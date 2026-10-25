@@ -1,0 +1,21 @@
+{
+  "Changes.note": "Switching a policy on or off holds at once in every köşk, medrese and course, without asking; your name goes to the audit log with the old and the new value. While Enrolment always needs approval is on, a talebe's own enrolment becomes an application that waits for the course team; registrations from a partner application are still enrolled directly. While Course recordings cannot be public is on, no recording is shown to people outside the course, and a köşk cannot switch the rule off in its own settings. A policy is undone by switching it back; applications that waited meanwhile do not turn into seats by themselves.",
+  "NoAccess.bodyGeneric": "This section’s permission has not been given to your account. The Medaris başnazım gives permissions; if you need one, ask them.",
+  "NoAccess.title": "You do not have access to this section",
+  "PlatformSettingsPage.combineHeading": "How policies combine",
+  "PlatformSettingsPage.combineWarningTitle": "A permission granted from above overrides the policy below",
+  "PlatformSettingsPage.errors.forbidden": "You may not do this.",
+  "PlatformSettingsPage.errors.generic": "The action could not be completed. Try again in a moment.",
+  "PlatformSettingsPage.instantNote": "Every change takes effect at once and is written to the audit log.",
+  "PlatformSettingsPage.intro": "Platform policies apply in every köşk, medrese and course. A policy closes a permission; a köşk, medrese or course cannot open it again.",
+  "PlatformSettingsPage.policies.approval.body": "While on, no course can be joined directly; every enrolment becomes a request and the course team approves it. In unlisted köşks enrolment is always approved, whatever this setting says.",
+  "PlatformSettingsPage.policies.approval.title": "Enrolment is always approved",
+  "PlatformSettingsPage.policies.recordings.body": "While on, no recording can be made public or uploaded to YouTube; only enrolled students and the course team watch recordings.",
+  "PlatformSettingsPage.policies.recordings.title": "Recordings cannot be made public",
+  "PlatformSettingsPage.policiesHeading": "Policies",
+  "PlatformSettingsPage.saveFailed": "The policy could not be saved",
+  "PlatformSettingsPage.scopedHeading": "Köşk and medrese policies",
+  "PlatformSettingsPage.title": "Platform settings",
+  "PlatformSettingsPage.turnedOff": "Policy switched off",
+  "PlatformSettingsPage.turnedOn": "Policy switched on"
+}

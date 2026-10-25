@@ -1,0 +1,54 @@
+# The screen of medaris.review-enrollments: the Başvurular tab of nazar's "Talebeler" (/ders/:id/talebeler). The portal
+# shell owns <main>; the page sets no first focus. The rejection question is an AlertDialog, focus on "Vazgeç".
+schema: delurio-graph/0
+kind: ui
+id: medaris.review-enrollments
+flow: medaris.review-enrollments
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { course: "Usûl-i Fıkıh Okumaları", name: "Zeynep Kaya" }
+changes: { key: Changes.note }
+
+nodes:
+  page: { type: page, component: Page, role: main, name: { labelledBy: title }, in: [forbidden, loadFailed, applications, rejectQuestion, approving, rejecting, bulkAdding], source: "apps/nazar/features/enrolments/components/enrolments-page.tsx:77" }
+  title: { type: text, component: Heading, role: heading, text: { key: CourseStudents.title }, in: [forbidden, loadFailed, applications, rejectQuestion, approving, rejecting, bulkAdding], source: "apps/nazar/features/enrolments/components/enrolments-page.tsx:78" }
+  subtitle: { type: text, component: Text, text: { key: CourseStudents.subtitle }, in: [forbidden, loadFailed, applications, rejectQuestion, approving, rejecting, bulkAdding], source: "apps/nazar/features/enrolments/components/enrolments-page.tsx:81" }
+  forbiddenTitle: { type: status, component: Status, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: "apps/nazar/features/shell/components/page-problem.tsx:25" }
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden] }
+  loadFailedTitle: { type: alert, component: Alert, role: alert, text: { key: CourseStudents.loadFailedTitle }, in: [loadFailed], source: "apps/nazar/features/shell/components/load-failed.tsx:28" }
+  loadFailedText: { type: text, component: Text, text: { key: CourseStudents.loadFailed }, in: [loadFailed] }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: "apps/nazar/features/shell/components/load-failed.tsx:33" }
+
+  bulkOpen: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseStudents.bulk.open }, in: [applications, approving, rejecting], when: "holds == 'decide'", emits: BULK, source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:198" }
+  tabs: { type: list, component: List, role: tablist, name: { key: CourseStudents.tabsLabel }, in: [applications, rejectQuestion, approving, rejecting], source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:207" }
+  tab: { type: field, component: ListItem, role: tab, text: { oneOf: [CourseStudents.tabs.applications, CourseStudents.tabs.enrolled, CourseStudents.tabs.completed, CourseStudents.tabs.removed] }, in: [applications, rejectQuestion, approving, rejecting] }
+  approvalNote: { type: text, component: Text, text: { oneOf: [CourseStudents.applicationsNote, CourseStudents.applicationsNoteOpen] }, in: [applications, approving, rejecting], source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:236" }
+  caption: { type: text, component: Text, text: { key: CourseStudents.captions.applications }, in: [applications, approving, rejecting], source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:245" }
+  rows: { type: list, component: List, role: table, name: { labelledBy: caption }, in: [applications, approving, rejecting], when: "applicants == 'some'", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:244" }
+  row: { type: text, component: ListItem, role: row, text: { key: CourseStudents.columns.applied }, repeat: course.applications, in: [applications, approving, rejecting], when: "applicants == 'some'" } # the talebe's name, address and date
+  approve: { type: action, component: Button, role: button, intent: confirm, name: { key: Pano.applications.approveLabel }, text: { key: Pano.applications.approve }, repeat: course.applications, in: [applications, approving, rejecting], when: mayDecide, disabledIn: [rejecting], emits: APPROVE, source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:161" } # busy while its own approval runs
+  reject: { type: action, component: Button, role: button, intent: secondary, name: { key: Pano.applications.rejectLabel }, text: { key: Pano.applications.reject }, repeat: course.applications, in: [applications, approving, rejecting], when: mayDecide, disabledIn: [approving], emits: REJECT, source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:174" }
+  empty: { type: text, component: Text, text: { key: CourseStudents.empty.applications }, in: [applications], when: "applicants == 'none'", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:249" }
+  approvedToast: { type: status, component: Status, role: status, text: { key: Pano.applications.approved }, in: [applications], when: "notice == 'approved'", source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:84" }
+  approvedBody: { type: text, component: Text, text: { key: Pano.applications.approvedBody }, in: [applications], when: "notice == 'approved'" }
+  rejectedToast: { type: status, component: Status, role: status, text: { key: Pano.applications.rejected }, in: [applications], when: "notice == 'rejected'" }
+  goneToast: { type: status, component: Status, role: status, text: { key: Pano.applications.errors.gone }, in: [applications], when: "notice == 'gone'", source: "apps/nazar/features/pano/pano.ts:249" } # tone info
+
+  rejectDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: rejectTitle }, in: [rejectQuestion], initialFocus: rejectCancel, source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:277" }
+  rejectTitle: { type: text, component: Heading, role: heading, text: { key: Pano.applications.rejectTitle }, in: [rejectQuestion], source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:282" }
+  rejectBody: { type: text, component: Text, text: { key: Pano.applications.rejectBody }, in: [rejectQuestion], source: "apps/nazar/features/enrolments/components/enrolments-tabs.tsx:293" }
+  rejectCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Pano.applications.rejectCancel }, in: [rejectQuestion], emits: CANCEL }
+  rejectConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Pano.applications.reject }, in: [rejectQuestion], emits: CONFIRM }
+
+edges:
+  - { labelledBy: [page, title] }
+  - { labelledBy: [rows, caption] }
+  - { labelledBy: [rejectDialog, rejectTitle] }
+  - { triggers: [approve, approving] }
+  - { triggers: [rejectConfirm, rejecting] }
+  - { triggers: [bulkOpen, bulkAdding] }
+
+rules:
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: ask-before-rejecting, rule: "rejecting asks once, in an alertdialog whose focus starts on \"Vazgeç\"" }

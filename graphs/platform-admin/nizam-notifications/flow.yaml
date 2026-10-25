@@ -1,0 +1,142 @@
+# CAPTURE of Medaris at origin/main ce47fce8: nizam's Bildirimler (/bildirimler, designs nizam/37 and nizam/46). nizam
+# words two notification types only, COURSE_BAN_PLACED and KOSK_BAN_PLACED (notification-view.ts:16); every list,
+# count and "Tümünü okundu say" asks for those types alone. One reader and one of their ban notifications. What
+# writes them: medaris.ban-notify. Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.nizam-notifications
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.nizam-notifications
+title: Read the ban notifications in nizam
+summary: >-
+  A köşk nazımı or a Medaris nazımı opens Bildirimler and reads the new bans, each with who barred whom from what and
+  why. They mark one read, or all, and follow one to the köşk's Yasaklamalar. A mark that the server does not save
+  moves back with a note. The başnazım's page lists nothing: no ban notification is ever written for the başnazım.
+
+scope:
+  shows: one reader and one ban notification of theirs, from opening the page to marking it read or following it
+  world: open
+  outOfView:
+    - "the bell and the menu badge, which read the same unread count on every page (reads.ts:39)"
+    - "the Okunmamış tab, the Yasaklar chip and Daha fazla göster (cursor paging)"
+    - "the reader's tedris notifications, which live in the same table and which nizam neither lists, counts nor marks"
+
+context:
+  reader:
+    values: [koskNazim, medarisBanReader, medarisOther, basnazim, noRole]
+    initial: any
+    say: { koskNazim: "a köşk's nazımı", medarisBanReader: "a Medaris nazımı holding platform.ban_scoped or platform.ban_account", medarisOther: "a Medaris nazımı holding neither", basnazim: "the Medaris başnazımı", noRole: "a person with no management role" }
+  item:
+    values: [none, unread, read]
+    initial: any
+    say: { none: "they have no ban notification", unread: "a ban notification of theirs is unread", read: "they have read their ban notification" }
+  saveFails:
+    values: [false, true]
+    initial: any
+    say: { "true": "marking read fails on the server", "false": "" }
+  shown: { values: [none, unread, read], initial: none } # what the page draws, which moves before the server answers
+
+guards:
+  # shellVariant (apps/nizam/lib/shell-nav.ts:25): SYSTEM_ADMIN, MEDARIS_NAZIM or KOSK_NAZIM, else "none"
+  manages: "reader != 'noRole'"
+  # GET /kosks/:id/bans asks READ_KOSK_BANS_CODES (apps/tedrisat/src/ban/ban-codes.ts:61)
+  readsKoskBans: "reader in ['koskNazim', 'medarisBanReader', 'basnazim']"
+
+effects:
+  nothingForChief: { set: { item: none } }
+  showNone: { set: { shown: none } }
+  showUnread: { set: { shown: unread } }
+  showRead: { set: { shown: read } }
+  saved: { set: { item: read, shown: read } }
+  rollBack: { set: { shown: unread } }
+
+failures:
+  reading: { from: listNotifications, failed: [SERVER_ERROR] }
+  marking: { from: markNotificationRead, failed: [SERVER_ERROR] }
+  markingAll: { from: markAllNotificationsRead, failed: [SERVER_ERROR] }
+
+main:
+  given: { reader: koskNazim, item: unread, saveFails: false }
+  events: [DONE, MARK_READ, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open Bildirimler
+    description: the page reads the caller's assignments first and refuses a person with no management role
+    source: apps/nizam/app/bildirimler/page.tsx:24
+    always:
+      - { guard: "reader == 'basnazim' and item != 'none'", target: opening, effect: [nothingForChief], say: "the başnazım holds no role row, so no ban notification is written for them (ban.repository.ts:432)" }
+      - { guard: "not manages", target: forbidden, say: "no management role: Bu bölüm için izniniz yok", source: "apps/nizam/app/bildirimler/page.tsx:27" }
+      - { target: reading }
+
+  forbidden:
+    type: final
+    title: No access
+    source: apps/nizam/app/forbidden.tsx:1
+
+  reading:
+    title: Read the notifications and the counts
+    description: GET /notifications?status=all&types=COURSE_BAN_PLACED,KOSK_BAN_PLACED and GET /notifications/unread-count, both scoped to the caller
+    source: apps/nizam/features/notifications/reads.ts:19
+    invoke: { action: listNotifications }
+    on:
+      DONE:
+        - { guard: "item == 'none'", target: inbox, effect: [showNone], say: "the list is empty", source: "apps/tedrisat/src/notification/notification.controller.ts:88" }
+        - { guard: "item == 'unread'", target: inbox, effect: [showUnread], say: "the notification comes, unread" }
+        - { target: inbox, effect: [showRead], say: "the notification comes, read" }
+
+  inbox:
+    title: The Bildirimler page
+    by: human
+    goal: true
+    description: >-
+      Today, Yesterday and Earlier groups. A row says who barred whom from which course or köşk and the reason, with
+      the köşk and the time; an unread one wears Yeni and Okundu say, and its title links to the köşk's Yasaklamalar.
+    source: apps/nizam/features/notifications/components/notifications-page.tsx:306
+    on:
+      MARK_READ: { guard: "shown == 'unread'", target: marking, effect: [showRead], say: "they press Okundu say", source: "apps/nizam/features/notifications/components/notification-row.tsx:89" }
+      MARK_ALL: { guard: "shown == 'unread'", target: markingAll, effect: [showRead], say: "they press Tümünü okundu say", source: "apps/nizam/features/notifications/components/notifications-page.tsx:319" }
+      OPEN_LINK: { guard: "shown != 'none'", target: followingLink, say: "they follow the notification's title", source: "apps/nizam/features/notifications/components/notification-row.tsx:59" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  marking:
+    title: Mark it read
+    description: POST /notifications/:id/read; a read row keeps its first readAt
+    source: apps/nizam/features/notifications/components/notifications-page.tsx:148
+    invoke: { action: markNotificationRead }
+    on:
+      DONE: { guard: "not saveFails", target: inbox, effect: [saved], say: "it is read; the badge and the bell follow", source: "apps/tedrisat/src/notification/notification.repository.ts:113" }
+      FAIL.failed: { guard: saveFails, target: inbox, effect: [rollBack], say: "it moves back to unread, with a note", source: "apps/nizam/features/notifications/components/notifications-page.tsx:160" }
+
+  markingAll:
+    title: Mark every ban notification read
+    description: POST /notifications/read-all?types=COURSE_BAN_PLACED,KOSK_BAN_PLACED; the caller's tedris notifications stay unread
+    source: apps/nizam/features/notifications/components/notifications-page.tsx:172
+    invoke: { action: markAllNotificationsRead }
+    on:
+      DONE: { guard: "not saveFails", target: inbox, effect: [saved], say: "they are read", source: "apps/tedrisat/src/notification/notification.repository.ts:123" }
+      FAIL.failed: { guard: saveFails, target: inbox, effect: [rollBack], say: "nothing changed, with a note", source: "apps/nizam/features/notifications/components/notifications-page.tsx:182" }
+
+  followingLink:
+    title: Open the köşk's Yasaklamalar
+    description: >-
+      The link is /kosks/:targetId/yasaklamalar; an unread notification is marked read on the click. That page reads
+      the köşk's bans, which only the köşk's nazımı and Medaris administration holding a ban code may.
+    source: apps/nizam/features/notifications/notification-view.ts:68
+    always:
+      - { guard: readsKoskBans, target: koskBans, say: "the köşk's bans open", source: "apps/tedrisat/src/ban/ban.service.ts:205" }
+      - { target: linkForbidden, say: "the link leads to Bu bölüm için izniniz yok", source: "apps/tedrisat/src/ban/ban.service.ts:198" }
+
+  koskBans: { type: final, title: The köşk's Yasaklamalar, source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:22" }
+  linkForbidden: { type: final, title: No access, source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:35" }
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: bildirimler-for-managers, never: "state in ['reading', 'inbox', 'marking', 'markingAll'] and not manages", say: "Only a person with a management role opens nizam's Bildirimler", source: "apps/nizam/app/bildirimler/page.tsx:27" }
+  - { id: read-only-when-saved, never: "state == 'inbox' and shown != item", say: "Bildirimler never shows as read what the server did not save", source: "apps/nizam/features/notifications/components/notifications-page.tsx:160" }
+  - { id: mark-all-needs-an-unread, never: "state == 'markingAll' and item != 'unread'", say: "Tümünü okundu say is pressed only while something is unread", source: "apps/nizam/features/notifications/components/notifications-page.tsx:319" }
+# NOT HELD, kept out on purpose (REPORT.md, PLATFORM-ADMIN-3, F09): notification-leads-where-its-reader-may-go:
+#   "state == 'linkForbidden'" is reached by a Medaris nazımı holding no ban code, who is sent the ban with its reason
+#   and whose link opens Bu bölüm için izniniz yok.

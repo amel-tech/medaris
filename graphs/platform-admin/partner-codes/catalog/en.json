@@ -1,0 +1,19 @@
+{
+  "Changes.note": "Add maps one of the partner application's codes to this course and writes it to the audit log: from then on a person approved in the partner application under this code is enrolled in the course as a talebe, provided their account is enabled with a verified e-mail, the course takes enrolments and they are not barred. Those enrolments look like talebe the course team added. Remove takes the code off the course without asking and writes it to the audit log; the talebe it enrolled stay, and the partner's later cancellations still reach them. The code can be added again, unless another course has it.",
+  "CourseSettings.partnerCodes.add": "Add",
+  "CourseSettings.partnerCodes.added": "Code added",
+  "CourseSettings.partnerCodes.addedBody": "The {name} code {code} is now linked to this course.",
+  "CourseSettings.partnerCodes.codeHelp": "The code in the partner application: lower-case letters, digits and hyphens, at most 64 characters.",
+  "CourseSettings.partnerCodes.codeLabel": "Add a code",
+  "CourseSettings.partnerCodes.empty": "No code is linked to this course.",
+  "CourseSettings.partnerCodes.errors.shape": "A code holds only lower-case letters, digits and hyphens, and starts with a letter or a digit.",
+  "CourseSettings.partnerCodes.errors.taken": "This code is linked to another course. It has to be removed there first.",
+  "CourseSettings.partnerCodes.errors.unknownPartner": "This partner application no longer works with this köşk. Reload the page.",
+  "CourseSettings.partnerCodes.intro": "Registrations in a partner application reach this course through these codes. A person approved there is enrolled here as a student; if their registration is cancelled there, only the enrolment added this way is removed.",
+  "CourseSettings.partnerCodes.listLabel": "{name} codes",
+  "CourseSettings.partnerCodes.remove": "Remove",
+  "CourseSettings.partnerCodes.removed": "Code removed",
+  "CourseSettings.partnerCodes.removedBody": "The {name} code {code} is no longer linked to this course. Students enrolled through it stay in the course.",
+  "CourseSettings.partnerCodes.title": "Partner application codes",
+  "CourseSettings.title": "Course settings"
+}

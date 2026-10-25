@@ -1,0 +1,510 @@
+# CAPTURE of Medaris at origin/main ce47fce8: the data and the API behind what the başnazım and Medaris nazımları do in
+# nizam, and the ban, archive and partner routes the course and medrese staff share with them. Shared by every flow of
+# graphs/platform-admin. Fields are JSON Schema (2020-12) with delurio's keywords (SPEC.md §5); an action with a route
+# is one OpenAPI operation, named by tedrisat's own operationId. Paths are repo-relative.
+# `needs`: session = a Keycloak bearer token through AuthGuard; partner-token = a registered partner's service-account
+# token through PartnerGuard. Who may do what beyond that is under `policies` and in each action's `refusals`.
+# Never named here: the partner organisation; the example partner is "Örnek Uygulama", client id ornek-uygulama.
+schema: delurio-graph/0
+kind: domain
+id: medaris.platform-admin
+status: proposed
+
+entities:
+  Ban: # a talebe barred from one course, a köşk's every course, or a medrese's every course; lifted, never deleted
+    source: apps/tedrisat/src/database/schema/ban.schema.ts:47
+    required: [userId, scope, reason, bannedBy, bannedRole, bannedTier, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid, references: User } # no foreign key: the row outlives what it names
+      scope: { enum: [COURSE, KOSK, MADRASAH] }
+      koskId: { type: [string, "null"], format: uuid, references: Kosk } # set for COURSE and KOSK, null for MADRASAH
+      madrasahId: { type: [string, "null"], format: uuid, references: Madrasah } # set for MADRASAH alone
+      courseId: { type: [string, "null"], format: uuid, references: Course } # set for COURSE alone
+      extendedFromCourseId: { type: [string, "null"], format: uuid, references: Course }
+      reason: { type: string, minLength: 1, maxLength: 500, sensitivity: personal } # read by whoever may lift; never sent to the talebe
+      bannedBy: { type: string, format: uuid, references: User }
+      bannedRole: { enum: [MUDERRIS, DERS_NAZIR, MEDRESE_NAZIR, MEDRESE_BASMUDERRIS, KOSK_NAZIM, MEDARIS_NAZIM, SYSTEM_ADMIN] } # the highest role that conferred the code used
+      bannedTier: { type: integer, minimum: 1, maximum: 4 } # course 1, medrese 2, köşk 3, platform 4 (ban-tier.ts:23)
+      createdAt: { type: string, format: date-time }
+      liftedAt: { type: [string, "null"], format: date-time }
+      liftedBy: { type: [string, "null"], format: uuid, references: User }
+      liftReason: { type: [string, "null"], maxLength: 500, sensitivity: personal }
+    lifecycle:
+      - "none -> open: createBan (course page or a Yasaklamalar page), createMadrasahBan, extendBan, escalateBan; one open ban per person and scope (ban.schema.ts:71)"
+      - "open -> lifted: liftBan, with a reason, by the level's permission and a kademe at or above bannedTier"
+
+  BanPermanentRequest: # a medrese asks Medaris administration to make a ban permanent; nothing decides it yet
+    source: apps/tedrisat/src/database/schema/ban.schema.ts:110
+    key: [banId]
+    fields:
+      id: { type: string, format: uuid }
+      banId: { type: string, format: uuid, references: Ban, unique: true }
+      reason: { type: string, minLength: 1, maxLength: 500, sensitivity: personal }
+      requestedBy: { type: string, format: uuid, references: User }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> requested: requestPermanentBan; no route reads it back except as the ban's permanentRequestedAt"
+
+  Notification:
+    source: apps/tedrisat/src/database/schema/notification.schema.ts:22
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid, references: User }
+      type: { enum: [ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, COURSE_BAN_PLACED, KOSK_BAN_PLACED] }
+      targetType: { enum: [COURSE, SESSION, DECK, KOSK, null] }
+      targetId: { type: [string, "null"], format: uuid }
+      params: { type: object, additionalProperties: { type: [string, number, boolean, "null"] }, sensitivity: personal } # COURSE_BAN_PLACED and KOSK_BAN_PLACED carry the ban's reason
+      readAt: { type: [string, "null"], format: date-time }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> unread: written by a producer (BanService.announce and tellBarred for the two ban types and COURSE_ACCESS_REMOVED)"
+      - "unread -> read: markNotificationRead or markAllNotificationsRead; a read row keeps its first readAt"
+
+  AuditRecord: # the platform's audit trail; nothing updates or deletes a row
+    source: apps/tedrisat/src/database/schema/audit.schema.ts:19
+    fields:
+      id: { type: string, format: uuid }
+      seq: { type: integer } # the "#12" of a record
+      actorId: { type: string, format: uuid, references: User }
+      action: { type: string } # ban.create, ban.extend, ban.lift, ban.permanent_request, <type>.restore, platform_policy.change, integration_partner.*, course.partner_code_add, audit.export, ...
+      entity: { type: string }
+      entityId: { type: string, format: uuid }
+      details: { type: object, sensitivity: personal } # a ban's reason, a person's id, the filters of an export
+      createdAt: { type: string, format: date-time }
+
+  HiddenItem: # what an Arşiv lists: a row of its own table with archived_at set
+    source: apps/tedrisat/src/archive/archive-types.ts:69
+    key: [type, id]
+    fields:
+      type: { enum: [kosk, madrasah, course, week, session, recording, deck] } # madrasah and recording list nothing (archive-types.ts:47)
+      id: { type: string, format: uuid }
+      archivedAt: { type: string, format: date-time }
+      archivedBy: { type: [string, "null"], format: uuid, references: User }
+      archivedLevel: { enum: [course, madrasah, kosk, platform, null] } # null on a row hidden before the level was recorded: the lowest level that could have hidden it
+    lifecycle:
+      - "shown -> hidden: the course, week, session, deck and köşk hides of other areas, recording the hider's level"
+      - "hidden -> shown: restoreArchiveItem, by the level that hid it or a higher one, while its parent is shown"
+      - "hidden -> none: deleteArchiveItem, the başnazım's alone, with everything under it"
+
+  PlatformPolicy:
+    source: apps/tedrisat/src/database/schema/platform-policy.schema.ts:19
+    key: [key]
+    fields:
+      key: { enum: [ALWAYS_REQUIRE_APPROVAL, RECORDINGS_NEVER_PUBLIC] }
+      enabled: { type: boolean, default: false } # a key nobody touched has no row and reads as off
+      changedBy: { type: [string, "null"], format: uuid, references: User }
+      changedAt: { type: string, format: date-time }
+
+  IntegrationPartner: # a partner application whose registrations become enrolments; never deleted
+    source: apps/tedrisat/src/database/schema/integration-partner.schema.ts:31
+    key: [clientId]
+    fields:
+      clientId: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" } # the partner's Keycloak client; ornek-uygulama
+      name: { type: string, minLength: 1, maxLength: 100 } # Örnek Uygulama
+      enabled: { type: boolean, default: true }
+      createdBy: { type: [string, "null"], format: uuid, references: User }
+    lifecycle:
+      - "none -> enabled: createPartnerApplication, bound to no köşk"
+      - "enabled <-> disabled: updatePartnerApplication"
+
+  PartnerKosk:
+    source: apps/tedrisat/src/database/schema/integration-partner.schema.ts:63
+    key: [clientId, koskId]
+    fields:
+      clientId: { type: string, references: IntegrationPartner }
+      koskId: { type: string, format: uuid, references: Kosk }
+    lifecycle:
+      - "none -> bound -> none: setPartnerApplicationKosks; unbinding removes the partner's codes on the köşk's courses"
+
+  PartnerCourseCode: # one of a partner's codes, mapped to one course
+    source: apps/tedrisat/src/database/schema/partner-enrollment.schema.ts:23
+    fields:
+      partnerClientId: { type: string, references: IntegrationPartner }
+      code: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,63}$" } # unique per partner (partner-enrollment.schema.ts:39)
+      courseId: { type: string, format: uuid, references: Course }
+      createdBy: { type: string, format: uuid, references: User }
+
+  PartnerEnrollmentLink: # a partner's registration and the seat it made, if it made one
+    source: apps/tedrisat/src/database/schema/partner-enrollment.schema.ts:68
+    key: [partnerClientId, registrationRef, courseCode]
+    fields:
+      partnerClientId: { type: string, references: IntegrationPartner }
+      registrationRef: { type: string }
+      courseCode: { type: string }
+      courseId: { type: string, format: uuid, references: Course }
+      userId: { type: string, format: uuid, references: User }
+      createdEnrollment: { type: boolean, default: false }
+      closedAt: { type: [string, "null"], format: date-time }
+
+policies:
+  - { actor: course team, needs: session, where: "ban.course, ban.manage_kosk or madrasah.ban held at the course", write: [Ban], do: [createBan, liftBan], source: "apps/tedrisat/src/ban/ban-codes.ts:38" }
+  - { actor: köşk nazımı or Medaris nazımı with platform.ban_scoped, needs: session, where: "ban.manage_kosk or platform.ban_scoped at the köşk", write: [Ban], do: [createBan, extendBan, liftBan], source: "apps/tedrisat/src/ban/ban-codes.ts:40" }
+  - { actor: medrese staff, needs: session, where: "madrasah.ban (or platform.ban_scoped) at the medrese; madrasah.permanent_ban_request for a request", write: [Ban, BanPermanentRequest], do: [createMadrasahBan, escalateBan, requestPermanentBan, liftBan], source: "apps/tedrisat/src/ban/ban-codes.ts:41" }
+  - { actor: ban readers, needs: session, where: "READ_KOSK_BANS_CODES at the köşk; READ_ALL_BANS_CODES at the platform", read: [Ban], do: [listKoskBans, listAllBans, listMadrasahBans], source: "apps/tedrisat/src/ban/ban-codes.ts:61" }
+  - { actor: anyone signed in, needs: session, where: "Notification.userId = the caller", read: [Notification], write: [Notification], do: [listNotifications, getNotificationCounts, markNotificationRead, markAllNotificationsRead], source: "apps/tedrisat/src/notification/notification.controller.ts:53" }
+  - { actor: archive readers, needs: session, where: "kosk.manage or platform.kosk_edit at the köşk; the başnazım for the platform", read: [HiddenItem], do: [listKoskArchive, listArchive, getArchiveScopes], source: "apps/tedrisat/src/archive/hide-codes.ts:12" }
+  - { actor: restorers, needs: session, where: "a rung of the item's hide ladder at or above archivedLevel", write: [HiddenItem], do: [restoreArchiveItem], source: "apps/tedrisat/src/archive/archive.service.ts:460" }
+  - { actor: Medaris başnazımı, needs: session, where: "SYSTEM_ADMIN realm role", write: [HiddenItem, AuditRecord], do: [getArchiveImpact, deleteArchiveItem], source: "apps/tedrisat/src/archive/archive.service.ts:510" }
+  - { actor: Medaris administration, needs: session, where: "SYSTEM_ADMIN, or a Medaris nazımı holding the platform code (platform.audit_read, platform.policy_edit, platform.partner_manage)", read: [AuditRecord, PlatformPolicy, IntegrationPartner], write: [AuditRecord, PlatformPolicy, IntegrationPartner, PartnerKosk, PartnerCourseCode], do: [listAuditLog, exportAuditLog, listPlatformPolicies, setPlatformPolicy, listScopedPolicies, listPartnerApplications, createPartnerApplication, updatePartnerApplication, setPartnerApplicationKosks], source: "apps/tedrisat/src/platform-access/platform-access.service.ts:43" }
+  - { actor: köşk nazımı, needs: session, where: "course.partner_codes at the course (köşk-scoped)", write: [PartnerCourseCode], do: [getCoursePartnerCodes, addCoursePartnerCode, removeCoursePartnerCode], source: "apps/tedrisat/src/integration/partner-codes.controller.ts:62" }
+  - { actor: partner application, needs: partner-token, where: "a registered, enabled partner holding the partner-enrollment role; codes mapped in its köşks", write: [PartnerEnrollmentLink], do: [putPartnerEnrollment, deletePartnerEnrollment, listPartnerCourses], source: "apps/tedrisat/src/integration/partner.guard.ts:93" }
+
+actions:
+  # ---- bans --------------------------------------------------------------------------------------
+  createBan:
+    route: POST /courses/{courseId}/bans
+    needs: session
+    source: apps/tedrisat/src/ban/ban.controller.ts:83
+    body: { type: object, required: [userId, scope, reason], properties: { userId: { type: string, format: uuid }, scope: { enum: [COURSE, KOSK] }, reason: { type: string, maxLength: 500, pattern: "\\S" } } }
+    result: { returns: Ban, status: 201 } # with viewerMayLift and viewerMayExtend; a person barred already gets the standing ban
+    sideEffects: ["audit:ban.create", "notify:COURSE_BAN_PLACED|KOSK_BAN_PLACED to the köşk's nazımları and every Medaris nazımı but the banner", "notify:COURSE_ACCESS_REMOVED to the talebe per newly covered seat"]
+    refusals:
+      BAN_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/ban.service.ts:145" }
+      BAN_TARGET_INVALID: { status: 400, source: "apps/tedrisat/src/ban/ban.service.ts:153" } # themselves, or someone who runs the course
+      COURSE_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/ban/ban.service.ts:128" }
+  listKoskBans:
+    route: GET /kosks/{koskId}/bans
+    needs: session
+    source: apps/tedrisat/src/ban/ban.controller.ts:102
+    query: { type: object, properties: { status: { enum: [ACTIVE, LIFTED], default: ACTIVE } } }
+    result: { type: object, properties: { items: { type: array, items: { $ref: Ban } }, activeCount: { type: integer }, liftedCount: { type: integer }, recentCount: { type: integer } } }
+    refusals:
+      BAN_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/ban.service.ts:201" }
+      KOSK_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/ban/ban.service.ts:195" }
+  listAllBans:
+    route: GET /bans
+    needs: session
+    source: apps/tedrisat/src/ban/ban.controller.ts:135
+    query: { type: object, properties: { status: { enum: [ACTIVE, LIFTED] }, scope: { enum: [COURSE, KOSK, MADRASAH] }, q: { type: string, maxLength: 100 }, limit: { type: integer, minimum: 1 }, offset: { type: integer, minimum: 0 } } }
+    result: { type: object, properties: { items: { type: array, items: { $ref: Ban } }, total: { type: integer } } }
+    refusals:
+      BAN_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/ban.service.ts:234" }
+  extendBan:
+    route: POST /bans/{banId}/extend
+    needs: session
+    source: apps/tedrisat/src/ban/ban.controller.ts:175
+    body: { type: object, required: [scope, reason], properties: { scope: { enum: [KOSK] }, reason: { type: string, maxLength: 500, pattern: "\\S" } } }
+    result: { returns: Ban, status: 200 }
+    sideEffects: ["audit:ban.extend", "notify: as createBan"]
+    refusals:
+      BAN_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/ban.service.ts:290" }
+      BAN_ALREADY_LIFTED: { status: 409, source: "apps/tedrisat/src/ban/ban.service.ts:277" }
+      BAN_TARGET_INVALID: { status: 400, source: "apps/tedrisat/src/ban/ban.service.ts:279" } # not a course ban
+      BAN_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/ban/ban.service.ts:276" }
+  liftBan:
+    route: POST /bans/{banId}/lift
+    needs: session
+    source: apps/tedrisat/src/ban/ban.controller.ts:195
+    body: { type: object, required: [reason], properties: { reason: { type: string, maxLength: 500, pattern: "\\S" } } }
+    result: { returns: Ban, status: 200 }
+    sideEffects: ["audit:ban.lift"] # no notification
+    refusals:
+      BAN_LIFT_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/ban.service.ts:334" }
+      BAN_ALREADY_LIFTED: { status: 409, source: "apps/tedrisat/src/ban/ban.service.ts:326" }
+      BAN_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/ban/ban.service.ts:325" }
+  escalateBan:
+    route: POST /bans/{banId}/escalate
+    needs: session
+    source: apps/tedrisat/src/ban/ban.controller.ts:218
+    body: { type: object, required: [reason], properties: { reason: { type: string, maxLength: 500, pattern: "\\S" } } }
+    result: { returns: Ban, status: 201 }
+    sideEffects: ["audit:ban.create", "notify:COURSE_ACCESS_REMOVED only"]
+    refusals:
+      BAN_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/ban.service.ts:535" }
+      BAN_NOT_ESCALATABLE: { status: 409, source: "apps/tedrisat/src/ban/ban.service.ts:525" }
+      BAN_ALREADY_LIFTED: { status: 409, source: "apps/tedrisat/src/ban/ban.service.ts:522" }
+  requestPermanentBan:
+    route: POST /bans/{banId}/permanent-request
+    needs: session
+    source: apps/tedrisat/src/ban/ban.controller.ts:243
+    body: { type: object, required: [reason], properties: { reason: { type: string, maxLength: 500, pattern: "\\S" } } }
+    result: { returns: BanPermanentRequest, status: 201 }
+    sideEffects: ["audit:ban.permanent_request"] # nothing tells Medaris administration
+    refusals:
+      BAN_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/ban.service.ts:589" }
+      BAN_PERMANENT_REQUEST_INVALID: { status: 409, source: "apps/tedrisat/src/ban/ban.service.ts:570" } # no medrese, or Medaris placed it
+      BAN_PERMANENT_REQUEST_EXISTS: { status: 409, source: "apps/tedrisat/src/ban/ban.service.ts:599" }
+      BAN_ALREADY_LIFTED: { status: 409, source: "apps/tedrisat/src/ban/ban.service.ts:567" }
+  listMadrasahBans:
+    route: GET /madrasahs/{id}/bans
+    needs: session
+    source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:70
+    query: { type: object, properties: { status: { enum: [ACTIVE, LIFTED] }, scope: { enum: [COURSE, MADRASAH] }, courseId: { type: string, format: uuid } } }
+    result: { type: object, properties: { items: { type: array, items: { $ref: Ban } } } } # with viewerMayLift, viewerMayEscalate, viewerMayRequestPermanent
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/madrasah-ban.controller.ts:71" }
+  createMadrasahBan:
+    route: POST /madrasahs/{id}/bans
+    needs: session
+    source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+    body: { type: object, required: [userId, scope, reason], properties: { userId: { type: string, format: uuid }, scope: { enum: [COURSE, MADRASAH] }, courseId: { type: string, format: uuid }, reason: { type: string, maxLength: 500, pattern: "\\S" } } }
+    result: { returns: Ban, status: 201 }
+    sideEffects: ["audit:ban.create", "notify:COURSE_ACCESS_REMOVED only"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/madrasah-ban.controller.ts:114" }
+      BAN_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/ban/ban.service.ts:476" }
+      BAN_TARGET_INVALID: { status: 400, source: "apps/tedrisat/src/ban/ban.service.ts:488" }
+      COURSE_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/ban/ban.service.ts:461" } # missing, or another medrese's
+  getCourseEnrollments:
+    route: GET /courses/{id}/enrollments
+    needs: session
+    source: apps/tedrisat/src/course/course.controller.ts:562
+    result: { type: array, items: { type: object, properties: { userId: { type: string }, status: { enum: [PENDING, ENROLLED, COMPLETED, REVOKED] }, ban: { type: [object, "null"], properties: { id: { type: string }, scope: { enum: [COURSE, KOSK, MADRASAH] } } } } } } # the ban's id and scope, never its reason nor viewerMayLift
+    sideEffects: ["audit:roster read"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/course.controller.ts:561" }
+  approveEnrollment:
+    route: POST /courses/{id}/enrollments/{userId}/approve
+    needs: session
+    source: apps/tedrisat/src/course/course.controller.ts:633
+    result: { status: 201, returns: Enrollment }
+    sideEffects: ["notify:ENROLLMENT_APPROVED"] # asks nothing of bans (course.service.ts:1621)
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/course/course.controller.ts:632" }
+      ENROLLMENT_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/course/course.service.ts:1628" }
+      ENROLLMENT_STATE_CONFLICT: { status: 409, source: "apps/tedrisat/src/course/course.service.ts:1631" }
+  getMadrasahStudents:
+    route: GET /madrasahs/{id}/students
+    needs: session
+    source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:68" }
+  lookupUser:
+    route: GET /users/lookup
+    needs: session
+    source: apps/tedrisat/src/user/users.controller.ts:57
+    query: { type: object, required: [email], properties: { email: { type: string, format: email } } }
+    result: { type: array, maxItems: 1 }
+    sideEffects: ["audit:every search"] # a read that writes
+    refusals:
+      SERVICE_UNAVAILABLE: { status: 503, source: "apps/tedrisat/src/user/users.controller.ts:51" }
+
+  # ---- notifications -------------------------------------------------------------------------------
+  listNotifications:
+    route: GET /notifications
+    needs: session
+    source: apps/tedrisat/src/notification/notification.controller.ts:88
+    query: { type: object, properties: { status: { enum: [all, unread] }, types: { type: string }, cursor: { type: string }, limit: { type: integer, minimum: 1, maximum: 50 } } }
+    result: { type: object, properties: { items: { type: array, items: { $ref: Notification } }, nextCursor: { type: [string, "null"] } } }
+    refusals:
+      INVALID_NOTIFICATION_TYPES: { status: 400, source: "apps/tedrisat/src/notification/notification.controller.ts:104" }
+      INVALID_NOTIFICATION_CURSOR: { status: 400, source: "apps/tedrisat/src/notification/notification-cursor.ts" }
+  getNotificationCounts:
+    route: GET /notifications/unread-count
+    needs: session
+    source: apps/tedrisat/src/notification/notification.controller.ts:135
+    result: { type: object, properties: { unread: { type: integer }, total: { type: integer } } }
+  markNotificationRead:
+    route: POST /notifications/{id}/read
+    needs: session
+    source: apps/tedrisat/src/notification/notification.controller.ts:190
+    result: { returns: Notification, status: 200 }
+    refusals:
+      NOTIFICATION_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/notification/notification.service.ts:67" } # also another person's
+  markAllNotificationsRead:
+    route: POST /notifications/read-all
+    needs: session
+    source: apps/tedrisat/src/notification/notification.controller.ts:164
+    query: { type: object, properties: { types: { type: string } } }
+    result: { type: object, properties: { updated: { type: integer } } }
+
+  # ---- archive -------------------------------------------------------------------------------------
+  listKoskArchive:
+    route: GET /kosks/{id}/archive
+    needs: session
+    source: apps/tedrisat/src/archive/archive.controller.ts:103
+    result: { type: object, properties: { items: { type: array, items: { $ref: HiddenItem } } } } # each with canRestore
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/archive/archive.controller.ts:104" }
+  listCourseArchive: # the course team's archive (weeks and sessions), each with canRestore; no flow here
+    route: GET /courses/{id}/archive
+    needs: session
+    source: apps/tedrisat/src/archive/archive.controller.ts:150
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/archive/archive.controller.ts:151" }
+  listArchive:
+    route: GET /archive
+    needs: session
+    source: apps/tedrisat/src/archive/archive.controller.ts:191
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/archive/archive.service.ts:511" }
+  getArchiveScopes:
+    route: GET /archive/scopes
+    needs: session
+    source: apps/tedrisat/src/archive/archive.controller.ts:228
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/archive/archive.service.ts:292" }
+  restoreArchiveItem:
+    route: POST /archive/{type}/{id}/restore
+    needs: session
+    source: apps/tedrisat/src/archive/archive.controller.ts:246
+    result: { status: 200, type: object, properties: { type: { type: string }, id: { type: string }, title: { type: string } } }
+    sideEffects: ["audit:<type>.restore with the level"]
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/archive/archive.service.ts:324" }
+      ARCHIVE_RESTORE_LEVEL: { status: 403, source: "apps/tedrisat/src/archive/archive.service.ts:342" }
+      ARCHIVE_PARENT_HIDDEN: { status: 409, source: "apps/tedrisat/src/archive/archive.service.ts:344" }
+      ARCHIVE_ITEM_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/archive/archive.service.ts:338" }
+  getArchiveImpact:
+    route: GET /archive/{type}/{id}/impact
+    needs: session
+    source: apps/tedrisat/src/archive/archive.controller.ts:265
+    result: { type: object, properties: { courses: { type: integer }, weeks: { type: integer }, sessions: { type: integer }, students: { type: integer }, recordings: { type: integer }, followers: { type: integer }, cards: { type: integer } } }
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/archive/archive.service.ts:356" }
+  deleteArchiveItem:
+    route: DELETE /archive/{type}/{id}
+    needs: session
+    source: apps/tedrisat/src/archive/archive.controller.ts:284
+    result: { status: 204 }
+    sideEffects: ["audit: the deletion with the caller's name", "send the session cancellations still owed", "delete the files from storage"]
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/archive/archive.service.ts:368" }
+      ARCHIVE_ITEM_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/archive/archive.service.ts:372" }
+
+  # ---- audit, settings, dashboard --------------------------------------------------------------------
+  listAuditLog:
+    route: GET /nizam/audit-log
+    needs: session
+    source: apps/tedrisat/src/audit/audit.controller.ts:45
+    query: { type: object, properties: { actor: { type: string }, type: { type: string }, scope: { type: string }, from: { type: string, format: date-time }, to: { type: string, format: date-time }, cursor: { type: string } } }
+    result: { type: object, properties: { items: { type: array, maxItems: 50, items: { $ref: AuditRecord } }, nextCursor: { type: [string, "null"] } } }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/audit/audit.service.ts:97" }
+      BAD_REQUEST: { status: 400, source: "apps/tedrisat/src/audit/audit.service.ts:41" } # a cursor this list did not give out
+  exportAuditLog:
+    route: GET /nizam/audit-log/export
+    needs: session
+    source: apps/tedrisat/src/audit/audit.controller.ts:64
+    result: { status: 200, type: string, contentMediaType: text/csv } # denetim-kaydi.csv, at most 10 000 rows, no details
+    sideEffects: ["audit:audit.export with the count and the filters"] # a GET that writes
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/audit/audit.service.ts:116" }
+  listPlatformPolicies:
+    route: GET /nizam/platform-policies
+    needs: session
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:50
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:72" }
+  setPlatformPolicy:
+    route: PUT /nizam/platform-policies/{key}
+    needs: session
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:70
+    body: { type: object, required: [enabled], properties: { enabled: { type: boolean } } }
+    result: { returns: PlatformPolicy, status: 200 }
+    sideEffects: ["audit:platform_policy.change with the old and the new value"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:98" }
+  listScopedPolicies:
+    route: GET /nizam/scoped-policies
+    needs: session
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:88
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:107" }
+  getNizamDashboard: # the Medaris home page; its newest bans card reads listAllBans
+    route: GET /nizam/dashboard
+    needs: session
+    source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.controller.ts:35
+    result: { type: object, properties: { pendingTotals: { type: object, properties: { permanentBanRequests: { type: [integer, "null"] } } } } } # 0 whenever shown (nizam-dashboard.service.ts:77)
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/nizam-dashboard/nizam-dashboard.service.ts:45" } # neither the başnazım nor a held MEDARIS_NAZIM row
+
+  # ---- partner applications ------------------------------------------------------------------------
+  listPartnerApplications:
+    route: GET /nizam/partner-applications
+    needs: session
+    source: apps/tedrisat/src/integration/partner-admin.controller.ts:59
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/integration/partner-admin.service.ts:48" }
+  createPartnerApplication:
+    route: POST /nizam/partner-applications
+    needs: session
+    source: apps/tedrisat/src/integration/partner-admin.controller.ts:81
+    body: { type: object, required: [clientId, name], properties: { clientId: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" }, name: { type: string, maxLength: 100, pattern: "\\S" } } }
+    result: { returns: IntegrationPartner, status: 201 }
+    sideEffects: ["audit:integration_partner.create", "the registry's cache is emptied in this process"]
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/integration/partner-admin.service.ts:66" }
+      PARTNER_FRONT_END_CLIENT: { status: 409, source: "apps/tedrisat/src/integration/partner-admin.service.ts:71" }
+      PARTNER_EXISTS: { status: 409, source: "apps/tedrisat/src/integration/partner-admin.service.ts:77" }
+      VALIDATION_ERROR: { status: 400, source: "apps/tedrisat/src/integration/dto/partner-admin.dto.ts:69" }
+  updatePartnerApplication:
+    route: PATCH /nizam/partner-applications/{clientId}
+    needs: session
+    source: apps/tedrisat/src/integration/partner-admin.controller.ts:98
+    body: { type: object, properties: { name: { type: string, maxLength: 100 }, enabled: { type: boolean } } }
+    result: { returns: IntegrationPartner, status: 200 }
+    sideEffects: ["audit:integration_partner.rename|disable|enable"]
+    refusals:
+      PARTNER_UNKNOWN: { status: 404, source: "apps/tedrisat/src/integration/partner-admin.service.ts:97" }
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/integration/partner-admin.service.ts:88" }
+  setPartnerApplicationKosks:
+    route: PUT /nizam/partner-applications/{clientId}/kosks
+    needs: session
+    source: apps/tedrisat/src/integration/partner-admin.controller.ts:117
+    body: { type: object, required: [koskIds], properties: { koskIds: { type: array, items: { type: string, format: uuid } } } }
+    result: { returns: IntegrationPartner, status: 200 }
+    sideEffects: ["audit:integration_partner.kosk_bind|kosk_unbind per köşk", "an unbound köşk's codes deleted, audit:course.partner_code_remove each"]
+    refusals:
+      PARTNER_UNKNOWN: { status: 404, source: "apps/tedrisat/src/integration/partner-admin.service.ts:119" }
+      KOSK_NOT_FOUND: { status: 404, source: "apps/tedrisat/src/integration/partner-admin.service.ts:120" }
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/integration/partner-admin.service.ts:114" }
+  getCoursePartnerCodes:
+    route: GET /courses/{id}/partner-codes
+    needs: session
+    source: apps/tedrisat/src/integration/partner-codes.controller.ts:63
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/integration/partner-codes.controller.ts:62" }
+  addCoursePartnerCode:
+    route: POST /courses/{id}/partner-codes
+    needs: session
+    source: apps/tedrisat/src/integration/partner-codes.controller.ts:91
+    body: { type: object, required: [partner, code], properties: { partner: { type: string, examples: [ornek-uygulama] }, code: { type: string, pattern: "^[a-z0-9][a-z0-9-]{0,63}$" } } }
+    result: { returns: PartnerCourseCode, status: 201 }
+    sideEffects: ["audit:course.partner_code_add"]
+    refusals:
+      PARTNER_UNKNOWN: { status: 404, source: "apps/tedrisat/src/integration/partner-codes.service.ts:107" }
+      PARTNER_CODE_TAKEN: { status: 409, source: "apps/tedrisat/src/integration/partner-codes.service.ts:64" }
+      AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/integration/partner-codes.controller.ts:90" }
+  removeCoursePartnerCode:
+    route: DELETE /courses/{id}/partner-codes/{partner}/{code}
+    needs: session
+    source: apps/tedrisat/src/integration/partner-codes.controller.ts:113
+    result: { status: 204 }
+    sideEffects: ["audit:course.partner_code_remove"]
+    refusals:
+      PARTNER_UNKNOWN: { status: 404, source: "apps/tedrisat/src/integration/partner-codes.service.ts:86" }
+  putPartnerEnrollment:
+    route: PUT /integrations/enrollments/{registrationRef}/{courseCode}
+    needs: partner-token
+    source: apps/tedrisat/src/integration/partner-enrollment.controller.ts:96
+    result: { status: 200, type: object, properties: { status: { enum: [ENROLLED, ALREADY_ENROLLED] }, courseId: { type: string } } }
+    sideEffects: ["an ENROLLED seat through the bulk path, audited with the partner named", "notify:ENROLLMENT_APPROVED for an approved request", "session invitations sent"]
+    refusals:
+      PARTNER_DISABLED: { status: 403, source: "apps/tedrisat/src/integration/partner.guard.ts:125" }
+      PARTNER_ROLE_MISSING: { status: 403, source: "apps/tedrisat/src/integration/partner.guard.ts:128" }
+      PARTNER_COURSE_UNKNOWN: { status: 404, source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:114" }
+      PARTNER_REGISTRATION_USER_MISMATCH: { status: 409, source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:122" }
+      PARTNER_USER_UNKNOWN: { status: 404, source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:314" }
+      PARTNER_USER_UNVERIFIED: { status: 409, source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:315" }
+      PARTNER_ENROLLMENT_REFUSED: { status: 409, source: "apps/tedrisat/src/integration/partner-enrollment.service.ts:170" } # reason COURSE_NOT_PUBLISHED, COURSE_HIDDEN, KOSK_HIDDEN, BANNED, REMOVED_BY_COURSE_TEAM, CHANGED
+  deletePartnerEnrollment:
+    route: DELETE /integrations/enrollments/{registrationRef}/{courseCode}
+    needs: partner-token
+    source: apps/tedrisat/src/integration/partner-enrollment.controller.ts:116
+    result: { status: 200, type: object, properties: { status: { enum: [REMOVED, KEPT, NOT_FOUND] } } }
+  listPartnerCourses:
+    route: GET /integrations/courses
+    needs: partner-token
+    source: apps/tedrisat/src/integration/partner-enrollment.controller.ts:132
+
+invariants:
+  - { id: one-open-ban-per-scope, rule: "A person has at most one open ban per course, per köşk and per medrese; a second request returns the first", source: "apps/tedrisat/src/database/schema/ban.schema.ts:71" }
+  - { id: ban-kademe, rule: "A ban is lifted only with the permission for its level, held where it sits, by a role whose tier is at or above bannedTier", source: "apps/tedrisat/src/ban/ban.service.ts:333" }
+  - { id: reason-never-to-the-talebe, rule: "No course, enrolment, roster or notification response a talebe reads carries a ban's reason", source: "apps/tedrisat/src/ban/ban.controller.ts:61" }
+  - { id: hide-kademe, rule: "A hidden item is brought back only by the level that hid it or a higher one, compared under the row lock", source: "apps/tedrisat/src/archive/archive.repository.ts:376" }
+  - { id: purge-is-chief-only, rule: "Only SYSTEM_ADMIN deletes for real, and only a hidden item, with a deletion record in the same transaction", source: "apps/tedrisat/src/archive/archive.service.ts:363" }
+  - { id: audit-append-only, rule: "Nothing updates or deletes an audit_log row and no route could", source: "apps/tedrisat/src/database/schema/audit.schema.ts:17" }
+  - { id: one-course-per-code, rule: "A partner's code is mapped to at most one course", source: "apps/tedrisat/src/database/schema/partner-enrollment.schema.ts:39" }
+  - { id: barred-never-seated-by-a-partner, rule: "A barred person is not seated by a partner's registration", source: "apps/tedrisat/src/course/bulk-enrollment.service.ts:184" }

@@ -1,0 +1,285 @@
+# CAPTURE of Medaris at origin/main ce47fce8: a medrese's bans in nazar, the staff portal (designs nazir/10 and
+# nazir/11): Yasakla from the medrese's Talebeler or its Yasaklamalar, and on an open ban Yasağı kaldır, Medreseden de
+# yasakla and Kalıcı yasak talebi aç. One viewer and one person. The başmüderris holds every medrese- and
+# course-scoped code by role default; a medrese nazırı holds only what was given to them. Paths are repo-relative.
+schema: delurio-graph/0
+kind: flow
+id: medaris.medrese-bans
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.medrese-bans
+title: Bar a talebe from a medrese's course or from the whole medrese
+summary: >-
+  The medrese's başmüderris, or a nazır given madrasah.ban, bars a talebe from one of the medrese's courses or from all
+  of them, with a reason. On an open ban they lift it when their kademe reaches the one that placed it, widen a course
+  ban to the medrese, or, as the başmüderris, ask Medaris administration to make it permanent. Nazar's Talebeler offers
+  Yasakla on every row to whoever may read the talebe.
+
+scope:
+  shows: one viewer, one medrese and one person, from opening a page to one decision on a ban
+  world: open
+  outOfView:
+    - "the Kaldırılan tab, the scope filter and the search of Yasaklamalar"
+    - "who is told: medaris.ban-notify, started here; the köşk's and Medaris' lists: medaris.ban-lists"
+    - "deciding a permanent-ban request: no route or screen does it (PLATFORM-ADMIN-8)"
+    - "Medaris administration in nazar: a Medaris nazımı holding platform.ban_scoped passes the routes' @Authz but bars no single course (ban-codes.ts:39)"
+
+context:
+  viewer:
+    values: [basmuderris, nazirBan, nazirView]
+    initial: any
+    say: { basmuderris: "the medrese's başmüderris", nazirBan: "a nazır of the medrese given madrasah.ban only", nazirView: "a nazır of the medrese given madrasah.students_view only" }
+  entry:
+    values: [bansPage, studentsPage]
+    initial: any
+    say: { bansPage: "they open Yasaklamalar", studentsPage: "they open the medrese's Talebeler" }
+  target:
+    values: [talebe, runsMedrese]
+    initial: any
+    say: { talebe: "the person is a talebe", runsMedrese: "the person runs the medrese or one of its courses" }
+  found:
+    values: [yes, none]
+    initial: any
+    say: { yes: "the e-mail address finds the person", none: "no account has that address" }
+  rowScope:
+    values: [COURSE, MADRASAH]
+    initial: any
+    say: { COURSE: "the open ban on the list bars one of the medrese's courses", MADRASAH: "the open ban bars the whole medrese" }
+  rowTier:
+    values: [course, madrasah, kosk, platform]
+    initial: any
+    say: { course: "a müderris placed it", madrasah: "the medrese placed it", kosk: "the köşk's nazımı placed it", platform: "Medaris administration placed it" }
+  wide:
+    values: [false, true]
+    initial: any
+    say: { "true": "an open medrese-wide ban already bars the same person", "false": "" }
+  asked:
+    values: [false, true]
+    initial: any
+    say: { "true": "a permanent-ban request was opened for this ban already", "false": "" }
+  open: { values: [true, false], initial: true }
+  picked: { values: [false, true], initial: false }
+  chosen: { values: [COURSE, MADRASAH], initial: COURSE } # the first course is chosen, the whole medrese is the last option (ban-dialog.tsx:156)
+  reason: { values: [blank, written], initial: blank }
+  notice: { values: [none, saved, forbidden, targetInvalid, notFound, lifted, escalated, requested, moved], initial: none }
+  placed: { values: [false, true], initial: false }
+  liftedHere: { values: [false, true], initial: false }
+  escalatedHere: { values: [false, true], initial: false }
+  requestedHere: { values: [false, true], initial: false }
+
+guards:
+  # @Authz(madrasah.ban | platform.ban_scoped) on GET and POST /madrasahs/:id/bans (madrasah-ban.controller.ts:71, :367)
+  holdsBan: "viewer in ['basmuderris', 'nazirBan']"
+  # @Authz(madrasah.students_view) on GET /madrasahs/:id/students (madrasah-portal.controller.ts:68)
+  readsStudents: "viewer in ['basmuderris', 'nazirView']"
+  # mayLiftEntry (ban.service.ts:634): LIFT_CODES at the ban's place, then the kademe: both medrese roles are tier 2 (ban-tier.ts:38)
+  mayLift: "open and holdsBan and rowTier in ['course', 'madrasah']"
+  # viewerMayEscalate (ban.service.ts:697): an open course ban, madrasah.ban at the medrese, no open medrese-wide ban for the person
+  mayEscalate: "open and rowScope == 'COURSE' and holdsBan and not wide"
+  # viewerMayRequestPermanent (ban.service.ts:702): madrasah.permanent_ban_request, the başmüderris's by default
+  mayRequest: "open and rowTier != 'platform' and not asked and viewer == 'basmuderris'"
+
+effects:
+  noMedreseBanBelowMedrese: { set: { rowTier: madrasah } }
+  openFromList: { set: { picked: false, chosen: COURSE, reason: blank, notice: none } }
+  openFromRow: { set: { picked: true, chosen: COURSE, reason: blank, notice: none } }
+  pick: { set: { picked: true } }
+  noOne: { set: { notice: notFound } }
+  chooseCourse: { set: { chosen: COURSE } }
+  chooseMadrasah: { set: { chosen: MADRASAH } }
+  writeReason: { set: { reason: written } }
+  clearReason: { set: { reason: blank, notice: none } }
+  forbidden: { set: { notice: forbidden } }
+  targetInvalid: { set: { notice: targetInvalid } }
+  place: { set: { placed: true, notice: saved } }
+  lift: { set: { open: false, liftedHere: true, notice: lifted } }
+  escalate: { set: { wide: true, escalatedHere: true, notice: escalated } }
+  request: { set: { asked: true, requestedHere: true, notice: requested } }
+  moved: { set: { notice: moved } }
+
+failures:
+  readingBans: { from: listMadrasahBans, forbidden: [AUTHZ_FORBIDDEN] }
+  readingStudents: { from: getMadrasahStudents, forbidden: [AUTHZ_FORBIDDEN] }
+  lookingUp: { from: lookupUser, none: [NOT_FOUND] }
+  creating: { from: createMadrasahBan, forbidden: [AUTHZ_FORBIDDEN, BAN_FORBIDDEN], target: [BAN_TARGET_INVALID] }
+  lifting: { from: liftBan, moved: [BAN_ALREADY_LIFTED, BAN_NOT_FOUND] }
+  escalating: { from: escalateBan, moved: [BAN_ALREADY_LIFTED, BAN_NOT_ESCALATABLE] }
+  requesting: { from: requestPermanentBan, moved: [BAN_ALREADY_LIFTED, BAN_PERMANENT_REQUEST_EXISTS] }
+
+main:
+  given: { viewer: basmuderris, entry: studentsPage, target: talebe }
+  events: [DONE, BAN, TYPE_REASON, SUBMIT, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open a medrese page in nazar
+    description: normalises a start the code cannot produce, then reads the page
+    always:
+      - { guard: "rowScope == 'MADRASAH' and rowTier in ['course', 'kosk']", target: opening, effect: [noMedreseBanBelowMedrese], say: "a medrese-wide ban takes madrasah.ban or platform.ban_scoped" }
+      - { guard: "entry == 'bansPage'", target: readingBans }
+      - { target: readingStudents }
+
+  readingBans:
+    title: Read the medrese's bans
+    description: >-
+      GET /madrasahs/:id/bans: the medrese-wide bans and the bans on its courses, each with viewerMayLift,
+      viewerMayEscalate and viewerMayRequestPermanent; and the medrese's courses for the dialog's choices.
+    source: apps/nazar/features/bans/components/bans-page.tsx:37
+    invoke: { action: listMadrasahBans }
+    on:
+      DONE: { guard: holdsBan, target: bansPage, say: "the list comes", source: "apps/tedrisat/src/ban/ban.service.ts:418" }
+      FAIL.forbidden: { guard: "not holdsBan", target: noAccess, say: "no ban permission at the medrese: 403", source: "apps/tedrisat/src/ban/madrasah-ban.controller.ts:71" }
+
+  readingStudents:
+    title: Read the medrese's talebe
+    description: GET /madrasahs/:id/students, each with the medrese's courses they hold a seat in
+    source: apps/nazar/features/students/components/students-page.tsx:46
+    invoke: { action: getMadrasahStudents }
+    on:
+      DONE: { guard: readsStudents, target: studentsPage, say: "the list comes" }
+      FAIL.forbidden: { guard: "not readsStudents", target: noAccess, say: "no students_view at the medrese: 403", source: "apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:68" }
+
+  noAccess:
+    type: final
+    title: No access notice
+    description: the page's problem notice; Yasaklamalar then draws no Yasakla either
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  studentsPage:
+    title: The Talebeler page
+    by: human
+    description: every row carries Yasakla, whatever the viewer holds
+    source: apps/nazar/features/students/components/students-table.tsx:170
+    on:
+      BAN: { target: banDialog, effect: [openFromRow], say: "they press Yasakla on a talebe's row", source: "apps/nazar/features/students/components/students-table.tsx:174" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  bansPage:
+    title: The Yasaklamalar page
+    by: human
+    goal: true
+    description: >-
+      Yasakla in the header, a kademe notice, and per open row the actions the API allowed, with the line that says who
+      alone may lift a ban the viewer may not.
+    source: apps/nazar/features/bans/components/bans-page.tsx:51
+    on:
+      BAN: { target: banDialog, effect: [openFromList], say: "they press Yasakla", source: "apps/nazar/features/bans/components/ban-dialog.tsx:317" }
+      LIFT: { guard: mayLift, target: liftDialog, effect: [clearReason], say: "they press Yasağı kaldır", source: "apps/nazar/features/bans/bans.ts:131" }
+      ESCALATE: { guard: mayEscalate, target: escalateDialog, effect: [clearReason], say: "they press Medreseden de yasakla", source: "apps/nazar/features/bans/bans.ts:132" }
+      REQUEST_PERMANENT: { guard: mayRequest, target: permanentDialog, effect: [clearReason], say: "they press Kalıcı yasak talebi aç", source: "apps/nazar/features/bans/bans.ts:133" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  banDialog:
+    title: The ban dialog
+    by: human
+    description: >-
+      From Talebeler the person is the row's and the choices are that talebe's courses and the whole medrese; from
+      Yasaklamalar the dialog first asks for their e-mail address (searched on Enter or on leaving the field, every
+      search audited) and offers the medrese's courses. The reason is required; the scrim does not close it.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:131
+    on:
+      LOOKUP: { guard: "not picked", target: lookingUp, say: "they type the address and press Enter" }
+      CHOOSE_COURSE: { target: banDialog, effect: [chooseCourse], say: "they choose a course" }
+      CHOOSE_MADRASAH: { target: banDialog, effect: [chooseMadrasah], say: "they choose Medrese düzeyi" }
+      TYPE_REASON: { target: banDialog, effect: [writeReason], say: "they write a reason" }
+      SUBMIT: { guard: "picked and reason == 'written'", target: creating, say: "they press Yasakla", source: "apps/nazar/features/bans/components/ban-dialog.tsx:217" }
+      CANCEL:
+        - { guard: "entry == 'bansPage'", target: bansPage, say: "they press Vazgeç" }
+        - { target: studentsPage, say: "they press Vazgeç" }
+
+  lookingUp:
+    title: Find the person by e-mail
+    description: GET /users/lookup?email=…, an exact match in the realm; the search is written to the audit log
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:55
+    invoke: { action: lookupUser }
+    on:
+      DONE: { guard: "found == 'yes'", target: banDialog, effect: [pick], say: "the person is picked" }
+      FAIL.none: { guard: "found == 'none'", target: banDialog, effect: [noOne], say: "no one has that address: the field says so" }
+
+  creating:
+    title: Place the ban
+    description: >-
+      POST /madrasahs/:id/bans. A course must be the medrese's (404 otherwise); a course ban asks ban.course or
+      madrasah.ban in the course, a medrese-wide one madrasah.ban or platform.ban_scoped; nobody who runs the medrese or
+      the course is barred. The ban sits at the medrese's kademe. Its audit row (ban.create) is in the same transaction.
+    source: apps/tedrisat/src/ban/ban.service.ts:449
+    invoke: { action: createMadrasahBan }
+    on:
+      FAIL.forbidden: { guard: "not holdsBan", target: banDialog, effect: [forbidden], say: "refused at the route: AUTHZ_FORBIDDEN, worded as a plain refusal", source: "apps/tedrisat/src/ban/madrasah-ban.controller.ts:114" }
+      FAIL.target: { guard: "holdsBan and target == 'runsMedrese'", target: banDialog, effect: [targetInvalid], say: "they run the medrese or the course: BAN_TARGET_INVALID", source: "apps/tedrisat/src/ban/ban.service.ts:487" }
+      DONE:
+        - { guard: "holdsBan and target == 'talebe' and entry == 'bansPage'", target: bansPage, effect: [place], starts: { flow: medaris.ban-notify, given: { route: "'madrasah'", scope: chosen } }, say: "the ban is placed; the list is read again", source: "apps/tedrisat/src/ban/ban.service.ts:493" }
+        - { guard: "holdsBan and target == 'talebe'", target: studentsPage, effect: [place], starts: { flow: medaris.ban-notify, given: { route: "'madrasah'", scope: chosen } }, say: "the ban is placed", source: "apps/tedrisat/src/ban/ban.service.ts:493" }
+
+  liftDialog:
+    title: The lift dialog
+    by: human
+    description: the ban's summary, what lifting it means, and a required reason
+    source: apps/nazar/features/bans/components/reason-dialog.tsx:40
+    on:
+      TYPE_REASON: { target: liftDialog, effect: [writeReason], say: "they write why" }
+      SUBMIT: { guard: "reason == 'written'", target: lifting, say: "they press Yasağı kaldır" }
+      CANCEL: { target: bansPage, say: "they press Vazgeç" }
+
+  lifting:
+    title: Lift the ban
+    description: POST /bans/:banId/lift, by the kademe rule; the lift and its audit row are one transaction; nobody is told
+    source: apps/tedrisat/src/ban/ban.service.ts:319
+    invoke: { action: liftBan }
+    on:
+      DONE: { guard: mayLift, target: bansPage, effect: [lift], say: "the ban closes", source: "apps/tedrisat/src/ban/ban.service.ts:336" }
+      FAIL.moved: { target: bansPage, effect: [moved], say: "lifted or gone meanwhile: the dialog closes and the list is read again", source: "apps/nazar/features/bans/components/reason-dialog.tsx:87" }
+
+  escalateDialog:
+    title: The medrese-widening dialog
+    by: human
+    description: the course ban stays; the new ban bars every course of the medrese, present and future
+    source: apps/nazar/features/bans/components/reason-dialog.tsx:40
+    on:
+      TYPE_REASON: { target: escalateDialog, effect: [writeReason], say: "they write the reason" }
+      SUBMIT: { guard: "reason == 'written'", target: escalating, say: "they press Medreseden de yasakla" }
+      CANCEL: { target: bansPage, say: "they press Vazgeç" }
+
+  escalating:
+    title: Widen the ban to the medrese
+    description: POST /bans/:banId/escalate; a second, medrese-wide ban beside the course's, at the medrese's kademe
+    source: apps/tedrisat/src/ban/ban.service.ts:515
+    invoke: { action: escalateBan }
+    on:
+      DONE: { guard: mayEscalate, target: bansPage, effect: [escalate], starts: { flow: medaris.ban-notify, given: { route: "'escalate'", scope: "'MADRASAH'" } }, say: "the medrese-wide ban is placed", source: "apps/tedrisat/src/ban/ban.service.ts:539" }
+      FAIL.moved: { target: bansPage, effect: [moved], say: "lifted meanwhile: the list is read again", source: "apps/tedrisat/src/ban/ban.service.ts:522" }
+
+  permanentDialog:
+    title: The permanent-request dialog
+    by: human
+    description: says the request goes to Medaris administration and the ban stands as it is meanwhile (Reasons.permanent.body), and asks a required reason
+    source: apps/nazar/features/bans/components/reason-dialog.tsx:40
+    on:
+      TYPE_REASON: { target: permanentDialog, effect: [writeReason], say: "they write the request's reason" }
+      SUBMIT: { guard: "reason == 'written'", target: requesting, say: "they press Talebi aç" }
+      CANCEL: { target: bansPage, say: "they press Vazgeç" }
+
+  requesting:
+    title: Record the permanent-ban request
+    description: >-
+      POST /bans/:banId/permanent-request: a ban_permanent_requests row and its audit row (ban.permanent_request). The ban
+      stays as it is. Nothing notifies, lists or counts the request for Medaris administration.
+    source: apps/tedrisat/src/ban/ban.service.ts:560
+    invoke: { action: requestPermanentBan }
+    on:
+      DONE: { guard: mayRequest, target: bansPage, effect: [request], say: "the request is recorded; the row wears Kalıcı yasak talebi bekliyor", source: "apps/tedrisat/src/ban/ban.repository.ts:737" }
+      FAIL.moved: { target: bansPage, effect: [moved], say: "a request exists already, or the ban was lifted: the list is read again", source: "apps/tedrisat/src/ban/ban.service.ts:599" }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: bans-page-for-ban-holders, never: "state in ['bansPage', 'liftDialog', 'lifting', 'escalateDialog', 'escalating', 'permanentDialog', 'requesting'] and not holdsBan", say: "Only who holds madrasah.ban (or platform.ban_scoped) reads the medrese's bans and acts on them", source: "apps/tedrisat/src/ban/madrasah-ban.controller.ts:71" }
+  - { id: no-ban-on-who-runs-the-medrese, never: "placed and target == 'runsMedrese'", say: "Nobody who runs the medrese or its course is barred from it", source: "apps/tedrisat/src/ban/ban.service.ts:487" }
+  - { id: medrese-lifts-only-its-own-kademe, never: "liftedHere and rowTier in ['kosk', 'platform']", say: "A medrese's staff never lift a ban the köşk's nazımı or Medaris administration placed", source: "apps/tedrisat/src/ban/ban.service.ts:640" }
+  - { id: one-request-per-ban, never: "state == 'requesting' and asked", say: "A ban has at most one permanent-ban request", source: "apps/tedrisat/src/database/schema/ban.schema.ts:121" }
+  - { id: no-request-for-medaris-bans, never: "requestedHere and rowTier == 'platform'", say: "A ban Medaris administration placed is not asked to be made permanent", source: "apps/tedrisat/src/ban/ban.service.ts:575" }
+  - { id: widened-to-the-medrese-once, never: "state == 'escalating' and wide", say: "A person already barred from the whole medrese is not barred from it again", source: "apps/tedrisat/src/ban/ban.service.ts:701" }
+# NOT HELD, kept out on purpose (REPORT.md, PLATFORM-ADMIN-9): yasakla-only-for-who-may-ban:
+#   "state == 'banDialog' and not holdsBan" is reached from Talebeler: every row carries Yasakla
+#   (students-table.tsx:170), and a nazır holding only madrasah.students_view gets AUTHZ_FORBIDDEN.

@@ -1,0 +1,543 @@
+# Medaris, captured at origin/main ce47fce8 (25 Oct 2026): the data and the tedrisat API behind what medrese and course
+# staff do in nazar (and nizam's answer to a course request). Every entity and action carries `source:`, the code that
+# makes it true. `needs` names the permission code the route's @Authz (or the service) asks for, in the scope named;
+# "the başnazım" is the SYSTEM_ADMIN realm role, which passes every @Authz by bypass (libs/common/src/authz/authz.service.ts:81).
+schema: delurio-graph/0
+kind: domain
+id: medaris.madrasah-staff
+status: proposed
+title: Medrese and course staff
+summary: >-
+  Opening a medrese course, asking a köşk for a course outside the medrese and the köşk's answer, the medrese's nazırs
+  and what they are given, a course's ders nazırları (MDRS-270), planning sessions, saving the syllabus, hiding a week
+  or a session, deciding on applications and adding talebe in bulk.
+
+entities:
+  Course:
+    source: apps/tedrisat/src/database/schema/course.schema.ts:56
+    required: [id, koskId, authorId, title, status, requiresApproval, isClosed, inPerson, timeZone, version]
+    fields:
+      id: { type: string, format: uuid }
+      koskId: { type: string, format: uuid, references: Kosk }
+      madrasahId: { type: [string, "null"], format: uuid, references: Madrasah, note: "null for a köşk's own course" }
+      authorId: { type: string, format: uuid }
+      title: { type: string, minLength: 2, maxLength: 200 }
+      status: { enum: [DRAFT, PUBLISHED] }
+      requiresApproval: { type: boolean, default: false }
+      isClosed: { type: boolean, default: false }
+      inPerson: { type: boolean, default: false, note: "the sessions are held in person; nothing keeps men and women apart (see REPORT)" }
+      timeZone: { type: string, default: Europe/Istanbul }
+      version: { type: integer, minimum: 0, note: "moves on every write of the syllabus, the team or the sessions; an editor that read an older one gets 409" }
+      archivedAt: { type: [string, "null"], format: date-time, note: "hidden; nothing is deleted" }
+      archivedLevel: { enum: [platform, kosk, madrasah, course, null] }
+    lifecycle:
+      - "none -> DRAFT: openMadrasahCourse (a medrese course) or createCourse (a köşk's own course)"
+      - "DRAFT -> PUBLISHED: the course settings (not in this area)"
+      - "shown -> hidden: hideMadrasahCourse or the course's own hide; brought back from the archive by the level that hid it or one above"
+
+  CourseMuderris:
+    source: apps/tedrisat/src/database/schema/course.schema.ts:223
+    key: [courseId, userId]
+    fields:
+      courseId: { type: string, format: uuid, references: Course }
+      userId: { type: [string, "null"], format: uuid, note: "null for a hoca shown by name alone, with no account" }
+      name: { type: string, sensitivity: personal }
+      unvan: { type: [string, "null"] }
+      orderIndex: { type: integer }
+
+  HostingRight:
+    source: apps/tedrisat/src/database/schema/role-assignment.schema.ts:133
+    fields:
+      madrasahId: { type: string, format: uuid, references: Madrasah }
+      koskId: { type: string, format: uuid, references: Kosk }
+      grantedBy: { type: string, format: uuid }
+      revokedAt: { type: [string, "null"], format: date-time }
+
+  OffsiteCourseRequest:
+    source: apps/tedrisat/src/database/schema/offsite-course-request.schema.ts:35
+    required: [id, madrasahId, koskId, title, reason, requestedBy, status]
+    fields:
+      id: { type: string, format: uuid }
+      madrasahId: { type: string, format: uuid, references: Madrasah }
+      koskId: { type: string, format: uuid, references: Kosk }
+      title: { type: string, minLength: 2, maxLength: 200 }
+      reason: { type: string, minLength: 1, maxLength: 2000 }
+      requestedBy: { type: string, format: uuid, sensitivity: personal }
+      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING, note: "nothing in the code ever moves it off PENDING" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> PENDING: requestOffsiteCourse (nazar's \"Talebi gönder\")"
+
+  CourseRequest:
+    source: apps/tedrisat/src/database/schema/course-request.schema.ts:25
+    required: [id, koskId, madrasahId, title, reason, requestedBy, status]
+    fields:
+      id: { type: string, format: uuid }
+      koskId: { type: string, format: uuid, references: Kosk }
+      madrasahId: { type: string, format: uuid, references: Madrasah }
+      title: { type: string, maxLength: 200 }
+      reason: { type: string, maxLength: 2000 }
+      requestedBy: { type: string, format: uuid, sensitivity: personal }
+      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING }
+      rejectReason: { type: [string, "null"] }
+      decidedBy: { type: [string, "null"], format: uuid }
+      decidedAt: { type: [string, "null"], format: date-time }
+      courseId: { type: [string, "null"], format: uuid, references: Course }
+    lifecycle:
+      - "none -> PENDING: createCourseRequest, which no app calls"
+      - "PENDING -> ACCEPTED: acceptCourseRequest, with a course of the request's köşk"
+      - "PENDING -> REJECTED: rejectCourseRequest, with a reason"
+
+  RoleAssignment:
+    source: apps/tedrisat/src/database/schema/role-assignment.schema.ts:68
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid }
+      role: { enum: [MEDARIS_NAZIM, KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR] }
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      scopeId: { type: [string, "null"], format: uuid }
+      isImam: { type: boolean, default: false }
+      grantedBy: { type: string, format: uuid }
+      expiresAt: { type: [string, "null"], format: date-time }
+      revokedAt: { type: [string, "null"], format: date-time, note: "a seat is revoked, never deleted" }
+    lifecycle:
+      - "none -> held: addMadrasahNazir (MEDRESE_NAZIR), createCourseNazir (DERS_NAZIR), openMadrasahCourse (MUDERRIS)"
+      - "held -> revoked: removeMadrasahNazir, revokeCourseNazir, a müderris left off the list"
+
+  PermissionGrant:
+    source: apps/tedrisat/src/database/schema/permission.schema.ts:75
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid }
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      scopeId: { type: [string, "null"], format: uuid }
+      permission: { type: [string, "null"], note: "one code, or null when the row gives a group" }
+      groupId: { type: [string, "null"], format: uuid, references: PermissionGroup }
+      grantedBy: { type: string, format: uuid }
+      authorityScopeType: { enum: [platform, kosk, madrasah, course, null], note: "the level the giver acted at; decides which policies the grant survives" }
+      expiresAt: { type: [string, "null"], format: date-time }
+      revokedAt: { type: [string, "null"], format: date-time }
+
+  PermissionGroup:
+    source: apps/tedrisat/src/database/schema/permission.schema.ts:24
+    fields:
+      id: { type: string, format: uuid }
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      scopeId: { type: [string, "null"], format: uuid }
+      name: { type: string, minLength: 1, unique: case-insensitive }
+      deletedAt: { type: [string, "null"], format: date-time }
+
+  CourseWeek:
+    source: apps/tedrisat/src/database/schema/course.schema.ts:124
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course }
+      weekNumber: { type: integer }
+      title: { type: string }
+      archivedAt: { type: [string, "null"], format: date-time }
+      archivedLevel: { enum: [platform, kosk, madrasah, course, null] }
+
+  Lesson:
+    source: apps/tedrisat/src/database/schema/course.schema.ts:148
+    fields:
+      id: { type: string, format: uuid }
+      weekId: { type: string, format: uuid, references: CourseWeek }
+      title: { type: string, maxLength: 200 }
+      scheduledAt: { type: [string, "null"], format: date-time }
+      durationMinutes: { type: [integer, "null"], minimum: 1, maximum: 1440 }
+      meetingUrl: { type: [string, "null"], format: uri }
+      inPersonOverride: { type: [boolean, "null"], note: "null follows the course" }
+      cancelledAt: { type: [string, "null"], format: date-time }
+      archivedAt: { type: [string, "null"], format: date-time }
+
+  Enrollment:
+    source: apps/tedrisat/src/database/schema/course.schema.ts:326
+    key: [userId, courseId]
+    fields:
+      userId: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course }
+      studentName: { type: [string, "null"], sensitivity: personal }
+      studentEmail: { type: [string, "null"], format: email, sensitivity: personal }
+      status: { enum: [PENDING, ENROLLED, COMPLETED, REVOKED] }
+    lifecycle:
+      - "none -> PENDING | ENROLLED: the talebe's own enrol (learning area), or bulkEnroll (ENROLLED)"
+      - "PENDING | REVOKED -> ENROLLED: approveEnrollment"
+      - "PENDING -> none: rejectEnrollment deletes the row"
+
+  AuditRow:
+    source: apps/tedrisat/src/database/schema/audit.schema.ts
+    fields:
+      actorId: { type: string, format: uuid }
+      action: { type: string }
+      entity: { type: string }
+      entityId: { type: string, format: uuid }
+      details: { type: object }
+
+policies:
+  - { actor: "başmüderris", needs: session, where: "MEDRESE_BASMUDERRIS in the medrese", write: [Course, CourseMuderris, OffsiteCourseRequest, RoleAssignment, PermissionGrant, PermissionGroup], do: [openMadrasahCourse, requestOffsiteCourse, addMadrasahNazir, setMadrasahNazirPermissions, removeMadrasahNazir, createMadrasahPermissionGroup], source: "libs/common/src/authz/permissions.ts:358" }
+  - { actor: "medrese nazırı", needs: session, where: "MEDRESE_NAZIR in the medrese; holds only what was granted (role default: nothing)", write: [Course, OffsiteCourseRequest, RoleAssignment], do: [openMadrasahCourse, requestOffsiteCourse, addMadrasahNazir, removeMadrasahNazir], source: "libs/common/src/authz/permissions.ts:359" }
+  - { actor: "müderris", needs: session, where: "MUDERRIS in the course: every course-scoped code", write: [Lesson, CourseWeek, Course, Enrollment, RoleAssignment, PermissionGrant], do: [createSessionBatch, replaceCourse, hideCourseWeek, archiveLesson, approveEnrollment, rejectEnrollment, bulkEnroll, createCourseNazir, updateCourseNazir, revokeCourseNazir], source: "libs/common/src/authz/permissions.ts:360" }
+  - { actor: "ders nazırı", needs: session, where: "DERS_NAZIR in the course; holds only what the post carries", write: [Lesson, Enrollment, RoleAssignment], do: [createSessionBatch, approveEnrollment, bulkEnroll, createCourseNazir, revokeCourseNazir], source: "libs/common/src/authz/permissions.ts:361" }
+  - { actor: "köşk nazımı", needs: session, where: "KOSK_NAZIM of the köşk; in a medrese course it is \"outside\" for ders nazırları", write: [CourseRequest, Course], do: [acceptCourseRequest, rejectCourseRequest, createCourse], source: "apps/tedrisat/src/course-request/course-request.service.ts:186" }
+
+actions:
+  # ---- opening a medrese course (nazir/08)
+  getMadrasahHostingKosks:
+    route: GET /madrasahs/{id}/hosting-kosks
+    needs: "madrasah.course_open on the medrese"
+    result: { type: array, items: { type: object, properties: { id: { type: string }, name: { type: string }, field: { type: [string, "null"] }, courseCount: { type: integer } } } }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, MADRASAH_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:82
+  getMadrasahSettings:
+    route: GET /madrasahs/{id}/settings
+    needs: "madrasah.settings_edit on the medrese"
+    result: { type: object, properties: { policies: { type: object, properties: { alwaysApproval: { type: boolean }, closedCourseRequired: { type: boolean } } } } }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 } }
+    source: apps/tedrisat/src/madrasah/madrasah.controller.ts:626
+  openMadrasahCourse:
+    route: POST /madrasahs/{id}/courses
+    needs: "madrasah.course_open on the medrese"
+    body:
+      type: object
+      required: [koskId, title, muderrisUserIds]
+      properties:
+        koskId: { type: string, format: uuid }
+        title: { type: string, minLength: 2, maxLength: 200 }
+        muderrisUserIds: { type: array, minItems: 1, maxItems: 20, items: { type: string, format: uuid } }
+        imamUserId: { type: string, format: uuid }
+        muderrisUnvans: { type: array, maxItems: 20 }
+        closedCourse: { type: boolean }
+        requiresApproval: { type: boolean }
+    result: { returns: Course, status: 201 }
+    sideEffects:
+      - "audit:course.open, with the köşk, the title, the accounts, the imam, the unvans and the two settings as applied"
+      - "the course is DRAFT; each listed account gets a MUDERRIS seat, the imam is marked"
+      - "\"Kayıt her zaman onaylı\" and \"Kapalı ders zorunlu\" are applied under the medrese's lock, whatever was sent"
+      - "the caller naming themselves is refused unless they already hold every MUDERRIS default code in the medrese, and the refusal is audited as permission.self_grant_refused"
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403 }
+      SELF_GRANT_REFUSED: { status: 403 }
+      COURSE_IMAM_REQUIRED: { status: 400 }
+      COURSE_IMAM_NOT_LISTED: { status: 400 }
+      MUDERRIS_DUPLICATE_USER: { status: 400 }
+      MUDERRIS_LIST_INVALID: { status: 400 }
+      VALIDATION_ERROR: { status: 400 }
+      MUDERRIS_UNKNOWN_USER: { status: 404 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503 }
+      MADRASAH_NOT_FOUND: { status: 404 }
+      HOSTING_RIGHT_REQUIRED: { status: 403 }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:103
+  setMadrasahCourseMuderris:
+    route: PUT /madrasahs/{id}/courses/{courseId}/muderrises
+    needs: "madrasah.muderris_manage on the medrese"
+    result: { returns: Course }
+    sideEffects: ["audit:course.muderris.update", "an account left off the list loses its MUDERRIS seat; the course version moves"]
+    refusals: { MADRASAH_COURSE_NOT_FOUND: { status: 404 }, MUDERRIS_UNKNOWN_USER: { status: 404 }, SELF_GRANT_REFUSED: { status: 403 }, COURSE_IMAM_REQUIRED: { status: 400 } }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:137
+  hideMadrasahCourse:
+    route: POST /madrasahs/{id}/courses/{courseId}/hide
+    needs: "madrasah.course_hide on the medrese"
+    result: { status: 204 }
+    sideEffects: ["audit:course.hide, at the level the caller acts at"]
+    refusals: { MADRASAH_COURSE_NOT_FOUND: { status: 404 }, MADRASAH_COURSE_ALREADY_HIDDEN: { status: 409 } }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:177
+  lookupUser:
+    route: GET /users/lookup
+    needs: "SYSTEM_ADMIN, or anyone who holds a role"
+    query: { type: object, required: [email], properties: { email: { type: string, format: email } } }
+    result: { type: array, maxItems: 1 }
+    sideEffects: ["every search is written to the audit log"]
+    refusals: { USER_LOOKUP_FORBIDDEN: { status: 403 }, KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503 } }
+    source: apps/tedrisat/src/user/users.controller.ts:57
+
+  # ---- a course outside the medrese (nazir/09) and the köşk's answer (nizam/39)
+  requestOffsiteCourse:
+    route: POST /madrasahs/{id}/offsite-course-requests
+    needs: "madrasah.offsite_course_request on the medrese"
+    body: { type: object, required: [koskId, title, reason], properties: { koskId: { type: string, format: uuid }, title: { type: string, minLength: 2, maxLength: 200 }, reason: { type: string, minLength: 1, maxLength: 2000 } } }
+    result: { returns: OffsiteCourseRequest, status: 201 }
+    sideEffects: ["audit:offsite_course_request.create", "a row in offsite_course_requests, PENDING; no course"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, MADRASAH_NOT_FOUND: { status: 404 }, KOSK_NOT_FOUND: { status: 404 }, VALIDATION_ERROR: { status: 400 } }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:220
+  getOffsiteCourseRequests:
+    route: GET /madrasahs/{id}/offsite-course-requests
+    needs: "madrasah.offsite_course_request on the medrese"
+    result: { returns: OffsiteCourseRequest, note: "an array, newest first" }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:239
+  createCourseRequest:
+    route: POST /kosks/{id}/course-requests
+    needs: "MEDRESE_BASMUDERRIS of the medrese in the body (a role, not a permission); no app calls this route"
+    body: { type: object, required: [madrasahId, title, reason], properties: { madrasahId: { type: string, format: uuid }, title: { type: string, maxLength: 200 }, reason: { type: string, maxLength: 2000 } } }
+    result: { returns: CourseRequest, status: 201 }
+    sideEffects: ["a row in course_requests, PENDING; no audit row"]
+    refusals: { KOSK_NOT_FOUND: { status: 404 }, MADRASAH_NOT_FOUND: { status: 404 }, COURSE_REQUEST_FORBIDDEN: { status: 403 } }
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:63
+  listCourseRequests:
+    route: GET /kosks/{id}/course-requests
+    needs: "a nazım of the köşk, or the başnazım (checked in the service)"
+    query: { type: object, properties: { status: { enum: [PENDING, DECIDED], default: PENDING } } }
+    result: { type: object, properties: { items: { type: array, maxItems: 100 }, pendingCount: { type: integer }, decidedCount: { type: integer } } }
+    refusals: { KOSK_NOT_FOUND: { status: 404 }, COURSE_REQUEST_FORBIDDEN: { status: 403 } }
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:86
+  createCourse:
+    route: POST /kosks/{koskId}/courses
+    needs: "course.open_standalone on the köşk"
+    result: { returns: Course, status: 201 }
+    note: "nizam's \"Dersi aç\" of a köşk's own course; described by the köşk area. Used here only as the first step of accepting a request."
+    source: apps/tedrisat/src/course/course.controller.ts:188
+  acceptCourseRequest:
+    route: POST /course-requests/{id}/accept
+    needs: "a nazım of the request's köşk, or the başnazım"
+    body: { type: object, required: [courseId], properties: { courseId: { type: string, format: uuid } } }
+    result: { status: 204 }
+    sideEffects: ["audit:course_request.accept, in one transaction with the status"]
+    refusals: { COURSE_REQUEST_NOT_FOUND: { status: 404 }, COURSE_REQUEST_FORBIDDEN: { status: 403 }, COURSE_REQUEST_NOT_PENDING: { status: 409 }, COURSE_REQUEST_COURSE_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:110
+  rejectCourseRequest:
+    route: POST /course-requests/{id}/reject
+    needs: "a nazım of the request's köşk, or the başnazım"
+    body: { type: object, required: [reason], properties: { reason: { type: string, minLength: 1 } } }
+    result: { status: 204 }
+    sideEffects: ["audit:course_request.reject, with the reason"]
+    refusals: { COURSE_REQUEST_NOT_FOUND: { status: 404 }, COURSE_REQUEST_FORBIDDEN: { status: 403 }, COURSE_REQUEST_NOT_PENDING: { status: 409 } }
+    source: apps/tedrisat/src/course-request/course-request.controller.ts:129
+
+  # ---- the medrese's nazırs (nazir/05, 06, 15, 16)
+  getMadrasahNazirs:
+    route: GET /madrasahs/{id}/nazirs
+    needs: "madrasah.nazir_appoint on the medrese, or platform.madrasah_nazir_grant"
+    result: { type: array }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:72
+  addMadrasahNazir:
+    route: POST /madrasahs/{id}/nazirs/{userId}
+    needs: "madrasah.nazir_appoint on the medrese, or platform.madrasah_nazir_grant"
+    result: { returns: RoleAssignment, status: 201 }
+    sideEffects:
+      - "audit:madrasah_nazir.appoint, with the level the caller acts at"
+      - "a MEDRESE_NAZIR seat with no permission; what an earlier seat left under it is revoked first"
+      - "idempotent: appointing a nazır again writes nothing"
+      - "the user id is not checked against the users table, the realm or a ban"
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, SELF_GRANT_REFUSED: { status: 403 }, MADRASAH_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:95
+  getMadrasahNazirGrants:
+    route: GET /madrasahs/{id}/nazirs/{userId}/grants
+    needs: "madrasah.nazir_appoint on the medrese, or platform.madrasah_nazir_grant"
+    result: { type: array, note: "one row per person the nazır gave a role or a permission to in the medrese or its courses, still held" }
+    refusals: { MADRASAH_NAZIR_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:134
+  removeMadrasahNazir:
+    route: DELETE /madrasahs/{id}/nazirs/{userId}
+    needs: "madrasah.nazir_appoint on the medrese, or platform.madrasah_nazir_grant; a nazır who holds it by a grant dismisses only the nazırs they appointed"
+    body: { type: object, required: [decisions], properties: { decisions: { type: array, maxItems: 500, items: { type: object, required: [userId, action], properties: { userId: { type: string, format: uuid }, action: { enum: [TAKE_OVER, DROP] } } } } } }
+    result: { status: 204 }
+    sideEffects:
+      - "audit:madrasah_nazir.dismiss, with how many rows were taken over and dropped"
+      - "TAKE_OVER: the rows stay, with the caller as their giver; DROP: they are revoked, and a seat dropped takes what its holder was given in its scope"
+      - "the nazır's own seat and every grant they hold in the medrese and its courses are revoked"
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403 }
+      MADRASAH_NAZIR_NOT_FOUND: { status: 404 }
+      NAZIR_NOT_APPOINTED_BY_YOU: { status: 403 }
+      DISMISS_DECISIONS_INCOMPLETE: { status: 400 }
+      DISMISS_SEAT_HANDED_ON: { status: 409 }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:161
+  getMadrasahPermissions:
+    route: GET /madrasahs/{id}/permissions
+    needs: "madrasah.nazir_appoint on the medrese, or platform.madrasah_nazir_grant"
+    result: { type: object, properties: { madrasah: { type: array }, course: { type: array }, givable: { type: array, note: "cut to what the caller holds; empty for one who may not give" } } }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:68
+  getMadrasahPermissionGroups:
+    route: GET /madrasahs/{id}/permission-groups
+    needs: "madrasah.nazir_appoint on the medrese, or platform.madrasah_nazir_grant"
+    result: { type: array }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:92
+  createMadrasahPermissionGroup:
+    route: POST /madrasahs/{id}/permission-groups
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant to come in; permission.grant through a role (or the başnazım, or platform.madrasah_nazir_grant) to write"
+    result: { returns: PermissionGroup, status: 201 }
+    sideEffects: ["audit row with the level the caller gives at"]
+    refusals: { PERMISSION_NOT_GIVABLE: { status: 403 }, GRANT_EXCEEDS_GIVER: { status: 403 }, PERMISSION_GROUP_EMPTY: { status: 400 }, PERMISSION_UNKNOWN: { status: 400 }, PERMISSION_GROUP_NAME_TAKEN: { status: 409 } }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:117
+  updateMadrasahPermissionGroup:
+    route: PATCH /madrasahs/{id}/permission-groups/{groupId}
+    needs: "as createMadrasahPermissionGroup"
+    result: { returns: PermissionGroup }
+    refusals: { PERMISSION_NOT_GIVABLE: { status: 403 }, GRANT_EXCEEDS_GIVER: { status: 403 }, USERS_POLICY_REQUIRED: { status: 400 }, PERMISSION_GROUP_NOT_FOUND: { status: 404 }, PERMISSION_GROUP_NAME_TAKEN: { status: 409 } }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:144
+  deleteMadrasahPermissionGroup:
+    route: DELETE /madrasahs/{id}/permission-groups/{groupId}
+    needs: "as createMadrasahPermissionGroup"
+    result: { status: 204 }
+    refusals: { PERMISSION_NOT_GIVABLE: { status: 403 }, USERS_POLICY_REQUIRED: { status: 400 }, PERMISSION_GROUP_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:171
+  getMadrasahNazirPermissions:
+    route: GET /madrasahs/{id}/nazirs/{userId}/permissions
+    needs: "madrasah.nazir_appoint on the medrese, or platform.madrasah_nazir_grant"
+    result: { type: object, properties: { groupId: { type: [string, "null"] }, permissions: { type: array }, courseIds: { type: [array, "null"] }, expiresAt: { type: [string, "null"] } } }
+    refusals: { MADRASAH_NAZIR_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:204
+  setMadrasahNazirPermissions:
+    route: PUT /madrasahs/{id}/nazirs/{userId}/permissions
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant to come in; to write, permission.grant through a role (the başmüderris), the başnazım, or platform.madrasah_nazir_grant"
+    body: { type: object, required: [permissions], properties: { groupId: { type: [string, "null"] }, permissions: { type: array, items: { type: string } }, courseIds: { type: [array, "null"], items: { type: string, format: uuid } }, expiresAt: { type: [string, "null"], format: date-time } } }
+    result: { returns: RoleAssignment }
+    sideEffects:
+      - "audit rows of every grant written, with the level the giver acts at"
+      - "replaces what the nazır held in the medrese and its courses; what stays keeps its giver and date"
+      - "nothing beyond what the giver holds in the medrese (GRANT_EXCEEDS_GIVER); a row is stored with no higher authority than the giver's own holding"
+    refusals:
+      PERMISSION_NOT_GIVABLE: { status: 403 }
+      MADRASAH_NAZIR_NOT_FOUND: { status: 404 }
+      SELF_GRANT_REFUSED: { status: 403 }
+      PERMISSION_UNKNOWN: { status: 400 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404 }
+      NAZIR_COURSE_SCOPE_INVALID: { status: 400 }
+      GRANT_EXPIRY_INVALID: { status: 400 }
+      GRANT_EXCEEDS_GIVER: { status: 403 }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:232
+
+  # ---- a course's ders nazırları (MDRS-270)
+  getMyCoursePermissions:
+    route: GET /courses/{id}/my-permissions
+    needs: "course.view on the course"
+    result: { type: object, properties: { permissions: { type: array, items: { type: string } } } }
+    source: apps/tedrisat/src/course/course.controller.ts:283
+  getCourseNazirs:
+    route: GET /courses/{id}/nazirs
+    needs: "course_nazir.assign on the course"
+    result: { type: object, properties: { items: { type: array }, catalog: { type: array }, grantable: { type: array, note: "empty for one who holds course_nazir.assign by a grant" }, mayAppoint: { type: boolean, note: "false outside, and on a hidden course" } } }
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, COURSE_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:71
+  createCourseNazir:
+    route: POST /courses/{id}/nazirs
+    needs: "course_nazir.assign on the course; giving a permission also needs permission.grant through a role (müderris, başmüderris, köşk nazımı of a köşk course) or the başnazım"
+    body: { type: object, required: [userId, permissions], properties: { userId: { type: string, format: uuid }, permissions: { type: array, items: { type: string } }, endsAt: { type: string, format: date-time } } }
+    result: { status: 201, note: "answers the list as it is now" }
+    sideEffects:
+      - "audit:course_nazir.assign, with the standing (giver or appointer) and the authority"
+      - "a DERS_NAZIR seat and one grant per code, all ending at endsAt; what an earlier post left open is revoked"
+    refusals:
+      SELF_GRANT_REFUSED: { status: 403 }
+      COURSE_NOT_FOUND: { status: 404 }
+      GRANT_COURSE_INVALID: { status: 400 }
+      PERMISSION_NOT_GIVABLE: { status: 403 }
+      PERMISSION_UNKNOWN: { status: 400 }
+      GRANT_EXCEEDS_GIVER: { status: 403 }
+      GRANT_EXPIRY_INVALID: { status: 400 }
+      COURSE_NAZIR_UNKNOWN_ACCOUNT: { status: 404 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503 }
+      COURSE_NAZIR_BARRED: { status: 409 }
+      COURSE_NAZIR_EXISTS: { status: 409 }
+      COURSE_NAZIR_HOLDS_SEAT: { status: 409 }
+    source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+  updateCourseNazir:
+    route: PATCH /courses/{id}/nazirs/{postId}
+    needs: "course_nazir.assign on the course and permission.grant through a role (a giver)"
+    body: { type: object, required: [permissions, endsAt], properties: { permissions: { type: array }, endsAt: { type: [string, "null"], format: date-time } } }
+    result: { note: "answers the list as it is now" }
+    sideEffects: ["audit row; the whole set is replaced, what stays keeps its giver and date; a row from above the caller is never lengthened"]
+    refusals: { SELF_GRANT_REFUSED: { status: 403 }, PERMISSION_NOT_GIVABLE: { status: 403 }, GRANT_EXCEEDS_GIVER: { status: 403 }, COURSE_NAZIR_NOT_FOUND: { status: 404 }, GRANT_EXPIRY_INVALID: { status: 400 } }
+    source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:126
+  revokeCourseNazir:
+    route: DELETE /courses/{id}/nazirs/{postId}
+    needs: "course_nazir.assign on the course; an appointer ends only the posts they appointed"
+    result: { status: 204 }
+    sideEffects: ["audit:course_nazir.revoke", "the post and every grant its holder has in the course are revoked at once"]
+    refusals: { COURSE_NAZIR_NOT_FOUND: { status: 404 }, NAZIR_NOT_APPOINTED_BY_YOU: { status: 403 }, DISMISS_SEAT_HANDED_ON: { status: 409 }, PERMISSION_NOT_GIVABLE: { status: 403 } }
+    source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:159
+
+  # ---- sessions, syllabus, weeks
+  getCourseById:
+    route: GET /courses/{id}
+    needs: "course.view on the course (public); a hidden course is not-found to all but those who may restore it"
+    result: { returns: Course }
+    refusals: { COURSE_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/course/course.controller.ts:260
+  previewSessionBatch:
+    route: POST /courses/{courseId}/sessions/batch/preview
+    needs: "session.manage on the course"
+    body: { type: object, required: [weekdays, startTime, startDate], properties: { weekdays: { type: array, minItems: 1, maxItems: 7, items: { type: integer, minimum: 1, maximum: 7 } }, startTime: { type: string }, timeZone: { type: string }, startDate: { type: string }, endDate: { type: string }, count: { type: integer, minimum: 1 } } }
+    result: { type: object, properties: { timeZone: { type: string }, sessions: { type: array } } }
+    sideEffects: ["none: nothing is written"]
+    refusals: { INVALID_SESSION_PATTERN: { status: 400 }, COURSE_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/course/lesson.controller.ts:297
+  createSessionBatch:
+    route: POST /courses/{courseId}/sessions/batch
+    needs: "session.manage on the course"
+    body: { type: object, required: [weekdays, startTime, startDate, title, durationMinutes], properties: { title: { type: string, minLength: 1, maxLength: 200 }, durationMinutes: { type: integer, minimum: 1, maximum: 1440 }, meetingUrl: { type: string, format: uri, maxLength: 500 } } }
+    result: { status: 201, type: object, properties: { courseVersion: { type: integer }, weeks: { type: array }, lessons: { type: array } } }
+    sideEffects:
+      - "every session in one transaction; a missing week is created as \"Hafta N\"; only the first session gets the link"
+      - "the course version moves"
+      - "the calendar sweep runs: enrolled talebe are e-mailed an invitation for each session within 30 days"
+    refusals: { INVALID_SESSION_PATTERN: { status: 400 }, VALIDATION_ERROR: { status: 400 } }
+    source: apps/tedrisat/src/course/lesson.controller.ts:326
+  replaceCourse:
+    route: PUT /courses/{id}
+    needs: "course.edit on the course; a change to a session also needs session.manage; a change to the müderris list needs course.open_standalone or madrasah.muderris_manage"
+    result: { returns: Course }
+    sideEffects:
+      - "the weeks and sessions the save drops are hidden at the saver's level, never deleted"
+      - "the calendar sweep runs, and dropped files are removed from storage"
+    refusals: { COURSE_VERSION_CONFLICT: { status: 409 }, AUTHZ_FORBIDDEN: { status: 403 }, MUDERRIS_ASSIGNMENT_FORBIDDEN: { status: 403 }, SELF_GRANT_REFUSED: { status: 403 }, COURSE_NOT_FOUND: { status: 404 }, MUDERRIS_UNKNOWN_USER: { status: 404 }, VALIDATION_ERROR: { status: 400 } }
+    source: apps/tedrisat/src/course/course.controller.ts:334
+  hideCourseWeek:
+    route: POST /courses/{courseId}/weeks/{weekId}/hide
+    needs: "week.hide on the course"
+    result: { type: object, properties: { id: { type: string }, courseVersion: { type: integer }, hiddenSessions: { type: integer } } }
+    sideEffects: ["audit:week.hide, at the level the caller acts at", "the week and every session in it are stamped hidden; the course version moves", "the calendar sweep sends cancellations"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, WEEK_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/course/lesson.controller.ts:428
+  archiveLesson:
+    route: DELETE /lessons/{id}
+    needs: "week.hide or session.manage on the session's course"
+    result: { type: object }
+    sideEffects: ["audit:lesson.hide, at the level the caller acts at", "the calendar sweep sends a cancellation"]
+    refusals: { AUTHZ_FORBIDDEN: { status: 403 }, LESSON_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/course/lesson.controller.ts:408
+
+  # ---- applications and bulk enrolment
+  getCourseEnrollments:
+    route: GET /courses/{id}/enrollments
+    needs: "course.staff_read on the course (implied by any enrollment code)"
+    result: { returns: Enrollment, note: "an array: every enrolment of the course" }
+    source: apps/tedrisat/src/course/course.controller.ts:562
+  approveEnrollment:
+    route: POST /courses/{id}/enrollments/{userId}/approve
+    needs: "enrollment.decide on the course"
+    result: { returns: Enrollment, status: 201 }
+    sideEffects: ["an ENROLLMENT_APPROVED notification to the talebe", "the calendar sweep e-mails the talebe their sessions"]
+    refusals: { ENROLLMENT_NOT_FOUND: { status: 404 }, ENROLLMENT_STATE_CONFLICT: { status: 409 } }
+    note: "no ban is read: a barred talebe's PENDING or REVOKED row becomes ENROLLED"
+    source: apps/tedrisat/src/course/course.controller.ts:633
+  rejectEnrollment:
+    route: DELETE /courses/{id}/enrollments/{userId}
+    needs: "enrollment.decide on the course"
+    body: { type: object, properties: { reason: { type: string } } }
+    result: { type: boolean }
+    sideEffects: ["audit:enrollment.reject, with the reason when one is sent", "the PENDING row is deleted", "an ENROLLMENT_REJECTED notification to the talebe"]
+    refusals: { ENROLLMENT_NOT_FOUND: { status: 404 } }
+    source: apps/tedrisat/src/course/course.controller.ts:687
+  bulkEnroll:
+    route: POST /courses/{id}/enrollments/bulk
+    needs: "enrollment.decide on the course"
+    body: { type: object, required: [emails], properties: { emails: { type: array, maxItems: 500, items: { type: string } } } }
+    result: { status: 200, type: object, properties: { enrolled: { type: array }, approved: { type: array }, already: { type: array }, notFound: { type: array }, invalid: { type: array }, skipped: { type: array } } }
+    sideEffects:
+      - "audit:enrollment.bulk_add, with the counts and the accounts enrolled or approved"
+      - "every address is looked up in the realm first; no account, no seat"
+      - "a new ENROLLED seat for an account with none; a PENDING request approved as approveEnrollment does (with its notification); a barred person, a REVOKED seat and a completion are skipped"
+      - "the calendar sweep runs once"
+    refusals: { KEYCLOAK_ADMIN_NOT_CONFIGURED: { status: 503 }, KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503 }, COURSE_NOT_FOUND: { status: 404 }, VALIDATION_ERROR: { status: 400 } }
+    source: apps/tedrisat/src/course/course.controller.ts:665
+
+invariants:
+  - { id: self-grant-refused, rule: "nobody but the başnazım names themselves into a role or codes they do not already hold in the scope; a nazır appointing themselves is refused whatever they hold", source: "libs/common/src/authz/self-grant.guard.ts:60" }
+  - { id: self-grant-audited, rule: "a refused self-naming writes permission.self_grant_refused to the audit log", source: "libs/common/src/authz/self-grant.guard.ts:80" }
+  - { id: grant-ceiling, rule: "a giver hands on only codes they hold in the medrese (or the course); GRANT_EXCEEDS_GIVER otherwise", source: "apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:279" }
+  - { id: grants-never-handed-on, rule: "permission.grant is never grantable, so a grantee never gives; only a role's own permission.grant does", source: "libs/common/src/authz/permissions.ts:255" }
+  - { id: appointer-ends-own, rule: "one who holds madrasah.nazir_appoint or course_nazir.assign by a grant dismisses only the nazırs they appointed", source: "apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:817" }
+  - { id: revoke-not-delete, rule: "seats, grants, weeks, sessions and courses are revoked or hidden, never deleted; a rejected PENDING enrolment is the one row that is deleted", source: "apps/tedrisat/src/course/course.repository.ts:1651" }
+  - { id: policy-applied-on-open, rule: "a medrese course opens closed and needing approval whenever the medrese's policies say so, whatever the form sent", source: "apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:182" }
+  - { id: barred-never-a-ders-nazir, rule: "an account an open ban bars from the course is never made its ders nazırı", source: "apps/tedrisat/src/course/nazir/course-nazir.service.ts:223" }
+  - { id: gender-kept-apart, requirement: true, enforced: false, rule: "Gender is a required attribute of every account, and men and women are kept apart wherever they meet in person (a course held in person and its sessions). The code reads no gender when it seats a talebe (approveEnrollment, bulkEnroll) or a hoca (openMadrasahCourse), a course has no gender of its own, and an account's gender may be empty", source: "apps/tedrisat/src/database/schema/user-profile.schema.ts:33" }

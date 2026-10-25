@@ -1,0 +1,40 @@
+# The screen of medaris.nizam-notifications: nizam's Bildirimler (/bildirimler). Words from libs/i18n nizam.json.
+# No dialog; the page takes no focus of its own when it opens.
+schema: delurio-graph/0
+kind: ui
+id: medaris.nizam-notifications
+flow: medaris.nizam-notifications
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { koskName: "Nûruosmaniye Köşkü", actorName: "Ahmet Yılmaz", talebeName: "Rümeysa Nur Karaca", courseTitle: "Emsile ve Bina", reason: "Celsede başkalarını rahatsız etti.", title: "Yeni ders yasağı" }
+changes: { key: Changes.note }
+
+nodes:
+  inboxPage: { type: page, component: Page, role: main, name: { labelledBy: inboxTitle }, in: [inbox, marking, markingAll], source: apps/nizam/features/notifications/components/notifications-page.tsx:306 }
+  inboxTitle: { type: text, component: Heading, role: heading, text: { key: NotificationsPage.title }, in: [inbox, marking, markingAll] }
+  inboxSubtitle: { type: text, component: Text, text: { oneOf: [NotificationsPage.subtitleKosk, NotificationsPage.subtitlePlatform] }, in: [inbox, marking, markingAll] }
+  markAll: { type: action, component: Button, role: button, intent: secondary, text: { key: NotificationsPage.markAllRead }, in: [inbox, marking, markingAll], when: "shown != 'none'", emits: MARK_ALL, source: apps/nizam/features/notifications/components/notifications-page.tsx:316 } # disabled while nothing is unread; not drawn while the list is empty
+  tabs: { type: list, component: List, role: tablist, name: { key: NotificationsPage.tabsLabel }, in: [inbox, marking, markingAll] }
+  tab: { type: action, component: ListItem, role: tab, text: { oneOf: [NotificationsPage.tabAll, NotificationsPage.tabUnread] }, in: [inbox, marking, markingAll] }
+  list: { type: list, component: List, role: list, name: { key: NotificationsPage.listLabel }, in: [inbox, marking, markingAll], when: "shown != 'none'" }
+  row: { type: text, component: ListItem, role: listitem, text: { oneOf: [NotificationsPage.types.courseBanPlaced.bodyReason, NotificationsPage.types.koskBanPlaced.bodyReason] }, in: [inbox, marking, markingAll], when: "shown != 'none'", repeat: notifications.items, source: apps/nizam/features/notifications/components/notification-row.tsx:46 }
+  rowLink: { type: action, component: LinkButton, role: link, text: { oneOf: [NotificationsPage.types.courseBanPlaced.title, NotificationsPage.types.koskBanPlaced.title] }, in: [inbox, marking, markingAll], when: "shown != 'none'", repeat: notifications.items, emits: OPEN_LINK, source: apps/nizam/features/notifications/components/notification-row.tsx:59 }
+  newBadge: { type: text, component: Text, text: { key: NotificationsPage.new }, in: [inbox, marking, markingAll], when: "shown == 'unread'" }
+  markRead: { type: action, component: Button, role: button, intent: secondary, name: { key: NotificationsPage.markReadLabel, params: { title: notification.title } }, text: { key: NotificationsPage.markRead }, in: [inbox, marking, markingAll], disabledIn: [marking, markingAll], when: "shown == 'unread'", repeat: notifications.items, emits: MARK_READ, source: apps/nizam/features/notifications/components/notification-row.tsx:86 }
+  empty: { type: text, component: Text, text: { key: NotificationsPage.emptyTitle }, in: [inbox], when: "shown == 'none'" }
+  markFailed: { type: alert, component: Alert, role: alert, text: { key: NotificationsPage.markReadFailedTitle }, in: [inbox], when: saveFails, source: apps/nizam/features/notifications/components/notifications-page.tsx:163 }
+  markFailedText: { type: text, component: Text, text: { key: NotificationsPage.markReadFailedText }, in: [inbox], when: saveFails }
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden, linkForbidden], source: apps/nizam/components/errors/no-access.tsx:30 }
+  noAccessBody: { type: text, component: Text, text: { key: NoAccess.bodyGeneric }, in: [forbidden, linkForbidden] }
+  koskBansTitle: { type: text, component: Heading, role: heading, text: { key: BansPage.title }, in: [koskBans] }
+
+edges:
+  - { labelledBy: [inboxPage, inboxTitle] }
+  - { triggers: [markRead, marking] }
+  - { triggers: [markAll, markingAll] }
+
+rules:
+  - { id: leads-where-allowed, rule: "a notification's link leads only to a page its reader may open" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

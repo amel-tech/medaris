@@ -1,0 +1,38 @@
+# The screen of medaris.audit-log: nizam's Denetim kaydı (AuditView). Words from libs/i18n nizam.json. Dışa aktar is
+# an <a download> styled as a button, so it is a link to the export route, not a button.
+schema: delurio-graph/0
+kind: ui
+id: medaris.audit-log
+flow: medaris.audit-log
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: {}
+changes: { key: Changes.note }
+
+nodes:
+  auditPage: { type: page, component: Page, role: main, name: { labelledBy: auditTitle }, in: [auditPage, loadingOlder, exporting], source: apps/nizam/features/platform-admin/components/audit-view.tsx:185 }
+  auditTitle: { type: text, component: Heading, role: heading, text: { key: AuditPage.title }, in: [auditPage, loadingOlder, exporting] }
+  auditIntro: { type: text, component: Text, text: { key: AuditPage.intro }, in: [auditPage, loadingOlder, exporting] }
+  exportLink: { type: action, component: LinkButton, role: link, text: { key: AuditPage.export }, in: [auditPage, loadingOlder, exporting], emits: EXPORT, source: apps/nizam/features/platform-admin/components/audit-view.tsx:194 }
+  notice: { type: alert, component: Alert, text: { key: AuditPage.noticeTitle }, in: [auditPage, loadingOlder, exporting], source: apps/nizam/features/platform-admin/components/audit-view.tsx:204 } # tone neutral: no role, not announced
+  noticeText: { type: text, component: Text, text: { key: AuditPage.notice }, in: [auditPage, loadingOlder, exporting] }
+  filters: { type: list, component: List, role: form, name: { key: AuditPage.filtersLabel }, in: [auditPage, loadingOlder, exporting], source: apps/nizam/features/platform-admin/components/audit-view.tsx:208 }
+  actorFilter: { type: field, component: TextField, role: textbox, text: { key: AuditPage.filters.actor }, in: [auditPage, loadingOlder, exporting], emits: FILTER }
+  typeFilter: { type: field, component: TextField, role: combobox, text: { key: AuditPage.filters.type }, in: [auditPage, loadingOlder, exporting], emits: FILTER }
+  scopeFilter: { type: field, component: TextField, role: combobox, text: { key: AuditPage.filters.scope }, in: [auditPage, loadingOlder, exporting], emits: FILTER }
+  rangeFilter: { type: field, component: TextField, role: combobox, text: { key: AuditPage.filters.range }, in: [auditPage, loadingOlder, exporting], emits: FILTER }
+  records: { type: list, component: List, role: table, name: { key: AuditPage.title }, in: [auditPage, loadingOlder, exporting], source: apps/nizam/features/platform-admin/components/audit-view.tsx:317 } # the caption repeats the page's title
+  olderButton: { type: action, component: Button, role: button, intent: secondary, text: { key: AuditPage.older }, in: [auditPage, loadingOlder, exporting], disabledIn: [loadingOlder], when: older, emits: OLDER, source: apps/nizam/features/platform-admin/components/audit-view.tsx:327 }
+  retention: { type: text, component: Text, text: { key: AuditPage.retention }, in: [auditPage, loadingOlder, exporting], source: apps/nizam/features/platform-admin/components/audit-view.tsx:336 } # ships a bracketed placeholder (PLATFORM-ADMIN-12)
+
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden], source: apps/nizam/components/errors/no-access.tsx:30 }
+  noAccessBody: { type: text, component: Text, text: { key: NoAccess.bodyGeneric }, in: [forbidden] }
+
+edges:
+  - { labelledBy: [auditPage, auditTitle] }
+  - { triggers: [exportLink, exporting] }
+  - { triggers: [olderButton, loadingOlder] }
+
+rules:
+  - { id: failure-said, rule: "a refused or failed export says so on the page" }

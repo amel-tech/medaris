@@ -1,0 +1,17 @@
+{
+  "AuditPage.export": "Export",
+  "AuditPage.filters.actor": "Person",
+  "AuditPage.filters.range": "Date",
+  "AuditPage.filters.scope": "Scope",
+  "AuditPage.filters.type": "What they did",
+  "AuditPage.filtersLabel": "Audit log filters",
+  "AuditPage.intro": "A read-only record of who read or changed what. Records cannot be deleted or edited.",
+  "AuditPage.notice": "Köşk nazıms and medrese and course staff cannot see it; personal data is given only as far as a request needs (KVKK).",
+  "AuditPage.noticeTitle": "Only you can see this log",
+  "AuditPage.older": "Show older ones",
+  "AuditPage.retention": "Records are kept for [KVKK retention period].",
+  "AuditPage.title": "Audit log",
+  "Changes.note": "Reading the audit trail changes nothing; its records cannot be deleted or edited. Export downloads at most 10,000 records matching the chosen filters as a CSV file; the export itself is written to the trail under your name, with its row count and filters, and everyone who reads the trail sees it. The downloaded file stays on your computer and cannot be called back.",
+  "NoAccess.bodyGeneric": "This section’s permission has not been given to your account. The Medaris başnazım gives permissions; if you need one, ask them.",
+  "NoAccess.title": "You do not have access to this section"
+}

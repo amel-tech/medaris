@@ -1,0 +1,242 @@
+# CAPTURE of Medaris at origin/main ce47fce8: a course's Talebeler page in nizam (design nizam/57 and 58). The course
+# team bars a talebe from the course, or from every course of its köşk, from the Kayıtlı table; a barred row offers
+# "Yasağı kaldır" instead; the Başvurular tab approves a waiting application. Paths are repo-relative.
+# One talebe row and one viewer. People are the role whose defaults give them the code (ROLE_DEFAULT_PERMISSIONS,
+# libs/common/src/authz/permissions.ts:352); a Medaris nazımı holds only what is granted, here platform.ban_scoped.
+# `standing` is the open ban the row shows (the widest, ban.repository.ts:258), named by its scope and the kademe of the
+# role it was placed in (bans.banned_tier, ban-tier.ts:35).
+schema: delurio-graph/0
+kind: flow
+id: medaris.ban-roster
+status: proposed
+domain: medaris.platform-admin
+ui: medaris.ban-roster
+title: Bar a talebe from the course roster, and lift the ban there
+summary: >-
+  On a course's Talebeler page the course team presses Yasakla on an enrolled talebe, writes a reason and bars them
+  from this course, or, as the köşk's nazımı or the başnazım, from every course of the köşk. The ban is in force at
+  once and its notifications are written beside it. A barred row offers Yasağı kaldır to every viewer; the server lifts
+  it only for the permission of the ban's level and a kademe that reaches the one that placed it. The Başvurular tab
+  approves a waiting application, barred or not.
+
+scope:
+  shows: one viewer, one course and one talebe row, from reading the roster to placing, lifting or approving
+  world: open
+  outOfView:
+    - "Tamamladı say, Yeniden aç and Dersten çıkar on the same rows (PATCH and POST /courses/:id/enrollments/:userId/...)"
+    - "who is told of a new ban: medaris.ban-notify, started here"
+    - "the köşk's and Medaris' Yasaklamalar pages: medaris.ban-lists; the medrese's own bans in nazar: medaris.medrese-bans"
+    - "what a barred talebe can still do in tedris (content, leaving, applying elsewhere): the learning area"
+    - "a person holding several roles at once; their standing is the highest role that confers the code (ban-authority.ts:192)"
+    - "a ders nazırı or a medrese nazırı given ban.course only: they hold no roster work, so the roster is refused to them as to a Medaris nazımı"
+
+context:
+  viewer:
+    values: [muderris, koskNazim, basnazim, medarisNazim]
+    initial: any
+    say: { muderris: "the course's müderris", koskNazim: "a nazım of the köşk the course is held in", basnazim: "the Medaris başnazımı (SYSTEM_ADMIN)", medarisNazim: "a Medaris nazımı granted platform.ban_scoped only" }
+  course:
+    values: [kosk, madrasah]
+    initial: any
+    say: { kosk: "a course the köşk holds for itself", madrasah: "a medrese's course the köşk hosts" }
+  target:
+    values: [talebe, runsCourse]
+    initial: any
+    say: { talebe: "the row is a talebe of the course", runsCourse: "the row's person also runs the course (a müderris, ders nazırı, köşk nazımı, Medaris nazımı, or in a medrese course its başmüderris or nazır)" }
+  seat:
+    values: [enrolled, pending]
+    initial: any
+    say: { enrolled: "they hold a seat (Kayıtlı)", pending: "their application waits (Başvurular)" }
+  standing:
+    values: [none, courseByMuderris, courseByMedrese, courseByKosk, courseByPlatform, koskByKosk, koskByPlatform, madrasahByMedrese, madrasahByPlatform]
+    initial: any
+    say:
+      none: "no ban bears on them here"
+      courseByMuderris: "a müderris barred them from this course"
+      courseByMedrese: "the medrese barred them from this course"
+      courseByKosk: "a köşk nazımı barred them from this course"
+      courseByPlatform: "the başnazım barred them from this course"
+      koskByKosk: "a köşk nazımı barred them from the whole köşk"
+      koskByPlatform: "Medaris administration barred them from the whole köşk"
+      madrasahByMedrese: "the medrese barred them from all its courses"
+      madrasahByPlatform: "Medaris administration barred them from all the medrese's courses"
+  open: { values: [false, true], initial: false } # the ban on the row still bars them; set on opening from `standing`
+  scope: { values: [COURSE, KOSK], initial: COURSE } # the dialog's radio, which starts on the course (ban-dialog.tsx:59)
+  reason: { values: [blank, written], initial: blank }
+  liftReason: { values: [blank, written], initial: blank }
+  notice: { values: [none, saved, refused, targetInvalid, lifted, liftRefused, approved], initial: none }
+  placed: { values: [false, true], initial: false } # a ban was placed in this visit
+  liftedHere: { values: [false, true], initial: false }
+  approvedHere: { values: [false, true], initial: false }
+
+guards:
+  # GET /courses/:id/enrollments asks course.staff_read, which only roster work confers (effective-permissions.ts:188, :294)
+  reachesRoster: "viewer in ['muderris', 'koskNazim', 'basnazim']"
+  # "Köşkten de yasakla" is offered to the köşk's nazımı and the başnazım (apps/nizam/features/bans/present.ts:25)
+  offersKosk: "viewer in ['koskNazim', 'basnazim']"
+  # IMPOSE_CODES (apps/tedrisat/src/ban/ban-codes.ts:38): COURSE asks ban.course | ban.manage_kosk | madrasah.ban, KOSK asks ban.manage_kosk | platform.ban_scoped
+  mayImpose: "(scope == 'COURSE' and viewer in ['muderris', 'koskNazim', 'basnazim']) or (scope == 'KOSK' and viewer in ['koskNazim', 'basnazim', 'medarisNazim'])"
+  # LIFT_CODES (ban-codes.ts:45), asked where the ban sits (ban-authority.ts:67): a medrese-wide ban's place has no köşk on its chain (ban-authority.ts:135)
+  holdsLift: >-
+    (standing in ['courseByMuderris', 'courseByMedrese', 'courseByKosk', 'courseByPlatform'] and viewer in ['muderris', 'koskNazim', 'basnazim'])
+    or (standing in ['koskByKosk', 'koskByPlatform'] and viewer in ['koskNazim', 'basnazim', 'medarisNazim'])
+    or (standing in ['madrasahByMedrese', 'madrasahByPlatform'] and viewer in ['basnazim', 'medarisNazim'])
+  # mayLift (ban-tier.ts:87) over TIER_OF_ROLE (ban-tier.ts:35): müderris 1, medrese 2, köşk nazımı 3, Medaris 4
+  reachesTier: >-
+    standing == 'courseByMuderris'
+    or (standing in ['courseByMedrese', 'madrasahByMedrese', 'courseByKosk', 'koskByKosk'] and viewer in ['koskNazim', 'basnazim', 'medarisNazim'])
+    or (standing in ['courseByPlatform', 'koskByPlatform', 'madrasahByPlatform'] and viewer in ['basnazim', 'medarisNazim'])
+  mayLift: "open and holdsLift and reachesTier"
+  medreseOnlyStanding: "standing in ['courseByMedrese', 'madrasahByMedrese', 'madrasahByPlatform']"
+
+effects:
+  noMedreseBan: { set: { standing: none, open: false } }
+  barred: { set: { open: true } }
+  free: { set: { open: false } }
+  openBanForm: { set: { scope: COURSE, reason: blank, notice: none } } # a new talebe starts from a clean form (ban-dialog.tsx:66)
+  writeReason: { set: { reason: written } }
+  chooseKosk: { set: { scope: KOSK } }
+  chooseCourse: { set: { scope: COURSE } }
+  refused: { set: { notice: refused } }
+  targetInvalid: { set: { notice: targetInvalid } }
+  placeCourseByMuderris: { set: { standing: courseByMuderris, open: true, placed: true, notice: saved } }
+  placeCourseByKosk: { set: { standing: courseByKosk, open: true, placed: true, notice: saved } }
+  placeKoskByKosk: { set: { standing: koskByKosk, open: true, placed: true, notice: saved } }
+  placeCourseByPlatform: { set: { standing: courseByPlatform, open: true, placed: true, notice: saved } }
+  placeKoskByPlatform: { set: { standing: koskByPlatform, open: true, placed: true, notice: saved } }
+  openLiftForm: { set: { liftReason: blank, notice: none } }
+  writeLiftReason: { set: { liftReason: written } }
+  liftRefused: { set: { notice: liftRefused } }
+  lift: { set: { open: false, liftedHere: true, notice: lifted } }
+  approve: { set: { seat: enrolled, approvedHere: true, notice: approved } }
+
+failures:
+  readingRoster: { from: getCourseEnrollments, refused: [AUTHZ_FORBIDDEN] }
+  creating: { from: createBan, forbidden: [BAN_FORBIDDEN], target: [BAN_TARGET_INVALID] }
+  lifting: { from: liftBan, refused: [BAN_LIFT_FORBIDDEN] }
+
+main:
+  given: { viewer: koskNazim, course: kosk, target: talebe, seat: enrolled, standing: none }
+  events: [DONE, BAN, TYPE_REASON, SUBMIT, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Open the course's Talebeler
+    description: normalises a start the code cannot produce (a köşk's own course has no medrese whose ban bears on it) and reads whether the row's ban is open
+    always:
+      - { guard: "course == 'kosk' and medreseOnlyStanding", target: readingRoster, effect: [noMedreseBan], say: "a köşk's own course has no medrese" }
+      - { guard: "standing == 'none'", target: readingRoster, effect: [free], say: "no ban is on the row" }
+      - { target: readingRoster, effect: [barred], say: "an open ban is on the row" }
+
+  readingRoster:
+    title: Read the roster
+    description: >-
+      GET /courses/:id/enrollments for the Talebeler page, which also reads the köşk, the course and the removed talebe.
+      Each row carries the id and the scope of the open ban that bars it, never its reason.
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:37"
+    invoke: { action: getCourseEnrollments }
+    on:
+      DONE: { guard: reachesRoster, target: roster, say: "the roster comes", source: "apps/tedrisat/src/course/course.service.ts:1588" }
+      FAIL.refused: { guard: "not reachesRoster", target: unavailable, say: "no roster work here: 403, which the page shows as an unreadable roster", source: "apps/tedrisat/src/course/course.controller.ts:561" }
+
+  unavailable:
+    type: final
+    title: The course's records cannot be read
+    description: the page shows its heading and the note that the course's records cannot be read now (StudentsPage.unavailable); no row, no Yasakla
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:62"
+
+  roster:
+    title: The Talebeler page
+    by: human
+    goal: true
+    description: >-
+      The Başvurular tab with Onayla and Reddet on each waiting application, and the Kayıtlı table, where a free row
+      offers Yasakla and a barred row a "Yasaklı" badge and Yasağı kaldır. The row's buttons come from its status and
+      whether it is barred alone (studentActions); the lift is offered whoever views it.
+    source: apps/nizam/features/applications/present.ts:138
+    on:
+      BAN: { guard: "seat == 'enrolled' and not open", target: banDialog, effect: [openBanForm], say: "they press Yasakla on the row", source: "apps/nizam/features/applications/components/roster-table.tsx:133" }
+      LIFT: { guard: "seat == 'enrolled' and open", target: liftDialog, effect: [openLiftForm], say: "they press Yasağı kaldır on the barred row", source: "apps/nizam/features/applications/components/roster-table.tsx:139" }
+      APPROVE: { guard: "seat == 'pending'", target: approving, say: "they press Onayla on the waiting application", source: "apps/nizam/features/applications/components/applications-table.tsx:123" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  banDialog:
+    title: The ban dialog
+    by: human
+    description: >-
+      A form dialog: the scope (this course, or the köşk, which only the köşk's nazımı and the başnazım are offered), a
+      required reason of at most 500 characters, and a warning to renew the next session's meeting link. Yasakla stays
+      off while the reason is blank; the scrim does not close it.
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:45
+    on:
+      TYPE_REASON: { target: banDialog, effect: [writeReason], say: "they write a reason" }
+      CHOOSE_KOSK: { guard: offersKosk, target: banDialog, effect: [chooseKosk], say: "they choose Köşkten de yasakla", source: "apps/nizam/features/bans/components/ban-dialog.tsx:185" }
+      CHOOSE_COURSE: { target: banDialog, effect: [chooseCourse], say: "they choose Yalnızca bu ders" }
+      SUBMIT: { guard: "reason == 'written'", target: creating, say: "they press Yasakla", source: "apps/nizam/features/bans/components/ban-dialog.tsx:142" }
+      CANCEL: { target: roster, say: "they press Vazgeç" }
+
+  creating:
+    title: Place the ban
+    description: >-
+      POST /courses/:courseId/bans. The caller's standing is asked where the ban would sit; then they may not bar
+      themselves or anyone who runs the course. The ban and its audit row (ban.create, with the reason) are one
+      transaction; a person already barred in that scope gets the standing ban back and nobody is told again.
+    source: apps/tedrisat/src/ban/ban.service.ts:122
+    invoke: { action: createBan }
+    on:
+      FAIL.forbidden: { guard: "not mayImpose", target: banDialog, effect: [refused], say: "no permission for that scope: BAN_FORBIDDEN, the dialog stays open", source: "apps/tedrisat/src/ban/ban.service.ts:144" }
+      FAIL.target: { guard: "mayImpose and target == 'runsCourse'", target: banDialog, effect: [targetInvalid], say: "the person runs the course: BAN_TARGET_INVALID", source: "apps/tedrisat/src/ban/ban.service.ts:159" }
+      DONE:
+        - { guard: "mayImpose and target == 'talebe' and viewer == 'muderris'", target: roster, effect: [placeCourseByMuderris], starts: { flow: medaris.ban-notify, given: { route: "'course'", scope: scope } }, say: "barred from the course at the müderris' kademe", source: "apps/tedrisat/src/ban/ban.service.ts:165" }
+        - { guard: "mayImpose and target == 'talebe' and viewer == 'koskNazim' and scope == 'COURSE'", target: roster, effect: [placeCourseByKosk], starts: { flow: medaris.ban-notify, given: { route: "'course'", scope: scope } }, say: "barred from the course at the köşk's kademe", source: "apps/tedrisat/src/ban/ban.service.ts:165" }
+        - { guard: "mayImpose and target == 'talebe' and viewer == 'koskNazim'", target: roster, effect: [placeKoskByKosk], starts: { flow: medaris.ban-notify, given: { route: "'course'", scope: scope } }, say: "barred from every course of the köşk at the köşk's kademe", source: "apps/tedrisat/src/ban/ban.service.ts:165" }
+        - { guard: "mayImpose and target == 'talebe' and scope == 'COURSE'", target: roster, effect: [placeCourseByPlatform], starts: { flow: medaris.ban-notify, given: { route: "'course'", scope: scope } }, say: "barred from the course by the başnazım", source: "apps/tedrisat/src/ban/ban.service.ts:165" }
+        - { guard: "mayImpose and target == 'talebe'", target: roster, effect: [placeKoskByPlatform], starts: { flow: medaris.ban-notify, given: { route: "'course'", scope: scope } }, say: "barred from every course of the köşk by the başnazım", source: "apps/tedrisat/src/ban/ban.service.ts:165" }
+
+  liftDialog:
+    title: The lift dialog
+    by: human
+    description: >-
+      From the roster the dialog has no summary of the ban and no kademe line: only the person, the line that they
+      may apply to this course again once the ban is lifted (LiftDialog.infoSimple), and a required reason.
+    source: apps/nizam/features/bans/components/lift-dialog.tsx:49
+    on:
+      TYPE_REASON: { target: liftDialog, effect: [writeLiftReason], say: "they write why the ban is lifted" }
+      SUBMIT: { guard: "liftReason == 'written'", target: lifting, say: "they press Yasağı kaldır", source: "apps/nizam/features/bans/components/lift-dialog.tsx:112" }
+      CANCEL: { target: roster, say: "they press Vazgeç" }
+
+  lifting:
+    title: Lift the ban
+    description: >-
+      POST /bans/:banId/lift: the permission to ban at the ban's level, asked where it sits, and a kademe at or above
+      the one that placed it. The lift and its audit row (ban.lift, with the reason and the role) are one transaction.
+      Nobody is notified.
+    source: apps/tedrisat/src/ban/ban.service.ts:319
+    invoke: { action: liftBan }
+    on:
+      DONE: { guard: mayLift, target: roster, effect: [lift], say: "the ban closes with the reason and the lifter's name", source: "apps/tedrisat/src/ban/ban.service.ts:336" }
+      FAIL.refused: { guard: "not mayLift", target: liftDialog, effect: [liftRefused], say: "not their level or not their kademe: BAN_LIFT_FORBIDDEN, shown as a toast over the open dialog", source: "apps/tedrisat/src/ban/ban.service.ts:333" }
+
+  approving:
+    title: Approve the application
+    description: >-
+      POST /courses/:id/enrollments/:userId/approve, for enrollment.decide. It asks nothing of bans: a barred person's
+      waiting application becomes an ENROLLED seat, and ENROLLMENT_APPROVED is written for them.
+    source: apps/tedrisat/src/course/course.service.ts:1621
+    invoke: { action: approveEnrollment }
+    on:
+      DONE: { target: roster, effect: [approve], say: "the applicant is seated", source: "apps/tedrisat/src/course/course.service.ts:1635" }
+
+  left: { type: final, title: They leave the page, leavesPage: true }
+
+assertions:
+  - { id: roster-is-the-course-teams, never: "state in ['roster', 'banDialog', 'creating', 'liftDialog', 'lifting', 'approving'] and not reachesRoster", say: "Only those who do the course's roster work (its müderris, its köşk's nazımı, the başnazım) reach the roster and its ban buttons", source: "apps/tedrisat/src/course/course.controller.ts:561" }
+  - { id: no-ban-on-who-runs-the-course, never: "placed and target == 'runsCourse'", say: "Nobody who runs the course is barred from it", source: "apps/tedrisat/src/ban/ban.service.ts:159" }
+  - { id: kosk-ban-by-kosk-or-platform, never: "placed and scope == 'KOSK' and viewer not in ['koskNazim', 'basnazim']", say: "From the roster only the köşk's nazımı and the başnazım bar someone from the whole köşk", source: "apps/tedrisat/src/ban/ban-codes.ts:40" }
+  - { id: every-ban-has-a-reason, never: "state == 'creating' and reason == 'blank'", say: "No ban is sent without a reason", source: "apps/tedrisat/src/ban/dto/ban.dto.ts:31" }
+  - { id: lift-respects-kademe, never: "liftedHere and not (holdsLift and reachesTier)", say: "A ban is lifted only with its level's permission, by the kademe that placed it or a higher one", source: "apps/tedrisat/src/ban/ban.service.ts:333" }
+# NOT HELD, kept out on purpose (REPORT.md, PLATFORM-ADMIN-1 and -2):
+#   roster-offers-only-liftable: "state == 'liftDialog' and not mayLift" is reached: the roster offers Yasağı kaldır on
+#     every barred row (present.ts:138); the server then refuses BAN_LIFT_FORBIDDEN.
+#   barred-never-seated: "approvedHere and open" is reached: Onayla seats a barred applicant (course.service.ts:1621).

@@ -1,0 +1,264 @@
+# Medaris, captured at origin/main ce47fce8: a medrese asks a köşk to open a course outside the medrese. nazar's
+# "Medrese dışı ders talebi" (/medrese/:id/dersler/talep, nazir/09) writes offsite_course_requests; nizam's "Ders
+# talepleri" (/kosks/:id/ders-talepleri, nizam/39) reads and answers course_requests, which only
+# POST /kosks/:id/course-requests writes, and no app calls that route. The two tables never meet.
+schema: delurio-graph/0
+kind: flow
+id: medaris.course-request
+status: proposed
+domain: medaris.madrasah-staff
+ui: medaris.course-request
+title: Ask a köşk for a course outside the medrese
+summary: >-
+  In nazar the başmüderris, or a nazır given madrasah.offsite_course_request, sends a köşk a suggested course name and
+  a reason; the request is kept as PENDING and nothing reads it again. In nizam a köşk's nazım answers the requests of
+  another table: "Kabul et" opens the köşk's own course form with the request's name and accepts the request with the
+  course it opens, "Reddet" asks for a reason. Requests reach that table only through an API call no app makes.
+
+scope:
+  shows: both halves as the code has them, nazar's form and nizam's answer, and the two tables between them
+  world: open
+  outOfView:
+    - "nizam's \"Ders aç\" form of a köşk's own course (its team, schedule and settings): the köşk area"
+    - "the köşk list nazar reads (GET /kosks, every listed köşk, 50 a page)"
+    - "the Karara bağlanan tab, which only lists"
+
+context:
+  via:
+    values: [nazarForm, api]
+    initial: any
+    say: { nazarForm: "the request is sent with nazar's form", api: "the request is sent by calling POST /kosks/:id/course-requests directly" }
+  sender:
+    values: [basmuderris, nazirGiven, nazirNot]
+    initial: any
+    say: { basmuderris: "the sender is the medrese's başmüderris", nazirGiven: "the sender is a nazır given madrasah.offsite_course_request", nazirNot: "the sender is a nazır without it" }
+  kosks:
+    values: [some, none]
+    initial: any
+    say: { some: "köşks are listed", none: "no köşk is listed" }
+  formOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "the köşk, the name and the reason are filled in", "false": "a field is missing or too long" }
+  koskLive:
+    values: [true, false]
+    initial: any
+    say: { "true": "the köşk is still there when the request is written", "false": "the köşk was hidden or deleted meanwhile" }
+  answerer:
+    values: [koskNazim, admin, other]
+    initial: any
+    say: { koskNazim: "nizam's page is opened by a nazım of the köşk", admin: "by the başnazım", other: "by someone else" }
+  stillPending:
+    values: [true, false]
+    initial: any
+    say: { "true": "nobody answers the request meanwhile", "false": "another nazım answers it meanwhile" }
+  attempted: { values: [false, true], initial: false }
+  notice: { values: [none, kosk, answered], initial: none }
+  table: { values: [none, offsite, kosk], initial: none } # where the request was written
+  courseOpened: { values: [false, true], initial: false }
+  requestStatus: { values: [none, pending, accepted, rejected, elsewhere], initial: none } # elsewhere: another nazım answered it
+
+guards:
+  maySendOffsite: "sender in ['basmuderris', 'nazirGiven']"
+  answers: "answerer in ['koskNazim', 'admin']"
+
+effects:
+  markAttempted: { set: { attempted: true } }
+  fixForm: { set: { formOk: true } }
+  koskGone: { set: { notice: kosk, koskLive: true, formOk: false }, havoc: [kosks] }
+  writtenOffsite: { set: { table: offsite, requestStatus: pending } }
+  writtenKosk: { set: { table: kosk, requestStatus: pending } }
+  courseOpened: { set: { courseOpened: true } }
+  accepted: { set: { requestStatus: accepted } }
+  rejected: { set: { requestStatus: rejected } }
+  answeredElsewhere: { set: { notice: answered, requestStatus: elsewhere } }
+
+failures:
+  sendingOffsite: { from: requestOffsiteCourse, kosk: [KOSK_NOT_FOUND] }
+  sendingDirect: { from: createCourseRequest, forbidden: [COURSE_REQUEST_FORBIDDEN] }
+  rejecting: { from: rejectCourseRequest, settled: [COURSE_REQUEST_NOT_PENDING] }
+  accepting: { from: acceptCourseRequest, settled: [COURSE_REQUEST_NOT_PENDING] }
+
+main:
+  given: { via: nazarForm, sender: basmuderris, kosks: some, formOk: true, koskLive: true }
+  events: [SUBMIT, DONE]
+
+initial: start
+states:
+  start:
+    title: How the request is sent
+    always:
+      - { guard: "via == 'nazarForm'", target: offsiteLoading, say: "with nazar's form, the only app that sends one", source: "apps/nazar/features/offsite/actions.ts:16" }
+      - { target: sendingDirect, say: "by a direct call that no app makes", source: "apps/tedrisat/src/course-request/course-request.controller.ts:63" }
+
+  offsiteLoading:
+    title: Read the köşks and the medrese's own requests
+    description: The köşks are open to anyone signed in, so the page asks the medrese's own requests to learn whether it may send.
+    source: apps/nazar/features/offsite/components/offsite-page.tsx:38
+    always:
+      - { guard: "not maySendOffsite", target: offsiteForbidden, say: "the API refuses the medrese's requests (403)", source: "apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:240" }
+      - { guard: "kosks == 'none'", target: offsiteNoKosk, say: "no köşk is listed", source: "apps/nazar/features/offsite/components/offsite-page.tsx:69" }
+      - { target: offsiteForm, say: "the form opens with the first köşk chosen", source: "apps/nazar/features/offsite/components/offsite-page.tsx:77" }
+
+  offsiteForbidden:
+    type: final
+    title: The page says the reader has no permission
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  offsiteNoKosk:
+    title: There is no köşk to ask
+    by: human
+    source: apps/nazar/features/offsite/components/offsite-page.tsx:70
+    on:
+      BACK: { target: left, say: "they go back to Dersler", source: "apps/nazar/features/offsite/components/offsite-page.tsx:72" }
+
+  offsiteForm:
+    title: Write the request
+    by: human
+    description: The köşk, a suggested name and the reason, and beside them what happens after the request.
+    includes: [the köşk, the course name, the reason, "\"Talepten sonra\""]
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:33
+    on:
+      SUBMIT:
+        - { guard: "not formOk", target: offsiteForm, effect: [markAttempted], say: "a field is wrong: its problem is written under it, the focus goes to the first, nothing is sent", source: "apps/nazar/features/offsite/components/offsite-form.tsx:61" }
+        - { target: sendingOffsite, say: "they press \"Talebi gönder\"", source: "apps/nazar/features/offsite/components/offsite-form.tsx:75" }
+      FIX: { guard: "not formOk", target: offsiteForm, effect: [fixForm], say: "they correct the fields" }
+      CANCEL: { target: left, say: "they press \"Vazgeç\"", source: "apps/nazar/features/offsite/components/offsite-form.tsx:189" }
+
+  sendingOffsite:
+    title: Record the request
+    description: >-
+      POST /madrasahs/:id/offsite-course-requests: one row in offsite_course_requests, PENDING, and the audit row
+      offsite_course_request.create, in one transaction. No course is made. No screen and no route reads the row for the
+      köşk, and nothing ever moves it off PENDING.
+    invoke: { action: requestOffsiteCourse }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:384
+    on:
+      FAIL.kosk: { guard: "not koskLive", target: offsiteForm, effect: [koskGone], say: "404 KOSK_NOT_FOUND: the köşk list is read again", source: "apps/nazar/features/offsite/components/offsite-form.tsx:97" }
+      DONE: { guard: koskLive, target: parked, effect: [writtenOffsite], say: "a toast says the request went to the köşk's nazım, and the page goes back to Dersler", source: "apps/nazar/features/offsite/components/offsite-form.tsx:81" }
+
+  parked:
+    type: final
+    title: The request waits where nobody reads it
+    description: >-
+      offsite_course_requests is read only by the medrese's own GET, which nazar uses to decide whether the form may be
+      drawn and never lists. nizam's Ders talepleri reads course_requests.
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:434
+
+  sendingDirect:
+    title: Record the request in the köşk's table
+    description: POST /kosks/:id/course-requests. The service asks for the MEDRESE_BASMUDERRIS role, not a permission, and writes no audit row.
+    invoke: { action: createCourseRequest }
+    source: apps/tedrisat/src/course-request/course-request.service.ts:88
+    on:
+      FAIL.forbidden: { guard: "sender != 'basmuderris'", target: directRefused, say: "403 COURSE_REQUEST_FORBIDDEN: only the başmüderris, whatever was granted", source: "apps/tedrisat/src/course-request/course-request.service.ts:99" }
+      DONE: { guard: "sender == 'basmuderris'", target: pending, effect: [writtenKosk], say: "201 with the request's id", source: "apps/tedrisat/src/course-request/course-request.repository.ts:198" }
+
+  directRefused:
+    type: final
+    title: The call is refused
+    response: { status: 403, code: COURSE_REQUEST_FORBIDDEN }
+    source: apps/tedrisat/src/course-request/course-request.service.ts:100
+
+  pending:
+    title: The request waits in the köşk's Bekleyen tab
+    description: course_requests, PENDING, oldest first, a hundred at most.
+    source: apps/tedrisat/src/course-request/course-request.repository.ts:114
+    on:
+      KOSK_OPENS: { target: requestsLoading, say: "someone opens the köşk's Ders talepleri in nizam" }
+
+  requestsLoading:
+    title: Read the waiting requests
+    source: apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:27
+    always:
+      - { guard: "not answers", target: requestsForbidden, say: "403 COURSE_REQUEST_FORBIDDEN: not a nazım of the köşk", source: "apps/tedrisat/src/course-request/course-request.service.ts:195" }
+      - { target: requestsList, say: "the first waiting request is selected", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:58" }
+
+  requestsForbidden:
+    type: final
+    title: nizam's "Bu bölüm için izniniz yok"
+    source: apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:28
+
+  requestsList:
+    title: Answer a waiting request
+    by: human
+    goal: true
+    description: The waiting requests on the left; the selected one's köşk, medrese, sender, date and reason on the right.
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:169
+    on:
+      ACCEPT: { guard: "requestStatus == 'pending'", target: courseForm, say: "they press \"Kabul et\"", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:234" }
+      REJECT: { guard: "requestStatus == 'pending'", target: rejectDialog, say: "they press \"Reddet\"", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:238" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  rejectDialog:
+    title: Write why the request is refused
+    by: human
+    description: The reason is required; "Reddet" stays off until it is written.
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:39
+    on:
+      CONFIRM: { target: rejecting, say: "they write the reason and press \"Reddet\"", source: "apps/nizam/features/deck-review/components/reject-dialog.tsx:70" }
+      CANCEL: { target: requestsList, say: "they press \"Vazgeç\"" }
+
+  rejecting:
+    title: Refuse the request
+    description: POST /course-requests/:id/reject. Only a PENDING row is answered, with the audit row course_request.reject and its reason.
+    invoke: { action: rejectCourseRequest }
+    source: apps/tedrisat/src/course-request/course-request.repository.ts:206
+    on:
+      DONE: { guard: stillPending, target: rejected, effect: [rejected], say: "the request leaves the waiting list", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:125" }
+      FAIL.settled: { guard: "not stillPending", target: requestsList, effect: [answeredElsewhere], say: "409 COURSE_REQUEST_NOT_PENDING: answered meanwhile; the row leaves the list", source: "apps/nizam/features/platform-admin/components/course-requests-view.tsx:118" }
+
+  rejected:
+    type: final
+    title: The request is refused
+    description: >-
+      The toast says the reason was passed on to the başmüderris; no screen of the medrese reads course_requests, so
+      nobody there sees it.
+    source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:125
+
+  courseForm:
+    title: Open the köşk's own course from the request
+    by: human
+    description: nizam's "Ders aç" with the request's name filled in (/kosks/:id/courses/new?talep=…); an answered request leaves the form empty.
+    source: apps/nizam/app/kosks/[id]/courses/new/page.tsx:39
+    on:
+      SUBMIT: { target: creatingCourse, say: "they fill in the course and press \"Dersi aç\"", source: "apps/nizam/features/courses/components/course-create-form.tsx:122" }
+      CANCEL: { target: requestsList, say: "they go back" }
+
+  creatingCourse:
+    title: Open the course
+    description: POST /kosks/:koskId/courses, a köşk course with no medrese (the köşk area).
+    invoke: { action: createCourse }
+    source: apps/nizam/features/courses/components/course-create-form.tsx:130
+    on:
+      DONE: { target: accepting, effect: [courseOpened], say: "the course exists" }
+
+  accepting:
+    title: Accept the request with the course
+    description: >-
+      POST /course-requests/:id/accept with the new course's id. The service checks that the course is in the request's
+      köşk, nothing more. The form does not read the answer: whatever it is, it goes on to plan the sessions and says the
+      course was opened.
+    invoke: { action: acceptCourseRequest }
+    source: apps/nizam/features/courses/components/course-create-form.tsx:160
+    on:
+      DONE: { guard: stillPending, target: openedFromRequest, effect: [accepted], say: "the request is accepted with the course", source: "apps/tedrisat/src/course-request/course-request.service.ts:144" }
+      FAIL.settled: { guard: "not stillPending", target: openedFromRequest, effect: [answeredElsewhere], say: "409 COURSE_REQUEST_NOT_PENDING, which the form does not read", source: "apps/nizam/features/courses/components/course-create-form.tsx:160" }
+
+  openedFromRequest:
+    type: final
+    title: The course is open; the form plans its sessions
+    description: A toast says "Ders açıldı" and the page goes to the köşk's Dersler.
+    source: apps/nizam/features/courses/components/course-create-form.tsx:177
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: only-holders-send-offsite, never: "table == 'offsite' and sender == 'nazirNot'", say: "A nazır without madrasah.offsite_course_request never sends a request", source: "apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:221" }
+  - { id: no-offsite-request-to-a-gone-kosk, never: "table == 'offsite' and not koskLive", say: "nazar's form never records a request for a köşk that is hidden or gone", source: "apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:401" }
+  - { id: only-the-kosk-answers, never: "requestStatus in ['accepted', 'rejected'] and not answers", say: "Only a nazım of the köşk, or the başnazım, answers a request", source: "apps/tedrisat/src/course-request/course-request.service.ts:186" }
+  - { id: answered-once, never: "state in ['rejecting', 'accepting'] and requestStatus in ['accepted', 'rejected', 'elsewhere']", say: "A request already answered is never answered again", source: "apps/tedrisat/src/course-request/course-request.repository.ts:229" }
+  - { id: invalid-form-sends-nothing, never: "state == 'sendingOffsite' and not formOk", say: "A form with a missing or wrong field sends nothing", source: "apps/nazar/features/offsite/components/offsite-form.tsx:61" }
