@@ -1,5 +1,5 @@
 {
-  "Changes.note": "“Çıkış yap” bu tarayıcıdaki portal oturumunu kapatır ve Keycloak’taki Medaris oturumunu da kapatır; aynı oturumla açık olan öbür portallar da hemen çıkış yapar. Derslerin, görevlerin ve tercihlerin hesabında kalır. Geri almak için yeniden giriş yaparsın. Portal oturumu önceden bitmişse ya da Keycloak’a ulaşılamazsa yalnız bu portaldan çıkılır ve Keycloak oturumu açık kalır.",
+  "Changes.note": "“Çıkış yap” bu tarayıcıdaki portal oturumunu kapatır ve Keycloak’taki Medaris oturumunu da kapatır. Aynı oturumla açık olan öbür portallar da çıkış yapar: portallar oturumları sunucudaki oturum deposunda tutuyorsa hemen, oturum deposuna o an ulaşılamıyorsa birkaç dakika içinde; tarayıcı çerezinde tutuyorsa öbür portallar bir dakikaya kadar açık kalabilir ve sonraki ilk işlemde çıkış yapar. Derslerin, görevlerin ve tercihlerin hesabında kalır. Geri almak için yeniden giriş yaparsın. Portal oturumu önceden bitmişse ya da Keycloak’a ulaşılamazsa yalnız bu portaldan çıkılır ve Keycloak oturumu açık kalır.",
   "Keycloak.body": "Bu tarayıcıda Medaris’ten çıkarsın.",
   "Keycloak.cancel": "Vazgeç",
   "Keycloak.confirm": "Çıkış yap",

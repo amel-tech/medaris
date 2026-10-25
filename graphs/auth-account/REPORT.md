@@ -9,10 +9,10 @@
 | kc-sign-in | 15 / 1014 / 6 |
 | kc-register | 11 / 2330 / 5 |
 | kc-reset-password | 11 / 256 / 5 |
-| portal-sign-in (proxy, giriş sayfası, başlatma, callback) | 16 / 13945 / 6 |
+| portal-sign-in (proxy, giriş sayfası, başlatma, callback) | 16 / 69410 / 8 |
 | portal-landing (her portalın `/` kararı, ekransız) | 15 / 294 / 4 |
 | portal-session (yenileme, userinfo, back-channel; ekransız) | 7 / 2808 / 4 |
-| portal-sign-out | 6 / 111 / 3 |
+| portal-sign-out | 6 / 213 / 4 |
 | account-edit (Tedris Hesap, cinsiyet aynası) | 14 / 2760 / 4 |
 | platform-policy | 6 / 248 / 4 |
 | inactive-scope-assign | 7 / 890 / 6 |
@@ -30,9 +30,9 @@
   - UPDATE_PROFILE'da e-postanın düzenlenip düzenlenemediği;
   - Vazgeç'in de kod döndürdüğü (yalnız README'de yazıyor).
 - **Üretim yapılandırması bilinmiyor.**
-  - Üretimde oturum deposu (`WEB__AUTH_STORE_URL`) açık mı? Store ve cookie kipini ikisini birden modelledim.
+  - Üretimde oturum deposu (`WEB__AUTH_STORE_URL`) açık mı? Store ve cookie kipini ikisini birden modelledim (portal-session ve portal-sign-out'ta `mode` olarak).
   - #317'nin dört adımı yapıldı mı? Bu, AUTH-1'in üretimde ne kadar sık görüldüğünü belirler.
-- **Bütçeleri sadeleştirdim.** Sayaçlar "var / bitti" oldu. Sekme başına üç bütçe tek değişkene indi. Çok sekme tek sekme olarak çizildi.
+- **Bütçeleri sadeleştirdim.** Sayaçlar "var / bitti" oldu: sekmenin otomatik başlatmaları, tek otomatik yeniden denemesi ve doğrudan devamları üç ayrı değişken, başlatma rotasının sınırı dördüncü. Çok sekme tek sekme olarak çizildi.
 - **Bir davranışı koşmadan okudum.** Base UI, initialFocus verilmeyen diyalogda ilk sekmelenebilir öğeye, yani kapat düğmesine odaklanır. Bunu belgeden okudum, çalıştırmadım.
 
 ## Bulgular

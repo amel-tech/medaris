@@ -166,8 +166,8 @@ states:
     source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:118
     description: >-
       POST /nizam/medaris-nazims. In order: the caller (service.ts:122), an end in the past (service.ts:124), the
-      codes and the group (service.ts:161), an appointment already held (repository.ts:365). Neither the caller nor an
-      account behind the id is checked. In one transaction: the role, the revocation of grants the person holds from a
+      codes and the group (service.ts:161), an appointment already held (repository.ts:365). Neither whether the person is
+      the caller themself nor whether an account stands behind the id is checked (AUTH-2). In one transaction: the role, the revocation of grants the person holds from a
       lost seat (repository.ts:371), the audit row medaris_nazim.appoint and the grants with their own audit rows.
     invoke: { action: appointMedarisNazim }
     on:

@@ -362,7 +362,7 @@ actions:
     needs: bearer token
     source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:84
     body: { type: object, required: [userId], properties: { userId: { type: string, format: uuid }, endsAt: { type: string, format: date-time } } }
-    result: { status: 204, returns: RoleAssignment }
+    result: { status: 204 }
     sideEffects: ["audit of the assignment", "permission.self_grant_refused when refused for naming oneself (libs/common/src/authz/self-grant.guard.ts:80)"]
     refusals:
       AUTHZ_FORBIDDEN: { status: 403, source: "apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:68" }

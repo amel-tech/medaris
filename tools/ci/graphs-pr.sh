@@ -31,6 +31,18 @@ for f in "${files[@]}"; do
   fi
 done
 
+# a changed API of an area is compared through the area's flows, which read it
+for f in "${domains[@]}"; do
+  for flow in "$(dirname "$(dirname "$f")")"/*/flow.yaml; do
+    [ -f "$flow" ] || continue
+    g=$(dirname "$flow")
+    if [ -z "${seen[$g]:-}" ]; then
+      seen[$g]=1
+      dirs+=("$g")
+    fi
+  done
+done
+
 body="$marker"$'\n'"## What this pull request changes in the graphs"$'\n\n'
 if [ ${#dirs[@]} -eq 0 ] && [ ${#domains[@]} -eq 0 ]; then
   body+="No graph changes."$'\n'
@@ -56,6 +68,11 @@ if [ ${#body} -gt 60000 ]; then
   body="${body:0:60000}"$'\n\n'"(cut: the full text is in the run's log)"
 fi
 
+# A pull request from a fork runs with a read-only token: the summary still has the text, and no comment is written.
+if [ "$(jq -r .pull_request.head.repo.full_name "$GITHUB_EVENT_PATH")" != "$GITHUB_REPOSITORY" ]; then
+  echo "$body"
+  exit 0
+fi
 pr=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
 id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$pr/comments" --paginate --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n1)
 if [ -n "$id" ]; then

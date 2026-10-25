@@ -2,7 +2,9 @@
 # origin/main ce47fce8. The three portals run the same code: their proxy.ts hands every request to
 # libs/auth/src/server/proxy.ts, their sign-in page runs enterSignIn (libs/auth/src/client/sign-in.ts:286), and their
 # /api/auth/[...auth] route is libs/auth/src/server/routes.ts. What differs is which pages are public and the words.
-# Budgets are counters in the code (sessionStorage per tab, a cookie per browser); here they are "left or spent".
+# Budgets are counters in the code (sessionStorage per tab, a cookie per browser); here they are "left or spent":
+# the tab's automatic starts, its one automatic retry and its go-ons are three (sign-in.ts:199-218), the start route's
+# cap is the fourth.
 schema: delurio-graph/0
 kind: flow
 id: medaris.portal-sign-in
@@ -43,7 +45,7 @@ context:
   storeUp:
     values: [true, false]
     initial: any
-    say: { "true": "", "false": "the session store (Valkey) cannot be reached" }
+    say: { "true": "", "false": "the session store (Valkey) cannot be reached; only with a store, the cookie kind cannot fail" }
   apiRefuses:
     values: [false, true]
     initial: any
@@ -59,7 +61,15 @@ context:
   startsLeft:
     values: [true, false]
     initial: any
-    say: { "true": "", "false": "this tab has spent its automatic starts, retry and go-ons for two minutes" }
+    say: { "true": "", "false": "this tab has started 3 round trips on its own in two minutes" }
+  retryLeft:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "this tab has used its one automatic retry after a failure in two minutes" }
+  goOnLeft:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "this tab has gone straight on twice in two minutes because a session was already there" }
   returned:
     values: [code, denied, clientRefused, failed]
     initial: any
@@ -69,6 +79,7 @@ context:
   signedIn: { values: [false, true], initial: false }
   reauth: { values: [false, true], initial: false }
   namedPage: { values: [false, true], initial: false }
+  limit: { values: [none, tab, cap], initial: none } # which budget a SignInLimit came from: this tab's, or the start route's cap
   staleSession: { values: [false, true], initial: false } # the browser still holds the session whose token tedrisat refused
 
 guards:
@@ -81,14 +92,19 @@ effects:
   forRegister: { set: { intent: register, namedPage: false } }
   forSignIn: { set: { intent: signin, namedPage: false } }
   refused: { set: { reauth: true, namedPage: true, staleSession: true } }
-  finalError: { set: { pageError: final } }
+  capLimit: { set: { pageError: final, limit: cap } }
+  tabLimit: { set: { pageError: final, limit: tab } }
+  retryTaken: { set: { retryLeft: false }, havoc: [startsLeft] }
+  retryThenLimit: { set: { retryLeft: false, pageError: final, limit: tab } }
+  autoStart: { havoc: [startsLeft] }
   retryableError: { set: { pageError: retryable } }
-  clearError: { set: { pageError: none } }
-  callbackFinal: { set: { pageError: final, reauth: false } } # the error redirect carries no reauth=1 (routes.ts:126)
+  clearError: { set: { pageError: none, limit: none } }
+  callbackFinal: { set: { pageError: final, reauth: false, limit: none } } # the error redirect carries no reauth=1 (routes.ts:126)
   callbackRetryable: { set: { pageError: retryable, reauth: false } }
-  arrived: { set: { signedIn: true, reauth: false, pageError: none, staleSession: false }, havoc: [apiRefuses, capLeft, startsLeft, returned] }
-  goneOn: { set: { reauth: false, pageError: none }, havoc: [startsLeft] }
-  tabFinished: { set: { signedIn: true, reauth: false, pageError: none, staleSession: false }, havoc: [startsLeft, apiRefuses] }
+  arrived: { set: { signedIn: true, reauth: false, pageError: none, staleSession: false, limit: none }, havoc: [apiRefuses, capLeft, startsLeft, retryLeft, goOnLeft, returned] }
+  goneOn: { set: { reauth: false, pageError: none, limit: none }, havoc: [goOnLeft] }
+  serverGoneOn: { set: { reauth: false, pageError: none, limit: none }, havoc: [capLeft] } # counted against the start route's cap (routes.ts:198)
+  tabFinished: { set: { signedIn: true, reauth: false, pageError: none, staleSession: false, limit: none }, havoc: [goOnLeft, apiRefuses] }
 
 failures:
   starting:
@@ -102,7 +118,7 @@ failures:
     failed: [OAuthCallback]
 
 main:
-  given: { portal: nazar, asked: protectedPage, hasSession: false, storeUp: true, apiRefuses: false, startOk: true, capLeft: true, startsLeft: true, returned: code }
+  given: { portal: nazar, asked: protectedPage, hasSession: false, storeUp: true, apiRefuses: false, startOk: true, capLeft: true, startsLeft: true, retryLeft: true, goOnLeft: true, returned: code }
   events: [TURN, DONE, RETURNED, DONE]
 
 initial: arriving
@@ -154,14 +170,19 @@ states:
     description: >-
       /auth/signin renders AuthEntry, which runs enterSignIn once (tedris features/auth/auth-entry.tsx:63). A final
       error (AccessDenied, Configuration, SignInLimit) is the box at once; a session already there goes straight on
-      while the tab's go-on budget lasts, unless reauth=1, where only a newer session counts; a retryable error gets
-      this tab's one automatic retry; a tab that started too many on its own gets the box.
+      while the tab's go-on budget lasts, unless reauth=1, where only a newer session counts (sign-in.ts:312); a
+      retryable error gets this tab's one automatic retry, and with that spent the box shows the error itself, still
+      with its retry button (sign-in.ts:313); a tab that started 3 round trips on its own gets SignInLimit
+      (sign-in.ts:314). The retry, once taken, still needs an automatic start.
     always:
       - { guard: "pageError == 'final'", target: errorBox, say: "a final error: the box", source: "libs/auth/src/client/sign-in.ts:291" }
-      - { guard: "signedIn and not reauth and startsLeft", target: rendering, effect: [goneOn], say: "a session is already there: straight on to callbackUrl", source: "libs/auth/src/client/sign-in.ts:312" }
-      - { guard: "signedIn and not reauth and not startsLeft", target: errorBox, effect: [finalError], say: "the tab's go-on budget is spent: SignInLimit", source: "libs/auth/src/client/sign-in.ts:307" }
-      - { guard: "not startsLeft", target: errorBox, effect: [finalError], say: "the tab's automatic budget is spent: SignInLimit", source: "libs/auth/src/client/sign-in.ts:314" }
-      - { target: redirecting, say: "the tab waits for its turn to go to Keycloak", source: "libs/auth/src/client/sign-in.ts:319" }
+      - { guard: "signedIn and not reauth and goOnLeft", target: rendering, effect: [goneOn], say: "a session is already there: straight on to callbackUrl", source: "libs/auth/src/client/sign-in.ts:312" }
+      - { guard: "signedIn and not reauth and not goOnLeft", target: errorBox, effect: [tabLimit], say: "the tab's go-on budget is spent: SignInLimit", source: "libs/auth/src/client/sign-in.ts:307" }
+      - { guard: "pageError == 'retryable' and not retryLeft", target: errorBox, say: "the automatic retry is spent: the box shows the failure itself, with its retry button", source: "libs/auth/src/client/sign-in.ts:313" }
+      - { guard: "pageError == 'retryable' and retryLeft and not startsLeft", target: errorBox, effect: [retryThenLimit], say: "the retry is taken, but the tab's automatic starts are spent: SignInLimit", source: "libs/auth/src/client/sign-in.ts:314" }
+      - { guard: "pageError == 'retryable' and retryLeft and startsLeft", target: redirecting, effect: [retryTaken], say: "the tab's one automatic retry: it waits for its turn to go to Keycloak again", source: "libs/auth/src/client/sign-in.ts:313" }
+      - { guard: "pageError == 'none' and not startsLeft", target: errorBox, effect: [tabLimit], say: "the tab's automatic starts are spent: SignInLimit", source: "libs/auth/src/client/sign-in.ts:314" }
+      - { guard: "pageError == 'none'", target: redirecting, effect: [autoStart], say: "the tab waits for its turn to go to Keycloak", source: "libs/auth/src/client/sign-in.ts:319" }
 
   redirecting:
     title: On the way to the sign-in page
@@ -174,8 +195,8 @@ states:
       TURN: { target: starting, say: "the tab's turn comes and it goes on by itself", source: "libs/auth/src/client/sign-in.ts:329" }
       CONTINUE: { target: starting, say: "they press Devam et", source: "apps/tedris/features/auth/auth-entry.tsx:110" }
       SESSION_ARRIVED:
-        - { guard: startsLeft, target: rendering, effect: [tabFinished], say: "another tab's round trip brought a session: straight on", source: "libs/auth/src/client/sign-in.ts:332" }
-        - { target: errorBox, effect: [finalError], say: "another tab brought a session, but this tab's go-on budget is spent", source: "libs/auth/src/client/sign-in.ts:307" }
+        - { guard: goOnLeft, target: rendering, effect: [tabFinished], say: "another tab's round trip brought a session: straight on", source: "libs/auth/src/client/sign-in.ts:332" }
+        - { target: errorBox, effect: [tabLimit], say: "another tab brought a session, but this tab's go-on budget is spent: SignInLimit", source: "libs/auth/src/client/sign-in.ts:307" }
       NAVIGATE: { target: left, say: "they close the tab" }
 
   errorBox:
@@ -201,10 +222,10 @@ states:
       the browser to Keycloak's authorization endpoint, with prompt=create for Kayıt ol (routes.ts:229).
     invoke: { action: startSignIn }
     on:
-      FAIL.limit: { guard: "not capLeft", target: signInPage, effect: [finalError], say: "SignInLimit", source: "libs/auth/src/server/routes.ts:158" }
+      FAIL.limit: { guard: "not capLeft", target: signInPage, effect: [capLimit], say: "SignInLimit", source: "libs/auth/src/server/routes.ts:158" }
       FAIL.unavailable: { guard: "capLeft and not startOk", target: signInPage, effect: [retryableError], say: "OAuthSignin: the round trip could not start", source: "libs/auth/src/server/routes.ts:209" }
       DONE:
-        - { guard: "capLeft and startOk and alreadyIn", target: rendering, effect: [goneOn], say: "already signed in: straight to callbackUrl", source: "libs/auth/src/server/routes.ts:198" }
+        - { guard: "capLeft and startOk and alreadyIn", target: rendering, effect: [serverGoneOn], say: "already signed in: straight to callbackUrl", source: "libs/auth/src/server/routes.ts:198" }
         - { guard: "capLeft and startOk and not alreadyIn and intent == 'signin'", target: atKeycloak, say: "to Keycloak's sign-in form", source: "libs/auth/src/server/routes.ts:241" }
         - { guard: "capLeft and startOk and not alreadyIn and intent == 'register'", target: atRegister, say: "to Keycloak's registration form (prompt=create)", source: "libs/auth/src/server/routes.ts:229" }
 
@@ -259,4 +280,6 @@ assertions:
   - { id: start-cap-holds, never: "state in ['atKeycloak', 'atRegister'] and not capLeft", say: "A browser past 5 starts in 5 minutes is never sent to Keycloak again", source: "libs/auth/src/server/routes.ts:158" }
   - { id: final-errors-never-retry, never: "state == 'starting' and pageError == 'final'", say: "AccessDenied, Configuration and SignInLimit never start another round trip", source: "libs/auth/src/client/sign-in.ts:291" }
   - { id: register-only-in-tedris, never: "state == 'atRegister' and portal != 'tedris'", say: "Only Tedris opens Keycloak's registration form", source: "apps/tedris/features/keycloak/login.tsx:28" }
+  - { id: retry-before-the-box, never: "state == 'errorBox' and pageError == 'retryable' and retryLeft", say: "A failure that one more round trip may fix reaches the box only after the tab's automatic retry", source: "libs/auth/src/client/sign-in.ts:313" }
+  - { id: limit-only-from-a-spent-budget, never: "state == 'errorBox' and limit == 'tab' and startsLeft and goOnLeft", say: "The tab's SignInLimit is shown only when its automatic starts or its go-ons are spent, never for a spent retry", source: "libs/auth/src/client/sign-in.ts:307" }
   - { id: refused-token-gets-new-tokens, never: "state == 'rendering' and reauth", say: "A page whose token tedrisat refused is never sent straight back with the same session", source: "libs/auth/src/client/sign-in.ts:303" }

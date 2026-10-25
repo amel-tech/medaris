@@ -1,5 +1,5 @@
 {
-  "Changes.note": "“Sign out” ends the portal's session in this browser and your Medaris session at Keycloak too; the other portals open with that session sign out at once. Your courses, assignments and preferences stay on your account. To undo it you sign in again. If the portal's session had already ended, or Keycloak cannot be reached, only this portal is signed out and the Keycloak session stays open.",
+  "Changes.note": "“Sign out” ends the portal's session in this browser and your Medaris session at Keycloak too. The other portals open with that session sign out as well: at once when the portals keep sessions in their session store on the server, within a few minutes if that store cannot be reached at the moment; when they keep them in the browser's cookie, the other portals may stay open for up to a minute and sign out at their next action. Your courses, assignments and preferences stay on your account. To undo it you sign in again. If the portal's session had already ended, or Keycloak cannot be reached, only this portal is signed out and the Keycloak session stays open.",
   "Keycloak.body": "You will be signed out of Medaris in this browser.",
   "Keycloak.cancel": "Cancel",
   "Keycloak.confirm": "Sign out",
