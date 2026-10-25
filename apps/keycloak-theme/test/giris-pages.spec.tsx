@@ -71,6 +71,32 @@ describe("login.ftl", () => {
       "true"
     );
   });
+
+  it.each([
+    ["nizam-dev", "Nizam"],
+    ["tedris", "Tedris"],
+    ["nazar-dev", "Nazar"],
+  ])("names the app of client %s under the logo", async (clientId, name) => {
+    page = await renderPage("login.ftl", "tr", {
+      client: { clientId },
+    } as never);
+    expect(q(".mds-logo__subtitle")?.textContent).toBe(name);
+  });
+
+  it("keeps the app's Latin name on an Arabic page", async () => {
+    page = await renderPage("login.ftl", "ar", {
+      client: { clientId: "tedris-dev" },
+    } as never);
+    expect(q(".mds-logo__subtitle")?.textContent).toBe("Tedris");
+    expect(q(".mds-logo__subtitle")?.getAttribute("lang")).toBe("tr");
+  });
+
+  it("draws no app name for a client that is not a Medaris app", async () => {
+    page = await renderPage("login.ftl", "tr", {
+      client: { clientId: "ornek-uygulama" },
+    } as never);
+    expect(q(".mds-logo__subtitle")).toBeNull();
+  });
 });
 
 describe("info.ftl", () => {

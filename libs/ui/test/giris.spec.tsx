@@ -98,6 +98,25 @@ describe("AuthCard", () => {
     );
     expect(host.querySelector("hr.mds-separator")).not.toBeNull();
     expect(host.querySelector(".mds-logo__arabic")).toBeNull();
+    expect(host.querySelector(".mds-logo__subtitle")).toBeNull();
+  });
+
+  it("names the app that sent the visitor under the wordmark", async () => {
+    const host = await render(<AuthCard title="Giriş yap" app="nizam" />);
+    expect(host.querySelector(".mds-logo__subtitle")?.textContent).toBe(
+      "Nizam"
+    );
+    expect(host.querySelector(".mds-logo")?.getAttribute("aria-label")).toBe(
+      "Medaris — Nizam"
+    );
+  });
+
+  it("sets the app's name as Latin text, upper-cased the Turkish way in every language", async () => {
+    const host = await render(<AuthCard title="تسجيل الدخول" app="nazar" />);
+    const subtitle = host.querySelector(".mds-logo__subtitle");
+    expect(subtitle?.textContent).toBe("Nazar");
+    expect(subtitle?.getAttribute("lang")).toBe("tr");
+    expect(subtitle?.getAttribute("dir")).toBe("ltr");
   });
 });
 
