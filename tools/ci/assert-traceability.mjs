@@ -75,6 +75,8 @@ const EXEMPT_ACTORS = new Set([
   "dependabot", // `app/dependabot`, after the prefix is stripped
   "dependabot[bot]",
   "dependabot-preview[bot]",
+  "renovate", // `app/renovate`; renovate.json, 2026-10-25
+  "renovate[bot]",
   "release-please", // `app/release-please`, only on a bot token — see above
   "release-please[bot]",
 ]);

@@ -172,6 +172,21 @@ export async function setup(project: TestProject): Promise<void> {
     .withUsername("testuser")
     .withPassword("testpass")
     .withExposedPorts(5432)
+    // vitest.config.ts runs four files at once, each with up to two Nest apps
+    // and pg's default pool of 10: 80 connections against Postgres's default
+    // 100 would leave almost nothing for the per-file CREATE DATABASE clients.
+    // fsync and synchronous_commit are off because this container lives for
+    // one run; every file migrates a fresh database, and none of it has to
+    // survive a crash.
+    .withCommand([
+      "postgres",
+      "-c",
+      "max_connections=200",
+      "-c",
+      "fsync=off",
+      "-c",
+      "synchronous_commit=off",
+    ])
     .start();
 
   const container = await startup;

@@ -1,119 +1,54 @@
-# Security Audit Documentation
+# Dependency security
 
-## Overview
+How this repo keeps known-vulnerable and freshly-published packages out of
+`pnpm-lock.yaml`. Rewritten on 2026-10-25, when the PR gate stopped auditing the
+whole tree. The earlier version of this page described npm commands, a
+`security-audit.yml` workflow and a `pre-commit-security` hook, none of which
+existed in this repo.
 
-This project includes comprehensive security audit tools to ensure the safety and integrity of dependencies across the monorepo.
+## The three parts
 
-## Available Commands
+| Part | Where | When it says no |
+| --- | --- | --- |
+| **Security gates** check | `.github/workflows/security.yaml`, job `gates` | A PR or push brings in a high/critical advisory that the base did not have. depcheck runs in the same job. |
+| **Dependency audit** issue | `.github/workflows/security.yaml`, job `report` | Never red on findings. Daily at 04:23 UTC it opens, rewrites or closes the one issue labelled `dependency-audit`, and comments when a new advisory appears. |
+| **Release-age floor** | `minimumReleaseAge` in `pnpm-workspace.yaml` | pnpm refuses any release younger than 7 days, during resolution and on every install of the lockfile. |
 
-### Root Level Commands
+Renovate (`renovate.json`) opens the update PRs. It waits the same 7 days. On
+Mondays it opens a lock file maintenance PR that re-resolves every range; that
+is the PR that picks up a transitive fix the parent's range already admits.
+Majors, plus Biome, `@babel/standalone` and Playwright, wait for a tick on its
+Dependency Dashboard issue.
 
-```bash
-# Run security audit across all workspaces
-npm run audit
+## Policy
 
-# Run audit-ci for CI/CD environments (strict mode)
-npm run audit:ci
+`audit-ci.json` holds the thresholds (`high` and `critical`), `skip-dev`
+(`false`: dev tooling is audited too) and the dated allowlist.
+`tools/ci/dependency-audit.mjs` reads it and rejects any key it does not
+implement. audit-ci itself is no longer installed.
 
-# Automatically fix known audit issues
-npm run audit:fix
-
-# Check for unused dependencies
-npm run depcheck
-
-# Run combined security checks
-npm run security-check
-
-# Run comprehensive security audit with detailed reporting
-npm run security-audit
-```
-
-### Individual Workspace Commands
-
-Each workspace (apps/tedrisat, apps/teskilat, libs/common) supports:
+## Commands
 
 ```bash
-# In any workspace directory
-npm run audit
-npm run audit:ci
-npm run depcheck
+pnpm run audit:ci      # would this branch fail Security gates? (against origin/main)
+pnpm run audit:report  # the full list, as the issue would show it
+pnpm run depcheck      # unused/missing dependencies
 ```
 
-## Configuration Files
+## When an advisory appears
 
-### audit-ci.json
-Configures audit-ci behavior:
-- Sets vulnerability severity levels (low, moderate, high, critical)
-- Defines retry logic
-- Manages allowlists for known safe vulnerabilities
+Nothing goes red. The advisory shows up in the `dependency-audit` issue.
 
-### .depcheckrc.json
-Configures depcheck behavior:
-- Ignores development dependencies and build tools
-- Defines file patterns to analyze
-- Configures parsers for different file types
+- **Direct dependency:** raise its catalog entry in `pnpm-workspace.yaml`, or
+  wait for Renovate.
+- **Transitive, and the parent's range admits the fix:** the next lock file
+  maintenance PR clears it.
+- **Transitive, and the parent pins it exactly:** add a floor under *Security
+  floors* in `pnpm-workspace.yaml`, with one line giving the advisory, why only
+  an override reaches it, and its removal condition.
+- **No fixed release at all:** add it to the `audit-ci.json` allowlist with a
+  dated reason. The issue lists allowlist entries that are no longer found.
 
-## Automation
-
-### GitHub Actions
-The security audit workflow (`.github/workflows/security-audit.yml`) runs:
-- On every push to main/develop branches
-- On pull requests
-- Daily at 2 AM UTC as a scheduled job
-- On multiple Node.js versions (18.x, 20.x)
-
-### Pre-commit Hooks
-The pre-commit security hook (`.husky/pre-commit-security`) runs audit-ci before each commit to catch issues early.
-
-## Security Levels
-
-### audit-ci Severity Levels
-- **Critical**: Immediate action required
-- **High**: Should be fixed soon
-- **Moderate**: Should be reviewed and fixed
-- **Low**: Informational, consider fixing
-
-### Depcheck Categories
-- **Unused dependencies**: Dependencies listed in package.json but not used
-- **Missing dependencies**: Used in code but not listed in package.json
-- **Unused devDependencies**: Development dependencies that are not used
-
-## Best Practices
-
-1. **Run audits regularly**: Use `npm run security-check` before releases
-2. **Fix critical and high vulnerabilities immediately**
-3. **Review moderate vulnerabilities within a reasonable timeframe**
-4. **Keep dependencies up to date**: Use `npm update` regularly
-5. **Remove unused dependencies**: Run `npm run depcheck` and clean up unused packages
-
-## Troubleshooting
-
-### False Positives
-If audit-ci reports false positives, you can:
-1. Add package advisories to the allowlist in `audit-ci.json`
-2. Update the package to a secure version
-3. Find alternative packages
-
-### Depcheck Issues
-If depcheck reports false positives:
-1. Add packages to `ignoreMatches` in `.depcheckrc.json`
-2. Add file patterns to `ignorePatterns` for files that shouldn't be analyzed
-3. Verify the package is actually unused before removing
-
-### CI/CD Failures
-If the security audit fails in CI/CD:
-1. Check the audit results in the workflow logs
-2. Fix critical and high vulnerabilities locally
-3. Consider temporarily adding to allowlist for false positives
-4. Re-run the workflow after fixes
-
-## Integration with Development Workflow
-
-The security audit is integrated into the development workflow at multiple points:
-- **Pre-commit**: Basic security checks before code is committed
-- **Pre-push**: Comprehensive security checks and tests before code is pushed
-- **CI/CD**: Comprehensive checks on every push and PR
-- **Scheduled**: Regular automated scans to catch new vulnerabilities
-- **Manual**: Available for on-demand security reviews
-
-This multi-layered approach ensures that security vulnerabilities are caught and addressed at the earliest possible stage.
+A fix younger than 7 days that cannot wait goes into `minimumReleaseAgeExclude`
+as `name@version`, with the date it turns 7 days old. Delete the line after that
+date.

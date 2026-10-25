@@ -1,0 +1,153 @@
+name: Security
+
+# Dependency advisories, checked in two different ways (2026-10-25).
+#
+# Until then ci.yaml's `Security gates` job ran audit-ci over the whole
+# lockfile on every pull request and every push to main. An advisory published
+# overnight against a package nobody had touched turned every open PR red, and
+# main with it, until someone wrote a floor for it: eight floor/bump PRs
+# between 8 September and 23 October. A check that is red for reasons the
+# author cannot act on stops being read. So:
+#
+#  * `Security gates` (pull requests, pushes to main) fails only on a
+#    high/critical advisory that the change itself brings in: one that
+#    `pnpm audit` reports for the head lockfile and not for the base. A change
+#    that leaves pnpm-lock.yaml alone never asks the registry. depcheck runs
+#    here as it did in ci.yaml, and so does the install, which is also where
+#    pnpm enforces pnpm-workspace.yaml's minimumReleaseAge on the lockfile.
+#  * `Dependency audit` (daily, or by hand) puts every high/critical advisory
+#    in the lockfile into one issue labelled `dependency-audit`. It opens that
+#    issue, rewrites it, comments when a new advisory appears, and closes it
+#    when the list is empty. It fails only when the audit itself cannot run,
+#    never on findings.
+#
+# Thresholds, `skip-dev` and the allowlist still come from audit-ci.json.
+# tools/ci/dependency-audit.mjs explains why it reads that file instead of
+# running audit-ci, and why GitHub's dependency review cannot do the PR half
+# in this repo.
+#
+# A file of its own rather than a job in ci.yaml: nx.json's sharedGlobals
+# lists ci.yaml, so any edit there marks all 17 projects affected and costs a
+# full cold Verify run (traceability.yaml is separate for the same reason).
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: security-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: Security gates
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Depth 2: on a pull request HEAD is the merge commit and HEAD^1 is the
+      # base it merges into; on a push HEAD^1 is the fallback base below.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # A push compares against the previous tip of main, so a push carrying
+      # several commits is judged as a whole. When that tip cannot be fetched
+      # (branch created, force-push) the push is compared with its first parent.
+      # `github.event.before` arrives as env, not interpolated into the script.
+      - name: Fail on an advisory this change brings in
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          base='HEAD^1'
+          zero='0000000000000000000000000000000000000000'
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ -n "$BEFORE_SHA" ] \
+            && [ "$BEFORE_SHA" != "$zero" ] \
+            && git fetch --quiet --depth=1 origin "$BEFORE_SHA"; then
+            base="$BEFORE_SHA"
+          fi
+          node tools/ci/dependency-audit.mjs gate --base "$base"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Unused/missing deps for the three projects that declare the target.
+      - name: Check for unused dependencies
+        run: pnpm run depcheck
+
+  report:
+    name: Dependency audit
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      # No install: `pnpm audit` reads the lockfile and nothing else.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Rewrite the dependency-audit issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          label=dependency-audit
+          work="$RUNNER_TEMP/dependency-audit"
+          mkdir -p "$work"
+
+          gh label create "$label" --color b60205 --force \
+            --description 'Opened, rewritten and closed by the Security workflow' >/dev/null
+          number=$(gh issue list --label "$label" --state open --limit 1 \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue view "$number" --json body --jq .body > "$work/previous.md"
+          fi
+
+          node tools/ci/dependency-audit.mjs report --body "$work/body.md" \
+            --previous "$work/previous.md" --comment "$work/comment.md"
+
+          if [ -s "$work/body.md" ]; then
+            count=$(head -n 1 "$work/body.md" | grep -o 'GHSA-[0-9a-z-]*' | wc -l)
+            title="Dependency advisories: ${count} high/critical"
+            if [ -n "$number" ]; then
+              gh issue edit "$number" --title "$title" --body-file "$work/body.md" >/dev/null
+              if [ -s "$work/comment.md" ]; then
+                gh issue comment "$number" --body-file "$work/comment.md" >/dev/null
+              fi
+              echo "Rewrote #${number}."
+            else
+              gh issue create --title "$title" --label "$label" --body-file "$work/body.md"
+            fi
+          elif [ -n "$number" ]; then
+            gh issue close "$number" \
+              --comment "The audit of $(date -u +%F) finds no high/critical advisory outside the allowlist."
+          fi

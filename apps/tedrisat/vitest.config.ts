@@ -36,25 +36,31 @@ export default mergeConfig(
       testTimeout: 60_000,
       hookTimeout: 180_000,
       teardownTimeout: 60_000,
-      // jest.config.json's `maxWorkers: 1`. Vitest 4 removed `poolOptions`, so
-      // `singleFork` would be silently ignored; `fileParallelism: false` is the
-      // option that actually serialises, and it forces `maxWorkers` to 1.
+      // Four files at a time (2026-10-25). Until then this ran one file at a
+      // time, jest.config.json's `maxWorkers: 1`, and with 211 files that one
+      // target was the whole critical path of CI's Verify: 9m 55s of a 10m 35s
+      // Nx run.
       //
-      // MDRS-84 removed the original reason for it — suites no longer race for
-      // the Docker daemon, because there is only one container and `globalSetup`
-      // has already started it before any worker runs. It stays serial on
-      // purpose all the same: each e2e file boots one or two full Nest
-      // applications with their own pg pools, and letting eight files do that
-      // at once would point a multiple of those connections at one postgres
-      // whose `max_connections` nobody has sized. Turning it on is its own
-      // change, with its own measurement.
+      // Nothing the files share stood in the way any more:
+      //   - each file gets its own database in the one container
+      //     (test-app.helper.ts);
+      //   - the four suites that start Keycloak or Mailpit get containers with
+      //     generated names, and the two that need a network create their own;
+      //   - temporary files come from `mkdtemp`;
+      //   - nothing listens on a fixed port;
+      //   - the migrations create no cluster-wide object.
+      // The serial setting stood only because nobody had sized the
+      // container's `max_connections`. That is now set in global-setup.ts:
+      // four files × up to two Nest apps × pg's default pool of 10 is 80
+      // connections, against 200.
       //
-      // `pool: "forks"` is now load-bearing for a second reason: the per-file
-      // database name in test-app.helper.ts is a module-level variable, and it
-      // is the fresh-fork-per-file behaviour that keeps it per file.
+      // 4 matches the GitHub runner's vCPUs; more would just queue there.
+      //
+      // `pool: "forks"` is load-bearing: the per-file database name in
+      // test-app.helper.ts is a module-level variable, and it is the
+      // fresh-fork-per-file behaviour that keeps it per file.
       pool: "forks",
-      fileParallelism: false,
-      maxWorkers: 1,
+      maxWorkers: 4,
       coverage: {
         // Verbatim from jest.config.json `collectCoverageFrom`.
         include: ["src/**/*.{ts,tsx}"],
