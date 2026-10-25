@@ -40,6 +40,13 @@ export default mergeConfig(
       // next-intl's ESM build imports `next/server` without an extension,
       // which Node's own resolver refuses; inlined, Vite resolves it.
       server: { deps: { inline: ["next-intl"] } },
+      // happy-dom 21 no longer loads stylesheets by default, so a `<link>` a
+      // page renders (the font faces) fires `error` and React rejects its
+      // stylesheet promise. Counting the skipped load as success keeps
+      // loading off and the run free of unhandled rejections.
+      environmentOptions: {
+        happyDOM: { settings: { handleDisabledFileLoadingAsSuccess: true } },
+      },
       env: {
         KEYCLOAK_CLIENT_ID: "tedris-test",
         KEYCLOAK_CLIENT_SECRET: "test-secret",
