@@ -19,12 +19,14 @@ Each area's API is `<area>/domain/domain.yaml` (fields as JSON Schema, actions w
 ## Reading it
 
 ```sh
-npx @delurio/cli@0.1.1 page graphs --out viz      # every graph's page, and viz/index.html listing them
-npx @delurio/cli@0.1.1 check graphs --strict --baseline graphs/delurio.baseline.sarif
-npx @delurio/cli@0.1.1 diff graphs/learning/enrollment --base origin/main
+npx @delurio/cli@0.2.0 page graphs --out viz      # every graph's page, and viz/index.html listing them
+npx @delurio/cli@0.2.0 check graphs --strict --baseline graphs/delurio.baseline.sarif
+npx @delurio/cli@0.2.0 diff graphs/learning/enrollment --base origin/main
 ```
 
 A page shows a flow in words: its main story, every way it ends, its guarantees and whether they hold, its screens as wireframes and its diagram. `viz/` is ignored by git.
+
+To write a graph, `.vscode/settings.json` points VS Code's YAML extension (`redhat.vscode-yaml`) at delurio's JSON Schemas: it completes keys, explains each from SPEC.md on hover, and marks a typo or a title cut short by a comma inside `{ }`, as `check` does. `npx @delurio/cli@0.2.0 page graphs --serve` keeps the pages open at http://127.0.0.1:4600/ and reloads them on every save.
 
 ## In CI
 
@@ -33,7 +35,7 @@ The `Graphs` workflow (`.github/workflows/graphs.yaml`) runs when a pull request
 - a comment that says in words what the pull request changes in the graphs;
 - the pages of the changed graphs as an artifact.
 
-The baseline holds the findings known when it was written; they still show as warnings, and only a new error fails. Renew it after a fix, or after a finding is accepted, with `npx @delurio/cli@0.1.1 check graphs --format sarif --output graphs/delurio.baseline.sarif`, and review its diff in the pull request.
+The baseline holds the findings known when it was written; they still show as warnings, and only a new error fails. Renew it after a fix, or after a finding is accepted, with `npx @delurio/cli@0.2.0 check graphs --format sarif --output graphs/delurio.baseline.sarif`, and review its diff in the pull request.
 
 ## Keeping it true
 

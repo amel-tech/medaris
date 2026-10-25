@@ -30,7 +30,7 @@ permissions:
 
 env:
   # Bump on purpose: a new version may judge the same graphs differently.
-  DELURIO: "@delurio/cli@0.1.1"
+  DELURIO: "@delurio/cli@0.2.0"
 
 jobs:
   graphs:
