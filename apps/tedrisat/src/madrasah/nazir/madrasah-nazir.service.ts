@@ -18,6 +18,7 @@ import { MadrasahNotFoundError } from "../errors/madrasah-not-found.error";
 import { NazirBarredError } from "../errors/nazir-barred.error";
 import { NazirNotFoundError } from "../errors/nazir-not-found.error";
 import { NazirUnknownAccountError } from "../errors/nazir-unknown-account.error";
+import { MadrasahService } from "../madrasah.service";
 import type {
   MadrasahNazirGivenResponse,
   MadrasahNazirGroupResponse,
@@ -71,7 +72,8 @@ export class MadrasahNazirService {
     private readonly repo: MadrasahNazirRepository,
     private readonly assignments: AssignmentRepository,
     private readonly directory: UserDirectoryService,
-    private readonly bans: BanService
+    private readonly bans: BanService,
+    private readonly madrasahs: MadrasahService
   ) {}
 
   async list(madrasahId: string): Promise<MadrasahNazirResponse[]> {
@@ -103,6 +105,11 @@ export class MadrasahNazirService {
     authority: ScopeType
   ): Promise<MadrasahNazirResponse> {
     const id = userId.toLowerCase();
+    // A medrese that is gone answers first, as it did before these checks;
+    // the repository's lock still answers a delete that races this one.
+    if (!(await this.madrasahs.exists(madrasahId))) {
+      throw new MadrasahNotFoundError(madrasahId);
+    }
     const [unknownAccount] = await this.directory.findUnknownAccounts([id]);
     if (unknownAccount) throw new NazirUnknownAccountError(id);
     if (await this.bans.isBarredInMadrasah(id, madrasahId)) {
