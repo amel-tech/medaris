@@ -188,6 +188,16 @@ export class CourseRequestRepository {
     return rows.length > 0;
   }
 
+  /** Whether another request is already answered with this course. */
+  async courseAnswersARequest(courseId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: courseRequests.id })
+      .from(courseRequests)
+      .where(eq(courseRequests.courseId, courseId))
+      .limit(1);
+    return rows.length > 0;
+  }
+
   async create(input: {
     koskId: string;
     madrasahId: string;

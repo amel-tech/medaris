@@ -877,6 +877,37 @@ describe("Platform admin (e2e)", () => {
         .send({ courseId: opened })
         .expect(404);
     });
+
+    it("answers one request with one course: a second accepted with the first's course is refused, and still waits", async () => {
+      const first = (await send(HEAD_ID).expect(201)).body.id as string;
+      const second = (await send(HEAD_ID, { title: "Mantık" }).expect(201)).body
+        .id as string;
+      const [{ id: opened }] = await db()
+        .insert(courses)
+        .values({
+          koskId: koskA,
+          authorId: NAZIM_A_ID,
+          title: "Usûl-i Fıkıh Okumaları",
+          status: CourseStatus.PUBLISHED,
+        })
+        .returning({ id: courses.id });
+      await http()
+        .post(`/course-requests/${first}/accept`)
+        .set("Authorization", auth(NAZIM_A_ID))
+        .send({ courseId: opened })
+        .expect(204);
+      const taken = await http()
+        .post(`/course-requests/${second}/accept`)
+        .set("Authorization", auth(NAZIM_A_ID))
+        .send({ courseId: opened })
+        .expect(409);
+      expect(taken.body.code).toBe("COURSE_REQUEST_COURSE_TAKEN");
+      const [row] = await db()
+        .select()
+        .from(courseRequests)
+        .where(eq(courseRequests.id, second));
+      expect(row).toMatchObject({ status: "PENDING", courseId: null });
+    });
   });
 });
 
