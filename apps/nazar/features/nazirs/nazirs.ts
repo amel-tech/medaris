@@ -364,6 +364,10 @@ export function nazirErrorKey(code: string): string {
       return "Problems.selfGrant";
     case "MADRASAH_NAZIR_NOT_FOUND":
       return "Dismiss.gone";
+    case "MADRASAH_NAZIR_UNKNOWN_ACCOUNT":
+      return "Problems.unknownAccount";
+    case "MADRASAH_NAZIR_BARRED":
+      return "Problems.barredFromMadrasah";
     case "AUTHZ_FORBIDDEN":
     case "PERMISSION_NOT_GIVABLE":
       return "Problems.actionForbidden";

@@ -215,7 +215,9 @@
     "groupGone": "This group no longer exists. The groups were refreshed; choose again.",
     "groupNameTaken": "Another group has this name. Choose a different name.",
     "exceedsGiver": "You do not hold some of these permissions; you can only give what you hold yourself. Ask the Medaris administration for the ones you need.",
-    "selfGrant": "You cannot give yourself a role or a permission; taking over one that was given to you counts as that."
+    "selfGrant": "You cannot give yourself a role or a permission; taking over one that was given to you counts as that.",
+    "unknownAccount": "This account was not found.",
+    "barredFromMadrasah": "This person is barred from this medrese or one of its courses and cannot be made its nazır."
   },
   "Settings": {
     "title": "Medrese settings",
