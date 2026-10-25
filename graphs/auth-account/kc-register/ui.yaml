@@ -1,0 +1,77 @@
+# The screens of medaris.kc-register. register.ftl is apps/keycloak-theme/src/login/pages/Register.tsx on
+# libs/ui/src/giris/register-form.tsx; the fields come from config/keycloak/user-profile.json in its order. The page
+# sets no initial focus; after a stopped submission the focus goes to the first invalid field (register-form.tsx:119).
+schema: delurio-graph/0
+kind: ui
+id: medaris.kc-register
+flow: medaris.kc-register
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { min: "10", link: "Aydınlatma Metni", email: "zeynep@ornek.com" }
+changes: { key: Changes.note }
+
+nodes:
+  registerPage: { type: page, component: Page, role: main, name: { labelledBy: registerTitle }, in: [registerForm, registering], source: "libs/ui/src/giris/auth-card.tsx:173" }
+  registerTitle: { type: text, component: Heading, role: heading, text: { key: Register.title }, in: [registerForm, registering], source: "apps/keycloak-theme/src/login/pages/Register.tsx:73" }
+  registerSubtitle: { type: text, component: Text, text: { key: Register.subtitle }, in: [registerForm, registering], source: "apps/keycloak-theme/src/login/pages/Register.tsx:78" }
+  requiredNote: { type: text, component: Text, text: { key: Common.requiredFields }, in: [registerForm, registering], source: "libs/ui/src/giris/register-form.tsx:254" }
+  firstNameField: { type: field, component: TextField, role: textbox, text: { key: Register.firstName }, in: [registerForm, registering], source: "config/keycloak/user-profile.json:4" }
+  lastNameField: { type: field, component: TextField, role: textbox, text: { key: Register.lastName }, in: [registerForm, registering], source: "config/keycloak/user-profile.json:15" }
+  genderLabel: { type: text, component: Text, text: { key: Register.gender }, in: [registerForm, registering], source: "config/keycloak/user-profile.json:27" }
+  genderGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: genderLabel }, in: [registerForm, registering], source: "libs/ui/src/giris/profile-field.tsx:136" }
+  genderChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Register.female, Register.male] }, in: [registerForm, registering], source: "config/keycloak/user-profile.json:29" }
+  genderMissing: { type: text, component: Text, text: { key: Register.requiredChoice }, in: [registerForm], when: "pageErrors and not genderChosen", source: "apps/keycloak-theme/src/login/pages/Register.tsx:123" }
+  usernameField: { type: field, component: TextField, role: textbox, text: { key: Register.username }, in: [registerForm, registering], source: "config/keycloak/user-profile.json:41" }
+  usernameTaken: { type: text, component: Text, text: { key: Register.usernameExists }, in: [registerForm], when: "serverErrors and taken == 'username'", source: "apps/keycloak-theme/src/login/profile-fields.tsx:226" }
+  emailField: { type: field, component: TextField, role: textbox, text: { key: Register.email }, in: [registerForm, registering], source: "config/keycloak/user-profile.json:52" }
+  emailHelp: { type: text, component: Text, text: { key: Register.emailHelp }, in: [registerForm, registering], source: "apps/keycloak-theme/src/login/pages/Register.tsx:50" }
+  emailTaken: { type: text, component: Text, text: { key: Register.emailExists }, in: [registerForm], when: "serverErrors and taken == 'email'", source: "apps/keycloak-theme/src/login/profile-fields.tsx:226" }
+  passwordField: { type: field, component: TextField, role: textbox, text: { key: Register.password }, in: [registerForm, registering], source: "libs/ui/src/giris/register-form.tsx:194" }
+  rulesList: { type: list, component: List, role: list, name: { labelledBy: passwordField }, in: [registerForm, registering], source: "libs/ui/src/giris/register-form.tsx:208" }
+  ruleItem: { type: text, component: ListItem, role: listitem, text: { oneOf: [Register.ruleLength, Register.ruleNotEmail, Register.ruleNotUsername] }, in: [registerForm, registering], source: "apps/keycloak-theme/src/login/pages/Register.tsx:115" }
+  passwordProblem: { type: text, component: Text, text: { oneOf: [Register.required, Register.passwordTooShort, Register.passwordRules] }, in: [registerForm], when: "pageErrors and not fieldsValid", source: "apps/keycloak-theme/src/login/pages/Register.tsx:121" }
+  confirmField: { type: field, component: TextField, role: textbox, text: { key: Register.passwordConfirm }, in: [registerForm, registering], source: "libs/ui/src/giris/register-form.tsx:228" }
+  confirmProblem: { type: text, component: Text, text: { key: Register.passwordMismatch }, in: [registerForm], when: "pageErrors and not fieldsValid", source: "apps/keycloak-theme/src/login/pages/Register.tsx:126" }
+  privacyBox: { type: field, component: Text, role: checkbox, text: { key: Register.privacyRead, params: { link: privacy.linkLabel } }, in: [registerForm, registering], source: "config/keycloak/user-profile.json:60" }
+  privacyNewTab: { type: text, component: Text, text: { key: Register.newTab }, in: [registerForm, registering], source: "apps/keycloak-theme/src/login/profile-fields.tsx:252" }
+  privacyMissing: { type: text, component: Text, text: { key: Register.privacyRequired }, in: [registerForm], when: "pageErrors and not privacyTicked", source: "apps/keycloak-theme/src/login/profile-fields.tsx:269" }
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: Register.submit }, in: [registerForm, registering], disabledIn: [registering], emits: SUBMIT, source: "libs/ui/src/giris/register-form.tsx:271" }
+  sending: { type: status, component: Status, role: status, text: { key: Register.sending }, in: [registering], source: "libs/ui/src/giris/register-form.tsx:276" }
+  haveAccount: { type: text, component: Text, text: { key: Register.haveAccount }, in: [registerForm, registering], source: "apps/keycloak-theme/src/login/pages/Register.tsx:84" }
+  loginLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Register.logIn }, in: [registerForm, registering], emits: LOG_IN, source: "apps/keycloak-theme/src/login/pages/Register.tsx:85" }
+
+  verifyPage: { type: page, component: Page, role: main, name: { labelledBy: verifyTitle }, in: [verifyEmail, checkingLink], source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:23" }
+  verifyTitle: { type: text, component: Heading, role: heading, text: { key: Verify.title }, in: [verifyEmail, checkingLink], source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:28" }
+  verifyBody: { type: text, component: Text, text: { key: Verify.body, params: { email: user.email } }, in: [verifyEmail, checkingLink], source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:41" }
+  resendNote: { type: text, component: Text, text: { key: Verify.notReceived }, in: [verifyEmail, checkingLink], source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:33" }
+  resendLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Verify.resend }, in: [verifyEmail, checkingLink], emits: RESEND, source: "apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35" }
+
+  expiredPage: { type: page, component: Page, role: main, name: { labelledBy: expiredTitle }, in: [pageExpired], source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:24" }
+  expiredTitle: { type: text, component: Heading, role: heading, text: { key: Expired.title }, in: [pageExpired], source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:31" }
+  expiredBody: { type: text, component: Text, text: { key: Expired.body1 }, in: [pageExpired], source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:34" }
+  retryLink: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Expired.retry }, in: [pageExpired], emits: RETRY, source: "apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:36" }
+
+  errorPageMain: { type: page, component: Page, role: main, name: { labelledBy: errorTitle }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:30" }
+  errorTitle: { type: text, component: Heading, role: heading, text: { key: Error.title }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:36" }
+  errorBody: { type: text, component: Text, text: { key: Error.body1 }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:43" }
+  errorBack: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Error.back }, in: [errorPage], emits: BACK, source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:47" }
+
+  infoPage: { type: page, component: Page, role: main, name: { labelledBy: infoTitle }, in: [verifiedElsewhere], source: "apps/keycloak-theme/src/login/pages/Info.tsx:85" }
+  infoTitle: { type: text, component: Heading, role: heading, text: { key: Info.verifiedTitle }, in: [verifiedElsewhere], source: "apps/keycloak-theme/src/login/pages/Info.tsx:8" }
+  infoBody: { type: text, component: Text, text: { key: Info.verifiedBody }, in: [verifiedElsewhere], source: "apps/keycloak-theme/src/login/pages/Info.tsx:54" }
+  infoContinue: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Info.continue }, in: [verifiedElsewhere], source: "apps/keycloak-theme/src/login/pages/Info.tsx:79" }
+
+edges:
+  - { labelledBy: [registerPage, registerTitle] }
+  - { labelledBy: [genderGroup, genderLabel] }
+  - { labelledBy: [verifyPage, verifyTitle] }
+  - { labelledBy: [expiredPage, expiredTitle] }
+  - { labelledBy: [errorPageMain, errorTitle] }
+  - { labelledBy: [infoPage, infoTitle] }
+  - { triggers: [submit, registering] }
+  - { triggers: [loginLink, toLogin] }
+
+rules:
+  - { id: reasons-under-fields, rule: "every reason the page or Keycloak gives is written under its own field, and the focus goes to the first invalid one" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }

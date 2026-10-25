@@ -1,0 +1,229 @@
+# Tedris's Hesap page (apps/tedris/app/account/page.tsx), captured from origin/main ce47fce8: the name, the account's
+# gender and its mirror in tedrisat, the time zone, the language and lesson invitations by e-mail.
+# Keycloak holds the gender (#317): Hesap shows tedrisat's mirror and changes it only through Keycloak's own profile
+# form, an account action (libs/auth/src/shared/account-action.ts). Nazar's and Nizam's Hesap pages show the name
+# read-only and change only the time zone and the language; they are left to the navigation graphs.
+schema: delurio-graph/0
+kind: flow
+id: medaris.account-edit
+status: proposed
+domain: medaris.auth-account
+ui: medaris.account-edit
+title: Edit your account in Tedris
+summary: >-
+  Hesap shows the first and last name, the e-mail (read-only), the gender (read-only), the time zone, the language
+  and the lesson-invitation switch. Kaydet writes the names to tedrisat. Değiştir, or Ekle while no gender is known,
+  opens Keycloak's profile form and comes back to Hesap with new tokens, whose gender tedrisat copies on the next
+  request. The time zone and the switch are saved the moment they change; the language is a cookie in this browser.
+
+scope:
+  shows: Hesap's personal-information and time-and-language cards, the switch, and the round trip for the gender
+  world: open
+  outOfView:
+    - "Görevlerin ve izinlerin, the roles section below the cards (features/account/components/roles-section.tsx)"
+    - "the calendar link page (/account/calendar) and Bağlı uygulamalar, Keycloak's account console"
+    - "Herkese açık profil (/account/public-profile): hidden while PUBLIC_PROFILE_ENABLED is off"
+    - "Keycloak's sign-in form before its profile form, when the Keycloak session has ended: medaris.kc-sign-in"
+    - "a session that ends under the page: medaris.portal-session"
+
+context:
+  profileRead:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "GET /me fails" }
+  tokenGender:
+    values: [female, male, none]
+    initial: any
+    say: { female: "the session's token says FEMALE", male: "the session's token says MALE", none: "the token carries no gender claim" }
+  mirror:
+    values: [female, male, none]
+    initial: any
+    say: { female: "tedrisat's copy says FEMALE", male: "tedrisat's copy says MALE", none: "tedrisat has no gender for them" }
+  namesFilled:
+    values: [true, false]
+    initial: any
+    say: { "true": "both names are filled in", "false": "a name is left blank" }
+  saveOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "tedrisat cannot save" }
+  capLeft:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "this browser has visited the sign-in start route 5 times in 5 minutes" }
+  chosen:
+    values: [female, male]
+    initial: any
+    say: { female: "they choose Kadın on Keycloak's form", male: "they choose Erkek on Keycloak's form" }
+  notice: { values: [none, nameSaved, nameFailed, nameBlank, zoneSaved, zoneFailed, invitationsSaved, invitationsFailed], initial: none }
+  changedGender: { values: [false, true], initial: false }
+
+effects:
+  copyFemale: { set: { mirror: female } }
+  copyMale: { set: { mirror: male } }
+  clear: { set: { notice: none } }
+  nameBlank: { set: { notice: nameBlank } }
+  nameSaved: { set: { notice: nameSaved }, havoc: [saveOk] }
+  nameFailed: { set: { notice: nameFailed }, havoc: [saveOk] }
+  zoneSaved: { set: { notice: zoneSaved }, havoc: [saveOk] }
+  zoneFailed: { set: { notice: zoneFailed }, havoc: [saveOk] }
+  invitationsSaved: { set: { notice: invitationsSaved }, havoc: [saveOk] }
+  invitationsFailed: { set: { notice: invitationsFailed }, havoc: [saveOk] }
+  fixNames: { set: { namesFilled: true, notice: none } }
+  pickedFemale: { set: { tokenGender: female, changedGender: true, notice: none } }
+  pickedMale: { set: { tokenGender: male, changedGender: true, notice: none } }
+
+failures:
+  loading:
+    from: getMe
+    unavailable: [UNAVAILABLE]
+  savingName:
+    from: updateMe
+    failed: [VALIDATION_ERROR, UNAVAILABLE]
+  savingZone:
+    from: updateMe
+    failed: [VALIDATION_ERROR, UNAVAILABLE]
+  savingInvitations:
+    from: updateMe
+    failed: [VALIDATION_ERROR, UNAVAILABLE]
+  startingAction:
+    from: startSignIn
+    limit: [SignInLimit]
+  savingProfile:
+    from: kcUpdateProfile
+    invalid: [ATTRIBUTE_INVALID]
+
+main:
+  given: { profileRead: true, tokenGender: female, mirror: female, namesFilled: true, saveOk: true }
+  events: [DONE, SAVE_NAME, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Hesap reads the account
+    source: apps/tedris/features/account/reads.ts:42
+    description: >-
+      GET /me. Before the handler runs, tedrisat's interceptor copies the token's gender into user_profiles.gender
+      when the token carries one (user/user-sync.service.ts:75); a token without the claim leaves the copy as it is.
+      GET /me answers the copy, not the token (user/user.service.ts:175).
+    invoke: { action: getMe }
+    on:
+      DONE:
+        - { guard: "profileRead and tokenGender == 'female'", target: accountPage, effect: [copyFemale], say: "read; the copy follows the token", source: "apps/tedrisat/src/user/user-profile.repository.ts:96" }
+        - { guard: "profileRead and tokenGender == 'male'", target: accountPage, effect: [copyMale], say: "read; the copy follows the token", source: "apps/tedrisat/src/user/user-profile.repository.ts:96" }
+        - { guard: "profileRead and tokenGender == 'none'", target: accountPage, say: "read; no claim, so the copy stays as it was", source: "apps/tedrisat/src/user/user-sync.service.ts:75" }
+      FAIL.unavailable: { guard: "not profileRead", target: loadFailed, say: "the read fails", source: "apps/tedris/features/account/reads.ts:49" }
+
+  accountPage:
+    title: Hesap
+    by: human
+    goal: true
+    source: apps/tedris/app/account/page.tsx:26
+    description: >-
+      The name fields (both required, profile-model.ts:51), the e-mail read-only, the gender read-only with
+      Değiştir, or "Belirtilmemiş" with Ekle when tedrisat has none (account-settings.tsx:54), the time zone and
+      language card, the calendar card with the invitation switch, and Çıkış yap.
+    on:
+      SAVE_NAME:
+        - { guard: namesFilled, target: savingName, effect: [clear], say: "they press Kaydet", source: "apps/tedris/features/account/components/account-settings.tsx:115" }
+        - { target: accountPage, effect: [nameBlank], say: "a blank name never leaves the page; the field says so", source: "apps/tedris/features/account/components/account-settings.tsx:114" }
+      FIX_NAME: { guard: "notice == 'nameBlank'", target: accountPage, effect: [fixNames], say: "they fill in the name" }
+      PICK_ZONE: { target: savingZone, effect: [clear], say: "they pick a time zone", source: "apps/tedris/features/account/components/account-settings.tsx:230" }
+      TOGGLE_INVITATIONS: { target: savingInvitations, effect: [clear], say: "they flip Ders davetlerini e-postayla gönder", source: "apps/tedris/features/account/components/account-settings.tsx:290" }
+      PICK_LANGUAGE: { target: switchingLanguage, effect: [clear], say: "they pick a language", source: "apps/tedris/features/account/components/account-settings.tsx:265" }
+      CHANGE_GENDER: { target: startingAction, effect: [clear], say: "they press Değiştir, or Ekle", source: "apps/tedris/features/account/components/account-settings.tsx:82" }
+      SIGN_OUT: { target: toSignOut, starts: { flow: medaris.portal-sign-out }, say: "they press Çıkış yap", source: "apps/tedris/features/account/components/account-settings.tsx:386" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  savingName:
+    title: tedrisat saves the names
+    source: apps/tedrisat/src/user/user.service.ts:61
+    description: >-
+      PATCH /me { givenName, familyName }: trimmed, at most 100 characters each, into user_profiles in one transaction
+      (user.service.ts:87). The names are tedrisat's own from now on: the token's names no longer show here
+      (user.service.ts:170), and nothing is written to Keycloak.
+    invoke: { action: updateMe }
+    on:
+      DONE: { guard: saveOk, target: accountPage, effect: [nameSaved], say: "saved: Adın ve soyadın kaydedildi.", source: "apps/tedris/features/account/components/account-settings.tsx:121" }
+      FAIL.failed: { guard: "not saveOk", target: accountPage, effect: [nameFailed], say: "not saved", source: "apps/tedris/features/account/components/account-settings.tsx:123" }
+
+  savingZone:
+    title: tedrisat saves the time zone
+    source: apps/tedris/features/account/profile-actions.ts:35
+    description: PATCH /me { timeZone }; on success the viewer's zone cookie follows (profile-actions.ts:42); on failure the select goes back (account-settings.tsx:220)
+    invoke: { action: updateMe }
+    on:
+      DONE: { guard: saveOk, target: accountPage, effect: [zoneSaved], say: "saved", source: "apps/tedris/features/account/components/account-settings.tsx:216" }
+      FAIL.failed: { guard: "not saveOk", target: accountPage, effect: [zoneFailed], say: "not saved; the previous zone comes back", source: "apps/tedris/features/account/components/account-settings.tsx:220" }
+
+  savingInvitations:
+    title: tedrisat saves the invitation switch
+    source: apps/tedris/features/account/profile-actions.ts:23
+    description: PATCH /me { lessonInvitationEmails }; the switch is disabled while it saves (account-settings.tsx:333) and moves back on failure (account-settings.tsx:304)
+    invoke: { action: updateMe }
+    on:
+      DONE: { guard: saveOk, target: accountPage, effect: [invitationsSaved], say: "saved", source: "apps/tedris/features/account/components/account-settings.tsx:297" }
+      FAIL.failed: { guard: "not saveOk", target: accountPage, effect: [invitationsFailed], say: "not saved; the switch moves back", source: "apps/tedris/features/account/components/account-settings.tsx:304" }
+
+  switchingLanguage:
+    title: The browser keeps the language
+    source: libs/ui/src/mds/locale-switcher.tsx:14
+    description: >-
+      The medaris-locale cookie for every Medaris app of the domain, a year long, then a full reload
+      (libs/ui/src/lib/locale-preference.ts:35). Never on the account (locale-preference.ts:2): neither tedrisat's
+      users.locale nor Keycloak's locale attribute changes.
+    always:
+      - { target: accountPage, say: "the page reloads in the chosen language" }
+
+  startingAction:
+    title: The start route, for an account action
+    source: libs/auth/src/server/routes.ts:151
+    description: >-
+      GET /api/auth/signin?action=UPDATE_PROFILE&callbackUrl=/account. Only UPDATE_PROFILE is passed on, as kc_action
+      (routes.ts:231); it goes through Keycloak even with a session and counts against the start route's cap.
+    invoke: { action: startSignIn }
+    on:
+      DONE: { guard: capLeft, target: kcProfileForm, say: "to Keycloak's profile form", source: "libs/auth/src/server/routes.ts:231" }
+      FAIL.limit: { guard: "not capLeft", target: limitBox, say: "SignInLimit on the sign-in page", source: "libs/auth/src/server/routes.ts:158" }
+
+  kcProfileForm:
+    title: Keycloak's profile form
+    by: human
+    source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:31
+    description: >-
+      login-update-profile.ftl as an action the app asked for: the realm's whole profile (names, gender, e-mail,
+      the privacy box), no sentence about missing details, and Vazgeç (LoginUpdateProfile.tsx:85).
+    on:
+      SAVE:
+        - { guard: "chosen == 'female'", target: savingProfile, effect: [pickedFemale], say: "they choose Kadın and press Kaydet ve devam et" }
+        - { guard: "chosen == 'male'", target: savingProfile, effect: [pickedMale], say: "they choose Erkek and press Kaydet ve devam et" }
+      CANCEL: { target: returning, say: "they press Vazgeç", source: "apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:88" }
+
+  savingProfile:
+    title: Keycloak saves the profile
+    source: config/keycloak/user-profile.json:26
+    invoke: { action: kcUpdateProfile }
+    on:
+      DONE: { target: returning, say: "saved on the account" }
+      FAIL.invalid: { target: kcProfileForm, say: "Keycloak refuses a value" }
+
+  returning:
+    title: Back through the callback
+    source: libs/auth/src/server/routes.ts:321
+    description: >-
+      Keycloak sends the browser to the callback with a code, after a cancel too (kc_action_status=cancelled, libs/auth
+      README "Account actions"); a new session replaces the old one, so the tokens say what the person chose.
+    invoke: { action: completeSignIn }
+    on:
+      DONE: { target: loading, say: "back to /account with new tokens" }
+
+  loadFailed: { type: final, title: Hesabın yüklenemedi, source: "apps/tedris/app/account/page.tsx:55" }
+  limitBox: { type: final, title: The sign-in page says there were too many attempts, source: "libs/auth/src/server/routes.ts:159" }
+  toSignOut: { type: final, title: Hand over to signing out, source: "apps/tedris/features/account/components/account-settings.tsx:386" }
+  left: { type: final, title: The person leaves, leavesPage: true }
+
+assertions:
+  - { id: shows-the-account-gender, never: "state == 'accountPage' and tokenGender != 'none' and mirror != tokenGender", say: "When the token carries a gender, Hesap shows exactly that one", source: "apps/tedrisat/src/user/user-sync.service.ts:75" }
+  - { id: no-blank-name-sent, never: "state == 'savingName' and not namesFilled", say: "A blank first or last name never reaches tedrisat", source: "apps/tedris/features/account/components/account-settings.tsx:114" }
+  - { id: gender-from-the-form, never: "state == 'accountPage' and changedGender and tokenGender != chosen", say: "After Keycloak's form, Hesap shows the gender that was chosen there" }
+  - { id: account-action-capped, never: "state == 'kcProfileForm' and not capLeft", say: "The profile form opens only within the start route's cap", source: "libs/auth/src/server/routes.ts:158" }

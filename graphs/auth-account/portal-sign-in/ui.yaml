@@ -1,0 +1,53 @@
+# The screens of medaris.portal-sign-in: a public page's way in, and the sign-in page (AuthEntry) of each portal:
+# tedris features/auth/auth-entry.tsx, nazar features/auth/auth-entry.tsx, nizam features/auth/auth-entry.tsx. The
+# three bodies say the same things in different words and kits; a node per portal carries its `when`.
+# No sign-in page sets an initial focus.
+schema: delurio-graph/0
+kind: ui
+id: medaris.portal-sign-in
+flow: medaris.portal-sign-in
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: {}
+changes: { key: Changes.note }
+
+nodes:
+  # a public page
+  tedrisSignIn: { type: action, component: Button, role: button, intent: secondary, text: { key: Tedris.signIn }, in: [visitorPage], when: "portal == 'tedris'", emits: SIGN_IN, source: "apps/tedris/features/keycloak/login.tsx:21" }
+  tedrisRegister: { type: action, component: Button, role: button, intent: confirm, text: { key: Tedris.register }, in: [visitorPage], when: "portal == 'tedris'", emits: REGISTER, source: "apps/tedris/features/keycloak/login.tsx:27" }
+  nizamWelcome: { type: text, component: Heading, role: heading, text: { key: Nizam.welcome }, in: [visitorPage], when: "portal == 'nizam'", source: "apps/nizam/app/(home)/page.tsx:41" }
+  nizamSignIn: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Nizam.signIn }, in: [visitorPage], when: "portal == 'nizam'", emits: SIGN_IN, source: "apps/nizam/app/(home)/page.tsx:42" }
+
+  # the sign-in page, on its way to Keycloak
+  tedrisRedirecting: { type: status, component: Status, role: status, text: { key: Tedris.redirectingSignIn }, in: [redirecting], when: "portal == 'tedris'", source: "apps/tedris/features/auth/auth-entry.tsx:104" }
+  tedrisContinue: { type: action, component: Button, role: button, intent: secondary, text: { key: Tedris.continue }, in: [redirecting], when: "portal == 'tedris'", emits: CONTINUE, source: "apps/tedris/features/auth/auth-entry.tsx:110" }
+  nazarRedirectingTitle: { type: text, component: Heading, role: heading, text: { key: Nazar.redirectingTitle }, in: [redirecting], when: "portal == 'nazar'", source: "apps/nazar/features/auth/auth-entry.tsx:100" }
+  nazarRedirecting: { type: text, component: Text, text: { key: Nazar.redirectingDescription }, in: [redirecting], when: "portal == 'nazar'", source: "apps/nazar/features/auth/auth-entry.tsx:107" }
+  nazarContinue: { type: action, component: Button, role: button, intent: secondary, text: { key: Nazar.continue }, in: [redirecting], when: "portal == 'nazar'", emits: CONTINUE, source: "apps/nazar/features/auth/auth-entry.tsx:102" }
+  nizamRedirecting: { type: status, component: Status, role: status, text: { key: Nizam.redirectingSignIn }, in: [redirecting], when: "portal == 'nizam'", source: "apps/nizam/features/auth/auth-entry.tsx:99" }
+  nizamContinue: { type: action, component: Button, role: button, intent: secondary, text: { key: Nizam.continue }, in: [redirecting], when: "portal == 'nizam'", emits: CONTINUE, source: "apps/nizam/features/auth/auth-entry.tsx:102" }
+
+  # the box
+  tedrisErrorTitle: { type: text, component: Heading, role: heading, text: { key: Tedris.errorTitle }, in: [errorBox], when: "portal == 'tedris'", source: "apps/tedris/features/auth/auth-entry.tsx:82" }
+  tedrisErrorText: { type: text, component: Text, text: { oneOf: [Tedris.errorDescription, Tedris.accessDenied, Tedris.configurationError, Tedris.signInLimit] }, in: [errorBox], when: "portal == 'tedris'", source: "apps/tedris/features/auth/auth-entry.tsx:98" }
+  tedrisRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: Tedris.backToSignIn }, in: [errorBox], when: "portal == 'tedris' and pageError == 'retryable'", emits: RETRY, source: "apps/tedris/features/auth/auth-entry.tsx:88" }
+  tedrisHome: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Tedris.backHome }, in: [errorBox], when: "portal == 'tedris' and pageError != 'retryable'", emits: HOME, source: "apps/tedris/features/auth/auth-entry.tsx:92" }
+  nazarErrorTitle: { type: text, component: Heading, role: heading, text: { key: Nazar.errorTitle }, in: [errorBox], when: "portal == 'nazar'", source: "apps/nazar/features/auth/auth-entry.tsx:80" }
+  nazarErrorText: { type: text, component: Text, text: { oneOf: [Nazar.errorDescription, Nazar.accessDenied, Nazar.configurationError, Nazar.signInLimit] }, in: [errorBox], when: "portal == 'nazar'", source: "apps/nazar/features/auth/auth-entry.tsx:93" }
+  nazarRetry: { type: action, component: Button, role: button, intent: confirm, text: { key: Nazar.retry }, in: [errorBox], when: "portal == 'nazar' and pageError == 'retryable'", emits: RETRY, source: "apps/nazar/features/auth/auth-entry.tsx:85" }
+  nazarHome: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nazar.backHome }, in: [errorBox], when: "portal == 'nazar'", emits: HOME, source: "apps/nazar/features/auth/auth-entry.tsx:87" }
+  nizamErrorTitle: { type: text, component: Heading, role: heading, text: { key: Nizam.errorTitle }, in: [errorBox], when: "portal == 'nizam'", source: "apps/nizam/features/auth/auth-entry.tsx:80" }
+  nizamErrorText: { type: text, component: Text, text: { oneOf: [Nizam.errorDescription, Nizam.accessDenied, Nizam.configurationError, Nizam.signInLimit] }, in: [errorBox], when: "portal == 'nizam'", source: "apps/nizam/features/auth/auth-entry.tsx:83" }
+  nizamRetry: { type: action, component: Button, role: button, intent: confirm, text: { key: Nizam.retry }, in: [errorBox], when: "portal == 'nizam' and pageError == 'retryable'", emits: RETRY, source: "apps/nizam/features/auth/auth-entry.tsx:88" }
+  nizamHome: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nizam.backHome }, in: [errorBox], when: "portal == 'nizam'", emits: HOME, source: "apps/nizam/features/auth/auth-entry.tsx:91" }
+
+edges:
+  - { triggers: [tedrisSignIn, starting] }
+  - { triggers: [tedrisRegister, starting] }
+  - { triggers: [tedrisContinue, starting] }
+  - { triggers: [nazarContinue, starting] }
+  - { triggers: [nizamContinue, starting] }
+
+rules:
+  - { id: no-retry-for-a-final-error, rule: "a final error (AccessDenied, Configuration, SignInLimit) offers no retry, since it fails the same way on a click" }

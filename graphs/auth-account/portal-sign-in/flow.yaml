@@ -1,0 +1,262 @@
+# Signing in to Tedris, Nazar or Nizam through the one OIDC session package (libs/auth, #285), captured from
+# origin/main ce47fce8. The three portals run the same code: their proxy.ts hands every request to
+# libs/auth/src/server/proxy.ts, their sign-in page runs enterSignIn (libs/auth/src/client/sign-in.ts:286), and their
+# /api/auth/[...auth] route is libs/auth/src/server/routes.ts. What differs is which pages are public and the words.
+# Budgets are counters in the code (sessionStorage per tab, a cookie per browser); here they are "left or spent".
+schema: delurio-graph/0
+kind: flow
+id: medaris.portal-sign-in
+status: proposed
+domain: medaris.auth-account
+ui: medaris.portal-sign-in
+title: Sign in to a portal
+summary: >-
+  A page that is not public, asked for without a session, sends the browser to the portal's sign-in page, which goes
+  on to Keycloak by itself, one tab at a time. Keycloak sends it back with a code; the portal stores a session and
+  opens the page that was asked for, or its home. A failed round trip is retried once by itself, then the page shows
+  a box. Budgets per tab and per browser stop any loop, and a page whose token tedrisat refused gets new tokens
+  instead of being sent straight back.
+
+scope:
+  shows: the proxy's gate, the sign-in page, the start route, Keycloak, the callback, and where the browser lands
+  world: open
+  outOfView:
+    - "Keycloak's pages: medaris.kc-sign-in and medaris.kc-register"
+    - "where `/` sends a signed-in person in each portal: medaris.portal-landing"
+    - "refreshing a session, and a session that ends: medaris.portal-session; signing out: medaris.portal-sign-out"
+    - "several tabs waiting for one round trip (the localStorage claim, sign-in.ts:124): drawn as one tab"
+    - "the account action UPDATE_PROFILE through the same start route: medaris.account-edit"
+
+context:
+  portal:
+    values: [tedris, nazar, nizam]
+    initial: any
+    say: { tedris: "in Tedris", nazar: "in Nazar", nizam: "in Nizam" }
+  asked:
+    values: [protectedPage, publicPage]
+    initial: any
+    say: { protectedPage: "the page asked for needs a session", publicPage: "the page asked for is one of the portal's public pages" }
+  hasSession:
+    values: [false, true]
+    initial: any
+    say: { "false": "the browser has no usable session", "true": "the browser has a usable session" }
+  storeUp:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the session store (Valkey) cannot be reached" }
+  apiRefuses:
+    values: [false, true]
+    initial: any
+    say: { "false": "", "true": "tedrisat refuses the session's token (a wrong audience, clock skew, a session just ended)" }
+  startOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the start route cannot reach Keycloak's discovery or the session store" }
+  capLeft:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "this browser has visited the start route 5 times in 5 minutes" }
+  startsLeft:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "this tab has spent its automatic starts, retry and go-ons for two minutes" }
+  returned:
+    values: [code, denied, clientRefused, failed]
+    initial: any
+    say: { code: "Keycloak sends a code", denied: "Keycloak answers access_denied", clientRefused: "Keycloak refuses the portal's client (invalid_client)", failed: "the callback fails (an unknown or replayed state, an expired code, the store)" }
+  intent: { values: [signin, register], initial: signin }
+  pageError: { values: [none, retryable, final], initial: none }
+  signedIn: { values: [false, true], initial: false }
+  reauth: { values: [false, true], initial: false }
+  namedPage: { values: [false, true], initial: false }
+  staleSession: { values: [false, true], initial: false } # the browser still holds the session whose token tedrisat refused
+
+guards:
+  isPublic: "asked == 'publicPage' and portal != 'nazar'"
+  alreadyIn: "signedIn and intent == 'signin' and not reauth"
+
+effects:
+  signedInNow: { set: { signedIn: true } }
+  toSignInNamed: { set: { namedPage: true } }
+  forRegister: { set: { intent: register, namedPage: false } }
+  forSignIn: { set: { intent: signin, namedPage: false } }
+  refused: { set: { reauth: true, namedPage: true, staleSession: true } }
+  finalError: { set: { pageError: final } }
+  retryableError: { set: { pageError: retryable } }
+  clearError: { set: { pageError: none } }
+  callbackFinal: { set: { pageError: final, reauth: false } } # the error redirect carries no reauth=1 (routes.ts:126)
+  callbackRetryable: { set: { pageError: retryable, reauth: false } }
+  arrived: { set: { signedIn: true, reauth: false, pageError: none, staleSession: false }, havoc: [apiRefuses, capLeft, startsLeft, returned] }
+  goneOn: { set: { reauth: false, pageError: none }, havoc: [startsLeft] }
+  tabFinished: { set: { signedIn: true, reauth: false, pageError: none, staleSession: false }, havoc: [startsLeft, apiRefuses] }
+
+failures:
+  starting:
+    from: startSignIn
+    limit: [SignInLimit]
+    unavailable: [OAuthSignin]
+  callback:
+    from: completeSignIn
+    denied: [AccessDenied]
+    config: [Configuration]
+    failed: [OAuthCallback]
+
+main:
+  given: { portal: nazar, asked: protectedPage, hasSession: false, storeUp: true, apiRefuses: false, startOk: true, capLeft: true, startsLeft: true, returned: code }
+  events: [TURN, DONE, RETURNED, DONE]
+
+initial: arriving
+states:
+  arriving:
+    title: The proxy reads the session
+    source: libs/auth/src/server/proxy.ts:173
+    description: >-
+      Every page request passes the portal's proxy.ts (tedris proxy.ts:26, nazar proxy.ts:17, nizam proxy.ts:23). A
+      page that is not public, without a usable session, is redirected to /auth/signin?callbackUrl=<the page>
+      (proxy.ts:198). Nazar names no public page; Tedris lists /, /home, /discover, the auth pages and the intro pages of
+      a köşk, medrese, course or deck (tedris lib/public-paths.ts:12); Nizam lists / and the auth pages (nizam
+      lib/public-paths.ts:19). When the store cannot be asked, the proxy decides nothing (proxy.ts:188).
+    always:
+      - { guard: "not storeUp and not isPublic", target: storeDown, say: "the store cannot be asked; the protected page's own read throws", source: "libs/auth/src/server/reads.ts:126" }
+      - { guard: "not storeUp and isPublic", target: visitorPage, say: "the store cannot be asked; the public page renders for a visitor", source: "libs/auth/src/server/proxy.ts:198" }
+      - { guard: hasSession, target: rendering, effect: [signedInNow], say: "a usable session: the page renders" }
+      - { guard: isPublic, target: visitorPage, say: "a public page renders for the visitor", source: "libs/auth/src/server/proxy.ts:203" }
+      - { target: signInPage, effect: [toSignInNamed], say: "no session: to the sign-in page, with the page as callbackUrl", source: "libs/auth/src/server/proxy.ts:205" }
+
+  rendering:
+    title: The page reads tedrisat with the session's token
+    source: apps/nazar/features/shell/reads.ts:69
+    description: >-
+      A page read that tedrisat answers 401 is not "signed out": it sends the browser to sign in with reauth=1
+      (redirectToSignIn({ reauth: true }): nazar features/shell/reads.ts:69, tedris lib/tedrisat-api.ts:45).
+    always:
+      - { guard: apiRefuses, target: signInPage, effect: [refused], say: "tedrisat refuses the token: to the sign-in page with reauth=1", source: "apps/tedris/lib/tedrisat-api.ts:45" }
+      - { target: pageServed, say: "the page renders for the signed-in person" }
+
+  visitorPage:
+    title: A public page, for a visitor
+    by: human
+    source: apps/tedris/lib/public-paths.ts:12
+    description: >-
+      Tedris's header has Giriş yap and Kayıt ol, which start the round trip at once with callbackUrl "/" (tedris
+      features/keycloak/login.tsx:23, :28). Nizam's `/` shows its welcome and a Giriş yap link to /auth/signin
+      (nizam app/(home)/page.tsx:42).
+    on:
+      SIGN_IN:
+        - { guard: "portal == 'tedris'", target: starting, effect: [forSignIn], say: "they press Giriş yap in the header", source: "apps/tedris/features/keycloak/login.tsx:23" }
+        - { guard: "portal == 'nizam'", target: signInPage, effect: [forSignIn], say: "they press Giriş yap", source: "apps/nizam/app/(home)/page.tsx:42" }
+      REGISTER: { guard: "portal == 'tedris'", target: starting, effect: [forRegister], say: "they press Kayıt ol in the header", source: "apps/tedris/features/keycloak/login.tsx:28" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  signInPage:
+    title: The sign-in page decides
+    source: libs/auth/src/client/sign-in.ts:286
+    description: >-
+      /auth/signin renders AuthEntry, which runs enterSignIn once (tedris features/auth/auth-entry.tsx:63). A final
+      error (AccessDenied, Configuration, SignInLimit) is the box at once; a session already there goes straight on
+      while the tab's go-on budget lasts, unless reauth=1, where only a newer session counts; a retryable error gets
+      this tab's one automatic retry; a tab that started too many on its own gets the box.
+    always:
+      - { guard: "pageError == 'final'", target: errorBox, say: "a final error: the box", source: "libs/auth/src/client/sign-in.ts:291" }
+      - { guard: "signedIn and not reauth and startsLeft", target: rendering, effect: [goneOn], say: "a session is already there: straight on to callbackUrl", source: "libs/auth/src/client/sign-in.ts:312" }
+      - { guard: "signedIn and not reauth and not startsLeft", target: errorBox, effect: [finalError], say: "the tab's go-on budget is spent: SignInLimit", source: "libs/auth/src/client/sign-in.ts:307" }
+      - { guard: "not startsLeft", target: errorBox, effect: [finalError], say: "the tab's automatic budget is spent: SignInLimit", source: "libs/auth/src/client/sign-in.ts:314" }
+      - { target: redirecting, say: "the tab waits for its turn to go to Keycloak", source: "libs/auth/src/client/sign-in.ts:319" }
+
+  redirecting:
+    title: On the way to the sign-in page
+    by: human
+    source: apps/tedris/features/auth/auth-entry.tsx:103
+    description: >-
+      "Giriş sayfasına yönlendiriliyorsunuz…" with a Devam et button. The tab starts when it is visible and no other
+      tab holds the round trip (sign-in.ts:322); a click starts at once, over any other tab (sign-in.ts:340).
+    on:
+      TURN: { target: starting, say: "the tab's turn comes and it goes on by itself", source: "libs/auth/src/client/sign-in.ts:329" }
+      CONTINUE: { target: starting, say: "they press Devam et", source: "apps/tedris/features/auth/auth-entry.tsx:110" }
+      SESSION_ARRIVED:
+        - { guard: startsLeft, target: rendering, effect: [tabFinished], say: "another tab's round trip brought a session: straight on", source: "libs/auth/src/client/sign-in.ts:332" }
+        - { target: errorBox, effect: [finalError], say: "another tab brought a session, but this tab's go-on budget is spent", source: "libs/auth/src/client/sign-in.ts:307" }
+      NAVIGATE: { target: left, say: "they close the tab" }
+
+  errorBox:
+    title: Sign-in could not be completed
+    by: human
+    source: apps/tedris/features/auth/auth-entry.tsx:77
+    description: >-
+      The box says which failure it was (authErrorMessageKey, libs/auth/src/shared/auth-error.ts:271). A retryable one
+      offers a retry ("Giriş sayfasına dön" in Tedris, "Tekrar dene" in Nazar and Nizam); a final one only the way home.
+    on:
+      RETRY: { guard: "pageError == 'retryable'", target: starting, effect: [clearError], say: "they press the retry button", source: "apps/tedris/features/auth/auth-entry.tsx:88" }
+      HOME: { target: home, say: "they press Ana sayfaya dön", source: "apps/nazar/features/auth/auth-entry.tsx:87" }
+      NAVIGATE: { target: left, say: "they close the tab" }
+
+  starting:
+    title: The start route
+    source: libs/auth/src/server/routes.ts:139
+    description: >-
+      GET /api/auth/signin. Past 5 visits from this browser in 5 minutes it refuses with SignInLimit (routes.ts:158). A
+      store or a discovery that cannot be reached is OAuthSignin, without going to Keycloak (routes.ts:181, :209).
+      Already signed in, it goes straight to callbackUrl, counted like a start, except for Kayıt ol and for reauth
+      (routes.ts:191). Otherwise it keeps state, nonce and the PKCE verifier in a sealed cookie of its own and sends
+      the browser to Keycloak's authorization endpoint, with prompt=create for Kayıt ol (routes.ts:229).
+    invoke: { action: startSignIn }
+    on:
+      FAIL.limit: { guard: "not capLeft", target: signInPage, effect: [finalError], say: "SignInLimit", source: "libs/auth/src/server/routes.ts:158" }
+      FAIL.unavailable: { guard: "capLeft and not startOk", target: signInPage, effect: [retryableError], say: "OAuthSignin: the round trip could not start", source: "libs/auth/src/server/routes.ts:209" }
+      DONE:
+        - { guard: "capLeft and startOk and alreadyIn", target: rendering, effect: [goneOn], say: "already signed in: straight to callbackUrl", source: "libs/auth/src/server/routes.ts:198" }
+        - { guard: "capLeft and startOk and not alreadyIn and intent == 'signin'", target: atKeycloak, say: "to Keycloak's sign-in form", source: "libs/auth/src/server/routes.ts:241" }
+        - { guard: "capLeft and startOk and not alreadyIn and intent == 'register'", target: atRegister, say: "to Keycloak's registration form (prompt=create)", source: "libs/auth/src/server/routes.ts:229" }
+
+  atKeycloak:
+    title: Keycloak's sign-in pages
+    invoke: { flow: medaris.kc-sign-in }
+    source: libs/auth/src/server/routes.ts:242
+    on:
+      RETURNED: { target: callback, say: "Keycloak sends the browser back to /api/auth/callback/keycloak" }
+      NAVIGATE: { target: left, say: "they leave Keycloak's pages" }
+
+  atRegister:
+    title: Keycloak's registration pages
+    invoke: { flow: medaris.kc-register }
+    source: libs/auth/src/server/routes.ts:229
+    on:
+      RETURNED: { target: callback, say: "Keycloak sends the browser back to /api/auth/callback/keycloak" }
+      NAVIGATE: { target: left, say: "they leave Keycloak's pages" }
+
+  callback:
+    title: The callback stores the session
+    source: libs/auth/src/server/routes.ts:268
+    description: >-
+      GET /api/auth/callback/keycloak. The state must match this browser's own round-trip cookie (routes.ts:283); the
+      code is exchanged with the PKCE verifier and the nonce checked (routes.ts:305); a new session is stored under a
+      new id, ending the one the browser had (routes.ts:321). A failure lands on the sign-in page with ?error=, and
+      the session the browser had is left as it was (oidc.ts:100).
+    invoke: { action: completeSignIn }
+    on:
+      DONE: { guard: "returned == 'code'", target: toDestination, effect: [arrived], say: "the session is stored", source: "libs/auth/src/server/routes.ts:326" }
+      FAIL.denied: { guard: "returned == 'denied'", target: signInPage, effect: [callbackFinal], say: "AccessDenied", source: "libs/auth/src/server/oidc.ts:102" }
+      FAIL.config: { guard: "returned == 'clientRefused'", target: signInPage, effect: [callbackFinal], say: "Configuration: the client secret no longer matches", source: "libs/auth/src/server/oidc.ts:103" }
+      FAIL.failed: { guard: "returned == 'failed'", target: signInPage, effect: [callbackRetryable], say: "OAuthCallback", source: "libs/auth/src/server/oidc.ts:106" }
+
+  toDestination:
+    title: Where the browser goes
+    source: libs/auth/src/server/routes.ts:144
+    description: the flow's returnTo, a same-origin path checked by safeReturnTo (return-to.ts:158), else afterSignIn, "/" in all three portals (config.ts:269)
+    always:
+      - { guard: namedPage, target: rendering, say: "back to the page that was asked for" }
+      - { target: toLanding, starts: { flow: medaris.portal-landing, given: { portal: portal } }, say: "no page was named: to the portal's `/`", source: "apps/tedris/lib/auth.ts:47" }
+
+  pageServed: { type: final, title: The page renders for the signed-in person, source: "libs/auth/src/server/proxy.ts:215" }
+  toLanding: { type: final, title: The portal's home decides where they belong, source: "libs/auth/src/server/config.ts:269" }
+  storeDown: { type: final, title: The portal's error page, with its retry, source: "libs/auth/src/server/reads.ts:126" }
+  home: { type: final, title: The portal's home address, leavesPage: true, source: "apps/nazar/features/auth/auth-entry.tsx:87" }
+  left: { type: final, title: The person leaves, leavesPage: true }
+
+assertions:
+  - { id: no-page-without-a-session, never: "state in ['rendering', 'pageServed'] and not signedIn", say: "A page that needs a session never renders for a visitor", source: "libs/auth/src/server/proxy.ts:198" }
+  - { id: nazar-has-no-public-page, never: "state == 'visitorPage' and portal == 'nazar'", say: "Nazar shows no page to a visitor", source: "apps/nazar/proxy.ts:17" }
+  - { id: start-cap-holds, never: "state in ['atKeycloak', 'atRegister'] and not capLeft", say: "A browser past 5 starts in 5 minutes is never sent to Keycloak again", source: "libs/auth/src/server/routes.ts:158" }
+  - { id: final-errors-never-retry, never: "state == 'starting' and pageError == 'final'", say: "AccessDenied, Configuration and SignInLimit never start another round trip", source: "libs/auth/src/client/sign-in.ts:291" }
+  - { id: register-only-in-tedris, never: "state == 'atRegister' and portal != 'tedris'", say: "Only Tedris opens Keycloak's registration form", source: "apps/tedris/features/keycloak/login.tsx:28" }
+  - { id: refused-token-gets-new-tokens, never: "state == 'rendering' and reauth", say: "A page whose token tedrisat refused is never sent straight back with the same session", source: "libs/auth/src/client/sign-in.ts:303" }

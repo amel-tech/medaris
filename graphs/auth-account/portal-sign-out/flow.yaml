@@ -1,0 +1,122 @@
+# Signing out of a portal, captured from origin/main ce47fce8: the confirmation page of each portal
+# (features/auth/sign-out-confirm.tsx), POST /api/auth/signout (libs/auth/src/server/routes.ts:342) and Keycloak's
+# end-session endpoint. Keycloak tells the other portals through back-channel logout (medaris.portal-session).
+schema: delurio-graph/0
+kind: flow
+id: medaris.portal-sign-out
+status: proposed
+domain: medaris.auth-account
+ui: medaris.portal-sign-out
+title: Sign out of a portal
+summary: >-
+  The account menu and the account page lead to a confirmation. "Çıkış yap" ends the portal's session and sends
+  the browser to Keycloak's end-session endpoint with the ID token as a hint, which ends the Keycloak session and,
+  through it, the other portals' sessions, and comes back to the portal. Without an ID token the portal signs out
+  alone; with a session store that cannot be read Keycloak asks first on its own page.
+
+scope:
+  shows: the confirmation, the sign-out route, Keycloak's end-session, and where the browser lands
+  world: open
+  outOfView:
+    - "the other portals ending their sessions on Keycloak's word: medaris.portal-session"
+    - "a cross-site form posted to /api/auth/signout: refused with 403 (routes.ts:353)"
+
+context:
+  portal:
+    values: [tedris, nazar, nizam]
+    initial: any
+    say: { tedris: "in Tedris", nazar: "in Nazar", nizam: "in Nizam" }
+  hadSession:
+    values: [true, false]
+    initial: any
+    say: { "true": "the portal still holds the session", "false": "the portal's session had already ended" }
+  storeUp:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the session store cannot be read" }
+  idpUp:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "Keycloak's discovery cannot be reached" }
+  localEnded: { values: [false, true], initial: false }
+  ssoEnded: { values: [false, true], initial: false }
+
+guards:
+  withHint: "hadSession and storeUp and idpUp"
+  withoutHint: "not storeUp and idpUp"
+
+effects:
+  endLocal: { set: { localEnded: true } }
+  endSso: { set: { ssoEnded: true } }
+
+failures:
+  signingOut:
+    from: signOut
+    local: [END_SESSION_UNAVAILABLE]
+
+main:
+  given: { portal: tedris, hadSession: true, storeUp: true, idpUp: true }
+  events: [CONFIRM, DONE, DONE]
+
+initial: confirmPage
+states:
+  confirmPage:
+    title: Sign out?
+    by: human
+    source: apps/tedris/features/auth/sign-out-confirm.tsx:19
+    description: >-
+      /auth/signout, open without a session (tedris lib/public-paths.ts:17, nizam lib/public-paths.ts:19; nazar's
+      matcher leaves /auth/ out, proxy.ts:36). "Vazgeç" goes back in Tedris and Nizam and to `/` in Nazar.
+    on:
+      CONFIRM: { target: signingOut, say: "they press Çıkış yap", source: "libs/auth/src/client/sign-out.ts:138" }
+      CANCEL: { target: cancelled, say: "they press Vazgeç", source: "apps/tedris/features/auth/sign-out-confirm.tsx:39" }
+
+  signingOut:
+    title: The portal ends its session
+    source: libs/auth/src/server/routes.ts:342
+    description: >-
+      POST /api/auth/signout from the page's own origin. The store entry and its index entries go first, and the
+      cookie goes whatever the store answers (routes.ts:403). With the ID token the browser goes to Keycloak's
+      end-session endpoint with id_token_hint, ui_locales and post_logout_redirect_uri = the portal's address
+      (routes.ts:384); with no ID token it signs out here only (routes.ts:378); with a store that cannot be read it
+      asks Keycloak without a hint (routes.ts:381).
+    invoke: { action: signOut }
+    on:
+      DONE:
+        - { guard: withHint, target: keycloakEnds, effect: [endLocal], say: "to Keycloak's end-session, with the hint", source: "libs/auth/src/server/routes.ts:391" }
+        - { guard: withoutHint, target: keycloakAsks, effect: [endLocal], say: "the store cannot be read: Keycloak without a hint", source: "libs/auth/src/server/routes.ts:384" }
+      FAIL.local: { guard: "not withHint and not withoutHint", target: landed, effect: [endLocal], say: "no ID token, or Keycloak cannot be reached: signed out here only, to `/`", source: "libs/auth/src/server/routes.ts:377" }
+
+  keycloakEnds:
+    title: Keycloak ends its session
+    source: config/keycloak/clients/prod/tedris.json:12
+    description: >-
+      With a valid id_token_hint Keycloak ends the SSO session without a page and back-channels every other client
+      of it: front-channel logout is off and each portal has a back-channel URL (clients/prod/*.json:13). Then it
+      sends the browser to the post-logout address the client allows (clients/prod/*.json:12).
+    invoke: { action: kcEndSession }
+    on:
+      DONE: { target: landed, effect: [endSso], say: "back to the portal's address" }
+
+  keycloakAsks:
+    title: Do you want to sign out?
+    by: human
+    source: apps/keycloak-theme/src/login/KcPage.tsx:127
+    description: logout-confirm.ftl, the theme's fallback (LogoutConfirm.tsx:6); "Vazgeç" goes to the client's baseUrl (LogoutConfirm.tsx:38)
+    on:
+      CONFIRM: { target: landed, effect: [endSso], say: "they press Çıkış yap on Keycloak's page", source: "apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:33" }
+      CANCEL: { target: landed, say: "they press Vazgeç: the portal is signed out, Keycloak is not", source: "apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:38" }
+
+  landed:
+    type: final
+    title: The portal's address, signed out
+    description: >-
+      Tedris's `/` opens Keşfet for a visitor; Nizam's `/` its welcome; Nazar's `/` is behind the session, so the
+      browser goes on to the sign-in page and to Keycloak's sign-in form (nazar lib/auth.ts:15).
+    source: libs/auth/src/server/config.ts:267
+  cancelled: { type: final, title: Back to where they were, leavesPage: true, source: "apps/tedris/features/auth/sign-out-confirm.tsx:40" }
+
+assertions:
+  - { id: always-signs-out-here, never: "state == 'landed' and not localEnded", say: "Çıkış yap always ends the portal's own session, whatever the store answers", source: "libs/auth/src/server/routes.ts:406" }
+  - { id: keycloak-asks-only-without-the-store, never: "state == 'keycloakAsks' and storeUp", say: "Keycloak's own confirmation is shown only when the session store cannot be read", source: "libs/auth/src/server/routes.ts:384" }
+  - { id: no-hint-without-a-session, never: "state == 'keycloakEnds' and not hadSession", say: "Keycloak is never given an empty id_token_hint", source: "libs/auth/src/server/routes.ts:391" }

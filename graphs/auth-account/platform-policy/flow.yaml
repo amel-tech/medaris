@@ -1,0 +1,132 @@
+# Nizam's Platform ayarları (design nizam/19), captured from origin/main ce47fce8: two platform-wide switches that
+# close a permission below them for every köşk, medrese and course. Server: apps/tedrisat/src/platform-policy;
+# who may: apps/tedrisat/src/platform-access/platform-access.service.ts; web: apps/nizam/app/ayarlar/platform.
+schema: delurio-graph/0
+kind: flow
+id: medaris.platform-policy
+status: proposed
+domain: medaris.auth-account
+ui: medaris.platform-policy
+title: Switch a platform policy
+summary: >-
+  The başnazım, or a Medaris nazımı holding "Platform politikalarını değiştir", turns "Kayıt her zaman onaylı" or
+  "Ders kayıtları herkese açılamaz" on or off. A switch moves at once, is in force at once and is written to the audit
+  log in the same transaction; a refused save moves it back with a toast. Anyone else sees "Bu bölüm için izniniz yok".
+
+scope:
+  shows: the page, its two switches and their saving
+  world: open
+  outOfView:
+    - "what each policy does where it is enforced (enrolment, recordings, a köşk's own settings): the learning and live-media areas"
+    - "the read-only table of köşks that apply a rule on their own (GET /nizam/scoped-policies)"
+    - "how a Medaris nazımı gets the permission: medaris.direct-grant"
+
+context:
+  caller:
+    values: [chief, holder, nazimNoGrant, other]
+    initial: any
+    say: { chief: "the başnazım (SYSTEM_ADMIN)", holder: "a Medaris nazımı holding Platform politikalarını değiştir", nazimNoGrant: "a Medaris nazımı without it", other: "anyone else" }
+  readOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the settings cannot be read" }
+  stillAllowed:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the permission lapsed or was taken away while the page was open" }
+  saveOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the save fails" }
+  turnOn:
+    values: [true, false]
+    initial: any
+    say: { "true": "the switch is turned on", "false": "the switch is turned off" }
+  changed: { values: [false, true], initial: false }
+  audited: { values: [false, true], initial: false }
+  notice: { values: [none, on, off, refused, failed], initial: none }
+
+guards:
+  mayEdit: "caller in ['chief', 'holder']"
+
+effects:
+  savedOn: { set: { changed: true, audited: true, notice: on } }
+  savedOff: { set: { changed: true, audited: true, notice: off } }
+  refused: { set: { notice: refused } }
+  failed: { set: { notice: failed } }
+  clear: { set: { notice: none } }
+  press: { set: { notice: none }, havoc: [turnOn, stillAllowed, saveOk] } # the next press: any switch, any time later
+
+failures:
+  loading:
+    from: listPlatformPolicies
+    forbidden: [AUTHZ_FORBIDDEN]
+    unavailable: [UNAVAILABLE]
+  saving:
+    from: setPlatformPolicy
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [UNAVAILABLE]
+
+main:
+  given: { caller: chief, readOk: true, stillAllowed: true, saveOk: true, turnOn: true }
+  events: [DONE, TOGGLE, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Nizam reads the platform settings
+    source: apps/nizam/features/platform-admin/reads.ts:58
+    description: >-
+      GET /nizam/platform-policies and GET /nizam/scoped-policies (reads.ts:65). tedrisat answers anyone but the
+      başnazım and a Medaris nazımı holding the permission 403 (platform-policy.service.ts:72): the engine's
+      computation over the platform chain, so the grant needs a held Medaris nazımı role under it and a lapsed role or
+      grant counts for nothing (platform-access.service.ts:43).
+    invoke: { action: listPlatformPolicies }
+    on:
+      DONE: { guard: "mayEdit and readOk", target: policiesPage, say: "read" }
+      FAIL.forbidden: { guard: "not mayEdit", target: forbiddenPage, say: "403: Bu bölüm için izniniz yok", source: "apps/nizam/app/ayarlar/platform/page.tsx:24" }
+      FAIL.unavailable: { guard: "mayEdit and not readOk", target: loadFailed, say: "the read fails", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:134" }
+
+  loadFailed:
+    title: Ayarlar okunamadı
+    by: human
+    source: apps/nizam/features/platform-admin/components/policies-view.tsx:134
+    on:
+      RETRY: { target: loading, effect: [clear], say: "they press Tekrar dene, which reads again", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:140" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  policiesPage:
+    title: Platform ayarları
+    by: human
+    goal: true
+    source: apps/nizam/features/platform-admin/components/policies-view.tsx:48
+    description: >-
+      Each policy is a Switch that moves the moment it is pressed (policies-view.tsx:68) and is disabled only while
+      its own save runs (policies-view.tsx:166).
+    on:
+      TOGGLE: { target: saving, effect: [press], say: "they flip a switch", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:167" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  saving:
+    title: tedrisat switches the policy
+    source: apps/tedrisat/src/platform-policy/platform-policy.service.ts:93
+    description: >-
+      PUT /nizam/platform-policies/{key} { enabled }. The caller is asked again (platform-policy.service.ts:98); the
+      row and the audit row platform_policy.change, with the value before, are written in one transaction and the
+      policy is in force at once (platform-policy.repository.ts:109).
+    invoke: { action: setPlatformPolicy }
+    on:
+      DONE:
+        - { guard: "stillAllowed and saveOk and turnOn", target: policiesPage, effect: [savedOn], say: "on: Politika açıldı", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:82" }
+        - { guard: "stillAllowed and saveOk and not turnOn", target: policiesPage, effect: [savedOff], say: "off: Politika kapatıldı", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:82" }
+      FAIL.forbidden: { guard: "not stillAllowed", target: policiesPage, effect: [refused], say: "403: the switch moves back, with a toast that stays", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:74" }
+      FAIL.failed: { guard: "stillAllowed and not saveOk", target: policiesPage, effect: [failed], say: "the save fails: the switch moves back", source: "apps/nizam/features/platform-admin/components/policies-view.tsx:74" }
+
+  forbiddenPage: { type: final, title: Bu bölüm için izniniz yok, source: "apps/nizam/app/not-found.tsx:23" }
+  left: { type: final, title: The person leaves, leavesPage: true }
+
+assertions:
+  - { id: only-chief-and-holders-see, never: "state in ['policiesPage', 'saving', 'loadFailed'] and not mayEdit", say: "Only the başnazım and a Medaris nazımı holding the permission see the switches", source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:72" }
+  - { id: only-chief-and-holders-change, never: "changed and not mayEdit", say: "Only the başnazım and a Medaris nazımı holding the permission change a platform policy", source: "apps/tedrisat/src/platform-access/platform-access.service.ts:43" }
+  - { id: lapsed-permission-changes-nothing, never: "notice in ['on', 'off'] and not stillAllowed", say: "A permission taken away while the page is open changes nothing", source: "apps/tedrisat/src/platform-policy/platform-policy.service.ts:98" }
+  - { id: every-change-audited, never: "changed and not audited", say: "Every change of a platform policy is in the audit log", source: "apps/tedrisat/src/platform-policy/platform-policy.repository.ts:121" }

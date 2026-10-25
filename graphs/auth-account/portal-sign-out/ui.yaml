@@ -1,0 +1,48 @@
+# The screens of medaris.portal-sign-out: each portal's confirmation and Keycloak's logout-confirm.ftl.
+# None sets an initial focus. Tedris and Nizam disable "Vazgeç" while signing out; Nazar's is a link to `/` that
+# stays live (nazar features/auth/sign-out-confirm.tsx:39).
+schema: delurio-graph/0
+kind: ui
+id: medaris.portal-sign-out
+flow: medaris.portal-sign-out
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: {}
+changes: { key: Changes.note }
+
+nodes:
+  tedrisPage: { type: page, component: Page, role: region, name: { labelledBy: tedrisTitle }, in: [confirmPage, signingOut], when: "portal == 'tedris'", source: "apps/tedris/features/auth/sign-out-confirm.tsx:45" }
+  tedrisTitle: { type: text, component: Heading, role: heading, text: { key: Tedris.title }, in: [confirmPage, signingOut], when: "portal == 'tedris'", source: "apps/tedris/features/auth/sign-out-confirm.tsx:53" }
+  tedrisBody: { type: text, component: Text, text: { key: Tedris.body }, in: [confirmPage, signingOut], when: "portal == 'tedris'", source: "apps/tedris/features/auth/sign-out-confirm.tsx:56" }
+  tedrisConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Tedris.confirm }, in: [confirmPage, signingOut], disabledIn: [signingOut], when: "portal == 'tedris'", emits: CONFIRM, source: "apps/tedris/features/auth/sign-out-confirm.tsx:60" }
+  tedrisBusy: { type: status, component: Status, role: status, text: { key: Tedris.busy }, in: [signingOut], when: "portal == 'tedris'", source: "apps/tedris/features/auth/sign-out-confirm.tsx:64" }
+  tedrisCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Tedris.cancel }, in: [confirmPage, signingOut], disabledIn: [signingOut], when: "portal == 'tedris'", emits: CANCEL, source: "apps/tedris/features/auth/sign-out-confirm.tsx:69" }
+  nazarTitle: { type: text, component: Heading, role: heading, text: { key: Nazar.title }, in: [confirmPage, signingOut], when: "portal == 'nazar'", source: "apps/nazar/features/auth/sign-out-confirm.tsx:29" }
+  nazarBody: { type: text, component: Text, text: { key: Nazar.body }, in: [confirmPage, signingOut], when: "portal == 'nazar'", source: "apps/nazar/features/auth/sign-out-confirm.tsx:45" }
+  nazarConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Nazar.confirm }, in: [confirmPage, signingOut], disabledIn: [signingOut], when: "portal == 'nazar'", emits: CONFIRM, source: "apps/nazar/features/auth/sign-out-confirm.tsx:32" }
+  nazarBusy: { type: status, component: Status, role: status, text: { key: Nazar.busy }, in: [signingOut], when: "portal == 'nazar'", source: "apps/nazar/features/auth/sign-out-confirm.tsx:35" }
+  nazarCancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: Nazar.cancel }, in: [confirmPage, signingOut], when: "portal == 'nazar'", emits: CANCEL, source: "apps/nazar/features/auth/sign-out-confirm.tsx:39" }
+  nizamPage: { type: page, component: Page, role: region, name: { labelledBy: nizamTitle }, in: [confirmPage, signingOut], when: "portal == 'nizam'", source: "apps/nizam/features/auth/sign-out-confirm.tsx:39" }
+  nizamTitle: { type: text, component: Heading, role: heading, text: { key: Nizam.title }, in: [confirmPage, signingOut], when: "portal == 'nizam'", source: "apps/nizam/features/auth/sign-out-confirm.tsx:44" }
+  nizamBody: { type: text, component: Text, text: { key: Nizam.body }, in: [confirmPage, signingOut], when: "portal == 'nizam'", source: "apps/nizam/features/auth/sign-out-confirm.tsx:47" }
+  nizamConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Nizam.confirm }, in: [confirmPage, signingOut], disabledIn: [signingOut], when: "portal == 'nizam'", emits: CONFIRM, source: "apps/nizam/features/auth/sign-out-confirm.tsx:49" }
+  nizamBusy: { type: status, component: Status, role: status, text: { key: Nizam.busy }, in: [signingOut], when: "portal == 'nizam'", source: "apps/nizam/features/auth/sign-out-confirm.tsx:53" }
+  nizamCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Nizam.cancel }, in: [confirmPage, signingOut], disabledIn: [signingOut], when: "portal == 'nizam'", emits: CANCEL, source: "apps/nizam/features/auth/sign-out-confirm.tsx:58" }
+
+  kcPage: { type: page, component: Page, role: main, name: { labelledBy: kcTitle }, in: [keycloakAsks], source: "apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:24" }
+  kcTitle: { type: text, component: Heading, role: heading, text: { key: Keycloak.title }, in: [keycloakAsks], source: "apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:30" }
+  kcBody: { type: text, component: Text, text: { key: Keycloak.body }, in: [keycloakAsks], source: "apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:31" }
+  kcConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Keycloak.confirm }, in: [keycloakAsks], emits: CONFIRM, source: "apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:33" }
+  kcCancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: Keycloak.cancel }, in: [keycloakAsks], emits: CANCEL, source: "apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:38" }
+
+edges:
+  - { labelledBy: [tedrisPage, tedrisTitle] }
+  - { labelledBy: [nizamPage, nizamTitle] }
+  - { labelledBy: [kcPage, kcTitle] }
+  - { triggers: [tedrisConfirm, signingOut] }
+  - { triggers: [nazarConfirm, signingOut] }
+  - { triggers: [nizamConfirm, signingOut] }
+
+rules:
+  - { id: no-default-confirm, rule: "no confirmation page has its initial focus on Çıkış yap" }

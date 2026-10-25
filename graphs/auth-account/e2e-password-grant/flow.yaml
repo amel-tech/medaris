@@ -1,0 +1,84 @@
+# The end-to-end helpers' password grant, captured from origin/main ce47fce8: Playwright specs of Tedris and Nazar
+# take a test account's tokens from Keycloak with grant_type=password and seal the session cookie with
+# libs/auth/src/testing (sealSessionCookies, sessionFromTokenResponse). It is test code, not a way into a portal:
+# the web clients in config/keycloak have the password grant off (clients/_base.json:8) and setup-realm.sh warns
+# when one has it on (tools/keycloak/setup-realm.sh:312), so the helpers work only against a client set up by hand.
+# Keycloak's answer for an account with a pending required step ("Account is not fully set up") is Keycloak's own.
+schema: delurio-graph/0
+kind: flow
+id: medaris.e2e-password-grant
+status: proposed
+domain: medaris.auth-account
+title: An end-to-end spec takes a test account's tokens
+summary: >-
+  A spec asks Keycloak's token endpoint for the test account's tokens with its e-mail and password, through the client
+  E2E_KEYCLOAK_CLIENT_ID (tedris-dev by default), and writes the session cookie the portal would have written. An
+  account with an unverified e-mail or a missing required attribute (a gender, since it became required) gets no
+  token, and the spec fails before it starts.
+
+scope:
+  shows: the helpers' token request and the cookie they write
+  world: open
+  outOfView:
+    - "the browser path the same helpers use on the port the client lists (localhost:4000): medaris.kc-sign-in"
+
+context:
+  credentials:
+    values: [valid, invalid]
+    initial: any
+    say: { valid: "the test account's password is right", invalid: "it is wrong" }
+  clientAllows:
+    values: [true, false]
+    initial: any
+    say: { "true": "the client allows the password grant", "false": "the client does not (as config/keycloak and setup-realm.sh make them)" }
+  emailVerified:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the test account's e-mail is not verified" }
+  profileComplete:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the test account lacks a required attribute (a gender, the privacy box)" }
+
+guards:
+  pending: "not emailVerified or not profileComplete"
+
+failures:
+  requesting:
+    from: kcPasswordGrant
+    refused: [unauthorized_client, invalid_grant]
+
+main:
+  given: { credentials: valid, clientAllows: true, emailVerified: true, profileComplete: true }
+  events: [DONE]
+
+initial: requesting
+states:
+  requesting:
+    title: The helper asks for tokens
+    by: ci
+    source: apps/tedris/e2e/sign-in.ts:29
+    description: >-
+      POST <issuer>/protocol/openid-connect/token, grant_type=password, scope "openid email profile"
+      (tedris e2e/sign-in.ts:35; Nazar's copy apps/nazar/e2e/accounts.ts:72). Any answer that is not 2xx is thrown
+      (sign-in.ts:47).
+    invoke: { action: kcPasswordGrant }
+    on:
+      DONE: { guard: "clientAllows and credentials == 'valid' and not pending", target: sealing, say: "Keycloak answers with tokens" }
+      FAIL.refused: { guard: "not clientAllows or credentials == 'invalid' or pending", target: failedBeforeStart, say: "Keycloak refuses: the client, the password, or a pending required step", source: "apps/tedris/e2e/sign-in.ts:47" }
+
+  sealing:
+    title: The helper writes the portal's session cookie
+    by: ci
+    source: apps/tedris/e2e/sign-in.ts:66
+    description: sealed by libs/auth's own code (libs/auth/src/testing/index.ts), so the format is never copied; the spec's browser gets it as an HttpOnly, SameSite=Lax cookie (sign-in.ts:74)
+    always:
+      - { target: specRuns, say: "the spec runs signed in" }
+
+  specRuns: { type: final, title: The spec runs signed in, source: "apps/tedris/e2e/sign-in.ts:74" }
+  failedBeforeStart: { type: final, title: The spec fails before it starts, source: "apps/tedris/e2e/sign-in.ts:47" }
+
+assertions:
+  - { id: no-token-for-an-incomplete-account, never: "state == 'specRuns' and not profileComplete", say: "A test account that lacks a required attribute never gets a session", source: "config/keycloak/user-profile.json:36" }
+  - { id: no-token-unverified, never: "state == 'specRuns' and not emailVerified", say: "A test account whose e-mail is not verified never gets a session", source: "config/keycloak/realms/_base.json:5" }
+  - { id: no-token-from-a-closed-client, never: "state == 'specRuns' and not clientAllows", say: "A client with the password grant off gives no token", source: "config/keycloak/clients/_base.json:8" }

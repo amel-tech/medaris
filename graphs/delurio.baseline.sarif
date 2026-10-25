@@ -1,0 +1,568 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "delurio",
+          "version": "0.1.1",
+          "informationUri": "https://delur.io",
+          "rules": [
+            {
+              "id": "nav-problem",
+              "shortDescription": {
+                "text": "A problem of the navigation graph"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "nav-note",
+              "shortDescription": {
+                "text": "A note on the navigation graph"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            }
+          ]
+        }
+      },
+      "automationDetails": {
+        "id": "delurio/check/"
+      },
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "exitCode": 0
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "A link or button is named differently from the page it opens. (words-differ)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/landing/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-landing/words-differ"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "96d2f5eae907f40720e706cea898a4e2"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "A link or button is named differently from the page it opens. (words-differ)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nazar/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nazar/words-differ"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "cf5a2306c3da90f1bf0344bb4acaa014"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Different pages share a title, so two tabs or two history entries cannot be told apart. (same-title)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nazar/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nazar/same-title"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "0037771076649cc80dc67e14a6641528"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Two entries in one menu open the same page. (menu-twins)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nazar/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nazar/menu-twins"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "1a9f6dfc2ba65f45602d878fa0d089a3"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "“Müderris”, “Ders nazırı” and “Ders nazırı with two grants” land on a page that says it is not ready. (landing-not-built)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nazar/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nazar/landing-not-built"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "462493006e86be58961eda41fcbd2814"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "2 of 18 things people come to do fail. (goals)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nazar/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nazar/goals"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "23788a36d62b8ecf9f6789e20c25bb68"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "5 pages that the menus offer say “Bu sayfa henüz hazır değil.” (menu-not-built)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nazar/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nazar/menu-not-built"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "ca33d3391c930e84fc28755a2fc94cdb"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "A link or button is drawn for a person whose destination then refuses them. (link-refused)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nazar/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nazar/link-refused"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "ff73f0c60a0064547c233a856c16dc5b"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "The menu offers entries whose page then refuses the person. Only “Ödevler” and “Ders destesi” are drawn by permission; every other entry is drawn for everyone and the page decides. (menu-refused)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nazar/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nazar/menu-refused"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "5e2b626c6cf6e6917e3cd0bc38a85e7a"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "A link or button is named differently from the page it opens. (words-differ)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nizam/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nizam/words-differ"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "0f8bb006e42b71f8fda55f82c701baa4"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Different pages share a title, so two tabs or two history entries cannot be told apart. (same-title)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nizam/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nizam/same-title"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "cb66fe4eec698100b95e7bae7279d726"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "3 entries in the menus lead to a page that does not exist, so the server answers not found. (menu-missing)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nizam/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nizam/menu-missing"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "a4dd2f429cfedb5352d76e9b7e128cc3"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "6 of 28 things people come to do fail. (goals)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nizam/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nizam/goals"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "7022ea4d019c15f7e3efa4c8bbc2ef44"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "A link or button is drawn for a person whose destination then refuses them. (link-refused)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nizam/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nizam/link-refused"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "4fb5a8c2bda76c52468572f4e63c924b"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Some pages cannot be reached by any kind of user. (unreachable)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/nizam/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-nizam/unreachable"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "e49db7718ede83c250ebb7d8029a5458"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "A link or button is named differently from the page it opens. (words-differ)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/tedris/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-tedris/words-differ"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "3e46718d9429e959282e5e03b9f38ba3"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Different pages share a title, so two tabs or two history entries cannot be told apart. (same-title)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/tedris/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-tedris/same-title"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "f0d860b77c4c9cd9427cdf6821a2de43"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Some pages cannot be reached by any kind of user. (unreachable)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nav/tedris/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "medaris-tedris/unreachable"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "28e3231e7ae5f2423c94b2d5eb049ba0"
+          }
+        }
+      ]
+    }
+  ]
+}

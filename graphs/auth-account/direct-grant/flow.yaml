@@ -1,0 +1,250 @@
+# Direct grants of a role and permissions on Nizam's Medaris nazımları page (designs nizam/11 and nizam/12),
+# captured from origin/main ce47fce8: the başnazım appoints a Medaris nazımı, gives them platform permissions one by
+# one or through a group, changes them, and dismisses them, deciding what they handed on.
+# Server: apps/tedrisat/src/assignment/admin; web: apps/nizam/features/permissions.
+# This is the flow the previous capture called direct-grant only by name: that one was the e2e password grant, now
+# medaris.e2e-password-grant.
+schema: delurio-graph/0
+kind: flow
+id: medaris.direct-grant
+status: proposed
+domain: medaris.auth-account
+ui: medaris.direct-grant
+title: Appoint a Medaris nazımı and give them permissions
+summary: >-
+  Only the başnazım (SYSTEM_ADMIN) opens Medaris nazımları. They appoint a person found by e-mail, with a platform
+  group and single permissions and an optional end; the appointment and the permissions end together. Edit replaces
+  the permissions, never beyond the appointment's end. Dismissal asks, for every role and permission the nazım gave
+  others, whether the başnazım takes it over or it is dropped; what the nazım gave themself goes with them.
+
+scope:
+  shows: the list, the appoint and edit dialog, and the dismiss dialog
+  world: open
+  outOfView:
+    - "İzin grupları (/izin-gruplari, design nizam/13): defining, changing and deleting the groups"
+    - "the e-mail search (GET /users/lookup) and its audit row: in the domain"
+    - "what a platform permission opens: medaris.platform-policy, medaris.inactive-scope-assign and the other areas"
+
+context:
+  caller:
+    values: [chief, other]
+    initial: any
+    say: { chief: "the başnazım (SYSTEM_ADMIN)", other: "anyone else, a Medaris nazımı included" }
+  target:
+    values: [someoneElse, self]
+    initial: any
+    say: { someoneElse: "the person picked is someone else", self: "the başnazım picks themself" }
+  pickedInOffice:
+    values: [false, true]
+    initial: any
+    say: { "false": "the person picked is not a Medaris nazımı", "true": "the person picked is already a Medaris nazımı" }
+  rowHeld:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the row's appointment lapsed or was ended while the page was open" }
+  groupOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the group chosen was deleted meanwhile" }
+  endChoice:
+    values: [none, future, past, afterAppointment]
+    initial: any
+    say: { none: "no end", future: "an end ahead, within the appointment", past: "an end that has passed", afterAppointment: "an end after the appointment's own" }
+  readOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "the list, the catalog or the groups cannot be read" }
+  givenToOthers:
+    values: [none, some]
+    initial: any
+    say: { none: "the nazım gave nothing to others", some: "the nazım gave others roles or permissions that are still held" }
+  listChanged:
+    values: [false, true]
+    initial: any
+    say: { "false": "", "true": "what the nazım gave changed while the dialog was open" }
+  cascadeOk:
+    values: [true, false]
+    initial: any
+    say: { "true": "", "false": "a dropped post would take a taken-over permission with it, or its holder handed on rows under it" }
+  picked: { values: [false, true], initial: false }
+  answered: { values: [false, true], initial: false }
+  appointed: { values: [false, true], initial: false }
+  grantsChanged: { values: [false, true], initial: false }
+  dismissed: { values: [false, true], initial: false }
+  notice: { values: [none, appointed, saved, dismissed, failed, dismissChanged, cascade], initial: none }
+
+guards:
+  isChief: "caller == 'chief'"
+  endOk: "endChoice in ['none', 'future']"
+
+effects:
+  openAppoint: { set: { picked: false, notice: none } }
+  openEdit: { set: { notice: none } }
+  openDismiss: { set: { answered: false, notice: none } }
+  pick: { set: { picked: true } }
+  answer: { set: { answered: true } }
+  appointedNow: { set: { appointed: true, notice: appointed } }
+  savedNow: { set: { grantsChanged: true, notice: saved } }
+  dismissedNow: { set: { dismissed: true, notice: dismissed } }
+  failed: { set: { notice: failed } }
+  changedList: { set: { notice: dismissChanged, answered: false, listChanged: false } }
+  cascade: { set: { notice: cascade } }
+
+failures:
+  loading:
+    from: getMedarisNazims
+    forbidden: [AUTHZ_FORBIDDEN]
+    unavailable: [UNAVAILABLE]
+  appointing:
+    from: appointMedarisNazim
+    refused: [AUTHZ_FORBIDDEN, GRANT_EXPIRY_INVALID, PERMISSION_GROUP_NOT_FOUND, MEDARIS_NAZIM_ALREADY_APPOINTED]
+  savingGrants:
+    from: setMedarisNazimGrants
+    refused: [AUTHZ_FORBIDDEN, PERMISSION_GROUP_NOT_FOUND, MEDARIS_NAZIM_NOT_FOUND, GRANT_EXPIRY_INVALID]
+  readingGiven:
+    from: getMedarisNazimGiven
+    unavailable: [UNAVAILABLE, MEDARIS_NAZIM_NOT_FOUND]
+  dismissing:
+    from: dismissMedarisNazim
+    changed: [DISMISS_DECISIONS_INCOMPLETE]
+    cascade: [DISMISS_TAKE_OVER_WITHOUT_SEAT, DISMISS_SEAT_HANDED_ON]
+
+main:
+  given: { caller: chief, target: someoneElse, pickedInOffice: false, groupOk: true, endChoice: none, readOk: true }
+  events: [DONE, APPOINT, PICK, SAVE, DONE]
+
+initial: loading
+states:
+  loading:
+    title: Nizam reads the Medaris nazımları
+    source: apps/nizam/app/medaris-nazimlari/page.tsx:22
+    description: >-
+      GET /nizam/medaris-nazims, the permission catalog and the groups at once. Every route answers anyone but the
+      SYSTEM_ADMIN realm role 403 (permission-admin.service.ts:88), which the page shows as Bu bölüm için izniniz yok
+      (page.tsx:27).
+    invoke: { action: getMedarisNazims }
+    on:
+      DONE: { guard: "isChief and readOk", target: listPage, say: "read" }
+      FAIL.forbidden: { guard: "not isChief", target: forbiddenPage, say: "403", source: "apps/nizam/app/medaris-nazimlari/page.tsx:27" }
+      FAIL.unavailable: { guard: "isChief and not readOk", target: listFailed, say: "a read fails; the table is hidden and Medaris nazımı ata is disabled", source: "apps/nizam/features/permissions/components/nazims-view.tsx:228" }
+
+  listFailed:
+    title: Medaris nazımları yüklenemedi
+    by: human
+    source: apps/nizam/features/permissions/components/nazims-view.tsx:228
+    on:
+      RETRY: { target: loading, say: "they press Yeniden dene", source: "apps/nizam/features/permissions/components/nazims-view.tsx:58" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  listPage:
+    title: Medaris nazımları
+    by: human
+    goal: true
+    source: apps/nizam/features/permissions/components/nazims-view.tsx:203
+    description: the people in office, each with their groups, single permissions, end and giver, and İzinleri düzenle and Görevden al
+    on:
+      APPOINT: { target: appointDialog, effect: [openAppoint], say: "they press Medaris nazımı ata", source: "apps/nizam/features/permissions/components/nazims-view.tsx:211" }
+      EDIT: { target: editDialog, effect: [openEdit], say: "they press İzinleri düzenle on a row", source: "apps/nizam/features/permissions/components/nazims-view.tsx:181" }
+      DISMISS: { target: readingGiven, effect: [openDismiss], say: "they press Görevden al on a row", source: "apps/nizam/features/permissions/components/nazims-view.tsx:189" }
+      NAVIGATE: { target: left, say: "they go elsewhere" }
+
+  appointDialog:
+    title: Appoint a Medaris nazımı
+    by: human
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:178
+    description: >-
+      The e-mail picker (GET /users/lookup, the realm's directory; nobody is left out, the başnazım included), a
+      platform group, single permissions and an end. Kaydet waits for a person and an end that has not passed by the
+      dialog's clock (permissions-dialog.tsx:134). Nothing has to be ticked.
+    on:
+      PICK: { target: appointDialog, effect: [pick], say: "they find the person by e-mail", source: "apps/nizam/features/permissions/components/nazim-picker.tsx:60" }
+      SAVE: { guard: "picked and endChoice != 'past'", target: appointing, say: "they press Kaydet", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:193" }
+      CANCEL: { target: listPage, say: "they press Vazgeç", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:192" }
+
+  appointing:
+    title: tedrisat appoints
+    source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:118
+    description: >-
+      POST /nizam/medaris-nazims. In order: the caller (service.ts:122), an end in the past (service.ts:124), the
+      codes and the group (service.ts:161), an appointment already held (repository.ts:365). Neither the caller nor an
+      account behind the id is checked. In one transaction: the role, the revocation of grants the person holds from a
+      lost seat (repository.ts:371), the audit row medaris_nazim.appoint and the grants with their own audit rows.
+    invoke: { action: appointMedarisNazim }
+    on:
+      DONE: { guard: "isChief and endChoice != 'past' and groupOk and not pickedInOffice", target: listPage, effect: [appointedNow], say: "appointed", source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:341" }
+      FAIL.refused: { guard: "not (isChief and endChoice != 'past' and groupOk and not pickedInOffice)", target: appointDialog, effect: [failed], say: "refused; the toast names the reason", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:156" }
+
+  editDialog:
+    title: Edit the permissions
+    by: human
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:187
+    description: the same fields, filled from the row; an end after the appointment's own is refused on the page (permissions-dialog.tsx:105)
+    on:
+      SAVE: { guard: endOk, target: savingGrants, say: "they press Kaydet", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:193" }
+      CANCEL: { target: listPage, say: "they press Vazgeç", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:192" }
+
+  savingGrants:
+    title: tedrisat replaces the permissions
+    source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:399
+    description: >-
+      PUT /nizam/medaris-nazims/{userId}/grants. Rows that stay keep their giver and date; the rest are revoked in the
+      başnazım's name or added, each with its audit row (repository.ts:429). The appointment must still be held
+      (repository.ts:556) and the end may not pass it (repository.ts:419).
+    invoke: { action: setMedarisNazimGrants }
+    on:
+      DONE: { guard: "isChief and groupOk and rowHeld and endOk", target: listPage, effect: [savedNow], say: "saved" }
+      FAIL.refused: { guard: "not (isChief and groupOk and rowHeld and endOk)", target: editDialog, effect: [failed], say: "refused; the toast names the reason", source: "apps/nizam/features/permissions/components/permissions-dialog.tsx:156" }
+
+  readingGiven:
+    title: Nizam reads what the nazım handed on
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:77
+    description: GET /nizam/medaris-nazims/{userId}/given, on every opening
+    invoke: { action: getMedarisNazimGiven }
+    on:
+      DONE: { guard: rowHeld, target: dismissDialog, say: "read" }
+      FAIL.unavailable: { guard: "not rowHeld", target: givenFailed, say: "it cannot be read: the same 'try again' for a nazım no longer in office", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:177" }
+
+  givenFailed:
+    title: Liste okunamadı
+    by: human
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:177
+    on:
+      RETRY: { target: readingGiven, say: "they press Yeniden dene", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:181" }
+      CANCEL: { target: listPage, say: "they close the dialog" }
+
+  dismissDialog:
+    title: Dismiss
+    by: human
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:149
+    description: >-
+      One question per role and permission the nazım gave others: Devral (stays, the başnazım becomes its giver) or
+      Düşür (taken back). What they gave themself, and the groups they defined, are listed with nothing to choose.
+      Görevden al waits until every question has an answer (dismiss-dialog.tsx:96).
+    on:
+      ANSWER: { guard: "givenToOthers == 'some'", target: dismissDialog, effect: [answer], say: "they answer every question", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:193" }
+      SUBMIT: { guard: "givenToOthers == 'none' or answered", target: dismissing, say: "they press Görevden al", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:165" }
+      CANCEL: { target: listPage, say: "they press Vazgeç", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:164" }
+
+  dismissing:
+    title: tedrisat dismisses the nazım
+    source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:565
+    description: >-
+      DELETE /nizam/medaris-nazims/{userId} { decisions }. In one transaction: the decisions checked against what is
+      held now (repository.ts:590), each answered row taken over or revoked, the person's own rows revoked, every post
+      dropped taking with it what its holder was given under it (repository.ts:638), the platform permissions and the
+      appointment revoked, and medaris_nazim.dismiss written with counts only (repository.ts:674).
+    invoke: { action: dismissMedarisNazim }
+    on:
+      DONE: { guard: "rowHeld and not listChanged and cascadeOk", target: listPage, effect: [dismissedNow], say: "dismissed" }
+      FAIL.changed: { guard: listChanged, target: readingGiven, effect: [changedList], say: "the list changed: the answers are cleared and it is read again", source: "apps/nizam/features/permissions/components/dismiss-dialog.tsx:117" }
+      FAIL.cascade: { guard: "not listChanged and not cascadeOk", target: dismissDialog, effect: [cascade], say: "a dropped post would leave rows nobody was asked about; nothing is written", source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:647" }
+
+  forbiddenPage: { type: final, title: Bu bölüm için izniniz yok, source: "apps/nizam/app/not-found.tsx:23" }
+  left: { type: final, title: The person leaves, leavesPage: true }
+
+assertions:
+  - { id: only-the-chief, never: "(appointed or grantsChanged or dismissed) and not isChief", say: "Only the başnazım appoints, changes or dismisses a Medaris nazımı", source: "apps/tedrisat/src/assignment/admin/permission-admin.service.ts:88" }
+  - { id: one-appointment, never: "appointed and pickedInOffice", say: "Nobody is appointed a second time while in office", source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:365" }
+  - { id: no-past-end, never: "(appointed or grantsChanged) and endChoice == 'past'", say: "No appointment or permission is given with an end that has passed", source: "apps/tedrisat/src/assignment/admin/grant-plan.ts:227" }
+  - { id: permissions-end-with-the-appointment, never: "grantsChanged and endChoice == 'afterAppointment'", say: "A permission never outlasts the appointment", source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:419" }
+  - { id: every-handed-on-row-decided, never: "state == 'dismissing' and givenToOthers == 'some' and not answered", say: "A dismissal decides every role and permission the nazım gave others", source: "apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:590" }

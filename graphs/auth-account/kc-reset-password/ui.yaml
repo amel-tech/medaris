@@ -1,0 +1,57 @@
+# The screens of medaris.kc-reset-password. login-reset-password.ftl still draws its body with the shadcn kit inside
+# the card (LoginResetPassword.tsx:1); login-update-password.ftl is libs/ui/src/giris/update-password-form.tsx.
+schema: delurio-graph/0
+kind: ui
+id: medaris.kc-reset-password
+flow: medaris.kc-reset-password
+status: proposed
+catalog: catalog/tr.json
+locales: [tr, en]
+samples: { min: "10", account: "zeynep" }
+changes: { key: Changes.note }
+
+nodes:
+  resetPage: { type: page, component: Page, role: main, name: { labelledBy: resetTitle }, in: [resetRequest, requesting], initialFocus: usernameField, source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:69" }
+  resetTitle: { type: text, component: Heading, role: heading, text: { key: Reset.title }, in: [resetRequest, requesting], source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:43" }
+  resetSubtitle: { type: text, component: Text, text: { key: Reset.instruction }, in: [resetRequest, requesting], source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:47" }
+  usernameField: { type: field, component: TextField, role: textbox, text: { key: Reset.usernameOrEmail }, in: [resetRequest, requesting], source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:64" }
+  usernameMissing: { type: text, component: Text, text: { key: Reset.usernameMissing }, in: [resetRequest], when: usernameError, source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:75" } # aria-live polite, not tied to the field
+  sendButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Reset.submit }, in: [resetRequest, requesting], emits: SUBMIT, source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:87" }
+  backLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Reset.backToLogin }, in: [resetRequest, requesting], emits: BACK, source: "apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:90" }
+
+  sentPage: { type: page, component: Page, role: main, name: { labelledBy: sentTitle }, in: [linkSent], source: "libs/ui/src/giris/auth-card.tsx:173" }
+  sentTitle: { type: text, component: Heading, role: heading, text: { key: Sent.title }, in: [linkSent], source: "apps/keycloak-theme/src/login/pages/Login.tsx:66" }
+  sentMessage: { type: status, component: Status, role: status, text: { key: Sent.message }, in: [linkSent], source: "apps/keycloak-theme/src/login/Template.tsx:85" }
+  sentSignIn: { type: action, component: Button, role: button, intent: secondary, text: { key: Sent.signIn }, in: [linkSent], emits: SIGN_IN, source: "libs/ui/src/giris/login-form.tsx:124" }
+
+  passwordPage: { type: page, component: Page, role: main, name: { labelledBy: passwordTitle }, in: [updatePassword, savingPassword], source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:59" }
+  passwordTitle: { type: text, component: Heading, role: heading, text: { key: Update.title }, in: [updatePassword, savingPassword], source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:67" }
+  accountSentence: { type: text, component: Text, text: { key: Update.forAccount, params: { account: user.username } }, in: [updatePassword, savingPassword], source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:71" }
+  requiredNote: { type: text, component: Text, text: { key: Common.requiredFields }, in: [updatePassword, savingPassword], source: "libs/ui/src/giris/update-password-form.tsx:130" }
+  newPassword: { type: field, component: TextField, role: textbox, text: { key: Update.newPassword }, in: [updatePassword, savingPassword], disabledIn: [savingPassword], source: "libs/ui/src/giris/update-password-form.tsx:132" }
+  rulesList: { type: list, component: List, role: list, name: { labelledBy: newPassword }, in: [updatePassword, savingPassword], source: "libs/ui/src/giris/update-password-form.tsx:147" }
+  ruleItem: { type: text, component: ListItem, role: listitem, text: { oneOf: [Update.ruleLength, Update.ruleNotEmail, Update.ruleNotUsername] }, in: [updatePassword, savingPassword], source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:96" }
+  passwordProblem: { type: text, component: Text, text: { oneOf: [Update.required, Update.tooShort, Update.rulesUnmet] }, in: [updatePassword], when: ruleErrors, source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:102" }
+  serverProblem: { type: text, component: Text, text: { key: Update.notEmail }, in: [updatePassword], when: serverRefused, source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:53" }
+  confirmPassword: { type: field, component: TextField, role: textbox, text: { key: Update.confirm }, in: [updatePassword, savingPassword], disabledIn: [savingPassword], source: "libs/ui/src/giris/update-password-form.tsx:171" }
+  confirmProblem: { type: text, component: Text, text: { key: Update.mismatch }, in: [updatePassword], when: ruleErrors, source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:106" }
+  signOutOthers: { type: field, component: Text, role: checkbox, text: { key: Update.signOutOthers }, in: [updatePassword, savingPassword], emits: TICK_SIGN_OUT_OTHERS, source: "libs/ui/src/giris/update-password-form.tsx:185" }
+  signOutOthersHelp: { type: text, component: Text, text: { key: Update.signOutOthersHelp }, in: [updatePassword, savingPassword], source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:112" }
+  saveButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Update.save }, in: [updatePassword, savingPassword], disabledIn: [savingPassword], emits: SAVE, source: "libs/ui/src/giris/update-password-form.tsx:194" }
+  saving: { type: status, component: Status, role: status, text: { key: Update.saving }, in: [savingPassword], source: "apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:115" }
+
+  errorPageMain: { type: page, component: Page, role: main, name: { labelledBy: errorTitle }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:30" }
+  errorTitle: { type: text, component: Heading, role: heading, text: { key: Error.title }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:36" }
+  errorBody: { type: text, component: Text, text: { key: Error.body1 }, in: [errorPage], source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:43" }
+  errorBack: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Error.back }, in: [errorPage], emits: BACK, source: "apps/keycloak-theme/src/login/pages/ErrorPage.tsx:47" }
+
+edges:
+  - { labelledBy: [resetPage, resetTitle] }
+  - { labelledBy: [sentPage, sentTitle] }
+  - { labelledBy: [passwordPage, passwordTitle] }
+  - { labelledBy: [errorPageMain, errorTitle] }
+  - { triggers: [sendButton, requesting] }
+  - { triggers: [saveButton, savingPassword] }
+
+rules:
+  - { id: rules-from-the-policy, rule: "the length rule a page shows is the realm's policy (register reads it, this page writes 10)" }
