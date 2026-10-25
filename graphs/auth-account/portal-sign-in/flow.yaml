@@ -270,7 +270,7 @@ states:
 
   pageServed: { type: final, title: The page renders for the signed-in person, source: "libs/auth/src/server/proxy.ts:215" }
   toLanding: { type: final, title: The portal's home decides where they belong, source: "libs/auth/src/server/config.ts:269" }
-  storeDown: { type: final, title: The portal's error page, with its retry, source: "libs/auth/src/server/reads.ts:126" }
+  storeDown: { type: final, title: "The portal's error page, with its retry", source: "libs/auth/src/server/reads.ts:126" }
   home: { type: final, title: The portal's home address, leavesPage: true, source: "apps/nazar/features/auth/auth-entry.tsx:87" }
   left: { type: final, title: The person leaves, leavesPage: true }
 
