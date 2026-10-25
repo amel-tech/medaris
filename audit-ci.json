@@ -49,25 +49,18 @@
     "",
     "When xlsx is replaced, delete both lines here in the same PR.",
     "",
-    "GHSA-ch52-4w7c-c8xp (http-cache-semantics <=4.2.0) and GHSA-vfj7-8cjw-p6xm",
-    "(braces <=3.0.3) were published on 2026-10-03 with no patched version:",
-    "4.2.0 and 3.0.3 are the latest releases on npm, so no bump or override can",
-    "clear them. Every path is build-time tooling — @swc/cli's binary downloader",
-    "(via @nestjs/cli and @nx/js), depcheck, and onchange's chokidar in",
-    "libs/services — none of which ships in an image or serves a request.",
-    "Delete each line as soon as its package publishes a patched release."
+    "GHSA-ch52-4w7c-c8xp (http-cache-semantics) and GHSA-vfj7-8cjw-p6xm",
+    "(braces) were allowlisted on 2026-10-03, when neither had a patched",
+    "release. Both entries were removed on 2026-10-25: http-cache-semantics",
+    "4.3.0 is fixed and cacheable-request's ^4.1.1 admits it, and braces was no",
+    "longer found in the lockfile at all."
   ],
   "low": false,
   "moderate": false,
   "high": true,
   "critical": true,
   "skip-dev": false,
-  "allowlist": [
-    "GHSA-4r6h-8v6p-xvw6",
-    "GHSA-5pgg-2g8v-p4x9",
-    "GHSA-ch52-4w7c-c8xp",
-    "GHSA-vfj7-8cjw-p6xm"
-  ],
+  "allowlist": ["GHSA-4r6h-8v6p-xvw6", "GHSA-5pgg-2g8v-p4x9"],
   "retry": {
     "count": 3,
     "delay": 1000

@@ -61,6 +61,10 @@ minimumReleaseAgeExclude:
   - '@storybook/react-dom-shim@10.6.3'
   - '@storybook/react-vite@10.6.3'
   - '@storybook/react@10.6.3'
+  # 2026-10-25 security pass, so the dependency-audit issue starts empty.
+  - body-parser@2.4.0 # 2026-10-22, GHSA-27r3-jxmh-p828; delete after 2026-10-29
+  - multer@2.5.0 # 2026-10-22, GHSA-q7qp-rjg7-q26m; delete after 2026-10-29
+  - happy-dom@21.0.4 # 2026-10-20, GHSA-834v-8h66-3h79; delete after 2026-10-27
 
 # ── Build-script decisions (MDRS-8 §3, ADR-001 §D11) ─────────────────────────
 # pnpm 11 replaces pnpm 10's `onlyBuiltDependencies` list with this map, and
@@ -160,10 +164,14 @@ overrides:
   # behind another hand edit of this file — the floor is what matters, not the
   # exact version. `^` stays inside 2.x, which is the major the parent expects.
   #
+  # 2026-10-25: raised to 2.5.0 for GHSA-q7qp-rjg7-q26m (high) and
+  # GHSA-3pph-fpjx-jg34 (moderate). @nestjs/platform-express 12.2.0 still pins
+  # the exact "2.4.0", so the override stays.
+  #
   # Removal condition: drop this the moment @nestjs/platform-express ships a
-  # version whose multer dependency admits >= 2.3.0, and let the ordinary
+  # version whose multer dependency admits >= 2.5.0, and let the ordinary
   # re-resolve carry it.
-  multer: ^2.3.0
+  multer: ^2.5.0
 
   # ── dev-only exposure (no advisory here reaches a shipped runtime) ────────
   # js-yaml: quadratic-CPU !!omap DoS on the 3.x and 4.x lines (depcheck and
@@ -281,7 +289,8 @@ catalog:
   vitest: ^4.1.9
   '@vitest/coverage-v8': ^4.1.9
   '@vitest/ui': ^4.1.9
-  happy-dom: ^20.14.5 # MDRS-100: DOM for keycloak-theme's page tests (Template renders nothing without one)
+  happy-dom: ^21.0.4 # MDRS-100: DOM for keycloak-theme's page tests (Template renders nothing without one)
+  #                    21.0.4 closes GHSA-834v-8h66-3h79 (high); 21.0 stopped loading CSS and iframes by default
   '@swc/core': ~1.15.43 # floors backend 1.15.33; emitDecoratorMetadata under Vitest
   unplugin-swc: ^1.5.11 # MDRS-20: routes Vitest's transform through @swc/core so
   #                       `design:paramtypes` survives — esbuild drops it and
@@ -412,8 +421,9 @@ catalog:
   tailwind-merge: ^3.3.1 # unified to ui's major; tedris v1→v3 port = FU-2
   tailwindcss-animate: ^1.0.7
   tw-animate-css: ^1.3.7
-  zod: ^4.5.4 # MDRS-21: v3->v4. FU-3 (libs/ui never imported zod) meant no
+  zod: ^4.6.6 # MDRS-21: v3->v4. FU-3 (libs/ui never imported zod) meant no
   #             per-package exception was needed for this migration either.
+  #             4.6.6 closes GHSA-mrhx-c7xc-m3w5 (high, memory exhaustion).
   '@opentelemetry/api': ^1.9.0
   '@vercel/otel': ^2.1.3 # MDRS-21: +1 major
   tus-js-client: ^4.3.1 # MDRS-114: nazar-web's resumable browser upload to Bunny Stream
