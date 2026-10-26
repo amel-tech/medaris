@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.2.13](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.12...tedrisat-v0.2.13) (2026-10-26)
+
+
+### Features
+
+* **tedrisat, common, services:** course decks a müderris opens, edits and hides from talebe ([#355](https://github.com/amel-tech/medaris/issues/355)) ([431330a](https://github.com/amel-tech/medaris/commit/431330a20ec099d480308d14ccd7e47075a42e77))
+* **tedrisat, nazar-web, services, i18n, docs:** add a recording before its session ([#377](https://github.com/amel-tech/medaris/issues/377)) ([57c787e](https://github.com/amel-tech/medaris/commit/57c787e9ea765c43f28fc0be43cc5ed62a5f0f26))
+* **tedrisat, nazar-web, tedris-web, services, i18n:** review and return a talebe's homework ([#349](https://github.com/amel-tech/medaris/issues/349)) ([4b1f9f7](https://github.com/amel-tech/medaris/commit/4b1f9f784f397d8b82d4aa232544434b5ac8cdac))
+
+
+### Bug Fixes
+
+* **tedrisat, nazar-web, i18n, services:** a medrese nazırı is an existing, unbarred account ([#371](https://github.com/amel-tech/medaris/issues/371)) ([b24ff26](https://github.com/amel-tech/medaris/commit/b24ff265b66e492b20d3bd22b4f64b4d51c3be26))
+* **tedrisat, nazar-web:** a medrese's offsite course request reaches the köşk ([#372](https://github.com/amel-tech/medaris/issues/372)) ([566d3e2](https://github.com/amel-tech/medaris/commit/566d3e211493708a93df345f0ec8d96ae8ebcc58))
+* **tedrisat, nizam-web, i18n, services:** accepting a course request says when it was not ([#373](https://github.com/amel-tech/medaris/issues/373)) ([d283d5a](https://github.com/amel-tech/medaris/commit/d283d5af36c92d0a7c537e8c5c7f60fce01e5ffc))
+* **tedrisat, services:** list only talebe still taken out on Erişimi kaldırılanlar ([#364](https://github.com/amel-tech/medaris/issues/364)) ([7e6e717](https://github.com/amel-tech/medaris/commit/7e6e71712422bfbddd2ba9f8367fc8e32164d9c7))
+* **tedrisat:** an approval or a reopening no longer seats a barred talebe ([#369](https://github.com/amel-tech/medaris/issues/369)) ([89a2d8f](https://github.com/amel-tech/medaris/commit/89a2d8f5ab8f6d1f80531d1cdcf2fb10a40bc367))
+
 ## [0.2.12](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.11...tedrisat-v0.2.12) (2026-10-21)
 
 

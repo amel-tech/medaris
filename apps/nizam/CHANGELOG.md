@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.9](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.8...nizam-web-v0.2.9) (2026-10-26)
+
+
+### Features
+
+* **keycloak-theme, ui, nizam-web:** MDRS-248 the app's name under the logo, in Latin ([#362](https://github.com/amel-tech/medaris/issues/362)) ([676ddb8](https://github.com/amel-tech/medaris/commit/676ddb842e51d396521aaea2ef68f154b70881bd))
+* **tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 language from a shared cookie ([#348](https://github.com/amel-tech/medaris/issues/348)) ([ce47fce](https://github.com/amel-tech/medaris/commit/ce47fce8df0042bdc81b962a99ee82a1db1d6438))
+
+
+### Bug Fixes
+
+* **nizam-web:** the home page links are plain paths again, not //host after [#348](https://github.com/amel-tech/medaris/issues/348) ([#370](https://github.com/amel-tech/medaris/issues/370)) ([b83c520](https://github.com/amel-tech/medaris/commit/b83c520a1cc77ea8e8b017c26560cb4b37ddd45c))
+* **tedrisat, nizam-web, i18n, services:** accepting a course request says when it was not ([#373](https://github.com/amel-tech/medaris/issues/373)) ([d283d5a](https://github.com/amel-tech/medaris/commit/d283d5af36c92d0a7c537e8c5c7f60fce01e5ffc))
+
 ## [0.2.8](https://github.com/amel-tech/medaris/compare/nizam-web-v0.2.7...nizam-web-v0.2.8) (2026-10-16)
 
 

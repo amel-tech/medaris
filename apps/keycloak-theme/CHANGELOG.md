@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/amel-tech/medaris/compare/keycloak-theme-v2.2.0...keycloak-theme-v2.3.0) (2026-10-26)
+
+
+### Features
+
+* **keycloak-theme, ui, nizam-web:** MDRS-248 the app's name under the logo, in Latin ([#362](https://github.com/amel-tech/medaris/issues/362)) ([676ddb8](https://github.com/amel-tech/medaris/commit/676ddb842e51d396521aaea2ef68f154b70881bd))
+
 ## [2.2.0](https://github.com/amel-tech/medaris/compare/keycloak-theme-v2.1.0...keycloak-theme-v2.2.0) (2026-10-16)
 
 

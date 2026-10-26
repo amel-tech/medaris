@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.11](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.10...nazar-web-v0.2.11) (2026-10-26)
+
+
+### Features
+
+* **nazar-web, i18n:** MDRS-248 the müderris generates a root's sîgas as draft deck cards ([#363](https://github.com/amel-tech/medaris/issues/363)) ([ff67317](https://github.com/amel-tech/medaris/commit/ff6731710d29482283ec354dce4b7172284bc0d1))
+* **nazar-web, i18n:** the müderris's course decks page, cards and Excel import ([#356](https://github.com/amel-tech/medaris/issues/356)) ([c1c3e76](https://github.com/amel-tech/medaris/commit/c1c3e76026d75e0ebe086600a2c8833c6b66f519))
+* **tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 language from a shared cookie ([#348](https://github.com/amel-tech/medaris/issues/348)) ([ce47fce](https://github.com/amel-tech/medaris/commit/ce47fce8df0042bdc81b962a99ee82a1db1d6438))
+* **tedrisat, nazar-web, services, i18n, docs:** add a recording before its session ([#377](https://github.com/amel-tech/medaris/issues/377)) ([57c787e](https://github.com/amel-tech/medaris/commit/57c787e9ea765c43f28fc0be43cc5ed62a5f0f26))
+* **tedrisat, nazar-web, tedris-web, services, i18n:** review and return a talebe's homework ([#349](https://github.com/amel-tech/medaris/issues/349)) ([4b1f9f7](https://github.com/amel-tech/medaris/commit/4b1f9f784f397d8b82d4aa232544434b5ac8cdac))
+
+
+### Bug Fixes
+
+* **tedrisat, nazar-web, i18n, services:** a medrese nazırı is an existing, unbarred account ([#371](https://github.com/amel-tech/medaris/issues/371)) ([b24ff26](https://github.com/amel-tech/medaris/commit/b24ff265b66e492b20d3bd22b4f64b4d51c3be26))
+* **tedrisat, nazar-web:** a medrese's offsite course request reaches the köşk ([#372](https://github.com/amel-tech/medaris/issues/372)) ([566d3e2](https://github.com/amel-tech/medaris/commit/566d3e211493708a93df345f0ec8d96ae8ebcc58))
+
 ## [0.2.10](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.9...nazar-web-v0.2.10) (2026-10-16)
 
 

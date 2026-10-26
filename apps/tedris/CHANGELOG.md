@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.11.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.10.1...tedris-web-v2.11.0) (2026-10-26)
+
+
+### Features
+
+* **tedris-web, i18n:** MDRS-248 deck cards: sîga table, colour, a visible flip and self-test ([#361](https://github.com/amel-tech/medaris/issues/361)) ([83425a0](https://github.com/amel-tech/medaris/commit/83425a053d5e988f879dc8faf219dfbbb43b39a5))
+* **tedris-web, i18n:** the course's deck tab lists its decks, with one featured to study first ([#357](https://github.com/amel-tech/medaris/issues/357)) ([49b5b59](https://github.com/amel-tech/medaris/commit/49b5b5934df880fd65e3a9f1826f7289e0b9afbc))
+* **tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 language from a shared cookie ([#348](https://github.com/amel-tech/medaris/issues/348)) ([ce47fce](https://github.com/amel-tech/medaris/commit/ce47fce8df0042bdc81b962a99ee82a1db1d6438))
+* **tedrisat, nazar-web, tedris-web, services, i18n:** review and return a talebe's homework ([#349](https://github.com/amel-tech/medaris/issues/349)) ([4b1f9f7](https://github.com/amel-tech/medaris/commit/4b1f9f784f397d8b82d4aa232544434b5ac8cdac))
+
 ## [2.10.1](https://github.com/amel-tech/medaris/compare/tedris-web-v2.10.0...tedris-web-v2.10.1) (2026-10-21)
 
 

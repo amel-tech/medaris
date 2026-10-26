@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.0](https://github.com/amel-tech/medaris/compare/landing-web-v2.5.1...landing-web-v2.6.0) (2026-10-26)
+
+
+### Features
+
+* **tedris-web, nizam-web, nazar-web, landing-web:** MDRS-248 language from a shared cookie ([#348](https://github.com/amel-tech/medaris/issues/348)) ([ce47fce](https://github.com/amel-tech/medaris/commit/ce47fce8df0042bdc81b962a99ee82a1db1d6438))
+
 ## [2.5.1](https://github.com/amel-tech/medaris/compare/landing-web-v2.5.0...landing-web-v2.5.1) (2026-10-21)
 
 
