@@ -20,7 +20,7 @@ import { mapValues } from '../runtime';
  */
 export interface SetRecordingAvailabilityDto {
     /**
-     * When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. "Kayıt eklendi" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing. The key must be sent: a body without it is 400.
+     * When the session's talebe may watch its recording (MDRS-288), an ISO 8601 instant with its offset; the page enters it in the course's time zone. Kept on the session, so it outlives a recording that is replaced. `null` opens the recording as soon as it is READY. Whatever is set, a recording never opens before its session's scheduled start, so one may be added ahead of its session: a recording's `availableAt` is the later of the two. Before it, every read gives a talebe or a visitor the recording with this `availableAt` and a null `url`, and signs no Bunny link; the course team (`recording.manage`) plays it as before. "Kayıt eklendi" goes to the talebe at that moment, once: a time moved before it fires moves it, a time moved after it changes nothing. The key must be sent: a body without it is 400.
      * @type {Date}
      * @memberof SetRecordingAvailabilityDto
      */

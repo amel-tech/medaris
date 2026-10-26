@@ -309,10 +309,10 @@ describe("Ders kayıtları", () => {
     expect(rowOf(out, "Kayıt l-6")).not.toContain("href=");
   });
 
-  it("offers 'Kayıt ekle' only to a session that has begun and has none, and 'Düzenle' to a recording", async () => {
+  it("offers 'Kayıt ekle' to a session that has none, one ahead too (26 October), and 'Düzenle' to a recording", async () => {
     const out = await markup();
     expect(out).toContain('aria-label="Kayıt ekle: Hafta 2"');
-    expect(out).not.toContain('aria-label="Kayıt ekle: Hafta 2b"');
+    expect(out).toContain('aria-label="Kayıt ekle: Hafta 2b"');
     expect(out).not.toContain('aria-label="Kayıt ekle: Hafta 2c"');
     expect(out).toContain('aria-label="Kaydı düzenle: Hafta 1"');
     expect(textOf(rowOf(out, "Hafta 2b"))).toContain("Celse henüz yapılmadı");
@@ -442,6 +442,20 @@ describe("Kayıt ekle", () => {
     expect(toast("success")).toContain("Kayıt eklendi");
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(dialog()).toBeNull();
+  });
+
+  it("adds a recording to a session still ahead, whose start it waits for (26 October)", async () => {
+    await mount();
+    await click(byLabel("Kayıt ekle: Hafta 2b"));
+    await settle(20);
+    expect(field("title").value).toBe("Hafta 2b kaydı");
+    await typeInto(field("url"), ZOOM);
+    await submit("Kaydı ekle");
+    expect(addRecording).toHaveBeenCalledWith("l-3", {
+      title: "Hafta 2b kaydı",
+      url: ZOOM,
+      visibility: "ENROLLED",
+    });
   });
 
   it("adds a public recording when the switch is turned on", async () => {
@@ -790,6 +804,8 @@ describe("when talebe may watch (MDRS-288)", () => {
     );
     expect(textOf(rowOf(out, "Kayıt l-5"))).toContain("Açık");
     expect(textOf(rowOf(out, "Kayıt l-6"))).toContain("Hazır olunca açılır");
+    // a session ahead opens at its start, with no time set (26 October)
+    expect(textOf(rowOf(out, "Hafta 2b"))).toContain("12 Ekim 21:00’de açılır");
     // the viewer reads the course's clock: nothing to name
     expect(textOf(out)).not.toContain("saatiyle");
   });
@@ -871,6 +887,23 @@ describe("when talebe may watch (MDRS-288)", () => {
     expect(dialog()).not.toBeNull();
   });
 
+  it("refuses a time before the session's start, naming the start, and takes the start itself (26 October)", async () => {
+    await openRelease("Hafta 2b");
+    await pick("Şu tarih ve saatte");
+    await enter("12.10.2026", "20:00");
+    await submit("Kaydet");
+    expect(dialog().textContent).toContain(
+      "Celse 12 Ekim 21:00’de başlıyor; kayıt ondan önce açılamaz."
+    );
+    expect(setRecordingAvailability).not.toHaveBeenCalled();
+    await enter("12.10.2026", "21:00");
+    await submit("Kaydet");
+    expect(setRecordingAvailability).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      "2026-10-12T18:00:00.000Z"
+    );
+  });
+
   it("opens a held time back to as soon as it is ready", async () => {
     state.course = { status: "ok", data: releasing("l-1", AHEAD) };
     await openRelease("Hafta 1");
@@ -883,7 +916,7 @@ describe("when talebe may watch (MDRS-288)", () => {
       null
     );
     expect(toast("success")).toContain(
-      "Hafta 1 celsesinin kaydı hazır olunca talebeye açılır."
+      "Hafta 1 celsesinin kaydı, celse başladıktan sonra hazır olur olmaz talebeye açılır."
     );
   });
 

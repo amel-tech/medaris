@@ -7,6 +7,7 @@ import {
   RecordingProvider,
   RecordingStatus,
   RecordingVisibility,
+  recordingReleaseAt,
   uploadReplaces,
   visibleRecordings,
 } from "../../../src/course/domain/recording";
@@ -214,6 +215,43 @@ describe("the release time (MDRS-288)", () => {
     const later = new Date(Date.now() + 3_600_000);
     const [only] = visibleRecordings([row("a", { availableAt: later })], true);
     expect(only.url).toBeNull();
+  });
+});
+
+/**
+ * A recording may be added before its session (26 October): whether the
+ * course team set a time or not, it opens no earlier than the session's
+ * start, and no earlier than their time.
+ */
+describe("recordingReleaseAt", () => {
+  const START = new Date("2026-10-28T19:00:00.000Z");
+  const EARLIER = new Date(START.getTime() - 3_600_000);
+  const LATER = new Date(START.getTime() + 3_600_000);
+
+  it("opens at the session's start when no time is set", () => {
+    expect(recordingReleaseAt(null, START)).toEqual(START);
+  });
+
+  it("waits for the session's start when the time set is earlier", () => {
+    expect(recordingReleaseAt(EARLIER, START)).toEqual(START);
+  });
+
+  it("keeps a time set after the session's start", () => {
+    expect(recordingReleaseAt(LATER, START)).toEqual(LATER);
+  });
+
+  it("keeps the time set for a session with no time, and nothing for one with neither", () => {
+    expect(recordingReleaseAt(LATER, null)).toEqual(LATER);
+    expect(recordingReleaseAt(null, null)).toBeNull();
+  });
+
+  it("holds a recording added ahead from a talebe until the start, and plays it for the course team", () => {
+    const ahead = row("a", { availableAt: recordingReleaseAt(null, START) });
+    const before = new Date(START.getTime() - 1);
+    expect(isReleased(ahead, before)).toBe(false);
+    expect(isReleased(ahead, START)).toBe(true);
+    expect(mayPlay(ahead, { now: before, team: true })).toBe(true);
+    expect(mayPlay(ahead, { now: before, team: false })).toBe(false);
   });
 });
 

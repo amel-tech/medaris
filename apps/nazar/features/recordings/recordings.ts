@@ -61,9 +61,10 @@ export interface SessionSlot {
   streamUrl: string | null;
   recording: RecordingFact | null;
   /**
-   * ISO time talebe may watch the session's recording from (MDRS-288); null
-   * opens it as soon as it is READY. Kept on the session, so a session with
-   * no recording yet may have one.
+   * ISO time the course team set for talebe to watch the session's recording
+   * from (MDRS-288); null opens it as soon as it is READY. Kept on the
+   * session, so a session with no recording yet may have one. Either way it
+   * never opens before the session's start (`opensAt`).
    */
   availableAt: string | null;
 }
@@ -99,9 +100,9 @@ export function recordingWeeks(
         const start = lesson.scheduledAt
           ? new Date(lesson.scheduledAt).getTime()
           : null;
-        // the course read carries the session's time; a recording carries it too
-        const release =
-          lesson.recordingAvailableAt ?? recording?.availableAt ?? null;
+        // the time as the course team set it; a recording's own `availableAt`
+        // is when it opens, the session's start taken into account
+        const release = lesson.recordingAvailableAt ?? null;
         return [
           {
             lessonId: lesson.id,
@@ -151,9 +152,11 @@ export function recordingWeeks(
 export type SlotState = "recorded" | "missing" | "notYet";
 
 /**
- * What a session offers: its recording, "Kayıt ekle" once it has begun, or
- * nothing yet. A session with no time set can be recorded: nothing says it has
- * not happened.
+ * Where a session is: it holds its recording, it has begun and holds none
+ * ("missing", which the summary counts), or it has not begun ("notYet"). A
+ * session with no time set counts as begun: nothing says it has not
+ * happened. Either of the last two offers "Kayıt ekle": a recording may be
+ * added before its session and opens at its start (26 October).
  */
 export function slotState(slot: SessionSlot, now: Date): SlotState {
   if (slot.recording) return "recorded";
@@ -266,11 +269,28 @@ export const anyBunnyPending = (blocks: readonly WeekBlock[]): boolean =>
 // ---- when talebe may watch (MDRS-288) ------------------------------------------------
 
 /**
+ * When a session's recording opens to talebe, as tedrisat decides it
+ * (`recordingReleaseAt`): the later of the time the course team set and the
+ * session's start, so a recording added before its session never opens
+ * before it, whether a time was set or not (26 October). Null, as soon as it
+ * is READY, only for a session with neither.
+ */
+export function opensAt(
+  availableAt: string | null,
+  startsAt: string | null
+): Date | null {
+  const times = [availableAt, startsAt].flatMap((iso) =>
+    iso ? [Date.parse(iso)] : []
+  );
+  return times.length > 0 ? new Date(Math.max(...times)) : null;
+}
+
+/**
  * The "Erişim" cell: "Açık" once talebe can watch the recording, "{when}
- * açılır" while the session's time is ahead (a session with no recording yet
- * included), and "Hazır olunca açılır" otherwise: the recording is not READY,
- * or not there yet, and nothing holds it back. tedrisat's rule
- * (`isReleased`): open when READY and the time, if any, is not after now.
+ * açılır" while the time it opens (`opensAt`) is ahead, a session with no
+ * recording yet included, and "Hazır olunca açılır" otherwise: the recording
+ * is not READY, or not there yet, and nothing holds it back. tedrisat's rule
+ * (`isReleased`): open when READY and that time, if any, is not after now.
  */
 export type Access =
   | { kind: "open" }
@@ -278,10 +298,10 @@ export type Access =
   | { kind: "whenReady" };
 
 export function accessOf(
-  slot: Pick<SessionSlot, "recording" | "availableAt">,
+  slot: Pick<SessionSlot, "recording" | "availableAt" | "startsAt">,
   now: Date
 ): Access {
-  const at = slot.availableAt ? new Date(slot.availableAt) : null;
+  const at = opensAt(slot.availableAt, slot.startsAt);
   if (at && at.getTime() > now.getTime()) return { kind: "at", at };
   return slot.recording?.status === "READY"
     ? { kind: "open" }
@@ -349,24 +369,31 @@ function releaseInstant(
   return zonedLocalToIso(form.local, timeZone) ?? undefined;
 }
 
-export type ReleaseProblem = "empty" | "past";
+export type ReleaseProblem = "empty" | "past" | "beforeSession";
 
 /**
  * What is wrong with the choice: "empty" when "Şu tarih ve saatte" has no
  * readable date and time, "past" when a new time is not after now (the
- * stored one may be: the recording opened then). Null when it is fine.
+ * stored one may be: the recording opened then), "beforeSession" when a new
+ * time is before the session's start, which the recording would wait for
+ * anyway (`opensAt`). Null when it is fine.
  */
 export function releaseProblem(
   form: ReleaseForm,
   held: string | null,
   timeZone: string,
-  now: Date
+  now: Date,
+  startsAt: string | null = null
 ): ReleaseProblem | null {
   const at = releaseInstant(form, held, timeZone);
   if (at === null) return null;
   if (at === undefined) return "empty";
   const stored = held ? new Date(held).toISOString() : null;
-  return at !== stored && Date.parse(at) <= now.getTime() ? "past" : null;
+  if (at === stored) return null;
+  if (Date.parse(at) <= now.getTime()) return "past";
+  return startsAt && Date.parse(at) < Date.parse(startsAt)
+    ? "beforeSession"
+    : null;
 }
 
 /**

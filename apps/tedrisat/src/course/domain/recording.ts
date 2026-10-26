@@ -80,10 +80,33 @@ export interface IRecordingRow {
   visibility: RecordingVisibility;
   status: RecordingStatus;
   /**
-   * When talebe may watch it (MDRS-288): its session's release time, set by
-   * the course team; null opens it as soon as it is READY.
+   * When talebe may watch it (MDRS-288): `recordingReleaseAt` of its
+   * session, the later of the release time the course team set and the
+   * session's start; null opens it as soon as it is READY.
    */
   availableAt: Date | null;
+}
+
+/**
+ * When a session's recording opens to talebe: the later of the release time
+ * the course team set (MDRS-288) and the session's scheduled start. A
+ * recording may be added before its session, so that it is ready at the
+ * session's time (26 October, "erişim saati eklesek de eklemesek de tam
+ * celse saatinden itibaren"): it never opens before the session begins,
+ * whether a time was set or not. Null, as soon as it is READY, only for a
+ * session with neither. Every recording row carries this as its
+ * `availableAt`; `RecordingRepository` holds its SQL twin.
+ */
+export function recordingReleaseAt(
+  recordingAvailableAt: Date | null,
+  scheduledAt: Date | null
+): Date | null {
+  if (!recordingAvailableAt || !scheduledAt) {
+    return recordingAvailableAt ?? scheduledAt;
+  }
+  return recordingAvailableAt.getTime() > scheduledAt.getTime()
+    ? recordingAvailableAt
+    : scheduledAt;
 }
 
 /** What a caller is told about one recording; `url` is null until it is ready. */
@@ -101,10 +124,12 @@ export interface IRecordingReader {
 }
 
 /**
- * Open to talebe (MDRS-288): READY, and its session's release time, when one
- * is set, has come. The one place the release time is read: the reads that
- * hand out a recording link, the stream rule below and the announcement of
- * a recording all ask this, or its SQL twin in `RecordingRepository`.
+ * Open to talebe (MDRS-288): READY, and its `availableAt`, when there is
+ * one, has come: the session has begun and the course team's time, if they
+ * set one, has passed (`recordingReleaseAt`). The one place that is asked:
+ * the reads that hand out a recording link, the stream rule below and the
+ * announcement of a recording all ask this, or its SQL twin in
+ * `RecordingRepository`.
  */
 export function isReleased(
   recording: Pick<IRecordingRow, "status" | "availableAt">,
@@ -189,7 +214,9 @@ export const LIVE_STREAM_HOURS_AFTER_END = 24;
  * over, which cut a lesson that ran long off mid-stream; the end of a stream
  * is now learned by the viewer's player, never by the server. A PROCESSING or
  * FAILED recording has nothing to play yet, and a READY one held back until
- * its release time plays for the course team alone, so the stream stays.
+ * its release time plays for the course team alone, so the stream stays. A
+ * READY recording added before its session opens at the session's start
+ * (`recordingReleaseAt`) and so takes the stream's place from then.
  * With no released recording it stops `LIVE_STREAM_HOURS_AFTER_END` hours
  * after the scheduled end. A cancelled session, or one with no time, has none.
  */

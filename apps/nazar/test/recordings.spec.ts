@@ -11,6 +11,7 @@ import {
   formOf,
   hostOf,
   newForm,
+  opensAt,
   patchBody,
   providerOfLink,
   type RecordingFact,
@@ -192,7 +193,7 @@ describe("what a session offers", () => {
     expect(slotState(slot({ recording: held }), NOW)).toBe("recorded");
   });
 
-  it("is 'Kayıt ekle' once the session has begun, and nothing before", () => {
+  it("is 'missing' once the session has begun, and 'notYet' before, which offers 'Kayıt ekle' too", () => {
     expect(slotState(slot(), NOW)).toBe("missing");
     expect(slotState(slot({ startsAt: "2026-10-05T19:00:00.000Z" }), NOW)).toBe(
       "missing"
@@ -782,7 +783,7 @@ describe("when talebe may watch (MDRS-288)", () => {
   });
   const soon: ReleaseForm = { mode: "ready", local: "", bad: false };
 
-  it("takes each session's time from the course read, else from its recording", () => {
+  it("takes each session's time from the course read alone: a recording's own availableAt counts the session's start", () => {
     const blocks = recordingWeeks(
       course([
         {
@@ -800,7 +801,7 @@ describe("when talebe may watch (MDRS-288)", () => {
     );
     expect(blocks[0]?.slots.map((s) => [s.lessonId, s.availableAt])).toEqual([
       ["a", AHEAD],
-      ["b", PAST],
+      ["b", null],
       ["c", null],
     ]);
   });
@@ -823,20 +824,29 @@ describe("when talebe may watch (MDRS-288)", () => {
   });
 
   it("says 'Açık' for a READY recording with no time, or a time that has come, the very minute included", () => {
-    expect(accessOf({ recording: ready, availableAt: null }, NOW)).toEqual({
-      kind: "open",
-    });
-    expect(accessOf({ recording: ready, availableAt: PAST }, NOW)).toEqual({
+    expect(
+      accessOf({ recording: ready, availableAt: null, startsAt: null }, NOW)
+    ).toEqual({
       kind: "open",
     });
     expect(
-      accessOf({ recording: ready, availableAt: AHEAD }, new Date(AHEAD))
+      accessOf({ recording: ready, availableAt: PAST, startsAt: null }, NOW)
+    ).toEqual({
+      kind: "open",
+    });
+    expect(
+      accessOf(
+        { recording: ready, availableAt: AHEAD, startsAt: null },
+        new Date(AHEAD)
+      )
     ).toEqual({ kind: "open" });
   });
 
   it("says when it opens while the time is ahead, with a recording or before one exists", () => {
     for (const recording of [ready, processing, null]) {
-      expect(accessOf({ recording, availableAt: AHEAD }, NOW)).toEqual({
+      expect(
+        accessOf({ recording, availableAt: AHEAD, startsAt: null }, NOW)
+      ).toEqual({
         kind: "at",
         at: new Date(AHEAD),
       });
@@ -844,15 +854,50 @@ describe("when talebe may watch (MDRS-288)", () => {
   });
 
   it("says 'Hazır olunca açılır' while nothing holds back a recording that is not READY, or not there yet", () => {
-    expect(accessOf({ recording: processing, availableAt: null }, NOW)).toEqual(
-      { kind: "whenReady" }
-    );
-    expect(accessOf({ recording: processing, availableAt: PAST }, NOW)).toEqual(
-      { kind: "whenReady" }
-    );
-    expect(accessOf({ recording: null, availableAt: null }, NOW)).toEqual({
+    expect(
+      accessOf(
+        { recording: processing, availableAt: null, startsAt: null },
+        NOW
+      )
+    ).toEqual({ kind: "whenReady" });
+    expect(
+      accessOf(
+        { recording: processing, availableAt: PAST, startsAt: null },
+        NOW
+      )
+    ).toEqual({ kind: "whenReady" });
+    expect(
+      accessOf({ recording: null, availableAt: null, startsAt: null }, NOW)
+    ).toEqual({
       kind: "whenReady",
     });
+  });
+
+  it("never opens before the session's start, whether a time is set or not (26 October)", () => {
+    /** 8 Ekim 21:00 in Istanbul */
+    const START = "2026-10-08T18:00:00.000Z";
+    for (const recording of [ready, processing, null]) {
+      for (const availableAt of [null, PAST]) {
+        expect(
+          accessOf({ recording, availableAt, startsAt: START }, NOW)
+        ).toEqual({ kind: "at", at: new Date(START) });
+      }
+      // a time after the start is kept
+      expect(
+        accessOf({ recording, availableAt: AHEAD, startsAt: START }, NOW)
+      ).toEqual({ kind: "at", at: new Date(AHEAD) });
+    }
+    expect(
+      accessOf(
+        { recording: ready, availableAt: null, startsAt: START },
+        new Date(START)
+      )
+    ).toEqual({ kind: "open" });
+    expect(opensAt(null, START)).toEqual(new Date(START));
+    expect(opensAt(PAST, START)).toEqual(new Date(START));
+    expect(opensAt(AHEAD, START)).toEqual(new Date(AHEAD));
+    expect(opensAt(AHEAD, null)).toEqual(new Date(AHEAD));
+    expect(opensAt(null, null)).toBeNull();
   });
 
   it("starts the choice from what the session holds, on the course's clock", () => {
@@ -875,6 +920,36 @@ describe("when talebe may watch (MDRS-288)", () => {
     expect(releaseProblem(at("2026-10-06T12:01"), null, IST, NOW)).toBeNull();
     // a stored time that has passed is the one the recording opened at, not a new one
     expect(releaseProblem(at("2026-10-05T20:00"), PAST, IST, NOW)).toBeNull();
+  });
+
+  it("refuses a new time before the session's start, and takes the start itself", () => {
+    /** 14 Ekim 20:00 in Istanbul */
+    const START = AHEAD;
+    expect(releaseProblem(at("2026-10-14T19:59"), null, IST, NOW, START)).toBe(
+      "beforeSession"
+    );
+    expect(
+      releaseProblem(at("2026-10-14T20:00"), null, IST, NOW, START)
+    ).toBeNull();
+    expect(
+      releaseProblem(at("2026-10-15T09:00"), null, IST, NOW, START)
+    ).toBeNull();
+    // "Hazır olunca hemen" waits for the start on its own
+    expect(releaseProblem(soon, null, IST, NOW, START)).toBeNull();
+    // a stored time is not new, even one the session was moved past
+    expect(
+      releaseProblem(
+        at("2026-10-10T20:00"),
+        "2026-10-10T17:00:00.000Z",
+        IST,
+        NOW,
+        START
+      )
+    ).toBeNull();
+    // a time already past is "past" first
+    expect(releaseProblem(at("2026-10-05T20:00"), null, IST, NOW, START)).toBe(
+      "past"
+    );
   });
 
   it("sends an instant read on the course's clock, null for as soon as it is ready, and nothing unchanged", () => {

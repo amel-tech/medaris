@@ -10,7 +10,7 @@ flow: medaris.recording-link
 status: proposed
 catalog: catalog/tr.json
 locales: [tr, en]
-samples: { session: "Birinci celse", title: "Birinci celse kaydı" }
+samples: { session: "Birinci celse", title: "Birinci celse kaydı", when: "14 Ekim 20:00" }
 changes: { key: Changes.note }
 
 nodes:
@@ -21,7 +21,7 @@ nodes:
   notYetText: { type: text, component: Text, text: { key: Recordings.notYet }, in: [recordingsPage], when: "existing in ['none', 'failedUpload'] and slot == 'notYet'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:214" }
   fromStreamNote: { type: text, component: Text, text: { key: Recordings.fromStreamNote }, in: [recordingsPage, addingStream], when: "canManage and streamOffered and slotMissing and slot == 'over'", source: "apps/nazar/features/recordings/components/recordings-table.tsx:219" }
   stateBadge: { type: text, component: Text, text: { oneOf: [Recordings.state.ready, Recordings.state.processing] }, in: [recordingsPage], when: slotRecorded, source: "apps/nazar/features/recordings/components/recordings-table.tsx:265" }
-  addButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.addLabel }, text: { key: Recordings.add }, in: [recordingsPage, addingStream], when: "canManage and slotMissing", emits: ADD, source: "apps/nazar/features/recordings/components/recordings-table.tsx:356" }
+  addButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.addLabel }, text: { key: Recordings.add }, in: [recordingsPage, addingStream], when: "canManage and slotMissing", emits: ADD, source: "apps/nazar/features/recordings/components/recordings-table.tsx:363" } # on a session ahead too
   fromStreamButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.fromStreamLabel }, text: { key: Recordings.fromStream }, in: [recordingsPage, addingStream], disabledIn: [addingStream], when: "canManage and streamOffered and slotMissing and slot == 'over'", emits: FROM_STREAM, source: "apps/nazar/features/recordings/components/recordings-table.tsx:369" }
   editButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.editLabel }, text: { key: Recordings.edit }, in: [recordingsPage], when: "canManage and slotRecorded", emits: EDIT, source: "apps/nazar/features/recordings/components/recordings-table.tsx:335" }
 
@@ -52,7 +52,7 @@ nodes:
   releaseGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: releaseLegend }, in: [linkDialog, adding, changing], source: "apps/nazar/features/recordings/components/release-fields.tsx:43" }
   releaseChoice: { type: field, component: ListItem, role: radio, text: { oneOf: [Recordings.release.ready, Recordings.release.at] }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], source: "apps/nazar/features/recordings/components/release-fields.tsx:50" }
   whenField: { type: field, component: TextField, role: textbox, text: { key: Recordings.release.whenLabel }, in: [linkDialog, adding, changing], when: "releaseChoice != 'unchanged'", disabledIn: [adding, changing], source: "apps/nazar/features/recordings/components/release-fields.tsx:64" } # the kit's date-time field; shown while Şu tarih ve saatte is chosen
-  releasePast: { type: text, component: Text, text: { key: Recordings.release.errors.past }, in: [linkDialog], when: "problem == 'release'", source: "apps/nazar/features/recordings/components/release-fields.tsx:70" }
+  releasePast: { type: text, component: Text, text: { oneOf: [Recordings.release.errors.past, Recordings.release.errors.beforeSession] }, in: [linkDialog], when: "problem == 'release'", source: "apps/nazar/features/recordings/components/release-fields.tsx:74" } # beforeSession names the session's start
   cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Recordings.form.cancel }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], emits: CLOSE, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:400" }
   submit: { type: action, component: Button, role: button, intent: confirm, text: { oneOf: [Recordings.form.submitAdd, Recordings.form.submitEdit] }, in: [linkDialog, adding, changing], disabledIn: [adding, changing], emits: SUBMIT, source: "apps/nazar/features/recordings/components/recording-dialog.tsx:401" }
 

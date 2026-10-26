@@ -1,5 +1,5 @@
 {
-  "Changes.note": "Seçtiğiniz video tarayıcınızdan doğrudan Medaris’in Bunny video kütüphanesine gider. tedrisat videoyu açtığı anda video celsenin kaydı olur ve Ders kayıtlarında “Hazırlanıyor” yazar; kaydın bir bağlantısı ya da başka bir videosu varsa o anda kayıttan kalkar. Eski bağlantı yalnızca denetim kaydında kalır; eski video yeni yükleme bitince Bunny’den kalıcı olarak silinir. Bunny videoyu işleyince kayıt hazır olur: derse kayıtlı talebe ve ders ekibi onu izleme sayfasında izler, bir açılış zamanı seçildiyse talebe o zamandan sonra; kayıt talebeye açıldığında kayıtlı talebeye bir kez “Kayıt eklendi” bildirimi gider. Durdurulan bir yükleme 24 saat içinde aynı tarayıcıda aynı dosyayla sürdürülebilir; bu süre dolarsa ya da Bunny videoyu işleyemezse kayıt düşer ve celse yeniden “Kayıt yok” görünür. Açılış zamanını değiştirdiyseniz o yüklemeden önce yazılır ve yükleme reddedilse de değişmiş kalır.",
+  "Changes.note": "Seçtiğiniz video tarayıcınızdan doğrudan Medaris’in Bunny video kütüphanesine gider. tedrisat videoyu açtığı anda video celsenin kaydı olur ve Ders kayıtlarında “Hazırlanıyor” yazar; kaydın bir bağlantısı ya da başka bir videosu varsa o anda kayıttan kalkar. Eski bağlantı yalnızca denetim kaydında kalır; eski video yeni yükleme bitince Bunny’den kalıcı olarak silinir. Bunny videoyu işleyince kayıt hazır olur: derse kayıtlı talebe ve ders ekibi onu izleme sayfasında izler, talebe celse başlamadan izleyemez, bir açılış zamanı seçildiyse o zamandan sonra izler; kayıt talebeye açıldığında kayıtlı talebeye bir kez “Kayıt eklendi” bildirimi gider. Durdurulan bir yükleme 24 saat içinde aynı tarayıcıda aynı dosyayla sürdürülebilir; bu süre dolarsa ya da Bunny videoyu işleyemezse kayıt düşer ve celse yeniden “Kayıt yok” görünür. Açılış zamanını değiştirdiyseniz o yüklemeden önce yazılır ve yükleme reddedilse de değişmiş kalır.",
   "Recordings.add": "Kayıt ekle",
   "Recordings.addLabel": "Kayıt ekle: {session}",
   "Recordings.edit": "Düzenle",
@@ -12,6 +12,7 @@
   "Recordings.form.publicLabel": "Herkese açık",
   "Recordings.form.titleLabel": "Başlık",
   "Recordings.none": "Kayıt yok",
+  "Recordings.notYet": "Celse henüz yapılmadı",
   "Recordings.release.at": "Şu tarih ve saatte",
   "Recordings.release.failed": "Kayıt erişimi kaydedilemedi",
   "Recordings.release.legend": "Talebe kaydı ne zaman izlesin",

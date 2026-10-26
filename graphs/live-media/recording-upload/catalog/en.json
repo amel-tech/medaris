@@ -1,5 +1,5 @@
 {
-  "Changes.note": "The video you pick goes from your browser straight to Medaris's Bunny video library. As soon as tedrisat creates the video it becomes the session's recording and Ders kayıtları says “Hazırlanıyor”; a link or another video the recording held leaves it at that moment. The old link stays only in the audit log; the old video is deleted from Bunny for good once the new upload is over. When Bunny has encoded the video the recording is ready: the enrolled talebe and the course team watch it on the watch page, talebe only from the release time if one was chosen, and when it opens to talebe the enrolled talebe get one “Kayıt eklendi” notification. A stopped upload can be continued within 24 hours, in the same browser with the same file; if that time runs out or Bunny cannot encode the video, the recording drops and the session shows “Kayıt yok” again. If you changed the release time, it is written before the upload and stays changed even when the upload is refused.",
+  "Changes.note": "The video you pick goes from your browser straight to Medaris's Bunny video library. As soon as tedrisat creates the video it becomes the session's recording and Ders kayıtları says “Hazırlanıyor”; a link or another video the recording held leaves it at that moment. The old link stays only in the audit log; the old video is deleted from Bunny for good once the new upload is over. When Bunny has encoded the video the recording is ready: the enrolled talebe and the course team watch it on the watch page, talebe never before the session begins and only from the release time if one was chosen, and when it opens to talebe the enrolled talebe get one “Kayıt eklendi” notification. A stopped upload can be continued within 24 hours, in the same browser with the same file; if that time runs out or Bunny cannot encode the video, the recording drops and the session shows “Kayıt yok” again. If you changed the release time, it is written before the upload and stays changed even when the upload is refused.",
   "Recordings.add": "Add recording",
   "Recordings.addLabel": "Add a recording: {session}",
   "Recordings.edit": "Edit",
@@ -12,6 +12,7 @@
   "Recordings.form.publicLabel": "Public",
   "Recordings.form.titleLabel": "Title",
   "Recordings.none": "No recording",
+  "Recordings.notYet": "The session has not happened yet",
   "Recordings.release.at": "At a date and time",
   "Recordings.release.failed": "Recording access could not be saved",
   "Recordings.release.legend": "When talebe may watch the recording",

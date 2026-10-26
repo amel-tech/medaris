@@ -2,6 +2,8 @@
 # recording ("Kayıt erişimi"), from the Erişim column of Ders kayıtları (Değiştir) or a Celseler row (Kayıt erişimi).
 # The time is kept on the session, before a recording exists and across one that is replaced. The recording dialog
 # writes the same time with a pasted link (medaris.recording-link) or before an upload (medaris.recording-upload).
+# Brought up to the pull request that lets a recording be added before its session (26 Oct 2026): a recording never
+# opens before its session's start, with or without a time (begun, beforeSession, no-news-before-the-session-begins).
 schema: delurio-graph/0
 kind: flow
 id: medaris.recording-release
@@ -11,9 +13,10 @@ ui: medaris.recording-release
 title: Set when talebe may watch a recording
 summary: >-
   The dialog offers "Hazır olunca hemen" or "Şu tarih ve saatte" on the course's clock, starting from what the session
-  holds. A new time must be ahead, and nothing is written when the choice is what the session holds. tedrisat writes the
-  time under the session's lock with an audit row. A READY recording this opens now is announced to the enrolled talebe
-  now; one it holds back is announced by the release poll at the time, and only if nobody was told before.
+  holds. A new time must be ahead and not before the session's start, and nothing is written when the choice is what the
+  session holds. tedrisat writes the time under the session's lock with an audit row. Neither choice opens a recording
+  before its session begins. A READY recording this opens now is announced to the enrolled talebe now; one it holds
+  back, until the time or the session's start, is announced by the release poll then, and only if nobody was told before.
 source: apps/nazar/features/recordings/components/release-dialog.tsx:29
 
 scope:
@@ -36,14 +39,18 @@ context:
     values: [ahead, over, cancelled]
     initial: any
     say: { ahead: "the session's scheduled end is ahead", over: "the session's scheduled end has passed", cancelled: "the session is cancelled" }
+  begun: # the recording opens no earlier than the session's start (recordingReleaseAt)
+    values: [true, false]
+    initial: any
+    say: { "true": "the session has begun (or has no time set)", "false": "the session has not begun" }
   held: # the session's release time when the page was read
     values: [none, at]
     initial: any
     say: { none: "the session opens its recording as soon as it is READY", at: "the session holds a release time ahead" }
   choice: # what the dialog holds when Kaydet is pressed
-    values: [same, ready, future, past, empty]
+    values: [same, ready, future, past, beforeSession, empty]
     initial: any
-    say: { same: "the choice is what the session holds", ready: "Hazır olunca hemen is chosen", future: "a new date and time ahead is typed", past: "a new date and time that is not ahead is typed", empty: "Şu tarih ve saatte is chosen with no readable date and time" }
+    say: { same: "the choice is what the session holds", ready: "Hazır olunca hemen is chosen", future: "a new date and time ahead, at or after the session's start, is typed", past: "a new date and time that is not ahead is typed", beforeSession: "a new date and time ahead but before the session's start is typed", empty: "Şu tarih ve saatte is chosen with no readable date and time" }
   recording:
     values: [none, processing, ready]
     initial: any
@@ -56,7 +63,7 @@ context:
     values: [none, hidden]
     initial: any
     say: { none: "", hidden: "someone hid the session after the page was read" }
-  problem: { values: [none, past, empty], initial: none }
+  problem: { values: [none, past, beforeSession, empty], initial: none }
   notice: { values: [none, savedAt, savedReady, gone], initial: none }
   written: { values: [false, true], initial: false }
   pending: { values: [false, true], initial: false } # a READY recording waits for the time this write set
@@ -64,15 +71,17 @@ context:
 guards:
   buttonDrawn: "canManage and (entry == 'recordings' or row == 'ahead')" # apps/nazar/features/recordings/components/recordings-table.tsx:163
   unchanged: "choice == 'same' or (choice == 'ready' and held == 'none')" # apps/nazar/features/recordings/recordings.ts:377
-  opensNow: "choice == 'ready' and recording == 'ready' and not announcedBefore" # apps/tedrisat/src/course/recording.repository.ts:355
+  opensNow: "choice == 'ready' and recording == 'ready' and begun and not announcedBefore" # apps/tedrisat/src/course/recording.repository.ts:380
 
 effects:
   open: { set: { problem: none, notice: none } }
   past: { set: { problem: past } }
+  beforeSession: { set: { problem: beforeSession } }
   empty: { set: { problem: empty } }
   savedAt: { set: { written: true, held: at, notice: savedAt, pending: false } }
   savedReady: { set: { written: true, held: none, notice: savedReady, pending: false } }
   waitForTime: { set: { pending: true } }
+  timeCame: { set: { begun: true } } # the recording opens no earlier than the session's start
   gone: { set: { notice: gone } }
   announced: { set: { announcedBefore: true, pending: false } }
 
@@ -80,7 +89,7 @@ failures:
   writing: { from: setRecordingAvailability, gone: [LESSON_NOT_FOUND] }
 
 main:
-  given: { canManage: true, entry: recordings, row: over, held: none, choice: future, recording: ready, announcedBefore: false, meanwhile: none }
+  given: { canManage: true, entry: recordings, row: over, begun: true, held: none, choice: future, recording: ready, announcedBefore: false, meanwhile: none }
   events: [OPEN, SAVE, DONE, RELEASE_TIME, DONE]
 
 initial: page
@@ -90,12 +99,13 @@ states:
     by: human
     goal: true
     description: >-
-      Ders kayıtları's Erişim column says Açık, "<time> açılır" or Hazır olunca açılır, with Değiştir for a holder of
-      recording.manage on every row; Celseler has Kayıt erişimi on a row of Yaklaşan celseler that is not cancelled.
+      Ders kayıtları's Erişim column says Açık, "<time> açılır" (the later of the session's time and its start) or Hazır
+      olunca açılır, with Değiştir for a holder of recording.manage on every row; Celseler has Kayıt erişimi on a row of
+      Yaklaşan celseler that is not cancelled.
     source: apps/nazar/features/recordings/components/recordings-table.tsx:139
     on:
       OPEN: { guard: buttonDrawn, target: dialog, effect: [open], say: "they press Değiştir or Kayıt erişimi", source: "apps/nazar/features/recordings/components/recordings-table.tsx:163" }
-      RELEASE_TIME: { guard: pending, target: announcingLater, say: "the release poll, a minute's pass after the time came", source: "apps/tedrisat/src/course/recording-release.poller.ts:101" }
+      RELEASE_TIME: { guard: pending, target: announcingLater, effect: [timeCame], say: "the release poll, a minute's pass after the time, or the session's start, came", source: "apps/tedrisat/src/course/recording-release.poller.ts:103" }
       NAVIGATE: { target: left, say: "they go to another page", source: "apps/nazar/app/ders/[dersId]/kayitlar/page.tsx:11" }
 
   dialog:
@@ -105,7 +115,8 @@ states:
     source: apps/nazar/features/recordings/components/release-dialog.tsx:106
     on:
       SAVE:
-        - { guard: "choice == 'past'", target: dialog, effect: [past], say: "the new time is not ahead; nothing is sent", source: "apps/nazar/features/recordings/recordings.ts:369" }
+        - { guard: "choice == 'past'", target: dialog, effect: [past], say: "the new time is not ahead; nothing is sent", source: "apps/nazar/features/recordings/recordings.ts:393" }
+        - { guard: "choice == 'beforeSession'", target: dialog, effect: [beforeSession], say: "the new time is before the session's start, which the dialog names; nothing is sent", source: "apps/nazar/features/recordings/recordings.ts:395" }
         - { guard: "choice == 'empty'", target: dialog, effect: [empty], say: "no readable date and time; nothing is sent", source: "apps/nazar/features/recordings/recordings.ts:367" }
         - { guard: unchanged, target: page, say: "nothing changed: the dialog closes and nothing is written", source: "apps/nazar/features/recordings/components/release-dialog.tsx:65" }
         - { target: writing, say: "they press Kaydet", source: "apps/nazar/features/recordings/components/release-dialog.tsx:70" }
@@ -124,6 +135,7 @@ states:
         - { guard: "meanwhile == 'none' and choice == 'future' and recording == 'ready' and not announcedBefore", target: page, effect: [savedAt, waitForTime], say: "the time is written; the READY recording waits for it", source: "apps/tedrisat/src/course/recording.repository.ts:325" }
         - { guard: "meanwhile == 'none' and choice == 'future'", target: page, effect: [savedAt], say: "the time is written", source: "apps/tedrisat/src/course/recording.repository.ts:325" }
         - { guard: "meanwhile == 'none' and opensNow", target: announcing, effect: [savedReady], say: "the recording opens now, and nobody was told yet", source: "apps/tedrisat/src/course/recording.service.ts:118" }
+        - { guard: "meanwhile == 'none' and choice == 'ready' and recording == 'ready' and not begun and not announcedBefore", target: page, effect: [savedReady, waitForTime], say: "the READY recording waits for the session's start", source: "apps/tedrisat/src/course/recording.repository.ts:82" }
         - { guard: "meanwhile == 'none'", target: page, effect: [savedReady], say: "it opens as soon as it is READY", source: "apps/tedrisat/src/course/recording.repository.ts:325" }
       FAIL.gone: { guard: "meanwhile == 'hidden'", target: page, effect: [gone], say: "404: the session was hidden; the dialog closes and the page is read again", source: "apps/nazar/features/recordings/components/release-dialog.tsx:81" }
 
@@ -137,7 +149,7 @@ states:
 
   announcingLater:
     title: Tell the talebe at the time
-    description: The release poll runs every minute and claims READY recordings whose time came and that nobody was told of, earliest first.
+    description: The release poll runs every minute and claims READY recordings whose time, or whose session's start, came and that nobody was told of, earliest first.
     invoke: { action: announceRecording }
     source: apps/tedrisat/src/course/recording.repository.ts:386
     on:
@@ -147,7 +159,9 @@ states:
 
 assertions:
   - { id: only-recording-manage-sets-the-time, never: "state in ['dialog', 'writing'] and not canManage", say: "Only a holder of recording.manage sets when talebe may watch", source: "apps/tedrisat/src/course/recording.controller.ts:145" }
-  - { id: a-time-not-ahead-is-never-sent, never: "state == 'writing' and choice in ['past', 'empty']", say: "A new time that is not ahead, or cannot be read, never leaves the dialog", source: "apps/nazar/features/recordings/components/release-dialog.tsx:60" }
+  - { id: a-time-not-ahead-is-never-sent, never: "state == 'writing' and choice in ['past', 'empty']", say: "A new time that is not ahead, or cannot be read, never leaves the dialog", source: "apps/nazar/features/recordings/components/release-dialog.tsx:63" }
+  - { id: a-time-before-the-session-is-never-sent, never: "state == 'writing' and choice == 'beforeSession'", say: "A new time before the session's start never leaves the dialog", source: "apps/nazar/features/recordings/recordings.ts:394" }
+  - { id: no-news-before-the-session-begins, never: "state in ['announcing', 'announcingLater'] and not begun", say: "A recording is never announced, nor opened to talebe, before its session begins", source: "apps/tedrisat/src/course/domain/recording.ts:100" }
   - { id: nothing-written-when-nothing-changed, never: "state == 'writing' and unchanged", say: "The same choice is never written again", source: "apps/nazar/features/recordings/recordings.ts:385" }
   - { id: told-once, never: "state in ['announcing', 'announcingLater'] and announcedBefore", say: "The talebe are told of a session's recording once", source: "apps/tedrisat/src/course/recording.repository.ts:363" }
   - { id: no-news-before-the-time, never: "state == 'announcing' and choice == 'future'", say: "A recording held back until a time is not announced before it", source: "apps/tedrisat/src/course/recording.repository.ts:369" }

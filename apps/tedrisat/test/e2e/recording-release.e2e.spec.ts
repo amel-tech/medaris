@@ -48,7 +48,9 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
  * the recording with its `availableAt` and neither its link nor a signed
  * Bunny link; at the time, with nothing else saved, they get both. The
  * course team plays it before. "Kayıt eklendi" goes once, at the time, from
- * the release poll called with that clock. The rule itself is unit-tested
+ * the release poll called with that clock. A recording added before its
+ * session waits for the session's start whether a time was set or not
+ * (26 October). The rule itself is unit-tested
  * (test/unit/course/recording.spec.ts).
  */
 
@@ -65,6 +67,10 @@ const T0 = new Date(Math.ceil(Date.now() / HOUR) * HOUR);
 /** The release time the course team set on two sessions. */
 const RELEASE = new Date(T0.getTime() + 2 * HOUR);
 const LATER = new Date(T0.getTime() + 4 * HOUR);
+/** The start of the one session still ahead, before RELEASE. */
+const AHEAD = new Date(T0.getTime() + HOUR);
+/** "Üç"'s start: its recording has been open since then. */
+const OPENED = new Date(T0.getTime() - 72 * HOUR);
 
 const LIBRARY: IBunnyStreamConfig = {
   libraryId: "424242",
@@ -123,6 +129,7 @@ describe("the recording release time (MDRS-288, e2e)", () => {
   let openLessonId: string;
   let emptyLessonId: string;
   let uploadLessonId: string;
+  let aheadLessonId: string;
 
   const db = () => databaseService.db;
   const as = (sub: string) =>
@@ -237,6 +244,7 @@ describe("the recording release time (MDRS-288, e2e)", () => {
       { id: openLessonId },
       { id: emptyLessonId },
       { id: uploadLessonId },
+      { id: aheadLessonId },
     ] = await db()
       .insert(lessons)
       .values([
@@ -263,7 +271,7 @@ describe("the recording release time (MDRS-288, e2e)", () => {
           ...base,
           orderIndex: 2,
           title: "Üç",
-          scheduledAt: new Date(T0.getTime() - 72 * HOUR),
+          scheduledAt: OPENED,
         },
         {
           ...base,
@@ -277,6 +285,14 @@ describe("the recording release time (MDRS-288, e2e)", () => {
           title: "Beş",
           scheduledAt: new Date(T0.getTime() - 2 * HOUR),
           recordingAvailableAt: RELEASE,
+        },
+        {
+          ...base,
+          orderIndex: 5,
+          title: "Altı",
+          // Ahead, streamed: its recording may be added before it.
+          scheduledAt: AHEAD,
+          liveStreamUrl: STREAM,
         },
       ])
       .returning();
@@ -308,6 +324,9 @@ describe("the recording release time (MDRS-288, e2e)", () => {
           url: OPEN_URL,
           visibility: RecordingVisibility.ENROLLED,
           status: RecordingStatus.READY,
+          // Open since before, so announced, as 0057's backfill marks every
+          // READY recording: the release poll has nothing to tell of it.
+          notifiedAt: OPENED,
         },
       ]);
     await db().insert(enrollments).values({
@@ -343,9 +362,9 @@ describe("the recording release time (MDRS-288, e2e)", () => {
         availableAt: RELEASE.toISOString(),
         url: null,
       });
-      // "Hazır olunca hemen" is today's behaviour.
+      // "Hazır olunca hemen" is today's behaviour: open since its session began.
       expect(of(early, openLessonId)).toMatchObject({
-        availableAt: null,
+        availableAt: OPENED.toISOString(),
         url: OPEN_URL,
       });
       expectNoHeldLink(early);
@@ -605,6 +624,81 @@ describe("the recording release time (MDRS-288, e2e)", () => {
 
       await release().releaseDue(RELEASE);
       expect(await told()).toContain(uploadLessonId);
+    });
+  });
+
+  describe("a recording added before its session (26 October)", () => {
+    const addAhead = (body: Record<string, unknown> = {}) =>
+      request(app.getHttpServer())
+        .post(`/lessons/${aheadLessonId}/recordings`)
+        .set("Authorization", as(MUDERRIS_ID))
+        .send({ title: "Altı: celse kaydı", url: DRIVE, ...body });
+
+    it("is held until the session's start with no time set, then opens and is announced, and takes the stream's place", async () => {
+      const added = await addAhead().expect(201);
+      // The writer is the course team: answered with the link.
+      expect(added.body).toMatchObject({
+        url: DRIVE,
+        availableAt: AHEAD.toISOString(),
+      });
+      expect(await told()).toEqual([]);
+      expect(of(await list(TALEBE_ID), aheadLessonId)).toMatchObject({
+        status: "READY",
+        availableAt: AHEAD.toISOString(),
+        url: null,
+      });
+      expect(of(await list(MUDERRIS_ID), aheadLessonId).url).toBe(DRIVE);
+      const early = await session(aheadLessonId, TALEBE_ID);
+      expect(early.recording).toMatchObject({
+        availableAt: AHEAD.toISOString(),
+        url: null,
+      });
+      expect(JSON.stringify(early)).not.toContain(DRIVE);
+
+      expect(await release().releaseDue(new Date(AHEAD.getTime() - 1))).toBe(0);
+      expect(await told()).toEqual([]);
+
+      vi.setSystemTime(AHEAD);
+      expect(await release().releaseDue(AHEAD)).toBe(1);
+      expect(await told()).toEqual([aheadLessonId]);
+      expect(of(await list(TALEBE_ID), aheadLessonId).url).toBe(DRIVE);
+      const due = await session(aheadLessonId, TALEBE_ID);
+      expect(due.recording.url).toBe(DRIVE);
+      expect(due.liveStreamUrl).toBeNull();
+    });
+
+    it("waits for the session's start when the time set is earlier, and for the time when it is later", async () => {
+      await addAhead({
+        availableAt: new Date(AHEAD.getTime() - HOUR / 2).toISOString(),
+      }).expect(201);
+      expect(of(await list(TALEBE_ID), aheadLessonId)).toMatchObject({
+        availableAt: AHEAD.toISOString(),
+        url: null,
+      });
+      // The time stays as the course team set it; only the recording's
+      // `availableAt` takes the start into account.
+      const course = (
+        await get(`/courses/${courseId}`, MUDERRIS_ID).expect(200)
+      ).body as { weeks: { lessons: Record<string, unknown>[] }[] };
+      expect(
+        course.weeks[0].lessons.find((l) => l.id === aheadLessonId)
+      ).toMatchObject({
+        recordingAvailableAt: new Date(
+          AHEAD.getTime() - HOUR / 2
+        ).toISOString(),
+      });
+      expect(await release().releaseDue(new Date(AHEAD.getTime() - 1))).toBe(0);
+
+      await setAvailability(aheadLessonId, MUDERRIS_ID, {
+        availableAt: LATER.toISOString(),
+      }).expect(200);
+      expect(of(await list(TALEBE_ID), aheadLessonId).availableAt).toBe(
+        LATER.toISOString()
+      );
+      await release().releaseDue(AHEAD);
+      expect(await told()).not.toContain(aheadLessonId);
+      await release().releaseDue(LATER);
+      expect(await told()).toContain(aheadLessonId);
     });
   });
 });

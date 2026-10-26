@@ -1,5 +1,5 @@
 {
-  "Changes.note": "Yapıştırdığınız bağlantı celsenin kaydı olur ve hemen hazırdır: derse kayıtlı talebe ve ders ekibi onu Ders kayıtlarında ve izleme sayfasında görür, Herkese açık ise ders kapalı değilken herkes görür. Bir açılış zamanı seçtiyseniz talebe kaydı o zamandan sonra izler; ders ekibi hemen izler. Kayıt talebeye açıldığında derse kayıtlı talebeye bir kez “Kayıt eklendi” bildirimi gider; bildirim geri alınmaz ve kayıt sonra değişse de yeniden gitmez. Her değişiklik denetim kaydına yazılır. Bu sayfada bir kayıt silinemez, yalnızca değiştirilir; bir Bunny videosunun yerine başka bir bağlantı koyarsanız o video Bunny’den kalıcı olarak silinir.",
+  "Changes.note": "Yapıştırdığınız bağlantı celsenin kaydı olur ve hemen hazırdır: derse kayıtlı talebe ve ders ekibi onu Ders kayıtlarında ve izleme sayfasında görür, Herkese açık ise ders kapalı değilken herkes görür. Kaydı celseden önce de ekleyebilirsiniz: talebe onu celse başlamadan izleyemez. Bir açılış zamanı seçtiyseniz talebe kaydı o zamandan sonra izler; ders ekibi hemen izler. Kayıt talebeye açıldığında derse kayıtlı talebeye bir kez “Kayıt eklendi” bildirimi gider; bildirim geri alınmaz ve kayıt sonra değişse de yeniden gitmez. Her değişiklik denetim kaydına yazılır. Bu sayfada bir kayıt silinemez, yalnızca değiştirilir; bir Bunny videosunun yerine başka bir bağlantı koyarsanız o video Bunny’den kalıcı olarak silinir.",
   "Recordings.add": "Kayıt ekle",
   "Recordings.addLabel": "Kayıt ekle: {session}",
   "Recordings.added": "Kayıt eklendi",
@@ -34,6 +34,7 @@
   "Recordings.notYet": "Celse henüz yapılmadı",
   "Recordings.note": "Burada yükleme yoktur: kaydı kendiniz yükleyin, bağlantısını yapıştırın. Medaris yalnızca bağlantıyı saklar.",
   "Recordings.release.at": "Şu tarih ve saatte",
+  "Recordings.release.errors.beforeSession": "Celse {when} başlıyor; kayıt ondan önce açılamaz.",
   "Recordings.release.errors.past": "İleri bir tarih ve saat seçin.",
   "Recordings.release.legend": "Talebe kaydı ne zaman izlesin",
   "Recordings.release.ready": "Hazır olunca hemen",

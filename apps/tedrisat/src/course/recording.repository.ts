@@ -29,6 +29,7 @@ import {
   RecordingProvider,
   RecordingStatus,
   type RecordingVisibility,
+  recordingReleaseAt,
   uploadReplaces,
 } from "./domain/recording";
 import {
@@ -68,14 +69,17 @@ function toBunnyUpload(row: {
 }
 
 /**
- * `isReleased` as SQL (MDRS-288): the session's release time is unset or has
- * come by `now`. The recording's own READY is the caller's half.
+ * `recordingReleaseAt` as SQL: the later of the session's release time and
+ * its start. Postgres's `greatest` skips a null, so it is null only when
+ * both are.
  */
-const releasedBy = (now: Date) =>
-  or(
-    isNull(lessons.recordingAvailableAt),
-    lte(lessons.recordingAvailableAt, now)
-  );
+const releaseAt = sql`greatest(${lessons.recordingAvailableAt}, ${lessons.scheduledAt})`;
+
+/**
+ * `isReleased` as SQL (MDRS-288): the recording opens at no time, or that
+ * time has come by `now`. The recording's own READY is the caller's half.
+ */
+const releasedBy = (now: Date) => or(isNull(releaseAt), lte(releaseAt, now));
 
 /** A session's recording release time, as the course team set it (MDRS-288). */
 export interface IRecordingAvailability {
@@ -103,7 +107,7 @@ export interface IStoredRecording {
   status: RecordingStatus;
   /** Set on a BUNNY recording only (MDRS-116); never handed to a caller as is. */
   bunnyVideoId: string | null;
-  /** The session's release time (MDRS-288), read off its lesson. */
+  /** When it opens to talebe (`recordingReleaseAt`), read off its lesson. */
   availableAt: Date | null;
 }
 
@@ -176,6 +180,8 @@ function written(
     weekId: string;
     weekNumber: number;
     weekTitle: string;
+    scheduledAt: Date | null;
+    /** the session's release time as the course team set it */
     availableAt: Date | null;
   }
 ): IWrittenRecording {
@@ -193,7 +199,7 @@ function written(
       url: row.url,
       visibility: row.visibility,
       status: row.status,
-      availableAt: at.availableAt,
+      availableAt: recordingReleaseAt(at.availableAt, at.scheduledAt),
     },
     bunnyVideoId: row.bunnyVideoId,
   };
@@ -279,7 +285,7 @@ export class RecordingRepository {
 
   async findByLessonIds(lessonIds: string[]): Promise<IStoredRecording[]> {
     if (lessonIds.length === 0) return [];
-    return this.db
+    const rows = await this.db
       .select({
         id: lessonRecordings.id,
         lessonId: lessonRecordings.lessonId,
@@ -291,11 +297,16 @@ export class RecordingRepository {
         visibility: lessonRecordings.visibility,
         status: lessonRecordings.status,
         bunnyVideoId: lessonRecordings.bunnyVideoId,
-        availableAt: lessons.recordingAvailableAt,
+        recordingAvailableAt: lessons.recordingAvailableAt,
+        scheduledAt: lessons.scheduledAt,
       })
       .from(lessonRecordings)
       .innerJoin(lessons, eq(lessonRecordings.lessonId, lessons.id))
       .where(inArray(lessonRecordings.lessonId, lessonIds));
+    return rows.map(({ recordingAvailableAt, scheduledAt, ...row }) => ({
+      ...row,
+      availableAt: recordingReleaseAt(recordingAvailableAt, scheduledAt),
+    }));
   }
 
   /**
@@ -376,12 +387,13 @@ export class RecordingRepository {
 
   /**
    * Marks announced, and returns the sessions of, up to `limit` READY
-   * recordings whose session's release time has come by `now` and that were
-   * not announced yet (MDRS-288), earliest release first: the release
-   * poll's work. A recording with no release time is announced by the write
-   * or the encoding poll that made it READY, never here. The mark is checked
-   * again in the same statement, so a recording claimed by anyone else
-   * meanwhile is not returned.
+   * recordings whose release time (`recordingReleaseAt`: the course team's,
+   * or the session's start for one added before its session) has come by
+   * `now` and that were not announced yet (MDRS-288), earliest release
+   * first: the release poll's work. A recording that opens at no time is
+   * announced by the write or the encoding poll that made it READY, never
+   * here. The mark is checked again in the same statement, so a recording
+   * claimed by anyone else meanwhile is not returned.
    */
   async claimDueAnnouncements(now: Date, limit: number): Promise<string[]> {
     const due = this.db
@@ -392,11 +404,11 @@ export class RecordingRepository {
         and(
           eq(lessonRecordings.status, RecordingStatus.READY),
           isNull(lessonRecordings.notifiedAt),
-          isNotNull(lessons.recordingAvailableAt),
-          lte(lessons.recordingAvailableAt, now)
+          isNotNull(releaseAt),
+          lte(releaseAt, now)
         )
       )
-      .orderBy(asc(lessons.recordingAvailableAt))
+      .orderBy(asc(releaseAt))
       .limit(limit);
     const claimed = await this.db
       .update(lessonRecordings)
@@ -986,6 +998,7 @@ export class RecordingRepository {
           weekId: courseWeeks.id,
           weekNumber: courseWeeks.weekNumber,
           weekTitle: courseWeeks.title,
+          scheduledAt: lessons.scheduledAt,
           recordingAvailableAt: lessons.recordingAvailableAt,
         })
         .from(lessonRecordings)

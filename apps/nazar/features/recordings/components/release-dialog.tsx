@@ -30,6 +30,7 @@ export function ReleaseDialog({
   lessonId,
   session,
   held,
+  startsAt,
   timeZone,
   onClose,
   onDone,
@@ -39,6 +40,8 @@ export function ReleaseDialog({
   session: string;
   /** the ISO time the session holds; null: as soon as it is ready */
   held: string | null;
+  /** the session's ISO start, before which nothing opens; null with no time set */
+  startsAt: string | null;
   /** the course's zone */
   timeZone: string;
   onClose: () => void;
@@ -52,7 +55,7 @@ export function ReleaseDialog({
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState(() => releaseFormOf(held, timeZone));
   const [sent, setSent] = useState(false);
-  const problem = releaseProblem(form, held, timeZone, new Date());
+  const problem = releaseProblem(form, held, timeZone, new Date(), startsAt);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -126,6 +129,7 @@ export function ReleaseDialog({
         value={form}
         onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
         timeZone={timeZone}
+        startsAt={startsAt}
         problem={sent ? problem : null}
         disabled={pending}
       />

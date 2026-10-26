@@ -90,7 +90,7 @@ export interface SessionRecordingResponse {
      */
     status: RecordingStatus;
     /**
-     * When talebe may watch it (MDRS-288): its session's release time, set by the course team; null when it opens as soon as it is READY. Until then a talebe or a visitor is given the recording with a null `url`, and no Bunny link is signed for them; the course team (`recording.manage`) is given its link as before.
+     * When talebe may watch it (MDRS-288): the later of its session's release time, set by the course team, and its session's scheduled start, so a recording added ahead of its session waits for it; null, for a session with neither, when it opens as soon as it is READY. Until then a talebe or a visitor is given the recording with a null `url`, and no Bunny link is signed for them; the course team (`recording.manage`) is given its link as before.
      * @type {Date}
      * @memberof SessionRecordingResponse
      */
