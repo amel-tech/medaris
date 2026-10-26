@@ -1,5 +1,5 @@
 {
-  "Changes.note": "The link you paste becomes the session's recording and is ready at once: the enrolled talebe and the course team see it under Ders kayıtları and on the watch page, and when it is Herkese açık everyone does while the course is not closed. If you chose a release time, talebe watch it from then on; the course team watches it at once. When the recording opens to talebe, the enrolled talebe get one “Kayıt eklendi” notification; it cannot be taken back and is not sent again when the recording changes later. Every change is written to the audit log. A recording cannot be deleted on this page, only changed; putting another link in place of a Bunny video deletes that video from Bunny for good.",
+  "Changes.note": "The link you paste becomes the session's recording and is ready at once: the enrolled talebe and the course team see it under Ders kayıtları and on the watch page, and when it is Herkese açık everyone does while the course is not closed. You may add it before the session too: talebe cannot watch it before the session begins. If you chose a release time, talebe watch it from then on; the course team watches it at once. When the recording opens to talebe, the enrolled talebe get one “Kayıt eklendi” notification; it cannot be taken back and is not sent again when the recording changes later. Every change is written to the audit log. A recording cannot be deleted on this page, only changed; putting another link in place of a Bunny video deletes that video from Bunny for good.",
   "Recordings.add": "Add recording",
   "Recordings.addLabel": "Add a recording: {session}",
   "Recordings.added": "Recording added",
@@ -34,6 +34,7 @@
   "Recordings.notYet": "The session has not happened yet",
   "Recordings.note": "There is no upload here: upload the recording yourself and paste its link. Medaris stores only the link.",
   "Recordings.release.at": "At a date and time",
+  "Recordings.release.errors.beforeSession": "The session starts on {when}; the recording cannot open before it.",
   "Recordings.release.errors.past": "Choose a time in the future.",
   "Recordings.release.legend": "When talebe may watch the recording",
   "Recordings.release.ready": "As soon as it is ready",

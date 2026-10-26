@@ -201,7 +201,7 @@ export function RecordingDialog({
   const heldRelease =
     releaseWritten === undefined ? slot.availableAt : releaseWritten;
   const releaseIssue = releasing
-    ? releaseProblem(release, heldRelease, timeZone, new Date())
+    ? releaseProblem(release, heldRelease, timeZone, new Date(), slot.startsAt)
     : null;
   const releaseDelta =
     releasing && releaseIssue === null
@@ -633,6 +633,7 @@ export function RecordingDialog({
             setRelease((current) => ({ ...current, ...patch }))
           }
           timeZone={timeZone}
+          startsAt={slot.startsAt}
           problem={sent ? releaseIssue : null}
           disabled={pending || locked}
         />

@@ -3,6 +3,8 @@
 # a stopped upload continues with the same video signed again. Once tedrisat has made the video the session's
 # recording is PROCESSING, and its encoding poll (medaris.recording-encoding) takes it from there.
 # Only the Bunny'ye yükle tab is drawn; the Bağlantı yapıştır tab is medaris.recording-link.
+# Brought up to the pull request that lets a recording be added before its session (26 Oct 2026): Kayıt ekle is offered
+# on a session ahead too (slotMissing); the video waits for the session's start (medaris.recording-release).
 schema: delurio-graph/0
 kind: flow
 id: medaris.recording-upload
@@ -11,8 +13,8 @@ domain: medaris.live-media
 ui: medaris.recording-upload
 title: Upload a session's video to Bunny
 summary: >-
-  A holder of recording.upload presses Kayıt ekle on a session that has begun and holds no recording, Düzenle on one that
-  holds a recording, or Devam et on a Bunny upload still PROCESSING, and picks a video. A changed release time is written
+  A holder of recording.upload presses Kayıt ekle on a session that holds no recording, one ahead too, Düzenle on one
+  that holds a recording, or Devam et on a Bunny upload still PROCESSING, and picks a video. A changed release time is written
   first, on its own route. tedrisat then creates the video in Bunny, makes it the session's PROCESSING recording (the
   link or the video it replaces leaves the recording, a replaced video is queued for deletion) and signs its upload for
   24 hours; the file goes from the browser to Bunny. İptal stops it; Devam et signs the same video again and continues
@@ -78,7 +80,7 @@ context:
   toast: { values: [none, uploaded], initial: none }
 
 guards:
-  slotMissing: "existing in ['none', 'failedUpload'] and slot == 'started' and not cancelled" # apps/nazar/features/recordings/recordings.ts:158; slotState 'missing'
+  slotMissing: "existing in ['none', 'failedUpload'] and not cancelled" # apps/nazar/features/recordings/components/recordings-table.tsx:357; slotState 'missing' or 'notYet'
   slotRecorded: "existing in ['link', 'bunnyProcessing', 'bunnyReady']" # apps/nazar/features/recordings/components/recordings-table.tsx:318
   replaceVideo: "intent == 'edit' and existing in ['bunnyProcessing', 'bunnyReady']" # apps/nazar/features/recordings/recordings.ts:565; uploadBody sends replaceVideo from a Bunny recording's Düzenle
   activeVideo: "existing in ['bunnyProcessing', 'bunnyReady'] or meanwhile == 'uploadStarted'" # apps/tedrisat/src/course/domain/recording.ts:57; what uploadReplaces keeps without replaceVideo
@@ -131,12 +133,12 @@ states:
     by: human
     goal: true
     description: >-
-      The page opens for a holder of recording.manage or recording.upload. A session that has begun and holds no
-      recording offers Kayıt ekle; a recording offers Düzenle to a holder of recording.upload, whose dialog then holds the
+      The page opens for a holder of recording.manage or recording.upload. A session that holds no recording, one ahead
+      too, offers Kayıt ekle; a recording offers Düzenle to a holder of recording.upload, whose dialog then holds the
       upload that replaces it; a Bunny upload still PROCESSING also offers Devam et.
     source: apps/nazar/features/recordings/components/recordings-table.tsx:316
     on:
-      ADD: { guard: "canUpload and slotMissing", target: uploadDialog, effect: [intentAdd], say: "they press Kayıt ekle; Bunny'ye yükle is the tab it opens on", source: "apps/nazar/features/recordings/components/recordings-table.tsx:356" }
+      ADD: { guard: "canUpload and slotMissing", target: uploadDialog, effect: [intentAdd], say: "they press Kayıt ekle; Bunny'ye yükle is the tab it opens on", source: "apps/nazar/features/recordings/components/recordings-table.tsx:363" }
       EDIT: { guard: "canUpload and slotRecorded", target: uploadDialog, effect: [intentEdit], say: "they press Düzenle and take Bunny'ye yükle", source: "apps/nazar/features/recordings/components/recordings-table.tsx:334" }
       RESUME: { guard: "canUpload and existing == 'bunnyProcessing'", target: uploadDialog, effect: [intentResume], say: "they press Devam et", source: "apps/nazar/features/recordings/components/recordings-table.tsx:320" }
       NAVIGATE: { target: left, say: "they go to another page", source: "apps/nazar/app/ders/[dersId]/kayitlar/page.tsx:11" }
@@ -272,6 +274,5 @@ assertions:
   - { id: no-video-without-recording-upload, never: "state in ['starting', 'resigning', 'sending'] and not canUpload", say: "Only a holder of recording.upload makes a Bunny video or sends a file", source: "apps/tedrisat/src/course/recording-upload.controller.ts:77" }
   - { id: no-file-without-a-library, never: "state == 'sending' and library == 'notConfigured'", say: "No file is sent while the server has no Bunny library", source: "apps/tedrisat/src/course/recording-upload.service.ts:58" }
   - { id: adding-keeps-an-active-video, never: "state == 'sending' and intent == 'add' and activeVideo", say: "Kayıt ekle never takes the place of a Bunny video being prepared or ready", source: "apps/tedrisat/src/course/domain/recording.ts:61" }
-  - { id: no-add-before-the-session-begins, never: "state == 'starting' and intent == 'add' and slot == 'notYet'", say: "Kayıt ekle is not offered on a session that has not begun", source: "apps/nazar/features/recordings/recordings.ts:160" }
   - { id: release-time-before-the-bytes, never: "state == 'sending' and mustWriteRelease", say: "No byte goes before a changed release time is written", source: "apps/nazar/features/recordings/components/recording-dialog.tsx:259" }
   - { id: no-file-after-the-24-hours, never: "state == 'sending' and expired", say: "An upload whose 24 hours are over is never continued", source: "apps/tedrisat/src/course/recording-upload.service.ts:126" }

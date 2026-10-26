@@ -43,7 +43,8 @@ import { ReleaseDialog } from "./release-dialog";
  * The weeks of Ders kayıtları, newest first, each a table of its sessions and
  * the recording each holds: its title, where it lives (the provider chip, or
  * the host when it has no name), whether it plays yet and who may watch it. A
- * session that has begun and has none offers "Kayıt ekle"; a recording offers
+ * session that has none offers "Kayıt ekle", one still ahead too: its
+ * recording opens to talebe at its start (26 October); a recording offers
  * "Düzenle" to a holder of `recording.manage` and to a holder of
  * `recording.upload`, whose dialog then holds the upload that replaces the
  * link or the Bunny video, in any status (13 October). A Bunny upload still
@@ -60,7 +61,8 @@ import { ReleaseDialog } from "./release-dialog";
  *
  * "Erişim" (MDRS-288) says when talebe may watch each session's recording:
  * "Açık", "{when} açılır" or "Hazır olunca açılır", the time on the course's
- * clock, named when the viewer's shows another. A holder of
+ * clock, named when the viewer's shows another; never before the session's
+ * start (`opensAt`). A holder of
  * `recording.manage` changes it from the row ("Değiştir"), with or without a
  * recording, as in the recording's own dialog.
  */
@@ -351,7 +353,8 @@ export function RecordingsTable({
           }
           return resume ?? edit ?? dash;
         }
-        if (state === "missing" && (can.manage || can.upload)) {
+        // "missing" or "notYet": a session ahead takes its recording now and opens it at its start
+        if (can.manage || can.upload) {
           const add = (
             <Button
               variant="outline"
@@ -444,6 +447,7 @@ export function RecordingsTable({
           lessonId={releasing.lessonId}
           session={releasing.title}
           held={releasing.availableAt}
+          startsAt={releasing.startsAt}
           timeZone={courseTimeZone}
           onClose={() => setReleasing(null)}
           onDone={refresh}

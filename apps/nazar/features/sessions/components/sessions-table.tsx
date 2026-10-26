@@ -22,6 +22,7 @@ import { dayMonthClock } from "~/lib/dates";
 import type { Messages } from "~/lib/i18n/messages";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { ReleaseDialog } from "../../recordings/components/release-dialog";
+import { opensAt } from "../../recordings/recordings";
 import { changeSession, setLiveStream } from "../actions";
 import {
   courseMoved,
@@ -323,9 +324,10 @@ export function SessionsTable({
     );
   };
 
-  /** "Kayıt 14 Ekim 20:00’de açılır", while the session's release time is ahead. */
+  /** "Kayıt 14 Ekim 20:00’de açılır", while the session's release time is ahead, and never before its start. */
   const releaseNote = (row: SessionRow) => {
-    const at = releases[row.id] ? new Date(releases[row.id] as string) : null;
+    const held = releases[row.id];
+    const at = held ? opensAt(held, row.startsAt) : null;
     if (!at || at <= now) return null;
     return (
       <span className="mds-caption" data-testid="release-note">
@@ -763,6 +765,7 @@ export function SessionsTable({
           lessonId={releasing.id}
           session={fullWhen(releasing)}
           held={releases[releasing.id] ?? null}
+          startsAt={releasing.startsAt}
           timeZone={courseTimeZone}
           onClose={() => setReleasing(null)}
           onDone={refresh}

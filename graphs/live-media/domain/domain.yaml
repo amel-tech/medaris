@@ -20,7 +20,7 @@ entities:
       archivedAt: { type: [string, "null"], format: date-time, note: "an archived (hidden) session is not found by any write of this area" }
       isPreview: { type: boolean, note: "a sample session: its PUBLIC recording is sent to a caller who may not read content" }
       liveStreamUrl: { type: [string, "null"], format: uri, pattern: "^https://www\\.youtube\\.com/live/", sensitivity: internal, note: "course content; stored as https://www.youtube.com/live/<id>", source: "apps/tedrisat/src/database/schema/course.schema.ts:174" }
-      recordingAvailableAt: { type: [string, "null"], format: date-time, note: "the release time; kept on the session, so it is set before a recording exists and outlives a replaced one", source: "apps/tedrisat/src/database/schema/course.schema.ts:184" }
+      recordingAvailableAt: { type: [string, "null"], format: date-time, note: "the release time; kept on the session, so it is set before a recording exists and outlives a replaced one. A recording opens no earlier than the session's scheduledAt either way: its availableAt is the later of the two (recordingReleaseAt)", source: "apps/tedrisat/src/database/schema/course.schema.ts:184" }
     lifecycle:
       - "liveStreamUrl: null -> set -> changed -> null, by setLiveStream, only while the session is LIVE, not archived and not cancelled"
       - "recordingAvailableAt: null <-> a time, by setRecordingAvailability, addRecording or changeRecording"
@@ -280,6 +280,7 @@ invariants:
   # the rules of the actions above, each with its source
   - { id: getSession-1, rule: "liveStreamUrl from the scheduled start until scheduled end + 24 h, unless the session is cancelled or its recording is released", source: "apps/tedrisat/src/course/domain/recording.ts:196" }
   - { id: getSession-2, rule: "a recording's url only when READY and (released or the caller holds recording.manage)", source: "apps/tedrisat/src/course/domain/recording.ts:125" }
+  - { id: release-1, rule: "a recording is released once READY and its availableAt, the later of the session's recordingAvailableAt and scheduledAt, has come: never before its session begins, so it may be added ahead of it", source: "apps/tedrisat/src/course/domain/recording.ts:100" }
   - { id: getSession-3, rule: "a FAILED recording is never listed, to anyone", source: "apps/tedrisat/src/course/domain/recording.ts:160" }
   - { id: getSession-4, rule: "a BUNNY url is a player link built for this response, signed for 6 h when BUNNY_STREAM_TOKEN_KEY is set, unsigned otherwise", source: "apps/tedrisat/src/bunny-stream/bunny-signature.ts:99" }
   - { id: getSession-5, rule: "a PUBLIC recording is hidden from a caller without content when the course is closed or a policy keeps recordings from the public", source: "apps/tedrisat/src/course/course.service.ts:852" }

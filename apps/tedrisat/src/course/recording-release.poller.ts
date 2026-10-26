@@ -15,18 +15,20 @@ export const RELEASE_POLL_BATCH = 100;
 
 /**
  * "Kayıt eklendi" (MDRS-283) at the moment a recording opens to its talebe
- * (MDRS-288). A recording opens when it is READY and its session's release
- * time, if the course team set one, has come; every read decides that on its
- * own clock (`isReleased`), so nothing has to happen at the time for the
- * recording to play. Its announcement does, and this owns it:
+ * (MDRS-288). A recording opens when it is READY, its session has begun and
+ * the release time the course team set, if any, has come
+ * (`recordingReleaseAt`); every read decides that on its own clock
+ * (`isReleased`), so nothing has to happen at the time for the recording to
+ * play. Its announcement does, and this owns it:
  *
  * - `announce` is called after every write that may have opened a recording
  *   (a pasted link, a link replaced, a release time changed) and by the
- *   encoding poll when an upload turns READY. With no release time, or one
- *   already past, that is MDRS-283's moment: the write that made it READY.
+ *   encoding poll when an upload turns READY. With that time already past,
+ *   that is MDRS-283's moment: the write that made it READY.
  * - `releaseDue` runs every minute and announces the recordings whose
- *   release time came since, so a time moved before it fires moves the
- *   announcement with it.
+ *   release time came since, a recording added before its session at the
+ *   session's start, so a time moved before it fires moves the announcement
+ *   with it.
  *
  * Both claim the recording first (`notified_at`, one statement that checks
  * and marks), so it is announced once whoever gets there first, and never

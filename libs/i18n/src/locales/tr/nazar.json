@@ -2056,7 +2056,7 @@
       "title": "Kayıt erişimi",
       "legend": "Talebe kaydı ne zaman izlesin",
       "ready": "Hazır olunca hemen",
-      "readyHelp": "Kayıt hazır olur olmaz talebeye açılır.",
+      "readyHelp": "Kayıt, celse başladıktan sonra hazır olur olmaz talebeye açılır.",
       "at": "Şu tarih ve saatte",
       "atHelp": "Ders ekibi kaydı hemen izler; talebe bu zamandan sonra.",
       "whenLabel": "Açılış tarihi ve saati",
@@ -2070,11 +2070,12 @@
       "today": "Bugün",
       "saved": "Kayıt erişimi kaydedildi",
       "savedAt": "{session} celsesinin kaydı talebeye {when} açılır.",
-      "savedReady": "{session} celsesinin kaydı hazır olunca talebeye açılır.",
+      "savedReady": "{session} celsesinin kaydı, celse başladıktan sonra hazır olur olmaz talebeye açılır.",
       "failed": "Kayıt erişimi kaydedilemedi",
       "errors": {
         "empty": "Tarihi ve saati yazın.",
         "past": "İleri bir tarih ve saat seçin.",
+        "beforeSession": "Celse {when} başlıyor; kayıt ondan önce açılamaz.",
         "invalid": "Açılış zamanı okunamadı. Tarihi ve saati denetleyip yeniden deneyin."
       }
     },

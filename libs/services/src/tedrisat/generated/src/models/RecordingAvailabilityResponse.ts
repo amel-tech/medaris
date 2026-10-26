@@ -26,7 +26,7 @@ export interface RecordingAvailabilityResponse {
      */
     lessonId: string;
     /**
-     * When the session's talebe may watch its recording; null: as soon as it is READY.
+     * When the session's talebe may watch its recording, as the course team set it; null: as soon as it is READY. Never before the session's scheduled start, which the recording's own `availableAt` takes into account.
      * @type {Date}
      * @memberof RecordingAvailabilityResponse
      */

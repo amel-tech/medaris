@@ -5,13 +5,16 @@ import { Field } from "@medaris/ui/mds/field";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { DEFAULT_TIME_ZONE, timeZoneCity } from "@medaris/utils";
 import { useLocale, useTranslations } from "next-intl";
+import { dayMonthClock } from "~/lib/dates";
 import type { ReleaseForm, ReleaseProblem } from "../recordings";
 
 /**
  * "Talebe kaydı ne zaman izlesin" (MDRS-288): "Hazır olunca hemen", the
  * session's default, or "Şu tarih ve saatte" with the kit's date-time field
- * (MDRS-278). The time is a wall time on the course's clock, as the course is
- * planned, whatever the viewer's; the help names that clock. The form and
+ * (MDRS-278). Neither opens it before the session's start (26 October), and
+ * a time before it is refused with the start named. The time is a wall time
+ * on the course's clock, as the course is planned, whatever the viewer's;
+ * the help names that clock. The form and
  * its checks are `recordings.ts`'s; this only draws them. The asterisk is the
  * field's only `required`: an empty field is the page's own check, worded,
  * as the link's is, rather than a submit the kit's form holds back.
@@ -20,6 +23,7 @@ export function ReleaseFields({
   value,
   onChange,
   timeZone,
+  startsAt,
   problem,
   disabled = false,
 }: {
@@ -28,6 +32,8 @@ export function ReleaseFields({
   onChange: (patch: Partial<ReleaseForm>) => void;
   /** the course's zone */
   timeZone: string;
+  /** the session's ISO start, named when a time before it is refused */
+  startsAt: string | null;
   /** what is wrong, once the form was sent */
   problem: ReleaseProblem | null;
   disabled?: boolean;
@@ -70,7 +76,11 @@ export function ReleaseFields({
               ? t("Recordings.release.errors.past")
               : problem === "empty"
                 ? t("Recordings.release.errors.empty")
-                : undefined
+                : problem === "beforeSession" && startsAt
+                  ? t("Recordings.release.errors.beforeSession", {
+                      when: dayMonthClock(new Date(startsAt), locale, timeZone),
+                    })
+                  : undefined
           }
         >
           <DateTimeField
