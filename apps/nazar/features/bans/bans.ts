@@ -1,6 +1,9 @@
 import type {
+  BanResponse,
+  CreateBanDto,
   CreateMadrasahBanDto,
   MadrasahBanResponse,
+  RosterEnrollmentResponse,
 } from "@medaris/services/tedrisat";
 import { whenLabel } from "~/features/archive/archive";
 import { ALL, genitive, isUuid } from "~/features/courses/courses";
@@ -45,12 +48,20 @@ export function filtersOf(params: {
 }
 
 export function bansHref(madrasahId: string, filters: Filters): string {
+  return bansHrefAt(
+    `/medrese/${encodeURIComponent(madrasahId)}/yasaklamalar`,
+    filters
+  );
+}
+
+/** The address of a Yasaklamalar list at `path` (a medrese's or a course's) with these filters. */
+export function bansHrefAt(path: string, filters: Filters): string {
   const query = new URLSearchParams();
   if (filters.status === "LIFTED") query.set("durum", "kaldirilan");
   if (filters.scope === MADRASAH_SCOPE) query.set("kapsam", "medrese");
   else if (filters.scope !== ALL) query.set("kapsam", filters.scope);
   const search = query.toString();
-  return `/medrese/${encodeURIComponent(madrasahId)}/yasaklamalar${search ? `?${search}` : ""}`;
+  return `${path}${search ? `?${search}` : ""}`;
 }
 
 /** What the list asks the API for: "Medrese düzeyi" is a scope, a course is its own parameter, "Bütün kapsamlar" none. */
@@ -247,6 +258,75 @@ export function banRows(
     };
   });
 }
+
+// ---- a course's Yasaklamalar --------------------------------------------------------
+
+/** The path of a course's Yasaklamalar; its only filter is the tab (`?durum=kaldirilan`). */
+export const courseBansPath = (courseId: string): string =>
+  `/ders/${encodeURIComponent(courseId)}/yasaklamalar`;
+
+/**
+ * A köşk's ban as a row of the course list: `GET /kosks/:koskId/bans` says
+ * only whether the caller may lift it, so the two medrese decisions are not
+ * offered (a course with no medrese has no medrese to widen the ban to).
+ */
+export function fromKoskBan(ban: BanResponse): MadrasahBanResponse {
+  const { viewerMayExtend: _extend, ...rest } = ban;
+  return {
+    ...rest,
+    viewerMayEscalate: false,
+    viewerMayRequestPermanent: false,
+    permanentRequestedAt: null,
+  };
+}
+
+/** One course's bans out of a köşk's list: the köşk-wide bans and other courses' are left out. */
+export const ofCourse = (
+  bans: readonly BanResponse[],
+  courseId: string
+): MadrasahBanResponse[] =>
+  bans
+    .filter((ban) => ban.scope === "COURSE" && ban.courseId === courseId)
+    .map(fromKoskBan);
+
+export interface Talebe {
+  id: string;
+  name: string;
+}
+
+/** Whom a course's "Yasakla" offers: its own talebe (applied, enrolled or completed) not already barred, once each, by name. */
+export function talebeOf(
+  roster: ReadonlyArray<
+    Pick<
+      RosterEnrollmentResponse,
+      "userId" | "studentName" | "studentEmail" | "status" | "ban"
+    >
+  >,
+  locale: string,
+  unknown: string
+): Talebe[] {
+  const seen = new Map<string, Talebe>();
+  for (const row of roster) {
+    if (row.status === "REVOKED" || row.ban || seen.has(row.userId)) continue;
+    seen.set(row.userId, {
+      id: row.userId,
+      name: row.studentName ?? row.studentEmail ?? unknown,
+    });
+  }
+  return [...seen.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, locale)
+  );
+}
+
+/** The body of a course's "Yasakla" (`POST /courses/:courseId/bans`): always that one course. */
+export const courseBanRequest = (input: {
+  userId: string;
+  reason: string;
+}): CreateBanDto => ({
+  userId: input.userId,
+  scope: "COURSE",
+  reason: input.reason.trim(),
+});
 
 // ---- the dialogs ---------------------------------------------------------------------
 
