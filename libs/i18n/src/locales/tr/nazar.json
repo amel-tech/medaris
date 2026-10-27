@@ -984,6 +984,20 @@
       "failed": "Cevap kaydedilemedi. Biraz sonra yeniden deneyin."
     }
   },
+  "CourseOverview": {
+    "openInTedris": "Tedris’te aç",
+    "openInTedrisHint": "(yeni sekmede açılır)",
+    "listLabel": "Bekleyen işler",
+    "boxes": {
+      "applications": "Bekleyen başvuru",
+      "homework": "Değerlendirme bekleyen ödev",
+      "withoutAccess": "Katılım yolu eksik celse",
+      "nextSession": "Sıradaki celse"
+    },
+    "empty": "Bekleyen işiniz yok.",
+    "loadFailedTitle": "Ders yüklenemedi",
+    "loadFailed": "Dersin bilgileri şu anda okunamadı. Biraz sonra yeniden deneyin."
+  },
   "Homework": {
     "title": "Ödevler",
     "subtitle": "{name} dersinde talebelerin celselere teslim ettiği ödevler.",
