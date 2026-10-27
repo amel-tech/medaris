@@ -123,11 +123,9 @@ describe("the shared placeholder under a course", () => {
 });
 
 describe("the scope's own pages", () => {
-  it("are placeholders named Genel bakış and Bildirimler until their packages arrive", async () => {
+  it("is a placeholder named Genel bakış until its package arrives", async () => {
     const overview = (await import("../app/ders/[dersId]/page")).default();
     expect(textOf(await html(overview))).toMatch(/^Genel bakış /);
-    const bell = (await import("../app/(global)/bildirimler/page")).default();
-    expect(textOf(await html(bell))).toMatch(/^Bildirimler /);
   });
 });
 
