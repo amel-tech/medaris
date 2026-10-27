@@ -984,6 +984,20 @@
       "failed": "The answer could not be saved. Try again in a moment."
     }
   },
+  "CourseOverview": {
+    "openInTedris": "Open in Tedris",
+    "openInTedrisHint": "(opens in a new tab)",
+    "listLabel": "Waiting work",
+    "boxes": {
+      "applications": "Pending applications",
+      "homework": "Homework awaiting review",
+      "withoutAccess": "Sessions missing a way to join",
+      "nextSession": "Next session"
+    },
+    "empty": "Nothing is waiting for you.",
+    "loadFailedTitle": "The course could not be loaded",
+    "loadFailed": "The course's details could not be read right now. Try again in a moment."
+  },
   "Homework": {
     "title": "Homework",
     "subtitle": "The homework talebe handed in on the sessions of {name}.",
