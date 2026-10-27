@@ -1140,6 +1140,12 @@
     "savedMadrasah": "{name} can no longer reach any course of the medrese.",
     "failedTitle": "The ban could not be placed"
   },
+  "CourseBans": {
+    "talebeLabel": "Talebe",
+    "talebePlaceholder": "Choose a talebe",
+    "noTalebe": "No talebe of this course can be barred.",
+    "rosterFailed": "The course's talebe could not be read; you cannot bar anyone right now."
+  },
   "Reasons": {
     "required": "required field",
     "reasonRequired": "Write a reason.",

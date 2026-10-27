@@ -1140,6 +1140,12 @@
     "savedMadrasah": "{name} artık medresenin hiçbir dersine erişemez.",
     "failedTitle": "Yasak konamadı"
   },
+  "CourseBans": {
+    "talebeLabel": "Talebe",
+    "talebePlaceholder": "Talebe seçin",
+    "noTalebe": "Bu derste yasaklanabilecek talebe yok.",
+    "rosterFailed": "Dersin talebeleri okunamadı; şu an yasaklayamazsınız."
+  },
   "Reasons": {
     "required": "zorunlu alan",
     "reasonRequired": "Bir gerekçe yazın.",

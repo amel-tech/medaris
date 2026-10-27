@@ -1140,6 +1140,12 @@
     "savedMadrasah": "لم يعد {name} قادرًا على الوصول إلى أي درس في المدرسة.",
     "failedTitle": "تعذّر فرض الحظر"
   },
+  "CourseBans": {
+    "talebeLabel": "الطالب",
+    "talebePlaceholder": "اختر طالبًا",
+    "noTalebe": "لا يوجد في هذا الدرس طالب يمكن حظره.",
+    "rosterFailed": "تعذّرت قراءة طلاب الدرس؛ لا يمكنك الحظر الآن."
+  },
   "Reasons": {
     "required": "حقل مطلوب",
     "reasonRequired": "اكتبوا سببًا.",
