@@ -42,13 +42,7 @@ describe("the menu of a medrese (nazir 21)", () => {
           ["archive", "/medrese/m-1/arsiv"],
         ],
       ],
-      [
-        "management",
-        [
-          ["rules", "/medrese/m-1/kabul-kurallari"],
-          ["settings", "/medrese/m-1/ayarlar"],
-        ],
-      ],
+      ["management", [["settings", "/medrese/m-1/ayarlar"]]],
     ]);
   });
 
@@ -200,8 +194,8 @@ describe("the item the viewer is on", () => {
 
   it("holds for a page below a section", () => {
     expect(activeItemId(sections, "/medrese/m-1/dersler/yeni")).toBe("courses");
-    expect(activeItemId(sections, "/medrese/m-1/kabul-kurallari")).toBe(
-      "rules"
+    expect(activeItemId(sections, "/medrese/m-1/itirazlar/i-1")).toBe(
+      "appeals"
     );
   });
 
@@ -235,7 +229,6 @@ describe("the pages behind the menu", () => {
       "yasaklamalar",
       "itirazlar",
       "arsiv",
-      "kabul-kurallari",
       "ayarlar",
     ]);
     expect(sectionSegments("ders")).toEqual([
@@ -266,6 +259,8 @@ describe("the pages behind the menu", () => {
     expect(findSegment("medrese", "mufredat")).toBeNull();
     expect(findSegment("medrese", "")).toBeNull();
     expect(findSegment("medrese", "Dersler")).toBeNull();
+    // Kabul kuralları left the menu: its one rule is a policy of Medrese ayarları.
+    expect(findSegment("medrese", "kabul-kurallari")).toBeNull();
   });
 
   it("gives every segment a different address", () => {

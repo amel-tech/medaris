@@ -104,7 +104,6 @@ describe("the shell of a medrese (nazir 21)", () => {
       "İtirazlar",
       "Arşiv",
       "Yönetim",
-      "Kabul kuralları",
       "Medrese ayarları",
     ]);
     // Dersler carries the courses with an application, Bildirimler the unread.
@@ -214,7 +213,7 @@ describe("the shell of a course (nazir 22)", () => {
       "Ders nazırları",
       "Ders ayarları",
     ]);
-    expect(aside).not.toContain("Kabul kuralları");
+    expect(aside).not.toContain("İtirazlar");
     expect(aside).toMatch(
       /Celseler<span class="mds-nav-item__count">1<span class="mds-visually-hidden"> katılım yolu eksik/
     );

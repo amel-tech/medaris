@@ -89,10 +89,7 @@ export const NAV: Readonly<Record<ScopeKind, readonly NavSectionDef[]>> = {
     },
     {
       id: "management",
-      entries: [
-        { id: "rules", icon: "shieldCheck", to: page("kabul-kurallari") },
-        { id: "settings", icon: "settings", to: page("ayarlar") },
-      ],
+      entries: [{ id: "settings", icon: "settings", to: page("ayarlar") }],
     },
   ],
   ders: [
