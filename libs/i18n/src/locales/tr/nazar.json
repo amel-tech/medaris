@@ -1181,6 +1181,47 @@
       "failedTitle": "Talep açılamadı"
     }
   },
+  "Appeals": {
+    "title": "İtirazlar",
+    "caption": "Köşkün reddettiği ders talepleri",
+    "columns": {
+      "course": "Ders",
+      "kosk": "Köşk",
+      "rejectReason": "Ret gerekçesi",
+      "status": "İtiraz durumu",
+      "note": "Karar notu",
+      "actions": "İşlem"
+    },
+    "status": {
+      "NONE": "Yok",
+      "PENDING": "Bekliyor",
+      "ACCEPTED": "Kabul edildi",
+      "REJECTED": "Reddedildi"
+    },
+    "open": "İtiraz aç",
+    "openLabel": "İtiraz aç: {title}",
+    "empty": "Köşkün reddettiği ders talebi yok.",
+    "loadFailedTitle": "İtirazlar okunamadı",
+    "loadFailed": "İtirazlar şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "dialog": {
+      "title": "İtiraz aç",
+      "label": "Gerekçe",
+      "required": "zorunlu alan",
+      "reasonRequired": "Bir gerekçe yazın.",
+      "cancel": "Vazgeç",
+      "submit": "Gönder",
+      "done": "İtiraz gönderildi",
+      "doneBody": "{title} için itirazınız Medaris yönetimine iletildi.",
+      "failedTitle": "İtiraz gönderilemedi"
+    },
+    "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
+      "exists": "Bu talebe zaten itiraz edildi.",
+      "notRejected": "Bu talep artık reddedilmiş değil.",
+      "gone": "Bu talep artık yok.",
+      "forbidden": "Bu işlem için izniniz yok."
+    }
+  },
   "Offsite": {
     "title": "Medrese dışı ders talebi",
     "breadcrumb": "Sayfa yolu",
