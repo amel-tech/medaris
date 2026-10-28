@@ -1,7 +1,6 @@
 import { withoutLocaleSegment } from "@medaris/ui/lib/locale-preference";
 import { type NextRequest, NextResponse } from "next/server";
 import { proxy as authProxy } from "~/lib/auth";
-import { locales } from "~/lib/i18n/routing";
 import { isPublicPath } from "~/lib/public-paths";
 
 /**
@@ -16,8 +15,11 @@ import { isPublicPath } from "~/lib/public-paths";
  * same page without the language: the language is the `medaris-locale`
  * cookie's.
  */
+/** Every language an address from before MDRS-248 may start with. */
+const OLD_LOCALE_SEGMENTS = ["tr", "en", "ar"];
+
 export default function proxy(request: NextRequest) {
-  const bare = withoutLocaleSegment(request.nextUrl, locales);
+  const bare = withoutLocaleSegment(request.nextUrl, OLD_LOCALE_SEGMENTS);
   if (bare) return NextResponse.redirect(new URL(bare, request.url), 308);
 
   return authProxy(request, { isPublicPath });

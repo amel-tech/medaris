@@ -35,10 +35,11 @@ describe("the request's language", () => {
     expect(await localeOfRequest()).toBe("tr");
   });
 
-  it("is the cookie's when it names one of the languages", async () => {
+  it("is Turkish only: English and Arabic are switched off", async () => {
+    expect(routing.locales).toEqual(["tr"]);
     for (const locale of ["tr", "en", "ar"]) {
       jar.cookies = { "medaris-locale": locale };
-      expect(await localeOfRequest()).toBe(locale);
+      expect(await localeOfRequest()).toBe("tr");
     }
   });
 

@@ -38,19 +38,19 @@ describe("the next-intl request config", () => {
     expect((await resolve()).locale).toBe("tr");
   });
 
-  it("follows the language chosen in Tedris or Nizam (MDRS-248)", async () => {
+  it("is Turkish only: an old English or Arabic choice falls back", async () => {
     for (const locale of ["tr", "en", "ar"]) {
       jar.locale = locale;
-      expect((await resolve()).locale).toBe(locale);
+      expect((await resolve()).locale).toBe("tr");
     }
   });
 
-  it("loads only the common and nazar namespaces, in that language", async () => {
+  it("loads only the common and nazar namespaces, in Turkish", async () => {
     jar.locale = "en";
     const { messages } = await resolve();
     expect(Object.keys(messages).sort()).toEqual(["common", "nazar"]);
-    expect((messages.nazar.Account as Record<string, string>).language).toBe(
-      "Language"
+    expect((messages.nazar.Account as Record<string, string>).timeZone).toBe(
+      "Saat dilimi"
     );
   });
 

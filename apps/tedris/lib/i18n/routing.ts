@@ -1,6 +1,9 @@
 import { defineRouting } from "next-intl/routing";
 
-export const locales = ["tr", "en", "ar"] as const;
+// Turkish only for now: English and Arabic are switched off, and so is the
+// language menu. Their messages stay in `@medaris/i18n` for when they return;
+// a `medaris-locale` cookie naming one of them falls back to Turkish.
+export const locales = ["tr"] as const;
 export type MadrasahLocale = (typeof locales)[number];
 
 /**

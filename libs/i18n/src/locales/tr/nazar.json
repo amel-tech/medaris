@@ -100,7 +100,7 @@
   },
   "Account": {
     "pageTitle": "Hesap ve ayarlar",
-    "pageSubtitle": "Görevleriniz, izinleriniz, saat diliminiz ve diliniz.",
+    "pageSubtitle": "Görevleriniz, izinleriniz ve saat diliminiz.",
     "tasksTitle": "Görevleriniz",
     "tasksIntro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
     "noNazirNote": "Medrese nazırlığınız ya da ders nazırlığınız yok.",
@@ -186,7 +186,7 @@
     },
     "loadFailedTitle": "Görevleriniz yüklenemedi",
     "loadFailed": "Görevleriniz ve izinleriniz şu an okunamadı. Sayfayı yenileyerek yeniden deneyin.",
-    "timeTitle": "Saat ve dil",
+    "timeTitle": "Saat dilimi",
     "timeZone": "Saat dilimi",
     "timeZoneHelp": "Celse saatleri bu saat diliminde gösterilir. Seçtiğiniz an kaydedilir.",
     "timeZoneOther": "Diğer…",

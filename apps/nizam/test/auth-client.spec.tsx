@@ -154,11 +154,11 @@ describe("redirectIfUnauthenticated (an action's answer on the client)", () => {
   it("hands an unauthenticated answer, reauth and all, to handleUnauthenticated with the page's language (MDRS-274, MDRS-248)", () => {
     auth.handleUnauthenticated.mockReturnValue(true);
     window.history.replaceState(null, "", "/kosks/k1?sekme=x");
-    document.documentElement.lang = "ar";
+    document.documentElement.lang = "tr";
     const answer = { kind: "unauthenticated", reauth: true } as const;
     expect(redirectIfUnauthenticated(answer)).toBe(true);
     expect(auth.handleUnauthenticated).toHaveBeenCalledWith(answer, {
-      locale: "ar",
+      locale: "tr",
     });
   });
 

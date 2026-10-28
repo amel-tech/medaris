@@ -125,16 +125,15 @@ describe("profile model", () => {
 });
 
 describe("Hesap cards (design tedris/34)", () => {
-  it("shows the names, a read-only e-mail, the language choice, the calendar link and the sign-out link", async () => {
+  it("shows the names, a read-only e-mail, no language choice, the calendar link and the sign-out link", async () => {
     const host = await mount();
     expect(input(host, "givenName").value).toBe("Zeynep Betül");
     expect(input(host, "familyName").value).toBe("Karahanlı");
     const email = input(host, "email");
     expect(email.value).toBe("zeynep.karahanli@example.com");
     expect(email.readOnly).toBe(true);
-    // MDRS-275: a language select on the page's locale, not a read-only field
-    const language = host.querySelector('[aria-label="Dil"]');
-    expect(language?.textContent).toContain("Türkçe");
+    // Turkish only: the language select is gone
+    expect(host.querySelector('[aria-label="Dil"]')).toBeNull();
     expect(host.querySelector('input[name="language"]')).toBeNull();
     const hrefs = [...host.querySelectorAll("a")].map((a) =>
       a.getAttribute("href")
