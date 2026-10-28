@@ -31,6 +31,7 @@ DELETE /nizam/medaris-nazims/:userId -> no AuthzGuard
 DELETE /nizam/permission-groups/:id -> no AuthzGuard
 DELETE /questions/:questionId -> course.view on byQuestionCourse
 GET / -> public
+GET /appeals -> no AuthzGuard
 GET /archive -> exempt
 GET /archive/:type/:id/impact -> exempt
 GET /archive/scopes -> exempt
@@ -103,6 +104,7 @@ GET /lessons/:id/submission/files/:fileId -> course.view on byLessonCourse
 GET /lessons/:id/submission/review-files/:fileId -> course.view on byLessonCourse
 GET /madrasahs -> madrasah.view on madrasah (public)
 GET /madrasahs/:id -> madrasah.view on byExistingMadrasah (public)
+GET /madrasahs/:id/appeals -> madrasah.appeal_open on byExistingMadrasah
 GET /madrasahs/:id/archive -> madrasah.course_hide | madrasah.hide | platform.madrasah_edit | madrasah.settings_edit on byExistingMadrasah
 GET /madrasahs/:id/badge-counts -> madrasah.students_view on byExistingMadrasah
 GET /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadrasah
@@ -172,6 +174,8 @@ PATCH /me/public-profile -> no AuthzGuard
 PATCH /nizam/partner-applications/:clientId -> no AuthzGuard
 PATCH /questions/:questionId -> course.view on byQuestionCourse
 PATCH /recordings/:id -> recording.manage on byRecordingCourse
+POST /appeals/:id/accept -> no AuthzGuard
+POST /appeals/:id/reject -> no AuthzGuard
 POST /archive/:type/:id/restore -> exempt
 POST /bans/:banId/escalate -> no AuthzGuard
 POST /bans/:banId/extend -> no AuthzGuard
@@ -231,6 +235,7 @@ POST /lessons/:id/recordings/uploads/:videoId/signature -> recording.upload on b
 POST /lessons/:id/resources/files -> session.manage on byLessonCourse
 POST /lessons/:id/submission/files -> course.view on byLessonCourse
 POST /madrasahs -> platform.madrasah_create on madrasah
+POST /madrasahs/:id/appeals -> madrasah.appeal_open on byExistingMadrasah
 POST /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadrasah
 POST /madrasahs/:id/courses -> madrasah.course_open on byExistingMadrasah
 POST /madrasahs/:id/courses/:courseId/hide -> madrasah.course_hide on byExistingMadrasah

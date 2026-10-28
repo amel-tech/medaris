@@ -51,15 +51,23 @@ export class NizamDashboardService {
       : new Set((await this.assignments.myPermissions(user)).permissions);
     const sections = sectionsFor(chief, held);
 
-    const [numbers, applications, deckRequests, passive, latestBans, dbName] =
-      await Promise.all([
-        this.repo.platformNumbers(),
-        sections.applications ? this.repo.applications(CARD_ROWS) : null,
-        sections.deckRequests ? this.repo.deckRequests(CARD_ROWS) : null,
-        this.inactive.brief(),
-        sections.bans ? this.latestBans(user) : null,
-        this.repo.givenNameOf(user.sub),
-      ]);
+    const [
+      numbers,
+      applications,
+      deckRequests,
+      appeals,
+      passive,
+      latestBans,
+      dbName,
+    ] = await Promise.all([
+      this.repo.platformNumbers(),
+      sections.applications ? this.repo.applications(CARD_ROWS) : null,
+      sections.deckRequests ? this.repo.deckRequests(CARD_ROWS) : null,
+      sections.appeals ? this.repo.pendingAppeals() : null,
+      this.inactive.brief(),
+      sections.bans ? this.latestBans(user) : null,
+      this.repo.givenNameOf(user.sub),
+    ]);
 
     const passiveOf = (type: "KOSK" | "MADRASAH" | "COURSE") =>
       passive.filter((p) => p.type === type).length;
@@ -71,9 +79,9 @@ export class NizamDashboardService {
       pendingTotals: {
         koskApplications: applications?.count ?? null,
         deckPublishRequests: deckRequests?.count ?? null,
-        // Appeals and permanent-ban requests have no model yet (nizam/44 and
-        // 45 are a later phase): a viewer who would see them has none waiting.
-        appeals: sections.appeals ? 0 : null,
+        appeals,
+        // Permanent-ban requests have no model yet (nizam/45 is a later
+        // phase): a viewer who would see them has none waiting.
         permanentBanRequests: sections.permanentBans ? 0 : null,
       },
       platformCounts: {

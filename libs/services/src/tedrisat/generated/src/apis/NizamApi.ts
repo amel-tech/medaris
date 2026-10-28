@@ -15,6 +15,7 @@
 
 import * as runtime from '../runtime';
 import type {
+  AppealListResponse,
   AppointMedarisNazimDto,
   ApproveKoskApplicationDto,
   AssignInactiveScopeDto,
@@ -43,6 +44,7 @@ import type {
   PermissionGroupResponse,
   PlatformPolicyKey,
   PlatformPolicyListResponse,
+  RejectAppealDto,
   RejectReasonDto,
   ScopedPolicyListResponse,
   SetNazimGrantsDto,
@@ -52,6 +54,8 @@ import type {
   UpdatePermissionGroupDto,
 } from '../models/index';
 import {
+    AppealListResponseFromJSON,
+    AppealListResponseToJSON,
     AppointMedarisNazimDtoFromJSON,
     AppointMedarisNazimDtoToJSON,
     ApproveKoskApplicationDtoFromJSON,
@@ -108,6 +112,8 @@ import {
     PlatformPolicyKeyToJSON,
     PlatformPolicyListResponseFromJSON,
     PlatformPolicyListResponseToJSON,
+    RejectAppealDtoFromJSON,
+    RejectAppealDtoToJSON,
     RejectReasonDtoFromJSON,
     RejectReasonDtoToJSON,
     ScopedPolicyListResponseFromJSON,
@@ -123,6 +129,10 @@ import {
     UpdatePermissionGroupDtoFromJSON,
     UpdatePermissionGroupDtoToJSON,
 } from '../models/index';
+
+export interface AcceptAppealRequest {
+    id: string;
+}
 
 export interface AppointMedarisNazimRequest {
     appointMedarisNazimDto: AppointMedarisNazimDto;
@@ -185,6 +195,10 @@ export interface GetPermissionGroupUsersRequest {
     id: string;
 }
 
+export interface ListAppealsRequest {
+    status?: ListAppealsStatusEnum;
+}
+
 export interface ListAuditLogRequest {
     actor?: string;
     type?: AuditType;
@@ -207,6 +221,11 @@ export interface ListKoskApplicationsRequest {
 export interface ReadDeckPublishRequestCardsRequest {
     id: string;
     all?: boolean;
+}
+
+export interface RejectAppealRequest {
+    id: string;
+    rejectAppealDto: RejectAppealDto;
 }
 
 export interface RejectDeckPublishRequestRequest {
@@ -258,6 +277,49 @@ export interface ViewInactiveScopeRequest {
  * 
  */
 export class NizamApi extends runtime.BaseAPI {
+
+    /**
+     * The course request goes back to PENDING and the köşk decides it again. 409 APPEAL_NOT_PENDING when it was decided already. Written to the audit log (appeal.accept).
+     * Accept the appeal (Kabul et)
+     */
+    async acceptAppealRaw(requestParameters: AcceptAppealRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling acceptAppeal().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/appeals/{id}/accept`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The course request goes back to PENDING and the köşk decides it again. 409 APPEAL_NOT_PENDING when it was decided already. Written to the audit log (appeal.accept).
+     * Accept the appeal (Kabul et)
+     */
+    async acceptAppeal(requestParameters: AcceptAppealRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.acceptAppealRaw(requestParameters, initOverrides);
+    }
 
     /**
      * nizam/12. The appointment and the permissions end together at `expiresAt`. Written to the audit log.
@@ -1067,6 +1129,46 @@ export class NizamApi extends runtime.BaseAPI {
     }
 
     /**
+     * Waiting ones oldest first, decided ones newest first, with both tab counts.
+     * Appeals (Bekleyen / Karara bağlanan)
+     */
+    async listAppealsRaw(requestParameters: ListAppealsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AppealListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/appeals`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AppealListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Waiting ones oldest first, decided ones newest first, with both tab counts.
+     * Appeals (Bekleyen / Karara bağlanan)
+     */
+    async listAppeals(requestParameters: ListAppealsRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AppealListResponse> {
+        const response = await this.listAppealsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Filters combine. Fifty records a page; pass `nextCursor` as `cursor` for the older ones. Köşk nazımları, başmüderrisler and everyone else get 403.
      * The audit trail, newest first
      */
@@ -1366,6 +1468,59 @@ export class NizamApi extends runtime.BaseAPI {
     async readDeckPublishRequestCards(requestParameters: ReadDeckPublishRequestCardsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DeckRequestCardsResponse> {
         const response = await this.readDeckPublishRequestCardsRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * The decision note is required; the request stays refused. 409 APPEAL_NOT_PENDING when it was decided already. Written to the audit log (appeal.reject).
+     * Refuse the appeal (Reddet)
+     */
+    async rejectAppealRaw(requestParameters: RejectAppealRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling rejectAppeal().'
+            );
+        }
+
+        if (requestParameters['rejectAppealDto'] == null) {
+            throw new runtime.RequiredError(
+                'rejectAppealDto',
+                'Required parameter "rejectAppealDto" was null or undefined when calling rejectAppeal().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/appeals/{id}/reject`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RejectAppealDtoToJSON(requestParameters['rejectAppealDto']),
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * The decision note is required; the request stays refused. 409 APPEAL_NOT_PENDING when it was decided already. Written to the audit log (appeal.reject).
+     * Refuse the appeal (Reddet)
+     */
+    async rejectAppeal(requestParameters: RejectAppealRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.rejectAppealRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -1850,6 +2005,14 @@ export class NizamApi extends runtime.BaseAPI {
 
 }
 
+/**
+ * @export
+ */
+export const ListAppealsStatusEnum = {
+    Pending: 'PENDING',
+    Decided: 'DECIDED'
+} as const;
+export type ListAppealsStatusEnum = typeof ListAppealsStatusEnum[keyof typeof ListAppealsStatusEnum];
 /**
  * @export
  */

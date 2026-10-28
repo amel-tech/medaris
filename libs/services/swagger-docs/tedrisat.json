@@ -12979,6 +12979,238 @@
         ]
       }
     },
+    "/madrasahs/{id}/appeals": {
+      "get": {
+        "description": "Every course request of the medrese a köşk refused, and every one it appealed (an accepted appeal sends the request back to PENDING), newest first, each with its appeal or null.",
+        "operationId": "listMadrasahAppeals",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MadrasahAppealRowResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The medrese's refused course requests and their appeals",
+        "tags": [
+          "madrasahs"
+        ]
+      },
+      "post": {
+        "description": "Only a REJECTED request of this medrese, once: 409 APPEAL_REQUEST_NOT_REJECTED or APPEAL_EXISTS otherwise; 404 APPEAL_REQUEST_NOT_FOUND for a request that is not the medrese's. Written to the audit log (appeal.create).",
+        "operationId": "createMadrasahAppeal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppealDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealCreatedResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "APPEAL_REQUEST_NOT_REJECTED or APPEAL_EXISTS"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Appeal a köşk's refusal of the medrese's course request",
+        "tags": [
+          "madrasahs"
+        ]
+      }
+    },
+    "/appeals": {
+      "get": {
+        "description": "Waiting ones oldest first, decided ones newest first, with both tab counts.",
+        "operationId": "listAppeals",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "PENDING",
+                "DECIDED"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppealListResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Appeals (Bekleyen / Karara bağlanan)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/appeals/{id}/accept": {
+      "post": {
+        "description": "The course request goes back to PENDING and the köşk decides it again. 409 APPEAL_NOT_PENDING when it was decided already. Written to the audit log (appeal.accept).",
+        "operationId": "acceptAppeal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "APPEAL_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept the appeal (Kabul et)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
+    "/appeals/{id}/reject": {
+      "post": {
+        "description": "The decision note is required; the request stays refused. 409 APPEAL_NOT_PENDING when it was decided already. Written to the audit log (appeal.reject).",
+        "operationId": "rejectAppeal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectAppealDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "APPEAL_NOT_PENDING"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refuse the appeal (Reddet)",
+        "tags": [
+          "nizam"
+        ]
+      }
+    },
     "/nizam/dashboard": {
       "get": {
         "description": "One read for the whole page: the greeting's name, what waits for a decision, the platform numbers and the newest rows of each queue. A Medaris nazımı gets the same page cut down to what their permissions open: a count or a list they may not see is null. Anyone else is refused.",
@@ -26379,6 +26611,253 @@
           "courseId"
         ]
       },
+      "AppealRefResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "AppealSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REJECTED"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "decisionNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reason",
+          "createdAt"
+        ]
+      },
+      "MadrasahAppealRowResponse": {
+        "type": "object",
+        "properties": {
+          "courseRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "The course the medrese asked for"
+          },
+          "kosk": {
+            "$ref": "#/components/schemas/AppealRefResponse"
+          },
+          "requestStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REJECTED"
+            ]
+          },
+          "rejectReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "appeal": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AppealSummaryResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "courseRequestId",
+          "title",
+          "kosk",
+          "requestStatus"
+        ]
+      },
+      "CreateAppealDto": {
+        "type": "object",
+        "properties": {
+          "courseRequestId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The medrese's course request the köşk refused"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "courseRequestId",
+          "reason"
+        ]
+      },
+      "AppealCreatedResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "AppealPersonResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "AppealResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ACCEPTED",
+              "REJECTED"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "decisionNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "decidedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "madrasah": {
+            "$ref": "#/components/schemas/AppealRefResponse"
+          },
+          "kosk": {
+            "$ref": "#/components/schemas/AppealRefResponse"
+          },
+          "courseRequestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "description": "The course the medrese asked for"
+          },
+          "rejectReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "The köşk's reason for refusing the request"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/AppealPersonResponse"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reason",
+          "createdAt",
+          "madrasah",
+          "kosk",
+          "courseRequestId",
+          "title",
+          "createdBy"
+        ]
+      },
+      "AppealListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppealResponse"
+            }
+          },
+          "pendingCount": {
+            "type": "number",
+            "description": "The Bekleyen tab's count"
+          },
+          "decidedCount": {
+            "type": "number",
+            "description": "The Karara bağlanan tab's count"
+          }
+        },
+        "required": [
+          "items",
+          "pendingCount",
+          "decidedCount"
+        ]
+      },
+      "RejectAppealDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "The decision note the medrese reads. Required."
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
       "DashboardViewer": {
         "type": "string",
         "enum": [
@@ -26412,7 +26891,7 @@
           "appeals": {
             "type": "number",
             "nullable": true,
-            "description": "İtirazlar: the appeal model comes with a later phase, so the count is 0 for a viewer who would see it"
+            "description": "İtirazlar: the medreses' appeals waiting for a decision"
           },
           "permanentBanRequests": {
             "type": "number",

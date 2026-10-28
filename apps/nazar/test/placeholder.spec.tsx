@@ -20,10 +20,17 @@ const props = (bolum: string) => ({ params: Promise.resolve({ bolum }) });
 
 /**
  * The medrese's sections that have a page of their own (MDRS-184, MDRS-185,
- * MDRS-187): a static route folder wins over the placeholder's `[bolum]`, so
+ * MDRS-187, and İtirazlar): a static route folder wins over the placeholder's `[bolum]`, so
  * these never reach it.
  */
-const BUILT = ["nazirlar", "ayarlar", "arsiv", "talebeler", "yasaklamalar"];
+const BUILT = [
+  "nazirlar",
+  "ayarlar",
+  "arsiv",
+  "talebeler",
+  "yasaklamalar",
+  "itirazlar",
+];
 
 /** The pages no package has built yet: one placeholder per kind of scope. */
 describe("the shared placeholder under a medrese", () => {
