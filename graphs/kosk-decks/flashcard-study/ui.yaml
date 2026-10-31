@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.flashcard-study
 flow: medaris.flashcard-study
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { deck: "Sarfın temel kelimeleri", count: "12", done: "3", total: "12", n: "4", front: "دَعَا يَدْعُو دُعَاءً", back: "Çağırdı, çağırır, çağırmak." }

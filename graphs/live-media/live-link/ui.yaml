@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.live-link
 flow: medaris.live-link
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { when: "14.10.2026 20:00" }

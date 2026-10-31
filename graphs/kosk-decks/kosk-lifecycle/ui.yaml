@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.kosk-lifecycle
 flow: medaris.kosk-lifecycle
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Davutpaşa Köşkü", kosk: "Davutpaşa Köşkü’nün", koskGenitive: "Davutpaşa Köşkü’nün", names: "Ahmet Yılmaz", level: "Medaris yönetimi", count: "2" }

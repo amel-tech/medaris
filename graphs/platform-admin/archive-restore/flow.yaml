@@ -6,7 +6,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.archive-restore
-status: proposed
+status: approved
 domain: medaris.platform-admin
 ui: medaris.archive-restore
 title: Bring a hidden item back from the archive, or delete it for good

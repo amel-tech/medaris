@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.platform-policy
 flow: medaris.platform-policy
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { names: "Üsküdar Köşkü" }

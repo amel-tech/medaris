@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.deck-browse
 flow: medaris.deck-browse
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { title: "Sarfın temel kelimeleri", count: "36", n: "4", deck: "Kelimelerim" }

@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.open-course
 flow: medaris.open-course
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Fatih Medresesi", count: "2", title: "Usûl-i Fıkıh Okumaları" }

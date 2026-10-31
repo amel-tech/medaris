@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.nizam-notifications
 flow: medaris.nizam-notifications
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { koskName: "Nûruosmaniye Köşkü", actorName: "Ahmet Yılmaz", talebeName: "Rümeysa Nur Karaca", courseTitle: "Emsile ve Bina", reason: "Celsede başkalarını rahatsız etti.", title: "Yeni ders yasağı" }

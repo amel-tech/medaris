@@ -10,7 +10,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.ban-roster
-status: proposed
+status: approved
 domain: medaris.platform-admin
 ui: medaris.ban-roster
 title: Bar a talebe from the course roster, and lift the ban there

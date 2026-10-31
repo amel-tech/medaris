@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.notes
 flow: medaris.notes
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { time: "12:34", body: "İcmânın şartları: ehliyet ve ittifak." }

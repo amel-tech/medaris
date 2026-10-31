@@ -6,7 +6,7 @@
 schema: delurio-graph/0
 kind: domain
 id: medaris.auth-account
-status: proposed
+status: approved
 
 entities:
   KeycloakAccount: # a user of the `medaris` realm; the attributes are config/keycloak/user-profile.json

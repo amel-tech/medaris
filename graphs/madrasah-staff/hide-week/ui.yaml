@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.hide-week
 flow: medaris.hide-week
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { number: "3", title: "Hafta 3", count: "2" }

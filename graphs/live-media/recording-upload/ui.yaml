@@ -7,7 +7,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.recording-upload
 flow: medaris.recording-upload
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { session: "Birinci celse", max: "10 GB", name: "celse-3.mp4", size: "1,2 GB", sent: "600 MB", total: "1,2 GB" }

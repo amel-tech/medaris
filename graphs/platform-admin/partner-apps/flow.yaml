@@ -6,7 +6,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.partner-apps
-status: proposed
+status: approved
 domain: medaris.platform-admin
 ui: medaris.partner-apps
 title: Register partner applications and choose their köşks

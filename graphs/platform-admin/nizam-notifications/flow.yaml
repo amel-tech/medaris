@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.nizam-notifications
-status: proposed
+status: approved
 domain: medaris.platform-admin
 ui: medaris.nizam-notifications
 title: Read the ban notifications in nizam

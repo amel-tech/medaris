@@ -6,7 +6,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.course-request
-status: proposed
+status: approved
 domain: medaris.madrasah-staff
 ui: medaris.course-request
 title: Ask a köşk for a course outside the medrese

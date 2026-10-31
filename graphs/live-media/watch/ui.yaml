@@ -6,7 +6,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.watch
 flow: medaris.watch
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { week: "3", title: "Birinci celse", minutes: "24", day: "14 Ekim Çarşamba", time: "20:00’de" }

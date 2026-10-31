@@ -7,7 +7,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.recording-release
-status: proposed
+status: approved
 domain: medaris.live-media
 ui: medaris.recording-release
 title: Set when talebe may watch a recording

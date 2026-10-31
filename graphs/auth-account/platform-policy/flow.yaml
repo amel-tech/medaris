@@ -4,7 +4,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.platform-policy
-status: proposed
+status: approved
 domain: medaris.auth-account
 ui: medaris.platform-policy
 title: Switch a platform policy

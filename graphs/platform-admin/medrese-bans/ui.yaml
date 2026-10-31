@@ -6,7 +6,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.medrese-bans
 flow: medaris.medrese-bans
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Rümeysa Nur Karaca", course: "Emsile ve Bina" }

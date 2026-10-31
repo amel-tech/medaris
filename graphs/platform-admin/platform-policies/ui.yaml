@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.platform-policies
 flow: medaris.platform-policies
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: {}

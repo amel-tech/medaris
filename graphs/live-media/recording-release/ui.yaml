@@ -6,7 +6,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.recording-release
 flow: medaris.recording-release
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { session: "Birinci celse", when: "14 Ekim 20:00", zone: "İstanbul" }

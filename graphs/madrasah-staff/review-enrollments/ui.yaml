@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.review-enrollments
 flow: medaris.review-enrollments
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { course: "Usûl-i Fıkıh Okumaları", name: "Zeynep Kaya" }

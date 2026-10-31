@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.ban-lists
 flow: medaris.ban-lists
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { kosk: "Nûruosmaniye Köşkü", name: "Rümeysa Nur Karaca", role: "dersin hocası", viewer: "köşk nazımı", course: "Emsile ve Bina" }

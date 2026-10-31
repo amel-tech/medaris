@@ -7,7 +7,7 @@
 schema: delurio-graph/0
 kind: domain
 id: medaris.learning
-status: proposed
+status: approved
 title: Learning in tedris
 summary: >-
   Course enrollment and its policies, bans and re-admission; a celse's page and its lock; homework, questions and

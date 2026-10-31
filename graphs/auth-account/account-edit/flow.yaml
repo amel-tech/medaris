@@ -6,7 +6,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.account-edit
-status: proposed
+status: approved
 domain: medaris.auth-account
 ui: medaris.account-edit
 title: Edit your account in Tedris

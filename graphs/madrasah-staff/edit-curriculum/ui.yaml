@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.edit-curriculum
 flow: medaris.edit-curriculum
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Usûl-i Fıkıh Okumaları", weeks: "8", sessions: "8", zone: "İstanbul", week: "1" }

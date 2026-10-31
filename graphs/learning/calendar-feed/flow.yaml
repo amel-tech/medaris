@@ -4,7 +4,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.calendar-feed
-status: proposed
+status: approved
 domain: medaris.learning
 ui: medaris.calendar-feed
 title: Create or renew the calendar subscription link

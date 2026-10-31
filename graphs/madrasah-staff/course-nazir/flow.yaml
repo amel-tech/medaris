@@ -3,7 +3,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.course-nazir
-status: proposed
+status: approved
 domain: medaris.madrasah-staff
 ui: medaris.course-nazir
 title: Appoint, change and end a course's ders nazırları

@@ -6,7 +6,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.kc-sign-in
 flow: medaris.kc-sign-in
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { email: "zeynep@ornek.com", link: "Aydınlatma Metni" }

@@ -7,7 +7,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.recording-link
-status: proposed
+status: approved
 domain: medaris.live-media
 ui: medaris.recording-link
 title: Add or change a recording by its link

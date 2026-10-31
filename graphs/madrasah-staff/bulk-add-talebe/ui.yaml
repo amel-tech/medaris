@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.bulk-add-talebe
 flow: medaris.bulk-add-talebe
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { count: "12", max: "500" }
