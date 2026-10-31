@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.course-request
 flow: medaris.course-request
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { kosk: "Nûruosmaniye Köşkü", koskGenitive: "Nûruosmaniye Köşkü’nün", title: "Usûl-i Fıkıh Okumaları", max: "2000", name: "Ders" }

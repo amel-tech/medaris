@@ -3,7 +3,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.homework
 flow: medaris.homework
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { maxFiles: "10", maxSize: "25 MB", name: "ödev-1.pdf", max: "4000", description: "Birinci bâbı oku, üç soruyu cevapla.", when: "26 Ekim 14:30", note: "İkinci cevabı yeniden düşün; düzeltmeleri dosyada işaretledim." }

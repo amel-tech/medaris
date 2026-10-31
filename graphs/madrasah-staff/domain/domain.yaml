@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: domain
 id: medaris.madrasah-staff
-status: proposed
+status: approved
 title: Medrese and course staff
 summary: >-
   Opening a medrese course, asking a köşk for a course outside the medrese and the köşk's answer, the medrese's nazırs

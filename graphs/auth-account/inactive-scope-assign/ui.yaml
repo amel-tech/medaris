@@ -6,7 +6,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.inactive-scope-assign
 flow: medaris.inactive-scope-assign
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Üsküdar Köşkü", person: "Zeynep Kaya", action: "Köşk nazımı ata" }

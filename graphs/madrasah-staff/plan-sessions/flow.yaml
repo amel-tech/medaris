@@ -3,7 +3,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.plan-sessions
-status: proposed
+status: approved
 domain: medaris.madrasah-staff
 ui: medaris.plan-sessions
 title: Plan sessions

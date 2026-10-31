@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.questions
 flow: medaris.questions
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { session: "Usûl-i Fıkıh, 3. celse", week: "3", title: "Usûl-i Fıkıh, 3. celse", max: "4000", when: "4 Eki 2026 21:00", name: "Ahmet Hoca", body: "İcmâ ile kıyas arasındaki fark nedir?" }

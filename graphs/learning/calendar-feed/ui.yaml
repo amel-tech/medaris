@@ -3,7 +3,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.calendar-feed
 flow: medaris.calendar-feed
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { date: "25 Ekim 2026 Pazar 10:02", code: "calendar.google.com" }

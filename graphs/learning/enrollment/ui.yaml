@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.enrollment
 flow: medaris.enrollment
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { when: "bugün 10:02", title: "Fıkıh Usulü", date: "28 Eylül 2026’da" }

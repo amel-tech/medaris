@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.calendar-feed-read
-status: proposed
+status: approved
 domain: medaris.learning
 title: A calendar app reads the feed
 summary: >-

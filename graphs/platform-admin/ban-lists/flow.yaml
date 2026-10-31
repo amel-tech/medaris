@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.ban-lists
-status: proposed
+status: approved
 domain: medaris.platform-admin
 ui: medaris.ban-lists
 title: Lift or widen a ban from the Yasaklamalar pages

@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.partner-codes
 flow: medaris.partner-codes
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Örnek Uygulama", code: "tecvid-2026-guz" }

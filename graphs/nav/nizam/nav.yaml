@@ -9,7 +9,7 @@ kind: nav
 schema: delurio-graph/0
 id: medaris-nizam
 title: Nizam
-status: proposed
+status: approved
 locale: tr
 catalog: catalog/tr.json
 

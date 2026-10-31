@@ -4,7 +4,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.kosk-decks
-status: proposed
+status: approved
 domain: medaris.kosk-decks
 ui: medaris.kosk-decks
 title: Run a köşk's decks

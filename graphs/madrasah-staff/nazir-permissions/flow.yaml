@@ -4,7 +4,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.nazir-permissions
-status: proposed
+status: approved
 domain: medaris.madrasah-staff
 ui: medaris.nazir-permissions
 title: Give a medrese nazırı their permissions

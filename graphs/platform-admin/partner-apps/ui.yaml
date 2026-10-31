@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.partner-apps
 flow: medaris.partner-apps
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Örnek Uygulama", count: "2" }

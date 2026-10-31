@@ -6,7 +6,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.kosk-application-review
 flow: medaris.kosk-application-review
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Davutpaşa Köşkü", handle: "davutpasa" }

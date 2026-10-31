@@ -8,7 +8,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.madrasah-nazir
-status: proposed
+status: approved
 domain: medaris.madrasah-staff
 ui: medaris.madrasah-nazir
 title: Appoint and dismiss the medrese's nazırs

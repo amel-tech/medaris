@@ -4,7 +4,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.bulk-add-talebe
-status: proposed
+status: approved
 domain: medaris.madrasah-staff
 ui: medaris.bulk-add-talebe
 title: Add talebe to a course by e-mail

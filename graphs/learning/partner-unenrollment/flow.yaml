@@ -4,7 +4,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.partner-unenrollment
-status: proposed
+status: approved
 domain: medaris.learning
 title: A partner application cancels a registration
 summary: >-

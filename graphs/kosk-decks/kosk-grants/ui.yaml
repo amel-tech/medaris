@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.kosk-grants
 flow: medaris.kosk-grants
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Ahmet Yılmaz", course: "Emsile ve Bina", count: "8" }

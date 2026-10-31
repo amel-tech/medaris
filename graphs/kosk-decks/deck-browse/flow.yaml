@@ -4,7 +4,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.deck-browse
-status: proposed
+status: approved
 domain: medaris.kosk-decks
 ui: medaris.deck-browse
 title: Read, collect and copy someone else's deck

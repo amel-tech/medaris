@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.kosk-apply
 flow: medaris.kosk-apply
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 changes: { key: Changes.note }

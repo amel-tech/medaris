@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.archive-restore
 flow: medaris.archive-restore
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { kosk: "Nûruosmaniye Köşkü", name: "Emsile ve Bina, Hafta 3", title: "Emsile ve Bina", level: "Medaris yönetimi", count: "12" }

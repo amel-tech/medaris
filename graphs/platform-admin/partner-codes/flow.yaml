@@ -6,7 +6,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.partner-codes
-status: proposed
+status: approved
 domain: medaris.platform-admin
 ui: medaris.partner-codes
 title: Map a partner application's code to a course, and enrol through it

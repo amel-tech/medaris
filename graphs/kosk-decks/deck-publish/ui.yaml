@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.deck-publish
 flow: medaris.deck-publish
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { title: "Sarfın temel kelimeleri", count: "36", at: "21 Ekim 14:05" }

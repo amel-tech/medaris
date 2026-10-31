@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: domain
 id: medaris.live-media
-status: proposed
+status: approved
 
 entities:
   Lesson: # only the columns this area reads or writes; the course area owns the rest of the row

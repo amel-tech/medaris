@@ -6,7 +6,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.hosting-rights
 flow: medaris.hosting-rights
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { kosk: "Nûruosmaniye Köşkü", koskLocative: "Nûruosmaniye Köşkü’nde", name: "Fatih Medresesi", count: "2", countWord: "iki", countWordCap: "İki", students: "35" }

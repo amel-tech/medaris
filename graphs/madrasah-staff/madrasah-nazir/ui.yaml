@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.madrasah-nazir
 flow: medaris.madrasah-nazir
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Ahmet Yılmaz", person: "Zeynep Kaya", what: "Talebe işleri grubu", date: "12 Ekim 2026" }

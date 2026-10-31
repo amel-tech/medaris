@@ -7,7 +7,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.homework
-status: proposed
+status: approved
 domain: medaris.learning
 ui: medaris.homework
 title: Hand in homework on a celse

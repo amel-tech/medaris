@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.questions
-status: proposed
+status: approved
 domain: medaris.learning
 ui: medaris.questions
 title: Ask the course team a question

@@ -3,7 +3,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.hide-week
-status: proposed
+status: approved
 domain: medaris.madrasah-staff
 ui: medaris.hide-week
 title: Hide a week or a session

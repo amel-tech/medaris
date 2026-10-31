@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.partner-enrollment
-status: proposed
+status: approved
 domain: medaris.learning
 title: A partner application enrols a person
 summary: >-

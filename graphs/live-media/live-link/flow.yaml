@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.live-link
-status: proposed
+status: approved
 domain: medaris.live-media
 ui: medaris.live-link
 title: Set a session's live stream link

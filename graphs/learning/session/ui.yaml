@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.session
 flow: medaris.session
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { title: "Usûl-i Fıkıh, 3. celse", course: "Fıkıh Usulü", name: "Ders notları.pdf" }

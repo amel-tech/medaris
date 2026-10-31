@@ -6,7 +6,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.kc-sign-in
-status: proposed
+status: approved
 domain: medaris.auth-account
 ui: medaris.kc-sign-in
 title: Sign in on Keycloak and finish the required steps

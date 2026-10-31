@@ -6,7 +6,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.direct-grant
 flow: medaris.direct-grant
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Zeynep Kaya", count: "2", moment: "31.12.2026 23:59" }

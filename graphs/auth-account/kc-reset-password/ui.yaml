@@ -4,7 +4,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.kc-reset-password
 flow: medaris.kc-reset-password
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { min: "10", account: "zeynep" }

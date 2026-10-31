@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.notes
-status: proposed
+status: approved
 domain: medaris.learning
 ui: medaris.notes
 title: Take private notes on a celse

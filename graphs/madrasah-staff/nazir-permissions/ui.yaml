@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.nazir-permissions
 flow: medaris.nazir-permissions
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Ahmet Yılmaz", group: "4", extra: "2" }

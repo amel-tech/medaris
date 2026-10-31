@@ -5,7 +5,7 @@
 schema: delurio-graph/0
 kind: flow
 id: medaris.medrese-bans
-status: proposed
+status: approved
 domain: medaris.platform-admin
 ui: medaris.medrese-bans
 title: Bar a talebe from a medrese's course or from the whole medrese

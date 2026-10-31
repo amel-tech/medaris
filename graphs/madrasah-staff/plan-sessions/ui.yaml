@@ -5,7 +5,7 @@ schema: delurio-graph/0
 kind: ui
 id: medaris.plan-sessions
 flow: medaris.plan-sessions
-status: proposed
+status: approved
 catalog: catalog/tr.json
 locales: [tr, en]
 samples: { name: "Usûl-i Fıkıh Okumaları", count: "8", week: "1", minutes: "60", link: "boş", zone: "İstanbul" }

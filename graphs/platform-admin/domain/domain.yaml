@@ -8,7 +8,7 @@
 schema: delurio-graph/0
 kind: domain
 id: medaris.platform-admin
-status: proposed
+status: approved
 
 entities:
   Ban: # a talebe barred from one course, a köşk's every course, or a medrese's every course; lifted, never deleted
