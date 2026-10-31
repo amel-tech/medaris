@@ -2132,7 +2132,7 @@
       "expires": "Süre"
     },
     "pageTitle": "Hesap ve ayarlar",
-    "pageSubtitle": "Görevleriniz, izinleriniz, saat diliminiz ve diliniz.",
+    "pageSubtitle": "Görevleriniz, izinleriniz ve saat diliminiz.",
     "tasksTitle": "Görevleriniz",
     "tasksIntro": "Her görev bir kapsamda geçerlidir. Görevi ve süresini, onu atayan kişi değiştirir.",
     "noTasks": "Henüz bir göreviniz yok.",
@@ -2156,7 +2156,7 @@
       "MUDERRIS": "Hoca olduğunuz derslerin her birinde geçerli: {names}.",
       "default": "{role} olduğunuz her kapsamda geçerli: {names}."
     },
-    "zoneTitle": "Saat ve dil",
+    "zoneTitle": "Saat dilimi",
     "zone": "Saat dilimi",
     "zoneHelp": "Celse saatleri bu saat diliminde gösterilir. Seçtiğiniz an kaydedilir.",
     "zoneOther": "Diğer…",

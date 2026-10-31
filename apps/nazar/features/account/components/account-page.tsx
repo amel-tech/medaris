@@ -4,13 +4,11 @@ import { Avatar } from "@medaris/ui/mds/avatar";
 import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
-import { LocaleSelect } from "@medaris/ui/mds/locale-switcher";
 import { Skeleton } from "@medaris/ui/mds/skeleton";
 import { DEFAULT_TIME_ZONE, resolveTimeZone } from "@medaris/utils";
 import { getLocale } from "next-intl/server";
 import { type ReactNode, Suspense } from "react";
 import type { Portal } from "~/features/shell/reads";
-import { LOCALES } from "~/lib/i18n/locale";
 import { getMessages } from "~/lib/i18n/messages";
 import { assignmentRows, lacksNazirRoles } from "../assignments-view";
 import { visibleGroups } from "../permissions";
@@ -164,16 +162,6 @@ export async function AccountPage({ portal }: { portal: OkPortal }) {
                 <p>{t("Account.timeZoneUnreadable")}</p>
               </Alert>
             )}
-            <Field
-              label={t("Account.language")}
-              help={t("Account.languageHelp")}
-            >
-              <LocaleSelect
-                locale={locale}
-                locales={LOCALES}
-                label={t("Account.language")}
-              />
-            </Field>
           </Card>
         </div>
         <div className="flex flex-col gap-grid">

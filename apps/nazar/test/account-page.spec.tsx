@@ -101,13 +101,11 @@ describe("Hesap ve ayarlar (nazir 20)", () => {
   it("has the title, the subtitle and the cards of the canvas", async () => {
     const { markup, text } = await render();
     expect(markup).toContain('<h1 class="mds-h1">Hesap ve ayarlar</h1>');
-    expect(text).toContain(
-      "Görevleriniz, izinleriniz, saat diliminiz ve diliniz."
-    );
+    expect(text).toContain("Görevleriniz, izinleriniz ve saat diliminiz.");
     for (const heading of [
       "Görevleriniz",
       "Etkin izinleriniz",
-      "Saat ve dil",
+      "Saat dilimi",
       "Hesap",
     ]) {
       expect(markup, heading).toMatch(
@@ -235,7 +233,7 @@ describe("Hesap ve ayarlar (nazir 20)", () => {
     expect(text).toContain("Görevleriniz yüklenemedi");
     expect(text).toContain("Görevleriniz ve izinleriniz şu an okunamadı.");
     expect(text).toContain("Medrese başmüderrisi");
-    expect(text).toContain("Saat ve dil");
+    expect(text).toContain("Saat dilimi");
   });
 
   it("has the time zone select with the saved zone, the help line and no save button", async () => {
@@ -257,11 +255,10 @@ describe("Hesap ve ayarlar (nazir 20)", () => {
     expect(text).toContain("Asia / Tokyo");
   });
 
-  it("offers the language shared with Tedris and Nizam, the current one chosen (MDRS-248)", async () => {
+  it("offers no language choice: the apps are Turkish only", async () => {
     const { markup, text } = await render();
-    expect(text).toContain("Tedris, Nizam ve Nazar aynı dilde açılır.");
-    expect(text).toContain("Türkçe");
-    expect(markup).not.toMatch(/<input[^>]*value="Türkçe"/);
+    expect(text).not.toContain("Tedris, Nizam ve Nazar aynı dilde açılır.");
+    expect(markup).not.toContain('aria-label="Dil"');
   });
 
   it("shows the account: the person, their roles and a read-only e-mail", async () => {

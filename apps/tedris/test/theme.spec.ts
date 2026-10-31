@@ -54,12 +54,12 @@ describe("tedris's <html> (MDRS-245)", () => {
     );
   });
 
-  it("keeps the direction first on <html>, so Arabic stays right to left", async () => {
-    request.locale = "ar";
+  it("keeps the direction first on <html>", async () => {
+    request.locale = "tr";
     const { default: RootLayout } = await import("../app/layout");
     expect(
       htmlTag(renderToStaticMarkup(await RootLayout({ children: "page" })))
-    ).toMatch(/^<html lang="ar" dir="rtl" data-theme="light"/);
+    ).toMatch(/^<html lang="tr" dir="ltr" data-theme="light"/);
   });
 
   it("is light by default on global-error", async () => {

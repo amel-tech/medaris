@@ -31,12 +31,8 @@ const renderLayout = async (locale: string) => {
 };
 
 describe("htmlLangDir (MDRS-230)", () => {
-  it("writes Arabic right to left", () => {
-    expect(htmlLangDir("ar")).toEqual({ lang: "ar", dir: "rtl" });
-  });
-
-  it.each(["tr", "en"] as const)("writes %s left to right", (locale) => {
-    expect(htmlLangDir(locale)).toEqual({ lang: locale, dir: "ltr" });
+  it("writes Turkish left to right", () => {
+    expect(htmlLangDir("tr")).toEqual({ lang: "tr", dir: "ltr" });
   });
 
   it("has a direction for every routed locale", () => {
@@ -46,18 +42,13 @@ describe("htmlLangDir (MDRS-230)", () => {
   });
 });
 
-describe("the layout's <html> follows the viewer's language (MDRS-230, MDRS-248)", () => {
+describe("the layout's <html> (MDRS-230, MDRS-248)", () => {
   it.each([
-    ["ar", "rtl"],
-    ["tr", "ltr"],
-    ["en", "ltr"],
-  ] as const)("in %s draws dir=%s", async (locale, dir) => {
-    expect(await renderLayout(locale)).toMatch(
-      new RegExp(`^<html lang="${locale}" dir="${dir}"`)
-    );
-  });
-
-  it("draws Turkish for a language it does not have", async () => {
-    expect(await renderLayout("de")).toMatch(/^<html lang="tr" dir="ltr"/);
+    "tr",
+    "en",
+    "ar",
+    "de",
+  ])("draws Turkish for a request in %s", async (locale) => {
+    expect(await renderLayout(locale)).toMatch(/^<html lang="tr" dir="ltr"/);
   });
 });
