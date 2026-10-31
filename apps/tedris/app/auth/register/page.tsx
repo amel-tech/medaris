@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { PhoneChrome } from "~/components/phone-menu/phone-chrome";
 import { AuthEntry } from "~/features/auth/auth-entry";
+import { signInLimit } from "~/lib/auth";
 import { homePath } from "~/lib/auth_pages";
 
 /**
@@ -14,7 +15,7 @@ export default async function RegisterPage() {
   return (
     <>
       <PhoneChrome section={null} title={t("register")} />
-      <AuthEntry intent="register" callbackUrl={homePath} />
+      <AuthEntry intent="register" callbackUrl={homePath} limit={signInLimit} />
     </>
   );
 }
