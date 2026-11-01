@@ -139,18 +139,19 @@ allowBuilds:
 # 2.x, js-yaml 3.x and 4.x, @grpc/grpc-js, piscina, @xhmikosr/decompress,
 # proxy-addr, sharp, source-map-js). The lockfile keeps the fixed versions, and
 # a change that brings one of those advisories back fails Security gates.
+#
+# 2026-11-01, with nx 24.0.3, the three floors that existed because nx pinned
+# an exact vulnerable version were removed the same way. smol-toml (MDRS-79):
+# nx pins the patched 1.9.0, which the floor was holding back at 1.8.0.
+# brace-expansion 5.x: nx pins 5.0.12 and minimatch 10 asks for ^5.0.5; if a
+# 5.x floor is ever needed again, key it `brace-expansion@5`, because an
+# unscoped key once collapsed every line onto 2.1.4, which lacks the named
+# `expand` nx imports. axios: nx no longer depends on it, and the remaining
+# parents ask for ^1.18.1 (openapi-generator-cli) and ^1.3.1 (@nestjs/axios).
 overrides:
   uuid: ^11.1.1 # GHSA missing-buffer-bounds-check; exceljs pins 8.3.2. uuid's
   #               named v1/v3/v4/v5 API has been stable since v3, so forcing
   #               the one exceljs pulls in doesn't change what it calls.
-  # 2026-10-01 security pass: GHSA-6j4f-fj2g-mc7p and GHSA-qhr7-859c-m2p7
-  # reach brace-expansion's 5.x line. nx 23.2.0 pinned the exact string
-  # "5.0.9", so only an override moved it. The `@5` selector matters: an
-  # unscoped key replaces every consumer's specifier, and a union of lines once
-  # collapsed the whole tree, nx included, onto 2.1.4, which lacks the named
-  # `expand` nx imports (`nx affected` died with "brace_expansion_1.expand is
-  # not a function").
-  brace-expansion@5: ^5.0.11
   # 2026-10-21: GHSA-8r9p-f939-6h3c and GHSA-q3jh-wrc6-jgq8 (array-form headers
   # bypass cross-origin credential stripping), 1.16.0 only, fixed in 1.16.1.
   # Reached through the axios under @openapitools/openapi-generator-cli (nx
@@ -202,38 +203,10 @@ overrides:
   #                         the one that used to sit there (`^0.21.5`) named a
   #                         version inside the advisory range this floors.
 
-  # MDRS-79. smol-toml <= 1.7.0 carries GHSA-7w5x-hrqm-74c2, a high DoS via
-  # malformed TOML documents, first patched in 1.7.1.
-  #
-  # The same shape as multer above, and it earns its place for the same reason:
-  # nx declares smol-toml as the exact string "1.6.1", so nothing re-resolves
-  # into the fix. Checked against the registry rather than the installed tree —
-  # the 23.2.0 this catalog then pinned, 23.2.1 (`latest`) and 23.3.0-beta.0
-  # (`next`) all still declared "1.6.1", so there was no bump to wait for.
-  #
-  # Reachability is weaker than multer's and is not dressed up: smol-toml
-  # arrives only through nx, so it is build tooling that reaches no deployed
-  # artifact, and the TOML nx parses is repo-controlled rather than
-  # attacker-supplied. It is floored anyway because audit-ci.json sets
-  # skip-dev:false on purpose (MDRS-8 §6) and is a ratchet, not an amnesty — a
-  # new high with a published fix and a one-line floor is not allowlist material.
-  #
-  # A caret for the reason given on the multer entry above.
-  #
-  # Removal condition: drop this the moment nx ships a release whose smol-toml
-  # dependency admits >= 1.7.1.
-  smol-toml: ^1.7.1
-
   # 2026-10-01 security pass. Advisories published after MDRS-21
   # turned audit-ci red on main; each entry below is a floor with a published
   # fix, which audit-ci.json says is not allowlist material.
   #
-  # axios < 1.20.0 carries seven highs (GHSA-3pq3-5fj3-cg6v, -542g-h47m-68v8,
-  # -c29m-xwm3-cm6r, -m8m8-qj5v-23w3, -mghh-pgcx-3jjj, -r4gj-5m52-g5wh,
-  # -x97p-jq2g-jp4f). nx 23.2.0 (then `latest`) pinned the exact string
-  # "1.18.1", so nothing re-resolved. The caret stays inside 1.x.
-  # Removal condition: nx ships a release whose axios admits >= 1.20.0.
-  axios: ^1.20.0
   # basic-ftp <= 6.2.0, GHSA-c475-qrg2-pj4r (high). The only fix is 6.2.1, one
   # major above what get-uri (proxy-agent, under openapi-generator-cli)
   # declares. 6.0.0's one breaking change refuses a separate FTP transfer host
