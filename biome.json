@@ -38,6 +38,7 @@
       "!design-system",
       "!apps/tedrisat/src/database/migrations/meta",
       "!libs/i18n/src/locales/**/*.json",
+      "!.github/actions/nx-remote-cache",
       "!**/pnpm-lock.yaml",
       "!**/*.min.js",
       "!**/*.min.css"
