@@ -65,6 +65,27 @@ minimumReleaseAgeExclude:
   - body-parser@2.4.0 # 2026-10-22, GHSA-27r3-jxmh-p828; delete after 2026-10-29
   - multer@2.5.0 # 2026-10-22, GHSA-q7qp-rjg7-q26m; delete after 2026-10-29
   - happy-dom@21.0.4 # 2026-10-20, GHSA-834v-8h66-3h79; delete after 2026-10-27
+  # Nx 24.0.3, published 2026-10-30, taken on the owner's word of 2026-11-01
+  # ("güncelle 24 olsun"). The family moves as one: the plugins pin nx and each
+  # other exactly, and nx lists one platform binary per OS/CPU as an optional
+  # dependency, all recorded in the lockfile. Each carries npm SLSA provenance
+  # and no GHSA advisory names 24.0.3. Delete the block after 2026-11-06.
+  - nx@24.0.3
+  - '@nx/devkit@24.0.3'
+  - '@nx/eslint@24.0.3'
+  - '@nx/eslint-plugin@24.0.3'
+  - '@nx/js@24.0.3'
+  - '@nx/workspace@24.0.3'
+  - '@nx/nx-darwin-arm64@24.0.3'
+  - '@nx/nx-darwin-x64@24.0.3'
+  - '@nx/nx-freebsd-x64@24.0.3'
+  - '@nx/nx-linux-arm-gnueabihf@24.0.3'
+  - '@nx/nx-linux-arm64-gnu@24.0.3'
+  - '@nx/nx-linux-arm64-musl@24.0.3'
+  - '@nx/nx-linux-x64-gnu@24.0.3'
+  - '@nx/nx-linux-x64-musl@24.0.3'
+  - '@nx/nx-win32-arm64-msvc@24.0.3'
+  - '@nx/nx-win32-x64-msvc@24.0.3'
 
 # ── Build-script decisions (MDRS-8 §3, ADR-001 §D11) ─────────────────────────
 # pnpm 11 replaces pnpm 10's `onlyBuiltDependencies` list with this map, and
@@ -123,16 +144,18 @@ overrides:
   #               named v1/v3/v4/v5 API has been stable since v3, so forcing
   #               the one exceljs pulls in doesn't change what it calls.
   # 2026-10-01 security pass: GHSA-6j4f-fj2g-mc7p and GHSA-qhr7-859c-m2p7
-  # reach brace-expansion's 5.x line. nx pins the exact string "5.0.9", so only
-  # an override moves it. The `@5` selector matters: an unscoped key replaces
-  # every consumer's specifier, and a union of lines once collapsed the whole
-  # tree, nx included, onto 2.1.4, which lacks the named `expand` nx imports
-  # (`nx affected` died with "brace_expansion_1.expand is not a function").
+  # reach brace-expansion's 5.x line. nx 23.2.0 pinned the exact string
+  # "5.0.9", so only an override moved it. The `@5` selector matters: an
+  # unscoped key replaces every consumer's specifier, and a union of lines once
+  # collapsed the whole tree, nx included, onto 2.1.4, which lacks the named
+  # `expand` nx imports (`nx affected` died with "brace_expansion_1.expand is
+  # not a function").
   brace-expansion@5: ^5.0.11
   # 2026-10-21: GHSA-8r9p-f939-6h3c and GHSA-q3jh-wrc6-jgq8 (array-form headers
   # bypass cross-origin credential stripping), 1.16.0 only, fixed in 1.16.1.
-  # Reached through nx's axios and @openapitools/openapi-generator-cli, both dev
-  # tooling; the floor stays on the 1.x line every consumer declares.
+  # Reached through the axios under @openapitools/openapi-generator-cli (nx
+  # dropped axios in 24.0), dev tooling; the floor stays on the 1.x line every
+  # consumer declares.
   follow-redirects: ^1.16.1
 
   # MDRS-76. multer 2.2.0 carries three high DoS advisories — GHSA-535w-7cp7-47q4
@@ -185,8 +208,8 @@ overrides:
   # The same shape as multer above, and it earns its place for the same reason:
   # nx declares smol-toml as the exact string "1.6.1", so nothing re-resolves
   # into the fix. Checked against the registry rather than the installed tree —
-  # the 23.2.0 this catalog now pins, 23.2.1 (`latest`) and 23.3.0-beta.0
-  # (`next`) all still declare "1.6.1", so there is no bump to wait for.
+  # the 23.2.0 this catalog then pinned, 23.2.1 (`latest`) and 23.3.0-beta.0
+  # (`next`) all still declared "1.6.1", so there was no bump to wait for.
   #
   # Reachability is weaker than multer's and is not dressed up: smol-toml
   # arrives only through nx, so it is build tooling that reaches no deployed
@@ -207,8 +230,8 @@ overrides:
   #
   # axios < 1.20.0 carries seven highs (GHSA-3pq3-5fj3-cg6v, -542g-h47m-68v8,
   # -c29m-xwm3-cm6r, -m8m8-qj5v-23w3, -mghh-pgcx-3jjj, -r4gj-5m52-g5wh,
-  # -x97p-jq2g-jp4f). nx 23.2.0 (still `latest`) pins the exact string
-  # "1.18.1", so nothing re-resolves. The caret stays inside 1.x.
+  # -x97p-jq2g-jp4f). nx 23.2.0 (then `latest`) pinned the exact string
+  # "1.18.1", so nothing re-resolved. The caret stays inside 1.x.
   # Removal condition: nx ships a release whose axios admits >= 1.20.0.
   axios: ^1.20.0
   # basic-ftp <= 6.2.0, GHSA-c475-qrg2-pj4r (high). The only fix is 6.2.1, one
@@ -228,9 +251,9 @@ overrides:
 
 catalog:
   # ═══ Toolchain — ADR-001 §D8 normative (do not re-decide here) ═══
-  nx: 23.2.0 # MDRS-21: exact; every @nx/* pinned to the same version
-  '@nx/eslint': 23.2.0
-  '@nx/eslint-plugin': 23.2.0
+  nx: 24.0.3 # MDRS-21: exact; every @nx/* pinned to the same version
+  '@nx/eslint': 24.0.3
+  '@nx/eslint-plugin': 24.0.3
   typescript: ~5.9.3 # last JS-based line; tilde ≈ frozen. TS7 held back —
   #                    typescript-eslint has no release supporting it yet
   #                    (peers cap at <6.1.0); see docs/migration/mdrs-21-*.
