@@ -85,8 +85,12 @@ export function CardQuickAdd({
   };
 
   const paste = (event: ClipboardEvent<HTMLInputElement>) => {
-    const text = event.clipboardData.getData("text");
-    if (!/\r?\n/.test(text.trim())) return;
+    const text = event.clipboardData.getData("text").trim();
+    // A line break or a tab (one row of two cells from Excel) is a card
+    // anywhere; a ";" only in the front, since a back may well contain one.
+    const separators =
+      event.currentTarget.name === "contentFront" ? /[\n\t;]/ : /[\n\t]/;
+    if (!separators.test(text)) return;
     event.preventDefault();
     setStatus(null);
     setFailure(null);
