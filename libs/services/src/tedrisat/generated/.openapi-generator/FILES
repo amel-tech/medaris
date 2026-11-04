@@ -32,6 +32,12 @@ src/models/AgendaStepDto.ts
 src/models/AgendaStepResponse.ts
 src/models/AllBansListResponse.ts
 src/models/AnswerLessonQuestionDto.ts
+src/models/AppealCreatedResponse.ts
+src/models/AppealListResponse.ts
+src/models/AppealPersonResponse.ts
+src/models/AppealRefResponse.ts
+src/models/AppealResponse.ts
+src/models/AppealSummaryResponse.ts
 src/models/AppointMedarisNazimDto.ts
 src/models/ApproveKoskApplicationDto.ts
 src/models/ArchiveImpactResponse.ts
@@ -90,6 +96,7 @@ src/models/CourseSubmissionResponse.ts
 src/models/CourseSubmissionSessionResponse.ts
 src/models/CourseSubmissionsResponse.ts
 src/models/CourseSummaryResponse.ts
+src/models/CreateAppealDto.ts
 src/models/CreateBanDto.ts
 src/models/CreateCourseDeckDto.ts
 src/models/CreateCourseDto.ts
@@ -246,6 +253,7 @@ src/models/LessonResponse.ts
 src/models/LessonSubmissionResponse.ts
 src/models/LiftBanDto.ts
 src/models/LiveStreamResponse.ts
+src/models/MadrasahAppealRowResponse.ts
 src/models/MadrasahArchiveCountsResponse.ts
 src/models/MadrasahArchiveStateResponse.ts
 src/models/MadrasahBadgeCountsResponse.ts
@@ -367,6 +375,7 @@ src/models/RecordingResponse.ts
 src/models/RecordingStatus.ts
 src/models/RecordingUploadResponse.ts
 src/models/RecordingVisibility.ts
+src/models/RejectAppealDto.ts
 src/models/RejectEnrollmentDto.ts
 src/models/RejectReasonDto.ts
 src/models/RemoveEnrollmentDto.ts

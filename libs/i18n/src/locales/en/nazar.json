@@ -1181,6 +1181,47 @@
       "failedTitle": "The request could not be opened"
     }
   },
+  "Appeals": {
+    "title": "Appeals",
+    "caption": "Course requests the köşk refused",
+    "columns": {
+      "course": "Course",
+      "kosk": "Köşk",
+      "rejectReason": "Reason for refusal",
+      "status": "Appeal status",
+      "note": "Decision note",
+      "actions": "Action"
+    },
+    "status": {
+      "NONE": "None",
+      "PENDING": "Waiting",
+      "ACCEPTED": "Accepted",
+      "REJECTED": "Refused"
+    },
+    "open": "Appeal",
+    "openLabel": "Appeal: {title}",
+    "empty": "No course request was refused by a köşk.",
+    "loadFailedTitle": "The appeals could not be read",
+    "loadFailed": "The appeals cannot be fetched right now. Try again in a little while.",
+    "dialog": {
+      "title": "Appeal",
+      "label": "Reason",
+      "required": "required field",
+      "reasonRequired": "Write a reason.",
+      "cancel": "Cancel",
+      "submit": "Send",
+      "done": "Appeal sent",
+      "doneBody": "Your appeal for {title} was passed on to the Medaris administration.",
+      "failedTitle": "The appeal could not be sent"
+    },
+    "errors": {
+      "generic": "This could not be done. Try again in a little while.",
+      "exists": "This request has been appealed already.",
+      "notRejected": "This request is no longer refused.",
+      "gone": "This request no longer exists.",
+      "forbidden": "You are not allowed to do this."
+    }
+  },
   "Offsite": {
     "title": "Off-medrese course request",
     "breadcrumb": "Breadcrumb",

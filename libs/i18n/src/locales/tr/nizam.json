@@ -3114,6 +3114,12 @@
       "body": "Talep kapanır. Gerekçeyi medresenin başmüderrisi görür.",
       "help": "Başmüderris bu gerekçeyi okuyacak."
     },
+    "appeal": {
+      "title": "İtirazı reddet",
+      "body": "Talep reddedilmiş kalır. Karar notunu medrese görür.",
+      "help": "Medrese bu notu okuyacak.",
+      "reasonLabel": "Karar notu"
+    },
     "unpublish": {
       "title": "Desteyi yayından kaldır",
       "body": "Deste herkese açık listeden çıkar ve sahibine özel olarak kalır. Gerekçe, deste sahibine bildirimle iletilir.",
@@ -3576,6 +3582,46 @@
       "answered": "Bu talep az önce karara bağlanmış.",
       "gone": "Bu talep artık yok.",
       "courseGone": "Bu ders bu köşkte bulunamadı.",
+      "forbidden": "Bu işlem için izniniz yok."
+    }
+  },
+  "AppealsPage": {
+    "title": "İtirazlar",
+    "tabsLabel": "İtiraz durumu",
+    "tabs": {
+      "PENDING": "Bekleyen",
+      "DECIDED": "Karara bağlanan"
+    },
+    "empty": {
+      "PENDING": "Karar bekleyen itiraz yok.",
+      "DECIDED": "Karara bağlanmış itiraz yok."
+    },
+    "loadFailedTitle": "İtirazlar okunamadı",
+    "loadFailed": "İtirazlar şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+    "retry": "Tekrar dene",
+    "detailEyebrow": "DERS TALEBİNE İTİRAZ",
+    "status": {
+      "PENDING": "Karar bekliyor",
+      "ACCEPTED": "Kabul edildi",
+      "REJECTED": "Reddedildi"
+    },
+    "madrasah": "Medrese",
+    "course": "Ders",
+    "kosk": "Köşk",
+    "rejectReason": "Ret gerekçesi",
+    "reason": "İtiraz gerekçesi",
+    "decisionNote": "Karar notu",
+    "accept": "Kabul et",
+    "reject": "Reddet",
+    "accepted": "İtiraz kabul edildi",
+    "acceptedBody": "{title} talebi yeniden köşkün kararına gönderildi.",
+    "rejected": "İtiraz reddedildi",
+    "rejectedBody": "{title} için karar notu medreseye iletildi.",
+    "answerFailed": "Karar kaydedilemedi",
+    "errors": {
+      "generic": "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.",
+      "answered": "Bu itiraz az önce karara bağlanmış.",
+      "gone": "Bu itiraz artık yok.",
       "forbidden": "Bu işlem için izniniz yok."
     }
   },

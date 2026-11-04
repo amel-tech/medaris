@@ -11,14 +11,16 @@ import { isBlank, REASON_MAX } from "../present";
 /**
  * The refusals that share this dialog: a publish request and a proposal
  * (nizam 16, 30), and, since MDRS-181, a köşk application (nizam 15) and a
- * medrese's course request (nizam 39); and, since MDRS-148, the başnazım's
- * taking a published deck back, which words its own button and label.
+ * medrese's course request (nizam 39); since MDRS-148, the başnazım's
+ * taking a published deck back, which words its own button and label; and a
+ * medrese's appeal (İtirazlar), whose field is "Karar notu".
  */
 export type RejectKind =
   | "request"
   | "proposal"
   | "application"
   | "courseRequest"
+  | "appeal"
   | "unpublish";
 
 interface Props {
