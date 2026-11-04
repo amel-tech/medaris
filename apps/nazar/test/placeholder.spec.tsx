@@ -39,9 +39,11 @@ describe("the shared placeholder under a medrese", () => {
       expect(text, segment).toContain("Bu sayfa henüz hazır değil.");
     }
     expect(textOf(await html(await page("dersler")))).toMatch(/^Dersler /);
-    expect(textOf(await html(await page("kabul-kurallari")))).toMatch(
-      /^Kabul kuralları /
-    );
+    expect(textOf(await html(await page("itirazlar")))).toMatch(/^İtirazlar /);
+  });
+
+  it("answers 404 for kabul-kurallari, which is no longer in the menu", async () => {
+    await expect(page("kabul-kurallari")).rejects.toThrow("NEXT_NOT_FOUND");
   });
 
   it("leaves the sections that have a page to their own route folder", () => {
@@ -116,7 +118,7 @@ describe("the shared placeholder under a course", () => {
   });
 
   it("answers 404 for a segment of the medrese's menu", async () => {
-    for (const segment of ["dersler", "itirazlar", "kabul-kurallari"]) {
+    for (const segment of ["dersler", "itirazlar"]) {
       await expect(page(segment), segment).rejects.toThrow("NEXT_NOT_FOUND");
     }
   });

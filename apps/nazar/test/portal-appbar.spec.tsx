@@ -178,7 +178,6 @@ describe("the phone bar (nazir 21, 22)", () => {
       "Yasaklamalar",
       "İtirazlar",
       "Arşiv",
-      "Kabul kuralları",
       "Medrese ayarları",
     ]);
     const dersler = sheet.querySelector("nav a[href='/medrese/m-1/dersler']");
