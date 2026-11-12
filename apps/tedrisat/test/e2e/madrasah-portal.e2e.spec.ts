@@ -426,6 +426,7 @@ describe("Medrese talebe list and Pano (e2e)", () => {
             title: "İptal",
             scheduledAt: inDays(3),
             cancelledAt: new Date(),
+            cancelReason: "  Bu hafta ders yapılmayacak.  ",
           }),
           session({
             title: "Kaldırılan celse",
@@ -487,6 +488,21 @@ describe("Medrese talebe list and Pano (e2e)", () => {
         ["Mantığa giriş", 4, "us02web.zoom.us"],
         ["Bina ve İzhar Şerhi", 2, "meet.google.com"],
         ["Bina ve İzhar Şerhi", 2, null],
+        ["Bina ve İzhar Şerhi", 2, null],
+      ]);
+      // MDRS-248: a cancelled celse stays, marked, with the note to the talebe.
+      expect(
+        res.body.upcomingSessions.map(
+          (s: { cancelled: boolean; cancelReason: string | null }) => [
+            s.cancelled,
+            s.cancelReason,
+          ]
+        )
+      ).toEqual([
+        [false, null],
+        [false, null],
+        [true, "Bu hafta ders yapılmayacak."],
+        [false, null],
       ]);
       expect(res.body.upcomingSessions[0]).toMatchObject({
         koskId: fatihId,
@@ -537,6 +553,14 @@ describe("Medrese talebe list and Pano (e2e)", () => {
             scheduledAt: inDays(5),
             liveStreamUrl: "https://www.youtube.com/live/dQw4w9WgXcQ",
           }),
+          // Cancelled with a note: the mark is shown, the note is content.
+          session({
+            weekId: mantikWeek.id,
+            title: "İptal edilen",
+            scheduledAt: inDays(6),
+            cancelledAt: new Date(),
+            cancelReason: "Hoca hasta.",
+          }),
         ]);
 
       const res = await dashboard().expect(200);
@@ -546,10 +570,20 @@ describe("Medrese talebe list and Pano (e2e)", () => {
         inPerson: boolean;
         hasLiveStream: boolean | null;
         withoutAccess: boolean | null;
+        cancelled: boolean;
+        cancelReason: string | null;
       };
       const rows = res.body.upcomingSessions as Row[];
       const passive = rows.filter((s) => s.courseId === mantikId);
-      expect(passive).toHaveLength(3);
+      expect(passive).toHaveLength(4);
+      expect(passive.map((s) => s.cancelled)).toEqual([
+        false,
+        false,
+        false,
+        true,
+      ]);
+      expect(passive.every((s) => s.cancelReason === null)).toBe(true);
+      expect(JSON.stringify(res.body)).not.toContain("Hoca hasta");
       for (const row of passive) {
         expect(row).toMatchObject({
           meetingHost: null,
@@ -569,6 +603,8 @@ describe("Medrese talebe list and Pano (e2e)", () => {
           ])
       ).toEqual([
         ["meet.google.com", false, false],
+        // cancelled (MDRS-248): not attended, so not flagged
+        [null, false, false],
         [null, false, true],
       ]);
     });

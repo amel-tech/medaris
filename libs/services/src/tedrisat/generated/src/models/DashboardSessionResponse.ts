@@ -86,11 +86,23 @@ export interface DashboardSessionResponse {
      */
     hasLiveStream: boolean | null;
     /**
-     * Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`). Null when the course is in a passive scope: it is read off the content, which is closed to the Pano, so the row is not flagged either way
+     * Nobody can attend it as it stands: no meeting link, no live stream and not held in person (MDRS-283). The row the Pano flags; the rule is the one behind the course menu's badge (`sessionsWithoutAccess`). Null when the course is in a passive scope: it is read off the content, which is closed to the Pano, so the row is not flagged either way. False for a cancelled celse, which nobody attends (MDRS-248)
      * @type {boolean}
      * @memberof DashboardSessionResponse
      */
     withoutAccess: boolean | null;
+    /**
+     * The celse was cancelled (MDRS-248). It stays in the list so the Pano can show it with its badge and note; it is not counted as an upcoming celse
+     * @type {boolean}
+     * @memberof DashboardSessionResponse
+     */
+    cancelled: boolean;
+    /**
+     * The müderris's note to the talebe on a cancelled celse (MDRS-248). Null when the celse is not cancelled, has no note, or the course is in a passive scope
+     * @type {string}
+     * @memberof DashboardSessionResponse
+     */
+    cancelReason: string | null;
 }
 
 /**
@@ -109,6 +121,8 @@ export function instanceOfDashboardSessionResponse(value: object): value is Dash
     if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('hasLiveStream' in value) || value['hasLiveStream'] === undefined) return false;
     if (!('withoutAccess' in value) || value['withoutAccess'] === undefined) return false;
+    if (!('cancelled' in value) || value['cancelled'] === undefined) return false;
+    if (!('cancelReason' in value) || value['cancelReason'] === undefined) return false;
     return true;
 }
 
@@ -134,6 +148,8 @@ export function DashboardSessionResponseFromJSONTyped(json: any, ignoreDiscrimin
         'inPerson': json['inPerson'],
         'hasLiveStream': json['hasLiveStream'],
         'withoutAccess': json['withoutAccess'],
+        'cancelled': json['cancelled'],
+        'cancelReason': json['cancelReason'],
     };
 }
 
@@ -160,6 +176,8 @@ export function DashboardSessionResponseToJSONTyped(value?: DashboardSessionResp
         'inPerson': value['inPerson'],
         'hasLiveStream': value['hasLiveStream'],
         'withoutAccess': value['withoutAccess'],
+        'cancelled': value['cancelled'],
+        'cancelReason': value['cancelReason'],
     };
 }
 

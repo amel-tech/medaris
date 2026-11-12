@@ -22,7 +22,13 @@ import { getPortal } from "~/features/shell/reads";
 import { medreseCourseLinks } from "~/features/shell/scope";
 import { getMessages } from "~/lib/i18n/messages";
 import { readOnce } from "~/lib/tedrisat-read";
-import { applicationRows, courseCards, greetingOf, sessionRows } from "../pano";
+import {
+  applicationRows,
+  courseCards,
+  greetingOf,
+  heldSessionCount,
+  sessionRows,
+} from "../pano";
 import { ApplicationsPanel, SessionsTable } from "./pano-tables";
 
 function Section({
@@ -91,7 +97,7 @@ export async function PanoPage({ madrasahId }: { madrasahId: string }) {
               me?.givenName,
               data
                 ? {
-                    sessions: data.upcomingSessions.length,
+                    sessions: heldSessionCount(data.upcomingSessions),
                     applications: data.pendingApplicationCount,
                   }
                 : null,

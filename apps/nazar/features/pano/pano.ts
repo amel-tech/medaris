@@ -122,7 +122,21 @@ export interface SessionRow {
   attendance: AttendanceView | null;
   /** the course's own page for the celseler, while the caller holds a scope there */
   editHref: string | null;
+  /**
+   * A cancelled celse (MDRS-248): its status says "İptal edildi" instead of
+   * "Planlandı", with the müderris's note to the talebe under it when there is
+   * one. Null for a celse that is going ahead.
+   */
+  cancelled: { note: string | null } | null;
 }
+
+/**
+ * How many of the listed celseler are still going ahead: the greeting's
+ * "{n} celse var" leaves the cancelled ones out (MDRS-248).
+ */
+export const heldSessionCount = (
+  items: readonly Pick<DashboardSessionResponse, "cancelled">[]
+): number => items.filter((item) => !item.cancelled).length;
 
 /** "3 Eki Cmt 19:00": the day, the month, the weekday and the time, in the viewer's zone. */
 export const sessionTime = (
@@ -144,7 +158,8 @@ export const sessionTime = (
  * and never picked by hand; no link is ever sent, only its host. Each says how
  * it is attended by the rule Celseler uses: a celse with a stream or the
  * in-person mark is covered without a link, and only one with none of the
- * three is flagged (MDRS-283). All of them are still ahead. A course in a
+ * three is flagged (MDRS-283). All of them are still ahead; a cancelled one
+ * is listed with its note and claims no attendance (MDRS-248). A course in a
  * passive scope is sent neither the host, nor the stream, nor the flag
  * (`withoutAccess` null): its row says only the in-person mark, which is a
  * public label, and nothing when there is none.
@@ -165,8 +180,10 @@ export function sessionRows(
         item.koskName,
       ].join(" · "),
       time: { label: sessionTime(at, where), iso: at.toISOString() },
-      attendance:
-        item.withoutAccess === null
+      // a cancelled celse is not attended, so it is not flagged "Eksik" either
+      attendance: item.cancelled
+        ? null
+        : item.withoutAccess === null
           ? item.inPerson
             ? { inPerson: true, platform: null, stream: null, lack: null }
             : null
@@ -180,6 +197,9 @@ export function sessionRows(
             ),
       editHref: where.held.has(item.courseId.toLowerCase())
         ? `/ders/${encodeURIComponent(item.courseId)}/celseler`
+        : null,
+      cancelled: item.cancelled
+        ? { note: item.cancelReason?.trim() || null }
         : null,
     };
   });

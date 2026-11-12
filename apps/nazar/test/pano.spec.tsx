@@ -121,6 +121,8 @@ const session = (over: Record<string, unknown>) => ({
   inPerson: false,
   hasLiveStream: false,
   withoutAccess: false,
+  cancelled: false,
+  cancelReason: null,
   ...over,
 });
 const application = (over: Record<string, unknown>) => ({
@@ -603,6 +605,38 @@ describe("Pano", () => {
     const [row] = out.split("<tr").slice(2).map(textOf);
     expect(row).not.toContain("Eksik");
     expect(row).toContain("Katılım bilgisi gösterilmez");
+  });
+
+  it("shows a cancelled celse with its badge and the note on one line, not struck through, and leaves it out of the greeting's count (MDRS-248)", async () => {
+    state.dashboard = ok({
+      upcomingSessions: [
+        session({
+          meetingHost: null,
+          withoutAccess: true,
+          cancelled: true,
+          cancelReason: "Bu hafta ders yapılmayacak.",
+        }),
+        session({ lessonId: "l-2", cancelled: true, cancelReason: null }),
+        session({ lessonId: "l-3" }),
+      ],
+    });
+    const html = await markup();
+    expect(html).toMatch(
+      /data-testid="greeting"[^>]*>[^<]*Önümüzdeki 7 günde 1 celse var;/
+    );
+    const out = section(html, "sessions-heading");
+    expect(out).not.toContain("line-through");
+    expect(out).not.toContain("<s>");
+    const rows = out.split("<tr").slice(2);
+    const text = rows.map(textOf);
+    expect(text[0]).toContain("İptal edildi");
+    expect(text[0]).toContain("Bu hafta ders yapılmayacak.");
+    expect(text[0]).not.toContain("Eksik");
+    expect(text[0]).not.toContain("Planlandı");
+    expect(rows[0]).toMatch(/class="[^"]*truncate[^"]*" dir="auto"/);
+    expect(text[1]).toContain("İptal edildi");
+    expect(text[2]).toContain("Planlandı");
+    expect(text[2]).not.toContain("İptal edildi");
   });
 
   it("lists the applications with the student, the course and the day, and the counter above them", async () => {

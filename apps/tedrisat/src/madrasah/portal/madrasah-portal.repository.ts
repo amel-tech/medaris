@@ -266,6 +266,8 @@ export class MadrasahPortalRepository {
         inPerson: inPersonSql(attendance),
         hasLiveStream: hasLiveStreamSql(attendance),
         withoutAccess: withoutAccessSql(attendance),
+        cancelled: sql<boolean>`${lessons.cancelledAt} is not null`,
+        cancelReason: lessons.cancelReason,
         passive,
       })
       .from(lessons)
@@ -280,7 +282,7 @@ export class MadrasahPortalRepository {
           isNull(kosks.archivedAt),
           isNull(courseWeeks.archivedAt),
           isNull(lessons.archivedAt),
-          isNull(lessons.cancelledAt),
+          // A cancelled celse stays on the Pano with its badge and note (MDRS-248).
           eq(lessons.type, LessonType.LIVE),
           gte(lessons.scheduledAt, sql`now()`),
           lte(lessons.scheduledAt, sql`now() + make_interval(days => ${days})`)
@@ -294,13 +296,20 @@ export class MadrasahPortalRepository {
         passive: closed,
         hasLiveStream,
         withoutAccess,
+        cancelled,
+        cancelReason,
         ...row
       }) => ({
         ...row,
         scheduledAt: scheduledAt as Date,
+        cancelled,
+        cancelReason:
+          cancelled && !closed ? cancelReason?.trim() || null : null,
         meetingHost: closed ? null : hostOf(meetingUrl),
         hasLiveStream: closed ? null : hasLiveStream,
-        withoutAccess: closed ? null : withoutAccess,
+        // a cancelled celse is not attended, so it is not flagged either,
+        // as the course menu's badge leaves it out (MDRS-248)
+        withoutAccess: closed ? null : !cancelled && withoutAccess,
       })
     );
   }
