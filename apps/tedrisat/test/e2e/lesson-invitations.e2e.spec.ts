@@ -437,7 +437,13 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
     expect(icsProp(ics, "STATUS")).toBe("CANCELLED");
     expect(icsProp(ics, "UID")).toBe(invitationUid(sessionId));
     expect(icsProp(ics, "SEQUENCE")).toBe("1");
-    expect(JSON.stringify(sent[0])).not.toContain("Müderris hasta");
+    // MDRS-248: the note is written for talebe, so the mail carries it; the
+    // calendar entry does not.
+    expect(String(sent[0].text)).toContain(
+      "Note from your teacher: Müderris hasta"
+    );
+    expect(String(sent[0].html)).toContain("Müderris hasta");
+    expect(ics).not.toContain("Müderris hasta");
     expect((await invitationRow(TALEBE_ID))?.cancelledAt).not.toBeNull();
 
     sent.length = 0;
@@ -457,6 +463,8 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
     await settle();
 
     expect(sent.map((m) => calendarOf(m).method)).toEqual(["CANCEL"]);
+    // The removal's reason is not a session note (MDRS-248).
+    expect(JSON.stringify(sent[0])).not.toContain("Celselere katılmadı.");
   });
 
   it("cancels the upcoming invitations of a course that turns passive, and sends nothing more for it", async () => {

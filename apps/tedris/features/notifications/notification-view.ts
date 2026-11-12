@@ -143,8 +143,11 @@ export const describeNotification = (
 
   let bodyKey = "body";
   switch (n.type) {
+    // MDRS-248: the note the müderris wrote for talebe follows the sentence.
     case "SESSION_CANCELLED":
-      if (has("makeupAt")) bodyKey = "bodyMakeup";
+      if (has("makeupAt"))
+        bodyKey = has("reason") ? "bodyMakeupReason" : "bodyMakeup";
+      else if (has("reason")) bodyKey = "bodyReason";
       break;
     case "SESSION_RESCHEDULED":
       if (has("previousAt")) bodyKey = "bodyPrevious";

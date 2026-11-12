@@ -39,6 +39,11 @@ export interface IInvitationDue {
    * false when the session no longer exists (a CANCEL for a deleted one).
    */
   attendance: CalendarAttendance;
+  /**
+   * The note the müderris left for talebe when the session itself was
+   * cancelled (MDRS-248), for a CANCEL's mail; null otherwise.
+   */
+  cancelReason: string | null;
 }
 
 /** What the last message for a pair said, to put back when a send fails. */
@@ -60,6 +65,7 @@ type Row = {
   in_person: boolean | null;
   has_meeting_link: boolean | null;
   has_live_stream: boolean | null;
+  cancel_reason: string | null;
 };
 
 const toDue = (r: Row): IInvitationDue => ({
@@ -81,6 +87,7 @@ const toDue = (r: Row): IInvitationDue => ({
     hasMeetingLink: r.has_meeting_link ?? false,
     hasLiveStream: r.has_live_stream ?? false,
   },
+  cancelReason: r.cancel_reason?.trim() || null,
 });
 
 /**
@@ -163,6 +170,7 @@ export class LessonInvitationRepository {
              l.scheduled_at as starts_at, l.duration_minutes,
              inv.sequence as last_sequence,
              (inv.lesson_id is null or inv.cancelled_at is not null) as last_cancelled,
+             null as cancel_reason,
              ${ATTENDANCE}
         from lessons l
         join course_weeks w on w.id = l.week_id
@@ -202,6 +210,7 @@ export class LessonInvitationRepository {
              inv.course_id, inv.course_title, inv.lesson_title,
              inv.starts_at, inv.duration_minutes,
              inv.sequence as last_sequence, false as last_cancelled,
+             case when l.cancelled_at is not null then l.cancel_reason end as cancel_reason,
              ${ATTENDANCE}
         from lesson_invitations inv
         join users u on u.id = inv.user_id

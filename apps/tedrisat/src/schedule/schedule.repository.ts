@@ -39,6 +39,8 @@ export interface IScheduledSession {
   startsAt: Date;
   durationMinutes: number | null;
   cancelledAt: Date | null;
+  /** The note the müderris left for talebe when cancelling (MDRS-248). */
+  cancelReason: string | null;
   meetingUrl: string | null;
   /** Held in person: the session's own mark, else the course's (MDRS-283). */
   inPerson: boolean;
@@ -161,6 +163,7 @@ export class ScheduleRepository {
         startsAt: lessons.scheduledAt,
         durationMinutes: lessons.durationMinutes,
         cancelledAt: lessons.cancelledAt,
+        cancelReason: lessons.cancelReason,
         meetingUrl: lessons.meetingUrl,
         inPerson: inPersonSql({
           lessonInPerson: lessons.inPersonOverride,

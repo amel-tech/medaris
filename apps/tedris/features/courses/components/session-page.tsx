@@ -155,7 +155,10 @@ export const SessionPage = async ({
       />
     ) : null;
 
-  const cancellation: ReactNode = cancelled ? (
+  // MDRS-248: the note the müderris wrote for talebe when cancelling, one
+  // line above what follows from the cancellation.
+  const cancelNote = cancelled ? session.cancelReason?.trim() || null : null;
+  const afterCancel: ReactNode = cancelled ? (
     replacement?.startsAt ? (
       <>
         {t.rich("SessionPage.replacement", {
@@ -179,6 +182,21 @@ export const SessionPage = async ({
       t("SessionPage.noReplacement")
     )
   ) : null;
+  const cancellation: ReactNode = cancelNote ? (
+    <>
+      <span
+        className="block truncate"
+        dir="auto"
+        title={cancelNote}
+        data-testid="cancel-note"
+      >
+        {t("SessionPage.cancelNote", { note: cancelNote })}
+      </span>
+      {afterCancel}
+    </>
+  ) : (
+    afterCancel
+  );
 
   const time = session.startsAt
     ? celseTimeWords(session.startsAt, session.durationMinutes, {

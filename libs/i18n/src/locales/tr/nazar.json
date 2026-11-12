@@ -1381,6 +1381,9 @@
     "cancelledToast": "Celse iptal edildi",
     "cancelledBody": "{name} iptal edildi.",
     "cancelDialog": {
+      "noteLabel": "Talebelere not",
+      "noteHelp": "Bildirimde, e-postada ve programda görünür.",
+      "noteSuggestion": "Bu hafta ders yapılmayacak.",
       "makeUp": "Telafi celsesi ekle",
       "makeUpHelp": "Aynı başlık ve uzunlukta yeni bir celse önce açılır, sonra iptal edilen celse ona bağlanır; iptal edilen celse telafisine bağlantı gösterir.",
       "makeUpFailed": "Telafi celsesi eklenemedi; celse iptal edilmedi",

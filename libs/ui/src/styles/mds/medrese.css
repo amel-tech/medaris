@@ -59,6 +59,7 @@ a.mds-lesson-row__title::after { content: ""; position: absolute; inset: 0; bord
 /* Each part but the last ends on its .mds-sep, so a wrapped line ends on the dot and never starts with it. */
 .mds-lesson-row__meta time { font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
 .mds-lesson-row__marker { color: var(--text-brand-default); font-weight: var(--weight-semibold); }
+.mds-lesson-row__note { margin: 0; font-size: var(--fs-caption); line-height: var(--lh-snug); color: var(--text-neutral-muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .mds-lesson-row__trailing { position: relative; z-index: 1; flex: none; display: flex; align-items: center; gap: var(--space-2); }
 .mds-lesson-row__lock { color: var(--text-neutral-subtle); }
 .mds-lesson-row__duration { flex: none; min-inline-size: var(--space-12); font-size: var(--fs-caption); text-align: end; color: var(--text-neutral-subtle); font-variant-numeric: lining-nums tabular-nums; }

@@ -1,5 +1,5 @@
 import { INestApplication } from "@nestjs/common";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import request from "supertest";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
@@ -108,11 +108,13 @@ describe("schedule (e2e)", () => {
       .post(`/courses/${courseId}/enroll`)
       .expect(201);
 
-  const cancel = (lessonId: string) =>
+  const cancel = (lessonId: string, reason?: string) =>
     app
       .get(DatabaseService)
       .db.execute(
-        `UPDATE "lessons" SET "cancelled_at" = now() WHERE "id" = '${lessonId}'`
+        reason
+          ? sql`UPDATE "lessons" SET "cancelled_at" = now(), "cancel_reason" = ${reason} WHERE "id" = ${lessonId}`
+          : sql`UPDATE "lessons" SET "cancelled_at" = now() WHERE "id" = ${lessonId}`
       );
 
   const window = (fromDays: number, toDays: number) => ({
@@ -276,7 +278,10 @@ describe("schedule (e2e)", () => {
       const cancelled = course.weeks[0].lessons.find(
         (l) => l.title === "İptal"
       );
-      await cancel((cancelled as { id: string }).id);
+      await cancel(
+        (cancelled as { id: string }).id,
+        "Bu hafta ders yapılmayacak."
+      );
 
       const res = await list().expect(200);
       expect(
@@ -290,6 +295,9 @@ describe("schedule (e2e)", () => {
       ]);
       expect(res.body[0].meetingUrl).toBeNull();
       expect(res.body[1].meetingUrl).toBe(MEETING_URL);
+      // MDRS-248: the müderris's note for talebe, on the cancelled one alone.
+      expect(res.body[0].cancelReason).toBe("Bu hafta ders yapılmayacak.");
+      expect(res.body[1].cancelReason).toBeNull();
     });
 
     it("applies the window: from inclusive, to exclusive; other lesson types and hidden lessons are not sessions", async () => {

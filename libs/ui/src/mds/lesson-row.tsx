@@ -100,6 +100,8 @@ export interface LessonRowProps
   minuteUnit?: string;
   locale?: string;
   trailing?: ReactNode;
+  /** One line under the meta, cut with an ellipsis: a cancelled session's note */
+  note?: string;
 }
 
 /** One lesson of a week: an `<li>` for the `.mds-lesson-list` a WeekAccordion draws. */
@@ -125,6 +127,7 @@ export function LessonRow({
   minuteUnit = "dk",
   locale: localeProp,
   trailing,
+  note,
   className,
   ...rest
 }: LessonRowProps) {
@@ -200,6 +203,11 @@ export function LessonRow({
           <span {...titleProps}>{name}</span>
         )}
         <p className="mds-lesson-row__meta">{joinRun(meta)}</p>
+        {note ? (
+          <p className="mds-lesson-row__note" dir="auto" title={note}>
+            {note}
+          </p>
+        ) : null}
       </div>
       {trailing ? (
         <span className="mds-lesson-row__trailing">{trailing}</span>

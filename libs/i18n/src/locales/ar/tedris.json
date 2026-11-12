@@ -487,7 +487,9 @@
       "SESSION_CANCELLED": {
         "title": "أُلغيت الجلسة",
         "body": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}.",
-        "bodyMakeup": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. جلسة التعويض: {makeupAt}."
+        "bodyMakeup": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. جلسة التعويض: {makeupAt}.",
+        "bodyReason": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. ملاحظة الأستاذ: {reason}",
+        "bodyMakeupReason": "أُلغيت جلسة {courseTitle} المقررة في {sessionAt}. جلسة التعويض: {makeupAt}. ملاحظة الأستاذ: {reason}"
       },
       "SESSION_RESCHEDULED": {
         "title": "تغيّر موعد الجلسة",
@@ -560,6 +562,7 @@
     "minuteUnit": "د",
     "cancelledTitle": "أُلغيت هذه الحلقة",
     "replacement": "حلقة التعويض: <when>{time}</when>.",
+    "cancelNote": "ملاحظة الأستاذ: {note}",
     "replacementGo": "انتقل إلى حلقة التعويض",
     "agendaTitle": "جدول الحلقة",
     "agendaZone": "الأوقات بتوقيت {zone}.",

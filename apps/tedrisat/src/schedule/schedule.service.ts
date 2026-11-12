@@ -104,6 +104,7 @@ const toResponse = (row: IScheduledSession, now: Date) => {
     startsAt: row.startsAt,
     durationMinutes: row.durationMinutes,
     status,
+    cancelReason: row.cancelledAt ? (row.cancelReason ?? null) : null,
     meetingUrl: joinable ? row.meetingUrl : null,
     inPerson: row.inPerson,
     hasLiveStream: row.hasLiveStream,

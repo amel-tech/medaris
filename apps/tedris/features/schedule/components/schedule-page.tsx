@@ -93,7 +93,19 @@ const ScheduleRow = ({
           {session.title}
         </Link>
         {cancelled ? (
-          <p className="mds-caption">{t("SchedulePage.cancelledNote")}</p>
+          // MDRS-248: the müderris's note on one line, when one was written.
+          <p
+            className="mds-caption truncate"
+            dir="auto"
+            title={session.cancelReason?.trim() || undefined}
+            data-testid="cancel-note"
+          >
+            {session.cancelReason?.trim()
+              ? t("SessionPage.cancelNote", {
+                  note: session.cancelReason.trim(),
+                })
+              : t("SchedulePage.cancelledNote")}
+          </p>
         ) : platform && session.meetingUrl ? (
           <p>
             <PlatformChip

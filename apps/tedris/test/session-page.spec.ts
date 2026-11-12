@@ -863,6 +863,19 @@ describe("session page, the main card: cancelled (design tedris/18, MDRS-289)", 
     expect(html).not.toContain("Telafi celsesi");
   });
 
+  it("writes the müderris's note above the replacement, on one line (MDRS-248)", async () => {
+    const html = card(
+      await render(cancelled({ cancelReason: "Bu hafta ders yapılmayacak." }))
+    );
+    expect(html).toContain('data-testid="cancel-note"');
+    expect(html).toContain("Hocanın notu: Bu hafta ders yapılmayacak.");
+    expect(html.indexOf("Hocanın notu")).toBeLessThan(
+      html.indexOf("Telafi celsesi:")
+    );
+    const none = card(await render(cancelled()));
+    expect(none).not.toContain('data-testid="cancel-note"');
+  });
+
   it("is not cancelled when it was not", async () => {
     expect(await render(session())).not.toContain(tr.cancelledTitle);
   });

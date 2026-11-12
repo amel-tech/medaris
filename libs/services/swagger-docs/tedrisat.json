@@ -24300,6 +24300,11 @@
               }
             ]
           },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true,
+            "description": "The note the müderris left for talebe when cancelling the session (MDRS-248); null while it stands or when none was written."
+          },
           "meetingUrl": {
             "type": "string",
             "nullable": true,
@@ -24325,6 +24330,7 @@
           "startsAt",
           "durationMinutes",
           "status",
+          "cancelReason",
           "meetingUrl",
           "inPerson",
           "hasLiveStream"

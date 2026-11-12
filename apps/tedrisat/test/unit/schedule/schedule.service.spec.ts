@@ -19,6 +19,7 @@ const row = (over: Partial<IScheduledSession> = {}): IScheduledSession => ({
   startsAt: new Date("2026-10-03T18:00:00.000Z"),
   durationMinutes: 60,
   cancelledAt: null,
+  cancelReason: null,
   meetingUrl: MEETING,
   ...over,
 });
@@ -69,6 +70,22 @@ describe("ScheduleService (MDRS-163)", () => {
     ]);
     const list = await service.list("u", "2026-10-03", "2026-10-10", NOW);
     expect(list.map((s) => s.meetingUrl)).toEqual([MEETING, null, null]);
+  });
+
+  it("hands the cancellation note only for a cancelled session (MDRS-248)", async () => {
+    const { service } = serviceWith([
+      row({ id: "ahead", cancelReason: "stale" }),
+      row({
+        id: "off",
+        cancelledAt: new Date("2026-10-01T10:00:00.000Z"),
+        cancelReason: "Bu hafta ders yapılmayacak.",
+      }),
+    ]);
+    const list = await service.list("u", "2026-10-03", "2026-10-10", NOW);
+    expect(list.map((s) => s.cancelReason)).toEqual([
+      null,
+      "Bu hafta ders yapılmayacak.",
+    ]);
   });
 
   it("records each passive course whose link it hands out, once, and nothing for a link it withholds (review D1)", async () => {
