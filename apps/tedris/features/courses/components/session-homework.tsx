@@ -25,6 +25,7 @@ import { Textarea } from "@medaris/ui/mds/textarea";
 import { useLocale, useTimeZone, useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
+import { getMyEvaluation } from "../actions/evaluation";
 import {
   deleteMySubmissionFile,
   getMySubmission,
@@ -119,7 +120,141 @@ const send = async (lessonId: string, file: File): Promise<Sent> => {
  * it before homework was set celse by celse: that stays theirs to see and
  * manage, without a state.
  */
-export function SessionHomework({
+export function SessionHomework(props: {
+  lessonId: string;
+  /** the homework the müderris set on the celse; null when there is none */
+  assignment?: LessonAssignmentResponse | null;
+}) {
+  return props.assignment?.kind === "MEMORIZE" ? (
+    <MemorizeHomework lessonId={props.lessonId} assignment={props.assignment} />
+  ) : (
+    <FileHomework {...props} />
+  );
+}
+
+type MarkState = "pending" | "full" | "incomplete" | "absent";
+
+const MARK_OF: Record<string, MarkState> = {
+  FULL: "full",
+  INCOMPLETE: "incomplete",
+  ABSENT: "absent",
+};
+
+const MARK_BADGE: Record<
+  MarkState,
+  {
+    variant: "secondary" | "success" | "warning" | "error";
+    key:
+      | "memorizePending"
+      | "memorizeFull"
+      | "memorizeIncomplete"
+      | "memorizeAbsent";
+  }
+> = {
+  pending: { variant: "secondary", key: "memorizePending" },
+  full: { variant: "success", key: "memorizeFull" },
+  incomplete: { variant: "warning", key: "memorizeIncomplete" },
+  absent: { variant: "error", key: "memorizeAbsent" },
+};
+
+/**
+ * A homework recited to the müderris (MDRS-248): its description and files
+ * as any homework's, then "Ezberini hocana dinlet" in place of Ödevim. Nothing
+ * is uploaded; the state beside the heading is the müderris's mark, read from
+ * tedrisat for the caller alone: "Bekliyor" until marked, then "Tam",
+ * "Eksik" or "Vermedi", with the müderris's note under it.
+ */
+function MemorizeHomework({
+  lessonId,
+  assignment,
+}: {
+  lessonId: string;
+  assignment: LessonAssignmentResponse;
+}) {
+  const t = useTranslations("tedrisLearn.Homework");
+  const locale = useLocale();
+  const [load, setLoad] = useState<Load>({ state: "loading" });
+  const [mark, setMark] = useState<{ state: MarkState; note: string | null }>({
+    state: "pending",
+    note: null,
+  });
+
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const result = await getMyEvaluation(lessonId);
+        if (!live || sendToSignIn(result)) return;
+        if (result.success) {
+          setMark({
+            state: MARK_OF[String(result.data.status)] ?? "pending",
+            note: result.data.note ?? null,
+          });
+          setLoad({ state: "ready" });
+        } else {
+          setLoad({ state: "failed" });
+        }
+      } catch {
+        if (live) setLoad({ state: "failed" });
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [lessonId]);
+
+  const badge = MARK_BADGE[mark.state];
+
+  return (
+    <section
+      className="mds-card flex flex-col gap-4"
+      aria-labelledby={`assignment-${lessonId}`}
+      data-testid="session-homework"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <h2
+          className="mds-card__title flex items-center gap-2"
+          id={`assignment-${lessonId}`}
+        >
+          <Icon name="note" />
+          {t("sectionTitle")}
+        </h2>
+        {load.state === "ready" ? (
+          <Badge variant={badge.variant} data-testid="memorize-state">
+            {t(badge.key)}
+          </Badge>
+        ) : null}
+      </div>
+
+      <AssignmentBody assignment={assignment} locale={locale} />
+
+      <div
+        className="flex flex-col gap-2 border-bs border-neutral-subtle pbs-4"
+        data-testid="memorize-homework"
+      >
+        <h3 className="mds-h3 flex items-center gap-2">
+          <Icon name="headphones" />
+          {t("memorizeTitle")}
+        </h3>
+        <p className="mds-caption">{t("memorizeBody")}</p>
+        {load.state === "failed" ? (
+          <p className="mds-body-sm" role="alert">
+            {t("memorizeLoadFailed")}
+          </p>
+        ) : null}
+        {mark.note ? (
+          <p className="mds-body-sm whitespace-pre-line break-words">
+            <span className="mds-label">{t("memorizeNote")}</span>{" "}
+            <bdi dir="auto">{mark.note}</bdi>
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+/** A homework handed in as files, as every homework was before MDRS-248. */
+function FileHomework({
   lessonId,
   assignment = null,
 }: {

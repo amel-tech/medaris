@@ -13,6 +13,7 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import {
+  assignmentEvaluations,
   lessonAssignmentFiles,
   lessonAssignments,
 } from "../database/schema/lesson-assignment.schema";
@@ -240,8 +241,8 @@ export async function deleteLessonSubmissions(
 }
 
 /**
- * Deletes the homework the müderris set on the given lessons, files first,
- * inside the caller's transaction, and marks every file's object for removal
+ * Deletes the homework the müderris set on the given lessons, the course
+ * team's marks on it (MDRS-248) and its files first, inside the caller's transaction, and marks every file's object for removal
  * from storage once it commits. Shared by every purge that deletes lessons.
  */
 export async function deleteLessonAssignments(
@@ -253,6 +254,9 @@ export async function deleteLessonAssignments(
     .select({ id: lessonAssignments.id })
     .from(lessonAssignments)
     .where(inArray(lessonAssignments.lessonId, lessonIds));
+  await tx
+    .delete(assignmentEvaluations)
+    .where(inArray(assignmentEvaluations.assignmentId, assignmentIds));
   const removed = await tx
     .delete(lessonAssignmentFiles)
     .where(inArray(lessonAssignmentFiles.assignmentId, assignmentIds))

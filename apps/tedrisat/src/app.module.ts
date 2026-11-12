@@ -19,6 +19,7 @@ import { CourseModule } from "./course/course.module";
 import { CourseRequestModule } from "./course-request/course-request.module";
 import { DatabaseModule } from "./database/database.module";
 import { DeckReviewModule } from "./deck-review/deck-review.module";
+import { EvaluationModule } from "./evaluation/evaluation.module";
 import { FlashcardModule } from "./flashcard/flashcard.module";
 import { FlashcardLabelModule } from "./flashcard/flashcard-label.module";
 import { HostingModule } from "./hosting/hosting.module";
@@ -68,6 +69,7 @@ import { UserModule } from "./user/user.module";
     LessonNoteModule,
     LessonQuestionModule,
     LessonSubmissionModule,
+    EvaluationModule,
     CalendarFeedModule,
     KoskApplicationModule,
     NotificationModule,

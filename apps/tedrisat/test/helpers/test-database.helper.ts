@@ -56,6 +56,7 @@ export const COURSE_TREE_TABLES = [
   "submission_review_files",
   "submission_files",
   "lesson_submissions",
+  "assignment_evaluations",
   "lesson_assignment_files",
   "lesson_assignments",
   "lesson_resources",

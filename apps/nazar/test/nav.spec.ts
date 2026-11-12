@@ -156,6 +156,28 @@ describe("the menu of a course (nazir 22)", () => {
     expect(resources.tr.nazar.Nav.ders.homework).toBe("Ödevler");
   });
 
+  it("offers Değerlendirme under Ödevler to a holder of session.manage alone (MDRS-248)", () => {
+    const ids = (held?: ReadonlySet<string>) =>
+      navFor(ders, { panoHref: "/medrese/m-1", counts: {}, held })
+        .flatMap((s) => s.items)
+        .map((i) => i.id);
+    expect(ids(new Set(["submission.read"]))).not.toContain("evaluation");
+    const held = ids(new Set(["submission.read", "session.manage"]));
+    expect(held.indexOf("evaluation")).toBe(held.indexOf("homework") + 1);
+    const item = navFor(ders, {
+      panoHref: "/medrese/m-1",
+      counts: {},
+      held: new Set(["session.manage"]),
+    })
+      .flatMap((s) => s.items)
+      .find((i) => i.id === "evaluation");
+    expect(item).toMatchObject({
+      href: "/ders/c-1/degerlendirme",
+      labelKey: "ders.evaluation",
+    });
+    expect(resources.tr.nazar.Nav.ders.evaluation).toBe("Değerlendirme");
+  });
+
   it("offers Ders destesi only to a holder of deck.manage_course", () => {
     const deckItem = (held?: ReadonlySet<string>) =>
       navFor(ders, { panoHref: "/medrese/m-1", counts: {}, held })
@@ -244,6 +266,7 @@ describe("the pages behind the menu", () => {
       "talebeler",
       "sorular",
       "odevler",
+      "degerlendirme",
       "kayitlar",
       "deste",
       "yasaklamalar",

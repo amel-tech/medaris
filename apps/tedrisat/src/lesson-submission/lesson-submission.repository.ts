@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { displayNameOf } from "../assignment/assignment.service";
 import type { Tx } from "../course/course-purge";
+import { AssignmentKind } from "../course/domain/assignment-kind.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
 import { LessonNotFoundError } from "../course/errors/lesson-not-found.error";
 import { DatabaseService } from "../database/database.service";
@@ -244,6 +245,21 @@ export class LessonSubmissionRepository {
         : null,
       reviewFiles: reviewFiles.filter((f) => f.submissionId === row.id),
     }));
+  }
+
+  /** Whether the celse's homework is recited to the müderris (MDRS-248). */
+  async isMemorization(lessonId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: lessonAssignments.id })
+      .from(lessonAssignments)
+      .where(
+        and(
+          eq(lessonAssignments.lessonId, lessonId),
+          eq(lessonAssignments.kind, AssignmentKind.MEMORIZE)
+        )
+      )
+      .limit(1);
+    return row !== undefined;
   }
 
   /** How many files the talebe's homework on the celse holds. */

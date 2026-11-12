@@ -4,6 +4,7 @@ export * from './ArchiveApi';
 export * from './BansApi';
 export * from './CalendarApi';
 export * from './CoursesApi';
+export * from './EvaluationsApi';
 export * from './FlashcardCardsApi';
 export * from './FlashcardDeckLabelApi';
 export * from './FlashcardDecksApi';

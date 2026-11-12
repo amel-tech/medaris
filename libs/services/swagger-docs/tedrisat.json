@@ -5185,7 +5185,7 @@
     },
     "/lessons/{id}/assignment": {
       "put": {
-        "description": "Gives the session homework if it has none (\"Bu celsenin ödevi var\"), written to `audit_log` as `lesson_assignment.create`; otherwise changes its description (`lesson_assignment.update`; a save that changes nothing writes nothing). The audit row carries the description's length, not its text. `session.manage`, the permission that edits the session's resources, on a live session of a course the caller may write to: a hidden session answers LESSON_NOT_FOUND. The course's version is not bumped: the homework is not part of `PUT /courses/:id`.",
+        "description": "Gives the session homework if it has none (\"Bu celsenin ödevi var\"), written to `audit_log` as `lesson_assignment.create`; otherwise changes its description or how it is handed in (`kind`), as `lesson_assignment.update` (a save that changes nothing writes nothing). The audit row carries the description's length, not its text. `session.manage`, the permission that edits the session's resources, on a live session of a course the caller may write to: a hidden session answers LESSON_NOT_FOUND. The course's version is not bumped: the homework is not part of `PUT /courses/:id`.",
         "operationId": "saveLessonAssignment",
         "parameters": [
           {
@@ -9772,7 +9772,7 @@
     },
     "/lessons/{id}/submission/files": {
       "post": {
-        "description": "Makes the homework if there is none yet; at most 10 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
+        "description": "Makes the homework if there is none yet; at most 10 files (409 SUBMISSION_FILE_LIMIT). A session whose homework is recited to the müderris (`kind` MEMORIZE) takes no file: 409 SUBMISSION_FILES_NOT_TAKEN. The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
         "operationId": "addMySubmissionFile",
         "parameters": [
           {
@@ -9824,7 +9824,7 @@
             "description": "LESSON_NOT_FOUND"
           },
           "409": {
-            "description": "SUBMISSION_FILE_LIMIT"
+            "description": "SUBMISSION_FILE_LIMIT, SUBMISSION_FILES_NOT_TAKEN"
           },
           "413": {
             "description": "FILE_TOO_LARGE"
@@ -10360,6 +10360,156 @@
         "summary": "Download a review file, as the course's staff",
         "tags": [
           "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/evaluations": {
+      "get": {
+        "description": "`session.manage` on the course. Rows are the talebe seated in the course (ENROLLED or COMPLETED), by name; columns are the memorisation homework on its live sessions (`kind` MEMORIZE), in programme order, each with how many are marked FULL (\"18/30 tam\"); `marks` are the marks given, and a cell with none is \"Bekliyor\". A hidden course or a draft is not found, as on its page.",
+        "operationId": "getEvaluationBoard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationBoardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's evaluation board",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/lessons/{id}/evaluations/{userId}": {
+      "put": {
+        "description": "`session.manage` on the course, on a live session whose homework is recited (`kind` MEMORIZE; otherwise 404 MEMORIZATION_NOT_FOUND), for a talebe seated in its course (otherwise 404 EVALUATION_TALEBE_NOT_FOUND). Sets \"Tam\", \"Eksik\" or \"Vermedi\" with an optional short note, replacing an earlier mark; written to `audit_log` as `assignment_evaluation.save` with the note's length. A save that changes nothing writes nothing. A hidden session is LESSON_NOT_FOUND.",
+        "operationId": "saveEvaluation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveEvaluationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationMarkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, MEMORIZATION_NOT_FOUND, EVALUATION_TALEBE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a talebe on a session's memorisation homework",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/lessons/{id}/evaluation": {
+      "get": {
+        "description": "Only the caller's own: `status` null is \"Bekliyor\". Read on the terms of `GET /lessons/:id/submission`: a course in a passive scope is closed (403 EVALUATION_FORBIDDEN), and a hidden course is as not found as a session that is not there. A session whose homework is not a memorisation is 404 MEMORIZATION_NOT_FOUND.",
+        "operationId": "getMyEvaluation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnEvaluationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "EVALUATION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, MEMORIZATION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own mark on a session's memorisation homework",
+        "tags": [
+          "evaluations"
         ]
       }
     },
@@ -17598,6 +17748,14 @@
           "orderIndex"
         ]
       },
+      "AssignmentKind": {
+        "type": "string",
+        "enum": [
+          "FILE",
+          "MEMORIZE"
+        ],
+        "description": "How the talebe hand it in: FILE, uploaded on the session page, or MEMORIZE, recited to the müderris and marked by the course team."
+      },
       "LessonAssignmentFileResponse": {
         "type": "object",
         "properties": {
@@ -17654,6 +17812,14 @@
             "nullable": true,
             "description": "Plain text as typed; null when there is none."
           },
+          "kind": {
+            "description": "How the talebe hand it in: FILE, uploaded on the session page, or MEMORIZE, recited to the müderris and marked by the course team.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentKind"
+              }
+            ]
+          },
           "files": {
             "description": "Oldest first.",
             "type": "array",
@@ -17675,6 +17841,7 @@
           "id",
           "lessonId",
           "description",
+          "kind",
           "files",
           "createdAt",
           "updatedAt"
@@ -20330,6 +20497,15 @@
             "nullable": true,
             "example": "Birinci babın çekimlerini yazın, fotoğrafını yükleyin.",
             "description": "What the talebe are to do, plain text with line breaks, at most 4000 characters after trimming; null, absent or blank is none. Stored as typed and never rendered as HTML."
+          },
+          "kind": {
+            "example": "FILE",
+            "description": "How the talebe hand it in (\"Teslim şekli\"): FILE, files uploaded on the session page, or MEMORIZE, recited to the müderris and marked on \"Değerlendirme\", where the talebe upload nothing (`POST /lessons/:id/submission/files` answers 409 SUBMISSION_FILES_NOT_TAKEN). Absent keeps what the homework has, FILE for new homework. Changing it keeps the talebe's submissions and the marks given.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentKind"
+              }
+            ]
           }
         }
       },
@@ -23911,6 +24087,210 @@
             "description": "The reviewer's note to the talebe, at most 4000 characters after trimming; null, absent or blank leaves none, which needs at least one review file. Stored as typed and never rendered as HTML."
           }
         }
+      },
+      "EvaluationColumnKind": {
+        "type": "string",
+        "enum": [
+          "MEMORIZE"
+        ],
+        "description": "What the column is; skip a kind you do not know."
+      },
+      "EvaluationColumnResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "What the column is; skip a kind you do not know.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationColumnKind"
+              }
+            ]
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The session it was set on."
+          },
+          "title": {
+            "type": "string",
+            "example": "Emsile, birinci bab"
+          },
+          "weekNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the session is held; null when it has no time."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "The homework's description, plain text; null when none."
+          },
+          "fullCount": {
+            "type": "number",
+            "example": 18,
+            "description": "Seated talebe marked FULL: \"18/30 tam\"."
+          }
+        },
+        "required": [
+          "kind",
+          "lessonId",
+          "title",
+          "weekNumber",
+          "scheduledAt",
+          "description",
+          "fullCount"
+        ]
+      },
+      "EvaluationTalebeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Their name, else their e-mail; null for an account tedrisat has not seen sign in."
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "EvaluationStatus": {
+        "type": "string",
+        "enum": [
+          "FULL",
+          "INCOMPLETE",
+          "ABSENT"
+        ]
+      },
+      "EvaluationMarkResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The column's session."
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The talebe marked."
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationStatus"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When it was last changed."
+          }
+        },
+        "required": [
+          "lessonId",
+          "userId",
+          "status",
+          "note",
+          "updatedAt"
+        ]
+      },
+      "EvaluationBoardResponse": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "description": "In programme order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvaluationColumnResponse"
+            }
+          },
+          "talebe": {
+            "description": "Every talebe seated in the course (ENROLLED or COMPLETED), by name.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvaluationTalebeResponse"
+            }
+          },
+          "marks": {
+            "description": "The marks given to the talebe above; none is Bekliyor.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvaluationMarkResponse"
+            }
+          }
+        },
+        "required": [
+          "columns",
+          "talebe",
+          "marks"
+        ]
+      },
+      "SaveEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "example": "FULL",
+            "description": "\"Tam\" (FULL), \"Eksik\" (INCOMPLETE) or \"Vermedi\" (ABSENT).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationStatus"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "Son iki satır eksik.",
+            "description": "An optional short note, at most 280 characters after trimming; null, absent or blank is none. The talebe reads it with the mark. Stored as typed and never rendered as HTML."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "OwnEvaluationResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "nullable": true,
+            "description": "null while the course team has not marked it: \"Bekliyor\".",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationStatus"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "note",
+          "updatedAt"
+        ]
       },
       "CalendarFeedStatusResponse": {
         "type": "object",

@@ -2,6 +2,7 @@
 
 import { AlertDialog } from "@medaris/ui/mds/alert-dialog";
 import { Button } from "@medaris/ui/mds/button";
+import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { IconButton } from "@medaris/ui/mds/icon-button";
@@ -27,6 +28,7 @@ import {
 import {
   ASSIGNMENT_DESCRIPTION_MAX,
   type AssignmentAnswer,
+  type AssignmentKind,
   type AssignmentState,
   assignmentDescriptionBody,
   assignmentStateOf,
@@ -157,6 +159,20 @@ export function LessonAssignmentEditor({
         setSaved(true);
       }
     );
+  // "Teslim şekli" (MDRS-248): stored at once like the rest of the block,
+  // with the description as stored, never the unsaved draft.
+  const changeKind = (id: string, kind: AssignmentKind) =>
+    assignment &&
+    kind !== assignment.kind &&
+    run(
+      () =>
+        saveLessonAssignment(
+          id,
+          assignmentDescriptionBody(assignment.description),
+          kind
+        ),
+      (data) => onChange(assignmentStateOf(data))
+    );
   const removeFile = (id: string, fileId: string) =>
     run(
       () => deleteLessonAssignmentFile(id, fileId),
@@ -209,6 +225,44 @@ export function LessonAssignmentEditor({
             />
             {assignment ? (
               <>
+                {editable ? (
+                  <ChoiceChips
+                    legend={t("Curriculum.assignmentKindLabel")}
+                    legendVisible
+                    value={assignment.kind}
+                    options={[
+                      {
+                        value: "FILE",
+                        label: t("Curriculum.assignmentKindFile"),
+                        icon: <Icon name="upload" size="sm" />,
+                        disabled: off,
+                      },
+                      {
+                        value: "MEMORIZE",
+                        label: t("Curriculum.assignmentKindMemorize"),
+                        icon: <Icon name="book" size="sm" />,
+                        disabled: off,
+                      },
+                    ]}
+                    onChange={(next) => {
+                      if (next === "FILE" || next === "MEMORIZE") {
+                        void changeKind(lessonId, next);
+                      }
+                    }}
+                  />
+                ) : (
+                  <p className="mds-body-sm">
+                    {t("Curriculum.assignmentKindLabel")}:{" "}
+                    {assignment.kind === "MEMORIZE"
+                      ? t("Curriculum.assignmentKindMemorize")
+                      : t("Curriculum.assignmentKindFile")}
+                  </p>
+                )}
+                {assignment.kind === "MEMORIZE" ? (
+                  <p className="mds-caption">
+                    {t("Curriculum.assignmentKindMemorizeHelp")}
+                  </p>
+                ) : null}
                 {editable ? (
                   <div className="flex flex-col gap-2">
                     <Field

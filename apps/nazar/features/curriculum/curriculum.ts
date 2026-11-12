@@ -720,12 +720,21 @@ export const withLessonResource = (
  */
 export interface AssignmentState {
   description: string;
+  /**
+   * "Teslim şekli" (MDRS-248): files handed in on the celse page, or recited
+   * to the müderris and marked on "Değerlendirme"
+   */
+  kind: AssignmentKind;
   files: Array<StoredFile & { id: string }>;
 }
+
+/** How a homework is handed in; FILE is what every homework was before MDRS-248. */
+export type AssignmentKind = "FILE" | "MEMORIZE";
 
 /** What tedrisat answers for a celse's homework, read or written, as JSON or parsed. */
 export interface AssignmentAnswer {
   description?: string | null;
+  kind?: string | null;
   files?: ReadonlyArray<StoredFile & { id: string }>;
 }
 
@@ -736,6 +745,7 @@ export const assignmentStateOf = (
   answer
     ? {
         description: answer.description ?? "",
+        kind: answer.kind === "MEMORIZE" ? "MEMORIZE" : "FILE",
         files: (answer.files ?? []).map((file) => ({
           id: file.id,
           ...storedFileOf(file),

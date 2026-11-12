@@ -9,6 +9,7 @@ import {
   lessonResources,
 } from "../../src/database/schema/course.schema";
 import {
+  assignmentEvaluations,
   lessonAssignmentFiles,
   lessonAssignments,
 } from "../../src/database/schema/lesson-assignment.schema";
@@ -492,10 +493,22 @@ describe("a celse's homework apart from its resources (e2e)", () => {
     beforeEach(async () => {
       await save(CAST.MUDERRIS, "Çekin.").expect(200);
       await addFile(CAST.MUDERRIS, pdf()).expect(201);
+      // A memorisation homework with a mark on it (MDRS-248): the mark goes too.
+      await http()
+        .put(`/lessons/${lessonId}/assignment`)
+        .set("Authorization", bearerOf(CAST.MUDERRIS))
+        .send({ description: "Çekin.", kind: "MEMORIZE" })
+        .expect(200);
+      await http()
+        .put(`/lessons/${lessonId}/evaluations/${CAST.TALEBE}`)
+        .set("Authorization", bearerOf(CAST.MUDERRIS))
+        .send({ status: "FULL" })
+        .expect(200);
     });
 
     const gone = async () => {
       await sweep();
+      expect(await db().select().from(assignmentEvaluations)).toHaveLength(0);
       expect(await db().select().from(lessonAssignments)).toHaveLength(0);
       expect(await db().select().from(lessonAssignmentFiles)).toHaveLength(0);
       expect(storage.keys()).toHaveLength(0);

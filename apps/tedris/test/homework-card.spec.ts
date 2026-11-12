@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   remove: vi.fn(),
   signIn: vi.fn(),
+  evaluation: vi.fn(),
 }));
 
 vi.mock("next-intl", async () => {
@@ -53,6 +54,12 @@ vi.mock("../features/courses/actions/submissions", () => ({
   getMySubmission: mocks.get,
   saveMySubmissionNote: mocks.save,
   deleteMySubmissionFile: mocks.remove,
+}));
+vi.mock("~/features/courses/actions/evaluation", () => ({
+  getMyEvaluation: mocks.evaluation,
+}));
+vi.mock("../features/courses/actions/evaluation", () => ({
+  getMyEvaluation: mocks.evaluation,
 }));
 // The hand-off itself is `send-to-sign-in.spec.ts`; here only that the card
 // hands an "unauthenticated" answer to it and draws nothing else.
@@ -104,6 +111,7 @@ const homework = (
   id: "a1",
   lessonId: LESSON,
   description: "Birinci babı çekin.\nFotoğrafını yükleyin.",
+  kind: "FILE",
   files: [
     {
       id: A1,
@@ -790,5 +798,45 @@ describe("the teacher's review", () => {
     expect(
       host.querySelector('[data-testid="homework-review"]')?.textContent
     ).toContain(tr.reviewChangedTitle);
+  });
+});
+
+describe("a homework recited to the müderris (MDRS-248)", () => {
+  const recited = () => homework({ kind: "MEMORIZE" });
+  const mark = (status: string | null, note: string | null = null) =>
+    mocks.evaluation.mockResolvedValue(
+      ok({ status, note, updatedAt: status ? new Date() : null })
+    );
+  const memorizeState = (host: HTMLElement) =>
+    host.querySelector('[data-testid="memorize-state"]')?.textContent;
+
+  it("asks the talebe to recite it, offers no upload and reads nothing of Ödevim", async () => {
+    mark(null);
+    const host = await mount(recited());
+    expect(host.textContent).toContain(tr.memorizeTitle);
+    expect(host.textContent).toContain(tr.memorizeBody);
+    expect(fileInput(host)).toBeNull();
+    expect(host.querySelector("textarea")).toBeNull();
+    expect(mocks.get).not.toHaveBeenCalled();
+    expect(mocks.evaluation).toHaveBeenCalledWith(LESSON);
+    expect(memorizeState(host)).toBe(tr.memorizePending);
+  });
+
+  it.each([
+    ["FULL", tr.memorizeFull],
+    ["INCOMPLETE", tr.memorizeIncomplete],
+    ["ABSENT", tr.memorizeAbsent],
+  ])("shows the mark %s and the müderris's note", async (status, label) => {
+    mark(status, "Son iki satır.");
+    const host = await mount(recited());
+    expect(memorizeState(host)).toBe(label);
+    expect(host.textContent).toContain("Son iki satır.");
+  });
+
+  it("says when the mark could not be read", async () => {
+    mocks.evaluation.mockResolvedValue({ success: false, error: "x" });
+    const host = await mount(recited());
+    expect(alerts(host)).toContain(tr.memorizeLoadFailed);
+    expect(memorizeState(host)).toBeUndefined();
   });
 });

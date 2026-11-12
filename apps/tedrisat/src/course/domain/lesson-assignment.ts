@@ -2,6 +2,7 @@ import type {
   lessonAssignmentFiles,
   lessonAssignments,
 } from "../../database/schema/lesson-assignment.schema";
+import type { AssignmentKind } from "./assignment-kind.enum";
 
 type AssignmentRow = typeof lessonAssignments.$inferSelect;
 type AssignmentFileRow = typeof lessonAssignmentFiles.$inferSelect;
@@ -36,6 +37,8 @@ export interface ILessonAssignment {
   lessonId: string;
   /** Plain text as the müderris typed it; null when there is none. */
   description: string | null;
+  /** How the talebe hand it in: files, or recited to the müderris (MDRS-248). */
+  kind: AssignmentKind;
   files: ILessonAssignmentFile[];
   createdAt: Date;
   /** When the müderris last changed it: the description, or a file added or removed. */
@@ -57,6 +60,7 @@ export function lessonAssignmentOf(
     id: row.id,
     lessonId: row.lessonId,
     description: row.description,
+    kind: row.kind as AssignmentKind,
     files: files.map((file) => ({
       id: file.id,
       name: file.fileName,

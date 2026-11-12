@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { AssignmentKind } from './AssignmentKind';
+import {
+    AssignmentKindFromJSON,
+    AssignmentKindFromJSONTyped,
+    AssignmentKindToJSON,
+    AssignmentKindToJSONTyped,
+} from './AssignmentKind';
+
 /**
  * 
  * @export
@@ -25,7 +33,15 @@ export interface SaveLessonAssignmentDto {
      * @memberof SaveLessonAssignmentDto
      */
     description?: string | null;
+    /**
+     * How the talebe hand it in ("Teslim şekli"): FILE, files uploaded on the session page, or MEMORIZE, recited to the müderris and marked on "Değerlendirme", where the talebe upload nothing (`POST /lessons/:id/submission/files` answers 409 SUBMISSION_FILES_NOT_TAKEN). Absent keeps what the homework has, FILE for new homework. Changing it keeps the talebe's submissions and the marks given.
+     * @type {AssignmentKind}
+     * @memberof SaveLessonAssignmentDto
+     */
+    kind?: AssignmentKind;
 }
+
+
 
 /**
  * Check if a given object implements the SaveLessonAssignmentDto interface.
@@ -45,6 +61,7 @@ export function SaveLessonAssignmentDtoFromJSONTyped(json: any, ignoreDiscrimina
     return {
         
         'description': json['description'] == null ? undefined : json['description'],
+        'kind': json['kind'] == null ? undefined : AssignmentKindFromJSON(json['kind']),
     };
 }
 
@@ -60,6 +77,7 @@ export function SaveLessonAssignmentDtoToJSONTyped(value?: SaveLessonAssignmentD
     return {
         
         'description': value['description'],
+        'kind': AssignmentKindToJSON(value['kind']),
     };
 }
 
