@@ -1041,6 +1041,7 @@
     "hasAssignment": "Ödev verildi",
     "noAssignment": "Ödev verilmedi",
     "handedIn": "{count} / {total} teslim",
+    "recited": "Ezber · Değerlendirme’de işaretlenir",
     "review": {
       "statusNone": "Değerlendirilmedi",
       "statusDraft": "Gönderilmedi",

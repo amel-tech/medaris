@@ -1041,6 +1041,7 @@
     "hasAssignment": "عليها واجب",
     "noAssignment": "لا واجب عليها",
     "handedIn": "سلّم {count} من {total}",
+    "recited": "تسميع · يُقيَّم في التقييم",
     "review": {
       "statusNone": "لم يُقيَّم",
       "statusDraft": "لم يُرسَل",

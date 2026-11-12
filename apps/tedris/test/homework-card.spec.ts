@@ -810,16 +810,47 @@ describe("a homework recited to the müderris (MDRS-248)", () => {
   const memorizeState = (host: HTMLElement) =>
     host.querySelector('[data-testid="memorize-state"]')?.textContent;
 
-  it("asks the talebe to recite it, offers no upload and reads nothing of Ödevim", async () => {
+  it("asks the talebe to recite it and offers no upload", async () => {
     mark(null);
     const host = await mount(recited());
     expect(host.textContent).toContain(tr.memorizeTitle);
     expect(host.textContent).toContain(tr.memorizeBody);
     expect(fileInput(host)).toBeNull();
     expect(host.querySelector("textarea")).toBeNull();
-    expect(mocks.get).not.toHaveBeenCalled();
     expect(mocks.evaluation).toHaveBeenCalledWith(LESSON);
     expect(memorizeState(host)).toBe(tr.memorizePending);
+    expect(host.querySelector('[data-testid="memorize-earlier"]')).toBeNull();
+  });
+
+  it("keeps the files handed in before it became recited, to download and remove, but takes no new one", async () => {
+    mark(null);
+    mocks.get.mockResolvedValue(
+      own(
+        submission({
+          note: "Önceki notum.",
+          files: [pdf(F1, { name: "bir.pdf" }), pdf(F2, { name: "iki.pdf" })],
+        })
+      )
+    );
+    mocks.remove.mockResolvedValue(ok(undefined));
+    const host = await mount(recited());
+    expect(mocks.get).toHaveBeenCalledWith(LESSON);
+    const earlier = host.querySelector(
+      '[data-testid="memorize-earlier"]'
+    ) as HTMLElement;
+    expect(earlier.textContent).toContain(tr.filesLabel);
+    expect(earlier.textContent).toContain("Önceki notum.");
+    expect(fileInput(host)).toBeNull();
+    expect(host.querySelector("textarea")).toBeNull();
+
+    await click(named(host, "Kaldır: bir.pdf"));
+    await click(button(host, "Kaldır"));
+    await settle();
+    expect(mocks.remove).toHaveBeenCalledWith(LESSON, F1);
+    const names = [
+      ...host.querySelectorAll('[data-testid="homework-files"] a'),
+    ].map((a) => a.textContent);
+    expect(names).toEqual(["iki.pdf (indirilir)"]);
   });
 
   it.each([

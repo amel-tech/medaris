@@ -163,6 +163,10 @@ const MARK_BADGE: Record<
  * is uploaded; the state beside the heading is the müderris's mark, read from
  * tedrisat for the caller alone: "Bekliyor" until marked, then "Tam",
  * "Eksik" or "Vermedi", with the müderris's note under it.
+ *
+ * A homework switched to recited after the talebe handed files in keeps
+ * them (tedrisat does): they are listed under it, still theirs to download
+ * and remove, with their note read-only; nothing new is added.
  */
 function MemorizeHomework({
   lessonId,
@@ -178,6 +182,7 @@ function MemorizeHomework({
     state: "pending",
     note: null,
   });
+  const [earlier, setEarlier] = useState<LessonSubmissionResponse | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -203,7 +208,30 @@ function MemorizeHomework({
     };
   }, [lessonId]);
 
+  // What was handed in before the homework became recited; a failed read
+  // only leaves it out.
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const result = await getMySubmission(lessonId);
+        if (!live || sendToSignIn(result)) return;
+        if (result.success) setEarlier(result.data.submission);
+      } catch {
+        // Nothing to list.
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [lessonId]);
+
   const badge = MARK_BADGE[mark.state];
+  const maxSize = formatFileSize(MAX_FILE_BYTES, locale);
+  const errorText = (key: FileErrorKey) =>
+    t(`errors.${key}`, { maxFiles: MAX_SUBMISSION_FILES, maxSize });
+  const earlierFiles = earlier?.files ?? [];
+  const earlierNote = earlier?.note?.trim();
 
   return (
     <section
@@ -249,6 +277,53 @@ function MemorizeHomework({
           </p>
         ) : null}
       </div>
+
+      {earlierFiles.length > 0 || earlierNote ? (
+        <div
+          className="flex flex-col gap-2 border-bs border-neutral-subtle pbs-4"
+          data-testid="memorize-earlier"
+        >
+          <h3 className="mds-h3 flex items-center gap-2">
+            <Icon name="upload" />
+            {t("filesLabel")}
+          </h3>
+          {earlierFiles.length > 0 ? (
+            <ul
+              className="m-0 flex list-none flex-col p-0"
+              aria-label={t("filesLabel")}
+              data-testid="homework-files"
+            >
+              {earlierFiles.map((file) => (
+                <FileRow
+                  key={file.id}
+                  lessonId={lessonId}
+                  file={file}
+                  locale={locale}
+                  errorText={errorText}
+                  onRemoved={() =>
+                    setEarlier((current) =>
+                      current
+                        ? {
+                            ...current,
+                            files: current.files.filter(
+                              (f) => f.id !== file.id
+                            ),
+                          }
+                        : current
+                    )
+                  }
+                />
+              ))}
+            </ul>
+          ) : null}
+          {earlierNote ? (
+            <p className="mds-body-sm whitespace-pre-line break-words">
+              <span className="mds-label">{t("noteLabel")}:</span>{" "}
+              <bdi dir="auto">{earlierNote}</bdi>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }

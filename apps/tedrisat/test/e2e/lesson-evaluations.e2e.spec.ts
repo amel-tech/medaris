@@ -6,7 +6,9 @@ import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
 import { enrollments } from "../../src/database/schema/course.schema";
 import { assignmentEvaluations } from "../../src/database/schema/lesson-assignment.schema";
+import { submissionFiles } from "../../src/database/schema/lesson-submission.schema";
 import { users } from "../../src/database/schema/user.schema";
+import { LessonSubmissionRepository } from "../../src/lesson-submission/lesson-submission.repository";
 import { ObjectStorage } from "../../src/storage/object-storage";
 import { StorageDeletionService } from "../../src/storage/storage-deletion.service";
 import {
@@ -215,6 +217,27 @@ describe("memorisation homework and its marks (e2e)", () => {
         .set("Authorization", bearer(CAST.TALEBE))
         .attach("file", pdf(), { filename: "Ödev.pdf" })
         .expect(201);
+    });
+
+    it("asks again under the lock: a switch to recited after the early check still refuses the file", async () => {
+      await setHomework(CAST.MUDERRIS, { kind: "MEMORIZE" }).expect(200);
+      // The early check read the homework before the switch committed.
+      vi.spyOn(
+        app.get(LessonSubmissionRepository),
+        "isMemorization"
+      ).mockResolvedValueOnce(false);
+      try {
+        const refused = await http()
+          .post(`/lessons/${lessonId}/submission/files`)
+          .set("Authorization", bearer(CAST.TALEBE))
+          .attach("file", pdf(), { filename: "Ezber.pdf" })
+          .expect(409);
+        expect(refused.body.code).toBe("SUBMISSION_FILES_NOT_TAKEN");
+      } finally {
+        vi.restoreAllMocks();
+      }
+      expect(await db().select().from(submissionFiles)).toHaveLength(0);
+      expect(await audits("submission.file_upload")).toHaveLength(0);
     });
   });
 

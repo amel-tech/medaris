@@ -1041,6 +1041,7 @@
     "hasAssignment": "Homework set",
     "noAssignment": "No homework set",
     "handedIn": "{count} / {total} handed in",
+    "recited": "Recited · marked on Evaluation",
     "review": {
       "statusNone": "Not reviewed",
       "statusDraft": "Not sent",
