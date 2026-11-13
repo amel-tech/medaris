@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getLocale, getTimeZone, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 import { SessionJoinLive } from "~/features/courses/components/session-join-live";
+import { examRunLabel } from "~/features/courses/exam-countdown";
 import { joinRun } from "~/features/courses/join-run";
 import { formatSessionMoment } from "~/features/courses/my-courses";
 import {
@@ -114,7 +115,9 @@ export const HomeSessions = async ({
               </div>
               <p className="mds-body-sm" dir="auto">
                 {joinRun([
-                  ...(next.isExam ? [t("SchedulePage.exam")] : []),
+                  ...(next.isExam
+                    ? [examRunLabel(t, next.startsAt, now, timeZone)]
+                    : []),
                   <Link
                     key="c"
                     href={`/courses/${next.courseId}`}
@@ -196,7 +199,12 @@ export const HomeSessions = async ({
                             {joinRun([
                               // MDRS-248: an exam says so on Pano.
                               session.isExam
-                                ? t("SchedulePage.exam")
+                                ? examRunLabel(
+                                    t,
+                                    session.startsAt,
+                                    now,
+                                    timeZone
+                                  )
                                 : t("PhoneMenu.liveBadge"),
                               <bdi key="c">{session.courseTitle}</bdi>,
                               t("SchedulePage.week", {

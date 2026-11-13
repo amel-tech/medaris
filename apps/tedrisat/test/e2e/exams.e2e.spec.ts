@@ -4,12 +4,19 @@ import request from "supertest";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { DatabaseService } from "../../src/database/database.service";
 import { auditLog } from "../../src/database/schema/audit.schema";
-import { enrollments } from "../../src/database/schema/course.schema";
+import {
+  courses,
+  enrollments,
+  lessons,
+} from "../../src/database/schema/course.schema";
 import {
   examResults,
   lessonExams,
 } from "../../src/database/schema/lesson-exam.schema";
+import { madrasahs } from "../../src/database/schema/madrasah.schema";
 import { notifications } from "../../src/database/schema/notification.schema";
+import { permissionGrants } from "../../src/database/schema/permission.schema";
+import { ASSIGNED_ROLES } from "../../src/database/schema/role-assignment.schema";
 import { users } from "../../src/database/schema/user.schema";
 import { ExamReminderPoller } from "../../src/exam/exam-reminder.poller";
 import {
@@ -21,6 +28,7 @@ import {
 } from "../helpers/course-scope-cast";
 import { createTestApp } from "../helpers/test-app.helper";
 import {
+  assignRole,
   COURSE_TREE_TABLES,
   TestDatabaseUtils,
 } from "../helpers/test-database.helper";
@@ -43,6 +51,14 @@ import { bearerFor } from "../helpers/test-keycloak.helper";
 
 /** A second enrolled talebe of course A. */
 const OTHER_TALEBE = "e2480000-0000-4000-8000-0000000000d1";
+/** Başmüderris of the medrese course A is in. */
+const BASMUDERRIS = "e2480000-0000-4000-8000-0000000000e1";
+/** Nazır of that medrese holding `madrasah.course_open`. */
+const MEDRESE_NAZIR = "e2480000-0000-4000-8000-0000000000e2";
+/** Nazır of that medrese with no grant. */
+const BARE_NAZIR = "e2480000-0000-4000-8000-0000000000e3";
+/** Başmüderris of another medrese. */
+const OTHER_BASMUDERRIS = "e2480000-0000-4000-8000-0000000000e4";
 /** A talebe of course B only. */
 const TALEBE_OF_B = "e2480000-0000-4000-8000-0000000000d3";
 
@@ -117,6 +133,7 @@ describe("exams (e2e)", () => {
       "permission_grants",
       "permission_groups",
       ...COURSE_TREE_TABLES,
+      "madrasahs",
       "notifications",
       "audit_log",
       "users"
@@ -430,6 +447,109 @@ describe("exams (e2e)", () => {
     });
   });
 
+  describe("the medrese's exam summary", () => {
+    let madrasahId: string;
+    const summary = (sub: string, id = madrasahId) =>
+      http()
+        .get(`/madrasahs/${id}/exam-summary`)
+        .set("Authorization", bearer(sub));
+
+    beforeEach(async () => {
+      const [madrasah, other] = await db()
+        .insert(madrasahs)
+        .values([
+          {
+            handle: "suleymaniye",
+            name: "Süleymaniye Medresesi",
+            createdBy: CAST.ADMIN,
+          },
+          { handle: "fatih", name: "Fatih Medresesi", createdBy: CAST.ADMIN },
+        ])
+        .returning();
+      madrasahId = madrasah.id;
+      await db()
+        .update(courses)
+        .set({ madrasahId })
+        .where(eq(courses.id, ids.courseId));
+      await assignRole(db(), {
+        userId: BASMUDERRIS,
+        role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+        scopeId: madrasahId,
+      });
+      for (const userId of [MEDRESE_NAZIR, BARE_NAZIR]) {
+        await assignRole(db(), {
+          userId,
+          role: ASSIGNED_ROLES.MEDRESE_NAZIR,
+          scopeId: madrasahId,
+          grantedBy: BASMUDERRIS,
+        });
+      }
+      await db().insert(permissionGrants).values({
+        scopeType: "madrasah",
+        scopeId: madrasahId,
+        userId: MEDRESE_NAZIR,
+        permission: "madrasah.course_open",
+        grantedBy: BASMUDERRIS,
+      });
+      await assignRole(db(), {
+        userId: OTHER_BASMUDERRIS,
+        role: ASSIGNED_ROLES.MEDRESE_BASMUDERRIS,
+        scopeId: other.id,
+      });
+    });
+
+    it("counts the entered results and the mean share of tam puan, leaving a cancelled exam out", async () => {
+      await enter(CAST.MUDERRIS, CAST.TALEBE, { score: 80 }).expect(200);
+      await enter(CAST.MUDERRIS, OTHER_TALEBE, { absent: true }).expect(200);
+      const oral = await insertLiveLesson(db(), ids.weekId, 1, {
+        title: "Şifahi",
+      });
+      await db().insert(lessonExams).values({ lessonId: oral, maxScore: 20 });
+      await enter(CAST.MUDERRIS, CAST.TALEBE, { score: 10 }, oral).expect(200);
+      // A cancelled exam celse with a result counts for nothing.
+      const cancelled = await insertLiveLesson(db(), ids.weekId, 2, {
+        title: "İptal",
+        cancelledAt: new Date(),
+      });
+      const [dropped] = await db()
+        .insert(lessonExams)
+        .values({ lessonId: cancelled })
+        .returning();
+      await db().insert(examResults).values({
+        examId: dropped.id,
+        userId: CAST.TALEBE,
+        score: 0,
+        gradedBy: CAST.MUDERRIS,
+      });
+
+      for (const sub of [BASMUDERRIS, MEDRESE_NAZIR]) {
+        expect((await summary(sub).expect(200)).body).toEqual([
+          {
+            courseId: ids.courseId,
+            courseTitle: "Emsile ve Bina",
+            examCount: 2,
+            takenCount: 2,
+            absentCount: 1,
+            // (80/100 + 10/20) / 2
+            averagePercent: 65,
+          },
+        ]);
+      }
+    });
+
+    it("is closed to a talebe, a stranger, a nazır with no grant and another medrese", async () => {
+      for (const sub of [
+        CAST.TALEBE,
+        CAST.STRANGER,
+        CAST.MUDERRIS,
+        BARE_NAZIR,
+        OTHER_BASMUDERRIS,
+      ]) {
+        await summary(sub).expect(403);
+      }
+    });
+  });
+
   describe("the 24-hour reminder", () => {
     it("is claimed once for an exam within a day, never for one further off", async () => {
       const soon = await insertLiveLesson(db(), ids.weekId, 2, {
@@ -450,6 +570,41 @@ describe("exams (e2e)", () => {
       const told = await notesOf(CAST.TALEBE, "EXAM_REMINDER");
       expect(told).toHaveLength(1);
       expect(told[0].targetId).toBe(soon);
+    });
+
+    it("is sent again after an exam already reminded moves to a later day", async () => {
+      const soon = await insertLiveLesson(db(), ids.weekId, 2, {
+        title: "Yarınki sınav",
+        scheduledAt: new Date(Date.now() + 3 * HOUR),
+      });
+      await db().insert(lessonExams).values({ lessonId: soon });
+      const poller = app.get(ExamReminderPoller);
+      expect(await poller.remindDue()).toBe(1);
+
+      const [{ version }] = await db()
+        .select({ version: courses.version })
+        .from(courses)
+        .where(eq(courses.id, ids.courseId));
+      await http()
+        .patch(`/lessons/${soon}`)
+        .set("Authorization", bearer(CAST.MUDERRIS))
+        .send({ version, scheduledAt: new Date(Date.now() + 72 * HOUR) })
+        .expect(200);
+      const [moved] = await db()
+        .select({ remindedAt: lessonExams.remindedAt })
+        .from(lessonExams)
+        .where(eq(lessonExams.lessonId, soon));
+      expect(moved.remindedAt).toBeNull();
+      // Three days out it is not due yet.
+      expect(await poller.remindDue()).toBe(0);
+
+      // Once it is within a day again, it is claimed again.
+      await db()
+        .update(lessons)
+        .set({ scheduledAt: new Date(Date.now() + 5 * HOUR) })
+        .where(eq(lessons.id, soon));
+      expect(await poller.remindDue()).toBe(1);
+      expect(await notesOf(CAST.TALEBE, "EXAM_REMINDER")).toHaveLength(2);
     });
   });
 });

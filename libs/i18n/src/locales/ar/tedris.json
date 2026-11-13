@@ -567,6 +567,11 @@
     }
   },
   "SessionPage": {
+    "examWritten": "تحريري",
+    "examOral": "شفهي",
+    "examMaxScore": "الدرجة الكاملة {max}",
+    "examPlace": "المكان",
+    "examTopics": "الموضوعات",
     "breadcrumb": "مسار الصفحة",
     "week": "الأسبوع {number}",
     "joinLabel": "درس مباشر",

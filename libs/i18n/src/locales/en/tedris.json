@@ -567,6 +567,11 @@
     }
   },
   "SessionPage": {
+    "examWritten": "Written",
+    "examOral": "Oral",
+    "examMaxScore": "Full marks {max}",
+    "examPlace": "Place",
+    "examTopics": "Topics",
     "breadcrumb": "Breadcrumb",
     "week": "Week {number}",
     "joinLabel": "Live session",

@@ -29,6 +29,7 @@ import { FileErrorNotice } from "./file-error-notice";
 import { LessonNotes } from "./lesson-notes";
 import { SessionActionCard, type WatchPoster } from "./session-action-card";
 import { SessionAgenda } from "./session-agenda";
+import { SessionExam } from "./session-exam";
 import { SessionHeader } from "./session-header";
 import { SessionHomework } from "./session-homework";
 import { SessionPager } from "./session-pager";
@@ -250,6 +251,31 @@ export const SessionPage = async ({
       />
     ) : null;
 
+  // An exam celse (MDRS-248): its form, its place and its topics.
+  const exam =
+    session.exam && !cancelled ? (
+      <SessionExam
+        exam={session.exam}
+        labels={{
+          title: t(
+            session.exam.isRetake
+              ? "CoursePage.retakeBadge"
+              : "CoursePage.examBadge"
+          ),
+          format: t(
+            session.exam.format === "ORAL"
+              ? "SessionPage.examOral"
+              : "SessionPage.examWritten"
+          ),
+          maxScore: t("SessionPage.examMaxScore", {
+            max: session.exam.maxScore,
+          }),
+          place: t("SessionPage.examPlace"),
+          topics: t("SessionPage.examTopics"),
+        }}
+      />
+    ) : null;
+
   // "Gündem" and "Kaynaklar" share a row, each half; either alone takes it.
   const details = [
     agenda.length > 0 ? (
@@ -327,6 +353,8 @@ export const SessionPage = async ({
       />
 
       {card}
+
+      {exam}
 
       {notes}
 

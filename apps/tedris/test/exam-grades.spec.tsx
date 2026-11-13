@@ -8,6 +8,7 @@ import {
   examDaysLeft,
   MyGradesTab,
 } from "~/features/courses/components/exam-grades";
+import { examRunLabel } from "~/features/courses/exam-countdown";
 import { describeNotification } from "~/features/notifications/notification-view";
 import { cleanup, render, settle } from "./dom";
 
@@ -44,6 +45,16 @@ describe("the countdown", () => {
     expect(examDaysLeft("2026-11-16T07:00:00Z", now, ZONE)).toBe(3);
     expect(examDaysLeft("2026-11-13T08:00:00Z", now, ZONE)).toBeNull();
     expect(examDaysLeft(null, now, ZONE)).toBeNull();
+  });
+
+  it("writes the same mark as text for Pano and the takvim", () => {
+    const t = (key: string, values?: Record<string, string | number>) =>
+      key === "SchedulePage.exam" ? "Sınav" : `${key}:${String(values?.count)}`;
+    const at = new Date(now);
+    expect(examRunLabel(t, "2026-11-16T07:00:00Z", at, ZONE)).toBe(
+      "Sınav · CoursePage.examCountdown:3"
+    );
+    expect(examRunLabel(t, "2026-11-13T08:00:00Z", at, ZONE)).toBe("Sınav");
   });
 
   it("marks an exam, a make-up, and the days left", async () => {

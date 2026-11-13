@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { withoutLinkKey } from "~/features/courses/attendance";
 import { CalendarMenu } from "~/features/courses/components/calendar-menu";
+import { examRunLabel } from "~/features/courses/exam-countdown";
 import { sessionStateOf, zoneLabel } from "~/features/courses/session-model";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
@@ -99,7 +100,7 @@ const ScheduleRow = ({
               className="mds-badge mds-badge--warning"
               data-testid="exam-badge"
             >
-              {t("SchedulePage.exam")}
+              {examRunLabel(t, session.startsAt, now, timeZone)}
             </span>
           </p>
         ) : null}

@@ -997,6 +997,7 @@
     "scoreLabel": "درجة {name}",
     "absentExam": "غائب",
     "scoreTooHigh": "لا تتجاوز الدرجة {max}.",
+    "scoreInvalid": "يجب أن تكون الدرجة عددًا صحيحًا، صفرًا أو أكثر.",
     "entered": "أُدخلت {entered}/{total}",
     "examKeysHint": "اكتب الدرجة واضغط Enter؛ تُحفظ وينتقل المؤشر إلى السطر التالي.",
     "release": "أظهر النتائج للطلاب",

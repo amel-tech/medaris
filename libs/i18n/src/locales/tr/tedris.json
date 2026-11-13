@@ -567,6 +567,11 @@
     }
   },
   "SessionPage": {
+    "examWritten": "Yazılı",
+    "examOral": "Şifahi",
+    "examMaxScore": "Tam puan {max}",
+    "examPlace": "Yer",
+    "examTopics": "Konular",
     "breadcrumb": "Sayfa yolu",
     "week": "Hafta {number}",
     "joinLabel": "Canlı ders",

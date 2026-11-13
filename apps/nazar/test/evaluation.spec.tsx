@@ -415,6 +415,27 @@ describe("exams on Değerlendirme", () => {
     expect(document.activeElement).toBe(scoreBox("t-2"));
   });
 
+  it("says a fraction or a negative is not a score and stays, and Enter saves once", async () => {
+    await mount(boardOf(examResponse()));
+    await open("x-1");
+    scoreBox("t-1").focus();
+    await typeInto(scoreBox("t-1"), "-5");
+    await key(scoreBox("t-1"), "Enter");
+    await settle();
+    expect(examRow("t-1").textContent).toContain(tr.scoreInvalid);
+    expect(examRow("t-1").textContent).not.toContain("En çok");
+    expect(document.activeElement).not.toBe(scoreBox("t-2"));
+    expect(actions.saveExamResult).not.toHaveBeenCalled();
+
+    scoreBox("t-1").focus();
+    await typeInto(scoreBox("t-1"), "60");
+    await key(scoreBox("t-1"), "Enter");
+    await settle();
+    expect(document.activeElement).toBe(scoreBox("t-2"));
+    // Moving on blurs the box; the blur does not send the score again.
+    expect(actions.saveExamResult).toHaveBeenCalledTimes(1);
+  });
+
   it("marks Girmedi and opens the results to the talebe", async () => {
     await mount(boardOf(examResponse()));
     await open("x-1");

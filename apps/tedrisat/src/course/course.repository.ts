@@ -1590,6 +1590,13 @@ export class CourseRepository implements ICourseRepository {
         .set(set)
         .where(eq(lessons.id, lessonId))
         .returning();
+      // A moved exam is reminded again a day before its new start (MDRS-248).
+      if (fields.scheduledAt !== undefined) {
+        await tx
+          .update(lessonExams)
+          .set({ remindedAt: null, updatedAt: set.updatedAt })
+          .where(eq(lessonExams.lessonId, lessonId));
+      }
       // Left out, the session's resources stay as they are (MDRS-286).
       if (resources != null) {
         await this.writeLessonResources(tx, lessonId, resources, {

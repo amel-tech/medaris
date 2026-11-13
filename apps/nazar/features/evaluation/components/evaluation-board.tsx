@@ -566,6 +566,9 @@ function ScoreRow({
       : ""
   );
   const [problem, setProblem] = useState<string | null>(null);
+  // The score last sent: Enter saves and moves on, and the blur that follows
+  // must not send the same value again.
+  const saved = useRef(draft);
   const name = talebe.name ?? t("unnamed");
   const absent = result?.absent === true;
 
@@ -576,11 +579,18 @@ function ScoreRow({
       return;
     }
     if (parsed.kind !== "score") {
-      setProblem(t("scoreTooHigh", { max }));
+      setProblem(
+        parsed.kind === "over" ? t("scoreTooHigh", { max }) : t("scoreInvalid")
+      );
       return;
     }
     setProblem(null);
-    await onSave({ score: parsed.score, absent: false });
+    if (draft === saved.current) return;
+    const before = saved.current;
+    saved.current = draft;
+    if (!(await onSave({ score: parsed.score, absent: false }))) {
+      saved.current = before;
+    }
   };
 
   return (
@@ -607,7 +617,8 @@ function ScoreRow({
             if (event.key !== "Enter") return;
             event.preventDefault();
             void commit();
-            if (parseScore(draft, max).kind !== "over") onNext();
+            const kind = parseScore(draft, max).kind;
+            if (kind === "score" || kind === "empty") onNext();
           }}
         />
         {problem ? (
@@ -623,6 +634,7 @@ function ScoreRow({
         onClick={() => {
           setDraft("");
           setProblem(null);
+          saved.current = "";
           void onSave({ score: null, absent: true });
         }}
       >

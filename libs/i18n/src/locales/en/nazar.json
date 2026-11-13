@@ -997,6 +997,7 @@
     "scoreLabel": "Score of {name}",
     "absentExam": "Absent",
     "scoreTooHigh": "At most {max} points can be given.",
+    "scoreInvalid": "The score must be a whole number, 0 or more.",
     "entered": "{entered}/{total} entered",
     "examKeysHint": "Type the score and press Enter; it is saved and the next row opens.",
     "release": "Release results to talebe",

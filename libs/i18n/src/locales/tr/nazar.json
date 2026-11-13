@@ -997,6 +997,7 @@
     "scoreLabel": "{name} puanı",
     "absentExam": "Girmedi",
     "scoreTooHigh": "En çok {max} puan verilebilir.",
+    "scoreInvalid": "Puan 0 ya da daha büyük bir tam sayı olmalı.",
     "entered": "{entered}/{total} girildi",
     "examKeysHint": "Puanı yazıp Enter’a basın; alttaki satıra geçer ve kaydedilir.",
     "release": "Sonuçları talebelere aç",
