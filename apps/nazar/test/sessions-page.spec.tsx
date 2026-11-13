@@ -202,6 +202,11 @@ const editor = () =>
   document.querySelector('[data-testid="session-edit"]') as HTMLElement;
 const save = () => buttonIn(editor(), "Kaydet");
 
+/** "Talebelere not" starts as the usual sentence (MDRS-248). */
+const NOTE = "Bu hafta ders yapılmayacak.";
+const noteField = () =>
+  document.querySelector("textarea[name=cancelNote]") as HTMLTextAreaElement;
+
 const L2 = "5 Eki Pzt 21:00";
 const L3 = "12 Eki Pzt 21:00";
 
@@ -558,7 +563,12 @@ describe("the link of a session", () => {
     await settle(60);
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 8, undefined);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      8,
+      undefined,
+      NOTE
+    );
   });
 
   it("is told apart from an authorization refusal: the sentence says the caller may not, and nothing is read again", async () => {
@@ -656,12 +666,37 @@ describe("İptal et", () => {
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
 
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 7, undefined);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      7,
+      undefined,
+      NOTE
+    );
     expect(createSessions).not.toHaveBeenCalled();
     expect(toast("success")).toContain("Celse iptal edildi");
     expect(toast("success")).toContain("Hafta 3 iptal edildi.");
     expect(refresh).toHaveBeenCalledOnce();
     expect(dialog()).toBeNull();
+  });
+
+  it("sends the note to talebe as written, and none once it is emptied (MDRS-248)", async () => {
+    cancelSession.mockResolvedValue({
+      success: true,
+      data: { courseVersion: 8 },
+    });
+    await open();
+    expect(dialog().textContent).toContain("Talebelere not");
+    expect(noteField().value).toBe(NOTE);
+    expect(noteField().maxLength).toBe(500);
+    await typeInto(noteField(), "Hoca hasta; gelecek hafta telafi edilir.");
+    await click(buttonIn(dialog(), "Celseyi iptal et"));
+    await settle(80);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      7,
+      undefined,
+      "Hoca hasta; gelecek hafta telafi edilir."
+    );
   });
 
   it("adds no make-up unless asked, and shows its fields only then", async () => {
@@ -701,7 +736,12 @@ describe("İptal et", () => {
       title: "Hafta 3",
       durationMinutes: 60,
     });
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 8, "l-new");
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      8,
+      "l-new",
+      NOTE
+    );
     expect(createSessions.mock.invocationCallOrder[0]).toBeLessThan(
       cancelSession.mock.invocationCallOrder[0] ?? 0
     );
@@ -719,7 +759,12 @@ describe("İptal et", () => {
     await open();
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);
-    expect(cancelSession).toHaveBeenCalledExactlyOnceWith("l-3", 7, undefined);
+    expect(cancelSession).toHaveBeenCalledExactlyOnceWith(
+      "l-3",
+      7,
+      undefined,
+      NOTE
+    );
   });
 
   it("asks for the make-up's date before it does anything", async () => {

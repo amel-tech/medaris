@@ -163,4 +163,24 @@ describe("lesson invitation e-mail (MDRS-121)", () => {
     );
     expect(mail.text).not.toContain("yüz yüze");
   });
+
+  it.each([
+    ["tr", "Hocanın notu"],
+    ["en", "Note from your teacher"],
+    ["ar", "ملاحظة الأستاذ"],
+  ] as const)("carries the müderris's note on a CANCEL in %s (MDRS-248)", (locale, label) => {
+    const mail = buildInvitationMail(
+      input({ kind: "CANCEL", locale, note: " Bu hafta <ders> yok. " })
+    );
+    expect(mail.text).toContain(`${label}: Bu hafta <ders> yok.`);
+    expect(mail.html).toContain("Bu hafta &lt;ders&gt; yok.");
+    expect(mail.html).not.toContain("<ders>");
+  });
+
+  it("writes no note line without a note, nor on an invitation (MDRS-248)", () => {
+    const cancel = buildInvitationMail(input({ kind: "CANCEL", note: "  " }));
+    expect(cancel.text).not.toContain("Hocanın notu");
+    const invite = buildInvitationMail(input({ kind: "NEW", note: "Not" }));
+    expect(invite.text).not.toContain("Hocanın notu");
+  });
 });

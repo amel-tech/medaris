@@ -27,6 +27,8 @@ import {
  * platform read from the link's host, the stream, the in-person mark, or
  * "Eksik" for a celse with none of them (MDRS-283); a celse of a course in a
  * passive scope, whose content the Pano is not sent, claims nothing ("—").
+ * A cancelled celse says "İptal edildi" with the note to the talebe on one
+ * line, its title not struck through (MDRS-248).
  * "Düzenle" opens the course's celseler where the caller holds
  * a scope in the course, and is left out where they do not.
  */
@@ -81,9 +83,23 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
       key: "status",
       header: t("Pano.sessions.columns.status"),
       width: "12%",
-      render: () => (
-        <Badge variant="secondary">{t("Pano.sessions.planned")}</Badge>
-      ),
+      render: (row) =>
+        row.cancelled ? (
+          <span className="flex min-inline-0 flex-col items-start gap-1">
+            <Badge variant="outline">{t("Sessions.state.cancelled")}</Badge>
+            {row.cancelled.note ? (
+              <span
+                className="mds-caption block max-w-full truncate"
+                dir="auto"
+                title={row.cancelled.note}
+              >
+                {row.cancelled.note}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          <Badge variant="secondary">{t("Pano.sessions.planned")}</Badge>
+        ),
     },
     {
       key: "actions",

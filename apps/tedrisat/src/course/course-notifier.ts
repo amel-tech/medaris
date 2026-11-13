@@ -114,14 +114,19 @@ export class CourseNotifier {
     });
   }
 
-  /** A session cancelled before it ended; one with no time is not news. */
+  /**
+   * A session cancelled before it ended; one with no time is not news. The
+   * note the müderris wrote for talebe (MDRS-248) rides along as `reason`.
+   */
   async sessionCancelled(
     session: ILessonMutation,
     actorId?: string
   ): Promise<void> {
     if (!session.scheduledAt || hasEnded(session, new Date())) return;
+    const reason = session.cancelReason?.trim();
     await this.tellSeats("SESSION_CANCELLED", session, actorId, {
       sessionAt: session.scheduledAt.toISOString(),
+      ...(reason ? { reason } : {}),
     });
   }
 

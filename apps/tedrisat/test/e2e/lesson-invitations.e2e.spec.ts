@@ -8,6 +8,7 @@ import { CourseStatus } from "../../src/course/domain/course-status.enum";
 import { EnrollmentStatus } from "../../src/course/domain/enrollment-status.enum";
 import { LessonType } from "../../src/course/domain/lesson-type.enum";
 import { DatabaseService } from "../../src/database/database.service";
+import { BAN_SCOPES, bans } from "../../src/database/schema/ban.schema";
 import {
   courses,
   courseWeeks,
@@ -108,7 +109,13 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
       responseCode: Number(response.slice(0, 3)),
     });
 
-  const TABLES = [...COURSE_TREE_TABLES, "audit_log", "notifications", "users"];
+  const TABLES = [
+    ...COURSE_TREE_TABLES,
+    "audit_log",
+    "notifications",
+    "bans",
+    "users",
+  ];
   const http = () => request(app.getHttpServer());
   const db = () => databaseService.db;
   const as = (sub: string, claims?: Record<string, unknown>) => {
@@ -437,7 +444,13 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
     expect(icsProp(ics, "STATUS")).toBe("CANCELLED");
     expect(icsProp(ics, "UID")).toBe(invitationUid(sessionId));
     expect(icsProp(ics, "SEQUENCE")).toBe("1");
-    expect(JSON.stringify(sent[0])).not.toContain("Müderris hasta");
+    // MDRS-248: the note is written for talebe, so the mail carries it; the
+    // calendar entry does not.
+    expect(String(sent[0].text)).toContain(
+      "Note from your teacher: Müderris hasta"
+    );
+    expect(String(sent[0].html)).toContain("Müderris hasta");
+    expect(ics).not.toContain("Müderris hasta");
     expect((await invitationRow(TALEBE_ID))?.cancelledAt).not.toBeNull();
 
     sent.length = 0;
@@ -457,6 +470,66 @@ describe("Lesson invitations by e-mail (MDRS-121, e2e)", () => {
     await settle();
 
     expect(sent.map((m) => calendarOf(m).method)).toEqual(["CANCEL"]);
+    // The removal's reason is not a session note (MDRS-248).
+    expect(JSON.stringify(sent[0])).not.toContain("Celselere katılmadı.");
+  });
+
+  describe("the cancel note goes only to a talebe who still holds the course (MDRS-248)", () => {
+    const NOTE = "Müderris hasta";
+    /**
+     * The session is cancelled with a note and the talebe loses the course
+     * before the CANCEL goes out. Written to the rows, not through the routes,
+     * so no sweep runs between the two.
+     */
+    const cancelAfter = async (loseAccess: () => Promise<unknown>) => {
+      await approve(TALEBE_ID);
+      await settle();
+      sent.length = 0;
+
+      await db()
+        .update(lessons)
+        .set({ cancelledAt: new Date(), cancelReason: NOTE })
+        .where(eq(lessons.id, sessionId));
+      await loseAccess();
+      await sweep();
+
+      expect(sent.map((m) => calendarOf(m).method)).toEqual(["CANCEL"]);
+      expect(JSON.stringify(sent[0])).not.toContain(NOTE);
+    };
+
+    it("leaves it out for a removed talebe", () =>
+      cancelAfter(() =>
+        db()
+          .update(enrollments)
+          .set({ status: EnrollmentStatus.REVOKED })
+          .where(eq(enrollments.userId, TALEBE_ID))
+      ));
+
+    it("leaves it out for a barred talebe", () =>
+      cancelAfter(async () => {
+        const [course] = await db()
+          .select({ koskId: courses.koskId })
+          .from(courses)
+          .where(eq(courses.id, courseId));
+        await db().insert(bans).values({
+          userId: TALEBE_ID,
+          koskId: course.koskId,
+          courseId,
+          scope: BAN_SCOPES.COURSE,
+          reason: "Düzeni bozdu.",
+          bannedBy: MANAGER_ID,
+          bannedRole: "KOSK_NAZIM",
+          bannedTier: 2,
+        });
+      }));
+
+    it("leaves it out when the course turned passive", () =>
+      cancelAfter(() =>
+        db()
+          .update(roleAssignments)
+          .set({ revokedAt: new Date(), revokedBy: MANAGER_ID })
+          .where(eq(roleAssignments.userId, MUDERRIS_ID))
+      ));
   });
 
   it("cancels the upcoming invitations of a course that turns passive, and sends nothing more for it", async () => {

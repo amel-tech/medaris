@@ -39,6 +39,8 @@ export interface IScheduledSession {
   startsAt: Date;
   durationMinutes: number | null;
   cancelledAt: Date | null;
+  /** The note the müderris left for talebe when cancelling (MDRS-248). */
+  cancelReason: string | null;
   meetingUrl: string | null;
   /** Held in person: the session's own mark, else the course's (MDRS-283). */
   inPerson: boolean;
@@ -100,8 +102,10 @@ export class ScheduleRepository {
   }
 
   /**
-   * The opens of a passive course's live link this list made (MDRS-135): a
-   * `scope.passive_open` and a `course.content_read` per course, as
+   * The opens of a passive course's content this list made (MDRS-135): a
+   * `scope.passive_open` and a `course.content_read` per course and per
+   * permission the content was handed out under (`session.live_link` for a
+   * live link, `course.view_details` for a cancellation note, MDRS-248), as
    * `GET /courses/:id` writes for the same reader, in one statement.
    */
   async recordPassiveOpens(
@@ -110,6 +114,7 @@ export class ScheduleRepository {
       courseId: string;
       courseTitle: string;
       passiveScope: ScopeRef;
+      permission: string;
     }>,
     via: string
   ): Promise<void> {
@@ -123,7 +128,7 @@ export class ScheduleRepository {
           entityId: open.courseId,
           details: {
             passiveScope: open.passiveScope,
-            permission: "session.live_link",
+            permission: open.permission,
             via,
           },
         },
@@ -136,7 +141,7 @@ export class ScheduleRepository {
             title: open.courseTitle,
             via,
             systemAdmin: false,
-            permission: "session.live_link",
+            permission: open.permission,
           },
         },
       ])
@@ -161,6 +166,7 @@ export class ScheduleRepository {
         startsAt: lessons.scheduledAt,
         durationMinutes: lessons.durationMinutes,
         cancelledAt: lessons.cancelledAt,
+        cancelReason: lessons.cancelReason,
         meetingUrl: lessons.meetingUrl,
         inPerson: inPersonSql({
           lessonInPerson: lessons.inPersonOverride,

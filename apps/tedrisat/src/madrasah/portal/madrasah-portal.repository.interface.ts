@@ -62,6 +62,13 @@ export interface IDashboardSession {
    * the content.
    */
   withoutAccess: boolean | null;
+  /** The celse was cancelled; it stays on the Pano with a badge (MDRS-248). */
+  cancelled: boolean;
+  /**
+   * The müderris's note to the talebe on a cancelled celse (MDRS-248). Null
+   * when it is not cancelled, has no note, or the course is in a passive scope.
+   */
+  cancelReason: string | null;
 }
 
 /** A pending application in the Pano's "Bekleyen başvurular". */

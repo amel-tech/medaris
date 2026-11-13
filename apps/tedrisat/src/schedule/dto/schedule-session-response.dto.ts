@@ -32,6 +32,13 @@ export class ScheduleSessionResponse {
     type: String,
     nullable: true,
     description:
+      "The note the müderris left for talebe when cancelling the session (MDRS-248); null while it stands or when none was written.",
+  })
+  cancelReason!: string | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
       "The meeting link; null when none was added, and always null once the session is cancelled or over. Only an enrolled caller receives this response, so the link is theirs to read.",
   })
   meetingUrl!: string | null;

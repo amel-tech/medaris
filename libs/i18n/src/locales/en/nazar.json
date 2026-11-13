@@ -1476,6 +1476,9 @@
     "cancelledToast": "Session cancelled",
     "cancelledBody": "{name} was cancelled.",
     "cancelDialog": {
+      "noteLabel": "Note to talebe",
+      "noteHelp": "Shown in the notification, the e-mail and the programme.",
+      "noteSuggestion": "There will be no lesson this week.",
       "makeUp": "Add a make-up session",
       "makeUpHelp": "A new session of the same title and length is created first, and the cancelled one is then linked to it; the cancelled session shows a link to its make-up.",
       "makeUpFailed": "The make-up could not be added; the session was not cancelled",

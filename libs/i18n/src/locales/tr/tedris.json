@@ -107,6 +107,8 @@
     "lessonCurrent": "Sıradaki",
     "lessonCurrentLive": "Sıradaki · Şu an canlı",
     "cancelledBadge": "İptal edildi",
+    "cancelNoteMore": "Notun tamamı",
+    "cancelNoteLess": "Notu kısalt",
     "sampleHeading": "Örnek celse",
     "sampleMark": "Örnek celse",
     "sampleIntro": "Bu celseyi kaydolmadan izleyebilir, celse akışını ve kaynaklarını okuyabilirsin.",
@@ -487,7 +489,9 @@
       "SESSION_CANCELLED": {
         "title": "Celse iptal edildi",
         "body": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi.",
-        "bodyMakeup": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}."
+        "bodyMakeup": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}.",
+        "bodyReason": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Hocanın notu: {reason}",
+        "bodyMakeupReason": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}. Hocanın notu: {reason}"
       },
       "SESSION_RESCHEDULED": {
         "title": "Celse saati değişti",
@@ -560,6 +564,7 @@
     "minuteUnit": "dk",
     "cancelledTitle": "Bu celse iptal edildi",
     "replacement": "Telafi celsesi: <when>{time}</when>.",
+    "cancelNote": "Hocanın notu: {note}",
     "replacementGo": "Telafi celsesine git",
     "agendaTitle": "Gündem",
     "agendaZone": "Saatler {zone} saatiyle.",

@@ -88,6 +88,12 @@ export interface ScheduleSessionResponse {
      */
     status: SessionStatus;
     /**
+     * The note the müderris left for talebe when cancelling the session (MDRS-248); null while it stands or when none was written.
+     * @type {string}
+     * @memberof ScheduleSessionResponse
+     */
+    cancelReason: string | null;
+    /**
      * The meeting link; null when none was added, and always null once the session is cancelled or over. Only an enrolled caller receives this response, so the link is theirs to read.
      * @type {string}
      * @memberof ScheduleSessionResponse
@@ -123,6 +129,7 @@ export function instanceOfScheduleSessionResponse(value: object): value is Sched
     if (!('startsAt' in value) || value['startsAt'] === undefined) return false;
     if (!('durationMinutes' in value) || value['durationMinutes'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('cancelReason' in value) || value['cancelReason'] === undefined) return false;
     if (!('meetingUrl' in value) || value['meetingUrl'] === undefined) return false;
     if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('hasLiveStream' in value) || value['hasLiveStream'] === undefined) return false;
@@ -149,6 +156,7 @@ export function ScheduleSessionResponseFromJSONTyped(json: any, ignoreDiscrimina
         'startsAt': (new Date(json['startsAt'])),
         'durationMinutes': json['durationMinutes'],
         'status': SessionStatusFromJSON(json['status']),
+        'cancelReason': json['cancelReason'],
         'meetingUrl': json['meetingUrl'],
         'inPerson': json['inPerson'],
         'hasLiveStream': json['hasLiveStream'],
@@ -176,6 +184,7 @@ export function ScheduleSessionResponseToJSONTyped(value?: ScheduleSessionRespon
         'startsAt': ((value['startsAt']).toISOString()),
         'durationMinutes': value['durationMinutes'],
         'status': SessionStatusToJSON(value['status']),
+        'cancelReason': value['cancelReason'],
         'meetingUrl': value['meetingUrl'],
         'inPerson': value['inPerson'],
         'hasLiveStream': value['hasLiveStream'],

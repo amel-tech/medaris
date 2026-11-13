@@ -56,19 +56,23 @@ export async function changeSession(
 /**
  * "İptal et" (`POST /lessons/:id/cancel`): the session stays in the programme,
  * marked cancelled, and names its make-up when it has one. The make-up must
- * exist already, so it is made first.
+ * exist already, so it is made first. `note` is the reason, written for
+ * talebe (MDRS-248); a blank one is not sent.
  */
 export async function cancelSession(
   lessonId: string,
   version: number,
-  replacementLessonId?: string
+  replacementLessonId?: string,
+  note?: string
 ): Promise<ActionOutcome<{ courseVersion: number }>> {
+  const reason = note?.trim();
   const result = await authenticatedAction(async (api) => {
     const { courseVersion } = await api.lessons.cancelLesson({
       id: lessonId,
       cancelLessonDto: {
         version,
         ...(replacementLessonId ? { replacementLessonId } : {}),
+        ...(reason ? { reason } : {}),
       },
     });
     return { courseVersion };

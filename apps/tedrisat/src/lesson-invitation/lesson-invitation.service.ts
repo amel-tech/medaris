@@ -282,6 +282,7 @@ export class LessonInvitationService
       sessionPageUrl: pageUrl,
       attendance: due.attendance,
       accountUrl: `${webUrl}/account`,
+      note: method === "CANCEL" ? due.cancelReason : null,
     });
 
     try {
