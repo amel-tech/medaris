@@ -661,7 +661,7 @@ describe("İptal et", () => {
     await open();
     expect(dialog().textContent).toContain("12 Ekim 2026 Pazartesi 21:00");
     expect(dialog().textContent).toContain(
-      "İptal edilen celse programda kalır."
+      "programda “İptal edildi” olarak kalır."
     );
     await click(buttonIn(dialog(), "Celseyi iptal et"));
     await settle(80);

@@ -184,7 +184,7 @@ export function CardQuickAdd({
           </div>
         </div>
       ) : null}
-      <p className="mds-body-sm text-neutral-muted" aria-live="polite">
+      <p className="mds-caption text-neutral-muted" aria-live="polite">
         {failure ??
           (problem === "required"
             ? words("Decks.required")

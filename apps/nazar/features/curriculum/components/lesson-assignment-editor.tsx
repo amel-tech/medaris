@@ -259,7 +259,7 @@ export function LessonAssignmentEditor({
                   </p>
                 )}
                 {assignment.kind === "MEMORIZE" ? (
-                  <p className="mds-caption">
+                  <p className="mds-caption text-neutral-muted">
                     {t("Curriculum.assignmentKindMemorizeHelp")}
                   </p>
                 ) : null}

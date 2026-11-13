@@ -161,11 +161,7 @@ export function CancelDialog({
           when: whenLabel(row.start, { locale, timeZone }, "full"),
         })}
       </p>
-      <p className="mds-caption">{t("Sessions.cancelWay")}</p>
-      <Field
-        label={t("Sessions.cancelDialog.noteLabel")}
-        help={t("Sessions.cancelDialog.noteHelp")}
-      >
+      <Field label={t("Sessions.cancelDialog.noteLabel")}>
         <Textarea
           name="cancelNote"
           rows={2}

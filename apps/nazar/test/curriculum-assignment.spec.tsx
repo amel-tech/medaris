@@ -336,7 +336,7 @@ describe("Ödev on a celse of Müfredat", () => {
     expect(
       (buttonIn(own, "Ezber") as HTMLButtonElement).getAttribute("aria-pressed")
     ).toBe("true");
-    expect(own.textContent).toContain("Değerlendirme’de işaretlersiniz");
+    expect(own.textContent).toContain("Değerlendirme’de işaretlenir");
     expect(save().disabled).toBe(true);
   });
 

@@ -6,6 +6,7 @@ import { Button } from "@medaris/ui/mds/button";
 import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Field } from "@medaris/ui/mds/field";
+import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Select } from "@medaris/ui/mds/select";
@@ -108,6 +109,7 @@ export function PlanForm({
   const [topics, setTopics] = useState("");
   const [retake, setRetake] = useState(false);
   const exam = kind === "exam";
+  const [details, setDetails] = useState(false);
   const [links, setLinks] = useState<Links>("empty");
   const [firstUrl, setFirstUrl] = useState("");
   const [sent, setSent] = useState(false);
@@ -175,6 +177,16 @@ export function PlanForm({
     if (saving) return;
     if (hasProblem || !pattern) {
       setSent(true);
+      // A problem folded away under "Sınav ayrıntıları" is shown, not hidden.
+      if (
+        exam &&
+        (maxScoreProblem ||
+          titleProblem ||
+          urlProblem ||
+          Boolean(problems.duration))
+      ) {
+        setDetails(true);
+      }
       return;
     }
     startSaving(async () => {
@@ -211,6 +223,128 @@ export function PlanForm({
     });
   };
 
+  // The fields both kinds share; an exam shows its date, time and place and
+  // folds the rest under "Sınav ayrıntıları" (MDRS-248).
+  const startTimeField = (
+    <Field
+      label={t("SessionPlan.startTimeLabel")}
+      required
+      error={show(Boolean(problems.startTime), "startTime")}
+    >
+      <Input
+        type="time"
+        name="startTime"
+        value={form.startTime}
+        onChange={(event) => set("startTime", event.target.value)}
+      />
+    </Field>
+  );
+  const durationField = (
+    <Field
+      label={t("SessionPlan.durationLabel")}
+      required
+      error={show(Boolean(problems.duration), "duration")}
+    >
+      <Input
+        type="number"
+        name="duration"
+        min={1}
+        max={1440}
+        inputMode="numeric"
+        value={form.duration}
+        trailing={t("SessionPlan.durationUnit")}
+        onChange={(event) => set("duration", event.target.value)}
+      />
+    </Field>
+  );
+  const zoneField = (
+    <Field label={t("SessionPlan.zoneLabel")} help={t("SessionPlan.zoneHelp")}>
+      <Select
+        name="timeZone"
+        value={form.timeZone}
+        onChange={(value) => value && set("timeZone", value)}
+        options={zones.map((zone) => ({
+          value: zone,
+          label: zoneName(zone),
+        }))}
+      />
+    </Field>
+  );
+  const dateField = (
+    <Field
+      label={t(
+        form.mode === "weekly"
+          ? "SessionPlan.startDateLabel"
+          : "SessionPlan.dateLabel"
+      )}
+      required
+      error={show(Boolean(problems.startDate), "startDate")}
+    >
+      <Input
+        type="date"
+        name="startDate"
+        value={form.startDate}
+        onChange={(event) => set("startDate", event.target.value)}
+      />
+    </Field>
+  );
+  const titleField = (
+    <Field
+      label={t("SessionPlan.titleLabel")}
+      required
+      help={exam ? undefined : t("SessionPlan.titleHelp")}
+      error={show(titleProblem, "title")}
+    >
+      <Input
+        name="title"
+        value={title}
+        maxLength={200}
+        onChange={(event) => setTitle(event.target.value)}
+      />
+    </Field>
+  );
+  const linkFields = (
+    <>
+      <RadioGroup
+        legend={t("SessionPlan.linksLegend")}
+        name="links"
+        bordered
+        value={links}
+        onChange={(value) => setLinks(value as Links)}
+        options={[
+          {
+            value: "empty",
+            label: t("SessionPlan.linksEmpty"),
+            description: t("SessionPlan.linksEmptyDesc"),
+          },
+          {
+            value: "first",
+            label: t("SessionPlan.linksFirst"),
+            description: t("SessionPlan.linksFirstDesc"),
+          },
+        ]}
+      />
+      {links === "first" ? (
+        <Field
+          label={t("SessionPlan.linkLabel")}
+          required
+          help={t("SessionPlan.linkHelp")}
+          error={show(urlProblem, "link")}
+        >
+          <Input
+            mono
+            name="meetingUrl"
+            placeholder="https://zoom.us/j/…"
+            autoComplete="off"
+            spellCheck={false}
+            value={firstUrl}
+            onChange={(event) => setFirstUrl(event.target.value)}
+          />
+        </Field>
+      ) : null}
+    </>
+  );
+
   return (
     <form
       className="flex flex-col gap-6"
@@ -233,7 +367,6 @@ export function PlanForm({
         <p className="mds-body-sm text-neutral-muted">
           {t("SessionPlan.intro", { name: courseTitle })}
         </p>
-        <p className="mds-caption">* {t("SessionPlan.requiredNote")}</p>
       </header>
 
       <ChoiceChips
@@ -277,151 +410,6 @@ export function PlanForm({
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-inline-0 flex-col gap-6">
-          <section
-            className="mds-card flex flex-col gap-4"
-            aria-labelledby="plan-repeat"
-          >
-            <h2 id="plan-repeat" className="mds-h2">
-              {t(
-                form.mode === "weekly"
-                  ? "SessionPlan.repeatTitle"
-                  : "SessionPlan.singleTitle"
-              )}
-            </h2>
-            {form.mode === "weekly" ? (
-              <div className="flex flex-col gap-2">
-                <ChoiceChips
-                  multiple
-                  legend={`${t("SessionPlan.daysLegend")} *`}
-                  legendVisible
-                  name="weekdays"
-                  value={form.weekdays.map(String)}
-                  onChange={(value) => set("weekdays", value.map(Number))}
-                  options={WEEKDAYS.map((day) => ({
-                    value: String(day),
-                    label: weekdayName(locale, day, "short"),
-                  }))}
-                />
-                {sent && problems.weekdays ? (
-                  <p className="mds-error" role="alert">
-                    {t("SessionPlan.errors.weekdays")}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field
-                label={t("SessionPlan.startTimeLabel")}
-                required
-                error={show(Boolean(problems.startTime), "startTime")}
-              >
-                <Input
-                  type="time"
-                  name="startTime"
-                  value={form.startTime}
-                  onChange={(event) => set("startTime", event.target.value)}
-                />
-              </Field>
-              <Field
-                label={t("SessionPlan.durationLabel")}
-                required
-                error={show(Boolean(problems.duration), "duration")}
-              >
-                <Input
-                  type="number"
-                  name="duration"
-                  min={1}
-                  max={1440}
-                  inputMode="numeric"
-                  value={form.duration}
-                  trailing={t("SessionPlan.durationUnit")}
-                  onChange={(event) => set("duration", event.target.value)}
-                />
-              </Field>
-            </div>
-            <Field
-              label={t("SessionPlan.zoneLabel")}
-              help={t("SessionPlan.zoneHelp")}
-            >
-              <Select
-                name="timeZone"
-                value={form.timeZone}
-                onChange={(value) => value && set("timeZone", value)}
-                options={zones.map((zone) => ({
-                  value: zone,
-                  label: zoneName(zone),
-                }))}
-              />
-            </Field>
-            <Field
-              label={t(
-                form.mode === "weekly"
-                  ? "SessionPlan.startDateLabel"
-                  : "SessionPlan.dateLabel"
-              )}
-              required
-              error={show(Boolean(problems.startDate), "startDate")}
-            >
-              <Input
-                type="date"
-                name="startDate"
-                value={form.startDate}
-                onChange={(event) => set("startDate", event.target.value)}
-              />
-            </Field>
-            {form.mode === "weekly" ? (
-              <>
-                <RadioGroup
-                  legend={t("SessionPlan.endLegend")}
-                  name="endMode"
-                  value={form.endMode}
-                  onChange={(value) =>
-                    set("endMode", value as PlanFields["endMode"])
-                  }
-                  options={[
-                    { value: "date", label: t("SessionPlan.endDate") },
-                    { value: "count", label: t("SessionPlan.endCount") },
-                  ]}
-                />
-                {form.endMode === "date" ? (
-                  <Field
-                    label={t("SessionPlan.endDateLabel")}
-                    required
-                    help={t("SessionPlan.endDateHelp")}
-                    error={
-                      problems.endBeforeStart
-                        ? show(true, "endBeforeStart")
-                        : show(Boolean(problems.endDate), "endDate")
-                    }
-                  >
-                    <Input
-                      type="date"
-                      name="endDate"
-                      value={form.endDate}
-                      onChange={(event) => set("endDate", event.target.value)}
-                    />
-                  </Field>
-                ) : (
-                  <Field
-                    label={t("SessionPlan.countLabel")}
-                    required
-                    error={show(Boolean(problems.count), "count")}
-                  >
-                    <Input
-                      type="number"
-                      name="count"
-                      min={1}
-                      max={200}
-                      inputMode="numeric"
-                      value={form.count}
-                      onChange={(event) => set("count", event.target.value)}
-                    />
-                  </Field>
-                )}
-              </>
-            ) : null}
-          </section>
-
           {exam ? (
             <section
               className="mds-card flex flex-col gap-4"
@@ -431,34 +419,10 @@ export function PlanForm({
               <h2 id="plan-exam" className="mds-h2">
                 {t("SessionPlan.examTitle")}
               </h2>
-              <ChoiceChips
-                legend={t("SessionPlan.examFormatLegend")}
-                legendVisible
-                name="examFormat"
-                value={examFormat}
-                onChange={(value) =>
-                  value && setExamFormat(value as ExamFormat)
-                }
-                options={[
-                  { value: "WRITTEN", label: t("SessionPlan.examWritten") },
-                  { value: "ORAL", label: t("SessionPlan.examOral") },
-                ]}
-              />
-              <Field
-                label={t("SessionPlan.examMaxScoreLabel")}
-                required
-                error={show(maxScoreProblem, "examMaxScore")}
-              >
-                <Input
-                  type="number"
-                  name="maxScore"
-                  min={1}
-                  max={1000}
-                  inputMode="numeric"
-                  value={maxScore}
-                  onChange={(event) => setMaxScore(event.target.value)}
-                />
-              </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {dateField}
+                {startTimeField}
+              </div>
               <RadioGroup
                 legend={t("SessionPlan.examPlaceLegend")}
                 name="examPlace"
@@ -484,93 +448,216 @@ export function PlanForm({
                   />
                 </Field>
               ) : null}
-              <Field label={t("SessionPlan.examTopicsLabel")}>
-                <Textarea
-                  name="examTopics"
-                  maxLength={2000}
-                  rows={3}
-                  dir="auto"
-                  value={topics}
-                  onChange={(event: { target: { value: string } }) =>
-                    setTopics(event.target.value)
+              <div className="flex flex-col gap-4 border-bs border-neutral-subtle pbs-4">
+                <Button
+                  variant="ghost"
+                  size="small"
+                  className="self-start"
+                  aria-expanded={details}
+                  aria-controls="plan-exam-details"
+                  iconRight={
+                    <Icon
+                      name={details ? "chevronUp" : "chevronDown"}
+                      size="sm"
+                    />
                   }
-                />
-              </Field>
-              <Checkbox
-                label={t("SessionPlan.examRetake")}
-                description={t("SessionPlan.examRetakeDesc")}
-                checked={retake}
-                onCheckedChange={(checked: boolean) => setRetake(checked)}
-              />
+                  onClick={() => setDetails((now) => !now)}
+                  data-testid="plan-exam-details-toggle"
+                >
+                  {t("SessionPlan.examDetails")}
+                  {details ? null : (
+                    <span className="mds-caption text-neutral-muted">
+                      {t("SessionPlan.examDetailsSummary", {
+                        format: t(
+                          examFormat === "ORAL"
+                            ? "SessionPlan.examOral"
+                            : "SessionPlan.examWritten"
+                        ),
+                        max: maxScore.trim() || "–",
+                      })}
+                    </span>
+                  )}
+                </Button>
+                {details ? (
+                  <div
+                    id="plan-exam-details"
+                    className="flex flex-col gap-4"
+                    data-testid="plan-exam-details"
+                  >
+                    <ChoiceChips
+                      legend={t("SessionPlan.examFormatLegend")}
+                      legendVisible
+                      name="examFormat"
+                      value={examFormat}
+                      onChange={(value) =>
+                        value && setExamFormat(value as ExamFormat)
+                      }
+                      options={[
+                        {
+                          value: "WRITTEN",
+                          label: t("SessionPlan.examWritten"),
+                        },
+                        { value: "ORAL", label: t("SessionPlan.examOral") },
+                      ]}
+                    />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field
+                        label={t("SessionPlan.examMaxScoreLabel")}
+                        required
+                        error={show(maxScoreProblem, "examMaxScore")}
+                      >
+                        <Input
+                          type="number"
+                          name="maxScore"
+                          min={1}
+                          max={1000}
+                          inputMode="numeric"
+                          value={maxScore}
+                          onChange={(event) => setMaxScore(event.target.value)}
+                        />
+                      </Field>
+                      {durationField}
+                    </div>
+                    <Field label={t("SessionPlan.examTopicsLabel")}>
+                      <Textarea
+                        name="examTopics"
+                        maxLength={2000}
+                        rows={3}
+                        dir="auto"
+                        value={topics}
+                        onChange={(event: { target: { value: string } }) =>
+                          setTopics(event.target.value)
+                        }
+                      />
+                    </Field>
+                    <Checkbox
+                      label={t("SessionPlan.examRetake")}
+                      description={t("SessionPlan.examRetakeDesc")}
+                      checked={retake}
+                      onCheckedChange={(checked: boolean) => setRetake(checked)}
+                    />
+                    {titleField}
+                    {zoneField}
+                    {linkFields}
+                  </div>
+                ) : null}
+              </div>
             </section>
-          ) : null}
-
-          <section
-            className="mds-card flex flex-col gap-4"
-            aria-labelledby="plan-sessions"
-          >
-            <h2 id="plan-sessions" className="mds-h2">
-              {t("SessionPlan.sessionsTitle")}
-            </h2>
-            <Field
-              label={t("SessionPlan.titleLabel")}
-              required
-              help={t("SessionPlan.titleHelp")}
-              error={show(titleProblem, "title")}
-            >
-              <Input
-                name="title"
-                value={title}
-                maxLength={200}
-                onChange={(event) => setTitle(event.target.value)}
-              />
-            </Field>
-            <RadioGroup
-              legend={t("SessionPlan.linksLegend")}
-              name="links"
-              bordered
-              value={links}
-              onChange={(value) => setLinks(value as Links)}
-              options={[
-                {
-                  value: "empty",
-                  label: t("SessionPlan.linksEmpty"),
-                  description: t("SessionPlan.linksEmptyDesc"),
-                },
-                {
-                  value: "first",
-                  label: t("SessionPlan.linksFirst"),
-                  description: t("SessionPlan.linksFirstDesc"),
-                },
-              ]}
-            />
-            {links === "first" ? (
-              <Field
-                label={t("SessionPlan.linkLabel")}
-                required
-                help={t("SessionPlan.linkHelp")}
-                error={show(urlProblem, "link")}
+          ) : (
+            <>
+              <section
+                className="mds-card flex flex-col gap-4"
+                aria-labelledby="plan-repeat"
               >
-                <Input
-                  mono
-                  name="meetingUrl"
-                  placeholder="https://zoom.us/j/…"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={firstUrl}
-                  onChange={(event) => setFirstUrl(event.target.value)}
-                />
-              </Field>
-            ) : null}
-            <Alert tone="info">
-              <p>{t("SessionPlan.linksNote")}</p>
-              {courseInPerson ? (
-                <p data-testid="plan-in-person">
-                  {t("SessionPlan.inPersonNote")}
-                </p>
-              ) : null}
-            </Alert>
-          </section>
+                <h2 id="plan-repeat" className="mds-h2">
+                  {t(
+                    form.mode === "weekly"
+                      ? "SessionPlan.repeatTitle"
+                      : "SessionPlan.singleTitle"
+                  )}
+                </h2>
+                {form.mode === "weekly" ? (
+                  <div className="flex flex-col gap-2">
+                    <ChoiceChips
+                      multiple
+                      legend={`${t("SessionPlan.daysLegend")} *`}
+                      legendVisible
+                      name="weekdays"
+                      value={form.weekdays.map(String)}
+                      onChange={(value) => set("weekdays", value.map(Number))}
+                      options={WEEKDAYS.map((day) => ({
+                        value: String(day),
+                        label: weekdayName(locale, day, "short"),
+                      }))}
+                    />
+                    {sent && problems.weekdays ? (
+                      <p className="mds-error" role="alert">
+                        {t("SessionPlan.errors.weekdays")}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {startTimeField}
+                  {durationField}
+                </div>
+                {zoneField}
+                {dateField}
+                {form.mode === "weekly" ? (
+                  <>
+                    <RadioGroup
+                      legend={t("SessionPlan.endLegend")}
+                      name="endMode"
+                      value={form.endMode}
+                      onChange={(value) =>
+                        set("endMode", value as PlanFields["endMode"])
+                      }
+                      options={[
+                        { value: "date", label: t("SessionPlan.endDate") },
+                        { value: "count", label: t("SessionPlan.endCount") },
+                      ]}
+                    />
+                    {form.endMode === "date" ? (
+                      <Field
+                        label={t("SessionPlan.endDateLabel")}
+                        required
+                        help={t("SessionPlan.endDateHelp")}
+                        error={
+                          problems.endBeforeStart
+                            ? show(true, "endBeforeStart")
+                            : show(Boolean(problems.endDate), "endDate")
+                        }
+                      >
+                        <Input
+                          type="date"
+                          name="endDate"
+                          value={form.endDate}
+                          onChange={(event) =>
+                            set("endDate", event.target.value)
+                          }
+                        />
+                      </Field>
+                    ) : (
+                      <Field
+                        label={t("SessionPlan.countLabel")}
+                        required
+                        error={show(Boolean(problems.count), "count")}
+                      >
+                        <Input
+                          type="number"
+                          name="count"
+                          min={1}
+                          max={200}
+                          inputMode="numeric"
+                          value={form.count}
+                          onChange={(event) => set("count", event.target.value)}
+                        />
+                      </Field>
+                    )}
+                  </>
+                ) : null}
+              </section>
+
+              <section
+                className="mds-card flex flex-col gap-4"
+                aria-labelledby="plan-sessions"
+              >
+                <h2 id="plan-sessions" className="mds-h2">
+                  {t("SessionPlan.sessionsTitle")}
+                </h2>
+                {titleField}
+                {linkFields}
+                <Alert tone="info">
+                  <p>{t("SessionPlan.linksNote")}</p>
+                  {courseInPerson ? (
+                    <p data-testid="plan-in-person">
+                      {t("SessionPlan.inPersonNote")}
+                    </p>
+                  ) : null}
+                </Alert>
+              </section>
+            </>
+          )}
 
           <div className="flex items-center gap-3">
             <Button
@@ -606,7 +693,6 @@ export function PlanForm({
               {t("SessionPlan.count", { count: summary.count })}
             </span>
           </div>
-          <p className="mds-caption">{t("SessionPlan.previewNote")}</p>
           {previewFailed ? (
             <p className="mds-error" role="alert">
               {t("SessionPlan.previewFailed")}

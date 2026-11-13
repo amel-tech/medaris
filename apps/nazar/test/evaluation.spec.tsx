@@ -259,11 +259,36 @@ describe("the board", () => {
     expect(list.contains(document.activeElement)).toBe(true);
   });
 
-  it("saves a note when it leaves the field, and not before a mark", async () => {
+  it("keeps the note box closed until asked, focuses it, and offers none before a mark", async () => {
     await mount();
     await open();
-    const empty = row("t-3").querySelector("input") as HTMLInputElement;
-    expect(empty.disabled).toBe(true);
+    expect(row("t-1").querySelector("input")).toBeNull();
+    expect(
+      row("t-3").querySelector('[data-testid="evaluation-note-t-3"]')
+    ).toBeNull();
+    const toggle = row("t-2").querySelector(
+      '[data-testid="evaluation-note-t-2"]'
+    ) as HTMLButtonElement;
+    // A kept note shows on its toggle, shortened by the row.
+    expect(toggle.textContent).toBe("Son satır.");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    await click(toggle);
+    await settle();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    const box = row("t-2").querySelector("input") as HTMLInputElement;
+    expect(document.activeElement).toBe(box);
+    expect(box.value).toBe("Son satır.");
+  });
+
+  it("saves a note when it leaves the field", async () => {
+    await mount();
+    await open();
+    const toggle = row("t-1").querySelector(
+      '[data-testid="evaluation-note-t-1"]'
+    ) as HTMLButtonElement;
+    expect(toggle.textContent).toBe(tr.note);
+    await click(toggle);
+    await settle();
     const note = row("t-1").querySelector("input") as HTMLInputElement;
     await typeInto(note, "  Çok güzel.  ");
     await key(note, "Enter");

@@ -108,8 +108,7 @@ export function CourseBanDialog({
         </>
       }
     >
-      <p>{t("BanDialog.intro")}</p>
-      <p className="mds-caption">* {t("BanDialog.required")}</p>
+      <p>{t("BanDialog.courseDesc")}</p>
       <Field label={t("CourseBans.talebeLabel")} required>
         <Select
           name="talebe"
@@ -124,7 +123,6 @@ export function CourseBanDialog({
       <Field
         label={t("BanDialog.reasonLabel")}
         required
-        help={t("BanDialog.reasonHelp")}
         error={touched && blank ? t("BanDialog.reasonRequired") : undefined}
       >
         <Textarea

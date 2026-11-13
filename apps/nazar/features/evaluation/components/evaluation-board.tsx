@@ -8,7 +8,7 @@ import { Input } from "@medaris/ui/mds/input";
 import { Table, type TableColumn } from "@medaris/ui/mds/table";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useTranslations } from "next-intl";
-import { type KeyboardEvent, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
 import { releaseExamResults, saveEvaluation, saveExamResult } from "../actions";
 import {
@@ -288,10 +288,9 @@ export function EvaluationBoard({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="mds-caption">{t("openHint")}</p>
+      <div className="flex justify-end">
         <Button
-          variant="outline"
+          variant="secondary"
           size="small"
           href={evaluationExportHref(courseId)}
           iconLeft={<Icon name="download" size="sm" />}
@@ -386,7 +385,7 @@ function ColumnScreen({
           {t("count", { full, total })}
         </output>
       </div>
-      <p className="mds-caption">{t("keysHint")}</p>
+      <p className="mds-caption text-neutral-muted">{t("keysHint")}</p>
       <ul
         className="m-0 flex list-none flex-col p-0"
         aria-label={t("listLabel")}
@@ -410,6 +409,41 @@ function ColumnScreen({
   );
 }
 
+/**
+ * A choice of one drawn as joined chips (MDRS-248): each a button with
+ * `aria-pressed`, the pressed one filled, so no row carries a primary button.
+ */
+function Segmented<V extends string>({
+  legend,
+  options,
+  value,
+  onPick,
+}: {
+  legend: string;
+  options: ReadonlyArray<{ value: V; label: string; shortcut?: string }>;
+  value: V | undefined;
+  onPick: (value: V) => void;
+}) {
+  return (
+    <fieldset className="mds-chips flex-nowrap gap-1">
+      <legend className="mds-visually-hidden">{legend}</legend>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          className="mds-chip"
+          aria-pressed={value === o.value}
+          data-pressed={value === o.value ? "" : undefined}
+          aria-keyshortcuts={o.shortcut}
+          onClick={() => onPick(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </fieldset>
+  );
+}
+
 function MarkRow({
   ref,
   talebe,
@@ -427,7 +461,21 @@ function MarkRow({
 }) {
   const t = useTranslations("nazar.Evaluation");
   const [draft, setDraft] = useState(mark?.note ?? "");
+  // The note box stays closed until asked for; a kept note shows shortened.
+  const [noting, setNoting] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  const noteId = `evaluation-note-box-${talebe.id}`;
   const name = talebe.name ?? t("unnamed");
+
+  useEffect(() => {
+    if (noting) box.current?.querySelector("input")?.focus();
+  }, [noting]);
+
+  const keep = () => {
+    if (mark && noteBody(draft) !== mark.note) {
+      onMark(mark.status, noteBody(draft));
+    }
+  };
 
   return (
     <li
@@ -435,47 +483,68 @@ function MarkRow({
       // One stop for Tab; the arrows move within the list.
       tabIndex={active ? 0 : -1}
       onFocus={onFocus}
-      className="flex flex-wrap items-center gap-3 py-3 border-be border-neutral-subtle last:border-be-0 focus-visible:outline-2"
+      className="flex flex-wrap items-center gap-3 py-2 border-be border-neutral-subtle last:border-be-0 focus-visible:outline-2"
       aria-label={name}
       data-testid={`evaluation-row-${talebe.id}`}
     >
       <bdi className="mds-label min-inline-0 flex-1">{name}</bdi>
-      <fieldset className="flex gap-2 border-0 p-0">
-        <legend className="mds-visually-hidden">
-          {t("markLegend", { name })}
-        </legend>
-        {MARK_STATUSES.map((status, i) => (
-          <Button
-            key={status}
-            size="small"
-            variant={mark?.status === status ? "primary" : "outline"}
-            aria-pressed={mark?.status === status}
-            aria-keyshortcuts={String(i + 1)}
-            onClick={() => onMark(status, mark?.note ?? null)}
-          >
-            {t(LABEL[status])}
-          </Button>
-        ))}
-      </fieldset>
-      <Input
-        size="small"
-        aria-label={t("noteLabel", { name })}
-        placeholder={t("notePlaceholder")}
-        maxLength={EVALUATION_NOTE_MAX}
-        dir="auto"
-        value={draft}
-        // A note goes with a mark: there is nothing to keep it on before.
-        disabled={!mark}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => {
-          if (mark && noteBody(draft) !== mark.note) {
-            onMark(mark.status, noteBody(draft));
+      {/* A note goes with a mark: there is nothing to keep it on before. */}
+      {mark ? (
+        <Button
+          variant="link"
+          size="small"
+          aria-label={
+            mark.note
+              ? t("noteWith", { name, note: mark.note })
+              : t("noteLabel", { name })
           }
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-        }}
+          aria-expanded={noting}
+          aria-controls={noteId}
+          className="min-inline-0"
+          style={{ maxInlineSize: "20ch" }}
+          onClick={() => setNoting((now) => !now)}
+          data-testid={`evaluation-note-${talebe.id}`}
+        >
+          <bdi className="min-inline-0 truncate" dir="auto">
+            {mark.note ?? t("note")}
+          </bdi>
+        </Button>
+      ) : null}
+      <Segmented
+        legend={t("markLegend", { name })}
+        options={MARK_STATUSES.map((status, i) => ({
+          value: status,
+          label: t(LABEL[status]),
+          shortcut: String(i + 1),
+        }))}
+        value={mark?.status}
+        onPick={(status) => onMark(status, mark?.note ?? null)}
       />
+      {mark && noting ? (
+        <span ref={box} id={noteId} className="basis-full">
+          <Input
+            size="small"
+            aria-label={t("noteLabel", { name })}
+            placeholder={t("notePlaceholder")}
+            maxLength={EVALUATION_NOTE_MAX}
+            dir="auto"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={keep}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.currentTarget.blur();
+              if (event.key === "Escape") {
+                // Back to the toggle, which saves the note on the way out.
+                event.currentTarget
+                  .closest("li")
+                  ?.querySelector<HTMLElement>("[aria-controls]")
+                  ?.focus();
+                setNoting(false);
+              }
+            }}
+          />
+        </span>
+      ) : null}
     </li>
   );
 }
@@ -563,7 +632,7 @@ function ExamScreen({
           )}
         </div>
       </div>
-      <p className="mds-caption">{t("examKeysHint")}</p>
+      <p className="mds-caption text-neutral-muted">{t("examKeysHint")}</p>
       <ul className="m-0 flex list-none flex-col p-0">
         {board.talebe.map((talebe, index) => (
           <ScoreRow
@@ -674,10 +743,11 @@ function ScoreRow({
           </p>
         ) : null}
       </div>
-      <Button
-        size="small"
-        variant={absent ? "primary" : "outline"}
+      <button
+        type="button"
+        className="mds-chip"
         aria-pressed={absent}
+        data-pressed={absent ? "" : undefined}
         onClick={() => {
           setDraft("");
           setProblem(null);
@@ -686,7 +756,7 @@ function ScoreRow({
         }}
       >
         {t("absentExam")}
-      </Button>
+      </button>
     </li>
   );
 }

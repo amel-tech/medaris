@@ -125,7 +125,11 @@ test("the müderris marks the talebe on the recited homework with a press and wi
       note: null,
     });
 
+  // The note box is closed until its "Not" toggle opens it.
+  await expect(row.getByRole("textbox")).toHaveCount(0);
+  await row.getByTestId(`evaluation-note-${TALEBE.sub}`).click();
   const note = row.getByRole("textbox");
+  await expect(note).toBeFocused();
   await note.fill("Son iki satır eksik.");
   await note.press("Enter");
   await expect
