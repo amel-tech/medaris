@@ -142,8 +142,9 @@ export class ExamRepository {
    * Enters a talebe's result on an exam, or changes it: a score from 0 to the
    * exam's `max_score`, or "Girmedi" with none. `exam_result.save` with the
    * score, never more. A save that changes nothing writes nothing. The exam
-   * row is held for the transaction, so its `max_score` cannot change under
-   * the check. The celse must be live (LESSON_NOT_FOUND) and an exam
+   * row is held for update for the transaction, so its `max_score` cannot
+   * change under the check and two saves of one cell, the first included,
+   * take turns. The celse must be live (LESSON_NOT_FOUND) and an exam
    * (EXAM_NOT_FOUND), the talebe seated in its course
    * (EXAM_TALEBE_NOT_FOUND).
    */
@@ -173,7 +174,11 @@ export class ExamRepository {
         .select({ id: lessonExams.id, maxScore: lessonExams.maxScore })
         .from(lessonExams)
         .where(eq(lessonExams.lessonId, lessonId))
-        .for("share");
+        // FOR UPDATE, not FOR SHARE: before a talebe's first result there is
+        // no result row to lock, so two first saves of one cell would both
+        // pass a shared lock and the second would write a change (and an
+        // audit row) that changes nothing. Saves on one exam take turns.
+        .for("update");
       if (!exam) throw new ExamNotFoundError(lessonId);
       if (
         entry.absent

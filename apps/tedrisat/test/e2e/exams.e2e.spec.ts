@@ -311,6 +311,23 @@ describe("exams (e2e)", () => {
       expect(audit.details).toMatchObject({ lessonId: examId });
     });
 
+    it("lets first saves of one cell made at once take turns: one write, one record", async () => {
+      const answers = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          enter(CAST.MUDERRIS, CAST.TALEBE, { score: 70 }).expect(200)
+        )
+      );
+      for (const answer of answers) {
+        expect(answer.body).toMatchObject({ score: 70, absent: false });
+      }
+      const saves = await db()
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.action, "exam_result.save"));
+      expect(saves).toHaveLength(1);
+      expect(await db().select().from(examResults)).toHaveLength(1);
+    });
+
     it("refuses a score above tam puan, below 0, a fraction or none", async () => {
       for (const body of [{ score: 101 }, { score: -1 }, {}, { score: null }]) {
         const res = await enter(CAST.MUDERRIS, CAST.TALEBE, body).expect(400);
