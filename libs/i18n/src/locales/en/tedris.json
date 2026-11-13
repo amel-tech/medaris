@@ -557,7 +557,7 @@
         "body": "The exam of {courseTitle} is on {sessionAt}."
       },
       "EXAM_REMINDER": {
-        "title": "Exam tomorrow",
+        "title": "Upcoming exam",
         "body": "The exam of {courseTitle} is on {sessionAt}."
       },
       "EXAM_RESULTS_RELEASED": {

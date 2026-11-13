@@ -557,7 +557,7 @@
         "body": "اختبار درس {courseTitle} في {sessionAt}."
       },
       "EXAM_REMINDER": {
-        "title": "الاختبار غدًا",
+        "title": "اختبار قريب",
         "body": "اختبار درس {courseTitle} في {sessionAt}."
       },
       "EXAM_RESULTS_RELEASED": {

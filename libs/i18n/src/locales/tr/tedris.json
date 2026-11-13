@@ -557,7 +557,7 @@
         "body": "{courseTitle} dersinin sınavı {sessionAt} tarihinde."
       },
       "EXAM_REMINDER": {
-        "title": "Sınav yarın",
+        "title": "Yaklaşan sınav",
         "body": "{courseTitle} dersinin sınavı {sessionAt} tarihinde."
       },
       "EXAM_RESULTS_RELEASED": {
