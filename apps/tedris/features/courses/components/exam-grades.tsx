@@ -66,12 +66,14 @@ export const MyGradesTab = ({ grades }: { grades: MyGradesResponse }) => {
   ) => (
     <li
       key={key}
-      className="flex items-center justify-between gap-4 py-3 border-be border-neutral-subtle last:border-be-0"
+      className="flex items-center justify-between gap-4 py-2 border-be border-neutral-subtle last:border-be-0"
       data-testid={testId}
     >
-      <span className="flex min-inline-0 flex-col">
-        <span className="mds-caption">{t("gradesWeek", { week })}</span>
-        <bdi className="mds-label">{title}</bdi>
+      <span className="flex min-inline-0 items-baseline gap-2">
+        <span className="mds-caption shrink-0 text-neutral-muted">
+          {t("gradesWeek", { week })}
+        </span>
+        <bdi className="mds-label truncate">{title}</bdi>
       </span>
       <span className="shrink-0">{value}</span>
     </li>

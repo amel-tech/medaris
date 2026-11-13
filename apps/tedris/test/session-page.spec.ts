@@ -1530,14 +1530,15 @@ describe("session page, an exam celse (MDRS-248)", () => {
     resultsReleasedAt: null,
   };
 
-  it("says what the exam is, where it is held and the topics it covers", async () => {
+  it("says what the exam is and where it is held on one line, then the topics it covers", async () => {
     const html =
       (await render(session({ exam }))).match(
         /<section[^>]*data-testid="session-exam"[\s\S]*?<\/section>/
       )?.[0] ?? "";
     expect(text(html)).toContain(resources.tr.tedris.CoursePage.examBadge);
-    expect(text(html)).toContain(`${tr.examWritten}·Tam puan 100`);
-    expect(text(html)).toContain(`${tr.examPlace}: Süleymaniye, 2. derslik`);
+    expect(text(html)).toContain(
+      `${tr.examWritten}·100 puan·Süleymaniye, 2. derslik`
+    );
     expect(html).toContain(
       '<p class="mds-body whitespace-pre-line" dir="auto" data-testid="session-exam-topics">Bina: mehmûz fiiller\nEmsile: sülâsî bablar</p>'
     );

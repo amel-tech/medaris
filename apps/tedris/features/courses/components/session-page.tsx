@@ -288,8 +288,6 @@ export const SessionPage = async ({
           maxScore: t("SessionPage.examMaxScore", {
             max: session.exam.maxScore,
           }),
-          place: t("SessionPage.examPlace"),
-          topics: t("SessionPage.examTopics"),
         }}
       />
     ) : null;
