@@ -16,6 +16,11 @@ export const env = createEnv({
     // session stays sealed in the cookie, as in Phase 1.
     AUTH_STORE_URL: z.string().optional(),
     AUTH_STORE_KEY_PREFIX: z.string().optional(),
+    // How many sign-ins one browser may start in a window
+    // (WEB__AUTH_SIGN_IN_LIMIT), written <count>/<seconds>, e.g. `30/60` on
+    // a test deployment. Unset or empty: 5 in 5 minutes. `parseSignInLimit`
+    // in lib/auth.ts rejects anything else at boot.
+    AUTH_SIGN_IN_LIMIT: z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).url().optional(),
     OTEL_SERVICE_NAME: z.string().min(1).optional(),
     API_MOCKING: z.enum(["enabled", "disabled"]).default("disabled"),
@@ -35,6 +40,7 @@ export const env = createEnv({
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
     AUTH_STORE_URL: process.env.AUTH_STORE_URL,
     AUTH_STORE_KEY_PREFIX: process.env.AUTH_STORE_KEY_PREFIX,
+    AUTH_SIGN_IN_LIMIT: process.env.AUTH_SIGN_IN_LIMIT,
     API_MOCKING: process.env.API_MOCKING,
 
     TEDRISAT_API_BASE_URL: process.env.TEDRISAT_API_BASE_URL,

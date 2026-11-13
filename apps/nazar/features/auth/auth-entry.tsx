@@ -5,6 +5,7 @@ import {
   browserSignInDeps,
   enterSignIn,
   isRetryableAuthError,
+  type SignInLimit,
   signIn,
 } from "@medaris/auth/client";
 import { Button } from "@medaris/ui/mds/button";
@@ -23,6 +24,8 @@ export interface AuthEntryProps {
    * fetches new tokens instead of going straight back to the refusal.
    */
   reauth?: boolean;
+  /** The app's `AUTH_SIGN_IN_LIMIT`, when it raises the defaults (`lib/auth.ts`). */
+  limit?: SignInLimit;
 }
 
 /**
@@ -44,7 +47,12 @@ export interface AuthEntryProps {
  *
  * Its look is as before; the twin of tedris's, on the unified kit.
  */
-export function AuthEntry({ callbackUrl, error, reauth }: AuthEntryProps) {
+export function AuthEntry({
+  callbackUrl,
+  error,
+  reauth,
+  limit,
+}: AuthEntryProps) {
   const t = useTranslations("nazar.Auth");
   const locale = useLocale();
   // The code whose message the box shows; `null` while there is no box.
@@ -63,12 +71,16 @@ export function AuthEntry({ callbackUrl, error, reauth }: AuthEntryProps) {
     // job, so there is nothing to cancel.
     if (started.current) return;
     started.current = true;
-    void enterSignIn(request, error, browserSignInDeps()).then((outcome) => {
+    void enterSignIn(
+      request,
+      error,
+      browserSignInDeps(limit ? { limit } : {})
+    ).then((outcome) => {
       // `outcome.error`, not the page's `?error=`: a tab whose budget ran
       // out had no error, and shows `SignInLimit`.
       if (outcome.kind === "show-error") setShown(outcome.error);
     });
-  }, [request, error]);
+  }, [request, error, limit]);
 
   // A click is the visitor's own decision: it goes, whatever another tab is doing.
   const start = () => signIn(request);
