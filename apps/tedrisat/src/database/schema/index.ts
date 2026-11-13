@@ -1,3 +1,4 @@
+export * from "./appeal.schema";
 export * from "./audit.schema";
 export * from "./ban.schema";
 export * from "./calendar-feed.schema";

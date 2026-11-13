@@ -3114,6 +3114,12 @@
       "body": "The request closes. The medrese's head müderris sees the reason.",
       "help": "The head müderris will read this reason."
     },
+    "appeal": {
+      "title": "Refuse the appeal",
+      "body": "The request stays refused. The medrese sees the decision note.",
+      "help": "The medrese will read this note.",
+      "reasonLabel": "Decision note"
+    },
     "unpublish": {
       "title": "Unpublish the deck",
       "body": "The deck leaves the public list and stays private to its owner. The reason is sent to the owner as a notification.",
@@ -3577,6 +3583,46 @@
       "gone": "This request is gone.",
       "courseGone": "This course was not found in this köşk.",
       "forbidden": "You may not do this."
+    }
+  },
+  "AppealsPage": {
+    "title": "Appeals",
+    "tabsLabel": "Appeal status",
+    "tabs": {
+      "PENDING": "Waiting",
+      "DECIDED": "Decided"
+    },
+    "empty": {
+      "PENDING": "No appeal is waiting for a decision.",
+      "DECIDED": "No appeal has been decided."
+    },
+    "loadFailedTitle": "The appeals could not be read",
+    "loadFailed": "The appeals cannot be fetched right now. Try again in a little while.",
+    "retry": "Try again",
+    "detailEyebrow": "APPEAL AGAINST A COURSE REQUEST REFUSAL",
+    "status": {
+      "PENDING": "Waiting for a decision",
+      "ACCEPTED": "Accepted",
+      "REJECTED": "Refused"
+    },
+    "madrasah": "Medrese",
+    "course": "Course",
+    "kosk": "Köşk",
+    "rejectReason": "Reason for refusal",
+    "reason": "Reason for appeal",
+    "decisionNote": "Decision note",
+    "accept": "Accept",
+    "reject": "Refuse",
+    "accepted": "Appeal accepted",
+    "acceptedBody": "The {title} request went back to the köşk for a new decision.",
+    "rejected": "Appeal refused",
+    "rejectedBody": "The decision note for {title} was passed on to the medrese.",
+    "answerFailed": "The decision could not be saved",
+    "errors": {
+      "generic": "This could not be done. Try again in a little while.",
+      "answered": "This appeal was decided a moment ago.",
+      "gone": "This appeal no longer exists.",
+      "forbidden": "You are not allowed to do this."
     }
   },
   "Dashboard": {

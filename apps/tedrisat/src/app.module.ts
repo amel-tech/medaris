@@ -8,6 +8,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { AppealModule } from "./appeal/appeal.module";
 import { ArchiveModule } from "./archive/archive.module";
 import { AssignmentModule } from "./assignment/assignment.module";
 import { AuditModule } from "./audit/audit.module";
@@ -84,6 +85,7 @@ import { UserModule } from "./user/user.module";
     AuditModule,
     PlatformPolicyModule,
     CourseRequestModule,
+    AppealModule,
     BanModule,
     NizamDashboardModule,
     UserModule,

@@ -22,7 +22,8 @@ Web (`apps/nizam`):
 
 ## Decisions
 
-- İtirazlar and Kalıcı yasak talepleri have no model (nizam/44, 45 are a later phase): their count is `0` for a viewer who would see them; the nazım's "Kalıcı yasak talepleri" card shows its empty state and has no "Tümünü gör" (the page does not exist).
+- Kalıcı yasak talepleri has no model (nizam/45 is a later phase): its count is `0` for a viewer who would see it; the nazım's "Kalıcı yasak talepleri" card shows its empty state and has no "Tümünü gör" (the page does not exist).
+- İtirazlar has its model since the appeals table (migration `0069_appeals`, W5 Medrese › İtirazlar): `sections.appeals` / `pendingTotals.appeals` is the real number of appeals with status `PENDING`, still `null` for a viewer who may not see it.
 - Pasif kapsamlar "… ata" buttons link to `/pasif-kapsamlar`, where the assignment dialog is (nizam/14), rather than repeating that dialog.
 - Celse buttons ("Toplantı bağlantısı ekle", "Düzenle", "Celseyi gör") go to the course's celse page `/kosks/:id/courses/:courseId/sessions`. "Tümünü gör" of Celseler goes to `/kosks/:id/celseler`, the path the menu already uses; that page is not built in this stack (404 until it is).
 - A köşk nazımı who manages several köşks lands on the first; the picker switches.
@@ -38,5 +39,5 @@ Web (`apps/nizam`):
 ## Not verified
 
 - nizam/01 criterion 3's "yöneticisiz" badge on the menu: the menu draws no such badge in this stack, so only the warning box is covered.
-- Counts of appeals and permanent-ban requests (no model).
+- Counts of permanent-ban requests (no model).
 - The Arabic and English wording was not read by a native speaker.
