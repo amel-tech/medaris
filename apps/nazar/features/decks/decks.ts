@@ -216,6 +216,36 @@ export const cardDraftOf = (card: CardFact): CardDraft => ({
   contentBack: card.contentBack,
 });
 
+export interface PastedCards {
+  drafts: CardDraft[];
+  /** 1-based line numbers that are not a valid card */
+  skipped: number[];
+}
+
+/**
+ * Lines pasted into "Kart ekle", one card each: the front, then a tab (two
+ * columns copied from Excel) or a ";", then the back. Blank lines are ignored;
+ * a line with no separator or a face out of length is skipped and its number
+ * returned, so the rest can still be added.
+ */
+export function parsePastedCards(text: string, type: CardType): PastedCards {
+  const drafts: CardDraft[] = [];
+  const skipped: number[] = [];
+  text.split(/\r?\n/).forEach((line, index) => {
+    if (line.trim().length === 0) return;
+    const separator = line.includes("\t") ? "\t" : ";";
+    const at = line.indexOf(separator);
+    const draft: CardDraft = {
+      type,
+      contentFront: at < 0 ? line : line.slice(0, at),
+      contentBack: at < 0 ? "" : line.slice(at + 1),
+    };
+    if (Object.keys(cardProblems(draft)).length > 0) skipped.push(index + 1);
+    else drafts.push(cardBody(draft));
+  });
+  return { drafts, skipped };
+}
+
 // ---- refusals ---------------------------------------------------------------------
 
 /**
