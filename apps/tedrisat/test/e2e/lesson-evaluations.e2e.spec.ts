@@ -285,6 +285,23 @@ describe("memorisation homework and its marks (e2e)", () => {
       expect(await db().select().from(assignmentEvaluations)).toHaveLength(1);
     });
 
+    it("lets first saves of one cell made at once take turns: one write, one record", async () => {
+      const same = { status: "FULL", note: "Ezber tam." };
+      const answers = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          mark(CAST.MUDERRIS, CAST.TALEBE, same).expect(200)
+        )
+      );
+      for (const answer of answers) {
+        expect(answer.body).toMatchObject({
+          status: "FULL",
+          note: "Ezber tam.",
+        });
+      }
+      expect(await audits("assignment_evaluation.save")).toHaveLength(1);
+      expect(await db().select().from(assignmentEvaluations)).toHaveLength(1);
+    });
+
     it("refuses a status it does not know and a note over the limit", async () => {
       await mark(CAST.MUDERRIS, CAST.TALEBE, { status: "PENDING" }).expect(400);
       await mark(CAST.MUDERRIS, CAST.TALEBE, {

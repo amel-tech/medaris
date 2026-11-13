@@ -271,6 +271,62 @@ describe("the board", () => {
     expect(document.body.textContent).toContain(tr.saveFailed);
   });
 
+  it("puts the mark back and says so when the save never reaches tedrisat", async () => {
+    actions.saveEvaluation.mockRejectedValue(new Error("offline"));
+    await mount();
+    await open();
+    await click(buttonIn(row("t-3"), tr.absent));
+    await settle(40);
+    expect(pressed("t-3")).toEqual([]);
+    expect(document.body.textContent).toContain(tr.saveFailed);
+    // The same press goes out again rather than being taken for a no-op.
+    await click(buttonIn(row("t-3"), tr.absent));
+    await settle();
+    expect(actions.saveEvaluation).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends a cell's presses one after another, and a late failure does not undo the newer one", async () => {
+    let fail: (value: unknown) => void = () => {};
+    actions.saveEvaluation.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          fail = resolve;
+        })
+    );
+    await mount();
+    await open();
+    await click(buttonIn(row("t-1"), tr.incomplete));
+    await click(buttonIn(row("t-1"), tr.absent));
+    await settle();
+    expect(pressed("t-1")).toEqual([tr.absent]);
+    // The second press waits for the first.
+    expect(actions.saveEvaluation).toHaveBeenCalledTimes(1);
+    fail({ success: false, code: "INTERNAL" });
+    await settle(40);
+    expect(actions.saveEvaluation).toHaveBeenCalledTimes(2);
+    expect(actions.saveEvaluation).toHaveBeenLastCalledWith(
+      L1,
+      "t-1",
+      "ABSENT",
+      null
+    );
+    expect(pressed("t-1")).toEqual([tr.absent]);
+    expect(document.body.textContent).toContain(tr.saveFailed);
+  });
+
+  it("goes back to what tedrisat last kept when every press on a cell fails", async () => {
+    actions.saveEvaluation.mockResolvedValue({
+      success: false,
+      code: "INTERNAL",
+    });
+    await mount();
+    await open();
+    await click(buttonIn(row("t-1"), tr.incomplete));
+    await click(buttonIn(row("t-1"), tr.absent));
+    await settle(40);
+    expect(pressed("t-1")).toEqual([tr.full]);
+  });
+
   it("goes back to the whole board", async () => {
     await mount();
     await open(L2);

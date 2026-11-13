@@ -853,6 +853,41 @@ describe("a homework recited to the müderris (MDRS-248)", () => {
     expect(names).toEqual(["iki.pdf (indirilir)"]);
   });
 
+  it("still shows the review the müderris sent on the files before the switch", async () => {
+    mark(null);
+    mocks.get.mockResolvedValue(
+      own(
+        submission({
+          files: [pdf(F1)],
+          review: {
+            note: "Harekeleri düzelttim.",
+            reviewedAt: new Date("2026-10-13T07:30:00Z"),
+            reviewer: { id: "u-1", name: "Yunus Emre Kandemir" },
+            files: [
+              pdf(F2, {
+                name: "duzeltilmis.pdf",
+                downloadUrl: `/lessons/${LESSON}/submission/review-files/${F2}`,
+              }),
+            ],
+          },
+        })
+      )
+    );
+    const host = await mount(recited());
+    const review = host.querySelector(
+      '[data-testid="homework-review"]'
+    ) as HTMLElement;
+    expect(
+      review.querySelector('[data-testid="review-note"]')?.textContent
+    ).toBe("Harekeleri düzelttim.");
+    expect(
+      review
+        .querySelector('[data-testid="review-files"] a')
+        ?.getAttribute("href")
+    ).toBe(`/api/files/lessons/${LESSON}/submission/review-files/${F2}`);
+    expect(review.textContent).not.toContain(tr.reviewChangedTitle);
+  });
+
   it.each([
     ["FULL", tr.memorizeFull],
     ["INCOMPLETE", tr.memorizeIncomplete],
