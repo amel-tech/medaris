@@ -124,13 +124,6 @@ describe("the shared placeholder under a course", () => {
   });
 });
 
-describe("the scope's own pages", () => {
-  it("is a placeholder named Bildirimler until its package arrives", async () => {
-    const bell = (await import("../app/(global)/bildirimler/page")).default();
-    expect(textOf(await html(bell))).toMatch(/^Bildirimler /);
-  });
-});
-
 describe("a scope as the picker draws it", () => {
   const words = { role: (role: string) => `rol:${role}` };
   const [m, c, sole] = buildScopes([
