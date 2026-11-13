@@ -155,16 +155,14 @@ export function DeckSettings({
             onChange={(value) => setDraft({ ...draft, weekId: value ?? "" })}
           />
         </Field>
-        <p className="mds-body-sm">
-          {deck.draft ? words("Decks.draftState") : words("Decks.published")}
-        </p>
         <div className="flex flex-wrap gap-3">
-          <Button type="submit" loading={pending}>
+          {/* The page's one primary is "Ekle" above; these stay secondary. */}
+          <Button type="submit" variant="secondary" loading={pending}>
             {words("Decks.save")}
           </Button>
           <Button
             type="button"
-            variant="secondary"
+            variant="ghost"
             disabled={pending}
             onClick={toggleDraft}
           >

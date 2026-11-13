@@ -3,14 +3,12 @@
 import { AppBar } from "@medaris/ui/mds/app-bar";
 import { Button } from "@medaris/ui/mds/button";
 import { Icon } from "@medaris/ui/mds/icon";
-import { LocaleMenu } from "@medaris/ui/mds/locale-switcher";
 import { Logo } from "@medaris/ui/mds/logo";
 import { NavItem } from "@medaris/ui/mds/nav-item";
 import { ThemeToggle } from "@medaris/ui/mds/theme-toggle";
 import Link from "next/link";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { usePathname } from "~/lib/i18n/navigation";
-import { locales } from "~/lib/i18n/routing";
 import { inviteHrefs } from "~/lib/invite-hrefs";
 
 /**
@@ -27,7 +25,6 @@ import { inviteHrefs } from "~/lib/invite-hrefs";
  */
 export function PhoneMenu({ title }: { title?: string } = {}) {
   const t = useTranslations("tedris");
-  const locale = useLocale();
   const pathname = usePathname();
   const hrefs = inviteHrefs(pathname === "/" ? "/home" : pathname);
 
@@ -40,11 +37,6 @@ export function PhoneMenu({ title }: { title?: string } = {}) {
       closeLabel={t("PhoneMenu.close")}
       actions={
         <>
-          <LocaleMenu
-            locale={locale}
-            locales={locales}
-            label={t("PhoneMenu.languageMenu")}
-          />
           <ThemeToggle
             darkLabel={t("PhoneMenu.themeDark")}
             lightLabel={t("PhoneMenu.themeLight")}

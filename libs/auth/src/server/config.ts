@@ -8,6 +8,10 @@
  * package knowing either prefix.
  */
 import { AUTH_ROUTES } from "../shared/routes";
+import {
+  DEFAULT_SIGN_IN_LIMIT,
+  type SignInLimit,
+} from "../shared/sign-in-limit";
 import type { StoreBackend } from "./store-backend";
 
 /**
@@ -112,6 +116,11 @@ export interface AuthConfig {
   now?: () => number;
   /** Where the sessions live; see `SessionStoreConfig`. Default: the cookie. */
   sessionStore?: SessionStoreConfig;
+  /**
+   * The start route's cap per browser (`AUTH_SIGN_IN_LIMIT`, read with
+   * `parseSignInLimit`). Default 5 in 5 minutes; see `shared/sign-in-limit.ts`.
+   */
+  signInLimit?: SignInLimit;
 }
 
 /** Refresh when the access token has less than this left. */
@@ -151,6 +160,7 @@ export interface ResolvedAuthConfig {
   now: () => number;
   /** `null`: the session is sealed into the cookie (Phase 1). */
   store: ResolvedStoreConfig | null;
+  signInLimit: SignInLimit;
 }
 
 const COOKIE_PREFIX_PATTERN = /^[a-z][a-z0-9-]*$/;
@@ -270,5 +280,6 @@ export function resolveConfig(config: AuthConfig): ResolvedAuthConfig {
     afterSignOut: config.pages.afterSignOut ?? "/",
     httpTimeout: config.httpTimeout ?? 10,
     store: resolveStore(config.sessionStore, cookie.cookiePrefix),
+    signInLimit: config.signInLimit ?? DEFAULT_SIGN_IN_LIMIT,
   };
 }

@@ -121,7 +121,6 @@ export async function NizamShell({
       }),
       kosk: t("roles.kosk"),
       themeDark: t("themeDark"),
-      languageMenu: t("languageMenu"),
       themeLight: t("themeLight"),
     },
   };

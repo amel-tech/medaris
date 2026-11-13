@@ -42,13 +42,7 @@ describe("the menu of a medrese (nazir 21)", () => {
           ["archive", "/medrese/m-1/arsiv"],
         ],
       ],
-      [
-        "management",
-        [
-          ["rules", "/medrese/m-1/kabul-kurallari"],
-          ["settings", "/medrese/m-1/ayarlar"],
-        ],
-      ],
+      ["management", [["settings", "/medrese/m-1/ayarlar"]]],
     ]);
   });
 
@@ -156,6 +150,28 @@ describe("the menu of a course (nazir 22)", () => {
     expect(resources.tr.nazar.Nav.ders.homework).toBe("Ödevler");
   });
 
+  it("offers Değerlendirme under Ödevler to a holder of session.manage alone (MDRS-248)", () => {
+    const ids = (held?: ReadonlySet<string>) =>
+      navFor(ders, { panoHref: "/medrese/m-1", counts: {}, held })
+        .flatMap((s) => s.items)
+        .map((i) => i.id);
+    expect(ids(new Set(["submission.read"]))).not.toContain("evaluation");
+    const held = ids(new Set(["submission.read", "session.manage"]));
+    expect(held.indexOf("evaluation")).toBe(held.indexOf("homework") + 1);
+    const item = navFor(ders, {
+      panoHref: "/medrese/m-1",
+      counts: {},
+      held: new Set(["session.manage"]),
+    })
+      .flatMap((s) => s.items)
+      .find((i) => i.id === "evaluation");
+    expect(item).toMatchObject({
+      href: "/ders/c-1/degerlendirme",
+      labelKey: "ders.evaluation",
+    });
+    expect(resources.tr.nazar.Nav.ders.evaluation).toBe("Değerlendirme");
+  });
+
   it("offers Ders destesi only to a holder of deck.manage_course", () => {
     const deckItem = (held?: ReadonlySet<string>) =>
       navFor(ders, { panoHref: "/medrese/m-1", counts: {}, held })
@@ -200,8 +216,8 @@ describe("the item the viewer is on", () => {
 
   it("holds for a page below a section", () => {
     expect(activeItemId(sections, "/medrese/m-1/dersler/yeni")).toBe("courses");
-    expect(activeItemId(sections, "/medrese/m-1/kabul-kurallari")).toBe(
-      "rules"
+    expect(activeItemId(sections, "/medrese/m-1/itirazlar/i-1")).toBe(
+      "appeals"
     );
   });
 
@@ -235,7 +251,6 @@ describe("the pages behind the menu", () => {
       "yasaklamalar",
       "itirazlar",
       "arsiv",
-      "kabul-kurallari",
       "ayarlar",
     ]);
     expect(sectionSegments("ders")).toEqual([
@@ -244,6 +259,7 @@ describe("the pages behind the menu", () => {
       "talebeler",
       "sorular",
       "odevler",
+      "degerlendirme",
       "kayitlar",
       "deste",
       "yasaklamalar",
@@ -266,6 +282,8 @@ describe("the pages behind the menu", () => {
     expect(findSegment("medrese", "mufredat")).toBeNull();
     expect(findSegment("medrese", "")).toBeNull();
     expect(findSegment("medrese", "Dersler")).toBeNull();
+    // Kabul kuralları left the menu: its one rule is a policy of Medrese ayarları.
+    expect(findSegment("medrese", "kabul-kurallari")).toBeNull();
   });
 
   it("gives every segment a different address", () => {

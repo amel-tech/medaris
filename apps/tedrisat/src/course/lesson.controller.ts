@@ -183,7 +183,7 @@ export class LessonController {
     const webUrl = this.config.get<string | null>("tedrisWeb.url");
     if (!webUrl) throw new CalendarNotConfiguredError();
 
-    const { course, lesson, attendance } =
+    const { course, lesson, attendance, isExam } =
       await this.courseService.getScheduledLesson(id, request.user);
     // Only the fields the event uses. The lesson row also carries
     // `meetingUrl`, which must never reach a calendar file; how the session
@@ -195,6 +195,9 @@ export class LessonController {
         title: lesson.title,
         scheduledAt: lesson.scheduledAt,
         durationMinutes: lesson.durationMinutes,
+        // Whether it is an exam is content (MDRS-248): only a caller who
+        // may read it is told (`getScheduledLesson`).
+        isExam,
       },
       attendance,
       sessionPageUrl: sessionPageUrl(webUrl, course.id, lesson.id),
@@ -327,10 +330,15 @@ export class LessonController {
   @Authz(PERMISSIONS.SESSION_MANAGE, byParam(ENTITIES.COURSE, "courseId"))
   @UsePipes(new MedarisValidationPipe({ transform: true }))
   async createBatch(
+    @Req() request: AuthorizedRequest,
     @Param("courseId", ParseUUIDPipe) courseId: string,
     @Body() dto: CreateSessionBatchDto
   ): Promise<SessionBatchResponse> {
-    return this.courseService.createSessionBatch(courseId, dto);
+    return this.courseService.createSessionBatch(
+      courseId,
+      dto,
+      request.user.sub
+    );
   }
 
   @ApiOperation({

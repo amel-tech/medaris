@@ -1,6 +1,7 @@
 "use server";
 
 import type {
+  AssignmentKind,
   LessonAssignmentResponse,
   ReplaceCourseDto,
 } from "@medaris/services/tedrisat";
@@ -45,13 +46,15 @@ export async function saveCurriculum(
  */
 export async function saveLessonAssignment(
   lessonId: string,
-  description: string | null
+  description: string | null,
+  /** "Teslim şekli" (MDRS-248); left out, the homework keeps its own */
+  kind?: AssignmentKind
 ): Promise<ActionOutcome<LessonAssignmentResponse>> {
   return outcomeOf(
     await authenticatedAction((api) =>
       api.lessonAssignments.saveLessonAssignment({
         id: lessonId,
-        saveLessonAssignmentDto: { description },
+        saveLessonAssignmentDto: kind ? { description, kind } : { description },
       })
     )
   );

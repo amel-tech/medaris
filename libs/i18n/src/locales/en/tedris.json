@@ -107,6 +107,8 @@
     "lessonCurrent": "Next",
     "lessonCurrentLive": "Next · Live now",
     "cancelledBadge": "Cancelled",
+    "cancelNoteMore": "Show the whole note",
+    "cancelNoteLess": "Shorten the note",
     "sampleHeading": "Sample session",
     "sampleMark": "Sample session",
     "sampleIntro": "You can read this session's outline and sources without enrolling.",
@@ -189,7 +191,23 @@
     "resourcesDownload": " (downloads)",
     "assignmentBadge": "Homework",
     "assignmentPending": "Homework not handed in",
-    "assignmentsPending": "{count, plural, one {Homework not handed in on # session} other {Homework not handed in on # sessions}}"
+    "assignmentsPending": "{count, plural, one {Homework not handed in on # session} other {Homework not handed in on # sessions}}",
+    "tabGrades": "My grades",
+    "examBadge": "Exam",
+    "retakeBadge": "Make-up",
+    "examCountdown": "{count, plural, =0 {Today} =1 {Tomorrow} other {# days left}}",
+    "gradesExams": "Exams",
+    "gradesMemorizations": "Memorisation",
+    "gradesEmpty": "No exams or memorisation yet.",
+    "gradesScore": "{score}/{max}",
+    "gradesClosed": "Result not released yet",
+    "gradesNotEntered": "Not entered",
+    "gradesAbsent": "Absent",
+    "gradesPending": "Pending",
+    "gradesFull": "Full",
+    "gradesIncomplete": "Incomplete",
+    "gradesNotRecited": "Not recited",
+    "gradesWeek": "Week {week}"
   },
   "DataTable": {
     "noResults": "No results."
@@ -487,7 +505,9 @@
       "SESSION_CANCELLED": {
         "title": "Session cancelled",
         "body": "The {sessionAt} session of {courseTitle} was cancelled.",
-        "bodyMakeup": "The {sessionAt} session of {courseTitle} was cancelled. Make-up session: {makeupAt}."
+        "bodyMakeup": "The {sessionAt} session of {courseTitle} was cancelled. Make-up session: {makeupAt}.",
+        "bodyReason": "The {sessionAt} session of {courseTitle} was cancelled. Note from your teacher: {reason}",
+        "bodyMakeupReason": "The {sessionAt} session of {courseTitle} was cancelled. Make-up session: {makeupAt}. Note from your teacher: {reason}"
       },
       "SESSION_RESCHEDULED": {
         "title": "Session time changed",
@@ -535,10 +555,25 @@
         "title": "{outcome, select, approved {Deck published} unpublished {Deck unpublished} proposal_rejected {Deck proposal rejected} other {Deck publish request rejected}}",
         "body": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} proposal_rejected {Your proposal for the deck {deckTitle} was rejected.} other {Your request to make {deckTitle} public was rejected.}}",
         "bodyReason": "{outcome, select, approved {{deckTitle} is now public.} unpublished {{deckTitle} was unpublished.} proposal_rejected {Your proposal for the deck {deckTitle} was rejected.} other {Your request to make {deckTitle} public was rejected.}} Reason: {reason}"
+      },
+      "EXAM_SCHEDULED": {
+        "title": "Exam planned",
+        "body": "The exam of {courseTitle} is on {sessionAt}."
+      },
+      "EXAM_REMINDER": {
+        "title": "Upcoming exam",
+        "body": "The exam of {courseTitle} is on {sessionAt}."
+      },
+      "EXAM_RESULTS_RELEASED": {
+        "title": "Your exam result is out",
+        "body": "See your result for {courseTitle} under My grades."
       }
     }
   },
   "SessionPage": {
+    "examWritten": "Written",
+    "examOral": "Oral",
+    "examMaxScore": "{max} points",
     "breadcrumb": "Breadcrumb",
     "week": "Week {number}",
     "joinLabel": "Live session",
@@ -560,6 +595,7 @@
     "minuteUnit": "min",
     "cancelledTitle": "This session was cancelled",
     "replacement": "Make-up session: <when>{time}</when>.",
+    "cancelNote": "Note from your teacher: {note}",
     "replacementGo": "Go to the make-up session",
     "agendaTitle": "Agenda",
     "agendaZone": "Times are in {zone} time.",
@@ -808,7 +844,8 @@
     "empty": "You have no sessions in these seven days.",
     "loadErrorTitle": "Your schedule could not be loaded",
     "loadError": "Your sessions could not be read right now.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "exam": "Exam"
   },
   "Decks": {
     "title": "Decks",

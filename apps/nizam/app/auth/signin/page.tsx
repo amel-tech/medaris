@@ -1,6 +1,7 @@
 import { destinationFromCallback } from "@medaris/utils";
 import { env } from "~/env";
 import { AuthEntry } from "~/features/auth/auth-entry";
+import { signInLimit } from "~/lib/auth";
 
 /**
  * The sign-in page (MDRS-101; `pages.signIn` in `lib/auth.ts`): sends the
@@ -27,6 +28,7 @@ export default async function SignInPage({
       }
       error={error}
       reauth={reauth === "1"}
+      limit={signInLimit}
     />
   );
 }

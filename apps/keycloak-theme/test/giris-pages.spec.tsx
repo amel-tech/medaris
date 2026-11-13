@@ -464,3 +464,20 @@ describe("login-oauth-grant.ftl (consent)", () => {
     expect(q('button[name="accept"]')?.textContent).toBe("السماح");
   });
 });
+
+describe("login-verify-email.ftl (MDRS-248)", () => {
+  it.each([
+    ["tr", "E-posta gelmediyse Gereksiz/Spam klasörüne bakın."],
+    ["en", "If the e-mail has not arrived, check your Junk/Spam folder."],
+    ["ar", "إن لم تصلك الرسالة فتحقّق من مجلد البريد غير المرغوب فيه."],
+  ] as const)("says in %s to look in the Junk/Spam folder, on one line under the instruction", async (lang, hint) => {
+    page = await renderPage("login-verify-email.ftl", lang);
+    const line = q("#kc-verify-email-spam-hint");
+    expect(line?.textContent).toBe(hint);
+    expect(
+      q("#kc-verify-email-instruction")?.compareDocumentPosition(
+        line as Element
+      )
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+});

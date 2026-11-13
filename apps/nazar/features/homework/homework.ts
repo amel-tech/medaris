@@ -75,6 +75,11 @@ export interface HomeworkSession {
   /** the course team set homework on it */
   hasAssignment: boolean;
   /**
+   * its homework is recited to the müderris (MDRS-248): nothing is handed in,
+   * it is marked on Değerlendirme, and no "N / M teslim" is drawn
+   */
+  isMemorization: boolean;
+  /**
    * "N / M teslim": enrolled talebe who handed in, of all enrolled; null for
    * a celse tedrisat no longer counts (one hidden since)
    */
@@ -135,9 +140,11 @@ export function homeworkSessions(
     const session = counted.get(lessonId);
     return {
       hasAssignment: session?.hasAssignment ?? false,
-      handIns: session
-        ? { count: session.handedInCount, total: handIns.talebeCount }
-        : null,
+      isMemorization: session?.isMemorization ?? false,
+      handIns:
+        session && !session.isMemorization
+          ? { count: session.handedInCount, total: handIns.talebeCount }
+          : null,
     };
   };
   const byLesson = new Map<string, HomeworkRow[]>();

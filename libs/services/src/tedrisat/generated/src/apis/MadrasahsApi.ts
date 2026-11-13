@@ -15,12 +15,15 @@
 
 import * as runtime from '../runtime';
 import type {
+  AppealCreatedResponse,
+  CreateAppealDto,
   CreateMadrasahDto,
   CreateMadrasahPermissionGroupDto,
   CreateOffsiteCourseRequestDto,
   DeletePermissionGroupDto,
   DismissMadrasahNazirDto,
   HeadDelegationResponse,
+  MadrasahAppealRowResponse,
   MadrasahBadgeCountsResponse,
   MadrasahCourseKoskResponse,
   MadrasahCourseListItemResponse,
@@ -51,6 +54,10 @@ import type {
   UpdateMadrasahSettingsDto,
 } from '../models/index';
 import {
+    AppealCreatedResponseFromJSON,
+    AppealCreatedResponseToJSON,
+    CreateAppealDtoFromJSON,
+    CreateAppealDtoToJSON,
     CreateMadrasahDtoFromJSON,
     CreateMadrasahDtoToJSON,
     CreateMadrasahPermissionGroupDtoFromJSON,
@@ -63,6 +70,8 @@ import {
     DismissMadrasahNazirDtoToJSON,
     HeadDelegationResponseFromJSON,
     HeadDelegationResponseToJSON,
+    MadrasahAppealRowResponseFromJSON,
+    MadrasahAppealRowResponseToJSON,
     MadrasahBadgeCountsResponseFromJSON,
     MadrasahBadgeCountsResponseToJSON,
     MadrasahCourseKoskResponseFromJSON,
@@ -128,6 +137,11 @@ export interface AddMadrasahNazirRequest {
 
 export interface CreateMadrasahRequest {
     createMadrasahDto: CreateMadrasahDto;
+}
+
+export interface CreateMadrasahAppealRequest {
+    id: string;
+    createAppealDto: CreateAppealDto;
 }
 
 export interface CreateMadrasahPermissionGroupRequest {
@@ -249,6 +263,10 @@ export interface HideMadrasahRequest {
 export interface HideMadrasahCourseRequest {
     id: string;
     courseId: string;
+}
+
+export interface ListMadrasahAppealsRequest {
+    id: string;
 }
 
 export interface OpenMadrasahCourseRequest {
@@ -404,6 +422,60 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async createMadrasah(requestParameters: CreateMadrasahRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MadrasahResponse> {
         const response = await this.createMadrasahRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Only a REJECTED request of this medrese, once: 409 APPEAL_REQUEST_NOT_REJECTED or APPEAL_EXISTS otherwise; 404 APPEAL_REQUEST_NOT_FOUND for a request that is not the medrese\'s. Written to the audit log (appeal.create).
+     * Appeal a köşk\'s refusal of the medrese\'s course request
+     */
+    async createMadrasahAppealRaw(requestParameters: CreateMadrasahAppealRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AppealCreatedResponse>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling createMadrasahAppeal().'
+            );
+        }
+
+        if (requestParameters['createAppealDto'] == null) {
+            throw new runtime.RequiredError(
+                'createAppealDto',
+                'Required parameter "createAppealDto" was null or undefined when calling createMadrasahAppeal().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/appeals`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateAppealDtoToJSON(requestParameters['createAppealDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AppealCreatedResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Only a REJECTED request of this medrese, once: 409 APPEAL_REQUEST_NOT_REJECTED or APPEAL_EXISTS otherwise; 404 APPEAL_REQUEST_NOT_FOUND for a request that is not the medrese\'s. Written to the audit log (appeal.create).
+     * Appeal a köşk\'s refusal of the medrese\'s course request
+     */
+    async createMadrasahAppeal(requestParameters: CreateMadrasahAppealRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AppealCreatedResponse> {
+        const response = await this.createMadrasahAppealRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1613,6 +1685,50 @@ export class MadrasahsApi extends runtime.BaseAPI {
      */
     async hideMadrasahCourse(requestParameters: HideMadrasahCourseRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.hideMadrasahCourseRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Every course request of the medrese a köşk refused, and every one it appealed (an accepted appeal sends the request back to PENDING), newest first, each with its appeal or null.
+     * The medrese\'s refused course requests and their appeals
+     */
+    async listMadrasahAppealsRaw(requestParameters: ListMadrasahAppealsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<MadrasahAppealRowResponse>>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling listMadrasahAppeals().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            // oauth required
+            headerParameters["Authorization"] = await this.configuration.accessToken("bearer", []);
+        }
+
+
+        let urlPath = `/madrasahs/{id}/appeals`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(MadrasahAppealRowResponseFromJSON));
+    }
+
+    /**
+     * Every course request of the medrese a köşk refused, and every one it appealed (an accepted appeal sends the request back to PENDING), newest first, each with its appeal or null.
+     * The medrese\'s refused course requests and their appeals
+     */
+    async listMadrasahAppeals(requestParameters: ListMadrasahAppealsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<MadrasahAppealRowResponse>> {
+        const response = await this.listMadrasahAppealsRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

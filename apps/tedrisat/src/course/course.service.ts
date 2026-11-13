@@ -23,6 +23,7 @@ import { UserDirectoryService } from "../assignment/user-directory.service";
 import { BanService } from "../ban/ban.service";
 import { BunnyStreamClient } from "../bunny-stream/bunny-stream.client";
 import { SCOPE_TYPES } from "../database/schema/scope-type.schema";
+import { ExamOneSessionError } from "../exam/errors/exam-one-session.error";
 import { KoskForbiddenError } from "../kosk/errors/kosk-forbidden.error";
 import { KoskNotFoundError } from "../kosk/errors/kosk-not-found.error";
 import { KoskService } from "../kosk/kosk.service";
@@ -34,6 +35,7 @@ import {
 import { StorageDeletionService } from "../storage/storage-deletion.service";
 import type { CalendarAttendance } from "./calendar/lesson-calendar";
 import { CourseRepository } from "./course.repository";
+import type { IExamPlan } from "./course.repository.interface";
 import {
   ICourse,
   ICourseBadgeCounts,
@@ -133,6 +135,8 @@ export interface SessionBatchInput extends SessionPatternInput {
   title: string;
   durationMinutes: number;
   meetingUrl?: string;
+  /** "Sınav" (MDRS-248): the one celse planned is an exam. */
+  exam?: IExamPlan;
 }
 
 export interface StudentIdentity {
@@ -587,10 +591,8 @@ export class CourseService {
     return (await this.courseRepo.findPassiveScope(courseId)) === null;
   }
 
-  private contentIsOpen(
-    user: AuthenticatedUser,
-    courseId: string
-  ): Promise<boolean> {
+  /** Whether the course's content is open to the person (`course.view_details`). */
+  contentIsOpen(user: AuthenticatedUser, courseId: string): Promise<boolean> {
     return this.authz.can(
       user,
       { entity: ENTITIES.COURSE, id: courseId },
@@ -614,6 +616,8 @@ export class CourseService {
     course: ICourseDetail;
     lesson: ILesson & { scheduledAt: Date };
     attendance: CalendarAttendance;
+    /** An exam (MDRS-248), told only to a caller who may read content. */
+    isExam: boolean;
   }> {
     const courseId = await this.courseRepo.findLessonCourseId(lessonId);
     if (!courseId) throw new LessonNotFoundError(lessonId);
@@ -650,6 +654,7 @@ export class CourseService {
       course,
       lesson: { ...lesson, scheduledAt: lesson.scheduledAt },
       attendance,
+      isExam: readsContent && Boolean(lesson.exam),
     };
   }
 
@@ -1380,20 +1385,31 @@ export class CourseService {
   /** Expands the pattern and inserts every session in one transaction. */
   async createSessionBatch(
     courseId: string,
-    input: SessionBatchInput
+    input: SessionBatchInput,
+    actorId?: string
   ): Promise<ISessionBatchResult & { timeZone: string }> {
-    const { title, durationMinutes, meetingUrl, ...pattern } = input;
+    const { title, durationMinutes, meetingUrl, exam, ...pattern } = input;
     let timeZone = "";
     const result = await this.courseRepo.createSessionBatch(courseId, {
       title,
       durationMinutes,
       meetingUrl,
+      exam,
       plan: (courseZone) => {
         const planned = this.expand(pattern, courseZone);
         timeZone = planned.timeZone;
+        // An exam is one celse (MDRS-248), never a weekly repeat.
+        if (exam && planned.sessions.length !== 1) {
+          throw new ExamOneSessionError(planned.sessions.length);
+        }
         return planned.sessions;
       },
     });
+    if (exam) {
+      for (const lesson of result.lessons) {
+        await this.notifier.examScheduled(lesson, actorId);
+      }
+    }
     this.invitations.kick();
     return { ...result, timeZone };
   }

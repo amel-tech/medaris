@@ -5,6 +5,7 @@ import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { Dialog, DialogClose } from "@medaris/ui/mds/dialog";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
+import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useState, useTransition } from "react";
@@ -28,7 +29,14 @@ import {
  * cancelled session links to it. When the make-up cannot be made nothing is
  * cancelled and the dialog stays; when it was made and the cancellation then
  * failed, the dialog says exactly that and the make-up stays in the programme.
+ *
+ * "Talebelere not" (MDRS-248) is the cancellation's reason, written for
+ * talebe: it reaches them in the notification, the e-mail and the
+ * programme. It starts as the usual sentence, so most cancellations need no
+ * typing; emptied, the cancellation carries no note.
  */
+export const CANCEL_NOTE_MAX = 500;
+
 export function CancelDialog({
   row,
   courseId,
@@ -57,6 +65,9 @@ export function CancelDialog({
   const [makeUp, setMakeUp] = useState(false);
   const [fields, setFields] = useState(() => makeUpFields(row.start, timeZone));
   const [problem, setProblem] = useState<string | null>(null);
+  const [note, setNote] = useState(() =>
+    t("Sessions.cancelDialog.noteSuggestion")
+  );
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -87,7 +98,12 @@ export function CancelDialog({
         cancelAt = created.data.courseVersion;
         onVersion(cancelAt);
       }
-      const cancelled = await cancelSession(row.id, cancelAt, replacementId);
+      const cancelled = await cancelSession(
+        row.id,
+        cancelAt,
+        replacementId,
+        note
+      );
       if (handleUnauthenticated(cancelled)) return;
       if (!cancelled.success) {
         notify({
@@ -145,7 +161,17 @@ export function CancelDialog({
           when: whenLabel(row.start, { locale, timeZone }, "full"),
         })}
       </p>
-      <p className="mds-caption">{t("Sessions.cancelWay")}</p>
+      <Field label={t("Sessions.cancelDialog.noteLabel")}>
+        <Textarea
+          name="cancelNote"
+          rows={2}
+          maxLength={CANCEL_NOTE_MAX}
+          value={note}
+          disabled={pending}
+          dir="auto"
+          onChange={(event) => setNote(event.target.value)}
+        />
+      </Field>
       <Checkbox
         label={t("Sessions.cancelDialog.makeUp")}
         description={t("Sessions.cancelDialog.makeUpHelp")}

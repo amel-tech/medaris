@@ -5,14 +5,17 @@ import { tedrisatApi } from "~/lib/tedrisat-api";
  * The card import's sample template (`GET /flashcard/cards/bulk/sample`),
  * sent to the browser as a download. Signed-in callers only: `tedrisatApi`
  * sends a caller without a session to sign-in.
+ *
+ * The generated client reads every body as JSON, and a workbook is not JSON,
+ * so the bytes are taken from the raw response instead.
  */
 export async function GET(request: Request) {
   const format =
     new URL(request.url).searchParams.get("format") === "csv" ? "csv" : "xlsx";
   try {
     const api = await tedrisatApi();
-    const file = await api.cards.getSampleFile({ format });
-    return new Response(file as unknown as Blob, {
+    const { raw } = await api.cards.getSampleFileRaw({ format });
+    return new Response(await raw.arrayBuffer(), {
       headers: {
         "Content-Type":
           format === "csv"

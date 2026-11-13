@@ -162,6 +162,21 @@ describe("İptal et", () => {
     });
   });
 
+  it("sends the note to talebe trimmed, and no key for a blank one (MDRS-248)", async () => {
+    const { cancelSession } = await sessions();
+    api.lessons.cancelLesson.mockResolvedValue({ courseVersion: 6 });
+    await cancelSession("l-1", 5, undefined, "  Bu hafta ders yapılmayacak. ");
+    expect(api.lessons.cancelLesson).toHaveBeenLastCalledWith({
+      id: "l-1",
+      cancelLessonDto: { version: 5, reason: "Bu hafta ders yapılmayacak." },
+    });
+    await cancelSession("l-1", 5, undefined, "   ");
+    expect(api.lessons.cancelLesson).toHaveBeenLastCalledWith({
+      id: "l-1",
+      cancelLessonDto: { version: 5 },
+    });
+  });
+
   it("hands back the code of a refusal", async () => {
     const { cancelSession } = await sessions();
     api.lessons.cancelLesson.mockRejectedValue(

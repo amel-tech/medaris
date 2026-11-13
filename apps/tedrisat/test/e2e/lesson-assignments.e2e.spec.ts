@@ -9,6 +9,7 @@ import {
   lessonResources,
 } from "../../src/database/schema/course.schema";
 import {
+  assignmentEvaluations,
   lessonAssignmentFiles,
   lessonAssignments,
 } from "../../src/database/schema/lesson-assignment.schema";
@@ -450,8 +451,15 @@ describe("a celse's homework apart from its resources (e2e)", () => {
       expect((await mine(CAST.STRANGER).expect(200)).body.items).toEqual([]);
     });
 
-    it("counts N / M teslim for the staff, per celse, with whether it has homework", async () => {
+    it("counts N / M teslim for the staff, per celse, with whether it has homework and whether it is recited", async () => {
       const third = await insertLiveLesson(db(), ids.weekId, 2);
+      // A recited homework (MDRS-248): nothing to hand in, said as such.
+      const recited = await insertLiveLesson(db(), ids.weekId, 3);
+      await http()
+        .put(`/lessons/${recited}/assignment`)
+        .set("Authorization", bearer(CAST.MUDERRIS))
+        .send({ description: "Ezberleyin.", kind: "MEMORIZE" })
+        .expect(200);
       await submit(CAST.TALEBE, "Yaptım.");
       await http()
         .post(`/lessons/${lessonId}/submission/files`)
@@ -474,16 +482,42 @@ describe("a celse's homework apart from its resources (e2e)", () => {
         .expect(200);
       expect(res.body.talebeCount).toBe(2);
       expect(res.body.sessions).toEqual([
-        { lessonId, hasAssignment: true, handedInCount: 1 },
-        { lessonId: second, hasAssignment: true, handedInCount: 0 },
-        { lessonId: third, hasAssignment: false, handedInCount: 0 },
+        {
+          lessonId,
+          hasAssignment: true,
+          isMemorization: false,
+          handedInCount: 1,
+        },
+        {
+          lessonId: second,
+          hasAssignment: true,
+          isMemorization: false,
+          handedInCount: 0,
+        },
+        {
+          lessonId: third,
+          hasAssignment: false,
+          isMemorization: false,
+          handedInCount: 0,
+        },
+        {
+          lessonId: recited,
+          hasAssignment: true,
+          isMemorization: true,
+          handedInCount: 0,
+        },
       ]);
       const one = await http()
         .get(`/courses/${ids.courseId}/submissions?lessonId=${second}`)
         .set("Authorization", bearerOf(CAST.MUDERRIS))
         .expect(200);
       expect(one.body.sessions).toEqual([
-        { lessonId: second, hasAssignment: true, handedInCount: 0 },
+        {
+          lessonId: second,
+          hasAssignment: true,
+          isMemorization: false,
+          handedInCount: 0,
+        },
       ]);
     });
   });
@@ -492,10 +526,22 @@ describe("a celse's homework apart from its resources (e2e)", () => {
     beforeEach(async () => {
       await save(CAST.MUDERRIS, "Çekin.").expect(200);
       await addFile(CAST.MUDERRIS, pdf()).expect(201);
+      // A memorisation homework with a mark on it (MDRS-248): the mark goes too.
+      await http()
+        .put(`/lessons/${lessonId}/assignment`)
+        .set("Authorization", bearerOf(CAST.MUDERRIS))
+        .send({ description: "Çekin.", kind: "MEMORIZE" })
+        .expect(200);
+      await http()
+        .put(`/lessons/${lessonId}/evaluations/${CAST.TALEBE}`)
+        .set("Authorization", bearerOf(CAST.MUDERRIS))
+        .send({ status: "FULL" })
+        .expect(200);
     });
 
     const gone = async () => {
       await sweep();
+      expect(await db().select().from(assignmentEvaluations)).toHaveLength(0);
       expect(await db().select().from(lessonAssignments)).toHaveLength(0);
       expect(await db().select().from(lessonAssignmentFiles)).toHaveLength(0);
       expect(storage.keys()).toHaveLength(0);

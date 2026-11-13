@@ -193,6 +193,90 @@ describe("LessonRow", () => {
   });
 });
 
+describe("LessonRow note (MDRS-248)", () => {
+  const widths = (scroll: number, client: number) => {
+    const proto = HTMLElement.prototype;
+    const was = {
+      scroll: Object.getOwnPropertyDescriptor(proto, "scrollWidth"),
+      client: Object.getOwnPropertyDescriptor(proto, "clientWidth"),
+    };
+    Object.defineProperty(proto, "scrollWidth", {
+      configurable: true,
+      get: () => scroll,
+    });
+    Object.defineProperty(proto, "clientWidth", {
+      configurable: true,
+      get: () => client,
+    });
+    return () => {
+      if (was.scroll) Object.defineProperty(proto, "scrollWidth", was.scroll);
+      else delete (proto as { scrollWidth?: number }).scrollWidth;
+      if (was.client) Object.defineProperty(proto, "clientWidth", was.client);
+      else delete (proto as { clientWidth?: number }).clientWidth;
+    };
+  };
+  const NOTE = "Bu hafta ders yapılmayacak; telafi celsesi ayrıca duyurulacak.";
+
+  it("opens a cut note with a button the keyboard and touch reach, above the row's link", async () => {
+    const restore = widths(400, 120);
+    try {
+      const host = await render(
+        <ol>
+          <LessonRow
+            title="İptal"
+            type="live"
+            href="/celse/5"
+            note={NOTE}
+            noteMoreLabel="Show the whole note"
+            noteLessLabel="Shorten the note"
+          />
+        </ol>
+      );
+      const note = host.querySelector(".mds-lesson-row__note") as HTMLElement;
+      const toggle = host.querySelector(
+        "button.mds-lesson-row__note-toggle"
+      ) as HTMLButtonElement;
+      expect(note.getAttribute("dir")).toBe("auto");
+      expect(note.getAttribute("title")).toBe(NOTE);
+      expect(toggle.getAttribute("type")).toBe("button");
+      expect(toggle.getAttribute("aria-controls")).toBe(note.id);
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      expect(toggle.textContent).toBe("Show the whole note");
+      // A sibling of the link, never inside it.
+      expect(toggle.closest("a")).toBeNull();
+
+      await click(toggle);
+      expect(toggle.getAttribute("aria-expanded")).toBe("true");
+      expect(toggle.textContent).toBe("Shorten the note");
+      expect(note.classList.contains("is-open")).toBe(true);
+      expect(note.hasAttribute("title")).toBe(false);
+
+      await click(toggle);
+      expect(toggle.getAttribute("aria-expanded")).toBe("false");
+      expect(note.classList.contains("is-open")).toBe(false);
+    } finally {
+      restore();
+    }
+  });
+
+  it("draws no button for a note that fits its line", async () => {
+    const restore = widths(80, 120);
+    try {
+      const host = await render(
+        <ol>
+          <LessonRow title="İptal" type="live" href="/celse/5" note="Hasta." />
+        </ol>
+      );
+      expect(host.querySelector(".mds-lesson-row__note")?.textContent).toBe(
+        "Hasta."
+      );
+      expect(host.querySelector(".mds-lesson-row__note-toggle")).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+});
+
 describe("SessionJoin", () => {
   const base = {
     startsAt: "2026-10-03T18:00:00Z",

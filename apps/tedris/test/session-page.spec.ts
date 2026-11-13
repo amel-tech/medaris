@@ -863,6 +863,19 @@ describe("session page, the main card: cancelled (design tedris/18, MDRS-289)", 
     expect(html).not.toContain("Telafi celsesi");
   });
 
+  it("writes the müderris's note above the replacement, whole (MDRS-248)", async () => {
+    const html = card(
+      await render(cancelled({ cancelReason: "Bu hafta ders yapılmayacak." }))
+    );
+    expect(html).toContain('data-testid="cancel-note"');
+    expect(html).toContain("Hocanın notu: Bu hafta ders yapılmayacak.");
+    expect(html.indexOf("Hocanın notu")).toBeLessThan(
+      html.indexOf("Telafi celsesi:")
+    );
+    const none = card(await render(cancelled()));
+    expect(none).not.toContain('data-testid="cancel-note"');
+  });
+
   it("is not cancelled when it was not", async () => {
     expect(await render(session())).not.toContain(tr.cancelledTitle);
   });
@@ -1504,5 +1517,40 @@ describe("session page strings", () => {
         keys
       );
     }
+  });
+});
+
+describe("session page, an exam celse (MDRS-248)", () => {
+  const exam = {
+    format: "WRITTEN",
+    maxScore: 100,
+    topics: "Bina: mehmûz fiiller\nEmsile: sülâsî bablar",
+    location: "Süleymaniye, 2. derslik",
+    isRetake: false,
+    resultsReleasedAt: null,
+  };
+
+  it("says what the exam is and where it is held on one line, then the topics it covers", async () => {
+    const html =
+      (await render(session({ exam }))).match(
+        /<section[^>]*data-testid="session-exam"[\s\S]*?<\/section>/
+      )?.[0] ?? "";
+    expect(text(html)).toContain(resources.tr.tedris.CoursePage.examBadge);
+    expect(text(html)).toContain(
+      `${tr.examWritten}·100 puan·Süleymaniye, 2. derslik`
+    );
+    expect(html).toContain(
+      '<p class="mds-body whitespace-pre-line" dir="auto" data-testid="session-exam-topics">Bina: mehmûz fiiller\nEmsile: sülâsî bablar</p>'
+    );
+  });
+
+  it("leaves out a place and topics the exam does not have, and draws nothing for a plain celse", async () => {
+    const online = await render(
+      session({ exam: { ...exam, location: null, topics: null } })
+    );
+    expect(online).toContain('data-testid="session-exam"');
+    expect(online).not.toContain("session-exam-place");
+    expect(online).not.toContain("session-exam-topics");
+    expect(await render(session())).not.toContain('data-testid="session-exam"');
   });
 });

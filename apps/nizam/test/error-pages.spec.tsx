@@ -108,13 +108,13 @@ describe("global-error: the shell itself threw", () => {
   };
 
   it.each([
-    ["ar", "rtl"],
-    ["en", "ltr"],
-    ["tr", "ltr"],
-  ] as const)("for a viewer who chose %s speaks it, %s (MDRS-248)", async (lang, dir) => {
-    const { html } = await draw(lang);
-    const words = resources[lang].common.globalError;
-    expect(html).toMatch(new RegExp(`^<html lang="${lang}" dir="${dir}"`));
+    "tr",
+    "en",
+    "ar",
+  ] as const)("for a viewer who chose %s speaks Turkish, the app's only language", async (choice) => {
+    const { html } = await draw(choice);
+    const words = resources.tr.common.globalError;
+    expect(html).toMatch(/^<html lang="tr" dir="ltr"/);
     expect(html).toContain(`>${words.title}</h1>`);
     expect(html).toContain(words.text);
     expect(html).toContain(`>${words.retry}</button>`);

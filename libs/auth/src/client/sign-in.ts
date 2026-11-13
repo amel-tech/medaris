@@ -1,6 +1,7 @@
 import { type AuthErrorCode, isRetryableAuthError } from "../shared/auth-error";
 import { AUTH_ROUTES, REAUTH_PARAM } from "../shared/routes";
 import type { Session } from "../shared/session";
+import type { SignInLimit } from "../shared/sign-in-limit";
 
 /**
  * Starting a sign-in from the browser, one round trip at a time (#180).
@@ -88,6 +89,18 @@ export const MAX_AUTO_STARTS = 3;
  */
 export const MAX_GO_ONS = 2;
 
+/**
+ * The automatic budgets under a raised `SignInLimit` (`AUTH_SIGN_IN_LIMIT`,
+ * passed in as `SignInDeps.limit`): starts and go-ons get its count and its
+ * window, so a test environment that allows thirty sign-ins a minute is not
+ * stopped here at three. The one automatic retry stays one; a raised limit
+ * is for people signing in on purpose, not for retrying failures.
+ */
+const autoBudget = (limit: SignInLimit | undefined, max: number) =>
+  limit
+    ? { max: Math.max(limit.max, max), windowMs: limit.windowMs }
+    : { max, windowMs: AUTO_WINDOW_MS };
+
 export type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
 const read = <T>(storage: StorageLike | undefined, key: string): T | null => {
@@ -172,14 +185,14 @@ interface Budget {
 const spend = (
   storage: StorageLike | undefined,
   key: string,
-  max: number,
+  { max, windowMs }: { max: number; windowMs: number },
   now: number,
   withoutStorage: boolean
 ): boolean => {
   try {
     if (!storage) return withoutStorage;
     const last = read<Budget>(storage, key);
-    const count = last && now - last.at < AUTO_WINDOW_MS ? last.count : 0;
+    const count = last && now - last.at < windowMs ? last.count : 0;
     if (count >= max) return false;
     storage.setItem(
       key,
@@ -197,15 +210,25 @@ const spend = (
  * box is the safe answer.
  */
 export const takeAutoRetry = (storage: StorageLike | undefined, now: number) =>
-  spend(storage, AUTO_RETRY_KEY, MAX_AUTO_RETRIES, now, false);
+  spend(
+    storage,
+    AUTO_RETRY_KEY,
+    { max: MAX_AUTO_RETRIES, windowMs: AUTO_WINDOW_MS },
+    now,
+    false
+  );
 
 /**
  * One of this tab's automatic starts (the loop cap). Allowed without
  * `sessionStorage`, since a first visit needs one; the start route's own cap
  * still holds then.
  */
-export const takeAutoStart = (storage: StorageLike | undefined, now: number) =>
-  spend(storage, AUTO_START_KEY, MAX_AUTO_STARTS, now, true);
+export const takeAutoStart = (
+  storage: StorageLike | undefined,
+  now: number,
+  limit?: SignInLimit
+) =>
+  spend(storage, AUTO_START_KEY, autoBudget(limit, MAX_AUTO_STARTS), now, true);
 
 /**
  * One of this tab's "already signed in, go on" steps. Refused without
@@ -214,8 +237,11 @@ export const takeAutoStart = (storage: StorageLike | undefined, now: number) =>
  * storage outright usually refuses the session cookie too, and then is not
  * signed in to go on with.)
  */
-export const takeGoOn = (storage: StorageLike | undefined, now: number) =>
-  spend(storage, GO_ON_KEY, MAX_GO_ONS, now, false);
+export const takeGoOn = (
+  storage: StorageLike | undefined,
+  now: number,
+  limit?: SignInLimit
+) => spend(storage, GO_ON_KEY, autoBudget(limit, MAX_GO_ONS), now, false);
 
 export interface SignInDeps {
   /** The current session, or `null`; a failure to ask counts as `null`. */
@@ -228,6 +254,11 @@ export interface SignInDeps {
   local: StorageLike | undefined;
   now: () => number;
   sleep: (ms: number) => Promise<void>;
+  /**
+   * The app's `AUTH_SIGN_IN_LIMIT`, when it raises the defaults; see
+   * `autoBudget`. Omitted: three starts and two go-ons per tab in two minutes.
+   */
+  limit?: SignInLimit;
   /** Stops a wait that is no longer wanted. */
   cancelled?: () => boolean;
   pollMs?: number;
@@ -304,14 +335,18 @@ export async function enterSignIn(
   const signedIn = (session: Session | null) =>
     session !== null && isNewer(session, refused);
   const goOn = (): SignInOutcome => {
-    if (!takeGoOn(deps.local, deps.now())) return showError(SIGN_IN_LIMIT);
+    if (!takeGoOn(deps.local, deps.now(), deps.limit)) {
+      return showError(SIGN_IN_LIMIT);
+    }
     deps.navigate(request.callbackUrl ?? "/");
     return { kind: "redirected" };
   };
 
   if (signedIn(first)) return goOn();
   if (error && !takeAutoRetry(deps.local, deps.now())) return showError(error);
-  if (!takeAutoStart(deps.local, deps.now())) return showError(SIGN_IN_LIMIT);
+  if (!takeAutoStart(deps.local, deps.now(), deps.limit)) {
+    return showError(SIGN_IN_LIMIT);
+  }
 
   const tab = tabIdOf(deps.local);
   const href = signInHref(request, true);

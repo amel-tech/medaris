@@ -146,7 +146,7 @@ describe("Celse planla", () => {
     const out = await markup();
     expect(out).toMatch(/<h1[^>]*>Celse planla<\/h1>/);
     expect(textOf(out)).toContain(
-      "Bina ve İzhar Şerhi dersine tek bir celse ekleyin"
+      "Bina ve İzhar Şerhi için tek celse ya da haftalık tekrar planlayın."
     );
     expect(out).toContain('href="/ders/c-1/celseler"');
     expect(out).toMatch(/<button[^>]*type="submit"[^>]*disabled/);
@@ -358,5 +358,87 @@ describe("'N celse oluştur'", () => {
     await click(submit());
     await settle(80);
     expect(document.body.textContent).toContain("geçerli bir celse üretmiyor");
+  });
+});
+
+describe("Sınav (MDRS-248)", () => {
+  const toggle = () =>
+    document.querySelector(
+      '[data-testid="plan-exam-details-toggle"]'
+    ) as HTMLButtonElement;
+  const details = () =>
+    document.querySelector('[data-testid="plan-exam-details"]');
+
+  it("shows the date, the start and the place, and folds the rest under Sınav ayrıntıları with a one-line summary", async () => {
+    await mount();
+    await click(chip("Sınav"));
+    await settle();
+    expect(field("startDate")).not.toBeNull();
+    expect(field("startTime")).not.toBeNull();
+    expect(
+      document.querySelector('[data-testid="plan-exam"]')?.textContent
+    ).toContain("Yer");
+    expect(field("maxScore")).toBeNull();
+    expect(field("duration")).toBeNull();
+    expect(field("title")).toBeNull();
+    expect(details()).toBeNull();
+    expect(toggle().getAttribute("aria-expanded")).toBe("false");
+    expect(toggle().textContent).toContain("Sınav ayrıntıları");
+    expect(toggle().textContent).toContain("Yazılı · 100 puan");
+
+    await click(toggle());
+    await settle();
+    expect(toggle().getAttribute("aria-expanded")).toBe("true");
+    expect(toggle().getAttribute("aria-controls")).toBe(details()?.id);
+    expect(field("maxScore").value).toBe("100");
+    expect(field("title").value).toBe("Ara sınav");
+    await click(chip("Şifahi"));
+    await click(toggle());
+    await settle();
+    expect(toggle().textContent).toContain("Şifahi · 100 puan");
+  });
+
+  it("opens the details when a folded field is wrong, and creates nothing", async () => {
+    await mount();
+    await click(chip("Sınav"));
+    await settle();
+    await click(toggle());
+    await settle();
+    await typeInto(field("maxScore"), "0");
+    await click(toggle());
+    await settle();
+    expect(details()).toBeNull();
+    await typeInto(field("startDate"), "2026-10-12");
+    await settle(350);
+    await click(submit());
+    await settle();
+    expect(createSessions).not.toHaveBeenCalled();
+    expect(details()).not.toBeNull();
+    expect(details()?.textContent).toContain(
+      resources.tr.nazar.SessionPlan.errors.examMaxScore
+    );
+  });
+
+  it("plans the exam with its defaults when the details stay closed", async () => {
+    previewSessions.mockResolvedValue(planned("2026-10-12"));
+    createSessions.mockResolvedValue({ success: true, data: { count: 1 } });
+    await mount();
+    await click(chip("Sınav"));
+    await settle();
+    await typeInto(field("startDate"), "2026-10-12");
+    await settle(350);
+    await click(submit());
+    await settle();
+    expect(createSessions).toHaveBeenCalledOnce();
+    expect(createSessions.mock.calls[0]?.[1]).toMatchObject({
+      title: "Ara sınav",
+      exam: {
+        format: "WRITTEN",
+        maxScore: 100,
+        topics: null,
+        location: null,
+        isRetake: false,
+      },
+    });
   });
 });

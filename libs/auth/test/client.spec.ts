@@ -214,6 +214,43 @@ describe("enterSignIn", () => {
     ).toMatchObject({ count: MAX_AUTO_STARTS });
   });
 
+  it("takes the loop cap's count and window from a raised limit (AUTH_SIGN_IN_LIMIT=30/60)", async () => {
+    const limit = { max: 30, windowMs: 60_000 };
+    let time = 1_000_000;
+    const deps = tab(new MemoryStorage(), { limit, now: () => time });
+    for (let index = 0; index < limit.max; index++) {
+      resetSignInState();
+      await expect(enterSignIn(request, null, deps)).resolves.toEqual({
+        kind: "signing-in",
+      });
+    }
+    resetSignInState();
+    await expect(enterSignIn(request, null, deps)).resolves.toEqual({
+      kind: "show-error",
+      error: "SignInLimit",
+    });
+    expect(deps.visits).toHaveLength(limit.max);
+
+    // Its window, not the default two minutes.
+    time += limit.windowMs;
+    resetSignInState();
+    await expect(enterSignIn(request, null, deps)).resolves.toEqual({
+      kind: "signing-in",
+    });
+  });
+
+  it("never lowers a budget below the default through the limit", async () => {
+    const deps = tab(new MemoryStorage(), {
+      limit: { max: 1, windowMs: 60_000 },
+    });
+    for (let index = 0; index < MAX_AUTO_STARTS; index++) {
+      resetSignInState();
+      await expect(enterSignIn(request, null, deps)).resolves.toEqual({
+        kind: "signing-in",
+      });
+    }
+  });
+
   it("waits while another tab is in a round trip, and goes on with the session it brings", async () => {
     const shared = new MemoryStorage();
     shared.setItem(

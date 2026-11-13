@@ -25,6 +25,10 @@ const ICONS: Record<string, IconName> = {
   KOSK_APPLICATION_RESULT: "kosk",
   DECK_PUBLISH_RESULT: "cards",
   SUBMISSION_REVIEWED: "note",
+  // MDRS-248: an exam planned, a day away, and its results opened.
+  EXAM_SCHEDULED: "calendar",
+  EXAM_REMINDER: "clock",
+  EXAM_RESULTS_RELEASED: "check",
 };
 
 const PLACEHOLDERS = [
@@ -143,8 +147,11 @@ export const describeNotification = (
 
   let bodyKey = "body";
   switch (n.type) {
+    // MDRS-248: the note the müderris wrote for talebe follows the sentence.
     case "SESSION_CANCELLED":
-      if (has("makeupAt")) bodyKey = "bodyMakeup";
+      if (has("makeupAt"))
+        bodyKey = has("reason") ? "bodyMakeupReason" : "bodyMakeup";
+      else if (has("reason")) bodyKey = "bodyReason";
       break;
     case "SESSION_RESCHEDULED":
       if (has("previousAt")) bodyKey = "bodyPrevious";

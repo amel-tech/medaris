@@ -56,6 +56,8 @@ const lessonWithoutContent = ({
   // So does the session's homework, its description and files and whether
   // there is any: a locked caller is not told the session has homework.
   assignment: _assignment,
+  // So does whether it is an exam (MDRS-248), like its homework.
+  exam: _exam,
   resources,
   ...rest
 }: ILesson): ILessonView => {

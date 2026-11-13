@@ -107,6 +107,8 @@
     "lessonCurrent": "Sıradaki",
     "lessonCurrentLive": "Sıradaki · Şu an canlı",
     "cancelledBadge": "İptal edildi",
+    "cancelNoteMore": "Notun tamamı",
+    "cancelNoteLess": "Notu kısalt",
     "sampleHeading": "Örnek celse",
     "sampleMark": "Örnek celse",
     "sampleIntro": "Bu celseyi kaydolmadan izleyebilir, celse akışını ve kaynaklarını okuyabilirsin.",
@@ -189,7 +191,23 @@
     "resourcesDownload": " (indirilir)",
     "assignmentBadge": "Ödev",
     "assignmentPending": "Ödev teslim edilmedi",
-    "assignmentsPending": "{count} ödev teslim edilmedi"
+    "assignmentsPending": "{count} ödev teslim edilmedi",
+    "tabGrades": "Notlarım",
+    "examBadge": "Sınav",
+    "retakeBadge": "Telafi",
+    "examCountdown": "{count, plural, =0 {Bugün} =1 {Yarın} other {# gün kaldı}}",
+    "gradesExams": "Sınavlar",
+    "gradesMemorizations": "Ezberler",
+    "gradesEmpty": "Henüz sınav ya da ezber yok.",
+    "gradesScore": "{score}/{max}",
+    "gradesClosed": "Sonuç henüz açıklanmadı",
+    "gradesNotEntered": "Girilmedi",
+    "gradesAbsent": "Girmedi",
+    "gradesPending": "Bekliyor",
+    "gradesFull": "Tam",
+    "gradesIncomplete": "Eksik",
+    "gradesNotRecited": "Vermedi",
+    "gradesWeek": "{week}. hafta"
   },
   "DataTable": {
     "noResults": "Sonuç bulunamadı."
@@ -487,7 +505,9 @@
       "SESSION_CANCELLED": {
         "title": "Celse iptal edildi",
         "body": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi.",
-        "bodyMakeup": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}."
+        "bodyMakeup": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}.",
+        "bodyReason": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Hocanın notu: {reason}",
+        "bodyMakeupReason": "{courseTitle} dersinin {sessionAt} celsesi iptal edildi. Telafi celsesi {makeupAt}. Hocanın notu: {reason}"
       },
       "SESSION_RESCHEDULED": {
         "title": "Celse saati değişti",
@@ -535,10 +555,25 @@
         "title": "{outcome, select, approved {Deste yayınlandı} unpublished {Deste yayından kaldırıldı} proposal_rejected {Deste öneriniz reddedildi} other {Deste yayın isteği reddedildi}}",
         "body": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} proposal_rejected {{deckTitle} deste öneriniz reddedildi.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}}",
         "bodyReason": "{outcome, select, approved {{deckTitle} destesi herkese açıldı.} unpublished {{deckTitle} destesi yayından kaldırıldı.} proposal_rejected {{deckTitle} deste öneriniz reddedildi.} other {{deckTitle} destesini herkese açma isteğin reddedildi.}} Gerekçe: {reason}"
+      },
+      "EXAM_SCHEDULED": {
+        "title": "Sınav planlandı",
+        "body": "{courseTitle} dersinin sınavı {sessionAt} tarihinde."
+      },
+      "EXAM_REMINDER": {
+        "title": "Yaklaşan sınav",
+        "body": "{courseTitle} dersinin sınavı {sessionAt} tarihinde."
+      },
+      "EXAM_RESULTS_RELEASED": {
+        "title": "Sınav sonucun açıklandı",
+        "body": "{courseTitle} dersinin sınav sonucunu Notlarım’da görebilirsin."
       }
     }
   },
   "SessionPage": {
+    "examWritten": "Yazılı",
+    "examOral": "Şifahi",
+    "examMaxScore": "{max} puan",
     "breadcrumb": "Sayfa yolu",
     "week": "Hafta {number}",
     "joinLabel": "Canlı ders",
@@ -560,6 +595,7 @@
     "minuteUnit": "dk",
     "cancelledTitle": "Bu celse iptal edildi",
     "replacement": "Telafi celsesi: <when>{time}</when>.",
+    "cancelNote": "Hocanın notu: {note}",
     "replacementGo": "Telafi celsesine git",
     "agendaTitle": "Gündem",
     "agendaZone": "Saatler {zone} saatiyle.",
@@ -808,7 +844,8 @@
     "empty": "Bu yedi günde celsen yok.",
     "loadErrorTitle": "Programın yüklenemedi",
     "loadError": "Celselerin şu an okunamadı.",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "exam": "Sınav"
   },
   "Decks": {
     "title": "Desteler",

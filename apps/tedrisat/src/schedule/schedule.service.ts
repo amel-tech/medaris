@@ -1,3 +1,4 @@
+import { PERMISSIONS } from "@medaris/common";
 import { Injectable } from "@nestjs/common";
 import { SessionStatus } from "../course/domain/session-status.enum";
 import { sessionStatus } from "../course/domain/session-view";
@@ -50,10 +51,11 @@ export class ScheduleService {
 
   /**
    * The responses, after the record of what they open. Only the köşk's nazımı
-   * still finds a passive course in these lists (`enrolledCourseIds`), and a
-   * live link of one is passive content: it goes on the record before it is
-   * returned, as the course's own page records it (owner, 4 October: their
-   * reads stay audited).
+   * still finds a passive course in these lists (`enrolledCourseIds`), and
+   * both a live link and a cancellation note of one are passive content
+   * (MDRS-158 counts the note as content): each goes on the record before it
+   * is returned, under the permission that hands it out, as the course's own
+   * page records it (owner, 4 October: their reads stay audited).
    */
   private async handedOut(
     userId: string,
@@ -62,20 +64,33 @@ export class ScheduleService {
     via: string
   ): Promise<ScheduleSessionResponse[]> {
     const responses = rows.map((row) => toResponse(row, now));
-    const linked = new Map<string, string>();
+    const titles = new Map<string, string>();
+    const opened = new Map<string, Set<string>>();
+    const open = (courseId: string, permission: string) => {
+      const codes = opened.get(courseId) ?? new Set<string>();
+      codes.add(permission);
+      opened.set(courseId, codes);
+    };
     for (const response of responses) {
+      titles.set(response.courseId, response.courseTitle);
       if (response.meetingUrl) {
-        linked.set(response.courseId, response.courseTitle);
+        open(response.courseId, PERMISSIONS.SESSION_LIVE_LINK);
+      }
+      if (response.cancelReason) {
+        open(response.courseId, PERMISSIONS.COURSE_VIEW_DETAILS);
       }
     }
-    const passive = await this.repo.passiveScopesOf([...linked.keys()]);
+    const passive = await this.repo.passiveScopesOf([...opened.keys()]);
     await this.repo.recordPassiveOpens(
       userId,
-      [...passive].map(([courseId, passiveScope]) => ({
-        courseId,
-        courseTitle: linked.get(courseId) ?? "",
-        passiveScope,
-      })),
+      [...passive].flatMap(([courseId, passiveScope]) =>
+        [...(opened.get(courseId) ?? [])].map((permission) => ({
+          courseId,
+          courseTitle: titles.get(courseId) ?? "",
+          passiveScope,
+          permission,
+        }))
+      ),
       via
     );
     return responses;
@@ -104,9 +119,11 @@ const toResponse = (row: IScheduledSession, now: Date) => {
     startsAt: row.startsAt,
     durationMinutes: row.durationMinutes,
     status,
+    cancelReason: row.cancelledAt ? (row.cancelReason ?? null) : null,
     meetingUrl: joinable ? row.meetingUrl : null,
     inPerson: row.inPerson,
     hasLiveStream: row.hasLiveStream,
+    isExam: row.isExam,
   };
   return response;
 };

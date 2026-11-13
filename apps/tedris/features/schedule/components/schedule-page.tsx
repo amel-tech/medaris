@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { withoutLinkKey } from "~/features/courses/attendance";
 import { CalendarMenu } from "~/features/courses/components/calendar-menu";
+import { examRunLabel } from "~/features/courses/exam-countdown";
 import { sessionStateOf, zoneLabel } from "~/features/courses/session-model";
 import type { LooseTranslator } from "~/lib/i18n/loose";
 import {
@@ -92,8 +93,31 @@ const ScheduleRow = ({
         >
           {session.title}
         </Link>
+        {session.isExam && !cancelled ? (
+          // MDRS-248: an exam is marked on the takvim as on the course page.
+          <p>
+            <span
+              className="mds-badge mds-badge--warning"
+              data-testid="exam-badge"
+            >
+              {examRunLabel(t, session.startsAt, now, timeZone)}
+            </span>
+          </p>
+        ) : null}
         {cancelled ? (
-          <p className="mds-caption">{t("SchedulePage.cancelledNote")}</p>
+          // MDRS-248: the müderris's note on one line, when one was written.
+          <p
+            className="mds-caption truncate"
+            dir="auto"
+            title={session.cancelReason?.trim() || undefined}
+            data-testid="cancel-note"
+          >
+            {session.cancelReason?.trim()
+              ? t("SessionPage.cancelNote", {
+                  note: session.cancelReason.trim(),
+                })
+              : t("SchedulePage.cancelledNote")}
+          </p>
         ) : platform && session.meetingUrl ? (
           <p>
             <PlatformChip

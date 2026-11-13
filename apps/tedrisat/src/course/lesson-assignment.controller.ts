@@ -72,7 +72,7 @@ export class LessonAssignmentController {
 
   @ApiOperation({
     summary: "Set a session's homework, or change its description",
-    description: `Gives the session homework if it has none ("Bu celsenin ödevi var"), written to \`audit_log\` as \`lesson_assignment.create\`; otherwise changes its description (\`lesson_assignment.update\`; a save that changes nothing writes nothing). The audit row carries the description's length, not its text. ${WHO_WRITES}`,
+    description: `Gives the session homework if it has none ("Bu celsenin ödevi var"), written to \`audit_log\` as \`lesson_assignment.create\`; otherwise changes its description or how it is handed in (\`kind\`), as \`lesson_assignment.update\` (a save that changes nothing writes nothing). The audit row carries the description's length, not its text. ${WHO_WRITES}`,
     operationId: "saveLessonAssignment",
   })
   @ApiOkResponse({ type: LessonAssignmentResponse })
@@ -87,7 +87,12 @@ export class LessonAssignmentController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: SaveLessonAssignmentDto
   ): Promise<ILessonAssignment> {
-    return this.service.save(id, request.user, dto.description ?? null);
+    return this.service.save(
+      id,
+      request.user,
+      dto.description ?? null,
+      dto.kind
+    );
   }
 
   @ApiOperation({

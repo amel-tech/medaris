@@ -6,7 +6,6 @@ import { Card } from "@medaris/ui/mds/card";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
-import { LocaleSelect } from "@medaris/ui/mds/locale-switcher";
 import { Select } from "@medaris/ui/mds/select";
 import { Switch } from "@medaris/ui/mds/switch";
 import { useToaster } from "@medaris/ui/mds/toast";
@@ -15,7 +14,6 @@ import { type FormEvent, useState, useTransition } from "react";
 import { LocaleAppProviders } from "~/components/locale-app-providers";
 import { PUBLIC_PROFILE_ENABLED } from "~/features/public-profile/availability";
 import { useAccountTranslations } from "~/lib/i18n/loose";
-import { locales } from "~/lib/i18n/routing";
 import { sendToSignIn } from "~/lib/send-to-sign-in";
 import { CARD_GAP } from "../card-gap";
 import {
@@ -183,10 +181,7 @@ function PersonalCard({
   );
 }
 
-function TimeLanguageCard({
-  timeZone,
-}: Pick<AccountSettingsProps, "timeZone">) {
-  const locale = useLocale();
+function TimeZoneCard({ timeZone }: Pick<AccountSettingsProps, "timeZone">) {
   const t = useAccountTranslations("AccountProfile");
   const toaster = useToaster();
   const [saved, setSaved] = useState(timeZone ?? "Europe/Istanbul");
@@ -261,13 +256,6 @@ function TimeLanguageCard({
             />
           </Field>
         ) : null}
-        <Field label={t("language")} help={t("languageHelp")}>
-          <LocaleSelect
-            locale={locale}
-            locales={locales}
-            label={t("language")}
-          />
-        </Field>
       </div>
     </Card>
   );
@@ -395,7 +383,7 @@ function SignOutCard() {
 
 /**
  * The cards of Hesap (design tedris/34, MDRS-166): personal information (with
- * the account's gender), the connected applications, time zone and language,
+ * the account's gender), the connected applications, time zone,
  * calendar, and the sign-out aside, plus, while the public profile is shown
  * (MDRS-141 hid it), a way to it (design tedris/35). The roles section (design
  * 43) follows below it on the page. A client component so the Toast root and
@@ -408,7 +396,7 @@ export function AccountSettings(props: AccountSettingsProps) {
         <div className="flex min-inline-0 flex-col gap-section">
           <PersonalCard {...props} />
           <ConnectedAppsCard connectedAppsHref={props.connectedAppsHref} />
-          <TimeLanguageCard timeZone={props.timeZone} />
+          <TimeZoneCard timeZone={props.timeZone} />
           <CalendarCard lessonInvitationEmails={props.lessonInvitationEmails} />
           {PUBLIC_PROFILE_ENABLED && <PublicProfileCard />}
         </div>

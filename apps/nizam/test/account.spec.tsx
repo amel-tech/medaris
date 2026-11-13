@@ -342,7 +342,7 @@ describe("the page (nizam/47)", () => {
     expect(html).toContain("Medaris başnazımı · köşk nazımı");
   });
 
-  it("shows the e-mail read-only, the time zone, the language choice, and the sign-out button to the confirmation page", async () => {
+  it("shows the e-mail read-only, the time zone, no language choice, and the sign-out button to the confirmation page", async () => {
     const html = await render(data());
     expect(html).toMatch(
       /<input[^>]*readOnly=""[^>]*value="yusuf.ertugrul@example.com"|<input[^>]*value="yusuf.ertugrul@example.com"[^>]*readonly=""/i
@@ -350,12 +350,8 @@ describe("the page (nizam/47)", () => {
     expect(html).toContain("Salt okunur.");
     expect(html).toContain("Saat dilimi");
     expect(html).toContain("İstanbul");
-    // MDRS-275: a language select on the page's locale, kept in this browser only
-    expect(html).toContain(
-      "Arayüzün dili. Seçimin yalnız bu tarayıcıda saklanır."
-    );
-    expect(html).toMatch(/aria-label="Dil"[\s\S]*Türkçe/);
-    expect(html).not.toContain("yalnız Türkçe görünür");
+    // Turkish only: the language select is gone
+    expect(html).not.toContain('aria-label="Dil"');
     expect(html).toMatch(/<a[^>]*href="\/auth\/signout"[^>]*>[\s\S]*Çıkış yap/);
   });
 

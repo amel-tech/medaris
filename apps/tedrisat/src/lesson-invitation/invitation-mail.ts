@@ -3,6 +3,7 @@ import {
   type CalendarAttendanceKind,
   type CalendarLocale,
   calendarAttendanceKind,
+  lessonCalendarSummary,
 } from "../course/calendar/lesson-calendar";
 
 /**
@@ -32,8 +33,15 @@ export interface InvitationMailInput {
   sessionPageUrl: string;
   /** How the session is attended, for the line under the link (MDRS-283). */
   attendance: CalendarAttendance;
+  /** Planned as "Sınav" (MDRS-248): the subject says so. */
+  isExam?: boolean;
   /** Hesap, where the invitations are turned off. */
   accountUrl: string;
+  /**
+   * The note the müderris left for talebe when cancelling the session
+   * (MDRS-248); a CANCEL alone carries it.
+   */
+  note?: string | null;
 }
 
 export interface InvitationMail {
@@ -53,6 +61,8 @@ interface Words {
   link: Record<CalendarAttendanceKind, string>;
   footer: string;
   turnOff: string;
+  /** The label before the müderris's note on a CANCEL (MDRS-248). */
+  note: string;
 }
 
 const WORDS: Record<CalendarLocale, Words> = {
@@ -84,6 +94,7 @@ const WORDS: Record<CalendarLocale, Words> = {
     footer:
       "Bu e-postayı Medaris’teki ders kaydın nedeniyle aldın; yanıtlaman gerekmez.",
     turnOff: "Ders davetlerini Hesap sayfasından kapatabilirsin",
+    note: "Hocanın notu",
   },
   en: {
     subject: { NEW: "Invitation", UPDATE: "Updated", CANCEL: "Cancelled" },
@@ -113,6 +124,7 @@ const WORDS: Record<CalendarLocale, Words> = {
     footer:
       "You received this e-mail because you are enrolled in a course on Medaris; there is no need to reply.",
     turnOff: "You can turn lesson invitations off on your Account page",
+    note: "Note from your teacher",
   },
   ar: {
     subject: { NEW: "دعوة", UPDATE: "تحديث", CANCEL: "إلغاء" },
@@ -140,6 +152,7 @@ const WORDS: Record<CalendarLocale, Words> = {
     },
     footer: "وصلتك هذه الرسالة لأنك مسجَّل في درس على Medaris؛ لا حاجة إلى الرد.",
     turnOff: "يمكنك إيقاف دعوات الدروس من صفحة الحساب",
+    note: "ملاحظة الأستاذ",
   },
 };
 
@@ -200,14 +213,17 @@ export const buildInvitationMail = (
       : when;
   // One line, no newline a header could be split at.
   const subject =
-    `${w.subject[input.kind]}: ${input.courseTitle} — ${input.lessonTitle}`
+    `${w.subject[input.kind]}: ${lessonCalendarSummary(input.courseTitle, input.lessonTitle, input.isExam ? { locale: input.locale } : null)}`
       .replace(/[\r\n]+/g, " ")
       .trim();
 
+  const note =
+    input.kind === "CANCEL" ? (input.note?.trim() ?? "") || null : null;
   const text = [
     lead,
     "",
     `${w.when}: ${whenLine}`,
+    ...(note ? [`${w.note}: ${note}`] : []),
     ...(input.kind === "CANCEL"
       ? []
       : [`${w.page}: ${input.sessionPageUrl}`, "", link]),
@@ -224,6 +240,11 @@ export const buildInvitationMail = (
     `<!doctype html><html lang="${input.locale}" dir="${dir}"><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f1f1f">`,
     `<p>${escapeHtml(lead)}</p>`,
     `<p><strong>${escapeHtml(w.when)}:</strong> ${escapeHtml(whenLine)}</p>`,
+    ...(note
+      ? [
+          `<p><strong>${escapeHtml(w.note)}:</strong> <span dir="auto">${escapeHtml(note)}</span></p>`,
+        ]
+      : []),
     ...(input.kind === "CANCEL"
       ? []
       : [
