@@ -166,7 +166,9 @@ const MARK_BADGE: Record<
  *
  * A homework switched to recited after the talebe handed files in keeps
  * them (tedrisat does): they are listed under it, still theirs to download
- * and remove, with their note read-only; nothing new is added.
+ * and remove, with their note read-only; nothing new is added. A review the
+ * müderris sent on them before the switch stays readable, its note and the
+ * corrected files with it.
  */
 function MemorizeHomework({
   lessonId,
@@ -323,6 +325,17 @@ function MemorizeHomework({
             </p>
           ) : null}
         </div>
+      ) : null}
+
+      {earlier?.review?.reviewedAt ? (
+        <ReviewBody
+          lessonId={lessonId}
+          review={earlier.review}
+          changedSince={
+            earlier.updatedAt.getTime() > earlier.review.reviewedAt.getTime()
+          }
+          locale={locale}
+        />
       ) : null}
     </section>
   );

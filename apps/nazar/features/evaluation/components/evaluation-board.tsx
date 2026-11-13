@@ -38,6 +38,59 @@ const TONE: Record<MarkStatus, BadgeVariant> = {
   ABSENT: "error",
 };
 
+type SaveOutcome = "saved" | "failed" | "signedOut";
+
+/**
+ * Cells saved at once and drawn before the answer comes (MDRS-248). The saves
+ * of one cell go out one after another, so tedrisat keeps the last press. A
+ * save that fails, or throws, puts the cell back to what tedrisat last kept,
+ * unless a later press on the same cell has been made since: that press is
+ * what the cell shows, and its own answer settles it.
+ */
+function useCellSaves<V>(initial: ReadonlyMap<string, V>) {
+  const [cells, setCells] = useState<ReadonlyMap<string, V>>(initial);
+  // What tedrisat last kept, per cell touched on this page.
+  const kept = useRef(new Map<string, V | undefined>());
+  const queue = useRef(new Map<string, Promise<SaveOutcome>>());
+  const latest = useRef(new Map<string, number>());
+
+  const save = (
+    key: string,
+    value: V,
+    send: () => Promise<SaveOutcome>
+  ): Promise<SaveOutcome> => {
+    if (!kept.current.has(key)) kept.current.set(key, initial.get(key));
+    const turn = (latest.current.get(key) ?? 0) + 1;
+    latest.current.set(key, turn);
+    setCells((now) => new Map(now).set(key, value));
+    const run = (queue.current.get(key) ?? Promise.resolve("saved")).then(
+      async (): Promise<SaveOutcome> => {
+        let outcome: SaveOutcome;
+        try {
+          outcome = await send();
+        } catch {
+          outcome = "failed";
+        }
+        if (outcome === "saved") kept.current.set(key, value);
+        else if (outcome === "failed" && latest.current.get(key) === turn) {
+          const back = kept.current.get(key);
+          setCells((now) => {
+            const next = new Map(now);
+            if (back === undefined) next.delete(key);
+            else next.set(key, back);
+            return next;
+          });
+        }
+        return outcome;
+      }
+    );
+    queue.current.set(key, run);
+    return run;
+  };
+
+  return { cells, save };
+}
+
 /**
  * The body of "Değerlendirme" (MDRS-248). Closed, it is the whole course at a
  * glance: a row per talebe, a column per homework recited to the müderris,
@@ -45,16 +98,25 @@ const TONE: Record<MarkStatus, BadgeVariant> = {
  * with every talebe, each row three buttons, Tam · Eksik · Vermedi, and an
  * optional short note; a press is saved at once and the count above,
  * "18/30 tam", follows. ↑ and ↓ move between rows, 1, 2 and 3 mark the row in
- * focus. A save that fails puts the cell back and says so.
+ * focus. A save that fails, or never reaches tedrisat, puts the cell back
+ * and says so.
  */
 export function EvaluationBoard({ initial }: { initial: Board }) {
   const t = useTranslations("nazar.Evaluation");
   const { notify } = useToaster();
-  const [marks, setMarks] = useState<ReadonlyMap<string, Mark>>(initial.marks);
+  const markSaves = useCellSaves(initial.marks);
+  const marks = markSaves.cells;
   const [open, setOpen] = useState<string | null>(null);
   const board = { ...initial, marks };
 
-  const save = async (
+  const failed = (talebe: EvaluationTalebe) =>
+    notify({
+      tone: "error",
+      title: t("saveFailed"),
+      description: talebe.name ?? t("unnamed"),
+    });
+
+  const save = (
     column: EvaluationColumn,
     talebe: EvaluationTalebe,
     status: MarkStatus,
@@ -63,27 +125,20 @@ export function EvaluationBoard({ initial }: { initial: Board }) {
     const key = markKey(column.lessonId, talebe.id);
     const before = marks.get(key);
     if (before?.status === status && before.note === note) return;
-    setMarks((now) => new Map(now).set(key, { status, note }));
-    const result = await saveEvaluation(
-      column.lessonId,
-      talebe.id,
-      status,
-      note
-    );
-    if (handleUnauthenticated(result)) return;
-    if (!("success" in result) || !result.success) {
-      setMarks((now) => {
-        const back = new Map(now);
-        if (before) back.set(key, before);
-        else back.delete(key);
-        return back;
+    void markSaves
+      .save(key, { status, note }, async () => {
+        const result = await saveEvaluation(
+          column.lessonId,
+          talebe.id,
+          status,
+          note
+        );
+        if (handleUnauthenticated(result)) return "signedOut";
+        return "success" in result && result.success ? "saved" : "failed";
+      })
+      .then((outcome) => {
+        if (outcome === "failed") failed(talebe);
       });
-      notify({
-        tone: "error",
-        title: t("saveFailed"),
-        description: talebe.name ?? t("unnamed"),
-      });
-    }
   };
 
   if (initial.columns.length === 0) {
@@ -104,9 +159,7 @@ export function EvaluationBoard({ initial }: { initial: Board }) {
         column={column}
         board={board}
         onBack={() => setOpen(null)}
-        onMark={(talebe, status, note) =>
-          void save(column, talebe, status, note)
-        }
+        onMark={(talebe, status, note) => save(column, talebe, status, note)}
       />
     );
   }
