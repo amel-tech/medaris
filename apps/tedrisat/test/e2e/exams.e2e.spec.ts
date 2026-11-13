@@ -275,6 +275,13 @@ describe("exams (e2e)", () => {
       await plan({ ...weekly, count: 1, exam: { format: "ESSAY" } }).expect(
         400
       );
+      // An array is no exam: its fields would be lost, not defaulted.
+      await plan({
+        ...weekly,
+        count: 1,
+        exam: [{ maxScore: 50, location: "Medrese" }],
+      }).expect(400);
+      expect(await db().select().from(lessonExams)).toHaveLength(1);
     });
   });
 
@@ -358,6 +365,21 @@ describe("exams (e2e)", () => {
       // Nobody but the course team opens them.
       await release(CAST.TALEBE).expect(403);
       await release(CAST.OTHER_COURSE).expect(403);
+      // A refused release opened nothing, wrote nothing and told no one.
+      const [stillClosed] = await db()
+        .select({ resultsReleasedAt: lessonExams.resultsReleasedAt })
+        .from(lessonExams)
+        .where(eq(lessonExams.lessonId, examId));
+      expect(stillClosed.resultsReleasedAt).toBeNull();
+      expect(
+        await db()
+          .select()
+          .from(auditLog)
+          .where(eq(auditLog.action, "exam.release"))
+      ).toHaveLength(0);
+      expect(await notesOf(CAST.TALEBE, "EXAM_RESULTS_RELEASED")).toHaveLength(
+        0
+      );
 
       const opened = await release(CAST.MUDERRIS).expect(200);
       expect(opened.body.lessonId).toBe(examId);
@@ -376,6 +398,15 @@ describe("exams (e2e)", () => {
         released: true,
         score: null,
         absent: null,
+      });
+    });
+
+    it("tells a caller the content is closed to of no exam or homework but their own", async () => {
+      await enter(CAST.MUDERRIS, CAST.TALEBE, { score: 72 }).expect(200);
+      await release(CAST.MUDERRIS).expect(200);
+      expect(await myGrades(CAST.STRANGER)).toEqual({
+        exams: [],
+        memorizations: [],
       });
     });
 
@@ -605,6 +636,29 @@ describe("exams (e2e)", () => {
         .where(eq(lessons.id, soon));
       expect(await poller.remindDue()).toBe(1);
       expect(await notesOf(CAST.TALEBE, "EXAM_REMINDER")).toHaveLength(2);
+    });
+
+    it("is not sent again when an edit sends the same start", async () => {
+      const at = new Date(Date.now() + 3 * HOUR);
+      const soon = await insertLiveLesson(db(), ids.weekId, 2, {
+        title: "Yarınki sınav",
+        scheduledAt: at,
+      });
+      await db().insert(lessonExams).values({ lessonId: soon });
+      const poller = app.get(ExamReminderPoller);
+      expect(await poller.remindDue()).toBe(1);
+
+      const [{ version }] = await db()
+        .select({ version: courses.version })
+        .from(courses)
+        .where(eq(courses.id, ids.courseId));
+      await http()
+        .patch(`/lessons/${soon}`)
+        .set("Authorization", bearer(CAST.MUDERRIS))
+        .send({ version, title: "Ara sınav", scheduledAt: at })
+        .expect(200);
+      expect(await poller.remindDue()).toBe(0);
+      expect(await notesOf(CAST.TALEBE, "EXAM_REMINDER")).toHaveLength(1);
     });
   });
 });

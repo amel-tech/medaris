@@ -6,6 +6,7 @@ import {
   ArrayUnique,
   IsArray,
   IsInt,
+  IsObject,
   IsString,
   IsTimeZone,
   IsUrl,
@@ -137,6 +138,7 @@ export class CreateSessionBatchDto extends WeeklyPatternDto {
       '"Sınav" (MDRS-248): the celse is planned as an exam. The pattern must give exactly one session (else 400 EXAM_ONE_SESSION); it is a LIVE session like any other, marked in person when `location` is given and online when not.',
   })
   @Omittable()
+  @IsObject()
   @ValidateNested()
   @Type(() => SessionExamDto)
   exam?: SessionExamDto;

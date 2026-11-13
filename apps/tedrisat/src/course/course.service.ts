@@ -591,10 +591,8 @@ export class CourseService {
     return (await this.courseRepo.findPassiveScope(courseId)) === null;
   }
 
-  private contentIsOpen(
-    user: AuthenticatedUser,
-    courseId: string
-  ): Promise<boolean> {
+  /** Whether the course's content is open to the person (`course.view_details`). */
+  contentIsOpen(user: AuthenticatedUser, courseId: string): Promise<boolean> {
     return this.authz.can(
       user,
       { entity: ENTITIES.COURSE, id: courseId },

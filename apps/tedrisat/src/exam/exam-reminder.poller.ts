@@ -24,7 +24,7 @@ export const EXAM_REMINDER_AHEAD_MS = 24 * 60 * 60_000;
 export const EXAM_REMINDER_BATCH = 50;
 
 /**
- * "Sınav yarın" (MDRS-248): a day before an exam its talebe are told in the
+ * "Yaklaşan sınav" (MDRS-248): a day before an exam its talebe are told in the
  * app and, when tedrisat has a sender and tedris' address, by e-mail. It
  * follows `RecordingReleasePoller`: every minute it claims the exams that
  * start within a day (`reminded_at`, one statement that checks and marks),

@@ -82,7 +82,7 @@ export class EvaluationController {
   @ApiProduces(
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   )
-  @ApiOkResponse({ type: StreamableFile })
+  @ApiOkResponse({ schema: { type: "string", format: "binary" } })
   @ApiQuery({ name: "lang", required: false, enum: ["tr", "en", "ar"] })
   @ApiForbiddenResponse({ description: "No `session.manage` on the course." })
   @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })

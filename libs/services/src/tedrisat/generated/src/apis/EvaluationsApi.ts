@@ -59,7 +59,7 @@ export class EvaluationsApi extends runtime.BaseAPI {
      * \"Excel indir\" (MDRS-248): `session.manage` on the course, as the board. An .xlsx with a row per talebe (\"Ad Soyad\") and a column per memorisation homework and exam, in programme order: a mark, or a score or \"Girmedi\". `lang` (tr, en or ar; tr otherwise) picks the language of the headers and the words.
      * The course\'s evaluation board as a spreadsheet
      */
-    async exportEvaluationBoardRaw(requestParameters: ExportEvaluationBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<object>> {
+    async exportEvaluationBoardRaw(requestParameters: ExportEvaluationBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -91,14 +91,14 @@ export class EvaluationsApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse<any>(response);
+        return new runtime.BlobApiResponse(response);
     }
 
     /**
      * \"Excel indir\" (MDRS-248): `session.manage` on the course, as the board. An .xlsx with a row per talebe (\"Ad Soyad\") and a column per memorisation homework and exam, in programme order: a mark, or a score or \"Girmedi\". `lang` (tr, en or ar; tr otherwise) picks the language of the headers and the words.
      * The course\'s evaluation board as a spreadsheet
      */
-    async exportEvaluationBoard(requestParameters: ExportEvaluationBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<object> {
+    async exportEvaluationBoard(requestParameters: ExportEvaluationBoardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
         const response = await this.exportEvaluationBoardRaw(requestParameters, initOverrides);
         return await response.value();
     }

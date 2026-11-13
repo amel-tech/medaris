@@ -3669,7 +3669,7 @@
       "checkConstraints": {
         "exam_results_score_check": {
           "name": "exam_results_score_check",
-          "value": "(\"exam_results\".\"absent\" and \"exam_results\".\"score\" is null) or (not \"exam_results\".\"absent\" and \"exam_results\".\"score\" >= 0)"
+          "value": "(\"exam_results\".\"absent\" and \"exam_results\".\"score\" is null) or (not \"exam_results\".\"absent\" and \"exam_results\".\"score\" is not null and \"exam_results\".\"score\" >= 0)"
         }
       },
       "isRLSEnabled": false

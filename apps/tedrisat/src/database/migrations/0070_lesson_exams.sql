@@ -8,7 +8,7 @@ CREATE TABLE "exam_results" (
 	"graded_by" uuid NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "exam_results_score_check" CHECK (("exam_results"."absent" and "exam_results"."score" is null) or (not "exam_results"."absent" and "exam_results"."score" >= 0))
+	CONSTRAINT "exam_results_score_check" CHECK (("exam_results"."absent" and "exam_results"."score" is null) or (not "exam_results"."absent" and "exam_results"."score" is not null and "exam_results"."score" >= 0))
 );
 --> statement-breakpoint
 CREATE TABLE "lesson_exams" (

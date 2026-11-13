@@ -319,8 +319,14 @@ export class ExamRepository {
    * "Notlarım": the caller's own exam results and memorisation marks in the
    * course. A score and "Girmedi" are read only from an exam whose results
    * were opened; until then the row is there and says nothing of them.
+   * Without `contentOpen` only what is the caller's own is listed: an exam
+   * whose result for them was opened, a homework they were marked on.
    */
-  async myGrades(courseId: string, userId: string): Promise<MyGradesResponse> {
+  async myGrades(
+    courseId: string,
+    userId: string,
+    { contentOpen }: { contentOpen: boolean }
+  ): Promise<MyGradesResponse> {
     const columns = await this.listColumns(courseId);
     const results =
       columns.length === 0
@@ -369,8 +375,16 @@ export class ExamRepository {
         asc(lessons.orderIndex),
         asc(lessons.id)
       );
+    const ownExams = contentOpen
+      ? columns
+      : columns.filter(
+          (c) => c.resultsReleasedAt !== null && resultOf.has(c.examId)
+        );
+    const ownMarks = contentOpen
+      ? memorizations
+      : memorizations.filter((m) => m.status !== null);
     return {
-      exams: columns.map((c) => {
+      exams: ownExams.map((c) => {
         const released = c.resultsReleasedAt !== null;
         const result = released ? resultOf.get(c.examId) : undefined;
         return {
@@ -385,7 +399,7 @@ export class ExamRepository {
           absent: result ? result.absent : null,
         };
       }),
-      memorizations: memorizations.map((m) => ({
+      memorizations: ownMarks.map((m) => ({
         lessonId: m.lessonId,
         title: m.title,
         weekNumber: m.weekNumber,
