@@ -201,17 +201,11 @@ export function AppealsView({ initial }: Props) {
             {t(`status.${selected.status}` as never)}
           </Badge>
         </header>
-        <dl className="grid gap-4 sm:grid-cols-3">
+        <dl className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1">
             <dt className="mds-caption">{t("madrasah")}</dt>
             <dd className="m-0">
               <bdi>{selected.madrasah.name}</bdi>
-            </dd>
-          </div>
-          <div className="flex flex-col gap-1">
-            <dt className="mds-caption">{t("course")}</dt>
-            <dd className="m-0">
-              <bdi>{selected.title}</bdi>
             </dd>
           </div>
           <div className="flex flex-col gap-1">
