@@ -13,7 +13,9 @@ import {
   Param,
   ParseUUIDPipe,
   Put,
+  Query,
   Req,
+  StreamableFile,
   UseGuards,
   UsePipes,
 } from "@nestjs/common";
@@ -24,6 +26,8 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiProduces,
+  ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
 import { byExistingCourse } from "../course/course.controller";
@@ -67,6 +71,30 @@ export class EvaluationController {
     @Param("id", ParseUUIDPipe) id: string
   ): Promise<EvaluationBoardResponse> {
     return this.service.board(request.user, id);
+  }
+
+  @ApiOperation({
+    summary: "The course's evaluation board as a spreadsheet",
+    description:
+      '"Excel indir" (MDRS-248): `session.manage` on the course, as the board. An .xlsx with a row per talebe ("Ad Soyad") and a column per memorisation homework and exam, in programme order: a mark, or a score or "Girmedi". `lang` (tr, en or ar; tr otherwise) picks the language of the headers and the words.',
+    operationId: "exportEvaluationBoard",
+  })
+  @ApiProduces(
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  )
+  @ApiOkResponse({ type: StreamableFile })
+  @ApiQuery({ name: "lang", required: false, enum: ["tr", "en", "ar"] })
+  @ApiForbiddenResponse({ description: "No `session.manage` on the course." })
+  @ApiNotFoundResponse({ description: "COURSE_NOT_FOUND" })
+  @Authz(PERMISSIONS.SESSION_MANAGE, byExistingCourse)
+  @Header("Cache-Control", "private, no-store")
+  @Get("courses/:id/evaluations/export")
+  export(
+    @Req() request: AuthorizedRequest,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query("lang") lang?: string
+  ): Promise<StreamableFile> {
+    return this.service.exportBoard(request.user, id, lang);
   }
 
   @ApiOperation({

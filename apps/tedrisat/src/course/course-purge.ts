@@ -17,6 +17,10 @@ import {
   lessonAssignmentFiles,
   lessonAssignments,
 } from "../database/schema/lesson-assignment.schema";
+import {
+  examResults,
+  lessonExams,
+} from "../database/schema/lesson-exam.schema";
 import { lessonNotes } from "../database/schema/lesson-note.schema";
 import { lessonQuestions } from "../database/schema/lesson-question.schema";
 import {
@@ -243,13 +247,15 @@ export async function deleteLessonSubmissions(
 /**
  * Deletes the homework the müderris set on the given lessons, the course
  * team's marks on it (MDRS-248) and its files first, inside the caller's transaction, and marks every file's object for removal
- * from storage once it commits. Shared by every purge that deletes lessons.
+ * from storage once it commits. Shared by every purge that deletes lessons,
+ * so it also deletes what makes any of them an exam (`deleteLessonExams`).
  */
 export async function deleteLessonAssignments(
   tx: Tx,
   lessonIds: SQLWrapper | string[],
   reason: DeletionReason
 ): Promise<void> {
+  await deleteLessonExams(tx, lessonIds);
   const assignmentIds = tx
     .select({ id: lessonAssignments.id })
     .from(lessonAssignments)
@@ -269,6 +275,22 @@ export async function deleteLessonAssignments(
   await tx
     .delete(lessonAssignments)
     .where(inArray(lessonAssignments.lessonId, lessonIds));
+}
+
+/**
+ * Deletes the exam rows of the given lessons (MDRS-248), their results first,
+ * inside the caller's transaction. Nothing of an exam is held in storage.
+ */
+export async function deleteLessonExams(
+  tx: Tx,
+  lessonIds: SQLWrapper | string[]
+): Promise<void> {
+  const examIds = tx
+    .select({ id: lessonExams.id })
+    .from(lessonExams)
+    .where(inArray(lessonExams.lessonId, lessonIds));
+  await tx.delete(examResults).where(inArray(examResults.examId, examIds));
+  await tx.delete(lessonExams).where(inArray(lessonExams.lessonId, lessonIds));
 }
 
 /** The ids of every course of a köşk, hidden or not. */

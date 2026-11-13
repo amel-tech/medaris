@@ -151,6 +151,46 @@ export class CourseNotifier {
     );
   }
 
+  /**
+   * A celse planned as an exam (MDRS-248, "Sınav"): its talebe are told when
+   * it is, apart from the calendar invitation every planned celse sends. One
+   * already over is not news.
+   */
+  async examScheduled(
+    session: Pick<
+      ILessonMutation,
+      "id" | "scheduledAt" | "durationMinutes" | "cancelledAt"
+    >,
+    actorId?: string
+  ): Promise<void> {
+    if (!session.scheduledAt || session.cancelledAt) return;
+    if (hasEnded(session, new Date())) return;
+    await this.tellSeats("EXAM_SCHEDULED", session, actorId, {
+      sessionAt: session.scheduledAt.toISOString(),
+    });
+  }
+
+  /** An exam a day away (MDRS-248); the reminder poll has no actor. */
+  async examReminder(lessonId: string, sessionAt: Date): Promise<void> {
+    await this.tellSeats("EXAM_REMINDER", { id: lessonId }, undefined, {
+      sessionAt: sessionAt.toISOString(),
+    });
+  }
+
+  /** "Sonuçları talebelere aç" (MDRS-248): the talebe may read their score. */
+  async examResultsReleased(
+    lessonId: string,
+    sessionAt: Date | null,
+    actorId?: string
+  ): Promise<void> {
+    await this.tellSeats(
+      "EXAM_RESULTS_RELEASED",
+      { id: lessonId },
+      actorId,
+      sessionAt ? { sessionAt: sessionAt.toISOString() } : {}
+    );
+  }
+
   private async tellTalebe(
     type: NotificationInput["type"],
     courseId: string,

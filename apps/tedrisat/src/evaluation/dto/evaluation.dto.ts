@@ -2,17 +2,20 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
 import { EvaluationStatus } from "../../course/domain/assignment-kind.enum";
+import { ExamFormat } from "../../course/domain/exam";
+import { ExamResultResponse } from "../../exam/dto/exam.dto";
 
 /** The longest note on a mark, in characters: a short line, not a review. */
 export const EVALUATION_NOTE_MAX = 280;
 
 /**
- * What a column of "Değerlendirme" is. Only MEMORIZE today: a homework
- * recited to the müderris. Exams join as their own kind, so a reader must
+ * What a column of "Değerlendirme" is: MEMORIZE, a homework recited to the
+ * müderris, or EXAM, a celse planned as "Sınav" (MDRS-248). A reader must
  * skip a kind it does not know rather than fail.
  */
 export enum EvaluationColumnKind {
   MEMORIZE = "MEMORIZE",
+  EXAM = "EXAM",
 }
 
 export class SaveEvaluationDto {
@@ -54,7 +57,23 @@ export class EvaluationMarkResponse {
   updatedAt!: Date;
 }
 
-/** A column of "Değerlendirme": today a memorisation homework on a session. */
+/** What an EXAM column carries besides the session (MDRS-248). */
+export class EvaluationExamColumnResponse {
+  @ApiProperty({ enum: ExamFormat, enumName: "ExamFormat" })
+  format!: ExamFormat;
+  @ApiProperty({ example: 100, description: '"Tam puan"' })
+  maxScore!: number;
+  @ApiProperty({ description: '"Telafi"' }) isRetake!: boolean;
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description:
+      "When the results were opened to the talebe; null while closed.",
+  })
+  resultsReleasedAt!: Date | null;
+}
+
+/** A column of "Değerlendirme": a memorisation homework or an exam on a session. */
 export class EvaluationColumnResponse {
   @ApiProperty({
     enum: EvaluationColumnKind,
@@ -82,9 +101,16 @@ export class EvaluationColumnResponse {
   description!: string | null;
   @ApiProperty({
     example: 18,
-    description: 'Seated talebe marked FULL: "18/30 tam".',
+    description:
+      'MEMORIZE: seated talebe marked FULL, "18/30 tam". EXAM: seated talebe whose result is entered, a score or "Girmedi".',
   })
   fullCount!: number;
+  @ApiPropertyOptional({
+    type: () => EvaluationExamColumnResponse,
+    nullable: true,
+    description: "Set on an EXAM column; null on any other.",
+  })
+  exam?: EvaluationExamColumnResponse | null;
 }
 
 /** A row of "Değerlendirme": a talebe seated in the course. */
@@ -120,6 +146,12 @@ export class EvaluationBoardResponse {
     description: "The marks given to the talebe above; none is Bekliyor.",
   })
   marks!: EvaluationMarkResponse[];
+  @ApiProperty({
+    type: [ExamResultResponse],
+    description:
+      "The exam results entered for the talebe above (MDRS-248); none is not entered yet.",
+  })
+  results!: ExamResultResponse[];
 }
 
 /** The caller's own mark on a session's memorisation homework. */

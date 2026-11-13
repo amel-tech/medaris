@@ -34,6 +34,13 @@ import {
     EvaluationMarkResponseToJSON,
     EvaluationMarkResponseToJSONTyped,
 } from './EvaluationMarkResponse';
+import type { ExamResultResponse } from './ExamResultResponse';
+import {
+    ExamResultResponseFromJSON,
+    ExamResultResponseFromJSONTyped,
+    ExamResultResponseToJSON,
+    ExamResultResponseToJSONTyped,
+} from './ExamResultResponse';
 
 /**
  * 
@@ -59,6 +66,12 @@ export interface EvaluationBoardResponse {
      * @memberof EvaluationBoardResponse
      */
     marks: Array<EvaluationMarkResponse>;
+    /**
+     * The exam results entered for the talebe above (MDRS-248); none is not entered yet.
+     * @type {Array<ExamResultResponse>}
+     * @memberof EvaluationBoardResponse
+     */
+    results: Array<ExamResultResponse>;
 }
 
 /**
@@ -68,6 +81,7 @@ export function instanceOfEvaluationBoardResponse(value: object): value is Evalu
     if (!('columns' in value) || value['columns'] === undefined) return false;
     if (!('talebe' in value) || value['talebe'] === undefined) return false;
     if (!('marks' in value) || value['marks'] === undefined) return false;
+    if (!('results' in value) || value['results'] === undefined) return false;
     return true;
 }
 
@@ -84,6 +98,7 @@ export function EvaluationBoardResponseFromJSONTyped(json: any, ignoreDiscrimina
         'columns': ((json['columns'] as Array<any>).map(EvaluationColumnResponseFromJSON)),
         'talebe': ((json['talebe'] as Array<any>).map(EvaluationTalebeResponseFromJSON)),
         'marks': ((json['marks'] as Array<any>).map(EvaluationMarkResponseFromJSON)),
+        'results': ((json['results'] as Array<any>).map(ExamResultResponseFromJSON)),
     };
 }
 
@@ -101,6 +116,7 @@ export function EvaluationBoardResponseToJSONTyped(value?: EvaluationBoardRespon
         'columns': ((value['columns'] as Array<any>).map(EvaluationColumnResponseToJSON)),
         'talebe': ((value['talebe'] as Array<any>).map(EvaluationTalebeResponseToJSON)),
         'marks': ((value['marks'] as Array<any>).map(EvaluationMarkResponseToJSON)),
+        'results': ((value['results'] as Array<any>).map(ExamResultResponseToJSON)),
     };
 }
 
