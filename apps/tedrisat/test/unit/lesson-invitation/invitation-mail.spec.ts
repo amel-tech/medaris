@@ -74,6 +74,13 @@ describe("lesson invitation e-mail (MDRS-121)", () => {
     );
   });
 
+  it("names an exam celse as an exam in the subject (MDRS-248)", () => {
+    expect(buildInvitationMail(input({ isExam: true })).subject).toContain(
+      "Siyer okumaları — Sınav: Mekke yılları"
+    );
+    expect(buildInvitationMail(input()).subject).not.toContain("Sınav");
+  });
+
   it("escapes the titles in the HTML and keeps the subject on one line", () => {
     const mail = buildInvitationMail(
       input({

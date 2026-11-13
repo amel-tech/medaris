@@ -49,6 +49,8 @@ export interface InvitationInput {
   sessionPageUrl: string;
   /** How the session is attended, for the description (MDRS-283). */
   attendance: CalendarAttendance;
+  /** Planned as "Sınav" (MDRS-248): the summary says so, as the feed does. */
+  isExam: boolean;
   locale: CalendarLocale;
   organizer: { address: string; name: string };
   attendee: string;
@@ -83,7 +85,7 @@ export const buildInvitationIcs = (input: InvitationInput): string => {
     ...(end ? [`DTEND:${formatIcsUtc(end)}`] : []),
     `STATUS:${cancel ? "CANCELLED" : "CONFIRMED"}`,
     "TRANSP:OPAQUE",
-    `SUMMARY:${escapeIcsText(lessonCalendarSummary(input.courseTitle, input.lessonTitle))}`,
+    `SUMMARY:${escapeIcsText(lessonCalendarSummary(input.courseTitle, input.lessonTitle, input.isExam ? { locale: input.locale } : null))}`,
     `DESCRIPTION:${escapeIcsText(lessonCalendarDescription(input.sessionPageUrl, input.locale, input.attendance))}`,
     `URL:${input.sessionPageUrl}`,
     `LOCATION:${escapeIcsText(input.sessionPageUrl)}`,

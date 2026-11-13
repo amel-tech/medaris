@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Transform } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -15,7 +15,9 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from "class-validator";
+import { SessionExamDto } from "../../exam/dto/exam.dto";
 import { MAX_BATCH_SESSIONS } from "../domain/weekly-pattern";
 import { LessonResponse } from "./course-response.dto";
 import { toCanonicalTimeZone } from "./create-course.dto";
@@ -128,6 +130,16 @@ export class CreateSessionBatchDto extends WeeklyPatternDto {
   )
   @MaxLength(500)
   meetingUrl?: string;
+
+  @ApiPropertyOptional({
+    type: () => SessionExamDto,
+    description:
+      '"Sınav" (MDRS-248): the celse is planned as an exam. The pattern must give exactly one session (else 400 EXAM_ONE_SESSION); it is a LIVE session like any other, marked in person when `location` is given and online when not.',
+  })
+  @Omittable()
+  @ValidateNested()
+  @Type(() => SessionExamDto)
+  exam?: SessionExamDto;
 }
 
 export class PlannedSessionResponse {

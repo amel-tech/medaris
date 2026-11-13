@@ -456,6 +456,13 @@
       "when": 1794520219264,
       "tag": "0069_memorize_evaluations",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1794527449239,
+      "tag": "0070_lesson_exams",
+      "breakpoints": true
     }
   ]
 }

@@ -111,6 +111,8 @@ export interface CalendarLessonInput {
     title: string;
     scheduledAt: Date;
     durationMinutes: number | null;
+    /** The session is an exam (MDRS-248): its title is marked "Sınav". */
+    isExam?: boolean;
   };
   /** How the session is attended: booleans only, never a link (MDRS-283). */
   attendance: CalendarAttendance;
@@ -141,11 +143,25 @@ export const sessionPageUrl = (
 export const lessonCalendarUid = (lessonId: string): string =>
   `lesson-${lessonId}@medaris.app`;
 
-/** `SUMMARY`: "Course title — Session title". */
+/** The word an exam's `SUMMARY` starts its session title with (MDRS-248). */
+export const EXAM_SUMMARY_LABEL: Record<CalendarLocale, string> = {
+  tr: "Sınav",
+  en: "Exam",
+  ar: "اختبار",
+};
+
+/**
+ * `SUMMARY`: "Course title — Session title", and for an exam (MDRS-248)
+ * "Course title — Sınav: Session title" in the reader's language.
+ */
 export const lessonCalendarSummary = (
   courseTitle: string,
-  lessonTitle: string
-): string => `${courseTitle} — ${lessonTitle}`;
+  lessonTitle: string,
+  exam?: { locale: CalendarLocale } | null
+): string =>
+  exam
+    ? `${courseTitle} — ${EXAM_SUMMARY_LABEL[exam.locale]}: ${lessonTitle}`
+    : `${courseTitle} — ${lessonTitle}`;
 
 /** `DESCRIPTION`: how the session is attended, then the page. */
 export const lessonCalendarDescription = (
@@ -254,7 +270,7 @@ const lessonEventLines = (input: CalendarEventInput): string[] => {
       ? [`DTEND;TZID=${CALENDAR_TIME_ZONE}:${formatIcsIstanbul(end)}`]
       : []),
     ...(input.cancelled ? ["STATUS:CANCELLED"] : []),
-    `SUMMARY:${escapeIcsText(lessonCalendarSummary(course.title, lesson.title))}`,
+    `SUMMARY:${escapeIcsText(lessonCalendarSummary(course.title, lesson.title, lesson.isExam ? { locale } : null))}`,
     `DESCRIPTION:${escapeIcsText(lessonCalendarDescription(pageUrl, locale, input.attendance))}`,
     // URL is a URI value (§3.8.4.6) and is not TEXT-escaped; LOCATION is TEXT.
     `URL:${pageUrl}`,

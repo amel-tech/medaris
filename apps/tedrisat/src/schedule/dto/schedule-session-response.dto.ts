@@ -45,4 +45,9 @@ export class ScheduleSessionResponse {
       "A live stream is set for the session (MDRS-283), whatever its status; never the link, which the session page gives while it is LIVE.",
   })
   hasLiveStream!: boolean;
+  @ApiProperty({
+    description:
+      'The celse is an exam ("Sınav", MDRS-248): the schedule and the home page mark it.',
+  })
+  isExam!: boolean;
 }

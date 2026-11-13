@@ -39,6 +39,8 @@ export interface IInvitationDue {
    * false when the session no longer exists (a CANCEL for a deleted one).
    */
   attendance: CalendarAttendance;
+  /** The session is planned as "Sınav" (MDRS-248); false when it is gone. */
+  isExam: boolean;
 }
 
 /** What the last message for a pair said, to put back when a send fails. */
@@ -60,6 +62,7 @@ type Row = {
   in_person: boolean | null;
   has_meeting_link: boolean | null;
   has_live_stream: boolean | null;
+  is_exam: boolean | null;
 };
 
 const toDue = (r: Row): IInvitationDue => ({
@@ -81,6 +84,7 @@ const toDue = (r: Row): IInvitationDue => ({
     hasMeetingLink: r.has_meeting_link ?? false,
     hasLiveStream: r.has_live_stream ?? false,
   },
+  isExam: r.is_exam ?? false,
 });
 
 /**
@@ -92,7 +96,8 @@ const ATTENDANCE = sql`${inPersonSql({
   courseInPerson: sql`c.in_person`,
 })} as in_person,
              ${hasMeetingLinkSql({ meetingUrl: sql`l.meeting_url` })} as has_meeting_link,
-             ${hasLiveStreamSql({ liveStreamUrl: sql`l.live_stream_url` })} as has_live_stream`;
+             ${hasLiveStreamSql({ liveStreamUrl: sql`l.live_stream_url` })} as has_live_stream,
+             exists (select 1 from lesson_exams x where x.lesson_id = l.id) as is_exam`;
 
 /**
  * Whether the session `l` of course `c` (week `w`, köşk `k`) is one a seat

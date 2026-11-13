@@ -4,6 +4,7 @@ import {
   Configuration,
   CoursesApi,
   EvaluationsApi,
+  ExamsApi,
   FlashcardCardsApi,
   FlashcardDeckLabelApi,
   FlashcardDecksApi,
@@ -294,6 +295,7 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     lessonAssignments: new LessonAssignmentsApi(configuration),
     // "Değerlendirme": marks on memorisation homework (MDRS-248)
     evaluations: new EvaluationsApi(configuration),
+    exams: new ExamsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

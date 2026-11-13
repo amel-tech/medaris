@@ -31,6 +31,7 @@ export interface IMemorizationColumn {
   lessonId: string;
   title: string;
   weekNumber: number;
+  orderIndex: number;
   scheduledAt: Date | null;
   description: string | null;
 }
@@ -80,6 +81,7 @@ export class EvaluationRepository {
         lessonId: lessons.id,
         title: lessons.title,
         weekNumber: courseWeeks.weekNumber,
+        orderIndex: lessons.orderIndex,
         scheduledAt: lessons.scheduledAt,
         description: lessonAssignments.description,
       })

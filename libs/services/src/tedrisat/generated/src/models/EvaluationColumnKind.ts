@@ -18,7 +18,8 @@
  * @export
  */
 export const EvaluationColumnKind = {
-    Memorize: 'MEMORIZE'
+    Memorize: 'MEMORIZE',
+    Exam: 'EXAM'
 } as const;
 export type EvaluationColumnKind = typeof EvaluationColumnKind[keyof typeof EvaluationColumnKind];
 

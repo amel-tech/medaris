@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { EvaluationExamColumnResponse } from './EvaluationExamColumnResponse';
+import {
+    EvaluationExamColumnResponseFromJSON,
+    EvaluationExamColumnResponseFromJSONTyped,
+    EvaluationExamColumnResponseToJSON,
+    EvaluationExamColumnResponseToJSONTyped,
+} from './EvaluationExamColumnResponse';
 import type { EvaluationColumnKind } from './EvaluationColumnKind';
 import {
     EvaluationColumnKindFromJSON,
@@ -64,11 +71,17 @@ export interface EvaluationColumnResponse {
      */
     description: string | null;
     /**
-     * Seated talebe marked FULL: "18/30 tam".
+     * MEMORIZE: seated talebe marked FULL, "18/30 tam". EXAM: seated talebe whose result is entered, a score or "Girmedi".
      * @type {number}
      * @memberof EvaluationColumnResponse
      */
     fullCount: number;
+    /**
+     * Set on an EXAM column; null on any other.
+     * @type {EvaluationExamColumnResponse}
+     * @memberof EvaluationColumnResponse
+     */
+    exam?: EvaluationExamColumnResponse | null;
 }
 
 
@@ -104,6 +117,7 @@ export function EvaluationColumnResponseFromJSONTyped(json: any, ignoreDiscrimin
         'scheduledAt': (json['scheduledAt'] == null ? null : new Date(json['scheduledAt'])),
         'description': json['description'],
         'fullCount': json['fullCount'],
+        'exam': json['exam'] == null ? undefined : EvaluationExamColumnResponseFromJSON(json['exam']),
     };
 }
 
@@ -125,6 +139,7 @@ export function EvaluationColumnResponseToJSONTyped(value?: EvaluationColumnResp
         'scheduledAt': ((value['scheduledAt'] as any).toISOString()),
         'description': value['description'],
         'fullCount': value['fullCount'],
+        'exam': EvaluationExamColumnResponseToJSON(value['exam']),
     };
 }
 

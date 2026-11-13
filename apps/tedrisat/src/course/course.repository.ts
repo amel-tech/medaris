@@ -40,6 +40,7 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
+import { lessonExams } from "../database/schema/lesson-exam.schema";
 import {
   madrasahSettings,
   madrasahs,
@@ -91,6 +92,7 @@ import { BULK_ENROLLMENT_ACTION } from "./domain/bulk-enrollment";
 import { ROSTER_READ_ACTION } from "./domain/course-content";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import { EXAM_DEFAULT_MAX_SCORE, ExamFormat } from "./domain/exam";
 import { LessonType } from "./domain/lesson-type.enum";
 import {
   courseResourceOf,
@@ -113,6 +115,7 @@ import { ResourceIsFileError } from "./errors/resource-is-file.error";
 import { ResourceUrlRequiredError } from "./errors/resource-url-required.error";
 import { WeekNotFoundError } from "./errors/week-not-found.error";
 import { findLessonAssignments } from "./lesson-assignment.repository";
+import { findLessonExams } from "./lesson-exams";
 
 /**
  * The deprecated free-text `duration`, kept in step with `durationMinutes`
@@ -307,14 +310,16 @@ export class CourseRepository implements ICourseRepository {
 
     if (!row) return null;
     const { enrollments: enr, weeks, ...course } = row;
-    const [{ madrasahName, imamKeys }, assignments] = await Promise.all([
+    const lessonIds = weeks.flatMap((week) =>
+      week.lessons.map((lesson) => lesson.id)
+    );
+    const [{ madrasahName, imamKeys }, assignments, exams] = await Promise.all([
       this.madrasahsAndImamsOf([row]),
       // Each session's homework, apart from its resources; the content rule
       // decides who is sent it.
-      findLessonAssignments(
-        this.db,
-        weeks.flatMap((week) => week.lessons.map((lesson) => lesson.id))
-      ),
+      findLessonAssignments(this.db, lessonIds),
+      // Which sessions are exams (MDRS-248); content like the homework.
+      findLessonExams(this.db, lessonIds),
     ]);
     return {
       ...course,
@@ -331,6 +336,7 @@ export class CourseRepository implements ICourseRepository {
             ),
             resources: resources.map(lessonResourceOf),
             assignment: assignments.get(lesson.id) ?? null,
+            exam: exams.get(lesson.id) ?? null,
           })
         ),
       })),
@@ -1584,6 +1590,13 @@ export class CourseRepository implements ICourseRepository {
         .set(set)
         .where(eq(lessons.id, lessonId))
         .returning();
+      // A moved exam is reminded again a day before its new start (MDRS-248).
+      if (fields.scheduledAt !== undefined) {
+        await tx
+          .update(lessonExams)
+          .set({ remindedAt: null, updatedAt: set.updatedAt })
+          .where(eq(lessonExams.lessonId, lessonId));
+      }
       // Left out, the session's resources stay as they are (MDRS-286).
       if (resources != null) {
         await this.writeLessonResources(tx, lessonId, resources, {
@@ -1857,12 +1870,26 @@ export class CourseRepository implements ICourseRepository {
           meetingUrl: i === 0 ? batch.meetingUrl : undefined,
           isPreview: false,
           // No in-person mark of its own (MDRS-283): a planned session
-          // follows the course's, as it stands now and after any change.
-          inPersonOverride: null,
+          // follows the course's, as it stands now and after any change. An
+          // exam (MDRS-248) is where it says: in person at its place, else
+          // online.
+          inPersonOverride: batch.exam ? Boolean(batch.exam.location) : null,
           orderIndex,
         };
       });
       const rows = await tx.insert(lessons).values(values).returning();
+      if (batch.exam) {
+        await tx.insert(lessonExams).values(
+          rows.map((row) => ({
+            lessonId: row.id,
+            format: batch.exam?.format ?? ExamFormat.WRITTEN,
+            maxScore: batch.exam?.maxScore ?? EXAM_DEFAULT_MAX_SCORE,
+            topics: batch.exam?.topics ?? null,
+            location: batch.exam?.location ?? null,
+            isRetake: batch.exam?.isRetake ?? false,
+          }))
+        );
+      }
       const weekNumberOf = new Map(touched.map((w) => [w.id, w.weekNumber]));
       return {
         courseVersion: stamp.version,
