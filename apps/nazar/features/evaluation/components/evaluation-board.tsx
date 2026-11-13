@@ -608,8 +608,9 @@ function ScoreRow({
   );
   const [problem, setProblem] = useState<string | null>(null);
   // The score last sent: Enter saves and moves on, and the blur that follows
-  // must not send the same value again.
-  const saved = useRef(draft);
+  // must not send the same value again. Null once the newest send failed, so
+  // whatever is typed next is sent.
+  const saved = useRef<string | null>(draft);
   const name = talebe.name ?? t("unnamed");
   const absent = result?.absent === true;
 
@@ -627,15 +628,15 @@ function ScoreRow({
     }
     setProblem(null);
     if (draft === saved.current) return;
-    const before = saved.current;
     const sent = draft;
     saved.current = sent;
-    // A later score typed since keeps its own place.
+    // A later score typed since keeps its own place. The one before this send
+    // may have failed too, so what tedrisat holds is not known here.
     if (
       !(await onSave({ score: parsed.score, absent: false })) &&
       saved.current === sent
     ) {
-      saved.current = before;
+      saved.current = null;
     }
   };
 

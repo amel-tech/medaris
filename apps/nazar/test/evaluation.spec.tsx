@@ -534,6 +534,42 @@ describe("exams on Değerlendirme", () => {
     expect(document.body.textContent).toContain(tr.saveFailed);
   });
 
+  it("sends a score again once both sends before it failed", async () => {
+    let fail: (value: unknown) => void = () => {};
+    actions.saveExamResult.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          fail = resolve;
+        })
+    );
+    actions.saveExamResult.mockResolvedValue({
+      success: false,
+      code: "INTERNAL",
+    });
+    await mount(boardOf(examResponse()));
+    await open("x-1");
+    // 70 is saved; 85 goes out, and 90 is typed before 85 comes back.
+    await typeInto(scoreBox("t-1"), "85");
+    await key(scoreBox("t-1"), "Enter");
+    scoreBox("t-1").focus();
+    await typeInto(scoreBox("t-1"), "90");
+    await key(scoreBox("t-1"), "Enter");
+    await settle();
+    fail({ success: false, code: "INTERNAL" });
+    await settle(40);
+    expect(actions.saveExamResult).toHaveBeenCalledTimes(2);
+
+    actions.saveExamResult.mockResolvedValue({ success: true, data: {} });
+    scoreBox("t-1").focus();
+    await typeInto(scoreBox("t-1"), "85");
+    await key(scoreBox("t-1"), "Enter");
+    await settle();
+    expect(actions.saveExamResult).toHaveBeenCalledTimes(3);
+    expect(actions.saveExamResult).toHaveBeenLastCalledWith("x-1", "t-1", {
+      score: 85,
+    });
+  });
+
   it("marks Girmedi and opens the results to the talebe", async () => {
     await mount(boardOf(examResponse()));
     await open("x-1");

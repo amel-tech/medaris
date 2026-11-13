@@ -99,11 +99,11 @@ test("the müderris plans an exam with Sınav in the same flow", async ({
   const page = await as("MUDERRIS");
   await page.setViewportSize(desktop);
   await page.goto(`/ders/${fixture?.courseId}/celseler/planla`);
-  await page.getByRole("radio", { name: "Sınav" }).click();
+  await page.getByRole("button", { name: "Sınav", exact: true }).click();
   await expect(page.getByTestId("plan-exam")).toBeVisible();
   // One celse: the weekly repeat is not offered for an exam.
   await expect(
-    page.getByRole("radio", { name: "Haftalık tekrar" })
+    page.getByRole("button", { name: "Haftalık tekrar", exact: true })
   ).toHaveCount(0);
   const day = new Date(Date.now() + 5 * 24 * 3_600_000)
     .toISOString()
