@@ -137,7 +137,7 @@ const get = (path: string, cookie = "") =>
 /** Signs in through the real routes; returns the session cookie. */
 async function signIn(): Promise<string> {
   const start = await handlers.GET(
-    get("/api/auth/signin?callbackUrl=%2Fkosks&locale=en")
+    get("/api/auth/signin?callbackUrl=%2Fkosks&locale=tr")
   );
   const authorize = new URL(start.headers.get("location") as string);
   state.nonce = authorize.searchParams.get("nonce") as string;
@@ -297,7 +297,7 @@ describe("app/api/auth/[...auth]/route.ts", () => {
 
   it("starts a sign-in with PKCE, the registered redirect URI and the visitor's locale", async () => {
     const start = await route.GET(
-      get("/api/auth/signin?callbackUrl=%2Fkosks&locale=ar")
+      get("/api/auth/signin?callbackUrl=%2Fkosks&locale=tr")
     );
     const authorize = new URL(start.headers.get("location") as string);
     expect(authorize.origin + authorize.pathname).toBe(
@@ -307,8 +307,8 @@ describe("app/api/auth/[...auth]/route.ts", () => {
       client_id: CLIENT_ID,
       redirect_uri: `${ORIGIN}/api/auth/callback/keycloak`,
       code_challenge_method: "S256",
-      ui_locales: "ar",
-      kc_locale: "ar",
+      ui_locales: "tr",
+      kc_locale: "tr",
     });
   });
 
@@ -362,14 +362,14 @@ describe("sign-out (POST /api/auth/signout)", () => {
 
   it("ends the session and goes to Keycloak's end-session with the ID token from the cookie, back to NEXTAUTH_URL", async () => {
     const session = await signIn();
-    const response = await signOut(session, "en");
+    const response = await signOut(session, "tr");
     const target = new URL(response.headers.get("location") as string);
     expect(target.origin + target.pathname).toBe(
       `${ISSUER}/protocol/openid-connect/logout`
     );
     expect(target.searchParams.get("id_token_hint")).toMatch(/^ey/);
     expect(target.searchParams.get("post_logout_redirect_uri")).toBe(ORIGIN);
-    expect(target.searchParams.get("ui_locales")).toBe("en");
+    expect(target.searchParams.get("ui_locales")).toBe("tr");
     expect(response.headers.getSetCookie().join("\n")).toMatch(
       /^nizam\.session=;/m
     );

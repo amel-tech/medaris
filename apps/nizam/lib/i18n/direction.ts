@@ -6,7 +6,7 @@ export type TextDirection = "ltr" | "rtl";
  * The routed locales written right to left. Listed rather than asked of
  * `Intl.Locale#getTextInfo`, which not every browser and Node build ships.
  */
-const RIGHT_TO_LEFT: ReadonlySet<MadrasahLocale> = new Set(["ar"]);
+const RIGHT_TO_LEFT: ReadonlySet<string> = new Set(["ar"]);
 
 /**
  * What `<html>` carries for a routed locale (MDRS-230): `lang` so screen
