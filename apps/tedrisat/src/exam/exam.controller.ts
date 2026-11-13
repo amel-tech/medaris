@@ -105,7 +105,7 @@ export class ExamController {
   @ApiOperation({
     summary: "The caller's own grades in a course",
     description:
-      '"Notlarım": only the caller\'s own. Each exam of the course, with the score or "Girmedi" only once its results are opened (`released`), and each memorisation homework with the mark given (null is "Bekliyor"). Read on the terms of `GET /courses/:id/my-submissions`: a course in a passive scope is closed (403 GRADES_FORBIDDEN), and a hidden course is not found.',
+      '"Notlarım": only the caller\'s own. Each exam of the course, with the score or "Girmedi" only once its results are opened (`released`), and each memorisation homework with the mark given (null is "Bekliyor"). Read on the terms of `GET /courses/:id/my-submissions`: a course in a passive scope is closed (403 GRADES_FORBIDDEN), and a hidden course is not found. To a caller the content is closed to (no `course.view_details`: a stranger, a removed or barred talebe) only their own is listed: an exam whose result for them was opened, a homework they were marked on.',
     operationId: "getMyGrades",
   })
   @ApiOkResponse({ type: MyGradesResponse })

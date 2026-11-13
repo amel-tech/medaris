@@ -81,10 +81,17 @@ export class ExamService {
   ): Promise<MyGradesResponse> {
     // A hidden course or a draft is not found here as on its page.
     await this.courses.getDetail(courseId, user, { read: true });
-    if (!(await this.courses.mayReachOwnWriting(user, courseId))) {
+    const contentOpen = await this.courses.contentIsOpen(user, courseId);
+    if (
+      !contentOpen &&
+      !(await this.courses.mayReachOwnWriting(user, courseId))
+    ) {
       throw new GradesForbiddenError();
     }
-    return this.repo.myGrades(courseId, user.sub);
+    // Which sessions are exams or carry homework is content: a caller it is
+    // closed to (a stranger, a removed or barred talebe) reads only their own
+    // released results and given marks.
+    return this.repo.myGrades(courseId, user.sub, { contentOpen });
   }
 
   madrasahSummary(madrasahId: string): Promise<MadrasahExamSummaryResponse[]> {

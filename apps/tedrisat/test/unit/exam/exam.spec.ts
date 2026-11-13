@@ -34,7 +34,7 @@ describe("exams", () => {
       sessionPageUrl: "https://tedris.example/courses/c/lessons/l",
       accountUrl: "https://tedris.example/account",
     });
-    expect(mail.subject).toBe("Sınav yarın: Sarf <b> — Ara sınav");
+    expect(mail.subject).toBe("Yaklaşan sınav: Sarf <b> — Ara sınav");
     expect(mail.text).toContain("https://tedris.example/courses/c/lessons/l");
     expect(mail.html).toContain("Sarf &lt;b&gt;");
     expect(mail.html).not.toContain("<b>");

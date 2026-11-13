@@ -87,7 +87,7 @@ export const examResults = table(
     uniqueIndex("exam_results_exam_user_uq").on(t.examId, t.userId),
     check(
       "exam_results_score_check",
-      sql`(${t.absent} and ${t.score} is null) or (not ${t.absent} and ${t.score} >= 0)`
+      sql`(${t.absent} and ${t.score} is null) or (not ${t.absent} and ${t.score} is not null and ${t.score} >= 0)`
     ),
   ]
 );

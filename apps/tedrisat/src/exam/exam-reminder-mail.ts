@@ -31,7 +31,7 @@ interface Words {
 
 const WORDS: Record<CalendarLocale, Words> = {
   tr: {
-    subject: "Sınav yarın",
+    subject: "Yaklaşan sınav",
     lead: (l, c) => `${c} dersinin “${l}” sınavı yaklaşıyor.`,
     when: "Zaman",
     open: "Sınav celsesini aç",
@@ -40,7 +40,7 @@ const WORDS: Record<CalendarLocale, Words> = {
     turnOff: "Ders e-postalarını Hesap sayfasından kapatabilirsin",
   },
   en: {
-    subject: "Exam tomorrow",
+    subject: "Upcoming exam",
     lead: (l, c) => `The exam “${l}” of ${c} is coming up.`,
     when: "When",
     open: "Open the exam session",
@@ -49,7 +49,7 @@ const WORDS: Record<CalendarLocale, Words> = {
     turnOff: "You can turn lesson e-mails off on your Account page",
   },
   ar: {
-    subject: "الاختبار غدًا",
+    subject: "اختبار قريب",
     lead: (l, c) => `يقترب اختبار «${l}» من درس ${c}.`,
     when: "الموعد",
     open: "افتح حلقة الاختبار",

@@ -1573,7 +1573,7 @@ export class CourseRepository implements ICourseRepository {
         set.duration = legacyDuration(fields.durationMinutes);
       }
       const [current] = await tx
-        .select({ weekId: lessons.weekId })
+        .select({ weekId: lessons.weekId, scheduledAt: lessons.scheduledAt })
         .from(lessons)
         .where(eq(lessons.id, lessonId));
       if (weekId !== undefined && weekId !== current.weekId) {
@@ -1590,8 +1590,12 @@ export class CourseRepository implements ICourseRepository {
         .set(set)
         .where(eq(lessons.id, lessonId))
         .returning();
-      // A moved exam is reminded again a day before its new start (MDRS-248).
-      if (fields.scheduledAt !== undefined) {
+      // A moved exam is reminded again a day before its new start (MDRS-248);
+      // the same start sent again is no move, and reminds no one twice.
+      if (
+        fields.scheduledAt !== undefined &&
+        fields.scheduledAt.getTime() !== current.scheduledAt?.getTime()
+      ) {
         await tx
           .update(lessonExams)
           .set({ remindedAt: null, updatedAt: set.updatedAt })
