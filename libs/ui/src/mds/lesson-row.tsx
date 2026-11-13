@@ -1,6 +1,13 @@
 "use client";
 
-import type { HTMLAttributes, ReactNode } from "react";
+import {
+  type HTMLAttributes,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { cx } from "./cx";
 import {
   formatDate,
@@ -74,6 +81,59 @@ function sessionTimes(startsAt: string, o: TimeOptions): ReactNode[] {
   ];
 }
 
+interface LessonNoteProps {
+  note: string;
+  moreLabel: string;
+  lessLabel: string;
+}
+
+/**
+ * A cancelled session's note: one line, cut with an ellipsis, and a button
+ * that opens the whole note when the line is cut. `title` serves a mouse
+ * alone; the button serves the keyboard and touch, and sits above the row's
+ * full-row link so a tap opens the note rather than the session.
+ */
+function LessonNote({ note, moreLabel, lessLabel }: LessonNoteProps) {
+  const id = useId();
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [open, setOpen] = useState(false);
+  const [cut, setCut] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || open) return;
+    const measure = () => setCut(el.scrollWidth > el.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [open, note]);
+  return (
+    <div className="mds-lesson-row__note-wrap">
+      <p
+        ref={ref}
+        id={id}
+        className={cx("mds-lesson-row__note", open && "is-open")}
+        dir="auto"
+        title={open ? undefined : note}
+      >
+        {note}
+      </p>
+      {cut || open ? (
+        <button
+          type="button"
+          className="mds-lesson-row__note-toggle"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen((was) => !was)}
+        >
+          {open ? lessLabel : moreLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export interface LessonRowProps
   extends Omit<HTMLAttributes<HTMLLIElement>, "title"> {
   title: ReactNode;
@@ -100,8 +160,13 @@ export interface LessonRowProps
   minuteUnit?: string;
   locale?: string;
   trailing?: ReactNode;
-  /** One line under the meta, cut with an ellipsis: a cancelled session's note */
+  /**
+   * One line under the meta, cut with an ellipsis: a cancelled session's note.
+   * When the line is cut, a button opens the whole note.
+   */
   note?: string;
+  noteMoreLabel?: string;
+  noteLessLabel?: string;
 }
 
 /** One lesson of a week: an `<li>` for the `.mds-lesson-list` a WeekAccordion draws. */
@@ -128,6 +193,8 @@ export function LessonRow({
   locale: localeProp,
   trailing,
   note,
+  noteMoreLabel = "Notun tamamı",
+  noteLessLabel = "Notu kısalt",
   className,
   ...rest
 }: LessonRowProps) {
@@ -204,9 +271,11 @@ export function LessonRow({
         )}
         <p className="mds-lesson-row__meta">{joinRun(meta)}</p>
         {note ? (
-          <p className="mds-lesson-row__note" dir="auto" title={note}>
-            {note}
-          </p>
+          <LessonNote
+            note={note}
+            moreLabel={noteMoreLabel}
+            lessLabel={noteLessLabel}
+          />
         ) : null}
       </div>
       {trailing ? (

@@ -125,8 +125,11 @@ export const CourseProgramme = ({
         lockedLabel={t("lessonLocked")}
         minuteUnit={t("minuteUnit")}
         // MDRS-248: a cancelled session keeps its title as it was, beside
-        // the "İptal" badge, with the müderris's note on one line.
+        // the "İptal" badge, with the müderris's note on one line and a
+        // button that opens the whole of a note the line cuts.
         note={(cancelled && lesson.cancelReason?.trim()) || undefined}
+        noteMoreLabel={t("cancelNoteMore")}
+        noteLessLabel={t("cancelNoteLess")}
         trailing={
           cancelled ? (
             <Badge variant="outline">{t("cancelledBadge")}</Badge>

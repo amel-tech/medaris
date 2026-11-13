@@ -267,6 +267,55 @@ describe("schedule (e2e)", () => {
       });
     });
 
+    it("records the cancellation note of a passive course it hands the köşk's nazımı, as content (MDRS-248)", async () => {
+      const course = await createCourse("Notu kalan", {
+        sessions: [{ title: "İptal edilen", at: inHours(30) }],
+      });
+      const db = app.get(DatabaseService).db;
+      await db.insert(enrollments).values({
+        userId: TEST_USER_ID,
+        courseId: course.id,
+        status: EnrollmentStatus.ENROLLED,
+      });
+      await cancel(course.weeks[0].lessons[0].id, "Müderris hasta.");
+      await db
+        .update(roleAssignments)
+        .set({ revokedAt: new Date(), revokedBy: TEST_USER_ID })
+        .where(
+          and(
+            eq(roleAssignments.scopeId, course.id),
+            eq(roleAssignments.role, ASSIGNED_ROLES.MUDERRIS)
+          )
+        );
+
+      const mine = await request(app.getHttpServer())
+        .get("/sessions")
+        .query(window(-1, 7))
+        .expect(200);
+      expect(
+        mine.body.map(
+          (s: { meetingUrl: string | null; cancelReason: string | null }) => [
+            s.meetingUrl,
+            s.cancelReason,
+          ]
+        )
+      ).toEqual([[null, "Müderris hasta."]]);
+
+      // No link went out, but the note did: it is content (MDRS-158), and is
+      // recorded under the permission that shows it.
+      const audited = await db
+        .select()
+        .from(auditLog)
+        .where(eq(auditLog.entityId, course.id))
+        .orderBy(auditLog.seq);
+      expect(
+        audited.map((r) => [r.action, r.details.via, r.details.permission])
+      ).toEqual([
+        ["scope.passive_open", "schedule", "course.view_details"],
+        ["course.content_read", "schedule", "course.view_details"],
+      ]);
+    });
+
     it("keeps a cancelled session, marked, with no meeting link", async () => {
       const course = await createCourse("Emsile ve Bina", {
         sessions: [

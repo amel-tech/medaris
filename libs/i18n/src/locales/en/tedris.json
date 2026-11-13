@@ -107,6 +107,8 @@
     "lessonCurrent": "Next",
     "lessonCurrentLive": "Next · Live now",
     "cancelledBadge": "Cancelled",
+    "cancelNoteMore": "Show the whole note",
+    "cancelNoteLess": "Shorten the note",
     "sampleHeading": "Sample session",
     "sampleMark": "Sample session",
     "sampleIntro": "You can read this session's outline and sources without enrolling.",

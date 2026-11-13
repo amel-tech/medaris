@@ -112,6 +112,51 @@ describe("ScheduleService (MDRS-163)", () => {
           courseId: "course-1",
           courseTitle: "Emsile ve Bina",
           passiveScope: { type: "course", id: "course-1" },
+          permission: "session.live_link",
+        },
+      ],
+      "schedule"
+    );
+  });
+
+  it("records a passive course whose cancellation note it hands out, under the permission that shows it (MDRS-248)", async () => {
+    const passive = new Map([
+      ["course-1", { type: "course", id: "course-1" }],
+      ["course-2", { type: "course", id: "course-2" }],
+    ]);
+    const { service, repo } = serviceWith(
+      [
+        row({ id: "ahead" }),
+        row({
+          id: "off",
+          cancelledAt: new Date("2026-10-01T10:00:00.000Z"),
+          cancelReason: "Müderris hasta.",
+        }),
+        row({
+          id: "off-silent",
+          courseId: "course-2",
+          cancelledAt: new Date("2026-10-01T10:00:00.000Z"),
+        }),
+      ],
+      passive
+    );
+    await service.list("u", "2026-10-03", "2026-10-10", NOW);
+    // course-2 handed out neither a link nor a note.
+    expect(repo.passiveScopesOf).toHaveBeenCalledWith(["course-1"]);
+    expect(repo.recordPassiveOpens).toHaveBeenCalledWith(
+      "u",
+      [
+        {
+          courseId: "course-1",
+          courseTitle: "Emsile ve Bina",
+          passiveScope: { type: "course", id: "course-1" },
+          permission: "session.live_link",
+        },
+        {
+          courseId: "course-1",
+          courseTitle: "Emsile ve Bina",
+          passiveScope: { type: "course", id: "course-1" },
+          permission: "course.view_details",
         },
       ],
       "schedule"

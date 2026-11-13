@@ -863,7 +863,7 @@ describe("session page, the main card: cancelled (design tedris/18, MDRS-289)", 
     expect(html).not.toContain("Telafi celsesi");
   });
 
-  it("writes the müderris's note above the replacement, on one line (MDRS-248)", async () => {
+  it("writes the müderris's note above the replacement, whole (MDRS-248)", async () => {
     const html = card(
       await render(cancelled({ cancelReason: "Bu hafta ders yapılmayacak." }))
     );

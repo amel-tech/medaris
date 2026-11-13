@@ -117,11 +117,12 @@ const ATTENDANCE = sql`${inPersonSql({
  *   counts as gone without anyone touching the row;
  * - the seat is ENROLLED, and its holder is barred by no open ban on the
  *   course, its köşk or its medrese (MDRS-113).
+ *
+ * Everything after the first point is `SEAT_OPEN`: whether the talebe may
+ * still open the course at all, whatever became of the session.
  */
-const SHOULD_HOLD = sql`(
-  l.scheduled_at > now()
-  and l.cancelled_at is null and l.archived_at is null and w.archived_at is null
-  and c.status = ${CourseStatus.PUBLISHED} and c.archived_at is null
+const SEAT_OPEN = sql`(
+  c.status = ${CourseStatus.PUBLISHED} and c.archived_at is null
   and k.archived_at is null and c.passive_since is null
   and not (
     ${isPassiveScope(ASSIGNED_ROLES.MUDERRIS, sql`c.id`)}
@@ -133,6 +134,24 @@ const SHOULD_HOLD = sql`(
                and ((b.scope = 'COURSE' and b.course_id = c.id)
                  or (b.scope = 'KOSK' and b.kosk_id = c.kosk_id)
                  or (c.madrasah_id is not null and b.madrasah_id = c.madrasah_id))))`;
+
+const SHOULD_HOLD = sql`(
+  l.scheduled_at > now()
+  and l.cancelled_at is null and l.archived_at is null and w.archived_at is null
+  and ${SEAT_OPEN})`;
+
+/**
+ * The note a CANCEL carries (MDRS-248): the müderris's reason, only when the
+ * session itself was cancelled and the talebe could still read it on tedris —
+ * the session and its week not hidden, and the seat still open. A talebe who
+ * was removed, barred or whose course turned passive is still sent the
+ * CANCEL, without the note: it is course content they no longer hold.
+ */
+const CANCEL_NOTE = sql`case
+               when l.cancelled_at is not null and l.archived_at is null
+                and w.archived_at is null and coalesce(${SEAT_OPEN}, false)
+               then l.cancel_reason
+             end`;
 
 /**
  * Who may be e-mailed at all: a verified address, and invitations not turned
@@ -210,7 +229,7 @@ export class LessonInvitationRepository {
              inv.course_id, inv.course_title, inv.lesson_title,
              inv.starts_at, inv.duration_minutes,
              inv.sequence as last_sequence, false as last_cancelled,
-             case when l.cancelled_at is not null then l.cancel_reason end as cancel_reason,
+             ${CANCEL_NOTE} as cancel_reason,
              ${ATTENDANCE}
         from lesson_invitations inv
         join users u on u.id = inv.user_id

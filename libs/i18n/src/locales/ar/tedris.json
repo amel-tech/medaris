@@ -107,6 +107,8 @@
     "lessonCurrent": "التالية",
     "lessonCurrentLive": "التالية · مباشر الآن",
     "cancelledBadge": "أُلغيت",
+    "cancelNoteMore": "عرض الملاحظة كاملة",
+    "cancelNoteLess": "اختصار الملاحظة",
     "sampleHeading": "جلسة نموذجية",
     "sampleMark": "جلسة نموذجية",
     "sampleIntro": "يمكنك قراءة مخطط هذه الجلسة ومصادرها دون التسجيل.",

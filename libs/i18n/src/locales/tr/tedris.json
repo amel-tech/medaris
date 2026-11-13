@@ -107,6 +107,8 @@
     "lessonCurrent": "Sıradaki",
     "lessonCurrentLive": "Sıradaki · Şu an canlı",
     "cancelledBadge": "İptal edildi",
+    "cancelNoteMore": "Notun tamamı",
+    "cancelNoteLess": "Notu kısalt",
     "sampleHeading": "Örnek celse",
     "sampleMark": "Örnek celse",
     "sampleIntro": "Bu celseyi kaydolmadan izleyebilir, celse akışını ve kaynaklarını okuyabilirsin.",

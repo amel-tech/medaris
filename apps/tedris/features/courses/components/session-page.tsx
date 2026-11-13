@@ -155,8 +155,9 @@ export const SessionPage = async ({
       />
     ) : null;
 
-  // MDRS-248: the note the müderris wrote for talebe when cancelling, one
-  // line above what follows from the cancellation.
+  // MDRS-248: the note the müderris wrote for talebe when cancelling, whole,
+  // above what follows from the cancellation. This page is where the note is
+  // read in full: it is never cut here.
   const cancelNote = cancelled ? session.cancelReason?.trim() || null : null;
   const afterCancel: ReactNode = cancelled ? (
     replacement?.startsAt ? (
@@ -185,9 +186,8 @@ export const SessionPage = async ({
   const cancellation: ReactNode = cancelNote ? (
     <>
       <span
-        className="block truncate"
+        className="block whitespace-pre-line break-words"
         dir="auto"
-        title={cancelNote}
         data-testid="cancel-note"
       >
         {t("SessionPage.cancelNote", { note: cancelNote })}
