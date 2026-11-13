@@ -111,6 +111,12 @@ export interface ScheduleSessionResponse {
      * @memberof ScheduleSessionResponse
      */
     hasLiveStream: boolean;
+    /**
+     * The celse is an exam ("Sınav", MDRS-248): the schedule and the home page mark it.
+     * @type {boolean}
+     * @memberof ScheduleSessionResponse
+     */
+    isExam: boolean;
 }
 
 
@@ -133,6 +139,7 @@ export function instanceOfScheduleSessionResponse(value: object): value is Sched
     if (!('meetingUrl' in value) || value['meetingUrl'] === undefined) return false;
     if (!('inPerson' in value) || value['inPerson'] === undefined) return false;
     if (!('hasLiveStream' in value) || value['hasLiveStream'] === undefined) return false;
+    if (!('isExam' in value) || value['isExam'] === undefined) return false;
     return true;
 }
 
@@ -160,6 +167,7 @@ export function ScheduleSessionResponseFromJSONTyped(json: any, ignoreDiscrimina
         'meetingUrl': json['meetingUrl'],
         'inPerson': json['inPerson'],
         'hasLiveStream': json['hasLiveStream'],
+        'isExam': json['isExam'],
     };
 }
 
@@ -188,6 +196,7 @@ export function ScheduleSessionResponseToJSONTyped(value?: ScheduleSessionRespon
         'meetingUrl': value['meetingUrl'],
         'inPerson': value['inPerson'],
         'hasLiveStream': value['hasLiveStream'],
+        'isExam': value['isExam'],
     };
 }
 

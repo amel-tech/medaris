@@ -67,7 +67,7 @@ export async function CoursesPage({
   madrasahId: string;
   filters: Filters;
 }) {
-  const [t, locale, me, medrese, courses, hosting] = await Promise.all([
+  const [t, locale, me, medrese, courses, hosting, exams] = await Promise.all([
     getMessages("nazar"),
     getLocale(),
     getViewer(),
@@ -81,6 +81,10 @@ export async function CoursesPage({
     ),
     readOnce("the medrese's hosting köşks", (api) =>
       api.madrasahs.getMadrasahHostingKosks({ id: madrasahId })
+    ),
+    // MDRS-248: how its courses' exams went; a side card, left out on failure.
+    readOnce("the medrese's exam summary", (api) =>
+      api.exams.getMadrasahExamSummary({ id: madrasahId })
     ),
   ]);
   const timeZone = resolveTimeZone(me?.timeZone, DEFAULT_TIME_ZONE);
@@ -184,6 +188,45 @@ export async function CoursesPage({
               )}
               <p>{t("Courses.hosts.text")}</p>
             </SideCard>
+            {exams.status === "ok" ? (
+              <SideCard
+                id="exam-summary-heading"
+                title={t("Courses.examSummaryTitle")}
+              >
+                {exams.data.length === 0 ? (
+                  <p>{t("Courses.examSummaryEmpty")}</p>
+                ) : (
+                  <ul className="flex flex-col" data-testid="exam-summary">
+                    {exams.data.map((row) => (
+                      <li
+                        key={row.courseId}
+                        className="flex flex-col py-3 border-be border-neutral-subtle last:border-be-0"
+                      >
+                        <bdi className="font-medium">{row.courseTitle}</bdi>
+                        <span className="mds-caption">
+                          {t("Courses.examSummaryRow", {
+                            exams: row.examCount,
+                            taken: row.takenCount,
+                            absent: row.absentCount,
+                          })}
+                          <span className="mds-sep" aria-hidden="true">
+                            ·
+                          </span>
+                          {row.averagePercent === null ||
+                          row.averagePercent === undefined
+                            ? t("Courses.examSummaryNoAverage")
+                            : t("Courses.examSummaryAverage", {
+                                average: new Intl.NumberFormat(locale, {
+                                  maximumFractionDigits: 1,
+                                }).format(row.averagePercent),
+                              })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SideCard>
+            ) : null}
             <SideCard id="outside-heading" title={t("Courses.outside.title")}>
               <p>{t("Courses.outside.text")}</p>
             </SideCard>

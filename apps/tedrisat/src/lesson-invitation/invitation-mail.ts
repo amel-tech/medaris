@@ -3,6 +3,7 @@ import {
   type CalendarAttendanceKind,
   type CalendarLocale,
   calendarAttendanceKind,
+  lessonCalendarSummary,
 } from "../course/calendar/lesson-calendar";
 
 /**
@@ -32,6 +33,8 @@ export interface InvitationMailInput {
   sessionPageUrl: string;
   /** How the session is attended, for the line under the link (MDRS-283). */
   attendance: CalendarAttendance;
+  /** Planned as "Sınav" (MDRS-248): the subject says so. */
+  isExam?: boolean;
   /** Hesap, where the invitations are turned off. */
   accountUrl: string;
   /**
@@ -210,7 +213,7 @@ export const buildInvitationMail = (
       : when;
   // One line, no newline a header could be split at.
   const subject =
-    `${w.subject[input.kind]}: ${input.courseTitle} — ${input.lessonTitle}`
+    `${w.subject[input.kind]}: ${lessonCalendarSummary(input.courseTitle, input.lessonTitle, input.isExam ? { locale: input.locale } : null)}`
       .replace(/[\r\n]+/g, " ")
       .trim();
 

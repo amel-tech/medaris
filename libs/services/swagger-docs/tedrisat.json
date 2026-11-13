@@ -5185,7 +5185,7 @@
     },
     "/lessons/{id}/assignment": {
       "put": {
-        "description": "Gives the session homework if it has none (\"Bu celsenin ödevi var\"), written to `audit_log` as `lesson_assignment.create`; otherwise changes its description (`lesson_assignment.update`; a save that changes nothing writes nothing). The audit row carries the description's length, not its text. `session.manage`, the permission that edits the session's resources, on a live session of a course the caller may write to: a hidden session answers LESSON_NOT_FOUND. The course's version is not bumped: the homework is not part of `PUT /courses/:id`.",
+        "description": "Gives the session homework if it has none (\"Bu celsenin ödevi var\"), written to `audit_log` as `lesson_assignment.create`; otherwise changes its description or how it is handed in (`kind`), as `lesson_assignment.update` (a save that changes nothing writes nothing). The audit row carries the description's length, not its text. `session.manage`, the permission that edits the session's resources, on a live session of a course the caller may write to: a hidden session answers LESSON_NOT_FOUND. The course's version is not bumped: the homework is not part of `PUT /courses/:id`.",
         "operationId": "saveLessonAssignment",
         "parameters": [
           {
@@ -6240,7 +6240,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are listed. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -6281,7 +6281,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are counted. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -6321,7 +6321,7 @@
             "name": "types",
             "required": false,
             "in": "query",
-            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
+            "description": "Comma separated; only these types are marked read. Any of ENROLLMENT_APPROVED, ENROLLMENT_REJECTED, REMOVED_FROM_COURSE, COURSE_ACCESS_REMOVED, SESSION_RESCHEDULED, SESSION_CANCELLED, SESSION_ADDED, RECORDING_ADDED, KOSK_APPLICATION_RESULT, DECK_PUBLISH_RESULT, SUBMISSION_REVIEWED, EXAM_SCHEDULED, EXAM_REMINDER, EXAM_RESULTS_RELEASED, COURSE_BAN_PLACED, KOSK_BAN_PLACED.",
             "schema": {
               "type": "string"
             }
@@ -9772,7 +9772,7 @@
     },
     "/lessons/{id}/submission/files": {
       "post": {
-        "description": "Makes the homework if there is none yet; at most 10 files (409 SUBMISSION_FILE_LIMIT). The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
+        "description": "Makes the homework if there is none yet; at most 10 files (409 SUBMISSION_FILE_LIMIT). A session whose homework is recited to the müderris (`kind` MEMORIZE) takes no file: 409 SUBMISSION_FILES_NOT_TAKEN. The file is the multipart field `file`: at most 25 MB (413 FILE_TOO_LARGE) and a PDF, PNG, JPEG, WebP, Word (docx), Excel (xlsx), PowerPoint (pptx) or plain UTF-8 text file as read from its bytes (415 FILE_TYPE_NOT_ALLOWED). Its name is sanitised and kept as a label; it is stored under a key tedrisat makes. Written to `audit_log` as `submission.file_upload`. A talebe enrolled in the course (ENROLLED or COMPLETED, not barred) while its content is open, on a live session: anyone else is 403 SUBMISSION_FORBIDDEN, a hidden session 404. There is no deadline.",
         "operationId": "addMySubmissionFile",
         "parameters": [
           {
@@ -9824,7 +9824,7 @@
             "description": "LESSON_NOT_FOUND"
           },
           "409": {
-            "description": "SUBMISSION_FILE_LIMIT"
+            "description": "SUBMISSION_FILE_LIMIT, SUBMISSION_FILES_NOT_TAKEN"
           },
           "413": {
             "description": "FILE_TOO_LARGE"
@@ -10360,6 +10360,409 @@
         "summary": "Download a review file, as the course's staff",
         "tags": [
           "submissions"
+        ]
+      }
+    },
+    "/courses/{id}/evaluations": {
+      "get": {
+        "description": "`session.manage` on the course. Rows are the talebe seated in the course (ENROLLED or COMPLETED), by name; columns are the memorisation homework on its live sessions (`kind` MEMORIZE), in programme order, each with how many are marked FULL (\"18/30 tam\"); `marks` are the marks given, and a cell with none is \"Bekliyor\". A hidden course or a draft is not found, as on its page.",
+        "operationId": "getEvaluationBoard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationBoardResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's evaluation board",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/courses/{id}/evaluations/export": {
+      "get": {
+        "description": "\"Excel indir\" (MDRS-248): `session.manage` on the course, as the board. An .xlsx with a row per talebe (\"Ad Soyad\") and a column per memorisation homework and exam, in programme order: a mark, or a score or \"Girmedi\". `lang` (tr, en or ar; tr otherwise) picks the language of the headers and the words.",
+        "operationId": "exportEvaluationBoard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lang",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "tr",
+                "en",
+                "ar"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The course's evaluation board as a spreadsheet",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/lessons/{id}/evaluations/{userId}": {
+      "put": {
+        "description": "`session.manage` on the course, on a live session whose homework is recited (`kind` MEMORIZE; otherwise 404 MEMORIZATION_NOT_FOUND), for a talebe seated in its course (otherwise 404 EVALUATION_TALEBE_NOT_FOUND). Sets \"Tam\", \"Eksik\" or \"Vermedi\" with an optional short note, replacing an earlier mark; written to `audit_log` as `assignment_evaluation.save` with the note's length. A save that changes nothing writes nothing. A hidden session is LESSON_NOT_FOUND.",
+        "operationId": "saveEvaluation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveEvaluationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationMarkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, MEMORIZATION_NOT_FOUND, EVALUATION_TALEBE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a talebe on a session's memorisation homework",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/lessons/{id}/evaluation": {
+      "get": {
+        "description": "Only the caller's own: `status` null is \"Bekliyor\". Read on the terms of `GET /lessons/:id/submission`: a course in a passive scope is closed (403 EVALUATION_FORBIDDEN), and a hidden course is as not found as a session that is not there. A session whose homework is not a memorisation is 404 MEMORIZATION_NOT_FOUND.",
+        "operationId": "getMyEvaluation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnEvaluationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "EVALUATION_FORBIDDEN"
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, MEMORIZATION_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own mark on a session's memorisation homework",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/lessons/{id}/exam-results/{userId}": {
+      "put": {
+        "description": "`session.manage` on the course, on a live exam celse (otherwise 404 EXAM_NOT_FOUND), for a talebe seated in its course (otherwise 404 EXAM_TALEBE_NOT_FOUND). A whole score from 0 to the exam's `maxScore`, or `absent` (\"Girmedi\") with none; a score above `maxScore`, below 0 or missing is 400 EXAM_SCORE_OUT_OF_RANGE. Replaces an earlier result; written to `audit_log` as `exam_result.save`. A save that changes nothing writes nothing. The talebe reads it only once the results are opened.",
+        "operationId": "saveExamResult",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveExamResultDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamResultResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Field validation, EXAM_SCORE_OUT_OF_RANGE"
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, EXAM_NOT_FOUND, EXAM_TALEBE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enter a talebe's result on an exam",
+        "tags": [
+          "exams"
+        ]
+      }
+    },
+    "/lessons/{id}/exam-results/release": {
+      "post": {
+        "description": "\"Sonuçları talebelere aç\": `session.manage` on the course. From then on each talebe reads their own score on `GET /courses/:id/my-grades`; before it, nobody but the course team does. Once only: opening them again changes nothing and tells nobody. The first time, the course's talebe are told (`EXAM_RESULTS_RELEASED`) and it is written to `audit_log` as `exam.release`.",
+        "operationId": "releaseExamResults",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExamReleaseResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No `session.manage` on the course."
+          },
+          "404": {
+            "description": "LESSON_NOT_FOUND, EXAM_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open an exam's results to its talebe",
+        "tags": [
+          "exams"
+        ]
+      }
+    },
+    "/courses/{id}/my-grades": {
+      "get": {
+        "description": "\"Notlarım\": only the caller's own. Each exam of the course, with the score or \"Girmedi\" only once its results are opened (`released`), and each memorisation homework with the mark given (null is \"Bekliyor\"). Read on the terms of `GET /courses/:id/my-submissions`: a course in a passive scope is closed (403 GRADES_FORBIDDEN), and a hidden course is not found. To a caller the content is closed to (no `course.view_details`: a stranger, a removed or barred talebe) only their own is listed: an exam whose result for them was opened, a homework they were marked on.",
+        "operationId": "getMyGrades",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyGradesResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "GRADES_FORBIDDEN"
+          },
+          "404": {
+            "description": "COURSE_NOT_FOUND"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The caller's own grades in a course",
+        "tags": [
+          "exams"
+        ]
+      }
+    },
+    "/madrasahs/{id}/exam-summary": {
+      "get": {
+        "description": "For whoever reads the medrese's courses (`GET /madrasahs/:id/courses`): each course of the medrese holding an exam, with how many results were entered with a score and as \"Girmedi\", and the mean score as a share of each exam's `maxScore`. Counts only; no talebe is named.",
+        "operationId": "getMadrasahExamSummary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MadrasahExamSummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "How the medrese's courses' exams went",
+        "tags": [
+          "exams"
         ]
       }
     },
@@ -17830,6 +18233,14 @@
           "orderIndex"
         ]
       },
+      "AssignmentKind": {
+        "type": "string",
+        "enum": [
+          "FILE",
+          "MEMORIZE"
+        ],
+        "description": "How the talebe hand it in: FILE, uploaded on the session page, or MEMORIZE, recited to the müderris and marked by the course team."
+      },
       "LessonAssignmentFileResponse": {
         "type": "object",
         "properties": {
@@ -17886,6 +18297,14 @@
             "nullable": true,
             "description": "Plain text as typed; null when there is none."
           },
+          "kind": {
+            "description": "How the talebe hand it in: FILE, uploaded on the session page, or MEMORIZE, recited to the müderris and marked by the course team.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentKind"
+              }
+            ]
+          },
           "files": {
             "description": "Oldest first.",
             "type": "array",
@@ -17907,9 +18326,60 @@
           "id",
           "lessonId",
           "description",
+          "kind",
           "files",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "ExamFormat": {
+        "type": "string",
+        "enum": [
+          "WRITTEN",
+          "ORAL"
+        ]
+      },
+      "LessonExamResponse": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamFormat"
+              }
+            ]
+          },
+          "maxScore": {
+            "type": "number",
+            "example": 100
+          },
+          "topics": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Where it is held in person; null when online."
+          },
+          "isRetake": {
+            "type": "boolean",
+            "description": "\"Telafi\""
+          },
+          "resultsReleasedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the results were opened to the talebe; null while they are closed."
+          }
+        },
+        "required": [
+          "format",
+          "maxScore",
+          "topics",
+          "location",
+          "isRetake",
+          "resultsReleasedAt"
         ]
       },
       "LessonResponse": {
@@ -18011,6 +18481,16 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/LessonAssignmentResponse"
+              }
+            ]
+          },
+          "exam": {
+            "nullable": true,
+            "description": "What makes the session an exam (\"Sınav\", MDRS-248); null when it is not one. Course content, like `assignment`: absent unless the caller holds `view_details` on the course. Carried by the course read, never by a session write's answer.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonExamResponse"
               }
             ]
           }
@@ -19537,6 +20017,16 @@
               }
             ]
           },
+          "exam": {
+            "nullable": true,
+            "description": "What makes the session an exam (\"Sınav\", MDRS-248); null when it is not one. Course content: absent unless the caller holds `view_details` on the course (MDRS-103).",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonExamResponse"
+              }
+            ]
+          },
           "recording": {
             "nullable": true,
             "description": "Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING, and before its `availableAt` for anyone but the course team (MDRS-288).",
@@ -19840,6 +20330,16 @@
               }
             ]
           },
+          "exam": {
+            "nullable": true,
+            "description": "What makes the session an exam (\"Sınav\", MDRS-248); null when it is not one. Course content, like `assignment`: absent unless the caller holds `view_details` on the course. Carried by the course read, never by a session write's answer.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonExamResponse"
+              }
+            ]
+          },
           "courseVersion": {
             "type": "number",
             "description": "The course version this write produced; send it with the next PUT /courses/:id or PATCH /lessons/:id."
@@ -19947,6 +20447,45 @@
           "sessions"
         ]
       },
+      "SessionExamDto": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "default": "WRITTEN",
+            "description": "\"Yazılı\" (WRITTEN, the default) or \"Şifahi\" (ORAL).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamFormat"
+              }
+            ]
+          },
+          "maxScore": {
+            "type": "number",
+            "example": 100,
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 100,
+            "description": "\"Tam puan\": the highest score a talebe can be given."
+          },
+          "topics": {
+            "type": "string",
+            "nullable": true,
+            "example": "Emsile, birinci ve ikinci bab",
+            "description": "\"Konular\", plain text, at most 2000 characters after trimming; blank is none."
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "example": "Medrese, 2. sınıf",
+            "description": "Where it is held in person, at most 200 characters; the celse is then marked in person. Null or blank: held online, at the celse's meeting link."
+          },
+          "isRetake": {
+            "type": "boolean",
+            "default": false,
+            "description": "\"Telafi\": a make-up of an earlier exam of the course; its results are a column of their own."
+          }
+        }
+      },
       "CreateSessionBatchDto": {
         "type": "object",
         "properties": {
@@ -20003,6 +20542,14 @@
             "type": "string",
             "example": "https://meet.google.com/bqx-mfzn-rde",
             "description": "Set on the first session only. Links change every week, so the others start empty."
+          },
+          "exam": {
+            "description": "\"Sınav\" (MDRS-248): the celse is planned as an exam. The pattern must give exactly one session (else 400 EXAM_ONE_SESSION); it is a LIVE session like any other, marked in person when `location` is given and online when not.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SessionExamDto"
+              }
+            ]
           }
         },
         "required": [
@@ -20136,6 +20683,16 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/LessonAssignmentResponse"
+              }
+            ]
+          },
+          "exam": {
+            "nullable": true,
+            "description": "What makes the session an exam (\"Sınav\", MDRS-248); null when it is not one. Course content, like `assignment`: absent unless the caller holds `view_details` on the course. Carried by the course read, never by a session write's answer.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LessonExamResponse"
               }
             ]
           },
@@ -20562,6 +21119,15 @@
             "nullable": true,
             "example": "Birinci babın çekimlerini yazın, fotoğrafını yükleyin.",
             "description": "What the talebe are to do, plain text with line breaks, at most 4000 characters after trimming; null, absent or blank is none. Stored as typed and never rendered as HTML."
+          },
+          "kind": {
+            "example": "FILE",
+            "description": "How the talebe hand it in (\"Teslim şekli\"): FILE, files uploaded on the session page, or MEMORIZE, recited to the müderris and marked on \"Değerlendirme\", where the talebe upload nothing (`POST /lessons/:id/submission/files` answers 409 SUBMISSION_FILES_NOT_TAKEN). Absent keeps what the homework has, FILE for new homework. Changing it keeps the talebe's submissions and the marks given.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentKind"
+              }
+            ]
           }
         }
       },
@@ -21229,6 +21795,9 @@
               "KOSK_APPLICATION_RESULT",
               "DECK_PUBLISH_RESULT",
               "SUBMISSION_REVIEWED",
+              "EXAM_SCHEDULED",
+              "EXAM_REMINDER",
+              "EXAM_RESULTS_RELEASED",
               "COURSE_BAN_PLACED",
               "KOSK_BAN_PLACED"
             ],
@@ -24094,6 +24663,10 @@
             "type": "boolean",
             "description": "The course team set homework on the session (`PUT /lessons/:id/assignment`)."
           },
+          "isMemorization": {
+            "type": "boolean",
+            "description": "Its homework is recited to the müderris (`kind` MEMORIZE): the talebe hand nothing in on it, and it is marked on \"Değerlendirme\" (`GET /courses/:id/evaluations`) instead, so `handedInCount` says nothing about it."
+          },
           "handedInCount": {
             "type": "number",
             "description": "How many of the course's enrolled talebe (ENROLLED or COMPLETED) handed homework in on the session: a submission with a note or at least one file. The \"N\" of \"N / M teslim\", against `talebeCount`."
@@ -24102,6 +24675,7 @@
         "required": [
           "lessonId",
           "hasAssignment",
+          "isMemorization",
           "handedInCount"
         ]
       },
@@ -24143,6 +24717,473 @@
             "description": "The reviewer's note to the talebe, at most 4000 characters after trimming; null, absent or blank leaves none, which needs at least one review file. Stored as typed and never rendered as HTML."
           }
         }
+      },
+      "EvaluationColumnKind": {
+        "type": "string",
+        "enum": [
+          "MEMORIZE",
+          "EXAM"
+        ],
+        "description": "What the column is; skip a kind you do not know."
+      },
+      "EvaluationExamColumnResponse": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExamFormat"
+              }
+            ]
+          },
+          "maxScore": {
+            "type": "number",
+            "example": 100,
+            "description": "\"Tam puan\""
+          },
+          "isRetake": {
+            "type": "boolean",
+            "description": "\"Telafi\""
+          },
+          "resultsReleasedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the results were opened to the talebe; null while closed."
+          }
+        },
+        "required": [
+          "format",
+          "maxScore",
+          "isRetake",
+          "resultsReleasedAt"
+        ]
+      },
+      "EvaluationColumnResponse": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "description": "What the column is; skip a kind you do not know.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationColumnKind"
+              }
+            ]
+          },
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The session it was set on."
+          },
+          "title": {
+            "type": "string",
+            "example": "Emsile, birinci bab"
+          },
+          "weekNumber": {
+            "type": "number",
+            "example": 1
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true,
+            "description": "When the session is held; null when it has no time."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "The homework's description, plain text; null when none."
+          },
+          "fullCount": {
+            "type": "number",
+            "example": 18,
+            "description": "MEMORIZE: seated talebe marked FULL, \"18/30 tam\". EXAM: seated talebe whose result is entered, a score or \"Girmedi\"."
+          },
+          "exam": {
+            "nullable": true,
+            "description": "Set on an EXAM column; null on any other.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationExamColumnResponse"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "lessonId",
+          "title",
+          "weekNumber",
+          "scheduledAt",
+          "description",
+          "fullCount"
+        ]
+      },
+      "EvaluationTalebeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Their name, else their e-mail; null for an account tedrisat has not seen sign in."
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "EvaluationStatus": {
+        "type": "string",
+        "enum": [
+          "FULL",
+          "INCOMPLETE",
+          "ABSENT"
+        ]
+      },
+      "EvaluationMarkResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The column's session."
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The talebe marked."
+          },
+          "status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationStatus"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When it was last changed."
+          }
+        },
+        "required": [
+          "lessonId",
+          "userId",
+          "status",
+          "note",
+          "updatedAt"
+        ]
+      },
+      "ExamResultResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The exam's session."
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "score": {
+            "type": "number",
+            "nullable": true
+          },
+          "absent": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lessonId",
+          "userId",
+          "score",
+          "absent",
+          "updatedAt"
+        ]
+      },
+      "EvaluationBoardResponse": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "description": "In programme order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvaluationColumnResponse"
+            }
+          },
+          "talebe": {
+            "description": "Every talebe seated in the course (ENROLLED or COMPLETED), by name.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvaluationTalebeResponse"
+            }
+          },
+          "marks": {
+            "description": "The marks given to the talebe above; none is Bekliyor.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvaluationMarkResponse"
+            }
+          },
+          "results": {
+            "description": "The exam results entered for the talebe above (MDRS-248); none is not entered yet.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExamResultResponse"
+            }
+          }
+        },
+        "required": [
+          "columns",
+          "talebe",
+          "marks",
+          "results"
+        ]
+      },
+      "SaveEvaluationDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "example": "FULL",
+            "description": "\"Tam\" (FULL), \"Eksik\" (INCOMPLETE) or \"Vermedi\" (ABSENT).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationStatus"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "example": "Son iki satır eksik.",
+            "description": "An optional short note, at most 280 characters after trimming; null, absent or blank is none. The talebe reads it with the mark. Stored as typed and never rendered as HTML."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "OwnEvaluationResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "nullable": true,
+            "description": "null while the course team has not marked it: \"Bekliyor\".",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationStatus"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "note",
+          "updatedAt"
+        ]
+      },
+      "SaveExamResultDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "nullable": true,
+            "example": 85,
+            "description": "A whole number from 0 to the exam's `maxScore`; null with `absent`. A score above it is 400 EXAM_SCORE_OUT_OF_RANGE."
+          },
+          "absent": {
+            "type": "boolean",
+            "default": false,
+            "description": "\"Girmedi\": the talebe did not sit it; no score is kept."
+          }
+        }
+      },
+      "ExamReleaseResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resultsReleasedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lessonId",
+          "resultsReleasedAt"
+        ]
+      },
+      "OwnExamGradeResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "maxScore": {
+            "type": "number"
+          },
+          "isRetake": {
+            "type": "boolean"
+          },
+          "released": {
+            "type": "boolean",
+            "description": "Whether the course team opened the results; `score` and `absent` are null until then, whatever was entered."
+          },
+          "score": {
+            "type": "number",
+            "nullable": true
+          },
+          "absent": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "\"Girmedi\"; null while closed or not entered."
+          }
+        },
+        "required": [
+          "lessonId",
+          "title",
+          "weekNumber",
+          "scheduledAt",
+          "maxScore",
+          "isRetake",
+          "released",
+          "score",
+          "absent"
+        ]
+      },
+      "OwnMemorizationGradeResponse": {
+        "type": "object",
+        "properties": {
+          "lessonId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "weekNumber": {
+            "type": "number"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "nullable": true,
+            "description": "null is \"Bekliyor\".",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationStatus"
+              }
+            ]
+          }
+        },
+        "required": [
+          "lessonId",
+          "title",
+          "weekNumber",
+          "scheduledAt",
+          "status"
+        ]
+      },
+      "MyGradesResponse": {
+        "type": "object",
+        "properties": {
+          "exams": {
+            "description": "In programme order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnExamGradeResponse"
+            }
+          },
+          "memorizations": {
+            "description": "In programme order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwnMemorizationGradeResponse"
+            }
+          }
+        },
+        "required": [
+          "exams",
+          "memorizations"
+        ]
+      },
+      "MadrasahExamSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseTitle": {
+            "type": "string"
+          },
+          "examCount": {
+            "type": "number",
+            "description": "Exam celses held in the course."
+          },
+          "takenCount": {
+            "type": "number",
+            "description": "Results entered with a score (not \"Girmedi\"), over its exams."
+          },
+          "absentCount": {
+            "type": "number",
+            "description": "Results entered as \"Girmedi\", over its exams."
+          },
+          "averagePercent": {
+            "type": "number",
+            "nullable": true,
+            "description": "The mean score as a percentage of each exam's `maxScore`, one decimal; null when nothing was entered."
+          }
+        },
+        "required": [
+          "courseId",
+          "courseTitle",
+          "examCount",
+          "takenCount",
+          "absentCount",
+          "averagePercent"
+        ]
       },
       "CalendarFeedStatusResponse": {
         "type": "object",
@@ -24549,6 +25590,10 @@
           "hasLiveStream": {
             "type": "boolean",
             "description": "A live stream is set for the session (MDRS-283), whatever its status; never the link, which the session page gives while it is LIVE."
+          },
+          "isExam": {
+            "type": "boolean",
+            "description": "The celse is an exam (\"Sınav\", MDRS-248): the schedule and the home page mark it."
           }
         },
         "required": [
@@ -24565,7 +25610,8 @@
           "cancelReason",
           "meetingUrl",
           "inPerson",
-          "hasLiveStream"
+          "hasLiveStream",
+          "isExam"
         ]
       },
       "MadrasahNazirGroupResponse": {

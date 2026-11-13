@@ -314,6 +314,32 @@ describe("Ödev on a celse of Müfredat", () => {
     expect(save().disabled).toBe(true);
   });
 
+  it("sets Teslim şekli at once, Dosya first, with the description as stored (MDRS-248)", async () => {
+    actions.saveLessonAssignment.mockResolvedValue({
+      success: true,
+      data: assignment({ kind: "MEMORIZE" }),
+    });
+    await mount();
+    const own = block("lesson-0-0") as HTMLElement;
+    expect(own.textContent).toContain("Teslim şekli");
+    const file = buttonIn(own, "Dosya") as HTMLButtonElement;
+    const memorize = buttonIn(own, "Ezber") as HTMLButtonElement;
+    expect(file.getAttribute("aria-pressed")).toBe("true");
+    expect(memorize.getAttribute("aria-pressed")).toBe("false");
+    await click(memorize);
+    await settle(30);
+    expect(actions.saveLessonAssignment).toHaveBeenCalledWith(
+      "l-1",
+      "Birinci babı çekin.",
+      "MEMORIZE"
+    );
+    expect(
+      (buttonIn(own, "Ezber") as HTMLButtonElement).getAttribute("aria-pressed")
+    ).toBe("true");
+    expect(own.textContent).toContain("Değerlendirme’de işaretlersiniz");
+    expect(save().disabled).toBe(true);
+  });
+
   it("asks before taking homework with a description or files off, then removes it", async () => {
     actions.deleteLessonAssignment.mockResolvedValue({
       success: true,
@@ -483,14 +509,19 @@ describe("the rules of a celse's homework", () => {
     expect(assignmentsOf(course() as never)).toEqual({
       "l-1": {
         description: "Birinci babı çekin.",
+        kind: "FILE",
         files: [{ id: "af-1", ...PDF }],
       },
       "l-2": null,
     });
     expect(assignmentStateOf({ description: null, files: [] })).toEqual({
       description: "",
+      kind: "FILE",
       files: [],
     });
+    // "Teslim şekli" (MDRS-248): a kind it does not know reads as FILE.
+    expect(assignmentStateOf({ kind: "MEMORIZE" })?.kind).toBe("MEMORIZE");
+    expect(assignmentStateOf({ kind: "ORAL" })?.kind).toBe("FILE");
   });
 
   it("send a trimmed description, and null for a blank one", () => {

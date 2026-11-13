@@ -5,6 +5,8 @@ src/apis/ArchiveApi.ts
 src/apis/BansApi.ts
 src/apis/CalendarApi.ts
 src/apis/CoursesApi.ts
+src/apis/EvaluationsApi.ts
+src/apis/ExamsApi.ts
 src/apis/FlashcardCardsApi.ts
 src/apis/FlashcardDeckLabelApi.ts
 src/apis/FlashcardDecksApi.ts
@@ -50,6 +52,7 @@ src/models/ArchiverResponse.ts
 src/models/AskLessonQuestionDto.ts
 src/models/AssignInactiveScopeDto.ts
 src/models/AssignedCourseInfo.ts
+src/models/AssignmentKind.ts
 src/models/AssignmentResponse.ts
 src/models/AuditActorResponse.ts
 src/models/AuditEntryResponse.ts
@@ -164,6 +167,16 @@ src/models/EffectivePermissionGroup.ts
 src/models/EnrolledCourseResponse.ts
 src/models/EnrollmentBanResponse.ts
 src/models/EnrollmentResponse.ts
+src/models/EvaluationBoardResponse.ts
+src/models/EvaluationColumnKind.ts
+src/models/EvaluationColumnResponse.ts
+src/models/EvaluationExamColumnResponse.ts
+src/models/EvaluationMarkResponse.ts
+src/models/EvaluationStatus.ts
+src/models/EvaluationTalebeResponse.ts
+src/models/ExamFormat.ts
+src/models/ExamReleaseResponse.ts
+src/models/ExamResultResponse.ts
 src/models/ExtendBanDto.ts
 src/models/ExtendBanScope.ts
 src/models/FieldError.ts
@@ -244,6 +257,7 @@ src/models/KoskStatusFilter.ts
 src/models/LabelStatsResponse.ts
 src/models/LessonAssignmentFileResponse.ts
 src/models/LessonAssignmentResponse.ts
+src/models/LessonExamResponse.ts
 src/models/LessonMutationResponse.ts
 src/models/LessonNoteResponse.ts
 src/models/LessonQuestionResponse.ts
@@ -267,6 +281,7 @@ src/models/MadrasahCourseResponse.ts
 src/models/MadrasahDashboardResponse.ts
 src/models/MadrasahDirectoryItemResponse.ts
 src/models/MadrasahDirectoryResponse.ts
+src/models/MadrasahExamSummaryResponse.ts
 src/models/MadrasahExploreCourseResponse.ts
 src/models/MadrasahExploreResponse.ts
 src/models/MadrasahHeadMuderrisResponse.ts
@@ -307,6 +322,7 @@ src/models/MyAssignmentsResponse.ts
 src/models/MyCoursePermissionsResponse.ts
 src/models/MyEffectivePermissionsResponse.ts
 src/models/MyEnrollmentResponse.ts
+src/models/MyGradesResponse.ts
 src/models/MyGrantsResponse.ts
 src/models/MyPermissionsResponse.ts
 src/models/MyPublicProfileResponse.ts
@@ -325,6 +341,9 @@ src/models/NotificationResponse.ts
 src/models/OffsiteCourseRequestResponse.ts
 src/models/OpenCourseMuderrisUnvanDto.ts
 src/models/OpenMadrasahCourseDto.ts
+src/models/OwnEvaluationResponse.ts
+src/models/OwnExamGradeResponse.ts
+src/models/OwnMemorizationGradeResponse.ts
 src/models/OwnSubmissionResponse.ts
 src/models/PaginatedArchiveResponse.ts
 src/models/PaginatedCourseArchiveResponse.ts
@@ -388,6 +407,8 @@ src/models/ReviewRating.ts
 src/models/RoleSummary.ts
 src/models/RosterEnrollmentResponse.ts
 src/models/RowError.ts
+src/models/SaveEvaluationDto.ts
+src/models/SaveExamResultDto.ts
 src/models/SaveLessonAssignmentDto.ts
 src/models/SaveSubmissionNoteDto.ts
 src/models/ScheduleSessionResponse.ts
@@ -400,6 +421,7 @@ src/models/SessionBatchLessonResponse.ts
 src/models/SessionBatchPreviewResponse.ts
 src/models/SessionBatchResponse.ts
 src/models/SessionBatchWeekResponse.ts
+src/models/SessionExamDto.ts
 src/models/SessionMuderrisResponse.ts
 src/models/SessionRecordingResponse.ts
 src/models/SessionRefResponse.ts

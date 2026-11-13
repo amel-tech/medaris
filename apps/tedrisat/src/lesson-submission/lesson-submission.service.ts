@@ -25,6 +25,7 @@ import {
 } from "./dto/lesson-submission.dto";
 import { SubmissionFileLimitError } from "./errors/submission-file-limit.error";
 import { SubmissionFileNotFoundError } from "./errors/submission-file-not-found.error";
+import { SubmissionFilesNotTakenError } from "./errors/submission-files-not-taken.error";
 import { SubmissionForbiddenError } from "./errors/submission-forbidden.error";
 import { SubmissionNotFoundError } from "./errors/submission-not-found.error";
 import { SubmissionReviewFileLimitError } from "./errors/submission-review-file-limit.error";
@@ -178,6 +179,10 @@ export class LessonSubmissionService {
   ): Promise<LessonSubmissionResponse> {
     this.storage.assertConfigured();
     const courseId = await this.assertMayWrite(user, lessonId);
+    // A memorisation homework (MDRS-248) is recited, never uploaded.
+    if (await this.repo.isMemorization(lessonId)) {
+      throw new SubmissionFilesNotTakenError(lessonId);
+    }
     // Refused before anything is stored; the write asks again under the lock.
     if (
       (await this.repo.countFiles(lessonId, user.sub)) >= MAX_SUBMISSION_FILES

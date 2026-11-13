@@ -45,7 +45,10 @@ GET /courses/:id/decks -> course.view_details on course
 GET /courses/:id/decks/manage -> deck.manage_course on course
 GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
+GET /courses/:id/evaluations -> session.manage on byExistingCourse
+GET /courses/:id/evaluations/export -> session.manage on byExistingCourse
 GET /courses/:id/live-streams -> session.live_link on course
+GET /courses/:id/my-grades -> course.view on byExistingCourse
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
 GET /courses/:id/my-submissions -> course.view on byExistingCourse
 GET /courses/:id/nazirs -> course_nazir.assign on byExistingCourse
@@ -97,6 +100,7 @@ GET /kosks/fields -> public
 GET /kosks/followed/courses -> exempt
 GET /lessons/:id/assignment/files/:fileId -> course.view_details on byLessonCourse
 GET /lessons/:id/calendar.ics -> exempt
+GET /lessons/:id/evaluation -> course.view on byLessonCourse
 GET /lessons/:id/notes -> course.view on byLessonCourse
 GET /lessons/:id/resources/:resourceId/file -> course.view_details on byLessonCourse
 GET /lessons/:id/submission -> course.view on byLessonCourse
@@ -111,6 +115,7 @@ GET /madrasahs/:id/bans -> madrasah.ban | platform.ban_scoped on byExistingMadra
 GET /madrasahs/:id/courses -> madrasah.course_open | madrasah.course_hide | madrasah.muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/dashboard -> madrasah.students_view on byExistingMadrasah
 GET /madrasahs/:id/deactivation-preview -> platform.madrasah_edit on byExistingMadrasah
+GET /madrasahs/:id/exam-summary -> madrasah.course_open | madrasah.course_hide | madrasah.muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/head-muderris/delegations -> platform.head_muderris_manage on byExistingMadrasah
 GET /madrasahs/:id/hosting-kosks -> madrasah.course_open on byExistingMadrasah
 GET /madrasahs/:id/nazirs -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah
@@ -227,6 +232,7 @@ POST /kosks/:id/restore -> exempt
 POST /kosks/:koskId/courses -> course.open_standalone on kosk
 POST /lessons/:id/assignment/files -> session.manage on byLessonCourse
 POST /lessons/:id/cancel -> session.manage on byLessonCourse
+POST /lessons/:id/exam-results/release -> session.manage on byLessonCourse
 POST /lessons/:id/notes -> course.view on byLessonCourse
 POST /lessons/:id/questions -> course.view on byLessonCourse
 POST /lessons/:id/recordings -> recording.manage on byLessonCourse
@@ -268,6 +274,8 @@ PUT /flashcard/cards/progress -> exempt
 PUT /flashcard/decks/:id -> deck.manage_private on flashcard-deck
 PUT /integrations/enrollments/:registrationRef/:courseCode -> partner application only (PartnerGuard)
 PUT /lessons/:id/assignment -> session.manage on byLessonCourse
+PUT /lessons/:id/evaluations/:userId -> session.manage on byLessonCourse
+PUT /lessons/:id/exam-results/:userId -> session.manage on byLessonCourse
 PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /lessons/:id/submission -> course.view on byLessonCourse

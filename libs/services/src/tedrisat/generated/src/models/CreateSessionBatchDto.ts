@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { SessionExamDto } from './SessionExamDto';
+import {
+    SessionExamDtoFromJSON,
+    SessionExamDtoFromJSONTyped,
+    SessionExamDtoToJSON,
+    SessionExamDtoToJSONTyped,
+} from './SessionExamDto';
+
 /**
  * 
  * @export
@@ -73,6 +81,12 @@ export interface CreateSessionBatchDto {
      * @memberof CreateSessionBatchDto
      */
     meetingUrl?: string;
+    /**
+     * "Sınav" (MDRS-248): the celse is planned as an exam. The pattern must give exactly one session (else 400 EXAM_ONE_SESSION); it is a LIVE session like any other, marked in person when `location` is given and online when not.
+     * @type {SessionExamDto}
+     * @memberof CreateSessionBatchDto
+     */
+    exam?: SessionExamDto;
 }
 
 /**
@@ -106,6 +120,7 @@ export function CreateSessionBatchDtoFromJSONTyped(json: any, ignoreDiscriminato
         'title': json['title'],
         'durationMinutes': json['durationMinutes'],
         'meetingUrl': json['meetingUrl'] == null ? undefined : json['meetingUrl'],
+        'exam': json['exam'] == null ? undefined : SessionExamDtoFromJSON(json['exam']),
     };
 }
 
@@ -129,6 +144,7 @@ export function CreateSessionBatchDtoToJSONTyped(value?: CreateSessionBatchDto |
         'title': value['title'],
         'durationMinutes': value['durationMinutes'],
         'meetingUrl': value['meetingUrl'],
+        'exam': SessionExamDtoToJSON(value['exam']),
     };
 }
 

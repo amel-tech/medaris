@@ -80,7 +80,7 @@ describe("the shared placeholder under a medrese", () => {
   });
 });
 
-/** The course's sections that have a page of their own: Celseler, Talebeler, Müfredat and Ders kayıtları (MDRS-247), Ders nazırları and Ders ayarları (MDRS-270), Ödevler (MDRS-290). */
+/** The course's sections that have a page of their own: Celseler, Talebeler, Müfredat and Ders kayıtları (MDRS-247), Ders nazırları and Ders ayarları (MDRS-270), Ödevler (MDRS-290), Değerlendirme (MDRS-248). */
 const DERS_BUILT = [
   "celseler",
   "talebeler",
@@ -89,6 +89,7 @@ const DERS_BUILT = [
   "nazirlar",
   "ayarlar",
   "odevler",
+  "degerlendirme",
 ];
 
 describe("the shared placeholder under a course", () => {

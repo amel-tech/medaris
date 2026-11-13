@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { AssignmentKind } from './AssignmentKind';
+import {
+    AssignmentKindFromJSON,
+    AssignmentKindFromJSONTyped,
+    AssignmentKindToJSON,
+    AssignmentKindToJSONTyped,
+} from './AssignmentKind';
 import type { LessonAssignmentFileResponse } from './LessonAssignmentFileResponse';
 import {
     LessonAssignmentFileResponseFromJSON,
@@ -46,6 +53,12 @@ export interface LessonAssignmentResponse {
      */
     description: string | null;
     /**
+     * How the talebe hand it in: FILE, uploaded on the session page, or MEMORIZE, recited to the müderris and marked by the course team.
+     * @type {AssignmentKind}
+     * @memberof LessonAssignmentResponse
+     */
+    kind: AssignmentKind;
+    /**
      * Oldest first.
      * @type {Array<LessonAssignmentFileResponse>}
      * @memberof LessonAssignmentResponse
@@ -65,6 +78,8 @@ export interface LessonAssignmentResponse {
     updatedAt: Date;
 }
 
+
+
 /**
  * Check if a given object implements the LessonAssignmentResponse interface.
  */
@@ -72,6 +87,7 @@ export function instanceOfLessonAssignmentResponse(value: object): value is Less
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('lessonId' in value) || value['lessonId'] === undefined) return false;
     if (!('description' in value) || value['description'] === undefined) return false;
+    if (!('kind' in value) || value['kind'] === undefined) return false;
     if (!('files' in value) || value['files'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
@@ -91,6 +107,7 @@ export function LessonAssignmentResponseFromJSONTyped(json: any, ignoreDiscrimin
         'id': json['id'],
         'lessonId': json['lessonId'],
         'description': json['description'],
+        'kind': AssignmentKindFromJSON(json['kind']),
         'files': ((json['files'] as Array<any>).map(LessonAssignmentFileResponseFromJSON)),
         'createdAt': (new Date(json['createdAt'])),
         'updatedAt': (new Date(json['updatedAt'])),
@@ -111,6 +128,7 @@ export function LessonAssignmentResponseToJSONTyped(value?: LessonAssignmentResp
         'id': value['id'],
         'lessonId': value['lessonId'],
         'description': value['description'],
+        'kind': AssignmentKindToJSON(value['kind']),
         'files': ((value['files'] as Array<any>).map(LessonAssignmentFileResponseToJSON)),
         'createdAt': ((value['createdAt']).toISOString()),
         'updatedAt': ((value['updatedAt']).toISOString()),

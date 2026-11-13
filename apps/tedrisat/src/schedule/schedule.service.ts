@@ -123,6 +123,7 @@ const toResponse = (row: IScheduledSession, now: Date) => {
     meetingUrl: joinable ? row.meetingUrl : null,
     inPerson: row.inPerson,
     hasLiveStream: row.hasLiveStream,
+    isExam: row.isExam,
   };
   return response;
 };

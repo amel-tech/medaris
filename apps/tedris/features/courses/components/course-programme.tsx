@@ -23,6 +23,7 @@ import {
   weekOpensAt,
   weekState,
 } from "../course-view";
+import { ExamBadge } from "./exam-grades";
 
 /** Where the sample session's block sits on the page, for the row that points to it. */
 export const SAMPLE_ANCHOR = "ornek-celse";
@@ -133,6 +134,14 @@ export const CourseProgramme = ({
         trailing={
           cancelled ? (
             <Badge variant="outline">{t("cancelledBadge")}</Badge>
+          ) : lesson.exam ? (
+            // An exam (MDRS-248) says so, with the days left while ahead.
+            <ExamBadge
+              isRetake={lesson.exam.isRetake}
+              startsAt={lesson.scheduledAt}
+              now={now}
+              timeZone={course.timeZone}
+            />
           ) : mark === "pending" ? (
             <Badge
               variant="warning"

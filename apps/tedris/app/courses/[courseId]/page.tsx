@@ -13,6 +13,7 @@ import { loadCourse } from "~/features/courses/load-course";
 import {
   getCourseDecks,
   getCourseForMetadata,
+  getMyGrades,
   getMySubmissions,
   getRecordings,
   isSignedIn,
@@ -61,18 +62,24 @@ export default async function Page({
   // Where the talebe handed homework in, read only when a celse has homework
   // they may hand in (the programme's "Ödev teslim edilmedi" marks).
   // The decks are read only for a caller who holds a seat (the tab exists only then).
-  const [kosk, signedIn, recordings, handedIn, decks] = await Promise.all([
-    getKosk(course.koskId),
-    isSignedIn(),
-    getRecordings(course.id),
-    mayHandInOn(course) && hasAssignments(course)
-      ? getMySubmissions(course.id)
-      : null,
-    (async () =>
-      holdsSeat(courseViewState(course, await isSignedIn()))
-        ? getCourseDecks(course.id)
-        : null)(),
-  ]);
+  // "Notlarım" (MDRS-248) is read, like the decks, only for a seat holder.
+  const [kosk, signedIn, recordings, handedIn, decks, grades] =
+    await Promise.all([
+      getKosk(course.koskId),
+      isSignedIn(),
+      getRecordings(course.id),
+      mayHandInOn(course) && hasAssignments(course)
+        ? getMySubmissions(course.id)
+        : null,
+      (async () =>
+        holdsSeat(courseViewState(course, await isSignedIn()))
+          ? getCourseDecks(course.id)
+          : null)(),
+      (async () =>
+        holdsSeat(courseViewState(course, await isSignedIn()))
+          ? getMyGrades(course.id)
+          : null)(),
+    ]);
   const hrefs = inviteHrefs(`/courses/${course.id}`);
 
   return (
@@ -87,6 +94,7 @@ export default async function Page({
       recordings={recordings}
       handedIn={handedIn}
       decks={decks ?? []}
+      grades={grades}
       initialTab={typeof tab === "string" ? tab : undefined}
     />
   );

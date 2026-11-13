@@ -32,7 +32,9 @@ import { ReviewCell } from "./review-dialog";
  * clock, and their note, cut short with a way to read it whole. Each celse
  * says under its heading whether the course team set homework on it ("Ödev
  * verildi" or "Ödev verilmedi") and "N / M teslim": how many of the enrolled
- * talebe handed in. "Bütün celseler" draws the celses with homework set or
+ * talebe handed in; a celse whose homework is recited (MDRS-248) says
+ * "Ezber · Değerlendirme'de işaretlenir" instead, with no count, since
+ * nothing is handed in on it. "Bütün celseler" draws the celses with homework set or
  * handed in; one celse is drawn even when nobody has handed in on it, and
  * its table says so.
  *
@@ -206,7 +208,15 @@ export function HomeworkList({
                     )}
                   </time>
                 ) : null}
-                {session.hasAssignment ? (
+                {session.isMemorization ? (
+                  <Badge
+                    variant="secondary"
+                    icon={<Icon name="headphones" size="sm" />}
+                    data-testid={`homework-recited-${session.lessonId}`}
+                  >
+                    {t("Homework.recited")}
+                  </Badge>
+                ) : session.hasAssignment ? (
                   <Badge
                     variant="secondary"
                     icon={<Icon name="note" size="sm" />}

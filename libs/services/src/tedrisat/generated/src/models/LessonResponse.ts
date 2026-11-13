@@ -20,6 +20,13 @@ import {
     LessonResourceResponseToJSON,
     LessonResourceResponseToJSONTyped,
 } from './LessonResourceResponse';
+import type { LessonExamResponse } from './LessonExamResponse';
+import {
+    LessonExamResponseFromJSON,
+    LessonExamResponseFromJSONTyped,
+    LessonExamResponseToJSON,
+    LessonExamResponseToJSONTyped,
+} from './LessonExamResponse';
 import type { LessonAssignmentResponse } from './LessonAssignmentResponse';
 import {
     LessonAssignmentResponseFromJSON,
@@ -161,6 +168,12 @@ export interface LessonResponse {
      * @memberof LessonResponse
      */
     assignment?: LessonAssignmentResponse | null;
+    /**
+     * What makes the session an exam ("Sınav", MDRS-248); null when it is not one. Course content, like `assignment`: absent unless the caller holds `view_details` on the course. Carried by the course read, never by a session write's answer.
+     * @type {LessonExamResponse}
+     * @memberof LessonResponse
+     */
+    exam?: LessonExamResponse | null;
 }
 
 
@@ -220,6 +233,7 @@ export function LessonResponseFromJSONTyped(json: any, ignoreDiscriminator: bool
         'resources': ((json['resources'] as Array<any>).map(LessonResourceResponseFromJSON)),
         'recordingAvailableAt': json['recordingAvailableAt'] == null ? undefined : (new Date(json['recordingAvailableAt'])),
         'assignment': json['assignment'] == null ? undefined : LessonAssignmentResponseFromJSON(json['assignment']),
+        'exam': json['exam'] == null ? undefined : LessonExamResponseFromJSON(json['exam']),
     };
 }
 
@@ -254,6 +268,7 @@ export function LessonResponseToJSONTyped(value?: LessonResponse | null, ignoreD
         'resources': ((value['resources'] as Array<any>).map(LessonResourceResponseToJSON)),
         'recordingAvailableAt': value['recordingAvailableAt'] === null ? null : ((value['recordingAvailableAt'] as any)?.toISOString()),
         'assignment': LessonAssignmentResponseToJSON(value['assignment']),
+        'exam': LessonExamResponseToJSON(value['exam']),
     };
 }
 

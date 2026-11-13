@@ -1519,3 +1519,37 @@ describe("session page strings", () => {
     }
   });
 });
+
+describe("session page, an exam celse (MDRS-248)", () => {
+  const exam = {
+    format: "WRITTEN",
+    maxScore: 100,
+    topics: "Bina: mehmûz fiiller\nEmsile: sülâsî bablar",
+    location: "Süleymaniye, 2. derslik",
+    isRetake: false,
+    resultsReleasedAt: null,
+  };
+
+  it("says what the exam is, where it is held and the topics it covers", async () => {
+    const html =
+      (await render(session({ exam }))).match(
+        /<section[^>]*data-testid="session-exam"[\s\S]*?<\/section>/
+      )?.[0] ?? "";
+    expect(text(html)).toContain(resources.tr.tedris.CoursePage.examBadge);
+    expect(text(html)).toContain(`${tr.examWritten}·Tam puan 100`);
+    expect(text(html)).toContain(`${tr.examPlace}: Süleymaniye, 2. derslik`);
+    expect(html).toContain(
+      '<p class="mds-body whitespace-pre-line" dir="auto" data-testid="session-exam-topics">Bina: mehmûz fiiller\nEmsile: sülâsî bablar</p>'
+    );
+  });
+
+  it("leaves out a place and topics the exam does not have, and draws nothing for a plain celse", async () => {
+    const online = await render(
+      session({ exam: { ...exam, location: null, topics: null } })
+    );
+    expect(online).toContain('data-testid="session-exam"');
+    expect(online).not.toContain("session-exam-place");
+    expect(online).not.toContain("session-exam-topics");
+    expect(await render(session())).not.toContain('data-testid="session-exam"');
+  });
+});

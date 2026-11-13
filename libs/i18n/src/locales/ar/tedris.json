@@ -191,7 +191,23 @@
     "resourcesDownload": " (يُنزَّل)",
     "assignmentBadge": "واجب",
     "assignmentPending": "لم يُسلَّم الواجب",
-    "assignmentsPending": "واجبات لم تُسلَّم: {count}"
+    "assignmentsPending": "واجبات لم تُسلَّم: {count}",
+    "tabGrades": "درجاتي",
+    "examBadge": "اختبار",
+    "retakeBadge": "تعويضي",
+    "examCountdown": "{count, plural, =0 {اليوم} =1 {غدًا} other {بقي # يوم}}",
+    "gradesExams": "الاختبارات",
+    "gradesMemorizations": "الحفظ",
+    "gradesEmpty": "لا اختبارات ولا حفظ في هذا الدرس بعد.",
+    "gradesScore": "{score}/{max}",
+    "gradesClosed": "لم تُعلن النتيجة بعد",
+    "gradesNotEntered": "لم تُدخل",
+    "gradesAbsent": "غائب",
+    "gradesPending": "قيد الانتظار",
+    "gradesFull": "تام",
+    "gradesIncomplete": "ناقص",
+    "gradesNotRecited": "لم يُسمِّع",
+    "gradesWeek": "الأسبوع {week}"
   },
   "DataTable": {
     "noResults": "لا توجد نتائج."
@@ -539,10 +555,27 @@
         "title": "{outcome, select, approved {نُشرت المجموعة} unpublished {أُلغي نشر المجموعة} proposal_rejected {رُفض اقتراح المجموعة} other {رُفض طلب نشر المجموعة}}",
         "body": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} proposal_rejected {رُفض اقتراحك للمجموعة {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}}",
         "bodyReason": "{outcome, select, approved {أصبحت {deckTitle} متاحة للجميع.} unpublished {أُلغي نشر {deckTitle}.} proposal_rejected {رُفض اقتراحك للمجموعة {deckTitle}.} other {رُفض طلبك لإتاحة {deckTitle} للجميع.}} السبب: {reason}"
+      },
+      "EXAM_SCHEDULED": {
+        "title": "تحدّد موعد الاختبار",
+        "body": "اختبار درس {courseTitle} في {sessionAt}."
+      },
+      "EXAM_REMINDER": {
+        "title": "اختبار قريب",
+        "body": "اختبار درس {courseTitle} في {sessionAt}."
+      },
+      "EXAM_RESULTS_RELEASED": {
+        "title": "أُعلنت نتيجة اختبارك",
+        "body": "اطّلع على نتيجتك في درس {courseTitle} ضمن درجاتي."
       }
     }
   },
   "SessionPage": {
+    "examWritten": "تحريري",
+    "examOral": "شفهي",
+    "examMaxScore": "الدرجة الكاملة {max}",
+    "examPlace": "المكان",
+    "examTopics": "الموضوعات",
     "breadcrumb": "مسار الصفحة",
     "week": "الأسبوع {number}",
     "joinLabel": "درس مباشر",
@@ -813,7 +846,8 @@
     "empty": "ليس لديك جلسات في هذه الأيام السبعة.",
     "loadErrorTitle": "تعذّر تحميل جدولك",
     "loadError": "تعذّرت قراءة جلساتك الآن.",
-    "retry": "أعد المحاولة"
+    "retry": "أعد المحاولة",
+    "exam": "اختبار"
   },
   "Decks": {
     "title": "المجموعات",

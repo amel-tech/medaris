@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   remove: vi.fn(),
   signIn: vi.fn(),
+  evaluation: vi.fn(),
 }));
 
 vi.mock("next-intl", async () => {
@@ -53,6 +54,12 @@ vi.mock("../features/courses/actions/submissions", () => ({
   getMySubmission: mocks.get,
   saveMySubmissionNote: mocks.save,
   deleteMySubmissionFile: mocks.remove,
+}));
+vi.mock("~/features/courses/actions/evaluation", () => ({
+  getMyEvaluation: mocks.evaluation,
+}));
+vi.mock("../features/courses/actions/evaluation", () => ({
+  getMyEvaluation: mocks.evaluation,
 }));
 // The hand-off itself is `send-to-sign-in.spec.ts`; here only that the card
 // hands an "unauthenticated" answer to it and draws nothing else.
@@ -104,6 +111,7 @@ const homework = (
   id: "a1",
   lessonId: LESSON,
   description: "Birinci babı çekin.\nFotoğrafını yükleyin.",
+  kind: "FILE",
   files: [
     {
       id: A1,
@@ -790,5 +798,111 @@ describe("the teacher's review", () => {
     expect(
       host.querySelector('[data-testid="homework-review"]')?.textContent
     ).toContain(tr.reviewChangedTitle);
+  });
+});
+
+describe("a homework recited to the müderris (MDRS-248)", () => {
+  const recited = () => homework({ kind: "MEMORIZE" });
+  const mark = (status: string | null, note: string | null = null) =>
+    mocks.evaluation.mockResolvedValue(
+      ok({ status, note, updatedAt: status ? new Date() : null })
+    );
+  const memorizeState = (host: HTMLElement) =>
+    host.querySelector('[data-testid="memorize-state"]')?.textContent;
+
+  it("asks the talebe to recite it and offers no upload", async () => {
+    mark(null);
+    const host = await mount(recited());
+    expect(host.textContent).toContain(tr.memorizeTitle);
+    expect(host.textContent).toContain(tr.memorizeBody);
+    expect(fileInput(host)).toBeNull();
+    expect(host.querySelector("textarea")).toBeNull();
+    expect(mocks.evaluation).toHaveBeenCalledWith(LESSON);
+    expect(memorizeState(host)).toBe(tr.memorizePending);
+    expect(host.querySelector('[data-testid="memorize-earlier"]')).toBeNull();
+  });
+
+  it("keeps the files handed in before it became recited, to download and remove, but takes no new one", async () => {
+    mark(null);
+    mocks.get.mockResolvedValue(
+      own(
+        submission({
+          note: "Önceki notum.",
+          files: [pdf(F1, { name: "bir.pdf" }), pdf(F2, { name: "iki.pdf" })],
+        })
+      )
+    );
+    mocks.remove.mockResolvedValue(ok(undefined));
+    const host = await mount(recited());
+    expect(mocks.get).toHaveBeenCalledWith(LESSON);
+    const earlier = host.querySelector(
+      '[data-testid="memorize-earlier"]'
+    ) as HTMLElement;
+    expect(earlier.textContent).toContain(tr.filesLabel);
+    expect(earlier.textContent).toContain("Önceki notum.");
+    expect(fileInput(host)).toBeNull();
+    expect(host.querySelector("textarea")).toBeNull();
+
+    await click(named(host, "Kaldır: bir.pdf"));
+    await click(button(host, "Kaldır"));
+    await settle();
+    expect(mocks.remove).toHaveBeenCalledWith(LESSON, F1);
+    const names = [
+      ...host.querySelectorAll('[data-testid="homework-files"] a'),
+    ].map((a) => a.textContent);
+    expect(names).toEqual(["iki.pdf (indirilir)"]);
+  });
+
+  it("still shows the review the müderris sent on the files before the switch", async () => {
+    mark(null);
+    mocks.get.mockResolvedValue(
+      own(
+        submission({
+          files: [pdf(F1)],
+          review: {
+            note: "Harekeleri düzelttim.",
+            reviewedAt: new Date("2026-10-13T07:30:00Z"),
+            reviewer: { id: "u-1", name: "Yunus Emre Kandemir" },
+            files: [
+              pdf(F2, {
+                name: "duzeltilmis.pdf",
+                downloadUrl: `/lessons/${LESSON}/submission/review-files/${F2}`,
+              }),
+            ],
+          },
+        })
+      )
+    );
+    const host = await mount(recited());
+    const review = host.querySelector(
+      '[data-testid="homework-review"]'
+    ) as HTMLElement;
+    expect(
+      review.querySelector('[data-testid="review-note"]')?.textContent
+    ).toBe("Harekeleri düzelttim.");
+    expect(
+      review
+        .querySelector('[data-testid="review-files"] a')
+        ?.getAttribute("href")
+    ).toBe(`/api/files/lessons/${LESSON}/submission/review-files/${F2}`);
+    expect(review.textContent).not.toContain(tr.reviewChangedTitle);
+  });
+
+  it.each([
+    ["FULL", tr.memorizeFull],
+    ["INCOMPLETE", tr.memorizeIncomplete],
+    ["ABSENT", tr.memorizeAbsent],
+  ])("shows the mark %s and the müderris's note", async (status, label) => {
+    mark(status, "Son iki satır.");
+    const host = await mount(recited());
+    expect(memorizeState(host)).toBe(label);
+    expect(host.textContent).toContain("Son iki satır.");
+  });
+
+  it("says when the mark could not be read", async () => {
+    mocks.evaluation.mockResolvedValue({ success: false, error: "x" });
+    const host = await mount(recited());
+    expect(alerts(host)).toContain(tr.memorizeLoadFailed);
+    expect(memorizeState(host)).toBeUndefined();
   });
 });

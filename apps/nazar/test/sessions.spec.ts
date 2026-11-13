@@ -651,3 +651,17 @@ describe("what the API refuses", () => {
     expect(courseMoved("AUTHZ_FORBIDDEN")).toBe(false);
   });
 });
+
+describe("an exam's tam puan (MDRS-248)", () => {
+  it("is a whole number from 1 to 1000", async () => {
+    const { examMaxScore } = await import(
+      "~/features/sessions/components/plan-form"
+    );
+    expect(examMaxScore("100")).toBe(100);
+    expect(examMaxScore(" 20 ")).toBe(20);
+    expect(examMaxScore("0")).toBeNull();
+    expect(examMaxScore("1001")).toBeNull();
+    expect(examMaxScore("12.5")).toBeNull();
+    expect(examMaxScore("")).toBeNull();
+  });
+});

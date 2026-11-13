@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
-import { IsOptional, IsString, MaxLength } from "class-validator";
+import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
+import { AssignmentKind } from "../domain/assignment-kind.enum";
 
 /** The longest homework description, in characters, as long as a talebe's note on it. */
 export const ASSIGNMENT_DESCRIPTION_MAX = 4000;
@@ -19,6 +20,17 @@ export class SaveLessonAssignmentDto {
   @IsString()
   @MaxLength(ASSIGNMENT_DESCRIPTION_MAX)
   description?: string | null;
+
+  @ApiPropertyOptional({
+    enum: AssignmentKind,
+    enumName: "AssignmentKind",
+    example: AssignmentKind.FILE,
+    description:
+      'How the talebe hand it in ("Teslim şekli"): FILE, files uploaded on the session page, or MEMORIZE, recited to the müderris and marked on "Değerlendirme", where the talebe upload nothing (`POST /lessons/:id/submission/files` answers 409 SUBMISSION_FILES_NOT_TAKEN). Absent keeps what the homework has, FILE for new homework. Changing it keeps the talebe\'s submissions and the marks given.',
+  })
+  @IsOptional()
+  @IsEnum(AssignmentKind)
+  kind?: AssignmentKind;
 }
 
 /** A file of a celse's homework. */
@@ -59,6 +71,13 @@ export class LessonAssignmentResponse {
     description: "Plain text as typed; null when there is none.",
   })
   description!: string | null;
+  @ApiProperty({
+    enum: AssignmentKind,
+    enumName: "AssignmentKind",
+    description:
+      "How the talebe hand it in: FILE, uploaded on the session page, or MEMORIZE, recited to the müderris and marked by the course team.",
+  })
+  kind!: AssignmentKind;
   @ApiProperty({
     type: [LessonAssignmentFileResponse],
     description: "Oldest first.",
