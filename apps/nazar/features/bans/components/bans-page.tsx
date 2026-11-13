@@ -78,8 +78,8 @@ export async function BansPage({
             <p>{t("Bans.kademe.text")}</p>
           </Alert>
           <BansTable
-            madrasahId={madrasahId}
-            madrasahName={madrasahName}
+            path={`/medrese/${encodeURIComponent(madrasahId)}/yasaklamalar`}
+            scopeName={madrasahName}
             rows={banRows(bans.data.items, t, {
               locale,
               timeZone,

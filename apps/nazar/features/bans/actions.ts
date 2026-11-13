@@ -1,6 +1,9 @@
 "use server";
 
-import type { CreateMadrasahBanDto } from "@medaris/services/tedrisat";
+import type {
+  CreateBanDto,
+  CreateMadrasahBanDto,
+} from "@medaris/services/tedrisat";
 import {
   type ActionOutcome,
   authenticatedAction,
@@ -26,6 +29,24 @@ export async function banPerson(
     return null;
   });
   if (!result.success) console.error("Error placing a ban:", result.error);
+  return outcomeOf(result);
+}
+
+/**
+ * "Yasakla" of a course's Yasaklamalar (`POST /courses/:courseId/bans`): the
+ * talebe is barred from this one course. It takes `ban.course` in the course
+ * (or `madrasah.ban` of its medrese); a refusal is its code, as above.
+ */
+export async function banFromCourse(
+  courseId: string,
+  request: CreateBanDto
+): Promise<ActionOutcome<null>> {
+  const result = await authenticatedAction(async (api) => {
+    await api.bans.createBan({ courseId, createBanDto: request });
+    return null;
+  });
+  if (!result.success)
+    console.error("Error placing a course ban:", result.error);
   return outcomeOf(result);
 }
 
