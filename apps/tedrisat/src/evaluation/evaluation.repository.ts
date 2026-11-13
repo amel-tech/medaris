@@ -210,7 +210,8 @@ export class EvaluationRepository {
    * never its text. A save that changes nothing writes nothing. The session
    * must be live and its homework a memorisation (MEMORIZATION_NOT_FOUND),
    * the talebe seated in its course (EVALUATION_TALEBE_NOT_FOUND). The
-   * homework row is held for the transaction, so taking it off waits.
+   * homework row is held for update for the transaction, so taking it off
+   * waits and two saves of the same cell, the first included, take turns.
    */
   async save(
     lessonId: string,
@@ -239,7 +240,11 @@ export class EvaluationRepository {
         .select({ id: lessonAssignments.id, kind: lessonAssignments.kind })
         .from(lessonAssignments)
         .where(eq(lessonAssignments.lessonId, lessonId))
-        .for("share");
+        // FOR UPDATE, not FOR SHARE: before a cell's first mark there is no
+        // evaluation row to lock, so two first saves of one cell would both
+        // pass a shared lock and the second would write a change (and an
+        // audit row) that changes nothing. Saves on one homework take turns.
+        .for("update");
       if (assignment?.kind !== AssignmentKind.MEMORIZE) {
         throw new MemorizationNotFoundError(lessonId);
       }

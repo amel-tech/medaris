@@ -290,6 +290,62 @@ describe("the board", () => {
     expect(document.body.textContent).toContain(tr.saveFailed);
   });
 
+  it("puts the mark back and says so when the save never reaches tedrisat", async () => {
+    actions.saveEvaluation.mockRejectedValue(new Error("offline"));
+    await mount();
+    await open();
+    await click(buttonIn(row("t-3"), tr.absent));
+    await settle(40);
+    expect(pressed("t-3")).toEqual([]);
+    expect(document.body.textContent).toContain(tr.saveFailed);
+    // The same press goes out again rather than being taken for a no-op.
+    await click(buttonIn(row("t-3"), tr.absent));
+    await settle();
+    expect(actions.saveEvaluation).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends a cell's presses one after another, and a late failure does not undo the newer one", async () => {
+    let fail: (value: unknown) => void = () => {};
+    actions.saveEvaluation.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          fail = resolve;
+        })
+    );
+    await mount();
+    await open();
+    await click(buttonIn(row("t-1"), tr.incomplete));
+    await click(buttonIn(row("t-1"), tr.absent));
+    await settle();
+    expect(pressed("t-1")).toEqual([tr.absent]);
+    // The second press waits for the first.
+    expect(actions.saveEvaluation).toHaveBeenCalledTimes(1);
+    fail({ success: false, code: "INTERNAL" });
+    await settle(40);
+    expect(actions.saveEvaluation).toHaveBeenCalledTimes(2);
+    expect(actions.saveEvaluation).toHaveBeenLastCalledWith(
+      L1,
+      "t-1",
+      "ABSENT",
+      null
+    );
+    expect(pressed("t-1")).toEqual([tr.absent]);
+    expect(document.body.textContent).toContain(tr.saveFailed);
+  });
+
+  it("goes back to what tedrisat last kept when every press on a cell fails", async () => {
+    actions.saveEvaluation.mockResolvedValue({
+      success: false,
+      code: "INTERNAL",
+    });
+    await mount();
+    await open();
+    await click(buttonIn(row("t-1"), tr.incomplete));
+    await click(buttonIn(row("t-1"), tr.absent));
+    await settle(40);
+    expect(pressed("t-1")).toEqual([tr.full]);
+  });
+
   it("goes back to the whole board", async () => {
     await mount();
     await open(L2);
@@ -434,6 +490,48 @@ describe("exams on Değerlendirme", () => {
     expect(document.activeElement).toBe(scoreBox("t-2"));
     // Moving on blurs the box; the blur does not send the score again.
     expect(actions.saveExamResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("puts a result back and says so when the save never reaches tedrisat", async () => {
+    actions.saveExamResult.mockRejectedValue(new Error("offline"));
+    await mount(boardOf(examResponse()));
+    await open("x-1");
+    await click(buttonIn(examRow("t-2"), tr.absentExam));
+    await settle(40);
+    expect(
+      examRow("t-2").querySelector('button[aria-pressed="true"]')
+    ).toBeNull();
+    expect(document.body.textContent).toContain(tr.saveFailed);
+    expect(
+      document.querySelector('[data-testid="exam-count"]')?.textContent
+    ).toBe("1/2 girildi");
+  });
+
+  it("sends a cell's results one after another, and a late failure does not undo the newer one", async () => {
+    let fail: (value: unknown) => void = () => {};
+    actions.saveExamResult.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          fail = resolve;
+        })
+    );
+    await mount(boardOf(examResponse()));
+    await open("x-1");
+    await typeInto(scoreBox("t-1"), "85");
+    await key(scoreBox("t-1"), "Enter");
+    await click(buttonIn(examRow("t-1"), tr.absentExam));
+    await settle();
+    expect(actions.saveExamResult).toHaveBeenCalledTimes(1);
+    fail({ success: false, code: "INTERNAL" });
+    await settle(40);
+    expect(actions.saveExamResult).toHaveBeenCalledTimes(2);
+    expect(actions.saveExamResult).toHaveBeenLastCalledWith("x-1", "t-1", {
+      absent: true,
+    });
+    expect(
+      examRow("t-1").querySelector('button[aria-pressed="true"]')?.textContent
+    ).toBe(tr.absentExam);
+    expect(document.body.textContent).toContain(tr.saveFailed);
   });
 
   it("marks Girmedi and opens the results to the talebe", async () => {
