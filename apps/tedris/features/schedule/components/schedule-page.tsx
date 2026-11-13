@@ -92,6 +92,17 @@ const ScheduleRow = ({
         >
           {session.title}
         </Link>
+        {session.isExam && !cancelled ? (
+          // MDRS-248: an exam is marked on the takvim as on the course page.
+          <p>
+            <span
+              className="mds-badge mds-badge--warning"
+              data-testid="exam-badge"
+            >
+              {t("SchedulePage.exam")}
+            </span>
+          </p>
+        ) : null}
         {cancelled ? (
           <p className="mds-caption">{t("SchedulePage.cancelledNote")}</p>
         ) : platform && session.meetingUrl ? (

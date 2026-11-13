@@ -114,6 +114,7 @@ export const HomeSessions = async ({
               </div>
               <p className="mds-body-sm" dir="auto">
                 {joinRun([
+                  ...(next.isExam ? [t("SchedulePage.exam")] : []),
                   <Link
                     key="c"
                     href={`/courses/${next.courseId}`}
@@ -193,7 +194,10 @@ export const HomeSessions = async ({
                           </Link>
                           <span className="mds-caption" dir="auto">
                             {joinRun([
-                              t("PhoneMenu.liveBadge"),
+                              // MDRS-248: an exam says so on Pano.
+                              session.isExam
+                                ? t("SchedulePage.exam")
+                                : t("PhoneMenu.liveBadge"),
                               <bdi key="c">{session.courseTitle}</bdi>,
                               t("SchedulePage.week", {
                                 week: session.weekNumber,

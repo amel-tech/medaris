@@ -25,6 +25,10 @@ const ICONS: Record<string, IconName> = {
   KOSK_APPLICATION_RESULT: "kosk",
   DECK_PUBLISH_RESULT: "cards",
   SUBMISSION_REVIEWED: "note",
+  // MDRS-248: an exam planned, a day away, and its results opened.
+  EXAM_SCHEDULED: "calendar",
+  EXAM_REMINDER: "clock",
+  EXAM_RESULTS_RELEASED: "check",
 };
 
 const PLACEHOLDERS = [

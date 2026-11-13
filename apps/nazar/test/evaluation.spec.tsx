@@ -6,10 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type EvaluationBoard as Board,
   boardOf,
+  enteredCount,
+  evaluationExportHref,
   fullCount,
   markKey,
   nextRow,
   noteBody,
+  parseScore,
   statusOfKey,
 } from "~/features/evaluation/evaluation";
 import { cleanup, click, key, render, settle, type as typeInto } from "./dom";
@@ -22,7 +25,11 @@ import { cleanup, click, key, render, settle, type as typeInto } from "./dom";
  * The action is a stub.
  */
 
-const actions = vi.hoisted(() => ({ saveEvaluation: vi.fn() }));
+const actions = vi.hoisted(() => ({
+  saveEvaluation: vi.fn(),
+  saveExamResult: vi.fn(),
+  releaseExamResults: vi.fn(),
+}));
 vi.mock("~/features/evaluation/actions", () => actions);
 vi.mock("~/lib/unauthenticated", () => ({
   handleUnauthenticated: (result: unknown) =>
@@ -54,11 +61,11 @@ const response = () =>
         description: null,
         fullCount: 0,
       },
-      // A kind this page does not know yet is skipped.
+      // A kind this page does not know is skipped.
       {
-        kind: "EXAM",
+        kind: "QUIZ",
         lessonId: "l-3",
-        title: "Ara sınav",
+        title: "Kısa yoklama",
         weekNumber: 3,
         scheduledAt: null,
         description: null,
@@ -99,7 +106,7 @@ const mount = async (board: Board = boardOf(response())) => {
       messages={{ nazar: resources.tr.nazar }}
     >
       <ToastProvider>
-        <EvaluationBoard initial={board} />
+        <EvaluationBoard initial={board} courseId="c-1" />
         <Toaster />
       </ToastProvider>
     </NextIntlClientProvider>
@@ -129,6 +136,13 @@ const open = async (lessonId = L1) => {
 };
 
 beforeEach(() => {
+  actions.saveExamResult.mockReset();
+  actions.saveExamResult.mockImplementation(async () => ({
+    success: true,
+    data: {},
+  }));
+  actions.releaseExamResults.mockReset();
+  actions.releaseExamResults.mockResolvedValue({ success: true, data: {} });
   actions.saveEvaluation.mockReset();
   actions.saveEvaluation.mockImplementation(
     async (
@@ -186,7 +200,7 @@ describe("the board", () => {
     const text = document.body.textContent ?? "";
     expect(text).toContain("1. hafta · Emsile, birinci bab");
     expect(text).toContain("2. hafta · Emsile, ikinci bab");
-    expect(text).not.toContain("Ara sınav");
+    expect(text).not.toContain("Kısa yoklama");
     expect(text).toContain(tr.full);
     expect(text).toContain(tr.incomplete);
     expect(text).toContain(tr.pending);
@@ -194,7 +208,12 @@ describe("the board", () => {
   });
 
   it("says there is nothing to mark without a memorisation homework", async () => {
-    await mount({ columns: [], talebe: [], marks: new Map() });
+    await mount({
+      columns: [],
+      talebe: [],
+      marks: new Map(),
+      results: new Map(),
+    });
     expect(document.body.textContent).toContain(tr.noColumns);
   });
 
@@ -279,5 +298,138 @@ describe("the board", () => {
     expect(
       document.querySelector('[data-testid="evaluation-column"]')
     ).toBeNull();
+  });
+});
+
+/** An exam column (MDRS-248): "Ara sınav" out of 100, t-1 holding 70. */
+const examResponse = () =>
+  ({
+    columns: [
+      {
+        kind: "EXAM",
+        lessonId: "x-1",
+        title: "Ara sınav",
+        weekNumber: 4,
+        scheduledAt: null,
+        description: null,
+        fullCount: 1,
+        exam: {
+          format: "WRITTEN",
+          maxScore: 100,
+          isRetake: false,
+          resultsReleasedAt: null,
+        },
+      },
+      {
+        kind: "EXAM",
+        lessonId: "x-2",
+        title: "Telafi",
+        weekNumber: 5,
+        scheduledAt: null,
+        description: null,
+        fullCount: 0,
+        exam: {
+          format: "ORAL",
+          maxScore: 20,
+          isRetake: true,
+          resultsReleasedAt: new Date("2026-11-01T10:00:00Z"),
+        },
+      },
+    ],
+    talebe: [
+      { id: "t-1", name: "Ahmet Talebe" },
+      { id: "t-2", name: "Zeynep Talebe" },
+    ],
+    marks: [],
+    results: [
+      {
+        lessonId: "x-1",
+        userId: "t-1",
+        score: 70,
+        absent: false,
+        updatedAt: new Date(),
+      },
+    ],
+  }) as never;
+
+const examRow = (id: string) =>
+  document.querySelector(`[data-testid="exam-row-${id}"]`) as HTMLElement;
+const scoreBox = (id: string) =>
+  examRow(id).querySelector("input") as HTMLInputElement;
+
+describe("exams on Değerlendirme", () => {
+  it("reads a score as typed: whole, within tam puan, blank is nothing", () => {
+    expect(parseScore("85", 100)).toEqual({ kind: "score", score: 85 });
+    expect(parseScore(" 0 ", 100)).toEqual({ kind: "score", score: 0 });
+    expect(parseScore("101", 100)).toEqual({ kind: "over" });
+    expect(parseScore("12.5", 100)).toEqual({ kind: "invalid" });
+    expect(parseScore("-3", 100)).toEqual({ kind: "invalid" });
+    expect(parseScore("  ", 100)).toEqual({ kind: "empty" });
+  });
+
+  it("keeps the exam columns, their results and the make-up apart", () => {
+    const board = boardOf(examResponse());
+    expect(board.columns.map((c) => [c.kind, c.exam?.isRetake])).toEqual([
+      ["EXAM", false],
+      ["EXAM", true],
+    ]);
+    expect(board.columns[1].exam?.releasedAt).toBe("2026-11-01T10:00:00.000Z");
+    expect(enteredCount(board, "x-1")).toEqual({ entered: 1, total: 2 });
+    expect(evaluationExportHref("c-1")).toBe(
+      "/api/files/courses/c-1/evaluations"
+    );
+  });
+
+  it("shows the scores on the board and offers the spreadsheet", async () => {
+    await mount(boardOf(examResponse()));
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("70/100");
+    expect(text).toContain(tr.examBadge);
+    expect(text).toContain(tr.retakeBadge);
+    const download = document.querySelector(
+      '[data-testid="evaluation-download"]'
+    ) as HTMLAnchorElement;
+    expect(download.getAttribute("href")).toBe(
+      "/api/files/courses/c-1/evaluations"
+    );
+  });
+
+  it("refuses a score above tam puan, saves one within it with Enter and moves down", async () => {
+    await mount(boardOf(examResponse()));
+    await open("x-1");
+    expect(
+      document.querySelector('[data-testid="exam-count"]')?.textContent
+    ).toBe("1/2 girildi");
+    await typeInto(scoreBox("t-2"), "120");
+    await key(scoreBox("t-2"), "Enter");
+    await settle();
+    expect(actions.saveExamResult).not.toHaveBeenCalled();
+    expect(examRow("t-2").textContent).toContain("En çok 100 puan");
+
+    await typeInto(scoreBox("t-1"), "85");
+    await key(scoreBox("t-1"), "Enter");
+    await settle();
+    expect(actions.saveExamResult).toHaveBeenCalledWith("x-1", "t-1", {
+      score: 85,
+    });
+    expect(document.activeElement).toBe(scoreBox("t-2"));
+  });
+
+  it("marks Girmedi and opens the results to the talebe", async () => {
+    await mount(boardOf(examResponse()));
+    await open("x-1");
+    await click(buttonIn(examRow("t-2"), tr.absentExam));
+    await settle();
+    expect(actions.saveExamResult).toHaveBeenCalledWith("x-1", "t-2", {
+      absent: true,
+    });
+    await click(
+      document.querySelector('[data-testid="exam-release"]') as HTMLElement
+    );
+    await settle();
+    expect(actions.releaseExamResults).toHaveBeenCalledWith("x-1");
+    expect(
+      document.querySelector('[data-testid="exam-released"]')
+    ).not.toBeNull();
   });
 });

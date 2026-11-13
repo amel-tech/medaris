@@ -54,7 +54,7 @@ export async function EvaluationPage({ courseId }: { courseId: string }) {
           }}
         />
       ) : (
-        <EvaluationBoard initial={boardOf(board.data)} />
+        <EvaluationBoard initial={boardOf(board.data)} courseId={courseId} />
       )}
     </>
   );

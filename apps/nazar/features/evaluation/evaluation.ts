@@ -24,7 +24,15 @@ export const MARK_STATUSES: readonly MarkStatus[] = [
 ];
 
 /** The kinds of column this page can draw; one it does not know is skipped. */
-export type ColumnKind = "MEMORIZE";
+export type ColumnKind = "MEMORIZE" | "EXAM";
+
+/** What an exam column carries besides its celse (MDRS-248). */
+export interface ExamInfo {
+  maxScore: number;
+  isRetake: boolean;
+  /** ISO time the results were opened to the talebe; null while closed. */
+  releasedAt: string | null;
+}
 
 export interface EvaluationColumn {
   kind: ColumnKind;
@@ -32,6 +40,14 @@ export interface EvaluationColumn {
   title: string;
   weekNumber: number;
   description: string | null;
+  /** Set on an EXAM column only. */
+  exam: ExamInfo | null;
+}
+
+/** A talebe's exam result: a score, or "Girmedi" with none. */
+export interface ExamResult {
+  score: number | null;
+  absent: boolean;
 }
 
 export interface EvaluationTalebe {
@@ -50,6 +66,8 @@ export interface EvaluationBoard {
   talebe: EvaluationTalebe[];
   /** by `markKey(lessonId, userId)` */
   marks: ReadonlyMap<string, Mark>;
+  /** Exam results, by `markKey(lessonId, userId)` */
+  results: ReadonlyMap<string, ExamResult>;
 }
 
 export const markKey = (lessonId: string, userId: string): string =>
@@ -60,15 +78,40 @@ const isStatus = (value: unknown): value is MarkStatus =>
 
 /** tedrisat's board as the page draws it: columns of a kind it knows only. */
 export function boardOf(response: EvaluationBoardResponse): EvaluationBoard {
-  const columns = response.columns
-    .filter((column) => String(column.kind) === "MEMORIZE")
-    .map((column) => ({
-      kind: "MEMORIZE" as const,
-      lessonId: column.lessonId,
-      title: column.title,
-      weekNumber: column.weekNumber,
-      description: column.description ?? null,
-    }));
+  const columns = response.columns.flatMap((column): EvaluationColumn[] => {
+    const kind = String(column.kind);
+    if (kind === "MEMORIZE") {
+      return [
+        {
+          kind: "MEMORIZE",
+          lessonId: column.lessonId,
+          title: column.title,
+          weekNumber: column.weekNumber,
+          description: column.description ?? null,
+          exam: null,
+        },
+      ];
+    }
+    if (kind === "EXAM" && column.exam) {
+      return [
+        {
+          kind: "EXAM",
+          lessonId: column.lessonId,
+          title: column.title,
+          weekNumber: column.weekNumber,
+          description: null,
+          exam: {
+            maxScore: column.exam.maxScore,
+            isRetake: column.exam.isRetake,
+            releasedAt: column.exam.resultsReleasedAt
+              ? new Date(column.exam.resultsReleasedAt).toISOString()
+              : null,
+          },
+        },
+      ];
+    }
+    return [];
+  });
   const marks = new Map<string, Mark>();
   for (const mark of response.marks) {
     if (!isStatus(mark.status)) continue;
@@ -77,10 +120,18 @@ export function boardOf(response: EvaluationBoardResponse): EvaluationBoard {
       note: mark.note ?? null,
     });
   }
+  const results = new Map<string, ExamResult>();
+  for (const result of response.results ?? []) {
+    results.set(markKey(result.lessonId, result.userId), {
+      score: result.score ?? null,
+      absent: result.absent,
+    });
+  }
   return {
     columns,
     talebe: response.talebe.map((t) => ({ id: t.id, name: t.name ?? null })),
     marks,
+    results,
   };
 }
 
@@ -119,3 +170,38 @@ export const nextRow = (
 
 /** A note as tedrisat keeps it: trimmed, blank is none. */
 export const noteBody = (note: string): string | null => note.trim() || null;
+
+/** "12/30 girildi": how many of the exam's talebe have a result, of all of them. */
+export function enteredCount(
+  board: Pick<EvaluationBoard, "talebe" | "results">,
+  lessonId: string
+): { entered: number; total: number } {
+  const entered = board.talebe.filter((t) =>
+    board.results.has(markKey(lessonId, t.id))
+  ).length;
+  return { entered, total: board.talebe.length };
+}
+
+/**
+ * A score as typed in an exam's box: a whole number from 0 to `max`.
+ * `empty` for a blank box (nothing to save), `over` above "tam puan",
+ * `invalid` for anything else.
+ */
+export function parseScore(
+  typed: string,
+  max: number
+):
+  | { kind: "score"; score: number }
+  | { kind: "empty" }
+  | { kind: "over" }
+  | { kind: "invalid" } {
+  const value = typed.trim();
+  if (value === "") return { kind: "empty" };
+  if (!/^\d+$/.test(value)) return { kind: "invalid" };
+  const score = Number(value);
+  return score > max ? { kind: "over" } : { kind: "score", score };
+}
+
+/** Where "Excel indir" downloads the board, through this app. */
+export const evaluationExportHref = (courseId: string): string =>
+  `/api/files/courses/${encodeURIComponent(courseId)}/evaluations`;

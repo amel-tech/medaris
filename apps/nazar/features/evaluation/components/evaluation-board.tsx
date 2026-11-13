@@ -10,12 +10,15 @@ import { useToaster } from "@medaris/ui/mds/toast";
 import { useTranslations } from "next-intl";
 import { type KeyboardEvent, useRef, useState } from "react";
 import { handleUnauthenticated } from "~/lib/unauthenticated";
-import { saveEvaluation } from "../actions";
+import { releaseExamResults, saveEvaluation, saveExamResult } from "../actions";
 import {
   type EvaluationBoard as Board,
   EVALUATION_NOTE_MAX,
   type EvaluationColumn,
   type EvaluationTalebe,
+  type ExamResult,
+  enteredCount,
+  evaluationExportHref,
   fullCount,
   MARK_STATUSES,
   type Mark,
@@ -23,6 +26,7 @@ import {
   markKey,
   nextRow,
   noteBody,
+  parseScore,
   statusOfKey,
 } from "../evaluation";
 
@@ -47,12 +51,73 @@ const TONE: Record<MarkStatus, BadgeVariant> = {
  * "18/30 tam", follows. ↑ and ↓ move between rows, 1, 2 and 3 mark the row in
  * focus. A save that fails puts the cell back and says so.
  */
-export function EvaluationBoard({ initial }: { initial: Board }) {
+export function EvaluationBoard({
+  initial,
+  courseId,
+}: {
+  initial: Board;
+  courseId: string;
+}) {
   const t = useTranslations("nazar.Evaluation");
   const { notify } = useToaster();
   const [marks, setMarks] = useState<ReadonlyMap<string, Mark>>(initial.marks);
+  const [results, setResults] = useState<ReadonlyMap<string, ExamResult>>(
+    initial.results
+  );
+  // Exams opened to the talebe on this page, by lesson id (MDRS-248).
+  const [released, setReleased] = useState<ReadonlySet<string>>(
+    () =>
+      new Set(
+        initial.columns.filter((c) => c.exam?.releasedAt).map((c) => c.lessonId)
+      )
+  );
   const [open, setOpen] = useState<string | null>(null);
-  const board = { ...initial, marks };
+  const board = { ...initial, marks, results };
+
+  const saveResult = async (
+    column: EvaluationColumn,
+    talebe: EvaluationTalebe,
+    entry: ExamResult
+  ): Promise<boolean> => {
+    const key = markKey(column.lessonId, talebe.id);
+    const before = results.get(key);
+    if (before?.score === entry.score && before?.absent === entry.absent) {
+      return true;
+    }
+    setResults((now) => new Map(now).set(key, entry));
+    const result = await saveExamResult(
+      column.lessonId,
+      talebe.id,
+      entry.absent ? { absent: true } : { score: entry.score ?? 0 }
+    );
+    if (handleUnauthenticated(result)) return false;
+    if (!("success" in result) || !result.success) {
+      setResults((now) => {
+        const back = new Map(now);
+        if (before) back.set(key, before);
+        else back.delete(key);
+        return back;
+      });
+      notify({
+        tone: "error",
+        title: t("saveFailed"),
+        description: talebe.name ?? t("unnamed"),
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const release = async (column: EvaluationColumn) => {
+    const result = await releaseExamResults(column.lessonId);
+    if (handleUnauthenticated(result)) return;
+    if (!("success" in result) || !result.success) {
+      notify({ tone: "error", title: t("releaseFailed") });
+      return;
+    }
+    setReleased((now) => new Set(now).add(column.lessonId));
+    notify({ title: t("releasedToast") });
+  };
 
   const save = async (
     column: EvaluationColumn,
@@ -98,6 +163,19 @@ export function EvaluationBoard({ initial }: { initial: Board }) {
   }
 
   const column = initial.columns.find((c) => c.lessonId === open);
+  if (column?.exam) {
+    return (
+      <ExamScreen
+        column={column}
+        max={column.exam.maxScore}
+        board={board}
+        released={released.has(column.lessonId)}
+        onBack={() => setOpen(null)}
+        onSave={(talebe, entry) => saveResult(column, talebe, entry)}
+        onRelease={() => release(column)}
+      />
+    );
+  }
   if (column) {
     return (
       <ColumnScreen
@@ -121,16 +199,41 @@ export function EvaluationBoard({ initial }: { initial: Board }) {
       (c): TableColumn<EvaluationTalebe> => ({
         key: c.lessonId,
         header: (
-          <Button
-            variant="link"
-            size="small"
-            onClick={() => setOpen(c.lessonId)}
-            data-testid={`evaluation-open-${c.lessonId}`}
-          >
-            {t("columnTitle", { week: c.weekNumber, title: c.title })}
-          </Button>
+          <span className="flex flex-wrap items-center gap-1">
+            <Button
+              variant="link"
+              size="small"
+              onClick={() => setOpen(c.lessonId)}
+              data-testid={`evaluation-open-${c.lessonId}`}
+            >
+              {c.exam
+                ? t("examColumnTitle", {
+                    week: c.weekNumber,
+                    title: c.title,
+                    max: c.exam.maxScore,
+                  })
+                : t("columnTitle", { week: c.weekNumber, title: c.title })}
+            </Button>
+            {c.exam ? (
+              <Badge variant="secondary">
+                {t(c.exam.isRetake ? "retakeBadge" : "examBadge")}
+              </Badge>
+            ) : null}
+          </span>
         ),
         render: (row) => {
+          if (c.exam) {
+            const result = results.get(markKey(c.lessonId, row.id));
+            return !result ? (
+              <span className="mds-caption">{t("pending")}</span>
+            ) : result.absent ? (
+              <Badge variant="error">{t("absentExam")}</Badge>
+            ) : (
+              <span className="mds-num">
+                {result.score}/{c.exam.maxScore}
+              </span>
+            );
+          }
           const mark = marks.get(markKey(c.lessonId, row.id));
           return mark ? (
             <Badge variant={TONE[mark.status]}>{t(LABEL[mark.status])}</Badge>
@@ -144,7 +247,18 @@ export function EvaluationBoard({ initial }: { initial: Board }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="mds-caption">{t("openHint")}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="mds-caption">{t("openHint")}</p>
+        <Button
+          variant="outline"
+          size="small"
+          href={evaluationExportHref(courseId)}
+          iconLeft={<Icon name="download" size="sm" />}
+          data-testid="evaluation-download"
+        >
+          {t("download")}
+        </Button>
+      </div>
       <Table
         caption={t("caption")}
         columns={columns}
@@ -321,6 +435,199 @@ function MarkRow({
           if (event.key === "Enter") event.currentTarget.blur();
         }}
       />
+    </li>
+  );
+}
+
+/**
+ * An exam column opened (MDRS-248): every talebe with a score box and
+ * "Girmedi". Enter saves the row and moves to the box below; leaving a box
+ * saves it too. A score above "tam puan" is refused here, as tedrisat refuses
+ * it. "Sonuçları talebelere aç" opens the results to the talebe once.
+ */
+function ExamScreen({
+  column,
+  max,
+  board,
+  released,
+  onBack,
+  onSave,
+  onRelease,
+}: {
+  column: EvaluationColumn;
+  max: number;
+  board: Board;
+  released: boolean;
+  onBack: () => void;
+  onSave: (talebe: EvaluationTalebe, entry: ExamResult) => Promise<boolean>;
+  onRelease: () => Promise<void>;
+}) {
+  const t = useTranslations("nazar.Evaluation");
+  const boxes = useRef<Array<HTMLLIElement | null>>([]);
+  const [releasing, setReleasing] = useState(false);
+  const { entered, total } = enteredCount(board, column.lessonId);
+
+  return (
+    <section
+      className="flex flex-col gap-4"
+      aria-labelledby={`evaluation-column-${column.lessonId}`}
+      data-testid="exam-column"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            size="small"
+            iconLeft={<Icon name="arrowLeft" size="sm" />}
+            onClick={onBack}
+          >
+            {t("back")}
+          </Button>
+          <h2
+            className="mds-h3"
+            id={`evaluation-column-${column.lessonId}`}
+            dir="auto"
+          >
+            {t("examColumnTitle", {
+              week: column.weekNumber,
+              title: column.title,
+              max,
+            })}
+          </h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <output
+            className="mds-h3"
+            aria-live="polite"
+            data-testid="exam-count"
+          >
+            {t("entered", { entered, total })}
+          </output>
+          {released ? (
+            <Badge variant="success" data-testid="exam-released">
+              {t("released")}
+            </Badge>
+          ) : (
+            <Button
+              loading={releasing}
+              onClick={async () => {
+                setReleasing(true);
+                await onRelease();
+                setReleasing(false);
+              }}
+              data-testid="exam-release"
+            >
+              {t("release")}
+            </Button>
+          )}
+        </div>
+      </div>
+      <p className="mds-caption">{t("examKeysHint")}</p>
+      <ul className="m-0 flex list-none flex-col p-0">
+        {board.talebe.map((talebe, index) => (
+          <ScoreRow
+            key={talebe.id}
+            ref={(el) => {
+              boxes.current[index] = el;
+            }}
+            talebe={talebe}
+            max={max}
+            result={board.results.get(markKey(column.lessonId, talebe.id))}
+            onSave={(entry) => onSave(talebe, entry)}
+            onNext={() =>
+              boxes.current[index + 1]?.querySelector("input")?.focus()
+            }
+          />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ScoreRow({
+  ref,
+  talebe,
+  max,
+  result,
+  onSave,
+  onNext,
+}: {
+  ref: (el: HTMLLIElement | null) => void;
+  talebe: EvaluationTalebe;
+  max: number;
+  result: ExamResult | undefined;
+  onSave: (entry: ExamResult) => Promise<boolean>;
+  onNext: () => void;
+}) {
+  const t = useTranslations("nazar.Evaluation");
+  const [draft, setDraft] = useState(
+    result && !result.absent && result.score !== null
+      ? String(result.score)
+      : ""
+  );
+  const [problem, setProblem] = useState<string | null>(null);
+  const name = talebe.name ?? t("unnamed");
+  const absent = result?.absent === true;
+
+  const commit = async (): Promise<void> => {
+    const parsed = parseScore(draft, max);
+    if (parsed.kind === "empty") {
+      setProblem(null);
+      return;
+    }
+    if (parsed.kind !== "score") {
+      setProblem(t("scoreTooHigh", { max }));
+      return;
+    }
+    setProblem(null);
+    await onSave({ score: parsed.score, absent: false });
+  };
+
+  return (
+    <li
+      ref={ref}
+      className="flex flex-wrap items-center gap-3 py-3 border-be border-neutral-subtle last:border-be-0"
+      data-testid={`exam-row-${talebe.id}`}
+    >
+      <bdi className="mds-label min-inline-0 flex-1">{name}</bdi>
+      <div className="flex flex-col gap-1">
+        <Input
+          size="small"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={max}
+          aria-label={t("scoreLabel", { name })}
+          aria-invalid={problem ? true : undefined}
+          value={draft}
+          trailing={`/${max}`}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => void commit()}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            void commit();
+            if (parseScore(draft, max).kind !== "over") onNext();
+          }}
+        />
+        {problem ? (
+          <p className="mds-error" role="alert">
+            {problem}
+          </p>
+        ) : null}
+      </div>
+      <Button
+        size="small"
+        variant={absent ? "primary" : "outline"}
+        aria-pressed={absent}
+        onClick={() => {
+          setDraft("");
+          setProblem(null);
+          void onSave({ score: null, absent: true });
+        }}
+      >
+        {t("absentExam")}
+      </Button>
     </li>
   );
 }

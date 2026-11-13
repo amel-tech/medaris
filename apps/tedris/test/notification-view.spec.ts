@@ -215,7 +215,7 @@ describe("describeNotification (tedris/36 sentences)", () => {
 
   it("has a sentence for every type in every language", () => {
     const types = Object.keys(resources.tr.tedris.NotificationsPage.types);
-    expect(types).toHaveLength(11);
+    expect(types).toHaveLength(14);
     for (const locale of ["tr", "en", "ar"] as const) {
       for (const type of types) {
         const text = describeAs(

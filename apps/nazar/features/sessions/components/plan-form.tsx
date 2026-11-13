@@ -3,11 +3,13 @@
 import { Alert } from "@medaris/ui/mds/alert";
 import { Breadcrumb } from "@medaris/ui/mds/breadcrumb";
 import { Button } from "@medaris/ui/mds/button";
+import { Checkbox } from "@medaris/ui/mds/checkbox";
 import { ChoiceChips } from "@medaris/ui/mds/choice-chips";
 import { Field } from "@medaris/ui/mds/field";
 import { Input } from "@medaris/ui/mds/input";
 import { RadioGroup } from "@medaris/ui/mds/radio-group";
 import { Select } from "@medaris/ui/mds/select";
+import { Textarea } from "@medaris/ui/mds/textarea";
 import { useToaster } from "@medaris/ui/mds/toast";
 import { DEFAULT_TIME_ZONE, listTimeZones, timeZoneCity } from "@medaris/utils";
 import { useRouter } from "next/navigation";
@@ -37,6 +39,15 @@ import {
 } from "../sessions";
 
 type Links = "empty" | "first";
+type Kind = "lesson" | "exam";
+type ExamFormat = "WRITTEN" | "ORAL";
+type ExamPlace = "online" | "inPerson";
+
+/** "Tam puan" as typed: a whole number from 1 to 1000, else null. */
+export const examMaxScore = (value: string): number | null => {
+  const n = Number(value);
+  return /^\d+$/.test(value.trim()) && n >= 1 && n <= 1000 ? n : null;
+};
 type Preview = Array<{
   scheduledAt: string;
   localDate: string;
@@ -88,6 +99,15 @@ export function PlanForm({
     count: "8",
   });
   const [title, setTitle] = useState(t("SessionPlan.defaultTitle"));
+  // "Sınav" (MDRS-248): the same flow, one celse, a few more fields.
+  const [kind, setKind] = useState<Kind>("lesson");
+  const [examFormat, setExamFormat] = useState<ExamFormat>("WRITTEN");
+  const [maxScore, setMaxScore] = useState("100");
+  const [place, setPlace] = useState<ExamPlace>("online");
+  const [location, setLocation] = useState("");
+  const [topics, setTopics] = useState("");
+  const [retake, setRetake] = useState(false);
+  const exam = kind === "exam";
   const [links, setLinks] = useState<Links>("empty");
   const [firstUrl, setFirstUrl] = useState("");
   const [sent, setSent] = useState(false);
@@ -136,8 +156,15 @@ export function PlanForm({
   const titleProblem = title.trim().length === 0;
   const firstLink = links === "first" ? sendableLink(firstUrl) : null;
   const urlProblem = links === "first" && firstLink === null;
+  const maxScoreProblem = exam && examMaxScore(maxScore) === null;
+  const locationProblem =
+    exam && place === "inPerson" && location.trim() === "";
   const hasProblem =
-    Object.keys(problems).length > 0 || titleProblem || urlProblem;
+    Object.keys(problems).length > 0 ||
+    titleProblem ||
+    urlProblem ||
+    maxScoreProblem ||
+    locationProblem;
   const count = preview?.length ?? 0;
 
   const show = (flag: boolean, key: string) =>
@@ -151,9 +178,21 @@ export function PlanForm({
       return;
     }
     startSaving(async () => {
+      const request = planRequest(pattern, form, title, firstLink);
       const result = await createSessions(
         courseId,
-        planRequest(pattern, form, title, firstLink)
+        exam
+          ? {
+              ...request,
+              exam: {
+                format: examFormat,
+                maxScore: examMaxScore(maxScore) ?? 100,
+                topics: topics.trim() || null,
+                location: place === "inPerson" ? location.trim() : null,
+                isRetake: retake,
+              },
+            }
+          : request
       );
       if (handleUnauthenticated(result)) return;
       if (!result.success) {
@@ -198,16 +237,43 @@ export function PlanForm({
       </header>
 
       <ChoiceChips
-        legend={t("SessionPlan.modeLegend")}
+        legend={t("SessionPlan.kindLegend")}
         legendVisible
-        name="mode"
-        value={form.mode}
-        onChange={(value) => value && set("mode", value as PlanFields["mode"])}
+        name="kind"
+        value={kind}
+        onChange={(value) => {
+          if (!value) return;
+          const next = value as Kind;
+          setKind(next);
+          // An exam is one celse; its title says what it is.
+          if (next === "exam") {
+            set("mode", "single");
+            setTitle(t("SessionPlan.examDefaultTitle"));
+          } else {
+            setTitle(t("SessionPlan.defaultTitle"));
+          }
+        }}
         options={[
-          { value: "single", label: t("SessionPlan.modeSingle") },
-          { value: "weekly", label: t("SessionPlan.modeWeekly") },
+          { value: "lesson", label: t("SessionPlan.kindLesson") },
+          { value: "exam", label: t("SessionPlan.kindExam") },
         ]}
       />
+
+      {exam ? null : (
+        <ChoiceChips
+          legend={t("SessionPlan.modeLegend")}
+          legendVisible
+          name="mode"
+          value={form.mode}
+          onChange={(value) =>
+            value && set("mode", value as PlanFields["mode"])
+          }
+          options={[
+            { value: "single", label: t("SessionPlan.modeSingle") },
+            { value: "weekly", label: t("SessionPlan.modeWeekly") },
+          ]}
+        />
+      )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-inline-0 flex-col gap-6">
@@ -356,6 +422,89 @@ export function PlanForm({
             ) : null}
           </section>
 
+          {exam ? (
+            <section
+              className="mds-card flex flex-col gap-4"
+              aria-labelledby="plan-exam"
+              data-testid="plan-exam"
+            >
+              <h2 id="plan-exam" className="mds-h2">
+                {t("SessionPlan.examTitle")}
+              </h2>
+              <ChoiceChips
+                legend={t("SessionPlan.examFormatLegend")}
+                legendVisible
+                name="examFormat"
+                value={examFormat}
+                onChange={(value) =>
+                  value && setExamFormat(value as ExamFormat)
+                }
+                options={[
+                  { value: "WRITTEN", label: t("SessionPlan.examWritten") },
+                  { value: "ORAL", label: t("SessionPlan.examOral") },
+                ]}
+              />
+              <Field
+                label={t("SessionPlan.examMaxScoreLabel")}
+                required
+                error={show(maxScoreProblem, "examMaxScore")}
+              >
+                <Input
+                  type="number"
+                  name="maxScore"
+                  min={1}
+                  max={1000}
+                  inputMode="numeric"
+                  value={maxScore}
+                  onChange={(event) => setMaxScore(event.target.value)}
+                />
+              </Field>
+              <RadioGroup
+                legend={t("SessionPlan.examPlaceLegend")}
+                name="examPlace"
+                value={place}
+                onChange={(value) => setPlace(value as ExamPlace)}
+                options={[
+                  { value: "online", label: t("SessionPlan.examOnline") },
+                  { value: "inPerson", label: t("SessionPlan.examInPerson") },
+                ]}
+              />
+              {place === "inPerson" ? (
+                <Field
+                  label={t("SessionPlan.examLocationLabel")}
+                  required
+                  error={show(locationProblem, "examLocation")}
+                >
+                  <Input
+                    name="examLocation"
+                    maxLength={200}
+                    dir="auto"
+                    value={location}
+                    onChange={(event) => setLocation(event.target.value)}
+                  />
+                </Field>
+              ) : null}
+              <Field label={t("SessionPlan.examTopicsLabel")}>
+                <Textarea
+                  name="examTopics"
+                  maxLength={2000}
+                  rows={3}
+                  dir="auto"
+                  value={topics}
+                  onChange={(event: { target: { value: string } }) =>
+                    setTopics(event.target.value)
+                  }
+                />
+              </Field>
+              <Checkbox
+                label={t("SessionPlan.examRetake")}
+                description={t("SessionPlan.examRetakeDesc")}
+                checked={retake}
+                onCheckedChange={(checked: boolean) => setRetake(checked)}
+              />
+            </section>
+          ) : null}
+
           <section
             className="mds-card flex flex-col gap-4"
             aria-labelledby="plan-sessions"
@@ -437,7 +586,9 @@ export function PlanForm({
               loadingLabel={t("SessionPlan.saving")}
               disabled={count === 0}
             >
-              {t("SessionPlan.submit", { count })}
+              {exam
+                ? t("SessionPlan.examSubmit")
+                : t("SessionPlan.submit", { count })}
             </Button>
           </div>
         </div>
