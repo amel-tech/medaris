@@ -64,8 +64,9 @@ accounts:
     address: '{secret.E2E_OTHER_EMAIL}'
     password: '{secret.E2E_OTHER_PASSWORD}'
     entry: '{tedris}'
-  # Two spare talebe with every profile attribute set and no enrolment anywhere, for the walks that apply to a course:
-  # applicantA is a woman, applicantB a man. The seed gives them no notification either.
+  # Eight spare talebe with every profile attribute set and no enrolment anywhere, for the walks that apply to a course:
+  # applicantA, C, E and G are women, applicantB, D, F and H men. The seed gives them no notification either. Writers
+  # working side by side take different ones.
   applicantA:
     address: '{secret.E2E_APPLICANT_A_EMAIL}'
     password: '{secret.E2E_APPLICANT_A_PASSWORD}'
@@ -73,6 +74,30 @@ accounts:
   applicantB:
     address: '{secret.E2E_APPLICANT_B_EMAIL}'
     password: '{secret.E2E_APPLICANT_B_PASSWORD}'
+    entry: '{tedris}'
+  applicantC:
+    address: '{secret.E2E_APPLICANT_C_EMAIL}'
+    password: '{secret.E2E_APPLICANT_C_PASSWORD}'
+    entry: '{tedris}'
+  applicantD:
+    address: '{secret.E2E_APPLICANT_D_EMAIL}'
+    password: '{secret.E2E_APPLICANT_D_PASSWORD}'
+    entry: '{tedris}'
+  applicantE:
+    address: '{secret.E2E_APPLICANT_E_EMAIL}'
+    password: '{secret.E2E_APPLICANT_E_PASSWORD}'
+    entry: '{tedris}'
+  applicantF:
+    address: '{secret.E2E_APPLICANT_F_EMAIL}'
+    password: '{secret.E2E_APPLICANT_F_PASSWORD}'
+    entry: '{tedris}'
+  applicantG:
+    address: '{secret.E2E_APPLICANT_G_EMAIL}'
+    password: '{secret.E2E_APPLICANT_G_PASSWORD}'
+    entry: '{tedris}'
+  applicantH:
+    address: '{secret.E2E_APPLICANT_H_EMAIL}'
+    password: '{secret.E2E_APPLICANT_H_PASSWORD}'
     entry: '{tedris}'
   # Stopped by a Keycloak required action after the password; a walk that completes the page uses it up, and the
   # stack's seed arms it again.

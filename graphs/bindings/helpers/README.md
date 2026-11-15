@@ -2,7 +2,7 @@
 
 Node scripts (no dependencies) that a binding's `setup`, `teardown`, `events` and `effects` run as `run: [node, helpers/<x>.mjs, ...]`. The replay runs them with `graphs/bindings/` as the working directory, with no shell and no stdin, and an `expect` is a substring of what they print to stdout. Each one exits 0 and prints one short line (or JSON, for `api`, `sql`, `mail`) on success, and exits non-zero with one line on stderr on failure.
 
-`ACCOUNT` is a role key of `graphs/.local/accounts.env` (`TALEBE_MALE`, `APPLICANT_A`) or the account name a binding gives (`talebeMale`, `applicantA`); `basmuderris` is `MEDRESE_BASMUDERRIS`. Nothing secret is ever printed or put on a command line. A person signs in with the real authorization-code flow and PKCE against `tedris-local`; the token is cached in `graphs/.local/tokens/` (git-ignored) and renewed on its own.
+`ACCOUNT` is a role key of `graphs/.local/accounts.env` (`TALEBE_MALE`, `APPLICANT_C`) or the account name a binding gives (`talebeMale`, `applicantA`); `basmuderris` is `MEDRESE_BASMUDERRIS`. Nothing secret is ever printed or put on a command line. A person signs in with the real authorization-code flow and PKCE against `tedris-local`; the token is cached in `graphs/.local/tokens/` (git-ignored) and renewed on its own.
 
 | Helper | What it does | Example `run:` line |
 | -- | -- | -- |
@@ -17,6 +17,7 @@ Node scripts (no dependencies) that a binding's `setup`, `teardown`, `events` an
 | `course-nazir-grants.mjs` | `--course <id> --nazir <ACCOUNT> --codes <code,code\|none\|seed> [--as <ACCOUNT>]`: sets the ders nazırı post's whole set of codes as the hoca (`MUDERRIS`) does, with `PATCH /courses/{id}/nazirs/{postId}`; appoints first if there is no post. `seed` is the seeded set. | `[node, helpers/course-nazir-grants.mjs, --course, '{seed.courses.open}', --nazir, dersNazir, --codes, none]` |
 | `remove-kosk.mjs` | `<handle>`: deletes every köşk with that short name, as the başnazım; none is fine. | `[node, helpers/remove-kosk.mjs, '{handle}']` |
 | `notify.mjs` | A notification for a person. tedrisat has no route that writes one, so: `<ACCOUNT> approved\|rejected --course <id>` (the course team answers the account's application: ENROLLMENT_APPROVED / ENROLLMENT_REJECTED), `<ACCOUNT> raw <TYPE> [--target-type T --target-id <uuid>] [--params <json>] [--read]` (a row written with SQL, any type), `<ACCOUNT> clear` (every notification of the account). | `[node, helpers/notify.mjs, applicantA, approved, --course, '{seed.courses.approval}']` |
+| `course.mjs` | A course of a walk's own, by tag. `make <tag> [--kosk <id>\|--madrasah <id>] [--draft] [--approval] [--weeks n] [--lessons n] [--start days] [--hoca ACCOUNT] [--talebe ACCOUNT...]` opens `Deneme dersi <tag>` (default: published, in the seed's second köşk, two weeks of two celses from tomorrow, `MUDERRIS` as hoca, anyone takes a seat), prints `{tag,title,course,kosk,weeks:[ids],lessons:[ids],talebe:{KEY:status}}` and records it in `graphs/.local/made/<tag>.json`, which a binding reads as a data source (`made: { json: ../.local/made/<tag>.json }`, then `{made.course}`). `remove <tag>` has the talebe leave, deletes the course as the başnazım, clears its invitation mails and the notifications that point at it (the one SQL delete: no route removes a notification); a second `remove` says `none`. | `[node, helpers/course.mjs, make, mine, --approval, --talebe, applicantC, applicantD]` and, in `teardown`, `[node, helpers/course.mjs, remove, mine]` |
 
 `lib.mjs` and `db.mjs` are what the others share; they are not commands.
 
@@ -24,5 +25,5 @@ Things to know when a walk uses them:
 
 - Applying or leaving a course with a seat makes tedrisat's invitation sweep mail the account the session invitations and cancellations (Mailpit). `mail.mjs clear 'to:<address>'` in `setup` or `teardown` gives the next walk a clean mailbox.
 - `approved` leaves the account `ENROLLED`; end the walk with `leave.mjs`. `rejected` leaves no row. Both need a course that asks for approval (`seed.courses.approval`); on a course that takes anyone they refuse before they change anything.
-- `APPLICANT_A` and `APPLICANT_B` start with no enrolment and no notification; give them back that way.
+- `APPLICANT_A` to `APPLICANT_H` (binding names `applicantA` to `applicantH`; A, C, E, G are women, B, D, F, H men) start with no enrolment and no notification; give them back that way. Writers working side by side take different ones, so that two walks never apply as the same person.
 - The seed's `seed.json` carries ids and the texts to match by: `courses.*`, `kosk`, `kosk2`, `madrasah`, `sessions.open.{next,later,past}`, `decks.{own,course}`, `titles.*` and the question, note, homework and hand-in texts in `sessions.open.*`.
