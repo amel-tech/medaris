@@ -1,0 +1,159 @@
+# What must exist for a talebe who reads Derslerim: tedris.learning.myCourses, written on 15 Nov 2026 in the format of LAYOUT.md section 7. Each
+# need is what the product must do, from the flow's story; none is read off what the page does today. No planned feature of planned.md (P-nn)
+# names this page; the gaps below are the inventory's findings. The page decides no seat, so the per-gender kontenjan need (MDRS-284) has no
+# place here: it is tedris.course.apply's and nazar.roster.decide's.
+#
+# The gaps this file leaves, for the orchestrator's merge into graphs/needs.gaps.yaml:
+#   missing    (no code): withdraw-never-removes-an-approved-seat (DSC-03), completed-link-names-its-course (DSC-11),
+#              cover-is-not-read-aloud (DSC-12), loading-says-so (DSC-19), every-course-is-a-heading (MYC-1)
+#   unwalked   (code, no e2e and no replay): failed-read-says-so (only the unit spec discover-pages.spec.ts proves the markup; the stack cannot make
+#              tedrisat refuse a read), leave-from-the-card (tedris.course.leave walks it; nothing walks it from this page),
+#              open-a-course-from-every-relation (the replay presses the ongoing card's link only; no e2e presses the other three),
+#              next-celse-or-none (the replay walks the "planned" case only: every course the stack can give has a celse ahead)
+kind: needs
+flow: tedris.learning.myCourses
+status: proposed
+
+needs:
+  - id: courses-by-state
+    need: >-
+      A talebe reads, in one place, the courses they follow now, the applications that wait for the course team, the courses the team completed
+      and the courses where their access was withdrawn, each section with how many it holds, and a section with nothing in it says so.
+    drawn: [listed, sections-only-with-something]
+    built:
+      - action: medaris.api:listEnrolledCourses
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:179
+      - route: apps/tedris/features/courses/my-courses.ts:17
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#21, discover#22'
+      - replay: fullPage
+
+  - id: progress-and-next-celse
+    need: >-
+      Each course a talebe follows shows how far they have got and when the next celse is, with its week; a course with no celse ahead says so.
+    drawn: [listed]
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:87
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#23'
+      - replay: fullPage # the next celse, its week and the 40 per cent; "Planlı celse yok" is not walked (see next-celse-or-none)
+
+  - id: next-celse-or-none
+    need: A card with no celse left ahead says "Planlı celse yok" in the place of the next celse.
+    drawn: [listed]
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:134
+    # walked: nothing. The unit spec discover-pages.spec.ts ("writes the next session with its day and week, or says none is planned") proves the
+    # markup; every course the stack can give a talebe has a celse ahead, and no e2e makes one that has none.
+
+  - id: dates-of-application-and-completion
+    need: >-
+      A waiting application says on what day it was made and that the course moves to the ongoing ones once approved; a completed course says on
+      what day the course team confirmed it.
+    drawn: [listed]
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:307
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:386
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#24'
+      - replay: fullPage # the dates are the walk's own (today), matched by pattern
+
+  - id: open-a-course-from-the-list
+    need: A talebe opens a course from its card, in one press.
+    drawn: [listed, course_opened]
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:102
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#25 (a1)'
+      - replay: fullPage
+
+  - id: open-a-course-from-every-relation
+    need: >-
+      A talebe opens the course page from a waiting application, from a course whose access was withdrawn and from a completed course, as from a
+      card, and the page they land on says what their relation to the course is.
+    drawn: [listed]
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:163
+    # walked: nothing presses these links. e2e discover#21 sees the three links on the page; the replay presses the ongoing card's link only; the
+    # page each opens is tedris.course.readProgramme's (its scenarios pending, revoked, completed).
+
+  - id: subscribe-from-the-list
+    need: A talebe goes from their courses to the page where they subscribe a calendar to their celses.
+    drawn: [listed, empty, loadFailed]
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:205
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#25 (a2)'
+
+  - id: no-courses-yet-way-on
+    need: A talebe with no course at all is told so in one sentence and is offered the way to the catalogue.
+    drawn: [empty, empty-only-with-nothing]
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:223
+    walked:
+      - replay: nothingYet
+
+  - id: failed-read-says-so
+    need: >-
+      When the courses cannot be read the talebe is told so, with a way to try again, and is never told they have none.
+    drawn: [loadFailed, a-failed-read-is-never-an-empty-page, alert-only-after-a-failed-read]
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:214
+      - route: apps/tedris/app/my-courses/page.tsx:15
+    # walked: nothing. The unit spec apps/tedris/test/discover-pages.spec.ts ("is an Alert, never 'no courses', when the read failed") proves the
+    # markup; no e2e and no replay makes tedrisat fail, and the stack cannot be made to.
+
+  - id: take-back-an-application
+    need: A talebe takes back an application that still waits, from the list, and it is gone.
+    drawn: [listed, handed_over.withdraw, only-an-application-is-withdrawn]
+    built:
+      - route: apps/tedris/features/courses/components/application-row.tsx:39
+      - action: medaris.api:leaveCourse
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#26' # carried by tedris.course.leave; it cannot tell which of the two API calls the button makes
+
+  - id: withdraw-never-removes-an-approved-seat
+    need: >-
+      Taking back an application never removes a seat the course team approved while the page was open: the button asks for the withdrawal and,
+      when the answer is that the application is no longer waiting, says so and reads the page again.
+    drawn: [listed, handed_over.withdraw]
+    missing: none # DSC-03: the row calls the leave endpoint, which deletes an approved seat too; no Linear issue
+
+  - id: leave-from-the-card
+    need: A talebe leaves a course they follow from its card, after being told what they lose and what they keep.
+    drawn: [listed, handed_over.leave_menu, only-a-card-has-a-menu]
+    built:
+      - route: apps/tedris/features/courses/components/course-actions-menu.tsx:67
+      - action: medaris.api:leaveCourse
+    # walked: nothing from this page. tedris.course.leave walks the menu and the window; no e2e touches "Dersten ayrıl".
+
+  - id: completed-link-names-its-course
+    need: >-
+      The link that leads from a completed course to its recordings names the course, and opens the recordings, so that a list of such links is
+      not N identical names that go to the same place.
+    drawn: [listed]
+    missing: none # DSC-11 and decision D1 of the flow; no Linear issue
+
+  - id: cover-is-not-read-aloud
+    need: >-
+      A course's cover is decoration, so a screen reader reads the course's title and not the cover's Arabic word first.
+    drawn: [listed]
+    missing: none # DSC-12; no Linear issue
+
+  - id: loading-says-so
+    need: While Derslerim loads, a screen reader is told that it is loading.
+    drawn: []
+    missing: none # DSC-19: loading.tsx is an aria-busy block of skeletons with no word; no screen of this flow; no Linear issue
+
+  - id: every-course-is-a-heading
+    need: >-
+      A talebe who moves by headings finds every course of the page in the list, in whichever section it is, or none of them in it: the
+      sections do not treat their courses differently.
+    drawn: [listed]
+    missing: none # MYC-1, proposed finding: h3 on the ongoing cards, a plain link on the three other sections' rows; no Linear issue

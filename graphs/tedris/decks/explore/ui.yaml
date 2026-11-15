@@ -1,0 +1,124 @@
+# The screens of tedris.decks.explore: "Desteleri keşfet" (tedris-web /decks/explore, features/flashcards/components/explore-decks-page.tsx), as a
+# signed-in talebe meets it: the head with its breadcrumb, the search box and the card-type chips, the two sections of decks ("Derslerinin desteleri"
+# and "Herkese açık desteler") with their counts, the collection controls of a deck, the toast of a refused change, and the box that takes the page's
+# place when the read fails. The deck's own page (/decks/<id>) is another flow's (tedris.decks.readAndCopy, tedris.decks.publish).
+#
+# Words: every `Decks.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.Decks`), the key being the path inside that
+# file, by script, letter for letter. Five more kinds of entry, none of them in an i18n file:
+#   composed.Deck.title        a deck's name, which the API gives: the card's link (deck-summary-card.tsx:73-78; a value, not a message)
+#   composed.Decks.context     "<course or köşk or medrese>·<müderris with the unvan they carry there>", the first line of a card in "Derslerinin desteleri"
+#                              (deck-summary-card.tsx:113-125; the "·" is decorative, aria-hidden)
+#   composed.Decks.footer      "<n> kart·<Kelime|Hadis>": `Decks.cards`, a decorative "·" and `Decks.cardTypeX`, put together (deck-summary-card.tsx:82-88)
+#   composed.Button.loading    "Yükleniyor", the kit's own default for a busy button's hidden status (libs/ui/src/mds/button.tsx:62; DCK-23)
+#   composed.Toast.close       "Kapat", the toast's close button, a constant of the kit (libs/ui/src/mds/toast.tsx:97; DCK-23)
+# and `Changes.note`, the one entry that is NOT copied from the app: the app has no message that says what adding a deck to the collection changes
+# (`Decks.exploreSubtitle` only tells the person to do it), so this one factual sentence is written for `changes`; every word of it is what the code does.
+# Samples are keyed by the catalog placeholder and are invented and neutral (`title` is the name of the one deck the flow acts on). The replay does not read
+# them: it takes its samples from the binding, which also overrides the locators of the nodes that name another deck (binding.yaml).
+schema: delurio-graph/0
+kind: ui
+id: tedris.decks.explore
+flow: tedris.decks.explore
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Zümrüt hadis seçkisi
+  course: Bina ve İzhar Şerhi
+  hoca: Örnek Hoca
+  count: "1"
+  kind: Hadis
+
+nodes:
+  # ---- the page and its head ----
+  explorePage: { type: page, component: Page, role: main, in: [explored, adding, removing, readFailed], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:106 } # TabView leaves /decks* without a <main>, so the page draws its own (components/tab-view/index.tsx:18). No name and no initialFocus: nothing moves the focus when the page opens (rule focus-not-set). Needs JavaScript: the chips, the search box and the collection buttons are client code
+  crumbNav: { type: page, component: Page, role: navigation, name: { key: Decks.breadcrumbLabel }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:219 } # "Sayfa yolu": "Desteler / Desteleri keşfet"; the current page is a span with aria-current, not a node here. Below 768 px only the parent shows, as a back link
+  crumbDecks: { type: action, component: LinkButton, role: link, text: { key: Decks.title }, in: [explored, adding, removing], emits: OPEN_DECKS, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:221 } # a plain <a href="/decks">: a new document
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Decks.explore }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:223 } # h1
+  pageSubtitle: { type: text, component: Text, text: { key: Decks.exploreSubtitle }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:224 }
+
+  # ---- the search box and the card-type chips (a <search> landmark, no name) ----
+  searchRegion: { type: page, component: Page, role: search, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:227 }
+  searchBox: { type: field, component: TextField, role: searchbox, text: { key: Decks.searchByName }, value: { literal: "" }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:229 } # type=search, maxLength 100; the aria-label and the placeholder say the same words; it filters in the browser, on the words of a deck's name and description; the address does not carry it
+  chipGroup: { type: page, component: Page, role: group, name: { key: Decks.kindLegend }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:240 } # a Base UI ToggleGroup named by a visually hidden legend
+  chipAll: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.all }, in: [explored, adding, removing], emits: PICK_ALL, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:244 } # aria-pressed says which chip is on: a button node has no key for it. Pressing the pressed "Tümü" pushes the same address and changes nothing
+  chipVocabulary: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.cardTypeVOCABULARY }, in: [explored, adding, removing], emits: PICK_VOCABULARY, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:244 } # router.push(?type=VOCABULARY); pressed again it goes back to the bare address
+  chipHadeeth: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.cardTypeHADEETH }, in: [explored, adding, removing], emits: PICK_HADEETH, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:244 }
+
+  # ---- "Derslerinin desteleri": other people's decks shared through a course, a köşk or a medrese the person is in ----
+  courseSection: { type: page, component: Page, role: region, name: { labelledBy: courseTitle }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:178 }
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: Decks.courseTitle }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:180 } # h2
+  courseCount: { type: text, component: Text, text: { key: Decks.deckCount, params: { count: decks.course.count } }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:183 } # "{n} deste", also "0 deste"; it changes with the box and the chips and nothing announces it (DCK-11)
+  courseHint: { type: text, component: Text, text: { key: Decks.courseHint }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:187 }
+  courseEmpty: { type: text, component: Text, text: { key: Decks.emptyCourse }, in: [explored, adding, removing], when: "not courseShown and typed == 'none'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:261 } # an EmptyState with an icon; shown when the person is in no course with a deck, and also when the chip leaves none
+  courseEmptySearch: { type: text, component: Text, text: { key: Decks.emptySearch }, in: [explored, adding, removing], when: "not courseShown and typed != 'none'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:261 } # the same sentence in both sections while the box holds something
+  courseList: { type: list, component: List, role: list, name: { labelledBy: courseTitle }, in: [explored, adding, removing], when: courseShown, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:191 } # <ul aria-labelledby>, the same heading that names the section; a grid of three, two or one column by width
+  courseItem: { type: list, component: ListItem, role: listitem, in: [explored, adding, removing], when: courseShown, repeat: decks.course, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:193 }
+  courseLink: { type: action, component: LinkButton, role: link, text: { key: composed.Deck.title, params: { title: deck.title } }, in: [explored, adding, removing], when: courseShown, repeat: decks.course, emits: OPEN_DECK, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 } # the one link of a card, inside its h3 (the avatar is decorative); the card's ::after makes the whole card press it. A plain <a>: a new document
+  courseKind: { type: text, component: Text, text: { oneOf: [Decks.kindCOURSE, Decks.kindKOSK, Decks.kindMADRASAH] }, in: [explored, adding, removing], when: courseShown, repeat: decks.course, source: apps/tedris/features/flashcards/components/deck-badges.tsx:55 } # a badge beside the name: where the deck comes from. Only this section draws it (explore-decks-page.tsx:198)
+  courseContext: { type: text, component: Text, text: { key: composed.Decks.context, params: { course: deck.contextTitle, hoca: deck.muderris } }, in: [explored, adding, removing], when: courseShown, repeat: decks.course, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:113 } # the course and its müderris with the unvan they carry there ("… Hoca" when they carry none, e2e decks#6)
+  courseMeta: { type: text, component: Text, text: { key: composed.Decks.footer, params: { count: deck.cardCount, kind: deck.kind } }, in: [explored, adding, removing], when: courseShown, repeat: decks.course, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:82 }
+  courseAdd: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.add }, name: { key: Decks.addLabel, params: { title: courseDeck.title } }, in: [explored, adding, removing], when: courseShown, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:157 } # the seeded course deck's own button, which e2e decks#6 asserts; the walk reads it and does not press it. It is the deck of the course the person is in, collected by nobody on the stack
+
+  # ---- "Herkese açık desteler": every deck that Medaris management published, the person's own among them ----
+  publicSection: { type: page, component: Page, role: region, name: { labelledBy: publicTitle }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:178 }
+  publicTitle: { type: text, component: Heading, role: heading, text: { key: Decks.publicTitle }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:180 } # h2
+  publicCount: { type: text, component: Text, text: { key: Decks.deckCount, params: { count: decks.public.count } }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:183 } # DCK-11
+  publicHint: { type: text, component: Text, text: { key: Decks.publicHint }, in: [explored, adding, removing], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:187 }
+  publicEmpty: { type: text, component: Text, text: { key: Decks.emptyPublic }, in: [explored, adding, removing], when: "not publicShown and typed == 'none'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:268 }
+  publicEmptySearch: { type: text, component: Text, text: { key: Decks.emptySearch }, in: [explored, adding, removing], when: "not publicShown and typed != 'none'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:268 }
+  publicList: { type: list, component: List, role: list, name: { labelledBy: publicTitle }, in: [explored, adding, removing], when: publicShown, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:191 }
+  publicItem: { type: list, component: ListItem, role: listitem, in: [explored, adding, removing], when: publicShown, repeat: decks.public, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:193 }
+  publicLink: { type: action, component: LinkButton, role: link, text: { key: composed.Deck.title, params: { title: deck.title } }, in: [explored, adding, removing], when: publicShown, repeat: decks.public, emits: OPEN_DECK, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 } # no kind badge in this section: the deck is public, and the card's first line is its description
+  publicMeta: { type: text, component: Text, text: { key: composed.Decks.footer, params: { count: deck.cardCount, kind: deck.kind } }, in: [explored, adding, removing], when: publicShown, repeat: decks.public, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:82 }
+  ownLink: { type: action, component: LinkButton, role: link, text: { key: composed.Deck.title, params: { title: ownDeck.title } }, in: [explored, adding, removing], when: ownListed, emits: OPEN_OWN_DECK, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 } # the person's own published deck: its link opens the author's page, not the reader's
+  yours: { type: text, component: Text, text: { key: Decks.yours }, in: [explored, adding, removing], when: ownListed, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:136 } # a caption in place of any collection control (e2e decks#6)
+
+  # ---- the collection controls of the deck the flow acts on (a published deck of somebody else's): the button flips at once, before the answer ----
+  addButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.add }, name: { key: Decks.addLabel, params: { title: title } }, in: [explored, removing], when: "deckListed and collected == 'no'", disabledIn: [removing], emits: ADD, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:157 } # outline, small, a plus icon; `loading` while the request is out (aria-disabled, aria-busy, never `disabled`); DCK-08
+  collectedBadge: { type: text, component: Text, text: { key: Decks.inCollection }, in: [explored, adding], when: "deckListed and collected == 'yes'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:141 } # a success badge with a check icon, beside "Çıkar"
+  removeButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.remove }, name: { key: Decks.removeLabel, params: { title: title } }, in: [explored, adding], when: "deckListed and collected == 'yes'", disabledIn: [adding], emits: REMOVE, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:144 } # ghost, mini; the visible "Çıkar" is inside the name
+  addingStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [adding], source: libs/ui/src/mds/button.tsx:113 } # the hidden <output> beside the busy button; it exists, empty, beside every deck button while idle
+  removingStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [removing], source: libs/ui/src/mds/button.tsx:113 }
+
+  # ---- the toast of a refused change (the unified kit's Toaster, Base UI): an error stays until it is closed ----
+  addFailedToast: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: addFailedTitle }, in: [explored, adding, removing], when: "notice == 'addFailed'", source: libs/ui/src/mds/toast.tsx:77 } # Base UI gives a high-priority toast the role alertdialog and aria-hidden until it is focused; its region is "Bildirimler"
+  addFailedTitle: { type: text, component: Text, text: { key: Decks.addFailedTitle }, in: [explored, adding, removing], when: "notice == 'addFailed'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:95 }
+  addFailedText: { type: text, component: Text, text: { key: Decks.tryAgain }, in: [explored, adding, removing], when: "notice == 'addFailed'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:96 }
+  removeFailedToast: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: removeFailedTitle }, in: [explored, adding, removing], when: "notice == 'removeFailed'", source: libs/ui/src/mds/toast.tsx:77 }
+  removeFailedTitle: { type: text, component: Text, text: { key: Decks.removeFailedTitle }, in: [explored, adding, removing], when: "notice == 'removeFailed'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:95 }
+  removeFailedText: { type: text, component: Text, text: { key: Decks.tryAgain }, in: [explored, adding, removing], when: "notice == 'removeFailed'", source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:96 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Toast.close }, in: [explored, adding, removing], when: "notice != 'none'", emits: CLOSE_TOAST, source: libs/ui/src/mds/toast.tsx:97 } # an icon only, aria-hidden with the toast until it is focused; its label is a constant of the kit (DCK-23)
+
+  # ---- the box that takes the page's place when the read fails (SystemState inside the page's <main>) ----
+  failedBox: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [readFailed], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:113 } # a <section aria-labelledby>; no h1, no breadcrumb, no search box, no chips (DCK-12)
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Decks.errorTitle }, in: [readFailed], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:115 } # h2: the page has no h1 here (DCK-12)
+  failedText: { type: text, component: Text, text: { key: Decks.errorText }, in: [readFailed], source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:123 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.retry }, in: [readFailed], emits: RETRY, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:118 } # router.refresh(): no busy state and no status while it reads (DCK-12)
+
+edges:
+  - { labelledBy: [courseSection, courseTitle] }
+  - { labelledBy: [courseList, courseTitle] }
+  - { labelledBy: [publicSection, publicTitle] }
+  - { labelledBy: [publicList, publicTitle] }
+  - { labelledBy: [addFailedToast, addFailedTitle] }
+  - { labelledBy: [removeFailedToast, removeFailedTitle] }
+  - { labelledBy: [failedBox, failedTitle] }
+  - { triggers: [addButton, adding] }
+  - { triggers: [removeButton, removing] }
+  - { triggers: [retryButton, reading] }
+  - { triggers: [chipAll, reading] }
+  - { triggers: [chipVocabulary, reading] }
+  - { triggers: [chipHadeeth, reading] }
+
+rules:
+  - { id: DCK-08, rule: "\"Koleksiyona ekle\" and \"Çıkar\" swap the whole control (a Button for a span with a badge and a Button, and back), so the button that was pressed is gone and the focus falls to <body>; a success is shown only as the changed control and is never announced, and only a refusal raises a toast (explore-decks-page.tsx:135-166, :75-98). The graph draws the swap as the same two states (the button before, the badge and \"Çıkar\" after) and says nothing of the focus afterwards, because no node has it. Fix: keep one button and change its name, or move the focus to the new control, and add a polite success message" }
+  - { id: DCK-11, rule: "the \"{n} deste\" counts change as the person types in the box or presses a chip, and the sentence \"Aramana uyan deste yok.\" appears, with no live region and no status (explore-decks-page.tsx:183-185); filtering is silent. Fix: role=status on the count" }
+  - { id: DCK-12, rule: "the read-failure state draws SystemState with headingLevel 2 inside <main>, so the page has no h1 (explore-decks-page.tsx:113-125), and \"Yeniden dene\" is router.refresh() with no busy state and no word while it reads. Fix: headingLevel 1 and a status while it reads" }
+  - { id: DCK-23, rule: "two words of this page are not in the catalog: the busy status \"Yükleniyor\" (libs/ui/src/mds/button.tsx:62, the kit's default, which the page does not override) and the toast's close button \"Kapat\" (libs/ui/src/mds/toast.tsx:97, an aria-label constant); the toast's region name \"Bildirimler\" is a default parameter too (toast.tsx:127; ToastHost passes none). Harmless while tr is the only locale a screen can show (the same as MDRS-233)" }
+  - { id: DCK-25, rule: "while the page reads again after a chip, (liste)/loading.tsx is a <main aria-busy=\"true\"> of three aria-hidden skeleton bars with no status text (loading.tsx:5-9); whether it is drawn at all when only the query string changes is not verified in a browser. The graph draws no node for it: `reading` has none" }
+  - { id: EXPL-1, rule: "new, provisional id. `overrides` (explore-decks-page.tsx:52,72-73,79) is never cleared: once a deck has been added or removed on this page, the page shows what the person last pressed and ignores what router.refresh() brings back for that deck (`overrides[deck.id] ?? deck.inCollection`). With two tabs, or after the deck was removed from the collection on Desteler, this tab keeps saying \"Koleksiyonunda\" until it is reloaded. Read from the code, not seen in a browser. Fix: drop the override once the refreshed row agrees with it, or read from the refreshed row alone" }
+  - { id: EXPL-2, rule: "new, provisional id. Every refusal of the two writes, whatever the API said (404 for a deck that was hidden or made private meanwhile, 403, 409, 5xx, or a request that never arrived), draws the one toast \"Deste eklenemedi\" or \"Deste çıkarılamadı\" with \"Bir sorun oluştu. Yeniden dene.\" (explore-decks-page.tsx:92-97; attempt.ts:16-30): a deck that is gone is told to be tried again, and the card stays in the list until the page is read again. Read from the code. Fix: map DECK_NOT_FOUND to a sentence that says the deck is no longer there, and read the page again" }
+  - { id: focus-not-set, rule: "Desteleri keşfet sets no initial focus (no autoFocus and no focus() in explore-decks-page.tsx or its page), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. After a chip press the page component is not remounted (the same router.push on /discover keeps the focus in its box, observed in tedris.discover.browse), so the focus stays on the chip; not verified here. Recorded so the silence is not read as an omission; the inventory does not call it a finding" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): the two collection buttons' names are the visible text, a colon and the deck's name (\"Çıkar\" sits inside \"Koleksiyondan çıkar\", compared without case)" }

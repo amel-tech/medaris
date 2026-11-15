@@ -1,0 +1,148 @@
+# tedris.celse.locked on the local stack (graphs/README.md, "The stack and the bindings"): the celse page of a course of its own, read by
+# a talebe who has no seat in it.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/tedris/celse/locked \
+#     --bind graphs/tedris/celse/locked/binding.yaml --absent --out <dir>                                (the main story)
+#   ... --to revokedCard --to signInGate --absent --out <dir>                                            (the two other starts)
+#
+# Not replayed in this phase (the owner's word: replays happen once, at the end). The binding loads: `replay <dir> --bind <this file>
+# --emit-spec` wrote the spec of the main story (1 walk, bound) and, with --to revokedCard --to signInGate --absent, of the two other
+# starts (2 walks, bound). Every walk is for the walk phase; no scenario of it has passed, so needs.yaml names none as walked.
+#
+# Data. The course is made by helpers/course.mjs in each scenario's `setup` and deleted in its `teardown`, so no seeded course and no
+# seeded talebe is touched: "Deneme dersi locked", in the second köşk, published, every application waits for approval, one week of
+# three celses from tomorrow at 21:00 (Istanbul). locked-data.mjs `content` gives the first celse a meeting link, a source and an agenda
+# (what the lock must hide) and makes the third the sample celse. The ids are read from graphs/.local/made/locked.json as {made.*}.
+# One account does all three walks, `applicantC`, because each scenario makes its own course and takes it away: a row of applicantC in one
+# course is gone with that course. Nothing else of applicantC's is left: the teardown clears the mailbox (the invitation mails) and the
+# notifications (an approval and a removal write one).
+#   strangerApplies  (the main story) applicantC holds no row: opens the celse, tries the watch address (it redirects back), applies (the course
+#                    asks for approval, so PENDING), reads the window, closes it and finds the pending card; the watch address redirects again
+#   revoked          applicantC applies, the hoca approves and removes the seat in setup: REVOKED. Opens the celse, tries the watch address
+#   visitor          nobody signed in: opens the celse, is sent to Keycloak, and the binding's `before` of `signInGate` types applicantC's
+#                    address and password on the realm's form (the replay's own sign-in never runs for a scenario with no `as`); the callback
+#                    must bring the browser back to the celse, where it checks the stranger's card (session#1 only asserts /signin/)
+# Not walked, and why:
+#   - `passive` and `barred` (CLS-02): they need an enrolled talebe whose scope is passive (a medrese or köşk switched to inactive) or who is
+#     barred; both change a seeded scope or need a ban, and the button's effect there is read from the code (lesson-locked.tsx:98).
+#   - the refusals of the button (`gone`, `conflict`, `failed`) and `signedOut`: the stack cannot make tedrisat refuse an application of a
+#     talebe who may apply. The `open` approval (the page drawn as the whole celse) needs a course that takes anyone: another course, which
+#     the main story would make a second time; it is the same call and the same refresh, and `session_opened` is tedris.celse.attend's page.
+#   - OPEN_KOSK, OPEN_COURSE, NAVIGATE and DISMISS are bound but not on the main story (no --cover transitions in this phase).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.celse.locked
+
+data:
+  made: { json: ../.local/made/locked.json }
+
+scenarios:
+  strangerApplies:
+    given: { reader: stranger, approval: needed }
+    as: applicantC
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    setup:
+      - run: [node, helpers/course.mjs, make, locked, --approval, --weeks, '1', --lessons, '3']
+        expect: '"tag":"locked"'
+      - run: [node, ../tedris/celse/locked/locked-data.mjs, content, locked]
+        expect: 'locked-data content'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, locked]
+        expect: 'course remove locked'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+  revoked:
+    given: { reader: revoked, approval: needed }
+    as: applicantC
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    setup:
+      - run: [node, helpers/course.mjs, make, locked, --approval, --weeks, '1', --lessons, '3']
+        expect: '"tag":"locked"'
+      - run: [node, ../tedris/celse/locked/locked-data.mjs, content, locked]
+        expect: 'locked-data content'
+      - run: [node, ../tedris/celse/locked/locked-data.mjs, revoke, locked, applicantC]
+        expect: 'REVOKED'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, locked]
+        expect: 'course remove locked'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+  visitor:
+    given: { reader: visitor, approval: needed }
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    setup:
+      - run: [node, helpers/course.mjs, make, locked, --approval, --weeks, '1', --lessons, '3']
+        expect: '"tag":"locked"'
+      - run: [node, ../tedris/celse/locked/locked-data.mjs, content, locked]
+        expect: 'locked-data content'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, locked]
+        expect: 'course remove locked'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+
+events:
+  # an address typed by hand: the watch page of this celse, which redirects back to the celse
+  OPEN_WATCH: [{ goto: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}/izle' }]
+  # Esc, the scrim and the header's "Kapat" all run the window's one close
+  DISMISS: [{ key: Escape }]
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  # a visitor is sent to Keycloak's form by the proxy; the walk types applicantC's own address and password there, as realm.auth.signIn's
+  # binding does, and Keycloak's callback must bring the browser back to the celse
+  signInGate:
+    before:
+      - waitUrl: '{keycloak}/realms/medaris/**'
+      - fill: { css: '#username', value: '{secret.E2E_APPLICANT_C_EMAIL}' }
+      - fill: { css: '#password', value: '{secret.E2E_APPLICANT_C_PASSWORD}' }
+      - click: { css: 'button[type=submit]' }
+      - waitUrl: '{tedris}/courses/**'
+  # the three cards live at the celse's own address, whatever the person did to get there (the watch address redirects back to it)
+  applyCard: { url: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}' }
+  pendingCard: { url: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}' }
+  revokedCard: { url: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}' }
+  session_opened: { url: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}' }
+  course_opened: { url: '{tedris}/courses/{made.course}' }
+  kosk_opened: { url: '{tedris}/kosks/{made.kosk}' }
+  left: { url: '{tedris}/discover' }
+  # the server action is a POST to the page's own address; the page's reads are GETs with a query, so this matches only the POST
+  enrolling: { call: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}' }
+
+effects:
+  # e2e celse-states#6 a9 and a10: the application is a PENDING row (the course asks for approval)
+  enrollInCourse:
+    - run: [node, helpers/seat.mjs, applicantC, '{made.course}']
+      expect: 'PENDING'
+
+nodes:
+  # the page of a locked celse, told from the course page and the discover page by its card
+  lockedPage: { css: 'main:has([data-testid="session-action"])' }
+  # the header
+  breadcrumb: { css: 'nav[aria-label="Sayfa yolu"]' }
+  crumbKosk: { css: 'nav[aria-label="Sayfa yolu"] a', hasText: '{seed.titles.kosk2}' }
+  crumbCourse: { css: 'nav[aria-label="Sayfa yolu"] a', hasText: '{made.title}' }
+  crumbWeek: { text: 'Hafta 1', within: { css: 'nav[aria-label="Sayfa yolu"]' } }
+  title: { role: heading, name: 'Celse 1' }
+  # a <time> in the badge, "21 saat sonra" or "Yarın" or "2 gün sonra", by the clock of the walk
+  stateBadge: { css: '[data-testid="session-state"] time' }
+  whenLine: { css: '[data-testid="session-meta"] time' }
+  zoneLine: { text: 'İstanbul saatiyle', within: { css: '[data-testid="session-meta"]' } }
+  lengthLine: { text: '60 dk', within: { css: '[data-testid="session-meta"]' } }
+  hocaLine: { text: '/Müderris Hoca/', within: { css: '[data-testid="session-meta"]' } }
+  # the lock card: the date block is three spans and the caption under it
+  dateBlock: { css: '[data-date-block]' }
+  startsIn: { text: '/^Başlamasına /', within: { css: '[data-date-block]' } }
+  # the course's card: the title is a link inside the h2 of the kit's Card
+  courseCardHeading: { css: 'h2', hasText: '{made.title}' }
+  courseCardLink: { css: 'h2 a', hasText: '{made.title}' }
+  courseCardFooter: { text: '/Kubbealtı Köşkü · 1 hafta/' }
+  # the programme: the week's count, and the rows (the first two locked, the third the sample celse)
+  programmeWeeks: { text: '/^1 hafta$/', within: { role: complementary } }
+  lockedMark: { role: img, name: Kilitli, count: 2 }
+  sampleRow: { role: link, name: 'Celse 3' }
+  # a Sonner toast has no role: found by its own attribute and its words
+  goneToast: { css: '[data-sonner-toast]', hasText: 'Bu ders artık bulunamıyor.' }
+  conflictToast: { css: '[data-sonner-toast]', hasText: 'Kaydının durumu değişmiş.' }
+  failedToast: { css: '[data-sonner-toast]', hasText: 'İşlem tamamlanamadı.' }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }

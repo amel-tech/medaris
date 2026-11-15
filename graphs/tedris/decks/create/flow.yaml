@@ -1,0 +1,241 @@
+# Making a deck: the talebe's page "Deste oluştur" (/decks/create) of tedris-web, read from the code of the branch (the tree of PR #394)
+# on 15 Nov 2026 (apps/tedris/features/flashcards/components/create-deck-page.tsx, actions/index.ts, attempt.ts, deck-model.ts;
+# apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:276, dto/create-flashcard-deck.dto.ts, flashcard-deck.service.ts:25,
+# flashcard-deck.repository.ts:169). Nothing here was replayed or looked at in a browser: every behaviour below is "from the code".
+# Nothing is approved.
+#   - What it draws: the form (a name, a description, the card type with no default, tags), the checks the page makes before it sends
+#     anything, the preview that follows the card type, the busy send, the toast of a refusal, and the three ways out (the new deck's
+#     page, "Vazgeç" or the breadcrumb, a session that is over).
+#   - The two guarantees the domain keeps for this write, drawn as what the page does with them: `deck-limits` (a name of 5 to 100
+#     characters, a description of at most 1000, at most 20 tags of at most 40 characters, trimmed and without repeats) and
+#     `deck-born-private` (the form has no visibility choice, the page sends none, and the API makes the deck PRIVATE whatever the body
+#     says). Asking for the deck to be made public is another flow (tedris.decks.publish).
+#   - Findings it carries (the inventory's ids): DCK-06 (a failed send shows the errors and moves no focus; they are not live regions),
+#     DCK-07 (does not hold on this page: the name input and the radio group are marked required; the finding is about three dialogs),
+#     DCK-23 (the busy label "Yükleniyor" and the toast's "Kapat" are written in the kit, not in the catalog). One finding is this flow's
+#     own, proposed as DCKCREATE-1: the page counts a name in UTF-16 units and the API counts characters, so a name of three emoji passes
+#     the page and is refused with a toast that names nothing (ui.yaml `rules`).
+#   - E2E carried: decks#9 (the empty send, the notice, no visibility choice, the 3-letter name), decks#10 (the preview), decks#11 (the
+#     create; the database row is read through the API instead, effect `createDeck`), decks#12 ("Vazgeç" writes nothing, effect
+#     `dropForm`). Not carried: decks#11 a4 (the new deck among Desteler with "Özel": tedris.decks.browse's list).
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.create
+status: captured
+domain: medaris.api
+ui: tedris.decks.create
+title: Create a deck
+summary: >-
+  A signed-in talebe opens "Deste oluştur" from Desteler. The page asks for a name, an optional description, the kind of the cards
+  (Kelime or Hadis, with no default) and optional tags, and shows beside it a preview of the card that kind makes. Pressing "Oluştur"
+  first checks the form in the browser: nothing is sent while the name is empty or shorter than five characters, no kind is chosen, or
+  the tags are over twenty or any is over forty characters, and each fault is said under its field (the missing kind in an alert) from
+  the first press on, and goes when it is put right. A form that passes is sent: the API makes the deck, private whatever was sent
+  (the form has no visibility choice and the notice says the deck starts private), the page opens the new deck's own page, and nobody
+  else can see it until its author asks for it to be published. A refusal of the API leaves the form as it was and raises a toast that
+  stays until it is closed. "Vazgeç" and the breadcrumb go back to Desteler and make nothing.
+
+scope:
+  shows: the form and its checks, the preview of the card, the busy send, the toast of a refusal, and the ways out
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "a visitor: /decks/create sends them to sign in and back before the page runs (apps/tedris/app/decks/(medaris)/create/page.tsx:14; realm.auth.signIn, tedris.decks.visitorPublicDeck)"
+    - "the new deck's own page and what is done there: the owner's overview, the edit dialog, the publication request and the delete (tedris.decks.editOrDelete, tedris.decks.publish); its cards (tedris.decks.manageCards, tedris.decks.importExport)"
+    - "the list of Desteler the page leaves for and its way to this page (tedris.decks.browse; the nav entry decks->decksCreate); the new deck's card there, with its status \"Özel\", is decks#11 a4"
+    - "the system bar above the page, the footer and the toast host's own region (tedris.shell.frame); the page draws its own <main>"
+    - "a session that is over while the send runs: the page sends the person to sign in and back to this form (exit sent_to_sign_in, realm.auth.signIn); what was typed is lost"
+    - "a refusal of any other kind (a 5xx, a 403, a network that drops, a call that rejects): the page draws the one toast whatever happened (`attempt()` makes a rejected call a refusal, attempt.ts:16); only the name of three emoji can be made to give it locally (DCKCREATE-1)"
+    - "pressing \"Vazgeç\" or the breadcrumb while the send runs: both are links and stay live, so the person can leave before the answer comes and the deck is made all the same; not drawn"
+    - "a name or a tag with only spaces, a description of spaces (sent as no description), the title field's own limit of 100 and the description's of 1000, which the browser enforces by not taking more characters (maxLength); the preview's two fixed Arabic sentences"
+
+context:
+  name:
+    values: [valid, short, astral]
+    initial: any
+    say:
+      valid: "a name of five to a hundred characters: the page and the API both take it"
+      short: "a name of fewer than five characters (\"abc\"): the page says so under the field and sends nothing"
+      astral: "a name of three emoji, which the page counts as six (two UTF-16 units each) and the API as three: the page sends it and the API answers 400 (DCKCREATE-1)"
+  tags:
+    values: [fine, tooMany, tooLong]
+    initial: any
+    say:
+      fine: "a comma list the page and the API take: the entries are trimmed, blanks are dropped and a repeat of an entry, in the Turkish alphabet, is dropped"
+      tooMany: "more than twenty different entries: the page says so under the field and sends nothing"
+      tooLong: "one entry of more than forty characters: the page says so under the field and sends nothing"
+  typed:
+    values: [true, false]
+    initial: false
+    say: { "true": "the name field holds the name of this case, and the description and tags are filled as the case says", "false": "the fields are empty" }
+  kind:
+    values: [none, vocabulary, hadeeth]
+    initial: none
+    say: { none: "no radio is chosen: the type has no default", vocabulary: "Kelime is chosen", hadeeth: "Hadis is chosen" }
+  toast:
+    values: [none, refused]
+    initial: none
+    say: { none: "no toast", refused: "the toast \"Deste oluşturulamadı\" is on the screen; it stays until it is closed" }
+
+guards:
+  # what the page checks before it sends (create-deck-page.tsx:55-61, deck-model.ts:141-162)
+  ready: "typed and name != 'short' and kind != 'none' and tags == 'fine'"
+  # what each field says once "Oluştur" has been pressed, which is the state `formAttempted` (create-deck-page.tsx:63-69, 169-173,
+  # 175-185); the error replaces the help line
+  nameSaysRequired: "state == 'formAttempted' and not typed"
+  nameSaysShort: "state == 'formAttempted' and typed and name == 'short'"
+  nameSaid: "nameSaysRequired or nameSaysShort"
+  kindSaid: "state == 'formAttempted' and kind == 'none'"
+  tagsSaysMany: "state == 'formAttempted' and typed and tags == 'tooMany'"
+  tagsSaysLong: "state == 'formAttempted' and typed and tags == 'tooLong'"
+  tagsSaid: "tagsSaysMany or tagsSaysLong"
+  # the preview follows the radio; with no radio chosen it draws the Kelime card (create-deck-page.tsx:97)
+  hadithPreview: "kind == 'hadeeth'"
+
+effects:
+  typedIn: { set: { typed: true } }
+  chooseVocabulary: { set: { kind: vocabulary } }
+  chooseHadeeth: { set: { kind: hadeeth } }
+  toastRefused: { set: { toast: refused } }
+  clearToast: { set: { toast: none } }
+  # "Vazgeç" and the breadcrumb leave the page: what was typed is gone, and the binding checks that no deck was made (decks#12)
+  dropForm: { set: { typed: false, kind: none, toast: none } }
+
+failures:
+  creating:
+    from: createDeck
+    refused: [VALIDATION_ERROR]
+    signedOut: [HTTP_401]
+
+# The main story: an empty send (the name and the kind are said), the preview follows Hadis and back to Kelime, the form is filled in
+# and sent, and the new deck's page opens (decks#9, #10, #11).
+main:
+  given: { name: valid, tags: fine }
+  events: [SUBMIT, CHOOSE_HADEETH, CHOOSE_VOCABULARY, FILL_IN, SUBMIT, DONE]
+
+initial: form
+states:
+  form:
+    title: The form, before "Oluştur" has been pressed
+    by: human
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:98
+    description: >-
+      The page "Deste oluştur": a breadcrumb "Desteler / Deste oluştur", the h1 and one sentence, the form (named "Deste oluştur") with
+      "* zorunlu alan", "Deste adı" (required, at most a hundred characters typed), "Açıklama" (a textarea of three rows, at most a
+      thousand), the group "Kart türü" with the radios "Kelime" and "Hadis", each with a sentence under it, and "Etiketler", then a
+      notice "Deste özel başlar", "Vazgeç" and "Oluştur"; beside it, or under it on a phone, the preview of the card of the chosen kind.
+      Nothing is chosen at first: the type has no default, so the preview draws the Kelime card. No visibility choice is drawn: the
+      deck is made private (deck-born-private). The page sets no initial focus (focus-not-set) and draws its own <main>. No field says
+      anything but its help until "Oluştur" is pressed: the page has no check of its own on a field that is left. The name is trimmed
+      before it is counted, and the page counts UTF-16 units (DCKCREATE-1). Typed text is lost, without asking, when the person leaves
+      by "Vazgeç", the breadcrumb or the address.
+    on:
+      FILL_IN: { target: form, effect: [typedIn], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:129, say: "they type the name, the description and the tags (the case says which name and which tags); nothing is said yet" }
+      CHOOSE_VOCABULARY: { target: form, effect: [chooseVocabulary], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:155, say: "they choose Kelime: the radio is checked and the preview is the Kelime card" }
+      CHOOSE_HADEETH: { target: form, effect: [chooseHadeeth], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:155, say: "they choose Hadis: the radio is checked and the preview is the Hadis card with its sentence and its source" }
+      SUBMIT:
+        - { guard: ready, target: creating, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:76, say: "the form passes the page's checks: it is sent, and the button is busy" }
+        - { target: formAttempted, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:75, say: "something is wrong: nothing is sent, each fault is said under its field from now on, and the focus stays on the button (DCK-06)" }
+      CANCEL: { target: decks_opened, effect: [dropForm], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197, say: "\"Vazgeç\": a plain link to /decks (a full page load); nothing was sent, nothing is made, and what was typed is gone" }
+      BREADCRUMB: { target: decks_opened, effect: [dropForm], source: libs/ui/src/mds/breadcrumb.tsx:43, say: "the breadcrumb's \"Desteler\": the same plain link to /decks" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  formAttempted:
+    title: The form, after "Oluştur" has been pressed
+    by: human
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:74
+    description: >-
+      The same page once "Oluştur" has been pressed (`attempted`, set by every press, a send that passes included: create-deck-page.tsx:74).
+      Each fault is said under its field and follows what is typed and chosen, with no new press: "Bir deste adı yaz." (the name is empty)
+      or "Deste adı en az 5 karakter olmalı." under the name, "Bir kart türü seç." under the radios (a <p role="alert">, the only message
+      that is announced; the radios are not marked invalid, DCK-06), "En çok 20 etiket yazabilirsin." or "Bir etiket en çok 40 karakter
+      olabilir." under the tags; the message replaces the field's help line. The focus is where it was, on "Oluştur" after a press, and
+      the field messages are no live regions, so a screen-reader user hears nothing (DCK-06). The preview, the buttons and the notice are
+      as before. This is also the state the form is in after a refusal of the API: the values are kept and the toast "Deste
+      oluşturulamadı" stands over the page until it is closed (`toast`).
+    on:
+      FILL_IN: { target: formAttempted, effect: [typedIn], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:129, say: "they type: a message that was there follows what they typed at once (\"Deste adı en az 5 karakter olmalı.\" for a short name, the tags' messages for a bad list)" }
+      CHOOSE_VOCABULARY: { target: formAttempted, effect: [chooseVocabulary], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:155, say: "they choose Kelime: \"Bir kart türü seç.\" goes at once and the preview is the Kelime card" }
+      CHOOSE_HADEETH: { target: formAttempted, effect: [chooseHadeeth], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:155, say: "they choose Hadis: \"Bir kart türü seç.\" goes at once and the preview is the Hadis card" }
+      SUBMIT:
+        - { guard: ready, target: creating, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:76, say: "the form passes the page's checks: it is sent, and the button is busy" }
+        - { target: formAttempted, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:75, say: "still something wrong: nothing is sent; the messages are as they are" }
+      CLOSE_TOAST: { guard: "toast != 'none'", target: formAttempted, effect: [clearToast], source: libs/ui/src/mds/toast.tsx:95, say: "they close the toast of a refusal with its own \"Kapat\"" }
+      CANCEL: { target: decks_opened, effect: [dropForm], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197, say: "\"Vazgeç\": a plain link to /decks (a full page load); nothing is sent now and what was typed is gone" }
+      BREADCRUMB: { target: decks_opened, effect: [dropForm], source: libs/ui/src/mds/breadcrumb.tsx:43, say: "the breadcrumb's \"Desteler\": the same plain link to /decks" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  creating:
+    title: Make the deck
+    description: >-
+      The server action createDeck, POST /flashcard/decks with the trimmed name, the description trimmed or left out when empty, the
+      kind and the parsed tags (actions/index.ts:34-46), through attempt() (attempt.ts:16). The API makes the deck with the caller as
+      its author, always private (isPublic false, publishStatus PRIVATE) whatever the body says, and a body that names isPublic is
+      refused with 400 (deck-born-private); it trims and de-duplicates the tags again and refuses a name of fewer than five characters,
+      counted as characters, not as UTF-16 units (DCKCREATE-1), more than twenty tags, a tag of more than forty, and a description of
+      more than a thousand (deck-limits). "Oluştur" is busy: aria-busy and aria-disabled, never `disabled`, with a hidden status
+      "Yükleniyor" (the kit's own word, DCK-23); a second press while it runs does nothing (create-deck-page.tsx:73). The fields stay
+      as they are. On success the page pushes /decks/<new id> and says nothing else: no toast, and the button stays busy until the
+      new page has come. On any refusal the button is released and the toast "Deste oluşturulamadı" / "Bir sorun oluştu; yazdıkların
+      korundu. Yeniden dene." is raised: tone error, so it stays until it is closed and is announced with priority high; the API's
+      code and message are thrown away, so a refusal that retrying can never cure says "try again" (DCKCREATE-1). A session that is
+      over is not a refusal: the page goes to sign in and back, and the button stays busy until it leaves.
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:77
+    invoke: { action: createDeck }
+    on:
+      DONE: { guard: "name == 'valid'", target: deck_opened, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:86, say: "the API answers 201 with the new deck: the page opens its own page" }
+      FAIL.refused: { guard: "name == 'astral'", target: formAttempted, effect: [toastRefused], source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89, say: "the API answers 400 for what the page let through: the button is released, the toast is raised and the form keeps its values" }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over: the page goes to sign in and back, and the form is lost" }
+
+  deck_opened:
+    type: final
+    title: The new deck's page opens
+    description: >-
+      router.push("/decks/<new id>"): the deck's own page as its author sees it, with its name as the h1, the status "Özel" and no
+      cards yet (tedris.decks.editOrDelete, tedris.decks.publish and tedris.decks.manageCards start here). The deck is PRIVATE, with
+      the tags as the API normalised them. Nothing says that the deck was made: there is no toast.
+
+  decks_opened:
+    type: final
+    title: Desteler opens
+    description: >-
+      "Vazgeç" and the breadcrumb's "Desteler" are plain links to /decks. Nothing was made: the page sends nothing before "Oluştur".
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+  sent_to_sign_in:
+    type: final
+    title: The session is over
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated" (no token, or tedrisat refused it with 401): sendToSignIn (lib/send-to-sign-in.ts) sends the
+      person to sign in and back to /decks/create, and draws no toast. What was typed is lost, and the deck was not made. realm.auth.signIn
+      takes over.
+
+assertions:
+  - id: a-form-with-a-fault-is-never-sent
+    never: "state == 'creating' and not ready"
+    say: "Nothing is sent while the name is empty or short, no kind is chosen, or the tags are over the limit: the page's own check stops it (deck-limits)"
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:75
+  - id: a-name-under-five-is-never-sent
+    never: "state == 'creating' and (not typed or name == 'short')"
+    say: "A name that the page counts as fewer than five characters, or no name at all, is never sent (deck-limits)"
+    source: apps/tedris/features/flashcards/deck-model.ts:155
+  - id: no-deck-without-a-kind
+    never: "state == 'creating' and kind == 'none'"
+    say: "A deck is never sent without a kind of card: the type has no default, so the choice is the author's"
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:75
+  - id: too-many-or-too-long-tags-are-never-sent
+    never: "state == 'creating' and tags != 'fine'"
+    say: "More than twenty tags, or a tag of more than forty characters, is never sent (deck-limits)"
+    source: apps/tedris/features/flashcards/deck-model.ts:141
+  - id: the-deck-page-opens-only-after-the-api-accepted
+    never: "state == 'deck_opened' and name != 'valid'"
+    say: "The new deck's page opens only after the API answered that it made the deck; a refusal keeps the form (DCKCREATE-1)"
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:85
+  - id: a-refusal-keeps-the-form
+    never: "state == 'formAttempted' and toast == 'refused' and not typed"
+    say: "A refused create leaves what was typed where it was: the form after the toast still holds the values"
+    source: apps/tedris/features/flashcards/components/create-deck-page.tsx:89

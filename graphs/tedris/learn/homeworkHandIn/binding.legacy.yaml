@@ -1,0 +1,34 @@
+# tedris.learn.homeworkHandIn, a celse that has no homework and a talebe who handed something in on it before (the section's `legacy` case):
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkHandIn \
+#     --bind graphs/tedris/learn/homeworkHandIn/binding.legacy.yaml --to panel --out <dir>
+# The scenario adds no transition of its own (the same steps as the main story, over another start), so `--cover transitions` would never
+# walk it from binding.yaml: it has a file of its own. handin-data.mjs makes the course, writes the talebe's one file by SQL and sets no
+# homework, as it stands for a celse whose homework the hoca never set or took off. The page then draws "Bu celsede ödev verilmedi;
+# daha önce teslim ettiğin ödev burada duruyor.", no badge and no warning; --absent checks the three are not there.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkHandIn
+
+scenarios:
+  handedInBefore:
+    given: { assignment: none, holds: oneFile, file: noStorage, removal: removed, noteAnswer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      after: '0'
+      note: Bu celsede ödev yoktu, eskisini bıraktım.
+    setup:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, make, none, oneFile]
+        expect: handin-data make
+    teardown:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, remove]
+        expect: handin-data remove
+
+states:
+  removing: { call: '{tedris}/courses/{course}/lessons/**' }
+  noteSaving: { call: '{tedris}/courses/{course}/lessons/**' }
+  left: { url: '{tedris}/home' }

@@ -1,0 +1,162 @@
+# What must exist for a talebe who takes notes on a celse: the flow's product list, from its story and from planned.md, never from
+# what the panel does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by the orchestrator).
+#
+# Missing or unwalked (for the orchestrator's gaps merge):
+#   missing:  player-position-on-bunny (MDRS-264), notes-shared-as-hasiye (none: PRD only), drafts-are-kept (none), saved-note-is-announced (none)
+#   unwalked: note-time-from-player (the walk needs YouTube's real player), refusals-are-told (bound, not run: walk phase; the stack
+#             cannot make the server refuse), removed-talebe-keeps-own-notes (tedris.learn.writingGating walks the API side)
+# Walked: the main story (scenario `writes`) passed once on 15 Nov 2026, in a run that was already going when the owner moved
+# every replay to the end. The scenarios refused, live and typed were not run: walk phase.
+kind: needs
+flow: tedris.learn.notes
+status: proposed
+
+needs:
+  - id: write-notes-on-a-celse
+    need: >-
+      An enrolled talebe writes private notes on a celse, each with a text and, if they like, a time, before the celse, while it
+      is live and after it, whether or not there is a video; the notes are listed with the timed ones first by time and the
+      untimed ones last, and what was saved is found again after a reload.
+    drawn:
+      - panel
+      - drafting
+      - adding
+      - reading
+    built:
+      - action: medaris.api:createLessonNote
+      - action: medaris.api:listLessonNotes
+      - route: apps/tedris/features/courses/components/lesson-notes.tsx:112
+    walked:
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#1'
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#10'
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#11'
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#12'
+      - replay: writes
+
+  - id: change-and-delete-own-note
+    need: >-
+      A talebe changes the text and the time of their own note, or removes the time, and deletes a note after one question; a
+      deleted note is gone for good, and an untouched note keeps its place.
+    drawn:
+      - editing
+      - saving
+      - confirming
+      - deleting
+    built:
+      - action: medaris.api:updateLessonNote
+      - action: medaris.api:deleteLessonNote
+      - route: apps/tedris/features/courses/components/lesson-notes.tsx:439
+    walked:
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#1'
+      - replay: writes
+
+  - id: note-time-from-clock
+    need: >-
+      While a celse with no video on screen is live, a new note's time is the time since its scheduled start, filled in and
+      changeable, with a button that takes it again; before and after, the time is typed or left out.
+    drawn:
+      - panel
+      - drafting
+    built:
+      - route: apps/tedris/features/courses/components/lesson-notes.tsx:55
+    walked:
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#10'
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#12'
+
+  - id: note-time-from-player
+    need: >-
+      Beside a YouTube frame a new note's time is the player's position, and pressing a note's time moves the player to that
+      moment.
+    drawn:
+      - panel
+    built:
+      - route: apps/tedris/features/courses/components/lesson-notes.tsx:554
+    walked: []
+    note: unwalked; the player's position comes from YouTube's real player API (lesson-notes#2 needs it too), which the local stack does not stub.
+
+  - id: player-position-on-bunny
+    need: >-
+      On a recording held at Bunny the panel reads the player's position for a new note and a note's time moves the player, as it
+      does for YouTube; today the time is typed.
+    drawn:
+      - panel
+      - drafting
+    missing: MDRS-264
+    note: P-10 of planned.md. The graph draws today's typed time (surface watchTyped).
+
+  - id: notes-stay-private
+    need: >-
+      A note is read and changed by its author alone: no other talebe, no müderris, no nazım and no başnazım ever reads it, and
+      the panel says so.
+    drawn:
+      - panel
+    built:
+      - action: medaris.api:listLessonNotes
+      - route: apps/tedrisat/src/lesson-note/lesson-note.repository.ts:40
+    walked:
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#16'
+    note: the refused API calls are walked by tedris.learn.writingGating; this flow only draws the caption "Yalnızca sen görürsün.".
+
+  - id: refusals-are-told
+    need: >-
+      A note that cannot be saved tells the talebe why, in words, next to the field it is about and to a screen reader: a time
+      that is not a time, a blank text, a seat that is gone, a failure. Typed text is kept.
+    drawn:
+      - addRefused
+      - editRefused
+      - deleteRefused
+    built:
+      - route: apps/tedris/features/courses/components/lesson-notes.tsx:424
+    walked: []
+    note: >-
+      the page's own refusal of a time is bound (scenarios refused and live) and not yet run: walk phase. The server's refusals
+      cannot be made on the local stack, and the alert is not tied to its field (WRT-03).
+
+  - id: saved-note-is-announced
+    need: >-
+      When a note is saved, changed or deleted, the talebe who cannot see the list is told so, and the focus is left where they
+      can go on.
+    drawn:
+      - adding
+      - saving
+      - deleting
+    missing: none
+    note: WRT-02 and WRT-01; a defect of the page, not a planned feature, so no Linear key.
+
+  - id: drafts-are-kept
+    need: >-
+      A note being written is not lost to a reload, to the sign-in round trip after a session ended, or to leaving the page by
+      accident.
+    drawn:
+      - drafting
+      - addRefused
+    missing: none
+    note: WRT-13; a defect of the page, not a planned feature, so no Linear key.
+
+  - id: notes-shared-as-hasiye
+    need: >-
+      A talebe turns a note into a haşiye (a gloss) that others can read, with the course team's review, so that notes can feed
+      the shared study of a text.
+    drawn:
+      - panel
+    missing: none
+    note: P-P3 of planned.md, in the PRD of 2026-07-05 with no Linear issue; the owner has not confirmed it is wanted. The panel today is private by design.
+
+  - id: removed-talebe-keeps-own-notes
+    need: >-
+      A talebe who was removed from the course still reads and deletes their own notes while the course is open, and can write no
+      more.
+    drawn:
+      - deleting
+    built:
+      - action: medaris.api:deleteLessonNote
+    walked: []
+    note: unwalked here; the panel is not drawn for a removed talebe (tedris.learn.writingGating), and the read of their notes through the API is MDRS-268.

@@ -1,0 +1,127 @@
+# The screens of tedris.celse.locked: the celse page as a person who may not read the course meets it (LessonLocked), in its three cards
+# (the one with the button, the one of a person whose application waits, the one of a person the team took out) and the window "Başvurun
+# alındı". The bar around the page (tedris.shell.frame) and the whole celse of a person with a seat (tedris.celse.attend) are not drawn.
+#
+# Words: every key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`: `LessonLocked.*`, `SessionPage.*`,
+# `CoursePage.*`) and common.json (`common.*`), the key being the path inside that file. The `composed.LockedCelse.*` keys are NOT in any
+# i18n file: they are what the app builds in code from messages and data, written here with their placeholders so a replay can match them
+# (a placeholder with no sample matches any text):
+#   composed.LockedCelse.kosk       a köşk's name, a value the API gives                                              session-join-labels.ts:113
+#   composed.LockedCelse.course     a course's title, a value the API gives                                           lesson-locked.tsx:263
+#   composed.LockedCelse.title      the celse's title, a value the API gives                                          session-header.tsx:62
+#   composed.LockedCelse.countdown  the badge's "2 gün sonra", "21 saat sonra": the kit's countdown(), on its own clock  libs/ui/src/mds/session-join.tsx:47, session-state-badge.tsx:59
+#   composed.LockedCelse.when       the meta line's day and time: `${day} · ${clock}`                                 session-join-labels.ts:136
+#   composed.LockedCelse.dateBlock  the card's date block: the weekday, the date and the clock, three spans           session-action-card.tsx:321-323
+#   composed.LockedCelse.hoca       a müderris's name with the unvan of this course, formatHocaName()                 session-header.tsx:98
+#   composed.LockedCelse.cardFooter the course card's footer: `${köşk} · ${SessionPage.weeksCount}`                   lesson-locked.tsx:267-272
+#   composed.LockedCelse.sampleRow  the sample celse's row: its title, which is the link's text                       libs/ui/src/mds/lesson-row.tsx; course-programme.tsx:105
+#   composed.LockedCelse.loading    "Yükleniyor", the kit's own default of a busy button's hidden status              libs/ui/src/mds/button.tsx:62 (CLS-18)
+# `changes` borrows the app's own message that says what an application does, because the app has no message for "what this flow
+# changes" and a graph never invents one (the same key tedris.course.apply uses).
+# Samples are invented and neutral; the binding gives the real values where it needs them.
+schema: delurio-graph/0
+kind: ui
+id: tedris.celse.locked
+flow: tedris.celse.locked
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  kosk: Örnek Köşk
+  course: Örnek Ders
+  title: Örnek celse
+  countdown: 2 gün sonra
+  day: 16 Kasım Pazartesi
+  clock: 21:00–22:00
+  weekday: Pazartesi
+  date: 16 Kasım
+  hoca: Örnek Hoca
+  weeks: 1 hafta
+  week: "1"
+  number: "1"
+  zone: İstanbul
+  count: "60"
+  time: 2 gün
+changes: { key: CoursePage.receivedBody }
+
+nodes:
+  # ---- the page ----
+  lockedPage: { type: page, component: Page, role: main, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/lesson-locked.tsx:169, script: actions } # server-drawn: the card reads without JavaScript; the button and the window need it. No name, no initial focus (rule focus-not-set)
+
+  # ---- the header (SessionHeader: the same one the whole celse has) ----
+  breadcrumb: { type: page, component: Page, role: navigation, name: { key: SessionPage.breadcrumb }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-header.tsx:53 } # the kit's Breadcrumb, an <ol>
+  crumbKosk: { type: action, component: LinkButton, role: link, text: { key: composed.LockedCelse.kosk, params: { kosk: kosk } }, in: [applyCard, enrolling, pendingCard, revokedCard], emits: OPEN_KOSK, source: apps/tedris/features/courses/components/session-header.tsx:53 }
+  crumbCourse: { type: action, component: LinkButton, role: link, text: { key: composed.LockedCelse.course, params: { course: course } }, in: [applyCard, enrolling, pendingCard, revokedCard], emits: OPEN_COURSE, source: apps/tedris/features/courses/components/session-header.tsx:53 } # the second link of the breadcrumb; the course's card below carries the same link
+  crumbWeek: { type: text, component: Text, text: { key: SessionPage.week, params: { number: number } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-header.tsx:53 } # the last item, not a link
+  eyebrow: { type: text, component: Text, text: { key: SessionPage.weekCelse, params: { week: week, number: number } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-header.tsx:57 } # "Hafta 1 · 1. celse"
+  title: { type: text, component: Heading, role: heading, text: { key: composed.LockedCelse.title, params: { title: title } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-header.tsx:58 } # h1
+  stateBadge: { type: text, component: Text, text: { key: composed.LockedCelse.countdown, params: { countdown: countdown } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-state-badge.tsx:59 } # a <time> in a secondary badge with a clock icon, on its own clock; "Sona erdi" once the celse is over
+  whenLine: { type: text, component: Text, text: { key: composed.LockedCelse.when, params: { day: day, clock: clock } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-header.tsx:82 }
+  zoneLine: { type: text, component: Text, text: { key: SessionPage.courseZone, params: { zone: zone } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-header.tsx:85 } # "İstanbul saatiyle"; the viewer's own time is added only when the viewer's zone differs
+  lengthLine: { type: text, component: Text, text: { key: SessionPage.minutes, params: { count: count } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-header.tsx:90 }
+  hocaLine: { type: text, component: Text, text: { key: composed.LockedCelse.hoca, params: { hoca: hoca } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-header.tsx:98 } # the müderris of the course with their unvan; the first of two lines with this name (the course's card repeats it)
+
+  # ---- the lock card (SessionActionCard, kind `locked`) ----
+  actionCard: { type: page, component: Page, role: region, name: { labelledBy: cardEyebrow }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-action-card.tsx:396 } # a <section> named by its eyebrow, because the locked card has no heading (:398)
+  cardEyebrow: { type: text, component: Text, text: { key: SessionPage.joinLabel }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-action-card.tsx:405 } # a <p>, not a heading: "Canlı ders", or "Yüz yüze" for a celse held face to face
+  dateBlock: { type: text, component: Text, text: { key: composed.LockedCelse.dateBlock, params: { weekday: weekday, date: date, clock: clock } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-action-card.tsx:316 }
+  startsIn: { type: text, component: Text, text: { key: SessionPage.startsIn, params: { time: time } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/session-action-card.tsx:326 } # "Başlamasına 21 saat 17 dakika", under the date block, on its own clock
+  lockReason: { type: text, component: Text, text: { key: LessonLocked.description.apply }, in: [applyCard, enrolling, pendingCard], source: apps/tedris/features/courses/components/session-action-card.tsx:350 } # the reason, in a <span> of the card's own line. A person whose application waits is given the key `description.pending`, which holds the very same words (LOCKED-2), so one node stands for both: two nodes with one text and complementary states cannot be told apart by a replay
+  lockRevoked: { type: text, component: Text, text: { key: LessonLocked.description.revoked }, in: [revokedCard], source: apps/tedris/features/courses/components/session-action-card.tsx:350 }
+  applyButton: { type: action, component: Button, role: button, intent: confirm, text: { key: LessonLocked.apply }, in: [applyCard, enrolling], disabledIn: [enrolling], emits: APPLY, source: apps/tedris/features/courses/components/lesson-locked.tsx:108 } # a large full-width button; busy: aria-disabled, aria-busy. Shown to an enrolled talebe whose content is closed too (CLS-02)
+  applyStatus: { type: status, component: Status, role: status, text: { key: composed.LockedCelse.loading }, in: [enrolling], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the button: empty until the button is busy, then the kit's own word (CLS-18)
+  pendingBadge: { type: text, component: Text, text: { key: CoursePage.pendingApproval }, in: [pendingCard], source: apps/tedris/features/courses/components/lesson-locked.tsx:114 } # a warning badge with a clock icon; the text carries the meaning
+  pendingNote: { type: text, component: Text, text: { key: LessonLocked.pendingNote }, in: [pendingCard], source: apps/tedris/features/courses/components/lesson-locked.tsx:117 }
+
+  # what the lock hides: not in the page for anyone this flow draws (session#11, celse-states#6). `unlocked` never holds, so a replay with --absent checks that none of them is visible.
+  joinLink: { type: action, component: LinkButton, role: link, text: { key: SessionPage.joinMeeting }, in: [applyCard, enrolling, pendingCard, revokedCard], when: unlocked, source: apps/tedris/features/courses/components/session-action-card.tsx:195 } # "Toplantıya katıl", the meeting link: session#11 a3
+  watchLink: { type: action, component: LinkButton, role: link, text: { key: SessionPage.watchStream }, in: [applyCard, enrolling, pendingCard, revokedCard], when: unlocked, source: apps/tedris/features/courses/components/session-action-card.tsx:270 } # "Yayını izle": no stream and no watch address in the page (celse-states#6 a3)
+  agendaTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.agendaTitle }, in: [applyCard, enrolling, pendingCard, revokedCard], when: unlocked, source: apps/tedris/features/courses/components/session-page.tsx:306 } # h2 "Gündem": session#11 a2; the page of a person with a seat draws it, this one has no agenda to draw
+
+  # ---- the course's card ----
+  courseCardHeading: { type: text, component: Heading, role: heading, text: { key: composed.LockedCelse.course, params: { course: course } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/lesson-locked.tsx:263 } # h2 of the kit's Card, which holds the link
+  courseCardLink: { type: action, component: LinkButton, role: link, text: { key: composed.LockedCelse.course, params: { course: course } }, in: [applyCard, enrolling, pendingCard, revokedCard], emits: OPEN_COURSE, source: apps/tedris/features/courses/components/lesson-locked.tsx:265 } # /courses/<id>; the one place this page links to the course page besides the breadcrumb
+  courseCardFooter: { type: text, component: Text, text: { key: composed.LockedCelse.cardFooter, params: { kosk: kosk, weeks: weeks } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/lesson-locked.tsx:267 }
+
+  # ---- the programme beside it ----
+  programme: { type: page, component: Page, role: complementary, name: { labelledBy: programmeHeading }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/lesson-locked.tsx:282 }
+  programmeHeading: { type: text, component: Heading, role: heading, text: { key: SessionPage.curriculum }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/lesson-locked.tsx:287 } # h2
+  programmeWeeks: { type: text, component: Text, text: { key: SessionPage.weeksCount, params: { count: count } }, in: [applyCard, enrolling, pendingCard, revokedCard], source: apps/tedris/features/courses/components/lesson-locked.tsx:290 }
+  lockedMark: { type: text, component: Text, role: img, name: { key: CoursePage.lessonLocked }, in: [applyCard, enrolling, pendingCard, revokedCard], when: "not seatHeld", repeat: lessons, source: apps/tedris/features/courses/components/course-programme.tsx:104 } # the lock on a row that is no link; the open week's rows. An enrolled talebe whose content is closed has a seat's programme instead: open weeks and linked rows (not drawn)
+  sampleRow: { type: action, component: LinkButton, role: link, text: { key: composed.LockedCelse.sampleRow, params: { title: title } }, in: [applyCard, enrolling, pendingCard, revokedCard], when: "not seatHeld", source: apps/tedris/features/courses/components/course-programme.tsx:105 } # the sample celse's row: a link to #ornek-celse, an id that exists on the course page only (CLS-11)
+
+  # ---- the window after an application that waits (EnrollmentReceivedDialog, the course page's own component) ----
+  receivedDialog: { type: page, component: Page, role: dialog, name: { labelledBy: receivedTitle }, in: [received], initialFocus: okButton, source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30 }
+  receivedTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.receivedTitle }, in: [received], source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:36 }
+  receivedBody: { type: text, component: Text, text: { key: CoursePage.receivedBody }, in: [received], source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:45 }
+  receivedNote: { type: text, component: Text, text: { key: CoursePage.receivedNote }, in: [received], source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:46 } # "bu sayfadan geri çekebilirsin": this page has no such button (CLS-12)
+  okButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: CoursePage.receivedOk }, in: [received], emits: CLOSE, source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:40 }
+  closeX: { type: action, component: Button, role: button, intent: dismiss, name: { key: CoursePage.receivedClose }, in: [received], emits: DISMISS, source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:37 } # an icon only; Esc and the scrim do the same
+
+  # ---- what the page says after a refused application (Sonner toasts, lesson-locked.tsx:92) ----
+  goneToast: { type: status, component: Status, text: { key: CoursePage.actionNotFound }, in: [applyCard], when: "notice == 'gone'", source: apps/tedris/features/courses/components/lesson-locked.tsx:92 }
+  conflictToast: { type: status, component: Status, text: { key: CoursePage.actionConflict }, in: [applyCard], when: "notice == 'conflict'", source: apps/tedris/features/courses/components/lesson-locked.tsx:92 }
+  failedToast: { type: status, component: Status, text: { key: CoursePage.actionFailed }, in: [applyCard], when: "notice == 'failed'", source: apps/tedris/features/courses/components/lesson-locked.tsx:92 }
+  toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [applyCard], when: "notice != 'none'", source: libs/ui/src/components/sonner.tsx:55 } # a close button on each toast, "Kapat" in every language (MDRS-233)
+
+edges:
+  - { labelledBy: [receivedDialog, receivedTitle] }
+  - { labelledBy: [actionCard, cardEyebrow] }
+  - { labelledBy: [programme, programmeHeading] }
+  - { triggers: [applyButton, enrolling] }
+
+rules:
+  - { id: focus-not-set, rule: "the page sets no initial focus (no autoFocus in lesson-locked.tsx or session-action-card.tsx): the first Tab stop is the bar's logo, and there is no skip link (CLS-14). The graph draws no focus on the page; the window gives it to \"Tamam\" and nothing gives it back" }
+  - { id: CLS-02, rule: "lessonLockReason (features/courses/lesson-lock.ts:19-27) reads only `contentLocked` and the enrolment's status: an ENROLLED talebe of a passive course, or one barred from the course, has contentLocked true and falls to the default branch, so the card tells them to register (\"Derse kaydolduğunda görebilirsin\") and offers \"Kayıt başvurusu yap\". Pressing it answers 201 with the ENROLLED row they hold (passive scope: nothing changes, no window) or 403 BAN_ACTIVE (barred: the toast \"İşlem tamamlanamadı\"). Known as MDRS-265, pinned by lesson-notes#15 as an expected failure; fix: a reason for ENROLLED or COMPLETED with the content closed, that explains it and offers no button. Drawn as `reader: passive` and `reader: barred`; the passive case is read from the code and from the API's own e2e, the barred one from authz (tedrisat-role-resolver.service.ts:403), neither walked here" }
+  - { id: CLS-03, rule: "no generateMetadata under app/courses/[courseId]/lessons: the tab says \"Medaris Tedris\" on every celse (measured on this page's address) (WCAG 2.4.2)" }
+  - { id: CLS-10, rule: "on a 409 the toast says \"Sayfa yenilendi, güncel hâline bak.\" and the code only toasts (lesson-locked.tsx:91-94); nothing refreshes the page, so the card stays as it was. Fix: router.refresh() on 404 and 409, as leave-course.tsx does" }
+  - { id: CLS-11, rule: "the sample celse's row of the programme links to #ornek-celse (course-programme.tsx:105-111), an id that exists only on the course page (course-page.tsx:500); on this page the link goes nowhere. Measured: the row is a link to \"#ornek-celse\" and the page holds no such anchor. Fix: an absolute /courses/<id>#ornek-celse when the programme is drawn here" }
+  - { id: CLS-12, rule: "the window says the application can be taken back \"bu sayfadan\" (CoursePage.receivedNote) and this page has no withdraw button (only the course page does, leave-course.tsx); the pending card has a badge and a sentence and no control. Fix: link the window to the course page, or add the button here" }
+  - { id: CLS-16, rule: "the refusal toast is Sonner's (lesson-locked.tsx:92), from the root providers; the layout of this page also mounts the mds toaster (\"Bildirimler\", ToastHost), which only the calendar menu uses. Two toast systems with different live-region markup on one page; the one-announcement behaviour of Sonner was not verified" }
+  - { id: CLS-18, rule: "the busy word \"Yükleniyor\" is the kit's default `loadingLabel` (libs/ui/src/mds/button.tsx:62), which the apply button on this page does not override (the course page's button passes \"Kaydolunuyor...\"). It would not translate with the en and ar catalogs" }
+  - { id: CLS-19, rule: "after \"Tamam\" the focus is on the document. The dialog has no trigger, and the button that had the focus has been replaced by the pending badge by router.refresh(); the course page moves the focus to \"Başvuruyu geri çek\" with an effect (course-aside.tsx:97-101) and this page has no such effect. Measured on the stack: document.activeElement is BODY after the window closes. Nothing announces the change either: the badge appears silently (and an application accepted at once redraws the whole celse silently). Fix: mirror course-aside.tsx; announce with a polite status" }
+  - { id: LOCKED-1, rule: "new, provisional id: the card is drawn only for a celse with a start (`session.startsAt ? <SessionActionCard ...locked={{reason, action}} />`, lesson-locked.tsx:194); the reason and the apply button live in that card, so a signed-in stranger who opens a celse with no start gets the header, the course's card and the programme and no button and no sentence saying why. The API lets a live session have no start (getSession's status says SCHEDULED for it). Read from the code, not walked" }
+  - { id: LOCKED-2, rule: "new, provisional id: the sentence over the pending badge is `LessonLocked.description.pending`, which is the sentence for a stranger word for word (\"Derse kaydolduğunda görebilirsin.\"); a person who has applied is told to enrol, and the badge and note beside it say the opposite. Measured: the card of a PENDING person holds both. e2e celse-states#6 a8 asserts the sentence on the stranger's card, so the fix has to give `pending` its own text" }
+  - { id: LOCKED-3, rule: "note, no finding: actionCaseOf (session-model.ts:314) puts `cancelled` before `locked`, and the cancelled card is drawn with no `cancellation` and no action (lesson-locked.tsx:195-214), so a locked reader of a cancelled celse sees \"Bu celse iptal edildi\" and \"Bu celse için toplantı bağlantısı yok.\" and neither the lock sentence nor the button. They can still apply from the course's card. Read from the code, not walked" }
+  - { id: toast-stays, rule: "an error toast stays until it is closed (course.apply's CRS-13 shape); the graph clears the notice at the next APPLY, which the browser does not do, so a second try after a refusal shows the old toast beside the new one" }
+  - { id: e2e-title-promises, rule: "session#11's title says the PENDING applicant \"gets the locked card\" and its three assertions are absences (SE-04), and celse-states#6 a8 reads the stranger's sentence only; the graph asserts the card's own words in each state, which both tests could" }

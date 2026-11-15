@@ -1,0 +1,20 @@
+{
+  "Homework.sectionTitle": "Ödev",
+  "Homework.memorizeTitle": "Ezberini hocana dinlet",
+  "Homework.memorizeBody": "Bu ödev dosyayla teslim edilmez; hocan dinleyip işaretler.",
+  "Homework.memorizePending": "Bekliyor",
+  "Homework.memorizeFull": "Tam",
+  "Homework.memorizeIncomplete": "Eksik",
+  "Homework.memorizeAbsent": "Vermedi",
+  "Homework.memorizeNote": "Hocanın notu:",
+  "Homework.memorizeLoadFailed": "Ezber durumun şu an okunamadı.",
+  "Homework.filesLabel": "Teslim ettiğin dosyalar",
+  "Homework.reviewTitle": "Hocanın değerlendirmesi",
+  "Homework.reviewed": "Değerlendirildi",
+  "Homework.reviewBy": "{name} · {when}",
+  "composed.Homework.description": "{description}",
+  "composed.Homework.markNote": "{note}",
+  "composed.Homework.earlierNoteLabel": "Notun:",
+  "composed.Homework.earlierNote": "{earlierNote}",
+  "composed.Homework.reviewNote": "{reviewNote}"
+}

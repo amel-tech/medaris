@@ -1,0 +1,171 @@
+# What must exist for a talebe who hands homework in on a celse: the flow's product list, from its story and from what the section is
+# for, never from what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by the orchestrator).
+#
+# Missing or unwalked (for the orchestrator's gaps merge). No e2e exists for the homework section (inventory: grep of apps/tedris/e2e
+# finds nothing), and no replay has run yet, so `walked` is empty everywhere; the scenario that is to walk each need is in its `note`.
+#   missing (code lacks it, all `missing: none`; defects of a built need, not planned work):
+#     quota-closes-the-picker-safely (WRT-12), refusals-are-said-in-words (WRT-03, WRT-07, WRT-08, HAND-3),
+#     steps-are-announced-and-keep-focus (WRT-01), a-typed-note-is-kept (WRT-13), a-seat-that-ended-is-told (HAND-2)
+#   unwalked (code exists, nothing walks it yet): see-what-the-hoca-set, know-what-is-handed-in, add-files-to-the-homework (also blocked: no
+#     storage on the stack, and no replay verb for a file input), files-are-removed-after-one-question, write-a-note-with-the-homework,
+#     hand-in-reaches-the-course-team, a-hand-in-outlives-the-homework
+kind: needs
+flow: tedris.learn.homeworkHandIn
+status: proposed
+
+needs:
+  - id: see-what-the-hoca-set
+    need: >-
+      On a celse that has homework, the talebe reads what the hoca wrote and can download the files the hoca attached, before they hand
+      anything in and after.
+    drawn:
+      - panel
+      - loadFailed
+    built:
+      - action: medaris.api:saveLessonAssignment
+      - action: medaris.api:webDownloadLessonAssignmentFile
+      - route: apps/tedris/features/courses/components/session-homework.tsx:790
+    walked: []
+    note: >-
+      unwalked; the description is read by the walk `removeThenNote` of binding.yaml. The download is tedris.files.download's, and answers 503 on the local stack (no storage).
+
+  - id: know-what-is-handed-in
+    need: >-
+      The talebe is told at a glance whether their homework is handed in: a warning that asks for a file or a note while there is neither,
+      "Teslim edildi" as soon as there is one of them, and when it last changed. Nothing says "late" or "graded": there is no deadline and
+      no grade.
+    drawn:
+      - panel
+      - fileGone
+      - noteSaving
+    built:
+      - action: medaris.api:getMySubmission
+      - route: apps/tedris/features/courses/components/session-homework.tsx:480
+    walked: []
+    note: >-
+      unwalked; the walks `removeThenNote` (the badge turns to "Teslim edilmedi" and back) and `firstNote` of binding.yaml.
+
+  - id: add-files-to-the-homework
+    need: >-
+      The talebe adds files to their homework, up to ten of 25 MB each in the types the hoca can open, one after another; the limits are said
+      before they choose, and a file that is refused stays in view with the reason until they dismiss it.
+    drawn:
+      - panel
+      - uploading
+    built:
+      - action: medaris.api:addMySubmissionFile
+      - action: medaris.api:webAddMySubmissionFile
+      - route: apps/tedris/features/courses/components/session-homework.tsx:411
+    walked: []
+    note: >-
+      unwalked, and not walkable yet. The local stack has no storage (every upload answers 503 STORAGE_NOT_CONFIGURED, the row says "Dosyalar şu an kaydedilemiyor...") and the replay has no verb that sets a file input. The page's own refusals (a file over 25 MB, an empty one) need only the verb.
+
+  - id: files-are-removed-after-one-question
+    need: >-
+      The talebe removes a file of their own after one question; the file and its stored object are gone for good, and the homework says
+      when it last changed.
+    drawn:
+      - confirming
+      - removing
+      - fileGone
+    built:
+      - action: medaris.api:deleteMySubmissionFile
+      - route: apps/tedris/features/courses/components/session-homework.tsx:892
+    walked: []
+    note: >-
+      unwalked; the walks `removeThenNote` and `fullQuota` of binding.yaml remove a file whose row the binding wrote by SQL (no upload is possible here). The object's removal from the store is the sweep's and is not checked.
+
+  - id: write-a-note-with-the-homework
+    need: >-
+      The talebe leaves the hoca a note with their homework, saved on its own, changed or cleared at any time; a blank note clears it, and the
+      note alone is a hand-in.
+    drawn:
+      - drafting
+      - noteSaving
+    built:
+      - action: medaris.api:saveMySubmissionNote
+      - route: apps/tedris/features/courses/components/session-homework.tsx:986
+    walked: []
+    note: >-
+      unwalked; the walks `removeThenNote` and `firstNote` of binding.yaml.
+
+  - id: hand-in-reaches-the-course-team
+    need: >-
+      A hand-in, a file or a note, is on the course team's list in nazar for everyone who may read it, with its files and its note, and for
+      nobody else; the talebe is told it is theirs and the team's to read.
+    drawn:
+      - onTeamList
+    built:
+      - action: medaris.api:listCourseSubmissions
+      - route: apps/nazar/features/homework/components/homework-page.tsx:41
+    walked: []
+    note: >-
+      unwalked here; nazar.homework.review walks the other half (this flow starts it with `handedIn`). The caption "Hoca ve ders ekibi görür." is drawn under "Ödevim".
+
+  - id: a-hand-in-outlives-the-homework
+    need: >-
+      What the talebe handed in stays theirs to read and manage when the hoca takes the homework off the celse, and a celse that never had
+      homework shows no section at all to a talebe who handed nothing in.
+    drawn:
+      - panel
+      - nothing_drawn
+    built:
+      - route: apps/tedris/features/courses/components/session-homework.tsx:458
+    walked: []
+    note: >-
+      unwalked; the walks `handedInBefore` of binding.legacy.yaml and `noHomework` of binding.yaml.
+
+  - id: quota-closes-the-picker-safely
+    need: >-
+      When the ten files are used up the picker closes and says why, without taking the focus from the person who was using it.
+    drawn:
+      - panel
+    missing: none
+    note: >-
+      WRT-12; a defect of a built need (the input becomes `disabled` while it may have the focus), not planned work, so no Linear key. The dependence on a 10th file is drawn only from `holds: tenFiles`.
+
+  - id: refusals-are-said-in-words
+    need: >-
+      Every refusal says what went wrong in words that fit what the person asked for (a file that is too large, a celse that is gone, a
+      seat that ended, a removal that failed), beside the thing it is about and to a screen reader; an upload in progress is announced.
+    drawn:
+      - panel
+      - removeRefused
+      - noteRefused
+    missing: none
+    note: >-
+      WRT-03, WRT-07, WRT-08 and HAND-3; the 403 sentence for a seat that ended is HAND-2. Defects of a built need, no Linear key.
+
+  - id: steps-are-announced-and-keep-focus
+    need: >-
+      After the trash, "Kaldır", "Vazgeç", a dismissed row and a saved note the focus stays where the person can go on, and a screen reader is
+      told that the question is up and what was done.
+    drawn:
+      - confirming
+      - removing
+      - panel
+    missing: none
+    note: >-
+      WRT-01 (the focus), and the question and the saved note are announced only by the polite status for a file. Defects of a built need, no Linear key.
+
+  - id: a-typed-note-is-kept
+    need: >-
+      A note being written is not lost to a reload, to a refused download that reloads the page, to the sign-in round trip after a session
+      ended, or to leaving the page by accident.
+    drawn:
+      - drafting
+      - noteRefused
+    missing: none
+    note: >-
+      WRT-13 and WRT-10; a defect of the page, not planned work, so no Linear key.
+
+  - id: a-seat-that-ended-is-told
+    need: >-
+      A talebe whose seat ended while the page was open is told so and where to go, instead of finding that every write is refused under
+      a section that still offers it.
+    drawn:
+      - noteRefused
+      - removeRefused
+    missing: none
+    note: >-
+      HAND-2 (new, provisional id); the course page's PROGRESS-1 (tedris.course.updateProgress) is the same defect. Not planned work, so no Linear key.

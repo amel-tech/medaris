@@ -1,0 +1,107 @@
+# The screens of tedris.learn.questions: the "Soru sor" panel beside a recording on the watch page (lesson-questions.tsx) and the tab
+# "Sorularım" of the course page (course-questions.tsx), which share one card (QuestionCard). `place` says which of the two a node
+# belongs to. Everything else on those pages (the player, the notes, the header, the other tabs) is another flow's (flow.yaml scope).
+# The words are copied from libs/i18n/src/locales/tr/tedris-learn.json (keys kept, the root removed; namespaces CourseQuestions and
+# WatchPage). The question's and the answer's own text is the talebe's and the hoca's, not the app's, so it is not drawn.
+# `changes` borrows the app's own message that says who reads a question (CourseQuestions.private), because the app has no message for
+# "what this flow changes" and a graph never invents one.
+schema: delurio-graph/0
+kind: ui
+id: tedris.learn.questions
+flow: tedris.learn.questions
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  session: Celse 1
+  week: "1"
+  title: Celse 1
+  max: "4000"
+  when: 16 Kas 2026 21:00
+  name: Hoca Örnek
+changes: { key: CourseQuestions.private }
+
+nodes:
+  # the page the panel or the tab sits on: the watch page's <main> (watch-view.tsx:205) or the course page's (course-page.tsx:229)
+  page: { type: page, component: Page, role: main, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], source: apps/tedris/features/courses/components/watch-view.tsx:205, script: actions } # no name, no initial focus: neither page sets one (not verified in a browser). The course page is server-drawn, the watch page needs its script.
+
+  # the watch page's panel: a section named by its heading
+  panel: { type: page, component: Page, role: region, name: { labelledBy: panelTitle }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'watch'", source: apps/tedris/features/courses/components/lesson-questions.tsx:69 }
+  panelTitle: { type: text, component: Heading, role: heading, text: { key: WatchPage.questionsTitle }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'watch'", source: apps/tedris/features/courses/components/lesson-questions.tsx:74 } # h2
+
+  # the course tab's form: a <form aria-label="Soru sor"> with its own heading
+  askForm: { type: page, component: Page, role: form, name: { key: CourseQuestions.askTitle }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'tab'", source: apps/tedris/features/courses/components/course-questions.tsx:432 }
+  askTitle: { type: text, component: Heading, role: heading, text: { key: CourseQuestions.askTitle }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'tab'", source: apps/tedris/features/courses/components/course-questions.tsx:441 } # h2 with a chats icon
+
+  privateNote: { type: text, component: Text, text: { key: CourseQuestions.private }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], source: apps/tedris/features/courses/components/course-questions.tsx:107 } # the caption of both places: who reads the questions
+  celseSelect: { type: field, component: TextField, role: combobox, text: { key: CourseQuestions.sessionLabel }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'tab'", source: apps/tedris/features/courses/components/course-questions.tsx:445 } # the kit's Select, a listbox in a popup: a replay clicks it and clicks an option, `fill` cannot drive it. Its options are "Hafta {week} · {title}" for every celse that is not cancelled
+  bodyField: { type: field, component: TextField, role: textbox, text: { key: CourseQuestions.bodyLabel }, value: { literal: "" }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], source: apps/tedris/features/courses/components/course-questions.tsx:460 } # up to 4000 characters. The tab names it by a visible label; the watch page by an aria-label only (WRT-14), with a placeholder "Bu celseyle ilgili sorunu yaz…" that a node cannot say
+  bodyHelp: { type: text, component: Text, text: { key: CourseQuestions.bodyHelp, params: { max: max } }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'tab' or typed == 'text'", source: apps/tedris/features/courses/components/lesson-questions.tsx:172 } # the tab always shows it; the watch page only once there is text
+  sendButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseQuestions.ask }, in: [opened, loadFailed, listed, asking, editing, saving, lateEdit, confirming, deleting], disabledIn: [asking], emits: SEND, source: apps/tedris/features/courses/components/course-questions.tsx:474 } # busy: aria-disabled, aria-busy. The tab's button has a plus icon
+  askingStatus: { type: status, component: Status, role: status, text: { key: CourseQuestions.asking }, in: [asking], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> of the busy button
+
+  # the ask form's alerts: paragraphs with role alert, after the form's fields (WRT-03)
+  pickCelseAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.sessionRequired }, in: [listed, lateEdit, editing, saving, confirming, deleting], when: "askNote == 'pickCelse'", source: apps/tedris/features/courses/components/course-questions.tsx:468 }
+  askBlankAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.bodyRequired }, in: [listed, lateEdit, editing, saving, confirming, deleting], when: "askNote == 'blank'", source: apps/tedris/features/courses/components/lesson-questions.tsx:186 }
+  askForbiddenAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.forbidden }, in: [listed, lateEdit, editing, saving, confirming, deleting], when: "askNote == 'forbidden'", source: apps/tedris/features/courses/components/lesson-questions.tsx:186 }
+  askFailedAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.askFailed }, in: [listed, lateEdit, editing, saving, confirming, deleting], when: "askNote == 'failed'", source: apps/tedris/features/courses/components/lesson-questions.tsx:186 }
+
+  # the list could not be read
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.loadFailed }, in: [loadFailed], source: apps/tedris/features/courses/components/course-questions.tsx:119 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseQuestions.retry }, in: [loadFailed], emits: RETRY, source: apps/tedris/features/courses/components/course-questions.tsx:122 }
+
+  # the list: the watch page names its <ul>, the tab does not; an empty list says so in words that differ by place
+  questionList: { type: list, component: List, role: list, name: { key: WatchPage.questionsList }, in: [listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'watch' and cards != 'none'", source: apps/tedris/features/courses/components/lesson-questions.tsx:103 }
+  emptyWatch: { type: text, component: Text, text: { key: WatchPage.questionsEmpty }, in: [listed, asking], when: "place == 'watch' and cards == 'none'", source: apps/tedris/features/courses/components/lesson-questions.tsx:101 }
+  emptyTab: { type: text, component: Text, text: { key: CourseQuestions.empty }, in: [listed, asking], when: "place == 'tab' and cards == 'none'", source: apps/tedris/features/courses/components/course-questions.tsx:128 } # the kit's EmptyState
+
+  # the card: <article aria-label="Soru, {celse title}"> (WRT-04: one name for every question on a celse)
+  card: { type: page, component: Page, role: article, name: { key: CourseQuestions.questionLabel, params: { session: session } }, in: [listed, asking, editing, saving, lateEdit, confirming, deleting], when: "cards != 'none'", source: apps/tedris/features/courses/components/course-questions.tsx:249 }
+  cardSession: { type: text, component: Text, text: { key: CourseQuestions.sessionLine, params: { week: week, title: title } }, in: [listed, asking, editing, saving, lateEdit, confirming, deleting], when: "place == 'tab' and cards != 'none'", source: apps/tedris/features/courses/components/course-questions.tsx:256 } # the eyebrow; the watch page's row has none, it is already about one celse
+  waitingBadge: { type: text, component: Text, text: { key: CourseQuestions.waiting }, in: [listed, asking, editing, saving, lateEdit, confirming, deleting], when: "cards == 'waiting'", source: apps/tedris/features/courses/components/course-questions.tsx:267 } # an outline badge: the state is text, not colour
+  answeredBadge: { type: text, component: Text, text: { key: CourseQuestions.answered }, in: [listed, asking, confirming, deleting], when: "cards == 'answered'", source: apps/tedris/features/courses/components/course-questions.tsx:263 } # a success badge with a check icon
+  askedAt: { type: text, component: Text, text: { key: CourseQuestions.askedAt, params: { when: when } }, in: [listed, asking, lateEdit, confirming, deleting], when: "cards != 'none'", source: apps/tedris/features/courses/components/course-questions.tsx:320 } # the time is the walk's own, so a replay matches it by pattern (binding)
+  answerBy: { type: text, component: Text, text: { key: CourseQuestions.answerBy, params: { name: name } }, in: [listed, asking, confirming, deleting], when: "cards == 'answered'", source: apps/tedris/features/courses/components/course-questions.tsx:328 } # "Cevap" alone when the answerer has no name
+
+  # the card in view mode
+  editButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseQuestions.edit }, name: { key: CourseQuestions.editLabel, params: { session: session } }, in: [listed, asking], when: "cards == 'waiting' and editClosed == 'no'", emits: EDIT, source: apps/tedris/features/courses/components/course-questions.tsx:361 } # a ghost mini button with a pencil; gone once answered, and gone for good after a 409
+  deleteButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseQuestions.delete }, name: { key: CourseQuestions.deleteLabel, params: { session: session } }, in: [listed, asking, lateEdit], when: "cards != 'none'", emits: DELETE, source: apps/tedris/features/courses/components/course-questions.tsx:371 } # a ghost mini button with a trash icon; always offered
+  lateEditAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.editAnswered }, in: [lateEdit], source: apps/tedris/features/courses/components/course-questions.tsx:220 }
+
+  # the card in edit mode
+  editField: { type: field, component: TextField, role: textbox, text: { key: CourseQuestions.bodyLabel }, in: [editing, saving], source: apps/tedris/features/courses/components/course-questions.tsx:280 } # holds the question as asked, which is the talebe's text and is not drawn; 3 rows, 4000 characters
+  editHelp: { type: text, component: Text, text: { key: CourseQuestions.bodyHelp, params: { max: max } }, in: [editing, saving], source: apps/tedris/features/courses/components/course-questions.tsx:282 }
+  saveButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseQuestions.save }, in: [editing, saving], disabledIn: [saving], emits: SAVE, source: apps/tedris/features/courses/components/course-questions.tsx:298 }
+  savingStatus: { type: status, component: Status, role: status, text: { key: CourseQuestions.saving }, in: [saving], source: libs/ui/src/mds/button.tsx:114 }
+  cancelEdit: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseQuestions.cancel }, in: [editing, saving], emits: CANCEL, source: apps/tedris/features/courses/components/course-questions.tsx:306 }
+  cardBlankAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.bodyRequired }, in: [editing], when: "cardNote == 'blank'", source: apps/tedris/features/courses/components/course-questions.tsx:292 }
+  cardForbiddenAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.forbidden }, in: [editing], when: "cardNote == 'forbidden'", source: apps/tedris/features/courses/components/course-questions.tsx:292 }
+  cardFailedAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.editFailed }, in: [editing], when: "cardNote == 'failed'", source: apps/tedris/features/courses/components/course-questions.tsx:292 }
+
+  # the card in confirm mode: an inline line, not a dialog
+  deleteAsk: { type: text, component: Text, text: { key: CourseQuestions.deleteAsk }, in: [confirming, deleting], when: "cards == 'waiting'", source: apps/tedris/features/courses/components/course-questions.tsx:339 }
+  deleteAskAnswered: { type: text, component: Text, text: { key: CourseQuestions.deleteAskAnswered }, in: [confirming, deleting], when: "cards == 'answered'", source: apps/tedris/features/courses/components/course-questions.tsx:339 }
+  confirmDelete: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseQuestions.delete }, in: [confirming, deleting], disabledIn: [deleting], emits: CONFIRM_DELETE, source: apps/tedris/features/courses/components/course-questions.tsx:341 } # destructive; the name is "Sil", not the aria-label of the card's own button
+  deletingStatus: { type: status, component: Status, role: status, text: { key: CourseQuestions.deleting }, in: [deleting], source: libs/ui/src/mds/button.tsx:114 }
+  cancelDelete: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseQuestions.cancel }, in: [confirming, deleting], emits: CANCEL, source: apps/tedris/features/courses/components/course-questions.tsx:350 }
+  deleteFailedAlert: { type: alert, component: Alert, role: alert, text: { key: CourseQuestions.deleteFailed }, in: [confirming], when: "cardNote == 'deleteFailed'", source: apps/tedris/features/courses/components/course-questions.tsx:386 }
+
+edges:
+  - { labelledBy: [panel, panelTitle] }
+  - { triggers: [sendButton, asking] }
+  - { triggers: [saveButton, saving] }
+  - { triggers: [confirmDelete, deleting] }
+
+rules:
+  - { id: WRT-01, rule: "pressing Düzenle, Kaydet, Vazgeç, Sil and the confirming Sil unmounts the button that had the focus and nothing moves it (no ref, no .focus() in course-questions.tsx); entering edit does not focus the text area. The graph says nothing of the focus in these states, and the focus falls to the document (not verified in a browser)" }
+  - { id: CRS-06, rule: "the course tab's copy of WRT-01 (course-questions.tsx:198-246, 359-383): focus is lost after each of the card's five steps; the inventory proposes focusing the text area on edit, the Düzenle button when it ends, and the next card or the tab heading after a delete" }
+  - { id: WRT-02, rule: "a question that was sent is silent: the box empties and a card is put first, and no live region or toast says so (lesson-questions.tsx:147-149, course-questions.tsx:417-419); a screen-reader user cannot tell it was sent. CRS-07 is the same finding on the course tab" }
+  - { id: CRS-07, rule: "see WRT-02: nothing announces a question that was sent on the course tab (course-questions.tsx:415-419)" }
+  - { id: WRT-03, rule: "the alerts of the ask form and of the edit form are role=alert paragraphs after the fields, not tied to a field: the text area is not aria-invalid and has no aria-describedby for them (lesson-questions.tsx:186-190, course-questions.tsx:292-296, 468-472)" }
+  - { id: WRT-04, rule: "the article is named \"Soru, <celse title>\" and its two buttons \"Soruyu düzenle, <celse title>\" and \"Soruyu sil, <celse title>\", so every question on one celse has the same three names (course-questions.tsx:251, 366, 379); the inventory proposes a snippet of the text or the time of asking" }
+  - { id: WRT-14, rule: "on the watch page the ask box has only an aria-label \"Sorun\" and a placeholder, no visible label, so a sighted person loses the prompt once typing starts (lesson-questions.tsx:176-184); the course tab's box has a visible label" }
+  - { id: CRS-16, rule: "the loading line \"Soruların yükleniyor…\" is an <output> that is mounted already filled, which assistive technology often does not read, and the tab's content mounts only when the tab is selected (course-questions.tsx:117, lesson-questions.tsx:90). Not drawn here: the first read cannot be held by a replay" }
+  - { id: QUESTIONS-1, rule: "new, provisional id: after the API refuses an edit with 409 the card goes back to view mode with the alert \"Cevaplanmış bir soru düzenlenemez.\" but keeps its old text, its badge \"Cevap bekleniyor\" and shows no answer, because the answer is read only when the page is read again; the text the talebe had written is discarded (course-questions.tsx:217-220). Read from the code, not walked" }
+  - { id: QUESTIONS-2, rule: "new, provisional id: the page is not live, so on a card the hoca has answered meanwhile the delete line says \"Silinsin mi?\" (the wording for an answerless card) and the answer is deleted with the question unseen (course-questions.tsx:339, question.answer is still null in the page's copy). Read from the code, not walked" }
+  - { id: delete-is-inline, rule: "deleting asks inline, in a line that replaces the card's buttons, not in a dialog; for an answered question the line says the answer goes too (deleteAskAnswered). Nothing behind it is inert" }
+  - { id: no-initial-focus, rule: "neither page sets an initial focus when the panel or the tab mounts, and the page nodes are not named (focus-not-set); the watch page's panel is a region named by its heading, the course tab's form is a form named \"Soru sor\"" }

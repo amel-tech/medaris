@@ -1,0 +1,28 @@
+# tedris.decks.visitorPublicDeck, the member address /decks/explore, on the local stack: nobody signed in, nothing made or removed.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/visitorPublicDeck --bind graphs/tedris/decks/visitorPublicDeck/binding.explore.yaml --to handed_over.redirected --out <dir>
+#
+# A file of its own for the reason binding.yaml gives: `memberPage` there opens /decks and this one /decks/explore, and both reach
+# handed_over.redirected through the same transition (e2e learn#16 names the three addresses). The proxy answers 307 to
+# /auth/signin?callbackUrl=<the address>, which the app's page hands to Keycloak (seen with curl as a visitor on 15 Nov 2026). Not replayed
+# in this phase.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.visitorPublicDeck
+
+accounts:
+  visitor: {}
+signIn: []
+
+scenarios:
+  memberPageExplore:
+    given: { address: memberOnly, deck: closed }
+    as: visitor
+    open: '{tedris}/decks/explore'
+
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  handed_over.redirected: { url: '{keycloak}/realms/medaris/**' }
+  left: { url: 'about:blank' }

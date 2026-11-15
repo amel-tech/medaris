@@ -1,0 +1,127 @@
+# What must exist for the author of a deck who asks for it to be published: the flow's product list, from its story and from the review the
+# story names, never from what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by the orchestrator).
+# Nothing here is planned in planned.md for this flow (MDRS-148, deck publication, was not fetched in full, planned.md:159), so a need that the code
+# does not meet is `missing: none`, with the finding that names it.
+#
+# Missing (no code, no Linear key): refused-deck-says-why-and-asks-again (DCK-13, PUB-3), stale-page-tells-the-truth (PUB-1, PUB-2),
+#   course-deck-is-not-offered-to-the-public (PUB-4)
+# Unwalked (code, and no e2e and no replay that has passed): take-a-public-deck-back, author-is-told-of-the-answer, reviewers-find-a-waiting-request
+#   (its e2e is nizam's deck-review, another flow's)
+# No replay has been run in this phase, so no `walked` names a scenario; the e2e names are the inventory's.
+kind: needs
+flow: tedris.decks.publish
+status: proposed
+
+needs:
+  - id: ask-and-wait-for-review
+    need: >-
+      The author of a private deck can ask for it to be made public. The author is told the request went in and when, the deck stays private
+      while the request waits (nobody but the author reads it), and the Medaris reviewers get the request.
+    drawn:
+      - privateDeck
+      - requesting
+      - reachesReviewers
+      - pendingDeck
+      - requestButton
+      - whoPending
+    built:
+      - action: medaris.api:requestDeckPublication
+      - route: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:60
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#13'
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#15'
+
+  - id: take-the-request-back
+    need: >-
+      The author can take a waiting request back at any time, is told the deck is private again, and can ask again.
+    drawn:
+      - pendingDeck
+      - withdrawingPending
+      - privateDeck
+      - withdrawButton
+      - withdrawnToast
+    built:
+      - action: medaris.api:withdrawDeckPublication
+      - route: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:66
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#15'
+
+  - id: take-a-public-deck-back
+    need: >-
+      The author of a published deck can take it back to private whenever they like, and the deck is private from that moment.
+    drawn:
+      - publishedDeck
+      - takingBackPublished
+      - makePrivateButton
+      - take-back-asks-nothing
+    built:
+      - action: medaris.api:withdrawDeckPublication
+      - route: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:222
+    walked: []
+    note: decks#15 takes back a waiting request, not a published deck; the seeded published deck of decks.e2e.ts is not taken back by any test
+
+  - id: author-is-told-of-the-answer
+    need: >-
+      When a reviewer publishes the deck, refuses the request or takes the deck back, the author is told, with the reason of a refusal or of a
+      take-back, and the author's page shows the new status.
+    drawn:
+      - pendingDeck
+      - rejectedDeck
+      - publishedDeck
+      - whoPublished
+    built:
+      - action: medaris.api:approveDeckPublishRequest
+      - action: medaris.api:rejectDeckPublishRequest
+      - route: apps/tedris/features/notifications/notification-view.ts:171
+    walked: []
+    note: the notification is built and carries the reason; the page shows the new status only after a reload (stale-page-tells-the-truth)
+
+  - id: refused-deck-says-why-and-asks-again
+    need: >-
+      The author of a refused request is told on the deck's own page that it was refused and why, and can ask again from there with one press.
+    drawn:
+      - rejectedDeck
+      - withdrawingRejected
+      - DCK-13
+      - PUB-3
+      - D1
+    missing: none
+
+  - id: stale-page-tells-the-truth
+    need: >-
+      A page that no longer matches the deck (a reviewer answered, the deck was taken back in another tab) says so when the author's press is refused,
+      and shows the deck's real status instead of inviting the same refused press again; a second press while the first is settling does nothing.
+    drawn:
+      - requesting
+      - withdrawingPending
+      - takingBackPublished
+      - withdrawingRejected
+      - PUB-1
+      - PUB-2
+      - D2
+    missing: none
+
+  - id: reviewers-find-a-waiting-request
+    need: >-
+      The Medaris başnazımı and a Medaris nazımı who may review decks find a waiting request on their list and as a count on their home page; they
+      read it before deciding and each read is on the record.
+    drawn:
+      - reachesReviewers
+    built:
+      - action: medaris.api:listDeckPublishRequests
+      - action: medaris.api:readDeckPublishRequestCards
+      - route: apps/nizam/app/talepler/deste-yayin-istekleri/page.tsx:31
+    walked: []
+    note: its e2e is nizam's deck-review#1-#5, carried by nizam.moderation.reviewDeckPublication
+
+  - id: course-deck-is-not-offered-to-the-public
+    need: >-
+      A deck that belongs to a course is published and taken down only through the course's own routes: the page of the hoca who wrote it offers no
+      "Yayın iste", and the API refuses the request.
+    drawn:
+      - privateDeck
+      - PUB-4
+    missing: none

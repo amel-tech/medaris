@@ -1,0 +1,48 @@
+# tedris.learn.questions on the course page's tab "Sorularım" (e2e lesson-questions#1): the same flow as binding.yaml, with `place: tab`.
+#   node apps/engine/src/cli.ts replay graphs/tedris/learn/questions --bind graphs/tedris/learn/questions/binding.tab.yaml --to confirming --out <dir>
+# WRITTEN IN THE WRITING PHASE, NOT REPLAYED (the owner moved every replay to the walk phase); it loads (`--emit-spec`).
+#
+# Why a file of its own: `--to <state>` takes the shortest way from the first scenario that reaches the state, and the watch page is the
+# shorter way to every state, so the tab is walked from its own binding. The shortest way to `confirming` here is DONE, TYPE, PICK_CELSE,
+# SEND, DONE, DELETE: the select's option is chosen, a question is asked, the card (with its eyebrow "Hafta 1 · Celse 1") is read and its
+# "Sil" asks. The tab is opened by its address, ?tab=sorularim, as e2e does; the nav graph's goal for this flow is the watch page, so
+# there is no `enter` here.
+# Data: a course of its own, tag `questionstab`, with no recording (the tab needs none) and `applicantD` seated. The same account as
+# binding.yaml: the two bindings are never walked at once (one replay at a time, under the lock), and each removes its course.
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: tedris.learn.questions
+
+data:
+  made: { json: ../.local/made/questionstab.json }
+
+scenarios:
+  onCourseTab:
+    given: { place: tab }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}?tab=sorularim'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      celse: 'Hafta 1 · Celse 1'
+      asked: 'Fe‘ale bâbında mâzînin aynü’l-fiili neden fethalıdır?'
+      asked_token: 'aynü’l-fiili'
+      rewritten: 'Fe‘ale bâbında mâzî ile muzârinin harekeleri neden ayrılır?'
+      rewritten_token: 'muzârinin harekeleri'
+      answer: 'Dört tanedir: **eyn** harfleri.'
+      answer_token: 'Dört tanedir'
+    setup:
+      - run: [node, helpers/course.mjs, make, questionstab, --weeks, '1', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, APPLICANT_D]
+        expect: '"tag":"questionstab"'
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+    teardown:
+      - run: [node, helpers/course.mjs, remove, questionstab]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+states:
+  # the page's own address, with the tab in it: the server action posts there
+  asking: { call: '{tedris}/courses/{course}?tab=sorularim' }
+  deleting: { call: '{tedris}/courses/{course}?tab=sorularim' }

@@ -1,0 +1,670 @@
+# Who may write on a celse, and what a person who may not is shown (tedris-web: the celse page /courses/<c>/lessons/<l>, its watch page .../izle
+# and the course page's Sorularım tab; tedrisat: the notes, questions and hand-in routes behind them), read from the code of the branch (the tree of
+# PR #394) on 15 Nov 2026. Nothing here was run: every behaviour below is "from the code" until the walk phase replays it. Nothing is approved.
+#   - What it draws: the three surfaces the panels sit on, the answer each gives to who is looking (an active talebe, a stranger, a talebe whose
+#     application waits, one the team took out, one an open ban bars, one of a passive course, the course's own hoca), the celse that is
+#     cancelled or hidden, and the calls the panels make that the API refuses (the stale page whose seat was taken away; a call made by hand).
+#   - What it leaves to other flows: what the panels do for a talebe who may write (tedris.learn.notes, tedris.learn.questions,
+#     tedris.learn.homeworkHandIn), the lock card's own words and the button on it (tedris.celse.locked), the cancelled celse's own page
+#     (tedris.celse.cancelled), the course page (tedris.course.*).
+#   - Domain rules it carries: talebe-writing-needs-an-active-seat, own-writing-outlives-the-seat, a-ban-bars-writing-not-the-seat,
+#     notes-and-questions-reach-hidden-sessions, and writing-stays-with-its-reader.
+#   - Findings it touches (ui.yaml `rules` carries the same ids): MDRS-265 (CLS-02, WRT-15) an enrolled talebe of a passive course, and one barred
+#     from the course, are told to apply; MDRS-268 a removed talebe reaches their own notes and questions through the API and no page shows them;
+#     and two new ones, WG-1 (a hidden celse still takes a note and a question through the API, from a page that was open before it was hidden)
+#     and WG-2 (the panels' refusal says "derse kayıtlı olman gerekir" to a talebe who is enrolled and barred, or whose course went passive).
+# E2E carried: lesson-notes#14 (the passive seat, and the API's 403), #16 (the hoca's page has no panel; the API list holds nobody else's note;
+# edit 403, delete 404), #17 (a stranger, a waiting application, a removed seat: no panel, API 403), lesson-questions#5, #7, #8 (no Sorularım tab,
+# API 403; a removed talebe reads their answered question through the API), #13 of lesson-notes (a cancelled celse draws no panel) in part.
+# E2E carried as the code does, not as the test asks: lesson-notes#15 is `test.fail` for MDRS-265 (the card says "Derse kaydolduğunda görebilirsin"
+# and offers "Kayıt başvurusu yap" to an enrolled talebe of a passive course): the graph draws the card as it is.
+# Not carried: the second talebe's own empty panel (needs a second seat), the başnazım's page, the recordings tab, every DB read of
+# `fixture.notesOf`, and the page-content scans (`page.content()` not containing the text).
+schema: delurio-graph/0
+kind: flow
+id: tedris.learn.writingGating
+status: captured
+domain: medaris.api
+ui: tedris.learn.writingGating
+title: Who gets no notes, questions or homework panel
+summary: >-
+  A person opens a celse: its page, its watch page, or the Sorularım tab of its course. The page asks the API for the celse and the course and
+  draws the panels, "Notlarım", "Ödev" and, beside a recording, "Soru sor", for one kind of person only: a talebe whose seat is ENROLLED or
+  COMPLETED, whom no open ban bars, and whose course is not in a passive scope. Everyone else gets the page without them: a stranger, a talebe
+  whose application waits, one the team took out and one an open ban bars get the lock card (the watch page sends them back to it); the
+  course's own hoca gets the celse and its watch page with no panel at all; a cancelled celse draws none; a hidden celse is not found; and
+  on the course page the tab "Sorularım" is not there. Nothing in the page shows or lets a person write what the API would refuse. The API
+  holds the same line by itself: a note, a question or a hand-in from anyone else is a 403 (LESSON_NOTE_FORBIDDEN, LESSON_QUESTION_FORBIDDEN,
+  SUBMISSION_FORBIDDEN), and that is the one refusal a person can meet in a panel, from a page that stayed open after the seat went (the panel
+  says "Not yazmak için derse kayıtlı olman gerekir."). What a person wrote outlives the seat in the API and nowhere else: a removed or barred
+  talebe still reads and deletes their notes and questions through it, while no page offers them (MDRS-268); only a passive scope closes it.
+  Nobody reads another person's note or question: the hoca's list holds none of theirs, and an edit or a delete of one is refused.
+source: apps/tedris/features/courses/components/session-page.tsx:130
+
+scope:
+  shows: the panels' presence on the celse page, the watch page and the course tab for each kind of person, and the refusals of the notes and questions routes
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "what a panel does for a talebe who may write: the time field, the list, edit and delete, the answer to a question, the hand-in's files and note (tedris.learn.notes, tedris.learn.questions, tedris.learn.homeworkHandIn, tedris.learn.homeworkMemorize, tedris.learn.homeworkReview)"
+    - "the lock card's other parts, its button and the window after an application (tedris.celse.locked); the cancelled celse's own card and the replacement (tedris.celse.cancelled); the not-found page's own screen (tedris.shell.systemPages)"
+    - "a visitor: /courses/<id>/lessons/<id> is behind the sign-in (lib/public-paths.ts:29-34), so the proxy sends them there first (tedris.celse.locked, realm.auth.signIn); the course page is public and a visitor's tab row has no Sorularım either, which is not walked"
+    - "the live chat that replaces the questions beside a stream on air (tedris.celse.watchStream), and the recordings tab (tedris.course.recordings), whose panel gate is the same"
+    - "a hand-in: SUBMISSION_FORBIDDEN is the same gate as the note's (invariant talebe-writing-needs-an-active-seat) and its panel is only drawn here; the hand-in's own refusals, the upload's 503 and the live-session rule (hand-in-needs-a-live-session) are tedris.learn.homeworkHandIn's, apart from the hidden celse's 404, which the exit hidden_celse_written compares"
+    - "the second talebe's own panel, which lists none of the first's writing; the başnazım's page. The API half of both is on the exit own_writing_only (the hoca's calls stand for them)"
+    - "the bar around the page (tedris.shell.frame) and the toast host"
+    - "a request that never reaches the server, a 5xx, and a session the API no longer takes (the panel sends the person to sign in and back, realm.auth.sessionEnded)"
+
+decisions:
+  D1:
+    question: >-
+      Should a removed or barred talebe be shown what they wrote, read-only and with a delete, as MDRS-268's default proposal says?
+    recommend: >-
+      Yes (a). The API serves them their own notes and questions while the course is open, and deleting one's own data is a KVKK matter. Today
+      no page does (own_writing_read has no screen), and a code comment in course-questions.tsx says the opposite of what the page does.
+    affects: [lockedShown, courseNoAsk, own_writing_read]
+  D2:
+    question: >-
+      Should the API refuse a note or a question on a hidden celse, as it refuses a hand-in?
+    recommend: >-
+      Yes. findVisibleLessonCourse counts archived celses "on purpose" (MDRS-150) and the page of a hidden celse is not found for everyone, so
+      what is written there can only come from a page that was open before, and nobody can read or delete it until the celse is restored (WG-1).
+    affects: [celseNotFound, hidden_celse_written]
+  D3:
+    question: >-
+      Which words should a panel say when the API refuses a write: one sentence for every 403, or one for each reason (removed, barred, passive)?
+    recommend: >-
+      One for each reason. "Not yazmak için derse kayıtlı olman gerekir." is false for a barred talebe, who is enrolled, and for a talebe of a
+      passive course (WG-2); the lock card already tells removed, pending and stranger apart.
+    affects: [addRefused]
+
+context:
+  seat:
+    values: [active, stranger, pending, removed, barred, passive, staff]
+    initial: any
+    say:
+      active: "the person is an ENROLLED talebe of the course, no open ban bars them and the course's scope is not passive"
+      stranger: "signed in, holds no row in the course"
+      pending: "signed in, their application waits (a PENDING row)"
+      removed: "signed in, the course team took their seat away (a REVOKED row)"
+      barred: "signed in, ENROLLED, and an open ban bars them from the course (the seat stays)"
+      passive: "signed in, ENROLLED, and the course has lost its last müderris, so its scope is passive and the content is closed to everyone but the köşk's nazım"
+      staff: "the course's own hoca (a müderris), who holds the content and no enrolment"
+  address:
+    values: [celse, watch, tab, cancelled, hidden]
+    initial: any
+    say:
+      celse: "they open /courses/<c>/lessons/<l>, a standing celse with nothing to watch"
+      watch: "they open /courses/<c>/lessons/<l>/izle, the watch page of a celse that has a recording"
+      tab: "they open /courses/<c>?tab=sorularim, the course page asking for the Sorularım tab"
+      cancelled: "they open the page of a celse the hoca cancelled"
+      hidden: "they open the page of a celse the course team hid (archived); an old link, a bookmark"
+  standing:
+    values: [kept, removed, barred, passive]
+    initial: kept
+    say:
+      kept: "the seat is as the page found it"
+      removed: "the course team took the seat away while the page stayed open"
+      barred: "an open ban was placed while the page stayed open"
+      passive: "the course went passive while the page stayed open"
+  notes:
+    values: [none, some]
+    initial: none
+    say:
+      none: "the panel lists no note"
+      some: "the panel lists the note just added"
+
+guards:
+  mayWrite: "seat == 'active' and standing == 'kept'"
+  removedNow: "seat == 'removed' or standing == 'removed'"
+  barredNow: "seat == 'barred' or standing == 'barred'"
+  passiveNow: "seat == 'passive' or standing == 'passive'"
+  pendingNow: "seat == 'pending'"
+  isStaff: "seat == 'staff'"
+  onWatch: "address == 'watch'"
+  isHidden: "address == 'hidden'"
+
+effects:
+  lostRemoved: { set: { standing: removed } }
+  lostBarred: { set: { standing: barred } }
+  lostPassive: { set: { standing: passive } }
+  noteListed: { set: { notes: some } }
+
+failures:
+  readingCelse:
+    from: getSession
+    notFound: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  adding:
+    from: createLessonNote
+    forbidden: [LESSON_NOTE_FORBIDDEN]
+  noteTried:
+    from: createLessonNote
+    forbidden: [LESSON_NOTE_FORBIDDEN]
+  questionTried:
+    from: askLessonQuestion
+    forbidden: [LESSON_QUESTION_FORBIDDEN]
+  ownNotesTried:
+    from: listLessonNotes
+    forbidden: [LESSON_NOTE_FORBIDDEN]
+  ownQuestionsTried:
+    from: listMyCourseQuestions
+    forbidden: [LESSON_QUESTION_FORBIDDEN]
+
+# The main story: a talebe has the celse page open with a note typed; the course team takes their seat away; "Notu ekle" is refused in the
+# panel; they reload and meet the lock card of a removed seat, with no panel; a note written by hand is refused with 403 too.
+main:
+  given: { seat: active, address: celse }
+  events: [DONE, TYPE, SEAT_REMOVED, SUBMIT, FAIL.forbidden, RELOAD, DONE, TRY_NOTE, FAIL.forbidden]
+
+initial: opened
+states:
+  opened:
+    title: An address is opened
+    description: >-
+      The celse page, its watch page and the course page each read their data on the server before they draw anything. A person with no
+      session never gets here (the proxy answers first, outOfView). The graph splits the three by the address.
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23
+    always:
+      - guard: "address == 'tab'"
+        target: readingCourse
+        say: "the course page reads the course and nothing of the celse"
+        source: apps/tedris/features/courses/components/course-page.tsx:166
+      - target: readingCelse
+        say: "the celse page and its watch page read the celse first, in their layout"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23
+
+  readingCelse:
+    title: Read the celse
+    description: >-
+      The segment's layout asks GET /courses/{courseId}/sessions/{sessionId} (getSession) before it streams the page, so that an unknown celse
+      is a real 404: the call answers LESSON_NOT_FOUND for an id that is no live celse of a course the caller may see, and that includes a
+      celse that was hidden (archived): buildSessionView finds only live ones. The page then reads the course (getCourse) and the same
+      celse again from a cache; neither read says who may write, only `contentLocked` and the caller's own enrolment, which the three pages
+      decide from. The graph draws the layout's read and the page's together.
+    includes: ["the celse with its recording, its meeting link and its homework, left out of the answer for a person who may not read the content", "the course with the caller's enrolment and `contentLocked`"]
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23
+    invoke: { action: getSession }
+    on:
+      DONE:
+        guard: "not isHidden"
+        target: deciding
+        say: "the celse is live: the page goes on"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:21
+      FAIL.notFound:
+        guard: isHidden
+        target: celseNotFound
+        say: "404 LESSON_NOT_FOUND: the layout calls notFound() for everyone, the hoca too"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27
+
+  readingCourse:
+    title: Read the course
+    description: >-
+      The course page reads GET /courses/{id} (getCourse) and draws its tabs from what comes back: the enrolment's status and
+      `contentLocked`. A visitor may read it too (outOfView).
+    source: apps/tedris/features/courses/components/course-page.tsx:166
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        target: courseDeciding
+        say: "the course is there"
+        source: apps/tedris/features/courses/components/course-page.tsx:166
+
+  deciding:
+    title: Decide which page the person gets
+    description: >-
+      Classification only, in the order the code takes. A cancelled celse draws its card and no panel for everyone: session-page.tsx asks
+      `!cancelled` of both panels, and the locked card is drawn after the cancelled one (LOCKED-3 of tedris.celse.locked). The watch page lets
+      a reader through only when the content is open (`lessonLockReason` is null) and there is something to watch; anyone else, and anyone
+      when the celse has no stream and no recording, is sent to the celse page by `redirect(detail)`. The panels appear for a talebe who
+      `canWriteNotes` (status ENROLLED or COMPLETED) on a page whose content is not locked: a hoca reads the page with the content open and no
+      enrolment, so no panel. The graph's `watch` address always has a recording (a celse with nothing to watch redirects every reader to the
+      celse page, outside this flow's view).
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:29
+    always:
+      - guard: "address == 'cancelled'"
+        target: cancelledShown
+        say: "the cancelled celse: its card, no panel"
+        source: apps/tedris/features/courses/components/session-page.tsx:133
+      - guard: "onWatch and mayWrite"
+        target: watchPanels
+        say: "an active talebe on the watch page gets the questions and the notes beside the video"
+        source: apps/tedris/features/courses/components/watch-page.tsx:44
+      - guard: "onWatch and isStaff"
+        target: staffWatch
+        say: "the hoca watches: the content is open, there is no aside"
+        source: apps/tedris/features/courses/components/watch-page.tsx:44
+      - guard: onWatch
+        target: watchRedirected
+        say: "anyone else is sent back to the celse page"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31
+      - guard: mayWrite
+        target: celsePanels
+        say: "an active talebe on the celse page gets \"Notlarım\" and, with a homework, \"Ödev\""
+        source: apps/tedris/features/courses/components/session-page.tsx:130
+      - guard: isStaff
+        target: staffCelse
+        say: "the hoca reads the celse: the content is open, no enrolment, no panel"
+        source: apps/tedris/features/courses/components/session-page.tsx:130
+      - target: lockedShown
+        say: "a stranger, a waiting application, a removed seat, a barred one and a passive course: the lock card"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:29
+
+  watchRedirected:
+    title: The watch page sends the person back to the celse page
+    description: >-
+      redirect(detail) before anything is drawn: the browser ends on /courses/<c>/lessons/<l>, where the lock card is. Nothing of the video, the
+      questions or the notes was in the page.
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31
+    always:
+      - target: lockedShown
+        say: "the celse page draws the lock card"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31
+
+  courseDeciding:
+    title: Decide which tabs the course page draws
+    description: >-
+      The tab row is built from the same two facts: `asksQuestions = !course.contentLocked && canWriteNotes(enrollment.status)`. "Sorularım" is in
+      the row for an active talebe only; for anyone else the tab is not there and the address's `?tab=sorularim` falls back to "Müfredat".
+    source: apps/tedris/features/courses/components/course-page.tsx:166
+    always:
+      - guard: mayWrite
+        target: courseAsk
+        say: "the row has \"Sorularım\" and the address selects it"
+        source: apps/tedris/features/courses/components/course-page.tsx:187
+      - target: courseNoAsk
+        say: "no \"Sorularım\" in the row; \"Müfredat\" is selected"
+        source: apps/tedris/features/courses/components/course-page.tsx:187
+
+  celsePanels:
+    title: The celse page with its panels
+    by: human
+    description: >-
+      SessionPage for a talebe who may write, on a celse with nothing to watch: the header, the card, "Notlarım" (a region named by its h2, the
+      caption "Yalnızca sen görürsün." and a form whose textbox is named "Not"), and, when the hoca set a homework, "Ödev". The time field, the
+      list and the homework's body are other flows' (outOfView). Nothing takes the focus on load (rule focus-not-set). The page does not watch
+      the seat: when the course team takes it away, bans the talebe or loses its last hoca, nothing here changes until the page is read again,
+      so the panel stays and the next write is refused (the states drafting, adding, addRefused).
+    source: apps/tedris/features/courses/components/session-page.tsx:152
+    on:
+      TYPE:
+        target: drafting
+        say: "they type a note"
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:240
+      SEAT_REMOVED:
+        target: celsePanels
+        effect: [lostRemoved]
+        say: "the course team removes their seat (POST /courses/{id}/enrollments/{userId}/remove): the page does not know"
+        source: apps/tedrisat/src/course/course.controller.ts:739
+      SEAT_BARRED:
+        target: celsePanels
+        effect: [lostBarred]
+        say: "a ban is placed on them (POST /courses/{courseId}/bans): the seat stays and the page does not know"
+        source: apps/tedrisat/src/ban/ban.controller.ts:83
+      SEAT_PASSIVE:
+        target: celsePanels
+        effect: [lostPassive]
+        say: "the course loses its last müderris and goes passive: the page does not know"
+        source: apps/tedrisat/src/database/passive-courses.ts:15
+      RELOAD:
+        target: opened
+        say: "the page is read again"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  drafting:
+    title: A note is typed
+    by: human
+    description: >-
+      The same page with the text in the form. The button is enabled whatever the seat is: nothing in the page asks the API first.
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:240
+    on:
+      SUBMIT:
+        target: adding
+        say: "\"Notu ekle\": the server action createLessonNote sends POST /lessons/{id}/notes"
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:328
+      SEAT_REMOVED:
+        target: drafting
+        effect: [lostRemoved]
+        say: "the course team removes their seat while they type"
+        source: apps/tedrisat/src/course/course.controller.ts:739
+      SEAT_BARRED:
+        target: drafting
+        effect: [lostBarred]
+        say: "a ban is placed on them while they type"
+        source: apps/tedrisat/src/ban/ban.controller.ts:83
+      SEAT_PASSIVE:
+        target: drafting
+        effect: [lostPassive]
+        say: "the course goes passive while they type"
+        source: apps/tedrisat/src/database/passive-courses.ts:15
+      RELOAD:
+        target: opened
+        say: "the page is read again"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  adding:
+    title: The note is sent
+    description: >-
+      POST /lessons/{id}/notes with the person's token: findVisibleLessonCourse, then mayWriteAsTalebe (an ENROLLED or COMPLETED row, no open
+      ban that bars the course, the content open to the caller). Nothing is shown while it runs that this graph draws: the button is busy
+      (aria-disabled, a hidden status) for a moment and the server action answers 200 on the page's own address, so no call is held. An
+      answer of 403 is LESSON_NOTE_FORBIDDEN and the panel reads the status only, not the code.
+    source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:91
+    invoke: { action: createLessonNote }
+    on:
+      DONE:
+        guard: "standing == 'kept'"
+        target: celsePanels
+        effect: [noteListed]
+        say: "the seat held: the note is listed and the form is empty (tedris.learn.notes)"
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:333
+      FAIL.forbidden:
+        guard: "standing != 'kept'"
+        target: addRefused
+        say: "403 LESSON_NOTE_FORBIDDEN: the panel says so and keeps what was typed"
+        source: apps/tedris/features/courses/components/lesson-notes.tsx:212
+
+  addRefused:
+    title: The panel says the note was refused
+    by: human
+    goal: true
+    description: >-
+      The create form's error line, a <p role="alert"> under the form: "Not yazmak için derse kayıtlı olman gerekir." The text is chosen by the
+      status alone (403, lesson-notes.tsx:212), so it is the same for a talebe who was removed (true), one a ban bars (false: they are enrolled)
+      and one whose course went passive (false), WG-2. What was typed stays in the field. The alert takes no focus (WRT-02). The page is as
+      stale as before: the person learns the seat is gone only from this line, and sees the lock card only after they read the page again.
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:424
+    on:
+      RELOAD:
+        target: opened
+        say: "the page is read again, and the seat is what the API now says"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  watchPanels:
+    title: The watch page with its panels
+    by: human
+    goal: true
+    description: >-
+      WatchView for an active talebe on a celse with a recording that is not framed (the locally made recording is a pasted link to a host the page
+      has no player for): the video's header and placeholder, then an <aside> named "Sorular ve notlar" holding "Soru sor" (a region named by its h2,
+      the caption of who reads it, a form) over "Notlarım". The same two components as the celse page and the course tab, so the same 403 line
+      appears in each (CourseQuestions.forbidden for a question). Nothing moves the focus.
+    source: apps/tedris/features/courses/components/watch-view.tsx:245
+    on:
+      RELOAD:
+        target: opened
+        say: "the page is read again"
+        source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  staffWatch:
+    title: The hoca's watch page has no panel
+    by: human
+    goal: true
+    description: >-
+      WatchPage computes `talebe = !contentLocked && canWriteNotes(status)`, which is false for a hoca (the content is open, there is no enrolment),
+      so WatchView gets `notes={false}` and `questions={false}` and draws no <aside> at all: the video, the header and the link "Celse ayrıntıları".
+      e2e lesson-notes#16 asserts the same page for the müderris and the başnazım.
+    source: apps/tedris/features/courses/components/watch-view.tsx:245
+    on:
+      TRY_NOTE:
+        target: noteTried
+        say: "a note is sent by hand with the hoca's token: no page draws a form for it"
+        source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:100
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  staffCelse:
+    title: The hoca's celse page has no panel
+    by: human
+    goal: true
+    description: >-
+      SessionPage for a person who holds the content and no enrolment: the header, the card, the agenda, the resources and the pager, and neither
+      "Notlarım" nor "Ödev" (mayTakeNotes is false). The hoca reads the talebe's homework in nazar (nazar.homework.review), not here.
+    source: apps/tedris/features/courses/components/session-page.tsx:130
+    on:
+      TRY_NOTE:
+        target: noteTried
+        say: "a note is sent by hand with the hoca's token"
+        source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:100
+      READ_OTHERS:
+        target: othersTried
+        say: "the hoca asks for the notes of the celse by hand, and tries to change and delete a talebe's"
+        source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:80
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  lockedShown:
+    title: The celse page is the lock card
+    by: human
+    goal: true
+    description: >-
+      LessonLocked, drawn for a person who may not read the course (tedris.celse.locked draws the card whole): the header, the lock card with the
+      sentence for the reason, the course's card and the programme with the rows locked. Of the panels nothing is in the page: no region
+      "Notlarım", no "Ödev", no form. Which sentence: a removed seat gets "Bu derse erişimin kaldırıldı." and no button; a person whose
+      application waits gets the stranger's sentence with a badge and a note and no button; a stranger, a barred talebe and a talebe of a passive
+      course all get "Derse kaydolduğunda görebilirsin." and the button "Kayıt başvurusu yap", the last two being enrolled already (CLS-02,
+      MDRS-265: pressing it answers 403 BAN_ACTIVE for a barred talebe and the same ENROLLED row for a passive course; from the code). The
+      watch address ends here too. What this person wrote earlier, and may still read and delete through the API, is not in the page (MDRS-268,
+      the exit own_writing_read).
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:169
+    on:
+      TRY_NOTE:
+        target: noteTried
+        say: "a note is sent by hand with the person's token: the lock card has no form for it"
+        source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:100
+      READ_NOTES:
+        target: ownNotesTried
+        say: "the person asks the API for their own notes of the celse by hand"
+        source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:80
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  cancelledShown:
+    title: The cancelled celse draws no panel
+    by: human
+    goal: true
+    description: >-
+      The page of a celse the hoca cancelled: the header and a card whose h2 says "Bu celse iptal edildi". SessionPage asks `!cancelled` of "Notlarım"
+      and of "Ödev" even for an active talebe (lesson-notes#13), and a person who may not read the course gets the same card, with no reason and no
+      button (LOCKED-3 of tedris.celse.locked). The API still takes a note and a question on a cancelled celse (createLessonNote checks no status),
+      so a stale page could write one; not walked and not a finding of this flow.
+    source: apps/tedris/features/courses/components/session-page.tsx:133
+    on:
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  celseNotFound:
+    title: A hidden celse is not found
+    by: human
+    goal: true
+    description: >-
+      The layout's notFound() for a celse the API says is not live: the page of a hidden (archived) celse is the not-found page for everyone,
+      the hoca and an active talebe included. The panel gate is not reached, but the API's is not the page's: createLessonNote and
+      askLessonQuestion find an archived celse of a visible course on purpose (findVisibleLessonCourse, MDRS-150), so an active talebe's call is
+      stored (WG-1; the exit hidden_celse_written), where a hand-in on the same celse is 404 (the invariant hand-in-needs-a-live-session). Everyone
+      else's call is the same 403 as anywhere.
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27
+    on:
+      TRY_NOTE:
+        target: noteTried
+        say: "a note is sent by hand, as a talebe's stale page would send it"
+        source: apps/tedrisat/src/lesson-note/lesson-note.controller.ts:100
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  courseAsk:
+    title: The course page has the Sorularım tab
+    by: human
+    goal: true
+    description: >-
+      The tab row of an active talebe: "Müfredat", "Ders kayıtları", "Ders destesi", "Sorularım", "Notlarım" (the grades), "Hocalar"; the address
+      selects "Sorularım" and its panel is the caption of who reads the questions and the form "Soru sor" over the list (tedris.learn.questions).
+    source: apps/tedris/features/courses/components/course-page.tsx:459
+    on:
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  courseNoAsk:
+    title: The course page has no Sorularım tab
+    by: human
+    goal: true
+    description: >-
+      The same page for anyone else: the row has "Müfredat", "Ders kayıtları" and "Hocalar" (and, for a seat, the deck and grades tabs), no
+      "Sorularım", and `?tab=sorularim` selects "Müfredat". A removed talebe also reads "Bu derse erişimin kaldırıldı." in the aside; a passive
+      course's talebe reads the closed course's own words, not drawn here. Nobody is told that a question could be asked; a talebe whose seat
+      was taken away loses the tab and the list of their questions together (MDRS-268).
+    source: apps/tedris/features/courses/components/course-page.tsx:187
+    on:
+      TRY_QUESTION:
+        target: questionTried
+        say: "a question is sent by hand with the person's token"
+        source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:133
+      READ_QUESTIONS:
+        target: ownQuestionsTried
+        say: "the person asks the API for their own questions of the course by hand"
+        source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:160
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  noteTried:
+    title: A note is sent by hand
+    description: >-
+      POST /lessons/{id}/notes. The route's order: the session's course must be visible to the caller (findVisibleLessonCourse: an archived celse
+      counts; a hidden course or a draft is 404 LESSON_NOT_FOUND), then mayWriteAsTalebe. An ENROLLED or COMPLETED row, no open ban that bars the
+      course and the content open: anything else is 403 LESSON_NOTE_FORBIDDEN, whether the person is a stranger, pending, removed, barred, a hoca
+      without a seat, the başnazım without one, or the talebe of a passive course. The one person it takes the note from is the active talebe,
+      on a hidden celse as on any other (WG-1).
+    includes: ["a hand-in's note sent the same way (saveMySubmissionNote): the same gate and 403 SUBMISSION_FORBIDDEN, but a hidden celse is 404 LESSON_NOT_FOUND there before the seat is asked, the binding compares both"]
+    source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:84
+    invoke: { action: createLessonNote }
+    on:
+      DONE:
+        guard: mayWrite
+        target: hidden_celse_written
+        say: "201: the note is stored on the celse nobody can open"
+        source: apps/tedrisat/src/course/course.service.ts:507
+      FAIL.forbidden:
+        guard: "not mayWrite"
+        target: write_refused
+        say: "403 LESSON_NOTE_FORBIDDEN"
+        source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:91
+
+  questionTried:
+    title: A question is sent by hand
+    description: >-
+      POST /lessons/{id}/questions: the same two steps as a note (findVisibleLessonCourse, then mayWriteAsTalebe) and the same answer for the same
+      people, 403 LESSON_QUESTION_FORBIDDEN. No person this flow reaches the state as can have it taken, because the tab that would ask is not
+      there for anyone who is not active.
+    source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:81
+    invoke: { action: askLessonQuestion }
+    on:
+      FAIL.forbidden:
+        guard: "not mayWrite"
+        target: write_refused
+        say: "403 LESSON_QUESTION_FORBIDDEN"
+        source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:81
+
+  ownNotesTried:
+    title: The person's own notes are asked for by hand
+    description: >-
+      GET /lessons/{id}/notes: only the caller's own notes, whatever has become of the seat, while the course is visible and not passive
+      (mayReachOwnWriting). A removed, barred, pending or stranger caller gets their notes, or an empty list; a passive scope answers 403
+      LESSON_NOTE_FORBIDDEN to everyone. No page offers this to a person with no seat (MDRS-268).
+    source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:96
+    invoke: { action: listLessonNotes }
+    on:
+      DONE:
+        guard: "not passiveNow"
+        target: own_writing_read
+        say: "200: what the person wrote, or []"
+        source: apps/tedrisat/src/course/course.service.ts:586
+      FAIL.forbidden:
+        guard: passiveNow
+        target: own_writing_closed
+        say: "403 LESSON_NOTE_FORBIDDEN: the passive scope closes it with the content"
+        source: apps/tedrisat/src/lesson-note/lesson-note.service.ts:104
+
+  ownQuestionsTried:
+    title: The person's own questions are asked for by hand
+    description: >-
+      GET /courses/{id}/questions/mine: the same rule for questions, with their answers: whatever has become of the seat, while the course is visible
+      and not passive. e2e lesson-questions#8 reads an answered question of a removed talebe this way.
+    source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:94
+    invoke: { action: listMyCourseQuestions }
+    on:
+      DONE:
+        guard: "not passiveNow"
+        target: own_writing_read
+        say: "200: their questions with the answers"
+        source: apps/tedrisat/src/course/course.service.ts:586
+      FAIL.forbidden:
+        guard: passiveNow
+        target: own_writing_closed
+        say: "403 LESSON_QUESTION_FORBIDDEN"
+        source: apps/tedrisat/src/lesson-question/lesson-question.service.ts:94
+
+  othersTried:
+    title: The hoca asks for what talebe wrote
+    description: >-
+      GET /lessons/{id}/notes with the hoca's token answers the hoca's own notes, never a talebe's: no route reads a note by id or across
+      people, the hoca, the köşk nazımı and the başnazım included (invariant writing-stays-with-its-reader). Changing one of a talebe's is
+      refused for the hoca as 403 LESSON_NOTE_FORBIDDEN (not an active talebe), and deleting it as 404 LESSON_NOTE_NOT_FOUND (the hoca has
+      no such note); for a second talebe the edit is 404 as well. e2e lesson-notes#16's title says "404" for all three.
+    source: apps/tedrisat/src/lesson-note/lesson-note.repository.ts:40
+    invoke: { action: listLessonNotes }
+    on:
+      DONE:
+        target: own_writing_only
+        say: "200 with none of the talebe's notes"
+        source: apps/tedrisat/src/lesson-note/lesson-note.repository.ts:40
+
+  write_refused:
+    type: final
+    title: The API refuses the write
+    description: 403 LESSON_NOTE_FORBIDDEN or LESSON_QUESTION_FORBIDDEN; nothing is stored, and the page stays as it was.
+  hidden_celse_written:
+    type: final
+    title: The API takes a note on a hidden celse
+    description: 201, from an active talebe; the note is stored on a celse no page opens (WG-1).
+  own_writing_read:
+    type: final
+    title: The API gives the person their own writing
+    description: 200, to a person who has no seat or no longer has one; no page shows it (MDRS-268).
+  own_writing_closed:
+    type: final
+    title: The API closes the person's own writing
+    description: 403, only for a course in a passive scope.
+  own_writing_only:
+    type: final
+    title: The API gives the hoca none of the talebe's writing
+    description: 200 with the hoca's own list; an edit is refused 403 and a delete is 404.
+  left: { type: final, title: The person leaves the page, leavesPage: true }
+
+assertions:
+  - id: panels-need-an-active-seat
+    never: "state in ['celsePanels', 'drafting', 'adding', 'addRefused', 'watchPanels', 'courseAsk'] and seat != 'active'"
+    say: "A panel or the Sorularım tab is drawn only for a talebe whose seat is active"
+    source: apps/tedris/features/courses/components/session-page.tsx:130
+  - id: staff-gets-no-panel
+    never: "state in ['celsePanels', 'drafting', 'adding', 'addRefused', 'watchPanels', 'courseAsk'] and isStaff"
+    say: "The course's own hoca is never drawn a panel on the celse page, the watch page or the course page"
+    source: apps/tedris/features/courses/components/watch-page.tsx:44
+  - id: celse-panels-only-on-the-celse-page
+    never: "state in ['celsePanels', 'drafting', 'adding', 'addRefused'] and address != 'celse'"
+    say: "The celse page's panels are never drawn for a cancelled celse, a hidden one, the watch address or the course page"
+    source: apps/tedris/features/courses/components/session-page.tsx:133
+  - id: watch-panels-only-on-the-watch-page
+    never: "state == 'watchPanels' and address != 'watch'"
+    say: "The questions and the notes beside the video are drawn on the watch page only"
+    source: apps/tedris/features/courses/components/watch-view.tsx:245
+  - id: hidden-celse-has-no-page
+    never: "state in ['celsePanels', 'drafting', 'addRefused', 'watchPanels', 'staffWatch', 'staffCelse', 'lockedShown', 'cancelledShown'] and isHidden"
+    say: "A hidden celse is a page nobody opens: no panel, no lock card, no cancelled card, not even for the hoca"
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27
+  - id: only-the-active-write
+    never: "state == 'hidden_celse_written' and not mayWrite"
+    say: "A note is stored only from a person whose seat is active, on a hidden celse as on a live one"
+    source: apps/tedrisat/src/course/course.service.ts:563
+  - id: a-refusal-needs-no-seat
+    never: "state == 'write_refused' and mayWrite"
+    say: "The API never refuses a note or a question to a person whose seat is active and unbarred"
+    source: apps/tedrisat/src/course/course.service.ts:563
+  - id: own-writing-closes-with-the-scope
+    never: "state == 'own_writing_closed' and not passiveNow"
+    say: "A person's own writing is closed to them only by a passive scope, never by a removal or a ban"
+    source: apps/tedrisat/src/course/course.service.ts:586

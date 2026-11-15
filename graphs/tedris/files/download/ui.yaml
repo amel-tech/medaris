@@ -1,0 +1,102 @@
+# The screens of tedris.files.download: the three lists a file or a link of a course can be in, and the toast of a refused download. They are
+# the card "Bu dersin kaynakları" of tedris-web's course page (features/courses/components/course-resources.tsx, built in course-page.tsx:151),
+# the cards "Kaynaklar" and "Ödev" of a celse's page (session-resources.tsx, session-homework.tsx, built in session-page.tsx:314 and :151) and the
+# Sonner toast that FileErrorNotice raises on both pages (file-error-notice.tsx). Everything else on those pages is another flow's
+# (flow.yaml scope.outOfView).
+#
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`:
+# `CoursePage.*`, `SessionPage.*`), tedris-learn.json (`tedrisLearn.<key>`: `Homework.*`, `FileDownload.*`) or common.json (`common.*`), the
+# key being the path inside that file. The `composed.*` keys are NOT in any i18n file: they are what the code writes from a resource's own name
+# and a message, with a placeholder so a replay can match it:
+#   composed.Files.linkRow        a link resource's name and the hidden CoursePage.resourcesNewTab / SessionPage.newTab " (yeni sekmede açılır)"   course-resources.tsx:142
+#   composed.Files.fileRow        a file resource's name and the hidden CoursePage.resourcesDownload / SessionPage.download " (indirilir)"          course-resources.tsx:109
+#   composed.Files.assignmentRow  a homework file's name and the hidden Homework.download " (indirilir)"                                            session-homework.tsx:848-850
+#   composed.Files.plainRow       a row that is not a link: the resource's name alone                                                              course-resources.tsx:169
+#   composed.Files.type           a file's type chip as fileTypeChip gives it ("PDF", "DOCX"), a Badge                                              course-resources.tsx:113
+#   composed.Files.size           a file's size as formatFileSize gives it in the page's language ("12 kB")                                         course-resources.tsx:114
+# The accessible name of a file row is its whole text (name, " (indirilir)", the chip and the size); the node's `text` is the words the person
+# reads first and the binding finds the link by its address and a name that starts with them.
+# The toast is Sonner's (libs/ui/src/components/sonner.tsx), not the kit's own toaster: a <li data-sonner-toast> with a title, a description and a
+# close button, in a region Sonner names "Notifications alt+T" (DSC-20, CRS-13).
+# `changes` is not written: the flow only reads (no writing action of the domain is invoked).
+# Samples are invented and neutral. The binding's data script (files-data.mjs) names the walk's own resources with these very words, so that
+# the replay compares the page against them.
+schema: delurio-graph/0
+kind: ui
+id: tedris.files.download
+flow: tedris.files.download
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  # the catalog's own placeholders (a node's `params` maps them to the specific values below)
+  name: Sarf çalışma kâğıdı
+  type: PDF
+  size: 12 kB
+  courseLinkName: Sarf için okuma listesi
+  courseFileName: Sarf çalışma kâğıdı
+  courseFileType: PDF
+  courseFileSize: 12 kB
+  ownLinkName: Celse için ek okuma
+  ownFileName: Celse notları
+  ownFileType: PDF
+  ownFileSize: 24 kB
+  assignmentFileName: Ödev kâğıdı
+  assignmentFileType: PDF
+  assignmentFileSize: 36 kB
+
+nodes:
+  # ---- the course page: the card of the course's resources ----
+  coursePage: { type: page, component: Page, role: main, in: [courseListed, namesOnly], source: apps/tedris/features/courses/components/course-page.tsx:229 } # no name, no initial focus: the page moves no focus when it opens or when it is loaded again after a refusal (rule focus-not-set)
+  courseResourcesTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.resourcesTitle }, in: [courseListed, namesOnly], source: apps/tedris/features/courses/components/course-resources.tsx:201 } # h2 of a card (a div, not a named section); drawn only when the course lists a resource
+  courseLinkRow: { type: action, component: LinkButton, role: link, text: { key: composed.Files.linkRow, params: { name: courseLinkName } }, in: [courseListed, celseListed], repeat: links.course, emits: OPEN_COURSE_LINK, source: apps/tedris/features/courses/components/course-resources.tsx:159 } # <a href=<the address> target=_blank rel="noopener noreferrer">, framed, an external-link icon at the end; on the celse page it is under "Ders geneli"
+  courseFileRow: { type: action, component: LinkButton, role: link, text: { key: composed.Files.fileRow, params: { name: courseFileName } }, in: [courseListed, celseListed], repeat: files.course, emits: DOWNLOAD_COURSE_FILE, source: apps/tedris/features/courses/components/course-resources.tsx:124 } # <a href="/api/files/courses/<course>/resources/<resource>"> with NO download attribute, framed, a download icon at the end
+  courseFileType: { type: text, component: Text, text: { key: composed.Files.type, params: { type: courseFileType } }, in: [courseListed, celseListed], repeat: files.course, source: apps/tedris/features/courses/components/course-resources.tsx:113 } # a secondary Badge under the name, inside the link
+  courseFileSize: { type: text, component: Text, text: { key: composed.Files.size, params: { size: courseFileSize } }, in: [courseListed, celseListed], repeat: files.course, source: apps/tedris/features/courses/components/course-resources.tsx:114 }
+  # what a person who may not read the content meets: the same rows without an address or a file, so none is a link
+  nameOfCourseLink: { type: text, component: Text, text: { key: composed.Files.plainRow, params: { name: courseLinkName } }, in: [namesOnly], repeat: links.course, source: apps/tedris/features/courses/components/course-resources.tsx:169 } # a plain <div> row with a link icon, not framed
+  nameOfCourseFile: { type: text, component: Text, text: { key: composed.Files.plainRow, params: { name: courseFileName } }, in: [namesOnly], repeat: files.course, source: apps/tedris/features/courses/components/course-resources.tsx:169 } # a file with no `file` in the answer is drawn as a link row with no address: nothing tells the two apart
+  resourcesLocked: { type: text, component: Text, text: { key: CoursePage.resourcesLocked }, in: [namesOnly], source: apps/tedris/features/courses/components/course-resources.tsx:208 }
+
+  # ---- the celse page: "Kaynaklar" and "Ödev" ----
+  celsePage: { type: page, component: Page, role: main, in: [celseListed], source: apps/tedris/features/courses/components/session-page.tsx:337 } # no name, no initial focus (rule focus-not-set)
+  homeworkRegion: { type: page, component: Page, role: region, name: { labelledBy: homeworkTitle }, in: [celseListed], source: apps/tedris/features/courses/components/session-homework.tsx:465 } # <section aria-labelledby="assignment-<celse>">; drawn while the celse stands, the content is open and the talebe holds a seat
+  homeworkTitle: { type: text, component: Heading, role: heading, text: { key: Homework.sectionTitle }, in: [celseListed], source: apps/tedris/features/courses/components/session-homework.tsx:471 } # h2
+  assignmentFilesTitle: { type: text, component: Heading, role: heading, text: { key: Homework.assignmentFiles }, in: [celseListed], source: apps/tedris/features/courses/components/session-homework.tsx:812 } # h3, the eyebrow over the homework's own files
+  assignmentFileRow: { type: action, component: LinkButton, role: link, text: { key: composed.Files.assignmentRow, params: { name: assignmentFileName } }, in: [celseListed], repeat: assignment.files, emits: DOWNLOAD_ASSIGNMENT_FILE, source: apps/tedris/features/courses/components/session-homework.tsx:848 } # <a class="mds-link" href="/api/files/lessons/<celse>/assignment/<file>">, the name and the hidden " (indirilir)" only
+  assignmentFileType: { type: text, component: Text, text: { key: composed.Files.type, params: { type: assignmentFileType } }, in: [celseListed], repeat: assignment.files, source: apps/tedris/features/courses/components/session-homework.tsx:856 } # beside the link, not inside it
+  assignmentFileSize: { type: text, component: Text, text: { key: composed.Files.size, params: { size: assignmentFileSize } }, in: [celseListed], repeat: assignment.files, source: apps/tedris/features/courses/components/session-homework.tsx:857 }
+  resourcesRegion: { type: page, component: Page, role: region, name: { labelledBy: resourcesTitle }, in: [celseListed], source: apps/tedris/features/courses/components/session-resources.tsx:74 } # <section aria-labelledby="resources-title">
+  resourcesTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.resourcesTitle }, in: [celseListed], source: apps/tedris/features/courses/components/session-resources.tsx:80 } # h2
+  ownGroupTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.resourcesOwn }, in: [celseListed], source: apps/tedris/features/courses/components/session-resources.tsx:64 } # h3, the celse's own resources
+  courseGroupTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.resourcesCourse }, in: [celseListed], source: apps/tedris/features/courses/components/session-resources.tsx:64 } # h3, the course's resources: the same rows as the course page's card
+  ownLinkRow: { type: action, component: LinkButton, role: link, text: { key: composed.Files.linkRow, params: { name: ownLinkName } }, in: [celseListed], repeat: links.own, emits: OPEN_OWN_LINK, source: apps/tedris/features/courses/components/course-resources.tsx:159 }
+  ownFileRow: { type: action, component: LinkButton, role: link, text: { key: composed.Files.fileRow, params: { name: ownFileName } }, in: [celseListed], repeat: files.own, emits: DOWNLOAD_LESSON_FILE, source: apps/tedris/features/courses/components/course-resources.tsx:124 } # <a href="/api/files/lessons/<celse>/resources/<resource>">
+  ownFileType: { type: text, component: Text, text: { key: composed.Files.type, params: { type: ownFileType } }, in: [celseListed], repeat: files.own, source: apps/tedris/features/courses/components/course-resources.tsx:113 }
+  ownFileSize: { type: text, component: Text, text: { key: composed.Files.size, params: { size: ownFileSize } }, in: [celseListed], repeat: files.own, source: apps/tedris/features/courses/components/course-resources.tsx:114 }
+
+  # ---- what a refused download says: one Sonner toast, which stays until it is closed ----
+  fileErrorToast: { type: status, component: Status, text: { key: FileDownload.title }, in: [courseListed, celseListed, namesOnly], when: noticed, source: apps/tedris/features/courses/components/file-error-notice.tsx:33 } # an error toast, id "file-error": a second refusal replaces the first
+  reasonForbidden: { type: status, component: Status, text: { key: FileDownload.forbidden }, in: [courseListed, celseListed, namesOnly], when: "notice == 'forbidden'", source: apps/tedris/features/courses/components/file-error-notice.tsx:35 }
+  reasonNotFound: { type: status, component: Status, text: { key: FileDownload.notFound }, in: [courseListed, celseListed, namesOnly], when: "notice == 'notFound'", source: apps/tedris/features/courses/components/file-error-notice.tsx:35 }
+  reasonUnavailable: { type: status, component: Status, text: { key: FileDownload.unavailable }, in: [courseListed, celseListed, namesOnly], when: "notice == 'unavailable'", source: apps/tedris/features/courses/components/file-error-notice.tsx:35 }
+  reasonFailed: { type: status, component: Status, text: { key: FileDownload.failed }, in: [courseListed, celseListed, namesOnly], when: "notice == 'failed'", source: apps/tedris/features/courses/components/file-error-notice.tsx:35 }
+  toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [courseListed, celseListed, namesOnly], when: noticed, emits: CLOSE_TOAST, source: libs/ui/src/components/sonner.tsx:62 } # a close button on each toast, "Kapat" in every language (MDRS-233); it shows when the toast is hovered or focused
+
+edges:
+  - { labelledBy: [homeworkRegion, homeworkTitle] }
+  - { labelledBy: [resourcesRegion, resourcesTitle] }
+  - { triggers: [courseFileRow, followingCourseFile] }
+  - { triggers: [ownFileRow, followingLessonFile] }
+  - { triggers: [assignmentFileRow, followingAssignmentFile] }
+
+rules:
+  - { id: WRT-10, rule: "A refused download is a 303 page navigation (file-proxy.ts:351-370): the whole page loads again, so the focus goes to the top, what the person was typing in the notes or the homework note is lost, and the reason arrives as a Sonner toast raised after hydration (file-error-notice.tsx:26-37). Not verified in a browser with typed text; read from the code. Fix: fetch the file, keep the page, and raise the toast from the click." }
+  - { id: DSC-20, rule: "The toast goes through Sonner, whose region keeps its English default name (\"Notifications alt+T\"; containerAriaLabel is not passed, libs/ui/src/components/sonner.tsx:59-76) and is polite although an error stays until it is closed; the close button is \"Kapat\" in every language. Fix: pass containerAriaLabel from the catalog and move the toast to the kit's own toaster." }
+  - { id: CRS-13, rule: "The same toast region on the course page: every action of the page reports through it, its name is the library default \"Notifications alt+T\" on a Turkish page and its aria-live is polite (libs/ui/src/components/sonner.tsx:55-80); the kit's own toaster speaks errors urgently (libs/ui/src/mds/toast.tsx:30-37). Fix: containerAriaLabel from the catalog; announce errors assertively." }
+  - { id: FILES-1, rule: "A 403 on a celse's file comes back to /courses/<id>/lessons/<id>?fileError=forbidden, and by then the person no longer reads the course's content, so the page is the locked card (page.tsx:29-41). Only course-page.tsx:230 and session-page.tsx:338 mount FileErrorNotice (grep of apps/tedris), so the card raises no toast and the parameter is never taken off the address: the person who lost their seat while the page was open is told nothing, and a reload or a copied link carries ?fileError=forbidden. The course page does say it (names only, with the toast). Read from the code; the walk makes it by taking the walk's talebe off the course just before the link is followed. Fix: mount FileErrorNotice in the celse layout, next to the Sonner toasts of both pages, or have the card read the parameter. Provisional id, not in the inventory." }
+  - { id: FILES-2, rule: "A download that works says nothing on the page: no toast, no status text, no focus move; the only sign is the browser's own saving, which a screen-reader user may not hear (the link has no download attribute on purpose, course-resources.tsx:61, so the browser decides how it shows a download). The same shape as ADDCAL-3 on the calendar menu. Not verified with a screen reader, and the success is not walked locally (no storage). Fix: an assertive line \"<dosya> indiriliyor\" in a role=status region, or a toast. Provisional id, not in the inventory." }
+  - { id: FILES-3, rule: "On the course page the chosen tab is the component's own state and the address never follows it (PROG-1), so a refused download, which reloads the page at the address the link was on, comes back on Müfredat (or the tab the address named); the resources card is in the aside, visible on every tab, so a person on \"Sorularım\" with a question half typed loses it and the tab. Read from the code (course-page.tsx:194-198, the Referer carries the loaded address). Fix: the same as WRT-10, or write the tab into the address. Provisional id, not in the inventory." }
+  - { id: focus-not-set, rule: "Neither opening a page nor loading it again after a refusal moves the focus: the pages set no initial focus, the toast is not focused, and a 303 resets the focus to the document. The page nodes have no `initialFocus`; the silence is not read as an omission." }
+  - { id: file-links-are-anchors, rule: "A file row and a homework file are plain anchors with no `download` attribute (course-resources.tsx:59-63): a download attribute would have the browser save whatever answers, the page a refusal redirects to included. They therefore work without JavaScript; only the toast of a refusal needs it." }
+  - { id: names-only-looks-alike, rule: "A person who may not read the content sees every resource as a plain row of the same layout without the frame; a link and a file are not told apart, and the card says only that enrolled talebe open them (course-resources.tsx:208). The names are programme, public like the course page." }

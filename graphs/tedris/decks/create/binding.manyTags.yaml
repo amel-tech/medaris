@@ -1,0 +1,24 @@
+# tedris.decks.create, twenty-one tags: after "Oluştur" has been pressed the tags field says "En çok 20 etiket yazabilirsin." (the name
+# is right, the kind is not chosen yet, so "Bir kart türü seç." stands too). Nothing is sent, so nothing is made.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/create \
+#     --bind graphs/tedris/decks/create/binding.manyTags.yaml --cover transitions --absent --out <dir>
+# A file of its own for the same reason as binding.short.yaml. NOT RUN in the writing phase.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.create
+
+scenarios:
+  manyTags:
+    given: { name: valid, tags: tooMany }
+    as: applicantC
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'decks->decksCreate' }
+    vars:
+      deckTitle: Çok etiketli deste denemesi
+      deckName: Çok etiketli deste denemesi
+      deckDescription: ''
+      deckTags: 'etiket01, etiket02, etiket03, etiket04, etiket05, etiket06, etiket07, etiket08, etiket09, etiket10, etiket11, etiket12, etiket13, etiket14, etiket15, etiket16, etiket17, etiket18, etiket19, etiket20, etiket21'
+    teardown:
+      - run: [node, ../tedris/decks/create/own-decks.mjs, remove, applicantC, '{deckTitle}']
+        expect: own-decks remove

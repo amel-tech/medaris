@@ -1,0 +1,30 @@
+# tedris.decks.explore, the world `publicOnly`: `other` (no role, no enrolment, no deck of their own) opens Desteleri keşfet by its address. The page then has no
+# course deck and no "Senin desten", only the published decks, and the walk takes the same steps as binding.yaml's (shared: binding.shared.yaml). Walked on
+# its own because a walk takes the shortest scenario for each transition, which is `mixed`. Not replayed in the writing phase.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/explore --bind graphs/tedris/decks/explore/binding.publicOnly.yaml --cover transitions --out <dir>
+# The main story's `given` is `mixed`, so this file has no main walk (reported by the replay as "no scenario starts where the main story starts"); --cover does the work.
+# `other` is also the account of tedris.course.apply and tedris.decks.accessRefusals: replay under the lock, as always. The deck "Lâl kelime defteri" that
+# `setup` makes belongs to `talebe` and is, for `other`, one more published deck of somebody else's.
+schema: delurio-graph/0
+kind: binding
+extends: binding.shared.yaml
+flow: tedris.decks.explore
+
+scenarios:
+  publicOnly:
+    given: { read: ok, world: publicOnly }
+    as: other
+    open: '{tedris}/decks/explore'
+    vars:
+      viewerSub: '{secret.E2E_OTHER_SUB}'
+      deckTitle: Zümrüt hadis seçkisi
+      ownDeckTitle: Lâl kelime defteri
+      courseDeckTitle: '{seed.titles.decks.course}'
+      openedDeck: '{explore.hadith}'
+      word: zümrüt
+    samples: { title: '{deckTitle}' }
+    setup:
+      - run: [node, ../tedris/decks/explore/public-decks.mjs, make]
+        expect: 'public-decks made 3'
+    teardown:
+      - run: [node, ../tedris/decks/explore/public-decks.mjs, remove]

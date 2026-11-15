@@ -1,0 +1,408 @@
+# Hesap, the talebe's own page (tedris-web /account): the name, the gender as the account holds it, the time zone, the lesson-invitation
+# switch, and the links out (connected apps, the calendar page, sign-out). Read from the code of the branch (the tree of PR #394) on
+# 15 Nov 2026. Nothing here is approved, and nothing was looked at in a browser: every behaviour is read from the code ("from the
+# code"), except the account's starting rows, which were read with a SELECT, and one GET of Keycloak's account-console address.
+#   - What it draws: the read of GET /me, the page with its cards, the three saves (PATCH /me with the names, with the time zone, with
+#     the switch), the two lists of the time-zone select, the refusal under a blank name, the toasts of each save, and the four links out.
+#   - The roles section of the same page is tedris.account.rolesOverview; Keycloak's profile page behind "Değiştir" is
+#     realm.auth.profileUpdate, the confirmation page behind "Çıkış yap" is realm.auth.signOut, and "Takvim bağlantını yönet" opens
+#     tedris.account.calendarFeed.
+#   - Gender. It is always required and always comes from Keycloak: the realm's user profile requires it (config/keycloak/user-profile.json:36),
+#     tedrisat copies the token's claim into user_profiles.gender at the first request with a changed claim (user-sync.service.ts:75,
+#     user-profile.repository.ts:80), and Hesap shows that copy read-only. The only way to change it is Keycloak's own profile form.
+#     "Belirtilmemiş" / "Ekle" is the page's answer for a copy that is empty (a token from before the realm required the claim);
+#     the local stack has no such account, so that branch is walked only by emptying the copy with SQL.
+#   - Findings it carries (the inventory's ids): ACC-02, ACC-07, ACC-09, ACC-10, ACC-12, ACC-16, ACC-19, ACC-20, ACC-21, ACC-23.
+#     Two are this flow's own, proposed as HESAP-1 and HESAP-2 (ui.yaml `rules`). The domain's own finding unreadable-input-500
+#     (PATCH /me with a null name) is named too: Hesap cannot send it. MDRS-243 (what happens to a person's data when they delete the
+#     account) is a decision with no code; it is in needs.yaml.
+#   - E2E carried: profile#1 (without its two language assertions, which cannot pass: ACC-16), profile#2, profile#3 (the two links; what
+#     follows "Çıkış yap" is realm.auth.signOut's). See needs.yaml and the report for what each does not carry.
+schema: delurio-graph/0
+kind: flow
+id: tedris.account.profile
+status: captured
+domain: medaris.api
+ui: tedris.account.profile
+title: Change my name, time zone and e-mail setting
+summary: >-
+  A signed-in talebe opens Hesap. The page reads GET /me and draws the cards: "Kişisel bilgiler" (Ad and Soyad, the e-mail address
+  read-only, the gender read-only with "Değiştir", and "Kaydet"), "Bağlı uygulamalar", "Saat dilimi", "Takvim" (a link and the
+  lesson-invitation switch) and, beside them, the sign-out card. A blank name is refused under its box and nothing is sent; a filled
+  one is saved with PATCH /me, answered with a toast, and holds after a reload. The time zone is picked from a short list and saved
+  at once, or from "Diğer…" and the second list; a refusal puts the old choice back. The switch flips at once and rolls back if the
+  save is refused. "Değiştir" (or "Ekle") goes to Keycloak's profile page and back, "Bağlı uygulamaları gör" to Keycloak's account
+  console, "Takvim bağlantını yönet" to the calendar page and "Çıkış yap" to the confirmation page. When the read of GET /me fails,
+  none of those cards is drawn, the sign-out card included (HESAP-1).
+
+scope:
+  shows: Hesap's personal, connected-apps, time-zone, calendar and sign-out cards, the read behind them, the three saves and the exits
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the roles section under the cards, and the subtitle that names the roles for a person who holds one (tedris.account.rolesOverview); this flow draws the plain subtitle"
+    - "a visitor, who is sent to sign in before the page runs, and a token tedrisat refuses (401), which sends the person to sign in again with `reauth` and not to the box (realm.auth.sessionEnded); the same answer to a save is the exit sent_to_sign_in"
+    - "the card 'Herkese açık profil' and its page: the switch PUBLIC_PROFILE_ENABLED is false, so the card is not drawn (tedris.account.publicProfile, switched off)"
+    - "a save whose request never reaches tedris (the browser offline): no try/catch, so the action's promise rejects, inside a transition the error boundary draws app/error.tsx and inside the switch's chain nothing is drawn and the switch stays flipped (ACC-12, from the code)"
+    - "a refusal of a save that is not an over-long name (a 404 for a federated id, a 5xx) and any refusal of the time zone or of the switch: the page has no way to send one, the same toasts are drawn, and the stack cannot make tedrisat answer one (from the code, not walked)"
+    - "a person who arrives with the switch already off, or with a saved time zone outside the eight (the page then opens with 'Diğer…' chosen and the second list showing it): the same transitions, mirrored; the graph starts from the switch on and the list hidden"
+    - "the second list's 400-odd zones, which are options of a list and not nodes (the e2e names none); and the toasts' own timers (a success toast closes by itself after six seconds, libs/ui/src/mds/toast.tsx:30, an error toast stays): the graph keeps a success toast only until the person's next step"
+    - "what the new time zone does elsewhere: the cookie medaris-tz is set by the same action and the route is rendered again, so Programım and every date shift (tedris.learning.schedule); Hesap itself shows no date outside the roles table"
+    - "the phone layout, the loading skeleton while GET /me runs (ACC-18) and the tab title 'Hesap', which has no site suffix (ACC-19)"
+    - "Keycloak's pages: the profile form (realm.auth.profileUpdate), its e-mail verification if the address changes (realm.auth.register), the account console (Keycloak's own, no graph) and the sign-out confirmation (realm.auth.signOut)"
+
+decisions:
+  D1:
+    question: >-
+      When GET /me fails, should Hesap still draw the cards that need no data (Bağlı uygulamalar, the calendar link, Çıkış yap),
+      and give the box a way to try again?
+    recommend: >-
+      Yes: draw the sign-out card and the two link cards outside the `profile ?` branch (they take no prop but the issuer's address),
+      and give the box a "Yeniden dene" button, as Ana sayfa and Derslerim have. Today a person whose profile cannot be read has no
+      sign-out on the page (HESAP-1).
+    affects: [profileUnreadable]
+  D2:
+    question: >-
+      The name this page saves lives in tedrisat only; the name in the bars and in Ana sayfa's greeting comes from the sign-in token.
+      Should the bars read the saved name, or should the success text say that the sign-in name changes later (ACC-07)?
+    recommend: >-
+      Read the bars' name from GET /me (the inventory's own fix); until then say in nameSaved that the name seen elsewhere changes at
+      the next sign-in.
+    affects: [savingName]
+  D3:
+    question: >-
+      Keycloak's profile page, opened by "Değiştir", also edits the first name, the last name and the e-mail address. Should Hesap
+      say so, and which names should it treat as the person's own (HESAP-2)?
+    recommend: >-
+      Name the link for what it opens ("Hesap profilini düzenle") and tell under the e-mail line where the address is changed; then
+      decide whether Hesap's own name box stays.
+    affects: [account]
+
+context:
+  read:
+    values: [ok, profileFailed]
+    initial: any
+    say:
+      ok: "GET /me answers"
+      profileFailed: "GET /me fails (any status but a refused token: a 404 USER_NOT_FOUND for a federated id, a 5xx, a network error)"
+  gender:
+    values: [female, male, unknown]
+    initial: any
+    say:
+      female: "tedrisat's copy of the account's gender is FEMALE: the field reads 'Kadın' and the link 'Değiştir'"
+      male: "tedrisat's copy of the account's gender is MALE: the field reads 'Erkek' and the link 'Değiştir'"
+      unknown: "the copy is empty (a token from before the realm required the claim): the field reads 'Belirtilmemiş' and the link 'Ekle'"
+  typed:
+    values: [filled, blankGiven, blankFamily, tooLong]
+    initial: filled
+    say:
+      filled: "both name boxes hold a name of at most a hundred characters"
+      blankGiven: "the person emptied Ad (spaces alone count as empty)"
+      blankFamily: "the person emptied Soyad"
+      tooLong: "Ad holds more than a hundred characters: the page does not stop it and tedrisat refuses it (ACC-21)"
+  said:
+    values: [none, givenRequired, familyRequired]
+    initial: none
+    say:
+      none: "no line under the name boxes"
+      givenRequired: "'Adını yaz.' is under Ad: it stays until the next press of Kaydet, even after the person types (ACC-02)"
+      familyRequired: "'Soyadını yaz.' is under Soyad, the same way"
+  zoneBox:
+    values: [hidden, shown]
+    initial: hidden
+    say:
+      hidden: "the first list holds one of the eight zones, and the second list is not drawn"
+      shown: "the first list holds 'Diğer…', and the second list is drawn under it"
+  boxWas:
+    values: [hidden, shown]
+    initial: hidden
+    say:
+      hidden: "before the pick in flight, the second list was not drawn"
+      shown: "before the pick in flight, the second list was drawn (the failed save puts it back)"
+  invitations:
+    values: ["on", "off"]
+    initial: "on"
+    say:
+      "on": "the switch 'Ders davetlerini e-postayla gönder' is on (the default), or has just been flipped on and the answer is awaited"
+      "off": "the switch is off, or has just been flipped off and the answer is awaited"
+  toast:
+    values: [none, nameSaved, zoneSaved, invitationsOn, invitationsOff]
+    initial: none
+    say:
+      none: "no success toast"
+      nameSaved: "the toast 'Adın ve soyadın kaydedildi.'"
+      zoneSaved: "the toast 'Saat dilimin kaydedildi.'"
+      invitationsOn: "the toast 'Ders davetleri açıldı.'"
+      invitationsOff: "the toast 'Ders davetleri kapatıldı; artık davet e-postası gelmeyecek.'"
+  alert:
+    values: [none, nameFailed, zoneFailed, invitationsFailed]
+    initial: none
+    say:
+      none: "no error toast"
+      nameFailed: "the error toast 'Adın ve soyadın kaydedilemedi.' stays until it is closed"
+      zoneFailed: "the error toast 'Saat dilimin kaydedilemedi; önceki seçimin korundu.' stays until it is closed"
+      invitationsFailed: "the error toast 'Ders davetleri ayarı kaydedilemedi; önceki seçimin geçerli.' stays until it is closed"
+
+guards:
+  readable: "read == 'ok'"
+  genderKnown: "gender != 'unknown'"
+  nameFilled: "typed == 'filled'"
+  boxHidden: "zoneBox == 'hidden'"
+  boxShown: "zoneBox == 'shown'"
+  wasShown: "boxWas == 'shown'"
+  switchOn: "invitations == 'on'"
+  switchOff: "invitations == 'off'"
+  alerting: "alert != 'none'"
+
+effects:
+  again: { havoc: [read] } # a reload reads again, and the answer may differ
+  pageFresh: { set: { typed: filled, said: none, zoneBox: hidden, boxWas: hidden, toast: none, alert: none } } # a reload draws the page from what the API holds
+  clearToast: { set: { toast: none } } # a success toast has closed itself by the person's next step
+  clearAlert: { set: { alert: none } }
+  typedFilled: { set: { typed: filled } }
+  typedBlankGiven: { set: { typed: blankGiven } }
+  typedBlankFamily: { set: { typed: blankFamily } }
+  typedTooLong: { set: { typed: tooLong } }
+  saidNone: { set: { said: none } }
+  saidGiven: { set: { said: givenRequired } } # nothing was sent
+  saidFamily: { set: { said: familyRequired } } # nothing was sent
+  boxOpened: { set: { zoneBox: shown } }
+  boxClosed: { set: { zoneBox: hidden } }
+  boxWasHidden: { set: { boxWas: hidden } }
+  boxWasShown: { set: { boxWas: shown } }
+  flipOn: { set: { invitations: "on" } }
+  flipOff: { set: { invitations: "off" } }
+  toastNameSaved: { set: { toast: nameSaved } }
+  toastZoneSaved: { set: { toast: zoneSaved } }
+  toastInvitationsOn: { set: { toast: invitationsOn } }
+  toastInvitationsOff: { set: { toast: invitationsOff } }
+  alertNameFailed: { set: { alert: nameFailed } }
+  alertZoneFailed: { set: { alert: zoneFailed } }
+  alertInvitationsFailed: { set: { alert: invitationsFailed } }
+
+failures:
+  readingProfile: { from: getMe, unreadable: [USER_NOT_FOUND] }
+  savingName: { from: updateMe, signedOut: [HTTP_401], refused: [VALIDATION_ERROR, USER_NOT_FOUND] }
+  savingZone: { from: updateMe, signedOut: [HTTP_401], refused: [VALIDATION_ERROR, USER_NOT_FOUND] }
+  savingInvitations: { from: updateMe, signedOut: [HTTP_401], refused: [VALIDATION_ERROR, USER_NOT_FOUND] }
+# `unreadable` stands for any answer but a refused token: the page treats a 404, a 5xx and a network error alike (reads.ts:178-187).
+# `refused` stands for every answer but 401 that a save gets: authenticatedAction turns each into `success: false` and the page draws
+# one toast whatever the status was (account-settings.tsx:120-125, 217-221, 293-297).
+
+# The main story, as e2e profile#1, #2 and #3 walk it together: a blank first name is refused and nothing is sent, the names are filled
+# and saved, a reload keeps them, a time zone is chosen from the short list, the invitation switch is turned off, and the calendar
+# link is followed.
+main:
+  given: { read: ok, gender: male }
+  events: [DONE, BLANK_GIVEN, SAVE_NAME, FILL_NAMES, SAVE_NAME, DONE, RELOAD, DONE, OPEN_ZONES, CHOOSE_PRESET, DONE, TOGGLE_INVITATIONS, DONE, OPEN_CALENDAR]
+
+initial: readingProfile
+states:
+  readingProfile:
+    title: Read the account
+    description: >-
+      The page's server side reads GET /me (and, in the same Promise.all, the two reads of the roles section, which are
+      tedris.account.rolesOverview's) and holds the answer until all are in; a skeleton stands in (ACC-18). The answer carries the
+      names (the person's own copy when they saved one, else the token's), the e-mail address, tedrisat's copy of the gender, the
+      time zone and the invitation switch (on when absent). A token tedrisat refuses is not a failure: it sends the person to sign in
+      again with reauth (out of view). Any other failure leaves the page with no profile to draw.
+    source: apps/tedris/features/account/reads.ts:178
+    invoke: { action: getMe }
+    on:
+      DONE: { guard: readable, target: account, say: "the cards are drawn from the answer", source: apps/tedris/app/account/page.tsx:45 }
+      FAIL.unreadable: { guard: "read == 'profileFailed'", target: profileUnreadable, say: "getMyProfile answers null and the page draws the box in the cards' place", source: apps/tedris/app/account/page.tsx:54 }
+
+  account:
+    title: Hesap
+    by: human
+    goal: true
+    source: apps/tedris/features/account/components/account-settings.tsx:392
+    description: >-
+      /account as a signed-in talebe, the cards in the order the code draws them: "Kişisel bilgiler" (Ad and Soyad with their help,
+      the e-mail address, read-only with a lock, the gender, read-only, with "Değiştir" or "Ekle" under it, and "Kaydet"), "Bağlı
+      uygulamalar", "Saat dilimi", "Takvim" (the subscription link and the switch), and, in a second column from the lg width, the
+      sign-out card. A fifth card, "Herkese açık profil", is left out while PUBLIC_PROFILE_ENABLED is false. The page sets no initial
+      focus (focus-not-set). The names start as GET /me gave them; the e-mail is not editable (a read-only box with a lock) and the
+      gender is not either: "Değiştir" goes to Keycloak's form (HESAP-2). A press of Kaydet with a blank name changes nothing but the
+      line under the box; a filled one saves. A success toast closes itself after six seconds (the graph says it is gone by the person's
+      next step); an error toast stays until it is closed or another error replaces it, up to three at a time (limit 3, not drawn).
+    on:
+      BLANK_GIVEN: { guard: nameFilled, target: account, effect: [typedBlankGiven, clearToast], say: "they empty Ad", source: apps/tedris/features/account/components/account-settings.tsx:140 }
+      BLANK_FAMILY: { guard: nameFilled, target: account, effect: [typedBlankFamily, clearToast], say: "they empty Soyad", source: apps/tedris/features/account/components/account-settings.tsx:153 }
+      FILL_TOO_LONG: { guard: nameFilled, target: account, effect: [typedTooLong, clearToast], say: "they type more than a hundred characters in Ad: no maxLength stops them (ACC-21)", source: apps/tedris/features/account/components/account-settings.tsx:140 }
+      FILL_NAMES: { target: account, effect: [typedFilled, clearToast], say: "they type a name in each box; a line the last press of Kaydet left stays until the next press (ACC-02)", source: apps/tedris/features/account/components/account-settings.tsx:140 }
+      SAVE_NAME:
+        - { guard: "typed == 'blankGiven'", target: account, effect: [saidGiven, clearToast], say: "Kaydet with Ad empty: 'Adını yaz.' under Ad, nothing is sent, the focus stays where it is (ACC-02); e2e profile#1", source: apps/tedris/features/account/components/account-settings.tsx:112 }
+        - { guard: "typed == 'blankFamily'", target: account, effect: [saidFamily, clearToast], say: "Kaydet with Soyad empty: 'Soyadını yaz.' under Soyad, nothing is sent", source: apps/tedris/features/account/components/account-settings.tsx:112 }
+        - { target: savingName, effect: [saidNone, clearToast], say: "both boxes hold a name: the lines go and updateMyName is called with the trimmed names", source: apps/tedris/features/account/components/account-settings.tsx:113 }
+      OPEN_ZONES: { target: choosingZone, effect: [clearToast], say: "they open the first list, 'Saat dilimi'", source: apps/tedris/features/account/components/account-settings.tsx:237 }
+      OPEN_LISTED: { guard: boxShown, target: choosingListed, effect: [clearToast], say: "they open the second list, 'Diğer saat dilimi'", source: apps/tedris/features/account/components/account-settings.tsx:247 }
+      TOGGLE_INVITATIONS:
+        - { guard: switchOn, target: savingInvitations, effect: [flipOff, clearToast], say: "they turn the switch off: it flips at once and updateMyInvitationEmails(false) is called", source: apps/tedris/features/account/components/account-settings.tsx:278 }
+        - { guard: switchOff, target: savingInvitations, effect: [flipOn, clearToast], say: "they turn the switch on: it flips at once and updateMyInvitationEmails(true) is called", source: apps/tedris/features/account/components/account-settings.tsx:278 }
+      CLOSE_ALERT: { guard: alerting, target: account, effect: [clearAlert], say: "they press Kapat on the error toast", source: libs/ui/src/mds/toast.tsx:95 }
+      CHANGE_GENDER:
+        - { guard: genderKnown, target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'nothing'" } }, say: "'Değiştir': the same tab goes to /api/auth/signin?action=UPDATE_PROFILE and Keycloak's form, which comes back to /account with new tokens", source: apps/tedris/features/account/components/account-settings.tsx:80 }
+        - { target: handed_over.profile_update, starts: { flow: realm.auth.profileUpdate, given: { entry: "'account'", lacks: "'gender'" } }, say: "'Ekle': the same link, for a copy with no gender", source: apps/tedris/features/account/components/account-settings.tsx:80 }
+      OPEN_CONNECTED: { target: account_console_opened, say: "'Bağlı uygulamaları gör': the same tab goes to <KEYCLOAK_ISSUER>/account/applications", source: apps/tedris/features/account/components/account-settings.tsx:357 }
+      OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet': /account/calendar, in the same tab (e2e profile#3)", source: apps/tedris/features/account/components/account-settings.tsx:313 }
+      SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap': /auth/signout, the confirmation page; nothing ends here (e2e profile#3)", source: apps/tedris/features/account/components/account-settings.tsx:372 }
+      RELOAD: { target: readingProfile, effect: [pageFresh], say: "the page is read again and the boxes hold what the API holds (e2e profile#1, #2)", source: apps/tedris/app/account/page.tsx:12 }
+      NAVIGATE: { target: left, say: "they go on to another page", source: apps/tedris/app/account/layout.tsx:75 }
+
+  profileUnreadable:
+    title: The account could not be read
+    by: human
+    source: apps/tedris/app/account/page.tsx:54
+    description: >-
+      The box "Hesabın yüklenemedi" ("Adın, e-postan ve saat dilimin şu an okunamadı. Biraz sonra yeniden dene.") takes the place of the
+      whole of AccountSettings: the name form, the e-mail and gender lines, "Bağlı uygulamalar", the time zone, the calendar card
+      with the switch and, beside them, the sign-out card are all missing, although the last four need nothing from GET /me
+      (HESAP-1). The box has no button to try again; the text says to try later. The title and the plain subtitle stay, and the roles
+      section under it is read on its own and still draws (tedris.account.rolesOverview). The only ways on are a reload and another
+      page: the page has no "Çıkış yap" in this state, and the phone sheet and the bar do not either, so a signed-in person who cannot
+      read their profile reaches the confirmation page only by typing /auth/signout. Not seen in a browser; no spec renders
+      this box (apps/tedris/test/account-messages-parity.spec.ts only checks that its two messages exist in the three languages).
+    on:
+      RELOAD: { target: readingProfile, effect: [again], say: "they reload the page, as the box tells them", source: apps/tedris/app/account/page.tsx:12 }
+      NAVIGATE: { target: left, say: "they go on to another page", source: apps/tedris/app/account/layout.tsx:75 }
+
+  choosingZone:
+    title: The first time-zone list is open
+    by: human
+    source: libs/ui/src/mds/select.tsx:79
+    description: >-
+      The kit's Select, a Base UI listbox in a popup, with nine options: İstanbul, Berlin, Amsterdam, Brüksel, Paris, Viyana, Londra,
+      New York and "Diğer…". Base UI's Select is modal by default, so the page behind is taken to be inert and only the list is drawn
+      here (not verified in a browser). A preset saves at once; "Diğer…" saves nothing and draws the second list; Esc closes the list
+      and changes nothing.
+    on:
+      CHOOSE_PRESET:
+        - { guard: boxHidden, target: savingZone, effect: [boxWasHidden], say: "they choose a zone: the select shows it and updateMyTimeZone is called", source: apps/tedris/features/account/components/account-settings.tsx:230 }
+        - { guard: boxShown, target: savingZone, effect: [boxWasShown, boxClosed], say: "they choose a zone while 'Diğer…' was chosen: the second list goes, and a refusal brings it back", source: apps/tedris/features/account/components/account-settings.tsx:230 }
+      CHOOSE_OTHER: { target: account, effect: [boxOpened], say: "'Diğer…': nothing is saved, the second list is drawn under the first (ACC-20: nothing says so and the focus stays)", source: apps/tedris/features/account/components/account-settings.tsx:229 }
+      DISMISS: { target: account, say: "Esc: the list closes, the zone is as it was", source: libs/ui/src/mds/select.tsx:79 }
+
+  choosingListed:
+    title: The second time-zone list is open
+    by: human
+    source: apps/tedris/features/account/components/account-settings.tsx:247
+    description: >-
+      The same kit Select with every IANA zone the runtime lists (Intl.supportedValuesOf, profile-model.ts:81), the underscores of a
+      name shown as spaces ("America/New York"). The options are not drawn as nodes: there are four hundred, and the e2e names none.
+      Choosing one saves it at once.
+    on:
+      CHOOSE_LISTED: { target: savingZone, effect: [boxWasShown], say: "they choose a zone: updateMyTimeZone is called, and a refusal puts the first list back on 'Diğer…'", source: apps/tedris/features/account/components/account-settings.tsx:254 }
+      DISMISS: { target: account, say: "Esc: the list closes, the zone is as it was", source: libs/ui/src/mds/select.tsx:79 }
+
+  savingName:
+    title: Save the names
+    description: >-
+      updateMyName(givenName.trim(), familyName.trim()) is a server action that calls PATCH /me with the two names. The API trims
+      again, keeps them in user_profiles (the person's own words, apart from the token's, so the next sync cannot undo them) and
+      answers the whole GET /me again. Kaydet is busy (aria-disabled and aria-busy, never disabled, so the focus stays on it) and a
+      hidden status says "Kaydediliyor". A success replaces both boxes with the answer's names and draws the toast "Adın ve soyadın
+      kaydedildi."; the name in the bar and in Ana sayfa's greeting does not change (ACC-07, decision D2). Any refusal but a refused
+      token (400 for a name over 100 characters, ACC-21; 404; a 5xx) draws one error toast, "Adın ve soyadın kaydedilemedi." with
+      "Sunucu isteği tamamlayamadı.", and keeps what is typed. The form never sends a null name, which the API would answer with a 500
+      (the domain's finding unreadable-input-500): validateName stops a blank one first.
+    source: apps/tedris/features/account/profile-actions.ts:11
+    invoke: { action: updateMe }
+    on:
+      DONE: { guard: "typed != 'tooLong'", target: account, effect: [toastNameSaved], say: "both boxes hold the API's names and the success toast says so (e2e profile#1)", source: apps/tedris/features/account/components/account-settings.tsx:116 }
+      FAIL.refused:
+        - { guard: "typed == 'tooLong'", target: account, effect: [alertNameFailed], say: "tedrisat answers 400 VALIDATION_ERROR (maxLength 100): one error toast and the boxes keep what is typed (ACC-21)", source: apps/tedris/features/account/components/account-settings.tsx:120 }
+        - { target: account, effect: [alertNameFailed], say: "any other refusal (404 USER_NOT_FOUND, a 5xx): the same toast; the stack cannot make one", source: apps/tedris/features/account/components/account-settings.tsx:120 }
+      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:115 }
+
+  savingZone:
+    title: Save the time zone
+    description: >-
+      updateMyTimeZone(zone) is a server action: PATCH /me with the zone, and, when it is saved, syncViewerTimeZone sets the cookie
+      medaris-tz (one year, path /, lax) from the saved zone, which makes Next render the route again so that every date on the
+      page switches zone without a reload. The card is aria-busy while the call is out; the list stays usable. A success draws the
+      toast "Saat dilimin kaydedildi."; a refusal sets the saved zone and the first list back to what they held, brings the second
+      list back if it was drawn, and draws the error toast "Saat dilimin kaydedilemedi; önceki seçimin korundu.".
+    source: apps/tedris/features/account/profile-actions.ts:35
+    invoke: { action: updateMe }
+    on:
+      DONE: { target: account, effect: [toastZoneSaved], say: "the zone is stored and the cookie follows (e2e profile#2)", source: apps/tedris/features/account/components/account-settings.tsx:210 }
+      FAIL.refused:
+        - { guard: wasShown, target: account, effect: [boxOpened, alertZoneFailed], say: "the old choice, 'Diğer…', is put back with the second list", source: apps/tedris/features/account/components/account-settings.tsx:215 }
+        - { target: account, effect: [boxClosed, alertZoneFailed], say: "the old preset is put back", source: apps/tedris/features/account/components/account-settings.tsx:215 }
+      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:209 }
+
+  savingInvitations:
+    title: Save the invitation switch
+    description: >-
+      The switch has already flipped (setInvitations(on)) and is natively disabled while updateMyInvitationEmails is out, which
+      takes the keyboard focus away from it (ACC-10, from the code). PATCH /me writes users.lesson_invitation_emails; off stops every
+      further invitation, update and cancellation mail and the exam reminder. A success draws "Ders davetleri açıldı." or "Ders
+      davetleri kapatıldı; artık davet e-postası gelmeyecek."; a refusal flips the switch back and draws the error toast "Ders davetleri
+      ayarı kaydedilemedi; önceki seçimin geçerli.".
+    source: apps/tedris/features/account/profile-actions.ts:23
+    invoke: { action: updateMe }
+    on:
+      DONE:
+        - { guard: switchOn, target: account, effect: [toastInvitationsOn], say: "the switch is on, the toast says so", source: apps/tedris/features/account/components/account-settings.tsx:286 }
+        - { guard: switchOff, target: account, effect: [toastInvitationsOff], say: "the switch is off, the toast says no invitation mail will come", source: apps/tedris/features/account/components/account-settings.tsx:286 }
+      FAIL.refused:
+        - { guard: switchOn, target: account, effect: [flipOff, alertInvitationsFailed], say: "the switch goes back to off", source: apps/tedris/features/account/components/account-settings.tsx:292 }
+        - { guard: switchOff, target: account, effect: [flipOn, alertInvitationsFailed], say: "the switch goes back to on", source: apps/tedris/features/account/components/account-settings.tsx:292 }
+      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: sendToSignIn goes to sign in and back to /account, no toast", source: apps/tedris/features/account/components/account-settings.tsx:284 }
+
+  handed_over.profile_update:
+    type: final
+    title: Keycloak's profile page is opened
+    description: >-
+      The link "Değiştir" (or "Ekle") is a plain anchor to /api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Faccount&locale=tr in
+      the same tab (libs/auth/src/shared/account-action.ts:44). realm.auth.profileUpdate draws Keycloak's form and the way back to
+      /account with new tokens, where tedrisat copies the new gender at the next request.
+  handed_over.calendar_feed:
+    type: final
+    title: The calendar page is opened
+    description: "/account/calendar in the same tab, by a plain link. tedris.account.calendarFeed draws it."
+  handed_over.sign_out:
+    type: final
+    title: The confirmation page is opened
+    description: "/auth/signout in the same tab, by a plain link. realm.auth.signOut draws \"Çıkış yapılsın mı?\" and what follows."
+  account_console_opened:
+    type: final
+    title: Keycloak's account console is opened
+    leavesPage: true
+    description: >-
+      <KEYCLOAK_ISSUER>/account/applications, in the same tab (connected-apps.ts:8): Keycloak's own page that lists the applications
+      the person signed in to and lets them take back the consent they gave. It is Keycloak's, so no graph draws it. A GET of that
+      address on the local stack answers 200; what the page then does for a signed-in person was not seen.
+  sent_to_sign_in:
+    type: final
+    title: The session is over
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to exactly
+      /account, and draws no toast. realm.auth.signIn takes over.
+  left:
+    type: final
+    title: The person leaves Hesap
+    leavesPage: true
+
+assertions:
+  - id: a-blank-name-is-never-sent
+    never: "state == 'savingName' and (typed == 'blankGiven' or typed == 'blankFamily')"
+    say: "Kaydet with a blank Ad or Soyad never reaches the API: validateName answers first and only the line under the box changes"
+    source: apps/tedris/features/account/components/account-settings.tsx:112
+  - id: a-name-over-the-limit-is-never-reported-saved
+    never: "toast == 'nameSaved' and typed == 'tooLong'"
+    say: "A name of more than a hundred characters reaches the API, which refuses it, and the person is never told it was saved"
+    source: apps/tedrisat/src/user/dto/update-me.dto.ts:22
+  - id: the-cards-need-the-read
+    never: "state == 'account' and read != 'ok'"
+    say: "The cards, the sign-out card included, are drawn only when GET /me answered"
+    source: apps/tedris/app/account/page.tsx:44
+  - id: the-box-only-after-a-failed-read
+    never: "state == 'profileUnreadable' and read == 'ok'"
+    say: "The box that says the account could not be read is drawn only when GET /me failed"
+    source: apps/tedris/app/account/page.tsx:54
+  - id: a-name-is-sent-after-the-lines-go
+    never: "state == 'savingName' and said != 'none'"
+    say: "A press of Kaydet that sends the names first takes the lines under the boxes away"
+    source: apps/tedris/features/account/components/account-settings.tsx:110

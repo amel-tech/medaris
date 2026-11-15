@@ -1,0 +1,102 @@
+# The screens of tedris.course.deckTab: the tab "Ders destesi" of the course page, for a talebe who holds a seat: the list of decks, the card grid, a
+# card turned over, and a round of "Kendini sına". The page's header, card and programme are other flows' (flow.yaml scope.outOfView).
+# The words are copied from libs/i18n/src/locales/tr/tedris.json (keys kept, root removed), by script, letter for letter.
+# Three entries are built in code and are in no i18n file, so they are `composed.*`: the deck's title as a name (a message of `{title}` alone), and the
+# names of a card, which the browser builds from the visually hidden side ("Ön yüz" / "Arka yüz", CoursePage.deckGridFront and deckGridBack) and the card's
+# text (deck-flip-card.tsx:78-88,120). `Changes.note` is the one entry not copied from the app: the app has no message for what a mark changes, and
+# the flow invokes a writing action (saveCardProgress), so check --strict asks for one. It says what a mark does to the review schedule.
+schema: delurio-graph/0
+kind: ui
+id: tedris.course.deckTab
+flow: tedris.course.deckTab
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  title: Deneme destesi deckTab # the deck the walk's own course holds (deck-data.mjs); a deck's title is the course team's data
+  count: "3"
+  total: "3"
+  mastered: "0"
+  marked: "0"
+  known: "2"
+  front: فعل # the first card of that deck, and its other side
+  back: fiil
+changes: { key: Changes.note }
+
+nodes:
+  # the course page and its tab list, in every state of the flow (course-page.tsx)
+  coursePage: { type: page, component: Page, role: main, in: [courseOpened, noDecks, list, readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-page.tsx:229, script: actions } # server-drawn: the list reads without JavaScript, the tabs, the chips and the grid need it. No name, no initial focus: the page sets none (`focus-not-set`)
+  tabList: { type: list, component: List, role: tablist, name: { key: CoursePage.tabsLabel }, in: [courseOpened, noDecks, list, readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-page.tsx:394 } # Base UI tabs, activateOnFocus: the arrow keys move and select
+  tabCurriculumSelected: { type: action, component: Button, role: tab, text: { key: CoursePage.tabCurriculum }, in: [courseOpened], source: apps/tedris/features/courses/components/course-page.tsx:170 } # selected
+  tabCurriculum: { type: action, component: Button, role: tab, text: { key: CoursePage.tabCurriculum }, in: [noDecks, list, readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], emits: OPEN_PROGRAMME, source: apps/tedris/features/courses/components/course-page.tsx:170 }
+  tabDeck: { type: action, component: Button, role: tab, text: { key: CoursePage.tabDeck }, in: [courseOpened], emits: OPEN_DECK_TAB, source: apps/tedris/features/courses/components/course-page.tsx:178 } # the name carries the number of decks when there are some ("Ders destesi 1"): a count span in the tab (libs/ui/src/mds/tabs.tsx:66-68,110-113)
+  tabDeckSelected: { type: action, component: Button, role: tab, text: { key: CoursePage.tabDeck }, in: [noDecks, list, readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-page.tsx:178 } # selected; pressing it again does nothing
+  deckPanel: { type: page, component: Page, role: tabpanel, name: { labelledBy: tabDeckSelected }, in: [noDecks, list, readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-page.tsx:451 } # the panel is named by its tab, count included
+
+  # a course with no deck (course-page.tsx:452-456)
+  noDecksText: { type: text, component: Text, text: { key: CoursePage.deckEmpty }, in: [noDecks], source: apps/tedris/features/courses/components/course-page.tsx:455 } # the kit's empty state: a paragraph, no heading
+
+  # the two views, two toggle buttons in a group (course-decks-tab.tsx:47-58, libs/ui/src/mds/choice-chips.tsx)
+  viewGroup: { type: list, component: List, role: group, name: { key: CoursePage.deckView }, in: [list, readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-decks-tab.tsx:47 } # named by a visually hidden legend div through aria-labelledby
+  viewListPressed: { type: action, component: Button, role: button, text: { key: CoursePage.deckViewList }, in: [list], source: apps/tedris/features/courses/components/course-decks-tab.tsx:50 } # aria-pressed true; a press on the pressed chip is ignored (:55-57)
+  viewList: { type: action, component: Button, role: button, text: { key: CoursePage.deckViewList }, in: [readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], emits: SHOW_LIST, source: apps/tedris/features/courses/components/course-decks-tab.tsx:50 } # aria-pressed false; the grid is unmounted (DECKTAB-2)
+  viewCards: { type: action, component: Button, role: button, text: { key: CoursePage.deckViewCards }, in: [list], emits: SHOW_CARDS, source: apps/tedris/features/courses/components/course-decks-tab.tsx:51 }
+  viewCardsPressed: { type: action, component: Button, role: button, text: { key: CoursePage.deckViewCards }, in: [readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-decks-tab.tsx:51 }
+
+  # the list (course-decks-tab.tsx:68-199)
+  featuredRegion: { type: page, component: Page, role: region, name: { key: composed.DeckTab.deckTitle, params: { title: deck.title } }, in: [list], source: apps/tedris/features/courses/components/course-decks-tab.tsx:119 } # a section named by aria-label
+  featuredEyebrow: { type: text, component: Text, text: { oneOf: [CoursePage.deckFeaturedNext, CoursePage.deckFeaturedThisWeek] }, in: [list], source: apps/tedris/features/courses/components/course-decks-tab.tsx:126 } # "Bu haftanın destesi" for a deck of the week of the celse on air or the next; the seeded deck has no week, so "Sıradaki deste"
+  featuredTitle: { type: text, component: Heading, role: heading, text: { key: composed.DeckTab.deckTitle, params: { title: deck.title } }, in: [list], source: apps/tedris/features/courses/components/course-decks-tab.tsx:137 } # h3, dir=auto
+  featuredLine: { type: text, component: Text, text: { oneOf: [CoursePage.deckFeaturedNew, CoursePage.deckFeaturedDue, CoursePage.deckFeaturedNone] }, in: [list], source: apps/tedris/features/courses/components/course-decks-tab.tsx:140 } # the due and the new parts joined with " · ", or "Bugün tekrar yok"
+  studyLink: { type: action, component: LinkButton, role: link, intent: confirm, name: { key: CoursePage.deckStudyLabel, params: { title: deck.title } }, text: { key: CoursePage.deckStudy }, in: [list], emits: STUDY, source: apps/tedris/features/courses/components/course-decks-tab.tsx:144 } # the visible "Çalış" is in the name "Çalış: {title}"; href /decks/study/{deckId}
+  progressBar: { type: status, component: Status, role: progressbar, name: { key: CoursePage.deckProgress, params: { total: deck.cardCount, mastered: deck.masteredCount } }, in: [list], source: apps/tedris/features/courses/components/course-decks-tab.tsx:151 } # named by its visible label; the percent beside it is aria-hidden
+  othersEyebrow: { type: text, component: Text, text: { key: CoursePage.deckOthers }, in: [list], when: severalDecks, source: apps/tedris/features/courses/components/course-decks-tab.tsx:88 } # only when a deck is featured; with every deck done there is none
+  rowLink: { type: action, component: LinkButton, role: link, name: { key: composed.DeckTab.deckTitle, params: { title: deck.title } }, in: [list], when: severalDecks, repeat: otherDecks, emits: OPEN_DECK, source: apps/tedris/features/courses/components/course-decks-tab.tsx:169 } # the card's title link, in an h3; the avatar is decorative; href /decks/{deckId}
+  rowBadge: { type: text, component: Text, text: { oneOf: [CoursePage.deckRowStart, CoursePage.deckRowDue, CoursePage.deckRowDone] }, in: [list], when: severalDecks, repeat: otherDecks, source: apps/tedris/features/courses/components/course-decks-tab.tsx:181 } # a badge: success "Tamamlandı", warning "{count} kart tekrar", secondary "Başla"; the text carries the meaning
+
+  # the grid (course-deck-grid.tsx)
+  gridRegion: { type: page, component: Page, role: region, name: { key: composed.DeckTab.deckTitle, params: { title: deck.title } }, in: [readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-deck-grid.tsx:217 }
+  deckPicker: { type: list, component: List, role: group, name: { key: CoursePage.deckGridPick }, in: [readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], when: severalDecks, source: apps/tedris/features/courses/components/course-deck-grid.tsx:222 } # with more than one deck: one chip per deck
+  pickChip: { type: action, component: Button, role: button, text: { key: composed.DeckTab.deckTitle, params: { title: deck.title } }, in: [readingCards, cardsFailed, noCards, cards, cardsTurned, test, testTurned, rating, summary], when: severalDecks, repeat: decks, emits: PICK_DECK, source: apps/tedris/features/courses/components/course-deck-grid.tsx:225 } # a toggle with aria-pressed; picking ends a round
+  gridHint: { type: text, component: Text, text: { key: CoursePage.deckGridHint }, in: [readingCards, cardsFailed, noCards, cards, cardsTurned], source: apps/tedris/features/courses/components/course-deck-grid.tsx:235 } # also the description of every card (aria-describedby)
+  testHint: { type: text, component: Text, text: { key: CoursePage.selfTestHint }, in: [test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-deck-grid.tsx:236 }
+  gridCount: { type: text, component: Text, text: { key: CoursePage.deckGridCount }, in: [cards, cardsTurned], source: apps/tedris/features/courses/components/course-deck-grid.tsx:240 } # a polite live span
+  testCount: { type: text, component: Text, text: { key: CoursePage.selfTestProgress }, in: [test, testTurned, rating, summary], source: apps/tedris/features/courses/components/course-deck-grid.tsx:242 } # the same live span: "{marked} / {total} işaretlendi"
+  startTest: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.selfTestStart }, in: [cards, cardsTurned], emits: START_TEST, source: apps/tedris/features/courses/components/course-deck-grid.tsx:253 } # data-self-test-start: the node the focus returns to after a round
+  stopTest: { type: action, component: Button, role: button, intent: dismiss, text: { key: CoursePage.selfTestStop }, in: [test, testTurned, rating, summary], emits: STOP, source: apps/tedris/features/courses/components/course-deck-grid.tsx:249 }
+  failedAlert: { type: alert, component: Alert, role: alert, text: { key: CoursePage.deckGridFailed }, in: [cardsFailed], source: apps/tedris/features/courses/components/course-deck-grid.tsx:301 } # Alert tone error
+  failedRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.deckGridRetry }, in: [cardsFailed], emits: RETRY, source: apps/tedris/features/courses/components/course-deck-grid.tsx:303 }
+  emptyCards: { type: text, component: Text, text: { key: CoursePage.deckGridEmpty }, in: [noCards], source: apps/tedris/features/courses/components/course-deck-grid.tsx:308 } # the kit's empty state
+
+  # the cards (deck-flip-card.tsx, course-deck-grid.tsx:163-205)
+  cardFront: { type: action, component: Button, role: button, name: { key: composed.DeckTab.faceFront, params: { front: card.front } }, in: [cards, test], repeat: cards, emits: TURN_CARD, source: apps/tedris/features/courses/components/deck-flip-card.tsx:52 } # one button per card in a list; the name is the visually hidden "Ön yüz" and the text, the other face is aria-hidden; the Arabic is lang=ar dir=rtl (CRS-11: the side is told by colour alone)
+  cardBack: { type: action, component: Button, role: button, name: { key: composed.DeckTab.faceBack, params: { back: card.back } }, in: [cardsTurned, testTurned], emits: TURN_BACK, source: apps/tedris/features/courses/components/deck-flip-card.tsx:52 } # the turned card; in a round a marked card also reads "Arka yüz …"
+  cardsMarked: { type: action, component: Button, role: button, name: { key: composed.DeckTab.faceBack, params: { back: card.back } }, in: [summary], repeat: cards, source: apps/tedris/features/courses/components/deck-flip-card.tsx:52 } # every card of a finished round stays turned, each with its badge
+  markBadge: { type: text, component: Text, text: { oneOf: [CoursePage.selfTestKnown, CoursePage.selfTestMissed] }, in: [test, testTurned, rating, summary], when: hasMarks, repeat: marks, source: apps/tedris/features/courses/components/course-deck-grid.tsx:178 } # a badge, success "Bildin" or warning "Bilemedin"; the buttons give way to it
+  askGroup: { type: list, component: List, role: group, name: { key: CoursePage.selfTestAsk }, in: [testTurned], source: apps/tedris/features/courses/components/course-deck-grid.tsx:185 } # a fieldset with a visually hidden legend; only under a card that is turned and not marked
+  knewButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CoursePage.selfTestKnew }, in: [testTurned], emits: MARK_KNOWN, source: apps/tedris/features/courses/components/course-deck-grid.tsx:187 } # size mini; rating EASY
+  didNotKnowButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.selfTestDidNotKnow }, in: [testTurned], emits: MARK_MISSED, source: apps/tedris/features/courses/components/course-deck-grid.tsx:194 } # size mini; rating HARD
+  unsavedAlert: { type: alert, component: Alert, role: alert, text: { key: CoursePage.selfTestSaveFailed }, in: [test, testTurned, rating, summary], when: hasUnsaved, source: apps/tedris/features/courses/components/course-deck-grid.tsx:269 } # Alert tone error; stays until every unsaved mark is sent
+  resend: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.selfTestResend }, in: [test, testTurned, rating, summary], when: hasUnsaved, emits: RESEND, source: apps/tedris/features/courses/components/course-deck-grid.tsx:271 }
+  summaryStatus: { type: alert, component: Alert, role: status, text: { key: CoursePage.selfTestSummary }, in: [summary], source: apps/tedris/features/courses/components/course-deck-grid.tsx:277 } # Alert, tone success when nothing was missed, else info; the same sentence is in a hidden live paragraph
+  retryMissed: { type: action, component: Button, role: button, intent: confirm, text: { key: CoursePage.selfTestRetry }, in: [summary], when: anyMissed, emits: RETRY_MISSED, source: apps/tedris/features/courses/components/course-deck-grid.tsx:281 }
+  finish: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.selfTestFinish }, in: [summary], emits: FINISH, source: apps/tedris/features/courses/components/course-deck-grid.tsx:285 }
+
+edges:
+  - { labelledBy: [deckPanel, tabDeckSelected] }
+  - { triggers: [tabDeck, tabOpened] }
+  - { triggers: [viewCards, readingCards] }
+  - { triggers: [startTest, test] }
+  - { triggers: [knewButton, rating] }
+  - { triggers: [didNotKnowButton, rating] }
+
+rules:
+  - { id: CRS-11, rule: "the side of a card in view (the Arabic front on the brand's bold fill, the meaning back on a plain sheet) is told by colour alone, and \"Ön yüz\" / \"Arka yüz\" is visually hidden (deck-flip-card.tsx:112-120); turning a card changes the button's own name (\"Ön yüz فعل\" to \"Arka yüz fiil\", seen in a browser on the stack) and nothing announces it, and the same hint is the description of every card (course-deck-grid.tsx:175). Whether a given screen reader speaks the change was not verified. The card is deliberately a plain button, not a toggle, because a toggle's name must not change when it is pressed" }
+  - { id: DECKTAB-1, rule: "new, provisional id: a failed read of the course's decks (getCourseDecks answers null, public-reads.ts:117-122) is turned into [] (page.tsx:96) and the panel says \"Bu derse bağlı bir deste yok.\" with no retry; the comment says it does so rather than show a stale list. The recordings tab draws RecordingsFailed for the same kind of read (title, text, \"Yeniden dene\"). Read from the code; the read was not made to fail on the stack. Fix: tell a null apart from an empty list, as the recordings tab does" }
+  - { id: DECKTAB-2, rule: "new, provisional id: CourseDeckGrid is mounted only while the view is \"Kartlar\" (course-decks-tab.tsx:59-63), so \"Desteler\" throws away its state: the cards it read, the cards turned, a round and its unsaved marks. The comment at course-deck-grid.tsx:55-56 says a deck's cards are read once and kept \"for the rest of the visit\", which holds only while the grid stays mounted (picking another deck and back). Seen in a browser on the stack: \"Kartlar\", \"Desteler\", \"Kartlar\" made two reads of the cards (two POSTs each in development, where React runs the effect twice); a round that was on screen is gone with no warning, and so are marks that had not reached the API. Fix: keep the grid mounted and hide it, or lift `read` and the round into the tab" }
+  - { id: PROG-1, rule: "cited, not filed twice (tedris.course.readProgramme): the tab is not in the address. `?tab=deste` is read once when the page is drawn (course-page.tsx:194-198) and a press on a tab only sets component state, so after a press the address was /courses/{id} (seen in a browser) and a reload, the way back or a shared link land on Müfredat. Nothing in the app links to ?tab=deste; the e2e does" }
+  - { id: DCK-14, rule: "cited (tedris.decks.accessRefusals): the deck page that a row opens links to /cards and /edit, which refuse a reader with \"{deck} herkese açık bir deste; kartlarını yalnız sahibi düzenler\", and the seeded course deck, which is not public, is called that (seen in a browser there). The tab itself says nothing of public" }
+  - { id: focus-not-set, rule: "the page sets no initial focus (the course page, course-page.tsx; document.activeElement was the BODY on a fresh load, seen in a browser), and a press on the tab or on a chip keeps the focus on that button; the page node has no `initialFocus` and the flow gives no `focus` for the states the chips lead to" }
+  - { id: focus-moved-by-hand, rule: "inside the grid the code moves the focus on purpose where the control that had it goes away (course-deck-grid.tsx:98-106,124-132,146): \"Kendini sına\" puts it on the first card of the round, a mark leaves it on the card (the buttons give way to the badge), a new round of the missed cards puts it on the first of them, and \"Bitir\", \"Sınamayı bitir\" put it on \"Kendini sına\" (seen in a browser: document.activeElement was that button). The graph does not give `focus` for these states because the node depends on how the state was entered (`test` is entered from the start, from a mark and from the retry with a different node each time)" }
+  - { id: chips-pressed, rule: "the two views and the deck chips are toggle buttons whose state is aria-pressed; the format has no key for a pressed button, so the pressed chip is its own node (viewListPressed, viewCardsPressed) and the others carry the event" }
+  - { id: label-in-name, rule: "holds: the visible \"Çalış\" is in the link's name \"Çalış: {title}\" (WCAG 2.5.3); a row's name is its title; a card's name starts with the side, then the text" }

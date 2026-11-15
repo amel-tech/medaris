@@ -1,0 +1,359 @@
+# Takvim aboneliği (tedris-web /account/calendar, MDRS-120 and MDRS-163): the page where a talebe makes the personal link that
+# Google Calendar and Apple Calendar subscribe to, copies it, finds it masked when they come back, and renews it behind a
+# confirmation. Written from the code of the branch (the tree of PR #394, captured) on 15 Nov 2026; nothing here is approved and
+# nothing was seen in a browser by the writer. Every behaviour below is "from the code" unless a line says otherwise.
+#   - What it draws: the read of whether a link exists, the four things the page shows (no link, a link that cannot be shown
+#     again, a status that could not be read, a link just made), the copy buttons and their toasts, the dialog that guards a
+#     renewal, and what a calendar app meets at the link that is kept and at the link that was replaced.
+#   - The rest: tedris.learning.addToCalendar draws the menus that lead here and the feed a calendar app reads (its `feedRead`);
+#     tedris.account.profile is the Hesap page the breadcrumb returns to. The started-by flows (addToCalendar, myCourses,
+#     schedule) pass no `given`, so this flow declares none of their names.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   ACC-11    a link that exists is shown as 32 bullets in two read-only fields: a screen reader reads a run of "bullet" as the value
+#   ACC-12    the Server Action call of this page has no try/catch either (calendar-subscription.tsx:122-135, a file the inventory
+#             does not list for ACC-12): a request that never reaches Next ends on the error page, not on the page's "failed" alert
+#   CALFEED-1 (new, provisional) three words the page shows are constants of the kit and in no catalog: the dialog's close button
+#             "Kapat", the busy status "Yükleniyor" and the toast's "Kapat" (the same family as LEAVE-2, ADDCAL-2 and MDRS-233)
+#   CALFEED-2 (new, provisional) a refused renewal says "Bağlantı oluşturulamadı" and closes the dialog: it never says that the old
+#             link is still the one that works, and a link shown in this visit stays on the page under the error
+#   CALFEED-3 (new, provisional) the success of "Bağlantı oluştur" is told by new content only: a role=status alert that arrives
+#             with its text (not reliably announced), while the focus stays on a button whose name has just changed
+# E2E carried: schedule#10 (create, shown once, reload masks, the dialog, Vazgeç and Yenile, the old link 404; the feed's own
+# content is addToCalendar's), schedule#11 (the copy buttons, the success toast), profile#3 (the Hesap link only, which is the nav
+# entry this flow is entered by). Not carried here: schedule#12 (the old address /learning/calendar, tedris.nav's).
+schema: delurio-graph/0
+kind: flow
+id: tedris.account.calendarFeed
+status: captured
+domain: medaris.api
+ui: tedris.account.calendarFeed
+title: Subscribe a calendar to my celses
+summary: >-
+  A talebe opens Takvim aboneliği, under Hesap. The page reads whether they already have a personal calendar link. With none it
+  offers "Bağlantı oluştur", which makes the link at once and shows it, in two fields (one for Google, one for Apple) with
+  "Kopyala" buttons, under a warning to copy it now, because only a hash is stored and the link is never shown again. Copying
+  says "Bağlantı kopyalandı" in a toast, or, when the browser refuses the clipboard, selects the field and says so in a toast
+  that stays. When the person comes back to the page the link exists and cannot be shown: the two fields hold bullets, the copy
+  buttons are off, and "Bağlantıyı yenile" makes a new one. Renewing always asks first, in a dialog whose focus starts on
+  "Vazgeç": a new link makes every calendar subscribed to the old one stop updating. Vazgeç keeps the link, "Yenile" replaces it
+  and shows the new one. When tedrisat cannot say whether a link exists the page says so and renewing still asks first. A refused
+  call draws one red alert, "Bağlantı oluşturulamadı. Lütfen tekrar dene." A calendar app reads /calendar/<token>.ics with no
+  session: the link that was kept answers, the link that was replaced answers 404.
+
+scope:
+  shows: the status read, the link made and shown once, the copy buttons and their toasts, the masked link of a return visit, the confirmation before renewing, and the answers a calendar app gets at the kept and at the replaced link
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "what a calendar app does with the feed and what the feed holds (the hourly refresh, the 30 days back and 180 ahead, a cancelled celse kept as STATUS:CANCELLED, no meeting link, the courses a başmüderris or a ders nazırı runs that it misses): tedris.learning.addToCalendar (its feedRead state) and the domain's getCalendarFeed"
+    - "the feed of the link made here: the walk can read an address only a helper made, and the page's own link is in the browser alone (the e2e check schedule#10 reads it from the field)"
+    - "how the page is reached: the menus on Programım and on the celse page (tedris.learning.addToCalendar), the links on Derslerim and on Programım (tedris.learning.myCourses, tedris.learning.schedule), Hesap's \"Takvim bağlantını yönet\" (tedris.account.profile) and the old address /learning/calendar, a redirect (tedris.nav)"
+    - "the bars above the page (the top bar, the phone bar, the loading skeleton of app/account/loading.tsx): tedris.shell.frame"
+    - "the phone layout: below 768 px the breadcrumb shows only its parent, as a back link"
+    - "a visitor, who is sent to sign in before the page runs (the middleware), and a token tedrisat refuses on the read, which sends the person to sign in again with `reauth` (realm.auth.sessionEnded)"
+    - "a dialog dismissed while its call is still running: Vazgeç, the cross and Esc work all the while and the call goes on to the end (renewing-can-be-dismissed in ui.yaml rules)"
+    - "the other cards of Hesap, including the switch that e-mails the lesson invitations: tedris.account.profile"
+
+context:
+  feed:
+    values: [none, exists, unreadable]
+    initial: any
+    say:
+      none: "they have no calendar link yet"
+      exists: "they made a link on an earlier visit, so the page can only say that it exists"
+      unreadable: "tedrisat cannot say whether they have a link, so the page says it could not read the status"
+  clipboard:
+    values: [allowed, refused]
+    initial: any
+    say:
+      allowed: "the browser lets the page write to the clipboard"
+      refused: "the browser refuses the clipboard (an insecure address, a refused permission)"
+  origin:
+    values: [masked, unknown, issued]
+    initial: masked
+    say:
+      masked: "the page that a dialog or a side step came from is the one that says a link exists and hides it"
+      unknown: "it is the one that could not read the status"
+      issued: "it is the one that shows a link just made"
+  notice:
+    values: [none, failed]
+    initial: none
+    say:
+      none: "no red alert on the page"
+      failed: "the red alert \"Bağlantı oluşturulamadı\" is on the page"
+  toast:
+    values: [none, copied, copyFailed]
+    initial: none
+    say:
+      none: "no toast from a copy button"
+      copied: "the success toast \"Bağlantı kopyalandı\" is up (it closes by itself after 6 seconds)"
+      copyFailed: "the warning toast \"Kopyalanamadı\" is up (it stays until it is closed)"
+  replaced:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "no link of this person was replaced in this visit"
+      yes: "a renewal replaced a link in this visit, so the old address answers 404"
+
+guards:
+  noFeed: "feed == 'none'"
+  hasFeed: "feed == 'exists'"
+  noRead: "feed == 'unreadable'"
+  cameFromMasked: "origin == 'masked'"
+  cameFromUnknown: "origin == 'unknown'"
+  copyAllowed: "clipboard == 'allowed'"
+  copyRefused: "clipboard == 'refused'"
+  toasting: "toast != 'none'"
+  successToast: "toast == 'copied'"
+  renewed: "replaced == 'yes'"
+
+effects:
+  originMasked: { set: { origin: masked } }
+  originUnknown: { set: { origin: unknown } }
+  originIssued: { set: { origin: issued } }
+  clearNotice: { set: { notice: none } }
+  failedNotice: { set: { notice: failed } }
+  toastCopied: { set: { toast: copied } }
+  toastCopyFailed: { set: { toast: copyFailed } }
+  clearToast: { set: { toast: none } }
+  linkReplaced: { set: { replaced: yes } }
+
+failures:
+  reading: { from: getMyCalendarFeed, unreadable: [] }
+  issuing: { from: regenerateMyCalendarFeed, signedOut: [], refused: [CALENDAR_NOT_CONFIGURED] }
+  renewing: { from: regenerateMyCalendarFeed, signedOut: [], refused: [CALENDAR_NOT_CONFIGURED] }
+  pollingOld: { from: webGetCalendarFeed, notFound: [HTTP_404, CALENDAR_FEED_NOT_FOUND] }
+# `unreadable` stands for any answer but a refused token: the domain lists no refusal for the status read, and the page treats a
+# network error, a 5xx and a 4xx alike (features/courses/actions/index.ts:197-208). `signedOut` is the guard's 401, which the domain
+# leaves out; a 401 sends the person to sign in through sendToSignIn (calendar-subscription.tsx:126). `refused` is every other
+# failure of the call, drawn as one red alert whatever the status: tedrisat's 503 CALENDAR_NOT_CONFIGURED is the only one the
+# domain lists, a 5xx and a network answer from tedris-web's own side say the same.
+
+# The main story: a person with no link makes one, copies the two addresses, comes back and finds it masked, changes their mind at
+# the dialog, then renews for good.
+main:
+  given: { feed: none, clipboard: allowed }
+  events: [DONE, CREATE, DONE, COPY_GOOGLE, COPY_APPLE, RELOAD, REGENERATE, CANCEL, REGENERATE, CONFIRM, DONE]
+
+initial: reading
+states:
+  reading:
+    title: Read whether a link exists
+    source: apps/tedris/app/account/calendar/page.tsx:18
+    description: >-
+      The page's server side asks tedrisat GET /me/calendar-feed, which says whether a link exists and when it was made, never the
+      link (only its SHA-256 is stored). An answer is `{ createdAt }`, with the date or null; a failure of any kind other than a
+      refused token is not told apart and becomes `null`, which the page draws as "could not be read" (getMyCalendarFeed, actions/index.ts:197-208).
+      A token tedrisat refuses sends the person to sign in again (out of view). The graph draws the read as a step of its own.
+    invoke: { action: getMyCalendarFeed }
+    on:
+      DONE:
+        - { guard: noFeed, target: noLink, say: "the status has no date: no link was ever made", source: apps/tedris/app/account/calendar/page.tsx:38 }
+        - { guard: hasFeed, target: masked, say: "the status has a date: a link exists and cannot be shown again", source: apps/tedris/app/account/calendar/page.tsx:38 }
+      FAIL.unreadable: { guard: noRead, target: unknown, say: "the status is null", source: apps/tedris/features/courses/actions/index.ts:205 }
+
+  noLink:
+    title: No link yet
+    by: human
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:203
+    description: >-
+      The page for a person with no link: the title, the subtitle, "Kişisel takvim bağlantın" with "Henüz bir takvim bağlantın yok.
+      Oluşturduğunda burada bir kez gösterilir." and the primary button "Bağlantı oluştur", then the explanations (how to add the link
+      to Google and Apple, a note that Google may be slow, what the calendar holds, that the link is private). "Bağlantı oluştur"
+      makes the link at once and asks nothing, because the page knows there is none (calendar-subscription.tsx:139). The page sets no
+      focus of its own on load (focus-not-set). After a refused call the red alert is on the page, under the buttons.
+    on:
+      CREATE: { target: issuing, effect: [clearNotice], source: apps/tedris/features/courses/components/calendar-subscription.tsx:223 }
+      OPEN_ACCOUNT: account_opened
+      NAVIGATE: left
+
+  masked:
+    title: A link exists and is hidden
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:160
+    description: >-
+      The page of a person who made a link before, or who reloaded after making one. The two fields "Google Takvim için" and "Apple
+      Takvim için" hold 32 bullets as their value, read-only, with their "Kopyala" buttons off (disabled), and under them "Bir
+      bağlantın var. Güvenliğin için yeniden gösterilmez; yeni bir tane oluşturmak için yenile.", "Oluşturuldu: <date and time>", the
+      outline button "Bağlantıyı yenile" and "Yeni bağlantı oluşur; eskisi çalışmayı bırakır." A screen reader reads a long run of
+      "bullet" as the value of each field (ACC-11); the page says in words that the link is hidden, but not in the field. "Bağlantıyı
+      yenile" never calls the API itself: it opens the dialog. A calendar app that subscribed to the link keeps polling it, and the
+      page can say nothing of that.
+    on:
+      REGENERATE: { target: confirming, effect: [originMasked], source: apps/tedris/features/courses/components/calendar-subscription.tsx:214 }
+      CALENDAR_APP_POLLS: { target: pollingCurrent, effect: [originMasked], say: "a calendar app, subscribed to the link of an earlier visit, reads it as it does every hour" }
+      OPEN_ACCOUNT: account_opened
+      NAVIGATE: left
+
+  unknown:
+    title: The status could not be read
+    by: human
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:204
+    description: >-
+      The page says "Bağlantı durumun şu an okunamadı." in the place of the fields and offers "Bağlantıyı yenile" (not "Bağlantı
+      oluştur"): not knowing whether a link exists, the page treats making one as a renewal and asks first (needsConfirmation, :139).
+      There is no caption under the button and no retry control; reloading is the person's own. The dialog's text still says the old
+      link stops working, which may be false (there may be none).
+    on:
+      REGENERATE: { target: confirming, effect: [originUnknown], source: apps/tedris/features/courses/components/calendar-subscription.tsx:214 }
+      OPEN_ACCOUNT: account_opened
+      NAVIGATE: left
+
+  issuing:
+    title: Make the first link
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:122
+    description: >-
+      The button is busy (aria-busy and aria-disabled, never `disabled`, so the focus stays; its hidden status says "Yükleniyor")
+      while the Server Action runs POST /me/calendar-feed. Success: the link is returned this once (its hash is stored, a second
+      call replaces it) and shown. A session that is over sends the person to sign in. Any other failure, whatever its status, is one
+      red alert "Bağlantı oluşturulamadı. Lütfen tekrar dene." The call has no try/catch: a request that never reaches Next ends on
+      the error page (ACC-12).
+    invoke: { action: regenerateMyCalendarFeed }
+    on:
+      DONE: { target: issued, say: "the link, its webcal form and its date come back", source: apps/tedris/features/courses/components/calendar-subscription.tsx:132 }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/courses/components/calendar-subscription.tsx:126 }
+      FAIL.refused: { target: noLink, effect: [failedNotice], source: apps/tedris/features/courses/components/calendar-subscription.tsx:128 }
+
+  issued:
+    title: The link, shown once
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:154
+    description: >-
+      A yellow alert "Bağlantını şimdi kopyala" with "Bağlantını yalnız oluşturulduğu anda gösterebiliyoruz...", the two fields with the
+      real addresses (https for Google, webcal for Apple, left to right, read-only, selected on focus), their "Kopyala" buttons, the
+      secondary link "Apple Takvim’de aç" (a webcal: address, only for a link made in this visit), "Oluşturuldu: <date and time>"
+      and "Bağlantıyı yenile" (now outline, the same button that said "Bağlantı oluştur", so the focus stays on it with a new name:
+      CALFEED-3). The alert is a role=status node that arrives together with its text, which a screen reader may not announce
+      (CALFEED-3, not verified with one). "Kopyala" writes the field's value to the clipboard: a success toast "Bağlantı kopyalandı"
+      (6 seconds), or, with no clipboard, the field is selected and a warning toast "Kopyalanamadı. Alan seçili; elle
+      kopyalayabilirsin." stays until it is closed (it is aria-hidden until it is focused: toast-aria-hidden; the words of the toast's cross
+      and of the region "Bildirimler" are kit constants: CALFEED-1). The link goes with the visit: a reload, or coming back, finds the page masked. After a
+      renewal the old address answers 404 (the replaced link).
+    on:
+      REGENERATE: { target: confirming, effect: [originIssued], source: apps/tedris/features/courses/components/calendar-subscription.tsx:223 }
+      COPY_GOOGLE:
+        - { guard: copyAllowed, target: issued, effect: [toastCopied], say: "the address is on the clipboard and a success toast says so", source: apps/tedris/features/courses/components/calendar-subscription.tsx:44 }
+        - { guard: copyRefused, target: issued, effect: [toastCopyFailed], say: "the field is selected and a warning toast says to copy by hand", source: apps/tedris/features/courses/components/calendar-subscription.tsx:46 }
+      COPY_APPLE:
+        - { guard: copyAllowed, target: issued, effect: [toastCopied], say: "the webcal address is on the clipboard and a success toast says so", source: apps/tedris/features/courses/components/calendar-subscription.tsx:44 }
+        - { guard: copyRefused, target: issued, effect: [toastCopyFailed], say: "the field is selected and a warning toast says to copy by hand", source: apps/tedris/features/courses/components/calendar-subscription.tsx:46 }
+      CLOSE_TOAST: { guard: toasting, target: issued, effect: [clearToast], source: libs/ui/src/mds/toast.tsx:95 }
+      TOAST_ENDS: { guard: successToast, target: issued, effect: [clearToast], say: "the clock closes a success toast after 6 seconds; a warning toast stays", source: libs/ui/src/mds/toast.tsx:36 }
+      OLD_LINK_POLLS: { guard: renewed, target: pollingOld, effect: [originIssued], say: "a calendar app subscribed to the replaced link reads it again" }
+      RELOAD: { target: masked, effect: [clearToast, clearNotice], say: "the page is read again: the link exists now, and cannot be shown", source: apps/tedris/app/account/calendar/page.tsx:18 }
+      OPEN_APPLE: { target: apple_opened, source: apps/tedris/features/courses/components/calendar-subscription.tsx:183 }
+      OPEN_ACCOUNT: account_opened
+      NAVIGATE: left
+
+  confirming:
+    title: Renew the link?
+    by: human
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:283
+    description: >-
+      An alertdialog (Base UI) "Bağlantı yenilensin mi?": "Yeni bağlantı oluşunca eskisi çalışmayı bırakır; ona abone olan takvimler
+      güncellenmez ve yeniden abone olman gerekir." and a footer with the ghost "Vazgeç" and the primary "Yenile". The focus starts on
+      "Vazgeç" (the kit's rule). Vazgeç, the cross (named "Kapat" from a kit constant, CALFEED-1) and Esc close it; the scrim does
+      not. The page behind is inert. The dialog is opened from state, not from a Base UI trigger, and the focus goes back to the
+      button that opened it (Base UI's default; not seen in a browser).
+    on:
+      CANCEL: { target: returned, source: apps/tedris/features/courses/components/calendar-subscription.tsx:285 }
+      CLOSE_DIALOG: { target: returned, source: apps/tedris/features/courses/components/calendar-subscription.tsx:285 }
+      ESCAPE: { target: returned, source: apps/tedris/features/courses/components/calendar-subscription.tsx:285 }
+      CONFIRM: { target: renewing, effect: [clearNotice], source: apps/tedris/features/courses/components/calendar-subscription.tsx:291 }
+
+  renewing:
+    title: Replace the link
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:122
+    description: >-
+      The dialog stays open and its "Yenile" is busy (aria-busy, aria-disabled; the hidden status says "Yükleniyor", CALFEED-1) while
+      POST /me/calendar-feed replaces the stored hash. Success closes the dialog and shows the new link as in `issued`; the
+      old address answers 404 from now on. A session that is over sends the person to sign in. Any other failure closes the dialog
+      and draws the red alert "Bağlantı oluşturulamadı. Lütfen tekrar dene." over a page that still holds whatever it held, so a
+      refused renewal reads as a failed creation and never says that the old link still works (CALFEED-2); a link shown earlier in
+      this visit stays on the page under its "copy now" warning.
+    invoke: { action: regenerateMyCalendarFeed }
+    on:
+      DONE: { target: issued, effect: [linkReplaced], say: "the dialog closes and the new link is shown once", source: apps/tedris/features/courses/components/calendar-subscription.tsx:132 }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/courses/components/calendar-subscription.tsx:126 }
+      FAIL.refused: { target: returned, effect: [failedNotice], say: "the dialog closes and the red alert is drawn on the page the dialog came from", source: apps/tedris/features/courses/components/calendar-subscription.tsx:127 }
+
+  returned:
+    title: Back on the page
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:285
+    description: >-
+      Classification only: the dialog (or a calendar app's poll) leaves, and the page that it stood over is drawn as it was.
+      `origin` says which one.
+    always:
+      - { guard: cameFromMasked, target: masked, say: "the link of an earlier visit, hidden" }
+      - { guard: cameFromUnknown, target: unknown, say: "the status that could not be read" }
+      - { target: issued, say: "the link made in this visit" }
+
+  pollingCurrent:
+    title: A calendar app reads the kept link
+    source: apps/tedris/app/calendar/[file]/route.ts:17
+    description: >-
+      GET /calendar/<token>.ics on tedris-web with no session (the secret in the address is the credential), passed on to tedrisat
+      with no Authorization header. A link that exists and was not replaced answers 200 text/calendar, inline as medaris.ics,
+      Cache-Control private no-store, X-Robots-Tag noindex. What the feed holds is tedris.learning.addToCalendar's (feedRead).
+      The person's page does not change.
+    invoke: { action: webGetCalendarFeed }
+    on:
+      DONE: returned
+
+  pollingOld:
+    title: A calendar app reads the replaced link
+    source: apps/tedris/app/calendar/[file]/route.ts:40
+    description: >-
+      The same route at an address whose hash no longer exists: tedrisat answers 404 CALENDAR_FEED_NOT_FOUND, tedris-web passes it on
+      as {"error":"CALENDAR_FEED_NOT_FOUND"} with Cache-Control no-store. The subscribed calendar keeps what it had and says its own
+      words; the page says nothing of it. This is what "eskisi çalışmayı bırakır" means.
+    invoke: { action: webGetCalendarFeed }
+    on:
+      FAIL.notFound: { guard: renewed, target: returned, source: "apps/tedris/app/calendar/[file]/route.ts:40" }
+
+  left:
+    type: final
+    title: The person goes to another page
+    leavesPage: true
+
+  account_opened:
+    type: final
+    title: Hesap opens
+    leavesPage: true
+    description: >-
+      The breadcrumb's "Hesap" is a plain link to /account (calendar-subscription's page.tsx:26). Below 768 px it is the only item
+      the breadcrumb shows, as a back link.
+
+  apple_opened:
+    type: final
+    title: The system's calendar app takes the webcal address
+    leavesPage: true
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:185
+    description: >-
+      "Apple Takvim’de aç" is a link to the webcal: address. The browser hands it to whatever the system has for webcal (Apple
+      Calendar on an iPhone, an iPad or a Mac); on a machine with no handler nothing opens. The page stays where it was.
+
+  sent_to_sign_in:
+    type: final
+    title: The session is over
+    leavesPage: true
+    source: apps/tedris/lib/send-to-sign-in.ts:25
+    description: >-
+      The call answered `{ kind: "unauthenticated" }`, so `sendToSignIn` hands the browser to sign in, in the page's language and
+      back to this address; a result marked `reauth` asks Keycloak for new tokens on the way. realm.auth.signIn takes over.
+
+assertions:
+  - id: a-red-alert-never-stands-while-the-call-runs
+    never: "state in ['issuing', 'renewing'] and notice == 'failed'"
+    say: "the alert is cleared the moment a new call starts (setFailed(false) opens issue()), so a busy button never sits under last time's error"
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:123
+  - id: a-copy-toast-needs-the-fields
+    never: "toast != 'none' and state in ['noLink', 'masked', 'unknown']"
+    say: "a toast of a copy button is only ever up on the page that shows the fields in full: a reload clears it, and no copy button works on the masked fields"
+    source: apps/tedris/features/courses/components/calendar-subscription.tsx:69
+  - id: the-replaced-address-is-only-read-after-a-renewal
+    never: "state == 'pollingOld' and replaced == 'no'"
+    say: "an address answers 404 only after the person replaced it: no renewal, no replaced link"
+    source: apps/tedris/app/calendar/[file]/route.ts:40

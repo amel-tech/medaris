@@ -1,0 +1,293 @@
+# What a talebe reads of the hoca's review of their homework: the block "Hocanın değerlendirmesi" under the panel "Ödev" of the celse page
+# (/courses/<c>/lessons/<l>), drawn by ReviewBody in apps/tedris/features/courses/components/session-homework.tsx. Read from the code of PR
+# #394's branch on 15 Nov 2026 (captured; nothing here is a plan). The review itself is written and sent in nazar (nazar.homework.review,
+# written later; it starts this flow with `reviewed: true`); the rest of the panel (the hoca's assignment, the hand-in, the file picker, the
+# note form) is tedris.learn.homeworkHandIn's.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   WRT-10     a refused download is a 303 to the same page with ?fileError=: the whole page loads again (focus and scroll reset, a typed note
+#              is lost) and the reason is a Sonner toast whose region is named by an English default
+#   WRT-13     no draft is kept: the reload that a refused download causes, or any reload, throws away a note being typed
+#   CLS-16     the file-error toast is Sonner's, the calendar's is the kit's: two toast systems on one page (not drawn here)
+#   HWREVIEW-1 (new) a sent review can be emptied: the course team may remove the last file of a review that has no note, and the talebe's
+#              block then holds a heading, a badge and a by-line and nothing else (tedrisat's removeReviewFile checks nothing)
+#   HWREVIEW-2 (new) what follows the talebe's own change is not announced reliably: the notice and "Not kaydedildi." are inserted already
+#              holding their text, and "Notu kaydet" becomes natively disabled while it has the focus
+#   HWREVIEW-3 (new) the panel reads the homework once, when it mounts: a review sent while the page is open (the talebe is notified in the
+#              bell) is not on the page until it is loaded again
+#   HWREVIEW-4 (new) the by-line says day, month and hour only: a review of last year reads like one of this week
+# Everything below is read from the code; nothing was seen in a browser (the local stack has no file store, so a returned file's bytes
+# were never seen either).
+# E2E carried: none (no e2e spec names the review; its unit tests are apps/tedris/test/homework-card.spec.ts:742-902). Carried by the
+# replay, not by an e2e check: the scenarios in binding.yaml.
+schema: delurio-graph/0
+kind: flow
+id: tedris.learn.homeworkReview
+status: captured
+domain: medaris.api
+ui: tedris.learn.homeworkReview
+title: Read the hoca's review of my homework
+summary: >-
+  A talebe who handed homework in finds the hoca's review on the celse page once the course team has sent it: a block "Hocanın
+  değerlendirmesi" with "Değerlendirildi", who sent it and when, the note as written, and the files the hoca returned under "Düzeltilmiş
+  dosyalar", each a plain download link. Until the review is sent the talebe sees none of it, not even a file the team has already
+  attached. If the talebe changes the homework after the review, the page says so: the review was written for the earlier version. A
+  file the store cannot give is told in a toast that stays until it is closed, after the page has loaded again.
+
+scope:
+  shows: 'the review block of the panel "Ödev" (title, badge, by-line, change notice, note, returned files), the download of a returned file and its refusals, and the one step that makes the notice appear: the talebe saving their own note again'
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the panel: the hoca's assignment and files, the state badge when nothing is handed in, the hand-in's own files and the picker, the remove confirmation, and the note form's refusals (403, 400, any other): tedris.learn.homeworkHandIn"
+    - "a homework the hoca switched to recitation, with a review kept from before the switch, which draws the same block under a different panel (session-homework.tsx:330): tedris.learn.homeworkMemorize"
+    - "a celse that no longer has homework but still holds a hand-in, which draws the same block under the caption \"Bu celsede ödev verilmedi…\" (session-homework.tsx:462)"
+    - "who gets no panel (not enrolled, pending, removed, a passive scope, a cancelled celse), and the refused API calls of others (another talebe's review file is 403, an unsent one 404): tedris.learn.writingGating"
+    - "writing the review, attaching files to it and sending it: the other person's flow, nazar.homework.review; here the send is only an event that someone else causes"
+    - "the notification the talebe gets when a review is sent (SUBMISSION_REVIEWED): tedris.account.notifications"
+    - "the same press on a file while a note is being typed (the download that succeeds leaves the text alone; a refusal throws it away, WRT-10 and WRT-13), and a reviewer whose name tedrisat does not have (the by-line then says \"Hoca\")"
+    - "a page opened when the homework already changed after the review: the same screen as after the talebe's own change and a reload"
+    - "the file's bytes: what the browser does with an attachment is not the page's"
+    - "a review sent again with a new note or more files: the block reads differently on the next load and the talebe is notified again; the same screen"
+
+context:
+  reviewed:
+    values: [true, false]
+    initial: any
+    say:
+      "true": "the course team has sent the review: the first read of the homework finds it"
+      "false": "the course team has not sent a review: the first read finds none (files may be attached already; the talebe sees none of them)"
+  content:
+    values: [both, noteOnly, filesOnly]
+    initial: any
+    say:
+      both: "the review has a note and at least one returned file"
+      noteOnly: "the review has a note and no file"
+      filesOnly: "the review has no note and at least one file (a review needs one of the two when it is sent)"
+  download:
+    values: [served, forbidden, notFound, unavailable, failed]
+    initial: any
+    say:
+      served: "the file is sent: the browser saves it and the page stays as it is"
+      forbidden: "tedrisat answers 403: the page loads again and says \"Bu dosyayı indirme iznin yok.\""
+      notFound: "tedrisat or the proxy answers 400, 404 or 410 (the file is gone, or the store no longer has it): \"Bu dosya artık yok.\""
+      unavailable: "502, 503 or 504 (the store is not configured, does not answer, or tedrisat is unreachable): \"Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene.\""
+      failed: "any other status: \"Bir sorun çıktı. Biraz sonra yeniden dene.\""
+  answer:
+    values: [saved, refused]
+    initial: any
+    say:
+      saved: "tedrisat saves the talebe's note"
+      refused: "tedrisat refuses the note (403, 400 or any other): the note form says why, and the review stays as it is"
+  sentSince:
+    values: ["no", "yes"]
+    initial: "no"
+    say:
+      "no": "the course team has not sent a review since the page was opened"
+      "yes": "the course team has sent the review while the page was open: the page does not know until it is read again"
+  homework:
+    values: [asReviewed, changed]
+    initial: asReviewed
+    say:
+      asReviewed: "the homework is as it was when the review was sent"
+      changed: "the talebe changed the homework after the review was sent (updatedAt is later than reviewedAt)"
+  said:
+    values: [none, saved]
+    initial: none
+    say:
+      none: "no line says that a note was saved"
+      saved: "\"Not kaydedildi.\" is under the note form"
+  toast:
+    values: [none, forbidden, notFound, unavailable, failed]
+    initial: none
+    say:
+      none: "no download toast is on the page"
+      forbidden: "the toast \"Dosya indirilemedi\" with \"Bu dosyayı indirme iznin yok.\""
+      notFound: "the toast with \"Bu dosya artık yok.\""
+      unavailable: "the toast with \"Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene.\""
+      failed: "the toast with \"Bir sorun çıktı. Biraz sonra yeniden dene.\""
+
+guards:
+  sent: "reviewed or sentSince == 'yes'"
+  hasNote: "content in ['both', 'noteOnly']"
+  hasFiles: "content in ['both', 'filesOnly']"
+  changed: "homework == 'changed'"
+  toasting: "toast != 'none'"
+
+effects:
+  sentNow: { set: { sentSince: "yes" } }
+  homeworkChanged: { set: { homework: changed, said: saved } }
+  readAgain: { set: { said: none } }
+  typedAgain: { set: { said: none } }
+  toastNone: { set: { toast: none } }
+  toastForbidden: { set: { toast: forbidden } }
+  toastNotFound: { set: { toast: notFound } }
+  toastUnavailable: { set: { toast: unavailable } }
+  toastFailed: { set: { toast: failed } }
+
+failures:
+  reading:
+    from: getMySubmission
+    signedOut: [HTTP_401]
+    failed: [SUBMISSION_FORBIDDEN, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  saving:
+    from: saveMySubmissionNote
+    signedOut: [HTTP_401]
+    refused: [SUBMISSION_FORBIDDEN, LESSON_NOT_FOUND, COURSE_NOT_FOUND, VALIDATION_ERROR]
+  downloading:
+    from: webDownloadMySubmissionReviewFile
+    signedOut: [unauthenticated]
+    forbidden: [SUBMISSION_FORBIDDEN]
+    notFound: [NOT_FOUND, SUBMISSION_FILE_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    unavailable: [TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    failed: []
+
+# The main story: the page is read and holds the review, the talebe changes their note, saves it, and the page says the review was
+# written for the earlier version. The download of a returned file is not on it, so `download` is only the value the scenarios hold
+# (`unavailable`, what the local stack, which has no file store, answers); scenario `refused` walks the press.
+main:
+  given: { reviewed: true, content: both, download: unavailable, answer: saved }
+  events: [DONE, TYPE_NOTE, SAVE, DONE]
+
+initial: reading
+states:
+  reading:
+    title: The panel reads the talebe's homework
+    source: apps/tedris/features/courses/components/session-homework.tsx:373
+    description: >-
+      The server action getMySubmission, GET /lessons/:id/submission, called when the panel mounts, and again after a reload, a
+      refused download (which loads the page anew) or "Yeniden dene". While it runs the panel draws its title, the hoca's assignment
+      and a hidden status "Ödevin getiriliyor…" where the form will be (session-homework.tsx:525). The answer carries the talebe's own
+      homework and, only once the review is sent, the review: its note, who sent it, when, and the files returned (tedrisat hides the
+      review from its talebe until reviewedAt is set, lesson-submission.service.ts:71-74, and a file of an unsent review is not found).
+      A page that was opened before the review was sent holds none of it. Not a stop of the walk: the replay passes it. A session that
+      is over sends the person to sign in and back to this address.
+    invoke: { action: getMySubmission }
+    on:
+      DONE:
+        - { guard: sent, target: reviewShown, effect: [readAgain], source: "apps/tedris/features/courses/components/session-homework.tsx:657" }
+        - { target: waiting, effect: [readAgain], source: "apps/tedris/features/courses/components/session-homework.tsx:657", say: "no review has been sent: the block is not drawn" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { target: readFailed, say: "any other answer (403 in a passive scope, 404), or a call that throws: the homework is not read", source: "apps/tedris/features/courses/components/session-homework.tsx:383" }
+
+  readFailed:
+    title: The homework could not be read
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:527
+    description: >-
+      A block with role alert, "Ödevin açılamadı.", and the outline button "Yeniden dene", where the form would be. No review is
+      drawn, and none could be: it comes with the homework. Nothing on the local stack makes the read fail, so no walk reaches this
+      state.
+    on:
+      RETRY: { target: reading, source: "apps/tedris/features/courses/components/session-homework.tsx:530" }
+      NAVIGATE: left
+
+  waiting:
+    title: The panel holds no review yet
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:657
+    description: >-
+      The homework is read and handed in ("Teslim edildi", the note form with its button off), and under it there is nothing: no
+      "Hocanın değerlendirmesi", no badge, no files, even when the course team has already attached files to the review, because the
+      talebe is told nothing until the review is sent. The page is not live (HWREVIEW-3): when the team sends the review the page
+      does not change, and the talebe finds it by loading the page again (from the notification, or by hand).
+    on:
+      REVIEW_SENT: { guard: "sentSince == 'no'", target: waiting, effect: [sentNow], source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:410", say: "the course team sends the review in nazar (nazar.homework.review): tedrisat notifies the talebe; this page does not know" }
+      RELOAD: reading
+      NAVIGATE: left
+
+  reviewShown:
+    title: The review is on the page
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/session-homework.tsx:658
+    description: >-
+      Under the panel's own form, after a rule: the h3 "Hocanın değerlendirmesi" with the success badge "Değerlendirildi", the
+      line "<hoca> · <day month hh:mm>" (the reviewer's name, "Hoca" when tedrisat has none; the time in the viewer's zone, with no
+      year, HWREVIEW-4), the note as written (line breaks kept, only when there is one), and under "Düzeltilmiş dosyalar" a list of
+      the files returned: a link with the file's name and a hidden " (indirilir)", its type chip and its size. A review with no note
+      and no file would show only the first two lines (HWREVIEW-1). When the homework changed after the review, an info alert
+      "Ödevin değerlendirmeden sonra değişti" / "Bu değerlendirme ödevinin önceki hâline yazıldı." stands between the by-line and the
+      note. A download toast, if one was raised, is on the page too. Nothing moves the focus here.
+    on:
+      OPEN_FILE: { guard: hasFiles, target: downloading, source: "apps/tedris/features/courses/components/session-homework.tsx:759", say: "they press a returned file's link: a plain request to this app's route, no script" }
+      TYPE_NOTE: { target: drafting, effect: [typedAgain], source: "apps/tedris/features/courses/components/session-homework.tsx:1058", say: "they change their own note in \"Notun\": \"Notu kaydet\" turns on" }
+      CLOSE_TOAST: { guard: toasting, target: reviewShown, effect: [toastNone], source: "libs/ui/src/components/sonner.tsx:75", say: "an error toast stays until it is closed; \"Kapat\" removes it" }
+      RELOAD: { target: reading, say: "the page is read again: what the talebe finds is what tedrisat holds now" }
+      NAVIGATE: left
+
+  drafting:
+    title: The talebe changes their note
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:1058
+    description: >-
+      "Notu kaydet" is on while the text differs from the saved note (a trimmed comparison). The review above is as it was. A
+      reload throws the typed text away (WRT-13). Pressing a returned file's link from here has the same outcome as from the review
+      shown, and a refusal also loads the page anew and throws the text away (WRT-10); that is not drawn twice.
+    on:
+      TYPE_NOTE: { target: drafting, effect: [typedAgain], say: "they go on typing" }
+      SAVE: { target: saving, source: "apps/tedris/features/courses/components/session-homework.tsx:1002" }
+      RELOAD: { target: reading, say: "what was typed is lost (WRT-13)" }
+      NAVIGATE: left
+
+  saving:
+    title: The note is sent
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:1010
+    description: >-
+      The server action saveMySubmissionNote, PUT /lessons/:id/submission with the note as typed (a blank one clears it). "Notu
+      kaydet" is busy (aria-disabled, aria-busy) and a hidden status says "Kaydediliyor". Success: the submission the API answers
+      replaces the page's, and its updatedAt is now later than the review's reviewedAt, so the notice appears at once; the field
+      holds the stored note and "Not kaydedildi." shows under it. A refusal (403, 400 or any other) leaves the review as it is and
+      the note form says why (tedris.learn.homeworkHandIn draws its three messages). A session that is over sends the person to sign
+      in.
+    invoke: { action: saveMySubmissionNote }
+    on:
+      DONE: { guard: "answer == 'saved'", target: reviewShown, effect: [homeworkChanged], source: "apps/tedris/features/courses/components/session-homework.tsx:1016" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: "answer == 'refused'", target: drafting, source: "apps/tedris/features/courses/components/session-homework.tsx:1020" }
+
+  downloading:
+    title: A returned file is asked for
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:759
+    description: >-
+      The link is a plain anchor to /api/files/lessons/<lessonId>/submission/review-files/<fileId>, followed as a page. The route
+      reads the session's token on the server and streams tedrisat's GET /lessons/:id/submission/review-files/:fileId, which serves
+      only the talebe the review answers, and only once the review is sent. Success: the file arrives as an attachment and the page
+      stays as it was. Any refusal is a 303 back to this page with ?fileError=<forbidden|notFound|unavailable|failed> (a 401 goes to
+      sign-in instead): the whole page is loaded again, so the panel is read again, the focus and scroll are reset and a typed note is
+      gone (WRT-10, WRT-13), and the page then says why in a toast (file-error-notice.tsx:26-37). The address loses the parameter at
+      once. Not a stop of the walk (a navigation, so no `call`): the replay passes it. On the local stack there is no file store, so
+      every file answers 503 STORAGE_NOT_CONFIGURED and the toast says "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene.".
+    invoke: { action: webDownloadMySubmissionReviewFile }
+    on:
+      DONE: { guard: "download == 'served'", target: reviewShown, source: "libs/services/src/file-proxy/file-proxy.ts:373", say: "the file is saved by the browser; the page does not change" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: "download == 'forbidden'", target: reading, effect: [toastForbidden], source: "libs/services/src/file-proxy/file-proxy.ts:351", say: "?fileError=forbidden" }
+      FAIL.notFound: { guard: "download == 'notFound'", target: reading, effect: [toastNotFound], source: "libs/services/src/file-proxy/file-proxy.ts:351", say: "?fileError=notFound" }
+      FAIL.unavailable: { guard: "download == 'unavailable'", target: reading, effect: [toastUnavailable], source: "libs/services/src/file-proxy/file-proxy.ts:351", say: "?fileError=unavailable" }
+      FAIL.failed: { guard: "download == 'failed'", target: reading, effect: [toastFailed], source: "libs/services/src/file-proxy/file-proxy.ts:351", say: "?fileError=failed" }
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated" (a server action: sendToSignIn, lib/send-to-sign-in.ts) or the file route answered 401 (a
+      303 to sign-in that comes back to this address): the person signs in again and returns to the celse. realm.auth.signIn takes
+      over.
+
+assertions:
+  - id: nothing-of-a-review-before-it-is-sent
+    never: "state in ['reviewShown', 'drafting', 'saving', 'downloading'] and not sent"
+    say: "The talebe's page draws the review, offers its files or sits over it only after the course team has sent it (and the page has read it again)"
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:71
+  - id: a-file-is-asked-for-only-where-one-is-listed
+    never: "state == 'downloading' and not hasFiles"
+    say: "A returned file is asked for only on a review that lists one"
+    source: apps/tedris/features/courses/components/session-homework.tsx:737

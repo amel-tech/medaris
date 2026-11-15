@@ -1,0 +1,182 @@
+# What must exist for a talebe who opens Programım: tedris.learning.schedule, written on 15 Nov 2026 in the format of LAYOUT.md
+# section 7. Each need is what the product must do, from the flow's story and planned.md; none is read off what the page does today.
+# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
+#
+# Missing (no code, or code that is wrong for its users; the Linear key is `none` where no issue was found):
+#   the-weeks-have-an-end (SCHED-1), times-in-the-viewers-zone (DSC-16, decision D1), an-empty-week-says-why-and-leads-on (SCHED-2),
+#   the-week-links-have-a-fitting-name (DSC-09), loading-is-announced (DSC-19), a-live-row-names-its-celse (SCHED-3),
+#   the-cancellation-note-can-be-read-in-full (DSC-17), an-in-person-celse-offers-a-seat (MDRS-284)
+# Unwalked (code, and no e2e and no replay that has passed):
+#   a-celse-on-air-is-marked-and-joinable, a-celse-over-says-so, an-exam-is-marked, an-in-person-celse-says-so,
+#   a-streamed-celse-says-so, a-failed-read-is-told-and-can-be-retried
+#   The first four are drawn and bound in binding.mixed.yaml (scenario `mixed`), which has not been replayed: walk phase. The
+#   stack cannot make the read fail, and holds no celse that is streamed.
+# Replays that passed on 15 Nov 2026 (one run each, before the owner moved the replays to the end): `talebe` (the main story, with
+# the nav entry) and `empty` (--to emptyWeek). `mixed` was never run.
+kind: needs
+flow: tedris.learning.schedule
+status: proposed
+
+needs:
+  - id: see-the-next-seven-days
+    need: >-
+      A talebe reads, in one place, the celses of every course they hold a seat in over the next seven days, soonest first and
+      grouped by day, each with its clock, its length, its course and week and a way into its page.
+    drawn: [week, dayGroup, rowItem, rowTitle, days-only-for-a-list]
+    built:
+      - action: medaris.api:listMySessions
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:260
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#1'
+      - replay: talebe
+
+  - id: only-seats-that-stand-are-listed
+    need: >-
+      A course whose seat is only asked for, or completed, or taken away, or which the person never joined, adds nothing to the
+      person's week.
+    drawn: [week]
+    built:
+      - action: medaris.api:listMySessions
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#2 (the pending and the foreign course are absent; an absence, which a replay checks only with --absent)'
+
+  - id: move-through-the-weeks
+    need: >-
+      A talebe moves on to the next seven days, and back to today, and a row opens its celse.
+    drawn: [week, rowTitle, nextWeek, backToToday]
+    built:
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:292
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#3'
+      - replay: talebe
+
+  - id: a-bad-day-in-the-address-shows-today
+    need: An address whose day is no date, or is already past, shows today's week and does not fail.
+    drawn: [week, backToToday]
+    built:
+      - route: apps/tedris/features/schedule/schedule-model.ts:93
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#4'
+      - replay: talebe
+
+  - id: the-weeks-have-an-end
+    need: >-
+      The link to the next seven days stops where the calendar does, and an address past that limit says so instead of failing
+      the page.
+    drawn: [nextWeek, week]
+    missing: none # SCHED-1: /schedule?from=9999-12-31 is the error page; no Linear issue
+
+  - id: a-celse-says-where-it-meets
+    need: >-
+      Under each celse a talebe reads where it meets: the platform, or that no link has been added yet, in words that say so.
+    drawn: [rowLine, week]
+    built:
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:121
+      - route: apps/tedris/features/courses/attendance.ts:28
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#1 (the no-link sentence, the Zoom chip)'
+      - replay: talebe # the platform chip of the first Nahiv celse and the no-link sentence of the others
+
+  - id: an-in-person-celse-says-so
+    need: A celse that is held in person says so in its row, and that its recording is published on the celse page if one is added.
+    drawn: [rowLine]
+    built:
+      - route: apps/tedris/features/courses/attendance.ts:28
+
+  - id: a-streamed-celse-says-so
+    need: A celse that is streamed says so in its row, in the words for before the start and for while it is on air.
+    drawn: [rowLine]
+    built:
+      - route: apps/tedris/features/courses/attendance.ts:28
+
+  - id: an-in-person-celse-offers-a-seat
+    need: >-
+      A row of an in-person celse says whether the talebe has a seat for it, and offers to register for one; seats are counted
+      separately for women and men, and given in the order of the applications.
+    drawn: [rowLine]
+    missing: MDRS-284 # planned.md P-08; no quota code exists today
+
+  - id: a-cancelled-celse-is-kept-and-marked
+    need: >-
+      A cancelled celse stays in the week, marked, with the müderris's note when one was written, and offers no calendar entry.
+    drawn: [badgeCancelled, cancelNoteWhole, cancelNoteNone]
+    built:
+      - action: medaris.api:listMySessions
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:107
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#2 (the badge and the no-note sentence)'
+
+  - id: the-cancellation-note-can-be-read-in-full
+    need: The whole of a müderris's note on a cancelled celse can be read by someone who uses a keyboard or a touch screen.
+    drawn: [cancelNoteWhole]
+    missing: none # DSC-17: one truncated line, the whole text only in `title`
+
+  - id: a-celse-on-air-is-marked-and-joinable
+    need: A celse that is on air now is marked so, and a row with a meeting link offers to join it in a new tab.
+    drawn: [badgeLive, joinLink]
+    built:
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:145
+
+  - id: a-live-row-names-its-celse
+    need: The way to join a celse names the celse it joins, so that two celses on air at once are told apart.
+    drawn: [joinLink]
+    missing: none # SCHED-3
+
+  - id: a-celse-over-says-so
+    need: A celse that is over today stays in today's list, marked as over, with no calendar entry.
+    drawn: [badgeEnded]
+    built:
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:167
+
+  - id: an-exam-is-marked
+    need: An exam is marked in the week, with the days left, so that it is not read as a plain celse.
+    drawn: [examBadge]
+    built:
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:96
+
+  - id: add-a-celse-to-a-calendar-from-its-row
+    need: A celse that is still to come offers a way to add it to a calendar from its row.
+    drawn: [calendarButton, calendar_menu_opened]
+    built:
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:175
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#5 (the button is found and opened; the menu is tedris.learning.addToCalendar)'
+      - replay: talebe # the button is found on every row of the main story, not pressed
+
+  - id: times-in-the-viewers-zone
+    need: >-
+      The window, the days and the clocks are those of the viewer's own time zone, and the link that says where to change it
+      changes this page.
+    drawn: [zoneNote, changeZone, week]
+    missing: none # DSC-16, decision D1: Istanbul, whatever the setting says
+
+  - id: an-empty-week-says-why-and-leads-on
+    need: >-
+      A week with no celse says whether the person has no course at all or only a quiet week, and a person with no course is
+      offered Keşfet.
+    drawn: [emptyWeek, emptyText]
+    missing: none # SCHED-2 (the replay `empty` shows the sentence as the page says it today)
+
+  - id: a-failed-read-is-told-and-can-be-retried
+    need: >-
+      When the week cannot be read, a talebe is told so, and not shown an empty week, and can try again.
+    drawn: [loadFailed, loadFailedBox, retry, box-only-after-a-failed-read]
+    built:
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:248
+
+  - id: the-week-links-have-a-fitting-name
+    need: The navigation that holds the week links is named for what it does, and the day lists are named.
+    drawn: [weekNav]
+    missing: none # DSC-09 (b)
+
+  - id: loading-is-announced
+    need: While the week is being read, a screen reader is told that it is loading.
+    drawn: [week]
+    missing: none # DSC-19

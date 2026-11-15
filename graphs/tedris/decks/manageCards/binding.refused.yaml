@@ -1,0 +1,48 @@
+# tedris.decks.manageCards when the API refuses every write, on the local stack, as the spare talebe `applicantF`:
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/manageCards --bind graphs/tedris/decks/manageCards/binding.refused.yaml --cover transitions --absent --out <dir>
+# The main story of the flow starts from an empty deck and is not this scenario's, so a walk of this file needs --cover transitions: it takes the three
+# FAIL.failed transitions (adding, updating, deleting) and the others a deck of one card can reach with the answer failed.
+#
+# A file of its own for two reasons. Its `before` actions drop the deck, which would break every other scenario of binding.yaml. And it has no `call` on the
+# three busy states: a server action answers 200 on the page's own address whatever the API said, so a walk through FAIL.failed would end with a mismatch
+# there (the 404 of the refusal against the 200 it sees), an engine limit, as on tedris.decks.create.
+#
+# How the API is made to refuse. The deck is taken away under the open page: the `before` of each of the three dialogs runs `cards-deck.mjs drop`, which
+# deletes the deck (and its cards and progress rows) as its author and leaves the file the binding reads. The page does not know, still shows the card, and
+# the next write answers 404 (DECK_NOT_FOUND for the add, CARD_NOT_FOUND for the edit and the delete). The page then draws the one error toast, "Kaydedilemedi" or
+# "Silinemedi". `drop` is safe to run again, so each arrival at a dialog may run it. `teardown` removes what is left and asks the database.
+schema: delurio-graph/0
+kind: binding
+extends: ./walk.common.binding.yaml
+flow: tedris.decks.manageCards
+
+scenarios:
+  refused:
+    given: { deck: one, fields: valid, answer: failed }
+    as: applicantF
+    open: '{tedris}/decks/{mc.deck}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'deck->deckCards Decks.tabCards' }
+    samples: { front: فعل, back: fiil }
+    vars: { cardFront: كتاب, cardBack: kitap, revised: 'fiil, geçmiş zaman' }
+    setup:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, make, --cards, '1']
+        expect: 'manage-cards made'
+    teardown:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, remove]
+        expect: 'manage-cards removed'
+      - run: [node, helpers/sql.mjs, "select count(*) = 0 as gone from decks where author_id = '{secret.E2E_APPLICANT_F_SUB}' and title = 'Kart yönetimi denemesi'"]
+        expect: '"gone":true'
+
+states:
+  addForm:
+    before:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, drop]
+        expect: 'manage-cards dropped'
+  editForm:
+    before:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, drop]
+        expect: 'manage-cards dropped'
+  confirmDelete:
+    before:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, drop]
+        expect: 'manage-cards dropped'

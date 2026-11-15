@@ -1,0 +1,364 @@
+# A talebe opens a link, or downloads a file, from the page of a course or of a celse (tedris-web, /courses/<id> and
+# /courses/<id>/lessons/<id>), and what a refused download comes to. Read from the code of the branch (the tree of PR #394) on 15 Nov 2026. Nothing
+# here is approved.
+#   - What it draws: the three lists a file can be in (the course page's card "Bu dersin kaynakları", the celse page's "Kaynaklar" with "Bu celse"
+#     and "Ders geneli", and the celse page's "Ödev" with "Ödevin dosyaları"), the plain rows a person who may not read the content meets, the
+#     three links that call tedris-web's /api/files/* routes (webDownloadCourseResourceFile, webDownloadLessonResourceFile,
+#     webDownloadLessonAssignmentFile), and the answer of the route: a file the browser saves while the page stays, or a refusal that comes back
+#     as a 303 and one toast.
+#   - The file links are plain anchors with no `download` attribute, on purpose (course-resources.tsx:61): the browser asks the route itself, as a
+#     page (`Sec-Fetch-Dest: document`, the page as the `Referer`). Success is an attachment, so the browser saves it and the page stays; a refusal
+#     is a 303 (libs/services/src/file-proxy/file-proxy.ts:351): no session or a token tedrisat refused goes to sign-in and comes back to the
+#     page; every other refusal goes back to the page with ?fileError=forbidden|notFound|unavailable|failed (by the status: 403, 400/404/410,
+#     502/503/504, the rest). The whole page loads again, FileErrorNotice (course-page.tsx:230, session-page.tsx:338) reads the parameter once,
+#     takes it off the address with history.replaceState and raises one Sonner error toast "Dosya indirilemedi" with the reason under it, which
+#     stays until it is closed.
+#   - Where the page the 303 comes back to is NOT the page it left. A 403 means the caller may no longer read the course's content, so the course
+#     page comes back as the page of a person with no seat (names only, the toast is drawn) and the celse page comes back as the locked card
+#     (tedris.celse.locked), which mounts no FileErrorNotice: no toast and the parameter stays in the address (FILES-1). A 404 for the course or
+#     the celse comes back as the not-found page. Only "the file is gone", 502/503/504 and the rest come back to the same page.
+#   - What the local stack can walk (STACK.md): there is no file storage (the BUNNY_STORAGE_* keys are not set), so a file cannot be uploaded and
+#     nothing is ever saved. The walk makes the file rows with SQL (no API can, without storage) and follows the real links in a browser: the
+#     route answers 503 STORAGE_NOT_CONFIGURED, the 303 comes back with ?fileError=unavailable and the toast is on the page. A 403 is made by
+#     taking the walk's talebe off the course just before the link is followed. What is NOT walked: the success (the attachment: only a unit
+#     spec and tedrisat's e2e read it), "the file is gone" (the service asks for the storage first, so locally 503 always comes before 404),
+#     COURSE_NOT_FOUND and LESSON_NOT_FOUND, a session that ends, and a failure that is none of the four. The routes' own behaviour (the
+#     303s, the JSON a fetch() gets, the plain text with no page behind it, the sign-in redirect of a visitor) is read with curl as `effects`.
+#   - The same routes are served to nazar and nizam (nazar.files.download is the staff's half); tedris's own route for the talebe's own homework
+#     files and for the files the müderris returned with a review belong to tedris.learn.homeworkHandIn and tedris.learn.homeworkReview.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   WRT-10   a refused download is a full page load: focus to the top, what was typed in the notes or the homework note is lost
+#   DSC-20   Sonner's region keeps its English default name ("Notifications alt+T") and is polite although an error stays until closed
+#   CRS-13   the same toast region, on the course page
+#   FILES-1  (new, provisional id) a 403 on a celse's file comes back to the locked card: no toast, and ?fileError=forbidden stays in the address
+#   FILES-2  (new, provisional id) a download that works says nothing on the page: no toast, no status, only the browser's own saving
+#   FILES-3  (new, provisional id) on the course page the chosen tab is not in the address, so a refused download reloads the page on Müfredat and
+#            the text typed in "Sorularım" is lost
+# E2E carried: none. The web e2e has no check of a file (apps/tedris/e2e has no `fileError`, no /api/files); the unit specs file-routes.spec.ts,
+# file-error-notice.spec.ts, course-resources.spec.ts and libs/services/test/file-proxy.spec.ts, and tedrisat's e2e (resource-files.e2e.spec.ts,
+# lesson-assignments.e2e.spec.ts), pin the pieces. needs.yaml names them.
+schema: delurio-graph/0
+kind: flow
+id: tedris.files.download
+status: captured
+domain: medaris.api
+ui: tedris.files.download
+title: Open a link or download a file from a course or a celse
+summary: >-
+  A talebe who holds a seat reads a list of resources on the course page ("Bu dersin kaynakları", beside the card on the right), or on a celse's
+  page ("Kaynaklar", with the celse's own resources under "Bu celse" and the course's under "Ders geneli", and "Ödev", where the müderris's
+  homework lists its files under "Ödevin dosyaları"). A row that is a link opens its address in a new tab and the page stays. A row that is a
+  file is a link to tedris-web's own route, which adds the token on the server and hands the file back as an attachment: the browser saves it, the
+  page stays and says nothing. When the route refuses, the browser comes back to the page with the reason in the address; the page loads again
+  and one toast, "Dosya indirilemedi", tells why: "Bu dosyayı indirme iznin yok." (403), "Bu dosya artık yok." (the file is gone),
+  "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene." (storage does not answer; always, on a stack with no storage) or "Bir sorun çıktı.
+  Biraz sonra yeniden dene." (anything else); the address is cleaned and the toast stays until it is closed. A session that has ended goes to
+  sign-in and back to the page. A person who may not read the course's content (a visitor, a signed-in person with no seat, a waiting or removed
+  talebe, the enrolled talebe of a passive course) sees only the names, in plain rows, and the line "Kaynakları derse kayıtlı talebeler açar."
+
+scope:
+  shows: the three lists, the plain rows of a person who may not read the content, a link opening in a new tab, the three file links with the route's answer (saved, to sign-in, back to the page with a toast, to another page), and the toast
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the course page (the header, the card on the right, the programme and the other tabs): tedris.course.readProgramme, tedris.course.apply, tedris.course.recordings and the others of the course"
+    - "the rest of the celse page (the header, the action card, the exam, the notes, the agenda, the pager and the Müfredat popup): tedris.celse.attend and the learn flows"
+    - "the talebe's own homework: handing a file in, removing it, its note, the files of the review the course team returned, and the recited homework's mark: tedris.learn.homeworkHandIn, tedris.learn.homeworkReview, tedris.learn.homeworkMemorize. Their file links are served by the same /api/files routes (webDownloadMySubmissionFile, webDownloadMySubmissionReviewFile) with the same 303"
+    - "the locked card a person with no seat meets on a celse's address, and the not-found page: tedris.celse.locked, tedris.shell.systemPages. This flow only says that a refusal can end there"
+    - "the sign-in a refused session goes to: realm.auth.signIn"
+    - "the staff's side: adding, renaming and removing a file or a link (nazar and nizam, nazar.curriculum.resources) and nazar's own downloads (nazar.files.download)"
+    - "an address opened with no page of this app behind it (pasted into a tab, sent by mail): the route cannot go back anywhere, so a refusal is plain text in Turkish, English and Arabic with the refusal's status, and a visitor is sent to sign-in with the app's root as the way back. Read with curl as `effects`, not a screen of this flow"
+    - "an address whose ids are not UUIDs: the route answers 404 {\"code\":\"NOT_FOUND\"} before it asks for a token and never redirects. No link of the app carries one; read with curl as an `effect`"
+    - "a link's own page (the host the address opens in the new tab), and the provider chip a Google Drive link carries (resource-provider.ts)"
+    - "what is saved: a file's bytes, its name and its type (tedrisat sets them), and the audit row a content read leaves for a person who is neither enrolled nor a müderris"
+
+decisions:
+  D1:
+    question: >-
+      Should a refused download keep the page as it is (fetch the file and say the reason in the page, as the calendar menu does) instead of
+      loading the page again?
+    recommend: >-
+      Yes. A 303 reloads the whole page: the focus goes to the top and what was typed in the notes, the homework note or "Sorularım" is lost
+      (WRT-10, FILES-3), and the course page comes back on Müfredat. A link is the right element for a file that works, and fetch() would give the
+      proxy's JSON refusal that it already keeps for such callers; the page could then raise the same toast without leaving.
+    affects: [onThePage, namesOnly, celse_locked]
+  D2:
+    question: >-
+      Should the page that a 303 for a 403 comes back to say why the person came back to it?
+    recommend: >-
+      Yes. The locked card of a celse mounts no FileErrorNotice, so the person who lost their seat while the page was open is told nothing and the
+      address keeps ?fileError=forbidden (FILES-1). Mount FileErrorNotice in the celse layout, where the Sonner toasts of both pages already live,
+      or let the card read the parameter.
+    affects: [celse_locked]
+
+context:
+  view:
+    values: [courseSeat, celseSeat, courseNames]
+    initial: any
+    say:
+      courseSeat: "the talebe holds a seat (enrolled or completed) and reads the course page, /courses/<id>: the card \"Bu dersin kaynakları\" lists links and files"
+      celseSeat: "the talebe holds a seat and reads a celse's page, /courses/<id>/lessons/<id>: \"Kaynaklar\" (the celse's own resources under \"Bu celse\", the course's under \"Ders geneli\") and \"Ödev\" with the homework's files"
+      courseNames: "a person who may not read the course's content reads the course page: a visitor, a signed-in person with no seat, a waiting or removed talebe, the enrolled talebe of a passive course. Only the course page lists resources to them: a celse's address is the locked card for them (tedris.celse.locked)"
+  answer:
+    values: [saved, signedOut, forbidden, fileGone, pageGone, unavailable, failed]
+    initial: any
+    say:
+      saved: "the route hands the file back as an attachment (tedrisat answered 200): the browser saves it"
+      signedOut: "the session has no usable token (none, or tedrisat refused the one it was sent: 401): the route redirects to sign-in"
+      forbidden: "the caller may not read the course's content (403 AUTHZ_FORBIDDEN): a seat that was taken away or given up since the page was drawn, which is the only way a seat holder's page has a link they may not follow"
+      fileGone: "the file is no longer there (404 RESOURCE_FILE_NOT_FOUND, LESSON_ASSIGNMENT_FILE_NOT_FOUND): taken off the list since the page was drawn, or its object lost from the store"
+      pageGone: "the course or the celse is no longer there for this caller (404 COURSE_NOT_FOUND, LESSON_NOT_FOUND): hidden since the page was drawn"
+      unavailable: "storage or tedrisat does not answer (502, 503, 504: TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE). On the local stack, always"
+      failed: "any other refusal (a status that is none of the above, 500 for one)"
+  notice:
+    values: [none, forbidden, notFound, unavailable, failed]
+    initial: none
+    say:
+      none: "no toast about a file is on the page"
+      forbidden: "the toast says \"Bu dosyayı indirme iznin yok.\""
+      notFound: "the toast says \"Bu dosya artık yok.\""
+      unavailable: "the toast says \"Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene.\""
+      failed: "the toast says \"Bir sorun çıktı. Biraz sonra yeniden dene.\""
+
+guards:
+  onCourse: "view == 'courseSeat'"
+  noticed: "notice != 'none'"
+
+effects:
+  noticeForbidden: { set: { notice: forbidden } }
+  noticeNotFound: { set: { notice: notFound } }
+  noticeUnavailable: { set: { notice: unavailable } }
+  noticeFailed: { set: { notice: failed } }
+  clearNotice: { set: { notice: none } }
+  readsNamesOnly: { set: { notice: none } } # nothing changes: it marks the arrival of a person who may not read the content, where the binding reads the routes as a visitor
+  lostTheSeat: { set: { notice: none } } # nothing changes: it marks the 303 that comes back to the locked card, where the binding reads the routes as the person who lost the seat
+
+# Each following state is one of the three file routes. `unauthenticated` is the route's own 401 (no token, or the token tedrisat refused, which
+# adds reauth); the other classes group tedrisat's refusals by the reason the route words them with (file-rules.ts:155).
+failures:
+  followingCourseFile:
+    from: webDownloadCourseResourceFile
+    signedOut: [unauthenticated]
+    forbidden: [AUTHZ_FORBIDDEN]
+    fileGone: [RESOURCE_FILE_NOT_FOUND]
+    pageGone: [COURSE_NOT_FOUND]
+    unavailable: [TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    failed: []
+  followingLessonFile:
+    from: webDownloadLessonResourceFile
+    signedOut: [unauthenticated]
+    forbidden: [AUTHZ_FORBIDDEN]
+    fileGone: [RESOURCE_FILE_NOT_FOUND]
+    pageGone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    unavailable: [TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    failed: []
+  followingAssignmentFile:
+    from: webDownloadLessonAssignmentFile
+    signedOut: [unauthenticated]
+    forbidden: [AUTHZ_FORBIDDEN]
+    fileGone: [LESSON_ASSIGNMENT_FILE_NOT_FOUND]
+    pageGone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    unavailable: [TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    failed: []
+
+# The main story, on a celse's page: open the celse's own link, download its own file and the homework's file; each is saved and the page stays.
+# The local stack has no storage, so this story is not walked as it stands (binding.yaml); its refusal is.
+main:
+  given: { view: celseSeat, answer: saved }
+  events: [OPEN_OWN_LINK, DOWNLOAD_LESSON_FILE, DONE, DOWNLOAD_ASSIGNMENT_FILE, DONE]
+
+initial: arriving
+states:
+  arriving:
+    title: The page opens
+    source: apps/tedris/app/courses/[courseId]/page.tsx:47
+    description: >-
+      A step with no screen: the talebe is on the course page with a seat (courseSeat), on a celse's page with a seat (celseSeat), or a person who
+      may not read the content is on the course page (courseNames). Nothing is drawn here; the pages are.
+    always:
+      - { guard: "view == 'courseSeat'", target: courseListed, source: "apps/tedris/app/courses/[courseId]/page.tsx:86" }
+      - { guard: "view == 'celseSeat'", target: celseListed, source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:46" }
+      - { target: namesOnly, effect: [readsNamesOnly], source: "apps/tedris/app/courses/[courseId]/page.tsx:86" }
+
+  courseListed:
+    title: The course page, with the card of its resources
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/course-resources.tsx:201
+    description: >-
+      The card "Bu dersin kaynakları" (an h2 in a card, under the card on the right; one `<ul>`), drawn only when the course lists a resource. Each
+      row is one block: the icon, the name, and on a linked row a frame and an icon at the end. A link resource is one anchor to its address,
+      target _blank, rel noopener noreferrer, the new tab said in a hidden " (yeni sekmede açılır)" and, for a Google Drive address, a chip with the
+      host's name; only an http or https address is linked. A file resource is one anchor to /api/files/courses/<course>/resources/<resource>
+      (no `download` attribute), the hidden " (indirilir)" after its name, a chip with its type ("PDF", "DOCX"...) and its size ("12 kB"). The
+      page sets no focus of its own when it opens (focus-not-set). It is also where the page is after a refused download, read again: the toast
+      "Dosya indirilemedi" is on it and the address no longer has ?fileError= (the course page is a client component: FileErrorNotice runs when
+      it mounts). The tab the person had chosen is not in the address, so the page opens on Müfredat again (FILES-3).
+    on:
+      OPEN_COURSE_LINK: { target: courseListed, say: "a link resource opens its address in a new tab; no API is called and this page stays where it is", source: apps/tedris/features/courses/components/course-resources.tsx:159 }
+      DOWNLOAD_COURSE_FILE: { target: followingCourseFile, source: apps/tedris/features/courses/components/course-resources.tsx:124 }
+      CLOSE_TOAST: { guard: noticed, target: courseListed, effect: [clearNotice], source: libs/ui/src/components/sonner.tsx:62 }
+      NAVIGATE: left
+
+  celseListed:
+    title: The celse page, with its resources and its homework's files
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/session-resources.tsx:74
+    description: >-
+      Two cards of the celse page (the other cards and the header are other flows'). "Ödev" comes first, a section named by its h2 and drawn when
+      the celse stands, the content is open and the talebe holds a seat: the homework the müderris set, and under "Ödevin dosyaları" one row for
+      each file it has, a link to /api/files/lessons/<celse>/assignment/<file> with its type and size, named by the file and the hidden
+      " (indirilir)". "Kaynaklar" follows (a section named by its h2, drawn when the celse has a kaynak or a resource of its own or the course
+      has one): under "Bu celse" the celse's own resources and under "Ders geneli" the course's, each list with the same rows as the course
+      page's: a link opens in a new tab, a file is a link to /api/files/lessons/<celse>/resources/<resource> or, for the course's, to
+      /api/files/courses/<course>/resources/<resource>. A refused download comes back here when the file is gone, storage does not answer or
+      the refusal is any other (a 403 does not, FILES-1), and the toast is on the page; this page reads the answer on the server and the toast
+      is raised by FileErrorNotice once the page is hydrated. The page sets no focus of its own.
+    on:
+      OPEN_OWN_LINK: { target: celseListed, say: "a link of the celse's own resources opens its address in a new tab; this page stays", source: apps/tedris/features/courses/components/course-resources.tsx:159 }
+      OPEN_COURSE_LINK: { target: celseListed, say: "a link of the course's resources, under \"Ders geneli\", does the same", source: apps/tedris/features/courses/components/course-resources.tsx:159 }
+      DOWNLOAD_LESSON_FILE: { target: followingLessonFile, source: apps/tedris/features/courses/components/course-resources.tsx:124 }
+      DOWNLOAD_COURSE_FILE: { target: followingCourseFile, say: "a file of the course's, under \"Ders geneli\": the same route as the course page's", source: apps/tedris/features/courses/components/course-resources.tsx:124 }
+      DOWNLOAD_ASSIGNMENT_FILE: { target: followingAssignmentFile, source: apps/tedris/features/courses/components/session-homework.tsx:848 }
+      CLOSE_TOAST: { guard: noticed, target: celseListed, effect: [clearNotice], source: libs/ui/src/components/sonner.tsx:62 }
+      NAVIGATE: left
+
+  namesOnly:
+    title: The course page of a person who may not read the content
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/course-resources.tsx:201
+    description: >-
+      The same card "Bu dersin kaynakları", where every row is only its name: the API leaves out `url` and `file` for a caller who may not read
+      the content (MDRS-103), so no row is a link and a row that is a file is told from one that is a link by nothing. The line "Kaynakları derse
+      kayıtlı talebeler açar." is under the list. The rows have the same layout without the frame, so they do not look pressable. A visitor reads
+      it as a public page; the page a person comes back to after a 403 is this one, with the toast "Bu dosyayı indirme iznin yok." on it. A link
+      or a file a visitor was given the address of is not followed from here: the route sends them to sign-in (read with curl, `effects`).
+    on:
+      CLOSE_TOAST: { guard: noticed, target: namesOnly, effect: [clearNotice], source: libs/ui/src/components/sonner.tsx:62 }
+      NAVIGATE: left
+
+  followingCourseFile:
+    title: Follow the link of a course resource's file
+    source: apps/tedris/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:19
+    description: >-
+      The browser follows /api/files/courses/<course>/resources/<resource> as a page (Sec-Fetch-Dest document, the page as the Referer). The route
+      checks that both ids are UUIDs, reads the session's token and calls tedrisat's GET /courses/<course>/resources/<resource>/file with it
+      (downloadCourseResourceFile: only a caller who may read the content, the storage asked for first). Saved: the file is streamed back with
+      tedrisat's content-type, content-length, content-disposition (attachment), x-content-type-options, cache-control and
+      content-security-policy; the browser saves it and stays where it is. A refusal is turned into a 303 (file-proxy.ts:351): 401 to sign-in with
+      the referring page as the way back (reauth=1 when tedrisat refused the token), any other back to the referring page with ?fileError=,
+      where 403 is forbidden, 400/404/410 notFound, 502/503/504 unavailable and the rest failed. A person who followed the link from the
+      course page of a course that went away meets the not-found page; one who lost the seat meets a page for a person with no seat. This is
+      also where the celse page's "Ders geneli" files lead.
+    invoke: { action: webDownloadCourseResourceFile }
+    on:
+      DONE: { guard: "answer == 'saved'", target: onThePage, say: "the browser saves the file; the page shows nothing new (FILES-2)", source: libs/services/src/file-proxy/file-proxy.ts:419 }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: libs/services/src/file-proxy/file-proxy.ts:360 }
+      FAIL.forbidden:
+        - { guard: "answer == 'forbidden' and onCourse", target: namesOnly, effect: [noticeForbidden], say: "the course page is read again by a person who may not read the content, and says why", source: libs/services/src/file-proxy/file-proxy.ts:367 }
+        - { guard: "answer == 'forbidden'", target: celse_locked, effect: [lostTheSeat], say: "the celse page is the locked card now, which says nothing (FILES-1)", source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.fileGone: { guard: "answer == 'fileGone'", target: onThePage, effect: [noticeNotFound], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.pageGone: { guard: "answer == 'pageGone'", target: page_not_found, source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.unavailable: { guard: "answer == 'unavailable'", target: onThePage, effect: [noticeUnavailable], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.failed: { guard: "answer == 'failed'", target: onThePage, effect: [noticeFailed], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+
+  followingLessonFile:
+    title: Follow the link of a celse resource's file
+    source: apps/tedris/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:18
+    description: >-
+      The same, for /api/files/lessons/<celse>/resources/<resource>, which calls tedrisat's GET /lessons/<celse>/resources/<resource>/file
+      (downloadLessonResourceFile: a celse that is hidden keeps its resources and serves none, LESSON_NOT_FOUND). Only the celse page has such
+      a link, so a 403 comes back to the locked card.
+    invoke: { action: webDownloadLessonResourceFile }
+    on:
+      DONE: { guard: "answer == 'saved'", target: onThePage, say: "the browser saves the file; the page shows nothing new (FILES-2)", source: libs/services/src/file-proxy/file-proxy.ts:419 }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: libs/services/src/file-proxy/file-proxy.ts:360 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: celse_locked, effect: [lostTheSeat], say: "the celse page is the locked card now, which says nothing (FILES-1)", source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.fileGone: { guard: "answer == 'fileGone'", target: onThePage, effect: [noticeNotFound], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.pageGone: { guard: "answer == 'pageGone'", target: page_not_found, source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.unavailable: { guard: "answer == 'unavailable'", target: onThePage, effect: [noticeUnavailable], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.failed: { guard: "answer == 'failed'", target: onThePage, effect: [noticeFailed], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+
+  followingAssignmentFile:
+    title: Follow the link of a homework file
+    source: apps/tedris/app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts:19
+    description: >-
+      The same, for /api/files/lessons/<celse>/assignment/<file>, which calls tedrisat's GET /lessons/<celse>/assignment/files/<file>
+      (downloadLessonAssignmentFile, on the terms of a celse resource's file: only a reader of the content, only while the celse is live). The
+      anchor is the file's name alone (a link of the kit, no frame), so the row's own type and size are beside it, not in it.
+    invoke: { action: webDownloadLessonAssignmentFile }
+    on:
+      DONE: { guard: "answer == 'saved'", target: onThePage, say: "the browser saves the file; the page shows nothing new (FILES-2)", source: libs/services/src/file-proxy/file-proxy.ts:419 }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: libs/services/src/file-proxy/file-proxy.ts:360 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: celse_locked, effect: [lostTheSeat], say: "the celse page is the locked card now, which says nothing (FILES-1)", source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.fileGone: { guard: "answer == 'fileGone'", target: onThePage, effect: [noticeNotFound], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.pageGone: { guard: "answer == 'pageGone'", target: page_not_found, source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.unavailable: { guard: "answer == 'unavailable'", target: onThePage, effect: [noticeUnavailable], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.failed: { guard: "answer == 'failed'", target: onThePage, effect: [noticeFailed], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+
+  onThePage:
+    title: Back on the page
+    source: libs/services/src/file-proxy/file-proxy.ts:367
+    description: >-
+      A step with no screen: the person is on the page they followed the link from. After a saved file it is the page that never left; after a
+      303 it is that page loaded again, with the toast of the reason.
+    always:
+      - { guard: onCourse, target: courseListed, source: apps/tedris/features/courses/components/course-page.tsx:230 }
+      - { target: celseListed, source: apps/tedris/features/courses/components/session-page.tsx:338 }
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    source: libs/services/src/file-proxy/file-proxy.ts:360
+    description: >-
+      303 to /auth/signin?callbackUrl=<the page the link was on>, with reauth=1 when tedrisat refused the token the session held. After signing
+      in the browser comes back to the page, not to the file: the person presses the link again. realm.auth.signIn takes over.
+
+  celse_locked:
+    title: The celse page comes back as the locked card
+    type: final
+    leavesPage: true
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:29
+    description: >-
+      The 303 came back to /courses/<id>/lessons/<id>?fileError=forbidden, and the person no longer reads the course's content, so the page is the
+      locked card of tedris.celse.locked ("Kayıt başvurusu yap"). The card mounts no FileErrorNotice, so no toast says why the link they pressed
+      did nothing, and ?fileError=forbidden stays in the address, for a reload or a copied link to carry (FILES-1).
+
+  page_not_found:
+    title: The page the link was on is gone
+    type: final
+    leavesPage: true
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/page.tsx:21
+    description: >-
+      The refusal said the course or the celse is not there for this caller (a course hidden since the page was drawn), so the 303 comes back to the
+      not-found page ("Sayfa bulunamadı", tedris.shell.systemPages), and the toast is never drawn.
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: names-only-follows-no-file
+    never: "view == 'courseNames' and (state == 'followingCourseFile' or state == 'followingLessonFile' or state == 'followingAssignmentFile')"
+    say: "A person who may not read the content has no link to follow: the API leaves the file and the address out of their rows"
+    source: apps/tedris/features/courses/components/course-resources.tsx:134
+  - id: a-toast-follows-only-a-refusal
+    never: "notice != 'none' and answer == 'saved'"
+    say: "The toast of a refused download is drawn only after a refusal: a saved file leaves the page as it was"
+    source: apps/tedris/features/courses/components/file-error-notice.tsx:33
+  - id: the-toast-says-the-reason-of-the-answer
+    never: "(notice == 'forbidden' and answer != 'forbidden') or (notice == 'notFound' and answer != 'fileGone') or (notice == 'unavailable' and answer != 'unavailable') or (notice == 'failed' and answer != 'failed')"
+    say: "The words of the toast are the reason the route gave: 403 forbidden, the file gone notFound, 502/503/504 unavailable, the rest failed"
+    source: libs/services/src/file-rules/file-rules.ts:155
+  - id: signed-out-never-toasts
+    never: "state == 'sent_to_sign_in' and notice != 'none'"
+    say: "A session that has ended goes to sign-in and shows no toast about a file"
+    source: libs/services/src/file-proxy/file-proxy.ts:360
+  - id: a-locked-celse-says-nothing
+    never: "state == 'celse_locked' and notice != 'none'"
+    say: "The locked card a 403 comes back to raises no toast (FILES-1: the finding is that it should)"
+    source: apps/tedris/features/courses/components/lesson-locked.tsx

@@ -1,0 +1,226 @@
+# What must exist for a talebe who reads a deck somebody else wrote, collects it and copies a card: the flow's product list, from its story and from the
+# decisions of the inventory, never from what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by the orchestrator).
+# planned.md plans nothing for these pages (its one mention is MDRS-224, the doubled "destesi" in copy: drawn as a rule, not as a need).
+# Gender separation is given and does not touch this flow: a deck has no seats, so no kontenjan and no per-gender count is asked here.
+#
+# Written in the owner's no-replay phase, so no scenario of binding*.yaml has been walked: `walked` names e2e checks only, and a need that no e2e check
+# carries is `unwalked` even where a scenario is bound for it (the walk phase will name the scenarios that pass).
+# Missing or unwalked, for the gaps merge:
+#   missing   staff-and-the-bashnazim-are-not-offered-the-collection (READCOPY-2, a defect, no Linear key), a-refusal-tells-its-cause (refusals-say-try-again),
+#             closing-the-dialog-stops-the-copy (READCOPY-1), changes-are-announced (DCK-09, DCK-10), the-copy-dialog-starts-in-its-form (DCK-19, DCK-06, DCK-24, DCK-23)
+#   unwalked  no-deck-to-copy-into-sends-to-create (a unit spec only; binding.yaml's noTarget is bound), a-refused-write-puts-the-page-back (no e2e;
+#             binding.refused.yaml is bound)
+kind: needs
+flow: tedris.decks.readAndCopy
+status: proposed
+
+needs:
+  - id: read-a-deck-and-not-change-it
+    need: >-
+      A signed-in person who did not write a deck and may read it (it is public, or it belongs to a course, a köşk or a medrese they are enrolled in) sees
+      its name, kind and size, its cards six at a time with their sources and their own progress, and can ask for six more. Nothing on the page changes the deck:
+      no edit, no delete, no new card, no import or export, no publication request. Which of the two kinds of access it is, public or shared, is said on the page.
+    drawn:
+      - reader
+      - readerMain
+      - deckTitle
+      - publicBadge
+      - metaLine
+      - cardsTable
+      - cardFrontFirst
+      - cardFrontAll
+      - cardSource
+      - showingPart
+      - showingAll
+      - loadMoreButton
+      - progressBar
+      - aboutPublicText
+      - aboutSharedText
+      - emptyCards
+    built:
+      - action: medaris.api:getDeck
+      - action: medaris.api:listDeckCards
+      - action: medaris.api:listDeckSummaries
+      - route: apps/tedris/features/flashcards/components/deck-reader-view.tsx:83
+      - route: apps/tedris/features/flashcards/deck-page-data.ts:30
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#22'
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#23'
+    note: >-
+      decks#22's "no button and no link named Düzenle, Desteyi sil, Kart ekle or İsteği geri çek" is carried by `--absent` only, in the sense that the graph draws no
+      such node; its fixed fixture (8 cards, 2 mastered, "2 yeni kart" in explore) is the walk's own data. The empty deck has no e2e check and no unit spec on
+      this page (binding.empty.yaml is bound).
+
+  - id: a-deck-of-an-enrolled-course-is-read-never-written
+    need: >-
+      A talebe enrolled in a course (ENROLLED or COMPLETED, the course published and not hidden) opens the course's, köşk's or medrese's deck, which is not
+      public, reads and collects it and copies its cards, and can write nothing in it; a talebe who is not enrolled, or whose seat is waiting or revoked, is told it
+      does not exist.
+    drawn:
+      - reader
+      - aboutSharedText
+      - collectButton
+      - copyButton
+    built:
+      - action: medaris.api:getDeck
+      - action: medaris.api:collectDeck
+      - route: apps/tedrisat/src/flashcard/deck-sharing.ts:35
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#26'
+    note: >-
+      decks#26's `response.status() == 200` is not carried (the engine does not compare the status of a page). The refusal for a person who is not enrolled is
+      tedris.decks.accessRefusals'. The domain invariant is `deck-shared-with-enrolled-read`.
+
+  - id: collect-a-deck-and-take-it-out
+    need: >-
+      A reader puts the deck in their collection and takes it out again from the deck's page; the page says at once which it is (the button and the badge), the
+      collection holds it after a reload and Desteler lists it under "Koleksiyonum", and a refused change puts the page back as it was.
+    drawn:
+      - reader
+      - collecting
+      - uncollecting
+      - collectButton
+      - uncollectButton
+      - collectedBadge
+      - collectBusy
+    built:
+      - action: medaris.api:collectDeck
+      - action: medaris.api:uncollectDeck
+      - action: medaris.api:listDeckSummaries
+      - route: apps/tedris/features/flashcards/components/deck-reader-view.tsx:61
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#25'
+    note: >-
+      decks#25 asserts the database through `expect.poll` on decks_users; this flow reads the row with SQL in `effects.collectDeck` and `effects.uncollectDeck`
+      instead. The same control on Keşfet's and Desteler's cards is tedris.decks.explore's.
+
+  - id: copy-a-card-into-my-own-deck
+    need: >-
+      A reader copies one card of the deck into one of their own decks of the same kind (Kelime or Hadis), chosen on purpose: with nothing chosen the dialog says
+      so and sends nothing; the card goes as it is, front, back, type and source; the deck being read is not changed; and the person is told the card was copied
+      and into which deck.
+    drawn:
+      - copyDialog
+      - copying
+      - copyButton
+      - copyDialogPage
+      - targetGroup
+      - targetOption
+      - targetMissing
+      - copySubmit
+      - copiedToast
+    built:
+      - action: medaris.api:createCards
+      - route: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:46
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#24'
+    note: >-
+      decks#24's database assertions (the copy keeps `content_front` and `content_meta.source`; the source deck still has its cards) are carried by
+      `effects.createCards` (two SQL checks); "only the own deck of the same kind is offered" is carried by `count: 1` on the radio node, the walk's reader
+      holding a Hadis and a Kelime deck.
+
+  - id: no-deck-to-copy-into-sends-to-create
+    need: >-
+      A reader with no own deck of the card's kind is told so in the dialog and is led to Deste oluştur; an own deck of the other kind is not an offer.
+    drawn:
+      - copyDialog
+      - noTargetsText
+      - createLink
+      - create_opened
+    built:
+      - route: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:93
+    walked: []
+    note: >-
+      Carried by a unit spec only (apps/tedris/test/deck-detail-page.spec.ts, "without an own deck of that kind it says to create one"), no e2e check. binding.yaml's
+      `noTarget` is bound for it and was not walked in this phase.
+
+  - id: a-refused-write-puts-the-page-back
+    need: >-
+      When tedrisat refuses the collection or the copy (the deck is no longer readable, the target deck is gone), the button and the badge go back to what is
+      held, the dialog stays open with what was chosen, and the person is told it did not work.
+    drawn:
+      - collecting
+      - copying
+      - addFailedToast
+      - copyFailedToast
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-reader-view.tsx:74
+      - route: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:62
+    walked: []
+    note: >-
+      No e2e check; a unit spec checks the two toasts (deck-detail-page.spec.ts "undoes the collection change when the API refuses", "a refused copy is a toast and
+      the dialog stays"). binding.refused.yaml makes both refusals on the stack by a change the page does not know of; not walked in this phase. The refusal of an
+      uncollect cannot be made on the stack (the route answers 200 whether or not there was a row).
+
+  - id: staff-and-the-bashnazim-are-not-offered-the-collection
+    need: >-
+      A person who may read the deck without being enrolled in it (the course's staff who did not write it, the Medaris başnazımı) is shown a page whose words and
+      buttons are true of them: no "Koleksiyona ekle", which the API refuses with 403, and no sentence that says they are enrolled.
+    drawn:
+      - reader
+      - collecting
+      - aboutSharedText
+      - collectButton
+      - addFailedToast
+    built:
+      - action: medaris.api:collectDeck
+      - route: apps/tedris/features/flashcards/deck-page-data.ts:38
+    missing: none
+    note: >-
+      A defect of a built page (READCOPY-2, decision D1), not planned work, so no Linear key. Read from the code and the domain's note on collectDeck; not run.
+
+  - id: a-refusal-tells-its-cause
+    need: >-
+      A refused collection or copy says what is wrong in words that name neither a status nor the server: the deck is no longer there, or the person may not collect
+      it, instead of "Bir sorun oluştu. Yeniden dene." for every answer.
+    drawn:
+      - addFailedToast
+      - removeFailedToast
+      - copyFailedToast
+      - addFailedHint
+    missing: none
+    note: >-
+      Finding `refusals-say-try-again` (no screen of the deck pages maps a refusal code, the inventory's shared mechanics); a defect of built screens, no Linear key.
+
+  - id: closing-the-dialog-stops-the-copy
+    need: >-
+      "Vazgeç", the close icon and Esc on the copy dialog do what they say: while the call is out they are ignored, or they stop it, so the card is never copied
+      after the person chose not to.
+    drawn:
+      - copying
+      - copyCancel
+      - copyClose
+    missing: none
+    note: READCOPY-1 (decision D2), the same shape as DCK-30 on the delete dialog; a defect, no Linear key. Read from the code, not seen.
+
+  - id: changes-are-announced
+    need: >-
+      The collection change, the six new rows and the new caption "n karttan m'si gösteriliyor" are announced where a screen-reader user can hear them, and the
+      focus survives "Daha fazla göster" when it leaves the page.
+    drawn:
+      - collectedBadge
+      - collectButton
+      - uncollectButton
+      - loadMoreButton
+      - showingPart
+      - showingAll
+    missing: none
+    note: DCK-09 and DCK-10, defects of a built page, no Linear key. Read from the code, not tried with a screen reader.
+
+  - id: the-copy-dialog-starts-in-its-form
+    need: >-
+      The copy dialog gives the focus to its first radio when it opens, marks the radios invalid and describes them by "Bir hedef deste seç." when nothing is
+      chosen, describes itself by a sentence and not by its whole body, and its words ("Kapat", "Yükleniyor") come from the catalog.
+    drawn:
+      - copyDialogPage
+      - copyClose
+      - targetGroup
+      - targetMissing
+      - collectBusy
+    missing: none
+    note: DCK-19, DCK-06 (the radios' half), DCK-24 and DCK-23, defects of a built dialog, no Linear key. Read from the code and the kit, not seen in a browser.

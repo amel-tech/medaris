@@ -1,0 +1,33 @@
+# tedris.learn.homeworkMemorize, the mark "Vermedi" with a note: the error badge and the note under the block (unit spec
+# apps/tedris/test/homework-card.spec.ts:891; no e2e).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkMemorize \
+#     --bind graphs/tedris/learn/homeworkMemorize/binding.absent.yaml --to marked --out <dir>
+# The same throwaway course as binding.yaml, opened by the celse's address; `setup` has the müderris save the mark before the page opens.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkMemorize
+
+scenarios:
+  absent:
+    given: { mark: given, verdict: absent, note: written, earlier: none }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+    samples:
+      description: İlk fasıl ezberden okunacak.
+      note: Gelecek derse hazırlıklı gel.
+    setup:
+      - run: [node, helpers/course.mjs, make, memorize, --weeks, '1', --lessons, '2', --talebe, applicantD]
+        expect: '"course"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.0}/assignment', '{"kind":"MEMORIZE","description":"İlk fasıl ezberden okunacak."}']
+        expect: '"kind":"MEMORIZE"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.0}/evaluations/{secret.E2E_APPLICANT_D_SUB}', '{"status":"ABSENT","note":"Gelecek derse hazırlıklı gel."}']
+        expect: '"status":"ABSENT"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, memorize]
+        expect: course remove memorize
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

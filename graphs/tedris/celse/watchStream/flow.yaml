@@ -1,0 +1,233 @@
+# The watch page of a celse that has a live stream (tedris-web /courses/<id>/lessons/<id>/izle, MDRS-285), read from the code of the branch
+# (the tree of PR #394) on 15 Nov 2026. Nothing here is approved.
+#   - What it draws: the two reads the page makes, then what the server finds to watch (the four answers: a stream, a recording, nothing,
+#     or a caller who may not read), the three looks of the stream page (live with the chat, ended by the player with "Soru sor", and the
+#     one a stream that cannot be framed has) and the ways out.
+#   - The stream itself is YouTube's: the page frames its player and its own chat. Nothing of the broadcast runs on the stack; what a walk
+#     can do is set a stream link on a celse (setLessonLiveStream), and a link to any YouTube video is framed and played by YouTube's player.
+#   - The recording's own page (the same address once a recording is open) is tedris.celse.watchRecording; the notes and the questions that sit
+#     beside the video are tedris.learn.notes and tedris.learn.questions; the join card, the "Yayını izle" button that leads here and the
+#     meeting link are on the celse's own page (tedris.celse.attend).
+#   - Findings it carries (the inventory's ids): CLS-06, CLS-08, CLS-13. CLS-07 is the poster of the celse page (tedris.celse.attend). Four more
+#     are this flow's own, proposed as WATCH-1 to WATCH-4 (ui.yaml `rules`).
+#   - The inventory's e2e check celse-states#1 expects the stream frame from `youtube-nocookie.com`; the app frames `www.youtube.com` since
+#     MDRS-293 (recordings-model.ts:20-21). The graph carries the code's host (`www.youtube.com/embed/<id>?enablejsapi=1`, as lesson-notes#9 has it).
+schema: delurio-graph/0
+kind: flow
+id: tedris.celse.watchStream
+status: captured
+domain: medaris.api
+ui: tedris.celse.watchStream
+title: Watch a live stream with notes beside it
+summary: >-
+  An enrolled talebe presses "Yayını izle" on a celse whose stream is on and lands on its watch page: the YouTube player over the width that is
+  left, and beside it YouTube's own live chat over "Notlarım". The page has no meeting link; "Celse ayrıntıları" and the course's name lead back.
+  The page calls the stream live until its player says it ended; then the chat gives way to "Soru sor" and the line under the video says the
+  recording will play here once it is added. A person who may read the course but holds no seat (the hoca, a nazır) sees the video and the chat
+  only. When the celse has not begun, has no link, or the caller may not read it, the address sends them back to the celse's page; when a
+  recording is open it plays instead of the stream.
+source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx
+
+scope:
+  shows: the watch page for a stream, the reads and the choice behind it, and the ways out
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the recording's page (tedris.celse.watchRecording), the notes and questions panels' own controls (tedris.learn.notes, tedris.learn.questions) and the celse page that leads here and that this page leads back to (tedris.celse.attend, tedris.celse.locked)"
+    - "a visitor, who is sent to sign in by the proxy before the page runs, with the celse as the way back (tedris.celse.locked, realm.auth.signIn)"
+    - "the phone layout: the video first, then the header row, then two toggle buttons \"Canlı sohbet\" or \"Soru sor\" and \"Notlarım\" in a fieldset, each panel shown alone (watch-view.tsx:251-275, CLS-06); drawn only above 768 px"
+    - "the second line under the release sentence that gives the course's zone and the viewer's own clock when they differ (recording-release.tsx:19-25)"
+    - "the loading skeleton while the reads run (izle/loading.tsx), and the minute counter ticking every 30 s"
+    - "whether the stream can be watched at all: the broadcast, YouTube's own refusals (a video that cannot be embedded, a sign-in prompt) and its chat's \"cannot be used in this browser\" page are inside YouTube's frames"
+    - "what the server decides inside `liveStreamFor`: the link is sent from the scheduled start until a recording is open or 24 hours after the scheduled end (recording.ts:223-241); drawn as the four answers of `watch`"
+
+decisions:
+  D1:
+    question: >-
+      Should the page call the stream live only after its player has said so, and stop counting minutes at the scheduled end?
+    recommend: >-
+      Yes (CLS-08): start the phase as unknown, show "Canlı" only after state 1 or 3, and cap the minutes. Today the badge says "Canlı · n dk" from the
+      first paint, counts past the scheduled end (the API still sends the link up to 24 hours after it) and never changes for a player that cannot start.
+    affects: [streamLive, streamUnframed]
+  D2:
+    question: >-
+      When the stream has ended and a recording is added, should the page find it by itself?
+    recommend: >-
+      Yes (WATCH-3): re-read the session when the player ends and now and then after, as the line "Ders kaydı eklenince burada oynar." says. Today the
+      person has to reload; the page was rendered with the stream and nothing asks the server again.
+    affects: [streamEnded]
+
+context:
+  watch:
+    values: [stream, recording, nothing, locked]
+    initial: any
+    say:
+      stream: "the API sends a stream link and no recording is open (a READY recording with a link wins), and the caller may read the content"
+      recording: "a READY recording with a link is open to this caller (a talebe after its release time, the course team at once): the stream is not sent"
+      nothing: "the celse has not begun, is cancelled, has no link, or its link is no longer sent (more than 24 hours after its end, or a recording that is still being prepared or held and no stream)"
+      locked: "the course holds its content from this caller (not enrolled, pending, revoked, or a passive course)"
+  viewer:
+    values: [talebe, reader]
+    initial: any
+    say:
+      talebe: "an enrolled or completed talebe: they take notes and ask questions"
+      reader: "someone who may read the content and holds no seat (the hoca, a nazır): they only watch"
+  link:
+    values: [framed, unframed]
+    initial: any
+    say:
+      framed: "the stored stream link is a YouTube video link, so the page frames YouTube's player and its chat (the route stores only such links, normalised)"
+      unframed: "the stored link is not a YouTube video link (an old row; no route writes one today): the page has no frame to show"
+  release:
+    values: [none, held]
+    initial: any
+    say:
+      none: "no recording is held back"
+      held: "a recording of the celse opens to talebe at a time still ahead, so the stream is still sent and the header says when the recording opens"
+
+guards:
+  isTalebe: "viewer == 'talebe'"
+  isReader: "viewer == 'reader'"
+  recordingHeld: "release == 'held'"
+  noneHeld: "release == 'none'"
+
+effects:
+  again: { havoc: [watch, release] } # a reload reads again, and the server may now find a recording
+
+failures:
+  readingCourse: { from: getCourse, notFound: [COURSE_NOT_FOUND, HTTP_400] }
+  readingSession: { from: getSession, notFound: [COURSE_NOT_FOUND, LESSON_NOT_FOUND, HTTP_400] }
+# The page reads both through `orNull` (public-reads.ts getSession, actions getCourse): any failure, a 5xx too, is a missing page (CLS-01, the shell's).
+
+# The main story: an enrolled talebe opens the watch page of a celse on air, reads the stream with the chat and the notes, and goes back to
+# the celse's page. The end of the stream is the player's to tell and the stack's browser cannot play a video: that step is not on the story.
+main:
+  given: { watch: stream, viewer: talebe, link: framed, release: none }
+  events: [DONE, DONE, OPEN_DETAILS]
+
+initial: readingCourse
+states:
+  readingCourse:
+    title: Read the course
+    description: >-
+      The page's server side reads the course and the celse at once (Promise.all; the segment's layout has read the celse before, with the
+      per-request cache, and the page reads the course again with the uncached call, so the course is asked for twice: CLS-13). The graph draws them one
+      after the other. A read that fails for any reason is a 404 page (the layout throws it before the page, so it is a real 404).
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:24
+    invoke: { action: getCourse }
+    on:
+      DONE: readingSession
+      FAIL.notFound: { target: not_found, say: "no such course, or one this caller may not open; the same page for every failure" }
+
+  readingSession:
+    title: Read the celse
+    description: the celse as this caller may read it, with the stream link and the recording when the content is open to them
+    source: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23
+    invoke: { action: getSession }
+    on:
+      DONE: deciding
+      FAIL.notFound: { target: not_found, say: "no such celse in this course, or not a live one" }
+
+  deciding:
+    title: Find what there is to watch
+    description: >-
+      Classification only. The page first asks whether the course holds its content from this caller (`lessonLockReason`) and sends them to the
+      celse's page, which draws the locked card; then `watchTargetOf` picks what plays: a READY recording with a link, else the stream while the API
+      sends its link (a cancelled celse has none), else nothing, and the caller is sent back to the celse's page. A stream whose link cannot be framed
+      gets the page without a player.
+    source: apps/tedris/features/courses/watch-model.ts:36
+    always:
+      - { guard: "watch == 'locked'", target: sent_to_details.locked, starts: { flow: tedris.celse.locked }, say: "the course holds its content from this caller: redirect to the celse's page, which draws the locked card", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31" }
+      - { guard: "watch == 'nothing'", target: sent_to_details.nothing, starts: { flow: tedris.celse.attend }, say: "there is nothing to watch yet or any more: redirect to the celse's page", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:33" }
+      - { guard: "watch == 'recording'", target: handed_over.recording, starts: { flow: tedris.celse.watchRecording }, say: "a recording is open: the same address plays it instead of the stream", source: apps/tedris/features/courses/watch-model.ts:43 }
+      - { guard: "link == 'unframed'", target: streamUnframed, say: "the stream has no frame", source: apps/tedris/features/courses/components/watch-page.tsx:52 }
+      - { target: streamLive, say: "the stream is framed and the page starts as live, whatever the clock says", source: apps/tedris/features/courses/components/watch-view.tsx:122 }
+
+  streamLive:
+    title: Watch the stream
+    by: human
+    goal: true
+    description: >-
+      The page for a framed stream while it is called live: a header row (the course's name as a link back, "Hafta {n} · {celse}", a red badge
+      "Canlı · {n} dk" and a hidden "Canlı" that a screen reader hears, "Celse ayrıntıları"), YouTube's player in a card whose title is "Canlı yayın"
+      with the line "Soru sormak için canlı sohbete yaz.", and beside it a column that holds YouTube's own live chat and, for a talebe, "Notlarım".
+      A talebe's column is named "Sohbet ve notlar", a reader's, with the chat only, "Canlı sohbet". The chat is YouTube's page in a frame that
+      mounts in the browser (its `embed_domain` is this host); it has "YouTube'da aç", which opens the same chat in a new tab. There is no meeting link
+      here (the e2e checks that none is in the page). The badge and this state come from the page and not from the broadcast: nothing has said the
+      stream is on until the player says so (CLS-08); "Canlı · n dk" counts minutes since the scheduled start, with no end. The stream frame's name is
+      the code's "Canlı yayın" until YouTube's player script has attached to it, and the video's title after (WATCH-1). A reader with no seat sees no
+      notes and no questions. On a phone the same page is a column with two toggle buttons (CLS-06). When a recording is added the page does not
+      find it: a reload does (WATCH-3).
+    source: apps/tedris/features/courses/components/watch-view.tsx:204
+    on:
+      PLAYER_ENDED:
+        target: streamEnded
+        say: "YouTube's player reports state 0 (ended): the badge says \"Yayın bitti\", the chat goes, the line under the video changes, and for a talebe \"Soru sor\" appears over \"Notlarım\""
+        source: apps/tedris/features/courses/watch-model.ts:72
+      OPEN_POPOUT: { target: streamLive, say: "\"YouTube'da aç\" opens YouTube's chat page in a new tab; this tab stays", source: apps/tedris/features/courses/components/live-chat.tsx:78 }
+      WRITE_NOTE: { guard: isTalebe, target: streamLive, starts: { flow: tedris.learn.notes }, say: "the talebe writes in \"Notlarım\", with the player's position as the time", source: apps/tedris/features/courses/components/watch-view.tsx:292 }
+      OPEN_DETAILS: { target: details_opened, starts: { flow: tedris.celse.attend }, say: "\"Celse ayrıntıları\" is a plain link: a full page load of the celse's page", source: apps/tedris/features/courses/components/watch-view.tsx:231 }
+      OPEN_COURSE: { target: course_opened, say: "the course's name at the start of the row is a link to the course page", source: apps/tedris/features/courses/components/watch-view.tsx:207 }
+      RELOAD: { target: readingCourse, effect: [again], say: "the page is read again, and a recording that has been added since replaces the stream" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  streamEnded:
+    title: The player says the stream ended
+    by: human
+    description: >-
+      The same page after YouTube's player reported state 0. Nothing is sent to the server and nothing is re-read. The badge says "Yayın bitti"
+      (and the hidden line, which is the page's one live region), the player stays (the archive may play in it) and its line says "Canlı yayın bitti. Ders
+      kaydı eklenince burada oynar." or, when a recording is held back, "Canlı yayın bitti. Ders kaydı açılınca burada oynar.". The chat is gone. A
+      talebe's column is now "Sorular ve notlar" with "Soru sor" over "Notlarım"; a reader is left with no column at all. A player that starts again (state 1 or
+      3) brings the stream back: the chat comes back and "Soru sor" stays mounted, hidden, so a half-written question survives. The line promises the
+      recording will play here, but the page only finds it on a reload (WATCH-3). The stack's browser cannot play a video, so no replay reaches this
+      state: it is read from the code and from the unit spec of `streamPhaseAfter`.
+    source: apps/tedris/features/courses/components/watch-view.tsx:145
+    on:
+      PLAYER_PLAYING: { target: streamLive, say: "the player reports state 1 (playing) or 3 (buffering): live again", source: apps/tedris/features/courses/watch-model.ts:78 }
+      WRITE_NOTE: { guard: isTalebe, target: streamEnded, starts: { flow: tedris.learn.notes }, say: "the talebe writes in \"Notlarım\"", source: apps/tedris/features/courses/components/watch-view.tsx:292 }
+      ASK_QUESTION: { guard: isTalebe, target: streamEnded, starts: { flow: tedris.learn.questions }, say: "the talebe asks in \"Soru sor\"", source: apps/tedris/features/courses/components/watch-view.tsx:281 }
+      OPEN_DETAILS: { target: details_opened, starts: { flow: tedris.celse.attend }, say: "\"Celse ayrıntıları\"", source: apps/tedris/features/courses/components/watch-view.tsx:231 }
+      OPEN_COURSE: { target: course_opened, say: "the course's name", source: apps/tedris/features/courses/components/watch-view.tsx:207 }
+      RELOAD: { target: readingCourse, effect: [again], say: "the page is read again: a recording that is open replaces the stream, and no stream link is sent once the last 24 hours after the end have passed" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  streamUnframed:
+    title: Watch a stream that has no frame
+    by: human
+    description: >-
+      The page when the stored link is not a YouTube video link: the card has the placeholder "Canlı yayın burada oynar" and a link "Yayını aç" that
+      opens the stored address in a new tab, and there is no player, so no player event ever arrives: the page stays "live", with no chat, and a talebe
+      has "Soru sor" over "Notlarım" from the start (the column is "Sorular ve notlar"). The line under the card still says "Soru sormak için canlı
+      sohbete yaz." although there is no chat to write in (WATCH-2). No route writes such a link today (the API stores only a YouTube video link, normalised);
+      the state is the code's answer for an old or hand-edited row. The badge claims a live broadcast nothing has confirmed (CLS-08).
+    source: apps/tedris/features/courses/components/media-player.tsx:71
+    on:
+      OPEN_STREAM: { target: streamUnframed, say: "\"Yayını aç\" opens the stored link in a new tab; this tab stays", source: apps/tedris/features/courses/components/media-player.tsx:74 }
+      WRITE_NOTE: { guard: isTalebe, target: streamUnframed, starts: { flow: tedris.learn.notes }, say: "the talebe writes in \"Notlarım\", with the time typed (no player to read)", source: apps/tedris/features/courses/components/watch-view.tsx:292 }
+      ASK_QUESTION: { guard: isTalebe, target: streamUnframed, starts: { flow: tedris.learn.questions }, say: "the talebe asks in \"Soru sor\"", source: apps/tedris/features/courses/components/watch-view.tsx:281 }
+      OPEN_DETAILS: { target: details_opened, starts: { flow: tedris.celse.attend }, say: "\"Celse ayrıntıları\"", source: apps/tedris/features/courses/components/watch-view.tsx:231 }
+      OPEN_COURSE: { target: course_opened, say: "the course's name", source: apps/tedris/features/courses/components/watch-view.tsx:207 }
+      RELOAD: { target: readingCourse, effect: [again], say: "the page is read again" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  not_found: { type: final, title: "The 404 page (a course or celse that does not exist for this caller)", leavesPage: true }
+  sent_to_details.locked: { type: final, title: "Back to the celse's page, which draws the locked card", leavesPage: true }
+  sent_to_details.nothing: { type: final, title: "Back to the celse's page, which has nothing to watch yet", leavesPage: true }
+  handed_over.recording: { type: final, title: "The same address plays the recording (tedris.celse.watchRecording)", leavesPage: true }
+  details_opened: { type: final, title: The celse's page, leavesPage: true }
+  course_opened: { type: final, title: The course page, leavesPage: true }
+  left: { type: final, title: The person leaves the watch page, leavesPage: true }
+
+assertions:
+  - id: stream-page-only-for-a-stream
+    never: "state in ['streamLive', 'streamEnded', 'streamUnframed'] and watch != 'stream'"
+    say: "The stream page is drawn only when the server found a stream to watch: a recording, nothing, or a locked caller never gets it"
+    source: apps/tedris/features/courses/watch-model.ts:36
+  - id: ended-needs-a-player
+    never: "state == 'streamEnded' and link == 'unframed'"
+    say: "The page learns that a stream ended only from YouTube's player, so a stream with no frame is never told ended"
+    source: apps/tedris/features/courses/components/watch-view.tsx:123
+  - id: nothing-is-not-locked
+    never: "state == 'sent_to_details.nothing' and watch == 'locked'"
+    say: "A caller the course holds its content from is sent to the locked card, not to the page for a celse with nothing to watch"
+    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31"

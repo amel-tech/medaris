@@ -1,0 +1,15 @@
+# The refused walk of tedris.learning.addToCalendar: `--to rowFailed` with this binding. The talebe has opened Programım and the menu; the
+# course is hidden (as the başnazım, through the API) just before "Apple Takvim (.ics)" is pressed, so the page, drawn before, still lists the
+# row and the file call answers 404 LESSON_NOT_FOUND (a hidden course is not told apart from a lesson that never was). The made course is
+# the walk's own (see binding.yaml), so hiding it touches nothing seeded; `calendar-data.mjs down` brings it back before it is deleted.
+#   node apps/engine/src/cli.ts replay graphs/tedris/learning/addToCalendar --bind graphs/tedris/learning/addToCalendar/binding.refused.yaml --to rowFailed --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: tedris.learning.addToCalendar
+
+nodes:
+  icsItem:
+    before:
+      - run: [node, ../tedris/learning/addToCalendar/calendar-data.mjs, hide]
+        expect: 'is hidden'

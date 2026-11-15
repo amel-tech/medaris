@@ -1,0 +1,97 @@
+# The screens of tedris.celse.cancelled: tedris-web's celse page (/courses/<course>/lessons/<celse>, app/courses/[courseId]/lessons/[lessonId]/
+# page.tsx, body features/courses/components/session-page.tsx) for a celse the hoca cancelled, read by a talebe with a seat (state
+# `cancelledShown`); the make-up celse's page that its link opens (state `makeUpPage`, drawn only as far as it differs from the cancelled
+# page, so that a replay can tell them apart); and the not-found page a lesson that is no live celse gets (state `notFound`).
+# The frame around the page (the wide bar, the phone's app bar and sheet, the footer) is tedris.shell.frame's. The Müfredat popup and the
+# previous and next cards are tedris.celse.browseCurriculum's, the panels "Notlarım" and "Ödev" tedris.learn.notes's and
+# tedris.learn.homeworkHandIn's; here the panel "Notlarım" is drawn only on the make-up page, to say that the cancelled page has none.
+#
+# Words: every `SessionPage.*`, `AddToCalendar.*` and `SystemPages.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it
+# as `tedris.<key>`) and `LessonNotes.title` from tedris-learn.json (read as `tedrisLearn.LessonNotes.title`); the key is the path inside
+# the file. The `composed.CancelledCelse.*` keys are NOT in any i18n file: they are the texts the app builds in code from a value the API
+# gives, written here with their placeholders so a replay can match them (a placeholder with no sample matches any text):
+#   composed.CancelledCelse.kosk        the first crumb, the köşk's name                                     session-join-labels.ts:112
+#   composed.CancelledCelse.course      the second crumb, the course's title                                 session-join-labels.ts:114
+#   composed.CancelledCelse.title       the celse's title, the h1                                            session-header.tsx:62
+#   composed.CancelledCelse.makeUpTitle the make-up celse's title, the h1 of its own page                    session-header.tsx:62
+#   composed.CancelledCelse.when        the day and the hours on the course's clock, "17 Kasım Salı · 21:00–22:00"   session-join-labels.ts:136
+#   composed.CancelledCelse.hoca        formatHocaName: the name with the unvan, "Hoca" when it has none     session-header.tsx:98
+#   composed.CancelledCelse.dateBlock   the date block's three lines, Intl on the course's clock             session-action-card.tsx:321-323
+# The rich message SessionPage.replacement keeps the app's own tag (<when>), which the replay does not format: the binding finds the
+# sentence by a pattern. Samples are invented and neutral; they are the walk's own data (cancelled-data.mjs).
+schema: delurio-graph/0
+kind: ui
+id: tedris.celse.cancelled
+flow: tedris.celse.cancelled
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  kosk: Kubbealtı Köşkü
+  course: İptal edilen celse denemesi
+  title: İptal edilen okuma
+  makeUpTitle: Telafi okuması
+  when: 17 Kasım Salı · 21:00–22:00
+  hoca: Hamdi Müderris Hoca
+  weekday: Salı
+  date: 17 Kasım
+  clock: 21:00–22:00
+  note: Hoca yolda kaldı. Bu haftanın okuması cumartesiye alındı.
+  time: 20 Kasım Cuma 21:00
+  week: "2"
+  number: "1"
+  count: "60"
+
+nodes:
+  # ---- the celse page's frame: the same on the cancelled celse and on its make-up ----
+  celsePage: { type: page, component: Page, role: main, in: [cancelledShown, makeUpPage], source: apps/tedris/features/courses/components/session-page.tsx:337 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus (rule focus-not-set)
+  crumbs: { type: page, component: Page, role: navigation, name: { key: SessionPage.breadcrumb }, in: [cancelledShown, makeUpPage], source: libs/ui/src/mds/breadcrumb.tsx:36 } # nav "Sayfa yolu", an ordered list
+  crumbKosk: { type: action, component: LinkButton, role: link, text: { key: composed.CancelledCelse.kosk, params: { kosk: course.koskName } }, in: [cancelledShown, makeUpPage], emits: OPEN_KOSK, source: apps/tedris/features/courses/session-join-labels.ts:112 } # dropped when the köşk read answers 400, 403 or 404; /kosks/<id>, a full page load
+  crumbCourse: { type: action, component: LinkButton, role: link, text: { key: composed.CancelledCelse.course, params: { course: course.title } }, in: [cancelledShown, makeUpPage], emits: OPEN_COURSE, source: apps/tedris/features/courses/session-join-labels.ts:114 } # /courses/<id>
+  crumbWeek: { type: text, component: Text, text: { key: SessionPage.week, params: { number: week.number } }, in: [cancelledShown, makeUpPage], source: apps/tedris/features/courses/session-join-labels.ts:115 } # the current crumb, aria-current="page", never a link
+  eyebrowWeek: { type: text, component: Text, text: { key: SessionPage.weekCelse, params: { week: week.number, number: celse.number } }, in: [cancelledShown, makeUpPage], source: apps/tedris/features/courses/session-header.tsx:57 } # "Hafta 2 · 1. celse"; a cancelled celse keeps its place in the count
+  metaWhen: { type: text, component: Text, text: { key: composed.CancelledCelse.when, params: { when: session.startsAt } }, in: [cancelledShown, makeUpPage], source: apps/tedris/features/courses/components/session-header.tsx:82 } # a <time> beside "İstanbul saatiyle"
+  metaLength: { type: text, component: Text, text: { key: SessionPage.minutes, params: { count: session.durationMinutes } }, in: [cancelledShown, makeUpPage], source: apps/tedris/features/courses/components/session-header.tsx:90 }
+  metaHoca: { type: text, component: Text, text: { key: composed.CancelledCelse.hoca, params: { hoca: session.muderris } }, in: [cancelledShown, makeUpPage], source: apps/tedris/features/courses/components/session-header.tsx:98 }
+
+  # ---- what only the cancelled celse draws ----
+  title: { type: text, component: Heading, role: heading, text: { key: composed.CancelledCelse.title, params: { title: session.title } }, in: [cancelledShown], source: apps/tedris/features/courses/components/session-header.tsx:58 } # h1, dir="auto"
+  badgeCancelled: { type: status, component: Status, text: { key: SessionPage.cancelledLabel }, in: [cancelledShown], source: apps/tedris/features/courses/components/session-state-badge.tsx:41 } # an outline badge on the right of the title; text, not colour, says it. No role="status" and no aria-live
+  cancelledCard: { type: page, component: Page, role: region, name: { labelledBy: cancelledHeading }, in: [cancelledShown], source: apps/tedris/features/courses/components/session-action-card.tsx:396 } # <section data-testid="session-action" data-case="cancelled">
+  cardEyebrow: { type: text, component: Text, text: { key: SessionPage.joinLabel }, in: [cancelledShown, makeUpPage], source: apps/tedris/features/courses/components/session-action-card.tsx:406 } # "Canlı ders" (an in-person celse says "Yüz yüze": out of view); no platform chip beside it
+  dateBlock: { type: text, component: Text, text: { key: composed.CancelledCelse.dateBlock, params: { weekday: course.weekday, date: course.date, clock: course.clock } }, in: [cancelledShown, makeUpPage], source: apps/tedris/features/courses/components/session-action-card.tsx:319 } # the celse's slot, still in its place
+  blockCaption: { type: text, component: Text, text: { key: SessionPage.cancelledLabel }, in: [cancelledShown], source: apps/tedris/features/courses/components/session-action-card.tsx:332 } # the date block's last line; an upcoming celse says "Başlamasına …" here
+  cancelledHeading: { type: text, component: Heading, role: heading, text: { key: SessionPage.cancelledTitle }, in: [cancelledShown], source: apps/tedris/features/courses/components/session-action-card.tsx:344 } # h2
+  noteLine: { type: text, component: Text, text: { key: SessionPage.cancelNote, params: { note: session.cancelReason } }, in: [cancelledShown], when: noteWritten, source: apps/tedris/features/courses/components/session-page.tsx:192 } # a block of its own, shown whole and never cut (whitespace-pre-line); only when the API sent a note
+  makeUpLine: { type: text, component: Text, text: { key: SessionPage.replacement, params: { time: replacement.startsAt } }, in: [cancelledShown], when: makeUpPlanned, source: apps/tedris/features/courses/components/session-page.tsx:166 } # "Telafi celsesi: 20 Kasım Cuma 21:00." with the time in a <time>, on the course's clock
+  makeUpLink: { type: action, component: LinkButton, role: link, text: { key: SessionPage.replacementGo }, in: [cancelledShown], when: makeUpPlanned, emits: OPEN_MAKEUP, source: apps/tedris/features/courses/components/session-page.tsx:179 } # a link to /courses/<course>/lessons/<make-up>, a full page load
+  noMakeUpLine: { type: text, component: Text, text: { key: SessionPage.noReplacement }, in: [cancelledShown], when: "not makeUpPlanned", source: apps/tedris/features/courses/components/session-page.tsx:184 } # plain text: Programım is named, and nothing links to it
+  cancelledJoinText: { type: text, component: Text, text: { key: SessionPage.cancelledJoinText }, in: [cancelledShown], source: apps/tedris/features/courses/components/session-action-card.tsx:346 } # the card's footnote; there is no meeting link, no platform chip, no "Bağlantıyı göster"
+
+  # ---- what only a celse that stands draws: the cancelled page has none of it ----
+  makeUpTitle: { type: text, component: Heading, role: heading, text: { key: composed.CancelledCelse.makeUpTitle, params: { makeUpTitle: replacement.title } }, in: [makeUpPage], source: apps/tedris/features/courses/components/session-header.tsx:58 } # h1 of the make-up celse's page
+  calendarButton: { type: action, component: Button, role: button, text: { key: AddToCalendar.button }, in: [makeUpPage], source: apps/tedris/features/courses/components/session-action-card.tsx:384 } # drawn for an upcoming celse of a caller who reads the content; a cancelled one has none
+  notesPanel: { type: page, component: Page, role: region, name: { labelledBy: notesTitle }, in: [makeUpPage], source: apps/tedris/features/courses/components/lesson-notes.tsx:154 } # "Notlarım": drawn for a seat holder on a celse that stands with nothing to watch (session-page.tsx:132); the cancelled page has none, and no "Ödev" and no exam card either
+  notesTitle: { type: text, component: Heading, role: heading, text: { key: LessonNotes.title }, in: [makeUpPage], source: apps/tedris/features/courses/components/lesson-notes.tsx:160 } # h2
+
+  # ---- the not-found page ----
+  notFoundSection: { type: page, component: Page, role: region, name: { labelledBy: notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:49 } # a <section>: no <main> around it on this address (READKOSK-1)
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:52 } # h1
+  notFoundText: { type: text, component: Text, text: { key: SystemPages.notFoundText }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:59 }
+  notFoundHome: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: SystemPages.notFoundAction }, in: [notFound], emits: GO_HOME, source: apps/tedris/features/errors/system-page.tsx:54 } # "/home" signed in
+
+edges:
+  - { labelledBy: [cancelledCard, cancelledHeading] }
+  - { labelledBy: [notesPanel, notesTitle] }
+  - { labelledBy: [notFoundSection, notFoundTitle] }
+
+rules:
+  - { id: focus-not-set, rule: "The celse page sets no initial focus (no autoFocus and no focus() in session-page.tsx, session-header.tsx, session-action-card.tsx or session-state-badge.tsx), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. The first Tab stop is the frame's logo link, and there is no skip link (CLS-14). Recorded so the silence is not read as an omission." }
+  - { id: CLS-03, rule: "A cancelled celse, like every celse page, has the tab title \"Medaris Tedris\" (no generateMetadata under app/courses/[courseId]/lessons; app/layout.tsx:18-21), so a talebe with the cancelled celse and its make-up open in two tabs cannot tell them apart (WCAG 2.4.2). Measured on the stack: both pages answer \"Medaris Tedris\". Fix: a generateMetadata that reads the cached getSession." }
+  - { id: CLS-01, rule: "getSession maps every failure to null (public-reads.ts:49-55, :92-97) and the layout turns null into the not-found page (layout.tsx:27), so a tedrisat outage on a cancelled celse reads as a missing celse, with no retry. The graph draws it as FAIL.unreadable into `notFound`. Fix: throw on anything but 400, 403 and 404, as getCourse does." }
+  - { id: DSC-17, rule: "On Programım the hoca's note of a cancelled celse is a one-line truncated paragraph whose full text is only in its `title` (schedule-page.tsx:109-120), which keyboard and touch users cannot read. This page is where the note is read whole (`whitespace-pre-line`, session-page.tsx:187-195, MDRS-248), so it is the way round; the row on Programım has no sign that more is here. Owned by tedris.learning.schedule; recorded here because this page is the other half." }
+  - { id: READKOSK-1, rule: "The not-found page has no <main> landmark on a celse address: /courses/<id>/... is in the shell's ownsItsMain list (tab-view/index.tsx:21), so the shell's wrapper main is left off, and NotFoundState draws a <section> (system-page.tsx:49). Measured on the stack for a cancelled video lesson's address (0 mains in the page). Same cause and same fix as READKOSK-1 of tedris.discover.readKosk, which found it on a köşk address." }
+  - { id: cancel-no-type-check, rule: "The domain's finding of the same name (invariant session-cancel-takes-live-sessions-only): cancelLesson has no lesson-type check (course.repository.ts:1330), so a VIDEO lesson can be cancelled. Measured on the stack with a cancelled VIDEO lesson: the course page's programme lists it as \"Video ders · İptal edildi\" with a link to this address, and getSession answers 404 LESSON_NOT_FOUND, so the link ends on the not-found page (e2e session#8 pins that a video lesson's id is not found). Fix: refuse the cancel of a lesson that is not LIVE." }
+  - { id: lesson-cancelled-text-streams-only, rule: "The domain's finding of the same name (invariant session-cancelled-message-fits-its-route): a cancelled celse takes no recording either, and POST /lessons/{id}/recordings refuses it with 409 LESSON_CANCELLED whose one sentence is \"Lesson <id> is cancelled; a cancelled session takes no live stream link\" (errors/lesson-cancelled.error.ts:11). Measured on the stack with a pasted recording link. The sentence names the stream, not the recording the staff was adding. Not on this page; the hoca who meets it is in nazar.recordings.add." }
+  - { id: label-in-name, rule: "the visible text of the make-up link, \"Telafi celsesine git\", is its whole accessible name (WCAG 2.5.3); the link does not say which celse it leads to, which the sentence before it does" }
+  - { id: text-not-colour, rule: "a cancelled celse is said in words three times (the badge, the date block's caption, the heading), never by colour alone" }

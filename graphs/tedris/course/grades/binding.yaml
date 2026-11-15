@@ -1,0 +1,50 @@
+# tedris.course.grades on the local stack (graphs/README.md, "The stack and the bindings"): the course page of a course the walk makes, read
+# by the spare talebe `applicantG` ("a woman, every profile attribute set, no enrolment anywhere") who holds a seat in it.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/grades --bind graphs/tedris/course/grades/binding.yaml --out <dir>
+# The other cases are bindings of their own (binding.empty.yaml, binding.refused.yaml), all extending locators.binding.yaml.
+#
+# Data. The seeded courses are other flows' and the release of results cannot be taken back ("exam-results-are-released-once"), so
+# grades-data.mjs (this folder) makes a published course of its own in the second köşk, "Kubbealtı Köşkü", through tedrisat's HTTP API:
+# the köşk's nazım opens it with the `muderris` account as its hoca; applicantG takes a seat (the course takes anyone); the hoca sets two
+# memorisation homeworks, plans two exams ("Ara sınav" out of 20 and "Dönem sınavı" out of 100, both in the past), enters 17 and 64 for
+# the talebe, RELEASES the first exam's results and marks the first memorisation Tam. So the page lists a released exam (17/20), a
+# closed exam whose entered score 64 must not come to the page (e2e exam#2), a marked and a waiting memorisation. The teardown deletes
+# the course (as the başnazım), which takes the exams, results and marks with it, clears the notification the release sent to the
+# talebe and the invitation mails the sweep sent her mailbox. `make` first deletes a course of that title, so a walk that crashed
+# leaves nothing in the way. Nothing the seed holds is touched. SQL is not used here (only `passive`, in the refused binding, uses it).
+#
+# The way in is the köşk's page and the course's card, then the tab, because nothing in the app leads to Notlarım (GRADES-1) and the
+# nav's entry from Derslerim cannot be named (two entries share its ends; an ask in the report). The first call of the page after a fresh start compiles it (15 to 30 s). The second half of the story, the course team entering the results
+# and releasing them (nazar.evaluation.examScores), is made by `setup` through the API as the hoca; it is not walked in nazar here.
+#
+# Not bound, so not walked: the address start (`tabParam: grades`, `?tab=notlarim`), a retake row (the page's unit spec,
+# apps/tedris/test/exam-grades.spec.tsx, draws one), the rows "Girmedi" and "Girilmedi" and the memorisation marks Eksik and Vermedi
+# (nothing draws them: no e2e, no unit spec), and the COMPLETED seat. e2e exam#2 is carried: a1 (17/20) and a2 (the closed exam's words) by the nodes, a3 (the entered 64 is not on the
+# page) by the effect below, which reads the API's answer, since the page can only show what it is sent.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.course.grades
+
+scenarios:
+  seated:
+    given: { read: ok, tabParam: none, released: true, closed: true, marks: true }
+    as: applicantG
+    open: '{tedris}/kosks/{seed.kosk2}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'kosk->course' }
+    setup:
+      - run: [node, ../tedris/course/grades/grades-data.mjs, make, full]
+        expect: 'make full course'
+    teardown:
+      - run: [node, ../tedris/course/grades/grades-data.mjs, remove]
+        expect: removed
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+
+effects:
+  # e2e exam#2 a3: the closed exam's entered score (64) is not sent, and the released one's 17 is
+  getMyGrades:
+    - run: [node, helpers/api.mjs, applicantG, GET, '/courses/{grades.course}/my-grades']
+      expect: '"released":false,"score":null,"absent":null'
+    - run: [node, helpers/api.mjs, applicantG, GET, '/courses/{grades.course}/my-grades']
+      expect: '"released":true,"score":17,"absent":false'

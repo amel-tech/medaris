@@ -1,0 +1,152 @@
+# What must exist for an enrolled talebe who opens a celse the hoca cancelled: tedris.celse.cancelled, written on 15 Nov 2026 in the format of
+# LAYOUT.md section 7. Each need is what the product must do, from the flow's story; none is read off what the page does today. Nothing here
+# comes from planned.md: no planned feature (P-nn) names this page.
+# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
+#   missing:  cancelled-celse-recording-is-offered (D1), title-says-which-celse (CLS-03), whole-note-from-the-row (DSC-17),
+#             read-failure-is-not-a-missing-celse (CLS-01), cancel-only-a-live-celse (cancel-no-type-check),
+#             refusal-says-why-in-its-own-words (lesson-cancelled-text-streams-only)
+#   unwalked: no-join-or-homework-on-a-cancelled-celse (the join link, the "Ödev" panel and the exam card are drawn on no state, so the replay
+#             cannot look for them; the API half is walked)
+kind: needs
+flow: tedris.celse.cancelled
+status: proposed
+
+needs:
+  - id: cancelled-says-so
+    need: >-
+      A talebe who opens a celse that was cancelled is told so in words at once, in the header and on the card, and the celse stays in its place
+      in the programme, so that nobody turns up for it and the weeks do not renumber.
+    drawn: [cancelledShown, badgeCancelled, blockCaption, cancelledHeading, eyebrowWeek]
+    built:
+      - action: medaris.api:getSession
+      - route: apps/tedris/features/courses/components/session-action-card.tsx:343
+    walked:
+      - e2e: apps/tedris/e2e/session.e2e.ts
+        check: 'session#6 (a1)'
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#13 (a1, a2)'
+      - replay: noteAndMakeUp
+
+  - id: note-reaches-the-talebe
+    need: >-
+      The note the hoca wrote when cancelling reaches the talebe of the course, whole and on the celse's own page, and nobody who may not read the
+      course's content.
+    drawn: [noteLine]
+    built:
+      - action: medaris.api:getSession
+      - route: apps/tedris/features/courses/components/session-page.tsx:162
+    walked:
+      - replay: noteAndMakeUp # the note is found by its hook and its words (the API's cancelReason is a content key: the locked card has none)
+    # e2e session#6 (a6) and session#10 (a2) assert the opposite, that "Müderris hasta" is not on the page. They are STALE since MDRS-248
+    # (4a57871f "note to talebe on cancelled session"): the page shows the note, as the seed of those specs gives one. Carried: the code.
+
+  - id: makeup-announced-and-reachable
+    need: >-
+      When the hoca names a make-up celse, the cancelled celse says on which day and at what time it is held and leads to its page in one step.
+    drawn: [makeUpLine, makeUpLink, makeUpPage, makeUpTitle]
+    built:
+      - action: medaris.api:getSession
+      - route: apps/tedris/features/courses/components/session-page.tsx:164
+    walked:
+      - e2e: apps/tedris/e2e/session.e2e.ts
+        check: 'session#6 (a2, a7, a8)'
+      - replay: noteAndMakeUp
+
+  - id: no-makeup-says-where-to-look
+    need: >-
+      When no make-up is set, the cancelled celse says that the hoca may set a new time and where it will then show, instead of leaving the talebe
+      with nothing.
+    drawn: [noMakeUpLine]
+    built:
+      - route: apps/tedris/features/courses/components/session-page.tsx:184
+    walked:
+      - replay: noNoteNoMakeUp # binding.bare.yaml
+
+  - id: no-notes-or-calendar-on-a-cancelled-celse
+    need: A cancelled celse offers no "Takvime ekle" and no panel for notes, because there is nothing to attend and nothing to write about.
+    drawn: [calendarButton, notesPanel]
+    built:
+      - route: apps/tedris/features/courses/components/session-page.tsx:132
+      - route: apps/tedris/features/courses/components/session-action-card.tsx:384
+    walked:
+      - e2e: apps/tedris/e2e/session.e2e.ts
+        check: 'session#6 (a5)'
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#13 (a3)'
+      - replay: noteAndMakeUp # `--absent`: both are drawn on the make-up's page and are looked for, and not found, on the cancelled one
+
+  - id: meeting-link-never-sent-for-a-cancelled-celse
+    need: >-
+      The meeting link of a cancelled celse is withheld by tedrisat, even from the course's own talebe, so that no page, payload or
+      share of it can lead anyone to a meeting that will not happen.
+    drawn: [cancelledJoinText]
+    built:
+      - action: medaris.api:getSession
+    walked:
+      - e2e: apps/tedris/e2e/session.e2e.ts
+        check: 'session#10 (a1)' # the e2e reads the page's HTML; the replay reads the API answer the page is made from
+      - replay: noteAndMakeUp # effect getSession: `"meetingUrl":null`
+
+  - id: no-join-or-homework-on-a-cancelled-celse
+    need: A cancelled celse offers no way to join, no homework to hand in and no exam card.
+    drawn: [cancelledShown]
+    built:
+      - route: apps/tedris/features/courses/components/session-page.tsx:151
+      - route: apps/tedris/features/courses/components/session-page.tsx:274
+    walked:
+      - e2e: apps/tedris/e2e/session.e2e.ts
+        check: 'session#6 (a4)'
+    # unwalked by replay: the join link, the "Ödev" panel and the exam card are drawn on no state of the graph, so `--absent` has no node to
+    # look for. The API half (no meetingUrl) is walked by meeting-link-never-sent-for-a-cancelled-celse.
+
+  - id: told-of-the-cancellation
+    need: >-
+      A talebe with a seat is told when a celse is cancelled, with the note, without having to open the page, so the page is read to find the
+      make-up and not to find out.
+    drawn: [cancelledShown]
+    built:
+      - action: medaris.api:cancelLesson # notification SESSION_CANCELLED to the enrolled seats, and a CANCEL calendar mail
+    walked:
+      - replay: noteAndMakeUp # effect getSession: two SESSION_CANCELLED rows for the talebe; how the notification reads is tedris.account.notifications
+
+  - id: cancelled-celse-recording-is-offered
+    need: >-
+      A talebe who opens a celse that was recorded and then cancelled is shown the recording they can watch, or told where it is, and not only
+      that the celse was cancelled (decision D1).
+    drawn: [cancelledShown]
+    missing: none # D1, measured: no link to /izle on the page, one in the course's Ders kayıtları tab, and /izle opens; no Linear issue
+
+  - id: title-says-which-celse
+    need: A person with several celse pages open can tell them apart by the tab's title, the cancelled one and its make-up included.
+    drawn: [cancelledShown, makeUpPage]
+    missing: none # CLS-03; no Linear issue
+
+  - id: whole-note-from-the-row
+    need: >-
+      The hoca's note is readable in full from where a talebe first sees the cancellation (the row on Programım), by keyboard and by touch, or the
+      row says that the whole note is on the celse's page.
+    drawn: [noteLine]
+    missing: none # DSC-17, owned by tedris.learning.schedule; this page is the way round
+
+  - id: read-failure-is-not-a-missing-celse
+    need: A tedrisat outage while a celse is read is told as an outage, with a way to try again, and not as a celse that does not exist.
+    drawn: [notFound]
+    missing: none # CLS-01; no Linear issue
+
+  - id: cancel-only-a-live-celse
+    need: >-
+      The hoca can cancel only a celse (a live lesson), so that no lesson of the programme is marked "İptal edildi" and then links to a page that
+      answers not found.
+    drawn: [notFound]
+    built:
+      - action: medaris.api:cancelLesson
+    missing: none # domain invariant session-cancel-takes-live-sessions-only (holds: false), finding cancel-no-type-check; measured here with a cancelled VIDEO lesson
+
+  - id: refusal-says-why-in-its-own-words
+    need: >-
+      When the hoca adds a recording to a cancelled celse, the refusal says that the celse is cancelled and that it takes no recording, in the words
+      of what was refused, not in the words of the live stream.
+    drawn: [cancelledShown]
+    built:
+      - action: medaris.api:createLessonRecording
+    missing: none # domain invariant session-cancelled-message-fits-its-route (holds: false), finding lesson-cancelled-text-streams-only; measured here

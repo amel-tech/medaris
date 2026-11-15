@@ -1,0 +1,495 @@
+# A talebe hands homework in on a celse, from the section "Ödev" of the celse page (/courses/<c>/lessons/<l>), read from the code of
+# PR #394's branch on 15 Nov 2026 (captured; nothing here is a plan). The section shows what the hoca set (a description and files),
+# the state "Teslim edilmedi" / "Teslim edildi", the talebe's own files with a picker, a note, and "Son değişiklik". A homework that is
+# recited instead of uploaded (kind MEMORIZE) draws another section: tedris.learn.homeworkMemorize.
+#
+# FILES ARE STORED IN BUNNY STORAGE, WHICH THE LOCAL STACK DOES NOT HAVE: every file the picker sends answers 503 STORAGE_NOT_CONFIGURED
+# (tedrisat's upload gate refuses before it reads the body, apps/tedrisat/src/storage/upload.ts:113) and the row says "Dosyalar şu an
+# kaydedilemiyor. Biraz sonra yeniden dene.". The graph draws both outcomes of a file the page sends (`file: stored` and `file: noStorage`
+# are two values of one case variable); the binding can walk only the second, and cannot walk even that yet: the replay has no action
+# that sets a file input (see binding.yaml). What the stack can walk is everything around the files: a file row that the binding
+# writes into the database by SQL (the upload route is the only way in, so SQL is the only way to hold a file here), its removal after the
+# question, the note, the state and the hoca's description.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   WRT-01  after the trash, "Kaldır" and "Vazgeç" the button that had the focus is gone and nothing moves the focus
+#   WRT-03  the note's refusal is a paragraph the textarea is not tied to (Field invalid is set, the error sits outside the Field)
+#   WRT-07  "Yükleniyor…" is an aria-busy span, which announces nothing: only "{name} eklendi." (a polite output) or the alert speak
+#   WRT-08  a 409 SUBMISSION_FILES_NOT_TAKEN reads as "En çok 10 dosya ekleyebilirsin...", which is wrong
+#   WRT-09  the component's doc says 5 files; the limit is 10 (the API sends it, the page says it)
+#   WRT-10  a refused download of one of these files reloads the whole page and loses a note that was typed and not saved
+#   WRT-12  the file input becomes `disabled` when the quota is reached, which can be while it has the focus
+#   WRT-13  no draft is kept: a typed note is lost to a reload or to leaving the page
+#   HAND-1 (new) the note's length check ("Not en çok 4000 karakter olabilir.") can never fire: the textarea stops at 4000 characters and the API counts the trimmed text
+#   HAND-2 (new) a seat that ended while the page is open leaves the whole section as it was; every write then answers 403 and the same sentence
+#   HAND-3 (new) the refusals are worded by status, not by what was asked: a celse that is gone says "Bu dosya artık yok." on an upload, and a 503 on a removal says the files cannot be saved
+# E2E carried: none (the inventory lists none; the unit specs homework-card.spec.ts and session-homework.spec.ts pin the same behaviours).
+schema: delurio-graph/0
+kind: flow
+id: tedris.learn.homeworkHandIn
+status: captured
+domain: medaris.api
+ui: tedris.learn.homeworkHandIn
+title: Hand in homework on a celse
+summary: >-
+  An enrolled talebe opens a celse that has homework. The section "Ödev" shows what the hoca wrote and the files they attached, and
+  under "Ödevim" the badge "Teslim edilmedi" with a warning that asks them to hand it in. They add files with the picker (at most 10, 25 MB
+  each, PDF, PNG, JPEG, WebP, Word, Excel, PowerPoint or text; the line under the picker says so), which are sent one at a time; a file that
+  the page or the API refuses stays as a row with its reason until it is dismissed. They remove a file after one inline question, and write
+  an optional note of up to 4000 characters, saved on its own. As soon as there is a file or a note the badge says "Teslim edildi" and
+  "Son değişiklik" gives the time; the hand-in is then on the course team's list in nazar (this flow starts nazar.homework.review). There is
+  no deadline, no grade and no draft: every write is a press of a button.
+
+scope:
+  shows: >-
+    the section "Ödev" of the celse page: the hoca's description and files, the state badge and warning, the talebe's files, the picker,
+    the removal question, the note, the time of the last change, and what each refusal says
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the celse page (header, join card, notes, agenda, resources, the pager and the Müfredat popup): tedris.celse.attend, tedris.celse.browseCurriculum, tedris.learn.notes"
+    - "a homework recited to the hoca (kind MEMORIZE): the section then reads \"Ezberini hocana dinlet\" and takes no file: tedris.learn.homeworkMemorize"
+    - "the hoca's review of a hand-in (\"Hocanın değerlendirmesi\", \"Düzeltilmiş dosyalar\", the notice that the homework changed since): tedris.learn.homeworkReview; what the course team does with the hand-in: nazar.homework.review"
+    - "the downloads (the hoca's files, the talebe's own, the returned ones) and the refusal that brings the person back with \"Dosya indirilemedi\": tedris.files.download. Locally every download answers 503, so a followed link there ends in that toast"
+    - "who gets no section at all (not enrolled, pending, removed, a course in a passive scope, a cancelled celse): tedris.learn.writingGating"
+    - "several files chosen at once: the page counts the room that is left, sends what fits and refuses the rest with the same row (\"En çok 10 dosya ekleyebilirsin...\"); a further file is the same step again"
+    - "the ninth file that makes ten, after which the picker closes (WRT-12): the graph draws it from a hand-in that already holds ten (`holds: tenFiles`)"
+    - "a file row's icon, type chip and size, and the count \"3600/4000 karakter\" that replaces the note's help from 3600 characters"
+    - "a refusal that names the file twice or that stays beside a later success: the graph keeps one failed row at a time"
+
+context:
+  # --- case variables: what the world is (initial: any) ---
+  assignment:
+    values: [text, textAndFile, none]
+    initial: any
+    say:
+      text: "the hoca wrote a description and attached no file"
+      textAndFile: "the hoca wrote a description and attached a file"
+      none: "the celse has no homework (the hoca never set one, or took it off): the section is drawn only for a talebe who handed something in before"
+  holds:
+    values: [nothing, oneFile, tenFiles]
+    initial: any
+    say:
+      nothing: "the talebe has handed nothing in: no row exists"
+      oneFile: "the talebe handed one file in before this page was opened"
+      tenFiles: "the talebe handed ten files in before this page was opened: the quota is used up"
+  file:
+    values: [stored, noStorage, wrongType, tooLarge, empty, overQuota, gone, failed]
+    initial: any
+    say:
+      stored: "a file the page sends and tedrisat keeps (201), on a stack that has storage"
+      noStorage: "a file the page sends and tedrisat cannot keep: 503 STORAGE_NOT_CONFIGURED (the local stack) or STORAGE_UNAVAILABLE"
+      wrongType: "a file the page sends whose bytes are none of the eight types: 415 FILE_TYPE_NOT_ALLOWED (read from the bytes, so only a stack with storage says it)"
+      tooLarge: "a file over 25 MB: the page refuses it before it sends anything"
+      empty: "a file of no bytes: the page refuses it before it sends anything"
+      overQuota: "the API says the quota is used up (409 SUBMISSION_FILE_LIMIT, or SUBMISSION_FILES_NOT_TAKEN when the homework became recited, WRT-08)"
+      gone: "the celse or its course is gone: 404"
+      failed: "anything else: a 400, a server that cannot be reached (502), a request that throws"
+  removal:
+    values: [removed, gone, failed]
+    initial: any
+    say:
+      removed: "tedrisat removes the file (204)"
+      gone: "the file or the celse is already gone (404): the page takes that as done"
+      failed: "anything else: a 400, a server that does not answer, a request that throws"
+  noteAnswer:
+    values: [saved, failed]
+    initial: any
+    say:
+      saved: "tedrisat saves the note (200)"
+      failed: "anything but a 403: a 404 (the celse is gone), a 400 the page never sends, a server that does not answer, a request that throws"
+
+  # --- shown-state variables: what the screen remembers ---
+  files:
+    values: [none, one, many, full]
+    initial: none
+    say:
+      none: "no file is listed"
+      one: "one file is listed"
+      many: "two to nine files are listed"
+      full: "ten files are listed: the quota is used up and the picker is closed"
+  note:
+    values: [none, saved]
+    initial: none
+    say:
+      none: "no note is stored (or it was cleared)"
+      saved: "a note is stored"
+  record:
+    values: [none, kept]
+    initial: none
+    say:
+      none: "tedrisat holds no homework row for this talebe on this celse"
+      kept: "tedrisat holds the row (made by the first file or the first saved note, and never taken away): \"Son değişiklik\" shows, even when the badge says \"Teslim edilmedi\" again"
+  seat:
+    values: [held, ended]
+    initial: held
+    say:
+      held: "the talebe is an active student of the course"
+      ended: "the talebe has left or been removed since the page was opened (another tab, the course team): every write is now refused with 403"
+  typed:
+    values: [words, blank]
+    initial: words
+    say:
+      words: "the note's field holds text"
+      blank: "the note's field was emptied: saving it clears the stored note"
+  row:
+    values: [none, tooLarge, type, empty, limit, forbidden, storage, notFound, failed]
+    initial: none
+    say:
+      none: "no refused file is listed"
+      tooLarge: "\"Bu dosya çok büyük: bir dosya en çok 25 MB olabilir.\""
+      type: "\"Bu dosya türü kabul edilmiyor. PDF, PNG, JPEG, WebP, Word, Excel, PowerPoint ya da metin dosyası ekleyebilirsin.\""
+      empty: "\"Dosya boş ya da okunamadı.\""
+      limit: "\"En çok 10 dosya ekleyebilirsin. Yenisi için birini kaldır.\""
+      forbidden: "\"Ödev teslim etmek için derse kayıtlı olman gerekir.\""
+      storage: "\"Dosyalar şu an kaydedilemiyor. Biraz sonra yeniden dene.\""
+      notFound: "\"Bu dosya artık yok.\""
+      failed: "\"Dosya eklenemedi. Biraz sonra yeniden dene.\""
+  heard:
+    values: [none, added, removed]
+    initial: none
+    say:
+      none: "the polite status holds nothing"
+      added: "the polite status says \"<file> eklendi.\""
+      removed: "the polite status says \"<file> kaldırıldı.\""
+  noteTold:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "no \"Not kaydedildi.\" beside the button"
+      yes: "\"Not kaydedildi.\" stands beside the button, until the text is changed again"
+  problem:
+    values: [none, forbidden, noteFailed, removeFailed]
+    initial: none
+    say:
+      none: "no error line"
+      forbidden: "\"Ödev teslim etmek için derse kayıtlı olman gerekir.\""
+      noteFailed: "\"Not kaydedilemedi. Biraz sonra yeniden dene.\""
+      removeFailed: "\"Dosya kaldırılamadı. Biraz sonra yeniden dene.\""
+
+guards:
+  hasAssignment: "assignment != 'none'"
+  legacy: "assignment == 'none'"
+  handedIn: "files != 'none' or note == 'saved'"
+  listed: "files != 'none'"
+  seatHeld: "seat == 'held'"
+  lostSeat: "seat == 'ended'"
+
+effects:
+  filesNone: { set: { files: none } }
+  filesOne: { set: { files: one } }
+  filesMany: { set: { files: many } }
+  filesFull: { set: { files: full } }
+  recordKept: { set: { record: kept } }
+  noteSaved: { set: { note: saved, typed: words, noteTold: 'yes', problem: none } }
+  noteCleared: { set: { note: none, typed: words, noteTold: 'yes', problem: none } }
+  typedWords: { set: { typed: words, noteTold: 'no' } }
+  typedBlank: { set: { typed: blank, noteTold: 'no' } }
+  seatEnded: { set: { seat: ended } }
+  heardNone: { set: { heard: none } }
+  heardAdded: { set: { heard: added } }
+  heardRemoved: { set: { heard: removed } }
+  rowNone: { set: { row: none } }
+  rowTooLarge: { set: { row: tooLarge, heard: none } }
+  rowType: { set: { row: type } }
+  rowEmpty: { set: { row: empty, heard: none } }
+  rowLimit: { set: { row: limit } }
+  rowForbidden: { set: { row: forbidden } }
+  rowStorage: { set: { row: storage } }
+  rowNotFound: { set: { row: notFound } }
+  rowFailed: { set: { row: failed } }
+  problemNone: { set: { problem: none } }
+  problemForbidden: { set: { problem: forbidden } }
+  problemNoteFailed: { set: { problem: noteFailed } }
+  problemRemoveFailed: { set: { problem: removeFailed } }
+  reloaded: { set: { row: none, heard: none, noteTold: 'no', problem: none, typed: words } }
+
+failures:
+  reading:
+    from: getMySubmission
+    signedOut: [HTTP_401]
+    failed: [SUBMISSION_FORBIDDEN, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  uploading:
+    from: webAddMySubmissionFile
+    signedOut: [unauthenticated]
+    storage: [STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    type: [FILE_TYPE_NOT_ALLOWED]
+    limit: [SUBMISSION_FILE_LIMIT, SUBMISSION_FILES_NOT_TAKEN]
+    forbidden: [SUBMISSION_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    failed: [HTTP_400, TEDRISAT_UNREACHABLE]
+  removing:
+    from: deleteMySubmissionFile
+    signedOut: [HTTP_401]
+    gone: [SUBMISSION_FILE_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    forbidden: [SUBMISSION_FORBIDDEN]
+    failed: [HTTP_400]
+  noteSaving:
+    from: saveMySubmissionNote
+    signedOut: [HTTP_401]
+    forbidden: [SUBMISSION_FORBIDDEN]
+    failed: [LESSON_NOT_FOUND, COURSE_NOT_FOUND, VALIDATION_ERROR]
+
+# The main story is the one the local stack can walk and the one that tells most of the section: the talebe holds a file, is told the
+# hoca's homework, removes the file after the question (the badge turns to "Teslim edilmedi" and the warning comes back), writes a note,
+# and the badge says "Teslim edildi". Adding a file is the same story with `file: stored`, which no local walk can reach.
+main:
+  given: { assignment: textAndFile, holds: oneFile, file: noStorage, removal: removed, noteAnswer: saved }
+  events: [DONE, REMOVE, CONFIRM, DONE, TYPE_NOTE, SAVE_NOTE, DONE]
+
+initial: opening
+states:
+  opening:
+    title: The section is mounted
+    source: apps/tedris/features/courses/components/session-page.tsx:151
+    description: >-
+      The celse page mounts the section for a talebe whose seat is ENROLLED or COMPLETED, whose content is open and whose celse is not
+      cancelled (`mayTakeNotes && !cancelled`); the hoca's description and files are already in the page (the page read the celse on
+      the server). A step with no screen of its own: it only says what the talebe already holds, which the read in the next state
+      then fetches. Where the celse has no homework the section draws nothing until that read says the talebe handed something in.
+    always:
+      - { guard: "holds == 'oneFile'", target: reading, effect: [filesOne, recordKept], source: "apps/tedris/features/courses/components/session-page.tsx:151" }
+      - { guard: "holds == 'tenFiles'", target: reading, effect: [filesFull, recordKept], source: "apps/tedris/features/courses/components/session-page.tsx:151" }
+      - { target: reading, source: "apps/tedris/features/courses/components/session-page.tsx:151" }
+
+  reading:
+    title: The talebe's own homework is read
+    source: apps/tedris/features/courses/components/session-homework.tsx:369
+    description: >-
+      The server action getMySubmission, GET /lessons/:id/submission, called when the section mounts, after a reload and after
+      "Yeniden dene". Only the caller's own row comes back, or null, with the limits (10 files, 25 MB) the page then uses. While it runs
+      the section draws the hoca's text and a hidden status "Ödevin getiriliyor…" under "Ödevim"; a celse with no homework draws nothing
+      yet. Not a stop of the walk: the replay passes it. A celse with no homework and no row of the talebe's draws nothing at all, and
+      a read that fails there is silent. A session that is over sends the person to sign in and back to this address.
+    invoke: { action: getMySubmission }
+    on:
+      DONE:
+        - { guard: "legacy and record == 'none'", target: nothing_drawn, source: "apps/tedris/features/courses/components/session-homework.tsx:458" }
+        - { target: panel }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed:
+        - { guard: legacy, target: nothing_drawn, say: "no homework and no read: the section draws nothing and says nothing", source: "apps/tedris/features/courses/components/session-homework.tsx:458" }
+        - { target: loadFailed, say: "any other answer, including 403 SUBMISSION_FORBIDDEN, or a call that throws", source: "apps/tedris/features/courses/components/session-homework.tsx:383" }
+
+  loadFailed:
+    title: The homework could not be read
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:526
+    description: >-
+      Under "Ödevim", a block with role alert: "Ödevin açılamadı." and the outline button "Yeniden dene". The hoca's description and files
+      stay drawn; no badge and no warning (the state is not known), no picker and no note. Nothing on the local stack can make the read
+      fail, so no walk reaches this state.
+    on:
+      RETRY: { target: reading, source: "apps/tedris/features/courses/components/session-homework.tsx:533" }
+      NAVIGATE: left
+
+  panel:
+    title: The section, nothing in flight
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/session-homework.tsx:465
+    description: >-
+      The region "Ödev" (an h2 with a note icon) with, on the right, the badge "Teslim edilmedi" (warning) or "Teslim edildi" (success)
+      and, under the hoca's description and files ("Ödevin dosyaları"), where nothing is handed in a warning "Bu ödevi henüz teslim
+      etmedin" with the line that asks for a file or a note. Under "Ödevim" and "Hoca ve ders ekibi görür." come the talebe's files
+      ("Teslim ettiğin dosyalar", each a download link, its type and size, and a trash button) or, with none and no refused row, "Henüz dosya
+      eklemedin."; the refused rows; the picker "Dosya ekle" with the line "En çok 10 dosya, her biri en çok 25 MB: PDF, PNG, JPEG, WebP,
+      Word, Excel, PowerPoint ya da metin." (or "10 dosyanın hepsini ekledin; yenisi için birini kaldır." when the quota is used up, and the
+      picker closed, WRT-12); the note "Notun" with its help and the button "Notu kaydet", disabled until the text differs from what is
+      stored; "Son değişiklik:" and the time once the row exists; and a hidden polite status. A celse with no homework (`legacy`) says "Bu
+      celsede ödev verilmedi; daha önce teslim ettiğin ödev burada duruyor." and has no badge and no warning. Nothing moves the focus into the
+      section. The panel is not live: it does not learn that the hoca changed the homework, that the seat ended or that the team reviewed
+      it, until the page is read again (HAND-2). A followed file link that the app refuses brings the person back to this page with a toast
+      (tedris.files.download) and loses an unsaved note (WRT-10).
+    on:
+      ADD:
+        - { guard: "files != 'full' and file == 'tooLarge'", target: panel, effect: [rowTooLarge], source: "apps/tedris/features/courses/components/session-homework.tsx:419", say: "a file over 25 MB: the page refuses it, nothing is sent, the row stays until it is dismissed" }
+        - { guard: "files != 'full' and file == 'empty'", target: panel, effect: [rowEmpty], source: "apps/tedris/features/courses/components/session-homework.tsx:421", say: "a file of no bytes: the same" }
+        - { guard: "files != 'full'", target: uploading, effect: [heardNone], source: "apps/tedris/features/courses/components/session-homework.tsx:429", say: "they choose a file (or several: one request each, in the order chosen); the status is cleared and each file gets a row" }
+      DISMISS: { guard: "row != 'none'", target: panel, effect: [rowNone], source: "apps/tedris/features/courses/components/session-homework.tsx:599", say: "\"Kapat: <file>\" on a refused row removes the row (no API); the focus is lost (WRT-01)" }
+      REMOVE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/session-homework.tsx:962", say: "the trash of the first file: the row asks \"Bu dosya kaldırılsın mı?\"; the focus is lost (WRT-01)" }
+      TYPE_NOTE: { target: drafting, effect: [typedWords], source: "apps/tedris/features/courses/components/session-homework.tsx:1056", say: "they write in \"Notun\": the button \"Notu kaydet\" is enabled, and \"Not kaydedildi.\" goes" }
+      CLEAR_NOTE: { guard: "note == 'saved'", target: drafting, effect: [typedBlank], source: "apps/tedris/features/courses/components/session-homework.tsx:1056", say: "they empty the field of a stored note: saving it clears the note" }
+      SEAT_ENDS: { guard: seatHeld, target: panel, effect: [seatEnded], source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490", say: "they leave the course in another tab, or the team removes them: the page is not told (HAND-2)" }
+      RELOAD: { guard: seatHeld, target: reading, effect: [reloaded], source: "apps/tedris/features/courses/components/session-homework.tsx:392", say: "the page is read again: refused rows, the status and an unsaved note are gone (WRT-13)" }
+      NAVIGATE: left
+
+  uploading:
+    title: A file is sent
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:435
+    description: >-
+      The browser's fetch, POST /api/files/lessons/<celse>/submission/files with the one multipart field `file` (the web route streams it
+      on to tedrisat's POST /lessons/:id/submission/files with the token; the browser never talks to tedrisat). The file is a row under the
+      list with its name and "Yükleniyor…", an aria-busy span that announces nothing (WRT-07); the picker stays open unless the quota is
+      now used up. tedrisat answers in this order: no storage (503, before the body is read), then who may write (403), then a recited homework
+      (409), then the quota (409), then the type from the bytes (415). 201 returns the whole homework: the file joins the list, its row goes
+      and the polite status says "<file> eklendi.". Any refusal turns the row into its reason in a paragraph with role alert, with
+      "Kapat: <file>" beside it; the status is not set. A 401 sends the person to sign in and back, and abandons the files still queued.
+    invoke: { action: webAddMySubmissionFile }
+    on:
+      DONE:
+        - { guard: "file == 'stored' and seat == 'held' and files == 'none' and note == 'none'", target: onTeamList, effect: [filesOne, recordKept, heardAdded], source: "apps/tedris/features/courses/components/session-homework.tsx:437", say: "the first thing handed in: the badge turns to \"Teslim edildi\"" }
+        - { guard: "file == 'stored' and seat == 'held' and files == 'none'", target: panel, effect: [filesOne, recordKept, heardAdded], source: "apps/tedris/features/courses/components/session-homework.tsx:437" }
+        - { guard: "file == 'stored' and seat == 'held' and files == 'one'", target: panel, effect: [filesMany, recordKept, heardAdded], source: "apps/tedris/features/courses/components/session-homework.tsx:437" }
+        - { guard: "file == 'stored' and seat == 'held'", target: panel, effect: [recordKept, heardAdded], source: "apps/tedris/features/courses/components/session-homework.tsx:437", say: "a further file: the list grows (the ninth to tenth step is not drawn, see scope.outOfView)" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.storage: { guard: "file == 'noStorage'", target: panel, effect: [rowStorage], source: "apps/tedris/features/courses/components/session-homework.tsx:442" }
+      FAIL.type: { guard: "file == 'wrongType' and seat == 'held'", target: panel, effect: [rowType], source: "apps/tedris/features/courses/components/session-homework.tsx:442" }
+      FAIL.limit: { guard: "file == 'overQuota' and seat == 'held'", target: panel, effect: [rowLimit], source: "apps/tedris/features/courses/components/session-homework.tsx:442", say: "the text is the page's own count of the quota, whichever of the two refusals it was (WRT-08)" }
+      FAIL.forbidden: { guard: "seat == 'ended' and file in ['stored', 'wrongType', 'overQuota']", target: panel, effect: [rowForbidden], source: "apps/tedris/features/courses/components/session-homework.tsx:442", say: "the seat is gone: 403 SUBMISSION_FORBIDDEN (HAND-2)" }
+      FAIL.gone: { guard: "file == 'gone'", target: panel, effect: [rowNotFound], source: "apps/tedris/features/courses/components/session-homework.tsx:442", say: "the celse or the course is gone: the row says the file is (HAND-3)" }
+      FAIL.failed: { guard: "file == 'failed'", target: panel, effect: [rowFailed], source: "apps/tedris/features/courses/components/session-homework.tsx:83", say: "a 400, a 502 from the web route, or a fetch that throws" }
+
+  onTeamList:
+    title: The hand-in is on the course team's list in nazar
+    source: apps/nazar/features/homework/components/homework-page.tsx:41
+    description: >-
+      The first file or the first note makes the talebe's row, and Ödevler in nazar (`GET /courses/:id/submissions`) lists it for whoever
+      holds submission.read on the course, with the files and the note. Nothing is sent when it is made (no notification, no audit row for a
+      note; the file's upload is audited). A step with no screen of its own.
+    always:
+      - { target: panel, starts: { flow: nazar.homework.review, given: { handedIn: "true" } }, say: "the müderris reads and reviews it on her own page" }
+
+  confirming:
+    title: Remove this file?
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:938
+    description: >-
+      Inline, in the file's row: "Bu dosya kaldırılsın mı?", the destructive button "Kaldır" and "Vazgeç"; the row's trash button is
+      gone. There is no dialog, no toast, and the focus is not moved to the question (WRT-01); nothing announces the question. The other
+      files, if any, keep their trash buttons.
+    on:
+      CONFIRM: { target: removing, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:946" }
+      CANCEL_REMOVE: { target: panel, source: "apps/tedris/features/courses/components/session-homework.tsx:953", say: "\"Vazgeç\": the row returns to its trash; the focus is lost (WRT-01)" }
+      SEAT_ENDS: { guard: seatHeld, target: confirming, effect: [seatEnded], source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490", say: "the seat ends while the question is up (HAND-2)" }
+      NAVIGATE: left
+
+  removing:
+    title: The file is removed
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:892
+    description: >-
+      The server action deleteMySubmissionFile, DELETE /lessons/:id/submission/files/:fileId: the row goes at once and the object is
+      queued for the store's sweep (which does nothing without a store); the homework's last change moves and the removal is audited.
+      "Kaldır" is busy (aria-disabled, aria-busy) and a hidden status says "Kaldırılıyor". Success, or a 404 ("gone already is what was
+      asked"), takes the row out of the list, sets the polite status "<file> kaldırıldı." and reads the homework again without a sound for the
+      new time. A 403 says "Ödev teslim etmek için derse kayıtlı olman gerekir."; any other status, or a throw, says "Dosya kaldırılamadı.
+      Biraz sonra yeniden dene." under the row, which stays (a 503 would read "Dosyalar şu an kaydedilemiyor...", HAND-3).
+    invoke: { action: deleteMySubmissionFile }
+    on:
+      DONE: { guard: "removal == 'removed' and seat == 'held'", target: fileGone, source: "apps/tedris/features/courses/components/session-homework.tsx:899" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.gone: { guard: "removal == 'gone' and seat == 'held'", target: fileGone, source: "apps/tedris/features/courses/components/session-homework.tsx:899", say: "any 404 is taken as removed" }
+      FAIL.forbidden: { guard: lostSeat, target: removeRefused, effect: [problemForbidden], source: "apps/tedris/features/courses/components/session-homework.tsx:904", say: "403 SUBMISSION_FORBIDDEN: the seat is gone (HAND-2)" }
+      FAIL.failed: { guard: "removal == 'failed' and seat == 'held'", target: removeRefused, effect: [problemRemoveFailed], source: "apps/tedris/features/courses/components/session-homework.tsx:906" }
+
+  fileGone:
+    title: The file leaves the list
+    source: apps/tedris/features/courses/components/session-homework.tsx:554
+    description: >-
+      The list drops the file, the polite status says "<file> kaldırıldı.", and a quiet read of the homework fetches the new time of the
+      last change (the walk never sees that read: it draws nothing, and a failure of it is silent). With no file left and no note the badge
+      turns back to "Teslim edilmedi" and the warning returns; "Son değişiklik" stays. A step with no screen of its own.
+    always:
+      - { guard: "files == 'one'", target: panel, effect: [filesNone, heardRemoved], source: "apps/tedris/features/courses/components/session-homework.tsx:554" }
+      - { guard: "files == 'full'", target: panel, effect: [filesMany, heardRemoved], source: "apps/tedris/features/courses/components/session-homework.tsx:554" }
+      - { target: panel, effect: [heardRemoved], source: "apps/tedris/features/courses/components/session-homework.tsx:554" }
+
+  removeRefused:
+    title: The file could not be removed
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:973
+    description: >-
+      The row stays in its question ("Bu dosya kaldırılsın mı?", "Kaldır", "Vazgeç") with a paragraph with role alert under it: the 403
+      sentence or "Dosya kaldırılamadı. Biraz sonra yeniden dene.". "Vazgeç" clears it; pressing "Kaldır" again clears it and tries again.
+    on:
+      CONFIRM: { target: removing, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:946" }
+      CANCEL_REMOVE: { target: panel, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:953", say: "\"Vazgeç\" clears the error line with the question" }
+      NAVIGATE: left
+
+  drafting:
+    title: A note is typed
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:1056
+    description: >-
+      The note's field differs from what is stored (a text, or an emptied field over a stored note), so "Notu kaydet" is enabled;
+      from 3600 characters the help line becomes the count. "Notu kaydet" is the form's submit: Enter does nothing in a textarea. Nothing is
+      stored until it is pressed, and reloading or leaving loses the text without a word (WRT-13). The picker and the trash buttons still
+      work in the page; the graph draws only the note's way from here.
+    on:
+      SAVE_NOTE: { target: noteSaving, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:1002" }
+      SEAT_ENDS: { guard: seatHeld, target: drafting, effect: [seatEnded], source: "apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490", say: "the seat ends while a note is typed (HAND-2)" }
+      RELOAD: { guard: seatHeld, target: reading, effect: [reloaded], source: "apps/tedris/features/courses/components/session-homework.tsx:392", say: "what was typed is lost (WRT-13)" }
+      NAVIGATE: left
+
+  noteSaving:
+    title: The note is sent
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:1010
+    description: >-
+      The server action saveMySubmissionNote, PUT /lessons/:id/submission with { note }; a blank text sends null, which clears the note, and
+      the API makes the row if there is none. "Notu kaydet" is busy and a hidden status says "Kaydediliyor". Success: the row replaces what the
+      page held, the field shows the stored note, "Not kaydedildi." appears beside the button while the text is not changed again, "Son
+      değişiklik" shows, and the badge reads "Teslim edildi" if there is now a file or a note. A 403 says "Ödev teslim etmek için derse
+      kayıtlı olman gerekir."; any other status or a throw says "Not kaydedilemedi. Biraz sonra yeniden dene." in a paragraph with role alert
+      after the form; the text stays. The page's own 4000-character check and the sentence for a 400 can never be reached (HAND-1).
+    invoke: { action: saveMySubmissionNote }
+    on:
+      DONE:
+        - { guard: "noteAnswer == 'saved' and seat == 'held' and typed == 'words' and not handedIn", target: onTeamList, effect: [noteSaved, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1016", say: "the first thing handed in: the badge turns to \"Teslim edildi\"" }
+        - { guard: "noteAnswer == 'saved' and seat == 'held' and typed == 'words'", target: panel, effect: [noteSaved, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1016" }
+        - { guard: "noteAnswer == 'saved' and seat == 'held'", target: panel, effect: [noteCleared, recordKept], source: "apps/tedris/features/courses/components/session-homework.tsx:1016", say: "a blank field stored null: the note is gone, and with no file the badge turns back to \"Teslim edilmedi\"" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: lostSeat, target: noteRefused, effect: [problemForbidden], source: "apps/tedris/features/courses/components/session-homework.tsx:1022", say: "403 SUBMISSION_FORBIDDEN: the seat is gone (HAND-2)" }
+      FAIL.failed: { guard: "noteAnswer == 'failed' and seat == 'held'", target: noteRefused, effect: [problemNoteFailed], source: "apps/tedris/features/courses/components/session-homework.tsx:1026" }
+
+  noteRefused:
+    title: The note was refused
+    by: human
+    source: apps/tedris/features/courses/components/session-homework.tsx:1085
+    description: >-
+      A paragraph with role alert after the form says why. The textarea is marked invalid but is not tied to the paragraph (WRT-03); the
+      typed text stays and the button stays enabled. Pressing it again clears the line and tries again.
+    on:
+      SAVE_NOTE: { target: noteSaving, effect: [problemNone], source: "apps/tedris/features/courses/components/session-homework.tsx:1002" }
+      RELOAD: { guard: seatHeld, target: reading, effect: [reloaded], source: "apps/tedris/features/courses/components/session-homework.tsx:392", say: "what was typed is lost (WRT-13)" }
+      NAVIGATE: left
+
+  nothing_drawn:
+    title: The section draws nothing
+    type: final
+    description: >-
+      The celse has no homework and the talebe has handed nothing in (or the read failed, which says nothing): the page goes on without the
+      section. This is the page's own end of the section, not a place the person went to.
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The server action answered "unauthenticated", or the upload route answered 401 with the body {kind: unauthenticated}: sendToSignIn
+      (lib/send-to-sign-in.ts) sends the person to sign in and back to this address, and the section draws no error. realm.auth.signIn
+      takes over.
+
+assertions:
+  - id: nothing-is-removed-of-nothing
+    never: "state in ['confirming', 'removing', 'removeRefused'] and files == 'none'"
+    say: "A file is asked about, removed or refused for removal only while one is listed"
+    source: apps/tedris/features/courses/components/session-homework.tsx:938
+  - id: the-picker-is-closed-when-the-quota-is-used
+    never: "state == 'uploading' and files == 'full'"
+    say: "No file is sent while the quota of ten is used up: the picker is closed"
+    source: apps/tedris/features/courses/components/session-homework.tsx:625
+  - id: no-homework-and-no-row-draws-nothing
+    never: "state in ['panel', 'uploading', 'confirming', 'removing', 'removeRefused', 'drafting', 'noteSaving', 'noteRefused', 'loadFailed'] and legacy and record == 'none'"
+    say: "A celse with no homework draws the section only for a talebe whose row exists"
+    source: apps/tedris/features/courses/components/session-homework.tsx:458
+  - id: an-ended-seat-hands-nothing-in
+    never: "state == 'onTeamList' and seat == 'ended'"
+    say: "A talebe whose seat has ended hands nothing in: every write is refused with 403"
+    source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:490

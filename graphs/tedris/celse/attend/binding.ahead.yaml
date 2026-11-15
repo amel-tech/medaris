@@ -1,0 +1,24 @@
+# tedris.celse.attend, the standing `ahead` (a celse two days ahead with a meeting link: the join window is closed). Same data, exits and locators as binding.yaml (see locators.binding.yaml).
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/attend --bind graphs/tedris/celse/attend/binding.ahead.yaml --to ahead --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.attend
+
+samples:
+  title: Sonraki celse
+  previous: Biten celse
+  next: Bağlantısız celse
+
+scenarios:
+  ahead:
+    given: { access: open, standing: ahead, means: link, place: online, agenda: none, resources: none, exam: none, neighbours: both }
+    as: applicantE
+    open: '{tedris}/courses/{att.course}/lessons/{att.ahead}'
+    vars: { steps: 3 }
+    setup:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, up]
+        expect: 'attend-data up'
+    teardown:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, down]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

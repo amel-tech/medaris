@@ -1,0 +1,196 @@
+# What must exist for a talebe who reads their decks and their collection: tedris.decks.browse, written on 15 Nov 2026 in the format of LAYOUT.md
+# section 7. Each need is what the product must do, from the flow's story; none is read off what the page does today. No planned feature of
+# planned.md (P-nn) names this page. The page decides no seat, so the per-gender kontenjan need (MDRS-284) has no place here.
+# No replay ran while this was written (the owner's phase rule), so no `walked` entry names a replay scenario: a need with no e2e check is
+# "unwalked" below until the walk phase has passed one.
+#
+# The gaps this file leaves, for the orchestrator's merge into graphs/needs.gaps.yaml:
+#   missing    (no code, or the code is wrong for its users and no Linear issue exists): the-count-is-announced (DCK-11), the-failed-read-has-a-heading
+#              (DCK-12), loading-is-announced (DCK-25), the-empty-sentence-names-its-cause (DECKLIST-1), study-needs-a-card (DECKLIST-2),
+#              a-long-list-is-paged (DECKLIST-3), words-come-from-the-catalog (DCK-23)
+#   unwalked   (code, and no e2e or replay walks it): open-a-deck-from-the-list (no e2e presses a deck's name here), reach-explore-and-create (decks#1
+#              only sees the two links, nobody presses them), a-person-with-nothing-is-pointed-on (no e2e has a talebe with no deck and none
+#              collected), a-failed-read-says-so (only the unit spec test/decks-page.spec.ts proves the markup; the stack cannot make tedrisat refuse
+#              the read)
+kind: needs
+flow: tedris.decks.browse
+status: proposed
+
+needs:
+  - id: my-decks-with-their-state
+    need: >-
+      A talebe reads, in one list, every deck they wrote, each with the state of its publication (private, waiting for review, published or
+      refused), how many cards it has and of what kind, how far they have mastered it and how many of its cards wait for a repeat.
+    drawn: [list, ownList, ownBadge, deckProgress, ownDue, deckCards, deckKind]
+    built:
+      - action: medaris.api:listDeckSummaries
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:152
+      - route: apps/tedris/features/flashcards/components/deck-summary-card.tsx:45
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#1 (a2, a3, a7 to a10, a12 to a14)'
+
+  - id: when-a-publication-was-asked
+    need: A deck whose publication was asked for shows the day it was asked, in the viewer's time zone, beside its state.
+    drawn: [list, ownRequested]
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-summary-card.tsx:88
+      - route: apps/tedris/features/flashcards/deck-model.ts:191
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#1 (a11: "18 kart·Kelime·29 Eylül’de istendi"; the day is fixed by the e2e seed and the zone Europe/Istanbul)'
+
+  - id: my-collection-and-where-each-deck-comes-from
+    need: >-
+      A talebe reads, apart from their own decks, the decks of other people they collected, each with where it comes from (a course and its
+      hoca, a köşk, a medrese or everyone) and with their progress in it. An author who makes a deck private again takes it out of the list.
+    drawn: [list, collectedList, collectedBadge, deckContext, deckProgress]
+    built:
+      - action: medaris.api:listDeckSummaries
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:213
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#1 (a15, a16: "Herkese açık", "Tamamlanan: 2 / 8 kart"; the context line of a course deck is asserted on Keşfet, decks#6)'
+
+  - id: new-cards-in-a-collected-deck
+    need: A talebe is told how many cards were written in a collected deck after they collected it, so they know there is something new to study.
+    drawn: [list, collectedAdded]
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-summary-card.tsx:143
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#1 (a17: "2 yeni kart")'
+
+  - id: only-my-decks-and-the-ones-i-collected
+    need: >-
+      The list holds the decks the talebe wrote and the ones they collected and may still read, and no other: another person's published deck they
+      did not collect, and a stranger's private deck, are not in it.
+    drawn: [list]
+    built:
+      - action: medaris.api:listDeckSummaries
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#1 (a19, a20: the screen shows no such deck; the rule belongs to the API, and the graph draws only decks that are in the list)'
+
+  - id: narrow-my-decks-by-status
+    need: >-
+      A talebe narrows the decks they wrote to those private, waiting for review or published, and takes the filter off, and the page says how many
+      decks are left. A refused deck is counted as private, and the filter leaves the collection alone.
+    drawn: [list, chipAll, chipPrivate, chipPending, chipPublished, filterGroup, ownCount, ownEmptyByChip, chips-narrow-only-own]
+    built:
+      - route: apps/tedris/features/flashcards/deck-model.ts:48
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:162
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#2 (a2 to a10; the aria-pressed of a chip in a1 is not drawn: the format has no pressed state)'
+
+  - id: find-a-deck-by-a-word
+    need: >-
+      A talebe types a word and both lists keep the decks that have every word of it in their name or description, in the Turkish alphabet; a
+      list with nothing left says so.
+    drawn: [list, searchBox, searchLandmark, ownEmptyBySearch, collectedEmptyBySearch]
+    built:
+      - route: apps/tedris/features/flashcards/deck-model.ts:26
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:140
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#3'
+
+  - id: study-a-deck-from-the-list
+    need: A talebe starts a study round of a deck from its card in the list, with one press, and the button names the deck it belongs to.
+    drawn: [list, deckStudy, study_opened]
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-summary-card.tsx:156
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#4'
+
+  - id: open-a-deck-from-the-list
+    need: >-
+      A talebe opens a deck from its card, and meets the owner's page for a deck they wrote and the reader's page for one they collected.
+    drawn: [list, deckLink, deck_opened]
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72
+    # walked: nothing. No e2e presses a deck's name here (decks#11 and #12 open a deck from the create form, the others by address).
+
+  - id: reach-explore-and-create
+    need: >-
+      From their decks a talebe reaches the page that finds more decks to collect and the form that makes a deck, from the head of the page and,
+      when a list is empty, from the sentence that says so.
+    drawn: [list, exploreLink, createLink, exploreFromEmpty, createFromEmpty, explore_opened, create_opened]
+    built:
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:126
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:133
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#1 (a5, a6: both links are seen and not pressed)'
+
+  - id: a-person-with-nothing-is-pointed-on
+    need: >-
+      A talebe who has no deck of their own is told so and is offered the form that makes one; one who collected none is told so and is offered the
+      page that finds some.
+    drawn: [list, ownEmptyNoDeck, createFromEmpty, collectedEmptyNoDeck, exploreFromEmpty]
+    built:
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:178
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:223
+    # walked: nothing. Every e2e account has decks and a collection; the replay's scenario `nothing` (binding.none.yaml) is bound and not yet run.
+
+  - id: a-failed-read-says-so
+    need: >-
+      When the decks cannot be read the talebe is told so, with a way to try again, and is never told they have no deck.
+    drawn: [loadFailed, loadFailedBox, retryButton, a-failed-read-draws-no-list, box-only-after-a-failed-read]
+    built:
+      - route: apps/tedris/features/flashcards/components/decks-page.tsx:85
+      - route: apps/tedris/features/flashcards/reads.ts:31
+    # walked: nothing. The unit spec apps/tedris/test/decks-page.spec.ts proves the markup; no e2e and no replay makes tedrisat fail, and the stack
+    # cannot be made to.
+
+  - id: a-visitor-is-sent-to-sign-in
+    need: A person who is not signed in and opens Desteler is sent to sign in and brought back to it.
+    drawn: []
+    built:
+      - route: apps/tedris/app/decks/(medaris)/(liste)/page.tsx:16
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#5 (carried by realm.auth.signIn; this flow draws a signed-in talebe only)'
+
+  - id: the-count-is-announced
+    need: >-
+      When a chip is pressed or a word typed, a person who cannot see the page is told how many decks are left in each section.
+    drawn: [list, ownCount, collectedCount]
+    missing: none # DCK-11: the counts are plain spans, not live regions; no Linear issue
+
+  - id: the-failed-read-has-a-heading
+    need: >-
+      The box that says the decks could not be read is the page's h1, and a retry says that it is working.
+    drawn: [loadFailed, loadFailedTitle, retryButton]
+    missing: none # DCK-12: SystemState has headingLevel 2 inside <main>, and "Yeniden dene" is a bare router.refresh(); no Linear issue
+
+  - id: loading-is-announced
+    need: While Desteler loads, a screen reader is told that it is loading.
+    drawn: []
+    missing: none # DCK-25: loading.tsx is an aria-busy block of skeletons with no word; no screen of this flow; no Linear issue
+
+  - id: the-empty-sentence-names-its-cause
+    need: >-
+      When a chip and a word together leave nothing, the page says which of the two hides the decks, and does not say that nothing matches the word
+      when the word matches.
+    drawn: [list, ownEmptyBySearch, ownEmptyByChip]
+    missing: none # DECKLIST-1, a finding of this flow; no Linear issue
+
+  - id: study-needs-a-card
+    need: A deck is offered for study only when it has a card to study; a deck with none is not.
+    drawn: [list, deckStudy]
+    missing: none # DECKLIST-2 and decision D1 of the flow; the study page's side is DCK-27; no Linear issue
+
+  - id: a-long-list-is-paged
+    need: >-
+      A talebe with very many decks reads them a page at a time: the read has a limit and the page draws what it was given, so that the answer and the
+      grid do not grow with the number of decks.
+    drawn: [reading, list]
+    missing: none # DECKLIST-3, a finding of this flow, not measured; the TODO at flashcard-deck.repository.ts:102 and :111 is about two other queries; no Linear issue
+
+  - id: words-come-from-the-catalog
+    need: Every word the page draws or a screen reader reads comes from the catalog and so can be translated.
+    drawn: [list, deckProgress, deckPercent]
+    missing: none # DCK-23: "tamamlandı" (Progress at %100) and the toaster's "Bildirimler" are kit defaults; MDRS-233 is the toast close button; no Linear issue for these two

@@ -1,0 +1,10 @@
+# The way into tedris.decks.editOrDelete: the list of the author's decks (/decks), then the deck's own card. The nav binding gives no locator for an
+# entry that needs an item (`data: true`), so this file names the card by its address: the card is an <a class="mds-card__link"> to /decks/<id>
+# (libs/ui/src/mds/card.tsx:48), and {deck} is the scenario's own deck.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'decks->deck': { css: 'a[href="/decks/{deck}"]', nth: 0 }

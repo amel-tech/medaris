@@ -1,0 +1,24 @@
+# tedris.celse.attend, the standing `inPerson` (a celse held face to face, three days ahead, no link and no stream: the eyebrow says Yüz yüze). Same data, exits and locators as binding.yaml (see locators.binding.yaml).
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/attend --bind graphs/tedris/celse/attend/binding.inPerson.yaml --to ahead --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.attend
+
+samples:
+  title: Yüz yüze celse
+  previous: Bağlantısız celse
+  next: Sınav celsesi
+
+scenarios:
+  inPerson:
+    given: { access: open, standing: ahead, means: none, place: inPerson, agenda: none, resources: none, exam: none, neighbours: both }
+    as: applicantE
+    open: '{tedris}/courses/{att.course}/lessons/{att.inPerson}'
+    vars: { steps: 3 }
+    setup:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, up]
+        expect: 'attend-data up'
+    teardown:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, down]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

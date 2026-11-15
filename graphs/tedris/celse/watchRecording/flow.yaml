@@ -1,0 +1,305 @@
+# Watching a celse's recording (tedris-web): the celse page that leads to it, the watch page that plays it (/courses/<id>/lessons/<id>/izle),
+# and the places a person is sent when there is nothing to play yet. Read from the code of the branch (the tree of PR #394) on 15 Nov 2026
+# and looked at on the local stack with a browser, by hand (a probe, never a replay: the replays are the walk phase's). Nothing here is approved.
+#   - What it draws: the one read the pages make (GET /courses/:id/sessions/:id), the three ways the celse page offers a recording (a link
+#     "Kaydı izle", the sentence that says when it opens, the sentence that says it is being prepared), the watch page for a talebe and for
+#     the course team, and the locked celse page of a person with no seat, which plays one kind of recording of its own.
+#   - Who sees a recording is decided by tedrisat, not by the pages (tedrisat/src/course/course.service.ts:697-761): a caller who may read the
+#     course's content (an enrolled or completed talebe, the course team) is sent the celse's recording whatever its visibility; a caller who
+#     may not is sent it only for a sample celse, and only when it is PUBLIC and no rule of the course, the platform or the köşk holds it back.
+#     The watch page then lets in only the first kind: anyone else is sent back to the celse page (izle/page.tsx:31), whatever the recording's
+#     visibility. The recording's own visibility is read by no component of these two pages.
+#   - When a recording opens: READY, its celse begun and the release time the course team set passed (domain/recording.ts:100-142). Before that
+#     tedrisat sends a talebe the recording with its time and no link, and the course team the link (domain/recording.ts:150-158).
+#   - Which parts need Bunny (the stack has none, STACK.md): a recording uploaded to Bunny's library, its signed player link, the frame it is
+#     played in ("Ders kaydı oynatıcısı: <title>") and its expiry; a recording that is uploading or being encoded (PROCESSING). The walk adds
+#     recordings as pasted links (POST /lessons/:id/recordings: YouTube, and a host that cannot be framed), which are READY at once; it puts one
+#     back to PROCESSING by SQL, and writes one BUNNY row by SQL, which this stack answers with no link, so it reads as a recording being
+#     prepared (WATCH-2). The YouTube frames are in the page but their video is not played: the stack's browser does not play YouTube.
+#   - Findings it carries (ui.yaml `rules` has the same ids): CLS-09 (the page's reading of the clock is fixed at render), CLS-07 (the poster
+#     link repeats the button's name), CLS-06 (the phone order of the watch page differs from the tab order), WATCH-1 (the YouTube API
+#     renames the frame), WATCH-2 (a READY Bunny recording that cannot be signed reads as being prepared), WATCH-3 (the page never reads
+#     the recording's visibility, and the medrese's "Ders kayıtları herkese açılamaz" is not honoured when a sample celse's PUBLIC recording is
+#     sent to a locked caller: the domain's recording-public-honours-medrese-policy and policy-no-public-recordings-inert), MDRS-259, MDRS-264.
+schema: delurio-graph/0
+kind: flow
+id: tedris.celse.watchRecording
+status: captured
+domain: medaris.api
+ui: tedris.celse.watchRecording
+title: Watch a celse's recording
+summary: >-
+  A talebe who holds a seat opens a celse that is over. When it has a recording that is open to talebe, the celse page offers the link "Kaydı
+  izle" (and the poster beside it) and the watch page plays the recording: its title, its date and length, the player and, beside it, the
+  talebe's questions and notes. A recording that is READY but whose release time is still ahead is not played to the talebe: the celse page says
+  when it opens, and the address of the watch page sends them back to the celse page. The same for a recording still being prepared. The course
+  team (a hoca, a nazır who may manage recordings) is handed the link of a held recording: the celse page and the watch page play it and say "Talebelere ...
+  açılacak". A person with no seat never reaches the watch page: the celse page they meet is the locked card, which plays only the PUBLIC recording of
+  a sample celse. A visitor is sent to sign in first.
+
+scope:
+  shows: the celse page's recording block, the watch page of a recording, the locked page's recording, and the ways between them and out of them
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the celse page: the header and the badge, the Müfredat popup and the pager, the agenda and the resources, the homework, the exam and the notes panel it draws when there is nothing to watch (tedris.celse.attend, tedris.celse.browseCurriculum, tedris.learn.notes, tedris.learn.homeworkHandIn)"
+    - "a celse that also has a live stream link (a held or a still-prepared recording within 24 hours of the end, liveStreamUrl sent): the celse page is then the stream card and the watch page plays the stream, with the chat (tedris.celse.watchStream); drawn here as the exit stream_opened"
+    - "the recordings tab of the course page, which lists the recordings and leads a seat's row here by a plain link (tedris.course.recordings)"
+    - "the notes and the questions panels beside the player, their forms and their rules (tedris.learn.notes, tedris.learn.questions); here only the column they sit in"
+    - "a celse that is cancelled yet keeps its recording: the celse page then shows only the cancellation card (actionCaseOf checks cancelled first) while the watch page still plays the recording by its address and from the recordings tab (watch-model.ts:132-146); tedris.celse.cancelled"
+    - "a recording of a lesson that is not a celse (a video or a document lesson): the pages are for celses, so the lesson is not found here"
+    - "the course team's controls for adding, renaming, replacing and releasing a recording (nazar.recordings.add, nazar.recordings.upload, nazar.sessions.manage)"
+    - "the person's own YouTube session and the YouTube player's controls, and Bunny's player's controls (third-party frames)"
+    - "the line under a release sentence that names the course's zone and the viewer's clock when they differ (RecordingRelease.zone): the stack's browser and the course are both Europe/Istanbul, so it is never drawn in a walk"
+    - "the loading skeleton while the pages' reads run (loading.tsx of both segments)"
+
+decisions:
+  D1:
+    question: >-
+      Should the celse page of a person with no seat play a sample celse's PUBLIC recording when the medrese's policy "Ders kayıtları herkese açılamaz"
+      is on, as it does not when the course is closed, or the platform's or the köşk's switch is on?
+    recommend: >-
+      No. The settings page promises that no recording is public while the switch is on. Ask the medrese's switch in publicRecordingsAllowed, the one place
+      that already asks the other three (course.service.ts:857-867), and refuse a PUBLIC write while the engine closes setting.recordings_public.
+    affects: [lockedPlayer]
+  D2:
+    question: >-
+      Should a talebe who opens the watch page of a recording that is held back be told when it opens, as the celse page tells them, instead of being sent back without a word?
+    recommend: >-
+      Yes: the redirect is the page's only answer and carries nothing; the sentence is on the page it lands on, but a bookmark or a link from a notification
+      that lands on the celse page reads like a refusal until the card is read.
+    affects: [celseHeld, celsePreparing]
+
+context:
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "GET /courses/:id/sessions/:id answers"
+      failed: "the read fails with any status (a missing, hidden or draft course, an unknown celse, a 5xx): the page maps every failure to null and shows the not-found page (CLS-01)"
+  viewer:
+    values: [talebe, team, outsider, visitor]
+    initial: any
+    say:
+      talebe: "they hold a seat (ENROLLED or COMPLETED) in a course that is not passive: they may read its content and take notes and ask questions"
+      team: "they are on the course team, hold recording.manage and are not enrolled (a hoca, a nazır who was given it): they read the content, see a recording before talebe may, and write no notes"
+      outsider: "they are signed in and may not read the course's content: no seat, a waiting application, a removed talebe, or an enrolled talebe of a passive course (MDRS-265)"
+      visitor: "they are not signed in"
+  entry:
+    values: [celse, direct]
+    initial: any
+    say:
+      celse: "the person is on the celse page (from the programme, the pager, the Müfredat popup or a link)"
+      direct: "the person opens the watch page by its address: the recordings tab's link, a bookmark, a shared link"
+  recording:
+    values: [open, held, preparing]
+    initial: any
+    say:
+      open: "the celse's recording is READY and open to talebe: no release time was set, or it has passed (and the celse has begun)"
+      held: "the recording is READY and its release time is still ahead: a talebe is sent no link, the course team is"
+      preparing: "the recording is PROCESSING and has no release time ahead: there is no link for anyone"
+  host:
+    values: [youtube, other, bunny]
+    initial: any
+    say:
+      youtube: "a YouTube or Google Drive link: the page frames the host's player"
+      other: "a link at any other https host: nothing can be framed, so the page shows a placeholder and a link to the host"
+      bunny: "a recording uploaded to Bunny and signed for this viewer: the page frames Bunny's player on the signed link (needs Bunny; not walked)"
+  stream:
+    values: [none, sent]
+    initial: any
+    say:
+      none: "the celse has no live stream link, or tedrisat no longer sends it"
+      sent: "tedrisat sends the celse's live stream link (from its start until a recording is open to talebe, never later than 24 hours after its end)"
+  lockedShows:
+    values: [nothing, publicSample, publicSampleDespiteMedreseRule]
+    initial: any
+    say:
+      nothing: "tedrisat sends a caller who may not read the content no recording: the celse is not a sample, or its recording is ENROLLED, or the course is closed, or the platform's or the köşk's switch is on"
+      publicSample: "the celse is a sample (isPreview), its recording is PUBLIC and no rule holds it back: tedrisat sends it to a locked caller"
+      publicSampleDespiteMedreseRule: "as publicSample, and the medrese of the course has switched \"Ders kayıtları herkese açılamaz\" on: the recording is sent all the same (WATCH-3)"
+
+guards:
+  recordingPlays: "recording == 'open' or (recording == 'held' and viewer == 'team')"
+  lockedSees: "viewer == 'outsider' and recording == 'open' and lockedShows != 'nothing'"
+  framed: "host != 'other'"
+
+failures:
+  reading: { from: getSession, notFound: [LESSON_NOT_FOUND, COURSE_NOT_FOUND] }
+# `notFound` stands for any failure: features/courses/public-reads.ts:49-55 turns a thrown error of any kind into null and the layout calls notFound()
+# (a 404 of the course, an unknown or non-live celse, a 5xx, a refused token): the page is the not-found page for every one of them.
+
+# The main story: a talebe on the celse page of a celse that is over, with a YouTube recording that is open, presses "Kaydı izle" and reads the watch page.
+main:
+  given: { read: ok, viewer: talebe, entry: celse, recording: open, host: youtube, stream: none, lockedShows: nothing }
+  events: [DONE, WATCH]
+
+initial: reading
+states:
+  reading:
+    title: Read the celse
+    description: >-
+      The segment's layout and the page read GET /courses/:id/sessions/:id (never from Next's data cache) together with the course, with the
+      person's own token. tedrisat answers a caller who may read the content with the celse's recording and, until a recording is open, its stream
+      link; a caller who may not, with neither, except the PUBLIC recording of a sample celse (course.service.ts:697-761). A READY Bunny recording
+      carries a player link signed for this response; a recording before its release time has no link, except for the course team. Any failure of
+      the read is turned into the not-found page (CLS-01).
+    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:76"
+    invoke: { action: getSession }
+    on:
+      DONE: { guard: "read == 'ok'", target: sorting, source: apps/tedris/features/courses/public-reads.ts:92 }
+      FAIL.notFound: { guard: "read == 'failed'", target: not_found, say: "the layout calls notFound(): a real 404 before the page streams", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:80" }
+
+  sorting:
+    title: See what the person is given
+    description: classification only; the order is the order of the code
+    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31"
+    always:
+      - { guard: "viewer == 'visitor'", target: sign_in_asked, say: "the proxy sends a person with no session to sign in, to come back to this address", source: apps/tedris/proxy.ts:17 }
+      - { guard: lockedSees, target: lockedPlayer, say: "the celse page is the locked card, which plays a sample celse's PUBLIC recording; the watch page's address redirects to it", source: apps/tedris/features/courses/components/lesson-locked.tsx:139 }
+      - { guard: "viewer == 'outsider'", target: detail_locked, say: "the celse page is the locked card; the watch page's address redirects to it", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31" }
+      - { guard: "recordingPlays and entry == 'celse'", target: celseCard, say: "the celse page offers the recording", source: apps/tedris/features/courses/components/session-action-card.tsx:233 }
+      - { guard: "recordingPlays and viewer == 'talebe'", target: playerTalebe, say: "the watch page's address plays the recording", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:34" }
+      - { guard: recordingPlays, target: playerTeam, say: "the watch page's address plays the recording", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:34" }
+      - { guard: "stream == 'sent'", target: stream_opened, starts: { flow: tedris.celse.watchStream }, say: "nothing to play yet, but the stream link is sent: the celse page is the stream card and the watch page plays the stream", source: apps/tedris/features/courses/watch-model.ts:143 }
+      - { guard: "recording == 'held'", target: celseHeld, say: "no link was sent, so the celse page says when the recording opens; the watch page's address redirects to it", source: apps/tedris/features/courses/watch-model.ts:139 }
+      - { target: celsePreparing, say: "no link was sent, so the celse page says the recording is being prepared; the watch page's address redirects to it", source: apps/tedris/features/courses/watch-model.ts:139 }
+
+  celseCard:
+    title: The celse page offers the recording
+    by: human
+    description: >-
+      The celse page of a celse that is over, in the case "recording": a card named "Celseyi kaçırdıysan kaydından izle", a 16:9 poster that is a
+      link, the eyebrow "Ders kaydı", the recording's day and length ("5 Kasım 2026 60 dk") and, for an enrolled talebe, "Notların ve soruların
+      izleme sayfasında, videonun yanında açılır.", and the primary button "Kaydı izle", a plain link to /courses/<id>/lessons/<celse>/izle. The
+      poster repeats the button's name (CLS-07) and is out of the tab order. For the course team, while the recording is held back, a line under
+      the card says "Talebelere <day> <time> açılacak" (the line is the card's footnote); the same card, with no notes sentence. The page
+      draws the card from what the server saw when it was rendered, so a recording that opened after that is not offered until the page is
+      read again (CLS-09). The card is the poster of a recording only while the celse is not cancelled.
+    source: apps/tedris/features/courses/components/session-action-card.tsx:281
+    on:
+      WATCH:
+        - { guard: "viewer == 'talebe'", target: playerTalebe, source: apps/tedris/features/courses/components/session-action-card.tsx:269 }
+        - { target: playerTeam, source: apps/tedris/features/courses/components/session-action-card.tsx:269 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  celseHeld:
+    title: The celse page says when the recording opens
+    by: human
+    description: >-
+      A talebe's celse page when the recording is READY and held back: the card is named by the sentence "Ders kaydı <day> <time>’de açılır."
+      (the release time in the course's zone), under the eyebrow "Ders kaydı", with the button "Ders kayıtlarına git" to the course's recordings tab. There
+      is no link to the watch page, because tedrisat sent no link: the watch page's address redirects here. A recording still being prepared that has a
+      release time ahead reads the same, whoever asks (recordingReleaseOf calls it held). The enrolled talebe's notes panel is under the card (tedris.learn.notes).
+    source: apps/tedris/features/courses/components/session-action-card.tsx:357
+    on:
+      OPEN_RECORDINGS:
+        target: recordings_opened
+        starts: { flow: tedris.course.recordings, given: { entry: "'address'" } }
+        say: "the link goes to the recordings tab by address (?tab=kayitlar)"
+        source: apps/tedris/features/courses/components/session-action-card.tsx:370
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  celsePreparing:
+    title: The celse page says the recording is being prepared
+    by: human
+    description: >-
+      The celse page when there is a recording and no link and no release time ahead: the card is named "Ders kaydı hazırlanıyor." under the eyebrow
+      "Ders kaydı", with the button "Ders kayıtlarına git". This is a recording that is PROCESSING (a Bunny upload still encoding, or one a hoca
+      announced). It is also what a READY Bunny recording reads as when tedrisat cannot sign its player link (the library's keys are not set,
+      measured on this stack with a row written by SQL, WATCH-2): nothing on the page tells the two apart. The watch page's address redirects here.
+    source: apps/tedris/features/courses/components/session-action-card.tsx:361
+    on:
+      OPEN_RECORDINGS:
+        target: recordings_opened
+        starts: { flow: tedris.course.recordings, given: { entry: "'address'" } }
+        say: "the link goes to the recordings tab by address (?tab=kayitlar)"
+        source: apps/tedris/features/courses/components/session-action-card.tsx:370
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  playerTalebe:
+    title: Watch the recording, with questions and notes
+    by: human
+    goal: true
+    description: >-
+      The watch page for an enrolled talebe: the link back to the course, the heading "Hafta <w> · <celse>", the badge "Ders kaydı · <day> · <n> dk",
+      the link "Celse ayrıntıları", the player card named by the recording's title and, beside it (under it below about 1036 px; on a phone the
+      video first, then two toggles "Soru sor" and "Notlarım"), the column "Sorular ve notlar" with the questions panel and the notes panel. The
+      player is a frame on the host's player (YouTube, Drive or Bunny's signed link, see `host`), or, for a link that cannot be framed, a placeholder
+      "Ders kaydı burada oynar" with a link "Ders kaydını aç" to the host in a new tab. For a YouTube recording the frame has `enablejsapi=1` so the notes
+      read its position, and the YouTube API then renames the frame "YouTube video player" (WATCH-1; measured). The page sets no initial focus: the focus
+      stays on the document (the first Tab stop is the chrome), and on a phone the order the eye follows (video first) is not the tab order (CLS-06).
+      Opened by address with a recording that is not open, the page is never drawn: it redirects.
+    source: apps/tedris/features/courses/components/watch-view.tsx:205
+    on:
+      OPEN_DETAILS: { target: celseCard, say: "a plain link to the celse page, which offers the recording again", source: apps/tedris/features/courses/components/watch-view.tsx:231 }
+      OPEN_COURSE: { target: course_opened, source: apps/tedris/features/courses/components/watch-view.tsx:207 }
+      OPEN_HOST: { target: playerTalebe, say: "the host opens in a new tab; this page stays where it is", source: apps/tedris/features/courses/components/media-player.tsx:75 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  playerTeam:
+    title: Watch the recording as the course team
+    by: human
+    goal: true
+    description: >-
+      The watch page for a person on the course team who reads the content and holds no seat: the same header, the same player, and no side column (no
+      notes, no questions: only an enrolled talebe has them). While the recording is held back, a line under the badge says "Talebelere <day> <time>
+      açılacak": the team plays what the talebe may not yet, and the sentence is the only mark of it (the badge is the same).
+      Their frame keeps the recording's title as its name, because no player API is attached to it.
+    source: apps/tedris/features/courses/components/watch-view.tsx:205
+    on:
+      OPEN_DETAILS: { target: celseCard, say: "a plain link to the celse page, which offers the recording again", source: apps/tedris/features/courses/components/watch-view.tsx:231 }
+      OPEN_COURSE: { target: course_opened, source: apps/tedris/features/courses/components/watch-view.tsx:207 }
+      OPEN_HOST: { target: playerTeam, say: "the host opens in a new tab; this page stays where it is", source: apps/tedris/features/courses/components/media-player.tsx:75 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  lockedPlayer:
+    title: The locked celse page plays a sample celse's public recording
+    by: human
+    description: >-
+      The celse page of a person who may not read the course, on a celse that is over, with a recording that tedrisat sent them: a player card named by the
+      recording's title (the YouTube frame, no id, the title it was written with) and the line "Ders kaydı · <day> · <n> dk", above the course card, beside
+      the programme, under the locked card ("Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda
+      görebilirsin." and "Kayıt başvurusu yap"). This is the only recording a person with no seat is ever sent, and only for a sample celse
+      (isPreview) whose recording is PUBLIC; the watch page's address redirects here and never plays it. With the medrese's "Ders kayıtları herkese
+      açılamaz" on, the recording is sent and drawn all the same (WATCH-3, the domain's recording-public-honours-medrese-policy). The rest of the page is tedris.celse.locked's.
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:195
+    on:
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  not_found: { type: final, title: The not-found page, leavesPage: true }
+  sign_in_asked: { type: final, title: A visitor is sent to sign in, leavesPage: true }
+  detail_locked: { type: final, title: The locked celse page, leavesPage: true }
+  stream_opened: { type: final, title: The stream is what plays, leavesPage: true }
+  recordings_opened: { type: final, title: The recordings tab opens, leavesPage: true }
+  course_opened: { type: final, title: The course page opens, leavesPage: true }
+  left: { type: final, title: The person leaves the page, leavesPage: true }
+
+assertions:
+  - id: watch-page-needs-a-seat
+    never: "(state == 'playerTalebe' or state == 'playerTeam') and (viewer == 'outsider' or viewer == 'visitor')"
+    say: "The watch page is drawn only for a person who may read the course's content: anyone else is sent to the celse page, or to sign in, whatever the recording's visibility"
+    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31"
+  - id: talebe-is-never-played-a-held-recording
+    never: "state == 'playerTalebe' and recording != 'open'"
+    say: "A talebe is played a recording only when it is open: a held one or one being prepared is never drawn to them"
+    source: apps/tedrisat/src/course/domain/recording.ts:150
+  - id: nobody-is-played-a-recording-being-prepared
+    never: "(state == 'playerTalebe' or state == 'playerTeam' or state == 'celseCard') and recording == 'preparing'"
+    say: "A recording that is still being prepared is offered to no one"
+    source: apps/tedris/features/courses/watch-model.ts:139
+  - id: only-the-team-plays-a-held-recording
+    never: "(state == 'playerTeam' or state == 'celseCard') and recording == 'held' and viewer != 'team'"
+    say: "A held recording is played, and offered, only to the course team"
+    source: apps/tedrisat/src/course/domain/recording.ts:150
+  - id: celse-page-says-so-when-a-talebe-must-wait
+    never: "(state == 'celseHeld' and recording != 'held') or (state == 'celsePreparing' and recording == 'open')"
+    say: "The celse page's sentences are drawn only for a recording that cannot be played: the one that opens later, the one being prepared"
+    source: apps/tedris/features/courses/components/session-action-card.tsx:357
+  - id: a-locked-page-plays-only-what-tedrisat-sent
+    never: "state == 'lockedPlayer' and lockedShows == 'nothing'"
+    say: "The locked page plays a recording only when tedrisat sent one to a caller who may not read the content"
+    source: apps/tedris/features/courses/components/lesson-locked.tsx:139
+  - id: failed-read-draws-no-page
+    never: "(state == 'celseCard' or state == 'celseHeld' or state == 'celsePreparing' or state == 'playerTalebe' or state == 'playerTeam' or state == 'lockedPlayer') and read == 'failed'"
+    say: "A failed read draws none of the pages: it is the not-found page"
+    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:80"

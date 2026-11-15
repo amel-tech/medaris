@@ -1,0 +1,217 @@
+# What must exist for a talebe who edits or deletes their own deck: tedris.decks.editOrDelete, written on 15 Nov 2026 in the format of LAYOUT.md section 7.
+# Each need is what the product must do, from the flow's story and its open decisions, never from what the page does today. Nothing here comes from
+# planned.md: no planned feature (P-nn) names these screens.
+# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
+#   missing:  delete-confirms-it-is-done (EDITDEL-2), closing-while-the-call-is-out-does-nothing (DCK-30, EDITDEL-1), edit-is-dated (deck-edit-updated-at),
+#             an-accepted-edit-is-never-a-500 (accepted-write-500), a-deck-name-is-never-blank-in-the-api (EDITDEL-3), the-dialog-gives-the-focus-back (DCK-18),
+#             a-refused-name-is-announced (DCK-06), published-edit-is-told-or-reviewed (decision D1), delete-says-what-goes-with-the-deck (decision D2).
+#             All `missing: none`: no Linear key is known for any of them.
+#   unwalked: unchanged-form-closes-silently (no e2e, and the replay has not been run), a-refused-save-keeps-the-words and a-refused-delete-says-so
+#             (binding.refused.yaml is written, not run: a refusal is made by deleting the deck through the API), no-flash-after-a-delete (EDITDEL-4: decks#16
+#             asserts only the final address; not verified in a browser). Inside refuse-an-empty-or-short-name the short name has no e2e check (decks#14 clears the
+#             name only). No replay has been run on this flow (the owner moved every replay to the end), so no `replay:` entry is named below.
+kind: needs
+flow: tedris.decks.editOrDelete
+status: proposed
+
+needs:
+  - id: rename-and-describe-the-deck
+    need: >-
+      A talebe changes the name and the description of a deck they wrote, from the deck's own page, in a dialog that starts with the deck's current words;
+      the new words show on the page at once and a toast says the deck was updated.
+    drawn:
+      - editLink
+      - editDialog
+      - titleField
+      - descriptionField
+      - saving
+      - saved
+      - deckHeadingSaved
+      - toastSaved
+    built:
+      - action: medaris.api:updateDeck
+      - route: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:77
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#14'
+
+  - id: refuse-an-empty-or-short-name
+    need: >-
+      A name that is empty, or has fewer than five characters once trimmed, is refused before anything is sent, and the reason is said under the field.
+    drawn:
+      - checking
+      - invalid
+      - titleRequired
+      - titleShort
+      - nothing-is-sent-for-a-bad-or-unchanged-name
+      - a-refused-name-shows-its-reason
+    built:
+      - route: apps/tedris/features/flashcards/deck-model.ts:155
+      - route: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:71
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#14'
+
+  - id: unchanged-form-closes-silently
+    need: >-
+      Saving a form in which nothing changed closes the dialog and sends nothing, with no toast.
+    drawn:
+      - editForm
+      - nothing-is-sent-for-a-bad-or-unchanged-name
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:72
+    # unwalked: no e2e checks it, and the scenario `unchanged` of binding.yaml has not been replayed
+
+  - id: waiting-request-survives-an-edit
+    need: >-
+      An edit leaves a waiting request for publication waiting, and the dialog tells the author so before they save: the reviewer reads the deck as it is
+      when they answer.
+    drawn:
+      - pendingAlert
+      - statusPending
+      - saved
+    built:
+      - action: medaris.api:updateDeck
+      - route: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:141
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#14'
+
+  - id: a-refused-save-keeps-the-words
+    need: >-
+      A save the server refuses leaves the dialog open with what the person typed in it and says so in an error toast that stays until it is closed.
+    drawn:
+      - saving
+      - filled
+      - toastSaveFailed
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:81
+    # unwalked: no e2e; binding.refused.yaml makes the refusal by deleting the deck through the API and has not been replayed
+
+  - id: delete-asks-first
+    need: >-
+      Deleting a deck asks once, in a confirmation whose focus starts on the safe choice; "Vazgeç" keeps the deck and sends nothing, and only the destructive
+      button inside the confirmation sends the delete.
+    drawn:
+      - deleteButton
+      - confirmDelete
+      - deleteDialog
+      - deleteCancel
+      - delete-only-after-the-confirmation
+      - confirm-before-deleting
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254
+      - route: libs/ui/src/mds/alert-dialog.tsx:62
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#16'
+
+  - id: delete-removes-the-deck-and-its-cards
+    need: >-
+      A confirmed delete removes the deck and every card in it for good and takes the person back to their decks.
+    drawn:
+      - deleting
+      - decks_opened
+      - deleteConfirm
+    built:
+      - action: medaris.api:deleteDeck
+      - route: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:88
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#16'
+
+  - id: a-refused-delete-says-so
+    need: >-
+      A delete the server refuses leaves the deck where it is and says in an error toast that it could not be deleted.
+    drawn:
+      - deleting
+      - overview
+      - toastDeleteFailed
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:93
+    # unwalked: no e2e; binding.refused.yaml makes the refusal by deleting the deck through the API and has not been replayed
+
+  - id: delete-confirms-it-is-done
+    need: >-
+      After a delete the person is told, in words a screen reader announces, that the deck is gone, as a save says "Deste güncellendi" and a card's delete says
+      "Kart silindi".
+    drawn:
+      - decks_opened
+    missing: none # EDITDEL-2: the page just becomes /decks
+
+  - id: closing-while-the-call-is-out-does-nothing
+    need: >-
+      Closing a dialog ("Vazgeç", "Kapat", Esc) while its save or delete is on its way either cancels the call or is ignored until it answers; it never lets
+      the write go on after the person said no, and an error never says "yazdıkların korundu" over a form that is gone.
+    drawn:
+      - savingClosed
+      - deletingClosed
+      - saving
+      - deleting
+    missing: none # DCK-30 (delete) and EDITDEL-1 (save); decision D3
+
+  - id: edit-is-dated
+    need: >-
+      Editing a deck sets its update time, which orders the köşk's deck list (newest update first) and is shown in nizam's köşk decks view.
+    drawn:
+      - saved
+    missing: none # deck-edit-updated-at; the domain invariant deck-edit-bumps-updated-at holds: false
+
+  - id: an-accepted-edit-is-never-a-500
+    need: >-
+      A PATCH of a deck that the validation accepts is answered, never a 500: an empty body, or a field sent as null, changes nothing or is refused with a reason.
+      This page cannot send either (it always sends a trimmed name and a description), so the need is the API's.
+    drawn:
+      - saving
+    missing: none # accepted-write-500; the domain invariant accepted-write-never-500 holds: false
+
+  - id: a-deck-name-is-never-blank-in-the-api
+    need: >-
+      A deck's name is trimmed and at least five visible characters in the API too, whoever sends it; a name of five spaces is refused, as the page refuses an
+      empty one.
+    drawn:
+      - checking
+    missing: none # EDITDEL-3, derived by reading and not run
+
+  - id: the-dialog-gives-the-focus-back
+    need: >-
+      When the edit dialog closes (Vazgeç, the close icon, Esc, or a save), the focus goes to a place the person can name: the heading of the page or the
+      "Düzenle" link they pressed, not to nothing.
+    drawn:
+      - editDialog
+      - saved
+    missing: none # DCK-18
+
+  - id: a-refused-name-is-announced
+    need: >-
+      The reason a name is refused is announced to a screen reader when the form is submitted, or the focus goes to the field that is wrong.
+    drawn:
+      - invalid
+      - titleRequired
+    missing: none # DCK-06
+
+  - id: published-edit-is-told-or-reviewed
+    need: >-
+      Editing a published deck either puts it back in front of a reviewer or tells the author, before they save, that the change is public at once.
+    drawn:
+      - saving
+      - saved
+    missing: none # decision D1; the API's PATCH keeps the deck PUBLISHED and the dialog warns only for a waiting request
+
+  - id: delete-says-what-goes-with-the-deck
+    need: >-
+      The delete confirmation tells the author what leaves with the deck beyond its cards: the readers' collections of a published deck, the waiting request.
+    drawn:
+      - confirmDelete
+      - deleteBody
+    missing: none # decision D2
+
+  - id: no-flash-after-a-delete
+    need: >-
+      After a confirmed delete the person goes from the dialog straight to their list of decks, without an intermediate "Sayfa bulunamadı" page.
+    drawn:
+      - deleting
+      - decks_opened
+    built:
+      - route: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:90
+    # unwalked: decks#16 asserts only the final address; EDITDEL-4, not verified in a browser

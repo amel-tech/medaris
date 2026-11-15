@@ -1,0 +1,139 @@
+# What must exist for a person who may not write on a celse, and for the one who may: tedris.learn.writingGating, written on 15 Nov 2026 in the
+# format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story and the owner's rules; none is read off what the page
+# does today. Nothing from planned.md names these gates: the planned items of the panels are tedris.learn.notes' and tedris.learn.questions'.
+# Nothing here has been replayed (the owner moved every replay to the end of the job), so `walked` names only the e2e checks that exist; a replay
+# scenario of binding.yaml is added once it has passed.
+# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
+#   missing:  removed-talebe-sees-own-writing (MDRS-268), passive-course-is-explained (MDRS-265), barred-talebe-is-told-the-access-is-gone (none: CLS-02),
+#             refusal-says-why (none: WG-2), hidden-celse-takes-no-writing (none: WG-1)
+#   unwalked: a-ban-bars-writing-not-the-seat (code, no e2e and no replay), the hand-in's half of writing-needs-an-active-seat (SUBMISSION_FORBIDDEN is
+#             in no e2e check), the second talebe's own panel inside nobody-reads-anothers-writing, the cancelled celse's API in cancelled-celse-takes-no-panel
+kind: needs
+flow: tedris.learn.writingGating
+status: proposed
+
+needs:
+  - id: writing-needs-an-active-seat
+    need: >-
+      Only a talebe whose seat is active, that is enrolled or completed, with no open ban and the course's content open, writes notes, questions and
+      homework on a celse. The page draws the panels for no one else, and the server refuses anyone else's write whatever a page showed.
+    drawn: [celsePanels, watchPanels, courseAsk, lockedShown, courseNoAsk, noteTried, write_refused, panels-need-an-active-seat, a-refusal-needs-no-seat]
+    built:
+      - action: medaris.api:createLessonNote
+      - action: medaris.api:askLessonQuestion
+      - action: medaris.api:saveMySubmissionNote
+      - route: apps/tedris/features/courses/components/session-page.tsx:130
+      - route: apps/tedris/features/courses/components/watch-page.tsx:44
+      - route: apps/tedris/features/courses/components/course-page.tsx:166
+    walked:
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#14'
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#17'
+      - e2e: apps/tedris/e2e/lesson-questions.e2e.ts
+        check: 'lesson-questions#5'
+      - e2e: apps/tedris/e2e/lesson-questions.e2e.ts
+        check: 'lesson-questions#7'
+    # unwalked half: a hand-in's SUBMISSION_FORBIDDEN is in no e2e check; the binding's TRY_NOTE compares it, and has not been replayed
+
+  - id: staff-gets-no-panel
+    need: >-
+      The course's own hoca, who holds the content and has no seat, reads the celse and its watch page with no panel on either, and is refused if they
+      write by hand.
+    drawn: [staffCelse, staffWatch, staff-gets-no-panel]
+    built:
+      - route: apps/tedris/features/courses/components/watch-page.tsx:44
+      - action: medaris.api:createLessonNote
+    walked:
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#16'
+
+  - id: nobody-reads-anothers-writing
+    need: >-
+      A talebe's notes are read by that talebe alone, and their questions by them and the people who answer; the hoca's list holds none of them, and an
+      edit or a delete of another's is refused.
+    drawn: [othersTried, own_writing_only]
+    built:
+      - action: medaris.api:listLessonNotes
+      - action: medaris.api:updateLessonNote
+      - action: medaris.api:deleteLessonNote
+      - action: medaris.api:listMyCourseQuestions
+    walked:
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#16'
+      - e2e: apps/tedris/e2e/lesson-questions.e2e.ts
+        check: 'lesson-questions#6'
+    # the second talebe's own empty panel and the başnazım's page are in those checks and not in this graph's replay
+
+  - id: own-writing-outlives-the-seat-in-the-api
+    need: >-
+      What a person wrote stays theirs when the seat goes: the server still gives a removed, barred or waiting person their own notes and questions
+      while the course is open, and closes them only with a passive scope.
+    drawn: [ownNotesTried, ownQuestionsTried, own_writing_read, own_writing_closed, own-writing-closes-with-the-scope]
+    built:
+      - action: medaris.api:listLessonNotes
+      - action: medaris.api:deleteLessonNote
+      - action: medaris.api:listMyCourseQuestions
+      - action: medaris.api:deleteLessonQuestion
+    walked:
+      - e2e: apps/tedris/e2e/lesson-questions.e2e.ts
+        check: 'lesson-questions#8'
+
+  - id: removed-talebe-sees-own-writing
+    need: >-
+      A talebe whose seat was removed, or whom a ban bars, is shown what they wrote, read-only and with a delete, because it is their own data;
+      the screen and the API agree (MDRS-268, decision D1).
+    drawn: [lockedShown, courseNoAsk, own_writing_read]
+    missing: MDRS-268
+
+  - id: passive-course-is-explained
+    need: >-
+      An enrolled talebe of a course that has gone passive is told that the course is closed and why, in words of their own, with no button that asks
+      them to register (MDRS-265, CLS-02, WRT-15).
+    drawn: [lockedShown, courseNoAsk]
+    missing: MDRS-265
+    # lesson-notes#15 pins it as an expected failure
+
+  - id: a-ban-bars-writing-not-the-seat
+    need: >-
+      An open ban stops a talebe writing notes, questions and homework and closes the course's content to them, and does not touch the seat: they stay
+      enrolled, still in the roster, still marked.
+    drawn: [lockedShown, courseNoAsk, noteTried, write_refused]
+    built:
+      - action: medaris.api:createBan
+      - route: apps/tedrisat/src/course/course.service.ts:563
+    # walked: nothing. No e2e check of tedris bars a talebe and then reads the panel or the API; the binding's scenario `barred` is written and has
+    # not been replayed
+
+  - id: barred-talebe-is-told-the-access-is-gone
+    need: >-
+      A talebe whom a ban bars is told their access to the course was removed, as the notification tells them, and is not asked to register for a course
+      they are enrolled in (CLS-02).
+    drawn: [lockedShown]
+    missing: none # CLS-02: the card for a barred talebe is the stranger's, with the apply button that answers 403 BAN_ACTIVE; no Linear issue of its own
+
+  - id: cancelled-celse-takes-no-panel
+    need: >-
+      A cancelled celse is not a place to write notes or homework: its page draws the cancellation and none of the panels, for the talebe and for a
+      person who may not read the course alike.
+    drawn: [cancelledShown, celse-panels-only-on-the-celse-page]
+    built:
+      - route: apps/tedris/features/courses/components/session-page.tsx:133
+    walked:
+      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
+        check: 'lesson-notes#13'
+    # the API still takes a note on a cancelled celse (createLessonNote checks no status): not walked and not a finding here
+
+  - id: refusal-says-why
+    need: >-
+      When a panel's write is refused because the seat is gone, the panel says which reason it is (removed, barred, the course closed) in the words the
+      lock card uses, and not "derse kayıtlı olman gerekir" to a person who is enrolled (WG-2, decision D3).
+    drawn: [addRefused]
+    missing: none # WG-2: new in this flow, no Linear issue yet
+
+  - id: hidden-celse-takes-no-writing
+    need: >-
+      A note or a question is not accepted for a celse that nobody can open, as a hand-in is not; what a stale page sends there is refused (WG-1,
+      decision D2).
+    drawn: [celseNotFound, noteTried, hidden_celse_written, only-the-active-write]
+    missing: none # WG-1: new in this flow, no Linear issue yet; the domain keeps it as "a difference between the routes, not a defect"

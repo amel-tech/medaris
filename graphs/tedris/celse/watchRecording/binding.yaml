@@ -1,0 +1,207 @@
+# tedris.celse.watchRecording on the local stack (graphs/README.md, "The stack and the bindings"): the celse page and the watch page of a course of
+# its own, read as a talebe, as the course team, as a person with no seat and as a visitor.
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/watchRecording --bind graphs/tedris/celse/watchRecording/binding.yaml \
+#     --to playerTeam --to lockedPlayer --out <dir>
+# (the main story is walked as well: a talebe on the celse page presses "Kaydı izle").
+# NOT REPLAYED in this phase (the owner's word: replays run once, at the end): the binding was only loaded, with --emit-spec, which walks nothing; every scenario
+# below is for the walk phase.
+#
+# What every scenario starts from. The course is made by `helpers/course.mjs make watchrec` in `setup` (two weeks of three celses, all over: 14, 12, 10, 7,
+# 5 and 3 days ago, in the second köşk, the hoca MUDERRIS), the recordings by watch-recording-data.mjs (L1 to L6, described there), the talebe's seat
+# last, so nobody is told "Kayıt eklendi", and all of it is deleted in `teardown` (the shared helper's `remove`, then the talebe's mailbox and
+# notifications). No seeded course, no seeded talebe and no notification of the seed is touched. The talebe is `applicantE`, the person with no seat
+# `applicantF`; neither holds a row anywhere else.
+#   talebeOpen      (the main story) applicantE on the celse page of L1 (a YouTube recording that is open): reads "Kaydı izle", presses it, reads the watch page
+#   teamHeld        muderris (the hoca, no seat) on the celse page of L3, whose recording is READY with its release time 3 days ahead: reads "Kaydı izle" and
+#                   "Talebelere ... açılacak", presses it, reads the same on the watch page, with no side column         (--to playerTeam)
+#   talebeHeld      applicantE opens the WATCH PAGE of L3 by address: sent back to the celse page, which says when the recording opens      (--to celseHeld)
+#   talebePreparing applicantE on the celse page of L4 (PROCESSING): "Ders kaydı hazırlanıyor."
+#   talebeLink      applicantE on the watch page of L2 (a link at a host that cannot be framed): the placeholder and "Ders kaydını aç"
+#   outsiderSample  applicantF (no seat) on the celse page of L6, a sample celse with a PUBLIC recording: the locked page plays it       (--to lockedPlayer)
+#   outsider        applicantF on the celse page of L1 (ENROLLED recording): the locked page, no recording
+#   visitor         nobody signed in opens the watch page of L1: sent to sign in
+# `effects.getSession` asks the API what it tells that person about the celse's recording after every read, with the same account: the status, whether
+# a link came and whether a release time exists, which are the facts the graph's `recording`, `viewer` and `lockedShows` stand for.
+#
+# Not walked on the stack, and why:
+#   - Bunny: a recording that is uploading or encoding, the signed player link and the frame it plays in ("Ders kaydı oynatıcısı: <title>"), its expiry,
+#     a FAILED upload, the time typed beside it (MDRS-264). A BUNNY row written by SQL reads as "being prepared" here (WATCH-2): that is a probe by
+#     hand (see the report), not a scenario.
+#   - The video itself: the YouTube frames are drawn and left idle. WATCH-1 (the frame renamed by YouTube's script) was measured by hand.
+#   - read: failed (the stack cannot make tedrisat refuse the read), stream: sent (a stream link is tedris.celse.watchStream's), a medrese course with its
+#     policy "Ders kayıtları herkese açılamaz" on (needs a medrese course of its own: WATCH-3 is read from the code), lockedShows publicSampleDespiteMedreseRule.
+#   - OPEN_HOST (the new tab of "Ders kaydını aç"): bound by nothing, the replay presses a link and does not follow a tab.
+#   - The phone layout (CLS-06): the replay's window is 1280 px wide.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.celse.watchRecording
+
+data:
+  rec: { json: ../.local/watch-recording.json }
+
+scenarios:
+  talebeOpen:
+    given: { read: ok, viewer: talebe, entry: celse, recording: open, host: youtube, stream: none, lockedShows: nothing }
+    as: applicantE
+    open: '{tedris}/courses/{rec.course}/lessons/{rec.l1}'
+    samples: { title: Celse 1, recording: Birinci okuma kaydı, course: Deneme dersi watchrec, week: '1', length: 60 dk }
+    vars: { who: applicantE, celse: l1, answer: READY url=yes }
+    setup:
+      - run: [node, helpers/course.mjs, make, watchrec, --weeks, '2', --lessons, '3', --start, '-14', --hoca, MUDERRIS]
+        expect: '"tag":"watchrec"'
+      - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, recordings]
+        expect: 'watch-recording-data recordings'
+      - run: [node, helpers/apply.mjs, applicantE, '{rec.course}']
+        expect: ENROLLED
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchrec]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+  teamHeld:
+    given: { read: ok, viewer: team, entry: celse, recording: held, host: youtube, stream: none, lockedShows: nothing }
+    as: muderris
+    open: '{tedris}/courses/{rec.course}/lessons/{rec.l3}'
+    samples: { title: Celse 3, recording: Üçüncü okuma kaydı, course: Deneme dersi watchrec, week: '1', length: 60 dk }
+    vars: { who: muderris, celse: l3, answer: READY url=yes }
+    setup:
+      - run: [node, helpers/course.mjs, make, watchrec, --weeks, '2', --lessons, '3', --start, '-14', --hoca, MUDERRIS]
+        expect: '"tag":"watchrec"'
+      - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, recordings]
+        expect: 'watch-recording-data recordings'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchrec]
+  talebeHeld:
+    given: { read: ok, viewer: talebe, entry: direct, recording: held, host: youtube, stream: none, lockedShows: nothing }
+    as: applicantE
+    open: '{tedris}/courses/{rec.course}/lessons/{rec.l3}/izle'
+    samples: { title: Celse 3, recording: Üçüncü okuma kaydı, course: Deneme dersi watchrec, week: '1', length: 60 dk }
+    vars: { who: applicantE, celse: l3, answer: READY url=no }
+    setup:
+      - run: [node, helpers/course.mjs, make, watchrec, --weeks, '2', --lessons, '3', --start, '-14', --hoca, MUDERRIS]
+        expect: '"tag":"watchrec"'
+      - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, recordings]
+        expect: 'watch-recording-data recordings'
+      - run: [node, helpers/apply.mjs, applicantE, '{rec.course}']
+        expect: ENROLLED
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchrec]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+  talebePreparing:
+    given: { read: ok, viewer: talebe, entry: celse, recording: preparing, host: youtube, stream: none, lockedShows: nothing }
+    as: applicantE
+    open: '{tedris}/courses/{rec.course}/lessons/{rec.l4}'
+    samples: { title: Celse 4, recording: Dördüncü okuma kaydı, course: Deneme dersi watchrec, week: '2', length: 60 dk }
+    vars: { who: applicantE, celse: l4, answer: PROCESSING url=no }
+    setup:
+      - run: [node, helpers/course.mjs, make, watchrec, --weeks, '2', --lessons, '3', --start, '-14', --hoca, MUDERRIS]
+        expect: '"tag":"watchrec"'
+      - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, recordings]
+        expect: 'watch-recording-data recordings'
+      - run: [node, helpers/apply.mjs, applicantE, '{rec.course}']
+        expect: ENROLLED
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchrec]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+  talebeLink:
+    given: { read: ok, viewer: talebe, entry: direct, recording: open, host: other, stream: none, lockedShows: nothing }
+    as: applicantE
+    open: '{tedris}/courses/{rec.course}/lessons/{rec.l2}/izle'
+    samples: { title: Celse 2, recording: İkinci okuma kaydı, course: Deneme dersi watchrec, week: '1', length: 60 dk }
+    vars: { who: applicantE, celse: l2, answer: READY url=yes }
+    setup:
+      - run: [node, helpers/course.mjs, make, watchrec, --weeks, '2', --lessons, '3', --start, '-14', --hoca, MUDERRIS]
+        expect: '"tag":"watchrec"'
+      - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, recordings]
+        expect: 'watch-recording-data recordings'
+      - run: [node, helpers/apply.mjs, applicantE, '{rec.course}']
+        expect: ENROLLED
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchrec]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+  outsiderSample:
+    given: { read: ok, viewer: outsider, entry: celse, recording: open, host: youtube, stream: none, lockedShows: publicSample }
+    as: applicantF
+    open: '{tedris}/courses/{rec.course}/lessons/{rec.l6}'
+    samples: { title: Celse 6, recording: Altıncı okuma kaydı, course: Deneme dersi watchrec, week: '2', length: 60 dk }
+    vars: { who: applicantF, celse: l6, answer: READY url=yes }
+    setup:
+      - run: [node, helpers/course.mjs, make, watchrec, --weeks, '2', --lessons, '3', --start, '-14', --hoca, MUDERRIS]
+        expect: '"tag":"watchrec"'
+      - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, recordings]
+        expect: 'watch-recording-data recordings'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchrec]
+  outsider:
+    given: { read: ok, viewer: outsider, entry: celse, recording: open, host: youtube, stream: none, lockedShows: nothing }
+    as: applicantF
+    open: '{tedris}/courses/{rec.course}/lessons/{rec.l1}'
+    vars: { who: applicantF, celse: l1, answer: no-recording url=no }
+    setup:
+      - run: [node, helpers/course.mjs, make, watchrec, --weeks, '2', --lessons, '3', --start, '-14', --hoca, MUDERRIS]
+        expect: '"tag":"watchrec"'
+      - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, recordings]
+        expect: 'watch-recording-data recordings'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchrec]
+  visitor:
+    given: { read: ok, viewer: visitor, entry: direct, recording: open, host: youtube, stream: none, lockedShows: nothing }
+    open: '{tedris}/courses/{rec.course}/lessons/{rec.l1}/izle'
+    vars: { who: visitor, celse: l1, answer: no-recording url=no }
+    setup:
+      - run: [node, helpers/course.mjs, make, watchrec, --weeks, '2', --lessons, '3', --start, '-14', --hoca, MUDERRIS]
+        expect: '"tag":"watchrec"'
+      - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, recordings]
+        expect: 'watch-recording-data recordings'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchrec]
+
+events:
+  # the person goes on to another page of the app
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  left: { url: '{tedris}/discover' }
+  sign_in_asked: { url: '{tedris}/auth/signin**' }
+  detail_locked: { url: '{tedris}/courses/{rec.course}/lessons/*' }
+  recordings_opened: { url: '{tedris}/courses/{rec.course}?tab=kayitlar' }
+  course_opened: { url: '{tedris}/courses/{rec.course}' }
+  celseCard: { url: '{tedris}/courses/{rec.course}/lessons/*' }
+  celseHeld: { url: '{tedris}/courses/{rec.course}/lessons/*' }
+  celsePreparing: { url: '{tedris}/courses/{rec.course}/lessons/*' }
+  lockedPlayer: { url: '{tedris}/courses/{rec.course}/lessons/*' }
+  playerTalebe: { url: '{tedris}/courses/{rec.course}/lessons/*/izle' }
+  playerTeam: { url: '{tedris}/courses/{rec.course}/lessons/*/izle' }
+
+effects:
+  # what tedrisat tells this person about the celse's recording (e2e celse-states#3, #4 a-side; the facts `recording`, `viewer` and `lockedShows` are made of)
+  getSession:
+    - run: [node, ../tedris/celse/watchRecording/watch-recording-data.mjs, page, '{who}', '{celse}']
+      expect: '{who} {celse} {answer}'
+
+# Where role and name cannot find a node. The celse page and the watch page both have a <main>, and the locked page a third: each is found by what only it holds.
+# Every recording block node sits inside the card's own <section data-testid=session-action>, so the same words are not found in the pager or the programme.
+nodes:
+  celsePage: { css: 'main:has(nav[aria-label="Sayfa yolu"]):not(:has(aside[aria-labelledby="programme"]))' }
+  celseHeading: { css: 'main h1' }
+  endedBadge: { testId: session-state }
+  cardKind: { css: '[data-testid=session-action] p.mds-eyebrow', hasText: Ders kaydı }
+  cardLine: { css: '[data-testid=session-action] p.mds-body-sm', hasText: '/^\d{1,2} [^ ]+ \d{4} \d+ dk/' }
+  notesHint: { css: '[data-testid=session-action] p.mds-body-sm', hasText: Notların ve soruların izleme sayfasında }
+  earlyNote: { css: '[data-testid=session-action] [data-recording-release]', hasText: '/^Talebelere .+ açılacak$/' }
+  posterLink: { css: '[data-testid=session-action] a[data-poster=recording]' }
+  watchButton: { css: '[data-testid=session-action] a.mds-btn--primary', hasText: Kaydı izle }
+  recordingsLink: { css: '[data-testid=session-action] a.mds-btn--secondary', hasText: Ders kayıtlarına git }
+
+  watchPage: { css: 'main:has(#watch-video-title)' }
+  releaseNote: { css: 'main [data-recording-release]', hasText: '/^Talebelere .+ açılacak$/' }
+  recordingFacts: { css: 'main .mds-badge', hasText: '/^Ders kaydı · .+ · 60 dk$/' }
+  playerFrame: { css: 'iframe#watch-frame' }
+  placeholder: { css: 'main section.mds-card .mds-join__status span', hasText: Ders kaydı burada oynar }
+
+  lockedPage: { css: 'main:has(aside[aria-labelledby="programme"])' }
+  lockedFrame: { css: 'section[aria-labelledby="recording-title"] iframe' }
+  lockedFacts: { css: 'section[aria-labelledby="recording-title"] p.mds-card__body', hasText: '/^Ders kaydı · .+ · 60 dk$/' }

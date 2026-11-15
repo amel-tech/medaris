@@ -1,0 +1,70 @@
+# What every walk of tedris.learn.homeworkHandIn shares (graphs/README.md, "The stack and the bindings"): the throwaway course's ids as
+# data, the events a person types or reloads with, the words the walk's own data gives the page, the places the walk finds nodes by,
+# and the check of what a step writes. The scenarios are in binding.yaml (the main story, a first note, a full quota, a celse with no
+# homework), binding.legacy.yaml (a homework taken off after a hand-in) and binding.seatEnds.yaml (the talebe's seat ends under an
+# open page): one file for each set of `states`, because a held `call` compares a status and a walk through a refusal must not hold one.
+#
+# Data. Every scenario makes its own course (handin-data.mjs make: the course `Deneme dersi handin` in the second köşk, three celses,
+# `applicantH` seated, the homework and the files the scenario needs) and removes it. The seeded homework (the next celse of
+# "Bina ve İzhar Şerhi"), its hand-in and every other account are never touched. handin-data.mjs writes graphs/.local/made/handin.json,
+# read here as {made.course} and {made.lessons.N}.
+#
+# WHAT THE REPLAY CANNOT DO HERE, AND WHAT IS NOT BOUND. The page's file input is a native <input type=file>, and the replay has no
+# action that sets one (its verbs are goto, reload, click, fill, key, waitUrl, waitText, waitResponse and run; Playwright's `fill`
+# refuses a file input). So `ADD` (choosing files) and, after it, `DISMISS` (a refused row) are not bound: no walk reaches `uploading`
+# or a refused row, and the transitions out of them are reported as not walked. Even with such an action the local stack answers 503
+# to every upload (no Bunny Storage), so `file: stored` would stay out of reach; `file: noStorage`, `tooLarge` and `empty` could be
+# walked. The files the walks need are written by SQL (handin-data.mjs says why). Not bound either: a failed read (the stack cannot
+# make one), `sent_to_sign_in` (a session that ends), and the refusals that only a failing server gives (`removal: failed`,
+# `noteAnswer: failed`, `file: gone`, `failed`).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learn.homeworkHandIn
+
+data:
+  made: { json: ../.local/made/handin.json }
+
+# the words the walk's own data gives the page; the other placeholders (the time of the last change) match any text
+samples:
+  description: Üçüncü bâbın mâzî çekimlerini deftere yaz ve sonraki derse getir.
+  assignmentFile: ders-notu.pdf
+  file: ödev.pdf
+  name: ödev.pdf
+  maxFiles: '10'
+  maxSize: 25 MB
+
+events:
+  # the note's text area: the one named "Notun" inside the region "Ödev" (the notes panel's own is named "Not")
+  TYPE_NOTE:
+    - fill: { role: textbox, name: Notun, within: { role: region, name: Ödev }, value: '{note}' }
+  CLEAR_NOTE:
+    - fill: { role: textbox, name: Notun, within: { role: region, name: Ödev }, value: '' }
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+
+nodes:
+  # the page's one <main>; the celse's own line "Hafta 1 · 1. celse" is what tells it from the page a walk leaves for
+  celsePage: { css: main, hasText: '/\d\. celse/' }
+  # the Alert holds the title and the line below it as one element
+  pendingBody: { role: status, hasText: Aşağıdan dosyanı ekle ya da notunu yaz }
+  # the list of the files being sent has no name: its test id
+  uploadsList: { testId: homework-uploads }
+  # one input, enabled or closed by the quota: the same role and name, so told apart by the state it is in
+  fileInput: { css: 'input[type=file]:enabled' }
+  fileInputFull: { css: 'input[type=file]:disabled' }
+  # "Son değişiklik:" and the <time> share one paragraph
+  lastChange: { text: '/^Son değişiklik:/' }
+  changedAt: { css: time, within: { role: region, name: Ödev } }
+  # the stored note's own confirmation is the only output of that text in the form
+  noteSavedStatus: { role: status, hasText: Not kaydedildi. }
+
+# What a step leaves outside the screen. The note's text is the walk's own and is not compared (an emptied field stores null, and one
+# walk saves both): the row of the walk's account on the walk's own celse must exist. The removal's effect counts what is left.
+effects:
+  saveMySubmissionNote:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_submissions where lesson_id = '{lesson}' and user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"n":1'
+  deleteMySubmissionFile:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from submission_files f join lesson_submissions s on s.id = f.submission_id where s.lesson_id = '{lesson}' and s.user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"n":{after}'

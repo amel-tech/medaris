@@ -1,0 +1,194 @@
+# What must exist for a talebe to look after their own account on Hesap: tedris.account.profile, written on 15 Nov 2026 in the format of
+# LAYOUT.md section 7. Each need is what the product must do, from the flow's story and from planned.md (P-21, P-37); none is read off
+# what the page does today. Gender separation is given: the account always holds a gender (the realm requires it) and tedris never
+# edits it; where a seat is decided the quota per gender is MDRS-284's, and this page decides no seat.
+# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
+#
+# `walked` names an e2e check that exists, or a replay scenario that PASSED. No replay has run in this phase (the owner's word), so no
+# scenario of binding.yaml is named: maleGender and noGenderCopy walk what it says in the binding's header at the walk phase, and a need
+# that only they would walk is listed as unwalked below.
+#
+# missing (no code):
+#   choose-the-language, delete-my-account, name-seen-everywhere, page-survives-a-failed-read, say-what-the-profile-link-edits,
+#   blank-name-is-announced, long-name-is-stopped-early, a-lost-connection-is-told, controls-keep-focus-and-say-where-they-lead
+# unwalked (code, no e2e and no passed replay):
+#   invitation-switch, failed-save-restores-the-choice, gender-comes-from-the-account, add-a-missing-gender,
+#   gender-is-required, gender-change-reaches-everyone, connected-apps, failed-read-says-so
+kind: needs
+flow: tedris.account.profile
+status: proposed
+
+needs:
+  - id: edit-my-name
+    need: >-
+      A person changes the first name and last name they are known by in their courses; a blank one is refused where it is typed
+      and nothing is sent, and a saved name holds after the page is read again.
+    drawn: [account, savingName, a-blank-name-is-never-sent]
+    built:
+      - action: medaris.api:updateMe
+      - route: apps/tedris/features/account/components/account-settings.tsx:107
+    walked:
+      - e2e: apps/tedris/e2e/profile.e2e.ts
+        check: 'profile#1' # without its two language assertions (ACC-16: no language field exists); its row and DB checks are effects of the binding
+
+  - id: pick-my-time-zone
+    need: >-
+      A person chooses the time zone their celse times are shown in, from a short list or from every zone, and it is saved the moment
+      they choose it; every date of the apps then reads in that zone.
+    drawn: [account, choosingZone, choosingListed, savingZone]
+    built:
+      - action: medaris.api:updateMe
+      - route: apps/tedris/features/account/profile-actions.ts:35
+    walked:
+      - e2e: apps/tedris/e2e/profile.e2e.ts
+        check: 'profile#2' # the short list only; the second list ("Diğer…") has no e2e
+
+  - id: invitation-switch
+    need: >-
+      A person turns the e-mail invitations for their celses on or off, it is saved the moment they flip it, and an off switch stops every
+      further invitation, update and cancellation mail.
+    drawn: [account, savingInvitations]
+    built:
+      - action: medaris.api:updateMe
+      - route: apps/tedris/features/account/components/account-settings.tsx:270
+      - route: apps/tedrisat/src/lesson-invitation/lesson-invitation.repository.ts:166
+    # walked: nothing. No e2e touches the switch; the unit spec apps/tedris/test/account-profile.spec.ts proves the markup and the rollback.
+
+  - id: failed-save-restores-the-choice
+    need: >-
+      When a save of the time zone or of the invitation switch is refused, the page puts back what the person had and says so; a
+      refused name keeps what they typed and says so.
+    drawn: [savingZone, savingInvitations, savingName]
+    built:
+      - route: apps/tedris/features/account/components/account-settings.tsx:215
+      - route: apps/tedris/features/account/components/account-settings.tsx:292
+    # walked: nothing. tedrisat cannot be made to refuse a valid zone or switch here; the unit spec proves the rollback. (The over-long name's
+    # refusal is carried by the binding's FILL_TOO_LONG path once it is walked.)
+
+  - id: gender-comes-from-the-account
+    need: >-
+      A person sees their gender as their account holds it, read only, and changes it only on the account's own profile page, which
+      brings them back to Hesap.
+    drawn: [account, handed_over.profile_update]
+    built:
+      - route: apps/tedris/features/account/components/account-settings.tsx:52
+      - route: apps/tedrisat/src/user/user-profile.repository.ts:80
+    # walked: nothing. realm.auth.profileUpdate's own scenario walks the round trip from "Değiştir" (and cancels); no e2e names the field.
+
+  - id: gender-is-required
+    need: >-
+      Every account holds a gender, FEMALE or MALE; the realm will not let a person finish signing in or saving their profile without
+      one.
+    drawn: [account]
+    built:
+      - route: config/keycloak/user-profile.json:36
+    # walked: nothing here. The realm's profile page is realm.auth.profileUpdate's; giris.e2e#16 walks its mock.
+
+  - id: add-a-missing-gender
+    need: >-
+      A person whose account has no gender on record at tedrisat (a token from before the realm required it) is told so and is taken to
+      the account's profile page to add it.
+    drawn: [account, handed_over.profile_update]
+    built:
+      - route: apps/tedris/features/account/components/account-settings.tsx:62
+    # walked: nothing. The binding's scenario noGenderCopy empties the copy with SQL to draw it; no account of the stack lacks a gender.
+
+  - id: gender-change-reaches-everyone
+    need: >-
+      A gender changed on the account's profile page reaches everyone's view of the person (rosters, quotas, the public profile) at the
+      person's next request, and the change is written to the audit log with what it was and what it became.
+    drawn: [handed_over.profile_update]
+    built:
+      - route: apps/tedrisat/src/user/user-profile.repository.ts:80
+      - route: apps/tedrisat/src/user/user-sync.service.ts:75
+    # walked: nothing. What a seat does when its person's gender changes is not decided here (the quota per gender is MDRS-284's).
+
+  - id: connected-apps
+    need: A person sees which applications they signed in to with their Medaris account and takes back a consent they gave.
+    drawn: [account, account_console_opened]
+    built:
+      - route: apps/tedris/features/account/components/account-settings.tsx:349
+      - route: apps/tedris/features/account/connected-apps.ts:8
+    # walked: nothing. The page behind the link is Keycloak's account console; a GET of its address answers 200 and nothing else was seen.
+
+  - id: open-the-calendar-page
+    need: Hesap leads to the page where a person makes the link their calendar app reads, and to nothing else about the calendar.
+    drawn: [account, handed_over.calendar_feed]
+    built:
+      - route: apps/tedris/features/account/components/account-settings.tsx:313
+    walked:
+      - e2e: apps/tedris/e2e/profile.e2e.ts
+        check: 'profile#3' # the link and the address only; the page is tedris.account.calendarFeed's
+
+  - id: sign-out-from-hesap
+    need: A person signs out from Hesap, after being asked to confirm.
+    drawn: [account, handed_over.sign_out]
+    built:
+      - route: apps/tedris/features/account/components/account-settings.tsx:365
+    walked:
+      - e2e: apps/tedris/e2e/profile.e2e.ts
+        check: 'profile#3' # the link and the confirmation page's address; the confirmation itself is realm.auth.signOut's
+
+  - id: failed-read-says-so
+    need: When the account cannot be read the person is told so, in the cards' place, and the roles section of the page is not taken down with it.
+    drawn: [profileUnreadable, the-box-only-after-a-failed-read]
+    built:
+      - route: apps/tedris/app/account/page.tsx:54
+    # walked: nothing. The stack cannot make GET /me fail for one account.
+
+  - id: page-survives-a-failed-read
+    need: >-
+      When the account cannot be read the person can still sign out, open the calendar page and the connected applications, and try
+      the read again, without a reload by hand.
+    drawn: [profileUnreadable]
+    missing: none # HESAP-1 (decision D1): the cards that need no data are dropped with the rest, and the box has no retry; no Linear issue
+
+  - id: name-seen-everywhere
+    need: The name a person saves is the name they are greeted by and the name the bars show, or the page says when the other places will change.
+    drawn: [savingName]
+    missing: none # ACC-07 (decision D2): no Linear issue
+
+  - id: say-what-the-profile-link-edits
+    need: >-
+      The link to the account's profile page says what that page lets the person change (their names, their e-mail address and their
+      gender), and the e-mail line says where the address is changed.
+    drawn: [account]
+    missing: none # HESAP-2 (decision D3): no Linear issue
+
+  - id: blank-name-is-announced
+    need: >-
+      When a name is refused, the person is told in a way a screen reader announces, the focus goes to the first box that needs fixing,
+      and the line goes when they fix it.
+    drawn: [account]
+    missing: none # ACC-02: no Linear issue
+
+  - id: long-name-is-stopped-early
+    need: A name longer than the API accepts is stopped where it is typed, and the person is told the limit.
+    drawn: [account, savingName]
+    missing: none # ACC-21: no Linear issue
+
+  - id: a-lost-connection-is-told
+    need: When a save cannot reach the server at all, the person is told, and what they changed is put back, as for a refusal.
+    drawn: [savingName, savingZone, savingInvitations]
+    missing: none # ACC-12: no Linear issue
+
+  - id: controls-keep-focus-and-say-where-they-lead
+    need: >-
+      A control the person has just used keeps the keyboard focus while it saves, a link says what it opens before it leaves the app, and a
+      list that appears is announced.
+    drawn: [account, savingInvitations]
+    missing: none # ACC-10, ACC-09, ACC-20: no Linear issue
+
+  - id: choose-the-language
+    need: >-
+      A person chooses the language the apps are shown in on Hesap, and it is kept for every page without a language in the address
+      (P-21). The page's own language field was taken out until this exists; the e2e check still expects it (ACC-16).
+    drawn: [account]
+    missing: MDRS-295 # it moves the language from the address to a cookie, which a chooser needs; it does not name a control on Hesap (not verified in Linear)
+
+  - id: delete-my-account
+    need: >-
+      A person can delete their account, and it is decided first what happens to their data: whether it is anonymised or erased (P-37). A
+      decision before any build; Hesap has nothing for it today.
+    drawn: [account]
+    missing: MDRS-243

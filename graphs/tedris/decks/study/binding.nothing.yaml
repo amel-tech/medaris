@@ -1,0 +1,22 @@
+# tedris.decks.study, a deck with no card at all: the round is empty and the page says "Bugün için bitti. Bugün tekrar bekleyen kartın yok. Yarın yeniden bak."
+# (the DCK-27 case: "look again tomorrow" is wrong for a deck with nothing in it). A file of its own because `opening` reaches `nothing` from this start
+# without a round before it.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/study \
+#     --bind graphs/tedris/decks/study/binding.nothing.yaml --to nothing --out <dir>
+# Written and NOT RUN. The deck is the walk's own (study-data.mjs make applicantD nothing) and is removed.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.study
+
+scenarios:
+  nothing:
+    given: { deck: nothing, answer: saved }
+    as: applicantD
+    open: '{tedris}/decks/study/{study.deck}'
+    setup:
+      - run: [node, ../tedris/decks/study/study-data.mjs, make, applicantD, nothing]
+        expect: 'study-data make APPLICANT_D nothing deck'
+    teardown:
+      - run: [node, ../tedris/decks/study/study-data.mjs, remove, applicantD]
+        expect: 'study-data remove APPLICANT_D'

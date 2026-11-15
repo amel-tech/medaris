@@ -1,0 +1,63 @@
+# tedris.learn.questions on the local stack (graphs/README.md, "The stack and the bindings"): the "Soru sor" panel on the watch page of a
+# recording, read and written as the spare talebe `applicantD`, with the hoca (`muderris`) as the second person, in nazar.
+#   node apps/engine/src/cli.ts replay graphs/tedris/learn/questions --bind graphs/tedris/learn/questions/binding.yaml --out <dir>
+#   (and `--to lateEdit` for the answer that arrives during an edit; binding.tab.yaml walks the course's tab "Sorularım")
+# WRITTEN IN THE WRITING PHASE, NOT REPLAYED: the owner moved every replay to the walk phase. What follows is from the code; it loads
+# (`--emit-spec`), nothing has been walked.
+#
+# Data. The seed has no question and no celse with a recording that a walk may change, so the walk makes a course of its own with the
+# shared helper (helpers/course.mjs make questions: `Deneme dersi questions` in the second köşk, `muderris` as its one hoca, one week of
+# two celses, the first three days ago and the second yesterday at 21:00, `applicantD` applying: the course takes anyone, so the seat is
+# ENROLLED) and the hoca adds a YouTube recording to the first celse through the API (POST /lessons/:id/recordings, READY at once), which
+# is what gives that celse a watch page. The seat is taken before the recording, so "Kayıt eklendi" reaches applicantD's notifications;
+# `notify.mjs ... clear` and `mail.mjs clear` give the account back as it was. The ids are in graphs/.local/made/questions.json, read as
+# {made.course} and {made.lessons.0}. `course.mjs make` removes an old course of its tag first, so a walk that died leaves nothing in the
+# way; the teardown removes the course, which takes the walk's question and answer with it (the course's delete runs through everything
+# under it). No SQL writes anything: the three `effects` and `teamAnswers` read the database.
+# The 3 days ago / yesterday celses are over, so the course page's Kayıtlar tab lists the recording as a row that opens the watch page,
+# which is the nav entry `course->celseWatch` (enter.nav.binding.yaml names the row's link).
+#
+# What a walk will need. The stack up with nazar-web, tedris-web and tedrisat; `applicantD` and `muderris` in accounts.env; the main
+# story is 14 events, one of them the hoca's four steps in nazar. `states.asking.call` and `states.deleting.call` hold the server action
+# (a POST to the watch page's own address) while the busy screen is checked; `saving` has no `call`: its refusal is a 409 that a server
+# action answers with 200, so only the screen can tell it.
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: tedris.learn.questions
+
+data:
+  made: { json: ../.local/made/questions.json }
+
+scenarios:
+  # The main story and the 409: on the watch page, as the talebe of the course made in setup.
+  onWatchPage:
+    given: { place: watch }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}?tab=kayitlar'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celseWatch' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      celse: 'Hafta 1 · Celse 1'
+      asked: 'Fe‘ale bâbında mâzînin aynü’l-fiili neden fethalıdır?'
+      asked_token: 'aynü’l-fiili'
+      rewritten: 'Fe‘ale bâbında mâzî ile muzârinin harekeleri neden ayrılır?'
+      rewritten_token: 'muzârinin harekeleri'
+      answer: 'Dört tanedir: **eyn** harfleri.'
+      answer_token: 'Dört tanedir'
+    setup:
+      - run: [node, helpers/course.mjs, make, questions, --weeks, '1', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, APPLICANT_D]
+        expect: '"tag":"questions"'
+      - run: [node, helpers/api.mjs, muderris, POST, '/lessons/{made.lessons.0}/recordings', '{"title":"Birinci celse kaydı","url":"https://www.youtube.com/watch?v=Ab3dEfGh1jK","visibility":"ENROLLED"}']
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+    teardown:
+      - run: [node, helpers/course.mjs, remove, questions]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+states:
+  # the server action is a POST to the page's own address; the page's reads are GETs with a query, so this matches only the POSTs
+  asking: { call: '{tedris}/courses/{course}/lessons/{lesson}/izle' }
+  deleting: { call: '{tedris}/courses/{course}/lessons/{lesson}/izle' }

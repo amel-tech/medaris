@@ -1,0 +1,93 @@
+# What every walk of tedris.account.notifications shares (graphs/README.md, "The stack and the bindings"): the events a person types or reloads
+# with, the places the walk finds nodes by, and the checks of what the API holds. The scenarios are in binding.yaml (the main story and one
+# for each other case) and in binding.gone.yaml (a mark that is refused), because a scenario whose steps are the same as another's is walked
+# only from a file of its own (`--to` and `--cover` take the shortest way from the first scenario that reaches the state).
+# NOT RUN in the writing phase: nothing below has been replayed (the owner moved every replay to the end).
+#
+# Data. The person is `applicantH`, a spare talebe (a man, full profile, no seat and no notification). Her rows are written by
+# notifications-data.mjs (this folder), because tedrisat has no route that makes a notification: SQL, with the columns and params the producers
+# write and dates placed in Istanbul's today, yesterday and earlier. `up <variant>` starts by deleting her rows, `down` leaves her with none, so
+# a walk that died leaves nothing in the way. The rows lead to the seed's own course, celse, deck and köşk, which are only read.
+# Nothing is made but notifications: no course, no seat, no mail. `applicantH` is also addToCalendar's; the walks run under the lock one at a time.
+#
+# Where role and name cannot find a node. The `oneOf` nodes are found by their first text only, so the alternatives are spelled here as
+# patterns built from tedris.json (a placeholder is `.+`, an ICU select is its branches). The rows are found by the page's own hooks: the lists
+# are named "Bildirim listesi" and an unread row carries data-unread. A tab's name is its word and the count after it, so it is a pattern.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.account.notifications
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+  # the page is read again by the browser
+  RELOAD: [{ reload: true }]
+  # the menu closes with Esc, wherever the focus is
+  CLOSE_MENU: [{ key: Escape }]
+  # RETRY, READ_ROW, READ_ALL, OPEN_MENU, OPEN_ROW, OPEN_UNREAD, OPEN_ALL, LOAD_MORE and CLOSE_TOAST are sent by the nodes below
+
+states:
+  # a row's link leaves for the page its target names (the seed's course, celse, deck and köşk); the pages are other flows'
+  course_opened: { url: '{tedris}/courses/{seed.courses.open}' }
+  celse_opened: { url: '{tedris}/courses/{seed.courses.open}/lessons/{seed.sessions.open.next}' }
+  deck_opened: { url: '{tedris}/decks/**' }
+  kosk_opened: { url: '{tedris}/kosks/{seed.kosk}' }
+  left: { url: '{tedris}/home' }
+  # not bound: sent_to_sign_in (the stack has no way to end the session under an open page without ending the walk's own)
+
+nodes:
+  # the page's one <main>; the page it leaves for (Ana sayfa) has a <main> of its own, so the subtitle names it
+  page: { role: main, hasText: 'Başvurularından ve derslerinden gelen haberler' }
+  # the bar's bell: a link to this page in the banner (the phone bar's, hidden from 768 px, is not in the way)
+  bell: { css: 'header[data-system-chrome] a[href="/notifications"]' }
+  # the tabs: a word and the count after it ("Tümü 7", "Okunmamış 6"); no count while the first read has failed
+  tabAll: { role: tab, name: '/^Tümü/' }
+  tabUnread: { role: tab, name: '/^Okunmamış/' }
+  panelAll: { role: tabpanel, name: '/^Tümü/' }
+  panelUnread: { role: tabpanel, name: '/^Okunmamış/' }
+  # the day groups: a section named by its h2, with a list named "Bildirim listesi" in each (NOTIF-2)
+  dayGroup: { css: 'section[aria-labelledby^=notification-group-]' }
+  dayHeading: { css: 'section[aria-labelledby^=notification-group-] > h2' }
+  rowList: { css: 'ul[aria-label="Bildirim listesi"]' }
+  rowItem: { css: 'ul[aria-label="Bildirim listesi"] > li' }
+  # the row the walk opens is found by its title, which a scenario gives (vars.linkName); the bar's bell is not in the list
+  rowLink: { role: link, name: '{linkName}', within: { css: 'ul[aria-label="Bildirim listesi"]' }, nth: 0 }
+  rowTitle: { css: 'ul[aria-label="Bildirim listesi"] > li strong', hasText: '/^(Celse iptal edildi|Celse saati değişti|Yeni ders kaydı|Ders kaydı eklendi|Ödevin değerlendirildi|Başvurun onaylandı|Başvurun reddedildi|Dersten çıkarıldın|Erişimin kaldırıldı|Köşk başvurun onaylandı|Köşk başvurun reddedildi|Deste yayınlandı|Deste yayından kaldırıldı|Deste öneriniz reddedildi|Deste yayın isteği reddedildi|Sınav planlandı|Yaklaşan sınav|Sınav sonucun açıklandı|Bildirim)$/' }
+  # a link's sentence is the second paragraph of the link, a plain row's the second paragraph of its column; the title's paragraph holds a <strong>
+  rowBody: { css: 'ul[aria-label="Bildirim listesi"] > li :is(a, div) > p.mds-body-sm:not(:has(strong))', hasText: '/^(.+ dersinin .+ celsesi iptal edildi\.|.+ dersinin .+ celsesi iptal edildi\. Telafi celsesi .+\.|.+ dersinin .+ celsesi iptal edildi\. Hocanın notu: .+|.+ dersinin .+ celsesi iptal edildi\. Telafi celsesi .+\. Hocanın notu: .+|.+ dersinin celsesi .+ tarihine alındı\.|.+ dersinin .+ celsesi .+ tarihine alındı\.|.+ dersinin .+ celsesine ders kaydı eklendi\.|.+ dersine ders kaydı eklendi\.|.+ dersinin .+ celsesine teslim ettiğin ödev değerlendirildi\.|.+ dersine kaydın onaylandı\.|.+ dersine başvurun reddedildi\.|.+ dersine başvurun reddedildi\. Gerekçe: .+|.+ dersinden çıkarıldın\.|.+ dersinden çıkarıldın\. Gerekçe: .+|.+ dersine erişimin kaldırıldı\.|.+ köşkünü açma başvurun onaylandı\.|.+ köşkünü açma başvurun reddedildi\.|.+ köşkünü açma başvurun reddedildi\. Gerekçe: .+|.+ destesi herkese açıldı\.|.+ destesi yayından kaldırıldı\.|.+ deste öneriniz reddedildi\.|.+ destesini herkese açma isteğin reddedildi\.|.+ destesi herkese açıldı\. Gerekçe: .+|.+ destesi yayından kaldırıldı\. Gerekçe: .+|.+ deste öneriniz reddedildi\. Gerekçe: .+|.+ destesini herkese açma isteğin reddedildi\. Gerekçe: .+|.+ dersinin sınavı .+ tarihinde\.|.+ dersinin sınav sonucunu Notlarım’da görebilirsin\.)$/' }
+  rowTime: { css: 'ul[aria-label="Bildirim listesi"] > li time' }
+  rowBadge: { css: 'ul[aria-label="Bildirim listesi"] > li[data-unread] .mds-badge', hasText: Yeni }
+  # the first unread row's "…": its name is "Diğer işlemler: <title>"
+  rowMenu: { role: button, name: '/^Diğer işlemler: /', nth: 0 }
+  rowMenuList: { role: menu, name: '/^Diğer işlemler: /' }
+  loadMoreBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor }
+  moreAlert: { role: alert, hasText: Bir sorun oluştu. }
+  emptyAllText: { css: '.mds-empty', hasText: '/^Bildirim yok$/' }
+  emptyUnreadText: { css: '.mds-empty', hasText: '/^Okunmamış bildirim yok$/' }
+  # a block of skeleton bars, no role and no text (ACC-18)
+  listBusy: { css: '[role=tabpanel] [aria-busy=true]' }
+  retryBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor }
+  # Base UI's toast: a high-priority one is an alertdialog and aria-hidden until it is focused, so it is found by its role attribute
+  rowFailedToast: { css: '[role=alertdialog]', hasText: Okundu olarak işaretlenemedi. }
+  rowFailedTitle: { css: '[role=alertdialog] p', hasText: Okundu olarak işaretlenemedi. }
+  rowFailedText: { css: '[role=alertdialog] p', hasText: Bildirim okunmamış kaldı. }
+  rowFailedClose: { css: '[role=alertdialog]:has-text("Okundu olarak işaretlenemedi.") button[aria-label=Kapat]' }
+  allFailedToast: { css: '[role=alertdialog]', hasText: Bildirimler okundu yapılamadı. }
+  allFailedTitle: { css: '[role=alertdialog] p', hasText: Bildirimler okundu yapılamadı. }
+  allFailedText: { css: '[role=alertdialog] p', hasText: Hiçbiri değişmedi. }
+  allFailedClose: { css: '[role=alertdialog]:has-text("Bildirimler okundu yapılamadı.") button[aria-label=Kapat]' }
+  # "Neler bildirilir": eight kinds, five with a caption (ACC-15)
+  aside: { role: complementary }
+  asideList: { css: 'aside ul' }
+  asideItem: { css: 'aside ul > li', hasText: '/^(Başvurularının sonucu|Dersten çıkarılman|Bir derse erişiminin kaldırılması|Celse saatinin değişmesi|Celsenin iptal edilmesi|Derslerine eklenen ders kayıtları|Köşk açma başvurunun sonucu|Desteni herkese açma isteğinin sonucu)$/', count: 8 }
+  asideText: { css: 'aside ul > li p.mds-caption', hasText: '/^(“Başvurun onaylandı” ya da “Başvurun reddedildi”; ret gerekçesi yazıldıysa onu da görürsün\.|“Dersten çıkarıldın”; ders ekibinin yazdığı gerekçeyi de görürsün\.|“Bu derse erişimin kaldırıldı\.”|Reddedilirse gerekçesini görürsün\.|Reddedilirse ya da yayın sonradan kaldırılırsa gerekçesini görürsün\.)$/', count: 5 }
+
+effects:
+  # what the API holds after a mark: the unread count is what the page's own counts say (the e2e of nizam's notifications read it the same
+  # way). The effect of one row is what the scenario says (vars.unreadAfterOne), the effect of "Tümünü okundu say" is none left.
+  markNotificationRead:
+    - run: [node, helpers/sql.mjs, "select count(*) filter (where read_at is null) as unread, count(*) as total from notifications where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"unread":{unreadAfterOne}'
+  markAllNotificationsRead:
+    - run: [node, helpers/sql.mjs, "select count(*) filter (where read_at is null) as unread, count(*) as total from notifications where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"unread":0'

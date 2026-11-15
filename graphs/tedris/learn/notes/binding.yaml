@@ -1,0 +1,69 @@
+# tedris.learn.notes on the local stack (graphs/bindings/local.tedris.binding.yaml): tedris-web on :4000, the spare talebe
+# `applicantF` signed in through Keycloak's real form, on the celse page of a celse that has not begun.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/notes \
+#     --bind graphs/tedris/learn/notes/binding.yaml [--to addRefused] --out <dir>
+#
+# What a walk makes and how it is taken away: `setup` makes a published course of its own (helpers/course.mjs make learnnotes: three
+# celses, the first tomorrow at 21:00 Istanbul, in the second köşk) with applicantF holding a seat, and `teardown` removes it with
+# the notes under it, the seat's mail and its notifications (course.mjs remove). Both are idempotent, so a walk that died leaves
+# nothing the next one trips on. The seeded courses, the seeded note and every other account are never touched. Everything below
+# the story is written through the app's own panel; the only SQL is the `effects` reads of the note rows (walk.common.binding.yaml).
+#
+# Run so far: `writes` passed once (main story, 18 steps, 15 Nov 2026); `refused` and the files below were not run: walk phase.
+#
+# Scenarios: `writes` is the main story (a timed and an untimed note, a change, a delete, a reload). `refused` is the page's own
+# refusal of a time it does not take (typing: badTime), walked with `--to addRefused`. The other surfaces are the files
+# binding.live.yaml (the celse on air: the clock gives the time) and binding.typed.yaml (the watch page of a recording whose host
+# reports no position). Not bound, with the reason: the watch page of a YouTube frame (`surface: watchPlayer`) needs YouTube's real
+# player API and its reported position (lesson-notes#2 needs it as well), and the refusals of the server (`answer: forbidden`,
+# `failed`), a failed read and an ended session cannot be made on request locally.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.notes
+
+scenarios:
+  writes:
+    given: { surface: celseLater, typing: ok, answer: saved }
+    as: applicantF
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      timeField: Celsedeki an
+      body1: 'Mâzî fiilde **fe‘ale** kalıbı'
+      time1: '1:05'
+      offset1: '65'
+      body2: 'Sonra sorulacak: bâb-ı sânî'
+      body3: 'Mâzî fiilde fe‘ale ve fe‘ile kalıpları'
+      time3: '2:10'
+      offset3: '130'
+    setup:
+      - run: [node, helpers/course.mjs, make, learnnotes, --weeks, '1', --lessons, '3', --talebe, applicantF]
+        expect: '"course"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, learnnotes]
+        expect: course remove learnnotes
+
+  refused:
+    given: { surface: celseLater, typing: badTime, answer: saved }
+    as: applicantF
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      timeField: Celsedeki an
+      body1: 'Geçersiz zamanlı not'
+      time1: '1:75'
+      body2: ''
+      body3: ''
+      time3: ''
+      offset1: '0'
+      offset3: '0'
+    setup:
+      - run: [node, helpers/course.mjs, make, learnnotes, --weeks, '1', --lessons, '3', --talebe, applicantF]
+        expect: '"course"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, learnnotes]
+        expect: course remove learnnotes

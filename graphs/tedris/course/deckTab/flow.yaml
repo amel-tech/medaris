@@ -1,0 +1,382 @@
+# The course page's tab "Ders destesi" of a talebe who holds a seat: the course's published decks, the way into studying one, the card grid with
+# flip cards, and "Kendini sına" (a round of "Bildim" / "Bilemedim" marks with a summary and a retry of the missed cards).
+# Written from the code of the branch (captured); nothing here is a plan. What it leaves to other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   CRS-11    the side of a flip card is told by colour alone, and turning a card changes the button's name with nothing announcing it
+#   DECKTAB-1 (new, provisional id) a failed read of the course's decks is told as "Bu derse bağlı bir deste yok." with no way to try again
+#   DECKTAB-2 (new, provisional id) the grid is unmounted by "Desteler": its reads, its round and its unsaved marks are lost, against the
+#             comment that says the cards are kept "for the rest of the visit"
+#   PROG-1    (cited from tedris.course.readProgramme) the tab is not in the address
+#   DCK-14    (cited, tedris.decks.accessRefusals) the deck page a row leads to has cards and edit addresses that call this deck "herkese açık"
+# E2E carried: course-decks#1 (the count in the tab, "Çalış" on the featured deck, a row link on every other deck). The card grid and the
+# self-test have unit specs only (apps/tedris/test/course-deck-grid.spec.ts, self-test.spec.ts), which a walk on the stack takes over in the walk phase (no replay has been run on this flow).
+schema: delurio-graph/0
+kind: flow
+id: tedris.course.deckTab
+status: captured
+domain: medaris.api
+ui: tedris.course.deckTab
+title: Study the course deck from its tab
+summary: >-
+  A talebe who holds a seat opens the tab "Ders destesi" of a course. It lists the course's published decks: one is featured with its progress
+  and "Çalış" (which opens the study page), the others are rows that open the deck's page. "Kartlar" turns the tab into every card of one deck
+  on one screen: a press turns a card, "Kendini sına" turns them all face down and asks "Bildim" or "Bilemedim" for each, every mark is sent to
+  the review schedule, the summary says how many were known and offers the missed cards again, and "Bitir" goes back to the grid. A course with
+  no deck says so; the grid says when a deck has no cards or when they could not be read.
+
+scope:
+  shows: "the tab \"Ders destesi\" of an enrolled talebe: the list, the card grid, one turned card, and one round of \"Kendini sına\" to its summary and its retry"
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the tab being absent for anyone who holds no seat (visitor, pending, revoked): the course page's own states, tedris.course.readProgramme and tedris.course.apply"
+    - "the other tabs of the list (Ders kayıtları, Sorularım, Notlarım, Hocalar) and the rest of the course page (header, card, programme, resources): tedris.course.readProgramme, .recordings, .grades"
+    - "the study page that \"Çalış\" opens and the deck page a row opens: tedris.decks.study, tedris.decks.readAndCopy"
+    - "how a deck gets onto the course (opened, filled, published by the hoca): nazar.decks.openAndFill and nazar.decks.publishAndDelete; the API lists only published decks"
+    - "the list when every deck is done: no deck is featured (course-decks-model.ts:48-74) and the rows are the whole tab, each marked \"Tamamlandı\""
+    - "a deck that belongs to a week: the eyebrow's \"· {n}. hafta\", the row's week caption, and the featured deck chosen by the week of the next celse (\"Bu haftanın destesi\"); the seeded deck has no week"
+    - "the sîga tables a deck of sîga cards is laid out as (course-siga-table.tsx), and the \"Bu turda değil\" cell of such a table in a round"
+    - "several cards turned at once: the graph follows one turned card at a time"
+    - "picking a deck whose cards the grid already read: they draw at once and no read is made (course-deck-grid.tsx:94-96); the graph draws the first reading"
+    - "the paragraph with aria-live that repeats the count and the summary (visually hidden, no role), and the six skeletons of a read in flight (a div with aria-busy, no role)"
+    - "a request that never reaches the server: attempt() turns it into the same failure as a refusal (flashcards/attempt.ts)"
+
+context:
+  arrival:
+    values: [tab, address]
+    initial: any
+    say:
+      tab: "the talebe opens the course and presses the tab \"Ders destesi\""
+      address: "the page opens on this tab at once, by the address ?tab=deste (course-page.tsx:194-198); nothing in the app links there, the e2e does"
+  decks:
+    values: [none, one, several]
+    initial: any
+    say:
+      none: "the course offers no published deck (or the read of them failed: DECKTAB-1)"
+      one: "the course offers one published deck"
+      several: "the course offers two or more published decks: the others are rows, and the grid has a deck picker"
+  deckCards:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the deck the grid opens on has cards"
+      none: "the deck the grid opens on has no card yet"
+  round:
+    values: [more, done]
+    initial: more
+    say:
+      more: "a card of the round is still to mark"
+      done: "the last card of the round has been marked"
+  marked:
+    values: [none, some]
+    initial: none
+    say:
+      none: "no card of the round is marked"
+      some: "a card of the round carries its mark"
+  missed:
+    values: [none, some]
+    initial: none
+    say:
+      none: "no card of the round was missed"
+      some: "a card of the round was missed"
+  unsaved:
+    values: [none, some]
+    initial: none
+    say:
+      none: "every mark reached the API"
+      some: "a mark did not reach the API: the alert \"Bazı işaretler kaydedilemedi\" is drawn"
+
+guards:
+  viaAddress: "arrival == 'address'"
+  courseHasNoDeck: "decks == 'none'"
+  severalDecks: "decks == 'several'"
+  deckIsEmpty: "deckCards == 'none'"
+  roundDone: "round == 'done'"
+  anyMissed: "missed == 'some'"
+  hasMarks: "marked == 'some'"
+  hasUnsaved: "unsaved == 'some'"
+
+effects:
+  newRound: { set: { round: more, marked: none, missed: none, unsaved: none } }
+  markKnown: { set: { marked: some }, havoc: [round] }
+  markMissed: { set: { marked: some, missed: some }, havoc: [round] }
+  notSaved: { set: { unsaved: some } }
+  sendAgain: { havoc: [unsaved] }
+
+failures:
+  readingCards:
+    from: listDeckCards
+    signedOut: [HTTP_401]
+    failed: [DECK_NOT_FOUND, HTTP_400]
+  rating:
+    from: saveCardProgress
+    signedOut: [HTTP_401]
+    refused: [CARD_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400, INTERNAL_ERROR]
+
+# The main story: open the tab, look at the featured deck, turn the grid on, turn a card and back, run a round (known, missed, known), retry the
+# missed card, finish, go back to the list and press "Çalış".
+main:
+  given: { arrival: tab, decks: one, deckCards: some }
+  events: [OPEN_DECK_TAB, SHOW_CARDS, DONE, TURN_CARD, TURN_BACK, START_TEST, TURN_CARD, MARK_KNOWN, DONE, TURN_CARD, MARK_MISSED, DONE, TURN_CARD, MARK_KNOWN, DONE, RETRY_MISSED, TURN_CARD, MARK_KNOWN, DONE, FINISH, SHOW_LIST, STUDY]
+
+initial: arriving
+states:
+  arriving:
+    title: The course page opens
+    source: apps/tedris/features/courses/components/course-page.tsx:194
+    description: >-
+      The course page of a talebe who holds a seat is drawn on the server with the course's decks already read (`GET /courses/:id/decks`,
+      app/courses/[courseId]/page.tsx:64-77, read only for a seat holder). The tab is chosen once, from `?tab=` (course-page.tsx:194-198): "deste"
+      opens on the deck tab, anything else, or nothing, on Müfredat. A step with no screen of its own.
+    always:
+      - { guard: viaAddress, target: tabOpened, say: "the address names the tab" }
+      - { target: courseOpened }
+
+  courseOpened:
+    title: The course page, on its first tab
+    by: human
+    source: apps/tedris/features/courses/components/course-page.tsx:394
+    description: >-
+      The course page with the tab list under the header and the card: Müfredat is selected and its panel is drawn (the programme: tedris.course.readProgramme).
+      "Ders destesi" is in the list for a seat holder, with the number of decks beside its name when there are some ("Ders destesi 1": the count is in the tab's
+      accessible name, course-page.tsx:181-184). The page sets no initial focus (`focus-not-set`).
+    on:
+      OPEN_DECK_TAB: tabOpened
+      NAVIGATE: left
+
+  tabOpened:
+    title: The deck tab is selected
+    source: apps/tedris/features/courses/components/course-page.tsx:451
+    description: >-
+      Base UI's Tabs selects the panel. The panel is the list of decks when the course has any, else the empty state. The address does not change
+      (PROG-1): a reload after this lands on Müfredat again. A step with no screen of its own.
+    always:
+      - { guard: courseHasNoDeck, target: noDecks }
+      - { target: list }
+
+  noDecks:
+    title: The course has no deck
+    by: human
+    source: apps/tedris/features/courses/components/course-page.tsx:452
+    description: >-
+      The panel says "Bu derse bağlı bir deste yok." in the kit's empty state, a paragraph with no heading, and the tab's name carries no count.
+      The same panel is drawn when the read of the decks failed, because `getCourseDecks` answers null for a failure and the page turns null into [] (public-reads.ts:117-122,
+      page.tsx:96): the talebe cannot tell "no deck" from "could not read" and has no retry (DECKTAB-1; the recordings tab, by contrast, draws RecordingsFailed with
+      "Yeniden dene"). Seen in a browser on the stack for a course with no deck (the seeded köşk's own course, as a spare talebe); the binding's `noDeck` scenario makes its own course for it (walk phase).
+    on:
+      OPEN_PROGRAMME: courseOpened
+      NAVIGATE: left
+
+  list:
+    title: The list of decks
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/course-decks-tab.tsx:68
+    description: >-
+      The panel opens on "Desteler" (pressed; the chips are two toggle buttons with aria-pressed in a group named "Görünüm"). The featured deck is a region named by
+      the deck's title: an eyebrow ("Bu haftanın destesi" for a deck of the week of the celse on air or the next one, else "Sıradaki deste"), the title (an h3), one line
+      made of the cards due today and the new cards ("Bugün {count} kart tekrar", "{count} yeni kart", or "Bugün tekrar yok"), the link "Çalış" (named "Çalış: {title}") to
+      /decks/study/{deckId}, and a progress bar named "{total} karttan {mastered} tanesi ezberlendi". When the course has several decks, "Diğer desteler" and one row per other
+      deck follow: the row's title is a link to /decks/{deckId} (the deck's page) with a badge "Başla", "{count} kart tekrar" or "Tamamlandı". The counts come from the page's
+      own read, which the marks of a round refresh (rateFlashcard revalidates the page: seen in a browser, the line read "Bugün tekrar yok" and "3 karttan 2 tanesi ezberlendi"
+      after a round with two known cards). Carries course-decks#1.
+    on:
+      SHOW_CARDS: readingCards
+      STUDY: study_opened
+      OPEN_DECK: { guard: severalDecks, target: deck_opened }
+      OPEN_PROGRAMME: courseOpened
+      NAVIGATE: left
+
+  readingCards:
+    title: Read the cards of the deck
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:86
+    description: >-
+      "Kartlar" mounts the grid on the featured deck (or the first the API gave) and its effect reads the deck's cards: the server action getDeckCards, GET /flashcard/cards?deckId=.
+      Six skeletons in a div with aria-busy stand in (not drawn: no role, no name). In development React runs the effect twice, so two reads are made; in production one. The
+      chips stay: "Kartlar" is pressed. A refusal or a failed request draws the alert; a session that is over goes to sign in (attempt() never settles it, flashcards/attempt.ts).
+    invoke: { action: listDeckCards }
+    on:
+      DONE:
+        - { guard: deckIsEmpty, target: noCards, say: "the deck has no card" }
+        - { target: cards }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: cardsFailed
+      SHOW_LIST: list
+
+  cardsFailed:
+    title: The cards could not be read
+    by: human
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:300
+    description: >-
+      An Alert with tone error, so role alert: "Bu destenin kartları yüklenemedi." and the button "Yeniden dene", which forgets the failed read and reads again. Nothing moves the
+      focus, which stays on "Kartlar". Not seen: no deck on the stack can be made to refuse its cards to an enrolled talebe (the unit spec makes it with a mocked action).
+    on:
+      RETRY: readingCards
+      SHOW_LIST: list
+      PICK_DECK: { guard: severalDecks, target: readingCards }
+      NAVIGATE: left
+
+  noCards:
+    title: The deck has no card
+    by: human
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:307
+    description: >-
+      The kit's empty state: "Bu destede henüz kart yok.". No "Kendini sına" is drawn, because it needs at least one card. The hint above is still the browsing one. The e2e fixture
+      (course-decks-seed.ts) makes decks with no card, so this is what that course shows in the grid. Not seen: the walk's decks have cards.
+    on:
+      SHOW_LIST: list
+      PICK_DECK: { guard: severalDecks, target: readingCards }
+      NAVIGATE: left
+
+  cards:
+    title: Every card of the deck, front up
+    by: human
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:217
+    description: >-
+      The grid is a region named by the deck's title. Above the cards: the hint "Anlamını görmek için karta dokun; yeniden dokununca Arapçasına döner.", the count "{count} kart" in a
+      polite live span, and the button "Kendini sına". A card is a button named by its visible side: a visually hidden "Ön yüz" and the text ("Ön yüz فعل", the Arabic in a lang="ar" dir="rtl"
+      span); the other face is aria-hidden. The cards sit in a list (a free grid) or, for a deck of sîga cards, in tables (not drawn). With several decks a group "Deste" with one
+      chip per deck sits on top. The side in view is told by colour alone (CRS-11).
+    on:
+      TURN_CARD: cardsTurned
+      START_TEST: { target: test, effect: [newRound] }
+      SHOW_LIST: list
+      PICK_DECK: { guard: severalDecks, target: readingCards }
+      NAVIGATE: left
+
+  cardsTurned:
+    title: A card turned over
+    by: human
+    source: apps/tedris/features/courses/components/deck-flip-card.tsx:52
+    description: >-
+      The card turns on a Y rotation (the global reduced-motion rule cuts it to an instant change) and its button is now named by the other face: "Arka yüz fiil". Nothing announces the
+      change (CRS-11). The card keeps the focus. Pressing the card again turns it back. The graph follows one card; several can be turned at once (outOfView).
+    on:
+      TURN_BACK: cards
+      START_TEST: { target: test, effect: [newRound] }
+      SHOW_LIST: list
+      PICK_DECK: { guard: severalDecks, target: readingCards }
+      NAVIGATE: left
+
+  test:
+    title: A round of "Kendini sına", cards face down
+    by: human
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:124
+    description: >-
+      "Kendini sına" turns every card of the round face down and puts the focus on the first card of the round (begin(), :124-127). The hint becomes "Kartlar kapalı. Birini çevir, sonra
+      bilip bilmediğini işaretle.", the count becomes "{marked} / {total} işaretlendi" and the button "Sınamayı bitir". A card already marked keeps its face and a badge "Bildin" or "Bilemedin". Entered
+      from a mark, the focus is on the card just marked (:146). A mark that did not reach the API leaves the alert "Bazı işaretler kaydedilemedi; tekrar listen güncellenmedi." with "Yeniden gönder",
+      which sends every unsaved mark again; the alert stays while one is unsaved (seen once in a browser, when the account's seat had been taken away by another writer's setup in the middle of a round, so the marks were refused; that cause is read from tedrisat's log, not measured).
+    on:
+      TURN_CARD: testTurned
+      STOP: { target: cards, effect: [newRound] }
+      SHOW_LIST: { target: list, effect: [newRound] }
+      PICK_DECK: { guard: severalDecks, target: readingCards, effect: [newRound] }
+      RESEND: { guard: hasUnsaved, target: test, effect: [sendAgain] }
+      NAVIGATE: left
+
+  testTurned:
+    title: A card of the round turned over, asking
+    by: human
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:185
+    description: >-
+      A card turned in a round is named by its other face ("Arka yüz fiil") and gets a group named "Bu kartı bildin mi?" (a fieldset with a visually hidden legend) with two small buttons, "Bildim" and
+      "Bilemedim". Only a card that is turned and not yet marked shows them; a marked card keeps its first mark (self-test.ts:60-68). Pressing the card again turns it back.
+    on:
+      MARK_KNOWN: { target: rating, effect: [markKnown] }
+      MARK_MISSED: { target: rating, effect: [markMissed] }
+      TURN_BACK: test
+      STOP: { target: cards, effect: [newRound] }
+      SHOW_LIST: { target: list, effect: [newRound] }
+      PICK_DECK: { guard: severalDecks, target: readingCards, effect: [newRound] }
+      RESEND: { guard: hasUnsaved, target: testTurned, effect: [sendAgain] }
+      NAVIGATE: left
+
+  rating:
+    title: A mark goes to the review schedule
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:134
+    description: >-
+      The mark is drawn at once (the buttons give way to the badge "Bildin" or "Bilemedin", the count moves, the focus stays on the card) and rateFlashcard sends it: the server action,
+      PUT /flashcard/cards/progress with one element, rating EASY for "Bildim" and HARD for "Bilemedim" (self-test.ts:64-66). The API sets the card's status and when it is due next (HARD: back in a day;
+      EASY: at least seven days) and the action revalidates the lists that count what waits. A rating that answers after the round ended or the deck changed is dropped (the generation counter, :74-76,137).
+      A failure keeps the mark and adds the card to the unsaved ones. Modelled as the write the mark makes; whether the round is complete is not known to the flow, so the last mark leaves it to chance (`round`).
+    invoke: { action: saveCardProgress }
+    on:
+      DONE: rated
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { target: rated, effect: [notSaved] }
+
+  rated:
+    title: The round is complete, or not
+    source: apps/tedris/features/courses/self-test.ts:378
+    description: >-
+      summarize() says the round is done when every card of it is marked (`done`). A flow cannot count the deck's cards, so the mark that completes a round is the one after which `round` is `done`
+      (a round of one card ends at its first mark). A step with no screen of its own.
+    always:
+      - { guard: roundDone, target: summary }
+      - { target: test }
+
+  summary:
+    title: The round's summary
+    by: human
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:276
+    description: >-
+      An Alert, role status, "{total} kartın {known} tanesini bildin." (tone success when nothing was missed, else info), beside the same sentence in the hidden live paragraph. Its buttons:
+      "Bilemediklerimi tekrar et" (only when a card was missed), which starts a new round of the missed cards face down with the focus on the first, and "Bitir", which ends the round and puts the
+      focus on "Kendini sına". "Sınamayı bitir" does the same. All cards stay turned, each with its badge. Marks cannot be changed.
+    on:
+      RETRY_MISSED: { guard: anyMissed, target: test, effect: [newRound] }
+      FINISH: { target: cards, effect: [newRound] }
+      STOP: { target: cards, effect: [newRound] }
+      SHOW_LIST: { target: list, effect: [newRound] }
+      PICK_DECK: { guard: severalDecks, target: readingCards, effect: [newRound] }
+      RESEND: { guard: hasUnsaved, target: summary, effect: [sendAgain] }
+      NAVIGATE: left
+
+  study_opened:
+    title: The study page opens
+    type: final
+    leavesPage: true
+    source: apps/tedris/features/courses/components/course-decks-tab.tsx:144
+    description: >-
+      "Çalış" is a link to /decks/study/{deckId}: a full navigation to the study page, tedris.decks.study, which asks the same deck a round of its own (its queue of the cards due today and ten new ones).
+
+  deck_opened:
+    title: The deck's page opens
+    type: final
+    leavesPage: true
+    source: apps/tedris/features/courses/components/course-decks-tab.tsx:169
+    description: >-
+      A row's title is a link to /decks/{deckId}, the deck page of tedris.decks.readAndCopy. The page says "herkese açık değil" of a shared deck (aboutShared), but the addresses it links to
+      for the cards and the edit page refuse a reader with a sentence that calls the same deck "herkese açık" (DCK-14, seen in a browser by tedris.decks.accessRefusals on the seeded course deck).
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to this address, and draws nothing. The address has no tab in it (PROG-1),
+      so the course page comes back on Müfredat. realm.auth.signIn takes over.
+
+assertions:
+  - id: no-round-on-an-empty-deck
+    never: "deckCards == 'none' and state in ['test', 'testTurned', 'rating', 'summary']"
+    say: "\"Kendini sına\" is drawn only when the deck has cards"
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:238
+  - id: no-list-for-a-course-without-decks
+    never: "decks == 'none' and state in ['list', 'readingCards', 'cards', 'test']"
+    say: "a course with no deck draws the empty state, never the list or the grid"
+    source: apps/tedris/features/courses/components/course-page.tsx:452
+  - id: unsaved-marks-end-with-the-round
+    never: "unsaved == 'some' and state in ['list', 'cards', 'cardsTurned']"
+    say: "the alert for marks that were not saved is only in a round; leaving the round forgets them (reset())"
+    source: apps/tedris/features/courses/components/course-deck-grid.tsx:112
+  - id: a-missed-card-needs-a-mark
+    never: "missed == 'some' and marked == 'none'"
+    say: "a round holds a missed card only after a mark was made in it"
+    source: apps/tedris/features/courses/self-test.ts:361

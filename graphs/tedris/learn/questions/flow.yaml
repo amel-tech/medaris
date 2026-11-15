@@ -1,0 +1,374 @@
+# A talebe asks the course team a question about a celse, reads the answer, and edits or deletes their own question. Two
+# places draw the same list, the same cards and the same ask box: the "Soru sor" panel beside a recording on the watch page
+# (/courses/<c>/lessons/<l>/izle, MDRS-285) and the tab "Sorularım" of the course page (/courses/<c>?tab=sorularim, MDRS-150).
+# Written from the code of the branch (captured); nothing here is a plan. What it leaves to other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   WRT-01  focus is lost after Düzenle, Kaydet, Vazgeç, Sil and the confirming Sil, and entering edit does not focus the field
+#   WRT-02 / CRS-07  a question that was sent is silent: the field empties and a card appears, no live region says so
+#   WRT-03  the alerts are paragraphs after the form, not tied to the field
+#   WRT-04  the card and its two buttons are named by the celse title only, so two questions on one celse have one name
+#   WRT-14  on the watch page the ask box has an aria-label and a placeholder, no visible label
+#   CRS-06  (the course tab's copy of WRT-01)
+#   CRS-16  the loading line is an <output> mounted already filled
+#   QUESTIONS-1 (new) after "Cevaplanmış bir soru düzenlenemez." the card still says "Cevap bekleniyor", shows no answer, and the
+#             text the talebe wrote is thrown away; the answer appears only when the page is read again
+#   QUESTIONS-2 (new) the page is not live, so a stale card's delete confirmation says "Silinsin mi?" over a question the hoca has
+#             already answered, and the answer goes with it unseen
+# E2E carried: lesson-questions#1 (the tab: ask, edit, delete), #3 (the watch page: ask, read it back), #4 (the answer is read, no edit,
+# delete asks "Cevabı da silinir"; the answer itself is the second person's step). Carried in part: #2 (the ask form on three celses of one
+# course: the graph draws the form once; the list of seven options is a data check). Not carried: #5-#8 (who may not ask and what the API
+# answers them: tedris.learn.writingGating) and every API status assertion.
+schema: delurio-graph/0
+kind: flow
+id: tedris.learn.questions
+status: captured
+domain: medaris.api
+ui: tedris.learn.questions
+title: Ask a question about a celse, read the answer, edit or delete it
+summary: >-
+  An enrolled talebe opens the question list of a celse: the "Soru sor" panel beside a recording on its watch page, or the
+  tab "Sorularım" of the course. The list is read, newest first. The ask box takes a question of up to 4000 characters; on the
+  course tab it also asks which celse the question is about. Once sent, the question stands in the list with the badge "Cevap
+  bekleniyor", and the question is on the course team's list in nazar (this flow starts nazar.questions.answer). While nobody has
+  answered it the talebe may rewrite it ("Düzenle", "Kaydet", "Vazgeç"). When the hoca answers, the talebe's page does not know
+  until it is read again: then the badge says "Cevaplandı", the answer is under it as "Cevap: <hoca>", and "Düzenle" is gone. A
+  question is deleted at any time after one inline question ("Silinsin mi?", or "Silinsin mi? Cevabı da silinir." when it holds an
+  answer); the answer goes with it. A talebe whose edit meets an answer given meanwhile is told "Cevaplanmış bir soru düzenlenemez."
+  Beside a live stream the chat stands where this panel would, and questions are asked there (tedris.celse.watchStream).
+
+scope:
+  shows: >-
+    the ask box, the list of the talebe's questions with their answers, one card followed through asking, rewriting, being
+    answered and being deleted, and the course-tab and watch-page forms of the same list
+  world: open
+  outOfView:
+    - "the course team reading and answering the question in nazar, with its own page and refusals: nazar.questions.answer"
+    - "the watch page beside the panel (the player, the notes, the header, \"Celse ayrıntıları\"), and the chat that stands in place of this panel beside a live stream: tedris.celse.watchRecording, tedris.celse.watchStream, tedris.learn.notes"
+    - "who gets no panel and no tab (not enrolled, pending, removed, a course in a passive scope, a cancelled celse) and what the API answers them: tedris.learn.writingGating"
+    - "the list's second and later pages (\"Daha fazla göster\", the course tab only) and the card's own text, which is the talebe's and the hoca's, not the app's"
+    - "a list that holds several questions: the graph follows one card, and a further question joins the list above it (needs.yaml carries paging as unwalked)"
+    - "asking from the celse's detail page (planned, MDRS-267), the player position (MDRS-264)"
+
+context:
+  place:
+    values: [watch, tab]
+    initial: any
+    say:
+      watch: "the talebe is on the watch page of a celse that has a recording: the panel \"Soru sor\" has no celse to pick and lists this celse's questions"
+      tab: "the talebe is on the course page, on the tab \"Sorularım\": the form asks for a celse and the list holds the course's questions"
+  cards:
+    values: [none, waiting, answered]
+    initial: none
+    say:
+      none: "the list shows no question"
+      waiting: "the list shows the talebe's question with the badge \"Cevap bekleniyor\""
+      answered: "the list shows it with the badge \"Cevaplandı\" and the answer under it"
+  team:
+    values: [silent, answered]
+    initial: silent
+    say:
+      silent: "the course team has not answered the question"
+      answered: "the course team has answered it, in nazar, and the talebe's page may not know"
+  typed:
+    values: [blank, text]
+    initial: blank
+    say:
+      blank: "the ask box holds nothing, or only spaces"
+      text: "the ask box holds a question"
+  picked:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "no celse is chosen in the course tab's form"
+      yes: "a celse is chosen in the course tab's form"
+  draft:
+    values: [kept, blank]
+    initial: kept
+    say:
+      kept: "the edit form holds text"
+      blank: "the edit form was emptied"
+  editClosed:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "\"Düzenle\" is on the card while the badge says \"Cevap bekleniyor\""
+      yes: "the API refused an edit because the question was answered, and the card has dropped \"Düzenle\" for good"
+  askNote:
+    values: [none, pickCelse, blank, forbidden, failed]
+    initial: none
+    say:
+      none: "the ask form shows no alert"
+      pickCelse: "the course tab's form says \"Önce bir celse seç.\""
+      blank: "the form says \"Soru boş olamaz.\""
+      forbidden: "the form says \"Soru sormak için derse kayıtlı olman gerekir.\""
+      failed: "the form says \"Soru gönderilemedi. Biraz sonra yeniden dene.\""
+  cardNote:
+    values: [none, blank, forbidden, failed, deleteFailed]
+    initial: none
+    say:
+      none: "the card shows no alert"
+      blank: "the edit form says \"Soru boş olamaz.\""
+      forbidden: "the edit form says \"Soru sormak için derse kayıtlı olman gerekir.\""
+      failed: "the edit form says \"Soru kaydedilemedi. Biraz sonra yeniden dene.\""
+      deleteFailed: "the confirmation says \"Soru silinemedi. Biraz sonra yeniden dene.\""
+
+guards:
+  needsCelse: "place == 'tab' and picked == 'no'"
+  mayEdit: "cards == 'waiting' and editClosed == 'no'"
+  staleAnswer: "cards == 'waiting' and team == 'answered'"
+  holdsQuestion: "cards != 'none'"
+
+effects:
+  typeText: { set: { typed: text } }
+  pickCelse: { set: { picked: yes } }
+  clearAsk: { set: { askNote: none } }
+  needCelse: { set: { askNote: pickCelse } }
+  askBlank: { set: { askNote: blank } }
+  askForbidden: { set: { askNote: forbidden } }
+  askFailed: { set: { askNote: failed } }
+  cardWaits: { set: { cards: waiting, typed: blank, askNote: none } }
+  asked: { set: { typed: blank, askNote: none } }
+  openEdit: { set: { draft: kept, cardNote: none } }
+  rewrite: { set: { draft: kept } }
+  emptyDraft: { set: { draft: blank } }
+  cardBlank: { set: { cardNote: blank } }
+  cardForbidden: { set: { cardNote: forbidden } }
+  cardFailed: { set: { cardNote: failed } }
+  saved: { set: { draft: kept, cardNote: none } }
+  closeEdit: { set: { editClosed: yes, draft: kept, cardNote: none } }
+  clearCard: { set: { cardNote: none } }
+  deleteFailed: { set: { cardNote: deleteFailed } }
+  cardGone: { set: { cards: none, team: silent, editClosed: no, draft: kept, cardNote: none } }
+  teamAnswers: { set: { team: answered } }
+  readAnswer: { set: { cards: answered, team: silent, editClosed: no, cardNote: none, askNote: none, typed: blank, picked: no, draft: kept } }
+  readAgain: { set: { editClosed: no, cardNote: none, askNote: none, typed: blank, picked: no, draft: kept } }
+
+failures:
+  opened:
+    from: listMyCourseQuestions
+    signedOut: [HTTP_401]
+    failed: [LESSON_QUESTION_FORBIDDEN, COURSE_NOT_FOUND, HTTP_400, INVALID_QUESTION_CURSOR]
+  asking:
+    from: askLessonQuestion
+    signedOut: [HTTP_401]
+    forbidden: [LESSON_QUESTION_FORBIDDEN]
+    failed: [LESSON_NOT_FOUND, COURSE_NOT_FOUND, VALIDATION_ERROR]
+  saving:
+    from: updateLessonQuestion
+    signedOut: [HTTP_401]
+    gone: [LESSON_QUESTION_NOT_FOUND, COURSE_NOT_FOUND]
+    answered: [LESSON_QUESTION_ANSWERED]
+    forbidden: [LESSON_QUESTION_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+  deleting:
+    from: deleteLessonQuestion
+    signedOut: [HTTP_401]
+    gone: [LESSON_QUESTION_NOT_FOUND, COURSE_NOT_FOUND]
+    failed: [LESSON_QUESTION_FORBIDDEN]
+
+# The story the page tells first: on the watch page of a recording, a question is asked, rewritten while it waits, answered by
+# the hoca in nazar, read again and deleted with its answer.
+main:
+  given: { place: watch }
+  events: [DONE, TYPE, SEND, DONE, EDIT, REWRITE, SAVE, DONE, TEAM_ANSWERS, RELOAD, DONE, DELETE, CONFIRM_DELETE, DONE]
+
+initial: opened
+states:
+  opened:
+    title: The list of questions is read
+    source: apps/tedris/features/courses/components/course-questions.tsx:59
+    description: >-
+      The panel or the tab mounts and reads GET /courses/:id/questions/mine through a server action (listMyCourseQuestions), the
+      first page of the talebe's own questions, newest first. On the watch page the same read runs through the course's pages, fifty
+      at a time, up to twenty pages, and keeps the questions of this celse (listMyLessonQuestions, actions/questions.ts:35); a
+      course with more than a thousand questions is cut without a word. While it runs the page holds the ask box and a line "Soruların
+      yükleniyor…" in an <output> that is mounted already filled (CRS-16); the line is not drawn, because a replay cannot hold the
+      first read. A talebe who still has their seat reads the list; one whose seat is gone reads their answers all the same, and only
+      a passive scope closes it (tedris.learn.writingGating).
+    invoke: { action: listMyCourseQuestions }
+    on:
+      DONE:
+        - { guard: staleAnswer, target: listed, effect: [readAnswer], say: "the question was answered meanwhile: the page is read again and shows the answer", source: apps/tedris/features/courses/components/course-questions.tsx:65 }
+        - { target: listed, effect: [readAgain], source: apps/tedris/features/courses/components/course-questions.tsx:65 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: loadFailed
+
+  loadFailed:
+    title: The list could not be read
+    by: human
+    source: apps/tedris/features/courses/components/course-questions.tsx:119
+    description: >-
+      An alert says "Soruların yüklenemedi." with a button "Yeniden dene"; the ask box above it stays. Any refusal and a call that
+      throws land here (the same code on both places). The stack cannot make tedrisat refuse the read, so a replay does not walk it.
+    on:
+      RETRY: { target: opened, say: "the button reads the list again" }
+      NAVIGATE: left
+
+  listed:
+    title: The list and the ask box
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/lesson-questions.tsx:68
+    description: >-
+      The list shows the talebe's questions or says there are none: "Bu celsede henüz soru sormadın." on the watch page, "Bu derste
+      henüz soru sormadın." on the tab. Above it the ask box, with the line that says who reads it ("Sorularını ve cevaplarını
+      yalnızca sen, dersin hocası ve ders nazırı görür; diğer talebeler görmez."). The watch page's box is a text area named "Sorun"
+      by an aria-label and a placeholder, with no visible label (WRT-14), and shows its help ("Markdown yazabilirsin. En çok 4000
+      karakter.") only once there is text; the tab's form is named "Soru sor" and has the label "Celse" over a select and the label
+      "Sorun" over the text area, with the help always. "Soruyu gönder" with a blank text, or on the tab with no celse, stays here
+      with an alert (the celse is checked first). A card shows its badge, the question, "Sorulma: <time>" and, once answered, "Cevap:
+      <hoca>" with the answer and its time. While the badge says "Cevap bekleniyor" the card offers "Düzenle" and "Sil"; once it
+      says "Cevaplandı" only "Sil". The page is not live: when the hoca answers, nothing here changes until it is read again. A
+      question sent here is not announced (WRT-02, CRS-07), and the alerts are not tied to the field (WRT-03). Every press below
+      that replaces a button leaves the focus nowhere (WRT-01, CRS-06).
+    on:
+      TYPE: { target: listed, effect: [typeText], say: "they write a question" }
+      PICK_CELSE: { guard: "place == 'tab'", target: listed, effect: [pickCelse], say: "they choose a celse in the course tab's form", source: apps/tedris/features/courses/components/course-questions.tsx:446 }
+      SEND:
+        - { guard: needsCelse, target: listed, effect: [needCelse], say: "the course tab says \"Önce bir celse seç.\" and sends nothing", source: apps/tedris/features/courses/components/course-questions.tsx:410 }
+        - { guard: "typed == 'blank'", target: listed, effect: [askBlank], say: "\"Soru boş olamaz.\" and nothing is sent", source: apps/tedris/features/courses/components/course-questions.tsx:411 }
+        - { target: asking, effect: [clearAsk], say: "they press \"Soruyu gönder\"" }
+      EDIT: { guard: mayEdit, target: editing, effect: [openEdit], say: "they press \"Düzenle\" on a card that waits", source: apps/tedris/features/courses/question-model.ts:55 }
+      DELETE: { guard: holdsQuestion, target: confirming, effect: [clearCard], say: "they press \"Sil\" on the card", source: apps/tedris/features/courses/components/course-questions.tsx:375 }
+      TEAM_ANSWERS: { guard: "cards == 'waiting' and team == 'silent'", target: listed, effect: [teamAnswers], say: "the hoca answers it in nazar; this page does not know", source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217 }
+      RELOAD: { target: opened, effect: [readAgain], say: "the page is read again (a reload): what was typed and chosen is gone (WRT-13)" }
+      NAVIGATE: left
+
+  asking:
+    title: The question is on its way
+    source: apps/tedris/features/courses/components/lesson-questions.tsx:140
+    description: >-
+      The server action askLessonQuestion, POST /lessons/:id/questions with the text; the API stores it trimmed and sends nobody a
+      notification (the course team finds it on its own list). The button is busy ("Gönderiliyor" through a hidden status). A 201 puts
+      the new question first in the list, empties the box, and says nothing (WRT-02). A 403 (not an active talebe, a closed course)
+      says "Soru sormak için derse kayıtlı olman gerekir."; any other refusal, or a call that throws, says "Soru gönderilemedi. Biraz
+      sonra yeniden dene." and the text stays. A session that is over sends the person to sign in.
+    invoke: { action: askLessonQuestion }
+    on:
+      DONE:
+        - { guard: "cards == 'none'", target: sent, effect: [cardWaits], say: "the question stands in the list, waiting", source: apps/tedris/features/courses/components/course-questions.tsx:418 }
+        - { target: sent, effect: [asked], say: "a further question joins the list above the one this flow follows", source: apps/tedris/features/courses/components/course-questions.tsx:418 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { target: listed, effect: [askForbidden], source: apps/tedris/features/courses/components/course-questions.tsx:422 }
+      FAIL.failed: { target: listed, effect: [askFailed], source: apps/tedris/features/courses/components/course-questions.tsx:422 }
+
+  sent:
+    title: The question is on the course team's list in nazar
+    source: apps/nazar/features/questions/components/questions-page.tsx:28
+    description: >-
+      The stored question comes first among the waiting ones on the course's Sorular page in nazar (still-waiting questions oldest
+      first, then the answered ones), where whoever holds question.answer answers it. Nothing is sent when it is made. A step with no
+      screen of its own.
+    always:
+      - { target: listed, starts: { flow: nazar.questions.answer, given: { waiting: "true" } }, say: "the hoca answers it on her own page" }
+
+  editing:
+    title: The card is rewritten
+    by: human
+    source: apps/tedris/features/courses/components/course-questions.tsx:271
+    description: >-
+      "Düzenle" swaps the card's text for a form: a text area "Sorun" holding the question, the help, "Kaydet" and "Vazgeç". The
+      field is not focused (WRT-01). "Kaydet" with a blank text says "Soru boş olamaz." and sends nothing. The hoca may answer while
+      the form is open, and the form does not know.
+    on:
+      REWRITE: { target: editing, effect: [rewrite], say: "they change the text" }
+      EMPTY: { target: editing, effect: [emptyDraft], say: "they empty the text area" }
+      SAVE:
+        - { guard: "draft == 'blank'", target: editing, effect: [cardBlank], say: "\"Soru boş olamaz.\"", source: apps/tedris/features/courses/components/course-questions.tsx:205 }
+        - { target: saving, effect: [clearCard], say: "they press \"Kaydet\"" }
+      CANCEL: { target: listed, effect: [clearCard], say: "they press \"Vazgeç\"; the text goes back to what it was" }
+      TEAM_ANSWERS: { guard: "team == 'silent'", target: editing, effect: [teamAnswers], say: "the hoca answers it in nazar while the form is open", source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217 }
+      NAVIGATE: left
+
+  saving:
+    title: The rewritten question is on its way
+    source: apps/tedris/features/courses/components/course-questions.tsx:204
+    description: >-
+      The server action updateLessonQuestion, PATCH /questions/:questionId with the text. The button is busy ("Kaydediliyor").
+      A 200 puts the API's copy in the card and returns to view. A 404 (the question went) drops the card without a word. A 409
+      (answered meanwhile) returns to view and says "Cevaplanmış bir soru düzenlenemez." (lateEdit); a 403 and any other refusal
+      say their words in the form and keep it open.
+    invoke: { action: updateLessonQuestion }
+    on:
+      DONE: { guard: "team == 'silent'", target: listed, effect: [saved], say: "the card shows the new text", source: apps/tedris/features/courses/components/course-questions.tsx:212 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.gone: { target: listed, effect: [cardGone], say: "the card is dropped silently", source: apps/tedris/features/courses/components/course-questions.tsx:216 }
+      FAIL.answered: { guard: "team == 'answered'", target: lateEdit, effect: [closeEdit], source: apps/tedris/features/courses/components/course-questions.tsx:217 }
+      FAIL.forbidden: { target: editing, effect: [cardForbidden], source: apps/tedris/features/courses/components/course-questions.tsx:222 }
+      FAIL.failed: { target: editing, effect: [cardFailed], source: apps/tedris/features/courses/components/course-questions.tsx:222 }
+
+  lateEdit:
+    title: The edit was refused because the question was answered
+    by: human
+    source: apps/tedris/features/courses/components/course-questions.tsx:217
+    description: >-
+      The card is back in view with the alert "Cevaplanmış bir soru düzenlenemez." and without "Düzenle". It still shows the old
+      text and the badge "Cevap bekleniyor", and it shows no answer: the answer is read only when the page is read again, and
+      the text the talebe had written is gone (QUESTIONS-1). The card's other button, "Sil", asks "Silinsin mi?" without saying that
+      the answer goes with the question (QUESTIONS-2). The ask box above behaves as in `listed`.
+    on:
+      DELETE: { target: confirming, effect: [clearCard], say: "they press \"Sil\"" }
+      RELOAD: { target: opened, effect: [readAgain], say: "the page is read again and shows the answer" }
+      NAVIGATE: left
+
+  confirming:
+    title: Sil asks once
+    by: human
+    source: apps/tedris/features/courses/components/course-questions.tsx:336
+    description: >-
+      The card's buttons give way to an inline line: "Silinsin mi?" (or "Silinsin mi? Cevabı da silinir." when the card holds an
+      answer), a destructive "Sil" and "Vazgeç". It is not a dialog: nothing behind it is inert, and the focus goes nowhere
+      (WRT-01). On a stale card (the hoca answered, the page does not know) the line is "Silinsin mi?" and the answer is deleted
+      with the question unseen (QUESTIONS-2). A failed delete leaves this line with "Soru silinemedi. Biraz sonra yeniden dene."
+    on:
+      CONFIRM_DELETE: { target: deleting, effect: [clearCard], say: "they press \"Sil\" in the line" }
+      CANCEL: { target: listed, effect: [clearCard], say: "they press \"Vazgeç\"" }
+      TEAM_ANSWERS: { guard: "cards == 'waiting' and team == 'silent'", target: confirming, effect: [teamAnswers], say: "the hoca answers it while the line is up", source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217 }
+      NAVIGATE: left
+
+  deleting:
+    title: The question is on its way out
+    source: apps/tedris/features/courses/components/course-questions.tsx:231
+    description: >-
+      The server action deleteLessonQuestion, DELETE /questions/:questionId, which the author may call at any time, answered or
+      not, and which deletes the answer with the question. The button is busy ("Siliniyor"). A 204 and a 404 (gone already is what
+      the author wanted) remove the card from the list; any other refusal says "Soru silinemedi. Biraz sonra yeniden dene." and
+      keeps the line.
+    invoke: { action: deleteLessonQuestion }
+    on:
+      DONE: { target: listed, effect: [cardGone], say: "the card is gone and the list says there are no questions", source: apps/tedris/features/courses/components/course-questions.tsx:239 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.gone: { target: listed, effect: [cardGone], source: apps/tedris/features/courses/components/course-questions.tsx:238 }
+      FAIL.failed: { target: confirming, effect: [deleteFailed], source: apps/tedris/features/courses/components/course-questions.tsx:241 }
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to this
+      address, with no alert. realm.auth.signIn takes over.
+
+assertions:
+  - id: edit-only-while-waiting
+    never: "state == 'editing' and cards == 'answered'"
+    say: "the edit form opens only on a question that has no answer"
+    source: apps/tedris/features/courses/question-model.ts:55
+  - id: save-only-while-waiting
+    never: "state == 'saving' and cards == 'answered'"
+    say: "a rewritten question is sent only from a card that waits"
+    source: apps/tedris/features/courses/question-model.ts:55
+  - id: send-needs-a-body
+    never: "state == 'asking' and typed == 'blank'"
+    say: "a question is sent only with text in the ask box"
+    source: apps/tedris/features/courses/components/course-questions.tsx:411
+  - id: send-needs-a-celse-on-the-tab
+    never: "state == 'asking' and place == 'tab' and picked == 'no'"
+    say: "the course tab sends a question only with a celse chosen"
+    source: apps/tedris/features/courses/components/course-questions.tsx:410

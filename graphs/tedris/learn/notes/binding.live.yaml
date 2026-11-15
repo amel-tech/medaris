@@ -1,0 +1,36 @@
+# tedris.learn.notes, the celse on air: the page of a celse that began 12 minutes ago and has only the course's own settings (no
+# meeting link, no stream), so the panel is under the join card and its time is the clock since the start (lesson-notes#10, #12).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/notes \
+#     --bind graphs/tedris/learn/notes/binding.live.yaml --to addRefused --out <dir>
+# The same throwaway course as binding.yaml, with its second celse moved to 12 minutes ago by SQL (no API moves a celse into the
+# past), so "Şimdiki an" and the line "Celsenin başından beri geçen süre yazılır..." are on the page. The walk types a time the
+# field does not take, so that it ends in the page's own refusal. `teardown` removes the course.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.notes
+
+scenarios:
+  live:
+    given: { surface: celseLive, typing: badTime, answer: saved }
+    as: applicantF
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.1}'
+      timeField: Celsedeki an
+      body1: 'Canlı derste geçersiz zaman'
+      time1: '1:75'
+      body2: ''
+      body3: ''
+      time3: ''
+      offset1: '0'
+      offset3: '0'
+    setup:
+      - run: [node, helpers/course.mjs, make, learnnotes, --weeks, '1', --lessons, '3', --talebe, applicantF]
+        expect: '"course"'
+      - run: [node, helpers/sql.mjs, "update lessons set scheduled_at = now() - interval '12 minutes' where id = '{made.lessons.1}'"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, learnnotes]
+        expect: course remove learnnotes

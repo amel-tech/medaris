@@ -1,0 +1,99 @@
+# What every walk of tedris.decks.manageCards shares (graphs/README.md, "The stack and the bindings"): the events a person types with, the addresses of
+# the exit, the places the walk finds nodes by where role and name cannot, and the checks of what the three writes leave in the database. The scenarios are in
+# binding.yaml (the main story, a deck of one card with too-short faces, a deck of three cards), binding.refused.yaml (the API refuses every write) and
+# binding.hadith.yaml (a Hadis deck): a scenario that adds no transition of its own is walked only from a file of its own, so each has one.
+#
+# NOT RUN: nothing here was replayed (the owner's decision: one run of every graph at the end). Every locator below is from the code of the page and of the
+# kit, not from a look at the running page. Where the first walk is likeliest to disagree: the error toast (aria-hidden until focused), the cells found by
+# their `data-label`, and the two textareas found by the words of their labels; each is said where it is used.
+#
+# What a walk writes, and how it is taken away. cards-deck.mjs (this folder) makes the deck `Kart yönetimi denemesi` of the spare talebe `applicantF`
+# (POST /flashcard/decks, and POST /flashcard/decks/{id}/cards and PUT /flashcard/cards/progress for the decks with cards) and takes it away again: the
+# progress rows of its cards with one SQL delete (no route deletes one, and a deleted card leaves them behind: the domain's progress-orphans), then the
+# deck as its author (DELETE /flashcard/decks/{id}), which takes the cards the walk added with it. `setup` makes it and `teardown` removes it and asks the
+# database whether any deck of that title and author is left; `make` removes an earlier one first, so a walk that died half way leaves nothing in the way.
+# The ids and the number of cards go to graphs/.local/manage-cards.json, read here as {mc.*}; `check` (the `effects` below) rewrites `count` after each
+# write, so the tab's name "Kartlar {mc.count}" follows the walk (decks#18 asserts "Kartlar 1" and "Kartlar 0").
+# `call` is not here: a server action answers 200 on the page's own address, so a walk through FAIL.failed would end with a mismatch on its status. The main
+# binding holds the busy states with it, the refused one does not.
+# Not bound, so the replay cannot reach them (reported): sent_to_sign_in (the stack cannot end the session in the middle of a write), a rejected call
+# (the network down), and a dialog closed while its write is out (MCARDS-4: the graph does not draw it).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.manageCards
+
+data:
+  mc: { json: ../.local/manage-cards.json }
+
+events:
+  # a face the person types in has no node that sends an event: the binding fills it in. The faces come from the scenario
+  FILL_IN:
+    - fill: { role: textbox, name: Ön yüz, value: '{cardFront}' }
+    - fill: { role: textbox, name: Arka yüz, value: '{cardBack}' }
+  # the edit form starts filled; the walk changes the back face
+  REVISE:
+    - fill: { role: textbox, name: Arka yüz, value: '{revised}' }
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  left: { url: '{tedris}/notifications' }
+
+effects:
+  # decks#18 a8, read with SQL and compared with what the file remembers of the deck: one card more, whose type is the deck's
+  createCards:
+    - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, check, add]
+      expect: 'check add ok'
+  # decks#18 a10: the same number of cards, and one of them has the back face the walk typed
+  updatedRevised:
+    - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, check, edit, --back, '{revised}']
+      expect: 'check edit ok'
+  # the form was sent unchanged (MCARDS-2): the same number of cards and nothing else is known
+  updatedUnchanged:
+    - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, check, edit]
+      expect: 'check edit ok'
+  # decks#18 a12: one card less, which the file knew
+  deleteCard:
+    - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, check, delete]
+      expect: 'check delete ok'
+
+nodes:
+  # a bare role=main is also on the page a walk leaves for: this page's is told by the sentence under its header
+  cardsPage: { role: main, hasText: 'Durum sütunu senin çalışma ilerlemeni gösterir' }
+  # "Kartlar" and the count, the count being the walk's own and following each write
+  tabCards: { role: link, name: 'Kartlar {mc.count}', within: { role: navigation, name: Deste bölümleri } }
+  # the header's "Kart ekle" and the empty state's are two buttons of one name; the header's comes first in the page
+  headerAdd: { role: button, name: Kart ekle, nth: 0 }
+  emptyAdd: { role: button, name: Kart ekle, nth: 1 }
+  # the row headers are the cards' own fronts; the other cells carry their column's name as data-label (libs/ui/src/mds/table.tsx, responsive "stack")
+  rowFront: { role: rowheader }
+  rowBack: { css: 'tbody td[data-label="Arka yüz"]' }
+  rowStatus: { text: '/^(Yeni|Öğreniliyor|Tamamlandı)$/' }
+  # a front in Arabic script: a span with lang=ar and dir=rtl, the first of the table (decks#19 a5)
+  arabicFace: { css: 'tbody [lang=ar][dir=rtl]', nth: 0 }
+  # the buttons of a row are named by position; the walk presses the first row's
+  editButton: { role: button, name: '/^Düzenle: kart \d+$/', nth: 0 }
+  deleteButton: { role: button, name: '/^Sil: kart \d+$/', nth: 0 }
+  # an error toast is role=alertdialog and aria-hidden until it is focused, so it is found by its attribute and its words (tedris.learning.addToCalendar)
+  toastSaveFailed: { css: '[role=alertdialog]', hasText: Kaydedilemedi }
+  toastSaveFailedTitle: { css: '[role=alertdialog] p', hasText: Kaydedilemedi }
+  toastSaveFailedBody: { css: '[role=alertdialog] p', hasText: yazdıkların korundu }
+  toastDeleteFailed: { css: '[role=alertdialog]', hasText: Silinemedi }
+  toastDeleteFailedTitle: { css: '[role=alertdialog] p', hasText: Silinemedi }
+  toastDeleteFailedBody: { css: '[role=alertdialog] p', hasText: 'Bir sorun oluştu. Yeniden dene.' }
+  # the form's icon "Kapat" is told from the toast's by the dialog it is in
+  addCloseIcon: { role: button, name: Kapat, within: { role: dialog, name: Kart ekle } }
+  editCloseIcon: { role: button, name: Kapat, within: { role: dialog, name: Kartı düzenle } }
+  confirmCloseIcon: { role: button, name: Kapat, within: { role: alertdialog, name: 'Kartı sil?' } }
+  # the help line depends on the deck's kind (Kelime or Hadis)
+  frontHelp: { text: '/^(Arapça kelime ya da kalıp\.|Hadisten bir parça\.)$/' }
+  backHelp: { text: '/^(Anlamı ve notu\.|Tam metni ve kaynağı\.)$/' }
+  editFrontHelp: { text: '/^(Arapça kelime ya da kalıp\.|Hadisten bir parça\.)$/' }
+  editBackHelp: { text: '/^(Anlamı ve notu\.|Tam metni ve kaynağı\.)$/' }
+  # a blank or short face is said under each of the two faces, in the same words
+  frontRequired: { text: Bu alan boş olamaz., nth: 0 }
+  backRequired: { text: Bu alan boş olamaz., nth: 1 }
+  frontShort: { text: En az 3 karakter yaz., nth: 0 }
+  backShort: { text: En az 3 karakter yaz., nth: 1 }
+  # "Kart 1" is the eyebrow over the title; the title "Kartı sil?" is a heading and the confirm button "Kartı sil" a button
+  confirmEyebrow: { css: '.mds-eyebrow', within: { role: alertdialog, name: 'Kartı sil?' } }

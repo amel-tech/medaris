@@ -1,0 +1,153 @@
+# tedris.decks.publish on the local stack (graphs/README.md, "The stack and the bindings"): the author of a deck of their own, a spare talebe
+# (APPLICANT_E), who opens Desteler, the deck's card, and asks for the deck to be published, takes the request back, asks again.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/publish --bind graphs/tedris/decks/publish/binding.yaml --out <dir>
+#   ... --to publishedDeck | --to rejectedDeck | --cover transitions      (not --absent: a success toast of the step before may still be on screen)
+# NOT RUN in the writing phase (no replay is run in it): nothing below has been walked. Where it rests on the code alone it says so.
+#
+# What the walk makes and takes away. `setup` has own-deck.mjs (a helper of this folder) make one deck, "Yayın denemesi destesi", of APPLICANT_E through the
+# API (POST /flashcard/decks, no cards), in the status the scenario starts from: private as made; pending after the author asked
+# (POST /flashcard/decks/{id}/publish-request); published or rejected after the Medaris başnazım (SYSTEM_ADMIN, through the nizam routes
+# POST /nizam/deck-publish-requests/{id}/approve and /reject) answered it. The deck's id goes to graphs/.local/publish-deck.json and is read as {pd.deck}.
+# `teardown` deletes the deck as its author, whatever status it ended in, and the notifications its answers wrote (no route removes one; one SQL delete,
+# by the deck's title, inside the helper). `setup` removes an earlier one first, so a walk that died half way leaves nothing. Nothing of the seed is
+# touched and nothing but APPLICANT_E's own deck and notifications is written. No SQL except the helper's one DELETE of the notifications and its SELECT
+# that finds the deck by title. Every run of the helper by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# The four scenarios differ by `given.deck`, which is the card the page opens on (the status of the deck when the page is read):
+#   privateDeck    (the main story) the deck is private: "Yayın iste", then "İsteği geri çek", then "Yayın iste" again (decks#15)
+#   pendingDeck    the request waits: the card of REVIEWER_APPROVES, REVIEWER_REFUSES, RELOAD and the stale withdrawal
+#   publishedDeck  a reviewer published it: "Özele çek"
+#   rejectedDeck   a reviewer refused it: the same button, "Özele çek" (DCK-13)
+# A scenario with the same `given` as an earlier one is never taken, and these four are all different, so one file is enough.
+#
+# The reviewer's answer is another person's step in another app. It is bound to the nizam routes through the API (`run` with `systemAdmin`), not to
+# nizam's own page, which is nizam.moderation.reviewDeckPublication's: the page (the list, the three sample cards, "Yayımla", "Reddet") is not walked
+# here. The page's refresh is a reload (RELOAD).
+# Not bound, so the replay cannot reach them (reported): FAIL.signedOut (the session cannot be ended mid-walk) and FAIL.other (a deck deleted under
+# the page is a 404 whose toast is the same as a 409's; no walk provokes it). FAIL.conflict is bound to the event MOVED_ON, which `own-deck.mjs flip` makes:
+# the author's other tab asks for a private deck or takes the deck of the page back, so the press on the open page is refused with 409.
+# `call` holds the busy state of the four invoke states; the server action answers 200 on the page's own address, so a FAIL status cannot be compared there.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.publish
+
+data:
+  pd: { json: ../.local/publish-deck.json }
+
+scenarios:
+  privateDeck:
+    given: { deck: private }
+    as: applicantE
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    setup:
+      - run: [node, ../tedris/decks/publish/own-deck.mjs, make, --status, private]
+        expect: 'own-deck made'
+      - run: [node, helpers/api.mjs, applicantE, GET, '/flashcard/decks/{pd.deck}']
+        expect: '"publishStatus":"PRIVATE"'
+    teardown:
+      - run: [node, ../tedris/decks/publish/own-deck.mjs, remove]
+  pendingDeck:
+    given: { deck: pending }
+    as: applicantE
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    setup:
+      - run: [node, ../tedris/decks/publish/own-deck.mjs, make, --status, pending]
+        expect: 'own-deck made'
+      - run: [node, helpers/api.mjs, applicantE, GET, '/flashcard/decks/{pd.deck}']
+        expect: '"publishStatus":"PENDING"'
+    teardown:
+      - run: [node, ../tedris/decks/publish/own-deck.mjs, remove]
+  publishedDeck:
+    given: { deck: published }
+    as: applicantE
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    setup:
+      - run: [node, ../tedris/decks/publish/own-deck.mjs, make, --status, published]
+        expect: 'own-deck made'
+      - run: [node, helpers/api.mjs, applicantE, GET, '/flashcard/decks/{pd.deck}']
+        expect: '"publishStatus":"PUBLISHED"'
+    teardown:
+      - run: [node, ../tedris/decks/publish/own-deck.mjs, remove]
+  rejectedDeck:
+    given: { deck: rejected }
+    as: applicantE
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    setup:
+      - run: [node, ../tedris/decks/publish/own-deck.mjs, make, --status, rejected]
+        expect: 'own-deck made'
+      - run: [node, helpers/api.mjs, applicantE, GET, '/flashcard/decks/{pd.deck}']
+        expect: '"publishStatus":"REJECTED"'
+    teardown:
+      - run: [node, ../tedris/decks/publish/own-deck.mjs, remove]
+
+events:
+  # the reviewer's answer, in nizam, as the başnazım: the same routes nizam's page calls (apps/nizam/features/deck-review/actions.ts), answered 204
+  REVIEWER_APPROVES:
+    - run: [node, helpers/api.mjs, systemAdmin, POST, '/nizam/deck-publish-requests/{pd.deck}/approve']
+      expect: 'HTTP 204'
+  REVIEWER_REFUSES:
+    - run: [node, helpers/api.mjs, systemAdmin, POST, '/nizam/deck-publish-requests/{pd.deck}/reject', '{"reason":"Kartlar yetersiz; sayıları artınca yeniden iste."}']
+      expect: 'HTTP 204'
+  # the author's other tab: a private deck is asked for, any other is taken back to private
+  MOVED_ON:
+    - run: [node, ../tedris/decks/publish/own-deck.mjs, flip]
+      expect: 'own-deck flipped'
+  # the page is read again: a full reload, so every toast goes too
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  # the server action is a POST to the page's own address; the page's reads are GETs with a query, so this matches only the POST (as tedris.course.apply)
+  requesting: { call: '{tedris}/decks/{pd.deck}' }
+  withdrawingPending: { call: '{tedris}/decks/{pd.deck}' }
+  takingBackPublished: { call: '{tedris}/decks/{pd.deck}' }
+  withdrawingRejected: { call: '{tedris}/decks/{pd.deck}' }
+  left: { url: '{tedris}/notifications' }
+
+effects:
+  # decks#15 a3 and a5: the status as the API holds it, read as the author
+  requestDeckPublication:
+    - run: [node, helpers/api.mjs, applicantE, GET, '/flashcard/decks/{pd.deck}']
+      expect: '"publishStatus":"PENDING"'
+  withdrawDeckPublication:
+    - run: [node, helpers/api.mjs, applicantE, GET, '/flashcard/decks/{pd.deck}']
+      expect: '"publishStatus":"PRIVATE"'
+  # the reviewer's answer: the status, and the notification the author is told by (the one DECK_PUBLISH_RESULT; no other flow writes one for this deck)
+  reviewerApproves:
+    - run: [node, helpers/api.mjs, applicantE, GET, '/flashcard/decks/{pd.deck}']
+      expect: '"publishStatus":"PUBLISHED"'
+    - run: [node, helpers/api.mjs, applicantE, GET, '/notifications']
+      expect: 'DECK_PUBLISH_RESULT'
+  reviewerRefuses:
+    - run: [node, helpers/api.mjs, applicantE, GET, '/flashcard/decks/{pd.deck}']
+      expect: '"publishStatus":"REJECTED"'
+    - run: [node, helpers/api.mjs, applicantE, GET, '/notifications']
+      expect: 'DECK_PUBLISH_RESULT'
+
+nodes:
+  # a bare role main is also matched on the page a walk leaves for: the card "Kimler görebilir" is in this one only
+  deckPage: { css: main, hasText: Kimler görebilir }
+  # the badges are plain <span class="mds-badge">; "Özel" is also a substring of "Bu deste özel…" and of "Deste özel oldu", so each is matched whole
+  statusPrivate: { css: .mds-badge, hasText: '/^Özel$/' }
+  statusPending: { css: .mds-badge, hasText: '/^Yayın isteği bekliyor$/' }
+  statusPublished: { css: .mds-badge, hasText: '/^Yayında$/' }
+  statusRejected: { css: .mds-badge, hasText: '/^Yayın isteği reddedildi$/' }
+  # "Yayın isteğini 29 Eylül 2026 Salı 21:10’da gönderdin.": the time of the request is the walk's own, so the line is matched by its pattern
+  whoPending: { text: '/Yayın isteğini .+ gönderdin/' }
+  # Base UI's toasts. A low-priority one (success) is role=dialog, a high-priority one (error) role=alertdialog and aria-hidden until it is focused, so
+  # each is found by its role attribute and its words, and its title and text by their own <p>
+  requestedToast: { css: '[role=dialog]', hasText: Yayın isteği gönderildi }
+  requestedTitle: { css: '[role=dialog] p', hasText: Yayın isteği gönderildi }
+  withdrawnToast: { css: '[role=dialog]', hasText: Deste özel oldu }
+  withdrawnTitle: { css: '[role=dialog] p', hasText: Deste özel oldu }
+  requestFailedToast: { css: '[role=alertdialog]', hasText: Yayın isteği gönderilemedi }
+  requestFailedTitle: { css: '[role=alertdialog] p', hasText: Yayın isteği gönderilemedi }
+  requestFailedText: { css: '[role=alertdialog] p', hasText: Bir sorun oluştu. Yeniden dene. }
+  withdrawFailedToast: { css: '[role=alertdialog]', hasText: İstek geri çekilemedi }
+  withdrawFailedTitle: { css: '[role=alertdialog] p', hasText: İstek geri çekilemedi }
+  withdrawFailedText: { css: '[role=alertdialog] p', hasText: Bir sorun oluştu. Yeniden dene. }

@@ -1,0 +1,223 @@
+# What must exist for a talebe who makes a deck: the flow's product list, from its story and from the domain's own guarantees
+# (`deck-born-private`, `deck-limits`), never from what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml,
+# merged by the orchestrator). planned.md has no item for decks; the needs below come from the story of FLOWS.md and the findings.
+#
+# For the orchestrator's gaps merge, the ids that are `missing` or `unwalked`:
+#   missing (a defect of code that exists, no Linear key): limits-counted-as-the-api-counts, errors-are-announced, a-refusal-says-why
+#   unwalked (code, and neither an e2e check nor a replay that passed): tag-limits-checked-before-sending, tags-are-the-authors-own,
+#     refusal-keeps-the-values, one-send-at-a-time
+# Nothing was replayed in the writing phase, so no `walked` entry names a replay scenario: binding.yaml (created, refused) and
+# binding.short.yaml, binding.manyTags.yaml and binding.longTag.yaml are written and load, and none has been run.
+kind: needs
+flow: tedris.decks.create
+status: proposed
+
+needs:
+  - id: deck-born-private
+    need: >-
+      A deck a talebe makes is private to them from the first moment: nobody else can read it or its cards, the form offers no way
+      to make it public and does not send one, the API makes it private whatever it is sent, and the talebe is told so before
+      sending. Making it public is a request that Medaris management answers (tedris.decks.publish), never a choice on this form.
+    drawn:
+      - form
+      - formAttempted
+      - creating
+      - deck_opened
+    built:
+      - action: medaris.api:createDeck
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:193
+      - route: apps/tedris/features/flashcards/actions/index.ts:33
+      - route: apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:169
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#9'
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#11'
+    note: >-
+      decks#9 a3 (the notice) and a4 (no "Herkese açık") are the page; decks#11 a3 reads is_public and publish_status in the database,
+      which the graph reads through the API instead (effect `createDeck`, `"isPublic":false,"publishStatus":"PRIVATE"`). The
+      API's refusal of a body that names isPublic is tedrisat's apps/tedrisat/test/e2e/deck-publication.e2e.spec.ts (the 400 on POST,
+      PUT and PATCH, :235), not a web check.
+
+  - id: name-and-kind-checked-before-sending
+    need: >-
+      A talebe who presses "Oluştur" with no name, a name of fewer than five characters, or no kind of card chosen is told which, under
+      the field, and nothing is sent; the messages follow what they type and choose until the form is right. The kind of card has no
+      default, because it cannot be changed once the deck exists, so the choice is the author's.
+    drawn:
+      - formAttempted
+      - nameRequired
+      - nameShort
+      - kindRequired
+      - radioVocabulary
+      - radioHadeeth
+    built:
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:63
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:169
+      - route: apps/tedris/features/flashcards/deck-model.ts:155
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#9'
+    note: >-
+      The kind's fixity (the API takes cardType on creation and no route changes it) is the domain's `createDeck` note, not drawn here.
+
+  - id: kind-previewed-before-choosing
+    need: >-
+      Choosing the kind of card shows a preview of the card that kind makes (its front, its back and where the sentence comes from), so
+      the talebe knows what they are choosing before the deck exists.
+    drawn:
+      - previewAside
+      - previewAsideHadeeth
+      - sampleFrontVocabulary
+      - sampleFrontHadeeth
+      - sampleBackVocabulary
+      - sampleBackHadeeth
+    built:
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:206
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#10'
+
+  - id: tag-limits-checked-before-sending
+    need: >-
+      A talebe who types more than twenty tags, or a tag of more than forty characters, is told so under the tags field and nothing is
+      sent; blanks and repeats (in the Turkish alphabet) are dropped without a message.
+    drawn:
+      - tagsTooMany
+      - tagsTooLong
+    built:
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:175
+      - route: apps/tedris/features/flashcards/deck-model.ts:128
+      - route: apps/tedris/features/flashcards/deck-model.ts:141
+    walked: []
+    note: >-
+      unwalked: no e2e file types a bad tag list (decks#9 stops at the name and the kind); the two cases are in
+      binding.manyTags.yaml and binding.longTag.yaml, written and not run. The unit spec deck-model.spec.ts tests parseTags
+      (:152-154) and imports tagsProblem, and create-deck-page.spec.ts has no test of a bad tag list; neither draws the two messages.
+
+  - id: tags-are-cleaned
+    need: >-
+      The tags typed as a comma list reach the deck trimmed, with blanks dropped and repeats removed whatever the case (in the Turkish
+      alphabet), in the order typed, and the API cleans them again for a client that is not this page.
+    drawn:
+      - tagsField
+      - deck_opened
+    built:
+      - action: medaris.api:createDeck
+      - route: apps/tedris/features/flashcards/deck-model.ts:128
+      - route: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:25
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#11'
+
+  - id: tags-are-the-authors-own
+    need: >-
+      The tags of a deck are its author's own labels: every other reader of the deck, public or shared, gets it without them, and
+      the form says so ("etiketlerini yalnız sen görürsün").
+    drawn:
+      - tagsHelp
+    built:
+      - action: medaris.api:getDeck
+      - route: apps/tedrisat/src/flashcard/flashcard-deck.service.ts:21
+    walked: []
+    note: >-
+      unwalked: the read of another person's deck is tedris.decks.readAndCopy's; no e2e file checks that tags do not come back to a
+      reader. The help text is walked as a node of this flow.
+
+  - id: create-is-one-write-and-lands-on-the-deck
+    need: >-
+      A form that passes the checks makes exactly one deck and then shows the talebe the new deck's page, with its name, so they
+      can add cards. A second press while the first is out makes nothing more.
+    drawn:
+      - creating
+      - deck_opened
+    built:
+      - action: medaris.api:createDeck
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:73
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:86
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#11'
+    note: >-
+      The second press is `if (busy) return` and is walked by the unit spec create-deck-page.spec.ts:147 only (unwalked as to a
+      browser); decks#11 a4 (the new deck among Desteler with "Özel") is tedris.decks.browse's list and is not carried here.
+
+  - id: leaving-the-form-makes-nothing
+    need: >-
+      A talebe who leaves the form before pressing "Oluştur", by "Vazgeç" or the breadcrumb, goes back to Desteler and has made
+      nothing.
+    drawn:
+      - cancel
+      - trailDecks
+      - decks_opened
+    built:
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:197
+    walked:
+      - e2e: apps/tedris/e2e/decks.e2e.ts
+        check: 'decks#12'
+
+  - id: refusal-keeps-the-values
+    need: >-
+      When the API refuses the create, the talebe stays on the form with every value kept, is told the deck was not made, and the
+      button is free to press again.
+    drawn:
+      - refusedToast
+      - refusedTitle
+      - refusedBody
+      - refusedClose
+    built:
+      - action: medaris.api:createDeck
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:89
+    walked: []
+    note: >-
+      unwalked: no e2e file makes the API refuse; the unit spec create-deck-page.spec.ts:129 does, with a mocked action. The graph's
+      scenario `refused` (a name of three emoji, DCKCREATE-1) is the one refusal a replay can make on the local stack; written, not run.
+
+  - id: a-refusal-says-why
+    need: >-
+      A refusal tells the talebe which field the API refused and why, and does not say "try again" when trying again cannot help (a
+      name the API counts as too short, a tag it refuses).
+    drawn:
+      - refusedBody
+    built:
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:89
+    walked: []
+    missing: none
+    note: >-
+      Partly built: one toast for every refusal, the API's code and message thrown away (DCKCREATE-1). A defect, not a planned
+      feature, so no Linear key.
+
+  - id: limits-counted-as-the-api-counts
+    need: >-
+      The page's count of a name, a description and a tag is the API's count, so a name the page takes is never refused for its
+      length and a name the page refuses is never one the API would take.
+    drawn:
+      - nameShort
+      - creating
+    built:
+      - route: apps/tedris/features/flashcards/deck-model.ts:155
+      - route: apps/tedrisat/src/flashcard/dto/create-flashcard-deck.dto.ts:16
+    walked: []
+    missing: none
+    note: >-
+      The page counts UTF-16 units and class-validator counts characters (a surrogate pair is one): three emoji pass the page and
+      are refused with 400 (DCKCREATE-1). A defect, not a planned feature, so no Linear key.
+
+  - id: errors-are-announced
+    need: >-
+      A press of "Oluştur" that is refused by the page's own checks is announced to a screen-reader user and the focus goes to the
+      first control that is wrong; the radios are marked invalid when the kind is missing.
+    drawn:
+      - nameRequired
+      - nameShort
+      - kindRequired
+      - tagsTooMany
+      - tagsTooLong
+    built:
+      - route: apps/tedris/features/flashcards/components/create-deck-page.tsx:71
+      - route: libs/ui/src/mds/field.tsx:50
+    walked: []
+    missing: none
+    note: >-
+      Partly built: only the kind's message is an alert, and it is not tied to the radios (DCK-06). A defect, not a planned feature,
+      so no Linear key.

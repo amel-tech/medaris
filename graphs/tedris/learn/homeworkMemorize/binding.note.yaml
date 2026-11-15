@@ -1,0 +1,33 @@
+# tedris.learn.homeworkMemorize, work handed in before the switch: the talebe saved a note while the homework was a file homework, and the
+# müderris then switched it to "Ezber" (homework-card.spec.ts:825). The card says "Bekliyor" and keeps the note under the heading
+# "Teslim ettiğin dosyalar", which says files over a note alone (MEMO-3). A file cannot be stored on the local stack (503), so no file row.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkMemorize \
+#     --bind graphs/tedris/learn/homeworkMemorize/binding.note.yaml --to waiting --out <dir>
+# The same throwaway course as binding.yaml. `setup` runs memorize-data.mjs (this folder), which does the file homework, the note and the
+# switch in order through tedrisat's HTTP API.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkMemorize
+
+scenarios:
+  note:
+    given: { mark: none, verdict: full, note: none, earlier: note }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+    samples:
+      description: İlk fasıl ezberden okunacak.
+      earlierNote: Ödevi önce dosyayla teslim edecektim.
+    setup:
+      - run: [node, helpers/course.mjs, make, memorize, --weeks, '1', --lessons, '2', --talebe, applicantD]
+        expect: '"course"'
+      - run: [node, ../tedris/learn/homeworkMemorize/memorize-data.mjs, earlier, memorize, applicantD, note, --description, 'İlk fasıl ezberden okunacak.', --note, 'Ödevi önce dosyayla teslim edecektim.']
+        expect: memorize-data earlier memorize note
+    teardown:
+      - run: [node, helpers/course.mjs, remove, memorize]
+        expect: course remove memorize
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

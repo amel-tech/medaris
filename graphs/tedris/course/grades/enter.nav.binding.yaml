@@ -1,0 +1,12 @@
+# The way into tedris.course.grades: the köşk's page, then the card of the course the walk made. tedris.nav's own binding gives no locator
+# for an entry that needs an item (`data: true`), because the item is the walk's to choose, so this file extends it and names the course
+# by its title: the card's link holds it. Derslerim (`myCourses->course`) is the way a talebe would come, but two entries of tedris.nav
+# share its ends and the key cannot pick the card's one (the engine says "2 entries share these ends"), so the walk comes in by the
+# köşk's page, as tedris.course.updateProgress does.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  kosk->course: { css: 'a[href^="/courses/"]', hasText: Notlar denemesi, nth: 0 }
