@@ -254,6 +254,8 @@ playwright-report/
 # Pages are generated: `npx @delurio/cli@0.8.0 page graphs --out viz` writes them locally, and the Graphs workflow
 # uploads those of a pull request's changed graphs as an artifact. They are never committed.
 graphs/**/viz/
+# The local stack's accounts and seed ids a binding reads (graphs/README.md); links, never copies, never committed.
+graphs/.local/
 /viz/
 /_pages/
 /delurio.sarif

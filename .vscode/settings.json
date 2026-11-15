@@ -40,7 +40,10 @@
       "graphs/**/nav.yaml",
       "graphs/**/nav.extracted.yaml"
     ],
-    "https://unpkg.com/@delurio/cli@0.8.0/schemas/domain.schema.json": "graphs/**/domain.yaml"
+    "https://unpkg.com/@delurio/cli@0.8.0/schemas/domain.schema.json": [
+      "graphs/**/domain.yaml",
+      "graphs/domain/*.yaml"
+    ]
   },
   "json.schemas": [
     {
