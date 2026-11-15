@@ -1,0 +1,118 @@
+# What must exist for the başnazım (and whoever opens a köşk) in nizam.kosks.open: the flow's product list, written from the
+# flow's story and the open decisions, never from what the page does today. A need that is not met is a gap in
+# graphs/needs.gaps.yaml (the orchestrator merges it; this file does not edit it).
+#
+# Gaps of this file, for that merge:
+#   missing:   the-form-says-what-is-missing, lookup-only-on-request, a-refusal-is-announced, a-medaris-nazim-opens,
+#              focus-returns-when-the-form-was-opened-by-the-address
+#   unwalked:  a-kosk-application-fills-the-form (this flow draws its start; nizam.applications.decide walks it, with an
+#              application the seed does not make)
+kind: needs
+flow: nizam.kosks.open
+status: proposed
+
+needs:
+  - id: open-a-kosk-with-its-nazims
+    need: >-
+      The başnazım opens a köşk with at least one köşk nazımı in one step. The köşk and its nazımları exist together or not at
+      all, the nazımları can manage it at once, and the başnazım is its owner without being a nazım.
+    drawn: [form, opening, opened, never-without-a-nazim]
+    built:
+      - action: medaris.api:createKosk
+      - route: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:123
+    walked:
+      - e2e: apps/nizam/e2e/kosks.e2e.ts
+        check: 'kosks#5'
+      - replay: opened
+      - replay: quickLink
+
+  - id: find-a-nazim-by-exact-email
+    need: >-
+      Each nazım is found by the exact e-mail address of an account in the realm, even one that has never opened the app; a
+      person already chosen is not added twice; an address with no account, and a directory that does not answer, are said
+      in words.
+    drawn: [looking, form]
+    built:
+      - action: medaris.api:lookupUser
+      - route: apps/nizam/features/kosks/components/nazim-picker.tsx:59
+    walked:
+      - e2e: apps/nizam/e2e/kosks.e2e.ts
+        check: 'kosks#5'
+      - replay: opened
+      - replay: notFound
+
+  - id: a-taken-short-name-is-said-under-its-field
+    need: >-
+      A short name another köşk uses is refused under its own field in words, nothing is made, and what the person typed is
+      kept. An untouched field is not blamed; a field left empty or wrong is, once they have left it.
+    drawn: [form, opening, a-refused-short-name-is-not-sent-again]
+    built:
+      - action: medaris.api:createKosk
+      - route: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:105
+    walked:
+      - e2e: apps/nizam/e2e/kosks.e2e.ts
+        check: 'kosks#6'
+      - replay: handleTaken
+      - replay: noName
+      - replay: shortName
+      - replay: badHandle
+
+  - id: the-form-says-what-is-missing
+    need: >-
+      A person who cannot send the form is told in words what is missing (the name, a nazım, a short name or tags that are
+      wrong), and a keyboard or screen-reader user can reach the button and the message. Nothing that blocks them is silent.
+    drawn: [form, settle]
+    missing: none # F-W3-1, F-X-3: the button is natively disabled and the messages written for a submit try never show; replay: manyTags walks the silent case
+
+  - id: lookup-only-on-request
+    need: >-
+      A person's address is searched in the realm only when the person asks (Enter or a button), never because they tabbed
+      through the field, since every search is written to the audit log; the result is announced and the focus is kept.
+    drawn: [looking]
+    missing: none # F-W3-14, F-X-14, F-W2-3: the field searches on blur and is disabled while it does
+
+  - id: a-refusal-is-announced
+    need: >-
+      A refusal the server gives (a taken short name, an unknown account, no permission) is announced to a screen reader and
+      the focus goes to what the person must correct.
+    drawn: [form]
+    missing: none # F-UI-W3-1, F-W3-13: the field error is no live region and the focus stays on a disabled button
+
+  - id: a-medaris-nazim-opens
+    need: >-
+      DECISION OPEN: a Medaris nazımı holding platform.kosk_create opens a köşk from the page, as the API allows, or the
+      permission is taken off the role's defaults. Today the API admits them and the page offers "Köşk aç" to the başnazım alone.
+    drawn: [kosksPage]
+    built:
+      - action: medaris.api:createKosk
+    missing: none # F-W3-open-1; P-14 (MDRS-107) says köşk creation is restricted to the başnazım and the Medaris nazımı
+
+  - id: open-from-the-home-link
+    need: The home page's "Köşk aç" link opens the Köşkler page with the form already open.
+    drawn: [start]
+    built:
+      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:308
+      - route: apps/nizam/app/kosks/page.tsx:68
+    walked:
+      - e2e: apps/nizam/e2e/dashboard.e2e.ts
+        check: 'dashboard#2'
+      - replay: quickLink # opens the address; the link on the home page is the navigation graph's entry start->kosks, not pressed here
+
+  - id: focus-returns-when-the-form-was-opened-by-the-address
+    need: >-
+      When the form was opened by /kosks?ac=1 and is closed, or has made the köşk, the focus goes to a control of the page
+      (the "Köşk aç" button or the heading) instead of falling to the page itself.
+    drawn: [closedFromLink, openedFromLink]
+    missing: none # F-W3-open-4: found by the replay on quickLink
+
+  - id: a-kosk-application-fills-the-form
+    need: >-
+      "Köşkü aç" on a köşk application opens the form with the application's name and description and the applicant as the
+      nazım, so that opening the köşk from an application is one decision; if the köşk is opened and the application cannot be
+      closed, the page says so (F-W3-8).
+    drawn: [start, form]
+    built:
+      - route: apps/nizam/features/platform-admin/components/applications-view.tsx:421
+    walked:
+      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
+        check: 'platform-admin#4'

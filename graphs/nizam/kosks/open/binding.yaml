@@ -1,0 +1,139 @@
+# nizam.kosks.open on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım
+# (SYSTEM_ADMIN) signed in through Keycloak's real form, and the talebe account as the nazım the picker finds.
+#
+#   KC_ADMIN_USER=<admin> KC_ADMIN_PASSWORD=<password> nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/open \
+#     --bind graphs/nizam/kosks/open/binding.yaml --out <dir>
+#
+# What a walk writes, and how it is taken away. The main story really opens a köşk (POST /kosks): a row of `kosks`, one
+# KOSK_NAZIM role assignment for the talebe account, and audit rows (kosk.create, user.lookup). `setup` and `teardown`
+# remove every köşk with the walk's short name through the API, as the başnazım: DELETE /kosks/:id, which is the
+# başnazım's alone and takes the köşk with its role assignments in one transaction (apps/tedrisat/src/kosk/kosk.controller.ts:367).
+# `setup` does it too, so a walk that died before its teardown leaves nothing to be refused as "taken". The audit rows of
+# the lookup, the creation and the deletion stay: the API has no way to remove them and the seed does not depend on them.
+# The API wants a bearer token; the apps' clients allow no password grant, so walk-api.mjs switches it on for a second
+# and off again (see its header). No SQL is used.
+#
+# Never remove the seed's köşk: `handleTaken` types the seed's own short name and creates nothing, so it has no teardown.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.kosks.open
+
+scenarios:
+  # The main story: the menu's "Köşkler", "Köşk aç", the form filled in, the talebe account found by e-mail, the köşk made.
+  opened:
+    given: { fromApplication: false, quick: false, fields: valid, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->kosks' }
+    setup: [{ run: [node, ../nizam/kosks/open/walk-api.mjs, SYSTEM_ADMIN, remove-kosk, '{koskHandle}'], expect: removed }]
+    teardown: [{ run: [node, ../nizam/kosks/open/walk-api.mjs, SYSTEM_ADMIN, remove-kosk, '{koskHandle}'], expect: removed }]
+    vars:
+      koskName: Örnek Çalışma Köşkü
+      koskHandle: ornek-calisma
+      koskTags: 'Akaid, Kelâm ,  Akaid-i Nesefî'
+      koskDescription: Akaid ve kelâm metinlerini şerhleriyle okuyan bir köşk.
+      nazimEmail: '{secret.E2E_TALEBE_EMAIL}'
+
+  # The same story from the address /kosks?ac=1 (the home page's "Köşk aç" link): the form is open on arrival.
+  quickLink:
+    given: { fromApplication: false, quick: true, fields: valid, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/kosks?ac=1'
+    setup: [{ run: [node, ../nizam/kosks/open/walk-api.mjs, SYSTEM_ADMIN, remove-kosk, '{koskHandle}'], expect: removed }]
+    teardown: [{ run: [node, ../nizam/kosks/open/walk-api.mjs, SYSTEM_ADMIN, remove-kosk, '{koskHandle}'], expect: removed }]
+    vars:
+      koskName: Örnek Çalışma Köşkü
+      koskHandle: ornek-calisma
+      koskTags: 'Akaid, Kelâm'
+      koskDescription: ''
+      nazimEmail: '{secret.E2E_TALEBE_EMAIL}'
+
+  # The short name of the seed's köşk: the server answers 409 and the form says so under the field. Nothing is made, so
+  # there is nothing to remove (and remove-kosk must never be run with this short name).
+  handleTaken:
+    given: { fromApplication: false, quick: false, fields: valid, lookup: found, answer: handleTaken }
+    as: systemAdmin
+    open: '{nizam}/kosks'
+    samples: { handle: suleymaniye }
+    vars:
+      koskName: Örnek İkinci Köşk
+      koskHandle: suleymaniye
+      koskTags: ''
+      koskDescription: ''
+      nazimEmail: '{secret.E2E_TALEBE_EMAIL}'
+
+  # An address no account has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and no nazım is chosen.
+  notFound:
+    given: { fromApplication: false, quick: false, fields: valid, lookup: notFound, answer: created }
+    as: systemAdmin
+    open: '{nizam}/kosks'
+    vars:
+      koskName: Örnek Çalışma Köşkü
+      koskHandle: ornek-calisma
+      koskTags: ''
+      koskDescription: ''
+      nazimEmail: kimse.yok@example.test
+
+  # A name left empty, a one-character name and a short name that is not allowed: each is said under its field once the
+  # field was left. Nothing is sent.
+  noName:
+    given: { fromApplication: false, quick: false, fields: noName, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/kosks'
+    vars: { koskName: '', koskHandle: '', koskTags: '', koskDescription: '', nazimEmail: '{secret.E2E_TALEBE_EMAIL}' }
+  shortName:
+    given: { fromApplication: false, quick: false, fields: shortName, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/kosks'
+    vars: { koskName: A, koskHandle: '', koskTags: '', koskDescription: '', nazimEmail: '{secret.E2E_TALEBE_EMAIL}' }
+  badHandle:
+    given: { fromApplication: false, quick: false, fields: badHandle, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/kosks'
+    vars: { koskName: Örnek Çalışma Köşkü, koskHandle: Örnek Köşk, koskTags: '', koskDescription: '', nazimEmail: '{secret.E2E_TALEBE_EMAIL}' }
+
+  # Eleven tags: nothing on the page says so (F-W3-1); "Köşk aç" simply stays off.
+  manyTags:
+    given: { fromApplication: false, quick: false, fields: manyTags, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/kosks'
+    vars: { koskName: Örnek Çalışma Köşkü, koskHandle: '', koskTags: 'a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11', koskDescription: '', nazimEmail: '{secret.E2E_TALEBE_EMAIL}' }
+
+  # Not bound, with the reason: `fromApplication: true` needs a köşk application, which the seed does not make
+  # (nizam.applications.decide makes one through tedris and starts this flow); `lookup: down`, `answer: unknownAccount`,
+  # `forbidden` and `failed` need the realm's directory down, an account that vanishes between the lookup and the
+  # click, a başnazım who may not, and a server that does not answer: nothing the local stack can be made to do on
+  # request.
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in
+  FILL_IN:
+    - fill: { role: textbox, name: Ad, value: '{koskName}' }
+    - fill: { role: textbox, name: Kısa ad, value: '{koskHandle}' }
+    - fill: { role: textbox, name: Etiketler, value: '{koskTags}' }
+    - fill: { role: textbox, name: Açıklama, value: '{koskDescription}' }
+  # the address is searched on Enter (it is also searched when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: Köşk nazımı, value: '{nazimEmail}' }
+    - key: Enter
+  # Vazgeç and the close icon both send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç }
+  NAVIGATE:
+    - goto: '{nizam}/'
+
+nodes:
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # a radio's words are its label's, beside it, not inside it: found by role and name, not by the text it contains
+  coverLaciverd: { role: radio, name: Lâciverd }
+  coverBordo: { role: radio, name: Bordo }
+  coverZumrut: { role: radio, name: Zümrüt }
+  coverMurekkep: { role: radio, name: Mürekkep }
+
+states:
+  opened: { url: '{nizam}/kosks**' }
+  openedFromLink: { url: '{nizam}/kosks**' }
+  # NAVIGATE goes to the home page, where the başnazım lands; an exit with no screen of its own is checked by its address
+  left: { url: '{nizam}/' }

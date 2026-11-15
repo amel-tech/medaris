@@ -1,0 +1,195 @@
+# Hesap's section "Görevlerin ve izinlerin" (tedris-web /account), read from the code of the branch (the tree of PR #394)
+# on 15 Nov 2026. Nothing here is approved.
+#   - What it draws: the two reads the page makes, the three things it then shows (no section, the section, the box
+#     that says a read failed) and the two buttons that open another Medaris app in a new tab.
+#   - The rest of Hesap (the name form, time zone, calendar, sign-out) is tedris.account.profile; the page it shares.
+#   - Findings it carries (the inventory's ids): ACC-08, ACC-17. ACC-06 is about Bildirimler and belongs to
+#     tedris.account.notifications. Two more are this flow's own, proposed as ROLES-1 and ROLES-2 (ui.yaml `rules`).
+schema: delurio-graph/0
+kind: flow
+id: tedris.account.rolesOverview
+status: captured
+domain: medaris.api
+ui: tedris.account.rolesOverview
+title: Read my roles and permissions
+summary: >-
+  A signed-in person opens Hesap and, under the personal cards, reads "Görevlerin ve izinlerin": each role they hold
+  with its scope, the state of a course, who gave it and until when, and the permissions those roles give them in
+  words. A role that is carried out in Nizam or Nazar has a button that opens that app in a new tab. A person who
+  holds no role sees no section at all. When either of the two reads fails, a box that says so takes the section's
+  place and the rest of the page stays as it is.
+source: apps/tedris/app/account/page.tsx
+
+scope:
+  shows: the roles section of Hesap, the reads behind it, and the two ways out into Nizam and Nazar
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of Hesap: the name, e-mail and gender card, the time zone, the calendar and sign-out cards (tedris.account.profile)"
+    - "a visitor, who is sent to sign in before the page runs, and a token tedrisat refuses, which sends the person to sign in again with `reauth` and not to an error box (realm.auth.sessionEnded)"
+    - "the buttons are left out when the target app's address is not set (NIZAM_URL, NAZAR_URL); the local stack sets both"
+    - "the imam star after a role, which shows only among more than one müderris of a course; the second line under four permission sentences, the defaults note under the köşk nazımı and müderris groups, and the line that says where a role holds in several scopes"
+    - "what the other app does when it opens (nizam.shell.landingByRole, nazar.access.landingScope)"
+    - "the phone layout, where each row is a card, and the loading skeleton while the reads run (ACC-18)"
+
+decisions:
+  D1:
+    question: >-
+      Should a Medaris başnazım, whose role is the Keycloak realm role SYSTEM_ADMIN and no role row, find that role
+      and a way into Nizam on Hesap?
+    recommend: >-
+      Yes: draw one row for it with "Nizam’da aç" from the `systemAdmin` flag of GET /me/roles, which Nizam already
+      reads. Today Hesap reads only the role rows, so the başnazım meets the same page as a talebe with no role.
+    affects: [plainAccount]
+
+context:
+  read:
+    values: [ok, assignmentsFailed, permissionsFailed]
+    initial: any
+    say:
+      ok: "both reads of the page answer"
+      assignmentsFailed: "the read of the roles (GET /me/assignments) fails"
+      permissionsFailed: "the roles read answers and the read of the permissions (GET /me/effective-permissions) fails"
+  nizam:
+    values: [none, platform, kosk]
+    initial: any
+    say:
+      none: "they hold no role carried out in Nizam"
+      platform: "they are a Medaris nazımı and hold no köşk role (a row with no scope name)"
+      kosk: "they are the nazım of at least one köşk (a row with the köşk's name)"
+  nazar:
+    values: [none, madrasah, course]
+    initial: any
+    say:
+      none: "they hold no role carried out in Nazar"
+      madrasah: "they are a başmüderris or a nazır of a medrese and hold no course role"
+      course: "they are the hoca or the nazır of at least one course (a row with the course's state)"
+  permissions:
+    values: [listed, dropped, none]
+    initial: any
+    say:
+      listed: "the permission read has at least one group with a permission the page has a sentence for"
+      dropped: "the permission read has groups, and none has a permission the page has a sentence for (a Medaris nazımı's, on the stack)"
+      none: "the permission read has no group"
+
+guards:
+  nizamRole: "nizam != 'none'"
+  nazarRole: "nazar != 'none'"
+  holdsRole: "nizamRole or nazarRole"
+  scoped: "nizam == 'kosk' or nazarRole"
+  courseRow: "nazar == 'course'"
+
+effects:
+  again: { havoc: [read] } # a reload reads again, and the answer may differ
+
+failures:
+  readingRoles: { from: getMyAssignments, unreadable: [] }
+  readingPermissions: { from: getMyEffectivePermissions, unreadable: [] }
+# `unreadable` stands for any answer but a refused token: the domain lists no refusal code for the two reads (a 401 is
+# the guard's and is left out of the domain), and the page treats a network error, a 5xx and a 4xx alike.
+
+# The main story: a hoca opens Hesap, reads the rows of their courses, and opens Nazar from one.
+main:
+  given: { read: ok, nizam: none, nazar: course, permissions: listed }
+  events: [DONE, DONE, OPEN_NAZAR]
+
+initial: readingRoles
+states:
+  readingRoles:
+    title: Read the roles
+    description: >-
+      The page's server side reads GET /me/assignments and GET /me/effective-permissions at once (Promise.all) and
+      keeps the answer for the page's subtitle and the section. The graph draws them one after the other. A token
+      tedrisat refuses is not a failure here: it sends the person to sign in again (out of view).
+    includes: ["each held role with its scope name, its grantor, its dates and, for a course, its state"]
+    source: apps/tedris/features/account/reads.ts:27
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: { guard: "read != 'assignmentsFailed'", target: readingPermissions }
+      FAIL.unreadable: { guard: "read == 'assignmentsFailed'", target: rolesUnreadable, say: "either read failed, so the page has no roles to draw" }
+
+  readingPermissions:
+    title: Read the permissions
+    description: the permissions the person holds, grouped by role and scope as the engine decides them
+    source: apps/tedris/features/account/reads.ts:28
+    invoke: { action: getMyEffectivePermissions }
+    on:
+      DONE: { guard: "read == 'ok'", target: sorting }
+      FAIL.unreadable: { guard: "read == 'permissionsFailed'", target: rolesUnreadable, say: "the roles came, the permissions did not: the page still draws neither" }
+
+  sorting:
+    title: See whether the person holds a role
+    description: classification only
+    source: apps/tedris/features/account/components/roles-section.tsx:36
+    always:
+      - { guard: holdsRole, target: rolesShown, say: "at least one role row came back" }
+      - { target: plainAccount, say: "no role row came back, so the section is not drawn" }
+
+  plainAccount:
+    title: Hesap with no roles section
+    by: human
+    description: >-
+      The page for a person who holds no role row: the personal cards and nothing else. The subtitle is the one with
+      no mention of roles. A Medaris başnazım meets this page too, because the realm role SYSTEM_ADMIN is not a row
+      (ROLES-2, decision D1).
+    source: apps/tedris/features/account/components/roles-section.tsx:36
+    on:
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  rolesShown:
+    title: Read the roles and permissions
+    by: human
+    goal: true
+    description: >-
+      The section "Görevlerin ve izinlerin": an introduction, a table with one row per role held (role, scope with a
+      state badge for a course and the köşk and medrese under it, who gave it with the date, the end or "Süresiz",
+      and a button that opens the other app), and, when the permission read has groups, "Etkin izinlerin" with its
+      introduction and then one group per role and scope with a sentence for each permission. A group none of whose
+      permissions has a sentence is left out, and when all are left out the heading and the introduction stand alone
+      (ROLES-1, seen on the Medaris nazımı). The subtitle names the roles.
+    source: apps/tedris/features/account/components/roles-section.tsx:89
+    on:
+      OPEN_NIZAM:
+        guard: nizamRole
+        target: rolesShown
+        starts: { flow: nizam.shell.landingByRole }
+        say: "\"Nizam’da aç\" opens Nizam in a new tab, at the köşk's address for a köşk row and at its root for the Medaris nazımı; this tab stays on Hesap"
+        source: apps/tedris/features/account/components/assignments-table.tsx:121
+      OPEN_NAZAR:
+        guard: nazarRole
+        target: rolesShown
+        starts: { flow: nazar.access.landingScope }
+        say: "\"Nazar’da aç\" opens Nazar's root in a new tab, for a medrese row and for a course row alike; this tab stays on Hesap"
+        source: apps/tedris/features/account/components/assignments-table.tsx:121
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  rolesUnreadable:
+    title: The roles could not be read
+    by: human
+    description: >-
+      A box in the section's place: "Görevlerin yüklenemedi" and one sentence that says to reload the page. It has no
+      retry control; the rest of Hesap is drawn as usual and the subtitle is the one with no mention of roles. The
+      section around the box is named by an id that does not exist (ACC-17).
+    source: apps/tedris/features/account/components/roles-section.tsx:27
+    on:
+      RELOAD: { target: readingRoles, effect: [again], say: "they reload the page, as the box tells them" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  left: { type: final, title: The person leaves Hesap, leavesPage: true }
+
+assertions:
+  - id: section-only-for-a-role
+    never: "state == 'rolesShown' and not holdsRole"
+    say: "The roles section is drawn only for a person who holds at least one role row"
+    source: apps/tedris/features/account/components/roles-section.tsx:36
+  - id: no-role-no-section
+    never: "state == 'plainAccount' and holdsRole"
+    say: "A person who holds a role never gets the plain page"
+    source: apps/tedris/features/account/components/roles-section.tsx:36
+  - id: box-only-after-a-failed-read
+    never: "state == 'rolesUnreadable' and read == 'ok'"
+    say: "The box that says the roles could not be read is drawn only when one of the two reads failed"
+    source: apps/tedris/features/account/components/roles-section.tsx:27
+  - id: a-failed-read-draws-no-roles
+    never: "state == 'rolesShown' and read != 'ok'"
+    say: "A failed read of either kind never leaves the roles or the permissions on the page"
+    source: apps/tedris/features/account/reads.ts:34

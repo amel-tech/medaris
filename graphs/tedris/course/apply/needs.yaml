@@ -1,0 +1,111 @@
+# What must exist for a talebe who applies to a course: the flow's product list, from its story and from planned.md,
+# never from what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by the orchestrator).
+# Gender separation is given: kontenjan is always two counts, one per gender, and gender is always required. The code has
+# no kontenjan rule in enrolment (domain invariants seat-quota-per-gender and gender-always-known, `holds: false`), so the
+# two needs below are `missing`; no quota is invented in the flow.
+kind: needs
+flow: tedris.course.apply
+status: proposed
+
+needs:
+  - id: apply-take-back-and-wait
+    need: >-
+      A talebe with no seat applies to a course that needs approval, is told the application was received and that the
+      course team will decide, can see when it went in, and can take it back until it is decided; on a course that
+      needs no approval the seat is given at once and the talebe is told.
+    drawn:
+      - applyCard
+      - enrolling
+      - received
+      - pending
+      - withdrawing
+      - enrolled
+    built:
+      - action: medaris.api:enrollInCourse
+      - action: medaris.api:withdrawEnrollmentRequest
+      - route: apps/tedris/features/courses/components/course-aside.tsx:80
+      - route: apps/tedris/features/courses/components/leave-course.tsx:26
+    walked:
+      - e2e: apps/tedris/e2e/course.e2e.ts
+        check: 'course#5'
+      - e2e: apps/tedris/e2e/system-pages.e2e.ts
+        check: 'system-pages#2'
+      - e2e: apps/tedris/e2e/system-pages.e2e.ts
+        check: 'system-pages#3'
+      - replay: applyThatWaits
+
+  - id: the-team-hears-of-the-application
+    need: >-
+      The application reaches the people who decide it, in nazar and in nizam, and the talebe is told when it is
+      decided. (Both screens are other flows; this flow starts them.)
+    drawn:
+      - reachesNazar
+      - reachesNizam
+    built:
+      - action: medaris.api:listCourseEnrollments
+      - action: medaris.api:approveEnrollment
+    walked: []
+    note: The talebe's notice on a decision is not drawn here; the decision flows own it.
+
+  - id: apply-card-says-what-will-happen
+    need: >-
+      The card tells the talebe what the click will do. When any rule above the course asks for approval (the course,
+      an unlisted köşk, the köşk's always-approve policy, the platform's policy, the medrese's policy), the card says
+      so and offers "Kayıt başvurusu yap"; it never says "Kayıt onay gerektirmez" over an application that waits.
+    drawn:
+      - applyCard
+      - approvalFact
+      - openFact
+    built:
+      - route: apps/tedris/app/courses/[courseId]/page.tsx:89
+    walked: []
+    missing: none
+    note: >-
+      Partly built, the card reads two of the five rules (finding CRS-APPLY-1). A defect, not a planned feature, so no Linear key.
+
+  - id: stale-withdraw-draws-the-real-state
+    need: >-
+      A talebe who withdraws from a page the course team has already decided on is told the enrolment changed and sees
+      what it now is; nothing is deleted that was already approved.
+    drawn:
+      - pending
+      - withdrawing
+      - enrolled
+    built:
+      - action: medaris.api:withdrawEnrollmentRequest
+      - route: apps/tedris/features/courses/components/leave-course.tsx:34
+    walked: []
+    note: unwalked; a walk needs the course team's decision as a second person (nazar.roster.decide).
+
+  - id: kontenjan-per-gender
+    need: >-
+      Seats are counted separately for women and for men wherever a count exists: a course or a celse that takes a
+      limited number has one quota per gender, the quotas are never shared, and a talebe is given a seat only while the
+      quota of their own gender has room. Wherever seats are given at approval, they are given in the order of the
+      applications.
+    drawn:
+      - enrolling
+      - reachesNazar
+    missing: MDRS-284
+    note: >-
+      No code: enrolment gives a seat with no count (apps/tedrisat/src/course/course.service.ts:1529). MDRS-284 plans it
+      per celse and per week, not per course (tedris.session.registerInPerson, nazar.sessions.inPersonSeats).
+
+  - id: gender-required-before-a-seat
+    need: >-
+      A talebe's gender, FEMALE or MALE, is always known before a seat is given, because quotas are kept per gender.
+    drawn:
+      - enrolling
+    missing: MDRS-284
+    note: >-
+      The realm requires the attribute (config/keycloak/user-profile.json) but tedrisat keeps the column nullable and no
+      enrolment path reads it (apps/tedrisat/src/database/schema/user-profile.schema.ts:33).
+
+  - id: admission-rules
+    need: >-
+      A medrese sets rules over its own courses: prerequisites, and enrolment without approval for a talebe who holds the
+      icazet the course asks for. The apply card tells a talebe whose prerequisite is missing why they cannot apply.
+    drawn:
+      - applyCard
+    missing: MDRS-138
+    note: P-05 of planned.md; the icazet half waits on the record of icazet (MDRS-149, "Not now"). No screen and no decision yet.

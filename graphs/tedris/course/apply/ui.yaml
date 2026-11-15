@@ -1,0 +1,65 @@
+# The screens of tedris.course.apply: the card "Derse kayıt" on the course page of a talebe with no enrolment, the window
+# "Başvurun alındı" and the pending card. Everything else on the course page is another flow's (flow.yaml scope.outOfView).
+# The words are copied from libs/i18n/src/locales/tr/tedris.json (keys kept, root removed) and common.json (common.*).
+# `changes` borrows the app's own message that says what an application does, because the app has no message for "what
+# this flow changes" and a graph never invents one (calibration note in the report).
+schema: delurio-graph/0
+kind: ui
+id: tedris.course.apply
+flow: tedris.course.apply
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples: { when: "bugün 10:02’de" }
+changes: { key: CoursePage.receivedBody }
+
+nodes:
+  # the course page and its apply card (course-page.tsx, course-aside.tsx)
+  coursePage: { type: page, component: Page, role: main, in: [applyCard, enrolling, pending, withdrawing, enrolled], source: apps/tedris/features/courses/components/course-page.tsx:229, script: actions } # server-drawn: the card reads without JavaScript, its two buttons and the dialog need it. No name, no initial focus: the page sets none (not verified in a browser)
+  cardTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.registerCard }, in: [applyCard, enrolling, pending, withdrawing], source: apps/tedris/features/courses/components/course-aside.tsx:326 } # h2
+  pendingBadge: { type: text, component: Text, text: { key: CoursePage.pendingApproval }, in: [pending, withdrawing], source: apps/tedris/features/courses/components/course-aside.tsx:330 } # a warning badge with a clock icon; the text carries the meaning
+  pendingSubmitted: { type: text, component: Text, text: { key: CoursePage.pendingSubmitted, params: { when: when } }, in: [pending, withdrawing], source: apps/tedris/features/courses/components/course-aside.tsx:338 } # {when} is the time of the application in the course's zone, so a replay matches it by pattern (binding)
+  approvalFact: { type: text, component: Text, text: { key: CoursePage.approvalNotice }, in: [applyCard, enrolling], when: "cardAsks", source: apps/tedris/features/courses/components/course-aside.tsx:127 }
+  openFact: { type: text, component: Text, text: { key: CoursePage.openEnrollNotice }, in: [applyCard, enrolling], when: "not cardAsks", source: apps/tedris/features/courses/components/course-aside.tsx:127 }
+  applyButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CoursePage.apply }, in: [applyCard, enrolling], when: "cardAsks", disabledIn: [enrolling], emits: APPLY, source: apps/tedris/features/courses/components/course-aside.tsx:368 } # busy: aria-disabled, aria-busy
+  enrollButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CoursePage.enroll }, in: [applyCard, enrolling], when: "not cardAsks", disabledIn: [enrolling], emits: APPLY, source: apps/tedris/features/courses/components/course-aside.tsx:368 }
+  applyNote: { type: text, component: Text, text: { key: CoursePage.applyNote }, in: [applyCard, enrolling], when: "cardAsks", source: apps/tedris/features/courses/components/course-aside.tsx:378 }
+  enrollingStatus: { type: status, component: Status, role: status, text: { key: CoursePage.enrolling }, in: [enrolling], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> of the busy button
+  withdraw: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.withdrawRequest }, in: [pending, withdrawing], disabledIn: [withdrawing], emits: WITHDRAW, source: apps/tedris/features/courses/components/leave-course.tsx:48 } # id withdraw-request; no confirmation, there is nothing to lose
+  withdrawingStatus: { type: status, component: Status, role: status, text: { key: CoursePage.withdrawing }, in: [withdrawing], source: libs/ui/src/mds/button.tsx:114 }
+
+  # the window after an application that waits (enrollment-received-dialog.tsx)
+  receivedDialog: { type: page, component: Page, role: dialog, name: { labelledBy: receivedTitle }, in: [received], initialFocus: okButton, source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30 }
+  receivedTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.receivedTitle }, in: [received], source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:36 }
+  receivedBody: { type: text, component: Text, text: { key: CoursePage.receivedBody }, in: [received], source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:45 }
+  receivedNote: { type: text, component: Text, text: { key: CoursePage.receivedNote }, in: [received], source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:46 }
+  okButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: CoursePage.receivedOk }, in: [received], emits: CLOSE, source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:40 }
+  closeX: { type: action, component: Button, role: button, intent: dismiss, name: { key: CoursePage.receivedClose }, in: [received], emits: DISMISS, source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:37 } # an icon only; Esc and the scrim do the same
+
+  # what the page says after a step (Sonner toasts, libs/ui/src/components/sonner.tsx)
+  enrolledToast: { type: status, component: Status, text: { key: CoursePage.enrolled }, in: [enrolled], when: "notice == 'enrolled'", source: apps/tedris/features/courses/components/course-aside.tsx:91 }
+  withdrawnToast: { type: status, component: Status, text: { key: CoursePage.withdrawn }, in: [applyCard], when: "notice == 'withdrawn'", source: apps/tedris/features/courses/components/leave-course.tsx:43 }
+  goneToast: { type: status, component: Status, text: { key: CoursePage.actionNotFound }, in: [applyCard], when: "notice == 'gone'", source: apps/tedris/features/courses/components/course-aside.tsx:85 }
+  conflictToast: { type: status, component: Status, text: { key: CoursePage.actionConflict }, in: [applyCard, pending, enrolled], when: "notice == 'conflict'", source: apps/tedris/features/courses/components/leave-course.tsx:34 }
+  failedToast: { type: status, component: Status, text: { key: CoursePage.actionFailed }, in: [applyCard, pending], when: "notice == 'failed'", source: apps/tedris/features/courses/components/course-aside.tsx:85 }
+  toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [applyCard, pending, enrolled], when: "notice != 'none'", source: libs/ui/src/components/sonner.tsx:55 } # a close button on each toast, "Kapat" in every language
+
+  # the enrolled card, only as far as this flow ends on it (tedris.course.readProgramme draws the rest)
+  enrolledBadge: { type: text, component: Text, text: { key: CoursePage.statusInProgress }, in: [enrolled], source: apps/tedris/features/courses/components/course-aside.tsx:277 }
+
+edges:
+  - { labelledBy: [receivedDialog, receivedTitle] }
+  - { returnsFocus: [receivedDialog, withdraw] } # not the kit's doing: the dialog has no trigger, so the page's effect puts the focus on the withdraw button (course-aside.tsx:97-101)
+  - { triggers: [applyButton, enrolling] }
+  - { triggers: [enrollButton, enrolling] }
+  - { triggers: [withdraw, withdrawing] }
+
+rules:
+  - { id: CRS-03, rule: "a 409 on the apply button says the page was refreshed (\"Sayfa yenilendi\") and nothing refreshes it (course-aside.tsx:84-87); the graph draws the toast and the card unchanged" }
+  - { id: CRS-04, rule: "the apply and the withdraw action are called with no try/catch, so a request that never reaches the server rejects instead of drawing \"İşlem tamamlanamadı\"; what the person sees is not verified, and the graph draws none of it" }
+  - { id: CRS-05, rule: "after an open enrolment succeeds and after a withdrawal the button that had the focus is gone and no code moves the focus; the graph says nothing of the focus in those states, and the focus falls to the document (not verified in a browser)" }
+  - { id: CRS-13, rule: "the toast has no role of its own; its region is named by the library's English default \"Notifications alt+T\" and is polite, also for an error that stays until closed; its close button is \"Kapat\" in every language (MDRS-233)" }
+  - { id: MDRS-224, rule: "the success toast says \"Kursa kaydoldunuz.\" (a kurs) where every other text of the page says ders" }
+  - { id: CRS-APPLY-1, rule: "new, provisional id: the card is drawn from course.requiresApproval and the köşk's isPrivate only (page.tsx:89); the API also asks for approval for the köşk's always-approve policy, the platform's ALWAYS_REQUIRE_APPROVAL and the medrese's policyAlwaysApproval (course.service.ts:1553-1557). Then the card says \"Kayıt ol\" and \"Kayıt onay gerektirmez\" and the click opens \"Başvurun alındı\". Read from the code, not walked" }
+  - { id: withdraw-asks-nothing, rule: "taking an application back asks nothing first (the code's comment: nothing to lose), where leaving an enrolled seat asks in an alertdialog (tedris.course.leave)" }
+  - { id: dialog-focus-by-hand, rule: "the window \"Başvurun alındı\" opens on \"Tamam\", traps the focus, and gives it to \"Başvuruyu geri çek\" on close by an effect of the page, not by the kit (system-pages#2, #3); the locked celse page opens the same window and does not (CLS-19)" }

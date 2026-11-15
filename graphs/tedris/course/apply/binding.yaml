@@ -1,0 +1,128 @@
+# tedris.course.apply on the local stack (graphs/README.md, "The stack and the bindings"), as the talebe-without-a-seat
+# account `other`: no role and no enrolment anywhere, so the walk can apply to a course and nothing else is touched.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/apply --bind graphs/tedris/course/apply/binding.yaml --out <dir>
+#
+# Replay data. The seeded `talebeMale` is pending in one course and enrolled in the other, so a walk that applied as him would
+# use that state up. `other` holds no row, and the main story ends where it started (apply, then take it back), so the
+# next walk finds the same state. If a walk stops half way, the `teardown` removes the row `other` may have been left with.
+# That teardown and the two `effects` read and write the tedrisat database with SQL (E2E_DATABASE_URL, through the stack's
+# own Postgres container): there is no API to do it, because no token a walk can hold may call tedrisat (the web clients'
+# direct grant is off), and tedrisat has no endpoint that reads another person's enrolment. The delete is scoped to
+# `other`'s own row of the one course (after the team's approval it is ENROLLED).
+#
+# The course team's step is another person's: TEAM_APPROVES is bound to actions `as: muderris`, who opens the course's roster in
+# nazar and presses "Onayla: <the applicant>"; the walk then goes on in `other`'s own browser, whose page is now stale.
+# Not bound, so the replay cannot reach them (reported): TEAM_REJECTS (the same person, a confirmation dialog: nazar.roster.decide's
+# walk), the approval `unseenRule` (it needs a platform, köşk or medrese policy switched on), and `signedOut`.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.course.apply
+
+scenarios:
+  # Open: the course that needs approval. Comes in through Keşfet (enter), so the page is reached the way a person reaches it.
+  applyThatWaits:
+    given: { approval: needed }
+    as: other
+    open: '{tedris}/discover'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: discover->course }
+    vars: { course: '{seed.courses.approval}', seat: PENDING }
+    setup:
+      - run:
+          - docker
+          - exec
+          - medaris-graphs-medaris-db-1
+          - psql
+          - '{secret.E2E_DATABASE_URL}'
+          - -tAc
+          - "delete from enrollments where user_id = '{secret.E2E_OTHER_SUB}' and course_id = '{course}'"
+    teardown:
+      - run:
+          - docker
+          - exec
+          - medaris-graphs-medaris-db-1
+          - psql
+          - '{secret.E2E_DATABASE_URL}'
+          - -tAc
+          - "delete from enrollments where user_id = '{secret.E2E_OTHER_SUB}' and course_id = '{course}'"
+
+  # Open: the course that takes anyone. The seat is given at once, so the walk ends on the enrolled card, and the teardown takes the row away
+  # (the way back through the app is tedris.course.leave's).
+  openEnrolment:
+    given: { approval: open }
+    as: other
+    open: '{tedris}/discover'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: discover->course }
+    vars: { course: '{seed.courses.open}', seat: ENROLLED }
+    setup:
+      - run:
+          - docker
+          - exec
+          - medaris-graphs-medaris-db-1
+          - psql
+          - '{secret.E2E_DATABASE_URL}'
+          - -tAc
+          - "delete from enrollments where user_id = '{secret.E2E_OTHER_SUB}' and course_id = '{course}'"
+    teardown:
+      - run:
+          - docker
+          - exec
+          - medaris-graphs-medaris-db-1
+          - psql
+          - '{secret.E2E_DATABASE_URL}'
+          - -tAc
+          - "delete from enrollments where user_id = '{secret.E2E_OTHER_SUB}' and course_id = '{course}'"
+
+events:
+  # Esc, the scrim and the header's "Kapat" all run the window's one close
+  DISMISS: [{ key: Escape }]
+  RELOAD: [{ reload: true }]
+  # the course team, in nazar: the course's Talebeler page lists the applications, each with "Onayla: <name>"
+  TEAM_APPROVES:
+    - goto: '{nazar}/ders/{course}/talebeler'
+      as: muderris
+    - click: { role: button, name: '/^Onayla: Fikret/' }
+      as: muderris
+    - waitText: 'Başvuru onaylandı'
+      as: muderris
+
+states:
+  # the server action is a POST to the page's own address; the page's reads are GETs with a query, so this matches only the POST
+  enrolling: { call: '{tedris}/courses/{course}' }
+  withdrawing: { call: '{tedris}/courses/{course}' }
+
+effects:
+  # e2e course#5 a7 and a10: the row is PENDING after the application and gone after the withdrawal
+  enrollInCourse:
+    - run:
+        - docker
+        - exec
+        - medaris-graphs-medaris-db-1
+        - psql
+        - '{secret.E2E_DATABASE_URL}'
+        - -tAc
+        - "select status from enrollments where user_id = '{secret.E2E_OTHER_SUB}' and course_id = '{course}'"
+      expect: '{seat}'
+  withdrawEnrollmentRequest:
+    - run:
+        - docker
+        - exec
+        - medaris-graphs-medaris-db-1
+        - psql
+        - '{secret.E2E_DATABASE_URL}'
+        - -tAc
+        - "select count(*) from enrollments where user_id = '{secret.E2E_OTHER_SUB}' and course_id = '{course}'"
+      expect: '0'
+
+nodes:
+  # "bugün 10:02’de": the time of the application is the walk's own, so the line is matched by its pattern
+  pendingSubmitted: { text: '/Başvurun .+ ders kadrosuna iletildi/' }
+  # Sonner's toast has no role: found by its own attribute and its words
+  enrolledToast: { css: '[data-sonner-toast]', hasText: 'Kursa kaydoldunuz.' }
+  withdrawnToast: { css: '[data-sonner-toast]', hasText: 'Başvurunuz geri çekildi.' }
+  goneToast: { css: '[data-sonner-toast]', hasText: 'Bu ders artık bulunamıyor.' }
+  conflictToast: { css: '[data-sonner-toast]', hasText: 'Kaydının durumu değişmiş.' }
+  failedToast: { css: '[data-sonner-toast]', hasText: 'İşlem tamamlanamadı.' }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+  # "Devam ediyor" is also the badge of the week in progress, lower on the page: the card's is the one in the aside
+  enrolledBadge: { text: Devam ediyor, within: { role: complementary } }

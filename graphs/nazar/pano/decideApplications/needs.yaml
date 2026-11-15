@@ -1,0 +1,80 @@
+# What must exist for the başmüderris of a medrese to read her Pano and decide the applications that wait there: the flow's
+# product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the planned work in
+# the inventory (planned.md), not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the
+# orchestrator merges. Read by people for now: no checker runs on this file yet.
+kind: needs
+flow: nazar.pano.decideApplications
+status: proposed
+
+needs:
+  - id: read-the-pano
+    need: >-
+      The başmüderris reads, on one page, what her medrese holds today: its scopes, the celses of the next seven days and the
+      applications that wait for a decision, and the köşks that host it, with the same numbers in the greeting, above the
+      table and on the sidebar.
+    drawn: [listed, empty, greeting, greetingSummary, applicationsCounter, coursesBadge, sessionsTable, hostsRegion]
+    built:
+      - action: medaris.api:getMadrasahDashboard
+      - route: apps/nazar/features/pano/components/pano-page.tsx:69
+    walked:
+      - e2e: apps/nazar/e2e/pano.e2e.ts
+        check: 'pano#1'
+      - test: apps/nazar/test/pano.spec.tsx
+      - replay: decides
+
+  - id: decide-from-the-list
+    need: >-
+      She approves a waiting application in one press, and rejects one after being asked once; the talebe is told either way,
+      the row leaves, and the greeting, the counter and the sidebar's number follow at once.
+    drawn: [approve, reject, rejectDialog, approving, rejecting, settled, toastApproved, toastRejected, only-those-the-api-lets-decide]
+    built:
+      - action: medaris.api:approveEnrollment
+      - action: medaris.api:rejectEnrollment
+      - route: apps/nazar/features/pano/components/pano-tables.tsx:176
+    walked:
+      - e2e: apps/nazar/e2e/pano.e2e.ts
+        check: 'pano#2'
+      - e2e: apps/nazar/e2e/pano.e2e.ts
+        check: 'pano#3'
+      - replay: decides
+
+  - id: head-decides-what-she-lists
+    need: >-
+      The başmüderris can decide every application the Pano lists for her medrese, whether or not she teaches the course, as
+      the routes already allow; a nazır who was granted the permission can too. A row she may not decide says why instead of
+      showing nothing (decision D1).
+    drawn: [listed, approve, reject]
+    missing: none # no issue: viewerMayDecide ignores her (apps/tedrisat/src/madrasah/portal/madrasah-portal.service.ts:93)
+    walked:
+      - replay: headOnly
+
+  - id: a-decision-already-made-is-told
+    need: >-
+      An application someone else decided first, or the talebe took back, leaves the list with a notice that says so, not an
+      error, and the counters are recounted.
+    drawn: [toastGone, settled]
+    built:
+      - route: apps/nazar/features/pano/pano.ts:265
+    walked:
+      - test: apps/nazar/test/pano.spec.tsx
+
+  - id: focus-follows-a-decision
+    need: >-
+      After a decision the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the next
+      row's button), and a line on the page, not only a toast of six seconds, says what was decided (F-A-2).
+    drawn: [listed, toastApproved, toastRejected]
+    missing: none
+
+  - id: a-failed-call-is-told
+    need: >-
+      When a decision cannot reach the server at all, the button stops being busy and the person is told to try again (F-A-10).
+    drawn: [approving, rejecting, toastFailed]
+    missing: none
+
+  - id: seats-per-gender-at-approval
+    need: >-
+      Where a seat is counted, the kontenjan is two counts, one per gender, and a seat is given at approval in the order of
+      application; the Pano's Onayla is one of the places that gives it, so it follows the same rule as the roster (MDRS-284,
+      per celse and weekly; no kontenjan rule exists in the code today).
+    drawn: [approve]
+    missing: MDRS-284

@@ -11,3 +11,14 @@ apps:
   landing: http://localhost:4003
   keycloak: http://localhost:8080
   mail: http://localhost:8025
+
+# Every persona signs in here, at tedris-web, whatever app they usually work in, so a tedris flow can walk as any of
+# them. A step another person takes in another app (`as:` on an action) starts with that app's own /auth/signin, which
+# Keycloak's session answers without a form.
+signIn:
+  - goto: '{tedris}/auth/signin'
+  - waitUrl: '{keycloak}/realms/medaris/**'
+  - fill: { css: '#username', value: '{address}' }
+  - fill: { css: '#password', value: '{password}' }
+  - click: { css: 'button[type=submit]' }
+  - waitUrl: '{tedris}/**'

@@ -1,0 +1,315 @@
+# Signing in on the realm's own page, from tedris, nizam or nazar, as the code does it today (status captured; the code is
+# PR #394's). The round trip is the app's /auth/signin page, GET /api/auth/signin, Keycloak's themed form, a POST of that
+# form, and GET /api/auth/callback/keycloak (libs/auth, apps/keycloak-theme, libs/ui/src/giris).
+#
+# How Keycloak is drawn. The four web-edge actions of libs/auth that the browser meets (startSignIn, finishSignIn,
+# getAuthSession) are domain actions and are invoked as such. Keycloak is not a domain: its pages are not routes of
+# medaris.api, and the form it posts to (the `url.loginAction` of login.ftl) is not an action the code of this repository
+# answers. So Keycloak is this flow's environment: its login page is a screen of ui.yaml (drawn from the theme and its
+# catalog), and the POST of that form is a state that `invoke`s `{ external: keycloak.loginAction }`, which ends with
+# DONE (Keycloak accepts the credentials and decides what comes next) or FAIL.wrongCredentials (Keycloak answers its own
+# page again with an error). What Keycloak decides after right credentials depends on the account (`account`): a required
+# action it holds the person on, or the redirect to the app's callback.
+#
+# Where this flow stops. After right credentials Keycloak may hold the person on a page of a required action: the
+# profile page (realm.auth.profileUpdate, started here), the e-mail verification page (drawn by realm.auth.register) or
+# the new-password page (drawn by realm.auth.forgotPassword). Those, the app's error box (realm.auth.signInFailures),
+# registration ("Kayıt ol", realm.auth.register) and the reset form ("Şifremi unuttum", realm.auth.forgotPassword) are
+# other flows: this one ends in an exit named handed_over.* or error_box.* where they begin.
+schema: delurio-graph/0
+kind: flow
+id: realm.auth.signIn
+status: captured
+domain: medaris.api
+ui: realm.auth.signIn
+title: Sign in on the realm's page, from any app
+summary: >-
+  A signed-out person opens a protected page of tedris, nizam or nazar, or the app's sign-in address, or presses a
+  "Giriş yap" link. The app's /auth/signin page sends the browser to Keycloak's themed form. They type a user name or
+  an e-mail address and the password (and may tick "Beni hatırla") and press "Giriş yap". A wrong password gives one
+  alert and keeps the name. Right credentials send the browser back to the app, which lands it on the page it asked for,
+  or on the app's own landing for the person.
+scope:
+  shows: >-
+    The round trip from the app's gate to the page the person lands on, with Keycloak's login form as its one screen.
+    The form is drawn for the apps tedris, nizam and nazar, one account of each kind a form meets, and the five ways
+    the round trip starts.
+  world: open
+  outOfView:
+    - "Keycloak's pages after the credentials: the profile page (realm.auth.profileUpdate), the e-mail verification page (realm.auth.register), the new-password page (realm.auth.forgotPassword)"
+    - "the app's error box and its automatic retry, the expired form (login-page-expired.ftl) and the error page (error.ftl): realm.auth.signInFailures"
+    - "Keycloak's brute-force lock (10 failures, a pause that grows from 60 s to 15 min) and the message it puts on this page; not walked"
+    - "the browser's own check that stops an empty submission (both fields are required) and posts nothing"
+    - "the reveal button of the password field (it keeps one name and toggles aria-pressed; the graph has no word for either)"
+    - "the language of the page: the apps pass ui_locales=tr and kc_locale=tr; en and ar exist and no app asks for them yet"
+    - "the tabs: one tab at a time takes the round trip, a hidden tab never starts one by itself, a session another tab brought is taken (libs/auth/src/client/sign-in.ts)"
+    - "the single sign-on session: a second app signed in to the same Keycloak session is sent back at once, with no form"
+    - "social providers and 'Başka bir yol dene': none is configured in the realm"
+    - "planned: a banned person's device refused (MDRS-125), a one-time code as second step (MDRS-190), en and ar copy (MDRS-202); see needs.yaml"
+
+context:
+  app:
+    values: [tedris, nizam, nazar]
+    initial: any
+    say:
+      tedris: "the person signs in to tedris, the talebe's app"
+      nizam: "the person signs in to nizam, the nazım's app"
+      nazar: "the person signs in to nazar, the app of medrese and course staff"
+  entry:
+    values: [protectedPage, signInLink, signInPage, landing]
+    initial: any
+    say:
+      protectedPage: "they open a page that needs a session, and the app's gate sends them to its sign-in page"
+      signInLink: "they press a Giriş yap link of the app, which carries the page they are on"
+      signInPage: "they open the app's /auth/signin address itself"
+      landing: "they come from the public site's Giriş yap, which sends them on to tedris's /auth/signin"
+  session:
+    values: [none, usable]
+    initial: any
+    say:
+      none: "the browser holds no session"
+      usable: "the browser already holds a usable session (another tab finished first)"
+  credentials:
+    values: [right, wrong]
+    initial: any
+    say:
+      right: "they type the right password"
+      wrong: "they type a wrong password the first time"
+  account:
+    values: [ready, profileIncomplete, emailUnverified, passwordUpdateDue]
+    initial: any
+    say:
+      ready: "the account needs nothing more after the password"
+      profileIncomplete: "the account has no gender or no privacy-notice tick, so Keycloak asks for the profile once"
+      emailUnverified: "the account's e-mail address is not verified yet"
+      passwordUpdateDue: "an administrator asked for a new password at the next sign-in"
+  callback:
+    values: [absent, page]
+    initial: absent
+    say:
+      absent: "the sign-in page's address names no page, so the round trip ends on the app's landing"
+      page: "the sign-in page's address names the page they asked for (callbackUrl)"
+  remember:
+    values: [false, true]
+    initial: false
+    say:
+      "true": "they ticked Beni hatırla"
+      "false": ""
+
+guards:
+  asksForPage: "callback == 'page'"
+  rightAndReady: "credentials == 'right' and account == 'ready'"
+
+effects:
+  gateCarriesPage: { set: { callback: page } }
+  linkCarriesPage: { set: { callback: page } }
+  remembers: { set: { remember: true } }
+  forgets: { set: { remember: false } }
+  retypesPassword: { set: { credentials: right } }
+
+failures:
+  startingRoundTrip:
+    from: startSignIn
+    retryable: [OAuthSignin]
+    final: [SignInLimit]
+  finishingRoundTrip:
+    from: finishSignIn
+    retryable: [OAuthCallback]
+    final: [AccessDenied, Configuration]
+
+main:
+  given: { app: tedris, entry: protectedPage, session: none, credentials: right, account: ready }
+  events: [DONE, DONE, SUBMIT, DONE, DONE]
+
+initial: openApp
+states:
+  openApp:
+    title: The person asks an app for a page
+    description: >-
+      The browser asks tedris, nizam or nazar for a page or for the sign-in address, with no session of this browser's own
+      in hand. Which of the first two states follows depends only on how they came (entry).
+    source: libs/auth/src/server/proxy.ts:173
+    always:
+      - { target: appGate, guard: "entry == 'protectedPage'", effect: [gateCarriesPage], say: "the page needs a session" }
+      - { target: appSignInPage, guard: "entry == 'signInLink'", effect: [linkCarriesPage], say: "the link carries the page they are on" }
+      - { target: appSignInPage, say: "the sign-in address, as it is" }
+
+  appGate:
+    title: The app's gate sends the request to its sign-in page
+    description: >-
+      The auth step of the app's proxy meets a page that is not public and has no usable session. It answers 307 to the
+      app's /auth/signin with callbackUrl set to the path and query asked for (nazar: `/hesap` gives `/auth/signin?callbackUrl=%2Fhesap`).
+      A page that is public renders for a visitor and never comes here; /api routes and Server Actions are never redirected,
+      and the sign-in page is never redirected to itself.
+    source: libs/auth/src/server/proxy.ts:198
+    always:
+      - { target: appSignInPage }
+
+  appSignInPage:
+    title: The app's sign-in page reads the session and starts the round trip
+    description: >-
+      The page (tedris, nizam and nazar each have their own, with their own words: AuthEntry, drawn by the app's nav graph, not
+      by this ui) reads GET /api/auth/session first. A usable session means someone else finished the round trip, so it goes
+      straight on to callbackUrl (or `/`), at most twice per tab in two minutes. A failed read counts as no session. With
+      none, it starts the round trip by itself, once per tab turn, by sending the browser to GET /api/auth/signin with
+      auto=1. For a moment it shows "Giriş sayfasına yönlendiriliyorsunuz…" in a status line and a "Devam et" button that
+      forces the start. Findings: SHL-02 (tedris: no heading in that state), F-P0-2 (nizam: no main landmark), F-E-23 and
+      SHL-01 (nazar and tedris: the tab title is the app's name on every auth page).
+    source: apps/tedris/features/auth/auth-entry.tsx:72
+    invoke: { action: getAuthSession }
+    on:
+      DONE:
+        - { target: landed_on_asked_page, guard: "session == 'usable' and asksForPage", say: "already signed in: straight on to the page the address names" }
+        - { target: landed_on_role_landing, guard: "session == 'usable'", say: "already signed in: straight on to /" }
+        - { target: startingRoundTrip, say: "no session: the page starts the round trip" }
+
+  startingRoundTrip:
+    title: The app starts the round trip
+    description: >-
+      GET /api/auth/signin: the cap of five starts in five minutes, the session store, Keycloak's discovery document, then
+      a 303 to Keycloak's authorization endpoint with the app's client, PKCE S256, state, nonce and ui_locales and kc_locale
+      (tr). It stores the destination in the sealed flow cookie it sets. A browser that already holds a usable session is sent
+      straight on (not drawn again).
+    source: libs/auth/src/server/routes.ts:146
+    invoke: { action: startSignIn }
+    on:
+      DONE: { target: loginPage, say: "Keycloak shows its login form" }
+      FAIL.retryable: { target: error_box.retryable, say: "Keycloak's discovery document or the session store could not be asked" }
+      FAIL.final: { target: error_box.final, say: "this browser has started five round trips in five minutes" }
+
+  loginPage:
+    title: Keycloak's login form
+    description: >-
+      login.ftl on the Medaris theme: one card with the logo and the app's name under it (from the client id: tedris,
+      nizam and nazar, with or without a -local or -dev suffix), the heading "Giriş yap", its sentence, the required-field
+      note, the user name or e-mail field, the password field with its reveal button, the reset link, "Beni hatırla",
+      the submit button, and under a rule the registration link. A native form that posts without script; the browser's own
+      check stops an empty one. Nothing has the focus (K3). Every Keycloak page has the same tab title (K2) and none has a
+      language switch (K12). Nizam and nazar show "Kayıt ol" too: the realm allows registration for every client, although
+      neither app has a registration page.
+    source: apps/keycloak-theme/src/login/pages/Login.tsx:14
+    by: human
+    on:
+      SUBMIT: { target: submitting, say: "they press Giriş yap with a user name and a password typed" }
+      TOGGLE_REMEMBER_ME:
+        - { target: loginPage, guard: "not remember", effect: [remembers], say: "they tick Beni hatırla: the single sign-on session lasts 14 days idle and 30 in all, not 5 and 10 hours" }
+        - { target: loginPage, guard: remember, effect: [forgets], say: "they untick it" }
+      FORGOT_PASSWORD: { target: handed_over.forgot_password, starts: { flow: realm.auth.forgotPassword }, say: "they take Şifremi unuttum" }
+      REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register }, say: "they take Kayıt ol" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  submitting:
+    title: Keycloak checks the credentials
+    description: >-
+      The form posts to url.loginAction (username, password, credentialId, and rememberMe=on only when ticked). While it
+      is on its way the button is busy (aria-busy and aria-disabled, never disabled, so the focus stays) and a status line
+      reads "Giriş yapılıyor"; the rest of the form stays as it was. This post is Keycloak's own, not an action of the domain (see the head of this file). Keycloak
+      answers with its page again and an error (wrong credentials), with the page of a required action, or with a redirect
+      to the app's callback.
+    source: libs/ui/src/giris/login-form.tsx:68
+    invoke: { external: keycloak.loginAction }
+    on:
+      DONE:
+        - { target: finishingRoundTrip, guard: rightAndReady, say: "Keycloak redirects to /api/auth/callback/keycloak with the code and the state" }
+        - { target: handed_over.profile_update, guard: "credentials == 'right' and account == 'profileIncomplete'", starts: { flow: realm.auth.profileUpdate, given: { entry: "'signIn'" } }, say: "Keycloak holds them on Profilini tamamla before it redirects" }
+        - { target: handed_over.verify_email, guard: "credentials == 'right' and account == 'emailUnverified'", say: "Keycloak holds them on the e-mail verification page and sends the mail" }
+        - { target: handed_over.update_password, guard: "credentials == 'right' and account == 'passwordUpdateDue'", say: "Keycloak holds them on Yeni şifreni belirle" }
+      FAIL.wrongCredentials: { target: loginPageError, guard: "credentials == 'wrong'", say: "Keycloak shows the form again with one alert and the user name kept" }
+
+  loginPageError:
+    title: The same form, with one alert
+    description: >-
+      After a wrong password Keycloak answers login.ftl again: one alert (role alert) with Keycloak's text, both fields
+      marked invalid, the user name kept, the password empty. Nothing says which of the two was wrong, and nothing moves
+      the focus to the alert. Keycloak's lock after ten failures puts its own message here (not drawn).
+    source: apps/keycloak-theme/src/login/pages/Login.tsx:41
+    by: human
+    on:
+      SUBMIT: { target: submitting, effect: [retypesPassword], say: "they type the password again and press Giriş yap" }
+      TOGGLE_REMEMBER_ME:
+        - { target: loginPageError, guard: "not remember", effect: [remembers] }
+        - { target: loginPageError, guard: remember, effect: [forgets] }
+      FORGOT_PASSWORD: { target: handed_over.forgot_password, starts: { flow: realm.auth.forgotPassword }, say: "they take Şifremi unuttum" }
+      REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register }, say: "they take Kayıt ol" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  finishingRoundTrip:
+    title: The app finishes the round trip
+    description: >-
+      GET /api/auth/callback/keycloak: the flow cookie of this browser is found by the state, the code is exchanged (state,
+      nonce and PKCE verifier checked), the session is stored under a new id (the one this browser had is ended), the flow
+      cookie is cleared and the browser is sent on (303) to the destination the flow cookie holds.
+    source: libs/auth/src/server/routes.ts:277
+    invoke: { action: finishSignIn }
+    on:
+      DONE:
+        - { target: landed_on_asked_page, guard: asksForPage, say: "the destination is the page the sign-in address named" }
+        - { target: landed_on_role_landing, say: "no page was named: the destination is /, which sends each person to their own landing" }
+      FAIL.retryable: { target: error_box.retryable, say: "no round trip of this browser has this state, or the grant failed" }
+      FAIL.final: { target: error_box.final, say: "Keycloak refused the account (access_denied) or the app (invalid_client)" }
+
+  landed_on_asked_page:
+    type: final
+    title: The person lands on the page they asked for
+    description: >-
+      Signed in. The page is the callbackUrl of the sign-in address: a same-origin path, with its query and fragment. Whether
+      the account may open it is that page's own answer (a person with no seat in nazar is sent to /erisim-yok).
+
+  landed_on_role_landing:
+    type: final
+    title: The person lands on the app's own landing
+    description: >-
+      Signed in, with no page named. The destination is /, which sends a tedris person to /home, a nizam person to the
+      landing their roles give (Ana sayfa, a köşk's home, /nazar-yonlendirme or /yetki-yok) and a nazar person to the
+      scope they work in (a medrese's Pano, a course, or /erisim-yok). nizam.shell.landingByRole and nazar.access.landingScope
+      draw those.
+
+  handed_over.register:
+    type: final
+    title: They go on to the registration form
+    description: "realm.auth.register draws register.ftl. The link keeps kc_locale."
+
+  handed_over.forgot_password:
+    type: final
+    title: They go on to the reset form
+    description: "realm.auth.forgotPassword draws login-reset-password.ftl."
+
+  handed_over.profile_update:
+    type: final
+    title: Keycloak holds them on the profile page
+    description: "realm.auth.profileUpdate draws login-update-profile.ftl (VERIFY_PROFILE: no gender or no privacy-notice tick)."
+
+  handed_over.verify_email:
+    type: final
+    title: Keycloak holds them on the e-mail verification page
+    description: "login-verify-email.ftl, drawn by realm.auth.register (4.3 of the inventory). Keycloak sends the verification mail at once; nothing in this flow starts it."
+
+  handed_over.update_password:
+    type: final
+    title: Keycloak holds them on the new-password page
+    description: "login-update-password.ftl, drawn by realm.auth.forgotPassword (UPDATE_PASSWORD, set by an administrator)."
+
+  error_box.retryable:
+    type: final
+    title: The app's sign-in page shows its error box after a retryable failure
+    description: "OAuthSignin or OAuthCallback: the page tries once by itself, then shows Giriş sayfasına dön. realm.auth.signInFailures draws it."
+
+  error_box.final:
+    type: final
+    title: The app's sign-in page shows its error box after a failure no retry fixes
+    description: "SignInLimit, AccessDenied or Configuration: the box at once, with Ana sayfaya dön. realm.auth.signInFailures draws it."
+
+  left:
+    type: final
+    title: They close the page
+    leavesPage: true
+
+assertions:
+  - id: wrong-password-never-calls-back
+    never: "state == 'finishingRoundTrip' and credentials == 'wrong'"
+    say: "A wrong password never reaches the app's callback: Keycloak answers its own page again."
+    source: apps/keycloak-theme/src/login/pages/Login.tsx:41
+  - id: required-action-before-callback
+    never: "state == 'finishingRoundTrip' and account != 'ready'"
+    say: "An account that a required action holds is never sent back to the app before the action is done: Keycloak keeps it on that page."
+    source: config/keycloak/realms/_base.json:5
