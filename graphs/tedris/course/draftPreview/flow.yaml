@@ -1,0 +1,196 @@
+# The course page of a DRAFT course in tedris-web (/courses/<id>, app/courses/[courseId]/{layout,page}.tsx and
+# features/courses/components/course-page.tsx), read from the code of the branch (the tree of PR #394) on 15 Nov 2026 and looked at on
+# the local stack with a hoca, the köşk's nazım, the başnazım, a ders nazırı with no say over the draft, a talebe, another signed-in
+# person and a visitor. Nothing here is approved.
+#   - What it draws: the one read the page makes (the course, with the caller's token), the preview that the API lets its staff open
+#     (a banner, the badge "Taslak", a card that says what students will see, the first celse's time, "Düzenlemeye dön" to Nazar), the same
+#     preview for a draft with no dated celse, and the not-found page that every other reader gets.
+#   - Who is "staff": whoever the API lets edit the course or view it unpublished (a hoca of the course, the köşk's nazım, the başnazım,
+#     a ders nazırı who was given course.view_unpublished). The page never decides it; the API answers 404 to everyone else
+#     (apps/tedrisat/src/course/course.service.ts:355).
+#   - Findings it carries (inventory ids): CRS-10 (seen in a browser now), CRS-15 (read, not walked: the walk's draft has no sample celse).
+#     Two more are this flow's own, proposed as DRAFT-1 and DRAFT-2 (ui.yaml `rules`), and SYS-1 of tedris.shell.systemPages is seen on this
+#     address. The page sets no focus when it opens (rule focus-not-set).
+#   - The e2e checks it takes over: system-pages#5 (a1 to a7) and #6 (a2; a1, the 404 status, the replay cannot read); see needs.yaml.
+schema: delurio-graph/0
+kind: flow
+id: tedris.course.draftPreview
+status: captured
+domain: medaris.api
+ui: tedris.course.draftPreview
+title: Preview a draft course, and what anyone else gets
+summary: >-
+  A course that is still a draft is not on any list, but its address works for the people who run it. A hoca of the course, the köşk's nazım
+  or the başnazım who opens it reads the course page as a preview: a banner "Önizleme" that says only managers see it, the badge "Taslak"
+  beside the title, and in place of the enrolment card a card "Ders yayımlandığında" that says what students will see there: the button
+  "Kayıt başvurusu yap" and the time of the first celse. The first celse is the earliest dated celse of any week; a draft none of whose
+  celses has a time yet has the card without that line. The preview offers no way to apply, and "Düzenlemeye dön" opens Nazar, at its address
+  and not at this course (CRS-10). Everyone else, a signed-in person with no say over the draft and a visitor alike, is told "Sayfa
+  bulunamadı", exactly as for a course that does not exist, so the page never says a draft is there.
+source: "apps/tedris/app/courses/[courseId]/page.tsx:47"
+
+scope:
+  shows: the page of a draft course for the people who may open it and for the people who may not, and the one way out of it that the preview adds
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame: the bar, the phone menu, the footer (tedris.shell.frame); the not-found page wears the same bar"
+    - "the tabs of the page and what is under them: the programme, Ders kayıtları, Hocalar (tedris.course.readProgramme, tedris.course.recordings). In a preview every row of the programme is locked, as for a person with no seat (course-programme.tsx:90), so no celse opens from here"
+    - "the card of the course's resources, which is drawn only when the draft has some, and the toast of a refused download (tedris.files.download)"
+    - "the cover, the description, the line of the köşk and the medrese, the hocas, and the breadcrumb: they are the page's header as it is for a published course"
+    - "the sample celse section (\"Örnek celse\"), which a preview does not draw even when a celse is marked as the sample (CRS-15)"
+    - "the not-found page's own story: its HTTP status (404 here, because the layout reads the course before anything streams, which the replay does not read), the system's faces and the way back from them (tedris.shell.systemPages)"
+    - "the preview that throws: a draft whose time zone the platform cannot format makes the page throw and the root's error page is drawn (tedris.shell.systemPages, arrival pageThrows); so does any 5xx of the course read"
+    - "\"Düzenlemeye dön\" left out when NAZAR_URL is not set (page.tsx:93); the local stack sets it"
+    - "what Nazar does when it opens (nazar.access.landingScope), and where a course's curriculum is edited there (nazar.curriculum.edit)"
+    - "a draft opened by a ders nazırı who holds course.view_unpublished or by the başnazım: the API lets them in by the same rule and the page is the same; only a hoca and the köşk's nazım were walked"
+    - "the loading skeleton that streams while the page's own reads run (app/courses/[courseId]/loading.tsx)"
+    - "the phone layout, where the preview card comes between the header and the tabs"
+
+decisions:
+  D1:
+    question: >-
+      Should "Düzenlemeye dön" lead to this course's curriculum in Nazar (CRS-10)?
+    recommend: >-
+      Yes: build the address from the course (NAZAR_URL + /ders/<id>/mufredat, the page the button's own accessible name promises), and
+      not the bare origin. Today the link goes to Nazar's landing, which for a hoca is some course of theirs: on the stack, the seeded
+      course "Bina ve İzhar Şerhi" and not the draft.
+    affects: [previewShown, previewUnscheduled]
+  D2:
+    question: >-
+      Should a staff member who arrives with no Tedris session be asked to sign in, and not told the page is missing (DRAFT-1)?
+    recommend: >-
+      Yes, on the Nazar side: where Nazar links a draft, send the person through Tedris's own sign-in with the course as the way back
+      (/auth/signin?callbackUrl=/courses/<id>), which Keycloak answers without a form while their session lasts. The API must keep
+      answering 404 to a visitor, so the page cannot tell them more.
+    affects: [notFound]
+
+context:
+  viewer:
+    values: [editor, member, visitor]
+    initial: any
+    say:
+      editor: "a signed-in person the API lets open the draft: a hoca of the course, the köşk's nazım, the başnazım, or a ders nazırı who holds course.view_unpublished there"
+      member: "a signed-in person with no say over the draft (a talebe, a hoca of other courses, a ders nazırı of another course)"
+      visitor: "nobody is signed in to Tedris, whoever they are elsewhere; a staff member who has only a Nazar session is this (DRAFT-1)"
+  draft:
+    values: [dated, undated]
+    initial: any
+    say:
+      dated: "at least one celse of the draft has a time, so the card can name the earliest"
+      undated: "no celse of the draft has a time yet (a draft that is still being planned)"
+
+guards:
+  isEditor: "viewer == 'editor'"
+  isMember: "viewer == 'member'"
+  isVisitor: "viewer == 'visitor'"
+  hasDate: "draft == 'dated'"
+  noDate: "draft == 'undated'"
+
+failures:
+  reading: { from: getCourse, notFound: [COURSE_NOT_FOUND, HTTP_400] }
+# `notFound` is what getCourse (features/courses/actions/index.ts:79) takes for "no such course": a 400, a 403 or a 404. A draft the
+# caller may not edit is the 404 (COURSE_NOT_FOUND). Any other failure is not an answer about the course and is thrown: the error page
+# of tedris.shell.systemPages, out of view.
+
+# The main story: a hoca opens their draft, reads the preview, and presses "Düzenlemeye dön".
+main:
+  given: { viewer: editor, draft: dated }
+  events: [DONE, OPEN_NAZAR]
+
+initial: reading
+states:
+  reading:
+    title: Read the course
+    description: >-
+      The segment's layout reads the course with the caller's token, or with none for a visitor, before anything streams, and the page shares
+      that read (cache). The API says what the caller may see: the whole course for a hoca of it, the köşk's nazım, the başnazım and anyone
+      holding course.view_unpublished there; a 404 for everyone else, and for a visitor in every case, because a draft is closed to a
+      caller with no token. The layout turns "no course" into the not-found page before the page runs, which is why the status is a
+      real 404. The page never decides who may see a draft: it draws a DRAFT course as a preview for whoever the API let it read.
+    includes: ["the course with its status, weeks, celses, hocas and the caller's own seat (none, for a draft)"]
+    source: "apps/tedris/app/courses/[courseId]/layout.tsx:26"
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: "isEditor and hasDate", target: previewShown, source: "apps/tedris/features/courses/components/course-page.tsx:239", say: "the course came and its status is DRAFT, so the page is the preview, and one celse at least has a time" }
+        - { guard: "isEditor and noDate", target: previewUnscheduled, source: "apps/tedris/features/courses/components/course-page.tsx:356", say: "the course came, its status is DRAFT, and no celse has a time, so the card has no line for the first celse" }
+      FAIL.notFound: { guard: "not isEditor", target: notFound, source: "apps/tedris/app/courses/[courseId]/layout.tsx:27", say: "the answer is \"no such course\", which a draft is to anyone who may not edit it, so the layout calls notFound()" }
+
+  previewShown:
+    title: Read the preview of the draft
+    by: human
+    goal: true
+    description: >-
+      The course page with a banner on top (a status: "Önizleme" and "Ders henüz yayında değil; bu önizlemeyi yalnızca yöneticiler görür."),
+      the badge "Taslak" before the title, and, where a published course has its enrolment card, the card "Ders yayımlandığında": a badge
+      "Önizleme", the sentence that students see "Kayıt başvurusu yap" and the first celse's time here and that nothing is applied for in a
+      preview, "İlk celse" with the earliest dated celse as a weekday and a clock in the course's time zone (not the first one listed: a
+      later week may hold the earlier celse), and the link "Düzenlemeye dön". No control of this page applies for the course. The link
+      goes to the bare address of Nazar; its accessible name says "Düzenlemeye dön: <course>, Nazar’da Müfredat" and promises the
+      course's curriculum, and on the stack it lands on the hoca's landing course, which is a different one (CRS-10). Below, the tabs and
+      the programme are the page's own; every programme row is locked here, as for a stranger. The browser's tab is titled "Tedris" only,
+      because the metadata is read with no token (DRAFT-2). Nothing moves the focus when the page opens (rule focus-not-set). The sample
+      celse section is not drawn in a preview, but a programme row of a celse marked as the sample would still point at it (CRS-15; the
+      walk's draft has none, so it was not walked).
+    includes: ["the banner, the badge \"Taslak\", the title, the card \"Ders yayımlandığında\" with the first celse's time, and \"Düzenlemeye dön\"", "no control that applies for the course"]
+    source: "apps/tedris/features/courses/components/course-page.tsx:239"
+    on:
+      OPEN_NAZAR:
+        target: nazar_opened
+        say: "\"Düzenlemeye dön\" is a link to NAZAR_URL, in this tab; Nazar sends the person where its landing rule says"
+        source: "apps/tedris/features/courses/components/course-page.tsx:367"
+      NAVIGATE: { target: left, say: "they use the bar, the breadcrumb, the köşk link or the address" }
+
+  previewUnscheduled:
+    title: Read the preview of a draft with no dated celse
+    by: human
+    description: >-
+      The same page and the same card, without "İlk celse" and its time: firstSessionAt finds no celse with a time and the card draws that
+      line only when it has one. The card's sentence still says that students see the time of the first celse here; with nothing dated, it
+      shows nothing in its place and gives no hint that the draft needs one. The programme under the tabs says the same number of weeks and celses.
+    includes: ["the banner, the badge, the title, the card without \"İlk celse\", and \"Düzenlemeye dön\""]
+    source: "apps/tedris/features/courses/components/course-page.tsx:356"
+    on:
+      OPEN_NAZAR:
+        target: nazar_opened
+        say: "\"Düzenlemeye dön\" is the same link"
+        source: "apps/tedris/features/courses/components/course-page.tsx:367"
+      NAVIGATE: { target: left, say: "they use the bar, the breadcrumb, the köşk link or the address" }
+
+  notFound:
+    title: Read that the page is not there
+    by: human
+    description: >-
+      "Sayfa bulunamadı", a sentence and "Ana sayfaya dön", under the system's bar, with the HTTP status 404 and no page of the course in it:
+      the same face as for an unknown course, so a person who may not edit the draft learns nothing about it. For a member the link goes to
+      /home, for a visitor to / and so to Keşfet. A staff member whose only session is Nazar's is a visitor here: Tedris does not pick up
+      the Keycloak session of another app by itself, so the link "Tanıtım sayfasını gör" of Nazar's course pages, or any link to the draft,
+      meets this page with nothing that says signing in would change it (DRAFT-1, seen in a browser on 15 Nov 2026); the bar's "Giriş yap"
+      comes back to this address. On this address the page has no <main>, only the region (SYS-1 of tedris.shell.systemPages, seen:
+      main count 0). Focus stays on the body.
+    includes: ["\"Sayfa bulunamadı\", the sentence, and \"Ana sayfaya dön\", for a member and for a visitor"]
+    source: "apps/tedris/features/errors/system-page.tsx:43"
+    on:
+      GO_HOME:
+        - { guard: isMember, target: home_opened, say: "\"Ana sayfaya dön\" goes to /home", source: "apps/tedris/features/errors/system-page.tsx:33" }
+        - { guard: isVisitor, target: discover_opened, say: "the visitor's link is /, which sends them on to Keşfet", source: apps/tedris/app/page.tsx:13 }
+      NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
+
+  nazar_opened: { type: final, title: "Nazar opens at its address, not at this course (nazar.access.landingScope)", leavesPage: true }
+  home_opened: { type: final, title: Ana sayfa opens (tedris.shell.home), leavesPage: true }
+  discover_opened: { type: final, title: Keşfet opens after the landing address sends the visitor on (tedris.discover.browse), leavesPage: true }
+  left: { type: final, title: "The person leaves by the bar, the breadcrumb, the footer or the address", leavesPage: true }
+
+assertions:
+  - id: only-staff-see-the-preview
+    never: "state in ['previewShown', 'previewUnscheduled'] and viewer != 'editor'"
+    say: "The preview of a draft is drawn only for a person the API let read it; a member and a visitor never see it, so the page never says a draft is there"
+    source: apps/tedrisat/src/course/course.service.ts:355
+  - id: staff-are-not-turned-away
+    never: "state == 'notFound' and viewer == 'editor'"
+    say: "A person who may edit the draft is never given the not-found page for it"
+    source: apps/tedrisat/src/course/course.service.ts:355
+  - id: the-card-names-a-celse-only-if-one-is-dated
+    never: "(state == 'previewShown' and draft == 'undated') or (state == 'previewUnscheduled' and draft == 'dated')"
+    say: "The card names the first celse's time exactly when some celse of the draft has one"
+    source: apps/tedris/features/courses/preview.ts:12

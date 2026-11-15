@@ -1,0 +1,65 @@
+# The screen of landing.site.enterApp: the home page "/" at the wide layout (768 px and up), drawn only as far as the doors into the
+# app: the header's two links, the hero's actions, the talebe door and the closing. The rest of the page (the three promises, the
+# sample course, the steps, the medrese door, the footer) is the navigation graph's and not drawn here. The words are Turkish
+# literals in apps/landing (landing has no i18n catalog); each key of catalog/tr.json is copied letter for letter from the literal
+# that the `source` of the node that uses it names (content/karsilama.ts, components/site-header.tsx). The exits draw no screen:
+# they are pages of tedris-web and Keycloak, which other graphs draw, and two plain responses (503, 404) that have no words of
+# the app's, only the one line named in the flow's description of refused.not_configured.
+# No `changes` note: the flow invokes no action that writes (two GET routes that only redirect).
+schema: delurio-graph/0
+kind: ui
+id: landing.site.enterApp
+flow: landing.site.enterApp
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples: {}
+
+# The page sets no focus when it opens and the links move none (a click on one leaves the page), so there is no `initialFocus`
+# and no `focus`.
+
+nodes:
+  # ---- the page and its header ----
+  page: { type: page, component: Page, role: main, in: [home], source: "apps/landing/app/[locale]/page.tsx:204" }
+  banner: { type: page, component: Page, role: banner, in: [home], source: apps/landing/components/site-header.tsx:54 } # two <header> elements are rendered; below 768 px the other is shown, at 768 and up this one
+  headerSignIn: { type: action, component: LinkButton, role: link, text: { key: Header.signIn }, in: [home], emits: SIGN_IN, source: apps/landing/components/site-header.tsx:60 } # a plain <a href="/api/tedris/signin">, not <Link>
+  headerRegister: { type: action, component: LinkButton, role: link, text: { key: Header.register }, in: [home], emits: REGISTER, source: apps/landing/components/site-header.tsx:63 } # wide layout only (L6)
+
+  # ---- the hero ----
+  hero: { type: page, component: Page, role: region, name: { labelledBy: heroTitle }, in: [home], source: "apps/landing/app/[locale]/page.tsx:205" }
+  heroTitle: { type: text, component: Heading, role: heading, text: { key: Hero.title }, in: [home], source: "apps/landing/app/[locale]/page.tsx:211" } # h1; a second sentence, "Nerede olursanız olun.", follows in a block span (content/karsilama.ts:10)
+  heroRegister: { type: action, component: LinkButton, role: link, text: { key: Hero.register }, in: [home], emits: REGISTER, source: "apps/landing/app/[locale]/page.tsx:224" }
+  heroExplore: { type: action, component: LinkButton, role: link, text: { key: Hero.explore }, in: [home], emits: EXPLORE, source: "apps/landing/app/[locale]/page.tsx:236" } # href /tedris/discover
+  heroNote: { type: text, component: Text, text: { key: Hero.note }, in: [home], source: "apps/landing/app/[locale]/page.tsx:240" }
+
+  # ---- the talebe door ----
+  door: { type: page, component: Page, role: article, name: { labelledBy: doorTitle }, in: [home], source: "apps/landing/app/[locale]/page.tsx:267" }
+  doorTitle: { type: text, component: Heading, role: heading, text: { key: Door.title }, in: [home], source: "apps/landing/app/[locale]/page.tsx:273" } # h2
+  doorRegister: { type: action, component: LinkButton, role: link, text: { key: Door.register }, in: [home], emits: REGISTER, source: "apps/landing/app/[locale]/page.tsx:278" }
+  doorExplore: { type: action, component: LinkButton, role: link, text: { key: Door.explore }, in: [home], emits: EXPLORE, source: "apps/landing/app/[locale]/page.tsx:284" }
+
+  # ---- the closing ----
+  closing: { type: page, component: Page, role: region, name: { labelledBy: closingTitle }, in: [home], source: "apps/landing/app/[locale]/page.tsx:397" }
+  closingTitle: { type: text, component: Heading, role: heading, text: { key: Closing.title }, in: [home], source: "apps/landing/app/[locale]/page.tsx:402" } # h2
+  closingRegister: { type: action, component: LinkButton, role: link, text: { key: Closing.register }, in: [home], emits: REGISTER, source: "apps/landing/app/[locale]/page.tsx:407" }
+  closingSignIn: { type: action, component: LinkButton, role: link, text: { key: Closing.signIn }, in: [home], emits: SIGN_IN, source: "apps/landing/app/[locale]/page.tsx:419" }
+
+edges:
+  - { labelledBy: [hero, heroTitle] }
+  - { labelledBy: [door, doorTitle] }
+  - { labelledBy: [closing, closingTitle] }
+  - { triggers: [headerSignIn, signInRoute] }
+  - { triggers: [closingSignIn, signInRoute] }
+  - { triggers: [headerRegister, registerRoute] }
+  - { triggers: [heroRegister, registerRoute] }
+  - { triggers: [doorRegister, registerRoute] }
+  - { triggers: [closingRegister, registerRoute] }
+  - { triggers: [heroExplore, discoverRoute] }
+  - { triggers: [doorExplore, discoverRoute] }
+
+rules:
+  - { id: L6, rule: "On a phone (below 768 px) the header has \"Giriş yap\" as an icon link named by an aria-label and no \"Kayıt ol\" at all, so from /sss, /iletisim and the legal pages a phone visitor cannot start registering except by going back to the home page. Add a register link or a menu (apps/landing/components/site-header.tsx:43-52). This ui draws the wide layout." }
+  - { id: ENTER-1, rule: "With TEDRIS_APP_URL unset every door answers 503 with the plain text \"TEDRIS_APP_URL is not configured\": an English line that names a server setting, on a page with no Medaris chrome and no link back, for a mistake the visitor cannot mend (apps/landing/app/api/tedris/[intent]/route.ts:21-26, apps/landing/lib/tedris.ts:18-21). Answer with a Turkish page in the site's chrome that says the entry is not available and gives selam@medaris.app. Not walked: the stack's landing has the address set." }
+  - { id: ENTER-2, rule: "The doors are plain links, but the page they reach in tedris-web (/auth/signin, /auth/register) is a client component that starts the round trip in an effect, and its \"Devam et\" button is an onClick button; Keycloak's form is drawn by React from window.kcContext. With JavaScript off, \"Giriş yap\" and \"Kayıt ol\" end on a page that says it is redirecting and does nothing (apps/tedris/features/auth/auth-entry.tsx:67-82, 118-120; apps/keycloak-theme/src/main.tsx:17-24). Read from the code, not run with script off. A server-side redirect to the Keycloak address would keep the doors working; the realm's own page needs script anyway." }
+  - { id: focus-not-set, rule: "The home page sets no initial focus (no autoFocus, no script that moves it): a keyboard visitor starts at the top of the document, and the first stops are the logo, the theme toggle, \"Giriş yap\" and \"Kayıt ol\"." }
+  - { id: same-name-twice, rule: "\"Dersleri keşfedin\", \"Talebe olarak kaydolun\" and \"Giriş yap\" are each the name of two links of this one page (the hero and the talebe door, the hero and the closing, the header and the closing); each pair goes to one place, so a list of links reads each twice. Not a failure of WCAG 2.4.4; named so that a binding finds each by where it sits." }

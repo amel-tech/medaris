@@ -1,0 +1,61 @@
+# tedris.course.readProgramme on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web on :4000, the course page of
+# a course the walk makes, read by the spare talebe `applicantA` as a seat holder.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/readProgramme --bind graphs/tedris/course/readProgramme/binding.yaml --out <dir>
+# The other relations to the course are bindings of their own, because `--to <state>` takes the first scenario that reaches the state and
+# the states here are the same for every relation: binding.completed.yaml, binding.revoked.yaml, binding.pending.yaml and
+# binding.passive.yaml (an enrolled talebe of a passive scope). All extend locators.binding.yaml, which holds the exits' addresses and
+# the locators.
+#
+# Data. The seeded courses are other flows' and change under a walk, and none has a cancelled celse, an exam or a sample celse, so
+# programme-data.mjs (this folder) makes a published course of its own in the second köşk, "Kubbealtı Köşkü", which no other flow uses:
+# four weeks (a past one holding the sample celse, the current one with the next celse and the marks, two ahead), one resource, the
+# müderris account as its hoca. `seat` gives `applicantA` the row the scenario needs (the course takes anyone, so applying gives
+# ENROLLED; the other statuses are written with SQL on tedrisat's database, as the app's own e2e does: apps/tedris/e2e/course-page-seed.ts).
+# The teardown deletes the course (DELETE /courses/{id} as the başnazım), the walk's talebe's row with it. `make` first deletes a course of
+# that title, so a walk that crashed leaves nothing in the way. Nothing the seed holds is touched.
+#
+#   enrolled    the main story (e2e course#6, #8, exam#1): the card, the programme with the marks, a week that has not begun, Hocalar, a reload
+#               that loses the tab (PROG-1), "Derse devam et"
+#
+# Walked on 15 Nov 2026, three runs, all with --absent:
+#   binding.yaml          main story: curriculum (twice), teachers, curriculum after the reload pass, 78 checks each; the exit celse_opened has the
+#                         right address, and --absent flags six nodes there (breadcrumb, breadcrumbKosk, noLinkLine, calendarButton, resourceLink,
+#                         sourceHeading) that the celse page draws too: an engine limit at an exit that is another page of the same app
+#   binding.revoked.yaml  --to my_courses_opened: curriculum and the exit pass (e2e course#9's way back)
+#   binding.passive.yaml  --to celse_locked_opened: curriculum passes; the exit has the right address, and --absent flags sixteen nodes the celse
+#                         page draws too (its own curriculum list, breadcrumb, "Devam ediyor" and the locked card's sentence)
+# Not walked, so bound and read only: completed and pending (their locators were counted against the live page by hand), every other
+# exit, OPEN_CURRICULUM, CLOSE_WEEK, and the values ahead none and linked, read gone and failed, tabParam teachers.
+# The first call of the page after a fresh start compiles it (15 to 30 s). The dates are the walk's own (the celses are two, three and
+# five days ahead, so "Öbür gün" and "3 gün kaldı" move), which is why the nodes that hold a date or a day count are found by a pattern.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.course.readProgramme
+
+scenarios:
+  enrolled:
+    given: { read: ok, who: enrolled, ahead: noLink, course: rich, tabParam: none }
+    as: applicantA
+    open: '{tedris}/courses/{prog.course}'
+    setup:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, make]
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, seat, ENROLLED]
+    teardown:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, remove]
+  # Not walked. The address asks for Hocalar: the page opens on it, and a reload keeps it (the other half of PROG-1).
+  opensOnTeachers:
+    given: { read: ok, who: enrolled, ahead: noLink, course: rich, tabParam: teachers }
+    as: applicantA
+    open: '{tedris}/courses/{prog.course}?tab=muderrisler'
+    setup:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, make]
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, seat, ENROLLED]
+    teardown:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, remove]
+  # Not walked (tedris.shell.systemPages walks the not-found page itself). The course is one the API does not know; the other variables
+  # are given and mean nothing there.
+  courseGone:
+    given: { read: gone, who: enrolled, ahead: noLink, course: rich, tabParam: none }
+    as: applicantA
+    open: '{tedris}/courses/00000000-0000-4000-8000-00000000dead'

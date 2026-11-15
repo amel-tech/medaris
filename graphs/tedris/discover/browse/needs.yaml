@@ -1,0 +1,195 @@
+# What must exist for a person who looks over Keşfet, searches and filters it, and opens a köşk, a medrese or a course:
+# tedris.discover.browse, written on 15 Nov 2026 in the format of LAYOUT.md section 7. Each need is what the product must do, from
+# the flow's story; none is read off what the page does today. No planned feature (P-nn) names this page: the language switch (P-21,
+# MDRS-295) and the medrese address by handle (P-22, MDRS-294) touch it through tedris.shell.frame and tedris.discover.readMadrasah.
+# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
+#
+# missing (no code, or the code is wrong for its users and no issue exists): page-past-the-end-is-answered (DSC-13),
+#   a-failure-the-address-causes-can-be-left (BROWSE-1), an-unknown-medrese-in-the-address-is-not-shown-as-an-id (BROWSE-2),
+#   loading-is-announced (DSC-19), the-notice-region-has-a-turkish-name (DSC-20)
+# unwalked (code, and no e2e or replay walks it): a-visitor-sees-only-medreses-with-a-course,
+#   a-member-sees-a-medrese-that-has-no-course (the seed has no medrese without a course),
+#   the-invitation-brings-a-visitor-back (SIGN_IN and REGISTER are drawn and bound to nothing the three runs took; e2e anonymous#4,
+#   #6, #7, #8 walk it from tedris.discover.visitorPath), the-list-says-what-it-lists-when-the-platform-has-none (stock: bare)
+kind: needs
+flow: tedris.discover.browse
+status: proposed
+
+needs:
+  - id: the-list-says-what-the-platform-lists
+    need: >-
+      A person, with an account or without, sees the köşks and the medreses the platform lists, under their own headings, with how
+      many there are of each, and each köşk with its description and how many courses it has open.
+    drawn: [list, koskSection, madrasahSection, resultCount]
+    built:
+      - action: medaris.api:listKosks
+      - action: medaris.api:exploreMadrasahs
+      - route: apps/tedris/features/discover/components/discover-page.tsx:96
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#2 (the headings and the count line; the count numbers are not asserted by the replay), discover#3 (the başmüderris and the courses of a medrese)'
+      - replay: visitorInACrowd
+
+  - id: a-word-narrows-both-lists
+    need: >-
+      A person types a word and the köşks and the medreses that have it, in their name, handle, description, ilim alanı or
+      başmüderris, are all that is listed; the page waits for a pause in typing and writes the word in the address, so the result
+      can be shared.
+    drawn: [list, searchBox, filters-in-the-address]
+    built:
+      - action: medaris.api:listKosks
+      - action: medaris.api:exploreMadrasahs
+      - route: apps/tedris/features/discover/components/discover-filters.tsx:50
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#8'
+      - replay: visitorInACrowd
+
+  - id: one-medrese-narrows-the-kosks-it-has-courses-in
+    need: >-
+      A person chooses one medrese and sees that medrese and the köşks that have a hosting right for it; "Bütün medreseler" takes the
+      filter away.
+    drawn: [list, madrasahSelect]
+    built:
+      - action: medaris.api:listKosks
+      - route: apps/tedris/features/discover/components/discover-filters.tsx:81
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#6 (stale: its title says the select keeps the köşks it hosts courses in and it picks a medrese with no course; the graph carries what the code does, E2E-DSC-03)'
+      - replay: visitorInACrowd
+
+  - id: kosks-come-twelve-to-a-page
+    need: >-
+      When more than twelve köşks are listed, the person pages through them, twelve at a time, with a way forward and a way back that
+      keep the word and the medrese they chose.
+    drawn: [list, pager, pagerNext, pagerPrevious, no-pager-under-one-page]
+    built:
+      - route: apps/tedris/features/discover/components/discover-page.tsx:25
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#11 (that the links keep the word is read from the hrefs by the e2e; the replay asserts the second page, not the address)'
+      - replay: visitorInACrowd
+
+  - id: nothing-found-says-so-and-lets-them-start-again
+    need: >-
+      When a word or a medrese finds nothing, the page says so in words and, if a filter is set, offers one control that takes every
+      filter away.
+    drawn: [emptyResult, emptyText, clearFilters, empty-only-when-nothing-is-listed]
+    built:
+      - route: apps/tedris/features/discover/components/discover-page.tsx:141
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#7'
+      - replay: visitorInACrowd
+
+  - id: a-card-opens-its-page
+    need: A person opens a köşk, a medrese or a course from its card, without an account.
+    drawn: [koskLink, madrasahLink, madrasahCourse, kosk_opened, madrasah_opened, course_opened]
+    built:
+      - route: apps/tedris/features/discover/components/kosk-card.tsx:27
+      - route: apps/tedris/features/discover/components/madrasah-card.tsx:28
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#10'
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#5'
+      - replay: visitorInACrowd # the köşk card only; the medrese card and a course link are drawn and not pressed
+
+  - id: a-failed-read-says-so
+    need: When the lists cannot be read the person is told so, not shown an empty list that looks like a platform with no köşks.
+    drawn: [loadFailed, loadFailedBox, retry, failure-only-after-a-failed-read]
+    built:
+      - route: apps/tedris/features/discover/components/discover-page.tsx:103
+    walked:
+      - replay: outage # through an address the API answers 500 to (BROWSE-1); no e2e makes tedrisat fail
+
+  - id: a-failure-the-address-causes-can-be-left
+    need: >-
+      When the page cannot be read because of what the address asks for, the person is offered the plain page; retrying the same
+      address is not the only way out.
+    drawn: [loadFailed, retry]
+    missing: none # BROWSE-1, a finding of this flow; no Linear issue
+
+  - id: a-visitor-sees-only-medreses-with-a-course
+    need: >-
+      A visitor is not shown a medrese that has opened no course, in the list or in the select, and the count line does not count it.
+    drawn: [list, madrasahSection, resultCount]
+    built:
+      - route: apps/tedris/features/discover/reads.ts:29
+    # walked: e2e discover#3 (a member) and anonymous#2 (a visitor) walk it with a seeded medrese that has no course; the stack's
+    # seed has none, and no replay creates one (it would be SQL into tedrisat's database), so nothing walks it here: unwalked.
+
+  - id: a-member-sees-a-medrese-that-has-no-course
+    need: A signed-in person sees a medrese that has opened no course, and is told it has none.
+    drawn: [list, madrasahNoCourses]
+    built:
+      - route: apps/tedris/features/discover/components/madrasah-card.tsx:49
+    # walked: e2e discover#3 only; the stack's seed has no such medrese: unwalked here.
+
+  - id: a-member-can-follow-a-kosk-from-its-card
+    need: A signed-in person sees on each köşk card whether they follow it, and a visitor sees no follow control.
+    drawn: [followButton]
+    built:
+      - route: apps/tedris/features/discover/components/follow-button.tsx:56
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#9'
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#1 (no follow button for a visitor)'
+      - replay: memberApplies # the button is found on both köşk cards and not pressed (tedris.discover.followKosk presses it)
+
+  - id: a-member-can-ask-for-a-kosk
+    need: A signed-in person is offered the way to ask Medaris to open a köşk, at the foot of the list.
+    drawn: [applyNotice, applyLink, application_opened]
+    built:
+      - route: apps/tedris/features/discover/components/discover-page.tsx:203
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#12'
+      - replay: memberApplies
+
+  - id: the-invitation-brings-a-visitor-back
+    need: >-
+      A visitor is invited to sign in or register, and after signing in comes back to the same page with the same word, medrese and
+      page number.
+    drawn: [inviteText, inviteSignIn, inviteRegister, handed_over.sign_in, handed_over.register, invitation-is-a-visitors]
+    built:
+      - route: apps/tedris/components/anonymous-invite.tsx:25
+      - route: apps/tedris/lib/invite-hrefs.ts:9
+    # walked: e2e anonymous#4 (the sentence and the callbackUrl), #6, #7, #8 (the round trip), carried by tedris.discover.visitorPath;
+    # this flow's replay draws the invitation and takes none of its links: unwalked here.
+
+  - id: a-page-past-the-end-is-answered
+    need: >-
+      An address with a page number past the last page gives the last page, or says there is none, and never a heading with nothing
+      under it and a way back one page at a time.
+    drawn: [list]
+    missing: none # DSC-13 (verified on the stack on 15 Nov 2026); no Linear issue
+
+  - id: an-unknown-medrese-in-the-address-is-not-shown-as-an-id
+    need: >-
+      An address that names a medrese the list does not have gives the empty state and a select that says "Bütün medreseler", not the
+      raw id.
+    drawn: [emptyResult, madrasahSelect]
+    missing: none # BROWSE-2; no Linear issue
+
+  - id: old-addresses-are-ignored
+    need: >-
+      An address from before the köşk filters were taken away (?level=, ?field=) opens the full list, and a malformed medrese or page
+      reads as not set.
+    drawn: [list]
+    built:
+      - route: apps/tedris/features/discover/discover-query.ts:28
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#5 (the level select and the alan chips are absent: the replay does not check absence without --absent)'
+
+  - id: loading-is-announced
+    need: While the page is read, a screen reader is told that it is loading.
+    drawn: [readingKosks]
+    missing: none # DSC-19; no Linear issue
+
+  - id: the-notice-region-has-a-turkish-name
+    need: The region that holds the page's toasts has a Turkish accessible name.
+    drawn: [list]
+    missing: none # DSC-20; no Linear issue

@@ -1,0 +1,127 @@
+# The screens of realm.auth.signInFailures: the error box of the three apps' /auth/signin page (features/auth/auth-entry.tsx in
+# apps/tedris, apps/nizam and apps/nazar), Keycloak's login form as it answers a switched-off or a paused account
+# (apps/keycloak-theme/src/login/pages/Login.tsx, Template.tsx, the form in libs/ui/src/giris/login-form.tsx, the card in
+# auth-card.tsx), and Keycloak's page-expired and error pages (LoginPageExpired.tsx, ErrorPage.tsx, message-screen.tsx).
+#
+# The words. The three apps' words are copied with their keys from libs/i18n/src/locales/tr/{tedris,nizam,nazar}.json and carry the
+# app's name as a prefix (`tedris.Auth.errorTitle`) because the three files use the same keys with different words. The Keycloak
+# theme's words are copied with their keys from apps/keycloak-theme/src/login/i18n.ts (the `tr` object). Two messages are
+# Keycloak's own, which the theme does not override: accountDisabledMessage and accountTemporarilyDisabledMessage (keycloakify
+# 11.16.0, login/i18n/messages_defaultSet/tr.js:145-146). There is no Changes.note: the flow invokes only a read (getAuthSession),
+# and a refusal or a box changes nothing.
+#
+# What is not drawn. The app's redirecting state (a status line and "Devam et") is drawn by the navigation graphs. The page of the
+# three apps' box and the Keycloak pages need JavaScript (the box is React; the theme draws from window.kcContext). `submitting`
+# draws only what changes while the form is on its way, as in realm.auth.signIn.
+schema: delurio-graph/0
+kind: ui
+id: realm.auth.signInFailures
+flow: realm.auth.signInFailures
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+
+nodes:
+  # ---- the app's error box: tedris (a section named by its heading, inside the app's header and legacy main) ----
+  boxTedris: { type: page, component: Page, role: region, name: { labelledBy: titleTedris }, in: [errorBoxTedris], source: apps/tedris/features/auth/auth-entry.tsx:87 } # SystemState shell: a <section aria-labelledby>
+  titleTedris: { type: text, component: Heading, role: heading, text: { key: tedris.Auth.errorTitle }, in: [errorBoxTedris], source: apps/tedris/features/auth/auth-entry.tsx:90 } # h1
+  textTedrisGeneric: { type: text, component: Text, text: { key: tedris.Auth.errorDescription }, in: [errorBoxTedris], when: "retryableCode", source: apps/tedris/features/auth/auth-entry.tsx:106 }
+  textTedrisDenied: { type: text, component: Text, text: { key: tedris.Auth.accessDenied }, in: [errorBoxTedris], when: "cause == 'AccessDenied'", source: apps/tedris/features/auth/auth-entry.tsx:106 }
+  textTedrisConfiguration: { type: text, component: Text, text: { key: tedris.Auth.configurationError }, in: [errorBoxTedris], when: "cause == 'Configuration'", source: apps/tedris/features/auth/auth-entry.tsx:106 }
+  textTedrisLimit: { type: text, component: Text, text: { key: tedris.Auth.signInLimit }, in: [errorBoxTedris], when: "cause == 'SignInLimit'", source: apps/tedris/features/auth/auth-entry.tsx:106 }
+  backToSignInTedris: { type: action, component: Button, role: button, intent: secondary, text: { key: tedris.Auth.backToSignIn }, in: [errorBoxTedris], when: "retryableCode", emits: RETRY, source: apps/tedris/features/auth/auth-entry.tsx:95 } # the only control of a retryable box
+  backHomeTedris: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: tedris.Auth.backHome }, in: [errorBoxTedris], when: "finalCode", emits: BACK_HOME, source: apps/tedris/features/auth/auth-entry.tsx:100 } # href /, the only control of a final box
+
+  # ---- nizam: a bare section, no main landmark (F-P0-2); the buttons are shadcn's (F-P0-19) ----
+  titleNizam: { type: text, component: Heading, role: heading, text: { key: nizam.Auth.errorTitle }, in: [errorBoxNizam], source: apps/nizam/features/auth/auth-entry.tsx:91 } # h1
+  textNizamGeneric: { type: text, component: Text, text: { key: nizam.Auth.errorDescription }, in: [errorBoxNizam], when: "retryableCode", source: apps/nizam/features/auth/auth-entry.tsx:94 }
+  textNizamDenied: { type: text, component: Text, text: { key: nizam.Auth.accessDenied }, in: [errorBoxNizam], when: "cause == 'AccessDenied'", source: apps/nizam/features/auth/auth-entry.tsx:94 }
+  textNizamConfiguration: { type: text, component: Text, text: { key: nizam.Auth.configurationError }, in: [errorBoxNizam], when: "cause == 'Configuration'", source: apps/nizam/features/auth/auth-entry.tsx:94 }
+  textNizamLimit: { type: text, component: Text, text: { key: nizam.Auth.signInLimit }, in: [errorBoxNizam], when: "cause == 'SignInLimit'", source: apps/nizam/features/auth/auth-entry.tsx:94 }
+  retryNizam: { type: action, component: Button, role: button, intent: confirm, text: { key: nizam.Auth.retry }, in: [errorBoxNizam], when: "retryableCode", emits: RETRY, source: apps/nizam/features/auth/auth-entry.tsx:100 }
+  homeNizam: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: nizam.Auth.backHome }, in: [errorBoxNizam], emits: BACK_HOME, source: apps/nizam/features/auth/auth-entry.tsx:102 } # href /, drawn for every code
+
+  # ---- nazar: the box is the page's main, named by its heading ----
+  boxNazar: { type: page, component: Page, role: main, name: { labelledBy: titleNazar }, in: [errorBoxNazar], source: apps/nazar/features/auth/auth-entry.tsx:90 } # SystemState kind=error: a <main aria-labelledby>
+  titleNazar: { type: text, component: Heading, role: heading, text: { key: nazar.Auth.errorTitle }, in: [errorBoxNazar], source: apps/nazar/features/auth/auth-entry.tsx:92 } # h1
+  textNazarGeneric: { type: text, component: Text, text: { key: nazar.Auth.errorDescription }, in: [errorBoxNazar], when: "retryableCode", source: apps/nazar/features/auth/auth-entry.tsx:105 }
+  textNazarDenied: { type: text, component: Text, text: { key: nazar.Auth.accessDenied }, in: [errorBoxNazar], when: "cause == 'AccessDenied'", source: apps/nazar/features/auth/auth-entry.tsx:105 }
+  textNazarConfiguration: { type: text, component: Text, text: { key: nazar.Auth.configurationError }, in: [errorBoxNazar], when: "cause == 'Configuration'", source: apps/nazar/features/auth/auth-entry.tsx:105 }
+  textNazarLimit: { type: text, component: Text, text: { key: nazar.Auth.signInLimit }, in: [errorBoxNazar], when: "cause == 'SignInLimit'", source: apps/nazar/features/auth/auth-entry.tsx:105 }
+  retryNazar: { type: action, component: Button, role: button, intent: confirm, text: { key: nazar.Auth.retry }, in: [errorBoxNazar], when: "retryableCode", emits: RETRY, source: apps/nazar/features/auth/auth-entry.tsx:97 }
+  homeNazar: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: nazar.Auth.backHome }, in: [errorBoxNazar], emits: BACK_HOME, source: apps/nazar/features/auth/auth-entry.tsx:99 } # href /, drawn for every code
+
+  # ---- Keycloak's login form (login.ftl) as it answers a switched-off or a paused account; the same card as realm.auth.signIn's ----
+  formPage: { type: page, component: Page, role: main, name: { labelledBy: formTitle }, in: [loginForm, formDisabled, formLocked], source: libs/ui/src/giris/auth-card.tsx:41 }
+  logoTedris: { type: text, component: Text, role: img, name: { literal: "Medaris — Tedris" }, in: [loginForm, formDisabled, formLocked, expiredPage, errorPage], when: "app == 'tedris'", source: libs/ui/src/mds/logo.tsx:52 } # the client id names the app (app-of-client.ts:9)
+  logoNizam: { type: text, component: Text, role: img, name: { literal: "Medaris — Nizam" }, in: [loginForm, formDisabled, formLocked, expiredPage, errorPage], when: "app == 'nizam'", source: libs/ui/src/mds/logo.tsx:52 }
+  logoNazar: { type: text, component: Text, role: img, name: { literal: "Medaris — Nazar" }, in: [loginForm, formDisabled, formLocked, expiredPage, errorPage], when: "app == 'nazar'", source: libs/ui/src/mds/logo.tsx:52 }
+  formTitle: { type: text, component: Heading, role: heading, text: { key: loginAccountTitle }, in: [loginForm, formDisabled, formLocked], source: libs/ui/src/giris/auth-card.tsx:54 } # the one h1, id kc-page-title
+  formSubtitle: { type: text, component: Text, text: { key: loginAccountSubtitle }, in: [loginForm, formDisabled, formLocked], source: apps/keycloak-theme/src/login/pages/Login.tsx:67 }
+  disabledAlert: { type: alert, component: Alert, role: alert, text: { key: accountDisabledMessage }, in: [formDisabled], source: apps/keycloak-theme/src/login/Template.tsx:81 } # Keycloak's message on the page, not on a field: Template's alert, the fields are not marked invalid
+  lockedAlert: { type: alert, component: Alert, role: alert, text: { key: accountTemporarilyDisabledMessage }, in: [formLocked], source: apps/keycloak-theme/src/login/pages/Login.tsx:41 } # one alert for both fields, which are marked invalid
+  requiredNote: { type: text, component: Text, text: { key: requiredFields }, in: [loginForm, formDisabled, formLocked], source: libs/ui/src/giris/login-form.tsx:76 }
+  username: { type: field, component: TextField, role: textbox, text: { key: usernameOrEmail }, value: { literal: "" }, in: [loginForm], source: libs/ui/src/giris/login-form.tsx:79 }
+  usernameKept: { type: field, component: TextField, role: textbox, text: { key: usernameOrEmail }, in: [formDisabled, formLocked], source: libs/ui/src/giris/login-form.tsx:90 } # holds what was typed (login.username); aria-invalid only in formLocked
+  password: { type: field, component: TextField, role: textbox, text: { key: password }, in: [loginForm, formDisabled, formLocked], source: libs/ui/src/giris/login-form.tsx:97 } # type=password, always empty when the page is drawn
+  showPassword: { type: action, component: Button, role: button, name: { key: showPassword }, in: [loginForm, formDisabled, formLocked], source: libs/ui/src/giris/password-field.tsx:130 }
+  forgotPassword: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: doForgotPassword }, in: [loginForm, formDisabled, formLocked], source: libs/ui/src/giris/login-form.tsx:105 } # realm.auth.forgotPassword; not an event of this flow
+  rememberMe: { type: action, component: Button, role: checkbox, text: { key: rememberMe }, in: [loginForm, formDisabled, formLocked], source: libs/ui/src/giris/login-form.tsx:113 }
+  signIn: { type: action, component: Button, role: button, intent: confirm, text: { key: doLogIn }, in: [loginForm], emits: SUBMIT, source: libs/ui/src/giris/login-form.tsx:124 }
+  signInAgain: { type: action, component: Button, role: button, intent: confirm, text: { key: doLogIn }, in: [formDisabled, formLocked], emits: SUBMIT, source: libs/ui/src/giris/login-form.tsx:124 }
+  signInBusy: { type: action, component: Button, role: button, text: { key: doLogIn }, in: [submitting], disabledIn: [submitting], source: libs/ui/src/mds/button.tsx:139 } # aria-busy and aria-disabled, never disabled
+  busyStatus: { type: status, component: Status, role: status, text: { key: loginSubmitting }, in: [submitting], source: libs/ui/src/mds/button.tsx:113 } # a visually hidden <output> beside the button
+  noAccount: { type: text, component: Text, text: { key: noAccount }, in: [loginForm, formDisabled, formLocked], source: apps/keycloak-theme/src/login/pages/Login.tsx:71 }
+  register: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: doRegister }, in: [loginForm, formDisabled, formLocked], source: apps/keycloak-theme/src/login/pages/Login.tsx:72 } # realm.auth.register; not an event of this flow
+
+  # ---- Keycloak's page-expired page (login-page-expired.ftl) ----
+  expiredMain: { type: page, component: Page, role: main, name: { labelledBy: expiredTitle }, in: [expiredPage], source: libs/ui/src/giris/auth-card.tsx:41 }
+  expiredTitle: { type: text, component: Heading, role: heading, text: { key: pageExpiredTitle }, in: [expiredPage], source: apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:31 }
+  expiredBodyOne: { type: text, component: Text, text: { key: pageExpiredBody1 }, in: [expiredPage], source: apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:34 }
+  expiredBodyTwo: { type: text, component: Text, text: { key: pageExpiredBody2 }, in: [expiredPage], source: apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:34 }
+  expiredRestart: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: pageExpiredRetry }, in: [expiredPage], emits: RESTART, source: apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:37 } # a#loginRestartLink, url.loginRestartFlowUrl
+
+  # ---- Keycloak's error page (error.ftl) ----
+  errorMain: { type: page, component: Page, role: main, name: { labelledBy: errorHeading }, in: [errorPage], source: libs/ui/src/giris/auth-card.tsx:41 }
+  errorHeading: { type: text, component: Heading, role: heading, text: { key: errorTitle }, in: [errorPage], source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:36 }
+  errorBodyOne: { type: text, component: Text, text: { key: errorBody1 }, in: [errorPage], when: "cause == 'requestRefused'", source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:41 }
+  errorBodyTwo: { type: text, component: Text, text: { key: errorBody2 }, in: [errorPage], when: "cause == 'requestRefused'", source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:41 }
+  cookieBodyOne: { type: text, component: Text, text: { key: errorCookieBody1 }, in: [errorPage], when: "cause == 'cookieBlocked'", source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:41 }
+  cookieBodyTwo: { type: text, component: Text, text: { key: errorCookieBody2 }, in: [errorPage], when: "cause == 'cookieBlocked'", source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:41 }
+  backToApp: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: backToLogin }, in: [errorPage], emits: BACK_TO_APP, source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:47 } # a#backToApplication; hidden when Keycloak says skipLink or knows no address
+
+edges:
+  - { labelledBy: [boxTedris, titleTedris] }
+  - { labelledBy: [boxNazar, titleNazar] }
+  - { labelledBy: [formPage, formTitle] }
+  - { labelledBy: [expiredMain, expiredTitle] }
+  - { labelledBy: [errorMain, errorHeading] }
+  - { triggers: [backToSignInTedris, handed_over.sign_in] }
+  - { triggers: [backHomeTedris, home_opened] }
+  - { triggers: [retryNizam, handed_over.sign_in] }
+  - { triggers: [homeNizam, home_opened] }
+  - { triggers: [retryNazar, handed_over.sign_in] }
+  - { triggers: [homeNazar, home_opened] }
+  - { triggers: [signIn, submitting] }
+  - { triggers: [signInAgain, submitting] }
+  - { triggers: [expiredRestart, handed_over.keycloak_form] }
+  - { triggers: [backToApp, app_opened] }
+
+rules:
+  - { id: SHL-03, rule: "tedris: when the automatic round trip fails the redirecting <output> is replaced by the error box (a SystemState with no role=alert and no status): the change is silent and the focus, if it was on 'Devam et', is lost (auth-entry.tsx:85-109). Fix: role=alert on the box, or move the focus to its h1 when it replaces the redirecting state." }
+  - { id: F-E-1, rule: "nazar: the same swap with no role=alert, no live region and no focus move (auth-entry.tsx:81,88-108); a screen-reader user hears 'Giriş sayfasına yönlendiriliyorsunuz' and then nothing. Fix: role=alert on the box, or focus its h1." }
+  - { id: F-P0-1, rule: "nizam: the same silent swap, no role=alert and no focus move (auth-entry.tsx:90-110). Fix: role=alert on the section, or focus its h1." }
+  - { id: F-P0-2, rule: "nizam: /auth/signin has no <main> landmark; the box is a bare <section> and the shell draws nothing around /auth/* (auth-entry.tsx:90,111). The ui has no page node for it. Fix: wrap it in <main>, as SignOutConfirm does." }
+  - { id: F-P0-19, rule: "nizam: 'Tekrar dene' and 'Ana sayfaya dön' use the shadcn Button, not the unified mds/button used elsewhere (auth-entry.tsx:100-104); visual only." }
+  - { id: SHL-01, rule: "tedris: the tab title of /auth/signin is the app's name, 'Medaris Tedris', in every state (no generateMetadata). F-E-23: nazar's is 'Medaris Nazar'. F-P0-3: nizam's is 'Nizam', while the h1 says 'Giriş yapılamadı' (WCAG 2.4.2). Not a node: the graph cannot draw a title." }
+  - { id: F-E-2, rule: "nazar e2e auth-pages#2 a5 expects a 'Tekrar dene' button for ?error=AccessDenied; the code draws none for a final code (auth-entry.tsx:96, auth-error.ts:54-62) and the unit spec pins the same. The e2e is stale; this graph carries the code's behaviour, not a5." }
+  - { id: focus-not-set, rule: "No box and no Keycloak page here moves the focus: the three apps' boxes (auth-entry.tsx) set none, and login.ftl, login-page-expired.ftl and error.ftl have no autoFocus (K3), so no page node carries initialFocus and no state a focus." }
+  - { id: K2, rule: "Every Keycloak page has the same tab title, 'Medaris adresinde oturum açın' (Template.tsx:57, no page passes documentTitle): the form, the expired page and the error page cannot be told apart by title (WCAG 2.4.2). Not a node." }
+  - { id: K3, rule: "login.ftl gives no control the initial focus (libs/ui/src/giris/login-form.tsx:78-95), so after a refusal a keyboard user starts at the top of the document and the alert, which role=alert may not announce on a freshly loaded page, is not focused. Fix: autoFocus the first invalid field, else the alert or the user name." }
+  - { id: K10, rule: "The Turkish copy mixes 'sen' and 'siz': the theme's own pages say 'sen' (error.ftl, login-page-expired.ftl), while the two refusal messages here and Keycloak's 'Eylem süresi doldu. Lütfen şimdi giriş yapmaya devam edin.' are keycloakify's defaults, written in 'siz' (messages_defaultSet/tr.js:145-148), and the app boxes differ again (tedris 'sen', nizam and nazar 'siz')." }
+  - { id: SIF-1, rule: "The pause comes after two wrong passwords less than a second apart, not only after ten: the realm sets quickLoginCheckMilliSeconds 1000 and minimumQuickLoginWaitSeconds 60 (config/keycloak/realms/_base.json:16-17), and two posts 1 s apart gave failedLoginNotBefore +60 s (measured on the local stack). A script, a password manager that retries, or a double submit through a slow network can pause an account for a minute; the message says nothing of how long. Fix: say 'bir dakika' (or the real wait) in the message, or lower the quick-login check." }
+  - { id: SIF-2, rule: "Both refusal messages send the person to 'yönetici' ('yönetici ile iletişime geçin', 'yöneticiyle iletişime geçin veya daha sonra tekrar deneyin') and the page names nobody and links nowhere: the card has no contact address or link (landing has /iletisim and selam@medaris.app). A talebe cannot know who the yönetici is. Fix: link the message to landing's contact page, or name the address." }
+  - { id: SIF-3, rule: "The paused-account text is given to anyone who types the account's address, whatever the password (the same attempt on an unknown address says 'Geçersiz kullanıcı adı veya şifre.'), so the form tells a stranger the account exists; the switched-off text needs the right password and tells whoever has it. Both are the realm's brute-force and enabled-user behaviour (bruteForceProtected, config/keycloak/realms/_base.json:12), not the theme's. Observed on the local stack (probed with a throwaway user)." }
+  - { id: SIF-4, rule: "nazar: for a refused account (AccessDenied) the box's only way out, 'Ana sayfaya dön', goes to /, which nazar's gate sends to /auth/signin?callbackUrl=%2F, which starts a new round trip by itself (the first hop was observed on the local stack: it ends on Keycloak's form). The link says 'home'; it is the same sign-in again. Fix: link to a public page, or name the button for what it does." }
+  - { id: SIF-5, rule: "error.ftl's link says 'Giriş sayfasına dön' (back to the sign-in page) but goes to the client's base address (http://localhost:4000 in the local realm: tedris's front door, then /discover), or to Keycloak's restart address when no client is known; a visitor in tedris or nizam lands on a public page and has to find 'Giriş yap' again (ErrorPage.tsx:27,47). Observed on the local stack (the href, not a click on the unknown-client link). Fix: point it at the app's /auth/signin." }
+  - { id: SIF-6, rule: "tedris: the header drawn around the error box offers 'Giriş yap' with href /auth/signin?callbackUrl=%2Fauth%2Fsignin, a callback that is the sign-in page itself (observed with ?error=AccessDenied on the local stack; what happens after signing in through it was not walked). Fix: drop callbackUrl when the current page is /auth/signin." }

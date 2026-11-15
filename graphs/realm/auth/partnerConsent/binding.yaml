@@ -1,0 +1,97 @@
+# realm.auth.partnerConsent on the local stack: Keycloak :8080 (realm medaris, the Medaris theme) and its example partner client
+# `ornek-uygulama`, whose redirect address https://ornek.example/auth/medaris/callback does not resolve here. So the page is
+# reached and answered, and the way back is a 302 the browser cannot follow: the walk ends on the browser's own error page
+# (chrome-error://chromewebdata/), which is what the `returned_to_partner.*` exits are bound to. That Keycloak answered the post
+# with a 302 is checked on the wire (effects.allows, effects.declines); where the 302 points (the code and the state, or
+# error=access_denied) was read once from a probe on 2026-11-15 and is not replayed.
+#
+# The partner's own page is a stand-in: every scenario opens a data: page with one link, "Medaris ile giriş yap", whose address
+# is the partner's authorization request (client ornek-uygulama, its registered redirect address, scope `openid email full-name
+# gender`, PKCE S256 with the challenge of RFC 7636 appendix B); `states.asking.before` presses it, as a person presses the
+# partner's button. Why a link and not `open` on the authorization address: when the page answers with a redirect to the partner's
+# address the browser's navigation fails, and a failed `goto` is a failed start, while a click is not.
+#
+# {keycloak} is the local Keycloak. No password, no token and no client secret is in this file: the account is applicantA (a spare
+# talebe that no other walk uses, "Aylin Başvuran"), the sign-in is the base's, and the helper reads the rest from graphs/.local.
+# The walks leave the stack as they found it: the helper takes the consent back at the start and at the end.
+#   node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/realm/auth/partnerConsent --bind graphs/realm/auth/partnerConsent/binding.yaml --out <dir>
+# The flow needs no partner registered in nizam: Keycloak asks for consent whatever nizam knows (the registry is the partner's own
+# later calls to tedrisat, which this flow does not draw).
+#
+# Walked in this phase: consentNotYetGiven (the main story, İzin ver), the same scenario to returned_to_partner.declined (Vazgeç),
+# and consentRemembered to returned_to_partner.remembered. Written and not walked: noSession, refusedToPartner, refusedHere. Not
+# bound: `terms: linked` (the stack's client gives no terms or privacy address, CONSENT-3; making one means editing the realm's
+# client) and `code: spent` (the page's post is made once, by the press).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: realm.auth.partnerConsent
+
+scenarios:
+  consentNotYetGiven: # the main story: a person of tedris with a session, who has never answered this partner
+    given: { request: valid, session: held, consent: asked, terms: none, code: fresh }
+    as: applicantA
+    open: 'data:text/html;charset=utf-8,%3Ca%20id%3D%22partner%22%20href%3D%22{keycloak}%2Frealms%2Fmedaris%2Fprotocol%2Fopenid-connect%2Fauth%3Fclient_id%3Dornek-uygulama%26redirect_uri%3Dhttps%253A%252F%252Fornek.example%252Fauth%252Fmedaris%252Fcallback%26response_type%3Dcode%26scope%3Dopenid%2520email%2520full-name%2520gender%26state%3Dgraphs%26code_challenge%3DE9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM%26code_challenge_method%3DS256%22%3EMedaris%20ile%20giri%C5%9F%20yap%3C%2Fa%3E'
+    setup:
+      - run: [node, ../realm/auth/partnerConsent/consent.mjs, forget, applicantA, ornek-uygulama]
+        expect: 'ornek-uygulama'
+    teardown:
+      - run: [node, ../realm/auth/partnerConsent/consent.mjs, forget, applicantA, ornek-uygulama]
+        expect: 'ornek-uygulama'
+  consentRemembered: # the same person after an İzin ver: Keycloak does not ask again (grant does what a person does, in HTTP)
+    given: { request: valid, session: held, consent: stored, terms: none, code: fresh }
+    as: applicantA
+    open: 'data:text/html;charset=utf-8,%3Ca%20id%3D%22partner%22%20href%3D%22{keycloak}%2Frealms%2Fmedaris%2Fprotocol%2Fopenid-connect%2Fauth%3Fclient_id%3Dornek-uygulama%26redirect_uri%3Dhttps%253A%252F%252Fornek.example%252Fauth%252Fmedaris%252Fcallback%26response_type%3Dcode%26scope%3Dopenid%2520email%2520full-name%2520gender%26state%3Dgraphs%26code_challenge%3DE9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM%26code_challenge_method%3DS256%22%3EMedaris%20ile%20giri%C5%9F%20yap%3C%2Fa%3E'
+    setup:
+      - run: [node, ../realm/auth/partnerConsent/consent.mjs, forget, applicantA, ornek-uygulama]
+        expect: 'ornek-uygulama'
+      - run: [node, ../realm/auth/partnerConsent/consent.mjs, grant, applicantA, ornek-uygulama]
+        expect: 'ornek-uygulama granted'
+    teardown:
+      - run: [node, ../realm/auth/partnerConsent/consent.mjs, forget, applicantA, ornek-uygulama]
+        expect: 'ornek-uygulama'
+  noSession: # no Keycloak session: the login form comes first (not walked)
+    given: { request: valid, session: none, consent: asked, terms: none, code: fresh }
+    signIn: false
+    open: 'data:text/html;charset=utf-8,%3Ca%20id%3D%22partner%22%20href%3D%22{keycloak}%2Frealms%2Fmedaris%2Fprotocol%2Fopenid-connect%2Fauth%3Fclient_id%3Dornek-uygulama%26redirect_uri%3Dhttps%253A%252F%252Fornek.example%252Fauth%252Fmedaris%252Fcallback%26response_type%3Dcode%26scope%3Dopenid%2520email%2520full-name%2520gender%26state%3Dgraphs%26code_challenge%3DE9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM%26code_challenge_method%3DS256%22%3EMedaris%20ile%20giri%C5%9F%20yap%3C%2Fa%3E'
+  refusedToPartner: # a scope the client does not have: invalid_scope goes to the partner (not walked)
+    given: { request: refusedToPartner, session: held, consent: asked, terms: none, code: fresh }
+    as: applicantA
+    open: 'data:text/html;charset=utf-8,%3Ca%20id%3D%22partner%22%20href%3D%22{keycloak}%2Frealms%2Fmedaris%2Fprotocol%2Fopenid-connect%2Fauth%3Fclient_id%3Dornek-uygulama%26redirect_uri%3Dhttps%253A%252F%252Fornek.example%252Fauth%252Fmedaris%252Fcallback%26response_type%3Dcode%26scope%3Dopenid%2520profile%26state%3Dgraphs%26code_challenge%3DE9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM%26code_challenge_method%3DS256%22%3EMedaris%20ile%20giri%C5%9F%20yap%3C%2Fa%3E'
+  refusedHere: # a redirect address the client did not register: Keycloak's own error page (not walked)
+    given: { request: refusedHere, session: held, consent: asked, terms: none, code: fresh }
+    as: applicantA
+    open: 'data:text/html;charset=utf-8,%3Ca%20id%3D%22partner%22%20href%3D%22{keycloak}%2Frealms%2Fmedaris%2Fprotocol%2Fopenid-connect%2Fauth%3Fclient_id%3Dornek-uygulama%26redirect_uri%3Dhttps%253A%252F%252Fevil.example%252Fcb%26response_type%3Dcode%26scope%3Dopenid%2520email%2520full-name%2520gender%26state%3Dgraphs%26code_challenge%3DE9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM%26code_challenge_method%3DS256%22%3EMedaris%20ile%20giri%C5%9F%20yap%3C%2Fa%3E'
+
+# What a step leaves outside the screen. The post of either button is answered 302 by Keycloak; after İzin ver the consent is
+# stored (the person's own account API says so), and after Vazgeç the consent that was not there before is still not there.
+effects:
+  allows:
+    - waitResponse: { url: '{keycloak}/realms/medaris/login-actions/consent**', status: 302 }
+    - run: [node, ../realm/auth/partnerConsent/consent.mjs, status, applicantA, ornek-uygulama, --until, granted, --wait, '10']
+      expect: 'ornek-uygulama granted'
+  declines:
+    - waitResponse: { url: '{keycloak}/realms/medaris/login-actions/consent**', status: 302 }
+    - run: [node, ../realm/auth/partnerConsent/consent.mjs, status, applicantA, ornek-uygulama, --until, none, --wait, '10']
+      expect: 'ornek-uygulama none'
+
+states:
+  # the partner's button is pressed when the walk reaches the authorization request; `asking` has no `call`: the request is a
+  # navigation, and a held navigation stalls every read of the page (see realm.auth.signIn's binding)
+  asking:
+    before:
+      - click: { css: '#partner' }
+  consentPage: { url: '{keycloak}/realms/medaris/login-actions/required-action**' }
+  # the partner's host does not resolve here: a 302 to it ends on the browser's error page
+  returned_to_partner.allowed: { url: 'chrome-error://**' }
+  returned_to_partner.declined: { url: 'chrome-error://**' }
+  returned_to_partner.remembered: { url: 'chrome-error://**' }
+  returned_to_partner.expired: { url: 'chrome-error://**' }
+  returned_to_partner.refused: { url: 'chrome-error://**' }
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**' }
+  handed_over.error_page: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**' }
+  left: { url: 'about:blank' }
+
+# NAVIGATE: closing the page, as the nav replay and the engine's own bindings do it.
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]

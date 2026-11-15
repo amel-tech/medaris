@@ -1,0 +1,17 @@
+{
+  "CoursePage.previewBannerTitle": "Önizleme",
+  "CoursePage.previewBannerText": "Ders henüz yayında değil; bu önizlemeyi yalnızca yöneticiler görür.",
+  "CoursePage.draftBadge": "Taslak",
+  "CoursePage.previewCardTitle": "Ders yayımlandığında",
+  "CoursePage.previewCardBadge": "Önizleme",
+  "CoursePage.previewCardText": "Talebeler burada “Kayıt başvurusu yap” düğmesini ve ilk celsenin zamanını görür. Önizlemede başvuru yapılmaz.",
+  "CoursePage.firstSession": "İlk celse",
+  "CoursePage.apply": "Kayıt başvurusu yap",
+  "CoursePage.backToEditing": "Düzenlemeye dön",
+  "CoursePage.backToEditingLabel": "Düzenlemeye dön: {title}, Nazar’da Müfredat",
+  "SystemPages.notFoundTitle": "Sayfa bulunamadı",
+  "SystemPages.notFoundText": "Aradığın sayfa yok ya da artık burada değil. Adresi kontrol et ya da ana sayfadan devam et.",
+  "SystemPages.notFoundAction": "Ana sayfaya dön",
+  "composed.CoursePage.courseTitle": "{title}",
+  "composed.CoursePage.firstSessionTime": "{when}"
+}

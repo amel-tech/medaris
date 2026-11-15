@@ -1,0 +1,69 @@
+# The screens of tedris.course.updateProgress: the progress part of the enrolled card on the course page, and the window
+# "İlerlemeni güncelle" over it. Read from apps/tedris/features/courses/components/{course-aside,progress-dialog}.tsx and the
+# kit's progress.tsx, dialog.tsx and button.tsx on 15 Nov 2026. The rest of the course page is another flow's.
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as
+# `tedris.<key>`, the key being the path inside that file) or common.json (`common.*`). The `composed.*` keys are texts the code
+# writes itself, in no i18n file:
+#   composed.Progress.percentBefore, composed.Progress.percentAfter   "%{before}" and "%{after}": one text, the kit's Progress writing
+#                               the stored number with Intl in the page's language (libs/ui/src/mds/progress.tsx:39-41), under two keys
+#                               because a sample is keyed by its placeholder and the card shows two numbers (40, then 55); the span is
+#                               aria-hidden, the bar's aria-valuetext says the same
+#   composed.Dialog.close       "Kapat", the kit Dialog's default `closeLabel` (libs/ui/src/mds/dialog.tsx:62)
+#   composed.Button.loading     "Yükleniyor", the kit Button's default `loadingLabel` (libs/ui/src/mds/button.tsx:62)
+# `changes` is the app's own message that tells the person what the save did ("İlerlemen güncellendi."), the toast the page shows.
+schema: delurio-graph/0
+kind: ui
+id: tedris.course.updateProgress
+flow: tedris.course.updateProgress
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples: { before: "40", after: "55" }
+changes: { key: CoursePage.progressSaved }
+
+nodes:
+  # ---- what the page says after a step (Sonner toasts, libs/ui/src/components/sonner.tsx). First in the file, so that a replay reads them first: a success toast closes by itself after 6 s and the page is slow to draw its new number ----
+  savedToast: { type: status, component: Status, text: { key: CoursePage.progressSaved }, in: [updated], when: "notice == 'saved'", source: apps/tedris/features/courses/components/progress-dialog.tsx:49 }
+  goneToast: { type: status, component: Status, text: { key: CoursePage.actionNotFound }, in: [card, dialog, refused, saving, failed], when: "notice == 'gone'", source: apps/tedris/features/courses/components/progress-dialog.tsx:46 }
+  conflictToast: { type: status, component: Status, text: { key: CoursePage.actionConflict }, in: [card, dialog, refused, saving, failed], when: "notice == 'conflict'", source: apps/tedris/features/courses/components/progress-dialog.tsx:46 }
+  failedToast: { type: status, component: Status, text: { key: CoursePage.actionFailed }, in: [card, dialog, refused, saving, failed], when: "notice == 'failed'", source: apps/tedris/features/courses/components/progress-dialog.tsx:46 }
+  toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [card, dialog, refused, saving, failed, updated], when: "notice != 'none'", source: libs/ui/src/components/sonner.tsx:55 } # a close button on each toast, "Kapat" in every language
+
+  # ---- the course page and its enrolled card (the window is open: the page behind is inert, so none of these is in a window state) ----
+  coursePage: { type: page, component: Page, role: main, in: [card, updated, reloaded], source: apps/tedris/features/courses/components/course-page.tsx:229, script: actions } # server-drawn: the bar reads without JavaScript, the button and the window need it. No name and no initial focus: the page sets none (not verified in a browser)
+  enrolledBadge: { type: text, component: Text, text: { key: CoursePage.statusInProgress }, in: [card, updated, reloaded], source: apps/tedris/features/courses/components/course-aside.tsx:277 } # the card's badge; the week in progress carries the same word lower on the page
+  progressBar: { type: status, component: Status, role: progressbar, name: { key: CoursePage.progressLabel }, in: [card, updated, reloaded], source: apps/tedris/features/courses/components/course-aside.tsx:312 } # Base UI Progress named by its visible label; the percent is its aria-valuetext
+  percentBefore: { type: text, component: Text, text: { key: composed.Progress.percentBefore, params: { before: before } }, in: [card], source: libs/ui/src/mds/progress.tsx:59 } # aria-hidden span beside the label
+  percentAfter: { type: text, component: Text, text: { key: composed.Progress.percentAfter, params: { after: after } }, in: [updated, reloaded], source: libs/ui/src/mds/progress.tsx:59 } # at 100 it would read "%100 tamamlandı" (PROGRESS-2)
+  progressNote: { type: text, component: Text, text: { key: CoursePage.progressNote }, in: [card, updated, reloaded], source: apps/tedris/features/courses/components/course-aside.tsx:313 }
+  openButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.updateProgress }, in: [card], emits: OPEN, source: apps/tedris/features/courses/components/progress-dialog.tsx:57 } # variant link; a plain button, not a Base UI trigger
+  openAgain: { type: action, component: Button, role: button, intent: secondary, text: { key: CoursePage.updateProgress }, in: [updated, reloaded], source: apps/tedris/features/courses/components/progress-dialog.tsx:57 } # the same button; the second round is not drawn
+
+  # ---- the window (progress-dialog.tsx, kit dialog.tsx) ----
+  progressDialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [dialog, refused, saving, failed], initialFocus: progressField, source: apps/tedris/features/courses/components/progress-dialog.tsx:67 } # React autoFocus on the field, no `initialFocus` passed to the kit (CRS-02): the replay says which element has the focus
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: CoursePage.updateProgress }, in: [dialog, refused, saving, failed], source: libs/ui/src/mds/dialog.tsx:87 } # h2 (Base UI Dialog.Title)
+  closeX: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Dialog.close }, in: [dialog, refused, saving, failed], emits: DISMISS, source: libs/ui/src/mds/dialog.tsx:97 } # an icon only, the kit's default name
+  progressField: { type: field, component: TextField, role: textbox, text: { key: CoursePage.progressField }, value: { literal: "40" }, in: [dialog, refused, saving, failed], source: apps/tedris/features/courses/components/progress-dialog.tsx:92 } # type text, inputMode numeric, autoComplete off; not `required`; holds the seat's current number on opening (the walk's seat is at 40)
+  progressHelp: { type: text, component: Text, text: { key: CoursePage.progressHelp }, in: [dialog, saving, failed], source: apps/tedris/features/courses/components/progress-dialog.tsx:89 } # the error takes its place, it does not stack under it
+  progressError: { type: text, component: Text, text: { key: CoursePage.progressInvalid }, in: [refused], source: apps/tedris/features/courses/components/progress-dialog.tsx:38 } # a plain div, no role and no live region (CRS-01); the field gets aria-invalid and aria-describedby
+  cancelButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: CoursePage.progressCancel }, in: [dialog, refused, saving, failed], emits: CANCEL, source: apps/tedris/features/courses/components/progress-dialog.tsx:78 }
+  saveButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CoursePage.progressSave }, in: [dialog, refused, saving, failed], disabledIn: [saving], emits: SAVE, source: apps/tedris/features/courses/components/progress-dialog.tsx:81 } # the submit button; busy while the call runs: aria-disabled, aria-busy
+  savingStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [saving], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the busy button; empty the rest of the time
+
+edges:
+  - { labelledBy: [progressDialog, dialogTitle] }
+  - { returnsFocus: [progressDialog, openButton] } # drawn for the way out by "Vazgeç" or Esc, as the kit says it does; NOT walked in this phase. The way out by a save does not return it (PROGRESS-3, measured)
+  - { triggers: [openButton, dialog] }
+  - { triggers: [saveButton, saving] }
+
+rules:
+  - { id: CRS-01, rule: "an invalid number is said only as a Field error: a plain div with no role and no live region (libs/ui/src/mds/field.tsx:50-53), and the focus stays on \"Kaydet\" (progress-dialog.tsx:37-40), so a screen reader user hears nothing and the window seems to do nothing. The graph draws the line (refused) and no focus there" }
+  - { id: CRS-02, rule: "the field relies on React autoFocus (progress-dialog.tsx:93) and the kit's initialFocus is not passed (libs/ui/src/mds/dialog.tsx:138), whose default is the first focusable element, the header's \"Kapat\". Measured by the replay on the dev server: the field has the focus when the window opens, so autoFocus wins and a keyboard user does not start on \"Kapat\". What is left is the fragility: the kit documents initialFocus for this and the page does not use it" }
+  - { id: CRS-03, rule: "a 409 says \"Sayfa yenilendi\" and nothing refreshes the page (progress-dialog.tsx:44-48): the toast states something that did not happen. Leave and withdraw call router.refresh() on this path, this one does not" }
+  - { id: CRS-04, rule: "updateCourseProgress is called with no try/catch (progress-dialog.tsx:42-52), so a request that never reaches the server rejects instead of drawing \"İşlem tamamlanamadı\"; what the person sees is not verified, and the graph draws none of it" }
+  - { id: CRS-13, rule: "the toast has no role of its own; its region is named by the library's English default \"Notifications alt+T\" and is polite, also for an error that stays until closed; its close button is \"Kapat\" in every language (MDRS-233). An error toast over the open window gives two buttons named \"Kapat\" (the window's header button and the toast's), which the to-failed replay met as an ambiguous locator" }
+  - { id: PROGRESS-1, rule: "new, provisional id: a talebe whose seat has ended since the page was drawn (left from another tab, or taken out by the course team) is stopped at the API's guard with 403 AUTHZ_FORBIDDEN, not at the service's 404 (measured on the stack), which the page words as \"İşlem tamamlanamadı. Biraz sonra yeniden dene.\" (the replay of the ended seat saw that toast over the open window; the 403 was read by a direct call as a talebe with no row). Trying again never works, the window stays open, the card behind it still says \"Devam ediyor\" and nothing refreshes the page (progress-dialog.tsx:45-48). Fix: on 403 and 404 refresh the page, so the card says what the seat now is, as leave-course.tsx does on 404" }
+  - { id: PROGRESS-2, rule: "new, provisional id, read from the code and not walked: at 100 the bar's value text and its aria-valuetext read \"%100 tamamlandı\" (libs/ui/src/mds/progress.tsx:40-41, the kit's default `completeLabel`, which course-aside.tsx:312 does not override) while the badge still says \"Devam ediyor\", the API does not complete the course (reaching 100 never does) and the note says the course team confirms it. A talebe who types 100 is told on the card that the course is completed. Fix: pass completeLabel with a word that is not \"tamamlandı\", or none" }
+  - { id: PROGRESS-3, rule: "new, provisional id, found by the first replay: after a successful save the window closes and the focus is on nothing (the page itself), not on the \"İlerlemeni güncelle\" button it was opened from, though the kit's dialog is meant to return it to the element that had it (libs/ui/src/mds/dialog.tsx comment; the button is a plain Button with no Base UI trigger). A keyboard or screen-reader user starts again from the top of the page. The graph says nothing of the focus in `updated`. The way out by \"Vazgeç\" or Esc is drawn with returnsFocus and was not walked in this phase. Fix: give the window the button's ref as `finalFocus`, or focus the button after the refresh" }
+  - { id: focus-not-set, rule: "no code moves the focus when the course page opens (not verified in a browser); the page node has no initialFocus" }
+  - { id: F-UI-W1-1, rule: "the kit Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:103), so a screen reader reads the field and its help as the window's description when it opens (nizam's id for the same kit code; not walked here)" }

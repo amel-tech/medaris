@@ -1,0 +1,58 @@
+# The screens of tedris.decks.accessRefusals: the three that tedris-web draws in place of a deck page the person may not open
+#   notFound         app/not-found.tsx -> features/errors/system-page.tsx NotFoundState        "Sayfa bulunamadı"
+#   forbiddenShown   features/errors/system-page.tsx ForbiddenState (with a deck)               "Bu sayfayı göremezsin"
+#   unavailable      features/flashcards/components/deck-unavailable.tsx DeckUnavailable        "Bu desteye ulaşılamıyor"
+# The system bar above them (PhoneChrome), the footer and the toast host belong to tedris.shell.frame; the author's and the reader's
+# pages are other flows. Only the nodes of this flow are drawn.
+#
+# Words: every key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`), the key being the path
+# inside that file, by <scratchpad>/accessRefusals-probe/catalog.mjs. No key here is composed in code. {deck} of
+# SystemPages.forbiddenDeckText is the deck's title, as the API gave it.
+# The flow changes nothing for a talebe (its one action is a GET), but the domain lists an audit row on getDeck for the başnazım's read
+# of another person's private deck, and `check --strict` therefore wants a `changes` note. `Changes.note` is the one entry of the
+# catalog that is NOT copied from the app (the app has no message for it): one short, factual Turkish sentence written for this flow.
+# Samples are invented and neutral; the deck's name below is the seeded course deck's, quoted because the replay reads it back from the
+# screen.
+schema: delurio-graph/0
+kind: ui
+id: tedris.decks.accessRefusals
+flow: tedris.decks.accessRefusals
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  deck: Sarf Kavramları
+
+nodes:
+  # ---- "Sayfa bulunamadı": a missing, malformed, private or hidden deck ----
+  notFoundPage: { type: page, component: Page, role: region, name: { labelledBy: notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:49 } # SystemState with `shell` is a <section>; no <main> around it on /decks (DCK-16); no initialFocus (rule focus-not-set)
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.notFoundTitle }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:52 } # h1
+  notFoundText: { type: text, component: Text, text: { key: SystemPages.notFoundText }, in: [notFound], source: apps/tedris/features/errors/system-page.tsx:59 }
+  goHome: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: SystemPages.notFoundAction }, text: { key: SystemPages.notFoundAction }, in: [notFound], emits: GO_HOME, source: apps/tedris/features/errors/system-page.tsx:54 } # /home for a signed-in person, / for a visitor (system-page.tsx:33, SHL-15)
+
+  # ---- "Bu sayfayı göremezsin": a reader on the cards or edit page of a deck they did not write ----
+  forbiddenPage: { type: page, component: Page, role: region, name: { labelledBy: forbiddenTitle }, in: [forbiddenShown], source: apps/tedris/features/errors/system-page.tsx:81 } # SystemState with `shell` is a <section>; no <main> (DCK-16); no initialFocus (rule focus-not-set)
+  forbiddenTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.forbiddenTitle }, in: [forbiddenShown], source: apps/tedris/features/errors/system-page.tsx:84 } # h1
+  forbiddenText: { type: text, component: Text, text: { key: SystemPages.forbiddenDeckText, params: { deck: deckRead.title } }, in: [forbiddenShown], source: apps/tedris/features/errors/system-page.tsx:98 } # "{deck} herkese açık bir deste…" for every deck a reader may read, public or not (DCK-14)
+  backToDeck: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: SystemPages.forbiddenDeckAction }, text: { key: SystemPages.forbiddenDeckAction }, in: [forbiddenShown], emits: BACK_TO_DECK, source: apps/tedris/features/errors/system-page.tsx:87 } # /decks/<id>
+
+  # ---- "Bu desteye ulaşılamıyor": the API said 403 (not reachable on the stack) ----
+  # A plain <div> with a Card from the old shadcn kit: no landmark, so no page node (DCK-16).
+  unavailableTitle: { type: text, component: Heading, role: heading, text: { key: DeckUnavailable.title }, in: [unavailable], source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:23 } # h1
+  unavailableText: { type: text, component: Text, text: { key: DeckUnavailable.description }, in: [unavailable], source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:24 }
+  backToDecks: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: DeckUnavailable.backToDecks }, text: { key: DeckUnavailable.backToDecks }, in: [unavailable], emits: BACK_TO_DECKS, source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26 } # /decks
+
+edges:
+  - { labelledBy: [notFoundPage, notFoundTitle] }
+  - { labelledBy: [forbiddenPage, forbiddenTitle] }
+
+rules:
+  - { id: DCK-14, rule: "ForbiddenState says \"{deck} herkese açık bir deste; kartlarını yalnız sahibi düzenler\" for every reader of a deck they did not write, whether or not the deck is public (features/errors/system-page.tsx:97-99, used by [id]/cards/page.tsx:41-43 and [id]/edit/page.tsx:24-26). Replay on the stack: the seeded course deck \"Sarf Kavramları\", which is_public = false and which a talebe reads only because they are in the course, is called public. Fix: pass deck.isPublic and use words that do not say public for a shared deck." }
+  - { id: DCK-15, rule: "The comments of deck-unavailable.tsx:7-12, deck-page-data.ts:23-28 and [id]/edit/page.tsx:8-15 say a missing deck and a refused one render the same copy on purpose. In code a 404 or 400 is notFound() (\"Sayfa bulunamadı\") and only a 403 is DeckUnavailable (\"Bu desteye ulaşılamıyor\"): two screens. The API answers 404 for every refusal a person can meet (measured as OTHER and as TALEBE on the stack), so the second is reached only by the API's second lock (a race) and no fixture reaches it. Decision D1: fix the comments, or draw one screen." }
+  - { id: DCK-16, rule: "None of the three screens has a main landmark on /decks. NotFoundState and ForbiddenState are a <section> (SystemState `shell`, libs/ui/src/mds/system-state.tsx:30) that relies on the shell's <main>, but TabView leaves /decks... without one (components/tab-view/index.tsx:18); DeckUnavailable is a plain <div>. Seen with the accessibility snapshot on the stack: banner, a region named by the h1, contentinfo, and no main; while the read runs [id]/loading.tsx does draw a <main aria-busy>, so the landmark disappears when the answer comes. Fix: render the states as <main> (omit `shell`) or give /decks a main wrapper." }
+  - { id: DCK-28, rule: "app/decks/(medaris)/[id]/edit/page.tsx has no generateMetadata, so the tab title of its refusal screens is the root \"Medaris Tedris\" (seen), while /cards says \"Tedris\" for a deck it cannot read and \"<deck> destesinin kartları | Tedris\" for one it can, and /decks/<id> says \"Desteler | Tedris\". No title says the page is missing (WCAG 2.4.2; SHL-01 is the same cause on other pages). Fix: add one." }
+  - { id: ACCREF-1, rule: "Hiding a deck does not hide it from a reader when the deck is public. findVisibility selects no archived_at (flashcard-deck.repository.ts:82-99) and the guard lets a public deck through before it asks anything else (tedrisat-role-resolver.service.ts:305), so only a deck that was shared (a course, köşk or medrese deck, whose deckSharedWith asks archived_at IS NULL, deck-sharing.ts:35) stops being readable. Measured on the stack with a köşk deck hidden by its nazım (POST /decks/{id}/hide) and is_public set by SQL, the stand-in for an approved publication request: OTHER got 200 and the deck; the shared, non-public hidden deck gave TALEBE 404. deck-review.service.ts:166-167 says so on purpose (\"the public reads keep serving it\"), for the sake of taking it back, but the screens call a hidden deck gone and the lists leave it out (the domain's `hidden-deck-leaves-lists` is already false for the first two lists). Proposed id; not in the inventory. Decision D2." }
+  - { id: focus-not-set, rule: "None of the three screens sets a focus: no autoFocus and no focus() in features/errors or in deck-unavailable.tsx, so the pages have no `initialFocus` and the graph says nothing of the focus when they open (document.activeElement was BODY on all of them, seen). Recorded so the silence is not read as an omission; the inventory does not call it a finding (SYS-3 of tedris.shell.systemPages has the same cause)." }
+  - { id: private-looks-absent, rule: "A person opening another person's private deck, a missing id, a malformed id or a hidden shared deck is shown the same screen with the same words and the same link: the API's answer for the three reads of this page is one 404 (MDRS-43 AC-4). Measured on the stack with GET /flashcard/decks/{id} and GET /flashcard/cards: 404 DECK_NOT_FOUND for all three, 400 for the malformed id, which the page maps to the same screen." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): the three links' names are their visible text" }

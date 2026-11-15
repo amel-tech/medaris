@@ -1,0 +1,167 @@
+# The questions page of the public site (landing-web, /sss): a visitor reads the answers to what is asked most before a
+# person opens an account. No sign-in, no form, no server call: the page is static, and the only thing that moves on it is
+# eleven disclosures, each a button that shows and hides its own answer. Written from the code on 15 Nov 2026 (captured):
+# the page is apps/landing/app/[locale]/sss/page.tsx and the disclosure apps/landing/components/faq-item.tsx.
+#
+# What the page does today, where it differs from what a visitor needs (inventory findings, apps/landing, section 7, and
+# one that the inventory lacks):
+#   L9    The answer to "Bir derse nasıl kaydolurum?" lists what the sign-up form asks (name, surname, username, e-mail,
+#         password, the privacy notice) and leaves out the gender choice, which the realm requires of every account
+#         (config/keycloak/user-profile.json:25-39, required for the roles admin and user) and which the terms page says
+#         is required (kullanim-sartlari/page.tsx:190-196). Gender is always asked in Medaris; the answer must say so.
+#   L11   The answers are plain divs: no role=region and no aria-labelledby, which the disclosure pattern asks for once
+#         there are more than a few panels.
+#   FAQ-1 (new) The same answer calls the course page's enrolment button "Derse kaydol"; tedris-web's button for a course
+#         that takes anyone is "Kayıt ol" (CoursePage.enroll, course-aside.tsx:375), and "Kayıt başvurusu yap" for a course
+#         that asks for approval. No string "Derse kaydol" exists in the apps.
+# The graph draws what the code does; none of these is fixed here.
+#
+# The disclosures are independent (several may be open at once), so each of the eleven is a variable of its own, q1 to q11;
+# the checker visits every combination (2048), which a flow of one state and eleven self-loops makes cheap.
+schema: delurio-graph/0
+kind: flow
+id: landing.site.faq
+status: captured
+domain: medaris.api
+ui: landing.site.faq
+title: Read the answers to the common questions
+summary: >-
+  A visitor opens the questions page and finds eleven questions in three groups (Medaris, Kayıt ve dersler, Hesap).
+  Each question is a button that shows and hides its own answer; the page opens with the first ("Medaris nedir?") and the
+  fourth ("Derse kaydım neden onay bekliyor?") already open, and any number may be open at once. The visitor opens the
+  question they came with, reads it and may close it again; the focus stays on the button they pressed. When the answer
+  is not there, the card beside the questions ("Sorunuz burada yok mu?") sends them to the contact page, and the privacy
+  notice is one link away in the card "Kişisel verileriniz" and inside the last answer. Two of the answers need care:
+  the one on signing up omits the required gender choice (L9) and names the course page's button wrongly (FAQ-1).
+source: "apps/landing/app/[locale]/sss/page.tsx:10"
+
+scope:
+  shows: the eleven questions as disclosures, opening and closing them, and the three links of the page body that lead on
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the way into the page: the footer link, the home page's closing sentence, the contact page's card and the success card are the navigation graph's entries (landing.nav: frame:site->faq, start->faq, contact->faq); a visitor who opens the address (a link in a mail, a bookmark) meets the same page"
+    - "the header and the footer, with the links they carry on every page (landing.nav draws the frame)"
+    - "the phone layout (below 768 px): the same questions, the card column falls under them, and the header is another bar (landing.nav)"
+    - "what the answers say about the other apps: the graph carries the words, and checks them against tedris-web only where a finding names it (the enrolment button, FAQ-1); the ten-minute window of \"Celseye katıl\", the tab \"Sorularım\" and the badge \"Onay bekliyor\" were read in tedris-web and agree"
+    - "a keyboard visitor: the triggers are native buttons, so Enter and Space press them; not walked"
+    - "an address with a locale prefix (/tr/sss) or with a fragment: not verified"
+    - "where the focus is when the page opens: the page sets none (focus-not-set in ui.yaml)"
+
+context:
+  q1: { values: [open, closed], initial: open, say: { open: "the answer to \"Medaris nedir?\" is shown", closed: "the answer to \"Medaris nedir?\" is hidden" } }
+  q2: { values: [open, closed], initial: closed, say: { open: "the answer to \"Köşk ve medrese nedir?\" is shown", closed: "the answer to \"Köşk ve medrese nedir?\" is hidden" } }
+  q3: { values: [open, closed], initial: closed, say: { open: "the answer to \"Bir derse nasıl kaydolurum?\" is shown", closed: "the answer to \"Bir derse nasıl kaydolurum?\" is hidden" } }
+  q4: { values: [open, closed], initial: open, say: { open: "the answer to \"Derse kaydım neden onay bekliyor?\" is shown", closed: "the answer to \"Derse kaydım neden onay bekliyor?\" is hidden" } }
+  q5: { values: [open, closed], initial: closed, say: { open: "the answer to \"Celseye nasıl katılırım?\" is shown", closed: "the answer to \"Celseye nasıl katılırım?\" is hidden" } }
+  q6: { values: [open, closed], initial: closed, say: { open: "the answer to \"Celse saatleri hangi saat dilimine göre yazılır?\" is shown", closed: "the answer to \"Celse saatleri hangi saat dilimine göre yazılır?\" is hidden" } }
+  q7: { values: [open, closed], initial: closed, say: { open: "the answer to \"Ders kayıtları kimlere açık?\" is shown", closed: "the answer to \"Ders kayıtları kimlere açık?\" is hidden" } }
+  q8: { values: [open, closed], initial: closed, say: { open: "the answer to \"Celse videosuna not alabilir miyim?\" is shown", closed: "the answer to \"Celse videosuna not alabilir miyim?\" is hidden" } }
+  q9: { values: [open, closed], initial: closed, say: { open: "the answer to \"Ders kadrosuna nasıl soru sorarım?\" is shown", closed: "the answer to \"Ders kadrosuna nasıl soru sorarım?\" is hidden" } }
+  q10: { values: [open, closed], initial: closed, say: { open: "the answer to \"Deste nedir?\" is shown", closed: "the answer to \"Deste nedir?\" is hidden" } }
+  q11: { values: [open, closed], initial: closed, say: { open: "the answer to \"Hesabımı nasıl silerim?\" is shown", closed: "the answer to \"Hesabımı nasıl silerim?\" is hidden" } }
+
+guards:
+  isOpen1: "q1 == 'open'"
+  isOpen2: "q2 == 'open'"
+  isOpen3: "q3 == 'open'"
+  isOpen4: "q4 == 'open'"
+  isOpen5: "q5 == 'open'"
+  isOpen6: "q6 == 'open'"
+  isOpen7: "q7 == 'open'"
+  isOpen8: "q8 == 'open'"
+  isOpen9: "q9 == 'open'"
+  isOpen10: "q10 == 'open'"
+  isOpen11: "q11 == 'open'"
+
+effects:
+  openQ1: { set: { q1: open } }
+  closeQ1: { set: { q1: closed } }
+  openQ2: { set: { q2: open } }
+  closeQ2: { set: { q2: closed } }
+  openQ3: { set: { q3: open } }
+  closeQ3: { set: { q3: closed } }
+  openQ4: { set: { q4: open } }
+  closeQ4: { set: { q4: closed } }
+  openQ5: { set: { q5: open } }
+  closeQ5: { set: { q5: closed } }
+  openQ6: { set: { q6: open } }
+  closeQ6: { set: { q6: closed } }
+  openQ7: { set: { q7: open } }
+  closeQ7: { set: { q7: closed } }
+  openQ8: { set: { q8: open } }
+  closeQ8: { set: { q8: closed } }
+  openQ9: { set: { q9: open } }
+  closeQ9: { set: { q9: closed } }
+  openQ10: { set: { q10: open } }
+  closeQ10: { set: { q10: closed } }
+  openQ11: { set: { q11: open } }
+  closeQ11: { set: { q11: closed } }
+
+# The main story: the visitor opens the question about signing up (the others stay as the page had them: the first and the
+# fourth open), closes it again, closes the first question that the page opened for them, opens the last, and follows the
+# link inside its second paragraph to the privacy notice.
+main:
+  events: [TOGGLE_3, TOGGLE_3, TOGGLE_1, TOGGLE_11, PRIVACY_IN_ANSWER]
+
+initial: questions
+states:
+  questions:
+    title: The questions
+    by: human
+    goal: true
+    description: >-
+      The page as it opens, and as it stays while the visitor reads: a heading, a line of introduction, three groups of
+      questions (Medaris 1-2, Kayıt ve dersler 3-10, Hesap 11), each question a button inside an h3, and two cards in an
+      aside beside them. Answers 1 and 4 are open when the page opens; the other nine are closed and carry `hidden`, so
+      their text is not on the screen and not in the accessibility tree. A press on a button toggles its own answer
+      only. The buttons keep the focus (the page moves nothing; the item is not remounted), the page sets no initial
+      focus, and aria-expanded and aria-controls carry the state, which the graph has no key for: it is drawn by whether
+      the answer is shown. Findings: L9 and FAQ-1 in the answer to question 3 (it leaves out the required gender choice
+      and names the button "Derse kaydol" where tedris-web says "Kayıt ol"); L11 on all eleven (the answers are plain
+      divs, no region named by its question).
+    source: "apps/landing/app/[locale]/sss/page.tsx:18"
+    on:
+      TOGGLE_1:
+        - { guard: isOpen1, target: questions, effect: [closeQ1], say: "they press \"Medaris nedir?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ1], say: "they press \"Medaris nedir?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_2:
+        - { guard: isOpen2, target: questions, effect: [closeQ2], say: "they press \"Köşk ve medrese nedir?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ2], say: "they press \"Köşk ve medrese nedir?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_3:
+        - { guard: isOpen3, target: questions, effect: [closeQ3], say: "they press \"Bir derse nasıl kaydolurum?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ3], say: "they press \"Bir derse nasıl kaydolurum?\": its answer is shown below it, and the others stay as they were. Its text lists what the sign-up form asks and leaves out the gender choice (L9), and calls the course page's button \"Derse kaydol\" where the page says \"Kayıt ol\" (FAQ-1).", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_4:
+        - { guard: isOpen4, target: questions, effect: [closeQ4], say: "they press \"Derse kaydım neden onay bekliyor?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ4], say: "they press \"Derse kaydım neden onay bekliyor?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_5:
+        - { guard: isOpen5, target: questions, effect: [closeQ5], say: "they press \"Celseye nasıl katılırım?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ5], say: "they press \"Celseye nasıl katılırım?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_6:
+        - { guard: isOpen6, target: questions, effect: [closeQ6], say: "they press \"Celse saatleri hangi saat dilimine göre yazılır?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ6], say: "they press \"Celse saatleri hangi saat dilimine göre yazılır?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_7:
+        - { guard: isOpen7, target: questions, effect: [closeQ7], say: "they press \"Ders kayıtları kimlere açık?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ7], say: "they press \"Ders kayıtları kimlere açık?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_8:
+        - { guard: isOpen8, target: questions, effect: [closeQ8], say: "they press \"Celse videosuna not alabilir miyim?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ8], say: "they press \"Celse videosuna not alabilir miyim?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_9:
+        - { guard: isOpen9, target: questions, effect: [closeQ9], say: "they press \"Ders kadrosuna nasıl soru sorarım?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ9], say: "they press \"Ders kadrosuna nasıl soru sorarım?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_10:
+        - { guard: isOpen10, target: questions, effect: [closeQ10], say: "they press \"Deste nedir?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ10], say: "they press \"Deste nedir?\": its answer is shown below it, and the others stay as they were.", source: "apps/landing/components/faq-item.tsx:35" }
+      TOGGLE_11:
+        - { guard: isOpen11, target: questions, effect: [closeQ11], say: "they press \"Hesabımı nasıl silerim?\" while its answer is open: it is hidden and the other answers stay as they were", source: "apps/landing/components/faq-item.tsx:35" }
+        - { target: questions, effect: [openQ11], say: "they press \"Hesabımı nasıl silerim?\": its answer is shown below it, and the others stay as they were. Its second paragraph carries a link to the privacy notice, which exists only while the answer is open.", source: "apps/landing/components/faq-item.tsx:35" }
+      CONTACT: { target: contact_opened, say: "they follow \"İletişime geçin\" in the card \"Sorunuz burada yok mu?\": a plain link, so the browser loads /iletisim anew", source: "apps/landing/app/[locale]/sss/page.tsx:228" }
+      PRIVACY_ASIDE: { target: privacy_opened, say: "they follow \"Aydınlatma Metni\" in the card \"Kişisel verileriniz\": a plain link, so the browser loads /aydinlatma-metni anew", source: "apps/landing/app/[locale]/sss/page.tsx:243" }
+      PRIVACY_IN_ANSWER: { guard: isOpen11, target: privacy_opened, say: "they follow \"Aydınlatma Metni\" inside the answer to \"Hesabımı nasıl silerim?\", which is there only while that answer is open", source: "apps/landing/app/[locale]/sss/page.tsx:214" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  contact_opened: { type: final, title: "The contact page opens (landing.nav: faq->contact)" }
+  privacy_opened: { type: final, title: "The privacy notice opens (landing.nav: faq->privacy)" }
+  left: { type: final, title: The visitor leaves the page, leavesPage: true }
+
+# No assertion: nothing the page does is a rule that a combination of open answers could break. The rules that matter are
+# about words, and they are in ui.yaml (L9, L11, FAQ-1).

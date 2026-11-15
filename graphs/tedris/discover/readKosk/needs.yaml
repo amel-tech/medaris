@@ -1,0 +1,177 @@
+# What must exist for a person who opens a köşk's page: tedris.discover.readKosk, written on 15 Nov 2026 in the format of LAYOUT.md section 7.
+# Each need is what the product must do, from the flow's story; none is read off what the page does today. No planned feature (P-nn) names this
+# page.
+# The gaps it leaves, for the orchestrator's merge into graphs/needs.gaps.yaml:
+#   missing:  kosk-ids-of-people-stay-off-reads (F-4), failed-read-box-has-a-heading-and-a-way-back (DSC-09 a), cover-label-is-not-read-aloud (DSC-12),
+#             loading-says-so (DSC-19), not-found-has-a-main (READKOSK-1), nazim-sees-which-course-is-a-draft (decision D1)
+#   unwalked: a-person-reads-their-waiting-application, a-failed-read-is-not-a-missing-page, the-way-on-to-a-medrese, the-way-on-to-a-deck
+#   walked in part only (they name what is not): unlisted-by-link (the signed-in half), the-köşks-decks-are-for-the-köşks-people (the deck cards)
+kind: needs
+flow: tedris.discover.readKosk
+status: proposed
+
+needs:
+  - id: read-without-an-account
+    need: >-
+      A person with no account reads who a köşk is, what it offers and who looks after it, and goes on to a course, without signing in; the page
+      invites them to sign in or register when they want to apply, and does not offer what needs an account (following, the köşk's decks).
+    drawn: [koskShown, invite, inviteSignIn, inviteRegister, decks-are-for-the-signed-in]
+    built:
+      - action: medaris.api:getKosk
+      - action: medaris.api:listKoskCourses
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:135
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#10 (a2-a4, a6, a7), anonymous#11 (a1, a2), anonymous#12'
+      - replay: visitor # the page, then the link "giriş yap" to Keycloak's authorization endpoint (--to sign_in_opened)
+
+  - id: a-seat-is-worn-on-the-course
+    need: A signed-in person sees, on each course of the köşk, whether they are in it, waiting to be, or have completed it, in words.
+    drawn: [enrollmentBadge]
+    built:
+      - route: apps/tedris/features/courses/madrasah-enrollment.ts:17
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:78
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#15 (a1, a2)'
+      - replay: member # three "Devam ediyor" badges, counted against the API's own answer
+
+  - id: a-person-reads-their-waiting-application
+    need: A person whose application is still waiting reads "Onay bekliyor" on that course and is not shown the köşk's decks.
+    drawn: [enrollmentBadge, decksSection]
+    built:
+      - route: apps/tedris/features/courses/madrasah-enrollment.ts:27
+    # walked: nothing. The scenario `applicant` of the binding (applicantA applies to the course that asks for approval) is written and was not run in
+    # the writing phase; no e2e checks a PENDING badge on the köşk page.
+
+  - id: each-course-says-who-opened-it-who-teaches-it-and-when
+    need: Each course card names the medrese that opened it (as a way to that medrese), its hocas, whether it is in person, and its next celse or that none is planned.
+    drawn: [madrasahLine, madrasahLink, inPersonBadge, hocaLine, nextSession, noNextSession]
+    built:
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:55
+      - route: apps/tedris/features/courses/next-session.ts:7
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#14 (a1, a4), discover#16 (a1-a3, a5, a6)'
+      - replay: member # medrese line and link x2, hoca lines x3, next celse x3, no in-person label (counted against the API)
+
+  - id: the-köşks-decks-are-for-the-köşks-people
+    need: >-
+      A person the köşk knows (a seat that is ENROLLED or COMPLETED, a hoca of one of its courses, its nazım) reads its decks and sees which are
+      already in their collection; everybody else, a visitor included, sees no deck block and is not told that one exists.
+    drawn: [decksSection, decksEmpty, deckLink, deckInCollection, decks-are-for-the-signed-in]
+    built:
+      - action: medaris.api:listKoskDecks
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:240
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#17 (a1), discover#20 (a1, a2)'
+      - replay: member # the block and "Bu köşkün henüz destesi yok." (the seed makes no köşk deck); the deck cards (`memberDecks`) are not walked
+
+  - id: unlisted-by-link
+    need: >-
+      A köşk can be left out of every list and still be opened by its link by a signed-in person, who is told it is unlisted; a visitor who follows the
+      link is told no such page exists, so that the köşk's existence is not given away.
+    drawn: [koskShown, privateBadge, notFound, unlisted-is-nobodys-for-a-visitor]
+    built:
+      - action: medaris.api:getKosk
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:172
+    walked:
+      - replay: visitorUnlisted # a visitor at the unlisted köşk's link meets the not-found page (--to notFound)
+    # The signed-in half (scenario `unlisted`: "Liste dışı", "Bu köşk henüz ders açmadı.", no deck block) is written and was not run: --to reaches
+    # a state by its shortest way and the visitor's is shorter. No e2e: discover#4 claims it in its title and does not assert it (the seed has no unlisted köşk).
+
+  - id: no-such-kosk-says-so
+    need: An address that no köşk has (an unknown or malformed id, a hidden köşk the person may not open) is answered as a page that does not exist, and offers the way home.
+    drawn: [notFound, not-found-only-for-no-such-kosk]
+    built:
+      - route: apps/tedris/app/not-found.tsx:5
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#19'
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#13'
+      - replay: visitorUnlisted # the same page, reached by the link of an unlisted köşk; the scenario `unknownId` (an address no köşk has) is not run
+
+  - id: a-failed-read-is-not-a-missing-page
+    need: When the köşk or its courses cannot be read, the person is told so and offered another try; they are never told the page does not exist, and a shelf that could not be read is never shown as empty.
+    drawn: [loadFailed, loadFailedAlert, retry, failed-box-only-after-a-failed-read, a-failed-shelf-is-not-an-empty-one, an-unreadable-kosk-is-not-a-missing-one]
+    built:
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:293
+      - route: apps/tedris/features/courses/actions/index.ts:51
+    # walked: nothing. No e2e makes tedrisat fail and the stack has no way to; the failed-read box has no unit spec either.
+
+  - id: the-way-on-to-a-course
+    need: From a course card a person, a visitor included, opens that course.
+    drawn: [courseLink, course_opened]
+    built:
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:75
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#12'
+      - replay: member # "Bina ve İzhar Şerhi"'s title, the first card, to /courses/<id>
+
+  - id: the-way-on-to-a-medrese
+    need: From the medrese named on a course card a person opens that medrese's page.
+    drawn: [madrasahLink, madrasah_opened]
+    built:
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:116
+    # walked: nothing. The link is found and counted by the main story; no walk presses it and no e2e follows it (discover#16 asserts only that it is visible).
+
+  - id: the-way-on-to-a-deck
+    need: From a deck card a person the köşk knows opens that deck.
+    drawn: [deckLink, deck_opened]
+    built:
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:259
+    # walked: nothing. The seed makes no köşk deck and no helper does.
+
+  - id: follow-from-the-page
+    need: A signed-in person follows the köşk from its page, sees that they do, and the choice holds after a reload.
+    drawn: [followButton]
+    built:
+      - action: medaris.api:followKosk
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:183
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#18' # carried by tedris.discover.followKosk, which the transition FOLLOW starts
+      - replay: member # the button is found, enabled and named; it is not pressed here
+
+  - id: the-manager-is-named-and-not-identified
+    need: The page names the köşk's nazım, so the person knows who looks after it, and gives no person's id to the browser.
+    drawn: [managerLine]
+    built:
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:176
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#18 (a2, a3: the API, for a visitor; not a browser check)'
+      - replay: member # the line reads the API's own managerName; effect getKosk reads what the same reader was answered, without the ids
+
+  - id: kosk-ids-of-people-stay-off-reads
+    need: Nothing but a name of a köşk's creator or nazım reaches a caller of the public köşk reads, whoever they are; the ids are given where a page needs them.
+    drawn: [managerLine]
+    missing: none # F-4: tedrisat answers a signed-in caller ownerId and managerIds on GET /kosks and GET /kosks/{id}; this page does not use or ship them (flow header); no Linear issue
+
+  - id: failed-read-box-has-a-heading-and-a-way-back
+    need: When the köşk cannot be read, the page still has a heading and a way back to Keşfet.
+    drawn: [loadFailed, loadFailedPage]
+    missing: none # DSC-09 a, no Linear issue
+
+  - id: cover-label-is-not-read-aloud
+    need: A course's decorative cover is not read to a screen-reader user as if it were text.
+    drawn: [courseHeading]
+    missing: none # DSC-12, no Linear issue
+
+  - id: loading-says-so
+    need: While the page loads, a person using a screen reader is told that it is loading.
+    drawn: [koskPage]
+    missing: none # DSC-19, no Linear issue
+
+  - id: not-found-has-a-main
+    need: The page that says there is no such köşk has a main landmark, as every other page of the app has.
+    drawn: [notFound, notFoundSection]
+    missing: none # READKOSK-1, proposed; no Linear issue
+
+  - id: nazim-sees-which-course-is-a-draft
+    need: The köşk's nazım, whose shelf also holds the köşk's draft courses, can tell which card is a draft, and the count agrees with the shelf.
+    drawn: [koskShown, courseCount]
+    missing: none # decision D1 of the flow; no Linear issue

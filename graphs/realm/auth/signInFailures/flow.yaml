@@ -1,0 +1,339 @@
+# A sign-in that does not end signed in, as the code does it today (status captured; the code is PR #394's). Four doors lead
+# here, and they are one flow because the person's question is the same ("why am I not in, and what do I press?"):
+#   1. the app's own /auth/signin page, which a failed round trip sent the browser back to with ?error=<code> (the box;
+#      libs/auth/src/client/sign-in.ts, the three apps' features/auth/auth-entry.tsx);
+#   2. Keycloak's login form, which answered the credentials with a reason that is not "wrong password": the account is switched
+#      off, or Keycloak's brute-force detector has paused it (apps/keycloak-theme Login.tsx and Template.tsx);
+#   3. Keycloak's "page expired" page, for a form posted after its time ran out (login-page-expired.ftl);
+#   4. Keycloak's error page (error.ftl): a blocked cookie, or a request Keycloak refuses (a client or redirect address it does not know).
+#
+# The context variable of the exits error_box.retryable and error_box.final of realm.auth.signIn is `cause`. Those two exits carry no
+# `starts:` today, so they name no variable themselves; they name two classes of codes. `cause` is the code of the address
+# (?error=), and its values group as the classes do: retryable = OAuthSignin, OAuthCallback, unknownCode; final = AccessDenied,
+# Configuration, SignInLimit (libs/auth/src/shared/auth-error.ts:54-62). The same five codes come from realm.auth.signIn's two
+# invoking states (failures: startSignIn gives OAuthSignin and SignInLimit, finishSignIn gives OAuthCallback, AccessDenied and
+# Configuration), or from an address typed or bookmarked. `app` has the name and the values signIn's `app` has, so a start may hand
+# it over as it is.
+#
+# How Keycloak is drawn. As in realm.auth.signIn, Keycloak is this flow's environment: its pages are screens of ui.yaml, and the
+# POST of its login form is a state that invokes { external: keycloak.loginAction }. The pause of a locked account and the switch of
+# a disabled one are Keycloak's own: no domain action of this repository answers them.
+schema: delurio-graph/0
+kind: flow
+id: realm.auth.signInFailures
+status: captured
+domain: medaris.api
+ui: realm.auth.signInFailures
+title: Meet a failed sign-in
+summary: >-
+  A person's sign-in does not end signed in. Back in the app they meet its error box: a code that no retry fixes (the account was
+  refused, the app is misconfigured, this browser tried too often) says so at once and offers the app's front door; a code that a
+  second round trip usually fixes is retried once by itself and, when that is spent, shown with a button that starts the round trip
+  again. At Keycloak's form the right password can be answered with "the account is switched off" or "the account is paused for a
+  while"; a form that sat too long or was replayed says its page has expired and offers a restart; a request Keycloak cannot take at
+  all ends on its error page with a link back to the app.
+scope:
+  shows: >-
+    The three apps' error boxes (tedris, nizam, nazar: their words and buttons differ) for the six codes an address can carry, what
+    the page does before it shows the box (the session read, the one automatic retry), Keycloak's form answering a switched-off or a
+    paused account, and Keycloak's expired and error pages.
+  world: open
+  outOfView:
+    - "the plain round trip and Keycloak's own form: realm.auth.signIn (this flow starts it again where the person goes on)"
+    - "the redirecting state of the app's sign-in page (a status line and 'Devam et'): drawn by the navigation graphs; SHL-02 (tedris, no heading) and F-P0-2 (nizam, no main landmark) are theirs"
+    - "?reauth=1, the sign-in page a refused token sends the person to, and the session that ended under an open page: realm.auth.sessionEnded"
+    - "this tab's budgets (three automatic starts and two go-ons in two minutes) and the start route's cap (five starts in five minutes): a spent budget shows SignInLimit with no code in the address; the local stack raises both to 1000 a minute (WEB__AUTH_SIGN_IN_LIMIT), so only ?error=SignInLimit reaches the box here"
+    - "Keycloak's pause as it grows: the realm pauses an account after 10 failures (failureFactor), by 60 s a step up to 15 min (waitIncrementSeconds, maxFailureWaitSeconds), and never for good (permanentLockout false); only the first 60 s pause was walked"
+    - "the e-mail and password pages Keycloak holds a person on after the password (realm.auth.profileUpdate, realm.auth.register, realm.auth.forgotPassword)"
+    - "a banned person's device refused (MDRS-125): no screen exists for it; see needs.yaml"
+
+context:
+  app:
+    values: [tedris, nizam, nazar]
+    initial: any
+    say:
+      tedris: "the person signs in to tedris, the talebe's app"
+      nizam: "the person signs in to nizam, the nazım's app"
+      nazar: "the person signs in to nazar, the app of medrese and course staff"
+  cause:
+    values: [OAuthSignin, OAuthCallback, AccessDenied, Configuration, SignInLimit, unknownCode, accountDisabled, accountLocked, pageExpired, cookieBlocked, requestRefused]
+    initial: any
+    say:
+      OAuthSignin: "the round trip could not start (the session store or Keycloak's discovery document was out of reach): the address says ?error=OAuthSignin"
+      OAuthCallback: "the round trip came back and failed (an unknown or replayed state, an expired code): ?error=OAuthCallback"
+      AccessDenied: "Keycloak refused the account (error=access_denied): ?error=AccessDenied"
+      Configuration: "Keycloak refused the app (invalid_client or unauthorized_client): ?error=Configuration"
+      SignInLimit: "this browser started too many round trips: ?error=SignInLimit"
+      unknownCode: "an address that carries some other ?error= text"
+      accountDisabled: "the account is switched off: Keycloak says so on its form, once the right password is typed"
+      accountLocked: "Keycloak's brute-force detector has paused the account: it says so on its form whatever is typed"
+      pageExpired: "the login form was posted after its time ran out, or replayed from the back button"
+      cookieBlocked: "the browser blocks the cookie Keycloak's page needs"
+      requestRefused: "Keycloak cannot take the request at all (a redirect address or a client it does not know)"
+  retry:
+    values: [fresh, spent]
+    initial: any
+    say:
+      fresh: "this tab has not yet spent its one automatic retry in the last two minutes"
+      spent: "this tab has spent its one automatic retry already (sessionStorage medaris.auth.auto-retry)"
+  session:
+    values: [none, usable]
+    initial: any
+    say:
+      none: "the browser holds no session"
+      usable: "the browser holds a usable session (another tab finished the round trip)"
+  pause:
+    values: [holds, over]
+    initial: holds
+    say:
+      holds: "Keycloak's pause on the account has not run out"
+      over: "the pause ran out, or an administrator lifted it"
+
+guards:
+  finalCode: "cause in ['AccessDenied', 'Configuration', 'SignInLimit']"
+  retryableCode: "cause in ['OAuthSignin', 'OAuthCallback', 'unknownCode']"
+  atTheForm: "cause in ['accountDisabled', 'accountLocked', 'pageExpired']"
+  inBox: "state in ['errorBoxTedris', 'errorBoxNizam', 'errorBoxNazar']"
+  lockHolds: "cause == 'accountLocked' and pause == 'holds'"
+  lockOver: "cause == 'accountLocked' and pause == 'over'"
+
+effects:
+  lockEnds: { set: { pause: over } }
+
+main:
+  given: { app: tedris, cause: AccessDenied, retry: fresh, session: none }
+  events: [BACK_HOME]
+
+initial: pageOpens
+states:
+  pageOpens:
+    title: A page of the sign-in family opens
+    description: >-
+      Which door the browser came through decides the first screen. A final code (AccessDenied, Configuration, SignInLimit) shows the
+      box at once: nothing is read first (enterSignIn returns before it asks for the session). A retryable code (OAuthSignin,
+      OAuthCallback, any other text) reads the session first, as the plain sign-in page does; with none, a fresh retry is spent and the
+      round trip starts by itself, which is realm.auth.signIn's appSignInPage and where this flow hands over, while a spent retry
+      shows the box. A cause at Keycloak's form (a switched-off or a paused account, a stale form) begins with the form on screen and
+      the credentials about to be sent. Keycloak's error page (a blocked cookie, a refused request) is simply there.
+    source: libs/auth/src/client/sign-in.ts:317
+    always:
+      - { target: errorBox, guard: finalCode, say: "a final code: the box at once", source: libs/auth/src/client/sign-in.ts:322 }
+      - { target: handed_over.sign_in, guard: "retryableCode and retry == 'fresh'", starts: { flow: realm.auth.signIn, given: { app: app, entry: "'signInPage'" } }, say: "a retryable code with the retry fresh: the page spends it and does what the plain sign-in page does", source: libs/auth/src/client/sign-in.ts:346 }
+      - { target: readingSession, guard: retryableCode, say: "a retryable code with the retry spent: the page reads the session before it decides", source: libs/auth/src/client/sign-in.ts:346 }
+      - { target: loginForm, guard: atTheForm, say: "Keycloak's form, about to be posted" }
+      - { target: errorPage, say: "Keycloak's error page" }
+
+  readingSession:
+    title: The page reads the session
+    description: >-
+      GET /api/auth/session, as the plain sign-in page does first (with the retry fresh that read is realm.auth.signIn's own). A usable session (another tab finished the round trip, or the Back
+      button replayed a callback) goes straight on to callbackUrl, or to / when the address names none, at most twice per tab per two
+      minutes (a third time shows SignInLimit instead); with the retry fresh the same session read is signIn's appSignInPage. A read
+      that fails counts as no session. With none and the retry spent the page shows the box with this code (nothing starts by itself:
+      the box carries a button).
+    source: libs/auth/src/client/sign-in.ts:345
+    invoke: { action: getAuthSession }
+    on:
+      DONE:
+        - { target: went_on_signed_in, guard: "session == 'usable'", say: "someone has signed in: straight on", source: libs/auth/src/client/sign-in.ts:345 }
+        - { target: errorBox, say: "no session and no retry left: the box", source: libs/auth/src/client/sign-in.ts:346 }
+
+  errorBox:
+    title: The page shows its error box (the app decides which)
+    description: >-
+      The page swaps its redirecting state for a box, or opens as one; the three apps draw their own: the words and the buttons
+      differ, so each is a screen of its own below. The sentence by code is the same in all three: AccessDenied "Bu hesabın giriş
+      izni yok.", Configuration "Giriş hizmeti şu anda kullanılamıyor...", SignInLimit (its own wording per app), any other code
+      the generic one (authErrorMessageKey, libs/auth/src/shared/auth-error.ts:45). Nothing moves the focus to the box and
+      nothing announces it: the swap is silent for a screen-reader user (SHL-03 in tedris, F-E-1 in nazar, F-P0-1 in nizam). The
+      tab title stays the app's name (SHL-01, F-E-23, F-P0-3).
+    source: libs/auth/src/client/sign-in.ts:317
+    always:
+      - { target: errorBoxTedris, guard: "app == 'tedris'", source: apps/tedris/features/auth/auth-entry.tsx:85 }
+      - { target: errorBoxNizam, guard: "app == 'nizam'", source: apps/nizam/features/auth/auth-entry.tsx:88 }
+      - { target: errorBoxNazar, source: apps/nazar/features/auth/auth-entry.tsx:88 }
+
+  errorBoxTedris:
+    title: Tedris's sign-in page shows its error box
+    description: >-
+      One section named by its heading ("Giriş tamamlanamadı"), inside the app's header and its legacy main, with one control:
+      for a retryable code the button "Giriş sayfasına dön" (it starts a new round trip, taking the tab's claim by force), for a
+      final code the link "Ana sayfaya dön" to /. A retryable box has no way home and a final box has no retry. "Ana sayfaya dön" is
+      / of tedris: a visitor goes on to /discover.
+    source: apps/tedris/features/auth/auth-entry.tsx:85
+    by: human
+    on:
+      RETRY: { target: handed_over.sign_in, guard: retryableCode, starts: { flow: realm.auth.signIn, given: { app: app, entry: "'signInLink'" } }, say: "they press the button: the page goes to /api/auth/signin without waiting for another tab (the start route, signIn's startingRoundTrip)", source: libs/auth/src/client/sign-in.ts:375 }
+      BACK_HOME: { target: home_opened, guard: finalCode, say: "they follow the link to /", source: apps/tedris/features/auth/auth-entry.tsx:100 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  errorBoxNizam:
+    title: Nizam's sign-in page shows its error box
+    description: >-
+      A bare section (no main landmark, F-P0-2) with the h1 "Giriş yapılamadı", the sentence, the link "Ana sayfaya dön" for every code
+      and, for a retryable code only, the button "Tekrar dene" (the buttons are shadcn's, F-P0-19). "Ana sayfaya dön" is / of nizam:
+      its welcome page, which has "Giriş yap".
+    source: apps/nizam/features/auth/auth-entry.tsx:88
+    by: human
+    on:
+      RETRY: { target: handed_over.sign_in, guard: retryableCode, starts: { flow: realm.auth.signIn, given: { app: app, entry: "'signInLink'" } }, say: "they press the button: the page goes to /api/auth/signin without waiting for another tab", source: libs/auth/src/client/sign-in.ts:375 }
+      BACK_HOME: { target: home_opened, say: "they follow the link to /", source: apps/nizam/features/auth/auth-entry.tsx:102 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  errorBoxNazar:
+    title: Nazar's sign-in page shows its error box
+    description: >-
+      The page's main, named by its h1 "Giriş yapılamadı", with the sentence, the link "Ana sayfaya dön" for every code and, for a
+      retryable code only, the primary button "Tekrar dene". nazar auth-pages#2 a5 expects "Tekrar dene" for AccessDenied: stale, the
+      code draws none (F-E-2); this graph does not carry it. "Ana sayfaya dön" is / of nazar, which has no public page: the gate sends it
+      to /auth/signin?callbackUrl=%2F, which starts a round trip by itself (SIF-4).
+    source: apps/nazar/features/auth/auth-entry.tsx:88
+    by: human
+    on:
+      RETRY: { target: handed_over.sign_in, guard: retryableCode, starts: { flow: realm.auth.signIn, given: { app: app, entry: "'signInLink'" } }, say: "they press the button: the page goes to /api/auth/signin without waiting for another tab", source: libs/auth/src/client/sign-in.ts:375 }
+      BACK_HOME: { target: home_opened, say: "they follow the link to /", source: apps/nazar/features/auth/auth-entry.tsx:99 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  loginForm:
+    title: Keycloak's login form, about to be posted
+    description: >-
+      login.ftl as realm.auth.signIn draws it (one card, the app's name under the logo, the user name or e-mail field, the password
+      field, "Beni hatırla", "Giriş yap"). Nothing has the focus (K3) and every Keycloak page has the same tab title (K2).
+    source: apps/keycloak-theme/src/login/pages/Login.tsx:14
+    by: human
+    on:
+      SUBMIT: { target: submitting, say: "they type the user name and the password and press Giriş yap" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  submitting:
+    title: Keycloak checks the credentials
+    description: >-
+      The form posts to url.loginAction. Keycloak looks the account up before it looks at the password for two of the answers: a
+      paused account is refused whatever is typed (the pause is checked first), and a switched-off account is refused once the
+      password is right (a wrong password still gets "Geçersiz kullanıcı adı veya şifre."). A form whose code ran out gets Keycloak's
+      page-expired page instead. This post is Keycloak's own, not an action of the domain (see the head of this file); it is a native
+      navigation, so the replay passes through it.
+    source: libs/ui/src/giris/login-form.tsx:68
+    invoke: { external: keycloak.loginAction }
+    on:
+      DONE:
+        - { target: handed_over.callback, guard: lockOver, say: "the pause is over and the password is right: Keycloak redirects to the app's callback", source: apps/keycloak-theme/src/login/pages/Login.tsx:36 }
+      FAIL.refused:
+        - { target: formDisabled, guard: "cause == 'accountDisabled'", say: "Keycloak shows the form again with the account-switched-off message", source: apps/keycloak-theme/src/login/Template.tsx:81 }
+        - { target: formLocked, guard: lockHolds, say: "Keycloak shows the form again with the account-paused message", source: apps/keycloak-theme/src/login/pages/Login.tsx:41 }
+      FAIL.expired:
+        - { target: expiredPage, guard: "cause == 'pageExpired'", say: "Keycloak answers with its page-expired page", source: apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:25 }
+
+  formDisabled:
+    title: The form says the account is switched off
+    description: >-
+      login.ftl again with one alert, Keycloak's own tr text "Hesap devre dışı, yönetici ile iletişime geçin." (accountDisabledMessage,
+      keycloakify's default: the theme does not override it). Keycloak puts the message on the page, not on a field, so Login.tsx's
+      credential branch does not run: the alert comes from Template.tsx, both fields are not marked invalid, the user name is kept,
+      the password is empty. It says "yönetici" and gives no way to reach one (SIF-2); Keycloak tells it only to whoever types the
+      right password (SIF-3). Nothing the person does here changes it: another press of the button says the same, and only an
+      administrator switches the account back on. Nothing moves the focus to the alert (K3).
+    source: apps/keycloak-theme/src/login/Template.tsx:81
+    by: human
+    on:
+      SUBMIT: { target: submitting, say: "they try again: Keycloak says the same" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  formLocked:
+    title: The form says the account is paused
+    description: >-
+      login.ftl again with one alert, Keycloak's own tr text "Hesabınız geçici olarak kilitlendi, lütfen yöneticiyle iletişime geçin
+      veya daha sonra tekrar deneyin." (accountTemporarilyDisabledMessage, keycloakify's default), and both fields marked invalid, as
+      after a wrong password (Login.tsx:36, the lock arrives as a field error). Measured on the local realm: two wrong passwords
+      less than a second apart paused the account for 60 s (quickLoginCheckMilliSeconds 1000, minimumQuickLoginWaitSeconds 60:
+      SIF-1); the page says how long neither way. Once paused, every attempt gets this text, the right password too (SIF-3). The
+      pause runs out by itself or an administrator lifts it; the page does not change until the person presses the button again,
+      and then the same text comes while the pause holds. Nothing moves the focus to the alert (K3).
+    source: apps/keycloak-theme/src/login/pages/Login.tsx:41
+    by: human
+    on:
+      SUBMIT: { target: submitting, say: "they try again" }
+      LOCK_ENDS: { target: formLocked, guard: lockHolds, effect: [lockEnds], say: "the pause runs out, or an administrator lifts it; the page still shows the old text", source: config/keycloak/realms/_base.json:15 }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  expiredPage:
+    title: Keycloak says the page has expired
+    description: >-
+      login-page-expired.ftl: the h1 "Bu sayfanın süresi doldu", two sentences and one primary link "Yeniden dene" to
+      url.loginRestartFlowUrl (Keycloak's own "continue" link, which would repost the stale form, is not offered). Reached by posting
+      a form whose code ran out (accessCodeLifespanUserAction, five minutes by default) or by posting it again after the Back button
+      (Keycloak's behaviour as the page's own sentences describe it; no stale post was walked here). Opening the stale form's address
+      again (a GET) does not come here: Keycloak redirects to the current form with its own default
+      alert "Eylem süresi doldu. Lütfen şimdi giriş yapmaya devam edin." (probed on the local stack; written in "siz", K10).
+    source: apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:25
+    by: human
+    on:
+      RESTART: { target: handed_over.keycloak_form, say: "they press Yeniden dene: Keycloak restarts the sign-in and shows a fresh form" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  errorPage:
+    title: Keycloak's error page
+    description: >-
+      error.ftl: the h1 "Giriş tamamlanamadı", two sentences and one primary link "Giriş sayfasına dön". Keycloak's own message is never
+      shown. When Keycloak's message is the cookie one the sentences say the browser blocked a cookie (cookieBlocked); for any other
+      refusal (an unknown redirect address, an unknown client) they say the sign-in stopped or went invalid (requestRefused). The
+      link goes to the client's base address (the app's front door: for tedris and nizam a public page, for nazar a gate that starts
+      a round trip), and to Keycloak's restart address when no client is known; its label promises the sign-in page (SIF-5).
+    source: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:30
+    by: human
+    on:
+      BACK_TO_APP: { target: app_opened, say: "they follow the link back" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  handed_over.sign_in:
+    type: final
+    title: They go on to the sign-in round trip
+    description: "realm.auth.signIn takes over: the page sends the browser to /api/auth/signin and on to Keycloak's form. If that round trip fails again its exits error_box.retryable and error_box.final bring the person back to a new run of this flow."
+
+  handed_over.keycloak_form:
+    type: final
+    title: They are on a fresh Keycloak form
+    description: "Keycloak restarted the sign-in: the form is realm.auth.signIn's loginPage."
+
+  handed_over.callback:
+    type: final
+    title: Keycloak takes the password and redirects to the app
+    description: "realm.auth.signIn's finishingRoundTrip: the callback, the session, the landing (a required action may still hold the person at Keycloak)."
+
+  went_on_signed_in:
+    type: final
+    title: The page goes straight on to where they were going
+    description: "A usable session made the page leave: callbackUrl, or / (tedris /home, nizam and nazar their own landing)."
+
+  home_opened:
+    type: final
+    title: They are on the app's front door
+    description: "/ of the app: tedris sends a visitor to /discover, nizam shows its welcome page, nazar gates it to /auth/signin?callbackUrl=%2F and starts a round trip (SIF-4)."
+
+  app_opened:
+    type: final
+    title: They are back at the app
+    description: "Keycloak's client base address: the app's front door."
+
+  left:
+    type: final
+    title: They close the page
+    leavesPage: true
+
+assertions:
+  - id: final-codes-never-start-another-round-trip
+    never: "state == 'handed_over.sign_in' and finalCode"
+    say: "A final code (AccessDenied, Configuration, SignInLimit) never starts another round trip, by itself or by a button: the page shows the box and nothing else."
+    source: libs/auth/src/client/sign-in.ts:322
+  - id: signed-in-browsers-skip-the-retryable-box
+    never: "inBox and retryableCode and session == 'usable'"
+    say: "A browser that already holds a usable session is sent straight on and never meets the box for a retryable code."
+    source: libs/auth/src/client/sign-in.ts:345
+  - id: a-paused-account-is-never-sent-back-to-the-app
+    never: "state == 'handed_over.callback' and cause == 'accountLocked' and pause == 'holds'"
+    say: "While Keycloak's pause holds, the form is answered with the pause text and the account is never sent back to the app, whatever is typed."
+    source: apps/keycloak-theme/src/login/pages/Login.tsx:41
+  - id: a-switched-off-account-is-never-sent-back-to-the-app
+    never: "state == 'handed_over.callback' and cause == 'accountDisabled'"
+    say: "A switched-off account is never sent back to the app."
+    source: apps/keycloak-theme/src/login/Template.tsx:81

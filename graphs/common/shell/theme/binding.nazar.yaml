@@ -1,0 +1,26 @@
+# common.shell.theme in nazar-web (:4002): a başmüderris on Hesap, then Bildirimler. See binding.yaml for why each app has a file.
+# The toggle is in the sidebar's brand row (portal-frame.tsx:94) and, below 768 px, in the phone bar; at 1280 px one is drawn.
+# The base signs the account in at nazar, through Keycloak's real form. Both pages are of the shell every seat has (nazar.nav:
+# hesap, bildirimler).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: common.shell.theme
+
+scenarios:
+  nazarBasmuderris:
+    given: {}
+    as: basmuderris
+    open: '{nazar}/hesap'
+    vars: { next: '{nazar}/bildirimler' }
+
+events:
+  OPEN_ANOTHER_PAGE: [{ goto: '{next}' }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  left: { url: 'about:blank' }
+
+nodes:
+  lightPage: { css: 'html[data-theme="light"]' }
+  darkPage: { css: 'html[data-theme="dark"]' }

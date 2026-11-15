@@ -1,0 +1,232 @@
+# The screens of landing.site.readLegal: the three legal pages of the public site at the wide layout (768 px and up), the
+# production build, each with the footer it wears. The header (the logo, the theme toggle, "Giriş yap", "Kayıt ol") is the
+# navigation graph's frame (landing.nav, frame site), not drawn here.
+#
+# Words. Landing has no i18n file: every word is a Turkish literal in the three pages, in components/site-footer.tsx or in
+# apps/landing/content/{cerezler,aydinlatma-metni}.ts. Each value of catalog/tr.json is copied from that literal (the
+# source of the node that uses it names the line) and was checked to be the whole text of one element of the page the
+# local dev server renders; the keys are the writer's: Terms.*, Cookies.*, Privacy.*, Link.* and Footer.nav. The keys that
+# are NOT one literal but a text the code puts together are `composed.*`:
+#   composed.Terms.dates                   terms page.tsx:29-31 ("Son güncelleme: <time>15 Ekim 2026</time> · Yürürlük tarihi: " and
+#                                          legal.termsEffectiveDate, content/legal.ts:189)
+#   composed.Cookies.required.1.lifetime,  content/cerezler.ts:62 and :82: a template literal over sessionCookieMax and
+#   composed.Cookies.required.4.lifetime   sessionEnds (:33), which are built from sessionIdle, sessionMax, rememberIdle and rememberMax (:21-24)
+#   composed.Privacy.updated               privacy page.tsx:28 ("Son güncelleme: " and LAST_UPDATED, content/aydinlatma-metni.ts:39)
+#   composed.Privacy.recordFields          content/aydinlatma-metni.ts:91: the closing of section 2, over ACCOUNT_RECORD_FIELDS (:47-58)
+#   composed.Privacy.apply                 content/aydinlatma-metni.ts:171: the first paragraph of section 7, over CONTROLLER.email (:30)
+# The flow writes nothing, so there is no `changes` key.
+#
+# What is drawn of each page: its landmarks, its headings, the dates, the controls (the contents links, the inline links
+# that go to another page, the footer), every row of the three cookie tables, and the statements that a spec of
+# apps/landing/test reads or that a finding below is about. The rest of the prose is not drawn (flow.yaml, scope).
+#
+# Repeated nodes. The eleven contents links and the eleven headings of the terms, the seven headings of the notice and the
+# rows of the cookie tables are `repeat` nodes whose words are `oneOf` their texts; the replay finds a `oneOf` node by its
+# first text only, so the binding gives each one a pattern of all of them and the count of items (binding.yaml, nodes).
+schema: delurio-graph/0
+kind: ui
+id: landing.site.readLegal
+flow: landing.site.readLegal
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+
+# No `initialFocus` and no `focus`: none of the three pages moves the focus when it opens, and none of its links moves it
+# (rule focus-not-set). A page that stays open after a contents link keeps the focus on the link.
+
+nodes:
+
+  # ---- the footer, on every page: the page's own link is marked aria-current="page" (not drawn by a key: the binding reads the attribute) ----
+  footerNav: { type: page, component: Page, role: navigation, name: { key: Footer.nav }, in: [terms, cookies, privacy], source: apps/landing/components/site-footer.tsx:21 }
+  footerPrivacy: { type: action, component: LinkButton, role: link, text: { key: Link.privacy }, in: [terms, cookies], emits: FOOTER_PRIVACY, source: apps/landing/components/site-footer.tsx:4 }
+  footerPrivacyHere: { type: action, component: LinkButton, role: link, text: { key: Link.privacy }, in: [privacy], source: apps/landing/components/site-footer.tsx:27 }
+  footerTerms: { type: action, component: LinkButton, role: link, text: { key: Link.terms }, in: [cookies, privacy], emits: FOOTER_TERMS, source: apps/landing/components/site-footer.tsx:7 }
+  footerTermsHere: { type: action, component: LinkButton, role: link, text: { key: Link.terms }, in: [terms], source: apps/landing/components/site-footer.tsx:27 }
+  footerCookies: { type: action, component: LinkButton, role: link, text: { key: Link.cookies }, in: [terms, privacy], emits: FOOTER_COOKIES, source: apps/landing/components/site-footer.tsx:8 }
+  footerCookiesHere: { type: action, component: LinkButton, role: link, text: { key: Link.cookies }, in: [cookies], source: apps/landing/components/site-footer.tsx:27 }
+  footerFaq: { type: action, component: LinkButton, role: link, text: { key: Link.faq }, in: [terms, cookies, privacy], emits: FOOTER_FAQ, source: apps/landing/components/site-footer.tsx:5 }
+  footerContact: { type: action, component: LinkButton, role: link, text: { key: Link.contact }, in: [terms, cookies, privacy], emits: FOOTER_CONTACT, source: apps/landing/components/site-footer.tsx:6 }
+  footerGithub: { type: action, component: LinkButton, role: link, text: { key: Link.github }, in: [terms, cookies, privacy], emits: FOOTER_GITHUB, source: apps/landing/components/site-footer.tsx:38 }
+
+  # ---- Kullanım şartları (/kullanim-sartlari) ----
+  termsPage: { type: page, component: Page, role: main, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:21" }
+  termsTitle: { type: text, component: Heading, role: heading, text: { key: Terms.title }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:24" }
+  termsIntro: { type: text, component: Text, text: { key: Terms.intro }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:26" }
+  termsDates: { type: text, component: Text, text: { key: composed.Terms.dates }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:30" }
+  termsToc: { type: page, component: Page, role: navigation, name: { key: Terms.tocName }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:54" }
+  tocLink: { type: action, component: LinkButton, role: link, text: { oneOf: [Terms.s1, Terms.s2, Terms.s3, Terms.s4, Terms.s5, Terms.s6, Terms.s7, Terms.s8, Terms.s9, Terms.s10, Terms.s11] }, in: [terms], repeat: terms.sections, emits: READ_SECTION, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:58" }
+  termsHeading: { type: text, component: Heading, role: heading, text: { oneOf: [Terms.s1, Terms.s2, Terms.s3, Terms.s4, Terms.s5, Terms.s6, Terms.s7, Terms.s8, Terms.s9, Terms.s10, Terms.s11] }, in: [terms], repeat: terms.sections, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:100" }
+  asideContact: { type: action, component: LinkButton, role: link, text: { key: Link.contact }, in: [terms], emits: OPEN_CONTACT, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:93" }
+  asidePrivacy: { type: action, component: LinkButton, role: link, text: { key: Link.privacy }, in: [terms], emits: OPEN_PRIVACY, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:95" }
+  termsAccount: { type: text, component: Text, text: { key: Terms.account }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:190" }
+  termsGender: { type: text, component: Text, text: { key: Terms.gender }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:208" }
+  termsAcceptance: { type: text, component: Text, text: { key: Terms.acceptance }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:224" }
+  termsPartners: { type: text, component: Text, text: { key: Terms.partners }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:231" }
+  termsDevice: { type: text, component: Text, text: { key: Terms.device }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:420" }
+  termsDeviceBlocked: { type: text, component: Text, text: { key: Terms.deviceBlocked }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:434" }
+  termsCookiesLink: { type: action, component: LinkButton, role: link, text: { key: Link.cookies }, in: [terms], emits: OPEN_COOKIES, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:425" }
+  termsChanges: { type: text, component: Text, text: { key: Terms.changes }, in: [terms], source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:481" }
+
+  # ---- Çerezler (/cerezler) ----
+  cookiesPage: { type: page, component: Page, role: main, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:22" }
+  cookiesTitle: { type: text, component: Heading, role: heading, text: { key: Cookies.title }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:25" }
+  cookiesIntro: { type: text, component: Text, text: { key: Cookies.intro }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:27" }
+  cookiesDate: { type: text, component: Text, text: { key: Cookies.updated }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:33" }
+  cookiesNote: { type: text, component: Text, role: note, text: { key: Cookies.note }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:41" }
+
+  # the group "Zorunlu çerezler": a region named by its heading, an introduction and a table named by the same heading
+  requiredSection: { type: page, component: Page, role: region, name: { labelledBy: requiredHeading }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:54" }
+  requiredHeading: { type: text, component: Heading, role: heading, text: { key: Cookies.required.title }, in: [cookies], source: apps/landing/content/cerezler.ts:53 }
+  requiredIntro: { type: text, component: Text, text: { key: Cookies.required.intro }, in: [cookies], source: apps/landing/content/cerezler.ts:54 }
+  requiredTable: { type: list, component: List, role: table, name: { labelledBy: requiredHeading }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:63" }
+  requiredName: { type: text, component: Text, role: rowheader, text: { oneOf: [Cookies.required.1.names, Cookies.required.2.names, Cookies.required.3.names, Cookies.required.4.names, Cookies.required.5.names, Cookies.required.6.names] }, in: [cookies], repeat: cookies.required, source: apps/landing/content/cerezler.ts:58 }
+  requiredPurpose: { type: text, component: Text, role: cell, text: { oneOf: [Cookies.required.1.purpose, Cookies.required.2.purpose, Cookies.required.3.purpose, Cookies.required.4.purpose, Cookies.required.5.purpose, Cookies.required.6.purpose] }, in: [cookies], repeat: cookies.required, source: apps/landing/content/cerezler.ts:59 }
+  requiredSetBy: { type: text, component: Text, role: cell, text: { oneOf: [Cookies.required.1.setBy, Cookies.required.2.setBy, Cookies.required.3.setBy, Cookies.required.4.setBy, Cookies.required.5.setBy, Cookies.required.6.setBy] }, in: [cookies], repeat: cookies.required, source: apps/landing/content/cerezler.ts:61 }
+  requiredLifetime: { type: text, component: Text, role: cell, text: { oneOf: [composed.Cookies.required.1.lifetime, Cookies.required.2.lifetime, Cookies.required.3.lifetime, composed.Cookies.required.4.lifetime, Cookies.required.5.lifetime, Cookies.required.6.lifetime] }, in: [cookies], repeat: cookies.required, source: apps/landing/content/cerezler.ts:62 }
+
+  # the group "Tercih çerezleri": a region named by its heading, an introduction and a table named by the same heading
+  preferenceSection: { type: page, component: Page, role: region, name: { labelledBy: preferenceHeading }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:54" }
+  preferenceHeading: { type: text, component: Heading, role: heading, text: { key: Cookies.preference.title }, in: [cookies], source: apps/landing/content/cerezler.ts:102 }
+  preferenceIntro: { type: text, component: Text, text: { key: Cookies.preference.intro }, in: [cookies], source: apps/landing/content/cerezler.ts:103 }
+  preferenceTable: { type: list, component: List, role: table, name: { labelledBy: preferenceHeading }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:63" }
+  preferenceName: { type: text, component: Text, role: rowheader, text: { oneOf: [Cookies.preference.1.names, Cookies.preference.2.names, Cookies.preference.3.names, Cookies.preference.4.names, Cookies.preference.5.names, Cookies.preference.6.names] }, in: [cookies], repeat: cookies.preference, source: apps/landing/content/cerezler.ts:107 }
+  preferencePurpose: { type: text, component: Text, role: cell, text: { oneOf: [Cookies.preference.1.purpose, Cookies.preference.2.purpose, Cookies.preference.3.purpose, Cookies.preference.4.purpose, Cookies.preference.5.purpose, Cookies.preference.6.purpose] }, in: [cookies], repeat: cookies.preference, source: apps/landing/content/cerezler.ts:108 }
+  preferenceSetBy: { type: text, component: Text, role: cell, text: { oneOf: [Cookies.preference.1.setBy, Cookies.preference.2.setBy, Cookies.preference.3.setBy, Cookies.preference.4.setBy, Cookies.preference.5.setBy, Cookies.preference.6.setBy] }, in: [cookies], repeat: cookies.preference, source: apps/landing/content/cerezler.ts:110 }
+  preferenceLifetime: { type: text, component: Text, role: cell, text: { oneOf: [Cookies.preference.1.lifetime, Cookies.preference.2.lifetime, Cookies.preference.3.lifetime, Cookies.preference.4.lifetime, Cookies.preference.5.lifetime, Cookies.preference.6.lifetime] }, in: [cookies], repeat: cookies.preference, source: apps/landing/content/cerezler.ts:111 }
+
+  # the group "Tarayıcı depolaması": a region named by its heading, an introduction and a table named by the same heading
+  storageSection: { type: page, component: Page, role: region, name: { labelledBy: storageHeading }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:54" }
+  storageHeading: { type: text, component: Heading, role: heading, text: { key: Cookies.storage.title }, in: [cookies], source: apps/landing/content/cerezler.ts:149 }
+  storageIntro: { type: text, component: Text, text: { key: Cookies.storage.intro }, in: [cookies], source: apps/landing/content/cerezler.ts:150 }
+  storageTable: { type: list, component: List, role: table, name: { labelledBy: storageHeading }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:63" }
+  storageName: { type: text, component: Text, role: rowheader, text: { oneOf: [Cookies.storage.1.names, Cookies.storage.2.names, Cookies.storage.3.names] }, in: [cookies], repeat: cookies.storage, source: apps/landing/content/cerezler.ts:154 }
+  storagePurpose: { type: text, component: Text, role: cell, text: { oneOf: [Cookies.storage.1.purpose, Cookies.storage.2.purpose, Cookies.storage.3.purpose] }, in: [cookies], repeat: cookies.storage, source: apps/landing/content/cerezler.ts:155 }
+  storageSetBy: { type: text, component: Text, role: cell, text: { oneOf: [Cookies.storage.1.setBy, Cookies.storage.2.setBy, Cookies.storage.3.setBy] }, in: [cookies], repeat: cookies.storage, source: apps/landing/content/cerezler.ts:156 }
+  storageLifetime: { type: text, component: Text, role: cell, text: { oneOf: [Cookies.storage.1.lifetime, Cookies.storage.2.lifetime, Cookies.storage.3.lifetime] }, in: [cookies], repeat: cookies.storage, source: apps/landing/content/cerezler.ts:157 }
+
+  # the column headers: one of each in each of the three tables
+  columnName: { type: text, component: Text, role: columnheader, text: { key: Cookies.column.name }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:75" }
+  columnPurpose: { type: text, component: Text, role: columnheader, text: { key: Cookies.column.purpose }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:78" }
+  columnSetBy: { type: text, component: Text, role: columnheader, text: { key: Cookies.column.setBy }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:81" }
+  columnLifetime: { type: text, component: Text, role: columnheader, text: { key: Cookies.column.lifetime }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:84" }
+  cookiesFootnote: { type: text, component: Text, text: { key: Cookies.footnote }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:113" }
+  manageHeading: { type: text, component: Heading, role: heading, text: { key: Cookies.manage.title }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:123" }
+  manageText: { type: text, component: Text, text: { key: Cookies.manage.text }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:126" }
+  servicesHeading: { type: text, component: Heading, role: heading, text: { key: Cookies.services.title }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:134" }
+  servicesText: { type: text, component: Text, text: { key: Cookies.services.text }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:137" }
+  moreSection: { type: page, component: Page, role: region, name: { labelledBy: moreHeading }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:150" }
+  moreHeading: { type: text, component: Heading, role: heading, text: { key: Cookies.more.title }, in: [cookies], source: "apps/landing/app/[locale]/cerezler/page.tsx:152" }
+  morePrivacy: { type: action, component: LinkButton, role: link, text: { key: Link.privacy }, in: [cookies], emits: OPEN_PRIVACY, source: "apps/landing/app/[locale]/cerezler/page.tsx:156" }
+  moreTerms: { type: action, component: LinkButton, role: link, text: { key: Link.terms }, in: [cookies], emits: OPEN_TERMS, source: "apps/landing/app/[locale]/cerezler/page.tsx:157" }
+  moreContact: { type: action, component: LinkButton, role: link, text: { key: Link.contact }, in: [cookies], emits: OPEN_CONTACT, source: "apps/landing/app/[locale]/cerezler/page.tsx:158" }
+
+  # ---- Aydınlatma Metni (/aydinlatma-metni) ----
+  privacyPage: { type: page, component: Page, role: main, in: [privacy], source: apps/landing/app/aydinlatma-metni/page.tsx:25 }
+  privacyTitle: { type: text, component: Heading, role: heading, text: { key: Privacy.title }, in: [privacy], source: apps/landing/app/aydinlatma-metni/page.tsx:27 }
+  privacyDate: { type: text, component: Text, text: { key: composed.Privacy.updated }, in: [privacy], source: apps/landing/app/aydinlatma-metni/page.tsx:28 }
+  privacyHeading: { type: text, component: Heading, role: heading, text: { oneOf: [Privacy.s1, Privacy.s2, Privacy.s3, Privacy.s4, Privacy.s5, Privacy.s6, Privacy.s7] }, in: [privacy], repeat: privacy.sections, source: apps/landing/app/aydinlatma-metni/page.tsx:45 }
+  privacyController: { type: text, component: Text, text: { key: Privacy.controller }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:74 }
+  privacyIdentity: { type: text, component: Text, text: { key: Privacy.identity }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:82 }
+  privacyContact: { type: text, component: Text, text: { key: Privacy.contact }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:83 }
+  privacyAccountData: { type: text, component: Text, text: { key: Privacy.accountData }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:84 }
+  privacyEducation: { type: text, component: Text, text: { key: Privacy.education }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:85 }
+  privacyRecordFields: { type: text, component: Text, text: { key: composed.Privacy.recordFields }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:91 }
+  privacyGenderPurpose: { type: text, component: Text, text: { key: Privacy.genderPurpose }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:105 }
+  privacyHosting: { type: text, component: Text, text: { key: Privacy.hosting }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:120 }
+  privacyFiles: { type: text, component: Text, text: { key: Privacy.files }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:124 }
+  privacyAuth: { type: text, component: Text, text: { key: Privacy.auth }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:125 }
+  privacyStaff: { type: text, component: Text, text: { key: Privacy.staff }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:127 }
+  privacyPartners: { type: text, component: Text, text: { key: Privacy.partners }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:132 }
+  privacyAbroad: { type: text, component: Text, text: { key: Privacy.abroad }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:135 }
+  privacyCollection: { type: text, component: Text, text: { key: Privacy.collection }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:141 }
+  privacyBasis: { type: text, component: Text, text: { key: Privacy.basis }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:146 }
+  privacyRightsClosing: { type: text, component: Text, text: { key: Privacy.rightsClosing }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:165 }
+  privacyApply: { type: text, component: Text, text: { key: composed.Privacy.apply }, in: [privacy], source: apps/landing/content/aydinlatma-metni.ts:171 }
+
+edges:
+  - { labelledBy: [requiredSection, requiredHeading] }
+  - { labelledBy: [requiredTable, requiredHeading] }
+  - { labelledBy: [preferenceSection, preferenceHeading] }
+  - { labelledBy: [preferenceTable, preferenceHeading] }
+  - { labelledBy: [storageSection, storageHeading] }
+  - { labelledBy: [storageTable, storageHeading] }
+  - { labelledBy: [moreSection, moreHeading] }
+  - { triggers: [tocLink, terms] }
+  - { triggers: [termsCookiesLink, cookies] }
+  - { triggers: [asidePrivacy, privacy] }
+  - { triggers: [asideContact, contact_opened] }
+  - { triggers: [morePrivacy, privacy] }
+  - { triggers: [moreTerms, terms] }
+  - { triggers: [moreContact, contact_opened] }
+  - { triggers: [footerPrivacy, privacy] }
+  - { triggers: [footerTerms, terms] }
+  - { triggers: [footerCookies, cookies] }
+  - { triggers: [footerFaq, faq_opened] }
+  - { triggers: [footerContact, contact_opened] }
+
+rules:
+  - id: L10
+    rule: >-
+      The terms promise an acceptance at sign-in that nothing does. Three sentences of the terms page say so: the lead
+      "Girişte gördüğünüz şartların özeti, bu metnin kısa hâlidir" (kullanim-sartlari/page.tsx:27), section 2 "Giriş,
+      bu şartların kabul edilmesiyle tamamlanır; kabul tarihi hesapta saklanır" (:224-225) and section 10 "Esaslı bir
+      değişiklikte girişte şartların yeniden kabul edilmesi istenebilir" (:482-484). What the repository does:
+      config/keycloak provisions no terms step (grep finds none); docs/migration/mdrs-102-privacy-notice.md:73-75 says the
+      terms-and-conditions required action "stays off"; the registration form of the theme draws a terms checkbox only
+      when Keycloak sends `termsAcceptanceRequired` (apps/keycloak-theme/src/login/pages/Register.tsx:131), which it
+      does only when the registration flow has the terms step; the only box at registration is `privacyNoticeRead`
+      (the privacy notice, stored as "yes" with no date); nothing in tedrisat stores an acceptance of the terms.
+      Measured on 15 Nov 2026 on the local stack's realm "medaris", provisioned from config/keycloak: the required action
+      TERMS_AND_CONDITIONS is enabled=false and the registration form's "Terms and conditions" execution is DISABLED.
+      The live realms were not checked. The work is MDRS-191 (Backlog). Fix: build the acceptance and its date, or
+      reword the three sentences to say what happens (see decision D1).
+  - id: L15
+    rule: >-
+      The two draft notes depend on NODE_ENV: `IS_DRAFT = process.env.NODE_ENV !== "production"`
+      (content/aydinlatma-metni.ts:35). A development server shows a "Taslak — hukuk onayı bekliyor" note (role=note) at
+      the top of the terms (kullanim-sartlari/page.tsx:36-48) and a "Bu metin taslaktır ..." note (role=note) under the
+      date of the notice (aydinlatma-metni/page.tsx:30-35); a production build shows neither. This graph draws the
+      production build, so the notes are not drawn, and a replay on the dev server sees them without failing. A walk on a
+      production build was not made. Fix: none needed in the code; walk a production build before approving the graph.
+  - id: L5
+    rule: >-
+      The footer's "GitHub" opens a new tab (target=_blank) with no visible or spoken note that it does
+      (components/site-footer.tsx:32-39). On a legal page the visitor who follows it finds themselves in another tab with
+      the page still open behind it. Fix: a visually hidden "(yeni sekmede açılır)" in the link.
+  - id: L12
+    rule: >-
+      The pages have no message catalog: every word is a Turkish literal in the page files and in content/*.ts, and
+      <html lang="tr"> is fixed (app/[locale]/layout.tsx:41-47, app/aydinlatma-metni/layout.tsx:19-25). The catalog of this
+      graph is made from those literals; a second language would need every page changed (a launch decision, lib/i18n/routing.ts:3-5).
+  - id: LEGAL-1
+    rule: >-
+      The cookies page lists a cookie that nothing writes. The row `medaris-locale` ("Dil menüsünde seçtiğiniz dili
+      hatırlar; Tedris, Nizam ve Nazar sonraki ziyaretinizde doğrudan o dilde açılır", content/cerezler.ts:120-125) describes
+      the language menu, which is gone: libs/ui/src/lib/locale-preference.ts:11-12 says "Nothing writes it while the apps
+      are Turkish only (the language menu is gone)", and a grep of apps and libs finds only readers of the cookie.
+      content/cerezler.ts:14-15 says a cookie that no code sets is not listed. Fix: take the row out until the menu
+      returns (MDRS-295 draws it again).
+  - id: LEGAL-2
+    rule: >-
+      The row `NEXT_LOCALE` ("Sayfaların dilini hatırlar", set by "Tedris ve Nizam", until the browser is closed,
+      content/cerezler.ts:127-131) is attributed to the wrong apps. Tedris and Nizam run no next-intl middleware (apps/tedris/proxy.ts
+      is its own; a grep for NEXT_LOCALE in apps and libs, tests apart, finds only this row), and on the local stack
+      GET /discover of Tedris and GET / of Nizam answer no Set-Cookie. Landing's own middleware (apps/landing/middleware.ts)
+      does set `NEXT_LOCALE=tr; Path=/; SameSite=lax` (a session cookie), measured on /, /kullanim-sartlari and /cerezler of
+      the stack; it does not on /aydinlatma-metni, which the matcher excludes. The page names landing nowhere as a setter.
+      Fix: name the site's own pages as the setter (and the pages that do), and take Tedris and Nizam out.
+  - id: LEGAL-3
+    rule: >-
+      Terms section 8 describes a device restriction that is not built (MDRS-125, Backlog; grep for device in
+      apps/tedrisat/src finds nothing, and content/cerezler.ts:14-15 says the device cookie is not built). Its first
+      paragraph says "Bu çerez henüz kullanılmıyor" (kullanim-sartlari/page.tsx:419-427), but the four items under it
+      (:429-447) are written as rules in force: "Kısıtlanan cihazdan ... kayıt başvurusu yapılamaz ... cihazdan hiçbir
+      sayfa kullanılamaz", "Kısıtlı cihazda ... kısa bir ileti gösterilir", "... cihaz kısıtlaması da kendiliğinden kalkar".
+      Fix: say once, at the head of the section and in the contents entry, that this is not in force yet, or leave the
+      section out until MDRS-125 is built.
+  - id: focus-not-set
+    rule: >-
+      No page sets an initial focus and no <main> is labelled: the focus starts at the start of the document on each of the
+      three pages, and a contents link of the terms leaves the focus on itself while the browser scrolls the section into
+      view. The sections are regions with names, but no link or heading is made focusable to receive the focus (the inventory
+      notes the same for the home page, L8). Fix: none required by the format; a skip link to the content would help.

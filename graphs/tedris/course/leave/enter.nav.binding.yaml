@@ -1,0 +1,13 @@
+# The way into tedris.course.leave from the course's side: Keşfet, then the link of the course on its medrese's card. (Derslerim's
+# own link to the course cannot be named: tedris.nav has two `myCourses->course` entries with the same `how`, and only one of them
+# has a label key.)
+# tedris.nav's own binding gives no locator for an entry that needs an item (`data: true`), because the item is the
+# walk's to choose, so this file extends it and names the course the walk leaves (the scenario's `course` variable),
+# found by its address.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  discover->course: { css: 'a[href="/courses/{course}"]', nth: 0 }

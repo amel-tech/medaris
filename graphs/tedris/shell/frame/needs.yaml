@@ -1,0 +1,149 @@
+# What must exist for a person to move around tedris-web's frame, wide and on a phone: tedris.shell.frame, written on 15 Nov 2026 in
+# the format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story; none is read off what the page does
+# today. The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
+#
+# missing: bell-says-how-many-are-unread (MDRS-167), the-person-row-says-who-they-are (MDRS-235), a-skip-link-comes-first,
+#          the-error-page-keeps-the-bar, the-error-page-has-a-main, the-visitors-current-place-is-honest,
+#          the-bar-marks-hesabim-and-bildirimler, a-language-menu (MDRS-295)
+# unwalked: the-sheet-closes-on-the-same-page-too (measured by hand on the stack; no e2e and no replay)
+# walked by the e2e only: the-sheet-closes-when-the-window-widens (anonymous#25, schedule#15; the replay has no action that resizes
+#           the window, so the graph draws the step and does not walk it)
+# not walked either, and not a need of its own: a member on a page of none of the five places (viewer `apart`) and the visitor's
+# older header (read on the stack by hand: two buttons and one tab)
+kind: needs
+flow: tedris.shell.frame
+status: proposed
+
+needs:
+  - id: the-bar-names-the-places
+    need: >-
+      Every page that is on the Medaris design has one bar that names the places a person can go: a member's five places and
+      the way to their notifications and account, a visitor's one place and the two ways in, wide and on a phone.
+    drawn: [wideBar, phoneBar, phoneSheet]
+    built:
+      - route: apps/tedris/components/phone-menu/desktop-bar.tsx:31
+      - route: apps/tedris/components/phone-menu/member-phone-menu.tsx:41
+      - route: apps/tedris/components/phone-menu/phone-menu.tsx:26
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#21 (the bar half: no Ana sayfa for a visitor, the wordmark leads to Keşfet), #22'
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#13 (the five links; "no Çıkış yap" is not carried: no node says it)'
+      - replay: memberWide # run 2, `--to left`, with --absent
+      - replay: visitorWide # run 2, `--to sign_in_opened`: Keycloak after the click
+      - replay: memberPhone # run 3, the main story
+      - replay: visitorPhone # run 3, `--to register_opened`: the bar, the sheet, "Kayıt ol"
+
+  - id: the-place-is-marked
+    need: A person can tell from the bar which place the page they are on belongs to.
+    drawn: [wideBar, phoneSheet]
+    built:
+      - route: apps/tedris/components/phone-menu/member-phone-menu.tsx:21
+      - route: libs/ui/src/mds/nav-item.tsx:56
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#13 (Ana sayfa is current)'
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#22 (Keşfet is current)'
+      - replay: memberWide # Ana sayfa is the current item (aria-current found by the binding)
+      - replay: visitorPhone # Keşfet is current in the visitor's sheet
+
+  - id: the-visitors-current-place-is-honest
+    need: The bar marks a place as current only when the page belongs to it, for a visitor too.
+    drawn: [wideBar, phoneSheet]
+    missing: none # SHL-10: a visitor's Keşfet is current on every page, a course page and a sign-in page too; no Linear issue
+
+  - id: the-bar-marks-hesabim-and-bildirimler
+    need: On the pages of the bell and of Hesabım, the bell and the Hesabım link are marked as the page the person is on.
+    drawn: [wideBar]
+    missing: none # FRAME-2: sectionOf() has no entry for them; no Linear issue
+
+  - id: the-phone-sheet-opens-and-gives-the-focus-back
+    need: >-
+      On a phone a person opens the menu, finds the focus inside it, and closes it with Esc or with the close button and finds the
+      focus back on the menu button, so a keyboard user does not lose their place.
+    drawn: [phoneBar, phoneSheet]
+    built:
+      - route: libs/ui/src/mds/app-bar.tsx:62
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#23'
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#13 (focus on Kapat)'
+      - replay: memberPhone # focus on "Kapat" three times, on "Menü" after "Kapat" and after Esc (run 3: all pass)
+      - replay: visitorPhone # focus on "Kapat" in the visitor's sheet
+
+  - id: a-link-in-the-sheet-leaves-the-sheet-behind
+    need: A link of the sheet takes the person to its page and the sheet is closed there, with only one bar on the page.
+    drawn: [phoneSheet, schedule_opened]
+    built:
+      - route: libs/ui/src/mds/app-bar.tsx:92
+    walked:
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#14'
+      - replay: memberPhone # PICK_SCHEDULE ends on /schedule; --absent also flags the bar of that next page (see the report: engine limit)
+
+  - id: the-sheet-closes-when-the-window-widens
+    need: A sheet that is open when the window passes 768 px closes, and the wide bar takes the place of the phone's.
+    drawn: [phoneSheet, wideBar]
+    built:
+      - route: libs/ui/src/mds/app-bar.tsx:50
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#25'
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#15'
+
+  - id: the-sheet-closes-on-the-same-page-too
+    need: A link to the page the person is already on closes the sheet and leaves the focus on the menu button.
+    drawn: [phoneSheet]
+    built:
+      - route: libs/ui/src/mds/app-bar.tsx:105
+
+  - id: one-bar-not-two
+    need: >-
+      A page shows one bar, and the older header and tab row never show beside it.
+    drawn: [wideBar, phoneBar, older-header-only-after-a-throw]
+    built:
+      - route: apps/tedris/components/phone-menu/phone-chrome.tsx:36
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#26'
+      - e2e: apps/tedris/e2e/schedule.e2e.ts
+        check: 'schedule#14 (the older header is hidden)'
+      - replay: memberPhone # run with --absent: the older header's nodes are checked absent in the phone's states
+      - replay: memberWide # and in the wide bar's
+
+  - id: bell-says-how-many-are-unread
+    need: >-
+      The bell a person sees in the bar says how many notifications are unread in its name ("Bildirimler, 3 okunmamış"), on a phone
+      and wide, and no request is made for a count nobody sees.
+    drawn: [wideBar, phoneBar, errorPage]
+    missing: MDRS-167 # SHL-04 = ACC-01: only the older header's bell says it, and that header is hidden
+
+  - id: the-error-page-keeps-the-bar
+    need: When a page throws, the person still has the bar and not an older header with a search box that does nothing.
+    drawn: [errorPage, older-header-only-after-a-throw]
+    missing: none # SHL-06: the root boundary drops PhoneChrome and the older header shows; replay memberError shows it (run 3, `--to errorPage`, passes)
+
+  - id: the-error-page-has-a-main
+    need: The page of a thrown error has a main landmark.
+    drawn: [errorPage]
+    missing: none # FRAME-1: no <main> on a path that owns its main; measured on the stack
+
+  - id: the-person-row-says-who-they-are
+    need: >-
+      The row of the signed-in person in the phone sheet says who they are: their name and a role line that is true for a hoca, a
+      nazım and a başnazım too, or no role line.
+    drawn: [phoneSheet]
+    missing: MDRS-235 # SHL-09 = ACC-22: the line is the fixed word "Talebe"; e2e schedule#13 a7 pins it
+
+  - id: a-skip-link-comes-first
+    need: A keyboard user can skip the bar's controls and reach the page's content with one key.
+    drawn: [wideBar]
+    missing: none # SHL-11 = DSC-22: nine tab stops before the content, wide, as a member; no Linear issue
+
+  - id: a-language-menu
+    need: A person can choose the language of the app from the bar.
+    drawn: [wideBar]
+    missing: MDRS-295 # P-21: the cookie half is done in code, the bar draws no menu; the app is Turkish only (lib/i18n/routing.ts:6)

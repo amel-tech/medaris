@@ -1,0 +1,40 @@
+# tedris.decks.accessRefusals, the hidden deck, on the local stack: a deck that was shared with TALEBE and has been hidden.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/accessRefusals --bind graphs/tedris/decks/accessRefusals/binding.hidden.yaml --to notFound --absent --out <dir>
+#
+# A file of its own because the scenario reaches the screen the main story of binding.yaml reaches (notFound), and a walk takes the first
+# scenario of a file whose `given` fits.
+#
+# What the walk makes and takes away. `setup` has the köşk's nazım make a deck of the seeded köşk, "Gizlenen deste denemesi" (POST /kosks/{id}/decks
+# as koskNazim, who is its author), and hide it (POST /decks/{id}/hide), with hidden-deck.mjs; the deck's id goes to graphs/.local/access-refusals.json
+# and is read as {ar.hidden}. A deck of the köşk is shared with the talebe of its courses (flashcard/deck-sharing.ts), and TALEBE is in three; a hidden
+# one is shared with nobody, so the second line of `setup` expects the API's 404 for TALEBE. `teardown` deletes the deck as its author (DELETE
+# /flashcard/decks/{id}); `setup` removes an earlier one of that title first, so a walk that died half way leaves nothing. No SQL except the one
+# SELECT that finds the decks by title.
+# TALEBE opens /decks/<id> (the deck's own page) and the page is "Sayfa bulunamadı". Public decks that are hidden are still read (ACCREF-1): not walked.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.accessRefusals
+
+data:
+  ar: { json: ../.local/access-refusals.json }
+
+scenarios:
+  hiddenDeck:
+    given: { deck: hidden, address: deck }
+    as: talebe
+    open: '{tedris}/decks/{ar.hidden}'
+    setup:
+      - run: [node, ../tedris/decks/accessRefusals/hidden-deck.mjs, make]
+        expect: 'hidden-deck made'
+      - run: [node, helpers/api.mjs, talebe, GET, '/flashcard/decks/{ar.hidden}', --any]
+        expect: '"code":"DECK_NOT_FOUND"'
+    teardown:
+      - run: [node, ../tedris/decks/accessRefusals/hidden-deck.mjs, remove]
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  home_opened: { url: '{tedris}/home' }
+  left: { url: '{tedris}/notifications' }

@@ -1,0 +1,62 @@
+# The one screen of realm.auth.profileUpdate: Keycloak's login-update-profile.ftl on the Medaris theme
+# (apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx, the fields in libs/ui/src/giris/profile-field.tsx drawn from the
+# realm's user profile, config/keycloak/user-profile.json, the card in libs/ui/src/giris/auth-card.tsx). Its words are the theme's
+# tr messages, copied with their keys from apps/keycloak-theme/src/login/i18n.ts (the `tr` object); `firstName` ("Ad") and
+# `lastName` ("Soyad") are Keycloak's own tr messages, which the theme does not override (keycloakify 11.16.0,
+# messages_defaultSet/tr.js:56 and :59). The one message that is not copied is Changes.note: the app has no sentence that tells the
+# person what saving changes, so one short factual one is authored here.
+# The page is drawn by React in the browser from window.kcContext, so it needs JavaScript (no `script` on the page).
+# The fields are the realm's profile, so a field added to the profile appears here with no page change (profile-fields.tsx:5); this
+# graph draws the five the page gets today (firstName, lastName, gender, email, privacyNoticeRead: Keycloak leaves the user name
+# out, and the theme's read-only line for it, readOnlyHelp, is never shown). Each holds the account's own value, which the graph
+# does not state. What the page does was looked at in a browser on 15 Nov 2026 (a probe of the sign-in entry with the seed's
+# PENDING_PROFILE and of the account entry with TALEBE, neither pressing save); the gender line of the sign-in entry was not.
+# The logo and the app's name under it (from the client id) are drawn by realm.auth.signIn; the graph does not know the app here.
+schema: delurio-graph/0
+kind: ui
+id: realm.auth.profileUpdate
+flow: realm.auth.profileUpdate
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples: { "0": "Aydınlatma Metni" } # {0} of privacyNoticeRead is where the link goes (linkedOptionLabel.tsx:46)
+changes: { key: Changes.note }
+
+nodes:
+  profilePage: { type: page, component: Page, role: main, name: { labelledBy: profileTitle }, in: [profileForm, profileReady], source: libs/ui/src/giris/auth-card.tsx:41 }
+  profileTitle: { type: text, component: Heading, role: heading, text: { key: loginProfileTitle }, in: [profileForm, profileReady], source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:57 } # the one h1, id kc-page-title
+  profileSubtitle: { type: text, component: Text, text: { key: loginProfileSubtitle }, in: [profileForm, profileReady], when: "entry == 'signIn'", source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:58 } # left out when the person asked for the page (isAppInitiatedAction)
+  requiredNote: { type: text, component: Text, text: { key: requiredFields }, in: [profileForm, profileReady], source: apps/keycloak-theme/src/login/Template.tsx:126 }
+
+  # the realm's profile, in its order
+  firstName: { type: field, component: TextField, role: textbox, text: { key: firstName }, in: [profileForm, profileReady], source: libs/ui/src/giris/profile-field.tsx:268 } # holds the account's first name; autocomplete=given-name
+  lastName: { type: field, component: TextField, role: textbox, text: { key: lastName }, in: [profileForm, profileReady], source: libs/ui/src/giris/profile-field.tsx:268 }
+  genderGroup: { type: list, component: List, role: radiogroup, name: { key: gender }, in: [profileForm, profileReady], source: libs/ui/src/giris/profile-field.tsx:134 } # the group is named by its legend; the asterisk is hidden from its name
+  genderFemale: { type: field, component: ListItem, role: radio, text: { key: genderFemale }, in: [profileForm, profileReady], source: libs/ui/src/giris/profile-field.tsx:134 } # checked when the account holds FEMALE, which this graph does not state
+  genderMale: { type: field, component: ListItem, role: radio, text: { key: genderMale }, in: [profileForm, profileReady], emits: CHOOSE_GENDER, source: libs/ui/src/giris/profile-field.tsx:134 } # one radio sends the event; either one can be pressed
+  genderRequired: { type: text, component: Text, text: { key: error-user-attribute-required }, in: [profileForm, profileReady], when: genderFlagged, source: apps/keycloak-theme/src/login/UserProfileFormFields.tsx:84 } # Keycloak's own reason for the missing gender, under the group; no live region. Not looked at: no account the stack can make lacks a gender
+  email: { type: field, component: TextField, role: textbox, text: { key: email }, in: [profileForm, profileReady], source: libs/ui/src/giris/profile-field.tsx:268 } # type=email, dir=ltr
+  privacyNotice: { type: field, component: TextField, role: checkbox, text: { key: privacyNoticeRead, params: { "0": privacyNoticeLinkLabel } }, checked: "noticeOk", in: [profileForm, profileReady], emits: TOGGLE_PRIVACY_NOTICE, source: libs/ui/src/giris/profile-field.tsx:154 } # its name is the sentence with the link's words in it
+  noticeRequired: { type: text, component: Text, text: { key: error-user-attribute-required }, in: [profileForm, profileReady], when: noticeFlagged, source: apps/keycloak-theme/src/login/UserProfileFormFields.tsx:84 } # Keycloak's own reason for the missing tick, under the box and its link; drawn from the first render, marks the box invalid, is no live region (K7)
+  noticeBroken: { type: text, component: Text, text: { literal: "1 en az 1, en fazla {2} değer içermelidir." }, in: [profileForm, profileReady], when: "noticeEdit == 'unticked'", source: apps/keycloak-theme/src/login/UserProfileFormFields.tsx:84 } # what the line under the box says once the tick is taken out and the box is left: keycloakify's error-invalid-multivalued-size with its placeholders half filled (PROFILE-3)
+  privacyLink: { type: action, component: LinkButton, role: link, text: { key: privacyNoticeLinkLabel }, in: [profileForm, profileReady], source: apps/keycloak-theme/src/login/components/linkedOptionLabel.tsx:57 } # opens landing's notice in a new tab (target=_blank), at a hard-coded production address (K13); a hidden line "Yeni sekmede açılır." describes it
+
+  # the buttons
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: updateProfileSubmit }, in: [profileForm, profileReady], disabledIn: [profileForm], emits: SUBMIT, source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:77 } # natively disabled in profileForm, nothing says why (K7); no busy state after the press (PROFILE-2)
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: doCancel }, in: [profileForm, profileReady], when: "entry == 'account'", emits: CANCEL, source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:86 } # only for an action an app asked for; a second submit button, formNoValidate, so it works while the save button is off
+
+edges:
+  - { labelledBy: [profilePage, profileTitle] }
+  - { triggers: [submit, saving] }
+  - { triggers: [cancel, cancelling] }
+
+rules:
+  - { id: K7, rule: "'Kaydet ve devam et' is natively disabled until every required answer is given (LoginUpdateProfile.tsx:77-83): it cannot be focused, and nothing near it says what is missing. The field that is missing carries Keycloak's generic 'Lütfen bu alanı doldurun.' under it from the first render (UserProfileFormFields.tsx:84; looked at in a browser, the box is marked invalid), but that line is no live region and nothing moves the focus to it, so a screen-reader person who tabs to the button finds it off and hears no reason. For a box to tick the generic 'fill in this field' is also the wrong sentence: 'Devam etmek için metni okuduğunu onayla.' (privacyNoticeRequired, requiredError of profile-field.tsx:68) was written for it, and is only read by the registration form's submit try (register-form.tsx:150). Fix: keep the button on and write the reasons when it is pressed, as RegisterForm does, or at least announce the line and name the box's own sentence." }
+  - { id: PROFILE-3, rule: "Taking the tick out of the box and leaving it gives the line '1 en az 1, en fazla {2} değer içermelidir.' under the box (looked at in a browser, 15 Nov 2026): the message is the theme's error-invalid-multivalued-size ('{0} en az {1}, en fazla {2} değer içermelidir.', i18n.ts tr), a check for a field with several values that keycloakify applies to this single-option box; its placeholders are not filled as the message expects, so '{0}', where a field's name belongs, got a '1' and '{2}' is printed as it is. The same box's missing-tick line on arrival is the right generic one. Fix: do not let a single-option box fall to the multivalued-size check, or give the theme's own required-box sentence for it (profile-fields.tsx:267 builds requiredError and the profile page does not use it)." }
+  - { id: PROFILE-1, rule: "login-update-profile.ftl gives no control the initial focus (looked at in a browser: the active element is the body on arrival, from sign-in and from Hesap; no field has autoFocus, profile-field.tsx:268-301, and nothing in LoginUpdateProfile.tsx focuses one), so a keyboard person starts at the top of the document, and when the save button comes on nothing says so. The same gap as K3 on login.ftl; login-reset-password.ftl and the new-password page do autofocus. Fix: autoFocus the first field that is missing, else the first one. The graph draws no initialFocus." }
+  - { id: K2, rule: "Every Keycloak page has the same tab title, Keycloak's 'Medaris adresinde oturum açın' (Template.tsx:57, no page passes documentTitle; looked at in a browser on this page): it cannot be told from the login, registration, reset or consent pages by its title (WCAG 2.4.2). Not a node: the graph cannot draw a title." }
+  - { id: PROFILE-2, rule: "'Kaydet ve devam et' has no busy state (LoginUpdateProfile.tsx:77-84 passes no `loading`, and the page has no form-state hook), unlike login.ftl, register.ftl and the new-password page, whose buttons turn aria-busy with a hidden status line: while the post is on its way the page looks as it did and a second press can post again. Read from the code; not looked at in a browser (the post is a navigation the replay cannot look into). Fix: use the same form-state hook as the other three." }
+  - { id: K13, rule: "The link of 'Aydınlatma Metni'ni okudum.' is the production address https://medaris.app/aydinlatma-metni on every environment, the local one included (config/keycloak/user-profile.json:66; looked at in a browser: the link's href), so on the local stack it leaves the machine. It opens in a new tab and says so in a hidden line." }
+  - { id: ACC-09, rule: "The link that starts this flow from Hesap ('Değiştir' or 'Ekle', apps/tedris/features/account/components/account-settings.tsx:80) has no name that says what it changes beside the word. It belongs to tedris.account.profile; it is listed here because it is the way into the 'account' entry." }
+  - { id: no-username-field, rule: "The inventory (keycloak-theme.md 4.5) and the theme draw a read-only user name with the line 'Salt okunur; buradan değiştirilemez.' (readOnlyHelp, profile-fields.tsx:225), but the page Keycloak sends has no username among its attributes (kcContext.profile.attributesByName: firstName, lastName, gender, email, privacyNoticeRead; looked at in a browser), so the line is dead on this page. Not a defect for the person; the message is unused here." }
+  - { id: no-javascript, rule: "The page is drawn by React in the browser from window.kcContext; with JavaScript off it is empty (src/main.tsx:17-24). Once drawn, the form is native (method=post), and the save button needs the hook's answer to switch on." }

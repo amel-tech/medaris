@@ -1,0 +1,20 @@
+# tedris.course.readProgramme as a talebe whose application waits: "Onay bekliyor", "Başvuruyu geri çek" (tedris.course.apply's) and a card
+# with the next celse and the sentence that the content opens on enrolment; the programme is locked. Same course, data and locators as
+# binding.yaml (see its header); the scenario is the only difference.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/readProgramme --bind graphs/tedris/course/readProgramme/binding.pending.yaml \
+#     --to curriculum --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.course.readProgramme
+
+scenarios:
+  pending:
+    given: { read: ok, who: pending, ahead: noLink, course: rich, tabParam: none }
+    as: applicantA
+    open: '{tedris}/courses/{prog.course}'
+    setup:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, make]
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, seat, PENDING]
+    teardown:
+      - run: [node, ../tedris/course/readProgramme/programme-data.mjs, remove]

@@ -1,0 +1,105 @@
+# tedris.course.recordings on the local stack (graphs/README.md, "The stack and the bindings"): the tab "Ders kayıtları" of a course of its
+# own, read as three people.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/recordings --bind graphs/tedris/course/recordings/binding.yaml \
+#     --to listForOutsider --to recordingsEmpty --out <dir>
+# (the main story is walked as well: a talebe with a seat, by the address ?tab=kayitlar).
+#
+# What each scenario starts from. The course is made by recordings-data.mjs in `setup` and deleted in `teardown`, so no seeded course, no
+# seeded talebe and no notification of the seed is touched; its five recordings and the rows they make are described there. The walk's talebe
+# is `applicantA`, who holds no row anywhere and is seated only in the first scenario; the course takes anyone, so the seat is ENROLLED.
+#   seat         (the main story) applicantA with a seat: opens /courses/<id>?tab=kayitlar, reads five rows (a Drive and two YouTube links to
+#                the watch page, one being prepared, one held back), and follows the second ready one to its watch page (e2e celse-states#5)
+#   visitor      nobody signed in (no `as`: the base's real sign-in never runs): opens the course on Müfredat, presses "Ders kayıtları", reads
+#                the three public rows (e2e celse-states#7); the page of a visitor and of a signed-in stranger differ nowhere on this tab
+#   koskHides    the same visitor with the köşk's own switch "Ders kayıtları herkese açılamaz" put on: the API lists nothing, the tab says there
+#                is none although the course has five recordings. The switch is the köşk's, the one the list reads (RECS-1: the medrese's is not)
+#
+# Not walked on the stack, and why:
+#   - the failed box and the retry (RECS-2): the stack cannot make tedrisat refuse the read, and nothing here switches it off.
+#   - Bunny: a recording that is uploading, one that failed (MDRS-259), the chip "Bunny Stream" and the signed link a Bunny row carries.
+#   - OPEN_HOST (the new tab of a visitor's row) is bound but not on the main story: the replay presses the link and does not follow the tab.
+#   - a medrese course whose medrese switches the policy on (RECS-1): that needs a medrese course of its own on the seeded medrese.
+# The first scenario's two `effects` read the API with the same account and check the rows the page was drawn from.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.course.recordings
+
+data:
+  recs: { json: ../.local/course-recordings.json }
+
+scenarios:
+  seat:
+    given: { reader: seat, recordings: publicToo, policy: none, read: ok, entry: address }
+    as: applicantA
+    open: '{tedris}/courses/{recs.course}?tab=kayitlar'
+    vars: { who: applicantA, rows: '5' }
+    setup:
+      - run: [node, ../tedris/course/recordings/recordings-data.mjs, up, --seat]
+        expect: 'recordings-data up'
+    teardown:
+      - run: [node, ../tedris/course/recordings/recordings-data.mjs, down]
+        expect: 'recordings-data down'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+      - run: [node, helpers/notify.mjs, applicantA, clear]
+  visitor:
+    given: { reader: outsider, recordings: publicToo, policy: none, read: ok, entry: tab }
+    open: '{tedris}/courses/{recs.course}'
+    vars: { who: visitor, rows: '3' }
+    setup:
+      - run: [node, ../tedris/course/recordings/recordings-data.mjs, up]
+        expect: 'recordings-data up'
+    teardown:
+      - run: [node, ../tedris/course/recordings/recordings-data.mjs, down]
+        expect: 'recordings-data down'
+  koskHides:
+    given: { reader: outsider, recordings: publicToo, policy: honoured, read: ok, entry: address }
+    open: '{tedris}/courses/{recs.course}?tab=kayitlar'
+    vars: { who: visitor, rows: '0' }
+    setup:
+      - run: [node, ../tedris/course/recordings/recordings-data.mjs, up]
+        expect: 'recordings-data up'
+      - run: [node, ../tedris/course/recordings/recordings-data.mjs, kosk, 'on']
+        expect: 'recordingsNeverPublic on'
+    teardown:
+      - run: [node, ../tedris/course/recordings/recordings-data.mjs, down]
+        expect: 'recordings-data down'
+
+events:
+  # the person goes on to another page of the app
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  left: { url: '{tedris}/discover' }
+  # the watch page of one celse of the course: /courses/<id>/lessons/<celse>/izle (a plain anchor, a full page load)
+  watch_opened: { url: '{tedris}/courses/{recs.course}/lessons/*/izle' }
+
+effects:
+  # what the API listed to this person, the page's own read repeated: the number of rows the tab is drawn from (e2e celse-states#5 a3-a4,
+  # #7 a1-a3: the ended and the processing recording for a talebe, only the public one for a stranger)
+  listCourseRecordings:
+    - run: [node, ../tedris/course/recordings/recordings-data.mjs, list, '{who}']
+      expect: '{who} {rows} rows'
+
+# Where role and name cannot find a node. Every row-level locator sits inside the list's own <section aria-labelledby="all-recordings">, so
+# the same node is not found in the programme panel, which has list items and badges of its own.
+nodes:
+  # the course page's <main>: the watch page has a <main> of its own, so the course page's is the one that holds the tab row
+  coursePage: { css: 'main:has([role=tablist][aria-label="Ders bölümleri"])' }
+  # the name of the tab is its words and, when the list has rows, a space and their number ("Ders kayıtları 3")
+  tabRecordings: { role: tab, name: '/^Ders kayıtları/' }
+  # the week's block and heading: "Hafta 2 Okuma" (the title only when it says more than the number)
+  weekGroup: { css: 'section[aria-labelledby="all-recordings"] section[aria-labelledby^="week-"]' }
+  weekHeading: { css: 'section[aria-labelledby="all-recordings"] h3[id^="week-"]', hasText: '/^Hafta \d+/' }
+  rowTitle: { css: 'section[aria-labelledby="all-recordings"] li span.mds-label' }
+  rowFacts: { css: 'section[aria-labelledby="all-recordings"] li span.mds-caption[id^="recording-facts-"]', hasText: '/ · \d+ dk$/' }
+  rowFactsPending: { css: 'section[aria-labelledby="all-recordings"] li span.mds-caption[id^="recording-facts-"]', hasText: '/ · Hazır olunca buradan açılır$/' }
+  publicChip: { css: 'section[aria-labelledby="all-recordings"] li span.mds-badge--outline', hasText: Herkese açık }
+  providerChip: { css: 'section[aria-labelledby="all-recordings"] li span.mds-platform-chip' }
+  preparingBadge: { css: 'section[aria-labelledby="all-recordings"] li span.mds-badge--secondary', hasText: Hazırlanıyor }
+  releaseNote: { css: 'section[aria-labelledby="all-recordings"] li [data-recording-release]', hasText: '/^Ders kaydı .+ açılır\.$/' }
+  # the links are the ready rows, in the order of the page: the Drive one, then the two YouTube ones; the second is the one the walk follows
+  watchRow: { css: 'section[aria-labelledby="all-recordings"] li a[href$="/izle"]', nth: 1 }
+  openRow: { css: 'section[aria-labelledby="all-recordings"] li a[target=_blank][aria-label^="Ders kaydını aç: "]' }
+  openCue: { css: 'section[aria-labelledby="all-recordings"] li a span', hasText: '/^Ders kaydını aç$/' }
+  retryStatus: { role: status, hasText: Yükleniyor }

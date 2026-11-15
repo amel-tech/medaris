@@ -1,0 +1,131 @@
+# What must exist for a person whose session ends under an open page: the closed product list of realm.auth.sessionEnded, written on
+# 2026-11-15 in the format LAYOUT.md section 7 fixes. Each need is what the product must do, from the flow's story, never from what
+# the page does today; a finding the flow touches is a need with `missing: none` where the code does not meet it (its id is in the
+# need). Parsed with a YAML parser before delivery. Nothing here is planned work with a Linear key: the planned items of planned.md
+# do not name this flow.
+#
+# missing (no code): the-text-they-typed-is-not-lost, the-page-says-the-session-ended
+# unwalked (code, nothing walks it): the-tab-learns-by-itself, the-end-is-noticed-at-once, a-refused-token-gets-new-tokens,
+#   a-link-to-a-protected-page-asks-to-sign-in, the-same-in-nazar-and-nizam
+# (the replay's TAB_SHOWN is a reload: the SessionProvider's own read is not walked; a-link-to-a-protected-page-asks-to-sign-in is
+# bound and was driven by hand, not by a replay; the others cannot be walked on this stack: see binding.yaml)
+# Replays (2026-11-15, the second of two runs): scenario celseWrites walked the main story and --to handed_over.sign_in_page_reload,
+# scenario discoverStale walked --to visitorPage, all with --absent, all pass.
+kind: needs
+flow: realm.auth.sessionEnded
+status: proposed
+
+needs:
+  - id: a-write-with-an-ended-session-asks-to-sign-in
+    need: >-
+      A person who presses a button that writes after their session ended is sent to sign in without being told that their action
+      failed, and comes back to the same page.
+    drawn:
+      - saving
+      - startingSignIn
+      - handed_over.sign_in_form
+    built:
+      - route: apps/tedris/lib/send-to-sign-in.ts:25
+      - route: libs/auth/src/client/unauthenticated.ts:314
+      - route: libs/auth/src/server/reads.ts:211
+    walked:
+      - replay: celseWrites
+
+  - id: a-protected-page-goes-to-sign-in-and-back
+    need: >-
+      A protected page that is open when the session ends sends the person to sign in, and after the sign-in they are on that page
+      again, not on the app's landing.
+    drawn:
+      - readingSession
+      - handed_over.sign_in_page_reload
+    built:
+      - action: medaris.api:getAuthSession
+      - route: libs/auth/src/client/session-context.ts:96
+      - route: libs/auth/src/server/proxy.ts:198
+    walked:
+      # the replay reaches Keycloak's form with the page as callbackUrl (TAB_SHOWN is a reload there); the way back onto the page is
+      # realm.auth.signIn's (tedrisProtectedPage)
+      - replay: celseWrites
+
+  - id: a-link-to-a-protected-page-asks-to-sign-in
+    need: >-
+      A person with a stale tab who follows a link to another protected page is asked to sign in and lands on that page, not on the page
+      they were on.
+    drawn:
+      - handed_over.sign_in_page_link
+    built:
+      - route: libs/auth/src/server/proxy.ts:198
+    walked: []
+
+  - id: a-public-page-stays-readable
+    need: >-
+      A page a visitor may read stays readable when the session ends: it is drawn again as the visitor's and nobody is sent to sign in
+      unasked.
+    drawn:
+      - visitorPage
+    built:
+      - route: libs/auth/src/server/reads.ts:129
+      - route: apps/tedris/lib/public-paths.ts:12
+    walked:
+      - replay: discoverStale
+
+  - id: the-tab-learns-by-itself
+    need: >-
+      A tab that is shown again learns that the session ended, in a way that does not loop and that does not reload a page already drawn
+      for a visitor.
+    drawn:
+      - staleSession
+      - readingSession
+    built:
+      - route: libs/auth/src/client/session-context.ts:72
+    walked: []
+
+  - id: the-end-is-noticed-at-once
+    need: >-
+      A sign-out in another Medaris app ends this app's session at once, not up to a minute later, and a write in that minute is not
+      accepted. (Back-channel logout does this with the session store; without it the proxy asks Keycloak once a minute and Keycloak's
+      call is answered 501.)
+    drawn:
+      - keycloakCallsBack
+      - staleSession
+    built:
+      - action: medaris.api:receiveBackchannelLogout
+      - route: libs/auth/src/server/renewal.ts:196
+    walked: []
+
+  - id: a-refused-token-gets-new-tokens
+    need: >-
+      When the API refuses a token that Keycloak issued, the person is sent for new tokens (reauth) and comes back to the same page
+      without a form, and a token the API never takes ends on a box that says so instead of a loop.
+    drawn:
+      - handed_over.reauth
+    built:
+      - route: libs/auth/src/server/reads.ts:182
+      - route: apps/tedris/lib/tedrisat-api.ts:44
+    walked: []
+
+  - id: the-text-they-typed-is-not-lost
+    need: >-
+      The text a person has typed and not saved is not lost when the session ends: it is kept per celse and offered back after the
+      sign-in, or the panel says before it leaves that it will be gone (finding WRT-13).
+    drawn:
+      - saving
+    missing: none
+
+  - id: the-page-says-the-session-ended
+    need: >-
+      A person who is sent to sign in, or who sees a page they were signed in on turn into a visitor's, is told that their session ended
+      (finding SESSION-1); nothing says it today.
+    drawn:
+      - visitorPage
+      - handed_over.sign_in_page_reload
+    missing: none
+
+  - id: the-same-in-nazar-and-nizam
+    need: >-
+      The same holds in nazar and nizam, each with its own pages: a protected page goes to sign-in, a write finds the session over without
+      an error text, and a request that is already on its way is not overridden by the redirect (finding F-E-21 in nazar).
+    drawn: []
+    built:
+      - route: libs/auth/src/client/unauthenticated.ts:314
+    walked: []

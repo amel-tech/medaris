@@ -1,0 +1,197 @@
+# What must exist for a person who forgot their password: the closed product list of realm.auth.forgotPassword, written on
+# 2026-11-15 in the format LAYOUT.md section 7 fixes. Each need is what the product must do, from the flow's story and from
+# planned.md, never from what the pages do today; a finding the flow touches is a need with `missing: none` where the code
+# does not meet it (its id is in the need). A need that nothing walks and a need with no code are the flow's gaps, reported to
+# the orchestrator for graphs/needs.gaps.yaml (this flow does not edit it).
+#
+# Missing (the need is not met by the code, `missing:` set): confirmation-names-the-way-on, a-link-works-once (the first half is
+#   built, the notice that a link is spent is not), email-rule-before-posting, length-from-the-realm, reset-reason-is-linked,
+#   password-change-is-told, smtp-reset-mail (MDRS-188).
+# Unwalked (code, no e2e and no replay): link-lasts-thirty-minutes, page-checks-before-posting, sign-out-other-devices-choice.
+kind: needs
+flow: realm.auth.forgotPassword
+status: proposed
+
+needs:
+  - id: ask-for-a-reset-by-name-or-address
+    need: >-
+      A person who cannot sign in gives their user name or their e-mail address on one form, reached from the sign-in form, and
+      is sent a mail with a link that lets them choose a new password.
+    drawn:
+      - resetForm
+      - sending
+      - sentNotice
+    built:
+      - route: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:22
+      - route: apps/keycloak-theme/src/email/html/password-reset.ftl:2
+      - route: config/keycloak/realms/_base.json:8
+    walked:
+      - e2e: apps/keycloak-theme/test/email.e2e.spec.ts
+        check: 'email.e2e.spec#2'
+      - replay: tedrisKnownAddress
+
+  - id: the-answer-never-tells-who-has-an-account
+    need: >-
+      The answer to an address that has no account is the same as the answer to one that has: the same page, the same sentence,
+      the same kept address, and no mail to the stranger. Nothing on the page, in the address or in the mail says which it was.
+    drawn:
+      - sending
+      - sentNotice
+    built:
+      - route: apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:42
+    walked:
+      - replay: tedrisUnknownAddress
+
+  - id: confirmation-names-the-way-on
+    need: >-
+      After the request the person is told, in words of this product, that a mail is on its way if the address has an account,
+      how long its link lasts and to look in the spam folder, on a page that is not the sign-in page, with the focus on the
+      message (findings FORGOT-1, K3).
+    drawn:
+      - sentNotice
+    missing: none
+
+  - id: link-lasts-thirty-minutes
+    need: >-
+      The link in the mail opens the new-password page for 30 minutes, in any browser, until a password was saved with it.
+    drawn:
+      - openingLink
+      - newPasswordForm
+    built:
+      - route: config/keycloak/realms/_base.json:44
+    walked: []
+
+  - id: a-link-works-once
+    need: >-
+      A link that was used, or is older than its lifetime, shows no password form; the person is told the link is spent and is
+      offered a new request (finding FORGOT-3).
+    drawn:
+      - openingLink
+      - handed_over.error_page
+    built:
+      - route: apps/keycloak-theme/src/login/pages/ErrorPage.tsx:25
+    walked: []
+    missing: none
+
+  - id: choose-a-new-password
+    need: >-
+      The new-password page takes a password of ten characters or more that is not the person's user name or e-mail address,
+      asks for it twice, and saves it.
+    drawn:
+      - newPasswordForm
+      - savingPassword
+    built:
+      - route: libs/ui/src/giris/update-password-form.tsx:57
+      - route: config/keycloak/realms/_base.json:20
+    walked:
+      - replay: tedrisKnownAddress
+
+  - id: page-checks-before-posting
+    need: >-
+      An empty, short, mismatched or user-name password is stopped on the page with its reason under the field, the focus on the
+      first field to fix, and nothing posted.
+    drawn:
+      - newPasswordInvalid
+      - newPasswordMismatch
+      - newPasswordRetyped
+    built:
+      - route: libs/ui/src/giris/update-password-form.tsx:92
+    walked: []
+
+  - id: email-rule-before-posting
+    need: >-
+      The page lists and checks the rule "different from the e-mail address" before posting, so that a person is not sent back to
+      empty fields by the realm after the post (finding FORGOT-2).
+    drawn:
+      - newPasswordForm
+      - newPasswordRefused
+    missing: none
+
+  - id: realm-refuses-the-address-as-password
+    need: >-
+      A password that is the person's e-mail address is refused, the account's password stays as it was, and the person is told.
+    drawn:
+      - savingPassword
+      - newPasswordRefused
+    built:
+      - route: config/keycloak/realms/_base.json:20
+      - route: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:64
+    walked:
+      - replay: tedrisKnownAddress
+
+  - id: length-from-the-realm
+    need: >-
+      The length in the page's rule and in its short-password reason is read from the realm's policy (finding K9).
+    drawn:
+      - newPasswordForm
+      - newPasswordInvalid
+    missing: none
+
+  - id: reset-reason-is-linked
+    need: >-
+      The reset form's reason is linked to its field and announced (finding K5), and the form says it is busy while it is sent
+      (finding K4).
+    drawn:
+      - resetFormError
+    missing: none
+
+  - id: sign-out-other-devices-choice
+    need: >-
+      The person chooses whether the other devices are signed out; the page says what the choice does.
+    drawn:
+      - newPasswordForm
+    built:
+      - route: libs/ui/src/giris/update-password-form.tsx:185
+    walked: []
+
+  - id: signed-in-after-saving
+    need: >-
+      After the new password is saved the person is signed in to the app that sent them, on the page they were going to.
+    drawn:
+      - finishingRoundTrip
+      - signed_in
+    built:
+      - action: medaris.api:finishSignIn
+    walked:
+      - replay: tedrisKnownAddress
+
+  - id: held-sign-in-asks-for-a-new-password
+    need: >-
+      An account that an administrator asked for a new password is held on the same page right after its password is typed, and
+      is signed in once the new one is saved.
+    drawn:
+      - holdingSignIn
+      - newPasswordForm
+    built:
+      - route: apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:24
+    walked:
+      - replay: tedrisPasswordUpdateDue
+
+  - id: password-change-is-told
+    need: >-
+      A person whose password was changed is told so, on the page they land on and by mail, so that someone who did not do it
+      can act (finding FORGOT-4).
+    drawn:
+      - signed_in
+    missing: none
+
+  - id: reset-mail-in-three-languages
+    need: >-
+      The reset mail reads in the person's language (tr, en, ar), left to right or right to left, with the subject, the button
+      and the link, and says how long the link lasts.
+    drawn:
+      - openingLink
+    built:
+      - route: apps/keycloak-theme/src/email/messages/messages_tr.properties:16
+      - route: apps/keycloak-theme/src/email/messages/messages_en.properties
+      - route: apps/keycloak-theme/src/email/messages/messages_ar.properties
+    walked:
+      - e2e: apps/keycloak-theme/test/email.e2e.spec.ts
+        check: 'email.e2e.spec#2'
+
+  - id: smtp-reset-mail
+    need: >-
+      The reset mail goes through the production mail sender, so that a person outside the local stack receives it (P-30).
+    drawn:
+      - sending
+    missing: MDRS-188

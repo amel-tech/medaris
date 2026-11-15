@@ -1,0 +1,153 @@
+# What must exist for a person with no account to look around tedris-web and be asked to sign in or register from the page they
+# like: tedris.discover.visitorPath, written on 15 Nov 2026 in the format of LAYOUT.md section 7. Each need is what the product must
+# do, from the flow's story; none is read off what the page does today. No planned feature (P-nn) of planned.md is this page's: the
+# language switch (P-21, MDRS-295) is tedris.shell.frame's and the address of a medrese by its handle (P-22, MDRS-294) is
+# tedris.discover.readMadrasah's.
+# Missing (no code, or code that says otherwise): registration-returns-to-the-page, medrese-notice-is-true,
+#   programme-names-a-week-once, sample-row-does-not-say-completed, loading-is-heard.
+# Unwalked (code, and neither an e2e nor a passed replay): none. Two needs rest on a weak walk and say so: register-from-the-page
+#   has only anonymous#7, which awaits /realms/ and so cannot tell the registration form from the login form (E2E-P-06); REGISTER is
+#   bound but not on the main story, so no replay of it has passed. closed-content-stays-out-of-the-page has the e2e that reads the
+#   page HTML, which a graph cannot.
+kind: needs
+flow: tedris.discover.visitorPath
+status: proposed
+
+needs:
+  - id: read-without-an-account
+    need: >-
+      A person with no account reads Keşfet, a köşk, a medrese and a course's introduction, and is not sent to sign in to do so.
+    drawn: [discover, kosk, madrasah, course]
+    built:
+      - route: apps/tedris/lib/public-paths.ts:15
+      - route: apps/tedris/lib/public-paths.ts:30
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#1, anonymous#5'
+      - e2e: apps/tedris/e2e/course.e2e.ts
+        check: 'course#1'
+      - replay: fullIntro
+
+  - id: no-follow-and-no-application-for-a-visitor
+    need: >-
+      A visitor is not offered the follow button, the way to ask for a köşk, a köşk's decks, or a talebe's tabs of a course, and is
+      invited to sign in or register in their place.
+    drawn: [discover, kosk, course, recordings]
+    built:
+      - route: apps/tedris/features/discover/components/kosk-card.tsx:39
+      - route: apps/tedris/features/discover/components/discover-page.tsx:203
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:183
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#1, anonymous#4, anonymous#10'
+      - replay: fullIntro # with --absent: every node behind `signedIn` is checked not to be there
+
+  - id: sign-in-comes-back-to-the-page
+    need: >-
+      From any page a visitor reads, "giriş yap" signs them in and brings them back to that page, with the filters of Keşfet kept.
+    drawn: [handed_over.sign_in]
+    built:
+      - route: apps/tedris/lib/invite-hrefs.ts:10
+      - route: apps/tedris/features/courses/components/course-aside.tsx:352
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#4 (the href), anonymous#8 (back on Keşfet)'
+      - e2e: apps/tedris/e2e/course.e2e.ts
+        check: 'course#4 (ends on the sign-in page; it does not check the way back)'
+      - replay: fullIntro # up to Keycloak's address; the way back is realm.auth.signIn's scenario tedrisSignInLink
+
+  - id: register-from-the-page
+    need: >-
+      From any page a visitor reads, "kayıt ol" opens the registration form.
+    drawn: [handed_over.register]
+    built:
+      - route: apps/tedris/lib/invite-hrefs.ts:11
+      - route: apps/tedris/features/courses/components/course-aside.tsx:358
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#7 (it awaits only /realms/, so a login form passes it too: E2E-P-06)'
+
+  - id: registration-returns-to-the-page
+    need: >-
+      A visitor who registers from a course's page comes back to that course once the account is made, as one who signs in does.
+    drawn: [handed_over.register]
+    missing: none # decision D1 of the flow; registration carries no callbackUrl today and ends on Ana sayfa (lib/invite-hrefs.ts:11)
+
+  - id: course-programme-is-open-and-its-content-locked
+    need: >-
+      A visitor reads a course's whole programme (every week, every celse's day and length) and sees which weeks are locked and
+      why, and what stays out of the page: the meeting links and the closed celses' agenda and source.
+    drawn: [course]
+    built:
+      - route: apps/tedris/features/courses/components/course-programme.tsx:199
+      - route: apps/tedris/features/courses/components/course-aside.tsx:195
+    walked:
+      - e2e: apps/tedris/e2e/course.e2e.ts
+        check: 'course#1 (a2-a9; a10, the page HTML holds no meeting URL, is not walkable in a graph)'
+      - replay: fullIntro
+
+  - id: sample-celse-is-open-to-everyone
+    need: >-
+      One celse a course marks as its sample is open to anyone, with its agenda and its source, and nothing else of the course's
+      celses is.
+    drawn: [course, recordings]
+    built:
+      - route: apps/tedris/features/courses/components/course-page.tsx:498
+      - action: medaris.api:updateLesson
+    walked:
+      - e2e: apps/tedris/e2e/course.e2e.ts
+        check: 'course#2 (a1-a3; a4-a11, the closed celse absent from the HTML and the API JSON, are not walkable in a graph)'
+      - replay: fullIntro
+
+  - id: public-recordings-are-listed
+    need: >-
+      A visitor sees the recordings a course made public, each as a link to its host, and no others.
+    drawn: [recordings]
+    built:
+      - action: medaris.api:listCourseRecordings
+      - route: apps/tedris/features/courses/components/recordings-tab.tsx:297
+    walked:
+      - replay: fullIntro # the tab with one public recording; "no others" is the API's (anonymous#20's neighbour, not an e2e of recordings)
+
+  - id: resource-names-without-links
+    need: >-
+      A visitor reads the names of a course's resources and is told who opens them; the resources' links and files are not theirs.
+    drawn: [course, recordings]
+    built:
+      - route: apps/tedris/features/courses/components/course-resources.tsx:201
+    walked:
+      - replay: fullIntro
+
+  - id: medrese-notice-is-true
+    need: >-
+      A medrese's page tells a visitor that enrolment is by approval only for a medrese whose policy says so.
+    drawn: [madrasah]
+    missing: none # VISIT-1: the sentence is drawn for every medrese (madrasah-page.tsx:199); no Linear issue yet; decision D2
+
+  - id: programme-names-a-week-once
+    need: >-
+      A week whose title only repeats its number is named once in the programme, as the recordings tab already does.
+    drawn: [course]
+    missing: none # VISIT-2: no Linear issue yet
+
+  - id: sample-row-does-not-say-completed
+    need: >-
+      A visitor is not told they completed the sample celse once it is over; the row says it is over, or nothing.
+    drawn: [course]
+    missing: none # VISIT-3: no Linear issue yet
+
+  - id: loading-is-heard
+    need: >-
+      While Keşfet, a köşk, a medrese or a course loads, assistive technology says so.
+    drawn: [discover, kosk, madrasah, course]
+    missing: none # DSC-19 and CRS-08, no Linear issue
+
+  - id: closed-content-stays-out-of-the-page
+    need: >-
+      The pages a visitor reads carry no meeting link, no stream and nothing of a closed celse beyond its place in the programme.
+    drawn: [course, recordings]
+    built:
+      - action: medaris.api:getCourse
+    walked:
+      - e2e: apps/tedris/e2e/course.e2e.ts
+        check: 'course#1 (a10), course#2 (a4, a5): they read the page HTML and the API JSON; this graph cannot, so the replay does not carry them'

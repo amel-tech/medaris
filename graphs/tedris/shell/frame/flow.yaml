@@ -1,0 +1,259 @@
+# The frame of tedris-web (apps/tedris): the bar a person meets at the top of the pages, wide and on a phone, and the
+# older header that shows when a page throws. Read from the code of the branch (the tree of PR #394) on 15 Nov 2026 and
+# walked on the local stack. Nothing here is approved.
+#
+# What this flow draws and what its neighbours draw:
+#   - tedris.nav draws the frame's entries, the way from a page to a page ("Keşfet" in the bar leads to Keşfet). This flow
+#     draws what the nav cannot: the wide bar for a visitor and for a member with the item the page belongs to, the phone's
+#     app bar and the sheet it opens (focus in, Esc or "Kapat" closes it and gives the focus back, a link or a wider window
+#     closes it), the bell that never says how many are unread (SHL-04), and the older header and tab row that show again
+#     when a page throws (SHL-06). A link leaves the page: the next page draws its own frame, which is this flow again.
+#   - The theme toggle belongs to common.shell.theme, the footer link to common.shell.privacyNotice, the not-found, error
+#     and global-error pages themselves to tedris.shell.systemPages, the page below the bar to the page's own flow.
+#
+# Findings it carries (ui.yaml `rules` has the same ids): SHL-04 = ACC-01, SHL-06, SHL-09 = ACC-22 = MDRS-235, SHL-10,
+# SHL-11 = DSC-22, SHL-14, and two of its own, FRAME-1 and FRAME-2. The tab count of SHL-11 is corrected there.
+schema: delurio-graph/0
+kind: flow
+id: tedris.shell.frame
+status: captured
+domain: medaris.api
+ui: tedris.shell.frame
+title: Move around the frame, wide and on a phone
+summary: >-
+  Every page of tedris-web that is on the Medaris design draws one bar. From 768 px it is the top bar: the wordmark, the
+  five places for a member (Ana sayfa, Keşfet, Derslerim, Programım, Desteler) or Keşfet alone for a visitor, the bell and
+  Hesabım for a member or "Giriş yap" and "Kayıt ol" for a visitor, with the item of the page the person is on marked as
+  current. Below 768 px it is a 56 px bar with a "Menü" button; the button opens a sheet that holds the same places and, at
+  its foot, the person's row for a member or the two ways in for a visitor. The sheet is a modal dialog: the focus goes to
+  "Kapat", Esc and "Kapat" close it and give the focus back to "Menü", a followed link closes it, and so does widening
+  the window past 768 px. The bell is named "Bildirimler" whatever is unread. When a page throws, the root error boundary
+  replaces the page and its layout, the bar goes with them, and the older header and tab row, which nothing hides any
+  more, show above the error box, with the one place that does say how many notifications are unread.
+source: apps/tedris/components/phone-menu/phone-chrome.tsx:20
+
+scope:
+  shows: the bar of a page in the three places it can be (wide, phone with the sheet closed or open) and the older header on the page of a thrown error
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the theme toggle in every bar (common.shell.theme) and the footer's link to the privacy notice (common.shell.privacyNotice)"
+    - "what each place opens: Ana sayfa, Keşfet, Derslerim, Programım, Desteler, Bildirimler, Hesabım and Keycloak are other flows, and a link leaves for them; the next page draws its own bar, which is this flow again, started at its own page (`viewer`)"
+    - "the page below the bar and its `<main>`: nothing in this flow draws it, because the bar does not own it"
+    - "the older user menu on the page of a thrown error: its trigger is drawn, its items (the disabled Öğrenimim, Profil and Yardım ve Destek, the enabled Hesap Ayarları and Çıkış yap, and the app version) are not, and neither are the older header's two buttons for a visitor, which call signIn() and leave for Keycloak by a library route"
+    - "narrowing the window, and widening it with the sheet closed: the two bars are both in the page and the style sheet shows one of them, so nothing happens that the graph could name"
+    - "the loading skeletons, the not-found page and the global error document (tedris.shell.systemPages)"
+    - "a language menu: the app is Turkish only, no menu is drawn (P-21, MDRS-295), and the bar has an unused `PhoneMenu.languageMenu` message"
+    - "a page that carries no place of the five (Hesabım, Bildirimler, a celse page): `viewer` is `apart`, the bar marks nothing and the phone bar says the page's own name"
+
+decisions:
+  D1:
+    question: >-
+      Should the bell in the bar say how many notifications are unread, as the older header's bell does (MDRS-167)?
+    recommend: >-
+      Yes: PhoneChrome reads the count once and passes the label to both bars, and the older header is deleted so that
+      the count is no longer read on every page of every signed-in person for a header nobody sees.
+    affects: [wideBar, phoneBar, errorPage]
+  D2:
+    question: >-
+      When a page throws, should the bar stay (the boundary mounts PhoneChrome) or should the older header and tab row
+      go (they are deleted)?
+    recommend: >-
+      Delete the older header and tab row, and mount PhoneChrome inside the error state, so that the error page is the
+      page with its bar and one `<main>`.
+    affects: [errorPage]
+  D3:
+    question: >-
+      Should the sheet's person row carry a role line at all, when the session does not carry the account's roles?
+    recommend: >-
+      No: drop the line "Talebe", which is said under a hoca, a nazım and a başnazım alike, or take it from GET /me.
+    affects: [phoneSheet]
+
+context:
+  viewer:
+    values: [visitor, home, discover, courses, schedule, decks, apart]
+    initial: any
+    say:
+      visitor: "signed out, on a public page (Keşfet, a köşk, a medrese, a course); a visitor's bar is always Keşfet's (SHL-10)"
+      home: "signed in, on Ana sayfa"
+      discover: "signed in, on Keşfet, a köşk page or a medrese page"
+      courses: "signed in, on Derslerim or on a course page of a course they hold a seat in"
+      schedule: "signed in, on Programım"
+      decks: "signed in, on Desteler or one of its pages"
+      apart: "signed in, on a page of none of the five places (Hesabım, Bildirimler, a celse page, a course they hold no seat in)"
+  opensAt:
+    values: [wide, phone]
+    initial: any
+    say:
+      wide: "the window is 768 px or wider when the page opens"
+      phone: "the window is narrower than 768 px when the page opens"
+  unread:
+    values: [none, some]
+    initial: any
+    say:
+      none: "the person has no unread notification"
+      some: "the person has at least one unread notification"
+  trouble:
+    values: [none, throws]
+    initial: any
+    say:
+      none: "the page the person opens draws"
+      throws: "the page the person opens throws on the server (the API unreachable, a 5xx, a time zone no calendar knows)"
+
+# `viewer` folds the person and the place into one variable, because a visitor on Ana sayfa or a member on nothing is not a
+# case the app has (/home sends a visitor to Keşfet), and `initial: any` cannot leave such a pair out. `unread` is only
+# read by the member's older bell; it is `none` in the visitor's scenarios.
+guards:
+  isVisitor: "viewer == 'visitor'"
+  isMember: "viewer != 'visitor'"
+  placed: "viewer != 'apart'"
+
+effects:
+  again: { havoc: [trouble] } # "Yeniden dene" reads the page again, and the answer may differ
+
+main:
+  given: { viewer: home, opensAt: phone, unread: some, trouble: none }
+  events: [OPEN_MENU, CLOSE, OPEN_MENU, ESCAPE, OPEN_MENU, PICK_SCHEDULE]
+
+initial: arriving
+states:
+  arriving:
+    title: A page of the app opens
+    description: >-
+      Classification only. A page that is on the Medaris design mounts PhoneChrome in its segment's layout, which draws
+      both bars and lets the style sheet pick one by the window's width, and hides the older header and tab row. A page
+      that throws is caught by the root boundary, above every segment layout, so none of that is drawn.
+    source: apps/tedris/components/phone-menu/phone-chrome.tsx:20
+    always:
+      - { guard: "trouble == 'throws'", target: errorPage, say: "the segment threw: the boundary replaced the page and PhoneChrome with the error box", source: apps/tedris/app/error.tsx:12 }
+      - { guard: "opensAt == 'wide'", target: wideBar, say: "the top bar is the one the style sheet shows", source: apps/tedris/components/phone-menu/desktop-bar.tsx:59 }
+      - { target: phoneBar, say: "the app bar is the one the style sheet shows", source: libs/ui/src/mds/app-bar.tsx:63 }
+
+  wideBar:
+    title: The wide bar
+    by: human
+    goal: true
+    description: >-
+      The top bar, a banner that sticks to the top, from 768 px. For a member: the wordmark (a link to Ana sayfa, current
+      on Ana sayfa), a navigation "Ana menü" with the five places, the theme toggle, the bell "Bildirimler" and a link
+      named "Hesabım" (initials in a decorative avatar). For a visitor: the wordmark (a link to Keşfet), a navigation with
+      Keşfet alone, the toggle, "Giriş yap" and "Kayıt ol". The item of the page is marked `aria-current="page"`: for a
+      member by the address, for a visitor always Keşfet, on a course page too (SHL-10); on Hesabım and Bildirimler nothing
+      is marked, neither the bell nor Hesabım (FRAME-2). No code gives the page a focus when it opens, and up to nine tab
+      stops come before its content, with no way past them (SHL-11, DSC-22). The bell is named "Bildirimler" for a person
+      with unread notifications too: the count is only in the older header, which is hidden here (SHL-04). The older
+      header and tab row are hidden by a style PhoneChrome draws (anonymous#26).
+    includes: ["the active item", "the visitor's Keşfet that is current on every page", "the bell with no count", "the older header hidden"]
+    source: apps/tedris/components/phone-menu/desktop-bar.tsx:31
+    on:
+      PICK_HOME: { guard: isMember, target: home_opened, say: "the wordmark or Ana sayfa; on Ana sayfa itself the address does not change", source: apps/tedris/components/phone-menu/desktop-bar.tsx:69 }
+      PICK_DISCOVER: { target: discover_opened, say: "Keşfet; a visitor's wordmark leads there too", source: apps/tedris/components/phone-menu/desktop-bar.tsx:70 }
+      PICK_COURSES: { guard: isMember, target: courses_opened, source: apps/tedris/components/phone-menu/desktop-bar.tsx:73 }
+      PICK_SCHEDULE: { guard: isMember, target: schedule_opened, source: apps/tedris/components/phone-menu/desktop-bar.tsx:74 }
+      PICK_DECKS: { guard: isMember, target: decks_opened, source: apps/tedris/components/phone-menu/desktop-bar.tsx:75 }
+      OPEN_NOTIFICATIONS: { guard: isMember, target: notifications_opened, source: apps/tedris/components/phone-menu/desktop-bar.tsx:83 }
+      OPEN_ACCOUNT: { guard: isMember, target: account_opened, source: apps/tedris/components/phone-menu/desktop-bar.tsx:93 }
+      SIGN_IN: { guard: isVisitor, target: sign_in_opened, say: "to /auth/signin?callbackUrl=<this page>, which forwards to Keycloak at once", source: apps/tedris/components/phone-menu/desktop-bar.tsx:103 }
+      REGISTER: { guard: isVisitor, target: register_opened, say: "to /auth/register, which forwards to Keycloak's registration form at once", source: apps/tedris/components/phone-menu/desktop-bar.tsx:106 }
+      NAVIGATE: left
+
+  phoneBar:
+    title: The phone's app bar, the sheet closed
+    by: human
+    description: >-
+      Below 768 px: a 56 px banner with the "Menü" button, the Medaris mark (no link), the page's name in a paragraph that
+      is not a heading (SHL-14: "Ana sayfa", "Keşfet", ..., or the page's own title on Hesabım, Bildirimler and a course),
+      the theme toggle, and for a member the bell "Bildirimler" (named so for a person with unread notifications too,
+      SHL-04) or for a visitor an icon link named "Giriş yap". The older header and tab row are hidden (anonymous#26). The
+      page gives the focus to nothing when it opens; after the sheet closes it is on "Menü" again.
+    includes: ["the title that is a paragraph", "the bell with no count", "the visitor's icon link"]
+    source: apps/tedris/components/phone-menu/member-phone-menu.tsx:41
+    on:
+      OPEN_MENU: { target: phoneSheet, say: "\"Menü\" opens the sheet, a Base UI dialog; the focus goes to \"Kapat\"", source: libs/ui/src/mds/app-bar.tsx:64 }
+      OPEN_NOTIFICATIONS: { guard: isMember, target: notifications_opened, source: apps/tedris/components/phone-menu/member-phone-menu.tsx:86 }
+      SIGN_IN: { guard: isVisitor, target: sign_in_opened, source: apps/tedris/components/phone-menu/phone-menu.tsx:44 }
+      NAVIGATE: left
+
+  phoneSheet:
+    title: The phone's menu sheet
+    by: human
+    description: >-
+      A modal dialog named "Ana menü" over the page: the page behind it is inert (its landmarks and the bar are out of the
+      accessibility tree). It holds the logo, "Kapat", a navigation "Ana menü" with the same places as the wide bar (a
+      member five, a visitor Keşfet alone, the page's own item current; for a visitor Keşfet is current whatever page it
+      is open on, SHL-10), and at the foot, outside the navigation, a member's row and a visitor's two links. The row is a
+      link named "Hesabım: {name}" whose visible text is the name and the fixed line "Talebe", said under every account
+      alike and left out of the link's name (SHL-09, ACC-22, MDRS-235). There is no "Çıkış yap" and no theme toggle in it.
+      The focus is on "Kapat" when it opens (e2e schedule#13); Esc and "Kapat" close it and the focus returns to "Menü"; a
+      link of the navigation closes it, and so does a window widened past 768 px.
+    includes: ["focus on Kapat", "the person's row with the fixed role line", "a modal that makes the page inert"]
+    source: libs/ui/src/mds/app-bar.tsx:78
+    on:
+      CLOSE: { target: phoneBar, say: "\"Kapat\"; the focus returns to \"Menü\"", source: libs/ui/src/mds/app-bar.tsx:82 }
+      ESCAPE: { target: phoneBar, say: "Esc, which Base UI's dialog closes; the focus returns to \"Menü\" (anonymous#23)", source: libs/ui/src/mds/app-bar.tsx:78 }
+      WIDEN: { target: wideBar, say: "the window passes 768 px: the effect on the open sheet closes it, the app bar is hidden by the style sheet and the top bar shows (anonymous#25, schedule#15); the replay has no action that resizes the window, so this step is drawn and not walked", source: libs/ui/src/mds/app-bar.tsx:50 }
+      PICK_HOME:
+        - { guard: "viewer == 'home'", target: phoneBar, say: "the same page: the sheet closes, the address does not change and the focus returns to \"Menü\" (walked by hand, not by the replay)", source: libs/ui/src/mds/app-bar.tsx:105 }
+        - { guard: isMember, target: home_opened, say: "another page: the sheet closes and the next page draws its own bar; the focus is on the body there (schedule#14)", source: apps/tedris/components/phone-menu/member-phone-menu.tsx:112 }
+      PICK_DISCOVER:
+        - { guard: "viewer == 'discover'", target: phoneBar, say: "the same page: the sheet closes", source: libs/ui/src/mds/app-bar.tsx:105 }
+        - { target: discover_opened, say: "a visitor's Keşfet is always the item; whether the visitor is already on Keşfet is not known here", source: apps/tedris/components/phone-menu/member-phone-menu.tsx:113 }
+      PICK_COURSES:
+        - { guard: "viewer == 'courses'", target: phoneBar, source: libs/ui/src/mds/app-bar.tsx:105 }
+        - { guard: isMember, target: courses_opened, source: apps/tedris/components/phone-menu/member-phone-menu.tsx:114 }
+      PICK_SCHEDULE:
+        - { guard: "viewer == 'schedule'", target: phoneBar, source: libs/ui/src/mds/app-bar.tsx:105 }
+        - { guard: isMember, target: schedule_opened, source: apps/tedris/components/phone-menu/member-phone-menu.tsx:115 }
+      PICK_DECKS:
+        - { guard: "viewer == 'decks'", target: phoneBar, source: libs/ui/src/mds/app-bar.tsx:105 }
+        - { guard: isMember, target: decks_opened, source: apps/tedris/components/phone-menu/member-phone-menu.tsx:116 }
+      OPEN_ACCOUNT: { guard: isMember, target: account_opened, say: "the row at the foot; it is outside the navigation, so the sheet closes with the page change", source: apps/tedris/components/phone-menu/member-phone-menu.tsx:96 }
+      SIGN_IN: { guard: isVisitor, target: sign_in_opened, source: apps/tedris/components/phone-menu/phone-menu.tsx:55 }
+      REGISTER: { guard: isVisitor, target: register_opened, source: apps/tedris/components/phone-menu/phone-menu.tsx:58 }
+
+  errorPage:
+    title: The older header and tab row above a page that threw
+    by: human
+    description: >-
+      The only error boundary is app/error.tsx, above every segment layout, so a page that throws takes its layout and
+      PhoneChrome with it: neither bar is drawn and the style that hides the older header and tab row is gone too (SHL-06,
+      measured on the stack with a time zone no calendar knows). What shows: the older header (the word "Medaris", a
+      search box "Ara…" that is wired to nothing, for a member the bell that does say "Bildirimler, {n} okunmamış" and a
+      menu button with the person's initials and name, for a visitor two buttons "Giriş yap" and "Kayıt ol"), the older
+      tab row ("Ev" and "Desteler" for a member, "Öğrenme" for everyone), the error box of tedris.shell.systemPages
+      (a region named by its h1 "Bir şeyler ters gitti", a sentence and "Yeniden dene") and the footer. The page has no
+      `<main>` at all on a path that owns its main (FRAME-1). The bell is the only place in the app where the unread count
+      is ever said, and it is the header nobody is meant to see (SHL-04).
+    includes: ["the older header", "the older tab row", "the bell that says the count", "no main landmark"]
+    source: apps/tedris/app/layout.tsx:59
+    on:
+      OPEN_NOTIFICATIONS: { guard: isMember, target: notifications_opened, source: apps/tedris/components/header/user-notification-menu.tsx:17 }
+      TAB_HOME: { guard: isMember, target: home_opened, source: apps/tedris/components/tab-view/index.tsx:43 }
+      TAB_LEARNING: { target: discover_opened, source: apps/tedris/components/tab-view/index.tsx:55 }
+      TAB_DECKS: { guard: isMember, target: decks_opened, source: apps/tedris/components/tab-view/index.tsx:70 }
+      RETRY: { target: arriving, effect: [again], say: "\"Yeniden dene\" reads the segment again (tedris.shell.systemPages); if it draws, the bar is back", source: apps/tedris/features/errors/system-page.tsx:106 }
+      NAVIGATE: left
+
+  home_opened: { type: final, title: Ana sayfa opens, leavesPage: true }
+  discover_opened: { type: final, title: Keşfet opens, leavesPage: true }
+  courses_opened: { type: final, title: Derslerim opens, leavesPage: true }
+  schedule_opened: { type: final, title: Programım opens, leavesPage: true }
+  decks_opened: { type: final, title: Desteler opens, leavesPage: true }
+  notifications_opened: { type: final, title: Bildirimler opens, leavesPage: true }
+  account_opened: { type: final, title: Hesabım opens, leavesPage: true }
+  sign_in_opened: { type: final, title: The sign-in page forwards to Keycloak, leavesPage: true }
+  register_opened: { type: final, title: The registration page forwards to Keycloak, leavesPage: true }
+  left: { type: final, title: The person leaves the app, leavesPage: true }
+
+assertions:
+  - id: sheet-only-on-a-phone
+    never: "state == 'phoneSheet' and opensAt == 'wide'"
+    say: "The menu sheet is reached only from the phone's app bar, which a window of 768 px or more never shows"
+    source: libs/ui/src/mds/app-bar.tsx:50
+  - id: no-bar-over-an-error
+    never: "state == 'phoneSheet' and trouble == 'throws'"
+    say: "A page that threw has no bar, so no sheet is ever open over it"
+    source: apps/tedris/app/error.tsx:12
+  - id: older-header-only-after-a-throw
+    never: "state == 'errorPage' and trouble == 'none'"
+    say: "The older header and tab row are shown only on the page of a thrown error: every other page hides them"
+    source: apps/tedris/components/phone-menu/phone-chrome.tsx:36

@@ -1,0 +1,347 @@
+# What must exist for a person who registers on a Medaris app: the closed product list of realm.auth.register, written on
+# 2026-11-15 in the format LAYOUT.md section 7 fixes. Each need is what the product must do, from the flow's story and from
+# planned.md, never from what the page does today; a finding the flow touches is a need with `missing: none` where the code
+# does not meet it (its id is in the need). A need that nothing walks and a need with no code are the flow's gaps, reported to
+# the orchestrator for graphs/needs.gaps.yaml (this flow does not edit it).
+#
+# missing (no code; `missing: none` is a finding the code does not meet, a Linear key is planned work):
+#   focus-stays-while-typing (K1), form-opens-where-they-type (REG-1), reasons-are-announced (REG-2),
+#   password-rules-stay-and-are-announced (REG-3, K8), accounts-are-not-enumerated (REG-4), resend-is-offered-when-it-works (REG-5, K14),
+#   verify-in-another-browser-ends-signed-in (REG-6), one-title-for-each-page (K2), one-way-of-speaking (K10),
+#   a-mistyped-address-can-be-corrected (K14), change-of-address-mail (MDRS-188), terms-and-consent-at-registration (MDRS-191)
+# unwalked (code, and no e2e check or replay scenario passed it): resend-the-mail, taken-address-under-the-field (the address half),
+#   an-expired-form-is-explained, the-mismatched-passwords-are-refused (giris#8 only, in Storybook), the-sign-in-form-leads-here (giris#1
+#   only sees the link; nothing walks it), and the last step of link-in-another-browser (verifiedPage to tedris's front door, no replay)
+# replay scenarios that passed (15 Nov 2026, under the replay lock): registered (main), userNameTaken (--to userNameRefused),
+#   otherDevice (--to verifiedPage), pendingEmail (--to verifyEmailPage)
+kind: needs
+flow: realm.auth.register
+status: proposed
+
+needs:
+  - id: register-with-every-attribute
+    need: >-
+      A visitor makes an account by giving a first name, a last name, a gender, a user name, an e-mail address, a password typed
+      twice and the tick that they have read the privacy notice, and is asked for nothing else at registration.
+    drawn:
+      - registerForm
+      - formFilled
+      - submitting
+    built:
+      - action: medaris.api:startSignIn
+      - route: apps/keycloak-theme/src/login/pages/Register.tsx:97
+      - route: config/keycloak/user-profile.json:4
+    walked:
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#7'
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#10'
+      - replay: registered
+
+  - id: the-form-opens-from-tedris
+    need: >-
+      "Kayıt ol" on the public site and on Keşfet's invitation opens the registration form, not the sign-in form, and the form's
+      own link back to sign-in works.
+    drawn:
+      - appRegisterPage
+      - startingRoundTrip
+      - registerForm
+    built:
+      - route: apps/tedris/app/auth/register/page.tsx:15
+      - route: libs/auth/src/server/routes.ts:146
+    walked:
+      - e2e: apps/tedris/e2e/anonymous.e2e.ts
+        check: 'anonymous#7'
+      - replay: registered
+
+  - id: gender-is-always-required
+    need: >-
+      No account is made without a gender, woman or man, so that the separate seats for women and men can always be counted. The
+      form lists it as missing when it is left, and the realm's profile requires it of the user. (tedrisat's own profile column is
+      still nullable, user-profile.schema.ts:11,33: the realm is where it is enforced today.)
+    drawn:
+      - genderGroup
+      - genderFemale
+      - genderMale
+      - genderReason
+      - formWithReasons
+    built:
+      - route: config/keycloak/user-profile.json:26
+      - route: libs/ui/src/giris/profile-field.tsx:134
+    walked:
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#8'
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#10'
+      - replay: registered
+
+  - id: privacy-notice-is-read-before-registering
+    need: >-
+      The person ticks that they have read the privacy notice before the account is made; the notice is one link away and opens
+      in a new tab so the half-filled form stays; the account keeps the tick.
+    drawn:
+      - privacyNotice
+      - privacyLink
+      - noticeReason
+    built:
+      - route: apps/keycloak-theme/src/login/components/linkedOptionLabel.tsx:54
+      - route: config/keycloak/user-profile.json:60
+    walked:
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#8'
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#10'
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#11'
+      - replay: registered
+
+  - id: what-is-missing-is-listed
+    need: >-
+      A press with something missing posts nothing, writes the reason under each field that needs one, and puts the focus on
+      the first of them; a second password that differs says so under itself.
+    drawn:
+      - formWithReasons
+      - formWithMismatch
+    built:
+      - route: libs/ui/src/giris/register-form.tsx:138
+    walked:
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#8'
+      - replay: registered
+
+  - id: the-mismatched-passwords-are-refused
+    need: >-
+      A second password that differs from the first is refused before anything is sent, under the second field, with the focus there.
+    drawn:
+      - formMismatched
+      - formWithMismatch
+      - mismatchReason
+    built:
+      - route: libs/ui/src/giris/register-form.tsx:170
+    walked:
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#8'
+
+  - id: password-rules-are-shown-as-typed
+    need: >-
+      The three rules of the realm's password policy (length 10, not the address, not the user name) are listed under the
+      password and show which are met as the person types.
+    drawn:
+      - passwordRules
+      - ruleLength
+      - ruleNotEmail
+      - ruleNotUsername
+    built:
+      - route: libs/ui/src/giris/password-field.tsx:33
+      - route: config/keycloak/realms/_base.json:20
+    walked:
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#7'
+      - replay: registered
+
+  - id: taken-name-is-refused-under-the-field
+    need: >-
+      A user name or an e-mail address another account has is refused by Keycloak under its own field, with the rest of the form kept
+      (the passwords emptied) and the focus on that field.
+    drawn:
+      - userNameRefused
+      - emailRefused
+      - userNameTakenReason
+      - emailTakenReason
+    built:
+      - route: libs/ui/src/giris/register-form.tsx:180
+      - route: config/keycloak/realms/_base.json:7
+    walked:
+      - replay: userNameTaken
+
+  - id: taken-address-under-the-field
+    need: >-
+      The e-mail half of the same refusal: the address another account has is refused under E-posta.
+    drawn:
+      - emailRefused
+      - emailTakenReason
+    built:
+      - route: config/keycloak/realms/_base.json:7
+    walked: []
+
+  - id: verification-mail-is-sent
+    need: >-
+      Registering sends one mail to the address, in the person's language, with a button that verifies it; the account cannot sign
+      in before the link is opened.
+    drawn:
+      - verifyEmailPage
+    built:
+      - route: config/keycloak/realms/_base.json:5
+      - route: apps/keycloak-theme/src/email/messages/messages_tr.properties:9
+    walked:
+      - e2e: apps/keycloak-theme/test/email.e2e.spec.ts
+        check: 'email.e2e.spec#1'
+      - replay: registered
+
+  - id: resend-the-mail
+    need: >-
+      A person whose mail did not come can have it sent again; Keycloak sends no second mail within 30 seconds and says to wait.
+    drawn:
+      - verifyEmailPage
+      - resendWait
+    built:
+      - route: apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:35
+    walked: []
+
+  - id: link-verifies-and-signs-in-the-same-browser
+    need: >-
+      The mail's link, opened in the browser that registered, verifies the address and lands the person on tedris's home page,
+      signed in, with no page in between.
+    drawn:
+      - finishingRoundTrip
+      - home_opened.registered
+    built:
+      - action: medaris.api:finishSignIn
+      - route: libs/auth/src/server/routes.ts:277
+    walked:
+      - replay: registered
+
+  - id: link-in-another-browser
+    need: >-
+      The mail's link opened in another browser or on another device verifies the address after one confirmation, and says so.
+    drawn:
+      - confirmPage
+      - verifiedPage
+    built:
+      - route: apps/keycloak-theme/src/login/pages/Info.tsx:84
+    walked:
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#12'
+      - replay: otherDevice
+
+  - id: unverified-sign-in-is-held-on-this-page
+    need: >-
+      A person who signs in with an account whose address was never verified is held on the verification page, is sent the mail
+      again, and cannot reach the app before the link is opened.
+    drawn:
+      - signingIn
+      - verifyEmailPage
+    built:
+      - route: config/keycloak/realms/_base.json:5
+      - route: apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:22
+    walked:
+      - replay: pendingEmail
+
+  - id: an-expired-form-is-explained
+    need: >-
+      A registration form whose code has gone stale says so and offers a way to start again (realm.auth.signInFailures draws the page).
+    drawn:
+      - handed_over.page_expired
+    built:
+      - route: apps/keycloak-theme/src/login/pages/LoginPageExpired.tsx:1
+    walked: []
+
+  - id: the-sign-in-form-leads-here
+    need: >-
+      The link "Kayıt ol" on Keycloak's sign-in form opens the same registration form inside the round trip that is already open.
+    drawn:
+      - openApp
+      - registerForm
+    built:
+      - route: apps/keycloak-theme/src/login/pages/Login.tsx:72
+    walked:
+      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
+        check: 'giris#1'
+
+  # ---- findings: what the code does not meet ----
+  - id: focus-stays-while-typing
+    need: >-
+      The focus stays where the person types after a failed press (finding K1: it moves on at every keystroke, measured in Chromium).
+    drawn:
+      - formWithReasons
+    missing: none
+
+  - id: form-opens-where-they-type
+    need: >-
+      The form opens with the focus on its first field, and the verification page on its first way on (finding REG-1).
+    drawn:
+      - registerForm
+      - verifyEmailPage
+    missing: none
+
+  - id: reasons-are-announced
+    need: >-
+      Every reason a failed press writes is announced to a screen reader, not only the first field's (finding REG-2).
+    drawn:
+      - formWithReasons
+    missing: none
+
+  - id: password-rules-stay-and-are-announced
+    need: >-
+      The password rules stay under a reason, and a rule that becomes met is announced (findings REG-3, K8).
+    drawn:
+      - passwordRules
+      - formWithReasons
+    missing: none
+
+  - id: accounts-are-not-enumerated
+    need: >-
+      The registration form does not tell a stranger whether a user name or an address has an account (finding REG-4; a decision for
+      the owner, because the stock answer is what lets a person who has forgotten they registered find out).
+    drawn:
+      - userNameRefused
+      - emailRefused
+    missing: none
+
+  - id: resend-is-offered-when-it-works
+    need: >-
+      The verification page offers a resend only when it will send, or shows the wait as it runs (findings REG-5, K14).
+    drawn:
+      - verifyEmailPage
+      - resendWait
+    missing: none
+
+  - id: verify-in-another-browser-ends-signed-in
+    need: >-
+      A person who verifies the address on their phone is not left to sign in again from tedris's front door, and the browser that registered
+      notices (finding REG-6).
+    drawn:
+      - verifiedPage
+      - home_opened.signed_out
+    missing: none
+
+  - id: a-mistyped-address-can-be-corrected
+    need: >-
+      A person who mistyped the address can change it on the verification page, or go back to sign-in (finding K14).
+    drawn:
+      - verifyEmailPage
+    missing: none
+
+  - id: one-title-for-each-page
+    need: >-
+      Each page of the registration has a title of its own in the tab and for a screen reader (finding K2).
+    drawn:
+      - registerForm
+      - verifyEmailPage
+    missing: none
+
+  - id: one-way-of-speaking
+    need: >-
+      The form, the verification page, the info pages and the mail address the person in one way, not "sen" and "siz" by turns
+      (finding K10).
+    drawn:
+      - registerForm
+      - verifyEmailPage
+    missing: none
+
+  # ---- planned ----
+  - id: change-of-address-mail
+    need: >-
+      A person who changes the address of their account gets the same kind of verification mail and page, in their language
+      (P-30, SMTP-backed account flows; the verification and the reset mails exist, the change does not).
+    drawn:
+      - verifyEmailPage
+    missing: MDRS-188
+
+  - id: terms-and-consent-at-registration
+    need: >-
+      The person accepts the terms of use at registration and the acceptance is kept with a date (P-32; the terms box is in the form's
+      code and the realm does not ask for it, K11, K15).
+    drawn:
+      - registerForm
+    missing: MDRS-191

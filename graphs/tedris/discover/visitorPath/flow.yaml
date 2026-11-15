@@ -1,0 +1,280 @@
+# What a visitor with no account can read in tedris-web, and where each page asks them to sign in: Keşfet, a köşk, a medrese and a
+# course's introduction (its programme with the weeks locked, the one open sample celse, the public recordings, the names of the
+# resources). Written from the code of the branch (captured); nothing here is a plan. What it leaves to other flows is in
+# scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   SHL-05   `/` takes two redirects to reach Keşfet (the entry, not drawn: tedris.shell.home)
+#   DSC-09   a köşk that cannot be read has no h1 and an empty breadcrumb (not drawn: tedris.discover.readKosk)
+#   DSC-12   the cover of a card prints its Arabic word before the title (not exercised: the seeded courses have no cover word)
+#   DSC-19   the four pages stream behind a loading state that says nothing (CRS-08 is the same on the course page)
+#   CRS-12   the kit's own words on the pages: the breadcrumb is "Sayfa yolu", a row done is ", tamamlandı"
+#   CRS-17   the cover of the course page reads its Arabic word before the h1 (not exercised: the seeded courses have no cover word)
+#   VISIT-1  (new, provisional id) the medrese page says every course of the medrese asks for approval; the API asks only where the
+#            medrese's own policy says so, and the course card next to it can say the opposite
+#   VISIT-2  (new, provisional id) the programme names a week twice when its title is only "Hafta N"; the recordings tab of the same
+#            page drops such a title
+#   VISIT-3  (new, provisional id) the sample celse's row tells a visitor "tamamlandı" (completed) once the celse is over
+# E2E carried: anonymous#1, #4, #5 whole, #2 and #3 in part (the medrese appears under Keşfet; the count and the medrese with no
+# course are tedris.discover.browse's), #10 to #15 are tedris.discover.readKosk's and readMadrasah's (this flow walks one pass through
+# each page), course#1 and #2 in part: what the page draws; the raw HTML and the API JSON that course#1 a10 and course#2 a4 to a11
+# read are not carried. anonymous#6 to #8 are realm.auth.signIn's and realm.auth.register's, which this flow starts: it stops at
+# Keycloak's address, where those tests stop too.
+schema: delurio-graph/0
+kind: flow
+id: tedris.discover.visitorPath
+status: captured
+domain: medaris.api
+ui: tedris.discover.visitorPath
+title: Look around as a visitor and sign in from the page you like
+summary: >-
+  A visitor opens Keşfet and finds the köşks and the medreses that have courses, with no follow button and no link to ask for a
+  köşk: under the lists one sentence invites them to sign in or register, and says they may browse without an account. They open
+  a köşk (its nazım named, its published courses listed, no decks), or a medrese, and then a course. The course page shows the
+  whole programme with every week locked except the one that holds the sample celse, which is open to everyone with its agenda
+  and its source; the next celse and why its content is locked; the names of the resources with no way to open them; and, under
+  "Ders kayıtları", the recordings the course made public. The card "Derse kayıt" offers "Başvurmak için giriş yap", which goes to
+  the sign-in page with this course as the page to come back to, and "Kayıt ol", which opens registration. Every page ends in one
+  of those two ways out; a registration does not come back to the page.
+
+scope:
+  shows: Keşfet, a köşk, a medrese and a course's introduction as a person with no session reads them, and the links on each that ask them to sign in or register
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the bar around the page (Keşfet, the theme switch, \"Giriş yap\", \"Kayıt ol\") and the phone's sheet: tedris.shell.frame (SHL-04, SHL-10, SHL-11); and how a visitor gets here from `/`, two redirects (SHL-05): tedris.shell.home"
+    - "the search box, the medrese filter, the pager, the empty list and the failed read of Keşfet: tedris.discover.browse (DSC-13, DSC-14, DSC-19)"
+    - "the köşk page's other cases (an unlisted köşk is a 404 to a visitor, a köşk with no course, the failed read with no h1, DSC-09): tedris.discover.readKosk; the medrese page's (a medrese with no course, a failed read drawn as a 404, DSC-10): tedris.discover.readMadrasah; an unknown id: tedris.shell.systemPages"
+    - "the follow button and the way to ask for a köşk, which a signed-in person has and a visitor does not: tedris.discover.followKosk, tedris.discover.applyForKosk (drawn here only as nodes the visitor never gets)"
+    - "the course page of a signed-in person in any of its states, and what the card does after \"Başvurmak için giriş yap\" brings the person back: tedris.course.apply, tedris.course.readProgramme"
+    - "the celse page and its watch page, which a visitor cannot open (the proxy sends them to sign in, with the celse as the page to come back to): tedris.celse.locked; a deck's page, which no page of a visitor's path links to (a link, a shared address): tedris.decks.visitorPublicDeck"
+    - "an address a visitor types that is not public (/my-courses, /schedule, /decks): the proxy sends them to sign in with it as the callback: realm.auth.signIn (anonymous#9)"
+    - "the tab \"Hocalar\", the hoca line and the cover of the course page; the \"Sıradaki celse\" card of a course with no celse ahead; the \"Yüz yüze\" badge; the resources that are links or files of a person who may read them"
+    - "a recording row's own link, which opens the host (YouTube, Drive) in a new tab and leaves Medaris"
+    - "Keycloak's form and what it does after the credentials: realm.auth.signIn and realm.auth.register"
+    - "the loading states of the four pages (DSC-19, CRS-08): each streams behind a `loading.tsx` of skeletons that no assistive technology hears"
+
+decisions:
+  D1:
+    question: >-
+      Should a visitor who registers from a page come back to that page, as one who signs in does?
+    recommend: >-
+      Yes: pass the page as `callbackUrl` to registration as the sign-in link does. Today the invitation's "kayıt ol" is a plain
+      `/auth/register` (the code's own comment: "Registration ends on Ana sayfa"), so a person who read a course, decided to join
+      and registered meets Ana sayfa, and has to find the course again. The registered person is sent to Ana sayfa by the start
+      route (lib/invite-hrefs.ts:11).
+    affects: [handed_over.register]
+  D2:
+    question: >-
+      Should the medrese page say that enrolment is by approval only where the medrese's policy "Kayıt her zaman onaylı" is on?
+    recommend: >-
+      Yes (VISIT-1): the sentence is fixed text, `MadrasahPage.approvalNotice`, drawn for every medrese; the API asks for approval
+      for a medrese's course only when `madrasah_settings.policy_always_approval` is true, which is off until a nazır sets it
+      (course.repository.ts:1928, madrasah.schema.ts:62). The seeded medrese says it above the card of a course that takes anyone.
+    affects: [madrasah]
+
+context:
+  intro:
+    values: [bare, full]
+    initial: any
+    say:
+      bare: "the course has no sample celse, no public recording and no resource: the course as the stack's seed made it"
+      full: "the course's first celse is its sample (isPreview, with an agenda and a source), it has a public recording and it lists one resource"
+  approval:
+    values: [open, needed]
+    initial: any
+    say:
+      open: "no rule the card reads asks for approval: the card says enrolment needs none"
+      needed: "the course or its köşk asks for approval, which the card reads: the card says enrolment waits for the course team"
+
+guards:
+  cardAsks: "approval == 'needed'"
+  fullIntro: "intro == 'full'"
+  bareIntro: "intro == 'bare'"
+  signedIn: "false" # the visitor's session: none. The nodes a signed-in person has and this person does not carry `when: signedIn`
+
+# The main story: Keşfet, the köşk, a course, the recordings the course made public, and the way in that the card offers.
+main:
+  given: { intro: full, approval: open }
+  events: [OPEN_KOSK, OPEN_COURSE, OPEN_RECORDINGS, SIGN_IN]
+
+initial: discover
+states:
+  discover:
+    title: Keşfet
+    by: human
+    source: apps/tedris/features/discover/components/discover-page.tsx:97
+    description: >-
+      The page `/discover`, public (lib/public-paths.ts:15). The server reads the köşks (GET /kosks) and the medreses (GET
+      /madrasahs/explore, twice) with no token (features/discover/reads.ts:36), and drops the medreses that have no course, which a
+      signed-in person still sees (reads.ts:29). Under the title and the sentence that says what köşks and medreses are: the count
+      line, the section "Köşkler" with a card for each köşk (its name as a link, a line of description, "N ders") and the section
+      "Medreseler" with a card for each medrese (its name as a link, its başmüderris, each course as a link). The cards carry no
+      follow button (kosk-card.tsx:39), and the card under the lists is the invitation, "Bir derse başvurmak için giriş yap ya da
+      kayıt ol. Köşklere, medreselere ve derslerin tanıtımına hesap açmadan da göz atabilirsin.", where a signed-in person has "Köşk
+      açma başvurusu". The invitation's "giriş yap" carries this page, with its filters, as the page to come back to; "kayıt ol"
+      carries nothing. The page sets no initial focus: it stays on the document. The page is reached from `/` by two redirects
+      (SHL-05, tedris.shell.home); loading it shows an unnamed skeleton first (DSC-19).
+    on:
+      OPEN_KOSK: { target: kosk, say: "they open a köşk from its card", source: apps/tedris/features/discover/components/kosk-card.tsx:27 }
+      OPEN_MADRASAH: { target: madrasah, say: "they open a medrese from its card", source: apps/tedris/features/discover/components/madrasah-card.tsx:28 }
+      SIGN_IN:
+        target: handed_over.sign_in
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
+        say: "\"giriş yap\" in the invitation: /auth/signin?callbackUrl=%2Fdiscover, which the app's page hands to Keycloak"
+        source: apps/tedris/components/anonymous-invite.tsx:41
+      REGISTER:
+        target: handed_over.register
+        starts: { flow: realm.auth.register }
+        say: "\"kayıt ol\" in the invitation: /auth/register, which the app's page hands to Keycloak's registration form"
+        source: apps/tedris/components/anonymous-invite.tsx:46
+      NAVIGATE: left
+
+  kosk:
+    title: A köşk
+    by: human
+    source: apps/tedris/features/courses/components/kosk-page.tsx:152
+    description: >-
+      The page `/kosks/<id>`, public (lib/public-paths.ts:30); the köşk's name is its title. A breadcrumb "Keşfet / the köşk", the
+      eyebrow "Köşk", the name as the h1, "N ders", and "Köşk nazımı <name>" where the API gives the manager's name, which a visitor
+      gets without who they are (anonymous#18). No follow button (kosk-page.tsx:183) and no block "Köşk desteleri": the decks are
+      read only with a token (public-reads.ts:163). The section "Dersler" has a card for each published course (its title as a link,
+      the medrese that opened it as a link and "dersi", the hoca line, the next celse), and under it the invitation "Bir derse
+      başvurmak için giriş yap ya da kayıt ol.", with the köşk as the page to come back to. A köşk the visitor may not read is not
+      found, and one that fails to read is a box with no heading (DSC-09): tedris.discover.readKosk.
+    on:
+      OPEN_COURSE: { target: course, say: "they open a course from its card", source: apps/tedris/features/courses/components/kosk-page.tsx:75 }
+      OPEN_MADRASAH: { target: madrasah, say: "they follow the medrese that opened a course", source: apps/tedris/features/courses/components/kosk-page.tsx:116 }
+      BACK_TO_DISCOVER: { target: discover, say: "the breadcrumb's first item", source: apps/tedris/features/courses/components/kosk-page.tsx:156 }
+      SIGN_IN:
+        target: handed_over.sign_in
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
+        say: "\"giriş yap\" in the invitation: /auth/signin?callbackUrl=%2Fkosks%2F<id>"
+        source: apps/tedris/components/anonymous-invite.tsx:41
+      REGISTER:
+        target: handed_over.register
+        starts: { flow: realm.auth.register }
+        say: "\"kayıt ol\" in the invitation: /auth/register"
+        source: apps/tedris/components/anonymous-invite.tsx:46
+      NAVIGATE: left
+
+  madrasah:
+    title: A medrese
+    by: human
+    source: apps/tedris/features/courses/components/madrasah-page.tsx:156
+    description: >-
+      The page `/madrasahs/<id>`, public (lib/public-paths.ts:31). A breadcrumb, the eyebrow "Medrese", the name as the h1, "N ders
+      · Başmüderris <name>", the description and, for every medrese, the sentence "Her dersin kendi hocaları vardır. Medresenin
+      derslerine kayıt onaylıdır: başvurduğunda, dersin kadrosu onaylayınca kaydın kesinleşir." (VISIT-1: it is drawn whatever the
+      medrese's policy, and the stack's medrese says it above a course that takes anyone). The section "Dersler" says "Medresenin
+      bütün dersleri, açıldıkları köşkle birlikte" (a signed-in person's hint drops "bütün"), with a card for each course (its title,
+      the köşk that hosts it as a link, the next celse), and, with no enrolment badges, the invitation with the medrese as the page
+      to come back to. In the aside: the başmüderris and the köşks that host the medrese's courses. A medrese that fails to read is
+      drawn as a 404 (DSC-10): tedris.discover.readMadrasah.
+    on:
+      OPEN_COURSE: { target: course, say: "they open a course from its card", source: apps/tedris/features/courses/components/madrasah-page.tsx:71 }
+      OPEN_KOSK: { target: kosk, say: "they follow the köşk that hosts a course", source: apps/tedris/features/courses/components/madrasah-page.tsx:91 }
+      BACK_TO_DISCOVER: { target: discover, say: "the breadcrumb's first item", source: apps/tedris/features/courses/components/madrasah-page.tsx:160 }
+      SIGN_IN:
+        target: handed_over.sign_in
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
+        say: "\"giriş yap\" in the invitation: /auth/signin?callbackUrl=%2Fmadrasahs%2F<id>"
+        source: apps/tedris/components/anonymous-invite.tsx:41
+      REGISTER:
+        target: handed_over.register
+        starts: { flow: realm.auth.register }
+        say: "\"kayıt ol\" in the invitation: /auth/register"
+        source: apps/tedris/components/anonymous-invite.tsx:46
+      NAVIGATE: left
+
+  course:
+    title: A course's introduction, the programme
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/course-page.tsx:229
+    description: >-
+      The page `/courses/<id>` for a person with no token (the page's state `visitor`, features/courses/course-view.ts:21), public
+      (lib/public-paths.ts:32). A draft is a 404 to everyone the API does not let in. The header: the cover, the title as the h1,
+      the description, the medrese and the köşk as links with "N hafta", "N celse" and "N saat", the hoca line. The aside: the card
+      "Derse kayıt" with the span of the weeks and one fact, "Kayıt onay gerektirmez: kaydolunca ders içerikleri sana açılır." or
+      "Kayıt onaya bağlı: başvurunu ders kadrosu değerlendirir." (it reads only the course's own setting and an unlisted köşk,
+      page.tsx:89: tedris.course.apply's CRS-APPLY-1), then "Başvurmak için giriş yap", a link to /auth/signin?callbackUrl=%2Fcourses%2F<id>,
+      and "Hesabın yok mu? Kayıt ol"; under it, when a celse is ahead, a card "Sıradaki celse" with its day, its time and the notice
+      "Ders içerikleri, toplantı bağlantıları ve ders kayıtları kayıtlı talebelere açıktır. Derse kaydolduğunda görebilirsin." Under
+      the card, when the course lists resources, "Bu dersin kaynakları": the names and the line under each, no link, and "Kaynakları
+      derse kayıtlı talebeler açar." The tabs are "Müfredat", "Ders kayıtları" (with a count when there are recordings) and
+      "Hocalar"; no "Ders destesi", "Sorularım" or "Notlarım". The tab "Müfredat": the line "N hafta · N celse · saatler İstanbul
+      saatiyle" and one accordion item for each week. Every week is locked and its button says ", kilitli" except the week that
+      holds the sample celse, which is open; the weeks that hold the sample celse and the next celse are open at first. A row of a
+      locked week is a plain row with the lock "Kilitli". The sample celse's row is a link to the block "Örnek celse" under the
+      tabs, with the agenda "Celse akışı" and "Kaynaklar" (course-page.tsx:498): the one celse anyone may read. Once it is over the
+      row says ", tamamlandı" and the week "Sona erdi" (VISIT-3), and a week whose title is only "Hafta N" is written twice, its
+      label and its title (VISIT-2). The meeting links, the closed celses' agenda and source, and the resources' links are not in
+      the page (course#1 a10, course#2 a4, a5; not walked here). Where the page ends up depends on `intro`: `bare` has no sample row,
+      no block "Örnek celse", no "Bu dersin kaynakları" and a recordings tab that is empty. The page sets no initial focus
+      (measured on the stack in a browser: the focus is on the document after the page loads).
+    on:
+      OPEN_RECORDINGS: { target: recordings, say: "they choose the tab \"Ders kayıtları\"", source: apps/tedris/features/courses/components/course-page.tsx:428 }
+      OPEN_KOSK: { target: kosk, say: "the breadcrumb's köşk", source: apps/tedris/features/courses/components/course-page.tsx:248 }
+      OPEN_MADRASAH: { target: madrasah, say: "the medrese in the line under the title", source: apps/tedris/features/courses/components/course-page.tsx:210 }
+      SIGN_IN:
+        target: handed_over.sign_in
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
+        say: "\"Başvurmak için giriş yap\": /auth/signin?callbackUrl=%2Fcourses%2F<id>, which the app's page hands to Keycloak and Keycloak hands back to this course"
+        source: apps/tedris/features/courses/components/course-aside.tsx:352
+      REGISTER:
+        target: handed_over.register
+        starts: { flow: realm.auth.register }
+        say: "\"Kayıt ol\" in \"Hesabın yok mu?\": /auth/register"
+        source: apps/tedris/features/courses/components/course-aside.tsx:358
+      NAVIGATE: left
+
+  recordings:
+    title: A course's introduction, the recordings
+    by: human
+    source: apps/tedris/features/courses/components/course-page.tsx:428
+    description: >-
+      The same page with the tab "Ders kayıtları" chosen (a click on the tab changes a client state; the address does not change).
+      The panel is the section "Bütün ders kayıtları" and, for each week that holds one, a row for each recording the API lists
+      to a caller with no token: only the PUBLIC ones (course controller listCourseRecordings), each a link that opens its host in
+      a new tab, named "Ders kaydını aç: <title> (yeni sekmede açılır)", with the chip "Herkese açık" and the host's name. A row
+      is not a link to the watch page: that is for those who may read the course's content (`watch={!course.contentLocked}`,
+      course-page.tsx:445). A course with no public recording says "Bu derste henüz yayımlanmış ders kaydı yok." The aside, the
+      resources and the block "Örnek celse" stay where they were.
+    on:
+      OPEN_PROGRAMME: { target: course, say: "they choose the tab \"Müfredat\"", source: apps/tedris/features/courses/components/course-page.tsx:400 }
+      OPEN_KOSK: { target: kosk, say: "the breadcrumb's köşk", source: apps/tedris/features/courses/components/course-page.tsx:248 }
+      OPEN_MADRASAH: { target: madrasah, say: "the medrese in the line under the title", source: apps/tedris/features/courses/components/course-page.tsx:210 }
+      SIGN_IN:
+        target: handed_over.sign_in
+        starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }
+        say: "\"Başvurmak için giriş yap\": the same link, whichever tab is open"
+        source: apps/tedris/features/courses/components/course-aside.tsx:352
+      REGISTER:
+        target: handed_over.register
+        starts: { flow: realm.auth.register }
+        say: "\"Kayıt ol\" in \"Hesabın yok mu?\""
+        source: apps/tedris/features/courses/components/course-aside.tsx:358
+      NAVIGATE: left
+
+  handed_over.sign_in:
+    title: Signing in, on the page they left
+    type: final
+    leavesPage: true
+    description: >-
+      The link is /auth/signin?callbackUrl=<the page>, tedris's own page, which starts the Keycloak round trip. realm.auth.signIn
+      takes over (given: tedris, entered by a link that carries the page). Keycloak sends the person back to the page named, so
+      the course page that comes back is the signed-in one: the card "Derse kayıt" with one button, which is tedris.course.apply's.
+
+  handed_over.register:
+    title: Registering, which ends on Ana sayfa
+    type: final
+    leavesPage: true
+    description: >-
+      The link is /auth/register, with no callbackUrl (lib/invite-hrefs.ts:11), tedris's own page, which opens Keycloak's
+      registration form (realm.auth.register). A registered, signed-in person lands on Ana sayfa, not on the page they left
+      (decision D1).
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true

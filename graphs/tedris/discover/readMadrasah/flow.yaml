@@ -1,0 +1,257 @@
+# A medrese's page in tedris-web (/madrasahs/<id>), read from the code of the branch (the tree of PR #394) on 15 Nov 2026. Captured;
+# nothing here is a plan beyond needs.yaml. Nothing is approved.
+#   - What it draws: the two reads the page makes, the page for a visitor and for a signed-in person, the page of a medrese with no
+#     course, the not-found page that every failed read ends on, and the six ways out.
+#   - What it leaves out is in scope.outOfView.
+#
+# Findings this flow carries (ui.yaml `rules` carries the same ids):
+#   DSC-10   every failure of the two reads (5xx, network) is `null` and drawn as the 404 page "Sayfa bulunamadı"
+#   DSC-12   (inventory) NOT seen on this page: the cover prints no Arabic label here, because the overview carries `category` and
+#            the cover reads `coverLabel` (madrasah-page.tsx:73); recorded so the silence is not read as an omission
+#   MAD-1    (new) the fixed notice "Medresenin derslerine kayıt onaylıdır" is drawn for every medrese and every course, while the
+#            seeded course "Bina ve İzhar Şerhi" takes anyone and its own page says "Kayıt onay gerektirmez"
+#   MAD-2    (new, not verified with a screen reader) the line under the title reads "2 dersBaşmüderris Nuri ..." in the accessibility tree
+#   MAD-3    (new) the köşk list's name is "<medrese adı> medresesinin derslerini açtığı köşkler": a name that already ends in
+#            "Medresesi" gives "Medresesi medresesinin"
+#   MAD-4    (new) the not-found page this address answers has no <main> landmark (a <section> in a shell that draws none)
+#   overview-exposes-head-id   (the domain's finding, see below) GET /madrasahs/{id}/overview gives the başmüderris's account id to a
+#            caller with no token; this page reads it and draws only the name and the count. Checked on the running stack on 15 Nov
+#            2026: the API answers it; the visitor's page, its flight payload and a signed-in person's page do not carry it.
+# E2E carried: madrasah#1, #2 (the next celse as weekday and clock; the meeting link never reaches the page, as `effects` on the wire),
+# #4, #5 (the 404 on the wire, the text on screen), #6 (as applicantA, who is given the two seats the e2e fixture gives its talebe);
+# anonymous#14, #15, #16. Not carried: madrasah#1's "the unlisted-köşk course is absent" and #3's "Gizli Köşk is absent" (the seed has
+# no unlisted köşk with a course), madrasah#5's console-error list, madrasah#2's raw-body check of the e2e's own marker.
+schema: delurio-graph/0
+kind: flow
+id: tedris.discover.readMadrasah
+status: captured
+domain: medaris.api
+ui: tedris.discover.readMadrasah
+title: Read a medrese page
+summary: >-
+  Anyone, signed in or not, opens a medrese's page. It names the medrese, counts its courses and names the başmüderris, then
+  tells what the medrese is, in the medrese's own paragraphs followed by one fixed notice about enrolment. Under "Dersler" each
+  listed course is a card: its title, the hocas, the köşk that opened it, the next celse as weekday and clock or "Planlı celse yok",
+  and, for a signed-in person who holds a seat or an application in it, a badge. A visitor reads a slightly different hint and an
+  invitation to sign in or register under the cards. Beside them the başmüderris and the köşks the medrese has a listed course in.
+  A medrese with no listed course says so. An id that matches no medrese, a malformed one and a medrese hidden from the caller all
+  end on the not-found page; so does a failed read, which the page cannot tell from a missing medrese.
+
+scope:
+  shows: the page for a visitor and for a signed-in person, the medrese with no course, the not-found page, and the links that leave
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame around the page: the wide bar, the phone's app bar and sheet, the theme switch, the privacy footer, and the top bar's own sign-in links (tedris.shell.frame)"
+    - "the loading skeleton the segment shows while the overview is read (loading.tsx: a <main aria-busy> of grey blocks)"
+    - "what the course page and the köşk page show once the link is followed (tedris.course.apply, tedris.course.readProgramme, tedris.discover.visitorPath, tedris.discover.readKosk)"
+    - "the not-found page's own words and its link back (tedris.shell.systemPages); drawn here only as far as the flow ends on it"
+    - "a medrese hidden from the public that its başmüderris or a Medaris nazım opens anyway (mayOpenHidden, madrasah.controller.ts:355): the page is the same"
+    - "a medrese with no description: the block then holds the fixed notice alone; a başmüderris with no name (never signed in): neither the line under the title nor the side card is drawn"
+    - "a course with no hoca (an empty line) and the imam's star, which shows only among more than one hoca of a course"
+    - "the page's title in the tab, `<medrese adı> · Tedris`, read with no token, so a medrese that is not public gives the plain `Tedris`"
+    - "the layout below 768 px, where the side cards stack under the courses and the breadcrumb shrinks to a back link"
+    - "the planned address by handle (MDRS-294), see needs.yaml"
+
+decisions:
+  D1:
+    question: >-
+      Should the notice under the description say what the medrese's courses ask, rather than the same sentence on every page?
+    recommend: >-
+      Yes. Read the medrese's policyAlwaysApproval and each course's requiresApproval, as the course page's card does, and say "kayıt
+      onaylıdır" only where that is true, or drop the sentence and let each card carry it. Today the sentence is a fixed catalog message
+      (madrasah-page.tsx:199) and the open course of the seeded medrese contradicts it (MAD-1).
+    affects: [readByVisitor, readByMember]
+  D2:
+    question: >-
+      Should a failed read be told apart from a missing medrese, as the köşk page does with its "Köşk yüklenemedi" box?
+    recommend: >-
+      Yes. Let `orNull` keep a 404 as null and throw on anything else, and draw the segment's error state ("Bir şeyler ters gitti"
+      with a retry) for an outage, so a medrese that exists is never reported missing (DSC-10).
+    affects: [notFoundPage]
+  D3:
+    question: >-
+      Should the overview leave the başmüderris's id out of what it gives a caller with no token, and out of what it gives anyone, since
+      no page uses it?
+    recommend: >-
+      Yes: drop `headMuderris.id` from the response, or mask it as the medrese read masks createdBy and nazirIds (anonymous-mask.ts).
+      See the finding overview-exposes-head-id in ui.yaml `rules`.
+    affects: [readingOverview]
+
+context:
+  viewer:
+    values: [visitor, member, seatHolder]
+    initial: any
+    say:
+      visitor: "no token: the page is read with no session and shows no seat"
+      member: "a token, and no seat or application in any listed course of this medrese: no badge"
+      seatHolder: "a token, and at least one listed course of this medrese in which the person holds a seat or an application: its card wears a badge"
+  read:
+    values: [ok, absent, failed, overviewFailed]
+    initial: any
+    say:
+      ok: "both reads answer"
+      absent: "GET /madrasahs/{id} answers 404: the id matches no medrese, is not a UUID, or the medrese is hidden from this caller"
+      failed: "GET /madrasahs/{id} fails in any other way (5xx, network, a refused token)"
+      overviewFailed: "GET /madrasahs/{id} answers and GET /madrasahs/{id}/overview fails"
+  listing:
+    values: [courses, none]
+    initial: any
+    say:
+      courses: "the medrese has at least one published, not hidden course in a köşk that is neither unlisted nor hidden"
+      none: "the medrese has no such course, so no köşk is listed either"
+  head:
+    values: [named, unnamed]
+    initial: any
+    say:
+      named: "the başmüderris has a name (the person has signed in once)"
+      unnamed: "the medrese has no head, or the head has never signed in, so the name is null"
+  celse:
+    values: [planned, none]
+    initial: any
+    say:
+      planned: "each listed course has a celse still ahead: its card says when"
+      none: "no listed course has a celse ahead: every card says \"Planlı celse yok\""
+  place:
+    values: [online, inPerson]
+    initial: any
+    say:
+      online: "no listed course is held in person"
+      inPerson: "a listed course is held in person (MDRS-283): its card carries a public label \"Yüz yüze\""
+
+guards:
+  isVisitor: "viewer == 'visitor'"
+  hasCourses: "listing == 'courses'"
+  badged: "viewer == 'seatHolder' and listing == 'courses'"
+  headNamed: "head == 'named'"
+  plannedCelse: "celse == 'planned' and listing == 'courses'"
+  unplannedCelse: "celse == 'none' and listing == 'courses'"
+  heldInPerson: "place == 'inPerson' and listing == 'courses'"
+
+effects:
+  answers404: { set: { read: absent } } # no change: the 404 is a response, and the replay checks the status on the wire
+
+failures:
+  readingMadrasah: { from: getMadrasah, notFound: [MADRASAH_NOT_FOUND], unreadable: [] }
+  readingOverview: { from: getMadrasahOverview, notFound: [MADRASAH_NOT_FOUND], unreadable: [] }
+# `unreadable` stands for any answer but a 404: public-reads.ts:49-55 turns a network error, a 5xx and a refused token alike into `null`.
+# A 404 from the overview after the medrese read answered (a medrese hidden between the two) is the same page; the graph draws it as
+# `overviewFailed`, and says nothing of the two requests' order beyond what the code does.
+
+# The main story: a signed-in talebe who has a seat in one course and an application in the other opens the medrese, reads it and
+# opens a course.
+main:
+  given: { viewer: seatHolder, read: ok, listing: courses, head: named, celse: planned, place: online }
+  events: [DONE, DONE, OPEN_COURSE]
+
+initial: readingMadrasah
+states:
+  readingMadrasah:
+    title: Read the medrese
+    description: >-
+      The segment's layout reads GET /madrasahs/{id} first, with the viewer's token when there is one and with none otherwise, and
+      calls notFound() when the answer is null. It does so above the segment's Suspense boundary (loading.tsx), so the answer is a real
+      HTTP 404 with the not-found page. A medrese that is hidden answers 404 to everyone but the people who may open it. The read is
+      cached for the request, so the page does not ask twice. Every failure of the read, not only a 404, is `null` (DSC-10).
+    source: "apps/tedris/app/madrasahs/[madrasahId]/layout.tsx:20"
+    invoke: { action: getMadrasah }
+    on:
+      DONE: { guard: "read in ['ok', 'overviewFailed']", target: readingOverview }
+      FAIL.notFound: { guard: "read == 'absent'", target: notFoundPage, effect: [answers404], say: "a real 404: the layout throws before anything is streamed", source: "apps/tedris/app/madrasahs/[madrasahId]/layout.tsx:20" }
+      FAIL.unreadable: { guard: "read == 'failed'", target: notFoundPage, say: "the page cannot tell an outage from a missing medrese: both are the 404 page (DSC-10)", source: apps/tedris/features/courses/public-reads.ts:49 }
+
+  readingOverview:
+    title: Read what the page shows
+    description: >-
+      The page reads GET /madrasahs/{id}/overview with the viewer's token (so the person's own seats come back) and asks whether a
+      token exists, together with the medrese. The overview holds the listed courses (each with its hocas, its köşk, the caller's seat and
+      its next celse), the köşks those courses are in and the başmüderris with the number of listed courses they teach. The başmüderris
+      comes with their account id as well, to a caller with no token too; the page reads only the name and the count and sends the id to
+      nobody (overview-exposes-head-id, D3). A null answer is `notFound()` again, now from the page itself, which the layout's own
+      comment says arrives after the response head is sent (a 200 with the not-found markup; not run, no way to make it happen here).
+    source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:58"
+    invoke: { action: getMadrasahOverview }
+    on:
+      DONE: { guard: "read == 'ok'", target: sorting }
+      FAIL.unreadable: { guard: "read == 'overviewFailed'", target: notFoundPage, say: "page.tsx:63 calls notFound() when either read is null", source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:63" }
+      FAIL.notFound: { guard: "read == 'overviewFailed'", target: notFoundPage, say: "the same page: the answer's status is not looked at", source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:63" }
+
+  sorting:
+    title: See whether the viewer holds a token
+    description: classification only; `isSignedIn` is "there is a usable access token", and decides the hint, the invitation and whether a badge can come
+    source: apps/tedris/features/courses/public-reads.ts:151
+    always:
+      - { guard: isVisitor, target: readByVisitor, say: "no token" }
+      - { target: readByMember, say: "a token" }
+
+  readByVisitor:
+    title: Read the medrese as a visitor
+    by: human
+    goal: true
+    description: >-
+      The page of a person with no account. Everything of the medrese is the same as for a member; what differs is the small line
+      above the cards ("Medresenin bütün dersleri, açıldıkları köşkle birlikte"), no badge on any card, and, under the cards,
+      "Bir derse başvurmak için giriş yap ya da kayıt ol." whose two links go to the app's sign-in page, carrying this page as the
+      place to come back to, and to registration. The page sets no initial focus. The notice about enrolment is drawn as for everyone
+      (MAD-1) and the line under the title runs together in the accessibility tree (MAD-2).
+    source: apps/tedris/features/courses/components/madrasah-page.tsx:136
+    on:
+      OPEN_COURSE: { guard: hasCourses, target: course_opened, say: "a card's title link; the whole card is the link's target", source: apps/tedris/features/courses/components/madrasah-page.tsx:71 }
+      OPEN_KOSK: { guard: hasCourses, target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the köşk named in a card's footer, or in the side list", source: apps/tedris/features/courses/components/madrasah-page.tsx:91 }
+      OPEN_DISCOVER: { target: discover_opened, starts: { flow: tedris.discover.browse }, say: "the breadcrumb's Keşfet", source: apps/tedris/features/courses/components/madrasah-page.tsx:160 }
+      OPEN_SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }, say: "\"giriş yap\" in the invitation: /auth/signin?callbackUrl=/madrasahs/<id>, which starts the Keycloak round trip", source: apps/tedris/components/anonymous-invite.tsx:41 }
+      OPEN_REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register }, say: "\"kayıt ol\" in the invitation: /auth/register, which opens Keycloak's registration form", source: apps/tedris/components/anonymous-invite.tsx:46 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  readByMember:
+    title: Read the medrese as a signed-in person
+    by: human
+    goal: true
+    description: >-
+      The page of a person with a token. The hint above the cards is "Medresenin dersleri, açıldıkları köşkle birlikte". A card in
+      which the person holds a seat wears "Devam ediyor" (ENROLLED) or "Tamamlandı" (COMPLETED), and one with a waiting
+      application "Onay bekliyor" (PENDING); a seat the course team revoked wears none (MDRS-161). There is no invitation. The links
+      are the same as a visitor's, minus the two of the invitation. The page sets no initial focus. MAD-1 and MAD-2 hold here too.
+    source: apps/tedris/features/courses/components/madrasah-page.tsx:136
+    on:
+      OPEN_COURSE: { guard: hasCourses, target: course_opened, say: "a card's title link", source: apps/tedris/features/courses/components/madrasah-page.tsx:71 }
+      OPEN_KOSK: { guard: hasCourses, target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the köşk named in a card's footer, or in the side list", source: apps/tedris/features/courses/components/madrasah-page.tsx:91 }
+      OPEN_DISCOVER: { target: discover_opened, starts: { flow: tedris.discover.browse }, say: "the breadcrumb's Keşfet", source: apps/tedris/features/courses/components/madrasah-page.tsx:160 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  notFoundPage:
+    title: The not-found page
+    by: human
+    description: >-
+      "Sayfa bulunamadı" with one sentence, under the app's bar, in place of the medrese. It is the answer for an id that matches no
+      medrese, an id that is not a UUID (`abc`), a medrese hidden from the caller, and every failed read (DSC-10). When the first read
+      is what failed the status is 404; when only the overview failed the status is the 200 of a response already begun (read from the
+      layout's comment, not run). The page has no <main> landmark (MAD-4) and sets no initial focus. Its words and the way back belong
+      to tedris.shell.systemPages.
+    source: apps/tedris/app/not-found.tsx:5
+    on:
+      NAVIGATE: { target: left, say: "they follow the link back or go elsewhere" }
+
+  course_opened: { type: final, title: A course page opens, leavesPage: true }
+  kosk_opened: { type: final, title: A köşk page opens, leavesPage: true }
+  discover_opened: { type: final, title: Keşfet opens, leavesPage: true }
+  handed_over.sign_in: { type: final, title: Sent to sign in and back to this page, leavesPage: true }
+  handed_over.register: { type: final, title: Sent to register, leavesPage: true }
+  left: { type: final, title: The person leaves the medrese page, leavesPage: true }
+
+assertions:
+  - id: page-only-after-both-reads
+    never: "state in ['readByVisitor', 'readByMember'] and read != 'ok'"
+    say: "The medrese page is drawn only when both reads answered"
+    source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:63"
+  - id: not-found-only-after-a-failed-read
+    never: "state == 'notFoundPage' and read == 'ok'"
+    say: "The not-found page is drawn only after a read failed or answered 404"
+    source: "apps/tedris/app/madrasahs/[madrasahId]/layout.tsx:20"
+  - id: visitor-page-is-for-a-visitor
+    never: "state == 'readByVisitor' and viewer != 'visitor'"
+    say: "The page with the invitation and no badge is drawn only for a person with no token"
+    source: apps/tedris/features/courses/components/madrasah-page.tsx:234
+  - id: member-page-is-for-a-member
+    never: "state == 'readByMember' and viewer == 'visitor'"
+    say: "The page with no invitation is drawn only for a person with a token"
+    source: apps/tedris/features/courses/components/madrasah-page.tsx:234

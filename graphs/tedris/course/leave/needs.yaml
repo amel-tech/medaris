@@ -1,0 +1,146 @@
+# What must exist for a talebe who leaves a course or takes back an application: the flow's product list, from its story and from
+# the inventory's findings, never from what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by
+# the orchestrator). Gender separation is given: kontenjan is always two counts, one per gender, and gender is always required;
+# enrolment keeps no count today (domain invariants seat-quota-per-gender and gender-always-known, `holds: false`), so the one
+# need below that depends on it is `missing` (MDRS-284); no quota is invented in the flow.
+#
+# Missing (no code), for the orchestrator's gaps merge: the-confirmation-names-the-progress (LEAVE-3), taking-back-never-removes-an-approved-seat
+# (DSC-03), success-is-said-and-the-focus-goes-somewhere (DSC-04, CRS-05), a-left-seat-frees-the-gender-count (MDRS-284).
+# Unwalked (code, no e2e and no replay): leave-from-the-course-page-and-meet-the-apply-card, a-stale-answer-says-so-and-reads-the-page-again, a-row-that-cannot-go-says-why-and-stays,
+# the-last-course-leaves-an-empty-page-that-points-on, a-completed-or-revoked-record-is-kept.
+kind: needs
+flow: tedris.course.leave
+status: proposed
+
+needs:
+  - id: leave-a-seat-after-a-confirmation
+    need: >-
+      A talebe who holds a seat can leave the course from Derslerim. The window asks first, says which access ends, lets the
+      talebe change their mind without any effect, and when they confirm the seat goes, a toast says so, the calendar
+      invitations are cancelled, and the talebe may apply again.
+    drawn:
+      - cardMenu
+      - confirm
+      - leaving
+      - seat_left
+    built:
+      - action: medaris.api:leaveCourse
+      - route: apps/tedris/features/courses/components/course-actions-menu.tsx:49
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:108
+    walked:
+      - replay: leavesSeat
+
+  - id: leave-from-the-course-page-and-meet-the-apply-card
+    need: >-
+      The same leave is offered on the course page of the seat, and afterwards the page offers the talebe the way to apply again.
+    drawn:
+      - courseCard
+      - courseMenu
+      - apply_card
+    built:
+      - action: medaris.api:leaveCourse
+      - route: apps/tedris/features/courses/components/course-aside.tsx:271
+    walked: []
+    note: scenario leavesFromCourse died at load in its replay (a nav entry key naming two entries) and was not run again; a hand run of the generated spec passed
+
+  - id: the-confirmation-names-the-progress
+    need: >-
+      The confirmation says that leaving deletes the talebe's progress in the course, so that it is not a surprise when they apply
+      again and start at zero. The code gives that as its reason for asking and the window does not say it.
+    drawn:
+      - confirm
+    missing: none # LEAVE-3: leaveBody names the access and leaveBodyCards the copied cards, and nothing the progress
+
+  - id: take-an-application-back-from-derslerim
+    need: >-
+      A talebe can take back an application that still waits from Derslerim, without a window, because there is nothing to lose;
+      the row goes and the talebe may apply again.
+    drawn:
+      - listed
+      - withdrawing
+      - application_withdrawn
+    built:
+      - action: medaris.api:leaveCourse
+      - route: apps/tedris/features/courses/components/application-row.tsx:39
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#26'
+      - replay: withdrawsApplication
+
+  - id: taking-back-never-removes-an-approved-seat
+    need: >-
+      Taking an application back never removes a seat the course team approved in the meantime: a page that is out of date gets
+      "the enrolment changed" and is read again, as the course page does. Derslerim's button must use the withdraw call, not the
+      leave call.
+    drawn:
+      - withdrawing
+      - listed
+    missing: none # DSC-03: application-row.tsx:42 calls leaveCourse; measured on the API, DELETE /enroll answers 404 on an approved seat and DELETE /enrollment deletes it (200)
+
+  - id: success-is-said-and-the-focus-goes-somewhere
+    need: >-
+      After a seat is left or an application is taken back, the talebe is told it worked and the keyboard focus goes somewhere
+      sensible (the section's heading or the next row), on the course page as on Derslerim.
+    drawn:
+      - application_withdrawn
+      - seat_left
+      - apply_card
+    missing: none # DSC-04 (a withdrawn row gives no toast and no focus), CRS-05 (the focus falls to body after a leave); a leave does give its toast
+
+  - id: a-stale-answer-says-so-and-reads-the-page-again
+    need: >-
+      When the enrolment changed while the page was open (the row went, or it is completed or revoked now), the window closes,
+      a toast says the enrolment changed, and the page is read again so it shows what the enrolment is now.
+    drawn:
+      - leaving
+      - apply_card
+      - course_read_again
+      - seat_left
+    built:
+      - action: medaris.api:leaveCourse
+      - route: apps/tedris/features/courses/components/course-actions-menu.tsx:55
+    walked: []
+    note: the stack cannot make a leave answer 404 or 409 without taking something from the seed (a REVOKED row blocks a person for good); read from the code only
+
+  - id: a-row-that-cannot-go-says-why-and-stays
+    need: >-
+      When an application cannot be taken back (a ban, a refusal), the row stays and a toast says the application could not be taken
+      back. A barred talebe keeps the seat while the ban lasts.
+    drawn:
+      - withdrawing
+      - listed
+    built:
+      - route: apps/tedris/features/courses/components/application-row.tsx:44
+    walked: []
+    note: the toast says only that it could not be done, never that a ban is the reason
+
+  - id: the-last-course-leaves-an-empty-page-that-points-on
+    need: >-
+      When the course that leaves is the only one Derslerim had, the page says the talebe is in no course and links to Keşfet.
+    drawn:
+      - nothing_left
+    built:
+      - route: apps/tedris/features/courses/components/my-courses-page.tsx:223
+    walked: []
+    note: the replay's data keeps one row of the other kind, so the empty page is never reached
+
+  - id: a-completed-or-revoked-record-is-kept
+    need: >-
+      A talebe cannot leave a completed course (the completion is their record) or a revoked one (the team's decision), and the
+      course page draws no leave menu for either.
+    drawn:
+      - course_read_again
+    built:
+      - action: medaris.api:leaveCourse
+      - route: apps/tedris/features/courses/components/course-aside.tsx:236
+    walked: []
+    note: the API answers 409 ENROLLMENT_STATE_CONFLICT; tedris.course.readProgramme draws the two cards
+
+  - id: a-left-seat-frees-the-gender-count
+    need: >-
+      A left seat is given back to the count of the talebe's own gender, so the next talebe of that gender may take it; kontenjan is
+      always per gender and the talebe's gender is always known.
+    drawn:
+      - leaving
+      - seat_left
+    missing: MDRS-284

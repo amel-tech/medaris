@@ -1,0 +1,84 @@
+# realm.auth.profileUpdate on the local stack: tedris-web :4000, Keycloak :8080 (realm medaris, the Medaris theme).
+#   flock <replay.lock> nice -n 10 node <engine>/src/cli.ts replay graphs/realm/auth/profileUpdate \
+#     --bind graphs/realm/auth/profileUpdate/binding.yaml --out <dir>
+#
+# What a walk uses up, and how it is given back. The main story completes the page of the seed's PENDING_PROFILE account: Keycloak
+# then holds the privacy-notice tick, and the account no longer stops at sign-in. `setup` and `teardown` run rearm.mjs (this
+# folder) as Keycloak's admin, which removes the tick again (it widens the realm's user profile for a second, to be allowed to,
+# and puts it back), so the next walk meets the page as the seed left it; `setup` does it too, so a walk that died before its
+# teardown leaves nothing behind. The admin's credentials are read inside the helper from graphs/.local/accounts.env; nothing
+# secret is in a command line. The walk also gives the account a tedrisat `users` row (tedris's /my-courses reads GET /me),
+# which the seed does not make for a pending account. The API has no route that deletes a person, so `setup` and `teardown`
+# delete that one row with helpers/sql.mjs (SQL because no API exists; the delete went through, with nothing in its way, after
+# the first walk had made the row).
+#
+# The main story enters through realm.auth.signIn: the walk opens a page that needs a session, the app's gate sends it to
+# Keycloak's login form, the walk types the account's address and password there (signIn: false, `as` says whose they are) and
+# presses "Giriş yap", and Keycloak answers with this page. signIn's own binding drives that way; this scenario only says where
+# it starts and which account.
+#
+# The scenario `accountCancel` is the other way in: a signed-in talebe follows the start route that tedris's "Değiştir" link
+# opens, and presses "Vazgeç", which changes nothing, so it needs no setup. The same walk with "Kaydet ve devam et" would save
+# the talebe's own values again, a change of nothing, and is not a scenario.
+#
+# Not bound, with the reason. `lacks: gender` and `lacks: both` need an account that has no gender; Keycloak's admin API refuses
+# to remove it (400 error-user-attribute-required, tried on 15 Nov 2026 on PENDING_PROFILE and put back), and the realm's profile is
+# not changed for a walk. giris.e2e#16 carries that story on a mock page (a story of the theme), not on a realm. `error_box.*` is
+# realm.auth.signInFailures'; `left` has no page to look at beyond the blank one.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: realm.auth.profileUpdate
+
+scenarios:
+  signInPrivacyNotice: # the main story: the account that lacks the tick, from a protected page of tedris
+    given: { entry: signIn, lacks: privacyNotice }
+    as: pendingProfile
+    signIn: false
+    open: '{tedris}/my-courses'
+    enter:
+      flow: ../signIn
+      bind: ../signIn/binding.yaml
+      given: { app: tedris, entry: protectedPage, session: none, credentials: right, account: profileIncomplete }
+      event: DONE
+    setup:
+      - { run: [node, ../realm/auth/profileUpdate/rearm.mjs, profile], expect: armed }
+      - { run: [node, helpers/sql.mjs, "delete from users where id = '{secret.E2E_PENDING_PROFILE_SUB}'"], expect: '"rows"' }
+    teardown:
+      - { run: [node, ../realm/auth/profileUpdate/rearm.mjs, profile], expect: armed }
+      - { run: [node, helpers/sql.mjs, "delete from users where id = '{secret.E2E_PENDING_PROFILE_SUB}'"], expect: '"rows"' }
+    vars: { appUrl: '{tedris}', asked: /my-courses, askedEncoded: '%2Fmy-courses', landedAt: '{tedris}/my-courses' }
+  accountCancel: # a signed-in talebe changes their profile on purpose and cancels
+    given: { entry: account, lacks: nothing }
+    as: talebe
+    open: '{tedris}/api/auth/signin?action=UPDATE_PROFILE&callbackUrl=%2Faccount&locale=tr'
+    vars: { appUrl: '{tedris}', landedAt: '{tedris}/account' }
+
+# What the save leaves outside the screen: Keycloak holds the tick. The check reads the account back through the admin API.
+effects:
+  profileSaved:
+    - run: [node, ../realm/auth/profileUpdate/rearm.mjs, status]
+      expect: privacyNoticeRead=yes
+
+states:
+  # Keycloak's page: its address is a one-time login-actions/required-action URL, so only the realm's prefix is held
+  profileForm: { url: '{keycloak}/realms/medaris/**' }
+  profileReady: { url: '{keycloak}/realms/medaris/**' }
+  # `saving` and `cancelling` are native form posts: no `call` (the walk would hang), the replay passes through them
+  finishingRoundTrip: { call: '{appUrl}/api/auth/callback/keycloak**' }
+  back_in_app: { url: '{landedAt}' }
+  left: { url: 'about:blank' }
+
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+nodes:
+  # a bare role main is also matched on the page the walk leaves for, so it is found by the form it holds
+  profilePage: { css: 'main:has(#kc-update-profile-form)' }
+  # a radio's words are its label's, beside it, not inside it: found by role and name, not by the text it contains
+  genderFemale: { role: radio, name: Kadın }
+  genderMale: { role: radio, name: Erkek }
+  # the same line of Keycloak's under the gender and under the box: each is found inside its own field, or the one that is hidden
+  # would be found by the other's words
+  genderRequired: { text: 'Lütfen bu alanı doldurun.', within: { role: radiogroup, name: Cinsiyet } }
+  noticeRequired: { text: 'Lütfen bu alanı doldurun.', within: { css: '.mds-field:has([role=checkbox])' } }

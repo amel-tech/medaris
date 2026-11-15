@@ -1,0 +1,134 @@
+# What must exist for a person who meets a page that is not there, a page that failed, or an app that could not start:
+# tedris.shell.systemPages, written on 15 Nov 2026 in the format of LAYOUT.md section 7. Each need is what the product must do,
+# from the flow's story; none is read off what the pages do today. Nothing here comes from planned.md: no planned feature (P-nn)
+# names these pages.
+# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
+#
+# missing (no code, or code that does the opposite): outage-is-not-a-missing-page (CLS-01, DSC-10), error-page-keeps-the-system-frame
+#   (SHL-06), retry-that-fails-says-so (SYS-3), app-failure-page-is-translatable (SHL-07, MDRS-234), faces-are-landmarks (SYS-1),
+#   missing-celse-answers-404 (SYS-2), faces-name-themselves-in-the-title (SHL-01)
+# unwalked (code, and no e2e check and no replay takes it): a-visitor-is-not-told-what-exists (the scenario visitorUnknownAddress is
+#   bound and was not walked), app-failure-has-a-page (a unit spec only; nothing in the stack makes the root layout throw),
+#   retry-reads-again (its `stays` half: the retry that fails again)
+kind: needs
+flow: tedris.shell.systemPages
+status: proposed
+
+needs:
+  - id: unknown-address-says-so
+    need: A person who opens an address that leads nowhere is told the page is not there, in the system's frame, and is offered one way back; it is not drawn as an error.
+    drawn: [notFound, notFoundTitle, notFoundText, homeLink, a-throw-is-not-a-404]
+    built:
+      - route: apps/tedris/app/not-found.tsx:5
+    walked:
+      - e2e: apps/tedris/e2e/system-pages.e2e.ts
+        check: 'system-pages#7 (a2, a3 and a4: the heading, the sentence and the link to /home; a1, the 404 status, is not carried)'
+      - replay: memberUnknownAddress
+
+  - id: missing-record-says-so
+    need: A course, köşk, medrese, deck or celse the API does not know, and a draft the person may not read, show the same page as an unknown address, and tell a visitor no more than a member.
+    drawn: [notFound, a-missing-page-is-not-an-error]
+    built:
+      - route: apps/tedris/app/courses/[courseId]/layout.tsx:27
+      - route: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27
+    walked:
+      - e2e: apps/tedris/e2e/system-pages.e2e.ts
+        check: 'system-pages#8 (a2: the heading; a1, the status, is not carried)'
+      - e2e: apps/tedris/e2e/session.e2e.ts
+        check: 'session#8'
+    # the scenarios visitorMissingCourse, memberMissingCourse and memberMissingCelse are bound and were not walked
+    # course#3 (a visitor opens a draft) has one assertion, the 404 status, which no graph carries; a replay does not read a navigation's status.
+
+  - id: way-home-fits-the-person
+    need: The way back from the not-found page leads a signed-in person to their Ana sayfa and a visitor to the page that is theirs, in one hop.
+    drawn: [notFound, home_opened, discover_opened]
+    built:
+      - route: apps/tedris/features/errors/system-page.tsx:33
+    walked:
+      - e2e: apps/tedris/e2e/system-pages.e2e.ts
+        check: 'system-pages#7 (a4: a member to /home); SP-04 says the visitor is tested by none'
+      - replay: memberUnknownAddress # the member's half; the visitor's (scenario visitorMissingCourse) is bound and was not walked
+
+  - id: a-visitor-is-not-told-what-exists
+    need: A visitor who asks for an address that is not public is sent to sign in and never shown a page that says whether it exists.
+    drawn: [opening, sign_in_opened, visitor-meets-no-private-404]
+    built:
+      - route: apps/tedris/lib/public-paths.ts:29
+      - route: apps/tedris/proxy.ts:24
+    # walked: nothing. The scenario visitorUnknownAddress is bound; this phase walked three scenarios and not that one.
+
+  - id: outage-is-not-a-missing-page
+    need: When tedrisat cannot answer, a person is told so and can try again, whatever page they asked for; a celse or a medrese is no different from a course.
+    drawn: [notFound, errorShown]
+    missing: none # CLS-01 and DSC-10, decision D1. getCourse and getKosk already throw (features/courses/actions/index.ts:78-84); getSession and getMadrasah do not. No Linear key found.
+
+  - id: error-page-keeps-the-system-frame
+    need: A page that fails is shown in the same bar as every other page and not in the app's old header and tab row, which are not meant to be seen.
+    drawn: [errorShown, legacyHeader]
+    missing: none # SHL-06, decision D2. Seen in a browser; the replay of hocaPageThrows walks it. No Linear key found.
+
+  - id: retry-reads-again
+    need: A person who is told something went wrong can ask for the page to be read again, and gets the page once what failed is over.
+    drawn: [errorShown, retrying, page_shown]
+    built:
+      - route: apps/tedris/app/error.tsx:12
+      - route: apps/tedris/features/errors/system-page.tsx:116
+    walked:
+      - e2e: apps/tedris/e2e/system-pages.e2e.ts
+        check: 'system-pages#10 (a1, a2 and a4; a3 is the next need)'
+      - replay: hocaPageThrows
+    # The retry that fails again (recovery: stays) is drawn and not walked: the node's `before` always mends the course first.
+
+  - id: retry-that-fails-says-so
+    need: A retry that fails again tells the person it tried, with a busy mark and a sentence, and does not drop them on the page's start.
+    drawn: [errorShown, retrying]
+    missing: none # SYS-3, seen: the button is replaced by an identical one and the focus falls to the body. No Linear key found.
+
+  - id: error-hides-the-error
+    need: The error page never shows the error itself, nor anything the server said, to a person who can do nothing about it.
+    drawn: [errorText]
+    built:
+      - route: apps/tedris/app/error.tsx:20
+    walked:
+      - e2e: apps/tedris/e2e/system-pages.e2e.ts
+        check: 'system-pages#10 (a3: no RangeError, zone name or Invalid time zone inside .mds-system-state)'
+      - replay: hocaPageThrows # the sentence is the whole text of the <p>, so nothing else is in it
+
+  - id: app-failure-has-a-page
+    need: When the app cannot start at all, a person still gets a page that says so and lets them try again.
+    drawn: [shellErrorShown, shellRetrying]
+    built:
+      - route: apps/tedris/app/global-error.tsx:29
+    # walked: nothing. test/system-pages.spec.ts proves the markup and that the button hands over to Next's retry; no e2e check and no replay
+    # reaches it, because nothing in the local stack makes the root layout throw.
+
+  - id: app-failure-page-is-translatable
+    need: The app-failure page is in the person's language and its words are kept with the others, so they cannot drift.
+    drawn: [shellErrorShown]
+    missing: MDRS-234 # SHL-07; the register's wording says "global-error and not-found pages", and the not-found page does read tedris.SystemPages (not verified in Linear)
+
+  - id: faces-are-landmarks
+    need: Each of these pages has one main landmark, and a bar that is a banner where the page has a bar.
+    drawn: [notFound, errorShown, shellErrorShown]
+    missing: none # SYS-1, seen at /courses/<missing> and on the error page of a course. test/system-pages.spec.ts asserts "a section inside the shell, not a second <main>", which holds for the markup and not for the shell. No Linear key found.
+
+  - id: missing-page-answers-404
+    need: An address that gives no page, and a course or köşk the API does not know, answer with HTTP 404.
+    drawn: [notFound]
+    built:
+      - route: apps/tedris/app/not-found.tsx:5
+      - route: apps/tedris/app/courses/[courseId]/layout.tsx:23
+    walked:
+      - e2e: apps/tedris/e2e/system-pages.e2e.ts
+        check: 'system-pages#7 (a1) and #8 (a1); course#3'
+    # no graph carries a status and a replay does not read a navigation's: these three checks stay in Playwright.
+
+  - id: missing-celse-answers-404
+    need: A celse that does not exist, or is not live, answers with HTTP 404 and not 200 with the page's markup.
+    drawn: [notFound]
+    missing: none # SYS-2: seen as 200 in `next dev`; not verified in a production build. session#8 reads the text only. No Linear key found.
+
+  - id: faces-name-themselves-in-the-title
+    need: The browser tab and a screen reader's page title say that the page is missing or that something went wrong.
+    drawn: [notFound, errorShown]
+    missing: none # SHL-01 (seen: "Medaris Tedris" and "Tedris"). No Linear key found.

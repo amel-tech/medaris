@@ -1,0 +1,10 @@
+# The way into tedris.discover.readMadrasah: Keşfet, then the link of the medrese's card. tedris.nav's own binding gives no locator for an
+# entry that needs an item (`data: true`), because the item is the walk's to choose, so this file extends it and names the medrese the walk
+# reads (the scenario's `madrasah` variable), found by its address. The title of a card is the link, in an <h3>.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  discover->madrasah: { css: 'h3 a.mds-card__link[href="/madrasahs/{madrasah}"]' }

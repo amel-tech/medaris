@@ -1,0 +1,73 @@
+# What tedris.shell.frame's two bindings share: the places each exit opens, the one event no node sends, and where role and
+# name cannot find a node of the frame. It carries no scenario and no window size, so it is not walked by itself:
+#   binding.yaml        the phone, 390 x 844 (the sheet, its focus, the visitor's sheet, the older header on the page of a thrown error)
+#   binding.wide.yaml   the wide bar, 1280 x 720
+# The window size is the binding's, not a scenario's (the replay opens every scenario's browser at `browser.width` and
+# `browser.height`), so the two sizes are two bindings of one flow.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.shell.frame
+
+events:
+  ESCAPE: [{ key: Escape }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+  # RETRY is the error box's "Yeniden dene" (a node sends it); WIDEN is bound to nothing: no action resizes the window (engine limit),
+  # so the step from the sheet to the wide bar is drawn and not walked
+
+states:
+  # An exit has no nodes, so its address is all the replay can check. A link of the bar is a client-side navigation.
+  home_opened: { url: '{tedris}/home' }
+  discover_opened: { url: '{tedris}/discover' }
+  courses_opened: { url: '{tedris}/my-courses' }
+  schedule_opened: { url: '{tedris}/schedule' }
+  decks_opened: { url: '{tedris}/decks' }
+  notifications_opened: { url: '{tedris}/notifications' }
+  account_opened: { url: '{tedris}/account' }
+  # /auth/signin and /auth/register send the browser on to Keycloak by themselves, so the walk ends there (as in landing.site.enterApp)
+  sign_in_opened: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**' }
+  register_opened: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**prompt=create**' }
+  left: { url: 'about:blank' }
+
+# Where role and name are not enough. The bar's names also stand in the page below it (Ana sayfa's own "Programım", "Keşfet",
+# "Desteler" and "Derslerim" links; the invitation sentence's "giriş yap" for a visitor), so every link of the bar is found inside
+# the navigation or the banner. A name given as a string is matched whole; one between slashes is a pattern.
+nodes:
+  # the wide bar
+  wideBanner: { css: 'header[data-system-chrome]' }
+  logoMember: { css: 'header[data-system-chrome] a[aria-label="Medaris Tedris, ana sayfa"][href="/home"]' }
+  logoVisitor: { css: 'header[data-system-chrome] a[aria-label="Medaris Tedris, ana sayfa"][href="/discover"]' }
+  # the live bars by their own marks, not as "a banner": on the page of a thrown error the older header is the only banner there is,
+  # and a link named "Bildirimler" in it would be taken for the bar's (run 1 of the walk found exactly that)
+  signInBar: { role: link, name: Giriş yap, within: { css: 'header[data-system-chrome], header.mds-appbar' } }
+  registerWide: { role: link, name: Kayıt ol, within: { css: 'header[data-system-chrome]' } }
+  account: { role: link, name: Hesabım, within: { css: 'header[data-system-chrome]' } }
+  bell: { role: link, name: Bildirimler, within: { css: 'header[data-system-chrome], header.mds-appbar' } }
+  # the five places, in the wide navigation and in the sheet's
+  navHome: { role: link, name: Ana sayfa, within: { role: navigation, name: Ana menü } }
+  navDiscover: { role: link, name: Keşfet, within: { role: navigation, name: Ana menü } }
+  navCourses: { role: link, name: Derslerim, within: { role: navigation, name: Ana menü } }
+  navSchedule: { role: link, name: Programım, within: { role: navigation, name: Ana menü } }
+  navDecks: { role: link, name: Desteler, within: { role: navigation, name: Ana menü } }
+  # aria-current has no key in the format: the item the page belongs to is the link that carries it
+  currentItem: { css: 'a[aria-current=page]', within: { role: navigation, name: Ana menü }, hasText: '/^(Ana sayfa|Keşfet|Derslerim|Programım|Desteler)$/' }
+  # the phone's app bar and its sheet
+  appBar: { css: 'header.mds-appbar' }
+  barTitle: { css: '.mds-appbar__title', hasText: '/^(Ana sayfa|Keşfet|Derslerim|Programım|Desteler)$/' }
+  sheetClose: { role: button, name: Kapat, within: { role: dialog, name: Ana menü } }
+  accountSheet: { role: link, name: '/^Hesabım: /', within: { role: dialog, name: Ana menü } }
+  accountName: { css: '.mds-nav-user__name' }
+  accountRole: { css: '.mds-nav-user__role' }
+  signInSheet: { role: link, name: Giriş yap, within: { role: dialog, name: Ana menü } }
+  registerSheet: { role: link, name: Kayıt ol, within: { role: dialog, name: Ana menü } }
+  # the older header and tab row (an unnamed banner, a <p>, a button whose name is its content, links in a <div>)
+  legacyBanner: { css: 'header[data-legacy-header]' }
+  legacyBrand: { css: 'header[data-legacy-header] p', hasText: '/^Medaris$/' }
+  legacyBellCounted: { role: link, name: '/^Bildirimler, \d+ okunmamış$/', within: { css: 'header[data-legacy-header]' } }
+  legacyBell: { role: link, name: Bildirimler, within: { css: 'header[data-legacy-header]' } }
+  legacyUserMenu: { css: 'header[data-legacy-header] button' }
+  legacySignIn: { css: 'header[data-legacy-header] button', hasText: '/^Giriş yap$/' }
+  legacyRegister: { css: 'header[data-legacy-header] button', hasText: '/^Kayıt ol$/' }
+  legacyTabHome: { css: '[data-legacy-tabs] a', hasText: '/^Ev$/' }
+  legacyTabLearning: { css: '[data-legacy-tabs] a', hasText: '/^Öğrenme$/' }
+  legacyTabDecks: { css: '[data-legacy-tabs] a', hasText: '/^Desteler$/' }

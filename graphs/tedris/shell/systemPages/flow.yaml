@@ -1,0 +1,201 @@
+# tedris-web's not-found page, its error page and its global error document, and how a person gets back from them, read from
+# the code of the branch (the tree of PR #394) on 15 Nov 2026. Its main story and the way through the error page and "Yeniden dene" were
+# walked on the local stack; the visitor's start and the rest were not (binding.yaml). Nothing here is approved.
+#   - What it draws: the one decision the app makes when an address is asked for (a page, nothing, a throw, or a shell that
+#     threw), the three faces it answers with, and the four ways back: the link home, "Yeniden dene", the visitor's sign-in
+#     and the address bar.
+#   - The forbidden page (ForbiddenState) is the deck pages' own and belongs to tedris.decks.accessRefusals.
+#   - Findings it carries (inventory ids): SHL-06 (seen in a browser now), SHL-07, SHL-15, CLS-01, DSC-10; SHL-01 and SHL-14 are
+#     named where they touch. Three more are this flow's own, proposed as SYS-1, SYS-2 and SYS-3 (ui.yaml `rules`).
+#   - The e2e checks it takes over: system-pages#7, #8, #10, course#3 (its one assertion is a status the replay cannot read) and
+#     session#8; see needs.yaml.
+schema: delurio-graph/0
+kind: flow
+id: tedris.shell.systemPages
+status: captured
+domain: medaris.api
+ui: tedris.shell.systemPages
+title: Meet the not-found and error pages, and come back
+summary: >-
+  An address that no page owns, or a course, köşk, medrese or celse the API does not know, shows "Sayfa bulunamadı" under the
+  system's bar, with "Ana sayfaya dön", which goes to Ana sayfa for a member and to the landing address for a visitor. A page
+  that throws shows "Bir şeyler ters gitti" with "Yeniden dene", which reads the page again; the error itself is never shown.
+  Because the only error boundary is the root's, that page carries the app's old header and tab row instead of the system's
+  bar (SHL-06). When the root layout itself throws, a document of its own says the same in words fixed in the code. A failed
+  read of a celse or a medrese is drawn as the not-found page, so an outage reads as a missing page (CLS-01, DSC-10).
+
+scope:
+  shows: what the person meets when an address does not give a page, and the way back from each face
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the system bar's own items, the phone's sheet and the theme toggle (tedris.shell.frame); here the bar is drawn only as a frame"
+    - "the forbidden page, which the deck's edit and cards pages draw for a non-owner (ForbiddenState: tedris.decks.accessRefusals)"
+    - "the loading skeletons that stream before a page decides it is missing (loading.tsx): under one, the not-found markup arrives with HTTP 200 (SYS-2)"
+    - "the HTTP status of each face: 404 for an unknown address and for a missing course, 200 for the error page and for a missing celse, and the replay does not read a navigation's status (system-pages#7 a1, #8 a1, course#3)"
+    - "the legacy user menu's items (Hesap Ayarları, Çıkış yap and three disabled ones): the page draws only the button that opens it"
+    - "a session that ends under a page, which sends the person to sign in again and not to an error box (realm.auth.sessionEnded)"
+    - "the phone layout: below 768 px the system bar is the phone's AppBar, and the legacy header and tab row show at every width on the error page"
+    - "what makes the root layout throw: nothing in the stack's tedris-web can be made to, so the global error document is drawn from the code and not walked"
+    - "the page a successful retry shows, and the Next dev overlay that sits over the error page in `next dev`"
+
+decisions:
+  D1:
+    question: >-
+      Should a failed read of a celse or a medrese be an error page with a retry, as a failed read of a course or a köşk
+      already is, and not the not-found page (CLS-01, DSC-10)?
+    recommend: >-
+      Yes: let getSession and getMadrasah throw on anything but a 400, 403 or 404 answer, as getCourse does
+      (features/courses/actions/index.ts:78-84). A tedrisat outage then reads as an outage, with "Yeniden dene".
+    affects: [notFound]
+  D2:
+    question: >-
+      Should the error page keep the system's bar, and the old header and tab row go (SHL-06)?
+    recommend: >-
+      Yes: mount PhoneChrome inside ErrorState, or add an error.tsx per segment, so a throwing page and a missing one wear the
+      same frame. The old header is also the only thing that reads the unread count on every signed-in render (SHL-04).
+    affects: [errorShown]
+
+context:
+  arrival:
+    values: [unknownAddress, missingIntro, missingCelse, readFailed, pageThrows, shellThrows]
+    initial: any
+    say:
+      unknownAddress: "the address is one no page owns (a typed or an old link)"
+      missingIntro: "the address is a course, köşk or medrese page and the API says it has no such thing, or a draft the person may not read"
+      missingCelse: "the address is a celse of a course the person may read, and there is no such celse or it is not a live one"
+      readFailed: "the address is a celse, and the read of it fails with a 5xx or a network error (CLS-01); a medrese's read fails the same way (DSC-10)"
+      pageThrows: "the page throws while it is made: the course read answers 5xx, or the page cannot be drawn (a zone the platform cannot format)"
+      shellThrows: "the root layout itself throws"
+  person:
+    values: [member, visitor]
+    initial: any
+    say:
+      member: "they are signed in"
+      visitor: "they have no session"
+  recovery:
+    values: [gone, stays]
+    initial: any
+    say:
+      gone: "whatever made the page fail is over by the time they press \"Yeniden dene\""
+      stays: "it is still there when they press it"
+
+guards:
+  needsSession: "arrival in ['unknownAddress', 'missingCelse', 'readFailed']"
+
+main:
+  given: { arrival: unknownAddress, person: member, recovery: gone }
+  events: [GO_HOME]
+
+initial: opening
+states:
+  opening:
+    title: Ask for the address
+    description: >-
+      The request goes through proxy.ts first: a visitor who asks for a page that is not public is sent to sign in before any
+      page runs, so an unknown address, a celse or a failed celse read never shows a visitor the not-found page. A course, a
+      köşk, a medrese, and the sign-in pages are public (lib/public-paths.ts:29-35), so a visitor meets the not-found page for
+      those. What is then drawn is decided by what the page does: it throws (the root's error page), the root layout throws
+      (the global error document), or it asks for the not-found page, which is also what Next draws for an address no page owns.
+      Nothing is shown in this state.
+    source: apps/tedris/proxy.ts:24
+    always:
+      - { guard: "person == 'visitor' and needsSession", target: sign_in_opened, say: "the address is not public, so the visitor is sent to Keycloak with the address as callbackUrl", source: apps/tedris/lib/public-paths.ts:29 }
+      - { guard: "arrival == 'shellThrows'", target: shellErrorShown, say: "the root layout threw, so the document is replaced by the global error", source: apps/tedris/app/global-error.tsx:29 }
+      - { guard: "arrival == 'pageThrows'", target: errorShown, say: "the page threw and the root's boundary replaced the segment", source: apps/tedris/app/error.tsx:12 }
+      - { target: notFound, say: "no page, no such record, or a read that failed and was taken for a missing one", source: apps/tedris/app/not-found.tsx:5 }
+
+  notFound:
+    title: Read that the page is not there
+    by: human
+    goal: true
+    description: >-
+      "Sayfa bulunamadı", a sentence, and one link, under the system's bar (PhoneChrome is mounted by app/not-found.tsx, so the
+      app's old header and tab row are hidden). The link is "Ana sayfaya dön": /home for a member, / for a visitor, which
+      lands on Keşfet; the choice is made on the client from the session provider, so for a moment while it loads a member's
+      link is the visitor's (SHL-15, not verified). The same page answers an outage of a celse read or a medrese read, with no
+      retry (CLS-01, DSC-10), and the unknown celse answers HTTP 200 in `next dev` while the layout says it is a real 404 (SYS-2).
+      Where the page sits in the document depends on the address: at an address no page owns it is inside the shell's legacy
+      <main>, together with the bar; under /courses, /kosks, /madrasahs, /decks and the other pages that own their <main>, the
+      page has no <main> at all (SYS-1). Focus stays on the body (SYS-3).
+    includes: ["the bar the other pages wear", "\"Ana sayfaya dön\", for a member and for a visitor"]
+    source: apps/tedris/features/errors/system-page.tsx:43
+    on:
+      GO_HOME:
+        - { guard: "person == 'member'", target: home_opened, say: "\"Ana sayfaya dön\" goes to /home", source: apps/tedris/features/errors/system-page.tsx:33 }
+        - { target: discover_opened, say: "the visitor's link is /, which sends them on to Keşfet", source: apps/tedris/app/page.tsx:13 }
+      NAVIGATE: { target: left, say: "they use the bar, the address or the footer" }
+
+  errorShown:
+    title: Read that something went wrong
+    by: human
+    description: >-
+      "Bir şeyler ters gitti", a sentence that never says what failed, and "Yeniden dene". The boundary is the root's, so the
+      segment's layout, and with it PhoneChrome, is gone: the app's old header (a wordmark, a search box that is wired to
+      nothing, and for a member the bell and a menu button with three disabled items, for a visitor "Giriş yap" and "Kayıt ol")
+      and its old tab row ("Ev", "Öğrenme", "Desteler") show above the box (SHL-06, seen in a browser on 15 Nov 2026). The
+      system's bar is not there. Under /courses the page has no <main> (SYS-1). The page's HTTP status is 200, because the shell
+      had already been streamed. Pressing "Yeniden dene" gives no busy mark or message (read from the code), and
+      after a retry that fails again the focus is on the body (seen, SYS-3).
+    includes: ["the old header and tab row, in place of the system's bar (SHL-06)", "\"Yeniden dene\""]
+    source: apps/tedris/features/errors/system-page.tsx:106
+    on:
+      RETRY: { target: retrying, say: "\"Yeniden dene\" asks Next to read the segment from the server again", source: apps/tedris/features/errors/system-page.tsx:116 }
+      SIGN_IN: { guard: "person == 'visitor'", target: sign_in_opened, say: "the old header's \"Giriş yap\" starts the sign-in and comes back to Ana sayfa, not to this address", source: apps/tedris/features/keycloak/login.tsx:23 }
+      REGISTER: { guard: "person == 'visitor'", target: register_opened, say: "the old header's \"Kayıt ol\" starts the registration", source: apps/tedris/features/keycloak/login.tsx:28 }
+      NAVIGATE: { target: left, say: "they use the old header, the old tabs, the address or the footer" }
+
+  retrying:
+    title: Read the segment again
+    description: >-
+      Next reads the segment from the server and draws it anew. If what failed is over the page comes back; if it is not, the
+      same error page is drawn again. Nothing is shown in this state: the error page stays until the answer arrives.
+    source: apps/tedris/app/error.tsx:23
+    always:
+      - { guard: "recovery == 'gone'", target: page_shown, say: "the read now succeeds and the page the person asked for is drawn" }
+      - { target: errorShown, say: "the segment throws again and the error page is drawn again" }
+
+  shellErrorShown:
+    title: Read that the app could not start
+    by: human
+    description: >-
+      A document of its own (no providers, no bar, no footer): <html lang="tr">, then "Bir şeyler ters gitti", the same sentence
+      and "Yeniden dene", written in the code and not read from a catalog, so it cannot be translated and its sentence
+      differs from common.globalError.text by one suffix (SHL-07, MDRS-234). Unlike the segment error page it is the page's
+      <main>, because SystemState is not drawn with `shell`. It follows the saved theme through ThemeScript. Not walked: nothing in
+      the local stack makes the root layout throw.
+    source: apps/tedris/app/global-error.tsx:29
+    on:
+      RETRY: { target: shellRetrying, say: "\"Yeniden dene\" asks Next for the shell again", source: apps/tedris/app/global-error.tsx:41 }
+      NAVIGATE: { target: left, say: "they use the address" }
+
+  shellRetrying:
+    title: Ask for the app again
+    description: "Next asks the server for the root layout again; the page is whatever the address gives once it does. Nothing is shown in this state."
+    source: apps/tedris/app/global-error.tsx:41
+    always:
+      - { guard: "recovery == 'gone'", target: page_shown, say: "the shell is made again and the page the person asked for is drawn" }
+      - { target: shellErrorShown, say: "the root layout throws again" }
+
+  page_shown:
+    type: final
+    title: The page the person asked for is drawn
+    description: "After a retry, the address gives its page: the same address, now with its own bar and no old header."
+  home_opened: { type: final, title: Ana sayfa opens (tedris.shell.home), leavesPage: true }
+  discover_opened: { type: final, title: Keşfet opens after the landing address sends the visitor on (tedris.discover.browse), leavesPage: true }
+  sign_in_opened: { type: final, title: "Keycloak's sign-in opens (realm.auth.signIn)", leavesPage: true }
+  register_opened: { type: final, title: Keycloak's registration opens (realm.auth.register), leavesPage: true }
+  left: { type: final, title: "The person leaves by the bar, the tabs, the footer or the address", leavesPage: true }
+
+assertions:
+  - id: visitor-meets-no-private-404
+    never: "state == 'notFound' and person == 'visitor' and needsSession"
+    say: "A visitor who asks for an address that is not public is sent to sign in; the not-found page never tells them whether a celse or a private page exists"
+    source: apps/tedris/lib/public-paths.ts:29
+  - id: a-throw-is-not-a-404
+    never: "state == 'notFound' and arrival in ['pageThrows', 'shellThrows']"
+    say: "A page or a shell that throws is never drawn as the not-found page"
+    source: apps/tedris/app/error.tsx:12
+  - id: a-missing-page-is-not-an-error
+    never: "state in ['errorShown', 'shellErrorShown'] and arrival in ['unknownAddress', 'missingIntro', 'missingCelse']"
+    say: "An address with no page, or one the API says it has no record for, is never drawn as an error"
+    source: apps/tedris/app/not-found.tsx:5

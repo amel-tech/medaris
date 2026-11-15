@@ -1,0 +1,177 @@
+# What must exist for a visitor who goes from the public site into the app, from landing.site.enterApp: the flow's closed product list,
+# written on 15 Nov 2026 from the flow's own story, the inventory finding L6 (apps/landing, section 7), two new findings (ENTER-1, ENTER-2) and
+# planned.md (P-21, P-23). Each need is what the product must do, never what the page does today. A need that is not met is a known
+# gap in graphs/needs.gaps.yaml (the orchestrator merges it; this file does not edit it).
+# Landing has no browser e2e: its checks are Vitest specs in apps/landing/test that render the page or call the route handler, so
+# `e2e:` below names one of those, and `check` is the inventory's number (landing.md section 6).
+#
+# missing (no code): phone-visitor-can-register-from-any-page, the-entry-says-no-in-words, roadmap-from-the-header,
+#   chosen-language-follows-into-the-app
+# unwalked (code, no e2e and no replay): none
+# walked by an e2e check only, no replay of the state: the-entry-never-redirects-blind, the-entry-keeps-a-path-prefix (the stack's
+#   landing has the address set and no second landing without it runs); an-entry-that-does-not-exist-is-not-found has the 404 on
+#   the wire in the replay (the effect enterTedris), not the state unknownRoute
+# replays that passed on 15 Nov 2026: scenario `visitor`, the main story (REGISTER), `--to handed_over.sign_in` and
+#   `--to handed_over.discover`; each ends with the wire checks of its effect
+kind: needs
+flow: landing.site.enterApp
+status: proposed
+
+needs:
+  - id: register-from-the-public-site
+    need: >-
+      A visitor who has read about Medaris on the public site starts registering in one click, from every place the home page
+      invites them (the header, the hero, the talebe door and the closing), and arrives on the registration form.
+    drawn:
+      - home
+      - headerRegister
+      - heroRegister
+      - doorRegister
+      - closingRegister
+      - registerRoute
+      - handed_over.register
+    built:
+      - action: medaris.api:enterTedris
+      - route: apps/landing/components/site-header.tsx:63
+      - route: apps/landing/app/[locale]/page.tsx:224
+      - route: apps/landing/app/api/tedris/[intent]/route.ts:28
+    walked:
+      - e2e: apps/landing/test/home.spec.ts
+        check: 'home#1, #2'
+      - e2e: apps/landing/test/tedris-entry.spec.ts
+        check: 'tedris-entry#1, #2'
+      - replay: visitor
+
+  - id: sign-in-from-the-public-site
+    need: >-
+      A person who already has an account signs in in one click from the public site (the header or the closing) and arrives on the
+      sign-in form.
+    drawn:
+      - home
+      - headerSignIn
+      - closingSignIn
+      - signInRoute
+      - handed_over.sign_in
+    built:
+      - action: medaris.api:enterTedris
+      - route: apps/landing/components/site-header.tsx:60
+      - route: apps/landing/app/[locale]/page.tsx:419
+    walked:
+      - e2e: apps/landing/test/home.spec.ts
+        check: 'home#1, #2'
+      - e2e: apps/landing/test/tedris-entry.spec.ts
+        check: 'tedris-entry#3'
+      - replay: visitor
+
+  - id: look-at-the-courses-without-an-account
+    need: >-
+      A visitor who has no account looks at the courses in one click from the public site, and is not asked to register first; the page
+      says so beside the link.
+    drawn:
+      - home
+      - heroExplore
+      - doorExplore
+      - heroNote
+      - discoverRoute
+      - handed_over.discover
+    built:
+      - action: medaris.api:redirectToTedris
+      - route: apps/landing/app/[locale]/page.tsx:236
+      - route: apps/landing/lib/tedris.ts:17
+    walked:
+      - e2e: apps/landing/test/home.spec.ts
+        check: 'home#3'
+      - replay: visitor
+
+  - id: the-doors-are-plain-links
+    need: >-
+      Every door is an ordinary link that the browser follows, so that it works before the page's scripts have run, and a person who
+      opens it in a new tab gets the same. What follows the link (tedris's entry page and Keycloak's form) needs script today
+      (ENTER-2); this need is about the link.
+    drawn:
+      - home
+    built:
+      - route: apps/landing/components/site-header.tsx:60
+    walked:
+      - e2e: apps/landing/test/home.spec.ts
+        check: 'home#1'
+      - replay: visitor
+
+  - id: the-entry-never-redirects-blind
+    need: >-
+      When the public site does not know where the app is, no door sends the visitor anywhere: it answers that it cannot, and never
+      redirects to an address that only looks right.
+    drawn:
+      - refused.not_configured
+      - handed-over-only-with-an-address
+      - refused-only-without-an-address
+    built:
+      - action: medaris.api:enterTedris
+      - route: apps/landing/app/api/tedris/[intent]/route.ts:21
+      - route: apps/landing/lib/tedris.ts:18
+    walked:
+      - e2e: apps/landing/test/tedris-entry.spec.ts
+        check: 'tedris-entry#6'
+
+  - id: the-entry-says-no-in-words
+    need: >-
+      A visitor to whom a door cannot answer is told so in Turkish, in the site's own page, with the contact address and a way back to
+      the home page, not with an English line that names a server setting (ENTER-1).
+    drawn:
+      - refused.not_configured
+    missing: none # ENTER-1; no Linear issue
+
+  - id: an-entry-that-does-not-exist-is-not-found
+    need: >-
+      An address under the entry route that is not one of its two entries answers not found, and never redirects.
+    drawn:
+      - unknownRoute
+      - refused.unknown_address
+    built:
+      - action: medaris.api:enterTedris
+      - route: apps/landing/app/api/tedris/[intent]/route.ts:17
+    walked:
+      - e2e: apps/landing/test/tedris-entry.spec.ts
+        check: 'tedris-entry#4'
+      - replay: visitor # on the wire only: the effect enterTedris asks /api/tedris/admin and sees 404
+
+  - id: the-entry-keeps-a-path-prefix
+    need: >-
+      Where the app is served under a path (a prefix on its address), the doors lead into that path, not to the root of its host.
+    drawn:
+      - signInRoute
+      - registerRoute
+      - discoverRoute
+    built:
+      - route: apps/landing/lib/tedris-entry.ts:23
+      - route: apps/landing/lib/tedris.ts:24
+    walked:
+      - e2e: apps/landing/test/tedris-entry.spec.ts
+        check: 'tedris-entry#5'
+
+  - id: phone-visitor-can-register-from-any-page
+    need: >-
+      A visitor on a phone can start registering from every page of the public site, not only from the home page: the phone header has
+      a way to "Kayıt ol" as the wide header has (L6).
+    drawn:
+      - banner
+      - headerRegister
+    missing: none # L6; no Linear issue
+
+  - id: roadmap-from-the-header
+    need: >-
+      A visitor reaches the public roadmap in one click from the header and the footer of every page (decided 4 October 2026: route
+      /yol-haritasi, linked from both). landing.site.roadmap draws the page; the link is in this flow's header.
+    drawn:
+      - banner
+    missing: MDRS-246
+
+  - id: chosen-language-follows-into-the-app
+    need: >-
+      A visitor who chose a language on the public site is taken into registration and sign-in in that language: the entry addresses name
+      none, so the choice has to travel in a cookie that tedris reads. The site is Turkish only today and has no language control, so
+      there is no choice to carry yet. Not confirmed that MDRS-295 (the interface language moves from the path to a cookie in tedris
+      and nizam) covers landing's doors; planned.md P-21 names landing-web among its apps.
+    drawn:
+      - home
+    missing: MDRS-295

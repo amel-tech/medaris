@@ -1,0 +1,191 @@
+# The doors from the public site into the app (landing-web, "/"): "Giriş yap", "Kayıt ol" and "Dersleri keşfedin". No sign-in,
+# nobody is asked who they are: the visitor presses a link, landing answers 307 and the browser is on tedris-web. Written from
+# the code on 15 Nov 2026 (captured): the header is apps/landing/components/site-header.tsx, the home page
+# apps/landing/app/[locale]/page.tsx, the two server routes apps/landing/app/api/tedris/[intent]/route.ts (GET
+# /api/tedris/<register|signin>, domain action enterTedris) and apps/landing/app/tedris/[[...path]]/route.ts (GET /tedris/<path>,
+# redirectToTedris), both read TEDRIS_APP_URL on every request.
+#
+# Where the flow stops. The three routes only send the browser on. What follows is another flow's: "Giriş yap" ends on tedris's
+# /auth/signin, which starts the Keycloak round trip (realm.auth.signIn, given entry landing); "Kayıt ol" ends on tedris's
+# /auth/register, which opens Keycloak's registration form (realm.auth.register); "Dersleri keşfedin" ends on tedris's /discover,
+# open to a visitor (tedris.discover.browse). Each is a `starts` on the transition that ends in the exit named for it.
+#
+# What the page does today, where it differs from what a visitor needs (inventory finding, apps/landing, section 7, and two new):
+#   L6      On a phone (below 768 px) the header has "Giriş yap" as an icon and no "Kayıt ol" at all, so from every page but the
+#           home page a phone visitor cannot start registering. The graph draws the wide layout; the home page's own links
+#           are the same at both widths.
+#   ENTER-1 With TEDRIS_APP_URL unset every door answers 503 with the plain text "TEDRIS_APP_URL is not configured": an
+#           English line naming a setting, on a page with no Medaris chrome and no link back. (Not walked on the stack: it
+#           has the address set.)
+#   ENTER-2 The page the doors reach in tedris starts the round trip in a script effect and its "Devam et" button is a script
+#           button, and Keycloak's form is drawn by React: with JavaScript off, "Giriş yap" and "Kayıt ol" end on a page that
+#           does nothing. Read from the code, not run with script off.
+# The graph draws what the code does; none of them is fixed here.
+schema: delurio-graph/0
+kind: flow
+id: landing.site.enterApp
+status: captured
+domain: medaris.api
+ui: landing.site.enterApp
+title: Go from the public site into the app
+summary: >-
+  A visitor on the home page of the public site takes "Kayıt ol" (in the header, the hero, the talebe door or the closing),
+  "Giriş yap" (the header or the closing) or "Dersleri keşfedin" (the hero or the talebe door). Each is a plain link to one of
+  landing's own routes; the route answers 307 and the browser is on tedris-web: on its registration page, which opens
+  Keycloak's registration form, on its sign-in page, which opens Keycloak's login form, or on Keşfet, which a visitor may read
+  with no account. When landing does not know where tedris is (TEDRIS_APP_URL unset) every door answers 503 with one line of
+  plain text instead of a redirect. An address under /api/tedris that is neither register nor signin answers 404 with no body;
+  no link leads there.
+source: apps/landing/components/site-header.tsx:54
+
+scope:
+  shows: the three doors of the home page, the route each one takes, and the page of tedris-web or Keycloak where the browser ends
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the header and footer links on the other pages of the site (/sss, /iletisim and the legal pages): landing.nav draws those entries, to the same two routes"
+    - "the phone layout (below 768 px): the header is another bar, with \"Giriş yap\" as an icon named by an aria-label and no \"Kayıt ol\" (L6); the home page's own doors are the same"
+    - "a visitor who is already signed in to tedris: landing reads no session and shows the same links; tedris sends them straight on (realm.auth.signIn, the scenario tedrisAlreadySignedIn)"
+    - "what tedris-web's /auth/signin and /auth/register pages do before Keycloak opens: their words, the status line and the \"Devam et\" button, the retry and the error box (tedris.nav draws the pages, realm.auth.signInFailures the box)"
+    - "the other links of the hero and the closing: \"Medreseniz için\" (an in-page link to #medreseler, whose target cannot take the focus, L8), \"Bize yazın\" and the consent sentence (landing.nav)"
+    - "the path prefix of TEDRIS_APP_URL: a prefix is kept, so https://example.org/tedris/ gives https://example.org/tedris/auth/signin (tedris-entry.spec#5)"
+    - "the language: the entry addresses name none; tedris reads the visitor's from its medaris-locale cookie, and landing is Turkish only"
+    - "the theme toggle in the header (common.shell.theme)"
+
+context:
+  tedrisUrl:
+    values: [set, unset]
+    initial: any
+    say:
+      set: "landing knows where tedris-web is (TEDRIS_APP_URL is set, as on the local stack and in every deployment)"
+      unset: "landing does not know where tedris-web is (TEDRIS_APP_URL is not set): a deployment mistake"
+
+failures:
+  signInRoute:
+    from: enterTedris
+    notConfigured: [HTTP_503]
+  registerRoute:
+    from: enterTedris
+    notConfigured: [HTTP_503]
+  discoverRoute:
+    from: redirectToTedris
+    notConfigured: [HTTP_503]
+  unknownRoute:
+    from: enterTedris
+    unknownIntent: [HTTP_404]
+
+# The main story: a new visitor takes "Kayıt ol"; landing sends the browser to tedris, which opens Keycloak's registration form.
+main:
+  given: { tedrisUrl: set }
+  events: [REGISTER, DONE]
+
+initial: home
+states:
+  home:
+    title: The home page, with its doors
+    by: human
+    description: >-
+      The page at "/" in the wide layout (768 px and up). The header has the logo, the theme toggle, "Giriş yap" and "Kayıt ol".
+      The hero has the heading "Kitap, hoca, halka." and three actions, "Talebe olarak kaydolun", "Medreseniz için" and "Dersleri
+      keşfedin", with a line saying the courses can be looked at with no account. The talebe door repeats "Kaydolun" and "Dersleri
+      keşfedin" under its heading; the closing repeats "Talebe olarak kaydolun" and adds "Giriş yap". All of them are plain links
+      (a, not Next's Link: they leave the app) to /api/tedris/register, /api/tedris/signin or /tedris/discover. Nothing has the
+      focus: the page sets none, so it starts at the document. The header shows the same two links to a visitor who is signed in
+      to tedris. Finding L6: below 768 px the header has no "Kayıt ol".
+    source: apps/landing/app/[locale]/page.tsx:189
+    on:
+      SIGN_IN: { target: signInRoute, say: "they take \"Giriş yap\" (the header or the closing)", source: "apps/landing/components/site-header.tsx:60" }
+      REGISTER: { target: registerRoute, say: "they take \"Kayıt ol\" or \"Talebe olarak kaydolun\" or \"Kaydolun\" (the header, the hero, the talebe door or the closing)", source: "apps/landing/components/site-header.tsx:63" }
+      EXPLORE: { target: discoverRoute, say: "they take \"Dersleri keşfedin\" (the hero or the talebe door)", source: "apps/landing/app/[locale]/page.tsx:236" }
+      OPEN_OTHER_INTENT: { target: unknownRoute, say: "they type an address under /api/tedris that is neither register nor signin; no link on the site leads there", source: "apps/landing/app/api/tedris/[intent]/route.ts:17" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  signInRoute:
+    title: Landing's sign-in route answers
+    description: >-
+      GET /api/tedris/signin, read on every request. With TEDRIS_APP_URL set it answers 307 with Location <TEDRIS_APP_URL>/auth/signin
+      (a path prefix on the address is kept); with it unset it answers 503 and the plain text "TEDRIS_APP_URL is not configured",
+      never a redirect to somewhere that only looks right. The address names no language.
+    invoke: { action: enterTedris }
+    source: apps/landing/app/api/tedris/[intent]/route.ts:28
+    on:
+      DONE: { guard: "tedrisUrl == 'set'", target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'landing'" } }, say: "307 to tedris's /auth/signin, which starts the Keycloak round trip", source: "apps/landing/app/api/tedris/[intent]/route.ts:28" }
+      FAIL.notConfigured: { guard: "tedrisUrl == 'unset'", target: refused.not_configured, say: "503 and one line of plain text (ENTER-1)", source: "apps/landing/app/api/tedris/[intent]/route.ts:23" }
+
+  registerRoute:
+    title: Landing's register route answers
+    description: >-
+      GET /api/tedris/register: the same as the sign-in route, with Location <TEDRIS_APP_URL>/auth/register. tedris's page opens
+      Keycloak's registration form at once (prompt=create), so a visitor reaches the form in one click.
+    invoke: { action: enterTedris }
+    source: apps/landing/app/api/tedris/[intent]/route.ts:28
+    on:
+      DONE: { guard: "tedrisUrl == 'set'", target: handed_over.register, starts: { flow: realm.auth.register }, say: "307 to tedris's /auth/register, which opens Keycloak's registration form", source: "apps/landing/app/api/tedris/[intent]/route.ts:28" }
+      FAIL.notConfigured: { guard: "tedrisUrl == 'unset'", target: refused.not_configured, say: "503 and one line of plain text (ENTER-1)", source: "apps/landing/app/api/tedris/[intent]/route.ts:23" }
+
+  discoverRoute:
+    title: Landing's route into tedris answers
+    description: >-
+      GET /tedris/discover, through the catch-all GET /tedris/<path> that sends any path on to the same path of tedris-web, each
+      segment encoded. With TEDRIS_APP_URL set it answers 307 with Location <TEDRIS_APP_URL>/discover; with it unset, 503 and the
+      same plain text.
+    invoke: { action: redirectToTedris }
+    source: apps/landing/lib/tedris.ts:17
+    on:
+      DONE: { guard: "tedrisUrl == 'set'", target: handed_over.discover, starts: { flow: tedris.discover.browse }, say: "307 to tedris's /discover, which a visitor may read with no account", source: "apps/landing/lib/tedris.ts:26" }
+      FAIL.notConfigured: { guard: "tedrisUrl == 'unset'", target: refused.not_configured, say: "503 and one line of plain text (ENTER-1)", source: "apps/landing/lib/tedris.ts:21" }
+
+  unknownRoute:
+    title: Landing's route answers for an intent it does not have
+    description: >-
+      GET /api/tedris/<anything but register or signin>: 404 with an empty body, checked before the address is read, so it is the
+      same whether TEDRIS_APP_URL is set or not. The site links to no such address.
+    invoke: { action: enterTedris }
+    source: apps/landing/app/api/tedris/[intent]/route.ts:17
+    on:
+      FAIL.unknownIntent: { target: refused.unknown_address, say: "404 and nothing else", source: "apps/landing/app/api/tedris/[intent]/route.ts:18" }
+
+  handed_over.sign_in:
+    type: final
+    title: They go on to tedris's sign-in page
+    description: >-
+      The browser is on tedris-web's /auth/signin with no page named, which sends it to Keycloak's login form. realm.auth.signIn
+      draws it from here (entry landing); a person who lands with no page named ends on tedris's Ana sayfa. Finding ENTER-2: the page
+      starts the round trip in a script effect (apps/tedris/features/auth/auth-entry.tsx:67-82) and its "Devam et" button needs script
+      too, so with script off the visitor stays here.
+
+  handed_over.register:
+    type: final
+    title: They go on to tedris's registration page
+    description: >-
+      The browser is on tedris-web's /auth/register, which opens Keycloak's registration form (prompt=create). realm.auth.register
+      draws it; a new account ends on tedris's Ana sayfa, with no first-login step between. Finding ENTER-2, as for the sign-in page:
+      the registration page starts the round trip in a script effect and stays put with script off.
+
+  handed_over.discover:
+    type: final
+    title: They go on to Keşfet
+    description: >-
+      The browser is on tedris-web's /discover, which opens to a visitor with no account. tedris.discover.browse draws it.
+
+  refused.not_configured:
+    type: final
+    title: Landing says it does not know where tedris is
+    description: >-
+      A page of one line of plain text, "TEDRIS_APP_URL is not configured", with status 503: English, naming a server setting,
+      with no Medaris chrome and no way back except the browser's. The visitor has no way to put it right and nothing tells them
+      to try later or to write to Medaris. Finding ENTER-1. Not walked: the stack's landing has the address set.
+
+  refused.unknown_address:
+    type: final
+    title: Landing answers not found, with nothing in it
+    description: >-
+      Status 404 and an empty body: the browser shows its own blank page. Reached only by typing an address; no link leads here.
+
+  left:
+    type: final
+    title: The visitor leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: handed-over-only-with-an-address, never: "state in ['handed_over.sign_in', 'handed_over.register', 'handed_over.discover'] and tedrisUrl == 'unset'", say: "Landing never sends a visitor on to tedris when it does not know where tedris is: it answers 503, not a redirect to somewhere that only looks right", source: "apps/landing/app/api/tedris/[intent]/route.ts:22" }
+  - { id: refused-only-without-an-address, never: "state == 'refused.not_configured' and tedrisUrl == 'set'", say: "The 503 text is shown only when TEDRIS_APP_URL is unset", source: "apps/landing/app/api/tedris/[intent]/route.ts:22" }

@@ -1,0 +1,59 @@
+# The screens of tedris.discover.followKosk: the köşk's card on Keşfet, the head of the köşk's page, the follow button on both, and the toast
+# of a refusal. The rest of both pages is another flow's (flow.yaml scope.outOfView).
+# The words are copied from libs/i18n/src/locales/tr/tedris.json (keys kept, root removed) and common.json (common.*), by script, letter for
+# letter. Three more kinds of entry, none of them in an i18n file:
+#   composed.FollowButton.follow / .following   the button's accessible name, which the code builds from the two messages and the köşk's
+#                                               name: `${shown ? labels.following : labels.follow}: ${koskName}` (follow-button.tsx:61)
+#   composed.Kosk.name                          the köşk's own name, which the API gives: the card's link and the page's h1 (a value, not a message)
+#   Changes.note                                the only entry not copied from the app: the app has no message that says what following does, so
+#                                               this one factual sentence is written for `changes` (it names Ana sayfa's section, Home.followedTitle,
+#                                               and that the follow can be stopped; both are what the code does)
+schema: delurio-graph/0
+kind: ui
+id: tedris.discover.followKosk
+flow: tedris.discover.followKosk
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples: { kosk: "Kubbealtı Köşkü" }
+changes: { key: Changes.note }
+
+nodes:
+  # Keşfet (discover-page.tsx)
+  discoverPage: { type: page, component: Page, role: main, in: [card, cardFollowing, cardUnfollowing, list_without_kosk], source: apps/tedris/features/discover/components/discover-page.tsx:97, script: actions } # server-drawn: it reads without JavaScript, the follow button needs it (not verified). No name, no initial focus: the page sets none
+  discoverTitle: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.title }, in: [card, cardFollowing, cardUnfollowing, list_without_kosk], source: apps/tedris/features/discover/components/discover-page.tsx:99 } # h1
+  kosksSection: { type: page, component: Page, role: region, name: { labelledBy: kosksTitle }, in: [card, cardFollowing, cardUnfollowing], source: apps/tedris/features/discover/components/discover-page.tsx:156 }
+  kosksTitle: { type: text, component: Heading, role: heading, text: { key: DiscoverPage.kosks }, in: [card, cardFollowing, cardUnfollowing], source: apps/tedris/features/discover/components/discover-page.tsx:160 } # h2
+  # the card (kosk-card.tsx): its title is the one link, and the button sits above the card's overlay
+  cardLink: { type: action, component: LinkButton, role: link, text: { key: composed.Kosk.name, params: { kosk: kosk } }, in: [card], emits: OPEN_KOSK, source: apps/tedris/features/discover/components/kosk-card.tsx:27 } # shown in the busy states too; the walk takes it only from the resting one
+  cardFollowButton: { type: action, component: Button, role: button, intent: secondary, text: { key: DiscoverPage.follow }, name: { key: composed.FollowButton.follow, params: { kosk: kosk } }, in: [card, cardUnfollowing], when: "follows == 'no'", disabledIn: [cardUnfollowing], emits: FOLLOW, source: apps/tedris/features/discover/components/follow-button.tsx:56 } # DSC-01: disabled, not loading; the name is the e2e's own (/^Takip et:/)
+  cardUnfollowButton: { type: action, component: Button, role: button, intent: secondary, text: { key: DiscoverPage.following }, name: { key: composed.FollowButton.following, params: { kosk: kosk } }, in: [card, cardFollowing], when: "follows == 'yes'", disabledIn: [cardFollowing], emits: UNFOLLOW, source: apps/tedris/features/discover/components/follow-button.tsx:56 } # DSC-02: aria-pressed is true too, which a button node cannot say; a check icon is drawn beside the text
+  cardFailedToast: { type: status, component: Status, text: { key: DiscoverPage.followFailed }, in: [card, cardFollowing, cardUnfollowing], when: "notice == 'failed'", source: apps/tedris/features/discover/components/follow-button.tsx:49 } # a Sonner toast: no role of its own (DSC-20)
+
+  # the köşk's page (kosk-page.tsx)
+  koskPage: { type: page, component: Page, role: main, in: [kosk, koskFollowing, koskUnfollowing], source: apps/tedris/features/courses/components/kosk-page.tsx:152, script: actions } # no name, no initial focus
+  breadcrumbLink: { type: action, component: LinkButton, role: link, text: { key: KoskPage.discover }, in: [kosk], emits: BACK, source: apps/tedris/features/courses/components/kosk-page.tsx:154 } # in the nav "Sayfa yolu" (the kit's default name); from 768 px it is the one link of the back trail
+  koskEyebrow: { type: text, component: Text, text: { key: KoskPage.eyebrow }, in: [kosk, koskFollowing, koskUnfollowing], source: apps/tedris/features/courses/components/kosk-page.tsx:164 }
+  koskTitle: { type: text, component: Heading, role: heading, text: { key: composed.Kosk.name, params: { kosk: kosk } }, in: [kosk, koskFollowing, koskUnfollowing], source: apps/tedris/features/courses/components/kosk-page.tsx:165 } # h1
+  pageFollowButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskPage.follow }, name: { key: composed.FollowButton.follow, params: { kosk: kosk } }, in: [kosk, koskUnfollowing], when: "follows == 'no'", disabledIn: [koskUnfollowing], emits: FOLLOW, source: apps/tedris/features/courses/components/kosk-page.tsx:184 } # size regular; same component, same DSC-01 and DSC-02
+  pageUnfollowButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskPage.following }, name: { key: composed.FollowButton.following, params: { kosk: kosk } }, in: [kosk, koskFollowing], when: "follows == 'yes'", disabledIn: [koskFollowing], emits: UNFOLLOW, source: apps/tedris/features/courses/components/kosk-page.tsx:184 }
+  pageFailedToast: { type: status, component: Status, text: { key: KoskPage.followFailed }, in: [kosk, koskFollowing, koskUnfollowing], when: "notice == 'failed'", source: apps/tedris/features/discover/components/follow-button.tsx:49 }
+
+  # the toast's close button, on both pages (libs/ui/src/components/sonner.tsx:55): "Kapat" in every language
+  toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [card, cardFollowing, cardUnfollowing, kosk, koskFollowing, koskUnfollowing], when: "notice == 'failed'", source: apps/tedris/features/discover/components/follow-button.tsx:49 } # not walked: the flow has no event for closing it
+
+edges:
+  - { labelledBy: [kosksSection, kosksTitle] }
+  - { triggers: [cardFollowButton, cardFollowing] }
+  - { triggers: [cardUnfollowButton, cardUnfollowing] }
+  - { triggers: [pageFollowButton, koskFollowing] }
+  - { triggers: [pageUnfollowButton, koskUnfollowing] }
+
+rules:
+  - { id: DSC-01, rule: "the button is set `disabled` while the request is out (follow-button.tsx:59); the kit's rule (libs/ui/src/mds/button.tsx:29) is `loading`, so that focus survives. Seen in Chromium on the local stack (a one-off probe, not the replay): Enter on the focused button on Keşfet, and on the köşk page, leaves document.activeElement on <body> at the first sample (80 ms) and it stays there once the request has ended. The graph draws the button disabled in the four busy states and says nothing of the focus afterwards, because no node has it. Fix: `loading={pending}` with a loadingLabel" }
+  - { id: DSC-02, rule: "the name flips between \"Takip et: X\" and \"Takip ediliyor: X\" and aria-pressed flips as well (follow-button.tsx:60-61), so a screen reader says the state twice (\"Takip ediliyor: X, toggle button, pressed\"). The graph draws two nodes by name; aria-pressed has no key on a button node. The e2e relies on both names. Fix: keep one name with aria-pressed, or drop aria-pressed, and update the e2e" }
+  - { id: DSC-14, rule: "the two actions are awaited in startTransition with no try/catch (follow-button.tsx:41-53); a request that never reaches tedris rejects instead of drawing the failure toast. What the person sees is not verified and not drawn. Fix: catch and use the toast of a refusal" }
+  - { id: DSC-20, rule: "the failure toast goes through Sonner, whose region keeps its English default name (\"Notifications alt+T\") and is polite although an error stays until it is closed (libs/ui/src/components/sonner.tsx:59-76); the close button is \"Kapat\" in every language. Fix: pass containerAriaLabel from the catalog and move the toast to the kit's own toaster" }
+  - { id: F-5, rule: "POST /kosks/:id/follow checks that the köşk exists, not that it is shown (apps/tedrisat/src/kosk/kosk.service.ts:276; the guard's closure covers courses only), so a signed-in caller whose page was drawn before the köşk was hidden, or who keeps its id, can follow a köşk that answers 404 to them. The graph draws it as the stale card (world hidden): the follow succeeds and the card is gone after the refresh. Seen on the local stack on 15 Nov 2026 (a one-off API call and a Chromium probe, not the replay): GET /kosks/<id> answered 404 KOSK_NOT_FOUND to the talebe and POST /kosks/<id>/follow answered 201 true; pressing \"Takip et\" on the stale card made one POST (200), the card left the list at once with no toast, and the follow row was there. The domain records it as invariant kosk-hidden-cannot-be-followed (holds: false). Fix: run the same visibility check as GET /kosks/:id (assertMayOpenHidden) in the service" }
+  - { id: FOLLOW-1, rule: "new, provisional id: success is silent. A follow or an unfollow that works draws no toast and no status, and the page is read again; what tells the person is the flipped name of the button, and the focus has left that button (DSC-01, seen in Chromium), so a keyboard or screen-reader user is told nothing and restarts from the top of the page. Read from the code (follow-button.tsx:47-52) and the DSC-01 probe; not tried with assistive technology. Fix: a polite status line, or keep the focus on the button by `loading`" }
+  - { id: focus-not-set, rule: "neither page sets an initial focus (not verified in a browser), so the graph names none; after a follow the focus is on <body> (DSC-01), which the graph does not draw because no node has it" }

@@ -1,0 +1,84 @@
+# What must exist for a talebe who follows a köşk: the flow's product list, from its story and from planned.md (which plans nothing about
+# following), never from what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by the orchestrator).
+# Missing or unwalked, for the gaps merge:
+#   missing   hidden-kosk-cannot-be-followed (a defect, F-5, no Linear key), follow-keeps-focus-and-says-its-state-once (DSC-01, DSC-02, FOLLOW-1)
+#   unwalked  a-refusal-puts-the-button-back
+# Gender separation is given and does not touch this flow: following has no seat and no count of people per gender.
+kind: needs
+flow: tedris.discover.followKosk
+status: proposed
+
+needs:
+  - id: follow-and-stop-following
+    need: >-
+      A signed-in talebe follows a köşk from its card on Keşfet or from its own page, sees at once that they follow it, finds the same
+      state after a reload, and stops following from either place. What they follow is read back to them on Ana sayfa as the courses of
+      those köşks that they are not in yet. A visitor is not offered the button.
+    drawn:
+      - card
+      - cardFollowing
+      - cardUnfollowing
+      - kosk
+      - koskFollowing
+      - koskUnfollowing
+    built:
+      - action: medaris.api:followKosk
+      - action: medaris.api:unfollowKosk
+      - action: medaris.api:listFollowedKoskCourses
+      - route: apps/tedris/features/discover/components/follow-button.tsx:23
+      - route: apps/tedris/features/discover/components/kosk-card.tsx:39
+      - route: apps/tedris/features/courses/components/kosk-page.tsx:183
+    walked:
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#9'
+      - e2e: apps/tedris/e2e/discover.e2e.ts
+        check: 'discover#18'
+      - replay: followFromCard
+    note: >-
+      Ana sayfa's side of it (the followed köşks' courses) is tedris.shell.home's, which lists it in its own needs.
+
+  - id: hidden-kosk-cannot-be-followed
+    need: >-
+      A köşk that is hidden, or otherwise answers "not found" to a person, cannot be followed by that person, whatever page they hold
+      open and whatever id they know. The API says the same "not found" it says for the köşk's page.
+    drawn:
+      - cardFollowing
+      - list_without_kosk
+    built:
+      - action: medaris.api:followKosk
+    walked: []
+    missing: none
+    note: >-
+      A defect, not planned work (finding F-5, domain invariant kosk-hidden-cannot-be-followed with holds: false): the API checks that the
+      köşk exists, not that it is shown (apps/tedrisat/src/kosk/kosk.service.ts:276). Seen on the local stack by an API call and a Chromium
+      probe, not by a replay: binding.stale.yaml is written for it and was not run in this phase, so nothing is named under `walked`.
+
+  - id: a-refusal-puts-the-button-back
+    need: >-
+      When a follow or an unfollow cannot be saved, the button goes back to what is held and the person is told, in words that name
+      neither a status nor the server, and a request that never reaches the server is told the same way.
+    drawn:
+      - cardFollowing
+      - cardUnfollowing
+      - koskFollowing
+      - koskUnfollowing
+    built:
+      - route: apps/tedris/features/discover/components/follow-button.tsx:49
+    walked: []
+    note: >-
+      Unwalked: the stack has no way to make tedrisat refuse a follow of a listed köşk, and the Server Action's answer is a 200 on the
+      page's own address. The request that never reaches the server is DSC-14 and is not told today.
+
+  - id: follow-keeps-focus-and-says-its-state-once
+    need: >-
+      The follow button keeps the keyboard focus while the request is out, says its state once to a screen reader, and the result of a
+      press is announced where the person can hear it.
+    drawn:
+      - cardFollowing
+      - cardUnfollowing
+      - koskFollowing
+      - koskUnfollowing
+    missing: none
+    note: >-
+      Findings DSC-01 (disabled, not loading), DSC-02 (the name flips and aria-pressed flips) and FOLLOW-1 (success is silent). Defects
+      of a built control, not planned work, so no Linear key. DSC-01 was seen in Chromium (the focus goes to the body); DSC-02 and FOLLOW-1 were read from the code and not tried with an assistive technology.

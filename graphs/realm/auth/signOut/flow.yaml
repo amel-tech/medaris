@@ -1,0 +1,294 @@
+# Signing out of tedris, nizam or nazar, as the code does it today (status captured; the code is PR #394's). The round trip is
+# the app's confirmation page /auth/signout, POST /api/auth/signout, Keycloak's end-session endpoint, Keycloak's back-channel
+# logout to the apps, and the browser's way back to the app's origin (libs/auth, apps/<app>/features/auth/sign-out-confirm.tsx,
+# apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx).
+#
+# How Keycloak is drawn. As in realm.auth.signIn, Keycloak is this flow's environment, not a domain. Its end-session endpoint
+# shows no page when the app sends an ID token hint, so it is a state with no screen that `invoke`s
+# `{ external: keycloak.endSession }`. What Keycloak then sends to the apps is the one route of this repository that it calls,
+# POST /api/auth/backchannel-logout, a domain action (`receiveBackchannelLogout`). Keycloak's own page for this flow,
+# logout-confirm.ftl on the Medaris theme, is a screen of ui.yaml; it appears only when the app asks without a hint.
+#
+# What the local stack cannot show (checked on 2026-11-15 against the running stack and the code):
+#   - The brief and STACK.md say Keycloak's back-channel call is answered 501 because no Valkey is set up. It is not: Keycloak
+#     tries the client's back-channel URL (http://host.docker.internal:400x/api/auth/backchannel-logout), the connection is
+#     refused (from inside its container 172.17.0.1, 172.21.0.1 and host.docker.internal all refuse :4000), and it logs
+#     "KC-SERVICES0057: Logout for client 'tedris-local' failed: ... Connection refused" and answers the redirect all the same.
+#     So the app is never asked. `backchannel: refused` is the local path and the main story. The app's own answers (200 with
+#     a Valkey store, 501 with the session in the cookie, 400, 503: routes.ts:463-525) are drawn from the code and were not
+#     seen on this stack; `session: inStore` and `backchannel: reaches` are not walked, and no other app's session ends at once
+#     here: it ends when the app's once-a-minute userinfo probe finds the Keycloak session gone (realm.auth.sessionEnded).
+#   - No Valkey is set up (WEB__AUTH_STORE_URL is empty), so each app keeps its session in the cookie: `session: inCookie`.
+#   - Keycloak's own "Çıkış yapılsın mı?" page needs a session store that cannot be read (`session: storeDown`), which needs
+#     Valkey to be set up and then down: not walked.
+#
+# Where this flow stops. Where the browser lands afterwards is the app's: tedris's Keşfet as a visitor (tedris.discover.browse),
+# nizam's signed-out root with its "Giriş yap" link (nizam.shell.landingByRole), and nazar's sign-in, which starts a new
+# round trip at once and ends on Keycloak's login form (realm.auth.signIn, started here). What another app and another tab do
+# when they learn the session is over is realm.auth.sessionEnded.
+#
+# Where the people start. The controls that lead here are the screens of other flows and the entries of the navigation graphs:
+#   tedris   Hesap's "Çıkış yap" link to /auth/signout (account-settings.tsx:374); the legacy user menu has the same link but is
+#            drawn only on the error page, where nothing hides it (user-header-menu.tsx:82)
+#   nizam    Hesap's "Çıkış yap" link to /auth/signout (account-page.tsx:265)
+#   nazar    Hesap's and the no-access page's "Çıkış yap" buttons post at once, with no confirmation (sign-out-button.tsx:28); the
+#            confirmation page exists and nothing links to it (F-E-18)
+# Findings it carries (the inventories' ids): SHL-13, F-E-18, SHL-01, F-E-23, F-P0-3, K2; MDRS-222 is answered in the code.
+# Four more are its own, SOUT-1 to SOUT-4 (ui.yaml `rules`).
+schema: delurio-graph/0
+kind: flow
+id: realm.auth.signOut
+status: captured
+domain: medaris.api
+ui: realm.auth.signOut
+title: Sign out of an app and of the realm
+summary: >-
+  A signed-in person presses "Çıkış yap" on Hesap. In tedris and nizam that opens the confirmation page "Çıkış yapılsın mı?",
+  where "Vazgeç" goes back and keeps the session and "Çıkış yap" signs out. In nazar the button signs out at once. Signing out
+  ends the app's session, sends the browser to Keycloak's end-session endpoint, which ends the single sign-on session without a
+  page of its own and tells the apps, and brings the browser back to the app. They land on tedris's Keşfet as a visitor, on
+  nizam's "Hoş geldiniz" page with its "Giriş yap" link, or, in nazar, on Keycloak's login form again.
+scope:
+  shows: >-
+    The sign-out from the confirmation page (or nazar's direct button) to the page the browser lands on, with the app's
+    confirmation page in each of the three apps and Keycloak's fallback page as its screens.
+  world: open
+  outOfView:
+    - "the controls that lead here: Hesap's sign-out card in each app, the no-access page's button in nazar, and tedris's legacy user menu (tedris.account.profile, nazar.account.settings, nizam.account.settings, nazar.access.noAccess; the navigation graphs' entries account->signOut, hesap->realmSignIn, erisimYok->realmSignIn)"
+    - "a request that is not the page's own: GET /api/auth/signout answers 405 and a form from another site 403, with no body; the page sends neither"
+    - "what another app and another tab do when they learn that the session is over: the once-a-minute probe, the focused tab's read of /api/auth/session and the reload (realm.auth.sessionEnded)"
+    - "tedris's top bar over the card (tedris.shell.frame), and its phone bar below 768 px, titled with the Çıkış yap of the confirm button"
+    - "Keycloak's refusal when post_logout_redirect_uri is not one the client lists: the app's own session is gone by then, and Keycloak would show its default error page; the realm's three clients list their origins (config/keycloak/clients), and production's were not read"
+    - "the tab title of every page here: no page has its own (SHL-01, F-E-23, F-P0-3, K2); a title is not a node"
+    - "en and ar: the three apps show tr only, the realm's page has all three (the language is what the app sent as ui_locales)"
+    - "what the person's other devices do: only this SSO session ends; 'Diğer cihazlarda çıkış yap' is not part of this sign-out"
+decisions:
+  D1:
+    question: >-
+      Should nazar's "Çıkış yap" buttons on Hesap and on the no-access page ask first, as tedris and nizam do, through the
+      confirmation page that nazar already has and nothing links to?
+    recommend: >-
+      Yes: send both buttons to /auth/signout (a link, as in nizam's Hesap). Today they post at once and the page that says
+      "Çıkış yapmak istiyor musunuz?" can be reached only by typing its address (F-E-18); auth-pages#3 asserts that page.
+    affects: [start, confirmPage]
+
+context:
+  app:
+    values: [tedris, nizam, nazar]
+    initial: any
+    say:
+      tedris: "the person signs out of tedris, the talebe's app"
+      nizam: "the person signs out of nizam, the nazım's app"
+      nazar: "the person signs out of nazar, the app of medrese and course staff"
+  entry:
+    values: [confirmationPage, directButton]
+    initial: any
+    say:
+      confirmationPage: "they are on /auth/signout, from Hesap's link or by its address"
+      directButton: "they pressed nazar's button on Hesap or on the no-access page, which signs out at once (no other app has one)"
+  session:
+    values: [inCookie, inStore, gone, storeDown]
+    initial: any
+    say:
+      inCookie: "they hold a session whose ID token is sealed in the cookie (no Valkey: the local stack)"
+      inStore: "they hold a session in Valkey (production): the cookie names it, the ID token is in the store"
+      gone: "the browser holds no session, or one with no ID token (it ended in another tab, or under the page)"
+      storeDown: "the session store (Valkey) cannot be read"
+  backchannel:
+    values: [reaches, refused]
+    initial: any
+    say:
+      reaches: "Keycloak's POST to the app's back-channel URL reaches the app, which answers it"
+      refused: "Keycloak's POST to the app's back-channel URL cannot connect (the local stack; in production: an app that is down)"
+  history:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the tab has a page to go back to (they came from Hesap)"
+      none: "the confirmation page was opened in a fresh tab"
+
+guards:
+  direct: "entry == 'directButton' and app == 'nazar'"
+  endsAtKeycloak: "session == 'inCookie' or session == 'inStore'"
+
+effects:
+  keycloakGaveUp: { set: { backchannel: refused } } # Keycloak's own log is what shows it (binding: KC-SERVICES0057)
+
+failures:
+  tellingApps:
+    from: receiveBackchannelLogout
+    unreachable: []
+    unsupported: [unsupported]
+    unavailable: [temporarily_unavailable]
+
+main:
+  given: { app: tedris, entry: confirmationPage, session: inCookie, history: some, backchannel: refused }
+  events: [CONFIRM, DONE, DONE, FAIL.unreachable]
+
+initial: start
+states:
+  start:
+    title: The person comes in
+    description: >-
+      Two ways in. On /auth/signout (tedris and nizam from Hesap's link, and any app by its address) the confirmation page asks
+      first. Nazar's buttons on Hesap and on the no-access page skip it and post at once (F-E-18, decision D1); no other app
+      has a button that signs out without asking. The page is public in all three apps, so it still opens when the session
+      ended before the person got there (`session: gone`).
+    source: apps/tedris/features/account/components/account-settings.tsx:374
+    always:
+      - { target: signingOut, guard: direct, say: "nazar's button posts at once" }
+      - { target: confirmPage, say: "the confirmation page opens" }
+
+  confirmPage:
+    title: The app asks "Çıkış yapılsın mı?"
+    by: human
+    description: >-
+      The app's own page, outside its shell: a card with the Medaris logo (tedris and nizam), the title, one sentence, a primary
+      "Çıkış yap" button and "Vazgeç". The words differ in each app: tedris and nizam say "Çıkış yapılsın mı?" and "Bu tarayıcıda
+      Medaris’ten çıkarsın."; nazar says "Çıkış yapmak istiyor musunuz?" and a longer sentence. "Vazgeç" is a button that goes back
+      one page (`router.back()`) or, in a fresh tab, to /home (tedris) or / (nizam); nazar's is a link to /, which sends the person
+      to their own scope. Nothing here takes the initial focus in any app. Findings: SHL-01, F-E-23 and F-P0-3 (no tab title of its own),
+      F-E-18 (nazar's page is unlinked), focus-not-set, and for a person whose session has ended SOUT-3 (tedris's visitor bar offers
+      a Giriş yap that returns to this page).
+    source: apps/tedris/features/auth/sign-out-confirm.tsx:19
+    on:
+      CONFIRM: { target: signingOut, say: "they press Çıkış yap" }
+      CANCEL:
+        - { target: kept_session.landing, guard: "app == 'nazar'", say: "nazar's Vazgeç is a link to /" }
+        - { target: kept_session.previous_page, guard: "history == 'some'", say: "Vazgeç goes back one page" }
+        - { target: kept_session.home, say: "Vazgeç with nothing to go back to goes to the app's home" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  signingOut:
+    title: The app signs the person out here
+    description: >-
+      The button is busy (aria-busy and aria-disabled, never disabled, so the focus stays) and a visually hidden status reads
+      "Çıkış yapılıyor"; in tedris and nizam "Vazgeç" is disabled while it is busy, in nazar it stays a live link (SOUT-1). In
+      nazar's direct case the busy button is the one on Hesap or on the no-access page. `signOut()` builds a hidden form and posts
+      it, so the whole tab leaves with the answer: POST /api/auth/signout with the locale. The route reads the session's ID
+      token, builds Keycloak's end-session URL (id_token_hint, post_logout_redirect_uri = the app's origin, ui_locales), removes
+      the store entry and clears the cookie whatever the store answers, and answers 303. With no session, or no ID token, it
+      goes to / and asks Keycloak nothing; with a store that cannot be read it asks Keycloak without a hint. When the form cannot
+      be sent in tedris, the error goes to the console and the button is pressable again with no message (SHL-13); nizam and
+      nazar do not catch it.
+    source: libs/auth/src/server/routes.ts:351
+    invoke: { action: signOut }
+    on:
+      DONE:
+        - { target: endingAtKeycloak, guard: endsAtKeycloak, say: "303 to Keycloak's end-session endpoint, with the ID token as the hint" }
+        - { target: keycloakAsks, guard: "session == 'storeDown'", say: "303 to the end-session endpoint with no hint: Keycloak asks" }
+        - { target: atAppRoot, say: "no session or no ID token: signed out here only, 303 to /" }
+      FORM_NOT_SENT: { target: confirmPage, guard: "app == 'tedris'", say: "tedris's catch: console.error and the button is pressable again, with no message" }
+
+  endingAtKeycloak:
+    title: Keycloak ends the single sign-on session
+    description: >-
+      GET /realms/medaris/protocol/openid-connect/logout with the ID token hint and the app's origin as the place to go back
+      to. With a valid hint and a registered address Keycloak shows nothing: it ends the SSO session and goes on (MDRS-222 is
+      answered in the code, which sends the hint so no confirmation and no default page appears). The SSO session is what the three apps
+      sign in through: a new sign-in after this asks for the password again (seen from the same app, on the local stack).
+    source: libs/auth/src/server/routes.ts:402
+    invoke: { external: keycloak.endSession }
+    on:
+      DONE: { target: tellingApps, say: "the session is ended" }
+
+  tellingApps:
+    title: Keycloak tells the apps
+    description: >-
+      Keycloak posts a signed logout token to the back-channel URL of each client that held a session under this SSO session,
+      this app included (POST /api/auth/backchannel-logout, form field logout_token). When the call reaches the app, it
+      checks the token against the realm's keys, the issuer and its client id, takes its jti once, and ends every session of
+      that SSO session in the session store: with Valkey that answers 200 and the other apps' sessions end at once; with the
+      session in the cookie there is nothing to look a session up in and a valid token is answered 501; a token that fails a
+      check is 400 and keys or a store that cannot be reached 503 (the last is `session: storeDown`).
+      When the call cannot connect, which is what happens on the local stack,
+      Keycloak writes KC-SERVICES0057 to its log and sends the browser back all the same (seen: the 302 to the app's origin
+      follows it), and the other apps find out within a minute (realm.auth.sessionEnded). The answers of the app were
+      read in the code (routes.ts:463-525), never seen from Keycloak here; Keycloak's order of work inside the request, and
+      what it does after a 400, 501 or 503, were not read in its source.
+    source: libs/auth/src/server/routes.ts:463
+    invoke: { action: receiveBackchannelLogout }
+    on:
+      DONE: { guard: "backchannel == 'reaches' and session == 'inStore'", target: atAppRoot, say: "200: the apps' sessions end at once" }
+      FAIL.unreachable: { guard: "backchannel == 'refused'", target: atAppRoot, effect: [keycloakGaveUp], say: "Keycloak cannot connect: it logs the failure and sends the browser back; nothing of the app is asked" }
+      FAIL.unsupported: { guard: "backchannel == 'reaches' and session == 'inCookie'", target: atAppRoot, say: "501: this app keeps its session in the cookie, so it cannot end one from here; the browser is sent back all the same" }
+      FAIL.unavailable: { guard: "backchannel == 'reaches' and session == 'storeDown'", target: atAppRoot, say: "503: the store cannot be reached" }
+
+  keycloakAsks:
+    title: Keycloak's own page asks "Çıkış yapılsın mı?"
+    by: human
+    description: >-
+      logout-confirm.ftl on the Medaris theme (canvas medaris/14), the fallback the apps never meet while the store can be read:
+      the end-session request came with no ID token hint, so Keycloak asks before it ends the session. A card with the logo and
+      the client's app name, the title, one sentence, a primary "Çıkış yap" and a ghost link "Vazgeç" to the client's base URL.
+      This app's own session is already gone (the route removed it first), so "Vazgeç" brings a signed-out person back to the
+      app while Keycloak's session lives on and the next "Giriş yap" signs in with no password. Not walked: it needs a store that
+      cannot be read. Findings: K2 (no tab title of its own), focus-not-set.
+    source: apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:11
+    on:
+      CONFIRM_AT_KEYCLOAK: { target: endingAtKeycloak, say: "they press Çıkış yap on Keycloak's page" }
+      CANCEL_AT_KEYCLOAK: { target: atAppRoot, say: "they press Vazgeç: back to the app, whose own session is already gone" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  atAppRoot:
+    title: The browser comes back to the app's address
+    description: >-
+      Keycloak sends the browser to post_logout_redirect_uri, the app's origin with no path (or the route did, when it asked
+      Keycloak nothing). The root of each app decides. Tedris sends a visitor to /discover. Nizam's / is public and draws
+      "Hoş geldiniz" with a "Giriş yap" link. Nazar's / is behind the session: the proxy sends it to /auth/signin?callbackUrl=/,
+      whose page starts a new round trip by itself, so the person ends on Keycloak's login form (realm.auth.signIn, started
+      here).
+    source: apps/tedris/app/page.tsx:13
+    always:
+      - { target: signed_out.discover, guard: "app == 'tedris'", say: "/ sends a visitor to Keşfet" }
+      - { target: signed_out.welcome, guard: "app == 'nizam'", say: "/ is public: Hoş geldiniz and Giriş yap" }
+      - { target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'nazar'", entry: "'protectedPage'" } }, say: "/ needs a session: the proxy sends the browser to sign in" }
+
+  signed_out.discover:
+    type: final
+    title: They are a visitor on Keşfet in tedris
+    description: "/ -> /discover. tedris.discover.browse draws the page; the header offers Giriş yap."
+
+  signed_out.welcome:
+    type: final
+    title: They are a visitor on nizam's root
+    description: "Nizam's / for a visitor: the logo, \"Hoş geldiniz\" and a \"Giriş yap\" link to /auth/signin (apps/nizam/app/(home)/page.tsx:23). The graph of nizam, not this one, draws it."
+
+  handed_over.sign_in:
+    type: final
+    title: Nazar starts a new sign-in and shows Keycloak's login form
+    description: "/ -> /auth/signin?callbackUrl=%2F -> GET /api/auth/signin -> Keycloak's login.ftl. realm.auth.signIn draws it, with entry protectedPage."
+
+  kept_session.previous_page:
+    type: final
+    title: They are back on the page they came from, still signed in
+    description: "Vazgeç in tedris or nizam, with a page to go back to: router.back(); from Hesap that is Hesap."
+
+  kept_session.home:
+    type: final
+    title: They are on the app's home, still signed in
+    description: "Vazgeç in a fresh tab: tedris pushes /home, nizam pushes /."
+
+  kept_session.landing:
+    type: final
+    title: They are on nazar's landing for them, still signed in
+    description: "Nazar's Vazgeç is a link to /, which sends a signed-in person to their medrese's Pano, their course or the no-access page (nazar.access.landingScope)."
+
+  left:
+    type: final
+    title: They close the page
+    leavesPage: true
+
+assertions:
+  - id: no-keycloak-without-a-token
+    never: "state == 'endingAtKeycloak' and session == 'gone'"
+    say: "A browser with no session, or with none that holds an ID token, is signed out here only and never sent to Keycloak's end-session endpoint."
+    source: libs/auth/src/server/routes.ts:393
+  - id: keycloak-asks-only-when-it-has-no-hint
+    never: "state == 'keycloakAsks' and session != 'storeDown'"
+    say: "Keycloak's own confirmation page appears only when the session store could not be read; with a token hint Keycloak asks nothing."
+    source: libs/auth/src/server/routes.ts:393
+  - id: nazars-buttons-never-ask
+    never: "state == 'confirmPage' and direct"
+    say: "The person who presses nazar's Çıkış yap button on Hesap or on the no-access page never meets the confirmation page."
+    source: apps/nazar/features/account/components/sign-out-button.tsx:28

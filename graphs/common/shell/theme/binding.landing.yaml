@@ -1,0 +1,26 @@
+# common.shell.theme in landing-web (:4003): a visitor on the home page, then Sık sorulan sorular. See binding.yaml for why each
+# app has a file. Landing has no sign-in, so no scenario has an `as` and the base's sign-in is not run. The header draws two
+# toggles (a phone bar and a wide bar, site-header.tsx:44 and :59); the narrow one is display:none at 1280 px, so one is exposed.
+# Not replayed: three runs were allowed and went to the other apps. It was loaded and planned with --emit-spec, and the same
+# steps were taken by hand in a probe (one visible toggle, dark kept on /sss).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.landing.binding.yaml
+flow: common.shell.theme
+
+scenarios:
+  landingVisitor:
+    given: {}
+    open: '{landing}/'
+    vars: { next: '{landing}/sss' }
+
+events:
+  OPEN_ANOTHER_PAGE: [{ goto: '{next}' }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  left: { url: 'about:blank' }
+
+nodes:
+  lightPage: { css: 'html[data-theme="light"]' }
+  darkPage: { css: 'html[data-theme="dark"]' }

@@ -1,0 +1,172 @@
+# tedris.course.leave on the local stack (graphs/README.md, "The stack and the bindings"), as the spare talebe `applicantA`
+# ("Aylin Başvuran"): a woman with every profile attribute, no enrolment and no notification, so the walk can take a seat
+# and leave it and nothing seeded is touched. Never TALEBE or TALEBE_MALE: leaving would use up the seed.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/leave --bind graphs/tedris/course/leave/binding.yaml --out <dir>
+#
+# Data. Every scenario starts from the same world, made through tedrisat's HTTP API with the shared helpers (no SQL except one
+# cleanup, below): applicantA holds a seat in "Bina ve İzhar Şerhi" (seed.courses.open, which takes anyone, so applying gives
+# ENROLLED at once) and a waiting application for "İsâgûcî ile Mantığa Giriş" (seed.courses.approval, PENDING). So Derslerim
+# lists one card and one row, and what the walk takes leaves the other behind (`others: kept`). `setup` is idempotent: it first
+# makes applicantA leave both courses (leave.mjs: `none` is fine), clears a REVOKED row (the one thing leave.mjs cannot: a
+# REVOKED row answers 409 to apply and to leave, and no route removes it) with the only SQL here, checks with seat.mjs that
+# both seats are `none`, and then applies. `teardown` does the same way back and checks `none` again, so no row is left, and
+# clears the invitation and cancellation mails the sweep sent to applicantA's mailbox (Mailpit).
+#
+# Walked on 15 Nov 2026 (replays under the lock): the main story (scenario leavesSeat, 10 steps, every check passes) and
+# `--to application_withdrawn` (scenario withdrawsApplication). `--to apply_card` (scenario leavesFromCourse) died at load, before
+# any walk, because its first entry key `myCourses->course` names two entries of tedris.nav; the entry is now `discover->course`,
+# the one tedris.course.apply uses (checked statically: one entry, one locator), and was not run again (the run cap).
+#
+# Not walked, so not bound or not reached: TEAM_APPROVES (the course team's step, in nazar, `as: muderris`; bound below for a later
+# walk of the DSC-03 path), the failure paths (the stack cannot make a leave answer 404, 409 or a ban without taking something from
+# the seed), `signedOut`, and the branch `others: none` (the walk's data always keeps a row of the other kind).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.course.leave
+
+scenarios:
+  # Open: Derslerim. The main story: open the card's menu, cancel once, confirm once.
+  leavesSeat:
+    given: { place: ongoing, others: kept }
+    as: applicantA
+    open: '{tedris}/discover'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->myCourses' }
+    vars: { course: '{seed.courses.open}', waiting: '{seed.courses.approval}', page: my-courses, left: '{seed.courses.open}' }
+    setup:
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.open}']
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.approval}']
+      - run: [node, helpers/sql.mjs, "delete from enrollments where user_id = '{secret.E2E_APPLICANT_A_SUB}' and status = 'REVOKED' and course_id in ('{seed.courses.open}', '{seed.courses.approval}')"]
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.open}']
+        expect: ' none'
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.approval}']
+        expect: ' none'
+      - run: [node, helpers/apply.mjs, applicantA, '{seed.courses.open}']
+        expect: ENROLLED
+      - run: [node, helpers/apply.mjs, applicantA, '{seed.courses.approval}']
+        expect: PENDING
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_A_EMAIL}']
+    teardown:
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.open}']
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.approval}']
+      - run: [node, helpers/sql.mjs, "delete from enrollments where user_id = '{secret.E2E_APPLICANT_A_SUB}' and status = 'REVOKED' and course_id in ('{seed.courses.open}', '{seed.courses.approval}')"]
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.open}']
+        expect: ' none'
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.approval}']
+        expect: ' none'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_A_EMAIL}']
+
+  # Open: Derslerim, the row of the application. `--to application_withdrawn`: the e2e discover#26, and the call is the leave call.
+  withdrawsApplication:
+    given: { place: application, others: kept }
+    as: applicantA
+    open: '{tedris}/discover'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->myCourses' }
+    vars: { course: '{seed.courses.open}', waiting: '{seed.courses.approval}', page: my-courses, left: '{seed.courses.approval}' }
+    setup:
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.open}']
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.approval}']
+      - run: [node, helpers/sql.mjs, "delete from enrollments where user_id = '{secret.E2E_APPLICANT_A_SUB}' and status = 'REVOKED' and course_id in ('{seed.courses.open}', '{seed.courses.approval}')"]
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.open}']
+        expect: ' none'
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.approval}']
+        expect: ' none'
+      - run: [node, helpers/apply.mjs, applicantA, '{seed.courses.open}']
+        expect: ENROLLED
+      - run: [node, helpers/apply.mjs, applicantA, '{seed.courses.approval}']
+        expect: PENDING
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_A_EMAIL}']
+    teardown:
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.open}']
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.approval}']
+      - run: [node, helpers/sql.mjs, "delete from enrollments where user_id = '{secret.E2E_APPLICANT_A_SUB}' and status = 'REVOKED' and course_id in ('{seed.courses.open}', '{seed.courses.approval}')"]
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.open}']
+        expect: ' none'
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.approval}']
+        expect: ' none'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_A_EMAIL}']
+
+  # Open: the course page of the seat, reached from Keşfet. `--to apply_card`: the card becomes the apply card.
+  leavesFromCourse:
+    given: { place: course, others: kept }
+    as: applicantA
+    open: '{tedris}/discover'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: discover->course }
+    vars: { course: '{seed.courses.open}', waiting: '{seed.courses.approval}', page: 'courses/{seed.courses.open}', left: '{seed.courses.open}' }
+    setup:
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.open}']
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.approval}']
+      - run: [node, helpers/sql.mjs, "delete from enrollments where user_id = '{secret.E2E_APPLICANT_A_SUB}' and status = 'REVOKED' and course_id in ('{seed.courses.open}', '{seed.courses.approval}')"]
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.open}']
+        expect: ' none'
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.approval}']
+        expect: ' none'
+      - run: [node, helpers/apply.mjs, applicantA, '{seed.courses.open}']
+        expect: ENROLLED
+      - run: [node, helpers/apply.mjs, applicantA, '{seed.courses.approval}']
+        expect: PENDING
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_A_EMAIL}']
+    teardown:
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.open}']
+      - run: [node, helpers/leave.mjs, applicantA, '{seed.courses.approval}']
+      - run: [node, helpers/sql.mjs, "delete from enrollments where user_id = '{secret.E2E_APPLICANT_A_SUB}' and status = 'REVOKED' and course_id in ('{seed.courses.open}', '{seed.courses.approval}')"]
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.open}']
+        expect: ' none'
+      - run: [node, helpers/seat.mjs, applicantA, '{seed.courses.approval}']
+        expect: ' none'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_A_EMAIL}']
+
+events:
+  # Esc closes the menu, and Esc closes the window (the scrim does not)
+  CLOSE_MENU: [{ key: Escape }]
+  DISMISS: [{ key: Escape }]
+  # the course team, in nazar: the course's Talebeler page lists the applications, each with "Onayla: <name>"
+  TEAM_APPROVES:
+    - goto: '{nazar}/ders/{waiting}/talebeler'
+      as: muderris
+    - click: { role: button, name: '/^Onayla: Aylin Başvuran/' }
+      as: muderris
+    - waitText: 'Başvuru onaylandı'
+      as: muderris
+
+states:
+  # the leave is a Next server action: a POST to the page's own address, held while the busy window is checked. The page's own
+  # reads are GETs with a query, so this matches only the POST.
+  leaving: { call: '{tedris}/{page}' }
+  withdrawing: { call: '{tedris}/my-courses' }
+  # the course page's POST goes to the course's own address
+  apply_card: { url: '{tedris}/courses/{course}' }
+
+effects:
+  # what the call leaves in the API, read as applicantA through the helper (graphs/bindings/helpers/seat.mjs)
+  leaveCourse:
+    - run: [node, helpers/seat.mjs, applicantA, '{left}']
+      expect: ' none'
+
+nodes:
+  # a bare role=main is also on the page a walk leaves for: each page's main is told by a text only it holds
+  listMain: { role: main, hasText: 'Kayıtlı olduğun dersler' }
+  courseMain: { role: main, hasText: 'Müfredat' }
+  # the course and application rows hold the seed's own titles, so the buttons are found by the part of their name that is the catalog's
+  cardTrigger: { role: button, name: 'Diğer işlemler: {seed.titles.courses.open}' }
+  cardMenuList: { role: menu, name: 'Diğer işlemler: {seed.titles.courses.open}' }
+  courseTrigger: { role: button, name: '/^Diğer işlemler$/' }
+  courseMenuList: { role: menu }
+  rowWithdraw: { role: button, name: 'Başvuruyu geri çek: {seed.titles.courses.approval}' }
+  # the window's body holds the course's title in <strong>, so the paragraph is found by what follows it
+  leaveEyebrow: { css: '.mds-eyebrow', within: { role: alertdialog } }
+  leaveBody: { css: 'p', hasText: '/dersinden ayrılacaksın\./', within: { role: alertdialog } }
+  leaveBodyCards: { css: 'p', hasText: '/^Kendi destene kopyaladığın kartlar/', within: { role: alertdialog } }
+  # the date of the application is the walk's own
+  appliedOn: { text: '/^Başvurdun: .+\. Onaylanınca ders/' }
+  # the card's badge and the course page's are both "Devam ediyor", and so is the page's own week badge
+  ongoingBadge: { text: Devam ediyor, within: { css: 'section[aria-labelledby="my-ongoing"]' }, nth: 0 }
+  seatBadge: { text: Devam ediyor, within: { role: complementary } }
+  # Sonner's toast has no role: found by its own attribute and its words
+  leftToast: { css: '[data-sonner-toast]', hasText: 'Dersten ayrıldınız.' }
+  conflictToast: { css: '[data-sonner-toast]', hasText: 'Kaydının durumu değişmiş.' }
+  failedToast: { css: '[data-sonner-toast]', hasText: 'İşlem tamamlanamadı.' }
+  withdrawFailedToast: { css: '[data-sonner-toast]', hasText: 'Başvuru geri çekilemedi.' }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+  # the apply card of the page read again
+  applyCardTitle: { role: heading, name: Derse kayıt, within: { role: complementary } }

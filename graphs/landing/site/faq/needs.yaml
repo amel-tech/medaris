@@ -1,0 +1,111 @@
+# What must exist for a visitor who reads the questions page (landing.site.faq): the flow's closed product list, written on
+# 15 Nov 2026 from the flow's own story, the inventory findings L9 and L11 (apps/landing, section 7) and one finding the
+# inventory lacks (FAQ-1). Each need is what the product must do, never what the page does today. A need that is not met is a
+# known gap in graphs/needs.gaps.yaml (the orchestrator merges it; this file does not edit it). The page has no item in
+# planned.md.
+# Landing has no browser e2e: its checks are Vitest specs in apps/landing/test that render the page, so `e2e:` below names one
+# of those, and `check` is the inventory's number (landing.md section 6).
+#
+# missing (no code, no Linear key searched; `none` below means none was looked up):
+#   registration-answer-says-gender, answers-name-the-buttons-as-the-apps-do, answers-are-named-regions,
+#   answers-follow-the-apps
+# unwalked (code, no e2e and no replay): none. Every need that has code is walked by the replay scenario `fromFooter`, which in
+# this phase took the main story, the exit through "İletişime geçin" (--to contact_opened) and the exit through the card's
+# "Aydınlatma Metni" (--to privacy_opened). The visitor leaving the page (NAVIGATE) is drawn and not walked.
+kind: needs
+flow: landing.site.faq
+status: proposed
+
+needs:
+  - id: read-the-answers-before-signing-up
+    need: >-
+      A visitor can read, with no account, the answers to what people ask before they open one: what Medaris is, what a köşk
+      and a medrese are, how to sign up and apply for a course, why an application waits, how to join a celse, which time
+      zone the times are in, who may watch the recordings, whether notes and questions are private, what a deck is and how to
+      ask for an account to be deleted.
+    drawn:
+      - questions
+      - group1
+      - group2
+      - group3
+    built:
+      - route: apps/landing/app/[locale]/sss/page.tsx:10
+    walked:
+      - e2e: apps/landing/test/sss.spec.ts
+        check: 'sss#3, #6'
+      - replay: fromFooter
+
+  - id: each-question-opens-and-closes-on-its-own
+    need: >-
+      A visitor opens the answer they came for and closes it again without disturbing the others: any number may be open at
+      once, the first and the fourth are open when the page opens, and the button they pressed keeps the focus.
+    drawn:
+      - questions
+      - q1
+      - q3
+      - q11
+    built:
+      - route: apps/landing/components/faq-item.tsx:25
+      - route: apps/landing/app/[locale]/sss/page.tsx:45
+    walked:
+      - replay: fromFooter # the main story: opens 3 and closes it, closes 1, opens 11; --absent checks every other answer stays hidden
+
+  - id: ask-when-the-answer-is-not-here
+    need: >-
+      A visitor whose question is not among the eleven is one link from the contact page.
+    drawn:
+      - contactLink
+      - contactTitle
+      - contact_opened
+    built:
+      - route: apps/landing/app/[locale]/sss/page.tsx:228
+    walked:
+      - replay: fromFooter # --to contact_opened
+
+  - id: read-what-is-done-with-my-data
+    need: >-
+      A visitor who worries about their data is one link from the privacy notice, from the card beside the questions and from
+      inside the answer about deleting an account.
+    drawn:
+      - privacyAside
+      - privacyInAnswer
+      - privacy_opened
+    built:
+      - route: apps/landing/app/[locale]/sss/page.tsx:243
+      - route: apps/landing/app/[locale]/sss/page.tsx:214
+    walked:
+      - replay: fromFooter # the inline link in the main story, the card's link with --to privacy_opened
+
+  - id: registration-answer-says-gender
+    need: >-
+      The answer to how to register lists everything the sign-up form asks, the gender choice (female or male) among it: in
+      Medaris gender is always required, so a visitor who follows the answer must not meet a required choice it left out (L9).
+    drawn:
+      - a3p1
+    missing: none
+
+  - id: answers-name-the-buttons-as-the-apps-do
+    need: >-
+      Where an answer names a button, tab or badge of another app, it uses the words that app draws: the course page's button
+      is "Kayıt ol" (and "Kayıt başvurusu yap" for a course that asks for approval), not "Derse kaydol" (FAQ-1).
+    drawn:
+      - a3p2
+    missing: none
+
+  - id: answers-are-named-regions
+    need: >-
+      Each answer is a region named by its question, so that a screen reader's list of landmarks and a keyboard visitor's
+      jump reach it (L11).
+    drawn:
+      - q1
+      - a1p1
+    missing: none
+
+  - id: answers-follow-the-apps
+    need: >-
+      The answers change in the same release as the behaviour or the words they describe, and something fails when they do not:
+      today a Vitest spec holds only a few sentences, and nothing ties the page to tedris-web's own strings, which is how FAQ-1
+      went unseen.
+    drawn:
+      - questions
+    missing: none
