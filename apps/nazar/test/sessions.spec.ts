@@ -46,6 +46,7 @@ const fact = (over: Partial<SessionFact> = {}): SessionFact => ({
   inPersonOverride: null,
   cancelledAt: null,
   replacementId: null,
+  exam: null,
   ...over,
 });
 
@@ -114,7 +115,24 @@ describe("the sessions of a course", () => {
       inPersonOverride: null,
       cancelledAt: "2026-10-03T08:00:00.000Z",
       replacementId: null,
+      exam: null,
     });
+  });
+
+  it("carry an exam and its retake, and nothing for a plain session (MDRS-248)", () => {
+    const facts = sessionFacts({
+      weeks: [
+        {
+          weekNumber: 1,
+          lessons: [
+            lesson({ id: "l-1", exam: { maxScore: 100, isRetake: false } }),
+            lesson({ id: "l-2", exam: { maxScore: 100, isRetake: true } }),
+            lesson({ id: "l-3" }),
+          ],
+        },
+      ],
+    } as never);
+    expect(facts.map((f) => f.exam)).toEqual(["exam", "retake", null]);
   });
 
   it("carry how each is attended from the course read, the stream as a yes or no (MDRS-283)", () => {

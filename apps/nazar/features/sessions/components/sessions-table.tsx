@@ -272,8 +272,18 @@ export function SessionsTable({
       id={sessionAnchor(row.id)}
       tabIndex={-1}
     >
-      <span className="font-semibold">
+      <span className="flex flex-wrap items-center gap-1 font-semibold">
         <bdi>{row.title}</bdi>
+        {row.exam ? (
+          // MDRS-248: an exam is marked here as on Tedris and Değerlendirme.
+          <Badge variant="secondary" data-testid="session-exam-badge">
+            {t(
+              row.exam === "retake"
+                ? "Evaluation.retakeBadge"
+                : "Evaluation.examBadge"
+            )}
+          </Badge>
+        ) : null}
       </span>
       <span className="mds-caption">
         {t("Sessions.week", { n: row.weekNumber })}

@@ -960,6 +960,16 @@ describe("Katılım (MDRS-283)", () => {
         .find((row) => textOf(row).includes(title)) ?? ""
     );
 
+  it("marks an exam session with the word Sınav, and no other row (MDRS-248)", async () => {
+    state.course = {
+      status: "ok",
+      data: withLesson("l-3", { exam: { maxScore: 100, isRetake: false } }),
+    };
+    const out = await markup();
+    expect(rowOf(out, "Hafta 3")).toContain("Sınav");
+    expect(out.match(/data-testid="session-exam-badge"/g)).toHaveLength(1);
+  });
+
   it("is one column instead of the link and the stream", async () => {
     const out = await markup();
     const head = textOf(out.slice(0, out.indexOf("</thead>")));
