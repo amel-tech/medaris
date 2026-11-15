@@ -1,0 +1,238 @@
+# nazar.nav on the local stack: every page of nazar-web at http://localhost:4002, as every persona the stack has an
+# account for.
+#   node apps/engine/src/cli.ts replay graphs/nazar/nav --bind graphs/nazar/nav/binding.yaml --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). What is written here comes from
+# the code and the catalog; every locator and every account fact below is unverified until a walk.
+#
+# Known gaps of the replay against this graph, each reported in the author's notes rather than worked around:
+#   - the extractor writes route parameters as {id} (SPEC and nav.schema.json say so too), the nav replay substitutes
+#     :id only (nav-replay.ts `params`, `pageAddress`), so a page with a parameter opens its address with the braces in it
+#     until the replay reads {id} as well; the samples below are what it will read then;
+#   - a page that sends this persona elsewhere (a person with no seat is redirected to /erisim-yok, one with other scopes
+#     gets the 404 page) cannot be said by `opensFor` and `refusal`, which expect the refusal at the same address: those
+#     visits will say mismatch at the address, with the refusal text found on the page they landed on;
+#   - Hesap and Bildirimler draw the menu of the scope the person lands in (frames.remembered `shows`), but the replay
+#     expects the chrome of a frame only on that frame's own pages, so the menu of those two pages reads as unexpected;
+#   - the persona `visitor` has no account, so it is not walked (it is a persona of the graph all the same).
+schema: delurio-graph/0
+kind: binding
+nav: nazar.nav
+extends: ../../bindings/local.nazar.binding.yaml
+
+# {id} of /medrese/{id}; the pages of a course say theirs under `pages` (the seed's course "Bina ve İzhar Şerhi", the one
+# the ders nazırı holds a seat in). A route that repeats {id} (a deck of a course) cannot give both.
+samples:
+  id: '{seed.madrasah}'
+
+# One account stands for several personas: the ders nazırı's account holds the three grants of one persona at a time. The
+# command is a helper the orchestrator provides (see the author's asks): it makes the ders nazırı's post in the course
+# carry exactly these codes, as the hoca would on Ders nazırları, and prints `grants set`. The persona `dersNazir` is the
+# seeded state; running its setup puts it back after another persona has changed it.
+personas:
+  noSeat: { as: talebe }
+  sistemAdmin: { as: systemAdmin }
+  basmuderris: { as: basmuderris }
+  medreseNazir: { as: medreseNazir }
+  muderris: { as: muderris }
+  dersNazir:
+    as: dersNazir
+    setup:
+      - run:
+          - node
+          - ../../tools/graphs/course-nazir-grants.mjs
+          - --course
+          - '{seed.courses.open}'
+          - --nazir
+          - DERS_NAZIR
+          - --codes
+          - enrollment.decide,session.manage,course.view_unpublished
+        expect: grants set
+  dersNazirBare:
+    as: dersNazir
+    setup:
+      - run:
+          - node
+          - ../../tools/graphs/course-nazir-grants.mjs
+          - --course
+          - '{seed.courses.open}'
+          - --nazir
+          - DERS_NAZIR
+          - --codes
+          - none
+        expect: grants set
+  dersNazirHomework:
+    as: dersNazir
+    setup:
+      - run:
+          - node
+          - ../../tools/graphs/course-nazir-grants.mjs
+          - --course
+          - '{seed.courses.open}'
+          - --nazir
+          - DERS_NAZIR
+          - --codes
+          - submission.read
+        expect: grants set
+  dersNazirDecks:
+    as: dersNazir
+    setup:
+      - run:
+          - node
+          - ../../tools/graphs/course-nazir-grants.mjs
+          - --course
+          - '{seed.courses.open}'
+          - --nazir
+          - DERS_NAZIR
+          - --codes
+          - deck.manage_course
+        expect: grants set
+
+frames:
+  # the sidebar is told apart by what only its menu holds: the medrese menu has "Medrese nazırları", the course menu
+  # "Genel bakış"
+  medrese:
+    find: { role: navigation, name: Ana menü, hasText: Medrese nazırları }
+    page: { role: main }
+    user: { open: [], find: { css: aside } }
+    picker:
+      open: [{ click: { role: button, name: '/^Kapsam değiştir/' } }]
+      find: { role: menu, name: Kapsamlar }
+  ders:
+    find: { role: navigation, name: Ana menü, hasText: Genel bakış }
+    page: { role: main }
+    user: { open: [], find: { css: aside } }
+    picker:
+      open: [{ click: { role: button, name: '/^Kapsam değiştir/' } }]
+      find: { role: menu, name: Kapsamlar }
+  remembered:
+    page: { role: main }
+  none:
+    page: { role: main }
+
+pages:
+  start: { skip: '"/" redirects: it never stays at its address; the landing is walked as the first page of each persona' }
+  signIn: { skip: 'opened with a session it sends the person on to "/" at once (enterSignIn finds the session)' }
+  medreseSegment: { skip: 'a route with no sample for {bolum}: every address answers the 404 page (F-L-4)' }
+  dersSegment: { skip: 'a route with no sample for {bolum}: every address answers the 404 page (F-L-4)' }
+  dersDeckOne: { skip: 'the stack seeds no deck, and the route repeats {id} for the course and the deck, so one sample cannot give both' }
+  erisimYok:
+    shows: { role: heading, name: Bu portala erişiminiz yok }
+
+  # the words a refusal says: the alert of a page that asks the API again, the 404 page, or the no-access page the
+  # layout sends a person with no scope to
+  medresePano:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+    shows: { role: link, name: Medrese dersi aç }
+  medreseCourses:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+    shows: { role: link, name: Medrese dışı ders talebi gönder }
+  medreseCoursesYeni:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+    shows: { role: button, name: Dersi aç }
+  medreseCoursesTalep:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+    shows: { role: button, name: Talebi gönder }
+  medreseStudents:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  medreseNazirs:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  medreseBans:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  medreseAppeals:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  medreseArchive:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  medreseSettings:
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+    shows: { role: button, name: Kaydet }
+  hesap:
+    refusal: { text: '/Bu portala erişiminiz yok/' }
+    shows: { role: button, name: Çıkış yap }
+  bildirimler:
+    refusal: { text: '/Bu portala erişiminiz yok/' }
+    shows: { role: heading, name: Bildirimler }
+  dersOverview:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersCurriculum:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersCurriculumGizle:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersSessions:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+    shows: { role: link, name: Celse planla }
+  dersSessionsPlanla:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersStudents:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersQuestions:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersHomework:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersEvaluation:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersRecordings:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersDeck:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersBans:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersArchive:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersNazirs:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  dersSettings:
+    samples: { id: '{seed.courses.open}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+
+entries:
+  # a menu entry that carries a number is named with it and its hidden label ("Dersler 2 derste bekleyen başvuru")
+  frame:medrese->bildirimler: { role: link, name: '/^Bildirimler/' }
+  frame:ders->bildirimler: { role: link, name: '/^Bildirimler/' }
+  frame:medrese->medreseCourses: { role: link, name: '/^Dersler/' }
+  frame:ders->dersSessions: { role: link, name: '/^Celseler/' }
+  frame:ders->dersStudents: { role: link, name: '/^Talebeler/' }
+  # the person row is a link with the name, the roles and a hidden ", ayarlar"
+  frame:medrese->hesap: { css: 'a.mds-nav-user' }
+  frame:ders->hesap: { css: 'a.mds-nav-user' }
+  # the picker is a menu only for a person with two or more scopes; for the others it is a card that cannot be opened,
+  # and an absence inside a menu that does not open would wait out the timeout on every page
+  frame:medrese->medresePano picker: { skip: 'a menu only with two or more scopes; the walk binds no account with a medrese and a course, and a card for the other personas cannot be opened' }
+  frame:medrese->dersOverview picker: { skip: 'a menu only with two or more scopes; the walk binds no account with a medrese and a course, and a card for the other personas cannot be opened' }
+  frame:ders->medresePano picker: { skip: 'a menu only with two or more scopes; the walk binds no account with a medrese and a course, and a card for the other personas cannot be opened' }
+  frame:ders->dersOverview picker: { skip: 'a menu only with two or more scopes: the hoca (three courses) is the one persona with a menu, but the other course personas hold one scope and have a card, which cannot be opened to check an absence' }
+  # links whose label is not the whole accessible name
+  medreseSettings->tedrisMadrasah: { role: link, name: '/^Medrese sayfasını gör/' }
+  dersSettings->tedrisCourse: { role: link, name: '/^Tanıtım sayfasını gör/' }
+  dersOverview->tedrisCourse: { role: link, name: '/^Tedris’te aç/' }
+  dersDeckOne->dersDeck: { role: link, name: '/Ders desteleri$/' }
+  # a course in the Dersler list: its name is the link
+  medreseCourses->dersOverview: { role: link, name: Bina ve İzhar Şerhi }
+  # the box of the next session, drawn while a live session is ahead (the seed's course runs to December)
+  dersOverview->dersSessions CourseOverview.boxes.nextSession: { role: link, name: Sıradaki celse }
+  # entries that need data the stack does not seed, or that name an item among several
+  dersOverview->dersStudents: { skip: 'a box drawn only while an application waits; the course "Bina ve İzhar Şerhi" takes talebe without approval, so none waits' }
+  dersOverview->dersHomework: { skip: 'a box drawn only while a hand-in awaits review; the stack seeds no submission' }
+  dersOverview->dersSessions CourseOverview.boxes.withoutAccess: { skip: 'a box drawn only while a session has no way in; every seeded session has a meeting link' }
+  medresePano->dersSessions: { skip: 'one "Düzenle: <title>" link per session row; several match' }
+  medresePano->dersOverview: { skip: 'the card of a course the person holds a seat in; the başmüderris of the stack holds none' }
+  medreseCoursesYeni->medreseSettings: { skip: 'drawn only while a policy locks a box of the form; the stack sets no policy' }
+  dersDeck->dersDeckOne: { skip: 'the stack seeds no deck' }
+  bildirimler->tedrisTarget: { skip: 'the stack seeds no notification for these accounts' }
+  # the buttons that sign out are never followed; the link back from the confirmation page is
+  hesap->realmSignIn: { follow: false }
+  erisimYok->realmSignIn: { follow: false }
+  signOut->realmSignIn: { follow: false }

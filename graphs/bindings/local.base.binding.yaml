@@ -1,0 +1,89 @@
+# What every binding of the local stack shares (graphs/README.md, "The stack and the bindings"): the four web apps, the
+# local Keycloak with the `medaris` realm and the Medaris theme, and Mailpit, plus one account per persona. The
+# accounts' addresses and passwords are read from graphs/.local/accounts.env and the seed's ids from
+# graphs/.local/seed.json, two git-ignored links to the files the stack's seed writes; no value of either is committed,
+# and the replay masks in its reports every value it used from the first.
+#
+# It names no `apps`: a navigation replay opens its pages at the first app, and an extending binding cannot reorder the
+# apps it inherits, so each app has its own base (local.<app>.binding.yaml) that lists every app with its own first.
+# Flow and navigation bindings extend their app's base, never this file.
+schema: delurio-graph/0
+kind: binding
+root: .
+
+browser:
+  locale: tr-TR
+  timezone: Europe/Istanbul
+  # A dev server compiles a page the first time it is opened, which can take half a minute on a busy machine.
+  timeout: 45
+
+data:
+  secret: { dotenv: ../.local/accounts.env }
+  seed: { json: ../.local/seed.json }
+
+# `entry` is the app the persona works in: the sign-in starts there and Keycloak sends them back to it. A second app
+# needs no second sign-in while Keycloak's session lasts.
+accounts:
+  systemAdmin:
+    address: '{secret.E2E_SYSTEM_ADMIN_EMAIL}'
+    password: '{secret.E2E_SYSTEM_ADMIN_PASSWORD}'
+    entry: '{nizam}'
+  medarisNazim:
+    address: '{secret.E2E_MEDARIS_NAZIM_EMAIL}'
+    password: '{secret.E2E_MEDARIS_NAZIM_PASSWORD}'
+    entry: '{nizam}'
+  koskNazim:
+    address: '{secret.E2E_KOSK_NAZIM_EMAIL}'
+    password: '{secret.E2E_KOSK_NAZIM_PASSWORD}'
+    entry: '{nizam}'
+  basmuderris:
+    address: '{secret.E2E_MEDRESE_BASMUDERRIS_EMAIL}'
+    password: '{secret.E2E_MEDRESE_BASMUDERRIS_PASSWORD}'
+    entry: '{nazar}'
+  medreseNazir:
+    address: '{secret.E2E_MEDRESE_NAZIR_EMAIL}'
+    password: '{secret.E2E_MEDRESE_NAZIR_PASSWORD}'
+    entry: '{nazar}'
+  muderris:
+    address: '{secret.E2E_MUDERRIS_EMAIL}'
+    password: '{secret.E2E_MUDERRIS_PASSWORD}'
+    entry: '{nazar}'
+  dersNazir:
+    address: '{secret.E2E_DERS_NAZIR_EMAIL}'
+    password: '{secret.E2E_DERS_NAZIR_PASSWORD}'
+    entry: '{nazar}'
+  talebe:
+    address: '{secret.E2E_TALEBE_EMAIL}'
+    password: '{secret.E2E_TALEBE_PASSWORD}'
+    entry: '{tedris}'
+  talebeMale:
+    address: '{secret.E2E_TALEBE_MALE_EMAIL}'
+    password: '{secret.E2E_TALEBE_MALE_PASSWORD}'
+    entry: '{tedris}'
+  other:
+    address: '{secret.E2E_OTHER_EMAIL}'
+    password: '{secret.E2E_OTHER_PASSWORD}'
+    entry: '{tedris}'
+  # Stopped by a Keycloak required action after the password; a walk that completes the page uses it up, and the
+  # stack's seed arms it again.
+  pendingProfile:
+    address: '{secret.E2E_PENDING_PROFILE_EMAIL}'
+    password: '{secret.E2E_PENDING_PROFILE_PASSWORD}'
+    entry: '{tedris}'
+  pendingEmail:
+    address: '{secret.E2E_PENDING_EMAIL_EMAIL}'
+    password: '{secret.E2E_PENDING_EMAIL_PASSWORD}'
+    entry: '{tedris}'
+  pendingPassword:
+    address: '{secret.E2E_PENDING_PASSWORD_EMAIL}'
+    password: '{secret.E2E_PENDING_PASSWORD_PASSWORD}'
+    entry: '{tedris}'
+
+# The real sign-in: the app sends the person to Keycloak's form, which sends them back.
+signIn:
+  - goto: '{entry}/auth/signin'
+  - waitUrl: '{keycloak}/realms/medaris/**'
+  - fill: { css: '#username', value: '{address}' }
+  - fill: { css: '#password', value: '{password}' }
+  - click: { css: 'button[type=submit]' }
+  - waitUrl: '{entry}/**'

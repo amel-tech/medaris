@@ -1,0 +1,60 @@
+# The navigation graph of landing-web (graphs/landing/nav) bound to the local stack: the site on :4003, nobody signed in.
+#   node apps/engine/src/cli.ts replay graphs/landing/nav --bind graphs/landing/nav/binding.yaml --out <dir>
+# Not walked yet (the writing phase runs no replay): the locators below come from reading the components, not from a
+# browser.
+# Landing has one person, the visitor, and nothing to sign in to: the account below has no address and no password, and
+# `signIn` is emptied so the base's real sign-in through Keycloak never runs.
+# The base's `apps` lists tedris first, and a nav replay opens a page's route on the first app of the merged `apps`, so
+# as it stands this binding would open landing's routes on :4000. The base needs landing first for this graph (or the
+# engine needs a way to name the app); see the report of batch V4.
+schema: delurio-graph/0
+kind: binding
+nav: landing.nav
+extends: ../../bindings/local.landing.binding.yaml
+
+accounts:
+  visitor: {}
+signIn: []
+
+personas:
+  visitor: { as: visitor }
+
+# The replay's browser is 1280 px wide: the wordmark bar is the one shown, with "Kayıt ol" in it.
+frames:
+  site:
+    find: { role: navigation, name: Alt bilgi } # the footer's own menu: on every landing page, and only there
+    page: { css: body } # the header's links, and a page's own links (each of those gives its `within`)
+
+pages:
+  # These answer with a redirect out of the app, so a visit would not stay at its address.
+  signInRoute: { skip: 'GET /api/tedris/signin answers 307 to tedris-web; the entries that lead here are checked on the pages that have them' }
+  registerRoute: { skip: 'GET /api/tedris/register answers 307 to tedris-web; the entries that lead here are checked on the pages that have them' }
+  discoverRoute: { skip: 'GET /tedris/discover answers 307 to tedris-web; the entries that lead here are checked on the pages that have them' }
+  roadmap: { skip: 'planned (MDRS-246): there is no page, and the footer and header have no link to it yet' }
+
+entries:
+  # The header (wide bar). A link of the page body with the same name sits beside it on the home page, so ask for the banner.
+  frame:site->signInRoute: { role: link, name: Giriş yap, within: { role: banner }, follow: false }
+  frame:site->registerRoute: { follow: false }
+  frame:site->roadmap: { skip: 'planned (MDRS-246): the link does not exist yet' }
+
+  # The home page. Where one name is twice on the page (hero and closing, hero and door), take the first.
+  start->registerRoute Nav.registerAsStudent: { role: link, name: Talebe olarak kaydolun, nth: 0, follow: false }
+  start->registerRoute Nav.registerShort: { follow: false }
+  start->discoverRoute: { role: link, name: Dersleri keşfedin, nth: 0, follow: false }
+  start->signInRoute: { role: link, name: Giriş yap, within: { role: main }, follow: false }
+  start->privacy: { role: link, name: Aydınlatma Metni, within: { role: main } }
+  start->faq: { role: link, name: Sık sorulan sorular, within: { role: main } }
+
+  # The footer has a link of the same name on every page, so the page's own links are asked for inside main.
+  faq->privacy: { role: link, name: Aydınlatma Metni, within: { role: main } }
+  contact->privacy: { role: link, name: Aydınlatma Metni, within: { role: main }, nth: 0 }
+  contact->faq: { role: link, name: Sık sorulan sorular, within: { role: main } }
+  # contact->start is in the card that replaces the form after a message is sent: it needs an item, so it is not bound here;
+  # landing.site.contact walks it.
+  terms->contact: { role: link, name: İletişim, within: { role: main }, nth: 0 }
+  terms->privacy: { role: link, name: Aydınlatma Metni, within: { role: main }, nth: 0 }
+  terms->cookies: { role: link, name: Çerezler, within: { role: main } }
+  cookies->privacy: { role: link, name: Aydınlatma Metni, within: { role: main } }
+  cookies->terms: { role: link, name: Kullanım şartları, within: { role: main } }
+  cookies->contact: { role: link, name: İletişim, within: { role: main } }

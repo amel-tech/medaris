@@ -1,0 +1,2181 @@
+# The web edge of Medaris: the HTTP routes the web apps (tedris, nazar, nizam and landing) answer to the browser themselves, none of
+# them tedrisat's. They are the 40 route.ts files of apps/*/app (tedris 16, nazar 12, nizam 9, landing 3), written as 32 actions, one per
+# behaviour: where two or three apps serve the same behaviour with the same code, one action and a `note` that names the apps and their
+# files (`source` is the first app's); where they differ (the deck sample, the legacy deck readers) the differences are in the
+# description and the refusals say which app. Pages are not here (the navigation graphs draw them) and neither are Server Actions: a flow
+# invokes the tedrisat action they call.
+#
+# What is here, by group:
+#   auth      5 actions, the five routes of libs/auth (@medaris/auth) that tedris, nazar and nizam mount at app/api/auth/[...auth]/route.ts.
+#             Anything else under /api/auth is a bodiless 404 (libs/auth/src/server/routes.ts:527), written once here and not as an action.
+#   files     13 actions, /api/files/**: one behaviour per proxied tedrisat action, 8 downloads and 5 uploads, 20 route files in the three apps.
+#   calendar  2 actions, tedris: /api/lessons/{id}/calendar and /calendar/{file}.
+#   decks     4 actions for the deck file routes (tedris: export, import, sample; nazar: sample) and 4 for the legacy JSON readers.
+#   audit     1 action, nizam: /api/audit-log/export.
+#   landing   3 actions: the contact form and the two redirects into tedris.
+#
+# Names. An action that stands in front of a tedrisat action is `web` + that action's name (webDownloadCourseResourceFile in front of
+# downloadCourseResourceFile) and names it in its description and its sideEffects; the others are named for what a person does
+# (startSignIn, signOut, submitContactForm).
+#
+# Refusals. This is not tedrisat's pipeline: the invariants access-token-only and rate-limit-before-auth do not apply to these routes, so each
+# action lists its own refusals in full, with the status the route answers. A refusal tedrisat gives is listed under its own code, as the
+# route relays it (the status and the JSON body as they came); a code the route makes up itself is a string the code contains, or
+# HTTP_<status> where the body is only an `error` string. A route that redirects says so in `redirect`.
+# A flow that walks a failure of one of these actions uses the codes here.
+#
+# What the web apps' proxy does around them (not a route, so not an action): proxy.ts of tedris, nazar and nizam (libs/auth/src/server/proxy.ts)
+# renews the session on every request except the four auth routes that start or end a round trip, and never redirects an /api route or a
+# Server Action to sign-in; a page that is not public and has no session is sent to /auth/signin?callbackUrl=<path> (307); tedris and nizam
+# also move an address from before MDRS-248 (/en/...) to the same page without the language (308). /calendar/ and the files with an
+# extension are outside tedris's matcher. Landing has no session: its middleware.ts is next-intl only and skips /api and /tedris.
+#
+# Verified by reading each route file and the libs it calls (libs/auth, libs/services file-proxy and file-rules); no route was walked in a
+# browser and no test was run. The one thing executed is the real proxyDownload on the evaluation export's path (the invariant
+# web-every-file-route-builds-a-proxiable-path).
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+policies:
+  - actor: visitor-browser
+    needs: no session cookie
+    where: >-
+      What a web app answers a browser that holds no session: the auth routes (the sign-in start and the sign-out answer everyone and the session route answers
+      null), landing's three routes and the calendar feed, whose address is its own credential. Every other route of the web apps answers a visitor 401, or
+      sends it to sign-in, and calls nothing.
+    do:
+    - startSignIn
+    - finishSignIn
+    - signOut
+    - getAuthSession
+    - webGetCalendarFeed
+    - submitContactForm
+    - enterTedris
+    - redirectToTedris
+    source: libs/auth/src/server/routes.ts:529
+  - actor: signed-in-browser
+    needs: a session whose access token is usable (the cookie or the store entry, which proxy.ts renews on every request)
+    where: >-
+      Every route that calls tedrisat for the person: the web app adds the caller's access token and checks no role. What the person may read or write is
+      the policy of the tedrisat action the route stands in front of, so the web edge never widens it.
+    do:
+    - webDownloadCourseResourceFile
+    - webDownloadLessonResourceFile
+    - webDownloadLessonAssignmentFile
+    - webDownloadMySubmissionFile
+    - webDownloadMySubmissionReviewFile
+    - webDownloadCourseSubmissionFile
+    - webDownloadCourseSubmissionReviewFile
+    - webExportEvaluationBoard
+    - webUploadCourseResourceFile
+    - webUploadLessonResourceFile
+    - webAddLessonAssignmentFile
+    - webAddMySubmissionFile
+    - webAddSubmissionReviewFile
+    - webGetLessonCalendar
+    - webExportCards
+    - webImportCards
+    - webDownloadCardSample
+    - webDownloadCardSampleNazar
+    - webListDecks
+    - webGetDeck
+    - webListDeckCards
+    - webGetCard
+    - webExportAuditLog
+    - startSignIn
+    - signOut
+    - getAuthSession
+    source: libs/services/src/file-proxy/file-proxy.ts:144
+  - actor: identity-provider
+    needs: a logout_token signed by the realm, with this app's client id as audience
+    where: Keycloak tells the app that an SSO session ended; no browser and no session cookie takes part.
+    do: [receiveBackchannelLogout]
+    source: libs/auth/src/server/routes.ts:463
+
+actions:
+  # ---- auth: libs/auth, five routes mounted at app/api/auth/[...auth]/route.ts in tedris, nazar and nizam ----
+  startSignIn:
+    route: GET /api/auth/signin
+    summary: Start a sign-in round trip with Keycloak
+    description: >-
+      The one entry of every sign-in: the app's /auth/signin and /auth/register pages and every "Giriş yap" end here. In order: a start from a browser that
+      has already counted five starts since its window of five minutes opened is refused (SignInLimit); a session store that cannot be asked is refused (OAuthSignin);
+      a browser that already holds a usable session, and asked neither for the registration form (intent=register), nor for new tokens (reauth=1), nor for
+      an account action (action=UPDATE_PROFILE), is sent straight on to the destination and the visit still counts as a start; Keycloak's discovery document
+      that cannot be read is refused (OAuthSignin); otherwise a 303 to Keycloak's authorization endpoint with redirect_uri <NEXTAUTH_URL>/api/auth/callback/keycloak,
+      scope openid profile email, PKCE S256, state, nonce, ui_locales (and kc_locale), prompt=create for the registration form and kc_action=UPDATE_PROFILE
+      for the account action. The destination is callbackUrl when it is a same-origin path, else the app's afterSignIn (/).
+    needs: 'nothing: a visitor or a signed-in browser (the route reads the session cookie only to skip the round trip)'
+    query:
+      type: object
+      properties:
+        callbackUrl:
+          type: string
+          maxLength: 2048
+          description: >-
+            Where to land afterwards: a same-origin path with its query and fragment, no control character, and not an /api/auth path. Anything else is dropped
+            and afterSignIn is used.
+        locale:
+          type: string
+          description: One of the app's locales; sent to Keycloak as ui_locales and kc_locale. Any other value is dropped.
+        intent:
+          enum: [register]
+          description: register asks for the registration form (prompt=create); tedris's /auth/register page is its only caller.
+        reauth:
+          enum: ['1']
+          description: >-
+            The API refused the token this browser holds: go through Keycloak for new tokens instead of straight back. Still counts against the cap.
+        action:
+          enum: [UPDATE_PROFILE]
+          description: >-
+            An account action: Keycloak's own form for it, then back through the callback with new tokens. Any other value is no action.
+        auto:
+          enum: ['1']
+          description: The sign-in page adds it to its own automatic start; the route ignores it.
+    result:
+      status: 303
+      redirect: Keycloak's authorization endpoint; or the destination itself when the browser already holds a usable session
+    refusals:
+      SignInLimit:
+        status: 303
+        redirect: <signInPage>?error=SignInLimit[&callbackUrl=<destination>]
+        note: >-
+          The browser has already started 5 round trips in 5 minutes (the default cap; AUTH_SIGN_IN_LIMIT sets it per app). Nothing starts another by itself.
+        source: libs/auth/src/server/routes.ts:167
+      OAuthSignin:
+        status: 303
+        redirect: <signInPage>?error=OAuthSignin[&callbackUrl=<destination>]
+        note: >-
+          The round trip could not start: the session store cannot be asked (a callback now could not store its session), or Keycloak's discovery document
+          is out of reach.
+        source: libs/auth/src/server/routes.ts:190
+    sideEffects:
+    - >-
+      cookie <prefix>.auth-flow.<state, 16 characters> set: the sealed state, nonce, PKCE verifier and destination, 10 minutes; the newest 3 round trips are
+      kept and older flow cookies are deleted
+    - 'cookie <prefix>.auth-starts set: counts this start for 5 minutes'
+    - reads the session store (Valkey, or the cookie) and Keycloak's discovery document
+    note: >-
+      Served by tedris, nazar and nizam through one catch-all each (apps/tedris/app/api/auth/[...auth]/route.ts:11, apps/nazar/app/api/auth/[...auth]/route.ts:10,
+      apps/nizam/app/api/auth/[...auth]/route.ts:10): the same libs/auth handler, with cookie prefix tedris, nazar or nizam and the Keycloak client of the
+      app. Landing has no auth route.
+    source: libs/auth/src/server/routes.ts:146
+
+  finishSignIn:
+    route: GET /api/auth/callback/keycloak
+    summary: Take Keycloak's answer and store the session
+    description: >-
+      The redirect URI every Keycloak client has had since NextAuth. A state that no flow cookie of this browser holds (the Back button replaying a callback,
+      or a link from elsewhere) is a quiet 303 to afterSignIn when a usable session is already there and OAuthCallback otherwise. Else the code grant is made
+      with the expected state, nonce and PKCE verifier; the session is stored under a new id, the one this browser had (a reauth, or a sign-in as someone
+      else) is ended with it, the flow cookie is cleared and the browser is sent on (303) to the flow's destination.
+    needs: >-
+      nothing: the browser comes back from Keycloak carrying the code and the state; the flow cookie of this browser is what proves the round trip is its
+      own
+    query:
+      type: object
+      properties:
+        code: {type: string, description: The authorization code.}
+        state:
+          type: string
+          description: Names the flow cookie; must be the state this browser started.
+        session_state: {type: string}
+        iss: {type: string}
+        error:
+          type: string
+          description: Keycloak's own error, such as access_denied or invalid_client.
+        error_description: {type: string}
+    result:
+      status: 303
+      redirect: the destination the flow cookie holds (a same-origin path)
+    refusals:
+      OAuthCallback:
+        status: 303
+        redirect: <signInPage>?error=OAuthCallback[&callbackUrl=<destination>]
+        note: >-
+          No round trip of this browser has this state and no usable session is there; or the grant failed for any other reason (an unknown or replayed state,
+          an expired code, an ID token that names no subject, a store that cannot keep the session). A second round trip usually fixes it.
+        source: libs/auth/src/server/routes.ts:300
+      AccessDenied:
+        status: 303
+        redirect: <signInPage>?error=AccessDenied&callbackUrl=<destination>
+        note: Keycloak refused the account (error=access_denied).
+        source: libs/auth/src/server/oidc.ts:102
+      Configuration:
+        status: 303
+        redirect: <signInPage>?error=Configuration&callbackUrl=<destination>
+        note: >-
+          Keycloak refused the app (invalid_client or unauthorized_client: a client secret that no longer matches). Retrying cannot help, so nothing retries
+          it.
+        source: libs/auth/src/server/oidc.ts:103
+    sideEffects:
+    - >-
+      session stored in the session store (a new id; the cookie <prefix>.session set, __Host- over https); the browser's earlier session ended
+    - cookie <prefix>.auth-flow.<state> cleared
+    - a failed callback is logged with names and codes only (failureSummary), never a token
+    note: >-
+      Served by tedris, nazar and nizam through one catch-all each (apps/tedris/app/api/auth/[...auth]/route.ts:11, apps/nazar/app/api/auth/[...auth]/route.ts:10,
+      apps/nizam/app/api/auth/[...auth]/route.ts:10): the same libs/auth handler, with cookie prefix tedris, nazar or nizam and the Keycloak client of the
+      app. Landing has no auth route.
+    source: libs/auth/src/server/routes.ts:277
+
+  signOut:
+    route: POST /api/auth/signout
+    summary: End the session here and at Keycloak
+    description: >-
+      Reads the session's ID token. With one (or when the session store cannot be read) it builds Keycloak's end-session URL with post_logout_redirect_uri
+      = NEXTAUTH_URL and ui_locales, and id_token_hint when there is a token (without a hint Keycloak shows its own logout-confirm page); with no ID token
+      it signs out here only and goes to afterSignOut (/). It removes the store entry first (Keycloak then tells the other Medaris apps through back-channel
+      logout) and the cookie whatever the store answers, and answers 303. The app's sign-out page posts it from a hidden form.
+    needs: >-
+      nothing: no session needed (without one it redirects and has nothing to end); the request must come from the app's own origin
+    body:
+      type: object
+      description: A form (application/x-www-form-urlencoded); a body that is not a form is read as no locale.
+      properties:
+        locale:
+          type: string
+          description: One of the app's locales, passed to Keycloak as ui_locales.
+    result:
+      status: 303
+      redirect: >-
+        Keycloak's end-session endpoint, which comes back to the app's origin; or afterSignOut (/) when there is no ID token or no end-session endpoint
+    refusals:
+      HTTP_405:
+        status: 405
+        note: 'Any method but POST (GET /api/auth/signout too), with Allow: POST and no body.'
+        source: libs/auth/src/server/routes.ts:352
+      HTTP_403:
+        status: 403
+        note: 'The Origin is not the app''s, or Sec-Fetch-Site is cross-site: a sign-out on another site''s say-so. No body.'
+        source: libs/auth/src/server/routes.ts:361
+    sideEffects:
+    - the session store entry and its index entries removed, the cookie <prefix>.session cleared
+    - >-
+      Keycloak ends its SSO session and posts a back-channel logout to the other Medaris apps (see receiveBackchannelLogout)
+    note: >-
+      Served by tedris, nazar and nizam through one catch-all each (apps/tedris/app/api/auth/[...auth]/route.ts:11, apps/nazar/app/api/auth/[...auth]/route.ts:10,
+      apps/nizam/app/api/auth/[...auth]/route.ts:10): the same libs/auth handler, with cookie prefix tedris, nazar or nizam and the Keycloak client of the
+      app. Landing has no auth route.
+    source: libs/auth/src/server/routes.ts:351
+
+  getAuthSession:
+    route: GET /api/auth/session
+    summary: The client-safe session, or null
+    description: >-
+      What the browser's SessionProvider reads when a tab is shown again (at least 5 s apart): who is signed in and until when, never a token. null means
+      signed out (no session, or no usable access token), and a page that reads it reloads when the session ended or switched account. Cache-Control: no-store,
+      max-age=0. proxy.ts runs on this route, so the access token is renewed on the way.
+    needs: 'nothing: a visitor gets null'
+    result:
+      status: 200
+      oneOf:
+      - {type: 'null'}
+      - type: object
+        required: [user, expiresAt]
+        properties:
+          user:
+            type: object
+            required: [sub]
+            properties:
+              sub: {type: string, description: Keycloak's subject for the account}
+              name: {type: string, sensitivity: personal}
+              email: {type: string, sensitivity: personal}
+              username: {type: string, description: the preferred_username claim, sensitivity: personal}
+              locale:
+                type: string
+                description: the account's locale claim, when Keycloak sends one
+              image: {type: string, description: 'the picture claim, when Keycloak sends one'}
+          expiresAt:
+            type: integer
+            description: epoch milliseconds until which the server holds a usable access token; a hint, not a deadline
+    refusals:
+      temporarily_unavailable:
+        status: 503
+        note: >-
+          The session store cannot be asked. Body {error: temporarily_unavailable}. Not null: that would read as signed out and reload the page; the client
+          takes any answer that is not 200 as "could not ask".
+        source: libs/auth/src/server/routes.ts:436
+    sideEffects: [reads the session store; proxy.ts renews the access token on the way]
+    note: >-
+      Served by tedris, nazar and nizam through one catch-all each (apps/tedris/app/api/auth/[...auth]/route.ts:11, apps/nazar/app/api/auth/[...auth]/route.ts:10,
+      apps/nizam/app/api/auth/[...auth]/route.ts:10): the same libs/auth handler, with cookie prefix tedris, nazar or nizam and the Keycloak client of the
+      app. Landing has no auth route.
+    source: libs/auth/src/server/routes.ts:428
+
+  receiveBackchannelLogout:
+    route: POST /api/auth/backchannel-logout
+    summary: Keycloak tells the app an SSO session ended (OIDC Back-Channel Logout 1.0)
+    description: >-
+      Called by Keycloak, never by a browser, when an SSO session ends (a sign-out in another Medaris app, an administrator, an expiry). The signed logout_token
+      is checked against the realm's keys, the issuer and this app's client id, and its jti may be used once; then every session of this app behind that Keycloak
+      session (sid), or of that account when the token names no sid, ends at once instead of within a minute through the userinfo probe. 200 with Cache-Control:
+      no-store.
+    needs: 'Keycloak: a logout_token signed by the realm with this app''s client id as audience; no session cookie'
+    body:
+      type: object
+      required: [logout_token]
+      description: A form (application/x-www-form-urlencoded).
+      properties:
+        logout_token: {type: string, description: The signed logout token (a JWT).}
+    result: {status: 200, description: 'No body. Cache-Control: no-store.'}
+    refusals:
+      invalid_request:
+        status: 400
+        note: >-
+          logout_token is missing, fails a check of OIDC Back-Channel Logout §2.8, or was used before (the same jti twice). Body {error: invalid_request,
+          error_description}.
+        source: libs/auth/src/server/routes.ts:492
+      unsupported:
+        status: 501
+        note: >-
+          The app keeps its sessions in the cookie, so there is nothing to look a session up in; a valid token is answered 501 so Keycloak's log says this
+          app did not end its session. Body {error: unsupported, error_description}.
+        source: libs/auth/src/server/routes.ts:508
+      temporarily_unavailable:
+        status: 503
+        note: 'Keycloak''s keys or the session store cannot be reached. Body {error: temporarily_unavailable}.'
+        source: libs/auth/src/server/routes.ts:523
+      HTTP_405:
+        status: 405
+        note: 'Any method but POST (GET too), with Allow: POST and Cache-Control: no-store.'
+        source: libs/auth/src/server/routes.ts:479
+    sideEffects:
+    - >-
+      every session of the SSO session (sid) or of the account ended in the session store, and the logout token's jti remembered for 3 minutes (JTI_TTL_MS)
+    note: >-
+      Served by tedris, nazar and nizam through one catch-all each (apps/tedris/app/api/auth/[...auth]/route.ts:11, apps/nazar/app/api/auth/[...auth]/route.ts:10,
+      apps/nizam/app/api/auth/[...auth]/route.ts:10): the same libs/auth handler, with cookie prefix tedris, nazar or nizam and the Keycloak client of the
+      app. Landing has no auth route. Excluded from the web apps' proxy matcher.
+    source: libs/auth/src/server/routes.ts:463
+
+  # ---- files: /api/files/**, tedrisat's files through the web apps (downloads, then uploads) ----
+  webDownloadCourseResourceFile:
+    route: GET /api/files/courses/{courseId}/resources/{resourceId}
+    summary: A course resource's file, as an attachment
+    description: >-
+      A course resource's file, as an attachment. The browser holds no token: the route reads the caller's access token on the server and streams the file
+      from tedrisat (downloadCourseResourceFile, GET /courses/{id}/resources/{resourceId}/file) with only content-type, content-length, content-disposition
+      (attachment), x-content-type-options, cache-control and content-security-policy of tedrisat's own headers. A refusal reaches a fetch() as JSON, and
+      a link followed as a page as a 303 (invariant web-download-refusal-returns-to-the-page). Used by the file link of a course resource: the "Bu dersin
+      kaynakları" card of the tedris course page, nazar Müfredat and the nizam curriculum editor.
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of downloadCourseResourceFile.
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+      description: The file's bytes, as an attachment under the name tedrisat gave it.
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/tedris/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:17
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+        redirect: 'a link followed as a page: 303 to signInUrl(the referring page, {reauth}); a fetch() keeps the JSON'
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from downloadCourseResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=forbidden'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadCourseResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      RESOURCE_FILE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadCourseResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from downloadCourseResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from downloadCourseResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: downloadCourseResourceFile (tedrisat GET /courses/{id}/resources/{resourceId}/file) with the caller's bearer token; what it writes (audit rows,
+      storage) is tedrisat's
+    note: >-
+      Served by tedris (apps/tedris/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:11), nazar (apps/nazar/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:11),
+      nizam (apps/nizam/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:11): the same handler in each (@medaris/services/file-proxy).
+    source: apps/tedris/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:11
+
+  webDownloadLessonResourceFile:
+    route: GET /api/files/lessons/{lessonId}/resources/{resourceId}
+    summary: A celse (session) resource's file, as an attachment
+    description: >-
+      A celse (session) resource's file, as an attachment. The browser holds no token: the route reads the caller's access token on the server and streams
+      the file from tedrisat (downloadLessonResourceFile, GET /lessons/{id}/resources/{resourceId}/file) with only content-type, content-length, content-disposition
+      (attachment), x-content-type-options, cache-control and content-security-policy of tedrisat's own headers. A refusal reaches a fetch() as JSON, and
+      a link followed as a page as a 303 (invariant web-download-refusal-returns-to-the-page). Used by the file link of a celse resource: the "Kaynaklar"
+      card of the tedris celse page, nazar Müfredat and the nizam curriculum editor.
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of downloadLessonResourceFile.
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+      description: The file's bytes, as an attachment under the name tedrisat gave it.
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/tedris/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:16
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+        redirect: 'a link followed as a page: 303 to signInUrl(the referring page, {reauth}); a fetch() keeps the JSON'
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from downloadLessonResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=forbidden'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadLessonResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadLessonResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      RESOURCE_FILE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadLessonResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from downloadLessonResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from downloadLessonResourceFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: downloadLessonResourceFile (tedrisat GET /lessons/{id}/resources/{resourceId}/file) with the caller's bearer token; what it writes (audit rows,
+      storage) is tedrisat's
+    note: >-
+      Served by tedris (apps/tedris/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:10), nazar (apps/nazar/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:10),
+      nizam (apps/nizam/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:12): the same handler in each (@medaris/services/file-proxy).
+    source: apps/tedris/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:10
+
+  webDownloadLessonAssignmentFile:
+    route: GET /api/files/lessons/{lessonId}/assignment/{fileId}
+    summary: A file of the homework set on a celse, as an attachment
+    description: >-
+      A file of the homework set on a celse, as an attachment. The browser holds no token: the route reads the caller's access token on the server and streams
+      the file from tedrisat (downloadLessonAssignmentFile, GET /lessons/{id}/assignment/files/{fileId}) with only content-type, content-length, content-disposition
+      (attachment), x-content-type-options, cache-control and content-security-policy of tedrisat's own headers. A refusal reaches a fetch() as JSON, and
+      a link followed as a page as a 303 (invariant web-download-refusal-returns-to-the-page). Used by the file link of a celse's homework: tedris celse page
+      (the homework card) and nazar Müfredat.
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of downloadLessonAssignmentFile.
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+      description: The file's bytes, as an attachment under the name tedrisat gave it.
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/tedris/app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts:17
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+        redirect: 'a link followed as a page: 303 to signInUrl(the referring page, {reauth}); a fetch() keeps the JSON'
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from downloadLessonAssignmentFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=forbidden'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from downloadLessonAssignmentFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadLessonAssignmentFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadLessonAssignmentFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_ASSIGNMENT_FILE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadLessonAssignmentFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from downloadLessonAssignmentFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: downloadLessonAssignmentFile (tedrisat GET /lessons/{id}/assignment/files/{fileId}) with the caller's bearer token; what it writes (audit rows,
+      storage) is tedrisat's
+    note: >-
+      Served by tedris (apps/tedris/app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts:11), nazar (apps/nazar/app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts:10):
+      the same handler in each (@medaris/services/file-proxy).
+    source: apps/tedris/app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts:11
+
+  webDownloadMySubmissionFile:
+    route: GET /api/files/lessons/{lessonId}/submission/files/{fileId}
+    summary: >-
+      One of the talebe's own homework files, as an attachment. Staff read a talebe's homework in nazar, through webDownloadCourseSubmissionFile
+    description: >-
+      One of the talebe's own homework files, as an attachment. Staff read a talebe's homework in nazar, through webDownloadCourseSubmissionFile. The browser
+      holds no token: the route reads the caller's access token on the server and streams the file from tedrisat (downloadMySubmissionFile, GET /lessons/{id}/submission/files/{fileId})
+      with only content-type, content-length, content-disposition (attachment), x-content-type-options, cache-control and content-security-policy of tedrisat's
+      own headers. A refusal reaches a fetch() as JSON, and a link followed as a page as a 303 (invariant web-download-refusal-returns-to-the-page). Used
+      by the file link of the talebe's own homework, on the tedris celse page ("Ödevim").
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of downloadMySubmissionFile.
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+      description: The file's bytes, as an attachment under the name tedrisat gave it.
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/tedris/app/api/files/lessons/[lessonId]/submission/files/[fileId]/route.ts:17
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+        redirect: 'a link followed as a page: 303 to signInUrl(the referring page, {reauth}); a fetch() keeps the JSON'
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from downloadMySubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from downloadMySubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=forbidden'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FILE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadMySubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from downloadMySubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadMySubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadMySubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: downloadMySubmissionFile (tedrisat GET /lessons/{id}/submission/files/{fileId}) with the caller's bearer token; what it writes (audit rows, storage)
+      is tedrisat's
+    note: >-
+      Served by tedris (apps/tedris/app/api/files/lessons/[lessonId]/submission/files/[fileId]/route.ts:11) only (@medaris/services/file-proxy).
+    source: apps/tedris/app/api/files/lessons/[lessonId]/submission/files/[fileId]/route.ts:11
+
+  webDownloadMySubmissionReviewFile:
+    route: GET /api/files/lessons/{lessonId}/submission/review-files/{fileId}
+    summary: >-
+      A file the course team returned with its review of the talebe's homework, as an attachment, once the review is sent
+    description: >-
+      A file the course team returned with its review of the talebe's homework, as an attachment, once the review is sent. The browser holds no token: the
+      route reads the caller's access token on the server and streams the file from tedrisat (downloadMySubmissionReviewFile, GET /lessons/{id}/submission/review-files/{fileId})
+      with only content-type, content-length, content-disposition (attachment), x-content-type-options, cache-control and content-security-policy of tedrisat's
+      own headers. A refusal reaches a fetch() as JSON, and a link followed as a page as a 303 (invariant web-download-refusal-returns-to-the-page). Used
+      by the "Düzeltilmiş dosyalar" links of the tedris celse page.
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of downloadMySubmissionReviewFile.
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+      description: The file's bytes, as an attachment under the name tedrisat gave it.
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/tedris/app/api/files/lessons/[lessonId]/submission/review-files/[fileId]/route.ts:17
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+        redirect: 'a link followed as a page: 303 to signInUrl(the referring page, {reauth}); a fetch() keeps the JSON'
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from downloadMySubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FILE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadMySubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from downloadMySubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=forbidden'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from downloadMySubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadMySubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadMySubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: downloadMySubmissionReviewFile (tedrisat GET /lessons/{id}/submission/review-files/{fileId}) with the caller's bearer token; what it writes (audit
+      rows, storage) is tedrisat's
+    note: >-
+      Served by tedris (apps/tedris/app/api/files/lessons/[lessonId]/submission/review-files/[fileId]/route.ts:11) only (@medaris/services/file-proxy).
+    source: apps/tedris/app/api/files/lessons/[lessonId]/submission/review-files/[fileId]/route.ts:11
+
+  webDownloadCourseSubmissionFile:
+    route: GET /api/files/courses/{courseId}/submissions/{fileId}
+    summary: A file a talebe handed in, read by the course team, as an attachment
+    description: >-
+      A file a talebe handed in, read by the course team, as an attachment. The browser holds no token: the route reads the caller's access token on the server
+      and streams the file from tedrisat (downloadCourseSubmissionFile, GET /courses/{id}/submissions/files/{fileId}) with only content-type, content-length,
+      content-disposition (attachment), x-content-type-options, cache-control and content-security-policy of tedrisat's own headers. A refusal reaches a fetch()
+      as JSON, and a link followed as a page as a 303 (invariant web-download-refusal-returns-to-the-page). Used by nazar Ödevler (a talebe's hand-in).
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of downloadCourseSubmissionFile.
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+      description: The file's bytes, as an attachment under the name tedrisat gave it.
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/nazar/app/api/files/courses/[courseId]/submissions/[fileId]/route.ts:18
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+        redirect: 'a link followed as a page: 303 to signInUrl(the referring page, {reauth}); a fetch() keeps the JSON'
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from downloadCourseSubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadCourseSubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FILE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadCourseSubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from downloadCourseSubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=forbidden'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from downloadCourseSubmissionFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: downloadCourseSubmissionFile (tedrisat GET /courses/{id}/submissions/files/{fileId}) with the caller's bearer token; what it writes (audit rows,
+      storage) is tedrisat's
+    note: >-
+      Served by nazar (apps/nazar/app/api/files/courses/[courseId]/submissions/[fileId]/route.ts:12) only (@medaris/services/file-proxy).
+    source: apps/nazar/app/api/files/courses/[courseId]/submissions/[fileId]/route.ts:12
+
+  webDownloadCourseSubmissionReviewFile:
+    route: GET /api/files/courses/{courseId}/review-files/{fileId}
+    summary: A file of a review the course team wrote, read by the course team, as an attachment
+    description: >-
+      A file of a review the course team wrote, read by the course team, as an attachment. The browser holds no token: the route reads the caller's access
+      token on the server and streams the file from tedrisat (downloadCourseSubmissionReviewFile, GET /courses/{id}/submissions/review-files/{fileId}) with
+      only content-type, content-length, content-disposition (attachment), x-content-type-options, cache-control and content-security-policy of tedrisat's
+      own headers. A refusal reaches a fetch() as JSON, and a link followed as a page as a 303 (invariant web-download-refusal-returns-to-the-page). Used
+      by nazar Ödevler (a review file).
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of downloadCourseSubmissionReviewFile.
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/octet-stream
+      description: The file's bytes, as an attachment under the name tedrisat gave it.
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/nazar/app/api/files/courses/[courseId]/review-files/[fileId]/route.ts:18
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+        redirect: 'a link followed as a page: 303 to signInUrl(the referring page, {reauth}); a fetch() keeps the JSON'
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from downloadCourseSubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadCourseSubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FILE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from downloadCourseSubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from downloadCourseSubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=forbidden'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from downloadCourseSubmissionReviewFile.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: downloadCourseSubmissionReviewFile (tedrisat GET /courses/{id}/submissions/review-files/{fileId}) with the caller's bearer token; what it writes
+      (audit rows, storage) is tedrisat's
+    note: >-
+      Served by nazar (apps/nazar/app/api/files/courses/[courseId]/review-files/[fileId]/route.ts:12) only (@medaris/services/file-proxy).
+    source: apps/nazar/app/api/files/courses/[courseId]/review-files/[fileId]/route.ts:12
+
+  webExportEvaluationBoard:
+    route: GET /api/files/courses/{courseId}/evaluations
+    summary: >-
+      The evaluation board of a course as an .xlsx. The language of the sheet is the locale cookie's (en or ar, tr otherwise): the route takes no query
+    description: >-
+      The evaluation board of a course as an .xlsx. The language of the sheet is the locale cookie's (en or ar, tr otherwise): the route takes no query. The
+      browser holds no token: the route reads the caller's access token on the server and streams the file from tedrisat (exportEvaluationBoard, GET /courses/{id}/evaluations/export)
+      with only content-type, content-length, content-disposition (attachment), x-content-type-options, cache-control and content-security-policy of tedrisat's
+      own headers. A refusal reaches a fetch() as JSON, and a link followed as a page as a 303 (invariant web-download-refusal-returns-to-the-page). Used
+      by nazar Değerlendirme ("Excel indir").
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of exportEvaluationBoard.
+    result:
+      status: 200
+      type: string
+      contentMediaType: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      description: The file's bytes, as an attachment under the name tedrisat gave it.
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/nazar/app/api/files/courses/[courseId]/evaluations/route.ts:18
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+        redirect: 'a link followed as a page: 303 to signInUrl(the referring page, {reauth}); a fetch() keeps the JSON'
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=unavailable'
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from exportEvaluationBoard.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=notFound'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from exportEvaluationBoard.
+        redirect: 'a link followed as a page: 303 back to the page with ?fileError=forbidden'
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      INVALID_PATH:
+        status: 400
+        note: >-
+          Every call: the route asks for /courses/{courseId}/evaluations/export?lang=<lang>, and isProxiablePath refuses any path with a query, so the proxy
+          answers 400 INVALID_PATH "Not a file address" before it calls tedrisat. Confirmed by calling the real proxyDownload on that path with a stub fetch
+          (a scratch copy of file-proxy.ts): 400 INVALID_PATH and no call; not walked in a browser.
+        redirect: >-
+          a link followed as a page: 303 back to the page with ?fileError=notFound (the page does not mount FileErrorNotice, F-D1-13, so the refusal is silent)
+        source: libs/services/src/file-proxy/file-proxy.ts:145
+    sideEffects:
+    - >-
+      calls: exportEvaluationBoard (tedrisat GET /courses/{id}/evaluations/export) with the caller's bearer token; what it writes (audit rows, storage) is
+      tedrisat's
+    note: >-
+      Served by nazar (apps/nazar/app/api/files/courses/[courseId]/evaluations/route.ts:12) only (@medaris/services/file-proxy). The upstream refusals above
+      are what tedrisat would answer; the route cannot reach it today (INVALID_PATH, finding evaluation-export-invalid-path).
+    source: apps/nazar/app/api/files/courses/[courseId]/evaluations/route.ts:12
+
+  webUploadCourseResourceFile:
+    route: POST /api/files/courses/{courseId}/resources
+    summary: Adds a file to a course's resources
+    description: >-
+      Adds a file to a course's resources. The route reads the caller's access token on the server and streams the multipart body on to tedrisat unread (uploadCourseResourceFile,
+      POST /courses/{id}/resources/files), with its Content-Type and so its boundary unchanged. Tedrisat decides the rest (who may, the 25 MB, the types it
+      stores by their bytes) and its status and JSON come back as they are. next.config.js raises proxyClientMaxBodySize to 26 MB for it. Used by the "Dosya
+      yükle" dialog of Müfredat (nazar) and of the curriculum editor (nizam).
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of uploadCourseResourceFile.
+    body:
+      type: object
+      required: [file]
+      description: multipart/form-data
+      properties:
+        file:
+          type: string
+          format: binary
+          description: at most 25 MB; PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text, as read from its bytes
+        name:
+          type: string
+          maxLength: 200
+          description: the listed name; the file's own name without its extension when absent or blank
+        meta: {type: string, maxLength: 120, description: a short line under the name}
+    result:
+      returns: CourseResource
+      status: 201
+      type: object
+      required: [resource, courseVersion]
+      description: the new CourseResource and the course's new version
+      properties:
+        resource:
+          type: object
+          description: >-
+            the CourseResource as the course page lists it, with file {name, contentType, sizeBytes, downloadUrl}; downloadUrl is tedrisat's download route
+            for it, a path from the API's root (/courses/<id>/resources/<rid>/file), which needs the caller's own token
+        courseVersion: {type: integer}
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/nazar/app/api/files/courses/[courseId]/resources/route.ts:24
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+      MULTIPART_REQUIRED:
+        status: 415
+        note: >-
+          The Content-Type is not multipart/form-data with a boundary. Answered at the web edge, before anything is sent.
+        source: libs/services/src/file-proxy/file-proxy.ts:236
+      FILE_TOO_LARGE:
+        status: 413
+        note: >-
+          The announced Content-Length is over 25 MB plus 64 KB of multipart allowance: refused before a byte of the body is read, body {code, status, message,
+          context: {maxBytes}}. A body that announces no length is cut off by tedrisat as it streams, with the same code. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:247
+      FILE_REQUIRED:
+        status: 400
+        note: >-
+          The request has no body. Tedrisat answers the same code for a multipart body that holds no file. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:255
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from uploadCourseResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      VALIDATION_ERROR:
+        status: 400
+        note: Relayed as it came, from uploadCourseResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from uploadCourseResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      FILE_TYPE_NOT_ALLOWED:
+        status: 415
+        note: Relayed as it came, from uploadCourseResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from uploadCourseResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from uploadCourseResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: uploadCourseResourceFile (tedrisat POST /courses/{id}/resources/files) with the caller's bearer token; what it writes (audit rows, storage) is
+      tedrisat's
+    note: >-
+      Served by nazar (apps/nazar/app/api/files/courses/[courseId]/resources/route.ts:18), nizam (apps/nizam/app/api/files/courses/[courseId]/resources/route.ts:17):
+      the same handler in each (@medaris/services/file-proxy).
+    source: apps/nazar/app/api/files/courses/[courseId]/resources/route.ts:18
+
+  webUploadLessonResourceFile:
+    route: POST /api/files/lessons/{lessonId}/resources
+    summary: Adds a file to a celse's resources
+    description: >-
+      Adds a file to a celse's resources. The route reads the caller's access token on the server and streams the multipart body on to tedrisat unread (uploadLessonResourceFile,
+      POST /lessons/{id}/resources/files), with its Content-Type and so its boundary unchanged. Tedrisat decides the rest (who may, the 25 MB, the types it
+      stores by their bytes) and its status and JSON come back as they are. next.config.js raises proxyClientMaxBodySize to 26 MB for it. Used by the "Dosya
+      yükle" dialog of a celse in Müfredat (nazar) and in the curriculum editor (nizam).
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of uploadLessonResourceFile.
+    body:
+      type: object
+      required: [file]
+      description: multipart/form-data, as uploadCourseResourceFile
+      properties:
+        file: {type: string, format: binary}
+        name: {type: string, maxLength: 200}
+        meta: {type: string, maxLength: 120}
+    result:
+      returns: LessonResource
+      status: 201
+      type: object
+      required: [resource, courseVersion]
+      description: the new LessonResource and the course's new version
+      properties:
+        resource:
+          type: object
+          description: >-
+            the LessonResource with file {name, contentType, sizeBytes, downloadUrl}; downloadUrl is /lessons/<id>/resources/<rid>/file
+        courseVersion: {type: integer}
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/nazar/app/api/files/lessons/[lessonId]/resources/route.ts:23
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+      MULTIPART_REQUIRED:
+        status: 415
+        note: >-
+          The Content-Type is not multipart/form-data with a boundary. Answered at the web edge, before anything is sent.
+        source: libs/services/src/file-proxy/file-proxy.ts:236
+      FILE_TOO_LARGE:
+        status: 413
+        note: >-
+          The announced Content-Length is over 25 MB plus 64 KB of multipart allowance: refused before a byte of the body is read, body {code, status, message,
+          context: {maxBytes}}. A body that announces no length is cut off by tedrisat as it streams, with the same code. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:247
+      FILE_REQUIRED:
+        status: 400
+        note: >-
+          The request has no body. Tedrisat answers the same code for a multipart body that holds no file. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:255
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from uploadLessonResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      VALIDATION_ERROR:
+        status: 400
+        note: Relayed as it came, from uploadLessonResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from uploadLessonResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from uploadLessonResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      FILE_TYPE_NOT_ALLOWED:
+        status: 415
+        note: Relayed as it came, from uploadLessonResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from uploadLessonResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from uploadLessonResourceFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: uploadLessonResourceFile (tedrisat POST /lessons/{id}/resources/files) with the caller's bearer token; what it writes (audit rows, storage) is
+      tedrisat's
+    note: >-
+      Served by nazar (apps/nazar/app/api/files/lessons/[lessonId]/resources/route.ts:17), nizam (apps/nizam/app/api/files/lessons/[lessonId]/resources/route.ts:16):
+      the same handler in each (@medaris/services/file-proxy).
+    source: apps/nazar/app/api/files/lessons/[lessonId]/resources/route.ts:17
+
+  webAddLessonAssignmentFile:
+    route: POST /api/files/lessons/{lessonId}/assignment
+    summary: Adds a file to the homework set on a celse
+    description: >-
+      Adds a file to the homework set on a celse. The route reads the caller's access token on the server and streams the multipart body on to tedrisat unread
+      (addLessonAssignmentFile, POST /lessons/{id}/assignment/files), with its Content-Type and so its boundary unchanged. Tedrisat decides the rest (who
+      may, the 25 MB, the types it stores by their bytes) and its status and JSON come back as they are. next.config.js raises proxyClientMaxBodySize to 26
+      MB for it. Used by the homework's file upload of a celse in nazar Müfredat.
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of addLessonAssignmentFile.
+    body:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          note: >-
+            multipart field `file`, one file, 25 MB at most, a PDF, PNG, JPEG, WebP, docx, xlsx, pptx or plain UTF-8 text by its bytes; at most 4 other fields
+    result: {returns: LessonAssignment, status: 201}
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/nazar/app/api/files/lessons/[lessonId]/assignment/route.ts:23
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+      MULTIPART_REQUIRED:
+        status: 415
+        note: >-
+          The Content-Type is not multipart/form-data with a boundary. Answered at the web edge, before anything is sent.
+        source: libs/services/src/file-proxy/file-proxy.ts:236
+      FILE_TOO_LARGE:
+        status: 413
+        note: >-
+          The announced Content-Length is over 25 MB plus 64 KB of multipart allowance: refused before a byte of the body is read, body {code, status, message,
+          context: {maxBytes}}. A body that announces no length is cut off by tedrisat as it streams, with the same code. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:247
+      FILE_REQUIRED:
+        status: 400
+        note: >-
+          The request has no body. Tedrisat answers the same code for a multipart body that holds no file. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:255
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from addLessonAssignmentFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      HTTP_400:
+        status: 400
+        note: Relayed as it came, from addLessonAssignmentFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      FILE_TYPE_NOT_ALLOWED:
+        status: 415
+        note: Relayed as it came, from addLessonAssignmentFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from addLessonAssignmentFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_ASSIGNMENT_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from addLessonAssignmentFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from addLessonAssignmentFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from addLessonAssignmentFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from addLessonAssignmentFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: addLessonAssignmentFile (tedrisat POST /lessons/{id}/assignment/files) with the caller's bearer token; what it writes (audit rows, storage) is
+      tedrisat's
+    note: >-
+      Served by nazar (apps/nazar/app/api/files/lessons/[lessonId]/assignment/route.ts:17) only (@medaris/services/file-proxy).
+    source: apps/nazar/app/api/files/lessons/[lessonId]/assignment/route.ts:17
+
+  webAddMySubmissionFile:
+    route: POST /api/files/lessons/{lessonId}/submission/files
+    summary: Adds a file to the talebe's own homework on a celse
+    description: >-
+      Adds a file to the talebe's own homework on a celse. The route reads the caller's access token on the server and streams the multipart body on to tedrisat
+      unread (addMySubmissionFile, POST /lessons/{id}/submission/files), with its Content-Type and so its boundary unchanged. Tedrisat decides the rest (who
+      may, the 25 MB, the types it stores by their bytes) and its status and JSON come back as they are. next.config.js raises proxyClientMaxBodySize to 26
+      MB for it. Used by the "Ödevim" card of the tedris celse page, which sends the chosen files one at a time.
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of addMySubmissionFile.
+    body:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          note: multipart field `file`, one file, 25 MB at most, the eight types of UPLOAD
+    result: {returns: LessonSubmission, status: 201}
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/tedris/app/api/files/lessons/[lessonId]/submission/files/route.ts:24
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+      MULTIPART_REQUIRED:
+        status: 415
+        note: >-
+          The Content-Type is not multipart/form-data with a boundary. Answered at the web edge, before anything is sent.
+        source: libs/services/src/file-proxy/file-proxy.ts:236
+      FILE_TOO_LARGE:
+        status: 413
+        note: >-
+          The announced Content-Length is over 25 MB plus 64 KB of multipart allowance: refused before a byte of the body is read, body {code, status, message,
+          context: {maxBytes}}. A body that announces no length is cut off by tedrisat as it streams, with the same code. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:247
+      FILE_REQUIRED:
+        status: 400
+        note: >-
+          The request has no body. Tedrisat answers the same code for a multipart body that holds no file. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:255
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      HTTP_400:
+        status: 400
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      FILE_TYPE_NOT_ALLOWED:
+        status: 415
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FILES_NOT_TAKEN:
+        status: 409
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_FILE_LIMIT:
+        status: 409
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from addMySubmissionFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: addMySubmissionFile (tedrisat POST /lessons/{id}/submission/files) with the caller's bearer token; what it writes (audit rows, storage) is tedrisat's
+    note: >-
+      Served by tedris (apps/tedris/app/api/files/lessons/[lessonId]/submission/files/route.ts:18) only (@medaris/services/file-proxy).
+    source: apps/tedris/app/api/files/lessons/[lessonId]/submission/files/route.ts:18
+
+  webAddSubmissionReviewFile:
+    route: POST /api/files/courses/{courseId}/reviews/{submissionId}
+    summary: Adds a file to the review of a talebe's homework
+    description: >-
+      Adds a file to the review of a talebe's homework. The route reads the caller's access token on the server and streams the multipart body on to tedrisat
+      unread (addSubmissionReviewFile, POST /courses/{id}/submissions/{submissionId}/review/files), with its Content-Type and so its boundary unchanged. Tedrisat
+      decides the rest (who may, the 25 MB, the types it stores by their bytes) and its status and JSON come back as they are. next.config.js raises proxyClientMaxBodySize
+      to 26 MB for it. Used by the review form of nazar Ödevler.
+    needs: >-
+      a signed-in browser: the route reads the session's access token (getAccessToken) and adds it as a bearer; it checks no role. Who may do it is tedrisat's
+      decision, as the `needs` of addSubmissionReviewFile.
+    body:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          note: multipart field `file`, one file, 25 MB at most, the eight types of UPLOAD
+    result: {returns: LessonSubmission, status: 201}
+    refusals:
+      NOT_FOUND:
+        status: 404
+        note: >-
+          A path id is not a uuid (isUuid). The route answers it itself, before it asks for a token and before tedrisat is called; a followed link is not
+          redirected for it. Body {code: NOT_FOUND}.
+        redirect: never
+        source: apps/nazar/app/api/files/courses/[courseId]/reviews/[submissionId]/route.ts:23
+      unauthenticated:
+        status: 401
+        note: >-
+          No access token in the session (reauth absent), or tedrisat refused the token (reauth true, relay at file-proxy.ts:186). Body {kind: unauthenticated,
+          reauth?: true}, the value handleUnauthenticated of @medaris/auth acts on. Tedrisat is not called when there is no token.
+        source: libs/services/src/file-proxy/file-proxy.ts:137
+      MULTIPART_REQUIRED:
+        status: 415
+        note: >-
+          The Content-Type is not multipart/form-data with a boundary. Answered at the web edge, before anything is sent.
+        source: libs/services/src/file-proxy/file-proxy.ts:236
+      FILE_TOO_LARGE:
+        status: 413
+        note: >-
+          The announced Content-Length is over 25 MB plus 64 KB of multipart allowance: refused before a byte of the body is read, body {code, status, message,
+          context: {maxBytes}}. A body that announces no length is cut off by tedrisat as it streams, with the same code. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:247
+      FILE_REQUIRED:
+        status: 400
+        note: >-
+          The request has no body. Tedrisat answers the same code for a multipart body that holds no file. Also relayed from tedrisat.
+        source: libs/services/src/file-proxy/file-proxy.ts:255
+      TEDRISAT_UNREACHABLE:
+        status: 502
+        note: The call to tedrisat itself failed (the service could not be reached).
+        source: libs/services/src/file-proxy/file-proxy.ts:176
+      STORAGE_NOT_CONFIGURED:
+        status: 503
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      HTTP_400:
+        status: 400
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      FILE_TYPE_NOT_ALLOWED:
+        status: 415
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      STORAGE_UNAVAILABLE:
+        status: 503
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      COURSE_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      LESSON_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      SUBMISSION_REVIEW_FILE_LIMIT:
+        status: 409
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, from addSubmissionReviewFile.
+        source: libs/services/src/file-proxy/file-proxy.ts:185
+    sideEffects:
+    - >-
+      calls: addSubmissionReviewFile (tedrisat POST /courses/{id}/submissions/{submissionId}/review/files) with the caller's bearer token; what it writes
+      (audit rows, storage) is tedrisat's
+    note: >-
+      Served by nazar (apps/nazar/app/api/files/courses/[courseId]/reviews/[submissionId]/route.ts:17) only (@medaris/services/file-proxy).
+    source: apps/nazar/app/api/files/courses/[courseId]/reviews/[submissionId]/route.ts:17
+
+  # ---- calendar: tedris ----
+  webGetLessonCalendar:
+    route: GET /api/lessons/{id}/calendar
+    summary: One celse as an iCalendar file, through the web app
+    description: >-
+      The "Apple Takvim (.ics)" link of the tedris course card, a plain navigation, and the fetch of the celse page's calendar menu. The browser cannot send
+      the access token, so the route fetches getLessonCalendar from tedrisat with it and hands the file on as an attachment named medaris-<id>.ics. Tedrisat
+      decides who may have it (the rule of the celse page) and builds the entry.
+    needs: >-
+      a signed-in browser (getAccessToken); a visitor is sent to sign-in. Who may have the file is tedrisat's decision, as getLessonCalendar
+    query:
+      type: object
+      properties:
+        locale:
+          enum: [tr, en, ar]
+          description: The language of the entry's one-line description; any other value is ignored. The link sends tr.
+    result:
+      status: 200
+      type: string
+      contentMediaType: text/calendar; charset=utf-8
+      description: >-
+        The entry as tedrisat built it. Content-Disposition: attachment; filename="medaris-<id>.ics"; Cache-Control: private, no-store.
+    refusals:
+      HTTP_404:
+        status: 404
+        note: 'The id is not a uuid. Body {error: "Not found"}; answered before the session is asked.'
+        source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:30
+      redirectToSignIn:
+        status: 307
+        redirect: >-
+          the app's sign-in page for /api/lessons/{id}/calendar[?locale=<locale>], so that the download starts after sign-in
+        note: >-
+          No access token, or tedrisat answered 401. A link followed as a download would only save a JSON 401 as a broken file, so this route redirects (NextResponse.redirect,
+          307) instead of answering JSON.
+        source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:43
+      CALENDAR_NOT_CONFIGURED:
+        status: 503
+        note: 'Relayed from getLessonCalendar with its status; the body is {error: "CALENDAR_NOT_CONFIGURED"}, the code only.'
+        source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:70
+      LESSON_NOT_FOUND:
+        status: 404
+        note: 'Relayed from getLessonCalendar with its status; the body is {error: "LESSON_NOT_FOUND"}, the code only.'
+        source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:70
+      LESSON_NOT_SCHEDULED:
+        status: 409
+        note: 'Relayed from getLessonCalendar with its status; the body is {error: "LESSON_NOT_SCHEDULED"}, the code only.'
+        source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:70
+      HTTP_500:
+        status: 500
+        note: >-
+          Any other failure of the call (an answer that is not one of 400, 403, 404, 409, 503, or an error that is not tedrisat's). Body {error: "Failed to
+          fetch the calendar file"}.
+        source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:85
+    sideEffects:
+    - 'calls: getLessonCalendar (tedrisat GET /lessons/{id}/calendar.ics) with the caller''s bearer token'
+    note: Served by tedris only (apps/tedris/app/api/lessons/[id]/calendar/route.ts:23).
+    source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:23
+
+  webGetCalendarFeed:
+    route: GET /calendar/{file}
+    summary: The personal calendar subscription feed, through the web app
+    description: >-
+      The address Apple Calendar and Google Calendar poll: /calendar/<token>.ics on tedris-web, passed on to tedrisat's getCalendarFeed (GET {TEDRISAT_API_BASE_URL}/calendar/<token>.ics)
+      with no Authorization header. A calendar app cannot sign in, so the secret in the address is the credential and tedrisat decides which feed it is and
+      what is in it. tedris's proxy.ts excludes calendar/ from its matcher: no sign-in redirect, no session renewal, no locale rewrite. The account calendar
+      page shows the link.
+    needs: 'nothing: no session; the 43-character token in the address is the credential (getCalendarFeed)'
+    result:
+      status: 200
+      type: string
+      contentMediaType: text/calendar; charset=utf-8
+      description: >-
+        The feed as tedrisat built it. Content-Disposition: inline; filename="medaris.ics"; Cache-Control: private, no-store; X-Robots-Tag: noindex.
+    refusals:
+      HTTP_404:
+        status: 404
+        note: >-
+          The file is not 43 base64url characters and ".ics" (^[A-Za-z0-9_-]{43}\.ics$). Body {error: "Not found"}; tedrisat is not called.
+        source: apps/tedris/app/calendar/[file]/route.ts:22
+      CALENDAR_NOT_CONFIGURED:
+        status: 503
+        note: >-
+          Relayed from getCalendarFeed with its status; the body is {error: "CALENDAR_NOT_CONFIGURED"} and Cache-Control: no-store.
+        source: apps/tedris/app/calendar/[file]/route.ts:40
+      CALENDAR_FEED_NOT_FOUND:
+        status: 404
+        note: >-
+          Relayed from getCalendarFeed with its status; the body is {error: "CALENDAR_FEED_NOT_FOUND"} and Cache-Control: no-store.
+        source: apps/tedris/app/calendar/[file]/route.ts:40
+      HTTP_429:
+        status: 429
+        note: >-
+          Relayed from getCalendarFeed with its status; the body is {error: "HTTP_429"} and Cache-Control: no-store, Retry-After as tedrisat sent it.
+        source: apps/tedris/app/calendar/[file]/route.ts:40
+      HTTP_502:
+        status: 502
+        note: 'The call to tedrisat itself failed. Body {error: "Failed to fetch the calendar feed"}.'
+        source: apps/tedris/app/calendar/[file]/route.ts:35
+    sideEffects:
+    - >-
+      calls: getCalendarFeed (tedrisat GET /calendar/{file}) with no token; tedrisat limits the polls of one feed's owner (20 a minute)
+    note: Served by tedris only (apps/tedris/app/calendar/[file]/route.ts:17).
+    source: apps/tedris/app/calendar/[file]/route.ts:17
+
+  # ---- decks: the deck file routes (tedris, nazar) and the legacy JSON readers (tedris, nizam) ----
+  webExportCards:
+    route: GET /api/decks/{id}/export
+    summary: A deck's cards as an xlsx or csv file, through tedris
+    description: >-
+      The "Dışa aktar" button of the tedris deck page (xlsx only). The route hands the request on to tedrisat with the caller's own access token and gives
+      the answer back as it came, body and status included, with only the content-type, content-disposition, content-length and retry-after headers; the refusals
+      of tedrisat (403, 404, 429) are the page's to show. Only the deck's author gets a file.
+    needs: >-
+      a signed-in browser (getAccessToken). Who may export is tedrisat's decision: deck.manage_cards on the deck, as exportCards
+    query:
+      type: object
+      properties:
+        format:
+          enum: [xlsx, csv]
+          default: xlsx
+          description: Any other value is 400.
+    result:
+      status: 200
+      type: string
+      format: binary
+      description: >-
+        The file as tedrisat sent it, with its Content-Disposition (an attachment named for the deck) and Content-Type.
+    refusals:
+      HTTP_400:
+        status: 400
+        note: 'The id is not a uuid, or format is neither xlsx nor csv. Body {error: "Bad request"}; tedrisat is not called.'
+        source: apps/tedris/app/api/decks/[id]/export/route.ts:14
+      HTTP_401:
+        status: 401
+        note: >-
+          No access token. Body {data: null, error: "Unauthorized"}; tedrisat is not called. A 401 from tedrisat is relayed as it came.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:28
+      DECK_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, with tedrisat's status and body, from exportCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, with tedrisat's status and body, from exportCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      DECK_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, with tedrisat's status and body, from exportCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      HTTP_429:
+        status: 429
+        note: Relayed as it came, with tedrisat's status and body, from exportCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      HTTP_502:
+        status: 502
+        note: 'The call to tedrisat itself failed. Body {data: null, error: "Failed to reach the service"}.'
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:55
+    sideEffects:
+    - >-
+      calls: exportCards (tedrisat GET /flashcard/decks/{deckId}/cards/bulk/export?format=) with the caller's bearer token
+    note: Served by tedris only (apps/tedris/app/api/decks/[id]/export/route.ts:7).
+    source: apps/tedris/app/api/decks/[id]/export/route.ts:7
+
+  webImportCards:
+    route: POST /api/decks/{id}/import
+    summary: A csv or xlsx file of cards into a deck, through tedris
+    description: >-
+      The "İçe aktar" dialog of the tedris deck page. The route reads the multipart form, takes its `file` part, packs it into a new FormData (any other field
+      is dropped) and hands it on to tedrisat with the caller's access token; tedrisat's answer comes back as it came, so the 422 with its row errors (context.errors)
+      is the dialog's to show. The size (5 MB) and the type are tedrisat's checks. Only the deck's author may.
+    needs: >-
+      a signed-in browser (getAccessToken). Who may import is tedrisat's decision: deck.create_card on the deck, as importCards
+    body:
+      type: object
+      required: [file]
+      description: multipart/form-data
+      properties:
+        file:
+          type: string
+          format: binary
+          description: A csv, text or xlsx file of cards; at most 5 MB at tedrisat.
+    result:
+      type: object
+      required: [count]
+      properties:
+        count: {type: integer}
+      status: 201
+    refusals:
+      HTTP_400:
+        status: 400
+        note: >-
+          The id is not a uuid, or the multipart body has no `file` part. Body {error: "Bad request"}; tedrisat is not called. Tedrisat's own HTTP_400 is
+          relayed under the same code.
+        source: apps/tedris/app/api/decks/[id]/import/route.ts:14
+      HTTP_401:
+        status: 401
+        note: >-
+          No access token. Body {data: null, error: "Unauthorized"}; tedrisat is not called. A 401 from tedrisat is relayed as it came.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:28
+      DECK_NOT_FOUND:
+        status: 404
+        note: Relayed as it came, with tedrisat's status and body, from importCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      AUTHZ_FORBIDDEN:
+        status: 403
+        note: Relayed as it came, with tedrisat's status and body, from importCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      BULK_ROW_LIMIT_EXCEEDED:
+        status: 422
+        note: Relayed as it came, with tedrisat's status and body, from importCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      BULK_VALIDATION_ERROR:
+        status: 422
+        note: Relayed as it came, with tedrisat's status and body, from importCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      HTTP_429:
+        status: 429
+        note: Relayed as it came, with tedrisat's status and body, from importCards.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      INTERNAL_ERROR:
+        status: 500
+        note: >-
+          Relayed as it came, with tedrisat's status and body, from importCards. (a 500 INTERNAL_ERROR body with a correlationId)
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:51
+      HTTP_502:
+        status: 502
+        note: 'The call to tedrisat itself failed. Body {data: null, error: "Failed to reach the service"}.'
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:55
+    sideEffects:
+    - >-
+      calls: importCards (tedrisat POST /flashcard/decks/{deckId}/cards/bulk/import) with the caller's bearer token; the cards are written by tedrisat
+    note: Served by tedris only (apps/tedris/app/api/decks/[id]/import/route.ts:7).
+    source: apps/tedris/app/api/decks/[id]/import/route.ts:7
+
+  webDownloadCardSample:
+    route: GET /api/decks/sample
+    summary: The card import template, through tedris
+    description: >-
+      The template links of the tedris "İçe aktar" dialog, the same for every deck. The route hands the request on to tedrisat with the caller's access token
+      and gives the answer back as it came.
+    needs: a signed-in browser (getAccessToken); the tedrisat route itself needs no permission (downloadCardSample)
+    query:
+      type: object
+      properties:
+        format:
+          enum: [xlsx, csv]
+          default: xlsx
+          description: Any other value is 400.
+    result:
+      status: 200
+      type: string
+      format: binary
+      description: The template as tedrisat sent it.
+    refusals:
+      HTTP_400:
+        status: 400
+        note: 'format is neither xlsx nor csv. Body {error: "Bad request"}.'
+        source: apps/tedris/app/api/decks/sample/route.ts:8
+      HTTP_401:
+        status: 401
+        note: >-
+          No access token (body {data: null, error: "Unauthorized"}: the web layer requires a token though the tedrisat route is exempt), or a 401 from tedrisat
+          relayed as it came.
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:28
+      HTTP_502:
+        status: 502
+        note: 'The call to tedrisat itself failed. Body {data: null, error: "Failed to reach the service"}.'
+        source: apps/tedris/lib/tedrisat-file-proxy.ts:55
+    sideEffects:
+    - 'calls: downloadCardSample (tedrisat GET /flashcard/cards/bulk/sample?format=) with the caller''s bearer token'
+    note: >-
+      Served by tedris (apps/tedris/app/api/decks/sample/route.ts:5). Nazar has its own route at the same address and answers differently: see webDownloadCardSampleNazar.
+    source: apps/tedris/app/api/decks/sample/route.ts:5
+
+  webDownloadCardSampleNazar:
+    route: GET /api/decks/sample
+    summary: The card import template, through nazar
+    description: >-
+      The "xlsx" and "csv" template links of nazar's "İçe aktar" dialog (plain <a download>). Unlike tedris, nazar calls tedrisat through the generated client
+      (cards.getSampleFileRaw) and builds its own response: format=csv gives csv and any other value, or none, gives xlsx, never a 400; a caller with no session
+      is redirected to sign-in; and any failure of the call is an empty 502.
+    needs: >-
+      a signed-in browser: tedrisatApi() redirects a caller with no session to sign-in. The tedrisat route itself needs no permission (downloadCardSample)
+    query:
+      type: object
+      properties:
+        format:
+          enum: [xlsx, csv]
+          default: xlsx
+          description: csv gives csv; anything else gives xlsx.
+    result:
+      status: 200
+      type: string
+      format: binary
+      description: >-
+        The template's bytes. Content-Type text/csv; charset=utf-8 or the spreadsheetml sheet type; Content-Disposition: attachment; filename="deste-ornek.<format>";
+        Cache-Control: no-store.
+    refusals:
+      redirectToSignIn:
+        status: 307
+        redirect: the app's sign-in page, keeping callbackUrl
+        note: >-
+          No usable session: requireAccessToken redirects (Next's redirect() from a route handler, 307; not run) and the route rethrows it.
+        source: apps/nazar/lib/tedrisat-api.ts:21
+      HTTP_502:
+        status: 502
+        note: >-
+          Every other failure, tedrisat's refusals included: an empty body, so the page behind the <a download> says nothing (F-D1-19).
+        source: apps/nazar/app/api/decks/sample/route.ts:31
+    sideEffects:
+    - 'calls: downloadCardSample (tedrisat GET /flashcard/cards/bulk/sample?format=) with the caller''s bearer token'
+    note: >-
+      Served by nazar only (apps/nazar/app/api/decks/sample/route.ts:12). Tedris answers the same address with webDownloadCardSample.
+    source: apps/nazar/app/api/decks/sample/route.ts:12
+
+  webListDecks:
+    route: GET /api/decks
+    summary: The caller's decks as JSON, through tedris or nizam
+    description: >-
+      A legacy reader: it calls listDecks with the caller's token. tedris wraps the list as {data, error: null}; nizam answers the list itself. Every failure
+      of the call, tedrisat's own 401, 403 and 404 included, is flattened into a 500 whose error text is "Failed to fetch decks" (tedris) or "Failed to fetch
+      card" (nizam). Called by no page of the app (DCK-22); the route stays reachable.
+    needs: a signed-in browser (getAccessToken); what the caller sees is tedrisat's decision, as listDecks
+    result:
+      status: 200
+      oneOf:
+      - type: object
+        required: [data, error]
+        description: tedris
+        properties:
+          data:
+            type: array
+            items: {type: object, references: Deck}
+          error: {type: 'null'}
+      - type: array
+        description: nizam
+        items: {type: object, references: Deck}
+    refusals:
+      HTTP_401:
+        status: 401
+        note: 'No access token. Body {data: null, error: "Unauthorized"} (tedris) or {error: "Unauthorized"} (nizam).'
+        source: apps/tedris/app/api/decks/route.ts:11
+      HTTP_500:
+        status: 500
+        note: >-
+          Any failure of the call. Body {data: null, error: "Failed to fetch decks"} (tedris) or {error: "Failed to fetch card"} (nizam, whose text names
+          a card).
+        source: apps/tedris/app/api/decks/route.ts:30
+    sideEffects:
+    - 'calls: listDecks (tedrisat GET /flashcard/decks) with the caller''s bearer token'
+    note: Served by tedris (apps/tedris/app/api/decks/route.ts:6) and nizam (apps/nizam/app/api/decks/route.ts:6).
+    source: apps/tedris/app/api/decks/route.ts:6
+
+  webGetDeck:
+    route: GET /api/decks/{id}
+    summary: One deck as JSON, through tedris or nizam
+    description: >-
+      A legacy reader: it calls getDeck with the caller's token and answers the deck itself. tedrisat's 403 and 404 come back as {error: "Forbidden"} and
+      {error: "Not found"}; nizam also maps a tedrisat 401 to {error: "Unauthorized"}, tedris does not (it falls into the 500). Called by no page of the app
+      (DCK-22); the route stays reachable.
+    needs: a signed-in browser (getAccessToken); who may read the deck is tedrisat's decision, as getDeck
+    result: {status: 200, returns: Deck}
+    refusals:
+      HTTP_401:
+        status: 401
+        note: 'No access token, or (nizam only) tedrisat refused the token. Body {error: "Unauthorized"}.'
+        source: apps/tedris/app/api/decks/[id]/route.ts:25
+      HTTP_403:
+        status: 403
+        note: 'Tedrisat answered 403 (a private deck of another person). Body {error: "Forbidden"}.'
+        source: apps/tedris/app/api/decks/[id]/route.ts:47
+      HTTP_404:
+        status: 404
+        note: >-
+          Tedrisat answered 404 (no such deck). Body {error: "Not found"}. The route's own {error: "Card not found"} would answer an empty 200 only: the generated
+          client throws on a 404.
+        source: apps/tedris/app/api/decks/[id]/route.ts:47
+      HTTP_500:
+        status: 500
+        note: >-
+          Any other failure, a malformed id included (tedrisat's 400). Body {error: "Failed to fetch card"}, a text that says card for a deck.
+        source: apps/tedris/app/api/decks/[id]/route.ts:60
+    sideEffects:
+    - 'calls: getDeck (tedrisat GET /flashcard/decks/{id}) with the caller''s bearer token'
+    note: >-
+      Served by tedris (apps/tedris/app/api/decks/[id]/route.ts:14) and nizam (apps/nizam/app/api/decks/[id]/route.ts:14).
+    source: apps/tedris/app/api/decks/[id]/route.ts:14
+
+  webListDeckCards:
+    route: GET /api/decks/{id}/cards
+    summary: A deck's cards with the caller's progress, as JSON, through tedris
+    description: >-
+      A legacy reader: it calls listDeckCards with the caller's token and include=progress, and wraps the list as {data, error: null}. Called by no page of
+      the app (DCK-22); the route stays reachable.
+    needs: a signed-in browser (getAccessToken); who may read the deck is tedrisat's decision, as listDeckCards
+    result:
+      status: 200
+      type: object
+      required: [data, error]
+      properties:
+        data:
+          type: array
+          items: {type: object, references: Flashcard}
+        error: {type: 'null'}
+    refusals:
+      HTTP_401:
+        status: 401
+        note: 'No access token. Body {data: null, error: "Unauthorized"}.'
+        source: apps/tedris/app/api/decks/[id]/cards/route.ts:26
+      HTTP_403:
+        status: 403
+        note: 'Tedrisat answered 403. Body {data: null, error: "Forbidden"}.'
+        source: apps/tedris/app/api/decks/[id]/cards/route.ts:48
+      HTTP_404:
+        status: 404
+        note: 'Tedrisat answered 404. Body {data: null, error: "Not found"}.'
+        source: apps/tedris/app/api/decks/[id]/cards/route.ts:48
+      HTTP_500:
+        status: 500
+        note: 'Any other failure. Body {data: null, error: "Failed to fetch cards"}.'
+        source: apps/tedris/app/api/decks/[id]/cards/route.ts:61
+    sideEffects:
+    - 'calls: listDeckCards (tedrisat GET /flashcard/cards?deckId=&include=progress) with the caller''s bearer token'
+    note: Served by tedris only (apps/tedris/app/api/decks/[id]/cards/route.ts:14).
+    source: apps/tedris/app/api/decks/[id]/cards/route.ts:14
+
+  webGetCard:
+    route: GET /api/cards/{id}
+    summary: One card as JSON, through tedris or nizam
+    description: >-
+      A legacy reader: it calls getCard with the caller's token and answers the card itself. tedrisat's 403 and 404 come back as {error: "Forbidden"} and
+      {error: "Not found"}; nizam also maps a tedrisat 401 to {error: "Unauthorized"}, tedris does not. Called by no page of the app (DCK-22); the route stays
+      reachable.
+    needs: a signed-in browser (getAccessToken); who may read the card is tedrisat's decision, as getCard
+    result: {status: 200, returns: Flashcard}
+    refusals:
+      HTTP_401:
+        status: 401
+        note: 'No access token, or (nizam only) tedrisat refused the token. Body {error: "Unauthorized"}.'
+        source: apps/tedris/app/api/cards/[id]/route.ts:25
+      HTTP_403:
+        status: 403
+        note: 'Tedrisat answered 403. Body {error: "Forbidden"}.'
+        source: apps/tedris/app/api/cards/[id]/route.ts:47
+      HTTP_404:
+        status: 404
+        note: 'Tedrisat answered 404 (no such card). Body {error: "Not found"}.'
+        source: apps/tedris/app/api/cards/[id]/route.ts:47
+      HTTP_500:
+        status: 500
+        note: 'Any other failure. Body {error: "Failed to fetch card"}.'
+        source: apps/tedris/app/api/cards/[id]/route.ts:60
+    sideEffects:
+    - 'calls: getCard (tedrisat GET /flashcard/cards/{id}) with the caller''s bearer token'
+    note: >-
+      Served by tedris (apps/tedris/app/api/cards/[id]/route.ts:14) and nizam (apps/nizam/app/api/cards/[id]/route.ts:14).
+    source: apps/tedris/app/api/cards/[id]/route.ts:14
+
+  # ---- audit log: nizam ----
+  webExportAuditLog:
+    route: GET /api/audit-log/export
+    summary: The audit log, filtered as the page is, as a CSV file, through nizam
+    description: >-
+      "Dışa aktar" of nizam's Denetim kaydı page. The page's own filters (actor, type, scope, range, and the days of a custom range) are read from the address,
+      turned into the API's query (a range becomes from and to as ISO times; a picked day starts and ends at UTC+3) and sent to exportAuditLog with the caller's
+      token. Tedrisat decides who may have the file and writes the export to the log; any refusal of tedrisat is passed on with its status and the one text
+      "Export failed". An unknown type, scope or range is dropped, as the page does.
+    needs: >-
+      a signed-in browser (getAccessToken). Who may export is tedrisat's decision: platform.audit_read, the başnazım, or a Medaris nazım holding it, as exportAuditLog
+    query:
+      type: object
+      properties:
+        actor: {type: string}
+        type:
+          enum:
+          - CONTENT_READ
+          - PRIVATE_DECK_READ
+          - PERSONAL_DATA_READ
+          - USER_LOOKUP
+          - GRANT
+          - ROLE_CHANGE
+          - POLICY_CHANGE
+          - BAN
+          - HIDE
+          - HOSTING
+          - TAKEOVER
+          - SELF_GRANT_REFUSED
+          - APPEAL
+          - PERMANENT_BAN
+          - PERMANENT_DELETE
+          - EXPORT
+        scope:
+          enum: [PLATFORM, KOSK, MADRASAH]
+        range:
+          enum: [24h, 7d, 30d, custom]
+        from:
+          type: string
+          format: date
+          description: Read only with range=custom; a day, YYYY-MM-DD.
+        to:
+          type: string
+          format: date
+          description: Read only with range=custom; a day, YYYY-MM-DD.
+    result:
+      status: 200
+      type: string
+      contentMediaType: text/csv; charset=utf-8
+      description: >-
+        The CSV tedrisat built, streamed. Content-Disposition: tedrisat's, else attachment; filename="denetim-kaydi.csv"; Cache-Control: private, no-store.
+    refusals:
+      HTTP_401:
+        status: 401
+        note: 'No access token. Body {error: "Unauthorized"}; tedrisat is not called.'
+        source: apps/nizam/app/api/audit-log/export/route.ts:18
+      HTTP_403:
+        status: 403
+        note: 'Tedrisat refused the caller (AUTHZ_FORBIDDEN). Body {error: "Export failed"}: the code is not passed on.'
+        source: apps/nizam/app/api/audit-log/export/route.ts:37
+      HTTP_400:
+        status: 400
+        note: 'Tedrisat refused the query (VALIDATION_ERROR). Body {error: "Export failed"}.'
+        source: apps/nizam/app/api/audit-log/export/route.ts:37
+      HTTP_502:
+        status: 502
+        note: 'The call to tedrisat itself failed. Body {error: "Export failed"}.'
+        source: apps/nizam/app/api/audit-log/export/route.ts:52
+    sideEffects:
+    - >-
+      calls: exportAuditLog (tedrisat GET /nizam/audit-log/export) with the caller's bearer token; tedrisat writes the audit row audit.export
+    note: >-
+      Served by nizam only (apps/nizam/app/api/audit-log/export/route.ts:16). Any other upstream status (401, 429, 500) is also passed on with {error: "Export
+      failed"}.
+    source: apps/nizam/app/api/audit-log/export/route.ts:16
+
+  # ---- landing: the contact form and the two ways into tedris ----
+  submitContactForm:
+    route: POST /api/iletisim
+    summary: Send the contact form's message to Medaris by e-mail
+    description: >-
+      The "Gönder" button of landing's İletişim page. The message is e-mailed to the address the page prints (selam@medaris.app) with the visitor as Reply-To.
+      Checked in this order: an SMTP sender (503 when LANDING SMTP_HOST is unset, or half-configured), the body (400), the throttle (429), the send (502).
+      It never pretends a message was delivered.
+    needs: 'nothing: anyone, no session; landing reads no cookie'
+    body:
+      type: object
+      required: [ad, eposta, konu, mesaj]
+      properties:
+        ad:
+          type: string
+          minLength: 1
+          maxLength: 120
+          sensitivity: personal
+          description: Trimmed.
+        eposta:
+          type: string
+          maxLength: 254
+          sensitivity: personal
+          description: Trimmed; one bare address, no name, brackets, whitespace or list separator.
+        konu:
+          enum: [genel, hesap, ders, kvkk, ders-vermek, diger]
+        mesaj: {type: string, minLength: 1, maxLength: 5000, description: Trimmed.}
+    result:
+      status: 200
+      type: object
+      required: [ok]
+      properties:
+        ok: {const: true}
+    refusals:
+      contact-delivery-not-configured:
+        status: 503
+        note: >-
+          SMTP_HOST is unset (no sender), or set and misconfigured (SmtpConfigError: SMTP_FROM not a bare address, a bad SMTP_SECURITY or SMTP_PORT, a user
+          without a password or the reverse, a password over SMTP_SECURITY=none). Body {error: "contact-delivery-not-configured"}. The page tells the visitor
+          where to write instead.
+        source: apps/landing/app/api/iletisim/route.ts:81
+      invalid:
+        status: 400
+        note: 'The body is not JSON or fails the schema. Body {error: "invalid", fields: [the names of the fields at fault]}.'
+        source: apps/landing/app/api/iletisim/route.ts:90
+      too-many:
+        status: 429
+        note: >-
+          More than 5 messages from one sender (the first x-forwarded-for, else x-real-ip, else "unknown") in 10 minutes, or 60 in all: per process, each
+          instance keeps its own window. Body {error: "too-many"}.
+        source: apps/landing/app/api/iletisim/route.ts:98
+      contact-send-failed:
+        status: 502
+        note: 'The SMTP server refused or could not be reached. Body {error: "contact-send-failed"}.'
+        source: apps/landing/app/api/iletisim/route.ts:107
+    sideEffects:
+    - >-
+      mail: one message to selam@medaris.app through the LANDING SMTP_* sender, Reply-To the visitor, subject "İletişim formu · <topic> · <name>", the text
+      "Ad soyad", "E-posta", "Konu" and the message (apps/landing/lib/contact-mail.ts:111)
+    note: >-
+      Served by landing only (apps/landing/app/api/iletisim/route.ts:59). The form keeps what was typed on every failure and shows one banner for all of them.
+    source: apps/landing/app/api/iletisim/route.ts:59
+
+  enterTedris:
+    route: GET /api/tedris/{intent}
+    summary: Send the visitor to tedris's registration or sign-in page
+    description: >-
+      The "Kayıt ol" and "Giriş yap" links of every landing page. tedris's own /auth/<intent> page starts the Keycloak round trip at once, so a visitor reaches
+      Keycloak's registration or login form in one click. The hop exists because tedris's origin is server configuration (TEDRIS_APP_URL, read on every request,
+      never at build time) while the landing pages are built statically. The address names no language: tedris reads the visitor's from the medaris-locale
+      cookie.
+    needs: 'nothing: anyone, no session'
+    result: {status: 307, redirect: <TEDRIS_APP_URL><path prefix>/auth/<intent>}
+    refusals:
+      HTTP_404:
+        status: 404
+        note: The intent is neither register nor signin. An empty body.
+        source: apps/landing/app/api/tedris/[intent]/route.ts:18
+      HTTP_503:
+        status: 503
+        note: >-
+          TEDRIS_APP_URL is not set: the plain text "TEDRIS_APP_URL is not configured", never a redirect to somewhere that only looks right.
+        source: apps/landing/app/api/tedris/[intent]/route.ts:23
+    note: >-
+      Served by landing only (apps/landing/app/api/tedris/[intent]/route.ts:12). The target's own work is startSignIn, with intent=register for the registration
+      form.
+    source: apps/landing/app/api/tedris/[intent]/route.ts:12
+
+  redirectToTedris:
+    route: GET /tedris/{path}
+    summary: Send the visitor on to a page of tedris
+    description: >-
+      A landing address that redirects to the same path on tedris-web: the "Keşfet" link (/tedris/discover) is its one caller in the pages. The path is zero
+      or more segments (the optional catch-all [[...path]], so /tedris itself goes to tedris's root), each re-encoded with encodeURIComponent. TEDRIS_APP_URL
+      is read on every request.
+    needs: 'nothing: anyone, no session'
+    result: {status: 307, redirect: <TEDRIS_APP_URL><path prefix>/<path>}
+    refusals:
+      HTTP_503:
+        status: 503
+        note: 'TEDRIS_APP_URL is not set: the plain text "TEDRIS_APP_URL is not configured".'
+        source: apps/landing/lib/tedris.ts:21
+    note: >-
+      Served by landing only (apps/landing/app/tedris/[[...path]]/route.ts:5; the redirect is apps/landing/lib/tedris.ts:17).
+    source: apps/landing/app/tedris/[[...path]]/route.ts:5
+
+invariants:
+  - id: web-token-stays-on-the-server
+    rule: >-
+      The browser holds no tedrisat token. Every route of the web apps that calls tedrisat for a person reads the access token of their session on the server
+      (getAccessToken) and adds it as a bearer; with none it answers at the route and does not call. The session route serves the user claims and expiresAt,
+      never a token. The one call made with no token is the calendar feed, whose address is the credential.
+    source: libs/services/src/file-proxy/file-proxy.ts:144
+  - id: web-return-to-is-same-origin
+    rule: >-
+      A callbackUrl is used only as a same-origin path with its query and fragment, at most 2048 characters, no control character and not under /api/auth;
+      anything else is replaced by the app's afterSignIn, so no auth route is an open redirect. The proxy and the sign-in redirect go through the same check.
+    source: libs/auth/src/server/return-to.ts:32
+  - id: web-sign-in-start-is-capped
+    rule: >-
+      One browser may start 5 sign-in round trips in 5 minutes (AUTH_SIGN_IN_LIMIT, <count>/<seconds>, sets it per app); the next start is answered ?error=SignInLimit
+      without asking Keycloak, and nothing starts another by itself. A visit that is only sent on because a session is already there counts too, so a page
+      that keeps sending a signed-in browser here cannot loop for free.
+    source: libs/auth/src/server/routes.ts:167
+  - id: web-sign-out-is-a-same-site-post
+    rule: >-
+      A session ends only through POST /api/auth/signout from the app's own origin: GET is 405, an Origin other than the app's or Sec-Fetch-Site: cross-site
+      is 403 before the IdP is asked. With an ID token it ends the Keycloak session too, with id_token_hint and post_logout_redirect_uri; the cookie goes
+      whatever the store answers.
+    source: libs/auth/src/server/routes.ts:351
+  - id: web-session-store-down-is-not-signed-out
+    rule: >-
+      When the session store cannot be asked, /api/auth/session says 503, never null: null would read as signed out and reload the page for a person who is
+      still signed in. The sign-in start refuses with OAuthSignin for the same reason, and the proxy decides nothing.
+    source: libs/auth/src/server/routes.ts:436
+  - id: web-backchannel-logout-token-is-used-once
+    rule: >-
+      A back-channel logout_token must verify against the realm's keys, the issuer and this app's client id, and its jti is accepted once (remembered for
+      JTI_TTL_MS, 3 minutes); it ends every session of the SSO session, or of the account when it names no sid. With the session in the cookie nothing can
+      be ended, and a valid token is answered 501 rather than 200.
+    source: libs/auth/src/server/routes.ts:495
+  - id: web-file-ids-are-uuids
+    rule: >-
+      The path ids of a file route are uuids, checked at the route before a token is asked for or tedrisat is called; anything else is 404 {code: NOT_FOUND},
+      whatever the method and even for a link followed as a page.
+    source: libs/services/src/file-proxy/file-proxy.ts:98
+  - id: web-file-proxy-sends-only-file-paths
+    rule: >-
+      The file proxy sends only a path that starts with /courses/ or /lessons/ and is made of segments of letters, digits, - and _, at most 512 characters:
+      no query, no fragment, no dot, no empty segment, no encoding. Anything else is 400 INVALID_PATH, unsent. It follows no redirect (redirect: error), so
+      the stream and the token never go anywhere else.
+    source: libs/services/src/file-proxy/file-proxy.ts:109
+  - id: web-every-file-route-builds-a-proxiable-path
+    rule: >-
+      Every file route builds a tedrisat path that the proxy accepts, so that what the page offers can be downloaded.
+    holds: false
+    finding: evaluation-export-invalid-path
+    note: >-
+      nazar's /api/files/courses/{courseId}/evaluations asks for /courses/<id>/evaluations/export?lang=<lang> (route.ts:23), and isProxiablePath refuses any
+      path with a query (file-proxy.ts:106-112; the proxy's own spec lists ?include=all among the refused paths), so "Excel indir" on the Değerlendirme page
+      is 400 INVALID_PATH on every call and tedrisat never sees it. The route was added on 13 November 2026, after the proxy (12 October); no spec or e2e
+      test downloads the sheet. Confirmed by calling proxyDownload on that path with a stub fetch (400 INVALID_PATH, fetch not called); not walked in a browser.
+      Fix: send lang as a path-safe segment, or let the proxy take a query of its own making.
+    source: apps/nazar/app/api/files/courses/[courseId]/evaluations/route.ts:24
+  - id: web-download-refusal-returns-to-the-page
+    rule: >-
+      A refused download is answered by what asked for it: a fetch() (Sec-Fetch-Dest: empty, and a link with the download attribute) gets the refusal as JSON
+      with tedrisat's status and body; a link followed as a page (Sec-Fetch-Dest: document, or Sec-Fetch-Mode: navigate where no destination is sent) gets
+      a 303: to the sign-in page with the page it was on as callbackUrl for a 401 (reauth when tedrisat refused the token), else back to that page with ?fileError=<forbidden
+      for 403, notFound for 400, 404 and 410, unavailable for 502, 503 and 504, failed for the rest>. A request that came from no page of this app (a typed
+      or pasted address) gets a plain text in three languages with the status. Only the four reasons ever reach the address, never tedrisat's own code.
+    source: libs/services/src/file-proxy/file-proxy.ts:351
+  - id: web-refused-download-keeps-the-page
+    rule: 'A download that is refused leaves the page as the person had it: focus, scroll and what they had typed.'
+    holds: false
+    finding: WRT-10
+    note: >-
+      The refusal is a 303 page navigation, so the whole celse page is loaded again: focus and scroll reset, and the text typed in the notes or the homework
+      note and not yet saved is lost, with no warning (WRT-13). The reason then appears as a toast, and on nazar's Değerlendirme page not even that, because
+      the page does not mount FileErrorNotice (F-D1-13). A fetch() download with the error shown in place would keep the page.
+    source: libs/services/src/file-proxy/file-proxy.ts:351
+  - id: web-sample-download-failure-is-explained
+    rule: A template or file download that fails says so to the person who asked for it.
+    holds: false
+    finding: F-D1-19
+    note: >-
+      nazar's template links are plain <a download> to /api/decks/sample (import-cards-dialog.tsx:134-138), and every failure of that route is an empty 502,
+      so the page says nothing. tedris's two links are plain <a download> as well (features/flashcards/components/import-cards-dialog.tsx:136, 142) and its
+      route answers a JSON refusal; what a browser does with that behind such a link was not verified.
+    source: apps/nazar/app/api/decks/sample/route.ts:31
+  - id: web-calendar-feed-address-is-the-credential
+    rule: >-
+      The subscription feed is read with no session: the 43 base64url characters and ".ics" of the address are checked at the web edge (a miss is 404 and
+      tedrisat is not called) and passed on with no Authorization header; the feed is never cached (no-store), marked noindex and answers inline. Which feed
+      the secret opens, and how often it may be read, is tedrisat's.
+    source: apps/tedris/app/calendar/[file]/route.ts:5
+  - id: web-contact-never-pretends-delivery
+    rule: >-
+      The contact form's route answers 200 only after the SMTP server took the message. With no sender, or a misconfigured one, it answers 503 contact-delivery-not-configured
+      and logs it, and the page tells the visitor where to write instead; a refused send is 502. A default local stack has no SMTP sender, so the form can
+      only reach its error state there.
+    source: apps/landing/app/api/iletisim/route.ts:76
+  - id: web-landing-reads-the-tedris-address-per-request
+    rule: >-
+      Landing's redirects into tedris read TEDRIS_APP_URL on every request, never at build time, so one image serves every environment. When it is unset they
+      answer 503 "TEDRIS_APP_URL is not configured" rather than send the visitor somewhere that only looks right.
+    source: apps/landing/lib/tedris.ts:18
+  - id: web-every-route-has-a-caller
+    rule: Every route handler of a web app is called by some page of that app.
+    holds: false
+    finding: DCK-22
+    note: >-
+      The GET handlers /api/decks, /api/decks/{id}, /api/decks/{id}/cards and /api/cards/{id} of tedris, and /api/decks, /api/decks/{id} and /api/cards/{id}
+      of nizam, have no caller in the app (a search for /api/decks and /api/cards finds only export, import and sample); they stay reachable. Two carry wrong
+      labels: the deck handler answers "Card not found" and "Failed to fetch card". In nizam the only reference is the dead hook useDeckCards, which fetches
+      /api/decks/{id}/cards, a route nizam does not have.
+    source: apps/tedris/app/api/decks/route.ts:6

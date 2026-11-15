@@ -1,0 +1,13 @@
+# The local stack as landing-web's bindings see it: everything local.base.binding.yaml shares, with landing-web as the
+# first app, where a navigation replay opens its pages. Mailpit's API is `mail`, for the `effects` that read a mail.
+schema: delurio-graph/0
+kind: binding
+extends: local.base.binding.yaml
+
+apps:
+  landing: http://localhost:4003
+  tedris: http://localhost:4000
+  nizam: http://localhost:4001
+  nazar: http://localhost:4002
+  keycloak: http://localhost:8080
+  mail: http://localhost:8025

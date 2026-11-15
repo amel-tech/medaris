@@ -1,0 +1,207 @@
+# The navigation graph of landing-web, the public site (apps/landing, port 4003): six pages, three route handlers that
+# only redirect, and the planned roadmap page. Written by hand from the code: landing has no extractor adapter, and
+# no catalog of its own. Every word a visitor sees is a Turkish literal in a content file or in the JSX, so
+# catalog/tr.json is made here: each value is copied letter for letter from the literal named by the `source` of the
+# page or entry that uses its key.
+# There is one person: the visitor. No guard, no session and no cookie decide anything on this site (middleware.ts is
+# next-intl only), and a signed-in tedris user sees what a visitor sees.
+# What the graph draws is the wide layout (768 px and up). Below it the header is another bar (see notModeled).
+schema: delurio-graph/0
+kind: nav
+id: landing.nav
+title: The Medaris public site (landing-web)
+status: captured
+locale: tr
+catalog: catalog/tr.json
+
+summary: >-
+  The home page, the questions, the contact form and the three legal pages, all behind one header and one footer.
+  Everything that leads into the apps goes through landing's own redirect routes: "Kayıt ol" and "Giriş yap" to
+  Keycloak's forms by way of tedris-web, "Dersleri keşfedin" to tedris-web's public Keşfet. Nothing links to nizam or
+  nazar. The roadmap page is planned (MDRS-246) and answers not found today.
+
+source:
+  repo: amel-tech/medaris
+  app: apps/landing
+  menu: apps/landing/components/site-footer.tsx
+  header: apps/landing/components/site-header.tsx
+  content: apps/landing/content
+
+frames:
+  site:
+    title: Every landing page (the header with the logo, the theme toggle, "Giriş yap" and "Kayıt ol"; the footer with five page links and GitHub)
+    menu: Footer
+    source: apps/landing/components/site-footer.tsx:17
+  bare:
+    title: No landing chrome (the route handlers that only redirect, and Next's built-in not-found page)
+  otherApp:
+    title: A page of another Medaris app or of Keycloak, opened by a link out of landing
+
+personas:
+  visitor:
+    title: Visitor
+    say: anyone who opens the public site; nothing decides what they see, signed in to tedris or not
+    facts: {}
+
+pages:
+  start: # the home page, Karşılama
+    route: /
+    title: Nav.home
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/page.tsx:189
+  faq:
+    route: /sss
+    title: Nav.faq
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/sss/page.tsx:10
+  contact: # the only form of the site; its states and its POST are drawn by landing.site.contact
+    route: /iletisim
+    title: Nav.contact
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/iletisim/page.tsx:11
+  terms:
+    route: /kullanim-sartlari
+    title: Nav.terms
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:10
+  cookies:
+    route: /cerezler
+    title: Nav.cookies
+    kind: screen
+    frame: site
+    source: apps/landing/app/[locale]/cerezler/page.tsx:11
+  privacy: # outside [locale] with a root layout of its own, at one fixed address for every language; same chrome
+    route: /aydinlatma-metni
+    title: Nav.privacy
+    kind: screen
+    frame: site
+    source: apps/landing/app/aydinlatma-metni/page.tsx:21
+
+  signInRoute: # GET /api/tedris/signin: 307 to <TEDRIS_APP_URL>/auth/signin, which starts the Keycloak round trip; 503 text when TEDRIS_APP_URL is unset
+    route: /api/tedris/signin
+    title: Landing's sign-in route (redirects through tedris-web to Keycloak)
+    kind: redirect
+    frame: bare
+    source: apps/landing/app/api/tedris/[intent]/route.ts:12
+  registerRoute: # GET /api/tedris/register: the same for the registration form; any other intent answers 404 with an empty body
+    route: /api/tedris/register
+    title: Landing's register route (redirects through tedris-web to Keycloak)
+    kind: redirect
+    frame: bare
+    source: apps/landing/app/api/tedris/[intent]/route.ts:12
+  discoverRoute: # GET /tedris/[[...path]]: 307 to <TEDRIS_APP_URL>/<path>, whatever the path; the site links only /tedris/discover
+    route: /tedris/discover
+    title: Landing's route into tedris-web (redirects to its Keşfet)
+    kind: redirect
+    frame: bare
+    source: apps/landing/app/tedris/[[...path]]/route.ts:5
+
+  realmSignIn: # tedris-web's /auth/signin answers with the redirect to the realm's sign-in form; the address carries a one-time session code
+    route: Keycloak sign-in form (realm medaris)
+    title: Keycloak's sign-in form
+    kind: external
+    frame: otherApp
+  realmRegister:
+    route: Keycloak registration form (realm medaris)
+    title: Keycloak's registration form
+    kind: external
+    frame: otherApp
+  tedrisDiscover: # tedris-web's own graph draws it; a visitor opens it without an account
+    route: tedris-web /discover
+    title: Tedris Keşfet (tedris-web)
+    kind: external
+    frame: otherApp
+  github: # opens in a new tab
+    route: https://github.com/amel-tech/medaris
+    title: Nav.github
+    kind: external
+    frame: otherApp
+    source: apps/landing/components/site-footer.tsx:12
+
+  roadmap: # PLANNED (MDRS-246, Backlog): no file, no link and no word of it exists in apps/landing; the address answers Next's not-found page
+    route: /yol-haritasi
+    title: Nav.roadmap
+    kind: missing
+    frame: site
+    evidence: grep for "roadmap" and "yol-haritasi" over apps/landing finds nothing; the issue's decision of 4 October is route /yol-haritasi, linked from the header and the footer
+
+entries:
+  # The header, on every page of the site. At 768 px and up (this graph) it is the wordmark bar; below it, the phone bar
+  # (site-header.tsx:31-53) has the same logo and sign-in but no registration link (L6).
+  - { from: frame:site, to: start, how: link, label: Nav.logo, source: "apps/landing/components/site-header.tsx:55" }
+  - { from: frame:site, to: signInRoute, how: link, label: Nav.signIn, source: "apps/landing/components/site-header.tsx:60" } # a plain <a>, not <Link>: it leaves the app
+  - { from: frame:site, to: registerRoute, how: link, label: Nav.register, source: "apps/landing/components/site-header.tsx:63" } # wide layout only (L6)
+
+  # The footer, on every page; the link of the page itself carries aria-current.
+  - { from: frame:site, to: privacy, how: menu, label: Nav.privacy, source: "apps/landing/components/site-footer.tsx:4" }
+  - { from: frame:site, to: faq, how: menu, label: Nav.faq, source: "apps/landing/components/site-footer.tsx:5" }
+  - { from: frame:site, to: contact, how: menu, label: Nav.contact, source: "apps/landing/components/site-footer.tsx:6" }
+  - { from: frame:site, to: terms, how: menu, label: Nav.terms, source: "apps/landing/components/site-footer.tsx:7" }
+  - { from: frame:site, to: cookies, how: menu, label: Nav.cookies, source: "apps/landing/components/site-footer.tsx:8" }
+  - { from: frame:site, to: github, how: menu, label: Nav.github, source: "apps/landing/components/site-footer.tsx:32" } # target=_blank with no spoken note (L5)
+  # PLANNED, MDRS-246 (decided 4 October: "linked from the header and the footer"): this link is not in the code, and
+  # its wording is not decided; "Yol haritası" is the page's name taken from its address. One entry stands for both
+  # places, and it is a `link`, not a `menu` entry: the check calls a menu entry to a missing page an error, and no menu
+  # leads there today. It is here so that the planned page is not an island; the binding skips it.
+  - { from: frame:site, to: roadmap, how: link, label: Nav.roadmap }
+
+  # What the redirect routes do: no click, the browser is sent on.
+  - { from: signInRoute, to: realmSignIn, how: auto, source: "apps/landing/lib/tedris-entry.ts:23" }
+  - { from: registerRoute, to: realmRegister, how: auto, source: "apps/landing/lib/tedris-entry.ts:23" }
+  - { from: discoverRoute, to: tedrisDiscover, how: auto, source: "apps/landing/lib/tedris.ts:17" }
+
+  # The home page. Where one button appears twice with one name, one entry stands for both (its line is the first).
+  - { from: start, to: registerRoute, how: link, label: Nav.registerAsStudent, source: "apps/landing/app/[locale]/page.tsx:224" } # the hero, and again in the closing (:407)
+  - { from: start, to: registerRoute, how: link, label: Nav.registerShort, source: "apps/landing/app/[locale]/page.tsx:278" } # the talebe door
+  - { from: start, to: discoverRoute, how: link, label: Nav.explore, source: "apps/landing/app/[locale]/page.tsx:236" } # the hero, and again in the talebe door (:284)
+  - { from: start, to: contact, how: link, label: Nav.writeUs, source: "apps/landing/app/[locale]/page.tsx:302" } # the medrese door; no topic is preselected
+  - { from: start, to: contact, how: link, label: Nav.writeForMadrasah, source: "apps/landing/app/[locale]/page.tsx:413" } # the closing
+  - { from: start, to: signInRoute, how: link, label: Nav.signIn, source: "apps/landing/app/[locale]/page.tsx:419" } # the closing, beside the header's
+  - { from: start, to: privacy, how: link, label: Nav.privacy, source: "apps/landing/app/[locale]/page.tsx:428" } # the closing's consent sentence
+  - { from: start, to: faq, how: link, label: Nav.faq, source: "apps/landing/app/[locale]/page.tsx:432" } # the closing's consent sentence
+
+  # The questions.
+  - { from: faq, to: contact, how: link, label: Nav.contactUs, source: "apps/landing/app/[locale]/sss/page.tsx:228" } # the aside card "Sorunuz burada yok mu?"
+  - { from: faq, to: privacy, how: link, label: Nav.privacy, source: "apps/landing/app/[locale]/sss/page.tsx:243" } # the aside card; also inline in answer 11 (:214), which is hidden until opened
+
+  # The contact page.
+  - { from: contact, to: privacy, how: link, label: Nav.privacy, source: "apps/landing/components/contact-form.tsx:229" } # under the form, and again in the card "İletişim bilgileri" (page.tsx:51)
+  - { from: contact, to: faq, how: link, label: Nav.faq, source: "apps/landing/app/[locale]/iletisim/page.tsx:63" } # the card "Önce bakmak isterseniz"
+  - { from: contact, to: start, how: link, label: Nav.backHome, data: true, source: "apps/landing/components/contact-form.tsx:85" } # only in the card that replaces the form after a message is sent; the same card repeats the link to the questions (:91)
+
+  # The legal pages: inline links only. The terms page's eleven contents links and its "7. bölüm" link stay on the page.
+  - { from: terms, to: contact, how: link, label: Nav.contact, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:93" } # also :498
+  - { from: terms, to: privacy, how: link, label: Nav.privacy, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:95" } # also :245, :426, :466
+  - { from: terms, to: cookies, how: link, label: Nav.cookies, source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:425" }
+  - { from: cookies, to: privacy, how: link, label: Nav.privacy, source: "apps/landing/app/[locale]/cerezler/page.tsx:156" }
+  - { from: cookies, to: terms, how: link, label: Nav.terms, source: "apps/landing/app/[locale]/cerezler/page.tsx:157" }
+  - { from: cookies, to: contact, how: link, label: Nav.contact, source: "apps/landing/app/[locale]/cerezler/page.tsx:158" }
+  # privacy has no link of its own: the notice names selam@medaris.app as text only (content/aydinlatma-metni.ts:30-32).
+
+goals:
+  - { id: visitor-starts-registering, say: "A visitor reaches Keycloak's registration form in one click from the home page", page: realmRegister, for: [visitor], within: 1 }
+  - { id: visitor-starts-signing-in, say: "A visitor reaches Keycloak's sign-in form in one click", page: realmSignIn, for: [visitor], within: 1 }
+  - { id: visitor-browses-courses-without-an-account, say: "A visitor looks at the courses in tedris-web's Keşfet in one click, with no account", page: tedrisDiscover, for: [visitor], within: 1 }
+  - { id: visitor-writes-to-medaris, say: "A visitor opens the contact page in one click", page: contact, for: [visitor], within: 1 }
+  - { id: visitor-reads-the-questions, say: "A visitor opens the questions in one click", page: faq, for: [visitor], within: 1 }
+  - { id: visitor-reads-the-legal-pages, say: "A visitor opens the privacy notice, the terms and the cookies in one click", page: privacy, for: [visitor], within: 1 }
+  - { id: visitor-reads-the-terms, say: "A visitor opens the terms in one click", page: terms, for: [visitor], within: 1 }
+  - { id: visitor-reads-the-cookies, say: "A visitor opens the cookies page in one click", page: cookies, for: [visitor], within: 1 }
+
+notModeled:
+  - "the phone layout (below 768 px): the header is another bar, the page's name sits in it, the sign-in link is an icon named Giriş yap, and there is no Kayıt ol link at all, so from the questions, the contact page and the legal pages a phone visitor cannot start registering (L6)"
+  - "links that stay on their page: the home page's Medreseniz için (#medreseler, whose target is not focusable, L8) and the eleven contents links of the terms page; the anchors are not pages"
+  - "mailto:selam@medaris.app, on the contact page and in its failure banner"
+  - "the contact form's POST /api/iletisim (200, 400, 429, 502, 503) and the card that replaces the form; landing.site.contact draws them, and only the success card's two links are entries here"
+  - "TEDRIS_APP_URL unset: the sign-in and register routes and /tedris/* answer 503 with a plain text, and an unknown intent under /api/tedris answers 404 with an empty body; landing.site.enterApp draws that"
+  - "the hop through tedris-web: the redirect routes land on tedris-web's /auth/signin or /auth/register, which start the Keycloak round trip; the graph draws the two as one automatic step"
+  - "the theme toggle in the header: it is a button, not a page; common.shell.theme draws it"
+  - "a signed-in tedris user who follows Giriş yap: tedris-web sends them on without a form; tedris.nav draws that side"
+  - "links into landing from other apps: the Keycloak registration form's privacy-notice box (to the production address, even on a local stack) and the footers of tedris and nizam; their own graphs draw them"
+  - "the draft notes of the terms and the privacy notice, shown only under next dev (L15): a walk on a development server and one on a production build differ there"
+  - "any address no page answers (a path below a page, a typo, /tr/sss): there is no not-found.tsx, error.tsx, global-error.tsx or loading.tsx under apps/landing/app, so Next draws its built-in not-found page, which was not opened in a browser and probably wears none of the landing chrome (L14); a page for it would be one nobody can reach by a link, which the check rejects, and /yol-haritasi answers it today"
+  - "what next-intl does with the prefixed forms (/tr/sss) was not verified"

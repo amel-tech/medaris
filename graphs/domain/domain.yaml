@@ -1,0 +1,471 @@
+# The data and the API of Medaris, read from the code as it is (domain.md of the inventory). One domain, split over files:
+# the head (this file: title, policies, cross-cutting invariants), entities-*.yaml (one file per group of tables), tedrisat-*.yaml (the
+# actions of the nine handler areas of apps/tedrisat), teskilat.yaml (the two routes of apps/teskilat) and web.yaml (the routes the web
+# apps answer themselves). Maps merge by key and `policies` and `invariants` join, so an id or a key is given once.
+# The actions of tedrisat do not repeat the 401 of AuthGuard (HTTP_401; invariant access-token-only) nor the 429 of the throttlers
+# (HTTP_429; invariant rate-limit-before-auth); a route with a budget of its own lists its 429. Routes are written with {param}.
+#
+# Shared refusal sites. Many handlers reach the same refusal; the area chapters cite them by tag, and each action lists them in
+# its own `refusals`. The tags are the inventory's, from call-graph reachability (they over-report; the corrections of
+# domain.md section 10 say where a site is real):
+#   S1-S4, S11 (53 and 26 handlers)  404 COURSE_NOT_FOUND   course.service.ts:306, 321, 348, 362; course.controller.ts:111 (a course that is absent, a draft or hidden to this caller, or a malformed id)
+#   S5 (39)                          404 MADRASAH_NOT_FOUND  madrasah.controller.ts:110
+#   S6-S8 (37)                       503 KEYCLOAK_ADMIN_UNAVAILABLE  keycloak-admin.service.ts:160, 167, 175 (real only where the failure is not swallowed, see keycloak-directory-failure-is-503)
+#   S9, S10, S15, S16 (30 and 14)    404 LESSON_NOT_FOUND    lesson.controller.ts:91, 95; course.service.ts:512, 517
+#   S12 (20)                         404 KOSK_NOT_FOUND      kosk.controller.ts:88
+#   S13 (19)                         403 SELF_GRANT_REFUSED  self-grant.guard.ts:91 (invariant self-grant-refused)
+#   S14 (16) and S18 (11)            403 AUTHZ_FORBIDDEN     platform-access.service.ts:46; assignment/admin/permission-admin.service.ts:91 (the message is "Caller is not authorized for the requested scope on this resource" unless a caller gives its own)
+#   S17 (12)                         503 STORAGE_NOT_CONFIGURED  storage/object-storage.ts:68 (the BUNNY_STORAGE_* keys are not set)
+#   S19 (10)                         409 COURSE_VERSION_CONFLICT  course.repository.ts:834 (checked only by PATCH /lessons/{id}, POST /lessons/{id}/cancel and the course saves that send expectedVersion)
+#
+# Background jobs (domain.md section 2): six in-process timers, none under the test runner. They are written as actions with no
+# route in the area files that own them: the recording encoding poll (60 s, only with the Bunny library configured), the recording
+# release poll (60 s), the exam reminder poll (60 s, 24 hours ahead), the lesson invitation sweep (5 minutes and after each write that
+# kicks it), the storage deletion sweep (5 minutes and on kick), and the partner registry seeder (once at boot).
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+title: The Medaris API
+summary: >-
+  The data and the API behind tedris, nazar and nizam: apps/tedrisat, a NestJS 11 service over PostgreSQL 17 through Drizzle, which
+  holds the whole domain (57 tables, 289 handlers). Keycloak signs people in and the API only reads it; the only realm role is
+  SYSTEM_ADMIN, the başnazım. Every other role, grant and policy lives in the database and is read on each decision, never from the
+  token. apps/teskilat has two routes and no domain (teskilat.yaml). The web apps' own HTTP routes (the auth routes, the file proxies,
+  the calendar, deck, audit-log export and landing routes) are written in web.yaml.
+status: captured
+source: apps/tedrisat/src/main.ts
+
+policies:
+  - actor: anonymous
+    needs: no token, on a route marked @AuthzPublic
+    where: >-
+      The resolver must answer the relationship ANONYMOUS, and only course.view, kosk.view, madrasah.view and deck.view are decided.
+      An unlisted köşk, a draft or hidden course, a private deck and any course of an unlisted köşk answer the same 404 as an absent id.
+      A token that is present and wrong is 401, never read as anonymous.
+    read: [Course, CourseWeek, Lesson, Kosk, Madrasah, Deck]
+    source: libs/common/src/authz/relations.ts:37
+
+  - actor: signed-in
+    needs: a valid access token
+    where: >-
+      The relationship PUBLIC holds course.view, course.enroll, kosk.view, madrasah.view, deck.view and deck.create_private.
+      A talebe who is barred or whose seat is REVOKED falls back to it.
+    read: [Course, CourseWeek, Lesson, Kosk, Madrasah, Deck]
+    write: [Enrollment, KoskFollower, Deck, UserProfile]
+    source: libs/common/src/authz/relations.ts:37
+
+  - actor: pending-talebe
+    needs: an enrollment with status PENDING
+    where: The relationship PENDING holds course.view only, so the course answers with the same body as for a stranger.
+    read: [Course, CourseWeek, Lesson]
+    source: libs/common/src/authz/relations.ts:37
+
+  - actor: enrolled-talebe
+    needs: an enrollment with status ENROLLED or COMPLETED, and no ban that bars the course
+    where: >-
+      The relationship ENROLLED holds course.view and course.view_details, which opens the content: links, agendas, kaynak, resources,
+      homework and exam flags. Notes, questions and hand-ins need that seat, an open course (a passive scope closes it even to the
+      enrolled) and no bar; a talebe who was removed, barred or left pending still reads and deletes what they wrote.
+    read: [Course, CourseWeek, Lesson, CourseMuderris, CourseResource, LessonResource, LessonRecording, LessonAssignment, LessonAssignmentFile, LessonExam, ExamResult, AssignmentEvaluation]
+    write: [Enrollment, LessonNote, LessonQuestion, LessonSubmission, SubmissionFile]
+    source: libs/common/src/authz/relations.ts:37
+
+  - actor: deck-owner
+    needs: being the author of the deck
+    where: The relationship DECK_OWNER holds deck.view, deck.create_card, deck.manage_private and deck.manage_cards on that deck.
+    read: [Deck, Flashcard, FlashcardProgress]
+    write: [Deck, Flashcard, FlashcardProgress]
+    source: libs/common/src/authz/relations.ts:37
+
+  - actor: system-admin
+    needs: the realm role SYSTEM_ADMIN in the access token (realm_access.roles)
+    where: >-
+      The başnazım passes every decision. Two exceptions are kept: it may only read another person's private deck, and that read is
+      audited as deck.admin_read; and opening the content of a passive scope is audited as scope.passive_open. It alone deletes for real
+      (course.delete, kosk.delete, madrasah.delete are held by no role, grant or relationship).
+    source: libs/common/src/authz/authz.service.ts:74
+
+  - actor: medaris-nazim
+    needs: the role MEDARIS_NAZIM, which lives in the platform scope
+    where: >-
+      Holds nothing by default: only what is granted to it, which for the platform scope means the platform.* codes (köşk create, edit
+      and nazım management, course hide, hosting grant, medrese create, edit, head and nazır management, köşk application decide, deck
+      publish, appeal decide, scoped and account bans, audit read, inactive scopes, youtube, policy edit, partner management).
+    source: libs/common/src/authz/permissions.ts:352
+
+  - actor: kosk-nazim
+    needs: the role KOSK_NAZIM in the köşk
+    where: >-
+      Holds every köşk- and course-scoped code in its köşk and in the courses held there. Not course.open_standalone and the müderris
+      management in a course of a medrese (notInMadrasahCourse). The köşk-wide list of pending enrollments is the nazım's alone, though its
+      code is reachable by grantees and the başnazım.
+    read: [Kosk, Course, CourseWeek, Lesson, Enrollment, MadrasahKoskHosting]
+    write: [Kosk, Course, CourseWeek, Lesson, CourseMuderris, Enrollment, LessonRecording, LessonAssignment, LessonExam, ExamResult, AssignmentEvaluation]
+    source: libs/common/src/authz/permissions.ts:352
+
+  - actor: medrese-basmuderris
+    needs: the role MEDRESE_BASMUDERRIS in the medrese
+    where: >-
+      Holds every medrese- and course-scoped code, in its medrese and its courses: course opening and hiding, müderris management,
+      students view, bans, appeals, settings, nazır appointment, off-site course requests, plus the course codes.
+    read: [Madrasah, MadrasahSettings, Course, CourseWeek, Lesson, Enrollment]
+    write: [MadrasahSettings, Course, CourseWeek, Lesson, CourseMuderris, Enrollment]
+    source: libs/common/src/authz/permissions.ts:352
+
+  - actor: medrese-nazir
+    needs: the role MEDRESE_NAZIR in the medrese, and a grant
+    where: >-
+      Holds nothing by default: only the codes and groups granted to it in that medrese, never beyond its role.
+    source: libs/common/src/authz/permissions.ts:352
+
+  - actor: muderris
+    needs: the role MUDERRIS in the course
+    where: >-
+      Holds every course-scoped code in its course: editing, publishing, settings, sessions, recordings, roster decisions, homework
+      review, exam marks, course decks, course nazırs. One müderris of a course may be its imam (isImam).
+    read: [Course, CourseWeek, Lesson, CourseResource, LessonResource, LessonRecording, LessonQuestion, LessonSubmission, LessonAssignment, LessonExam, ExamResult, Enrollment]
+    write: [Course, CourseWeek, Lesson, CourseMuderris, CourseResource, LessonResource, LessonRecording, LessonQuestion, LessonAssignment, LessonAssignmentFile, SubmissionReviewFile, AssignmentEvaluation, LessonExam, ExamResult, Enrollment]
+    source: libs/common/src/authz/permissions.ts:352
+
+  - actor: ders-nazir
+    needs: the role DERS_NAZIR in the course, and a grant
+    where: >-
+      Holds nothing by default: only the codes and groups granted to it in that course.
+    source: libs/common/src/authz/permissions.ts:352
+
+  - actor: grantee
+    needs: a live permission grant, directly or through a group
+    where: >-
+      A grant counts only while its holder still holds a role in the grant's scope or above, and only for a code that is grantable and
+      reaches that scope type. Its end is the earlier of its own end and the latest end of the roles that cover it. Course-scoped codes
+      held at a köşk or a medrese reach every course of that scope. Naming oneself into a role or codes one does not hold is refused.
+    read: [PermissionGrant, PermissionGroup, PermissionGroupItem, RoleAssignment]
+    source: libs/common/src/authz/effective-permissions.ts:263
+
+  - actor: partner-application
+    needs: a token whose azp is a registered, enabled partner and whose realm role is partner-enrollment, on /integrations/* only
+    where: >-
+      The partner guard sets request.partner and never request.user: no user sync, no user throttle, and the partner token is refused
+      on every ordinary route. With no registered partner every /integrations/* request is 404, worded as for a route that does not exist.
+      Its own budget is 600 requests a minute per partner and route.
+    read: [IntegrationPartner, PartnerCourseCode, Course]
+    write: [Enrollment, PartnerEnrollmentLink]
+    source: apps/tedrisat/src/integration/partner.guard.ts
+
+invariants:
+  # The decision engine and the request pipeline (domain.md section 12, the cross-cutting part)
+  - id: closed-by-default
+    rule: >-
+      A permission nobody holds on the resource denies. There is no role-by-scope matrix any more: a decision is the realm bypass, then
+      the caller's relationship, then the effective permissions, and it allows exactly when one wanted code is among them.
+    source: libs/common/src/authz/authz.service.ts:74
+
+  - id: every-handler-declares-its-access
+    rule: A handler on a guarded controller that names no @Authz, @AuthzExempt or @AuthzPublic is denied.
+    holds: false
+    finding: MDRS-44
+    note: >-
+      AuthzGuard still passes a handler with no @Authz metadata, deliberately and "transitionally" (authz.guard.ts:36-62); MDRS-44 flips
+      it to deny. What keeps it from being reachable is AuthzWiringAssertion, which refuses to boot a handler annotated @Authz without
+      AuthzGuard and a handler behind AuthzGuard with none of the three marks. It does not look at controllers that carry AuthGuard only.
+      The inventory counts 90 of the 289 handlers on such controllers: 84 behind AuthGuard alone (appeals, bans, nizam permission
+      admin, my assignments, chief nazım, audit, platform policies, inactive scopes, deck review, köşk applications, course requests,
+      notifications, /me and /users, schedule, my calendar feed, partner admin, the two flashcard label controllers, the nizam
+      dashboard), 3 behind PartnerGuard and 3 with no guard (GET /, GET /health, GET /calendar/{file}, whose token is the credential).
+      Their authorization is entirely in their services (platform-access.service.ts is the shared check).
+    source: libs/common/src/authz/authz.guard.ts:62
+
+  - id: effective-permissions
+    rule: >-
+      A caller's effective permissions are what their relationship, their role defaults and their live grants give, minus what the
+      policies close, minus the content codes of a passive scope.
+    source: libs/common/src/authz/effective-permissions.ts:238
+
+  - id: permission-never-outlasts-its-role
+    rule: >-
+      A grant counts only while its holder still holds a role in the grant's scope or above, and it ends at the earlier of its own end
+      and the latest end of the roles that cover it.
+    source: libs/common/src/authz/effective-permissions.ts:263
+
+  - id: expiry-and-revocation-are-immediate
+    rule: >-
+      Roles and grants are filtered against the database clock in the loader queries, with no cache, so an ended or revoked one is gone
+      on the very next request. Roles and grants are not in the token.
+    source: apps/tedrisat/src/authz/tedrisat-authz-context.service.ts
+
+  - id: nesting
+    rule: >-
+      The platform contains everything; a köşk and a medrese each contain their courses, so a course-scoped code held there reaches them;
+      a köşk is not above a medrese and a medrese is not above a köşk. A köşk-level holder lacks course.open_standalone and the
+      müderris management in a course of a medrese.
+    source: libs/common/src/authz/effective-permissions.ts:109
+
+  - id: policy-closes-below
+    rule: >-
+      ALWAYS_REQUIRE_APPROVAL closes setting.approval_off, RECORDINGS_NEVER_PUBLIC closes setting.recordings_public and, for a medrese,
+      CLOSED_COURSE_REQUIRED closes setting.course_open, in every scope below the policy's level. A scope's own settings cannot reopen
+      it; a grant made by an authority above the policy's level survives it.
+    source: libs/common/src/authz/effective-permissions.ts:325
+
+  - id: passive-scope-closes-content
+    rule: >-
+      A scope that once had a manager and has none now (every held manager row gone) closes every content code to everyone except
+      holders of platform.inactive_scopes_manage and the nazım of the köşk the course is held in. Each such open writes the audit row
+      scope.passive_open; a page view or a non-content code opens nothing and writes nothing.
+    source: libs/common/src/authz/effective-permissions.ts:337
+
+  - id: hidden-kosk-closes-its-courses
+    rule: >-
+      A course of a hidden (archived) köşk is 404 COURSE_NOT_FOUND to everyone but holders of course.hide or platform.kosk_edit. It is
+      read from the köşk's own state, so a course opened after the hide is closed too and a restore reopens exactly what the hide closed.
+    source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts
+
+  - id: sysadmin-bypass-with-two-exceptions
+    rule: >-
+      SYSTEM_ADMIN holds every code, except that it may only read, never write, another person's private deck (the read is audited as
+      deck.admin_read); opening a passive scope's content is audited too.
+    source: libs/common/src/authz/authz.service.ts:222
+
+  - id: deleting-for-real-is-the-basnazims
+    rule: >-
+      course.delete, kosk.delete and madrasah.delete are implicit codes held by no role, grant or relationship: only SYSTEM_ADMIN
+      deletes, through the realm bypass; everyone else hides.
+    source: libs/common/src/authz/relations.ts:34
+
+  - id: self-grant-refused
+    rule: >-
+      Unless the caller is SYSTEM_ADMIN, naming oneself into a role or codes one does not already hold in the scope is
+      403 SELF_GRANT_REFUSED and writes the audit row permission.self_grant_refused. Some paths use always: true, so a nazır appointing
+      themselves and a Medaris nazımı seating themselves as köşk nazım are refused whatever they hold.
+    source: libs/common/src/authz/self-grant.guard.ts:60
+
+  - id: anonymous-is-narrow
+    rule: >-
+      A request with no token is decided only on @AuthzPublic routes with @Authz, only for course.view, kosk.view, madrasah.view and
+      deck.view, and only when the resolver answers ANONYMOUS. A bad token is never read as anonymous (401).
+    source: libs/common/src/authz/authz.service.ts:193
+
+  - id: unseen-looks-absent
+    rule: >-
+      A private deck, a hidden köşk's course and an unlisted köşk answer 404, not 403, to strangers, so an id leaks nothing: the same
+      answer as an id that does not exist.
+    source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts
+
+  - id: access-token-only
+    rule: >-
+      Only an access token is accepted: payload typ Bearer, signed RS256, ES256, EdDSA or Ed25519 against the realm's JWKS, issued by
+      KEYCLOAK_ISSUER, with one of KEYCLOAK_AUDIENCE, an exp that is enforced (no clock tolerance), a non-empty sub, and an azp in
+      KEYCLOAK_ALLOWED_CLIENTS when that list is set. An ID token, a refresh token, a token without exp and a partner application's
+      token on an ordinary route are refused 401.
+    source: libs/common/src/auth-guard/services/jwt-verifier.service.ts:257
+
+  - id: validation-is-strict
+    rule: >-
+      Every DTO is whitelisted and forbids unknown properties; a failed DTO is 400 VALIDATION_ERROR, whose message names the properties
+      and whose body never echoes the submitted value.
+    source: libs/common/src/pipes/validation.pipe.ts:40
+
+  - id: error-body-shape
+    rule: >-
+      A refusal is one JSON body with a type, a code, a status, a message and a timestamp. A MedarisError is
+      {type APP_ERROR, code, status, message, context?, timestamp} under its own code and its own status at every status: a 5xx one, such as
+      503 KEYCLOAK_ADMIN_UNAVAILABLE, stays 503 under its own code and only gains a correlationId, the uuid that the server log repeats
+      beside the error and its cause, which are logged and never sent. A Nest HttpException is {type HTTP_ERROR, code HTTP_<status>, status,
+      message, timestamp}: only its message is kept, so a pipe's refusal is HTTP_400 and a missing token HTTP_401. Anything else is
+      500 INTERNAL_ERROR, {type UNKNOWN_ERROR, message "Internal server error", correlationId, timestamp}, whatever its own message was.
+    note: >-
+      A RawBodyError would be sent as its own body, but no class in apps/ extends it. A 5xx HttpException has no correlationId: only a
+      MedarisError of 500 or more and the opaque 500 carry one.
+    source: libs/common/src/error/filters/global-exception.filter.ts:37
+
+  - id: rate-limit-before-auth
+    rule: >-
+      The address throttle (3000 requests per 60 s per route and client address) runs before AuthGuard, so an unauthenticated flood is
+      429 before any JWKS fetch; the per-user throttle (100 per 60 s per route, keyed by the token's sub) follows. A route may carry its
+      own budget (the calendar feed, the three bulk flashcard routes, /integrations/*).
+    source: libs/common/src/throttler/throttler.module.ts
+
+  - id: users-row-is-a-directory
+    rule: >-
+      The users table is written from tokens (a cache plus a periodic refresh), never read for authorization. A person can be linked as
+      nazım, müderris or nazır only when their users row exists (they have signed in) or the Keycloak directory finds them.
+    source: apps/tedrisat/src/user/user-sync.interceptor.ts
+
+  - id: gender-is-the-accounts
+    rule: >-
+      The token's gender claim (FEMALE or MALE, anything else is none) is mirrored into user_profiles.gender on sync, with the audit row
+      user.gender_change when it overwrites a different value; a profile edit that disagrees with the account's gender is
+      409 GENDER_MANAGED_BY_ACCOUNT.
+    source: apps/tedrisat/src/user/user-profile.service.ts:58
+
+  - id: gender-always-known
+    rule: >-
+      Every person's gender, FEMALE or MALE, is always known: it is required, because in-person seats are counted and the medreses that
+      need it are told whom to contact.
+    holds: false
+    finding: MDRS-284
+    note: >-
+      The realm makes the attribute required (config/keycloak/user-profile.json), but tedrisat enforces nothing: user_profiles.gender is
+      nullable with no database check, and no enrollment, approval, bulk, schedule or invitation path reads it (gender is read only
+      under apps/tedrisat/src/user/). Closing it is part of the planned in-person registration.
+    source: apps/tedrisat/src/database/schema/user-profile.schema.ts:33
+
+  - id: seat-quota-per-gender
+    rule: >-
+      An in-person session has a seat quota that is always kept apart for women and for men, and seats are given at approval in
+      application order.
+    holds: false
+    finding: MDRS-284
+    note: >-
+      Planned and not built: there is no capacity, quota (kontenjan) or waiting-list concept anywhere in the schema or in a service
+      (grep of kontenjan, capacity, quota and waitlist over apps/tedrisat/src finds nothing but unrelated "seats" wording).
+      CourseService.enroll decides only visibility, ban, REVOKED and PENDING versus ENROLLED. Course.inPerson and Lesson.inPersonOverride
+      are a label only.
+    source: apps/tedrisat/src/course/course.service.ts:1529
+
+  - id: user-lookup-needs-user-lookup
+    rule: >-
+      Looking an account up by e-mail needs the catalogue code user.lookup, for a Medaris nazımı as well as for a köşk nazım.
+    holds: false
+    finding: MDRS-206
+    note: >-
+      Neither lookup route asks for the code. GET /users admits SYSTEM_ADMIN or a held KOSK_NAZIM (user.service.ts:104-122), and
+      GET /users/lookup admits SYSTEM_ADMIN or the holder of any role, reads the realm and writes the audit row user.lookup even
+      with no match (user-directory.service.ts:36-52). A Medaris nazımı is refused by both.
+    source: apps/tedrisat/src/user/user.service.ts:104
+
+  - id: grantable-codes-are-asked-for
+    rule: Every permission code that can be granted is checked by some handler or by the engine.
+    holds: false
+    finding: MDRS-208
+    note: >-
+      Eight grantable codes gate nothing. Six have no enforcement point in apps/tedrisat/src or libs/common/src: deck.manage_kosk and
+      deck.propose_kosk (köşk decks and proposals check a KOSK_NAZIM or MUDERRIS role assignment instead), user.lookup,
+      permission_group.define, platform.youtube_manage and madrasah.admission_rules. Two, session.view_content and
+      recording.watch_restricted, appear only in the CONTENT_WORK set of effective-permissions.ts:201-212, where they imply
+      course.view_details and no route asks for them. They can be granted and show on the permission screens. The catalogue holds
+      81 codes: 64 listed (9 köşk, 1 köşk and course, 22 course, 1 köşk, medrese and course, 19 platform, 12 medrese), 14 implicit and
+      3 derived (setting.approval_off, setting.recordings_public, setting.course_open); 61 can be granted.
+    source: libs/common/src/authz/permissions.ts:33
+
+  # Keycloak, e-mail and notifications (domain.md section 6)
+  - id: keycloak-is-read-only
+    rule: >-
+      The API never creates, updates or disables a Keycloak user and never assigns a Keycloak role, and no ban touches Keycloak. It
+      makes four GET calls with a client-credentials service account (view-users, query-users, view-realm): by exact e-mail, by id
+      (twice, one also reading enabled and emailVerified, for partner enrollment) and by realm role. So a person to be appointed must
+      already have an account.
+    source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:92
+
+  - id: keycloak-directory-failure-is-503
+    rule: >-
+      A failure of the user directory (transport, HTTP or parse, each call with a 5 s timeout and one retry on 401) is
+      503 KEYCLOAK_ADMIN_UNAVAILABLE, and unset credentials are 503 KEYCLOAK_ADMIN_NOT_CONFIGURED, only where the failure is not swallowed:
+      appointing a course nazır or a medrese nazır, a köşk grant, a köşk create with nazıms, seating a köşk nazım, GET /users/lookup, bulk
+      enrollment by e-mail, the partner enrollment PUT and the appointee checks (findUnknownAccounts). Everywhere else the name stays null.
+    source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160
+
+  - id: notify-never-undoes-the-action
+    rule: >-
+      A notification is written by NotificationService.notify, and a failure to write it is logged and never undoes the action that
+      caused it. The stored row carries a type and params, never a sentence.
+    source: apps/tedrisat/src/notification/notification.service.ts:27
+
+  - id: mail-has-two-producers
+    rule: >-
+      Only two code paths send mail: the calendar invitations (an iTIP REQUEST, then CANCEL when the pair stops qualifying) and the exam
+      reminder. Both go only to a person with a verified e-mail whose users.lesson_invitation_emails is true, for an ENROLLED seat with no
+      open ban, and invitations only while the course is published, not hidden, in an unhidden köşk and in no passive scope. With no
+      SMTP_HOST nothing is sent, silently.
+    source: apps/tedrisat/src/lesson-invitation/lesson-invitation.service.ts
+
+  # Configuration switches (domain.md section 1)
+  - id: unset-config-degrades-by-switch
+    rule: >-
+      A missing key switches one capability off with its own answer: no BUNNY_STREAM_* and the recording upload routes answer 503; no
+      BUNNY_STORAGE_* and every file route answers 503 STORAGE_NOT_CONFIGURED; no TEDRIS_WEB_URL and the calendar link routes answer 503;
+      no KEYCLOAK_ADMIN_CLIENT_ID and SECRET and the directory lookups answer 503 KEYCLOAK_ADMIN_NOT_CONFIGURED; no SMTP_* and mail is
+      skipped silently; while PUBLIC_PROFILE_ENABLED is not true the three /public-profile routes answer 404 PUBLIC_PROFILE_UNAVAILABLE
+      to everyone. A boot with no issuer or audience fails.
+    source: apps/tedrisat/src/config/config.ts
+
+  # Data rules that no single entity holds
+  - id: unknown-id-is-404
+    rule: >-
+      An id that is not a uuid, or names nothing, answers its own 404 before anything else: COURSE_NOT_FOUND, LESSON_NOT_FOUND,
+      KOSK_NOT_FOUND or MADRASAH_NOT_FOUND.
+    source: apps/tedrisat/src/course/course.controller.ts:111
+
+  - id: data-user-columns-hold-a-sub
+    rule: >-
+      Every user column (userId, authorId, createdBy, grantedBy, decidedBy, requestedBy, archivedBy and the rest) holds the Keycloak sub as a
+      plain uuid and is never a foreign key, because a users row is written lazily when a person first calls the API. The same holds for
+      scopeId, which points at a köşk, a medrese or a course by scopeType, and for the records that must outlive what they name (bans,
+      the audit log, lesson invitations, the köşk an application opened).
+    source: apps/tedrisat/src/database/schema/user.schema.ts:11
+
+  - id: data-purge-deletes-the-course-tree
+    rule: >-
+      A köşk or a medrese deleted for real takes its followers, hosting rights, course requests, deck proposals and partner bindings with
+      it (and a medrese its settings and appeals), but not its courses: a course is restricted by its köşk and only set to null from its
+      medrese. The purge deletes the course tree itself in one transaction (resources, recordings, notes, questions, submissions and
+      files, assignments, files and evaluations, exams and results, enrollments, partner codes and links, müderris rows, role
+      assignments) and writes an audit row with a count per child table.
+    source: apps/tedrisat/src/course/course-purge.ts
+
+  # What the data model should keep and does not (found while writing the entities; each is also a note on the field it concerns)
+  - id: progress-follows-its-card
+    rule: A card's study progress exists only for a card that exists, so deleting a card or a deck leaves no progress rows behind.
+    holds: false
+    finding: progress-orphans
+    note: >-
+      FlashcardProgress.flashcardId has no foreign key (flashcard.schema.ts:34), so deleting a card or a deck leaves its progress rows,
+      invisible to the stats and never cleaned. Only the archive purge deletes them (archive/archive.repository.ts:833).
+      See FlashcardProgress in entities-decks.yaml.
+    source: apps/tedrisat/src/database/schema/flashcard.schema.ts:34
+
+  - id: card-type-matches-deck
+    rule: A card's type is its deck's cardType, so a deck holds cards of one kind.
+    holds: false
+    finding: no-card-type-match
+    note: >-
+      A deck has one cardType (MDRS-164) and each card keeps its own type, and no check compares the two, so a HADEETH card can be
+      written into a VOCABULARY deck. See Deck.cardType and Flashcard.type in entities-decks.yaml.
+    source: apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:21
+
+  - id: medrese-deck-is-writable
+    rule: Every kind of deck the sharing rule reads can be created through the API, a medrese deck included.
+    holds: false
+    finding: medrese-deck-unwritable
+    note: >-
+      The sharing rule reads decks.madrasah_id, but no endpoint sets it, so a medrese deck cannot be created and Deck.madrasahId is
+      always null in practice. See Deck.madrasahId in entities-decks.yaml.
+    source: apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:59
+
+  - id: ban-extension-names-its-origin
+    rule: A ban that was widened from another ban names the original ban in the bans table.
+    holds: false
+    finding: ban-extension-audit-only
+    note: >-
+      ban.extend records the original ban's id only in the details of the audit row (extendedFromBanId, ban.service.ts:301); the table
+      keeps extendedFromCourseId and has no column for the ban. See Ban.extendedFromCourseId in entities-moderation.yaml.
+    source: apps/tedrisat/src/ban/ban.service.ts:301
+
+  - id: every-notification-type-has-a-producer
+    rule: Every notification type the API declares is written by some code.
+    holds: false
+    finding: session-added-no-producer
+    note: >-
+      SESSION_ADDED is declared in NOTIFICATION_TYPES and nothing produces it: its own comment says RECORDING_ADDED, a recording
+      becoming READY for the first time, is the one written. See Notification.type in entities-notify.yaml.
+    source: apps/tedrisat/src/notification/notification-types.ts:20
+
+  - id: every-audit-filter-has-a-writer
+    rule: Every audit action the audit page filters on is written by some code.
+    holds: false
+    finding: audit-types-never-written
+    note: >-
+      The audit page's TAKEOVER filter matches permission.take_over and permission.drop, and no code writes either: a take-over is
+      recorded inside the details of madrasah_nazir.dismiss and madrasah.head_muderris.set. inactive_scope.view is filed under OTHER
+      and not under CONTENT_READ. See AuditLog.action in entities-moderation.yaml.
+    source: apps/tedrisat/src/audit/audit-types.ts:28

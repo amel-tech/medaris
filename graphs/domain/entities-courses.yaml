@@ -1,0 +1,186 @@
+# Courses, weeks, sessions, staff, resources and enrollments (domain.md section 7, C). Every foreign key below a course is
+# ON DELETE RESTRICT since MDRS-124: the purge (course/course-purge.ts) deletes the children itself in one transaction and writes an
+# audit row with a count per child table. `created_at` and `updated_at` of Course, CourseWeek, Lesson and Enrollment are timestamps
+# WITHOUT time zone (older tables). A "lesson" of the code is a session (celse) of the app; only the LIVE ones are sessions.
+# A user column holds a Keycloak sub and is no foreign key (invariant data-user-columns-hold-a-sub): it is marked `note: "Keycloak sub"`.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  Course: # a course (ders) of one köşk, optionally of one medrese
+    source: apps/tedrisat/src/database/schema/course.schema.ts:56
+    required: [id, koskId, authorId, title, level, coverHue, durationWeeks, status, grantsCertificate, requiresApproval, isClosed, inPerson, timeZone, version, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      koskId: { type: string, format: uuid, references: Kosk, note: "on delete restrict" }
+      madrasahId: { type: [string, "null"], format: uuid, references: Madrasah, note: "on delete set null: deleting the medrese leaves a köşk course. A medrese may open courses only in a köşk it holds a hosting right in" }
+      authorId: { type: string, format: uuid, note: "Keycloak sub" }
+      title: { type: string }
+      subtitle: { type: [string, "null"] }
+      description: { type: [string, "null"] }
+      category: { type: [string, "null"] }
+      language: { type: [string, "null"] }
+      level: { enum: [BEGINNER, INTERMEDIATE, ADVANCED], default: BEGINNER }
+      coverHue: { type: integer, default: 220 }
+      durationWeeks: { type: integer, default: 0 }
+      status: { enum: [DRAFT, PUBLISHED], default: DRAFT }
+      grantsCertificate: { type: boolean, default: false }
+      requiresApproval: { type: boolean, default: false, note: "every self-enrollment waits for approval" }
+      isClosed: { type: boolean, default: false, note: "a kapalı ders: its content and recordings are never opened to everyone. It does not block enrollment" }
+      coverLabel: { type: [string, "null"], note: "the short word printed on the cover" }
+      inPerson: { type: boolean, default: false, note: "yüz yüze: a label only, no address and no seats; each session may override it through Lesson.inPersonOverride" }
+      timeZone: { type: string, default: Europe/Istanbul, note: "an IANA zone; sessions are authored in it" }
+      version: { type: integer, default: 0, note: "the optimistic-concurrency counter: every write to the course or its syllabus bumps it, and a save that carries a stale value is 409 (the calendar entries' SEQUENCE is this version)" }
+      archivedAt: { type: [string, "null"], format: date-time }
+      archivedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      archivedLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null], note: "the level the hider acted at; a restore needs the same level or above" }
+      passiveSince: { type: [string, "null"], format: date-time, note: "no writer for courses in src; only read, by the invitation sweep. A course's passivity is derived from the role assignments (database/passive-courses.ts:15-45)" }
+      passiveReason: { type: [string, "null"], note: "as passiveSince: no writer" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> draft: a course is created DRAFT (course.repository.ts:445), or opened by a medrese (madrasah-course.repository.ts:190). Creation accepts status PUBLISHED, requiresApproval and isClosed with only course.open_standalone: the publish and settings gates run on PATCH and PUT, not on create"
+      - "draft -> published: a save that carries status, by a holder of course.publish (course.service.ts:951-985)"
+      - "published -> draft: the same save, back"
+      - "published | draft -> hidden: archivedAt, archivedBy and archivedLevel are set by a hide (course.repository.ts:1995-2030) or by the hide of its medrese, which cascades; a hidden course answers 404 COURSE_NOT_FOUND to anyone without a hide or restore code"
+      - "hidden -> published | draft: restored by someone at the level that hid it or above, with a shown parent (archive/restore-course.ts)"
+      - "any -> none: deleted for real, by the SYSTEM_ADMIN only, in one transaction with the audit row course.delete (course-purge.ts)"
+      - "requiresApproval and isClosed: switching either on needs course.settings; switching either off also needs the ability a policy may have closed, else 409 PLATFORM_POLICY_LOCKED (course.service.ts:947-1010)"
+
+  CourseWeek: # a week of a course's programme
+    source: apps/tedrisat/src/database/schema/course.schema.ts:124
+    required: [id, courseId, weekNumber, title, orderIndex, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course, note: "on delete restrict" }
+      weekNumber: { type: integer, note: "no unique index on (courseId, weekNumber)" }
+      title: { type: string }
+      summary: { type: [string, "null"] }
+      orderIndex: { type: integer, default: 0 }
+      archivedAt: { type: [string, "null"], format: date-time, note: "a week that a whole-course PUT drops is hidden, not deleted" }
+      archivedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      archivedLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null] }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> shown: created with the course, by a whole-course save, or by planning sessions, which adds a missing week as 'Hafta N' after the last"
+      - "shown -> hidden: the week hide (course.repository.ts:1668-1700) hides its live sessions at one instant with one stamp; a whole-course PUT that drops it hides it too"
+      - "hidden -> shown: restored at the same level or above (archive.repository.ts)"
+      - "shown -> none: a DELETE is refused while the week holds any session (MDRS-124); only the purge deletes rows"
+
+  Lesson: # a session (celse) of a week; the code calls it a lesson and its type is VIDEO, DOCUMENT, LIVE or QUIZ. Its status is NEVER stored
+    source: apps/tedrisat/src/database/schema/course.schema.ts:148
+    required: [id, weekId, title, type, isPreview, orderIndex, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      weekId: { type: string, format: uuid, references: CourseWeek, note: "on delete restrict" }
+      title: { type: string }
+      type: { enum: [VIDEO, DOCUMENT, LIVE, QUIZ], note: "only a LIVE lesson is a session: the session page, the schedule and the batch deal with LIVE lessons only" }
+      duration: { type: [string, "null"], deprecated: true, note: "free text that nothing reads or writes; migration 0019 copied the minutes out of it" }
+      durationMinutes: { type: [integer, "null"], note: "a session with none lasts DEFAULT_SESSION_MINUTES (60)" }
+      kaynak: { type: [string, "null"], note: "the source or reading line; course content, sent only to a caller with course.view_details (a sample session shows it to everyone)" }
+      scheduledAt: { type: [string, "null"], format: date-time }
+      meetingUrl: { type: [string, "null"], format: uri, maxLength: 500, note: "where talebe join and speak; course content, https of any host, null for a cancelled session even to content readers" }
+      liveStreamUrl: { type: [string, "null"], note: "an embeddable YouTube live link, stored normalised; course content, only on a LIVE, non-cancelled session" }
+      inPersonOverride: { type: [boolean, "null"], note: "column in_person: true or false overrides Course.inPerson, null follows it; the effective value is coalesce(lessons.in_person, courses.in_person)" }
+      recordingAvailableAt: { type: [string, "null"], format: date-time, note: "when talebe may watch the recording; null means as soon as it is READY" }
+      agenda: { type: [array, "null"], items: { type: object, required: [time, title], properties: { time: { type: string, maxLength: 40 }, title: { type: string, minLength: 1, maxLength: 200 } } } }
+      isPreview: { type: boolean, default: false, note: "a sample session: it also shows kaynak, agenda and its PUBLIC recording to a caller whose content is locked" }
+      orderIndex: { type: integer, default: 0 }
+      cancelledAt: { type: [string, "null"], format: date-time }
+      cancelReason: { type: [string, "null"], note: "course content" }
+      replacementLessonId: { type: [string, "null"], format: uuid, references: Lesson, note: "the make-up session of a cancelled one; on delete set null" }
+      archivedAt: { type: [string, "null"], format: date-time }
+      archivedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      archivedLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null] }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    # An index on scheduledAt (the calendar feed's range predicate).
+    lifecycle:
+      - "scheduled -> live: derived, never stored: the clock reaches scheduledAt (sessionStatus, course/domain/session-view.ts:126-139); a session with no scheduledAt is scheduled"
+      - "live -> ended: derived: scheduledAt plus durationMinutes has passed"
+      - "scheduled | live | ended -> cancelled: cancelledAt, cancelReason and optionally replacementLessonId are set, the audit action lesson.cancel is written (course.repository.ts:1335-1375); a second cancel is 409 LESSON_ALREADY_CANCELLED. The session stays in the programme, and a cancelled session takes no live stream link and no pasted recording"
+      - "shown -> hidden: archivedAt, archivedBy and archivedLevel are set (course.repository.ts:1619-1640), or a whole-course PUT drops it (:728-745)"
+      - "hidden -> shown: restored at the same level or above (archive.repository.ts:551)"
+
+  CourseMuderris: # the müderris list a course page SHOWS (name, title, bio, avatar). Authorization does not read it: it reads the MUDERRIS role assignments, and syncMuderrisAssignments keeps the two in step
+    source: apps/tedrisat/src/database/schema/course.schema.ts:223
+    required: [id, courseId, name, avatarHue, orderIndex]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course, note: "on delete restrict" }
+      userId: { type: [string, "null"], format: uuid, note: "Keycloak sub; null for a hoca with no account" }
+      name: { type: string }
+      title: { type: [string, "null"] }
+      bio: { type: [string, "null"] }
+      avatarHue: { type: integer, default: 220 }
+      orderIndex: { type: integer, default: 0 }
+      unvan: { type: [string, "null"], enum: [PROF_DR, DOC_DR, DR, MUDERRIS, MOLLA, MUFTU, SEYH, HAFIZ, null], note: "the hoca's title, per course; null shows '{name} Hoca'. The values come from libs/utils/src/hoca-unvan.js:16-25" }
+    # An index on (courseId, userId).
+    lifecycle:
+      - "none -> listed: a course is opened with its müderris list, a whole-course PUT adds a row, or a medrese or an inactive-scope assignment seats one (audit course.muderris_update)"
+      - "listed -> listed: the unvan is set or cleared (audit course.muderris_unvan_update); a row rebound to another account loses its unvan, the others keep theirs"
+      - "listed -> none: a save drops the row, and the person's MUDERRIS role assignment is revoked with it"
+
+  CourseResource: # a course-level resource: a link (MDRS-279), a file in Medaris storage (MDRS-287), or only a name and a line
+    source: apps/tedrisat/src/database/schema/course.schema.ts:269
+    required: [id, courseId, name, orderIndex]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course, note: "on delete restrict" }
+      name: { type: string }
+      meta: { type: [string, "null"] }
+      type: { type: [string, "null"] }
+      url: { type: [string, "null"], note: "course content; null for a file row, and for legacy rows that had no link" }
+      storageKey: { type: [string, "null"], unique: true, sensitivity: internal, note: "never leaves tedrisat; built by tedrisat from ids and a random uuid" }
+      fileName: { type: [string, "null"] }
+      contentType: { type: [string, "null"] }
+      sizeBytes: { type: [integer, "null"] }
+      orderIndex: { type: integer, default: 0 }
+    # Check course_resources_link_or_file: either storageKey, fileName, contentType and sizeBytes are all null, or all four are set and url is null.
+    lifecycle:
+      - "none -> listed: a whole-course save adds a link row (a new row needs a url), or the file upload route stores a file row"
+      - "listed -> none: a row left out of a whole-list save is deleted and its object queued in StorageDeletion; a file row refuses a url (400 RESOURCE_IS_FILE)"
+
+  LessonResource: # a session-level resource (MDRS-286): exactly one of an absolute http(s) link of at most 500 characters, or a stored file
+    source: apps/tedrisat/src/database/schema/course.schema.ts:300
+    required: [id, lessonId, name, orderIndex]
+    fields:
+      id: { type: string, format: uuid }
+      lessonId: { type: string, format: uuid, references: Lesson, note: "on delete restrict" }
+      name: { type: string, note: "the name is programme: read by whoever sees the session; the link or file is course content" }
+      meta: { type: [string, "null"] }
+      url: { type: [string, "null"], maxLength: 500 }
+      storageKey: { type: [string, "null"], unique: true, sensitivity: internal }
+      fileName: { type: [string, "null"] }
+      contentType: { type: [string, "null"] }
+      sizeBytes: { type: [integer, "null"] }
+      orderIndex: { type: integer, default: 0 }
+    # An index on lessonId. Check lesson_resources_link_or_file: url is set and the four file columns are null, or url is null and all four are set.
+    lifecycle:
+      - "none -> listed: a session save adds a link row, or the file upload route stores a file row"
+      - "listed -> none: a row left out of a list is deleted and its object queued in StorageDeletion"
+
+  Enrollment: # a talebe's seat in a course; also what makes a person a talebe of a medrese, derived from the enrolled or completed seats in its shown courses
+    source: apps/tedrisat/src/database/schema/course.schema.ts:326
+    key: [userId, courseId]
+    required: [userId, courseId, progress, status, createdAt, updatedAt]
+    fields:
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      courseId: { type: string, format: uuid, references: Course, note: "on delete restrict" }
+      studentName: { type: [string, "null"], sensitivity: personal, note: "what the roster shows; copied at enrollment time" }
+      studentEmail: { type: [string, "null"], format: email, sensitivity: personal, note: "what the roster shows; copied at enrollment time. A roster read is audited (course.roster_read)" }
+      progress: { type: integer, default: 0, note: "written by the talebe only against an ENROLLED or COMPLETED row; reaching 100 never completes the course" }
+      status: { enum: [PENDING, ENROLLED, COMPLETED, REVOKED], default: ENROLLED, note: "the declaration order of the enum is its sort order: PENDING was added before ENROLLED (migration 0010), REVOKED last (0039)" }
+      completedAt: { type: [string, "null"], format: date-time, note: "set when the course team completes; null otherwise (migration 0031 backfilled it from updatedAt)" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> pending: a self-enrollment lands PENDING when the course requires approval, or its köşk is unlisted, or the köşk's alwaysRequireApproval is on, or the platform policy ALWAYS_REQUIRE_APPROVAL is on, or the medrese's policyAlwaysApproval is on (forcesApproval); else it lands ENROLLED. A held REVOKED row refuses it (409 ENROLLMENT_STATE_CONFLICT), a barred talebe too (course.service.ts:1529-1567)"
+      - "none -> enrolled: a self-enrollment that needs no approval; a bulk add (audit enrollment.bulk_add); a partner enrollment (audit enrollment.partner_add)"
+      - "pending | revoked -> enrolled: the course team approves; refused for a COMPLETED row and for a barred talebe (course.service.ts:1642-1668)"
+      - "pending -> none: the course team rejects, with an optional reason (audit enrollment.reject), or the talebe withdraws"
+      - "enrolled -> completed: the course team completes (completedAt is set); reaching 100 progress does not"
+      - "completed -> enrolled: the course team reopens, if the talebe is not barred (completedAt is cleared)"
+      - "enrolled -> revoked: the course team removes the talebe with a required reason (audit enrollment.remove, completedAt cleared); a REVOKED talebe keeps the public page only and cannot re-apply on their own"
+      - "enrolled | pending -> none: the talebe leaves; COMPLETED and REVOKED rows cannot leave, and a barred talebe cannot leave either, because the seat stays while the ban does"

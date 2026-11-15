@@ -1,0 +1,81 @@
+# tedris.nav bound to the local stack: tedris-web on :4000, signed in as the seeded talebe through Keycloak's real form.
+#   node apps/engine/src/cli.ts replay graphs/tedris/nav --bind graphs/tedris/nav/binding.yaml --out <dir>
+# (run from the engine checkout; paths of the base are relative to graphs/bindings, so `root` is the base's and is not set
+# here). NOT RUN in the writing phase: nothing below has been replayed.
+#
+# What the base gives: browser (tr-TR, Europe/Istanbul), the `secret` dotenv and the `seed` json, the accounts and the real
+# sign-in, and the apps with tedris-web first, where a nav replay opens every page.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../bindings/local.tedris.binding.yaml
+
+# The routes' :params, from the ids the stack's seed.json holds (ids only). The seed does not hold a celse or a deck, so
+# these pages are not opened ("no sample for :lessonId", "no sample for :id") until it does: celse, celseWatch, deck,
+# deckCards, deckEdit, deckStudy. A replay of them needs `lessonId` (a celse of courses.open) and `id` (a deck of the
+# talebe), which the orchestrator's seed extension or a `setup` of this binding would have to give; asked for in the report.
+#   lessonId: '{seed.sessions.open.next}'   # proposed key, not in seed.json today
+#   id: '{seed.decks.own}'                  # proposed key, not in seed.json today
+samples:
+  koskId: '{seed.kosk}'
+  madrasahId: '{seed.madrasah}'
+  courseId: '{seed.courses.open}'
+  address: no-such-page # notFound: any address no page owns
+
+# One person is bound. The graph's `visitor` has no account to sign in as, and a replay binds a persona only to an account
+# (`as` must name one), so the visitor's views (the invitation links, the sign-in redirects) are read from the graph and
+# not replayed; the replay of a signed-out browser is a gap of the engine.
+personas:
+  talebe: { as: talebe }
+
+frames:
+  app:
+    # the wide bar; the phone's app bar is another header, hidden from 768 px
+    find: { css: 'header[data-system-chrome]' }
+    # where a page draws its own links and buttons. A page with the legacy wrapper has two mains (SHL-16 on /kosk-applications/new).
+    page: { role: main }
+
+pages:
+  # a redirect page answers at another address: the replay holds that a page stays where it was opened
+  start: { skip: "/ redirects (308 to /home, then the page's own redirect)" }
+  learning: { skip: 'a redirect to /discover' }
+  learningMyCourses: { skip: 'a redirect to /my-courses' }
+  learningCalendar: { skip: 'a redirect to /account/calendar' }
+  legacyStart: { skip: 'a redirect to /' }
+  legacyWelcome: { skip: 'a redirect to /' }
+  # signed in, the page goes on to the callback address at once
+  signIn: { skip: 'opened with a session it goes straight on to its callbackUrl ("/" when none): enterSignIn checks the session first (libs/auth/src/client/sign-in.ts:341)' }
+  register: { skip: 'the same page and the same check: enterSignIn does not read the intent, so with a session it goes on to the callbackUrl too (read from the code, not replayed)' }
+  # what shows each page opened
+  home:
+    shows: { role: heading, name: /^Selâmün aleyküm/ }
+  discover:
+    shows: { role: heading, name: Keşfet }
+  myCourses:
+    shows: { role: heading, name: Derslerim }
+  schedule:
+    shows: { role: heading, name: Programım }
+  decks:
+    shows: { role: heading, name: Desteler }
+  newKoskApplication:
+    shows: { role: heading, name: Köşk açma başvurusu }
+  signOut:
+    shows: { role: heading, name: Çıkış yapılsın mı? }
+  notFound:
+    shows: { role: heading, name: Sayfa bulunamadı }
+  accountPublicProfile:
+    # the switch is off (features/public-profile/availability.ts:14): the page is the not-found page at this address
+    shows: { role: heading, name: Sayfa bulunamadı }
+
+entries:
+  # the footer's link sits outside <main>, so the frame's `page` locator cannot find it
+  frame:app->landingPrivacyNotice:
+    { role: link, name: Aydınlatma Metni, within: { role: contentinfo } }
+  # the empty states of Desteler repeat these two links, so the first one is the header's
+  decks->decksExplore: { role: link, name: Desteleri keşfet, nth: 0 }
+  decks->decksCreate: { role: link, name: Deste oluştur, nth: 0 }
+  # these end the session or leave the app: never taken
+  signOut->start: { follow: false }
+  signOut->home: { follow: false }
+  account->signOut: { follow: false }
+  account->realmProfileUpdate: { follow: false }

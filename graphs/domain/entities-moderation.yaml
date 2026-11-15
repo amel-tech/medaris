@@ -1,0 +1,96 @@
+# H. Bans, appeals, audit: 4 tables (inventory/domain.md section 7, H).
+# None of these has a foreign key to a scope or to users: a ban, a permanent-ban request and an audit row are records
+# that outlive what they name. A field with `references:` and the note "no foreign key" is a logical reference only; a user
+# column holds a Keycloak sub. All timestamps here are with time zone.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  Ban: # a talebe barred from one course, one köşk or one medrese (MDRS-177, MDRS-187); the row is the ban, lifted and never deleted
+    source: apps/tedrisat/src/database/schema/ban.schema.ts:47
+    required: [id, userId, scope, reason, bannedBy, bannedRole, bannedTier, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid, note: "Keycloak sub; the banned talebe" }
+      koskId: { type: [string, "null"], format: uuid, references: Kosk, note: "no foreign key; set for a COURSE and a KOSK ban, null for a MADRASAH ban (check bans_madrasah_scope_columns)" }
+      madrasahId: { type: [string, "null"], format: uuid, references: Madrasah, note: "no foreign key; set exactly for a MADRASAH ban" }
+      courseId: { type: [string, "null"], format: uuid, references: Course, note: "no foreign key; set exactly for a COURSE ban (check bans_scope_matches_course)" }
+      scope: { enum: [COURSE, KOSK, MADRASAH] }
+      extendedFromCourseId: { type: [string, "null"], format: uuid, references: Course, note: "no foreign key; the course a KOSK or MADRASAH ban was widened from. The original ban is recorded only in the audit details of ban.extend (extendedFromBanId); this table has no column for it (inventory finding 'audit link')" }
+      reason: { type: string, sensitivity: internal, note: "the banner's own reason, read by whoever may lift; never returned to the talebe" }
+      bannedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      bannedRole: { enum: [MEDARIS_NAZIM, KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR, SYSTEM_ADMIN], note: "a text column: the six assigned roles or SYSTEM_ADMIN (ban/ban-tier.ts:32); the role the banner acted in" }
+      bannedTier: { type: integer, minimum: 1, maximum: 4, note: "the rank of that role, written once: COURSE 1, MADRASAH 2, KOSK 3, PLATFORM 4 (ban/ban-tier.ts:23); it decides who may lift (check bans_tier_range)" }
+      createdAt: { type: string, format: date-time }
+      liftedAt: { type: [string, "null"], format: date-time, note: "null while the ban is open. An open ban takes the talebe's courses out of their calendar and programme (database/enrolled-courses.ts:58), refuses new and approved enrollment (BanService.assertNotBarred) and resolves them to PUBLIC on the course (authz/tedrisat-role-resolver.service.ts). Set together with liftedBy (check bans_lift_complete)" }
+      liftedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      liftReason: { type: [string, "null"], sensitivity: internal }
+    lifecycle:
+      - "none -> open: a ban is placed (ban/ban.repository.ts:302); at most one open ban per person and scope (unique partial indexes bans_open_course_uq, bans_open_kosk_uq, bans_open_madrasah_uq), and a second request is the first again, because the insert is onConflictDoNothing; those who run a course cannot be barred (RUNS_COURSE_ROLES, ban/ban-tier.ts)"
+      - "open -> lifted: liftedAt, liftedBy and liftReason are set (ban/ban.repository.ts:347, audit ban.lift); only the tier that placed it or a higher one may lift (BanAuthority)"
+
+  BanPermanentRequest: # a medrese's request that a ban become permanent (MDRS-187); deciding it is a later phase (MDRS-194)
+    source: apps/tedrisat/src/database/schema/ban.schema.ts:110
+    required: [id, banId, reason, requestedBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      banId: { type: string, format: uuid, unique: true, references: Ban, note: "no foreign key; one request per ban (unique index ban_permanent_requests_ban_uq), so asking again is refused" }
+      reason: { type: string }
+      requestedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> requested: a request is filed (ban/ban.repository.ts:776, audit ban.permanent_request); nothing here decides it yet, the decision columns come with MDRS-194"
+
+  Appeal: # a medrese's appeal against a köşk's refusal of its course request; one per request
+    source: apps/tedrisat/src/database/schema/appeal.schema.ts:27
+    required: [id, madrasahId, courseRequestId, reason, status, createdBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      madrasahId: { type: string, format: uuid, references: Madrasah, note: "on delete cascade" }
+      courseRequestId: { type: string, format: uuid, unique: true, references: CourseRequest, note: "on delete cascade; one appeal per request (unique index appeals_course_request_uq): a second answers 409 APPEAL_EXISTS" }
+      reason: { type: string, maxLength: 1000, note: "at most 1000 characters (check appeals_reason_length; APPEAL_REASON_MAX, appeal.schema.ts:17)" }
+      status: { enum: [PENDING, ACCEPTED, REJECTED], default: PENDING, note: "a text column with no database check (appeal.schema.ts:14)" }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time }
+      decidedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      decidedAt: { type: [string, "null"], format: date-time }
+      decisionNote: { type: [string, "null"] }
+    lifecycle:
+      - "none -> PENDING: the medrese files an appeal against a REJECTED course request (appeal/appeal.repository.ts:118, audit appeal.create); one that is not REJECTED answers 409 APPEAL_REQUEST_NOT_REJECTED, an unknown one 404 APPEAL_REQUEST_NOT_FOUND"
+      - "PENDING -> ACCEPTED: the Medaris başnazım or a Medaris nazım holding platform.appeal_decide accepts; the course request goes back to PENDING with its decision cleared, only if it was REJECTED, so the köşk decides again (appeal/appeal.repository.ts:239, audit appeal.accept)"
+      - "PENDING -> REJECTED: refused with a decision note (audit appeal.reject); both decisions are conditional on the appeal still being PENDING"
+
+  AuditLog: # the append-only trail of the whole platform (nizam audit page); nothing updates or deletes a row and the API has no route that could
+    source: apps/tedrisat/src/database/schema/audit.schema.ts:19
+    required: [id, seq, actorId, action, entity, entityId, details, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      seq: { type: integer, readOnly: true, note: "generated always as identity (sequence audit_log_seq_seq); the number the audit page prints as the row's no" }
+      actorId: { type: string, format: uuid, note: "Keycloak sub" }
+      action:
+        type: string
+        note: >-
+          `<entity>.<verb>`, free text with no enum. Literals seen in src (partial): appeal.create|accept|reject,
+          assignment_evaluation.save, audit.export, ban.lift, ban.permanent_request, course.content_read,
+          course.hide|restore, course.open, course.partner_code_add|remove, course.roster_read,
+          course.muderris_update, course.muderris_unvan_update, course_nazir.assign|revoke|update,
+          course_request.create|accept|reject, deck.unpublish, deck.admin_read, deck.private-read,
+          enrollment.bulk_add|partner_add|reject|remove, exam.release, exam_result.save,
+          hosting_right.grant|revoke, inactive_scope.assign|view, integration_partner.create|disable|enable|kosk_bind|kosk_unbind|rename,
+          kosk.create|deactivate|policy_change|nazim.add|nazim.remove, kosk_application.approve|reject|contact_read,
+          lesson.cancel, lesson.recording_availability_set, madrasah.create|deactivate|settings.update|head_muderris.set,
+          madrasah_nazir.appoint|dismiss, medaris_nazim.appoint|dismiss,
+          permission.grant|retime|revoke|take_over|drop|self_grant_refused, permission_group.create|update|delete,
+          platform_policy.change, recording.add|update|upload_start|video_delete, resource.file_upload|file_delete,
+          scope.passive_open, submission.*, user.gender_change, user.lookup, and <entity>.hide|restore|delete
+          (archive/hide-audit.ts:20). The audit page groups them by LIKE rules (audit/audit-types.ts:16 AUDIT_TYPE_RULES):
+          CONTENT_READ, PRIVATE_DECK_READ, PERSONAL_DATA_READ, USER_LOOKUP, TAKEOVER, SELF_GRANT_REFUSED, GRANT,
+          ROLE_CHANGE, POLICY_CHANGE, BAN, HIDE, HOSTING, APPEAL, PERMANENT_BAN, PERMANENT_DELETE, EXPORT, else OTHER.
+          No code writes permission.take_over or permission.drop (a take-over is recorded inside the details of
+          madrasah_nazir.dismiss and madrasah.head_muderris.set), and inactive_scope.view falls under OTHER, not CONTENT_READ.
+      entity: { type: string }
+      entityId: { type: string, format: uuid, note: "any entity, no foreign key. Platform-level rows use 00000000-0000-0000-0000-000000000000 (platform_policy.change); a create route's authz row is filed under the actor's id with the real target in details.about (authz/tedrisat-authz-audit.service.ts:21)" }
+      details: { type: object, sensitivity: personal, note: "what was removed or changed: titles, counts, and in a purge the e-mails of removed talebe, and reasons" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> recorded: a row is written in the same transaction as the change it records, except authz's own rows, which write straight through DatabaseService (authz/tedrisat-authz-audit.service.ts); it is never updated or deleted"
