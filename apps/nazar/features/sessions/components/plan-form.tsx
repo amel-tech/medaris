@@ -186,6 +186,14 @@ export function PlanForm({
           Boolean(problems.duration))
       ) {
         setDetails(true);
+        // ...and taken to, since the fold opens above the submit button.
+        requestAnimationFrame(() =>
+          document
+            .querySelector<HTMLElement>(
+              '#plan-exam-details [aria-invalid="true"]'
+            )
+            ?.focus()
+        );
       }
       return;
     }

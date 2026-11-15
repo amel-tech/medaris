@@ -417,6 +417,8 @@ describe("Sınav (MDRS-248)", () => {
     expect(details()?.textContent).toContain(
       resources.tr.nazar.SessionPlan.errors.examMaxScore
     );
+    await new Promise((done) => requestAnimationFrame(() => done(null)));
+    expect(document.activeElement).toBe(field("maxScore"));
   });
 
   it("plans the exam with its defaults when the details stay closed", async () => {

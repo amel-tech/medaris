@@ -573,7 +573,7 @@
   "SessionPage": {
     "examWritten": "Yazılı",
     "examOral": "Şifahi",
-    "examMaxScore": "{max} puan",
+    "examMaxScore": "Tam puan {max}",
     "breadcrumb": "Sayfa yolu",
     "week": "Hafta {number}",
     "joinLabel": "Canlı ders",

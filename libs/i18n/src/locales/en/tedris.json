@@ -573,7 +573,7 @@
   "SessionPage": {
     "examWritten": "Written",
     "examOral": "Oral",
-    "examMaxScore": "{max} points",
+    "examMaxScore": "Full marks {max}",
     "breadcrumb": "Breadcrumb",
     "week": "Week {number}",
     "joinLabel": "Live session",

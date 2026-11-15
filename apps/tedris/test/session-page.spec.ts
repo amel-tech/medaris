@@ -1537,7 +1537,7 @@ describe("session page, an exam celse (MDRS-248)", () => {
       )?.[0] ?? "";
     expect(text(html)).toContain(resources.tr.tedris.CoursePage.examBadge);
     expect(text(html)).toContain(
-      `${tr.examWritten}·100 puan·Süleymaniye, 2. derslik`
+      `${tr.examWritten}·Tam puan 100·Süleymaniye, 2. derslik`
     );
     expect(html).toContain(
       '<p class="mds-body whitespace-pre-line" dir="auto" data-testid="session-exam-topics">Bina: mehmûz fiiller\nEmsile: sülâsî bablar</p>'

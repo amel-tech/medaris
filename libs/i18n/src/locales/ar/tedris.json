@@ -573,7 +573,7 @@
   "SessionPage": {
     "examWritten": "تحريري",
     "examOral": "شفهي",
-    "examMaxScore": "{max} درجة",
+    "examMaxScore": "الدرجة الكاملة {max}",
     "breadcrumb": "مسار الصفحة",
     "week": "الأسبوع {number}",
     "joinLabel": "درس مباشر",

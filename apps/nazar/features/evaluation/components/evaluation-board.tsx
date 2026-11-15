@@ -412,6 +412,8 @@ function ColumnScreen({
 /**
  * A choice of one drawn as joined chips (MDRS-248): each a button with
  * `aria-pressed`, the pressed one filled, so no row carries a primary button.
+ * Not `ChoiceChips`: its ToggleGroup lets the pressed chip be unpressed and
+ * takes the arrow keys, which here move between talebe.
  */
 function Segmented<V extends string>({
   legend,
@@ -467,9 +469,17 @@ function MarkRow({
   const noteId = `evaluation-note-box-${talebe.id}`;
   const name = talebe.name ?? t("unnamed");
 
+  const toggle = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     if (noting) box.current?.querySelector("input")?.focus();
   }, [noting]);
+  // A note saved, reverted after a failed save or changed elsewhere is what
+  // the box opens with next, never a stale draft that its blur would resend.
+  const kept = mark?.note ?? "";
+  useEffect(() => {
+    if (!noting) setDraft(kept);
+  }, [kept, noting]);
 
   const keep = () => {
     if (mark && noteBody(draft) !== mark.note) {
@@ -498,6 +508,7 @@ function MarkRow({
               ? t("noteWith", { name, note: mark.note })
               : t("noteLabel", { name })
           }
+          ref={toggle}
           aria-expanded={noting}
           aria-controls={noteId}
           className="min-inline-0"
@@ -535,10 +546,7 @@ function MarkRow({
               if (event.key === "Enter") event.currentTarget.blur();
               if (event.key === "Escape") {
                 // Back to the toggle, which saves the note on the way out.
-                event.currentTarget
-                  .closest("li")
-                  ?.querySelector<HTMLElement>("[aria-controls]")
-                  ?.focus();
+                toggle.current?.focus();
                 setNoting(false);
               }
             }}

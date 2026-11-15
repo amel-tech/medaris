@@ -73,7 +73,7 @@ export const MyGradesTab = ({ grades }: { grades: MyGradesResponse }) => {
         <span className="mds-caption shrink-0 text-neutral-muted">
           {t("gradesWeek", { week })}
         </span>
-        <bdi className="mds-label truncate">{title}</bdi>
+        <bdi className="mds-label min-inline-0 truncate">{title}</bdi>
       </span>
       <span className="shrink-0">{value}</span>
     </li>
