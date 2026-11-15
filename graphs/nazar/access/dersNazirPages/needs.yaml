@@ -1,0 +1,169 @@
+# What must exist for a ders nazırı to work in a course by the permissions the hoca gave them: nazar.access.dersNazirPages, written on
+# 15 Nov 2026 in the format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story; none is read off what
+# the page does today. Nothing here comes from planned.md: no planned feature (P-nn) names these pages. No replay has been run, so no
+# `walked` entry names a scenario: the e2e checks are the only evidence, and the replay of each binding file is the walk phase's.
+# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
+#   missing: menu-offers-only-what-opens, bans-page-opens-for-a-ban-code, refusal-says-whom-to-ask, refusal-says-the-course-is-passive,
+#            refusal-is-announced-and-leads-somewhere, one-name-for-the-deck-page
+#   unwalked: desk-pages-open (code, no e2e and no replay opens Talebeler, Ödevler, Ders destesi or Arşiv for a ders nazırı),
+#             genel-bakis-opens-for-every-post (code; no e2e opens Genel bakış as a ders nazırı with no code)
+kind: needs
+flow: nazar.access.dersNazirPages
+status: proposed
+
+needs:
+  - id: a-page-opens-by-the-codes-held
+    need: >-
+      A ders nazırı opens exactly the pages the permissions the hoca gave them open, each by any one of its own codes, and meets “Bu sayfaya
+      izniniz yok” on the rest, under the page's own title and with nothing of its body.
+    drawn: [judged, shown, a-nazir-with-no-code-meets-no-body, talebeler-needs-the-roster, sorular-needs-question-answer, nazirlar-needs-assign]
+    built:
+      - action: medaris.api:getMyCoursePermissions
+      - route: apps/nazar/features/account/course-permissions.ts:36
+      - route: apps/nazar/features/account/course-permissions.ts:86
+    walked:
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#4 (a1-a12), course-nazirs#5 (a8-a12, the tail)'
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#12 (a1, a2)'
+
+  - id: genel-bakis-opens-for-every-post
+    need: A ders nazırı whose post holds no permission still lands on a page of their course, the course's own, and not on a refusal.
+    drawn: [shown, genel-bakis-always-opens]
+    built:
+      - route: apps/nazar/features/course-overview/components/course-overview-page.tsx:32
+    # walked: nothing here. nazar.course.overview draws the page and its `bare` scenario is the same person; no e2e opens it as a ders nazırı with no code.
+
+  - id: menu-hides-the-three-entries-without-the-code
+    need: >-
+      The course menu leaves out Ödevler, Değerlendirme and Ders destesi for a person who does not hold submission.read, session.manage and
+      deck.manage_course, and draws them for one who does (MDRS-290).
+    drawn: [shown, menuHomework, menuEvaluation, menuDeck]
+    built:
+      - route: apps/nazar/features/shell/nav.ts:193
+    walked:
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#2 (a3)'
+
+  - id: menu-offers-only-what-opens
+    need: >-
+      The course menu offers a ders nazırı only the entries whose page their permissions open (Müfredat, Celseler, Talebeler, Sorular, Ders
+      kayıtları, Arşiv, Ders nazırları and Ders ayarları by their codes; Yasaklamalar by none), as it already does for three, so that
+      nobody is led to a refusal by the menu.
+    drawn: [shown, menuCurriculum, menuSessions, menuStudents, menuQuestions, menuRecordings, menuBans, menuArchive, menuNazirs, menuSettings]
+    missing: none # F-D2c-2, F-D1-29, F-L-20 (the nav graph's `menu-refused` check); decision D1; no Linear issue
+
+  - id: sorular-answered-by-a-holder-of-question-answer
+    need: >-
+      A ders nazırı reads and answers the questions of the course only while their post holds question.answer: without it the list is
+      refused (403) and an answer is refused as if the question were not there (404); with it they answer, and the answer is theirs.
+    drawn: [shown, NAZIR_ANSWERS, sorular-needs-question-answer, waitingBadge, answeredBadge]
+    built:
+      - action: medaris.api:listCourseQuestions
+      - action: medaris.api:answerLessonQuestion
+      - route: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:189
+    walked:
+      - e2e: apps/nazar/e2e/questions.e2e.ts
+        check: 'questions#2 (a1-a8), questions#3 (a1-a4)'
+
+  - id: a-passive-course-closes-the-content-codes
+    need: >-
+      When the course has no müderris the codes of its content (course.edit, session.manage, enrollment.*, question.answer, submission.read,
+      recording.*, week.hide) close for every ders nazırı at once, and the codes that are no content (course.settings, course.publish,
+      deck.manage_course, course_nazir.assign) stay (MDRS-135, MDRS-136).
+    drawn: [HOCA_LEAVES, a-passive-course-closes-content, a-passive-course-keeps-the-other-codes, ders-ayarlari-survives-a-passive-course]
+    built:
+      - route: libs/common/src/authz/effective-permissions.ts:337
+    walked:
+      - e2e: apps/nazar/e2e/questions.e2e.ts
+        check: 'questions#3 (a5-a10)'
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#14 (a14-a20, the tail; a20 is stale: F-D2c-14)'
+
+  - id: an-appointer-gives-nothing-and-ends-only-their-own
+    need: >-
+      A ders nazırı given only course_nazir.assign appoints a person who starts with no permission, is shown no box and no “İzinleri düzenle”,
+      has no way to end their own post or one the hoca gave, and ends the posts they appointed; the API refuses them anything more (403
+      PERMISSION_NOT_GIVABLE, SELF_GRANT_REFUSED, NAZIR_NOT_APPOINTED_BY_YOU).
+    drawn: [shown, nazirlar-needs-assign, appointOnlyLine, appointButton, youMark, endAppointee, editRow]
+    built:
+      - action: medaris.api:listCourseNazirs
+      - action: medaris.api:createCourseNazir
+      - action: medaris.api:revokeCourseNazir
+      - route: apps/nazar/features/course-nazirs/course-nazirs.ts:157
+    walked:
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#13 (a3-a6, a11-a19; a7-a10 and a24-a26 are nazar.courseNazirs.appoint and .dismiss)'
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#12 (a3-a5)'
+
+  - id: ders-ayarlari-follows-the-codes-held
+    need: >-
+      Ders ayarları opens for a ders nazırı by any of course.edit, course.settings, course.publish and session.manage, and each control is open
+      only where the person holds every code its route asks: the sample session for session.manage, the two boxes, the zone and “yüz yüze” for
+      course.edit with course.settings, publishing for course.edit with course.publish, the unvans for course.settings; what is shut says why.
+    drawn: [settingsEditable, settingsSample, settingsShut, needsEditNote, formSave, hocaSave]
+    built:
+      - route: apps/nazar/features/course-settings/controls.ts:29
+      - action: medaris.api:updateCourse
+    walked:
+      - e2e: apps/nazar/e2e/course-settings.e2e.ts
+        check: 'course-settings#7, course-settings#8, course-settings#9 (stale in its “no Kaydet”: F-D2c-14), course-settings#11'
+
+  - id: evaluation-is-closed-to-those-without-session-manage
+    need: >-
+      The marks of the recited homework are written and read only by a holder of session.manage: a ders nazırı without it has no entry, is
+      refused the page, the board (403) and a mark (403), and a talebe marks nobody, themselves included, and reads no board.
+    drawn: [shown, menuEvaluation, evaluationEmpty]
+    built:
+      - action: medaris.api:getEvaluationBoard
+      - action: medaris.api:saveEvaluation
+    walked:
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#2 (a1-a6), evaluation#3 (a1-a3; a4, a5 are a multipart hand-in the helpers cannot send)'
+
+  - id: desk-pages-open
+    need: >-
+      A ders nazırı given enrollment.decide, submission.read, deck.manage_course or week.hide opens Talebeler, Ödevler, Ders destesi and Arşiv
+      (and Müfredat, read-only, for week.hide), and the entries of the first two codes appear in the menu.
+    drawn: [shown, menuHomework, menuDeck, studentsTabs, homeworkEmpty, deckSummary, archiveEmpty]
+    built:
+      - route: apps/nazar/features/account/course-permissions.ts:36
+      - action: medaris.api:listCourseEnrollments
+      - action: medaris.api:listCourseSubmissions
+      - action: medaris.api:listCourseDecksForStaff
+      - action: medaris.api:listCourseArchive
+    # walked: nothing. No e2e opens Talebeler, Ödevler, Ders destesi or Arşiv as a ders nazırı; the unit specs pin the components, not the person.
+
+  - id: bans-page-opens-for-a-ban-code
+    need: >-
+      A ders nazırı given ban.course (or ban.lift_course) can open the course's Yasaklamalar and bar or lift for their course, or the course
+      catalog does not offer the grant: a code that opens nothing is not given.
+    drawn: [bansTitle, yasaklamalar-never-opens]
+    missing: none # F-D2c-3: the page reads the medrese's or the köşk's ban list, which no course code reads; decision D3; no Linear issue
+
+  - id: refusal-says-whom-to-ask
+    need: >-
+      The sentence a refused course page says names the person who can give the permission, the course's hoca, and not the medrese's
+      başmüderris, who is not there in a course of a köşk.
+    drawn: [forbiddenText]
+    missing: none # DNP-1; decision D2; no Linear issue
+
+  - id: refusal-says-the-course-is-passive
+    need: >-
+      A person who held a permission and meets a refusal because the course has no müderris now is told that, and not the words of a person who
+      was never given it.
+    drawn: [HOCA_LEAVES, forbiddenAlert]
+    missing: none # DNP-2; no Linear issue
+
+  - id: refusal-is-announced-and-leads-somewhere
+    need: >-
+      A refused page announces the verdict to a screen reader as it loads, in a heading or an alert, and gives the person a way on: a link to
+      the first page they may open, or to whoever can give them the permission.
+    drawn: [forbiddenAlert, forbiddenText]
+    missing: none # F-A-16 and F-B-13, shared with nazar.access.medreseNazirRefused; no Linear issue
+
+  - id: one-name-for-the-deck-page
+    need: The menu entry and the title of the course's decks page say the same words.
+    drawn: [menuDeck, deckTitle]
+    missing: none # DNP-3, product wording; no Linear issue

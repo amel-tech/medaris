@@ -1,0 +1,63 @@
+# What the three walks of nazar.access.medreseNazirRefused share: the pages' locators, their states and the two addresses typed by hand. It has
+# no scenario; binding.yaml (the seeded nazır, who holds nothing), binding.appointer.yaml (a nazır given madrasah.nazir_appoint) and
+# binding.head.yaml (the başmüderris, the contrast) extend it and add theirs. Three files because a walk takes the first scenario of a file
+# whose `given` fits, and `--cover transitions` walks the shortest path to a transition, so the head's and the appointer's walks
+# along the same menu events would never be taken beside the nazır's.
+#
+# NOT RUN: the graphs were written without a replay (the walk phase comes later); every locator below comes from the code and the
+# catalog and is unverified until a walk.
+#
+#   node apps/engine/src/cli.ts replay graphs/nazar/access/medreseNazirRefused --bind <file> --cover transitions --absent --out <dir>
+#
+# --absent matters here: the whole point of the refused pages is what they do not draw, and the contrast nodes are what `--absent`
+# looks for. The default main story (`main` of flow.yaml) is the seeded nazır's: use it with binding.yaml, and --cover transitions with
+# the two others, whose `reader` is not `bare`.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.access.medreseNazirRefused
+
+# The two pages a nazır reaches only by address (for the başmüderris the buttons of Pano and Dersler lead there, and a walk as the head types the
+# address all the same, so that one event serves the three readers).
+events:
+  GO_OPEN_COURSE: [{ goto: '{nazar}/medrese/{seed.madrasah}/dersler/yeni' }]
+  GO_OFFSITE: [{ goto: '{nazar}/medrese/{seed.madrasah}/dersler/talep' }]
+
+states:
+  shown: { url: '{nazar}/medrese/**' }
+  # the one menu entry that opens for the nazır with no grant, and the only one the graph follows out of the medrese
+  left: { url: '{nazar}/bildirimler' }
+
+# Role and name find most nodes. Below are the ones they cannot find alone. The page node `mainPage` (a bare role main, which the page a walk
+# leaves for also has) has no locator of its own: it is the shell's one <main id="main"> on every page of the medrese, there is no text or test id common
+# to the ten, and every move here is a navigation to a new document.
+nodes:
+  # The menu's links are found inside the sidebar's menu: on Dersler the başmüderris's page has a link "Arşiv" of its own, and the breadcrumb of
+  # the two address-only pages has a "Dersler". A number the person may read is appended to the link's name with a hidden label
+  # ("Dersler 1 derste bekleyen başvuru", "Bildirimler 2 okunmamış"), so those two are found by their beginning.
+  menuPano: { role: link, name: Pano, within: { role: navigation, name: Ana menü } }
+  menuNotifications: { role: link, name: '/^Bildirimler/', within: { role: navigation, name: Ana menü } }
+  menuCourses: { role: link, name: '/^Dersler/', within: { role: navigation, name: Ana menü } }
+  menuStudents: { role: link, name: Talebeler, within: { role: navigation, name: Ana menü } }
+  menuNazirs: { role: link, name: Medrese nazırları, within: { role: navigation, name: Ana menü } }
+  menuBans: { role: link, name: Yasaklamalar, within: { role: navigation, name: Ana menü } }
+  menuAppeals: { role: link, name: İtirazlar, within: { role: navigation, name: Ana menü } }
+  menuArchive: { role: link, name: Arşiv, within: { role: navigation, name: Ana menü } }
+  menuSettings: { role: link, name: Medrese ayarları, within: { role: navigation, name: Ana menü } }
+  crumbCourses: { role: link, name: Dersler, within: { role: navigation, name: Sayfa yolu } }
+
+  # the greeting and its numbers are two messages in one paragraph; a refused Pano keeps only the greeting
+  greeting: { testId: greeting, hasText: '/^Selâmün aleyküm, .+? Hoca\./' }
+  # the card of the medrese is inside the cards' grid; the sidebar's picker and person row say the same words, so look inside it
+  scopeCard: { testId: scopes, hasText: '{seed.titles.madrasah}' }
+  scopeRole: { text: Medrese nazırı, within: { testId: scopes } }
+
+  # the verdict's alert is a status with the title and the sentence inside it; the warning above the roster too
+  awaitingAlert: { role: status, hasText: '/henüz izin almadı/' }
+  awaitingText: { text: '/atadı\. Siz izin verene kadar hiçbir işlem yapamaz\./' }
+
+  # the roster's buttons carry the person's name; the header link of the settings page carries a hidden "(yeni sekmede açılır)"
+  nazirsTable: { role: table, name: '/ nazırları$/' }
+  dismissRow: { role: button, name: '/^Görevden al: /' }
+  givePermission: { role: button, name: '/^(İzin ver|İzinleri düzenle): /' }
+  viewPage: { role: link, name: '/^Medrese sayfasını gör/' }

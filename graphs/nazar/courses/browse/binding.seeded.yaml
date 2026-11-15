@@ -1,0 +1,21 @@
+# nazar.courses.browse on the stack's own medrese, with no setup and no teardown: the başmüderris of "Hadis ve Siyer Medresesi" reads
+# the seed's two published courses, "Bina ve İzhar Şerhi" and "İsâgûcî ile Mantığa Giriş" (the second has one waiting application,
+# TALEBE_MALE's, which this walk never touches), both in Süleymaniye Köşkü, the one köşk that holds a hosting right of the medrese.
+#   node apps/engine/src/cli.ts replay graphs/nazar/courses/browse --bind graphs/nazar/courses/browse/binding.seeded.yaml \
+#     --to listed --absent --out <dir>
+# NOT RUN: written without a replay. It makes and removes nothing, so it is the walk to run first on a stack nobody has changed: the
+# card lists one köşk, the Köşk filter offers "tümü" and that köşk (choosing it leaves both courses), "Durum: Taslak" matches nothing
+# (the filtered empty state, then "Süzgeçleri temizle"), and the exam card says "Henüz sınavı yapılan ders yok." The `given` differs from
+# binding.yaml's, and no transition is its own, so it has a file of its own (see locators.binding.yaml).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courses.browse
+
+scenarios:
+  seeded:
+    given: { list: ok, hosting: kosks, exams: empty, stock: published }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    vars: { koskOne: '{seed.titles.kosk}' }

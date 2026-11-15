@@ -1,0 +1,78 @@
+# nazar.courseSettings.publish on the local stack: Ders ayarları (/ders/<id>/ayarlar) of a course that each walk makes, as the müderris
+# of the course, at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/courseSettings/publish --bind graphs/nazar/courseSettings/publish/binding.yaml --cover transitions --out <dir>
+#   (the two refusals are binding.refused.yaml and binding.failed.yaml, which add no transition of their own and so are walked on their own)
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser. `--absent` is worth a try, with one
+# known noise: a toast lives 6 seconds, so the toast of the step before may still be on the page when the next state is checked.
+#
+# The seeded courses are other flows' data, so each scenario makes a course
+# of its own with helpers/course.mjs, in the seed's second köşk, with the müderris as its hoca and anyone taking a seat, and removes it in
+# `teardown`; `make` removes a tag a crashed walk left, so `setup` is safe to run twice. Nothing seeded is read or changed. Both scenarios
+# use the tag pubMain, so there is one course at a time; its title is "Deneme dersi pubMain".
+#   unpublishes   the main story: a published course, as the e2e's course-settings#4 and #5 walk it. The walk reaches the page by the course
+#                 menu's "Ders ayarları" (the nav graph's entry), ticks "Kayıt onayı gereksin" and does not save, asks to take the course back
+#                 to draft, cancels once, asks again, confirms, publishes it again and takes the unsaved change back with Vazgeç. The
+#                 effects read the course back as the API holds it (the e2e's DB assertions, and its "after a reload" halves) and a visitor's
+#                 GET of the course's page in Tedris (200 while it is published, 404 while it is a draft).
+#   startsDraft   a draft (helpers/course.mjs make --draft): the walk starts on "Yayımla" and publishes, then takes it back.
+# What a walk cannot undo: the audit rows a course's creation, settings change and deletion write (audit_log is append-only), and the
+# invitation sweep's rows (no talebe takes a seat in these courses, so it mails nobody).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseSettings.publish
+
+scenarios:
+  unpublishes:
+    given: { stored: published, write: ok }
+    as: muderris
+    open: '{nazar}/ders/{pubMain.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSettings' }
+    samples: { name: '{pubMain.title}', title: '{pubMain.title}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, pubMain, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi pubMain"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, pubMain]
+        expect: 'course remove pubMain'
+  startsDraft:
+    given: { stored: draft, write: ok }
+    as: muderris
+    open: '{nazar}/ders/{pubMain.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSettings' }
+    samples: { name: '{pubMain.title}', title: '{pubMain.title}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, pubMain, --draft, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi pubMain"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, pubMain]
+        expect: 'course remove pubMain'
+
+# The link's whole address, as course-settings#6 a2 asserts it (with the language segment of PUB-1; the node of the shared file matches only its beginning).
+nodes:
+  viewPublic: { css: 'a[target=_blank][rel="noopener noreferrer"][href="{tedris}/tr/courses/{pubMain.course}"]', hasText: '/^Tanıtım sayfasını gör/' }
+
+# The two writes are Next server actions: a POST to the page's own address, held while the busy button and the question are checked.
+states:
+  drafting: { url: '{nazar}/ders/*/ayarlar', call: '{nazar}/ders/*/ayarlar' }
+  publishing: { url: '{nazar}/ders/*/ayarlar', call: '{nazar}/ders/*/ayarlar' }
+  publishingEdited: { url: '{nazar}/ders/*/ayarlar', call: '{nazar}/ders/*/ayarlar' }
+
+# What a status change leaves outside the screen, read as the API holds it and as a visitor of Tedris meets it. The access form's change
+# was never sent: requiresApproval stays false (course-settings#4 a7). Curl's %{http_code} clashes with {placeholders}, so the status line
+# is matched (-D -). The reload of course-settings#5 a6 and a9 is this read: the card is the server's own read after router.refresh.
+effects:
+  noteDrafted:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{pubMain.course}']
+      expect: '"status":"DRAFT"'
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{pubMain.course}']
+      expect: '"requiresApproval":false'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/courses/{pubMain.course}']
+      expect: 'HTTP/1.1 404'
+  notePublished:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{pubMain.course}']
+      expect: '"status":"PUBLISHED"'
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{pubMain.course}']
+      expect: '"requiresApproval":false'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/courses/{pubMain.course}']
+      expect: 'HTTP/1.1 200'

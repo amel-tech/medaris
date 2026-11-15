@@ -1,0 +1,172 @@
+# What must exist for the hoca to change who may take her course, in one Kaydet, and to be told in words when the page is out of date, a policy holds a
+# box or a code is gone: the flow's product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and from the code
+# and findings that say where the page falls short, not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the
+# orchestrator merges. Read by people for now: no checker runs on this file yet.
+#
+# The e2e checks of this card (course-settings#1, #2, #3, #10) are STALE (F-D2c-14): since #344 the page has a second Kaydet and Vazgeç and each spec
+# names Kaydet by role and name, so it finds two buttons and cannot pass as written. They are listed under `walked` where they pin the behaviour and are
+# marked STALE, and the needs they stand for count as unwalked until the replay walks them with the form's own Kaydet. No replay scenario is named under
+# `walked`: none has passed (the replays are one phase, at the end).
+#
+# missing (the need has no code; every one of them has no issue): stale-course-fields-told, late-policy-shows-the-lock, partial-save-honest,
+#   zone-list-usable, focus-after-save, cards-have-own-kaydet-names
+# unwalked (code, and no e2e or replay that passes): change-five-settings-in-one-save, kaydet-waits-for-a-change, read-back-after-reload,
+#   sample-moves-with-version, stale-page-told-to-retry, policy-lock-shown-and-worded, late-policy-refusal-worded, refusal-worded-and-nothing-written,
+#   in-person-mark
+kind: needs
+flow: nazar.courseSettings.access
+status: proposed
+
+needs:
+  - id: change-five-settings-in-one-save
+    need: >-
+      The hoca changes whether the course is closed, whether enrolment waits for approval, its sample session, whether its celses are in person and its
+      time zone, and one Kaydet saves them all: the sample first, then the course's own fields, only what differs.
+    drawn: [clean, dirty, sending, sendingSample, afterSample, sendingCourse, saved, closedBox, approvalBox, inPersonBox, sampleField, zoneField, submit, toastSaved]
+    built:
+      - action: medaris.api:updateLesson
+      - action: medaris.api:updateCourse
+      - route: apps/nazar/features/course-settings/components/course-settings-form.tsx:75
+    walked:
+      - e2e: apps/nazar/e2e/course-settings.e2e.ts
+        check: 'course-settings#2' # STALE (F-D2c-14): `save(page).click()` finds two buttons
+      - test: apps/nazar/test/course-settings-form.spec.tsx
+
+  - id: kaydet-waits-for-a-change
+    need: >-
+      Kaydet and Vazgeç are off until something differs from what is stored, and the controls that the caller's codes do not open are shown shut.
+    drawn: [clean, submit, cancel, closedBox, approvalBox, sampleField, zoneField]
+    built:
+      - route: apps/nazar/features/course-settings/components/course-settings-form.tsx:244
+      - route: apps/nazar/features/course-settings/controls.ts:29
+    walked:
+      - e2e: apps/nazar/e2e/course-settings.e2e.ts
+        check: 'course-settings#1' # a1-a6 hold; a7 (`save` disabled) is STALE, a8 (aria-current) is not expressible in a graph
+      - test: apps/nazar/test/course-settings-form.spec.tsx
+
+  - id: read-back-after-reload
+    need: >-
+      After a save and a reload the card shows each of the five values as it was saved, read from the API and not kept by the browser, with Kaydet off
+      again.
+    drawn: [readBack, reloading, closedBox, approvalBox, inPersonBox, sampleReadsFirst, zoneReadsBerlin, submit]
+    built:
+      - action: medaris.api:getCourse
+      - route: apps/nazar/features/course-settings/components/course-settings-page.tsx:51
+    walked:
+      - e2e: apps/nazar/e2e/course-settings.e2e.ts
+        check: 'course-settings#2' # STALE; a5-a10 are the read-back
+
+  - id: in-person-mark
+    need: >-
+      The hoca marks the course's celses as in person (MDRS-283): every celse without its own setting then counts as in person and is not shown as missing
+      its meeting link, and a single celse can still be changed on Celseler.
+    drawn: [inPersonBox, inPersonDesc, closedBox]
+    built:
+      - action: medaris.api:updateCourse
+      - route: apps/nazar/features/course-settings/components/course-settings-form.tsx:212
+    walked:
+      - test: apps/nazar/test/course-settings-form.spec.tsx # the box is pinned here only; no e2e spec touches it (CSA-3)
+
+  - id: sample-moves-with-version
+    need: >-
+      The sample session is one session of the course: choosing another takes it off the old one first and puts it on the new one with the version the
+      first write returned, and "Örnek ders yok" clears it, so a failure leaves no sample rather than two.
+    drawn: [choosingSample, sendingSample, optSampleNone, optSampleFirst, sampleReadsFirst]
+    built:
+      - action: medaris.api:updateLesson
+      - route: apps/nazar/features/course-settings/components/course-settings-form.tsx:95
+    walked:
+      - e2e: apps/nazar/e2e/course-settings.e2e.ts
+        check: 'course-settings#3' # STALE for the second tab's `save`; a3-a7 (the two saves of the first tab) are not carried: the graph's helper makes the other save through the API
+      - test: apps/nazar/test/course-settings-form.spec.tsx
+
+  - id: stale-page-told-to-retry
+    need: >-
+      A save of the sample session from a page that is out of date is refused in words ("Ders, bu sayfayı açtığınızdan beri başkası tarafından
+      kaydedildi; ayarlar yeniden okundu. Yeniden deneyin."), writes nothing, sends no course field after it, reads the page again, and the next Kaydet goes
+      through.
+    drawn: [sendingSample, toastStale, clean, dirty, a-conflict-stops-the-save]
+    built:
+      - action: medaris.api:updateLesson
+      - route: apps/nazar/features/course-settings/components/course-settings-form.tsx:92
+    walked:
+      - e2e: apps/nazar/e2e/course-settings.e2e.ts
+        check: 'course-settings#3' # STALE (the stale tab's `save` finds two buttons)
+      - test: apps/nazar/test/course-settings-form.spec.tsx
+
+  - id: stale-course-fields-told
+    need: >-
+      A page that is out of date is told so before any of its writes, not only the sample's: a save of closed, approval, in person or the zone from an old
+      page is today accepted at once (PATCH /courses/:id takes no version; the last save wins, field by field), and the toast says "Ders ayarları
+      kaydedildi" either way. The product decides whether that is wanted (stale-course-fields-not-told in ui.yaml).
+    drawn: [sendingCourse, saved]
+    missing: none
+
+  - id: policy-lock-shown-and-worded
+    need: >-
+      A box that a policy holds is shown ticked and shut with the reason beside it ("Medresenin “Kapalı ders zorunlu” politikası bu ayarı kilitler." and
+      "Bir politika bu derste kaydın her zaman onaya bağlı olmasını istiyor; bu ayar değiştirilemez."), and a shut box is never sent.
+    drawn: [readLocked, closedBoxLocked, closedLockedDesc, approvalBoxLocked, approvalLockedDesc, a-locked-page-sends-nothing]
+    built:
+      - route: apps/nazar/features/course-settings/controls.ts:29
+      - route: apps/nazar/features/course-settings/course-settings.ts:83
+    walked:
+      - test: apps/nazar/test/course-settings-form.spec.tsx # "never sends a box a policy holds ticked"; no e2e spec has a policy
+
+  - id: late-policy-refusal-worded
+    need: >-
+      A policy that came on after the page was opened refuses the unticking in words ("Bir politika bu değişikliği kilitliyor; ayar değiştirilmedi.") in a
+      toast that stays, and nothing is written.
+    drawn: [sendingCourse, afterRefusal, toastPolicy, dirty]
+    built:
+      - action: medaris.api:updateCourse
+      - route: apps/nazar/features/course-settings/course-settings.ts:135
+    walked:
+      - test: apps/nazar/test/course-settings-form.spec.tsx # "words a policy's lock and a refusal from the code"; no e2e spec
+
+  - id: late-policy-shows-the-lock
+    need: >-
+      After that refusal the page shows what it now knows: the box shut with its reason, and not a box that is still open and a Kaydet that is refused
+      the same way again (CSA-2).
+    drawn: [afterRefusal, dirty]
+    missing: none
+
+  - id: refusal-worded-and-nothing-written
+    need: >-
+      A save the API refuses for a code that was taken back is worded ("Ayarlar kaydedilemedi", "Bunu yapma izniniz yok."), writes nothing, and after a
+      reload the page says "Bu sayfaya izniniz yok".
+    drawn: [sendingCourse, toastForbidden, reloading, refusedPage, forbiddenAlert]
+    built:
+      - action: medaris.api:updateCourse
+      - route: apps/nazar/features/course-settings/components/course-settings-page.tsx:60
+    walked:
+      - e2e: apps/nazar/e2e/course-settings.e2e.ts
+        check: 'course-settings#10' # STALE: `save(page).click()` finds two buttons for a ders nazırı who holds course.settings
+
+  - id: partial-save-honest
+    need: >-
+      When the sample was saved and the course's fields were then refused, the toast says that the sample was saved and the rest was not, and the pressed
+      course fields survive for a second try (CSA-1).
+    drawn: [afterRefusal, sendingCourse, toastPolicy, clean]
+    missing: none
+
+  - id: zone-list-usable
+    need: >-
+      The time-zone list can be used by a hoca who does not know the order of IANA ids: labels that tell the region ("Berlin (Avrupa)"), sorted by label,
+      with type-ahead (F-D2c-17).
+    drawn: [choosingZone, optBerlin, optIstanbul]
+    missing: none
+
+  - id: focus-after-save
+    need: >-
+      After a save that changes the stored values the focus goes somewhere a keyboard or screen-reader user can use (the form's heading), and a line on the
+      page, not only a toast of six seconds, says what was saved (F-D2c-7, focus-not-set).
+    drawn: [saved, readBack]
+    missing: none
+
+  - id: cards-have-own-kaydet-names
+    need: >-
+      The page's two Kaydet and two Vazgeç tell the card they belong to, for a screen reader and for the specs, so that a locator by role and name finds
+      one (F-D2c-14); the four stale specs are scoped to the form until then.
+    drawn: [submit, cancel, accessForm, accessTitle]
+    missing: none

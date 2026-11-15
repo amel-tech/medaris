@@ -1,0 +1,11 @@
+# The way into nazar.decks.siga: the list of the walk's own course's decks (/ders/<course>/deste), then the deck's card, a link to
+# /ders/<course>/deste/<deck>. The nav binding gives no locator for an entry that needs an item (`data: true`; the stack seeds no deck),
+# so this file names the deck by its address. The card's accessible name is a long run of the cover's initials, the title and the facts
+# (F-D1-23), so its address is the surer way to find it. {course} and {deck} are the scenario's `vars`.
+schema: delurio-graph/0
+kind: binding
+nav: nazar.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'dersDeck->dersDeckOne': { css: 'a[href="/ders/{course}/deste/{deck}"]' }

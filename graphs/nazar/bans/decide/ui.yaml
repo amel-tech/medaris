@@ -1,0 +1,141 @@
+# The screens of nazar.bans.decide: Yasaklamalar of a medrese (/medrese/<id>/yasaklamalar) with the actions of its rows, the reason
+# dialog in its three kinds (lift, widen to the medrese, ask for a permanent ban) and the toasts of a decision. Read from
+# apps/nazar/features/bans/components/{bans-page,bans-table,reason-dialog}.tsx and bans.ts; the words are copied from
+# libs/i18n/src/locales/tr/nazar.json by <scratchpad>/bansdecide-probe/catalog.mjs.
+#
+# Authored, not copied: `Changes.note`, the one message of this catalog no app message stands for (nothing in the app says what a
+# decision on a ban changes).
+# Composed in code, in no i18n file (each named by its line):
+#   composed.Bans.count           tabs.tsx:29-36 and :67 (the count, formatted by Intl, in a <span> inside the tab link)
+#   composed.Button.loading       libs/ui/src/mds/button.tsx:62 (the default loadingLabel of a busy Button, F-B-2)
+#   composed.Reasons.person       reason-dialog.tsx:128 (the person's name); composed.Reasons.email :131 (their address)
+#   composed.Reasons.eyebrow      reason-dialog.tsx:112 (the medrese's name over the dialog's title)
+#   composed.Reasons.summary*     bans.ts:253-257 (the three values of the summary list: scope, who and when, the reason)
+# Where a node says "repeat", the page draws it once per row; the replay finds the rows through the binding. The page behind a
+# dialog is inert, so no page node is `in` a dialog state.
+schema: delurio-graph/0
+kind: ui
+id: nazar.bans.decide
+flow: nazar.bans.decide
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Nazlı Talebe
+  email: nazli.talebe@example.test
+  course: Mantık Dersi
+  madrasah: Örnek Medrese
+  nameGenitive: Örnek Medrese’nin
+  count: "2"
+  role: Medrese başmüderrisi
+  reason: Celselerde ders dışı reklam yaptı
+  label: Ders
+  detail: Mantık Dersi
+  placer: Selim Hoca
+  when: Dün
+
+# The page keeps no focus of its own on load (nothing in features/bans sets it), so there is no `initialFocus` on the page. After
+# a decision the dialog closes and the opener is gone (F-B-9): no `focus` is drawn there.
+nodes:
+  # ---- the page ----------------------------------------------------------------------------------------------------------
+  bansPage: { type: page, component: Page, role: main, in: [listed, empty, forbidden], source: apps/nazar/features/bans/components/bans-page.tsx:52 } # the shell's one <main>; it has no name
+  bansTitle: { type: text, component: Heading, role: heading, text: { key: Bans.title }, in: [listed, empty, forbidden], source: apps/nazar/features/bans/components/bans-page.tsx:55 } # h1
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert (F-B-13)
+  kademeAlert: { type: alert, component: Alert, role: status, name: { key: Bans.kademe.title }, text: { key: Bans.kademe.text }, in: [listed, empty], source: apps/nazar/features/bans/components/bans-page.tsx:77 }
+
+  # ---- the tabs ------------------------------------------------------------------------------------------------------------
+  tabsNav: { type: text, component: Text, role: navigation, name: { key: Bans.tabsLabel }, in: [listed, empty], source: apps/nazar/features/bans/components/bans-table.tsx:235 } # a named <nav> of two links, not tabs
+  tabActive: { type: action, component: LinkButton, role: link, text: { key: Bans.tabs.ACTIVE }, in: [listed, empty], source: apps/nazar/features/bans/components/bans-table.tsx:241 } # aria-current=page; its name reads "Etkin 2"
+  tabActiveCount: { type: text, component: Text, text: { key: composed.Bans.count, params: { count: bans.activeCount } }, in: [listed, empty], source: libs/ui/src/mds/tabs.tsx:67 } # follows a decision with no announcement (F-B-4)
+  tabLifted: { type: action, component: LinkButton, role: link, text: { key: Bans.tabs.LIFTED }, in: [listed, empty], source: apps/nazar/features/bans/components/bans-table.tsx:241 }
+  tabLiftedCount: { type: text, component: Text, text: { key: composed.Bans.count, params: { count: bans.liftedCount } }, in: [listed, empty], source: libs/ui/src/mds/tabs.tsx:67 }
+
+  # ---- the table ---------------------------------------------------------------------------------------------------------
+  bansTable: { type: list, component: List, role: table, name: { key: Bans.caption.ACTIVE }, in: [listed, empty], source: apps/nazar/features/bans/components/bans-table.tsx:278 }
+  emptyLine: { type: text, component: Text, text: { key: Bans.empty.ACTIVE }, in: [empty], source: apps/nazar/features/bans/components/bans-table.tsx:299 }
+  scopeCourse: { type: text, component: Text, text: { key: Bans.scope.COURSE }, in: [listed], when: "row != 'wide'", repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:141 } # "Ders", and the course's title under it
+  scopeMadrasah: { type: text, component: Text, text: { key: Bans.scope.MADRASAH }, in: [listed], when: "row == 'wide'", repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:141 }
+  scopeMadrasahDetail: { type: text, component: Text, text: { key: Bans.madrasahScope, params: { nameGenitive: madrasah.nameGenitive } }, in: [listed], when: "row == 'wide'", repeat: bans.items, source: apps/nazar/features/bans/bans.ts:213 } # "{medresenin} bütün dersleri"
+  newBadge: { type: text, component: Text, text: { key: Bans.new }, in: [listed], repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:125 } # an info Badge on an open ban placed in the last 24 hours: every ban of a walk
+  scopeExtendedFrom: { type: text, component: Text, text: { key: Bans.extendedFrom, params: { course: ban.course } }, in: [listed], when: widenedHere, repeat: bans.items, source: apps/nazar/features/bans/bans.ts:219 } # under "Medrese" on the ban a widening made (bans#4 a9)
+  bannedByYou: { type: text, component: Text, text: { key: Bans.you, params: { role: ban.role } }, in: [listed], when: "row != 'medaris'", repeat: bans.items, source: apps/nazar/features/bans/bans.ts:239 } # "Medrese başmüderrisi (siz)": the viewer placed it
+  bannedByAdmin: { type: text, component: Text, text: { key: Bans.admin }, in: [listed], when: "row == 'medaris'", repeat: bans.items, source: apps/nazar/features/bans/bans.ts:108 } # a ban of the başnazım is read as Medaris yönetimi
+  permanentBadge: { type: text, component: Text, text: { key: Bans.permanentPending }, in: [listed], when: asked, repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:126 } # a warning Badge with a clock icon
+  liftButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.liftLabel, params: { name: ban.name } }, text: { key: Bans.lift }, in: [listed], when: mayLift, repeat: bans.items, emits: LIFT, source: apps/nazar/features/bans/components/bans-table.tsx:102 } # absent, not disabled, on a row that cannot be lifted
+  widenButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.escalateLabel, params: { name: ban.name } }, text: { key: Bans.escalate }, in: [listed], when: mayWiden, repeat: bans.items, emits: WIDEN, source: apps/nazar/features/bans/components/bans-table.tsx:102 } # on an open course ban whose person is not barred from the medrese yet
+  requestButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.permanentLabel, params: { name: ban.name } }, text: { key: Bans.permanent }, in: [listed], when: mayRequest, repeat: bans.items, emits: REQUEST, source: apps/nazar/features/bans/components/bans-table.tsx:102 } # open, placed below Medaris, no request yet
+  rowNote: { type: text, component: Text, text: { key: Bans.platformOnly }, in: [listed], when: "row == 'medaris'", repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:198 } # stands where the lift would be
+
+  # ---- the toasts of a decision: each toast is a dialog in the "Bildirimler" region; an error toast is an alertdialog and stays -----------------
+  toastLifted: { type: status, component: Status, role: dialog, name: { key: Reasons.lift.done }, text: { key: Reasons.lift.doneBody, params: { name: ban.name } }, in: [listed, empty], when: "last == 'lifted'", source: apps/nazar/features/bans/components/reason-dialog.tsx:74 }
+  toastWidened: { type: status, component: Status, role: dialog, name: { key: Reasons.escalate.done }, text: { key: Reasons.escalate.doneBody, params: { name: ban.name } }, in: [listed, empty], when: "last == 'widened'", source: apps/nazar/features/bans/components/reason-dialog.tsx:74 } # also said of a hoca who teaches (ban-staff-check-gaps)
+  toastRequested: { type: status, component: Status, role: dialog, name: { key: Reasons.permanent.done }, text: { key: Reasons.permanent.doneBody }, in: [listed, empty], when: "last == 'requested'", source: apps/nazar/features/bans/components/reason-dialog.tsx:74 } # "iletildi": nobody reads it (MDRS-140)
+  toastMoved: { type: alert, component: Alert, role: alertdialog, name: { oneOf: [Reasons.lift.failedTitle, Reasons.escalate.failedTitle, Reasons.permanent.failedTitle] }, text: { oneOf: [Bans.errors.BAN_ALREADY_LIFTED, Bans.errors.BAN_NOT_FOUND, Bans.errors.BAN_NOT_ESCALATABLE, Bans.errors.BAN_PERMANENT_REQUEST_EXISTS, Bans.errors.BAN_PERMANENT_REQUEST_INVALID] }, in: [listed, empty], when: "last == 'moved'", source: apps/nazar/features/bans/components/reason-dialog.tsx:82 } # the dialog has closed and the list is read again
+  toastRefused: { type: alert, component: Alert, role: alertdialog, name: { oneOf: [Reasons.lift.failedTitle, Reasons.escalate.failedTitle, Reasons.permanent.failedTitle] }, text: { oneOf: [Bans.errors.BAN_LIFT_FORBIDDEN, Bans.errors.BAN_FORBIDDEN] }, in: [form, formReady], when: "last == 'refused'", source: apps/nazar/features/bans/components/reason-dialog.tsx:82 } # over the dialog, which stays open; the permanent request's refusal says "koymak" of a request (BANDEC-2)
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { oneOf: [Reasons.lift.failedTitle, Reasons.escalate.failedTitle, Reasons.permanent.failedTitle] }, text: { oneOf: [Bans.errors.VALIDATION_ERROR, Problems.actionGeneric] }, in: [form, formReady], when: "last == 'failed'", source: apps/nazar/features/bans/components/reason-dialog.tsx:82 }
+
+  # ---- the reason dialog: three kinds, one component (a form dialog, the scrim does not close it) -------------------------------------
+  liftDialog: { type: page, component: Page, role: dialog, name: { labelledBy: liftTitle }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'lift'", initialFocus: liftReason, source: apps/nazar/features/bans/components/reason-dialog.tsx:105 }
+  liftTitle: { type: text, component: Heading, role: heading, text: { key: Reasons.lift.title }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'lift'", source: libs/ui/src/mds/dialog.tsx:87 }
+  escalateDialog: { type: page, component: Page, role: dialog, name: { labelledBy: escalateTitle }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'escalate'", initialFocus: escalateReason, source: apps/nazar/features/bans/components/reason-dialog.tsx:105 }
+  escalateTitle: { type: text, component: Heading, role: heading, text: { key: Reasons.escalate.title }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'escalate'", source: libs/ui/src/mds/dialog.tsx:87 }
+  permanentDialog: { type: page, component: Page, role: dialog, name: { labelledBy: permanentTitle }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'permanent'", initialFocus: permanentReason, source: apps/nazar/features/bans/components/reason-dialog.tsx:105 }
+  permanentTitle: { type: text, component: Heading, role: heading, text: { key: Reasons.permanent.title }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'permanent'", source: libs/ui/src/mds/dialog.tsx:87 }
+  dialogEyebrow: { type: text, component: Text, text: { key: composed.Reasons.eyebrow, params: { madrasah: madrasah.name } }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/components/reason-dialog.tsx:112 }
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [form, formReady], emits: CLOSE, source: apps/nazar/features/bans/components/reason-dialog.tsx:114 } # it stays on while the call runs and does nothing (BANDEC-1); not drawn there
+  dialogPerson: { type: text, component: Text, text: { key: composed.Reasons.person, params: { name: ban.name } }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/components/reason-dialog.tsx:128 }
+  dialogEmail: { type: text, component: Text, text: { key: composed.Reasons.email, params: { email: ban.email } }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/components/reason-dialog.tsx:131 }
+  summaryScopeTerm: { type: text, component: Text, text: { key: Reasons.summary.scope }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/components/reason-dialog.tsx:151 } # a <dt>
+  summaryScope: { type: text, component: Text, text: { key: composed.Reasons.summaryScope, params: { label: ban.scopeLabel, detail: ban.scopeDetail } }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/bans.ts:254 }
+  summaryBannedByTerm: { type: text, component: Text, text: { key: Reasons.summary.bannedBy }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/components/reason-dialog.tsx:151 }
+  summaryBannedBy: { type: text, component: Text, text: { key: composed.Reasons.summaryBannedBy, params: { placer: ban.placer, role: ban.role, when: ban.when } }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/bans.ts:255 }
+  summaryReasonTerm: { type: text, component: Text, text: { key: Reasons.summary.reason }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/components/reason-dialog.tsx:151 }
+  summaryReason: { type: text, component: Text, text: { key: composed.Reasons.summaryReason, params: { reason: ban.reason } }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/bans.ts:256 }
+  liftBodyCourse: { type: text, component: Text, text: { key: Reasons.lift.bodyCourse, params: { course: ban.course } }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'lift' and row != 'wide'", source: apps/nazar/features/bans/components/reason-dialog.tsx:98 }
+  liftBodyMadrasah: { type: text, component: Text, text: { key: Reasons.lift.bodyMadrasah }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'lift' and row == 'wide'", source: apps/nazar/features/bans/components/reason-dialog.tsx:99 }
+  escalateBody: { type: text, component: Text, text: { key: Reasons.escalate.body, params: { course: ban.course } }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'escalate'", source: apps/nazar/features/bans/components/reason-dialog.tsx:101 }
+  permanentBody: { type: text, component: Text, text: { key: Reasons.permanent.body }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'permanent'", source: apps/nazar/features/bans/components/reason-dialog.tsx:102 } # "Talep Medaris yönetimine gider": nobody reads it (MDRS-140)
+  requiredNote: { type: text, component: Text, text: { key: Reasons.required }, in: [form, formReady, lifting, escalating, requesting], source: apps/nazar/features/bans/components/reason-dialog.tsx:159 } # drawn as "* zorunlu alan"
+  liftReason: { type: field, component: TextField, role: textbox, text: { key: Reasons.lift.label }, value: { literal: "" }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'lift'", disabledIn: [lifting], source: apps/nazar/features/bans/components/reason-dialog.tsx:166 } # a textarea of 4 rows, 500 characters, `required`; disabled while the call runs, so it loses the focus
+  liftHelp: { type: text, component: Text, text: { key: Reasons.lift.help }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'lift' and not (state == 'form' and touched)", source: apps/nazar/features/bans/components/reason-dialog.tsx:163 }
+  escalateReason: { type: field, component: TextField, role: textbox, text: { key: Reasons.escalate.label }, value: { literal: "" }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'escalate'", disabledIn: [escalating], source: apps/nazar/features/bans/components/reason-dialog.tsx:166 }
+  escalateHelp: { type: text, component: Text, text: { key: Reasons.escalate.help }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'escalate' and not (state == 'form' and touched)", source: apps/nazar/features/bans/components/reason-dialog.tsx:163 }
+  permanentReason: { type: field, component: TextField, role: textbox, text: { key: Reasons.permanent.label }, value: { literal: "" }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'permanent'", disabledIn: [requesting], source: apps/nazar/features/bans/components/reason-dialog.tsx:166 }
+  permanentHelp: { type: text, component: Text, text: { key: Reasons.permanent.help }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'permanent' and not (state == 'form' and touched)", source: apps/nazar/features/bans/components/reason-dialog.tsx:163 }
+  reasonRequired: { type: text, component: Text, text: { key: Reasons.reasonRequired }, in: [form], when: touched, source: apps/nazar/features/bans/components/reason-dialog.tsx:164 } # replaces the help line; plain text, no live region, the focus is not moved (F-B-6)
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Reasons.cancel }, in: [form, formReady], emits: CANCEL, source: apps/nazar/features/bans/components/reason-dialog.tsx:118 } # present and doing nothing while the call runs (BANDEC-1); not drawn there
+  liftSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reasons.lift.submit }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'lift'", disabledIn: [form, lifting], emits: SUBMIT, source: apps/nazar/features/bans/components/reason-dialog.tsx:119 } # natively disabled while the reason is blank; busy (aria-disabled, aria-busy) while the call runs
+  escalateSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reasons.escalate.submit }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'escalate'", disabledIn: [form, escalating], emits: SUBMIT, source: apps/nazar/features/bans/components/reason-dialog.tsx:119 }
+  permanentSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: Reasons.permanent.submit }, in: [form, formReady, lifting, escalating, requesting], when: "kind == 'permanent'", disabledIn: [form, requesting], emits: SUBMIT, source: apps/nazar/features/bans/components/reason-dialog.tsx:119 }
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [lifting, escalating, requesting], source: libs/ui/src/mds/button.tsx:114 } # the hidden <output>, from the kit's own default word (F-B-2)
+
+edges:
+  - { labelledBy: [liftDialog, liftTitle] }
+  - { labelledBy: [escalateDialog, escalateTitle] }
+  - { labelledBy: [permanentDialog, permanentTitle] }
+  - { triggers: [liftButton, form] }
+  - { triggers: [widenButton, form] }
+  - { triggers: [requestButton, form] }
+  - { triggers: [liftSubmit, lifting] }
+  - { triggers: [escalateSubmit, escalating] }
+  - { triggers: [permanentSubmit, requesting] }
+  - { returnsFocus: [liftDialog, liftButton] } # Vazgeç, Esc or the close icon: the row's button is still there; Base UI's own, not verified in a browser
+  - { returnsFocus: [escalateDialog, widenButton] }
+  - { returnsFocus: [permanentDialog, requestButton] }
+
+rules:
+  - { id: ban-staff-check-gaps, rule: "SECURITY. Widening a ban never asks who the person is. escalateBan (apps/tedrisat/src/ban/ban.service.ts:515-557) and extendBan (:270-317) do not call rolesHeld, which createBan (:155) and createMadrasahBan (:486) call to refuse a person who runs the course or the medrese (RUNS_COURSE_ROLES, RUNS_MADRASAH_ROLES: ban-tier.ts:66-83) with 400 BAN_TARGET_INVALID. And naming a müderris, a başmüderris, a köşk nazım or a Medaris nazım never looks at open bans (only madrasah-nazir.service.ts:115 and course-nazir.service.ts:223 do, for a medrese nazır and a ders nazırı). So a ban placed on a talebe before they were named hoca stays open, shows 'Medreseden de yasakla', and the API bars the hoca from every course of the medrese; the page then says '{name} artık medresenin hiçbir dersine erişemez.' of a person who teaches. The same holds for a person named köşk nazım or Medaris nazım after the course ban: it can be widened over them. Two smaller faults of the same invariant: createMadrasahBan passes koskId and courseId null for a medrese-wide ban (ban.service.ts:463-467), so a hoca (a course role) or a köşk nazım (a köşk role) is not found there either and can be barred from the whole medrese at once, and nazar.bans.ban's page offers exactly that; and SYSTEM_ADMIN is a realm role that rolesHeld never reads (ban.repository.ts:273), so the başnazım can be barred from a course and then widened. Read from the code, not run; the scenario `staff` of the binding is the walk. Fix: run rolesHeld in escalate and extend and refuse with BAN_TARGET_INVALID (the page words it already: Bans.errors.BAN_TARGET_INVALID), read every scope for a medrese-wide ban, and refuse to name a hoca who is barred." }
+  - { id: BANDEC-4, rule: "HONESTY (MDRS-140, MDRS-194). 'Kalıcı yasak talebi aç' writes a ban_permanent_requests row and an audit row and nothing else: no notification, no route that lists or decides the request (domain ban-permanent-request-is-decided holds: false), and nizam's menu entry '/talepler/kalici-yasak' has no page. Yet the dialog says 'Talep Medaris yönetimine gider.' and the toast 'Talep Medaris yönetimine iletildi; karar verilene kadar yasak sürer.' (reason-dialog.tsx:102, nazar.json Reasons.permanent). The start of nizam.moderation.decidePermanentBan drawn from this flow is the planned half; today the request waits for nobody. Fix: say it is only recorded until the deciding page exists, or hide the action." }
+  - { id: BANDEC-1, rule: "While the call runs (`pending`) Vazgeç, the close icon and Esc do nothing (onOpenChange ignores a close while pending, reason-dialog.tsx:107-109) and they stay on, drawn as usable; the textarea is disabled, so the focus leaves it (reason-dialog.tsx:173). Nothing says the dialog cannot be closed. The same shape as F-W3-open-2 in nizam. Fix: disable the three while pending, or give the call a way to be abandoned." }
+  - { id: BANDEC-3, rule: "SECURITY, on the way in. createMadrasahBan reads the person's roles with koskId and courseId null when the ban is medrese-wide (apps/tedrisat/src/ban/ban.service.ts:463-467, :486), so rolesHeld finds only a platform role and a role of this medrese: a hoca (MUDERRIS, a course role), a ders nazırı and a köşk nazım (a köşk role) are not found, though RUNS_MADRASAH_ROLES lists them, and a medrese-wide ban can be placed on them at once; the page that places it (nazar.bans.ban, 'Medrese düzeyi') offers it. The e2e ban-catalogue.e2e.spec.ts:796-820 tries each of those roles only for a COURSE ban. Read from the code, not run. Fix: read the roles of every scope of the medrese for a medrese-wide ban." }
+  - { id: BANDEC-2, rule: "banErrorKey maps BAN_FORBIDDEN to 'Bu yasağı koymak için yetkiniz yok.' (bans.ts:356, nazar.json Bans.errors.BAN_FORBIDDEN) for every decision; for the permanent request the API's own refusal is 'You may not ask for a permanent ban' (ban.service.ts:589), so a başmüderris who lost the code reads that she may not 'place' a ban when she asked for a request. Fix: a key of its own for the request and the widening." }
+  - { id: F-B-2, rule: "The submit passes no loadingLabel, so its hidden status says 'Yükleniyor' from the kit's hard-coded default (libs/ui/src/mds/button.tsx:62, reason-dialog.tsx:119), outside the catalog, the same word for every action." }
+  - { id: F-B-4, rule: "A decision changes the rows and the two tab counts with no announcement: the table's aria-busy is not spoken and the counts are plain spans (bans-table.tsx:233-246). The only word is the toast." }
+  - { id: F-B-6, rule: "The submit is natively disabled while the reason is blank, so the only way to meet 'Bir gerekçe yazın.' is to leave the empty field, and then it is plain text under it (Field.Error has no role), the focus is not moved (reason-dialog.tsx:160-177). Fix: leave the submit on and let it show the error and move the focus to the field, or make the error role=alert." }
+  - { id: F-B-9, rule: "After a decision the page closes the dialog and reads the list again, so the row's opener (the lift, the widening or the request button) is gone or has moved to another tab; Base UI's return of the focus has no element and it falls to the page (reason-dialog.tsx:78-79, bans-table.tsx:77). The graph draws no focus after a decision and only the cancel path returns it. Not verified in a browser. Fix: move the focus to the table's caption or the next row's button after a decision." }
+  - { id: F-B-12, rule: "The whole body of the dialog (the person, the summary, the sentence and the field) is its aria-describedby (libs/ui/src/mds/dialog.tsx:103-112), so a screen reader may read all of it on opening. Not verified how it is read." }
+  - { id: F-B-13, rule: "A refused caller (a nazır with no grant) meets a page titled 'Yasaklamalar' with a polite status 'Bu sayfaya izniniz yok' that is not a heading and has no link out (page-problem.tsx:23-29). The nazır's whole story is nazar.access.medreseNazirRefused." }
+  - { id: error-toast-stays, rule: "An error toast (every refusal here) stays until closed, so a second decision in the same visit can leave the first one's error on the screen beside the second's; the graph draws the last (`last`). A success toast closes after 6 seconds. A moved refusal also closes the dialog, so the person reads the reason of a list that has already changed." }
+  - { id: label-in-name, rule: "A row button's visible text is contained in its accessible name: 'Yasağı kaldır' in 'Yasağı kaldır: {name}', 'Medreseden de yasakla' in 'Medreseden de yasakla: {name}', 'Kalıcı yasak talebi aç' in 'Kalıcı yasak talebi aç: {name}' (WCAG 2.5.3). Holds." }
+  - { id: reason-never-reaches-the-talebe, rule: "The reason of a ban, of its lift and of the request is read by those who list and lift bans, never by the talebe, who is told only 'erişimin kaldırıldı' when a widening bars a seat of theirs, and nothing when a ban is lifted (liftBan sends no notification). Holds; the help lines of the three fields say so." }

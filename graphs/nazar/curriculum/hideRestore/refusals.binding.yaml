@@ -1,0 +1,81 @@
+# nazar.curriculum.hideRestore, the walks that are refused or lose a race. It extends binding.common.yaml (not binding.yaml) and gives its four
+# scenarios; no state has a `call`, because a Next server action answers 200 on the page's own address and the replay compares a FAIL class with
+# the call's HTTP status (SPEC.md section 7), which cannot pass here. The busy state is walked in binding.yaml.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/curriculum/hideRestore \
+#     --bind graphs/nazar/curriculum/hideRestore/refusals.binding.yaml --cover transitions --out <dir>
+# NOT RUN: see binding.yaml. The binding loads (`--emit-spec` wrote a spec and walked nothing).
+#
+#   sessionOnly  a ders nazırı of the course (DERS_NAZIR, appointed by setup with session.manage and nothing else) opens the hide page by its
+#                address (the editor's link is drawn only for week.hide). She hides a celse (it works: archiveLesson takes either code), is
+#                refused a week with the error toast "Hafta gizlenemedi / Bunu yapma izniniz yok." after the question (F-C-course-a-17), and the
+#                sidebar's "Arşiv" shows her "Bu sayfaya izniniz yok" (HIDEREST-3).
+#   neither      the same person with no grant at all: the celse is refused too ("Celse gizlenemedi / Bunu yapma izniniz yok.").
+#   hideGone     the hoca; `hide.mjs race` hides the first live week or celse in another tab when the window opens, so "Gizle" is answered with
+#                WEEK_NOT_FOUND or LESSON_NOT_FOUND: the info toast "... gizlenemedi / Bu hafta ya da celse artık yok. Sayfa yenilendi." and the page
+#                read again. Every hide of this walk is gone (the flow's `race: hide`), so it takes no success path.
+#   restoreGone  the hoca hides and walks to the Arşiv; `hide.mjs race` brings back every row she may, in another tab, when the list has been read,
+#                so "Geri al" is answered with ARCHIVE_ITEM_NOT_FOUND: "Geri alınamadı / Bu öğe artık arşivde değil. Liste yenilendi."
+# The helper acts as the hoca herself ("the same hoca in another tab"), not as another person: a hide by the köşk's nazım would put the row at a
+# kademe she cannot restore from, which is another story (`locked`).
+#
+# Not walked, with the reason: see binding.common.yaml. Also not bound: a ders nazırı who holds week.hide but not session.manage (the flow's `holds`
+# has no value for it: the hoca's list of codes is the same), and the unlocked-by-the-nazır codes.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.curriculum.hideRestore
+
+scenarios:
+  sessionOnly:
+    given: { holds: sessionManage, locks: none, weeks: many, nest: inside, race: none }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/mufredat/gizle'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, helpers/course.mjs, make, hideRestore, --weeks, '2', --lessons, '2']
+        expect: '"tag":"hideRestore"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, session.manage]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideRestore]
+        expect: 'course remove hideRestore'
+
+  neither:
+    given: { holds: neither, locks: none, weeks: many, nest: inside, race: none }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/mufredat/gizle'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, helpers/course.mjs, make, hideRestore, --weeks, '2', --lessons, '2']
+        expect: '"tag":"hideRestore"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideRestore]
+        expect: 'course remove hideRestore'
+
+  hideGone:
+    given: { holds: weekHide, locks: none, weeks: many, nest: inside, race: hide }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/mufredat'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'dersCurriculum->dersCurriculumGizle' }
+    vars: { meanwhile: hide }
+    setup:
+      - run: [node, helpers/course.mjs, make, hideRestore, --weeks, '2', --lessons, '2']
+        expect: '"tag":"hideRestore"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideRestore]
+        expect: 'course remove hideRestore'
+
+  restoreGone:
+    given: { holds: weekHide, locks: none, weeks: many, nest: inside, race: restore }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/mufredat'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'dersCurriculum->dersCurriculumGizle' }
+    vars: { meanwhile: restore }
+    setup:
+      - run: [node, helpers/course.mjs, make, hideRestore, --weeks, '2', --lessons, '2']
+        expect: '"tag":"hideRestore"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideRestore]
+        expect: 'course remove hideRestore'

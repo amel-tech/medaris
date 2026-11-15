@@ -1,0 +1,43 @@
+# nazar.courseNazirs.appoint, a person appointed elsewhere while the dialog is open (e2e course-nazirs#7, first half). Written without a replay;
+# see locators.binding.yaml for the data, the locators and the effects every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/courseNazirs/appoint \
+#     --bind graphs/nazar/courseNazirs/appoint/binding.race.yaml --cover transitions --out <dir>
+# `before` on "Kaydet" has the hoca appoint the spare through the API (./appoint-data.mjs elsewhere, no permission), so the save is refused with
+# COURSE_NAZIR_EXISTS: an error toast "Bu kişi bu dersin ders nazırı zaten.", the dialog closes and the list is read again with the other
+# post's row ("İzin yok", "Süresiz"). The helper treats a post that exists as done, so it does no harm if the replay runs it more than once.
+# It is a file of its own because a `before` is the binding's and not a scenario's, and the other scenarios must not have it.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseNazirs.appoint
+
+scenarios:
+  raced:
+    given: { person: raced }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up]
+        expect: 'course-nazirs up'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+      foundName: '{appt.name}'
+      foundEmail: '{appt.email}'
+
+nodes:
+  save:
+    role: button
+    name: '/^Kaydet$/'
+    before:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, elsewhere]
+        expect: 'course-nazirs elsewhere'

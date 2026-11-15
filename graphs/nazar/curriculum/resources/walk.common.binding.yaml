@@ -1,0 +1,142 @@
+# What every walk of nazar.curriculum.resources shares (graphs/README.md, "The stack and the bindings"): the throwaway course's ids as
+# data, the events a person types or reorders with, the words the walk's own data gives the page, the places the walk finds nodes by,
+# and the check of what a save writes. The scenarios are in binding.yaml (the müderris: the main story, and a course that holds a
+# file), binding.noSessions.yaml and binding.readOnly.yaml (a ders nazırı with part of the permissions): one file for each person,
+# because a walk keeps one account, and the second and third add no transition of the flow, so `--cover transitions` over the first
+# alone would never open them.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation below
+# is from the code and unverified. The bindings load (`replay <dir> --bind <this file's child> --emit-spec` wrote a spec and walked
+# nothing).
+#
+# Data. Every scenario makes its own course (resources-data.mjs make: the course `Deneme dersi resources` in the second köşk, two
+# weeks of two celses, `muderris` as its hoca; for `withFile` one stored file in its resources, by SQL, since no upload works here;
+# for the two ders nazırı scenarios a post that holds one permission) and removes it. The seeded courses, their resources and every
+# other account are never touched. resources-data.mjs writes graphs/.local/made/resources.json, read here as {made.course} and
+# {made.title}.
+#
+# WHAT THE REPLAY CANNOT DO HERE, AND WHAT IS NOT BOUND. The panel's file field is a native <input type=file>, and the replay has no
+# action that sets one (its verbs are goto, reload, click, fill, key, waitUrl, waitText, waitResponse and run; Playwright's `fill`
+# refuses a file input). So `CHOOSE` is not bound, and no walk reaches `uploadingCourse`, `uploadingLesson`, a file the page refuses
+# before sending or an alert of the server: the transitions out of them are reported as not walked. Even with such an action this
+# stack answers 503 to every upload (no Bunny Storage), so `store: stored` would stay out of reach; `storage` could be walked. What does
+# walk: the panel opens (courseUploadOpened, lessonUploadOpened), "Yükle" with no file says "Bir dosya seçin." and "Vazgeç" closes it.
+# Not bound either: a save the server refuses (`answer: conflict | forbidden | other`: the stack cannot be made to refuse the müderris's
+# own save, and a conflict needs a second save between the page's read and Kaydet, which no step of one walk can place), a download
+# of the file row (nazar.files.download's), and a session that ends.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.curriculum.resources
+
+data:
+  made: { json: ../.local/made/resources.json }
+
+# the walk's own course gives the intro its name and the toast its body; the other placeholders (the row's number is 1) match as written
+samples:
+  name: '{made.title}'
+
+events:
+  # the new link of the course's list is the only row of its list: name and address, in the row `resource-0`
+  FILL_COURSE:
+    - fill: { role: textbox, name: Kaynak adı, within: { testId: resource-0 }, value: '{linkName}' }
+    - fill: { role: textbox, name: Bağlantı, within: { testId: resource-0 }, value: '{linkUrl}' }
+  # the new link of the first celse's list is its last row (the rows are an <ol> in the celse's block; the upload panel is not in it)
+  FILL_LESSON:
+    - fill: { role: textbox, name: Kaynak adı, within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' }, value: '{lessonLinkName}' }
+    - fill: { role: textbox, name: Bağlantı, within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' }, value: '{lessonLinkUrl}' }
+  FILL_LESSON_NEXT:
+    - fill: { role: textbox, name: Kaynak adı, within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' }, value: '{lessonLinkName2}' }
+    - fill: { role: textbox, name: Bağlantı, within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' }, value: '{lessonLinkUrl2}' }
+  # the first row's "Aşağı taşı": the two rows change places (its twin, the second row's "Yukarı taşı", does the same)
+  MOVE:
+    - click: { role: button, name: Aşağı taşı, within: { css: '[data-testid="resources-lesson-0-0"] ol' }, nth: 0 }
+  # CHOOSE is not bound: the replay cannot set a file input (see above)
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}'
+
+nodes:
+  # the page's one <main>; its own heading "Bağlı kaynaklar" tells it from the page a walk leaves for
+  page: { css: main, hasText: Bağlı kaynaklar }
+  # the two sentences of a person with part of the permissions, each the only text of its Alert
+  readOnlyNote: { role: status, hasText: '/bu sayfa yalnız okunur/' }
+  sessionsNote: { role: status, hasText: '/celse yönetimi izni gerekir; bu düğmeler/' }
+  # the course's list: its testid is `resources`, its one row `resource-0`
+  courseRowHeading: { role: heading, name: Kaynak 1, within: { testId: resource-0 } }
+  courseFileBadge: { text: '/^Dosya$/', within: { testId: resource-0 } }
+  courseRemove: { role: button, name: Kaynağı çıkar, within: { testId: resource-0 } }
+  courseName: { role: textbox, name: Kaynak adı, within: { testId: resource-0 } }
+  courseMeta: { role: textbox, name: Kısa bilgi, within: { testId: resource-0 } }
+  courseUrl: { role: textbox, name: Bağlantı, within: { testId: resource-0 } }
+  courseUrlHelp: { text: '/http:\/\/ ya da https:\/\/ ile başlayan tam adres/', within: { testId: resource-0 } }
+  # a file row: the link is named by its file ("ders-notu.pdf dosyasını indir"), not by the course's name the sample would give
+  courseFileLink: { role: link, name: '/dosyasını indir$/', within: { testId: resource-0 } }
+  addCourseLink: { role: button, name: Bağlantı ekle, within: { testId: resources } }
+  courseUpload: { role: button, name: Dosya yükle, within: { testId: resources } }
+  # the first celse's toggle (`lesson-<week>-<celse>` is each celse's test id): it is pressed to open the details and again to fold them
+  detailsShow: { role: button, name: 'Başlık, bağlantı, kaynaklar, ödev', within: { testId: lesson-0-0 } }
+  detailsHide: { role: button, name: Ayrıntıları gizle, within: { testId: lesson-0-0 } }
+  addSession: { role: button, name: Celse ekle, nth: 0 }
+  # the first celse's list: its testid is `resources-lesson-0-0`; its rows are the <ol> in it
+  lessonGroup: { role: group, name: Celsenin kaynakları, within: { testId: lesson-0-0 } }
+  lessonRowName: { role: textbox, name: Kaynak adı, within: { css: '[data-testid="resources-lesson-0-0"] ol' } }
+  lessonRowMeta: { role: textbox, name: Kısa bilgi, within: { css: '[data-testid="resources-lesson-0-0"] ol' } }
+  lessonRowUrl: { role: textbox, name: Bağlantı, within: { css: '[data-testid="resources-lesson-0-0"] ol' } }
+  lessonMoveUp: { skip: "the first row's button is off and the others' are on, and the graph has one node for them all (a repeat node is checked on every item); MOVE presses the first row's 'Aşağı taşı' through the events" }
+  lessonMoveDown: { skip: "the last row's button is off and the others' are on, and the graph has one node for them all; MOVE presses the first row's 'Aşağı taşı' through the events" }
+  lessonRemove: { role: button, name: Kaynağı çıkar, within: { css: '[data-testid="resources-lesson-0-0"] ol' } }
+  lessonAddLink: { role: button, name: Bağlantı ekle, within: { testId: resources-lesson-0-0 } }
+  lessonUpload: { role: button, name: Dosya yükle, within: { testId: resources-lesson-0-0 } }
+  # the celse added on this page is the third of the first week (two are stored): `lesson-0-2`
+  freshGroup: { role: group, name: Celsenin kaynakları, within: { testId: lesson-0-2 } }
+  freshEmpty: { text: Bu celseye henüz kaynak bağlanmadı., within: { testId: lesson-0-2 } }
+  freshAddLink: { role: button, name: Bağlantı ekle, within: { testId: lesson-0-2 } }
+  freshUpload: { role: button, name: Dosya yükle, within: { testId: lesson-0-2 } }
+  freshSaveFirst: { text: '/önce müfredatı kaydedin/', within: { testId: lesson-0-2 } }
+  # the upload panel: the fieldset named by its legend; only one is open at a time
+  fileInput: { css: 'input[type=file]' }
+  uploadName: { role: textbox, name: Kaynak adı, within: { role: group, name: Dosya yükle } }
+  uploadMeta: { role: textbox, name: Kısa bilgi, within: { role: group, name: Dosya yükle } }
+  sendButton: { role: button, name: '/^Yükle$/', within: { role: group, name: Dosya yükle } }
+  cancelUpload: { role: button, name: '/^Vazgeç$/', within: { role: group, name: Dosya yükle } }
+  # the errors of a refused Kaydet: the same two sentences under the course's row and under the celse's last row
+  courseNameError: { text: Kaynağın adını yazın., within: { testId: resource-0 } }
+  courseUrlError: { text: '/tam bir adres olmalı/', within: { testId: resource-0 } }
+  lessonNameError: { text: Kaynağın adını yazın., within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' } }
+  lessonUrlError: { text: '/tam bir adres olmalı/', within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' } }
+  # the save bar
+  dirtyLine: { testId: dirty }
+  reset: { role: button, name: '/^Vazgeç$/', within: { testId: save-bar } }
+  save: { role: button, name: '/^Kaydet/', within: { testId: save-bar } }
+  savingOutput: { role: status, hasText: Kaydediliyor }
+  # the question: the file's name stands before the sentence in one paragraph
+  removeBody: { text: '/kaynaklardan çıkarılacak\./' }
+  removeCancel: { role: button, name: '/^Vazgeç$/', within: { role: alertdialog } }
+  removeConfirm: { role: button, name: '/^Çıkar$/', within: { role: alertdialog } }
+
+# What a save leaves outside the screen, read from tedrisat's database (helpers/sql.mjs, read-only). The text of every link is the
+# walk's own (`vars`). A lesson's rows are counted over the course's weeks and celses; the course is the walk's own, so nothing else
+# is in the count.
+effects:
+  savedCourseAdded:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_resources where course_id = '{made.course}' and name = '{linkName}' and url = '{linkUrl}'"]
+      expect: '"n":1'
+  savedCourseRemoved:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_resources where course_id = '{made.course}'"]
+      expect: '"n":0'
+    # a file taken off was queued for deletion under the walk's own key prefix; a link leaves nothing in the queue
+    - run: [node, helpers/sql.mjs, "select count(*) as n from storage_deletions where storage_key like 'walk/curriculum-resources/%'"]
+      expect: '"n":{queued}'
+  savedLessonRowsNone:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":0'
+  savedLessonRowsOne:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":1'
+  savedLessonRowsTwo:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":2'
+  # the two rows were stored in the order of adding (name 1, then name 2); after "Aşağı taşı" on the first they are stored the other way
+  savedMoved:
+    - run: [node, helpers/sql.mjs, "select string_agg(r.name, '>' order by r.order_index) as names from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"names":"{lessonLinkName2}>{lessonLinkName}"'

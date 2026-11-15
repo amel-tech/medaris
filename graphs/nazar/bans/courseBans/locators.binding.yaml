@@ -1,0 +1,158 @@
+# What every binding of nazar.bans.courseBans shares: the locators of the nodes that role and name cannot find, the events no node sends,
+# the addresses of the states and the checks of what a write leaves in the database. It holds no scenario: the files that extend it do
+# (binding.yaml, binding.refused.yaml, binding.dersNazir.yaml, binding.invalid.yaml, binding.moved.yaml, binding.nazir.yaml,
+# binding.higher.yaml, binding.noTalebe.yaml). NOT RUN: every locator is from the code and unverified until a walk (the owner's word:
+# replays come once, at the end).
+#
+# The people. A scenario makes one course of its own in the seeded medrese (helpers/course.mjs make cbans --madrasah) and enrols two spare
+# talebe accounts in it, which the page names by the name tedrisat holds (STACK.md):
+#   applicantE  "Betül Başvuran"   (a woman)       applicantG  "Dilek Başvuran"   (a woman)
+# binding.moved.yaml bans four people and enrols nobody (applicantC "Esma Başvuran" and applicantD "Salih Başvuran" besides): a person
+# is barred by id, whether or not they hold a seat, and each file clears its people's bans first and last.
+# Nobody else's account is barred, and no seeded course, ban, grant or setting is changed (binding.nazir.yaml changes the seeded nazır's
+# one grant and puts it back). A repeated node is pressed on its first item, and the list is newest first (ban.repository.ts:700).
+#
+# Two nodes that the page draws in two dialogs under the same words ("Vazgeç", "Kapat", the reason's label "Yasaklama gerekçesi") are told
+# apart by the dialog they are in: the Yasakla dialog is the one named exactly "Yasakla", the reason dialogs are named "Yasağı kaldır",
+# "Medreseden de yasakla" or "Kalıcı yasak talebi aç". A toast is a dialog too, so a locator that means a dialog's content names its dialog.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.bans.courseBans
+
+data:
+  made: { json: ../.local/made/cbans.json }
+
+states:
+  listed: { url: '{nazar}/ders/*/yasaklamalar**' }
+  empty: { url: '{nazar}/ders/*/yasaklamalar**' }
+  liftedList: { url: '{nazar}/ders/*/yasaklamalar**' }
+  liftedEmpty: { url: '{nazar}/ders/*/yasaklamalar**' }
+  forbidden: { url: '{nazar}/ders/*/yasaklamalar**' }
+  # NAVIGATE goes to the course's overview
+  left: { url: '{nazar}/ders/*' }
+
+events:
+  # the select is Base UI's: its trigger is a combobox named "Talebe", its choices are options in a popup
+  PICK_TALEBE:
+    - { click: { role: combobox, name: Talebe, within: { role: dialog, name: '/^Yasakla$/' } } }
+    - { click: { role: option, name: '{talebe}' } }
+  # the reason is a textarea with no node that sends an event: the binding fills the one textbox of the open dialog
+  FILL_IN:
+    - { fill: { role: textbox, within: { role: dialog, name: '/^(Yasakla|Yasağı kaldır|Medreseden de yasakla|Kalıcı yasak talebi aç)$/' }, value: '{reasonText}' } }
+  CLEAR:
+    - { fill: { role: textbox, within: { role: dialog, name: '/^(Yasakla|Yasağı kaldır|Medreseden de yasakla|Kalıcı yasak talebi aç)$/' }, value: '' } }
+  # the focus starts in the reason of a reason dialog but not in the Yasakla dialog (F-D2c-15): click the field, then Tab, and its blur shows its error (F-B-6)
+  LEAVE_EMPTY:
+    - { click: { role: textbox, within: { role: dialog, name: '/^(Yasakla|Yasağı kaldır|Medreseden de yasakla|Kalıcı yasak talebi aç)$/' } } }
+    - { key: Tab }
+  NAVIGATE:
+    - { goto: '{nazar}/ders/{made.course}' }
+
+nodes:
+  # ---- the page ----
+  # the shell's <main> is the same on every page of the course: this one holds the heading "Yasaklamalar"
+  bansPage: { role: main, hasText: Yasaklamalar }
+  bansTitle: { role: heading, name: '/^Yasaklamalar$/', within: { role: main } } # the menu's "Yasaklamalar" is a link, not a heading
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  # the header's button: the page's own "Yasakla" (the dialog's submit is in the dialog and the page behind it is inert)
+  banButton: { css: 'main header button:enabled', hasText: '/^Yasakla$/' }
+  banButtonOff: { css: 'main header button:disabled', hasText: '/^Yasakla$/' }
+  noTalebe: { testId: ban-off, hasText: Bu derste yasaklanabilecek talebe yok. }
+  rosterFailed: { testId: ban-off, hasText: Dersin talebeleri okunamadı }
+  tabActive: { role: link, name: '/^Etkin/', within: { role: navigation, name: Yasak durumu } }
+  tabLifted: { role: link, name: '/^Kaldırılan/', within: { role: navigation, name: Yasak durumu } }
+  # the counts are numbers the page formats: the first span is the Etkin tab's, the second the Kaldırılan's
+  tabActiveCount: { css: '.mds-tab__count', nth: 0, hasText: '/^\d+$/' }
+  tabLiftedCount: { css: '.mds-tab__count', nth: 1, hasText: '/^\d+$/' }
+  searchField: { role: searchbox, name: Kişi ara }
+  bansTable: { role: table, name: Etkin yasaklar }
+  liftedTable: { role: table, name: Kaldırılan yasaklar }
+
+  # ---- the rows: the cells by their place in the row, in the table of their own tab (the same cell in the other tab is another node) ----
+  rowPerson: { role: rowheader, hasText: Başvuran, within: { role: table, name: Etkin yasaklar } }
+  rowScope: { css: 'tbody td:nth-child(2)', hasText: '/^Ders/', within: { role: table, name: Etkin yasaklar } }
+  rowCourse: { css: 'tbody td:nth-child(2) bdi', hasText: Deneme dersi cbans, within: { role: table, name: Etkin yasaklar } }
+  rowReason: { css: 'tbody td:nth-child(3) bdi', within: { role: table, name: Etkin yasaklar } }
+  rowBannedBy: { css: 'tbody td:nth-child(4) bdi', within: { role: table, name: Etkin yasaklar } }
+  rowRoleYou: { css: 'tbody td:nth-child(4) .mds-caption', hasText: '/\(siz\)$/', within: { role: table, name: Etkin yasaklar } }
+  rowRoleAdmin: { css: 'tbody td:nth-child(4) .mds-caption', hasText: '/^Medaris yönetimi$/', within: { role: table, name: Etkin yasaklar } }
+  rowWhen: { css: 'tbody td:nth-child(5) time', within: { role: table, name: Etkin yasaklar } }
+  newBadge: { css: 'tbody .mds-badge', hasText: '/^Yeni$/', within: { role: table, name: Etkin yasaklar } }
+  permanentBadge: { css: 'tbody .mds-badge', hasText: Kalıcı yasak talebi bekliyor, within: { role: table, name: Etkin yasaklar } }
+  rowNote: { testId: lift-note, hasText: Bu yasağı yalnız Medaris yönetimi kaldırabilir. }
+  # the three buttons are named by the person: only the walk's own people are ever pressed (binding.moved.yaml has four)
+  liftButton: { role: button, name: '/^Yasağı kaldır: (Betül|Dilek|Esma|Salih) Başvuran$/' }
+  widenButton: { role: button, name: '/^Medreseden de yasakla: (Betül|Dilek|Esma|Salih) Başvuran$/' }
+  requestButton: { role: button, name: '/^Kalıcı yasak talebi aç: (Betül|Dilek|Esma|Salih) Başvuran$/' }
+  liftedPerson: { role: rowheader, hasText: Başvuran, within: { role: table, name: Kaldırılan yasaklar } }
+  liftedScope: { css: 'tbody td:nth-child(2)', hasText: '/^Ders/', within: { role: table, name: Kaldırılan yasaklar } }
+  liftedCourse: { css: 'tbody td:nth-child(2) bdi', hasText: Deneme dersi cbans, within: { role: table, name: Kaldırılan yasaklar } }
+  liftedReason: { css: 'tbody td:nth-child(3) bdi', within: { role: table, name: Kaldırılan yasaklar } }
+  liftedPlacedBy: { css: 'tbody td:nth-child(4) bdi', within: { role: table, name: Kaldırılan yasaklar } }
+  # the Kaldırılan tab's last column: who, when, why
+  liftedBy: { css: 'tbody td:nth-child(6) bdi:not(.mds-caption)', within: { role: table, name: Kaldırılan yasaklar } }
+  liftedWhen: { css: 'tbody td:nth-child(6) time', within: { role: table, name: Kaldırılan yasaklar } }
+  liftedWhy: { css: 'tbody td:nth-child(6) bdi.mds-caption', within: { role: table, name: Kaldırılan yasaklar } }
+
+  # ---- the toasts: a region "Bildirimler" of dialogs; the words with a person in them are found by their ending ----
+  toastPlaced: { role: dialog, name: Yasak kaydedildi, hasText: '/dersine erişemez\./' }
+  toastLifted: { role: dialog, name: Yasak kaldırıldı, hasText: '/için yasak kalktı\./' }
+  toastWidened: { role: dialog, name: Medreseden de yasaklandı, hasText: '/artık medresenin hiçbir dersine erişemez\./' }
+  toastRequested: { role: dialog, name: Kalıcı yasak talebi açıldı }
+  # one of three titles and one of five messages (text: oneOf is found by its first only)
+  toastMoved: { role: alertdialog, name: '/Yasak kaldırılamadı|Medreseden yasaklanamadı|Talep açılamadı/', hasText: '/liste yenilendi|açılamaz/' }
+  toastRefused: { role: alertdialog, name: '/Yasak kaldırılamadı|Medreseden yasaklanamadı|Talep açılamadı/', hasText: '/yalnız onu koyan kademe|yetkiniz yok/' }
+  toastFailed: { role: alertdialog, name: '/Yasak kaldırılamadı|Medreseden yasaklanamadı|Talep açılamadı/', hasText: '/denetleyip|ters gitti/' }
+  toastBanError: { role: alertdialog, name: Yasak konamadı, hasText: '/yasaklanamaz|yetkiniz yok|artık yok|denetleyip|ters gitti/' }
+
+  # ---- the Yasakla dialog: found by its exact title ----
+  banEyebrow: { css: '.mds-eyebrow', hasText: Deneme dersi cbans, within: { role: dialog, name: '/^Yasakla$/' } }
+  banClose: { role: button, name: Kapat, within: { role: dialog, name: '/^Yasakla$/' } }
+  talebeSelect: { role: combobox, name: Talebe, within: { role: dialog, name: '/^Yasakla$/' } }
+  banReason: { role: textbox, within: { role: dialog, name: '/^Yasakla$/' } }
+  banCancel: { role: button, name: Vazgeç, within: { role: dialog, name: '/^Yasakla$/' } }
+  banSubmit: { role: button, name: '/^Yasakla$/', within: { role: dialog, name: '/^Yasakla$/' } }
+
+  # ---- the reason dialogs: found by their titles; the page behind them is inert ----
+  dialogEyebrow: { css: '.mds-eyebrow', hasText: Deneme dersi cbans, within: { role: dialog, name: '/^(Yasağı kaldır|Medreseden de yasakla|Kalıcı yasak talebi aç)$/' } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: '/^(Yasağı kaldır|Medreseden de yasakla|Kalıcı yasak talebi aç)$/' } }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: '/^(Yasağı kaldır|Medreseden de yasakla|Kalıcı yasak talebi aç)$/' } }
+  dialogPerson: { testId: ban-person, hasText: '/Başvuran/' }
+  dialogEmail: { testId: ban-person, hasText: '/@medaris\.test/' }
+  summaryScopeTerm: { text: Kapsam, within: { testId: ban-summary } }
+  summaryBannedByTerm: { text: Yasaklayan, within: { testId: ban-summary } }
+  summaryReasonTerm: { text: Gerekçe, within: { testId: ban-summary } }
+  summaryScope: { testId: ban-summary, hasText: 'Ders · ' }
+  summaryBannedBy: { testId: ban-summary, hasText: '/\(siz\)|Medaris yönetimi/' }
+  summaryReason: { testId: ban-summary, hasText: '/ders dışı reklam|aynı davranışı|başka birine kullandırdı/' }
+  # "{course}" is the walk's own course, "Deneme dersi cbans"
+  liftBody: { text: '/dersine yeniden başvurabilir\./', within: { role: dialog, name: '/^Yasağı kaldır$/' } }
+  escalateBody: { text: '/dersindeki yasak da sürer\./', within: { role: dialog, name: '/^Medreseden de yasakla$/' } }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/', within: { role: dialog, name: '/^(Yasağı kaldır|Medreseden de yasakla|Kalıcı yasak talebi aç)$/' } }
+  liftReason: { role: textbox, name: '/^Kaldırma gerekçesi/', within: { role: dialog, name: '/^Yasağı kaldır$/' } }
+  escalateReason: { role: textbox, name: '/^Yasaklama gerekçesi/', within: { role: dialog, name: '/^Medreseden de yasakla$/' } }
+  permanentReason: { role: textbox, name: '/^Talep gerekçesi/', within: { role: dialog, name: '/^Kalıcı yasak talebi aç$/' } }
+  # the three submits are named like the row buttons and the dialogs' own titles: told apart by being in the dialog and by the whole name
+  liftSubmit: { role: button, name: '/^Yasağı kaldır$/', within: { role: dialog, name: '/^Yasağı kaldır$/' } }
+  escalateSubmit: { role: button, name: '/^Medreseden de yasakla$/', within: { role: dialog, name: '/^Medreseden de yasakla$/' } }
+  permanentSubmit: { role: button, name: '/^Talebi aç$/', within: { role: dialog, name: '/^Kalıcı yasak talebi aç$/' } }
+  busy: { role: status, hasText: Yükleniyor, within: { role: dialog } }
+
+# What a write leaves outside the screen, read from tedrisat's database by ../decide/bans.mjs (the people and the words come from the
+# scenario's `vars`; the walk's own people only). `expect: 'has:'` is the helper saying the line is there. The helper is nazar.bans.decide's
+# own, written for its walk: if the orchestrator promotes it to graphs/bindings/helpers/, change the path here (and in the setups).
+effects:
+  createBan:
+    - run: [node, ../nazar/bans/decide/bans.mjs, check, cbans, --who, '{who}', --has, '{placeHas}']
+      expect: 'has:'
+  liftBan:
+    - run: [node, ../nazar/bans/decide/bans.mjs, check, cbans, --who, '{who}', --has, '{liftHas}']
+      expect: 'has:'
+  escalateBan:
+    - run: [node, ../nazar/bans/decide/bans.mjs, check, cbans, --who, '{who}', --has, '{widenHas}']
+      expect: 'has:'
+  requestPermanentBan:
+    - run: [node, ../nazar/bans/decide/bans.mjs, check, cbans, --who, '{who}', --has, '{askHas}']
+      expect: 'has:'

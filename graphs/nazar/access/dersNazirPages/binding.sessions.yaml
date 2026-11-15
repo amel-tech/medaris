@@ -1,0 +1,29 @@
+# nazar.access.dersNazirPages, the ders nazırı given session.manage and recording.manage: `applicantD` appointed with those two codes in a course the
+# walk makes. e2e course-nazirs#4 (a1 the person row, a2-a9 Celseler, Müfredat, Ders kayıtları and Ders ayarları open, a10-a12 Talebeler, Sorular and
+# Ders nazırları refuse) and course-settings#7 (session.manage opens the sample session and nothing else). The menu gains Değerlendirme, whose page
+# opens too (session.manage is what the marks ask), and Ödevler and Ders destesi stay out of it.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/binding.sessions.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay. Data and teardown as binding.common.yaml says; nothing besides the course and the post is made.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.dersNazirPages
+
+scenarios:
+  sessions:
+    given: { held: sessions }
+    as: applicantD
+    open: '{nazar}/ders/{dnp.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, dnp, --weeks, '2', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, applicantE]
+        expect: '"tag":"dnp"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'session.manage,recording.manage']
+        expect: 'course-nazir-grants APPLICANT_D'
+    teardown:
+      - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, clear, '{dnp.course}']
+      - run: [node, helpers/course.mjs, remove, dnp]
+        expect: course remove dnp
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

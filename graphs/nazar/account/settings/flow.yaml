@@ -1,0 +1,382 @@
+# Hesap ve ayarlar in nazar-web (/hesap), read by the staff who work there: the roles they hold, the permissions those roles
+# give them in words, the e-mail the account is signed in with, the time zone the celse times are shown in, and the way out.
+# Read from the code of PR #394 (apps/nazar/features/account, the layout and reads of features/shell, libs/ui's Select, Table,
+# Toast and ImamStar) on 15 Nov 2026, and checked against the running stack with five GETs as five of the seeded people
+# (/me, /me/assignments, /me/effective-permissions). Nothing was looked at in a browser: every behaviour that no GET shows is
+# "from the code". Nothing here is approved.
+#   - What it draws: the three reads (the roles through the layout's portal read, the profile, the permissions), the page with
+#     its four cards, the two time-zone lists, the save at once with its toast, the failed save that puts the old zone back,
+#     the imam star's bubble, and the three ways out.
+#   - Who. The case variable `holds` is the person, one value for each account the stack seeds that can open the page: the
+#     başmüderris (the main story), a medrese nazırı, a hoca of three courses, a hoca whose course has a second hoca (the
+#     star), a ders nazırı, and the Medaris başnazım with no seat, who may open /hesap by its address and is called a
+#     "Talebe" (F-E-4). A person with no seat who is not the başnazım never meets the page: the layout sends them to
+#     /erisim-yok (nazar.access.noAccess). `read` says which read fails, if any; the stack has no way to make one fail.
+#   - The sign-out button posts at once, with no confirmation (F-E-18); realm.auth.signOut is started here, as its own
+#     `directButton` entry.
+#   - Findings it carries (the inventory's ids): F-E-3, F-E-4, F-E-11, F-E-12, F-E-13, F-E-14, F-E-16, F-E-18, F-E-19. Two more
+#     are its own, NAZSET-1 and NAZSET-2 (ui.yaml `rules`).
+#   - E2E carried: account#1 to #7 (see needs.yaml and the report for what each does not carry). account#3 a3 to a5 are STALE
+#     (the Dil field is gone, F-E-3) and are not carried.
+schema: delurio-graph/0
+kind: flow
+id: nazar.account.settings
+status: captured
+domain: medaris.api
+ui: nazar.account.settings
+title: Read my roles and set my time zone
+summary: >-
+  A staff member opens Hesap ve ayarlar. The page reads the roles they hold, their profile and the permissions those roles
+  give them, and draws four cards: "Görevleriniz" (a table: role, scope with its state, who gave it and when, until when),
+  "Etkin izinleriniz" (one group of plain sentences for each role and scope), "Saat dilimi" (a list of eight cities and
+  "Diğer…", which opens the full list) and, beside them, "Hesap" (the name, the roles held and the e-mail, read-only) and the
+  sign-out card. There is no Kaydet: a zone chosen from either list is saved at that moment, a toast says so, and the choice is
+  still there after a reload. A save that fails puts the old zone back and says so in a toast that stays until it is closed.
+  A hoca who shares a course with another hoca and is its imam has a star after "Hoca" that opens a bubble saying what an imam
+  is. "Çıkış yap" signs out at once, with no confirmation.
+
+scope:
+  shows: >-
+    Hesap ve ayarlar of one staff member: the table of roles, the permission sentences, the time-zone lists and their save,
+    the e-mail, the sign-out card, the imam star, and the reads behind them
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame: the sidebar with the scope picker, the menu and the person row that links here (nazar.shell.scopeAndMenu), the phone bar and its sheet"
+    - "a person with no seat who is not the başnazım, who is sent to /erisim-yok before the page runs, and a visitor, who is sent to sign in (nazar.access.noAccess, realm.auth.signIn); a session that ends at any read or at the save sends the person to sign in again, with a `reauth` mark and no toast (realm.auth.sessionEnded)"
+    - "the layout's own retry state when the portal read fails (nazar.shell.errorStates): drawn here only as the exit portal_unavailable"
+    - "both the profile read and the permissions read failing at once (each draws its own alert and nothing else changes; the graph draws each alone); a success toast's own six seconds and the limit of three toasts"
+    - "the skeleton under 'Etkin izinleriniz' while its read runs: a silent <output aria-busy> with no text (F-E-11)"
+    - "KOSK_NAZIM's and the Medaris nazımı's own roles: they hold no seat in nazar, so the account page is never theirs (the sentences for their codes, and Account.defaultsNote.KOSK_NAZIM, are in the catalog and not drawn)"
+    - "every permission group the stack's seed does not make: a grants-only group titled 'Verilen izinler', a group of several scopes of a role other than Hoca, the line that gives the nearest of several end dates, a role that has an end date (the graph draws the people the seed makes: every role it gives has no end)"
+    - "the phone layout, where each row of the table is a card, and the dates of the table, which follow the zone saved (router.refresh) and are not asserted"
+    - "the toast region's own name, 'Bildirimler', which is also the name of the notification page and bell (F-E-14)"
+
+decisions:
+  D1:
+    question: >-
+      Should the başnazım with no seat be told what they are? Hesap draws "Talebe" for the başnazım in the person card, an empty
+      table with the primitive's own "Bu listede henüz bir şey yok." and a note that no nazır role is held, while the sidebar of the same page
+      is the frame with no menu (F-E-4, F-E-13, F-E-17).
+    recommend: >-
+      Yes: fall back to SYSTEM_ADMIN, as the layout does for the frame (portal-layout.tsx:73-74), and word the empty table from
+      nazar.Account. Until then the başnazım can open the page only by typing its address: no link leads to it.
+    affects: [settings]
+  D2:
+    question: >-
+      Should "Çıkış yap" ask first, as tedris and nizam do? The page has the confirmation (/auth/signout) and nothing links to
+      it (F-E-18; the same decision as realm.auth.signOut D1).
+    recommend: >-
+      Yes: make the button a link to /auth/signout and keep the sentence above it. Until then a press signs out at once.
+    affects: [settings]
+  D3:
+    question: >-
+      Should the save say what is saved, and let the person see it work? The select stays enabled while PATCH /me runs and has no
+      busy state, so a second choice races the first and its rollback, and "Diğer…" opens a second list with no announcement
+      and no move of focus (F-E-12).
+    recommend: >-
+      Mark the card busy while the call runs and move the focus to the second list when it appears, as the inventory proposes.
+    affects: [choosingZone, choosingListed, savingZone]
+
+context:
+  holds:
+    values: [head, medreseNazir, hoca, hocaImam, dersNazir, chief]
+    initial: any
+    say:
+      head: "a başmüderris of a medrese and nothing else: one row, 'Medrese başmüderrisi' with 'Etkin', the medrese's group of 34 sentences, and the note that no nazır role is held (the main story)"
+      medreseNazir: "a medrese nazırı with no grant: one row with 'Etkin', no sentence at all ('Görevlerinizden gelen ya da size verilmiş bir izin henüz yok.'), and no note, because a nazır role is held"
+      hoca: "the hoca of several courses, alone in each: a row for each course with its state, its köşk and its medrese, one group 'Hoca' that names the courses, and the note; no star"
+      hocaImam: "the same hoca where one course has a second hoca and the hoca is its imam: that row has the star after 'Hoca'"
+      dersNazir: "a ders nazırı of one course: one course row, a group of the three codes the course gave the post, titled by the course, and no note"
+      chief: "the Medaris başnazım with no seat: no row (the table says it is empty), the person card says 'Talebe', no sentence, and the note; the page opens only by its address"
+  read:
+    values: [ok, portalFailed, meFailed, permissionsFailed]
+    initial: any
+    say:
+      ok: "the three reads answer"
+      portalFailed: "GET /me/assignments fails (any answer but a refused token): the layout draws its retry state in place of the frame and the page"
+      meFailed: "GET /me fails: the time card says so and has no list, and the dates fall back to Istanbul; for the başnazım the layout reads it too, and draws its retry state"
+      permissionsFailed: "GET /me/effective-permissions fails: the permissions card holds an alert in place of the groups"
+  zone:
+    values: [istanbul, newYork, tokyo]
+    initial: istanbul
+    say:
+      istanbul: "tedrisat holds İstanbul, or no zone (the page then shows İstanbul): the first list reads 'İstanbul'"
+      newYork: "tedrisat holds New York, the other of the eight the walk chooses; any of the other cities behaves the same: the first list reads 'New York'"
+      tokyo: "tedrisat holds Asia/Tokyo, a zone only the second list offers; any other zone of it behaves the same: the first list reads 'Diğer…' and the second 'Asia / Tokyo'"
+  box:
+    values: [hidden, shown]
+    initial: hidden
+    say:
+      hidden: "the second list is not drawn"
+      shown: "the first list holds 'Diğer…' and the second list, 'Diğer saat dilimleri', is drawn under it"
+  picked:
+    values: [istanbul, newYork, tokyo]
+    initial: istanbul
+    say:
+      istanbul: "the choice in flight is İstanbul (only read while it is being saved)"
+      newYork: "the choice in flight is New York"
+      tokyo: "the choice in flight is Asia / Tokyo, from the second list"
+  toast:
+    values: [none, saved]
+    initial: none
+    say:
+      none: "no success toast"
+      saved: "the toast 'Saat diliminiz kaydedildi.' is up; it closes by itself after six seconds, which the graph says by the person's next step"
+  alert:
+    values: [none, saveFailed]
+    initial: none
+    say:
+      none: "no error toast"
+      saveFailed: "the error toast 'Saat dilimi kaydedilemedi' with its sentence is up; it stays until it is closed"
+
+guards:
+  readable: "read != 'meFailed'" # GET /me answered, so the time card holds its lists
+  boxShown: "box == 'shown'"
+  zoneHeld: "(picked == 'istanbul' and zone == 'istanbul') or (picked == 'newYork' and zone == 'newYork') or (picked == 'tokyo' and zone == 'tokyo')"
+  alerting: "alert != 'none'"
+  isImam: "holds == 'hocaImam'"
+  rows: "holds != 'chief'" # the table has a row for each assignment, and none for a person who holds none
+  medreseRows: "holds == 'head' or holds == 'medreseNazir'"
+  courseRows: "holds == 'hoca' or holds == 'hocaImam' or holds == 'dersNazir'"
+  severalCourses: "holds == 'hoca' or holds == 'hocaImam'" # one group 'Hoca' over several courses, with its caption and its defaults note
+  noNazirNote: "holds != 'medreseNazir' and holds != 'dersNazir'" # lacksNazirRoles: neither a medrese nor a ders nazırlığı is held
+  noSentences: "(holds == 'medreseNazir' or holds == 'chief') and read != 'permissionsFailed'" # the engine returns no group: a nazır with no grant, a person who holds nothing
+  groupsListed: "holds != 'medreseNazir' and holds != 'chief' and read != 'permissionsFailed'"
+  noted: "holds == 'head' or holds == 'hoca' or holds == 'hocaImam'" # the groups that hold user.lookup and ban.lift_course, whose sentences carry a second line
+
+effects:
+  clearToast: { set: { toast: none } } # a success toast has closed itself by the person's next step
+  clearAlert: { set: { alert: none } }
+  boxOpened: { set: { box: shown } }
+  boxClosed: { set: { box: hidden } }
+  pickedIstanbul: { set: { picked: istanbul } }
+  pickedNewYork: { set: { picked: newYork } }
+  pickedTokyo: { set: { picked: tokyo } }
+  savedIstanbul: { set: { zone: istanbul, box: hidden, toast: saved } } # PATCH /me answered: the choice is what tedrisat holds, and the toast says so
+  savedNewYork: { set: { zone: newYork, box: hidden, toast: saved } }
+  savedTokyo: { set: { zone: tokyo, box: shown, toast: saved } }
+  saveRefused: { set: { alert: saveFailed } } # the first list goes back to the zone before the choice (the code's `setZone(previous)`)
+  reloaded: { set: { toast: none, alert: none } } # a reload draws the page from what tedrisat holds
+
+failures:
+  readingPortal: { from: getMyAssignments, unreadable: [] }
+  readingProfile: { from: getMe, unreadable: [USER_NOT_FOUND] }
+  readingPermissions: { from: getMyEffectivePermissions, unreadable: [] }
+  savingZone: { from: updateMe, signedOut: [HTTP_401], failed: [VALIDATION_ERROR, USER_NOT_FOUND] }
+# `unreadable` stands for any answer but a refused token: the domain lists no refusal code for the first and the third read (a 401
+# is the guard's and is left out of the domain), and the layout treats a 404, a 5xx and a network error alike (shell/reads.ts:60-66).
+# `failed` stands for every answer but 401 that a save gets, and for a zone the page's own check refuses before the call
+# (isValidTimeZone, actions.ts:20): the server action answers only {success}, so the page draws one toast whatever the status was.
+
+# The main story, as e2e account#4 and a part of #7 walk it: the başmüderris reads the page, chooses New York from the first list
+# (saved at once, a toast), reloads and finds it kept, and signs out.
+main:
+  given: { holds: head, read: ok }
+  events: [DONE, DONE, DONE, OPEN_ZONES, PICK_NEW_YORK, DONE, RELOAD, DONE, DONE, DONE, SIGN_OUT]
+
+initial: readingPortal
+states:
+  readingPortal:
+    title: Read the roles
+    description: >-
+      The layout (app/(global)/layout.tsx: PortalLayout with no scope) reads GET /me/assignments through getPortal before the
+      page runs, once for the whole request. The answer gives the table's rows, the scopes of the menu and the roles of the
+      person row. A session that is over sends the person to sign in again (out of view). Any other failure draws the layout's
+      retry state in place of the frame and the page (the exit portal_unavailable, nazar.shell.errorStates). A person with no
+      seat who is not the başnazım is sent to /erisim-yok instead (out of view); the başnazım with no seat gets the frame
+      without a menu and the page.
+    source: apps/nazar/features/shell/reads.ts:44
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: { guard: "read != 'portalFailed'", target: readingProfile }
+      FAIL.unreadable: { guard: "read == 'portalFailed'", target: portal_unavailable, say: "the layout answers PortalUnavailable: a retry state with no frame, and the page is never drawn", source: apps/nazar/features/shell/components/portal-layout.tsx:67 }
+
+  readingProfile:
+    title: Read the profile
+    description: >-
+      GET /me through getViewer, which the page reads for the zone (the dates and the first list) and the layout reads first for
+      the başnazım with no seat, to learn whether the person is the başnazım. A failure is null and no more: the page goes on, the time card holds an
+      alert in place of its lists and the dates fall back to Istanbul. For the başnazım with no seat a null is no answer either
+      way, and the layout draws its retry state in place of the frame and the page.
+    includes: ["the zone saved, which the first list shows (İstanbul when none is saved)"]
+    source: apps/nazar/features/account/reads.ts:16
+    invoke: { action: getMe }
+    on:
+      DONE: { guard: "read != 'meFailed'", target: readingPermissions }
+      FAIL.unreadable:
+        - { guard: "holds == 'chief'", target: portal_unavailable, say: "adminOutsideScopes cannot tell whether the person is the başnazım, so the layout draws PortalUnavailable", source: apps/nazar/features/shell/admin-scope.ts:89 }
+        - { guard: "read == 'meFailed'", target: readingPermissions, say: "getViewer answers null: the page goes on without the zone and says so in its time card", source: apps/nazar/features/account/components/account-page.tsx:105 }
+
+  readingPermissions:
+    title: Read the permissions
+    description: >-
+      GET /me/effective-permissions through getEffectivePermissions, behind a Suspense: the card streams in after the rest, with
+      a silent skeleton while it waits (F-E-11). The groups are the engine's own computation of what the roles and grants give
+      in each scope. A group none of whose codes has a sentence is left out, and a code with no sentence is never shown bare. A
+      failure is null: the card holds an alert in place of the groups.
+    source: apps/nazar/features/account/reads.ts:28
+    invoke: { action: getMyEffectivePermissions }
+    on:
+      DONE: { guard: "read != 'permissionsFailed'", target: sorted }
+      FAIL.unreadable: { guard: "read == 'permissionsFailed'", target: sorted, say: "getEffectivePermissions answers null: the card says it could not be read", source: apps/nazar/features/account/components/account-page.tsx:62 }
+
+  sorted:
+    title: Word what the person holds
+    description: >-
+      Classification only. The table's rows are worded and dated from the portal read (assignmentRows), the note under it is
+      drawn unless a nazır role is held (lacksNazirRoles), the person card's role line is the roles held, or "Talebe" for a
+      person who holds none (F-E-4), and the star is drawn after "Hoca" on a course where the person is the imam among more than
+      one hoca (showsImamStar). Six kinds of person, each its own transition, so that each can be walked by itself.
+    source: apps/nazar/features/account/components/account-page.tsx:107
+    always:
+      - { guard: "holds == 'chief'", target: settings, say: "no row: the table says it is empty, and the role line says Talebe", source: apps/nazar/features/account/components/account-page.tsx:109 }
+      - { guard: "holds == 'medreseNazir'", target: settings, say: "a medrese row with 'Etkin', and no note under the table", source: apps/nazar/features/account/assignments-view.ts:66 }
+      - { guard: "holds == 'dersNazir'", target: settings, say: "a course row with its state, its köşk and its medrese, and no note", source: apps/nazar/features/account/assignments-view.ts:85 }
+      - { guard: "holds == 'hoca'", target: settings, say: "a course row for each course, the role 'Hoca' with no star", source: apps/nazar/features/account/assignments-view.ts:96 }
+      - { guard: "holds == 'hocaImam'", target: settings, say: "the same, and the star after 'Hoca' on the course that has a second hoca", source: apps/nazar/features/account/assignments-view.ts:96 }
+      - { target: settings, say: "the başmüderris: a medrese row with 'Etkin' and the note", source: apps/nazar/features/account/assignments-view.ts:85 }
+
+  settings:
+    title: Hesap ve ayarlar
+    by: human
+    goal: true
+    description: >-
+      /hesap in the frame of the remembered scope (the frame is nazar.shell.scopeAndMenu's), under the h1 "Hesap ve ayarlar" and
+      its subtitle, in two columns from the md width. Left: "Görevleriniz" (an introduction, the table of Görev, Kapsam, Atayan,
+      Süre, and the note), "Etkin izinleriniz" (an introduction and one group for each role and scope, each a titled section
+      of sentences with a check, then its notes, and "Bitiş: ..."), and "Saat dilimi" (the first list with its help line, and
+      the second list under it while 'Diğer…' is chosen). Right: "Hesap" (the name, the roles, and the e-mail box, read-only
+      with its help line) and a card with a sentence and "Çıkış yap". The page sets no initial focus (focus-not-set). A
+      success toast ('Saat diliminiz kaydedildi.') stays six seconds; an error toast stays until it is closed. Findings read
+      here: F-E-4 (the başnazım is called 'Talebe'), F-E-13 (an empty table is worded by the kit, not the catalog), F-E-16 (a
+      failed permissions read is titled 'Görevleriniz yüklenemedi', the roles' title, although the roles above loaded), F-E-19
+      (every permission group is a landmark), F-E-3 (the dead keys Account.language and Account.languageHelp), NAZSET-2 (a medrese
+      nazırı with no grant reads that none is given and is not told whom to ask).
+    source: apps/nazar/features/account/components/account-page.tsx:113
+    on:
+      OPEN_ZONES: { guard: readable, target: choosingZone, effect: [clearToast], say: "they open the first list, 'Saat dilimi'", source: apps/nazar/features/account/components/time-zone-form.tsx:85 }
+      OPEN_LISTED: { guard: boxShown, target: choosingListed, effect: [clearToast], say: "they open the second list, 'Diğer saat dilimleri'", source: apps/nazar/features/account/components/time-zone-form.tsx:101 }
+      OPEN_STAR: { guard: isImam, target: starOpen, effect: [clearToast], say: "they hover the star, focus it with the keyboard or press it: the bubble opens", source: libs/ui/src/mds/imam-star.tsx:67 }
+      CLOSE_ALERT: { guard: alerting, target: settings, effect: [clearAlert], say: "they press Kapat on the error toast", source: libs/ui/src/mds/toast.tsx:95 }
+      RELOAD:
+        - { guard: "zone == 'tokyo'", target: readingPortal, effect: [reloaded, boxOpened], say: "the page is drawn again from what tedrisat holds: the zone is kept, and a zone outside the eight opens the second list at once (e2e account#4, #5)", source: apps/nazar/features/account/components/time-zone-form.tsx:46 }
+        - { target: readingPortal, effect: [reloaded, boxClosed], say: "the page is drawn again: the first list reads the zone kept (e2e account#4)", source: apps/nazar/features/account/components/time-zone-form.tsx:46 }
+      SIGN_OUT:
+        target: handed_over.sign_out
+        starts: { flow: realm.auth.signOut, given: { app: "'nazar'", entry: "'directButton'" } }
+        say: "'Çıkış yap': the button goes busy and posts to /api/auth/signout at once, with no confirmation window (F-E-18); Keycloak's end-session and the way back are realm.auth.signOut's (e2e account#7)"
+        source: apps/nazar/features/account/components/sign-out-button.tsx:26
+      NAVIGATE: { target: left, say: "they go on to another page", source: apps/nazar/features/shell/components/portal-frame.tsx:56 }
+
+  choosingZone:
+    title: The first time-zone list is open
+    by: human
+    description: >-
+      The kit's Select, a Base UI listbox in a popup, with nine options: İstanbul, Berlin, Amsterdam, Brüksel, Paris, Viyana,
+      Londra, New York and "Diğer…". Base UI's Select is modal, so the page behind is taken to be inert and only the list is
+      drawn here (not verified in a browser). A city saves at once, with no Kaydet (e2e account#4: no button named Kaydet);
+      choosing the zone already held sends nothing, though it still closes the second list; "Diğer…" saves nothing and draws
+      the second list; Esc closes the list and changes nothing. The focus goes back to the list's button (Base UI; not verified).
+    source: libs/ui/src/mds/select.tsx:79
+    on:
+      PICK_ISTANBUL:
+        - { guard: "zone == 'istanbul'", target: settings, effect: [boxClosed], say: "İstanbul is the zone held: save() returns at once and nothing is sent; setOpenOther(false) has already hidden the second list", source: apps/nazar/features/account/components/time-zone-form.tsx:56 }
+        - { target: savingZone, effect: [pickedIstanbul, boxClosed, clearToast], say: "they choose İstanbul: the list shows it at once and PATCH /me is called; the second list, if drawn, goes at once", source: apps/nazar/features/account/components/time-zone-form.tsx:94 }
+      PICK_NEW_YORK:
+        - { guard: "zone == 'newYork'", target: settings, effect: [boxClosed], say: "New York is the zone held: nothing is sent", source: apps/nazar/features/account/components/time-zone-form.tsx:56 }
+        - { target: savingZone, effect: [pickedNewYork, boxClosed, clearToast], say: "they choose New York: PATCH /me is called with America/New_York (e2e account#4)", source: apps/nazar/features/account/components/time-zone-form.tsx:94 }
+      PICK_OTHER: { target: settings, effect: [boxOpened], say: "'Diğer…': nothing is saved, the second list is drawn under the first, and nothing says so and the focus stays (F-E-12; e2e account#5)", source: apps/nazar/features/account/components/time-zone-form.tsx:90 }
+      DISMISS: { target: settings, say: "Esc: the list closes, the zone is as it was", source: libs/ui/src/mds/select.tsx:79 }
+
+  choosingListed:
+    title: The second time-zone list is open
+    by: human
+    description: >-
+      The same kit Select with every zone the runtime lists but the eight, each named by its zone with the underscores as
+      spaces and the slashes spaced ("Asia / Tokyo"); about four hundred options, not drawn as nodes (the e2e names one).
+      Choosing one saves it at once. The page behind is inert, as for the first list (not verified in a browser).
+    source: apps/nazar/features/account/components/time-zone-form.tsx:101
+    on:
+      PICK_TOKYO:
+        - { guard: "zone == 'tokyo'", target: settings, say: "Asia / Tokyo is the zone held: nothing is sent", source: apps/nazar/features/account/components/time-zone-form.tsx:56 }
+        - { target: savingZone, effect: [pickedTokyo, clearToast], say: "they choose a zone from the second list: it shows at once and PATCH /me is called (e2e account#5)", source: apps/nazar/features/account/components/time-zone-form.tsx:106 }
+      DISMISS: { target: settings, say: "Esc: the list closes, the zone is as it was", source: libs/ui/src/mds/select.tsx:79 }
+
+  savingZone:
+    title: Save the time zone
+    description: >-
+      updateTimeZone(zone) is a server action: it checks the name with isValidTimeZone and calls PATCH /me with { timeZone } as the
+      caller, and answers only { success }, never the API's message. The lists show the choice at once (setZone before the call)
+      and stay usable: nothing is busy or disabled while the call is out, so a second choice races the first and its rollback
+      (F-E-12). A success draws the toast 'Saat diliminiz kaydedildi.' and router.refresh() draws the server parts again, so every
+      date on the page follows the new zone. A refusal puts the zone before the choice back in the first list (and, when that
+      zone is one of the eight, takes the second list away, even if the person had opened it, which leaves the focus nowhere:
+      NAZSET-1), and draws the error toast 'Saat dilimi kaydedilemedi' with 'Seçiminiz kaydedilemedi; önceki saat diliminiz
+      geçerli. Yeniden deneyin.' that stays until it is closed (e2e account#6 aborts the call). A call that never reaches the server (a dropped connection) is a rejection the
+      page catches and words the same way. A session that is over goes to sign in and back, with no toast.
+    source: apps/nazar/features/account/actions.ts:17
+    invoke: { action: updateMe }
+    on:
+      DONE:
+        - { guard: "picked == 'istanbul'", target: settings, effect: [savedIstanbul], say: "tedrisat holds İstanbul; the toast says so", source: apps/nazar/features/account/components/time-zone-form.tsx:67 }
+        - { guard: "picked == 'newYork'", target: settings, effect: [savedNewYork], say: "tedrisat holds America/New_York; the toast says so, and the choice is still there after a reload (e2e account#4)", source: apps/nazar/features/account/components/time-zone-form.tsx:67 }
+        - { guard: "picked == 'tokyo'", target: settings, effect: [savedTokyo], say: "tedrisat holds Asia/Tokyo; the first list reads 'Diğer…' and the second 'Asia / Tokyo', also after a reload (e2e account#5)", source: apps/nazar/features/account/components/time-zone-form.tsx:67 }
+      FAIL.failed:
+        - { guard: "zone == 'tokyo'", target: settings, effect: [saveRefused, boxOpened], say: "the zone before was a listed one: the first list reads 'Diğer…' again and the second list is drawn with it", source: apps/nazar/features/account/components/time-zone-form.tsx:71 }
+        - { target: settings, effect: [saveRefused, boxClosed], say: "the zone before was one of the eight: the first list reads it again and the second list is not drawn (e2e account#6)", source: apps/nazar/features/account/components/time-zone-form.tsx:71 }
+      FAIL.signedOut: { target: sent_to_sign_in, say: "the session is over: handleUnauthenticated goes to sign in and back to /hesap, no toast", source: apps/nazar/features/account/components/time-zone-form.tsx:66 }
+
+  starOpen:
+    title: The imam star's bubble is open
+    by: human
+    description: >-
+      Base UI's Popover, non-modal, so the page stays as it was: a small bubble with the title "Dersin imamı" and what an imam is.
+      It opens on hover after 600 ms, on keyboard focus and on a press; Esc, a press outside and the focus leaving the star close
+      it. The focus never moves into the bubble. The star's own name is "Dersin imamı", described by the same text.
+    source: libs/ui/src/mds/imam-star.tsx:99
+    on:
+      CLOSE_STAR: { target: settings, say: "Esc, a press outside, the focus moving on, or a second press on the star", source: libs/ui/src/mds/imam-star.tsx:67 }
+
+  portal_unavailable:
+    type: final
+    title: The layout draws its retry state
+    description: >-
+      PortalUnavailable ("Görevleriniz okunamadı", with "Yeniden dene") replaces the frame and the page. It is the layout's, not
+      this page's: nazar.shell.errorStates draws it.
+  handed_over.sign_out:
+    type: final
+    title: The sign-out is started
+    description: >-
+      The button posts to /api/auth/signout and the person ends on Keycloak's login form; realm.auth.signOut draws the way
+      (its scenario nazarDirectButton).
+  sent_to_sign_in:
+    type: final
+    title: The session is over
+    leavesPage: true
+    description: "The server action answered 'unauthenticated': sign-in, and back to /hesap, with no toast (realm.auth.sessionEnded)."
+  left:
+    type: final
+    title: The person leaves Hesap
+    leavesPage: true
+
+assertions:
+  - id: the-lists-need-the-profile
+    never: "(state == 'choosingZone' or state == 'choosingListed') and read == 'meFailed'"
+    say: "The time-zone lists are drawn only when GET /me answered; otherwise the card holds an alert"
+    source: apps/nazar/features/account/components/account-page.tsx:147
+  - id: the-second-list-needs-its-opening
+    never: "state == 'choosingListed' and box != 'shown'"
+    say: "The second list is open only while it is drawn, that is, while 'Diğer…' is chosen or a zone outside the eight is held"
+    source: apps/nazar/features/account/components/time-zone-form.tsx:99
+  - id: a-held-zone-is-never-saved
+    never: "state == 'savingZone' and zoneHeld"
+    say: "Choosing the zone that is already held sends nothing: save() returns first"
+    source: apps/nazar/features/account/components/time-zone-form.tsx:56
+  - id: a-listed-zone-draws-the-second-list
+    never: "state == 'settings' and zone == 'tokyo' and box == 'hidden'"
+    say: "A zone outside the eight is never held with the second list hidden: the first list would read a city it does not hold"
+    source: apps/nazar/features/account/components/time-zone-form.tsx:46
+  - id: the-star-is-the-imams
+    never: "state == 'starOpen' and holds != 'hocaImam'"
+    say: "The star's bubble opens only for a hoca who is the imam of a course with more than one hoca"
+    source: libs/ui/src/lib/imam-star.ts:14

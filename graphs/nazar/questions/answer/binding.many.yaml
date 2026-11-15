@@ -1,0 +1,39 @@
+# nazar.questions.answer on a course with more than one page of questions: 21 answered questions, so the first page holds twenty and "Daha
+# fazla göster" reads the twenty-first.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/questions/answer \
+#     --bind graphs/nazar/questions/answer/binding.many.yaml --cover transitions --out <dir>
+#   (a walk of this file needs --cover: the flow's `main` starts from the main story's scenario, which is binding.yaml's)
+# WRITTEN IN THE WRITING PHASE, NOT REPLAYED (the owner moved every replay to the walk phase); it loads (`--emit-spec`).
+#
+# Why a file of its own: the one transition it adds, LOAD_MORE, needs the long list, and `--cover transitions` takes the shortest scenario
+# per transition, so the main story's scenarios would never be asked for it. The cards are all answered (waiting: false), so the page has
+# no text area and no "Bekliyor" badge, and the first card is the oldest answered question, which the walk then changes (CHANGE, REWRITE,
+# SUBMIT) as well. `questions.mjs up --waiting 0 --answered 21` asks the 21 as `applicantE` and answers each as the müderris through the
+# API (42 calls, a few seconds); the course is `helpers/course.mjs make answer`, removed in `teardown` with every question in it.
+# The two pages: the first page of the API holds the first 20 by (answered, time, id), the second the last one (listCourseQuestions, limit
+# 20 by default); no `count` is set on the cards because they number 20 and then 21.
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nazar.questions.answer
+
+scenarios:
+  many:
+    given: { waiting: false, answered: many, read: ok }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersQuestions' }
+    vars:
+      answer: 'Mâzîde aynü’l-fiil fethalıdır; fe‘ile ve fe‘ule de vardır.'
+      answer_token: 'fe‘ule de vardır'
+      replacement: 'Mâzîde aynü’l-fiil üç harekeyle gelir: fetha, kesre ve damme.'
+      replacement_token: 'üç harekeyle'
+    setup:
+      - run: [node, helpers/course.mjs, make, answer, --weeks, '1', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, APPLICANT_E]
+        expect: '"tag":"answer"'
+      - run: [node, ../nazar/questions/answer/questions.mjs, up, answer, --talebe, APPLICANT_E, --hoca, MUDERRIS, --waiting, '0', --answered, '21']
+        expect: 'questions up answer: 0 waiting, 21 answered'
+    teardown:
+      - run: [node, ../nazar/questions/answer/questions.mjs, down, answer]
+      - run: [node, helpers/course.mjs, remove, answer]
+        expect: 'course remove answer'

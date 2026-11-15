@@ -1,0 +1,164 @@
+# nazar.offsite.requestCourse on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on :4002, the başmüderris of
+# "Hadis ve Siyer Medresesi" signed in through Keycloak's real form.
+#   node apps/engine/src/cli.ts replay graphs/nazar/offsite/requestCourse --bind graphs/nazar/offsite/requestCourse/binding.yaml --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). What is written here comes from the code;
+# every locator below is unverified until a walk.
+#
+# The walk's own köşk. The request goes to a köşk, and the seed's two köşks are other flows' data (the köşk nazım's own flow,
+# nizam.courseRequests.decide, reads the course requests of both), so `setup` makes a köşk of the walk's own, "Arz Deneme Köşkü"
+# (short name arz-deneme), as the başnazım, with `applicantB` as its nazım (a man with a full profile and no enrolment; any account
+# no walk of this batch reads as a talebe would do). The name is chosen to sort first in Turkish order, because the form starts
+# with the first köşk by name (features/offsite/offsite.ts:28): `make` fails, naming the köşk that sorts before, if another does.
+# `teardown` deletes the köşk through the API (helpers/remove-kosk.mjs: DELETE /kosks/:id, the başnazım's alone), which takes the
+# request sent to it with it (course_requests.kosk_id cascades), so the walk leaves no row. `setup` does it first too, so a walk
+# that died before its teardown leaves nothing to be refused as "taken". What stays: the audit rows (kosk.create, kosk.delete,
+# course_request.create, and kosk.hide in `koskGone`), which the API cannot remove. No SQL writes.
+#
+# Not bound, with the reason: `read: noKosk` and `read: unreadable` (the stack always lists köşks and cannot be made to fail a read
+# on request), `answer: invalid` (the page's own check and the API's agree, so only a client that skips the page can be refused),
+# `answer: forbidden` (it needs the grant taken away between the page and the send), `answer: other`, the signed-out exits, and
+# `not_found`. `NAVIGATE` is not driven.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.offsite.requestCourse
+
+scenarios:
+  # The main story: Dersler's link, an empty send (both errors, the focus on the name), the name typed, a send with the reason
+  # missing (the focus on the reason), another köşk chosen and then the walk's own again, the reason typed, the send. e2e offsite#1-3.
+  sends:
+    given: { read: ok, answer: sent }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesTalep' }
+    vars:
+      koskName: Arz Deneme Köşkü
+      koskHandle: arz-deneme
+      koskNazim: applicantB
+      beforeSend: touch
+      typedTitle: '  Erbaîn-i Nevevî okumaları '
+      requestTitle: Erbaîn-i Nevevî okumaları
+      typedReason: '  Bu metni okutan bir ders medresemizde yok; müderrisliğini üstlenmek isteyen bir hoca var.  '
+      requestReason: Bu metni okutan bir ders medresemizde yok; müderrisliğini üstlenmek isteyen bir hoca var.
+    setup:
+      - run: [node, ../nazar/offsite/requestCourse/kosk.mjs, make, --handle, '{koskHandle}', --name, '{koskName}', --nazim, '{koskNazim}']
+        expect: 'kosk arz-deneme ready'
+    teardown:
+      - run: [node, helpers/remove-kosk.mjs, '{koskHandle}']
+        expect: removed
+
+  # The seed's medrese nazır holds no grant (the permission matrix gives MEDRESE_NAZIR none by role): the page opens with its header
+  # and the alert "Bu sayfaya izniniz yok", and no form. e2e offsite#4, carried by nazar.access.medreseNazirRefused. It opens by
+  # address: the nazır meets the same refusal on Dersler, so the link is not there to press. Nothing is made, so nothing is removed.
+  refused:
+    given: { read: refused, answer: sent }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/dersler/talep'
+
+  # The chosen köşk goes while the form is open: the same walk as `sends` as far as the reason, which is typed and then, before
+  # "Talebi gönder", the köşk is hidden (events.FILL_REASON runs `beforeSend`). The API answers 404 KOSK_NOT_FOUND: the error toast
+  # "Bu köşk artık yok…", the page reads the köşks again, and the form still holds the gone köşk (OFFSITE-2; what the Select shows
+  # then is not verified). Nothing is written, so there is no request to remove; the hidden köşk is deleted by the teardown.
+  koskGone:
+    given: { read: ok, answer: koskGone }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesTalep' }
+    vars:
+      koskName: Arz Deneme Köşkü
+      koskHandle: arz-deneme
+      koskNazim: applicantB
+      beforeSend: hide
+      typedTitle: '  Erbaîn-i Nevevî okumaları '
+      requestTitle: Erbaîn-i Nevevî okumaları
+      typedReason: '  Bu metni okutan bir ders medresemizde yok; müderrisliğini üstlenmek isteyen bir hoca var.  '
+      requestReason: Bu metni okutan bir ders medresemizde yok; müderrisliğini üstlenmek isteyen bir hoca var.
+    setup:
+      - run: [node, ../nazar/offsite/requestCourse/kosk.mjs, make, --handle, '{koskHandle}', --name, '{koskName}', --nazim, '{koskNazim}']
+        expect: 'kosk arz-deneme ready'
+    teardown:
+      - run: [node, helpers/remove-kosk.mjs, '{koskHandle}']
+        expect: removed
+
+events:
+  # the name and the reason have no node that sends an event: the binding types them, padded with spaces as e2e offsite#3 does
+  # (the page trims them before the send)
+  FILL_TITLE:
+    - fill: { role: textbox, name: Ders adı, value: '{typedTitle}' }
+  # after the reason, the walk's köşk is touched (`sends`: a read that changes nothing) or hidden (`koskGone`)
+  FILL_REASON:
+    - fill: { role: textbox, name: Gerekçe, value: '{typedReason}' }
+    - run: [node, ../nazar/offsite/requestCourse/kosk.mjs, '{beforeSend}', --handle, '{koskHandle}']
+      expect: 'ok arz-deneme'
+  # the köşk is chosen from the open list by its name: another one, then the walk's own again
+  CHOOSE_OTHER:
+    - click: { role: option, name: '{seed.titles.kosk}' }
+  CHOOSE_FIRST:
+    - click: { role: option, name: '{koskName}' }
+  DISMISS: [{ key: Escape }]
+
+states:
+  # the page keeps one address through every state of the form
+  form: { url: '{nazar}/medrese/*/dersler/talep' }
+  refusedTitle: { url: '{nazar}/medrese/*/dersler/talep' }
+  refusedReason: { url: '{nazar}/medrese/*/dersler/talep' }
+  choosingKosk: { url: '{nazar}/medrese/*/dersler/talep' }
+  refused: { url: '{nazar}/medrese/*/dersler/talep' }
+  # the server action is a POST to the page's own address and answers 200 whatever the API said, so the replay can hold the busy
+  # state with this `call` but cannot compare a refusal's status there
+  sending: { call: '{nazar}/medrese/*/dersler/talep' }
+  # the toast outlives the navigation, so it is checked on Dersler, where the page went
+  sent: { url: '{nazar}/medrese/*/dersler' }
+  courses_opened: { url: '{nazar}/medrese/*/dersler' }
+
+nodes:
+  # Dersler's own <main> and the form page's are two pages of one shell: the page is told apart by its intro
+  offsitePage: { css: 'main#main', hasText: Medreseye bağlı olmayan bir dersi kendiniz açamazsınız }
+  # the sidebar has a "Dersler" link too: the breadcrumb's own is found inside its navigation
+  trail: { role: navigation, name: Sayfa yolu }
+  trailCourses: { role: link, name: Dersler, within: { role: navigation, name: Sayfa yolu } }
+  # the breadcrumb's last item has the h1's words; it is the one marked as the current page
+  trailCurrent: { css: '[aria-current=page]', within: { role: navigation, name: Sayfa yolu } }
+  # the paragraph reads "* zorunlu alan"; the message is the part after the star
+  requiredNote: { css: 'p.mds-caption', hasText: zorunlu alan }
+  # the Select is a button with role combobox, named by its label; the sidebar's scope picker is a menu button, not a combobox
+  koskSelect: { role: combobox, name: Köşk, within: { testId: offsite-form } }
+  cancel: { role: link, name: Vazgeç, within: { testId: offsite-form } }
+  submit: { role: button, name: Talebi gönder, within: { testId: offsite-form } }
+  # the busy button's hidden <output>
+  sendingStatus: { css: 'output', hasText: Talep gönderiliyor }
+  # the open list: an unnamed listbox with one option per köşk; the walk chooses one by its name
+  koskList: { role: listbox }
+  optKosk: { role: option }
+  # the first line of the card names the köşk; its text is "Talep <köşk>’nün nazımına gider; ..."
+  afterNamedFirst: { text: '/^Talep Arz Deneme Köşkü’nün nazımına gider/' }
+  afterNamedOther: { text: '/^Talep Süleymaniye Köşkü’nün nazımına gider/' }
+  # a neutral Alert is a status with no name of its own: found by its words
+  forbiddenAlert: { css: '[role=status]', hasText: Bu sayfaya izniniz yok }
+  noKoskAlert: { css: '[role=status]', hasText: Talep gönderilecek köşk yok }
+  # Base UI's toasts: the success one is a dialog, an error one an alertdialog that is aria-hidden until it is focused, so they are
+  # found by their role attribute and their words; the region is "Bildirimler"
+  toastSent: { css: '[role=dialog]', hasText: Talep gönderildi }
+  toastKoskGone: { css: '[role=alertdialog]', hasText: Bu köşk artık yok }
+  toastInvalid: { css: '[role=alertdialog]', hasText: Ders adını ve gerekçeyi denetleyip }
+  toastForbidden: { css: '[role=alertdialog]', hasText: Bunu yapma izniniz yok }
+  toastOther: { css: '[role=alertdialog]', hasText: Bir şeyler ters gitti }
+  toastClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }
+
+# What a press leaves outside the screen, read as e2e offsite#2 and #3 read it: nothing after a refused press; after a send the row, the
+# course count, and the köşk nazım's own list.
+effects:
+  refuse:
+    # offsite#2 a4: a refused press writes no request (the walk's own title is looked for: other walks' requests share the medrese)
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_requests where madrasah_id = '{seed.madrasah}' and title = '{requestTitle}'"]
+      expect: '"n":0'
+  requestOffsiteCourse:
+    # a4: köşk, name and reason as typed and trimmed, PENDING, sent by the başmüderris
+    - run: [node, helpers/sql.mjs, "select r.status, k.name as kosk, r.requested_by, r.reason from course_requests r join kosks k on k.id = r.kosk_id where r.madrasah_id = '{seed.madrasah}' and r.title = '{requestTitle}'"]
+      expect: '"status":"PENDING","kosk":"Arz Deneme Köşkü","requested_by":"{secret.E2E_MEDRESE_BASMUDERRIS_SUB}","reason":"{requestReason}"'
+    # a5, a6: no course is made (the medrese's own count moves with other walks, so the title is looked for, not the count)
+    - run: [node, helpers/sql.mjs, "select count(*) as n from courses where title = '{requestTitle}'"]
+      expect: '"n":0'
+    # the hand-over to nizam.courseRequests.decide: the köşk's nazım finds it in the list the köşk's page reads
+    - run: [node, ../nazar/offsite/requestCourse/kosk.mjs, requests, --handle, '{koskHandle}', --as, '{koskNazim}']
+      expect: '{requestTitle}'

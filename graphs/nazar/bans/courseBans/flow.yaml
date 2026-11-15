@@ -1,0 +1,573 @@
+# Yasaklamalar of one course in nazar-web (/ders/<id>/yasaklamalar): the page that bars a talebe of the course from it with a reason, lists
+# the course's bans (Etkin and Kaldırılan), and offers on each open row the decisions its kademe reaches (lift, widen to the medrese, ask
+# Medaris for a permanent ban). Read from the code of PR #394 (apps/nazar/features/bans: course-bans-page.tsx, course-ban-dialog.tsx,
+# bans-table.tsx, reason-dialog.tsx, bans.ts, actions.ts; app/ders/[dersId]/yasaklamalar; and apps/tedrisat/src/ban for what each route
+# does and refuses). It says what the code does today. Where that is wrong for the people it serves, the finding is in ui.yaml `rules`
+# and in the description of the state it touches:
+#   - F-D2c-3 (CONFIRMED against the running API, not in a browser): the hoca, whom FLOWS.md names first, cannot use this page. Both list
+#     routes ask a medrese or köşk code (madrasah-ban.controller.ts:71-74 asks madrasah.ban or platform.ban_scoped; ban.service.ts:198-204
+#     asks ban.manage_kosk, platform.ban_scoped or platform.ban_account), and a müderris holds only the course-scoped codes
+#     (libs/common/src/authz/permissions.ts:360). The page then draws its title and "Bu sayfaya izniniz yok", with no "Yasakla", though the menu offers the
+#     entry (F-D2c-2) and the hoca holds ban.course, which the permission's own sentence says covers "dersin yasak listesini görmeyi".
+#     A ders nazırı given ban.course and ban.lift_course meets the same guard (from the code; the stack's own ders nazırı, who holds neither,
+#     was answered 403 as well; binding.dersNazir.yaml walks it). Who the page serves: the medrese's başmüderris (who opens
+#     every course of her medrese by its address), a nazır given madrasah.ban, and the başnazım.
+#   - A nazır given madrasah.ban alone reads the list but not the roster (course.staff_read is conferred by enrollment.decide, .remove or
+#     .complete only: effective-permissions.ts:188-192,295), so "Yasakla" is off with "Dersin talebeleri okunamadı; şu an yasaklayamazsınız.",
+#     a refusal worded as a failed read (COURSEBANS-1).
+#   - The list is the course's COURSE bans only. A ban over the whole medrese (or köşk) has no row here and no lift, yet the person is gone
+#     from the picker (the roster marks them barred): COURSEBANS-4.
+#   - "Medreseden de yasakla" is offered on the same terms as in nazar.bans.decide, and the API does not ask who the person is now
+#     (ban-staff-check-gaps, a security finding): see ui.yaml `rules` and the description of `listed`.
+schema: delurio-graph/0
+kind: flow
+id: nazar.bans.courseBans
+status: captured
+domain: medaris.api
+ui: nazar.bans.courseBans
+title: Bar a talebe from a course
+summary: >-
+  The medrese's başmüderris (or the başnazım) opens a course's Yasaklamalar. The page reads the course, its roster and the course's open
+  and lifted bans (the medrese's list narrowed to the course, or the köşk's list for a course with no medrese). It shows two tabs with
+  their counts and a table of who is barred from this course, why, by whom and when; an open row offers "Yasağı kaldır", on a course of a
+  medrese also "Medreseden de yasakla" and "Kalıcı yasak talebi aç", each only where the API says so, or says who may lift it. The header's
+  "Yasakla" opens a dialog where she picks one of the course's talebe and writes a reason; the button stays off until both are there. A
+  toast says the person can no longer reach the course, the dialog closes and the list is read again. A refusal (the person runs the
+  course, the course is gone, anything else) stays in the dialog as an error toast. The hoca of the course and a ders nazırı, who hold
+  ban.course, are told "Bu sayfaya izniniz yok" instead (F-D2c-3).
+
+scope:
+  shows: >-
+    Yasaklamalar of one course: the title, the header's "Yasakla" (on or off with its reason), the tabs with their counts, the search box,
+    the table in both tabs with its empty line, the page a caller who cannot read the list is given, the "Yasakla" dialog, the reason
+    dialog in its three kinds and the toasts
+  world: open
+  outOfView:
+    - "the same table for a whole medrese, its scope filter and its notice: nazar.bans.review; the same three decisions with the medrese's wording and a medrese-wide row: nazar.bans.decide"
+    - "narrowing by name (the search box) and the line 'Bu süzgece uyan yasak yok.': the table is the one nazar.bans.review draws"
+    - "barring from the medrese's own Talebeler or Yasaklamalar, by e-mail address, with a scope choice: nazar.bans.ban"
+    - "the köşk's widening (extendBan) and every ban of the whole köşk, which nizam's pages make: nizam.moderation.banStudent, nizam.moderation.decideBan"
+    - "who reads a request for a permanent ban: nizam.moderation.decidePermanentBan (planned, MDRS-140); nazar.bans.decide carries the start"
+    - "the talebe's side of a ban (the notice 'erişimin kaldırıldı', a refused seat or celse): tedris.account.notifications, tedris.course.apply"
+    - "the course page every persona meets when the course is not theirs or does not exist (404, /erisim-yok), and the failed read ('Yasaklar okunamadı', the shell's retry state): nazar.shell.errorStates"
+    - "an ended session: the dialogs send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "the loading bars (BansLoading), the course menu and the scope picker: nazar.shell.scopeAndMenu"
+
+decisions:
+  D1:
+    question: >-
+      Should the hoca read and use this page? Today both list reads ask a medrese or köşk code, so the müderris (and a ders nazırı given
+      ban.course) is refused "Bu sayfaya izniniz yok" although the menu draws the entry and the permission's sentence says it covers the
+      list (F-D2c-3, F-D2c-2).
+    recommend: >-
+      Yes: serve the course's list from a route of the course gated by ban.course or ban.lift_course (a COURSE-scoped list is what the page
+      draws), and keep the medrese and köşk lists for their own pages. Until then hide the menu entry for those who hold no list code, or
+      say on the page who can use it.
+    affects: [forbidden]
+  D2:
+    question: >-
+      Should widening ("Medreseden de yasakla") refuse a person who runs the course or the medrese, as placing a ban does? Today the API's
+      escalateBan never reads the person's roles, and the page offers the button on every open course ban whose person is not barred from
+      the medrese (ban-staff-check-gaps).
+    recommend: >-
+      Yes: run the createBan role check in escalateBan (and extendBan), answer BAN_TARGET_INVALID, and let viewerMayEscalate be false for
+      such a person; refuse to name a hoca or nazım who has an open ban, as a ders nazırı and a medrese nazır are refused. The page already
+      words BAN_TARGET_INVALID.
+    affects: [listed, escalating]
+  D3:
+    question: >-
+      What should the page do for a person who holds madrasah.ban but cannot read the roster? Today "Yasakla" is off and the page says the
+      roster could not be read, although the API would take the ban (COURSEBANS-1).
+    recommend: >-
+      Say the truth (no permission to read the course's talebe), or let the picker read the talebe from a route the ban permission covers.
+    affects: [listed, empty]
+
+context:
+  read:
+    values: [ok, refused, missing]
+    initial: any
+    say:
+      ok: "the course is read, and so are both lists of its bans"
+      refused: "the API refuses the course's ban list to the caller: a hoca, a ders nazırı (even one given ban.course) or a nazır with no madrasah.ban"
+      missing: "there is no such course: Next's 404 page"
+  list:
+    values: [none, own, higher, koskNone, koskOwn]
+    initial: any
+    say:
+      none: "a course of a medrese with no open ban"
+      own: "a course of a medrese with open course bans the başmüderris placed on ordinary talebe: each row offers the lift, the widening and the request (the walk stands on two rows, so a decision on one leaves the buttons of the other)"
+      higher: "a course of a medrese with an open course ban the başnazım placed: only the widening is offered, and the note that only Medaris may lift it"
+      koskNone: "a course with no medrese (the köşk's own), read by the başnazım, with no open ban"
+      koskOwn: "a course with no medrese with an open course ban the başnazım placed: the row offers the lift and nothing else (the köşk's list has no widening or request)"
+  roster:
+    values: [some, none, refused]
+    initial: any
+    say:
+      some: "the roster is read and holds at least one talebe who is not already barred"
+      none: "the roster is read and nobody on it can be barred (everyone is barred or was taken out, or nobody applied)"
+      refused: "the roster is refused to the caller (a nazır given madrasah.ban only): the page words it as unreadable"
+  banAnswer:
+    values: [done, invalid, refused, gone, failed]
+    initial: any
+    say:
+      done: "the API takes the ban"
+      invalid: "the chosen person runs the course (or the medrese) and cannot be barred: BAN_TARGET_INVALID"
+      refused: "the caller may not bar from this course: BAN_FORBIDDEN"
+      gone: "the course is no longer there: COURSE_NOT_FOUND"
+      failed: "anything else: the reason is refused (VALIDATION_ERROR), a malformed id (HTTP_400)"
+  answer:
+    values: [done, moved, refused, failed]
+    initial: any
+    say:
+      done: "the API takes the decision on the row"
+      moved: "the list has moved under the person: the ban was lifted or is gone meanwhile, cannot be widened, or has a request already"
+      refused: "the API refuses the caller (BAN_LIFT_FORBIDDEN, or BAN_FORBIDDEN on the widening and the request)"
+      failed: "anything else: the reason is refused (VALIDATION_ERROR), a malformed id (HTTP_400)"
+  after:
+    values: [more, none]
+    initial: any
+    say:
+      more: "other open bans are still on the list once a lift is made"
+      none: "the lifted ban was the last open one: the Etkin list is empty once a lift is made (a widening and a request leave their ban open)"
+  tab:
+    values: [ACTIVE, LIFTED]
+    initial: ACTIVE
+    say:
+      ACTIVE: "the Etkin tab (the address with no ?durum)"
+      LIFTED: "the Kaldırılan tab (?durum=kaldirilan)"
+  kind:
+    values: [lift, escalate, permanent]
+    initial: lift
+    say:
+      lift: "the reason dialog is 'Yasağı kaldır'"
+      escalate: "the reason dialog is 'Medreseden de yasakla'"
+      permanent: "the reason dialog is 'Kalıcı yasak talebi aç'"
+  picked: { values: [true, false], initial: false } # a talebe is chosen in the Yasakla dialog
+  typed: { values: [true, false], initial: false } # the reason field holds a letter
+  touched: { values: [true, false], initial: false } # a reason field was left while empty: its error is drawn
+  made: { values: [true, false], initial: false } # a ban was placed in this visit and is still open: its row offers the lift, the widening and the request
+  lifted: { values: [true, false], initial: false } # a ban was lifted in this visit: the Kaldırılan tab holds its row
+  drained: { values: [true, false], initial: false } # the last decision left no ban open
+  asked: { values: [true, false], initial: false } # a request was opened in this visit: the row wears the badge and has no request button
+  last:
+    values: [nothing, placed, lifted, widened, requested, banError, moved, refused, failed]
+    initial: nothing
+    say:
+      nothing: "no write has been made in this visit, or its toast is gone"
+      placed: "a ban was just placed (a toast of 6 seconds)"
+      lifted: "a ban was just lifted (6 seconds)"
+      widened: "a ban was just widened to the medrese (6 seconds)"
+      requested: "a permanent ban was just asked for (6 seconds)"
+      banError: "the Yasakla dialog was refused: an error toast that stays until closed, the dialog is still open"
+      moved: "the list had moved: an error toast that stays, the reason dialog is closed and the list read again"
+      refused: "the API refused the caller on a decision: an error toast, the reason dialog is still open"
+      failed: "the API refused the reason or the call on a decision: an error toast, the reason dialog is still open"
+
+guards:
+  onKosk: "list in ['koskNone', 'koskOwn']"
+  hadOpen: "list in ['own', 'higher', 'koskOwn']"
+  hasOpen: "(hadOpen or made) and not drained"
+  # the API's viewerMayLift, viewerMayEscalate and viewerMayRequestPermanent as a row draws them (bans.ts:127-153); the köşk's list turns the last two off (bans.ts:273-281).
+  # A row that was just widened or asked for loses its own button; the graph keeps the button because the walks that press them stand on two rows.
+  mayLift: "list in ['own', 'koskOwn'] or made"
+  mayWiden: "not onKosk and (list in ['own', 'higher'] or made)"
+  mayRequest: "not onKosk and (list == 'own' or made)"
+  canBan: "roster == 'some'"
+
+effects:
+  openBan: { set: { picked: false, typed: false, touched: false, last: nothing } }
+  pickedTalebe: { set: { picked: true } }
+  typedReason: { set: { typed: true } }
+  clearedReason: { set: { typed: false } }
+  leftEmpty: { set: { touched: true } }
+  placed: { set: { last: placed, made: true, drained: false } }
+  banError: { set: { last: banError } }
+  openLift: { set: { kind: lift, typed: false, touched: false, last: nothing } }
+  openWiden: { set: { kind: escalate, typed: false, touched: false, last: nothing } }
+  openRequest: { set: { kind: permanent, typed: false, touched: false, last: nothing } }
+  lifted: { set: { last: lifted, lifted: true } } # the row left the Etkin tab; other bans remain
+  liftedLast: { set: { last: lifted, lifted: true, made: false, drained: true } } # ... and it was the last one
+  widened: { set: { last: widened } }
+  requested: { set: { last: requested, asked: true } }
+  moved: { set: { last: moved } } # the ban is gone from the Etkin tab or has changed; other bans remain
+  movedLast: { set: { last: moved, made: false, drained: true } }
+  refused: { set: { last: refused } }
+  failed: { set: { last: failed } }
+  toLifted: { set: { tab: LIFTED, last: nothing } }
+  toActive: { set: { tab: ACTIVE, last: nothing } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+  readingMedrese:
+    from: listMadrasahBans
+    forbidden: [AUTHZ_FORBIDDEN]
+  readingKosk:
+    from: listKoskBans
+    forbidden: [BAN_FORBIDDEN]
+  banning:
+    from: createBan
+    invalid: [BAN_TARGET_INVALID]
+    refused: [BAN_FORBIDDEN]
+    gone: [COURSE_NOT_FOUND]
+    failed: [VALIDATION_ERROR, HTTP_400]
+  lifting:
+    from: liftBan
+    moved: [BAN_NOT_FOUND, BAN_ALREADY_LIFTED]
+    refused: [BAN_LIFT_FORBIDDEN]
+    failed: [VALIDATION_ERROR, HTTP_400]
+  escalating:
+    from: escalateBan
+    moved: [BAN_NOT_FOUND, BAN_ALREADY_LIFTED, BAN_NOT_ESCALATABLE]
+    refused: [BAN_FORBIDDEN]
+    failed: [VALIDATION_ERROR, HTTP_400]
+  requesting:
+    from: requestPermanentBan
+    moved: [BAN_NOT_FOUND, BAN_ALREADY_LIFTED, BAN_PERMANENT_REQUEST_EXISTS, BAN_PERMANENT_REQUEST_INVALID]
+    refused: [BAN_FORBIDDEN]
+    failed: [VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: the başmüderris opens a course that has talebe and no ban, bars one of them with a reason, and the
+# row appears with its actions.
+main:
+  given: { read: ok, list: none, roster: some, banAnswer: done, answer: done, after: none }
+  events: [DONE, DONE, BAN, PICK_TALEBE, FILL_IN, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The course is read
+    description: >-
+      The page asks, in parallel, for the viewer (GET /me), the course (GET /courses/:id) and the course's roster (GET
+      /courses/:id/enrollments, which writes an audit row when the reader is not one of the course's müderrises), and draws behind
+      the shell's loading bars (BansLoading). A course that is not there is Next's 404 page (a 404 of any read). The page has no gate of its
+      own: whoever the course layout lets in (the course's team, the başmüderris of its medrese, the başnazım by address) reaches the lists.
+    invoke: { action: getCourse }
+    on:
+      DONE: { guard: "read != 'missing'", target: reading, source: apps/nazar/features/bans/components/course-bans-page.tsx:62 }
+      FAIL.missing: { guard: "read == 'missing'", target: not_found, say: "a course that is not there: Next's 404 page", source: apps/nazar/lib/tedrisat-read.ts:46 }
+    source: apps/nazar/features/bans/components/course-bans-page.tsx:41
+
+  reading:
+    title: Which list is read
+    description: >-
+      Not a screen. A course of a medrese reads the medrese's list narrowed to the course (GET /madrasahs/:id/bans?status=&courseId=); a
+      course with no medrese reads its köşk's list (GET /kosks/:koskId/bans?status=), which has no course filter, and keeps this course's
+      COURSE rows (bans.ts:284-290). Both tabs are read each time, so each tab's count is the course's own and not the API's activeCount.
+    always:
+      - { guard: onKosk, target: readingKosk, source: apps/nazar/features/bans/components/course-bans-page.tsx:77 }
+      - { target: readingMedrese, source: apps/nazar/features/bans/components/course-bans-page.tsx:65 }
+    source: apps/nazar/features/bans/components/course-bans-page.tsx:62
+
+  readingMedrese:
+    title: The medrese's list is read for the course
+    description: >-
+      GET /madrasahs/:id/bans?status=ACTIVE and ?status=LIFTED with courseId: its guard asks madrasah.ban or platform.ban_scoped on the
+      medrese. The başmüderris, a nazır given madrasah.ban and the başnazım pass. The hoca of the course, a ders nazırı (given ban.course or
+      not) and a nazır with no grant do not: they get 403 AUTHZ_FORBIDDEN, and the page, which has no gate, draws the refusal (state
+      forbidden). F-D2c-3, read against the running API.
+    invoke: { action: listMadrasahBans }
+    on:
+      DONE: { guard: "read == 'ok'", target: classify, source: apps/nazar/features/bans/components/course-bans-page.tsx:73 }
+      FAIL.forbidden: { guard: "read == 'refused'", target: forbidden, say: "403: the page keeps its title and says 'Bu sayfaya izniniz yok'", source: apps/nazar/lib/tedrisat-read.ts:45 }
+    source: apps/nazar/features/bans/components/course-bans-page.tsx:66
+
+  readingKosk:
+    title: The köşk's list is read for the course
+    description: >-
+      GET /kosks/:koskId/bans?status=ACTIVE and ?status=LIFTED: it asks ban.manage_kosk, platform.ban_scoped or platform.ban_account at the
+      köşk, so the başnazım passes (the köşk's own nazım holds the code but makes no Nazar scope and meets /erisim-yok) and the hoca is
+      refused with 403 BAN_FORBIDDEN (read against the running API). Every ban of the köşk comes, and the page keeps this course's COURSE
+      rows.
+    invoke: { action: listKoskBans }
+    on:
+      DONE: { guard: "read == 'ok'", target: classify, source: apps/nazar/features/bans/components/course-bans-page.tsx:80 }
+      FAIL.forbidden: { guard: "read == 'refused'", target: forbidden, say: "403: the page keeps its title and says 'Bu sayfaya izniniz yok'", source: apps/nazar/lib/tedrisat-read.ts:45 }
+    source: apps/nazar/features/bans/components/course-bans-page.tsx:77
+
+  classify:
+    title: What the tab holds decides which screen
+    description: >-
+      Classification only: the Kaldırılan tab is its list or its empty line; the Etkin tab is its list or its empty line. A write that
+      succeeds, and a dialog that is closed, come back here, because the page reads the lists again and the tab does not change.
+    always:
+      - { guard: "tab == 'LIFTED' and lifted", target: liftedList, source: apps/nazar/features/bans/components/bans-table.tsx:299 }
+      - { guard: "tab == 'LIFTED'", target: liftedEmpty, source: apps/nazar/features/bans/components/bans-table.tsx:299 }
+      - { guard: hasOpen, target: listed, source: apps/nazar/features/bans/components/bans-table.tsx:278 }
+      - { target: empty, source: apps/nazar/features/bans/components/bans-table.tsx:299 }
+    source: apps/nazar/features/bans/components/course-bans-page.tsx:92
+
+  forbidden:
+    title: The page refuses the list
+    description: >-
+      The heading stays and a neutral alert (role status, so it is not announced as an alert) says "Bu sayfaya izniniz yok" and "Bu sayfayı
+      açma izniniz yok. İzne ihtiyacınız varsa medresenin başmüderrisine başvurun." under it; the header's "Yasakla" is left out with the
+      list. This is what the hoca of the course meets, and a ders nazırı with ban.course and ban.lift_course (F-D2c-3, F-D2c-2: the menu
+      offers the entry to everyone who holds the course scope). The page's <title> and <h1> still say "Yasaklamalar" and the alert is
+      no heading and has no link out (F-B-13). The unreadable course (a 5xx) is the shell's retry state, not drawn here.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/course-bans-page.tsx:113
+
+  listed:
+    title: The course's open bans are listed
+    description: >-
+      The page: the heading, the header's "Yasakla" (off with its reason when no talebe can be chosen: roster none or refused), the tabs
+      "Etkin" and "Kaldırılan" with the course's own counts, the search box, and the table of open bans, newest first. Each row names
+      the person, "Ders" with the course's title, the reason, who placed it (with "(siz)" when the viewer did) and when, and "Yeni"
+      for a ban under 24 hours old. Each row offers only what the API says the caller may do, absent and not disabled: "Yasağı kaldır" where
+      the viewer's kademe reaches the ban's, "Medreseden de yasakla" on a course of a medrese whose person is not barred from the medrese
+      yet, "Kalıcı yasak talebi aç" on an open ban placed below Medaris with no request yet; a row that cannot be lifted says who can
+      ("Bu yasağı yalnız Medaris yönetimi kaldırabilir."). A course with no medrese offers the lift alone. The row of a person barred from
+      the whole medrese or köşk is not here (COURSEBANS-4). The last write's toast stands in the page for its time (`last`). Findings read
+      here: F-B-4 (counts and rows change after a write with no announcement), F-B-9 and F-D2c-8 (after a decision the opener is gone and the
+      focus falls to the page), F-D2c-10 (the sentence that says why "Yasakla" is off is not tied to the button), and, on the "Medreseden de
+      yasakla" button, ban-staff-check-gaps (SECURITY: the API never asks whether the person now teaches the course, so a ban placed before
+      the post can be widened over a hoca; the walk of that is nazar.bans.decide's `staff`).
+    by: human
+    goal: true
+    on:
+      BAN: { guard: canBan, target: banForm, effect: [openBan], say: "they press the header's 'Yasakla'", source: apps/nazar/features/bans/components/course-ban-dialog.tsx:167 }
+      LIFT: { guard: mayLift, target: reasonForm, effect: [openLift], say: "they press 'Yasağı kaldır' on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
+      WIDEN: { guard: mayWiden, target: reasonForm, effect: [openWiden], say: "they press 'Medreseden de yasakla' on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
+      REQUEST: { guard: mayRequest, target: reasonForm, effect: [openRequest], say: "they press 'Kalıcı yasak talebi aç' on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
+      OPEN_LIFTED: { target: opened, effect: [toLifted], say: "they press the Kaldırılan tab: a full page load of ?durum=kaldirilan", source: libs/ui/src/mds/tabs.tsx:78 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/bans-table.tsx:278
+
+  empty:
+    title: No ban is open
+    description: >-
+      The table says "Etkin yasak yok." and the Etkin count reads 0. The header's "Yasakla" is the way on (or off with its reason); a toast
+      of the last write may still be up.
+    by: human
+    on:
+      BAN: { guard: canBan, target: banForm, effect: [openBan], say: "they press the header's 'Yasakla'", source: apps/nazar/features/bans/components/course-ban-dialog.tsx:167 }
+      OPEN_LIFTED: { target: opened, effect: [toLifted], say: "they press the Kaldırılan tab", source: libs/ui/src/mds/tabs.tsx:78 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/bans-table.tsx:299
+
+  liftedList:
+    title: The lifted bans are listed
+    description: >-
+      The Kaldırılan tab: the same table with the caption "Kaldırılan yasaklar" and no action on any row. The last column says who lifted
+      the ban, when, and the reason they gave. A lifted ban never wears "Yeni". The talebe was not told that access came back (liftBan sends
+      no notification).
+    by: human
+    on:
+      BAN: { guard: canBan, target: banForm, effect: [openBan], say: "they press the header's 'Yasakla'", source: apps/nazar/features/bans/components/course-ban-dialog.tsx:167 }
+      OPEN_ACTIVE: { target: opened, effect: [toActive], say: "they press the Etkin tab: a full page load", source: libs/ui/src/mds/tabs.tsx:78 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/bans-table.tsx:278
+
+  liftedEmpty:
+    title: No ban was lifted
+    description: >-
+      The Kaldırılan tab says "Kaldırılan yasak yok." and its count reads 0.
+    by: human
+    on:
+      BAN: { guard: canBan, target: banForm, effect: [openBan], say: "they press the header's 'Yasakla'", source: apps/nazar/features/bans/components/course-ban-dialog.tsx:167 }
+      OPEN_ACTIVE: { target: opened, effect: [toActive], say: "they press the Etkin tab", source: libs/ui/src/mds/tabs.tsx:78 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/bans-table.tsx:299
+
+  banForm:
+    title: The Yasakla dialog, the button off
+    description: >-
+      A form dialog over the page (the page behind is inert), titled "Yasakla" with the course's title over it. One sentence says what
+      the ban does ("Bu dersin celselerine, ders kayıtlarına ve içeriğine erişemez."). Two fields: "Talebe", a select of this course's
+      roster (not taken out, not already barred in this course, the medrese or the köşk, once each, by name only: F-D2c-11), and "Yasaklama
+      gerekçesi", a textarea of 500 characters. The submit "Yasakla" is natively off until a talebe is chosen and a reason typed. No
+      initial focus is given, so Base UI's default applies (F-D2c-15, not verified). "Bir gerekçe yazın." appears under the reason only
+      after it was left empty, as plain text: not a live region, the focus is not moved (F-D2c-4). Neither field is `required` for a
+      reader of the screen where it matters (F-D2c-12), and the dialog says neither who reads the reason nor what the asterisk means
+      (COURSEBANS-3). The whole body is the dialog's description (F-D2c-16). The scrim does not close the dialog.
+    by: human
+    on:
+      PICK_TALEBE: { target: banCheck, effect: [pickedTalebe], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:119, say: "they open the select and choose a talebe" }
+      FILL_IN: { target: banCheck, effect: [typedReason], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:135, say: "they type a reason" }
+      LEAVE_EMPTY: { target: banForm, effect: [leftEmpty], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:136, say: "they leave the empty reason (Tab, or a click elsewhere): its error appears under it" }
+      CANCEL: { target: classify, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:100, say: "Vazgeç, or Esc: the dialog closes, nothing is sent and the focus goes back to the header's button" }
+      CLOSE: { target: classify, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:90, say: "the close icon: the same" }
+    source: apps/nazar/features/bans/components/course-ban-dialog.tsx:87
+
+  banCheck:
+    title: Is the submit on
+    description: Not a screen. The submit is on when a talebe is chosen and the reason holds a letter.
+    always:
+      - { guard: "picked and typed", target: banReady, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:104 }
+      - { target: banForm, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:104 }
+    source: apps/nazar/features/bans/components/course-ban-dialog.tsx:104
+
+  banReady:
+    title: The Yasakla dialog, the button on
+    description: >-
+      The same dialog with a talebe and a reason: the submit is on. Pressing it sends POST /courses/:courseId/bans {userId, scope: COURSE,
+      reason trimmed}. After a refusal the dialog is here again with its error toast over it and what was typed kept.
+    by: human
+    on:
+      PICK_TALEBE: { target: banCheck, effect: [pickedTalebe], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:119, say: "they choose another talebe" }
+      FILL_IN: { target: banCheck, effect: [typedReason], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:135, say: "they change the reason" }
+      CLEAR: { target: banCheck, effect: [clearedReason], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:135, say: "they empty the reason: the submit goes off" }
+      SUBMIT: { target: banning, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:53, say: "they press 'Yasakla'" }
+      CANCEL: { target: classify, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:100, say: "Vazgeç, or Esc: what was typed is lost and the focus goes back to the header's button" }
+      CLOSE: { target: classify, source: apps/nazar/features/bans/components/course-ban-dialog.tsx:90, say: "the close icon: the same" }
+    source: apps/nazar/features/bans/components/course-ban-dialog.tsx:101
+
+  banning:
+    title: The ban is on its way
+    description: >-
+      createBan calls POST /courses/:courseId/bans: the caller's standing at the course (ban.course, ban.manage_kosk or madrasah.ban), the
+      caller is not the person, and the person holds no role that runs the course (RUNS_MADRASAH_ROLES for a medrese course, RUNS_COURSE_ROLES
+      otherwise, read from the roles at the course, its köşk, its medrese and the platform: ban.service.ts:129-163; the başnazım is never
+      found, because SYSTEM_ADMIN is a realm role). A ban is made with the caller's role and kademe, the köşk's nazımları and the Medaris
+      nazımları (all but the caller) are told (COURSE_BAN_PLACED), and each enrolled seat the ban newly bars is told "erişimin kaldırıldı", never
+      the reason. A person already barred in that scope gets the standing ban back with the same 201 and nothing is written, though the toast
+      says the ban was saved (a race: the picker offers nobody barred). The dialog stays open: the submit is busy (aria-disabled,
+      "Yükleniyor" for a reader of the screen, F-D2c-13), the select and the field are disabled so the focus leaves them, and Vazgeç, the
+      close icon and Esc do nothing (BANDEC-1). On success a toast says "Yasak kaydedildi" and "{name} artık “{course}” dersine
+      erişemez.", the dialog closes and the list is read again.
+    invoke: { action: createBan }
+    on:
+      DONE: { guard: "banAnswer == 'done'", target: classify, effect: [placed], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:66, say: "the row appears in Etkin, the Etkin count goes up by one, a toast says the talebe can no longer reach the course" }
+      FAIL.invalid: { guard: "banAnswer == 'invalid'", target: banReady, effect: [banError], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:78, say: "the chosen person runs the course: an error toast 'Yasak konamadı' says 'Bu kişi yasaklanamaz: kendinizi ya da medreseyi veya dersi yürüten birini yasaklayamazsınız.'; the dialog stays open" }
+      FAIL.refused: { guard: "banAnswer == 'refused'", target: banReady, effect: [banError], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:78, say: "the caller may not bar from this course: an error toast 'Bu yasağı koymak için yetkiniz yok.'; the dialog stays open" }
+      FAIL.gone: { guard: "banAnswer == 'gone'", target: banReady, effect: [banError], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:78, say: "the course is no longer there: an error toast says to refresh the page and choose again; the dialog stays open and does not close itself" }
+      FAIL.failed: { guard: "banAnswer == 'failed'", target: banReady, effect: [banError], source: apps/nazar/features/bans/components/course-ban-dialog.tsx:78, say: "an error toast ('Gerekçeyi denetleyip yeniden deneyin.' or 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'); the dialog stays open" }
+    source: apps/nazar/features/bans/components/course-ban-dialog.tsx:60
+
+  reasonForm:
+    title: The reason dialog, the button off
+    description: >-
+      A form dialog over the page, in the kind of the row's button: "Yasağı kaldır", "Medreseden de yasakla" or "Kalıcı yasak talebi aç". Over
+      the title stands the course's title (not the medrese's: bans-table.tsx:310); the body names the person (name and address), then the
+      ban's scope, who placed it and its reason, then one sentence of what the decision does (a lift says the talebe may apply to the course
+      again, a widening says the talebe cannot reach or apply to any course of the medrese and the course's ban goes on, a request says it
+      goes to Medaris administration and the ban goes on meanwhile), then the reason field. The focus starts in the reason (initialFocus).
+      The submit is natively off until the reason holds a letter. The scrim does not close the dialog. "Bir gerekçe yazın." appears under
+      the field only after it was left empty, as plain text (F-B-6, F-D2c-4). The whole body is the dialog's description (F-B-12).
+    by: human
+    on:
+      LEAVE_EMPTY: { target: reasonForm, effect: [leftEmpty], source: "apps/nazar/features/bans/components/reason-dialog.tsx:175", say: "they leave the empty reason: its error appears under it" }
+      FILL_IN: { target: reasonReady, effect: [typedReason], source: "apps/nazar/features/bans/components/reason-dialog.tsx:174", say: "they type a reason" }
+      CANCEL: { target: classify, source: apps/nazar/features/bans/components/reason-dialog.tsx:118, say: "Vazgeç, or Esc: nothing is sent and the focus goes back to the row's button" }
+      CLOSE: { target: classify, source: apps/nazar/features/bans/components/reason-dialog.tsx:107, say: "the close icon: the same" }
+    source: apps/nazar/features/bans/components/reason-dialog.tsx:105
+
+  reasonReady:
+    title: The reason dialog, the button on
+    description: >-
+      The same dialog with a reason in the field (trimmed when sent, 500 characters at most): the submit is on. Pressing it (or Enter in the
+      field) sends the decision of the dialog's kind.
+    by: human
+    on:
+      FILL_IN: { target: reasonReady, effect: [typedReason], source: "apps/nazar/features/bans/components/reason-dialog.tsx:174", say: "they change the reason" }
+      CLEAR: { target: reasonForm, effect: [clearedReason], source: "apps/nazar/features/bans/components/reason-dialog.tsx:174", say: "they empty the reason: the submit goes off" }
+      SUBMIT:
+        - { guard: "kind == 'lift'", target: lifting, source: apps/nazar/features/bans/components/reason-dialog.tsx:70, say: "they press 'Yasağı kaldır'" }
+        - { guard: "kind == 'escalate'", target: escalating, source: apps/nazar/features/bans/components/reason-dialog.tsx:70, say: "they press 'Medreseden de yasakla'" }
+        - { target: requesting, source: apps/nazar/features/bans/components/reason-dialog.tsx:70, say: "they press 'Talebi aç'" }
+      CANCEL: { target: classify, source: apps/nazar/features/bans/components/reason-dialog.tsx:118, say: "Vazgeç, or Esc: what was typed is lost and the focus goes back to the row's button" }
+      CLOSE: { target: classify, source: apps/nazar/features/bans/components/reason-dialog.tsx:107, say: "the close icon: the same" }
+    source: apps/nazar/features/bans/components/reason-dialog.tsx:119
+
+  lifting:
+    title: The lift is on its way
+    description: >-
+      liftBan calls POST /bans/:banId/lift with the reason: the ban is lifted with the lifter's name and the reason, in one transaction with its
+      audit row; the enrollment is not touched and nobody is told, so the talebe never hears that access has returned. The dialog stays
+      open while it runs: the submit is busy, the field is disabled so it loses the focus, and Vazgeç, the close icon and Esc do nothing
+      (BANDEC-1). On success a toast says "Yasak kaldırıldı", the dialog closes and the list is read again: the row is in Kaldırılan.
+    invoke: { action: liftBan }
+    on:
+      DONE:
+        - { guard: "answer == 'done' and after == 'none'", target: classify, effect: [liftedLast], source: apps/nazar/features/bans/components/reason-dialog.tsx:73, say: "the only open ban moves to Kaldırılan: the Etkin list is empty" }
+        - { guard: "answer == 'done'", target: classify, effect: [lifted], source: apps/nazar/features/bans/components/reason-dialog.tsx:73, say: "the row moves to Kaldırılan; the Etkin count goes down by one and the Kaldırılan count up" }
+      FAIL.moved:
+        - { guard: "answer == 'moved' and after == 'none'", target: classify, effect: [movedLast], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "someone lifted it first, or it is gone, and no other is open: an error toast says the list was refreshed, the dialog closes, the list is empty" }
+        - { guard: "answer == 'moved'", target: classify, effect: [moved], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "someone lifted it first, or it is gone: an error toast says the list was refreshed, the dialog closes" }
+      FAIL.refused: { guard: "answer == 'refused'", target: reasonReady, effect: [refused], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "the caller's kademe does not reach the ban's: an error toast, the dialog stays open with the reason" }
+      FAIL.failed: { guard: "answer == 'failed'", target: reasonReady, effect: [failed], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "an error toast, the dialog stays open" }
+    source: apps/nazar/features/bans/components/reason-dialog.tsx:71
+
+  escalating:
+    title: The widening is on its way
+    description: >-
+      escalateBan calls POST /bans/:banId/escalate with the reason: a second ban, over the whole medrese, is made for the same person with
+      the caller's own kademe and reason, and the course ban stays open (a person already barred from the medrese gets that ban back and
+      nothing is written). The talebe's seats the new ban newly bars are told 'erişimin kaldırıldı'; the köşk's nazımları are not told. This
+      course's list does not show the new ban (it is not a COURSE ban of this course), only that the row loses its widening button. The API
+      asks the caller's standing at the medrese (madrasah.ban or platform.ban_scoped) and nothing about the person: unlike placing a ban it
+      never reads the person's roles or compares them with the caller (ban.service.ts:515-553), so it does not refuse a person who has since
+      been named hoca, başmüderris or nazım (ban-staff-check-gaps, SECURITY; read from the code, the walk is nazar.bans.decide's `staff`). The
+      dialog stays open while it runs, as for the lift.
+    invoke: { action: escalateBan }
+    on:
+      DONE: { guard: "answer == 'done'", target: classify, effect: [widened], source: apps/nazar/features/bans/components/reason-dialog.tsx:73, say: "the toast says 'Medreseden de yasaklandı' and '{name} artık medresenin hiçbir dersine erişemez.'; the row loses its widening button; the medrese-wide ban is not on this list" }
+      FAIL.moved:
+        - { guard: "answer == 'moved' and after == 'none'", target: classify, effect: [movedLast], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "the ban is lifted or gone and no other is open: an error toast, the dialog closes, the list is empty" }
+        - { guard: "answer == 'moved'", target: classify, effect: [moved], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "the ban is lifted, gone or cannot be widened: an error toast, the dialog closes and the list is read again" }
+      FAIL.refused: { guard: "answer == 'refused'", target: reasonReady, effect: [refused], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "the caller may not widen to the medrese: an error toast, the dialog stays open" }
+      FAIL.failed: { guard: "answer == 'failed'", target: reasonReady, effect: [failed], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "an error toast, the dialog stays open" }
+    source: apps/nazar/features/bans/components/reason-dialog.tsx:71
+
+  requesting:
+    title: The request is on its way
+    description: >-
+      requestPermanentBan calls POST /bans/:banId/permanent-request with the reason: one row of ban_permanent_requests per ban and an audit
+      row. The ban stands as it was. No notification is sent and no route lists or answers the request, so nothing reaches Medaris
+      administration, although the toast says "Talep Medaris yönetimine iletildi" (BANDEC-4, MDRS-140, MDRS-194). The dialog stays open while
+      it runs, as for the lift. The start of nizam.moderation.decidePermanentBan (planned) is drawn by nazar.bans.decide, not repeated here.
+    invoke: { action: requestPermanentBan }
+    on:
+      DONE: { guard: "answer == 'done'", target: classify, effect: [requested], source: apps/nazar/features/bans/components/reason-dialog.tsx:73, say: "the row wears 'Kalıcı yasak talebi bekliyor' and loses its request button" }
+      FAIL.moved:
+        - { guard: "answer == 'moved' and after == 'none'", target: classify, effect: [movedLast], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "the ban is lifted or gone and no other is open: an error toast, the dialog closes, the list is empty" }
+        - { guard: "answer == 'moved'", target: classify, effect: [moved], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "the ban is lifted or gone, or a request exists already, or it is a ban Medaris placed: an error toast, the dialog closes and the list is read again" }
+      FAIL.refused: { guard: "answer == 'refused'", target: reasonReady, effect: [refused], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "the caller may not ask: an error toast that says 'Bu yasağı koymak için yetkiniz yok.' (BANDEC-2), the dialog stays open" }
+      FAIL.failed: { guard: "answer == 'failed'", target: reasonReady, effect: [failed], source: apps/nazar/features/bans/components/reason-dialog.tsx:82, say: "an error toast, the dialog stays open" }
+    source: apps/nazar/features/bans/components/reason-dialog.tsx:71
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the course read (or of the roster or a list) is Next's not-found page, which the shell draws."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-dialog-is-opened-for-what-the-row-offers
+    never: "(state == 'reasonForm' or state == 'reasonReady') and ((kind == 'lift' and not mayLift) or (kind == 'escalate' and not mayWiden) or (kind == 'permanent' and not mayRequest))"
+    say: A decision's dialog opens only from a row that offers that decision; the buttons are absent otherwise.
+    source: apps/nazar/features/bans/components/bans-table.tsx:190
+  - id: a-course-with-no-medrese-offers-only-the-lift
+    never: "(state == 'escalating' or state == 'requesting') and onKosk"
+    say: A course the köşk keeps for itself has no medrese to widen the ban to, and the köşk's list says nothing of a request, so only the lift is offered.
+    source: apps/nazar/features/bans/bans.ts:273
+  - id: a-ban-medaris-placed-is-not-lifted-here
+    never: "state == 'lifting' and list == 'higher' and not made"
+    say: A ban that Medaris administration placed is never lifted from this page by a başmüderris, only widened.
+    source: apps/nazar/features/bans/bans.ts:145
+  - id: a-ban-is-placed-only-where-the-list-is-read
+    never: "(state == 'banForm' or state == 'banReady' or state == 'banning') and read != 'ok'"
+    say: The header's "Yasakla" is drawn only when both lists were read, so a caller refused the list cannot open its dialog.
+    source: apps/nazar/features/bans/components/course-bans-page.tsx:98
+  - id: a-ban-needs-a-talebe-to-choose
+    never: "(state == 'banForm' or state == 'banReady' or state == 'banning') and not canBan"
+    say: The header's "Yasakla" is off when the roster is empty or unreadable, so its dialog never opens without a talebe to choose.
+    source: apps/nazar/features/bans/components/course-ban-dialog.tsx:166
+  - id: rows-mean-a-ban
+    never: "state == 'listed' and not hasOpen"
+    say: The Etkin table is drawn with rows only while a ban is open.
+    source: apps/nazar/features/bans/components/bans-table.tsx:299
+  - id: an-empty-line-means-no-open-ban
+    never: "state == 'empty' and hasOpen"
+    say: The Etkin table says it is empty only when no ban is open.
+    source: apps/nazar/features/bans/components/bans-table.tsx:299

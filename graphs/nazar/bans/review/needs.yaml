@@ -1,0 +1,100 @@
+# What must exist for the başmüderris of a medrese to read its bans: the flow's product list (LAYOUT.md section 7). Each need is what the
+# product must do, from the flow's story and the planned work in the inventory (planned.md P-01, P-03), not from what the page does today. The
+# known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+#
+# For the gaps merge:
+#   missing   counts-and-narrowing-are-told (none: F-B-4), a-refusal-says-what-it-is (none: F-B-13), the-list-is-bounded (none: BANS-2),
+#             every-ban-reaches-the-people-above (MDRS-113), a-permanent-request-is-answered (MDRS-140; MDRS-194 is the later phase's issue),
+#             staff-cannot-be-barred-on-any-route (none: ban-staff-check-gaps)
+#   unwalked  none: each built need has an e2e check (apps/nazar/e2e/bans.e2e.ts) and a unit spec (apps/nazar/test/bans.spec.tsx). No replay has
+#             run on this flow yet, so none is named.
+kind: needs
+flow: nazar.bans.review
+status: proposed
+
+needs:
+  - id: read-the-bans
+    need: >-
+      The başmüderris reads, on one page, every ban of her medrese, the ones that stand and the ones that were lifted, each with the person,
+      what they are barred from (one course or the whole medrese), the reason, who placed it and when, and who lifted it, when and why; the two
+      tabs say how many of each the medrese has.
+    drawn: [listed, empty, tableActive, tableLifted, tabActiveCount, tabLiftedCount, rowPerson, rowScopeCourse, rowScopeMadrasah, rowReason, rowBannedBy, rowWhen, rowLiftedBy, rowLiftReason]
+    built:
+      - action: medaris.api:listMadrasahBans
+      - route: apps/nazar/features/bans/components/bans-page.tsx:25
+    walked:
+      - e2e: apps/nazar/e2e/bans.e2e.ts
+        check: 'bans#1'
+      - test: apps/nazar/test/bans.spec.tsx
+
+  - id: each-row-says-what-its-kademe-allows
+    need: >-
+      Each open ban offers the reader only what the kademe that placed it and the reader's own permissions allow (lift it, widen it to the whole
+      medrese, ask Medaris for a permanent ban), and a ban the reader may not lift says who may, instead of leaving a gap.
+    drawn: [lift, escalate, permanent, platformNote, higherNote, badgeNew, badgePermanent, rowRoleYou, rowRoleMedaris, rowRoleKosk]
+    built:
+      - action: medaris.api:listMadrasahBans
+      - route: apps/nazar/features/bans/bans.ts:127
+    walked:
+      - e2e: apps/nazar/e2e/bans.e2e.ts
+        check: 'bans#2'
+      - test: apps/nazar/test/bans.spec.tsx
+
+  - id: narrow-by-scope-and-by-name
+    need: >-
+      She narrows the list to the bans over the whole medrese or to one course, and by a person's name, and takes the filters off again; the scope
+      is in the address, so a link keeps it, and a filter that leaves nothing says so and offers the way back.
+    drawn: [scopeFilter, searchField, noMatch, noMatchLine, clearFilters, reading]
+    built:
+      - action: medaris.api:listMadrasahBans
+      - route: apps/nazar/features/bans/components/bans-table.tsx:270
+    walked:
+      - e2e: apps/nazar/e2e/bans.e2e.ts
+        check: 'bans#3'
+      - test: apps/nazar/test/bans.spec.tsx
+
+  - id: counts-and-narrowing-are-told
+    need: >-
+      A change of the list that a person cannot see, the number a tab carries, the rows a scope or a name leaves, is said by a status line, and the
+      tab's count says what it counts (the medrese's whole), so that "Etkin 4" over one row is not a contradiction (F-B-4).
+    drawn: [tabActiveCount, tabLiftedCount, searchField, scopeFilter, noMatchLine]
+    missing: none # no issue: bans-table.tsx:233 sets aria-busy and nothing else
+
+  - id: a-refusal-says-what-it-is
+    need: >-
+      A reader the page refuses (a nazır the medrese gave no ban permission) meets a heading that says they have no access, in place of the page's
+      own title, with a way back to a page they may open (F-B-13).
+    drawn: [forbidden, forbiddenAlert, forbiddenText, bansTitle]
+    missing: none # no issue: page-problem.tsx:23 draws a neutral status with a <p> title and no link
+
+  - id: the-list-is-bounded
+    need: >-
+      A medrese with a great many bans reads them a page at a time, and the search is the server's, so that the page does not carry every ban of
+      the medrese on every tab and every scope (BANS-2).
+    drawn: [listed, searchField]
+    missing: none # no issue: the API sends every row (ban.repository.ts:682) and the search narrows what is on the screen
+
+  - id: every-ban-reaches-the-people-above
+    need: >-
+      Every ban a medrese places is put in front of the people above it (P-01, MDRS-113): the köşk's nazımları are told of a ban on a course of
+      their köşk and see a medrese-wide ban in their own list, and Medaris administration sees every ban. Today the lists of the köşk and of Medaris
+      exist (nizam), a ban placed from the medrese tells no köşk nazımı (createMadrasahBan writes only the talebe's notice), and a medrese-wide
+      ban, which has no köşk, is in no köşk's list.
+    drawn: [listed, platformNote, higherNote]
+    missing: MDRS-113
+
+  - id: a-permanent-request-is-answered
+    need: >-
+      A request for a permanent ban is read by Medaris administration, which is told of it, and answered; the row says what became of it
+      (P-03, MDRS-140). Today the request is written and nothing reads it: no route lists or decides it, nobody is told, and the badge "Kalıcı yasak
+      talebi bekliyor" stays on the row until the ban is lifted.
+    drawn: [badgePermanent, permanent]
+    missing: MDRS-140 # the deciding page is nizam.moderation.decidePermanentBan (planned); MDRS-194 is the deferred-screens issue of the same later phase
+
+  - id: staff-cannot-be-barred-on-any-route
+    need: >-
+      Nobody who runs the course or the medrese (a müderris, a ders nazırı, a nazır, a başmüderris, a köşk nazımı, a Medaris nazımı, the başnazım) can
+      be barred from it, whichever route places the ban, and the page never offers to widen a ban onto such a person. Today only the two create
+      routes check; widening a ban does not, and the page offers it (ban-staff-check-gaps, decision D1).
+    drawn: [escalate, listed]
+    missing: none # no issue: a security finding of the domain (invariant ban-staff-cannot-be-barred, holds: false); binding.staffRow.yaml walks it

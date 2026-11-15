@@ -1,0 +1,43 @@
+# nazar.bans.courseBans, the dialog is refused because the chosen person runs the course (BAN_TARGET_INVALID).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/courseBans \
+#     --bind graphs/nazar/bans/courseBans/binding.invalid.yaml --to banning --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# Dilek Başvuran is enrolled in the course of the walk's own and is also appointed its ders nazırı holding nothing (helpers/
+# course-nazir-grants.mjs --codes none, as the müderris does). The picker offers her (it leaves out only the taken-out and the barred,
+# bans.ts:310), the başmüderris chooses her and sends the reason, and createBan finds her role at the course and answers 400
+# BAN_TARGET_INVALID (ban.service.ts:155-163): the dialog stays open with an error toast "Yasak konamadı" and "Bu kişi yasaklanamaz: ...",
+# the typed reason kept (COURSEBANS-2). The post goes with the course. `call` is left off `banning`: a refusal of a server action is a 200.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.courseBans
+
+scenarios:
+  invalid:
+    given: { read: ok, list: none, roster: some, banAnswer: invalid, answer: done, after: none }
+    as: basmuderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, ../nazar/bans/decide/bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, applicantG, --codes, none]
+        expect: 'course-nazir-grants APPLICANT_G'
+    teardown:
+      - run: [node, ../nazar/bans/decide/bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+      - run: [node, ../nazar/bans/courseBans/cbans.mjs, forget, cbans]
+        expect: forgot
+    vars:
+      reasonText: Celselerde ders dışı reklam yaptı
+      talebe: Dilek Başvuran
+      who: APPLICANT_G
+      placeHas: COURSE open
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request

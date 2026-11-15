@@ -1,0 +1,540 @@
+# Hiding a week or a celse of a course from Müfredat's hide page and bringing it back from the course's Arşiv, in nazar-web, by
+# the course's hoca. Read from the code of the branch (the tree of PR #394) on 15 Nov 2026: apps/nazar/features/curriculum-hide
+# (the page, the list, the two server actions), apps/nazar/features/course-archive (the page and its tabs) and
+# apps/nazar/features/archive (the table, "Geri al", the sentences of a higher kademe), libs/ui/src/mds (AlertDialog, Button,
+# Tabs, Table, Toast), and the routes the buttons call (hideCourseWeek, archiveLesson, listCourseArchive, restoreArchiveItem).
+# It says what the code does today. Nothing here was seen in a browser by its writer: every behaviour is "from the code" unless a
+# line says it was read from the running app.
+#
+# What is drawn:
+#   - /ders/<id>/mufredat/gizle: the weeks and the celses under them, each with its own "Haftayı gizle" / "Celseyi gizle"; the
+#     alertdialog that asks first (focus on "Vazgeç", cancelled once, then confirmed); the toasts of the answer; the list read again
+#     without what was hidden, or the empty line when the last week went.
+#   - /ders/<id>/arsiv: the three tabs with their counts, the table of what is hidden (who hid it, when), "Geri al" on a week or a
+#     celse (no question first), the sentences that stand where a higher kademe hid a celse, the toasts of a restore.
+#   - the refusals: a person who does not hold week.hide meets "Bunu yapma izniniz yok." as a toast when she presses "Gizle", and
+#     "Bu sayfaya izniniz yok" on the Arşiv; the answers of a race ("someone hid it first").
+#
+# What the story depends on and the graph says plainly:
+#   - Nothing is deleted. A week hides with the celses it holds at one instant; a celse hides alone. The Arşiv lists a celse only
+#     while its week and its course are shown, so a celse hidden on its own and then covered by a week hidden later leaves the
+#     list, and comes back to it when the week is restored: "Geri al" on a week brings back the celses hidden with it, not the one
+#     hidden earlier (the model keeps this in `covered`; domain invariants archive-restore-week-brings-its-sessions,
+#     archive-lists-only-what-has-a-shown-parent, session-hide-never-deletes).
+#   - The hide page has no gate (F-C-course-a-17). It is drawn for any person who holds a seat in the course and the API refuses a
+#     write that is not hers. `holds` says which three people are in front of it: the hoca (week.hide), a ders nazırı who was given
+#     only session.manage (she may hide a celse, not a week) and one with no grant. The editor links here only for week.hide holders
+#     (curriculum-editor.tsx:468), so the other two arrive by address.
+#   - The Arşiv asks week.hide on its read (archive.controller.ts:150), so the second and third person meet the refusal there,
+#     and the person who may hide a celse can neither see it afterwards nor bring it back (HIDEREST-3).
+#   - Findings it carries (ui.yaml `rules` has the same ids): F-C-course-a-15 and -23 (the pressed control leaves with its row and no
+#     code moves the focus), F-C-course-a-16 (the editor's "Gizle" is another thing: it hides on save), F-C-course-a-17 (no gate, the
+#     title and h1 of the editor, no way back), F-C-course-a-25 and -26 and -28 (a controlled dialog with no trigger, closing ignored
+#     while the call runs, the busy label outside the catalog), F-A-12 (a tab's count joins its label), F-A-16 (the refusal is a
+#     neutral status), and four of its own: HIDEREST-1 (a course gone meanwhile is worded as "try again"), HIDEREST-2 (the page and
+#     the toasts name the Arşiv and link to it nowhere), HIDEREST-3 (a session.manage holder cannot open the Arşiv) and HIDEREST-4
+#     (the restore toast of a week does not say that a celse hidden earlier stays hidden and now has a row of its own).
+schema: delurio-graph/0
+kind: flow
+id: nazar.curriculum.hideRestore
+status: captured
+domain: medaris.api
+ui: nazar.curriculum.hideRestore
+title: Hide a week or a celse and bring it back from the course's Arşiv
+summary: >-
+  The hoca opens the hide page of her course: every live week with its celses, each with a "Gizle" button named by its title. A
+  button opens an alertdialog whose focus starts on "Vazgeç"; it says what leaves the course, that nothing is deleted and that the
+  kademe that hid it or one above brings it back. Cancelling leaves everything where it is; "Gizle" hides the week with its celses
+  (or the celse alone), a toast says so and the list is read again without it, or says "Bu dersin henüz haftası yok." when the last
+  week went. The course's Arşiv, which only the sidebar leads to, lists what is hidden in three tabs (Tümü, Haftalar, Celseler), newest
+  first, each row with its kind, who hid it and when. Where her kademe reaches the one that hid a row, "Geri al" brings it back at
+  once and a toast says so; where a higher kademe hid a celse, a sentence says which one stands in the button's place. A week that
+  comes back brings the celses hidden with it; a celse hidden on its own earlier stays hidden and now has a row of its own. A person
+  who may not hide is told by a toast after the question, not before it, and the Arşiv answers her with "Bu sayfaya izniniz yok". The
+  focus is lost where the pressed control leaves with its row (F-C-course-a-15, -23), and nothing says after six seconds what was done.
+source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:29
+
+scope:
+  shows: >-
+    the hide page with its weeks and celses, the window that asks, the toasts of a hide and of a restore, the course's Arşiv with its
+    tabs, its table, "Geri al" and the sentences of a higher kademe, and the refusals each person meets
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the editor of the same page, Müfredat (/ders/<id>/mufredat), whose own 'Gizle' only takes a row out of the draft until 'Kaydet' (F-C-course-a-16): nazar.curriculum.edit. The link from there to this page is its entry, 'Hafta ve celse gizle'"
+    - "deleting a hidden week or celse for real (only the başnazım, from the köşk's or the platform's Arşiv), which fails while a recording is attached (MDRS-244): nizam.moderation.deleteArchived; the same restore seen from a higher kademe: nizam.moderation.restoreArchived"
+    - "the medrese's Arşiv, whose table, tabs and 'Geri al' are the same components, and hiding a whole course: nazar.archive.hideAndRestoreCourse"
+    - "a list of more than ten rows (the pager 'Önceki' / 'Sonraki' and ?sayfa), the line 'Bu haftada celse yok.' of a week whose celses are all hidden, a week with no live week left among two (the model counts 'many' or 'one'), and a second listed week or celse: the model keeps one row of each kind, and which first week or celse the walk presses is the binding's"
+    - "a celse hidden by a higher kademe whose week she hides later, a row with no recorded hider (Archive.lockedUnknown), and a course whose köşk or medrese is hidden meanwhile (ARCHIVE_PARENT_HIDDEN is drawn, reached only by a race)"
+    - "the loading skeletons of both pages, a session that has ended (a server action then sends the person to sign in: realm.auth.sessionEnded), the read that fails for another reason ('Müfredat okunamadı', 'Arşiv okunamadı' with a retry), and a hide or a restore that fails outright, such as a dropped network (F-C-course-a-19)"
+
+decisions:
+  D1:
+    question: >-
+      Should the hide page be gated like the editor? It opens for anyone who holds a seat in the course and says nothing until the
+      API refuses a write, so a ders nazırı with no grant presses "Gizle", answers the question and is refused with a toast. It
+      also shares its title and h1 ("Müfredat") with the editor and has no way back to it (F-C-course-a-17).
+    recommend: >-
+      Gate it on week.hide or session.manage, as the editor does for its own controls; title it "Müfredat: gizle" and add a way
+      back; keep the refusal as a safety net.
+    affects: [listed, confirmWeek, confirmSession]
+  D2:
+    question: >-
+      Should a person who may hide a celse (session.manage, no week.hide) be able to open the Arşiv? She hides a celse here, and
+      the course's Arşiv, the only list of what is hidden, asks week.hide on its read, so she cannot see it or bring it back,
+      though the restore route would take her (HIDEREST-3).
+    recommend: >-
+      Let the Arşiv read for session.manage as well and list only the celses it may restore, or leave the hide of a celse to
+      week.hide holders.
+    affects: [readingArchive, archiveRefused]
+  D3:
+    question: >-
+      Should the page and its toasts link to the Arşiv? The intro says "Arşiv’den geri alınır" and every toast says "Arşiv’den
+      geri alabilirsiniz" and none leads there; the sidebar's entry is the only way (HIDEREST-2).
+    recommend: >-
+      Put a link "Arşiv" in the intro and an action on the toast, as the design's toasts allow ("an action must also exist
+      elsewhere").
+    affects: [listed, empty]
+
+context:
+  holds:
+    values: [weekHide, sessionManage, neither]
+    initial: any
+    say:
+      weekHide: "the person holds week.hide in the course: its hoca (the köşk's nazım and the başmüderris do too); she hides a week or a celse and reads the Arşiv"
+      sessionManage: "a ders nazırı who was given session.manage only: she may hide a celse, a week is refused her and so is the Arşiv"
+      neither: "a ders nazırı with no grant: every hide is refused her and so is the Arşiv"
+  locks:
+    values: [none, higher]
+    initial: any
+    say:
+      none: "no celse was hidden by a higher kademe"
+      higher: "the köşk's nazım hid one celse and Medaris yönetimi another before she came: the Arşiv lists them with a sentence in place of the button"
+  weeks:
+    values: [many, one]
+    initial: any
+    say:
+      many: "hiding a week leaves another live week on the page"
+      one: "the week she hides is the course's last live week: the page then says the course has no week"
+  nest:
+    values: [inside, apart]
+    initial: any
+    say:
+      inside: "the week she hides holds the celse she hid on its own earlier"
+      apart: "that celse sits in another week"
+  race:
+    values: [none, hide, restore]
+    initial: any
+    say:
+      none: "nobody else acts"
+      hide: "someone else hid the week or the celse she is about to hide, while her question was open: the API says it is gone"
+      restore: "someone else brought back what she is about to bring back (and what hung from it)"
+  weekRow:
+    values: [absent, listed]
+    initial: absent
+    say:
+      absent: "the Arşiv lists no week that she can bring back"
+      listed: "the Arşiv lists a hidden week"
+  sessionRow:
+    values: [absent, listed]
+    initial: absent
+    say:
+      absent: "the Arşiv lists no celse that she can bring back"
+      listed: "the Arşiv lists a celse hidden on its own, whose week is shown"
+  covered:
+    values: [absent, covered]
+    initial: absent
+    say:
+      absent: "no celse hidden on its own sits under a hidden week"
+      covered: "a celse hidden on its own is under a hidden week: the Arşiv leaves it out until the week is restored"
+  tab:
+    values: [all, weeks, sessions]
+    initial: all
+    say:
+      all: "Tümü"
+      weeks: "Haftalar"
+      sessions: "Celseler"
+  toast:
+    values: [none, weekHidden, sessionHidden, weekGone, sessionGone, weekRefused, sessionRefused, weekFailed, sessionFailed, restored, restoreGone, restoreLevel, parentHidden, restoreFailed]
+    initial: none
+    say:
+      none: "no answer is on the screen, or its toast is gone"
+      weekHidden: "the week was just hidden"
+      sessionHidden: "the celse was just hidden"
+      weekGone: "the week was not live any more (someone hid it first)"
+      sessionGone: "the celse was not live any more"
+      weekRefused: "the API refused the hide of a week for lack of permission"
+      sessionRefused: "the API refused the hide of a celse for lack of permission"
+      weekFailed: "the API refused the hide of a week for another reason"
+      sessionFailed: "the API refused the hide of a celse for another reason"
+      restored: "a week or a celse was just brought back"
+      restoreGone: "the item was no longer in the Arşiv"
+      restoreLevel: "a higher kademe hid it"
+      parentHidden: "its köşk or medrese is hidden, so it cannot come back"
+      restoreFailed: "the API refused the restore for another reason"
+
+guards:
+  mayWeek: "holds == 'weekHide'"
+  maySession: "holds in ['weekHide', 'sessionManage']"
+  lastWeek: "weeks == 'one'"
+  # the week she hides holds the celse she hid before and that celse is listed: the week covers it
+  coversSession: "sessionRow == 'listed' and nest == 'inside'"
+  # whether the tab being read has a row: Tümü any, Haftalar the weeks, Celseler the celses she may restore and the ones a higher kademe hid
+  holdsHere: "(tab == 'all' and (weekRow == 'listed' or sessionRow == 'listed' or locks == 'higher')) or (tab == 'weeks' and weekRow == 'listed') or (tab == 'sessions' and (sessionRow == 'listed' or locks == 'higher'))"
+  weekOnTab: "weekRow == 'listed' and tab in ['all', 'weeks']"
+  sessionOnTab: "sessionRow == 'listed' and tab in ['all', 'sessions']"
+
+effects:
+  clearNote: { set: { toast: none } }
+  tabAll: { set: { tab: all, toast: none } }
+  tabWeeks: { set: { tab: weeks, toast: none } }
+  tabSessions: { set: { tab: sessions, toast: none } }
+  weekHidden: { set: { weekRow: listed, toast: weekHidden } }
+  weekHiddenOver: { set: { weekRow: listed, sessionRow: absent, covered: covered, toast: weekHidden } } # the celse hidden before goes under the week
+  sessionHidden: { set: { sessionRow: listed, toast: sessionHidden } }
+  weekGone: { set: { weekRow: listed, toast: weekGone } }
+  sessionGone: { set: { sessionRow: listed, toast: sessionGone } }
+  weekRefused: { set: { toast: weekRefused } }
+  sessionRefused: { set: { toast: sessionRefused } }
+  weekFailed: { set: { toast: weekFailed } }
+  sessionFailed: { set: { toast: sessionFailed } }
+  weekRestored: { set: { weekRow: absent, toast: restored } }
+  weekRestoredWith: { set: { weekRow: absent, sessionRow: listed, covered: absent, toast: restored } } # the celse that was under the week gets its own row
+  sessionRestored: { set: { sessionRow: absent, toast: restored } }
+  restoreGone: { set: { weekRow: absent, sessionRow: absent, covered: absent, toast: restoreGone } } # whoever restored it restored what hung from it too
+  restoreLevel: { set: { toast: restoreLevel } }
+  parentHidden: { set: { toast: parentHidden } }
+  restoreFailed: { set: { toast: restoreFailed } }
+
+failures:
+  reading:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+    other: []
+  hidingWeek:
+    from: hideCourseWeek
+    gone: [WEEK_NOT_FOUND]
+    courseGone: [COURSE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [HTTP_400]
+  hidingSession:
+    from: archiveLesson
+    gone: [LESSON_NOT_FOUND]
+    courseGone: [COURSE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: []
+  readingArchive:
+    from: listCourseArchive
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+    other: [HTTP_400]
+  restoringWeek:
+    from: restoreArchiveItem
+    gone: [ARCHIVE_ITEM_NOT_FOUND]
+    level: [ARCHIVE_FORBIDDEN, ARCHIVE_RESTORE_LEVEL]
+    parentHidden: [ARCHIVE_PARENT_HIDDEN]
+    other: [COURSE_NOT_FOUND, HTTP_400]
+  restoringSession:
+    from: restoreArchiveItem
+    gone: [ARCHIVE_ITEM_NOT_FOUND]
+    level: [ARCHIVE_FORBIDDEN, ARCHIVE_RESTORE_LEVEL]
+    parentHidden: [ARCHIVE_PARENT_HIDDEN]
+    other: [COURSE_NOT_FOUND, HTTP_400]
+
+# The story the page tells first: the hoca hides a celse (changing her mind once), hides the week that holds it, follows the sidebar's
+# Arşiv, brings the week back (its other celse returns, the one hidden alone stays hidden and gets a row), opens Celseler and brings that
+# celse back.
+main:
+  given: { holds: weekHide, locks: none, weeks: many, nest: inside, race: none }
+  events: [DONE, HIDE_SESSION, CANCEL, HIDE_SESSION, CONFIRM, DONE, HIDE_WEEK, CONFIRM, DONE, OPEN_ARCHIVE, DONE, RESTORE_WEEK, DONE, TAB_SESSIONS, DONE, RESTORE_SESSION, DONE]
+
+initial: reading
+
+states:
+  reading:
+    title: The hide page reads the course
+    description: >-
+      The page reads GET /courses/:id on the server (getCourseById; the read is public, so there is no 403 here), with the viewer's
+      time zone, behind a skeleton (loading.tsx: a title bar and three tall bars). It asks no permission: the layout has only
+      checked that she holds a seat in the course (F-C-course-a-17). A 404 is Next's not-found page; any other failure draws
+      "Müfredat okunamadı" with a retry (not drawn: the stack cannot make a read fail). Nothing is on the screen of this step.
+    invoke: { action: getCourse }
+    on:
+      DONE: listed
+      FAIL.missing: not_found
+      FAIL.other: hide_read_failed
+    source: apps/nazar/features/curriculum-hide/components/curriculum-page.tsx:24
+
+  listed:
+    title: The weeks and celses are listed
+    description: >-
+      The page: h1 "Müfredat" (the editor's own title, F-C-course-a-17) and its sentence, then one card per live week, in the course's
+      order, with "Hafta n: title", "n celse", "Haftayı gizle" and a list of its celses, each with its time and "Celseyi gizle". Every
+      button is named by its title ("Haftayı gizle: …", "Celseyi gizle: …"). Nothing tells the person whether she may hide: every
+      button is on for everyone who holds a seat (D1). The sidebar's "Arşiv" is the only way to what she hides (D3, HIDEREST-2); there
+      is no way back to the editor. The page sets no focus on load (focus-not-set). A toast of the last answer may be up. Findings
+      read here: F-C-course-a-17, F-C-course-a-15 (after a hide the pressed button leaves with its row and the focus with it),
+      HIDEREST-2.
+    by: human
+    goal: true
+    on:
+      HIDE_WEEK: { target: confirmWeek, effect: [clearNote], say: "they press Haftayı gizle on a week" }
+      HIDE_SESSION: { target: confirmSession, effect: [clearNote], say: "they press Celseyi gizle on a celse" }
+      OPEN_ARCHIVE: { target: readingArchive, effect: [tabAll], say: "they follow Arşiv in the sidebar: a navigation inside the app, which takes the toast down" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:77
+
+  empty:
+    title: The course has no live week
+    description: >-
+      The h1 and its sentence stay and an empty state says "Bu dersin henüz haftası yok." The last week was just hidden (its toast may
+      still be up); it is in the Arşiv, which the sidebar still leads to.
+    by: human
+    on:
+      OPEN_ARCHIVE: { target: readingArchive, effect: [tabAll], say: "they follow Arşiv in the sidebar" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:71
+
+  confirmWeek:
+    title: The window "Haftayı gizle" asks first
+    description: >-
+      An alertdialog named by its title, with the week's title above it. The paragraph says "<week> ve içindeki <n> celse dersten
+      kalkar; talebeler görmez. Hiçbir şey silinmez; gizleyen kademe ya da üstü Arşiv’den geri alır." The focus starts on "Vazgeç"
+      (Base UI's alert dialog, libs/ui/src/mds/alert-dialog.tsx:64), is trapped, and the scrim does not close it. "Gizle" is a
+      primary button, not a destructive one. The dialog is controlled by the list's state and has no trigger element, so where the
+      focus returns when it closes without a hide is Base UI's fallback to the element that had it (F-C-course-a-25; not measured
+      here).
+    by: human
+    on:
+      CONFIRM: { target: hidingWeek, effect: [clearNote], say: "they press Gizle" }
+      CANCEL: { target: listed, say: "they press Vazgeç" }
+      CLOSE: { target: listed, say: "they press the close icon" }
+      DISMISS: { target: listed, say: "they press Esc" }
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153
+
+  confirmSession:
+    title: The window "Celseyi gizle" asks first
+    description: >-
+      The same alertdialog for one celse: its title above, "<celse> dersten kalkar; talebeler görmez. Hiçbir şey silinmez; gizleyen
+      kademe ya da üstü Arşiv’den geri alır." Focus, scrim and buttons as the week's.
+    by: human
+    on:
+      CONFIRM: { target: hidingSession, effect: [clearNote], say: "they press Gizle" }
+      CANCEL: { target: listed, say: "they press Vazgeç" }
+      CLOSE: { target: listed, say: "they press the close icon" }
+      DISMISS: { target: listed, say: "they press Esc" }
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:153
+
+  hidingWeek:
+    title: The week is being hidden
+    description: >-
+      The server action hideWeek calls POST /courses/:courseId/weeks/:weekId/hide (no body; the week and all its live celses get one
+      stamp and the kademe she acts at, the course's version moves, and the talebe's calendars get a CANCEL for each celse).
+      "Gizle" is busy (aria-disabled, hidden status "Yükleniyor", F-C-course-a-28); the window is still open, and "Vazgeç" and the
+      close icon stay on and do nothing, for the window ignores every way of closing while the call runs (F-C-course-a-26). The
+      window closes in every case. Success: "Hafta gizlendi" and the list is read again. WEEK_NOT_FOUND (it was hidden first): an
+      info toast "Hafta gizlenemedi" with "Bu hafta ya da celse artık yok. Sayfa yenilendi." and the same read. A course that is gone
+      (COURSE_NOT_FOUND, which also ends in _NOT_FOUND) is the same info toast with the generic words "Bir şeyler ters gitti. Biraz
+      sonra yeniden deneyin." and a read that now says 404 (HIDEREST-1). AUTHZ_FORBIDDEN (no week.hide): an error toast "Bunu yapma
+      izniniz yok." and nothing is read again. Any other refusal: an error toast with the generic words. The call has no try/catch
+      (F-C-course-a-19).
+    invoke: { action: hideCourseWeek }
+    on:
+      DONE:
+        - { guard: "mayWeek and race != 'hide' and coversSession", target: weekSettled, effect: [weekHiddenOver], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:52 }
+        - { guard: "mayWeek and race != 'hide'", target: weekSettled, effect: [weekHidden], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:52 }
+      FAIL.gone: { guard: "mayWeek and race == 'hide'", target: weekSettled, effect: [weekGone], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+      FAIL.courseGone: { target: not_found, say: "the info toast stands for a moment and the read that follows is Next's 404", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:65 }
+      FAIL.forbidden: { guard: "not mayWeek", target: listed, effect: [weekRefused], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+      FAIL.other: { target: listed, effect: [weekFailed], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:48
+
+  hidingSession:
+    title: The celse is being hidden
+    description: >-
+      The server action hideSession calls DELETE /lessons/:id (no body; the celse is archived, never deleted, with her kademe; its
+      recordings, resources and homework are kept; the talebe's calendars get a CANCEL). Busy and closing as the week's. Success:
+      "Celse gizlendi" and the list is read again. LESSON_NOT_FOUND (hidden first): the info toast "Celse gizlenemedi" with
+      "Bu hafta ya da celse artık yok. Sayfa yenilendi." AUTHZ_FORBIDDEN (neither week.hide nor session.manage): the error toast "Bunu
+      yapma izniniz yok." Any other refusal: the generic error toast; a course that is gone as for a week (HIDEREST-1).
+    invoke: { action: archiveLesson }
+    on:
+      DONE: { guard: "maySession and race != 'hide'", target: listed, effect: [sessionHidden], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:52 }
+      FAIL.gone: { guard: "maySession and race == 'hide'", target: listed, effect: [sessionGone], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+      FAIL.courseGone: { target: not_found, say: "the info toast stands for a moment and the read that follows is Next's 404", source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:65 }
+      FAIL.forbidden: { guard: "not maySession", target: listed, effect: [sessionRefused], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+      FAIL.other: { target: listed, effect: [sessionFailed], source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:60 }
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:49
+
+  weekSettled:
+    title: The page follows a week's answer
+    description: >-
+      router.refresh() reads the course again: the week is gone from the list with its celses, and the page is the list of the weeks
+      that are left or, when none is, the empty state.
+    always:
+      - { guard: lastWeek, target: empty, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:58 }
+      - { target: listed, source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:58 }
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:58
+
+  readingArchive:
+    title: The Arşiv is read
+    description: >-
+      The page reads GET /courses/:id/archive?types=<the tab's>&page=1&limit=10 on the server, with the viewer's time zone and id,
+      behind a skeleton. Every tab link is a plain <a href> (a whole page load). Newest hidden first, each item with its
+      `canRestore` and the tab counts; only weeks and celses are kept for a course, and a celse is listed only while its week and
+      its course are shown. The route asks week.hide on the course: a person who holds it is read (the hoca, the köşk's nazım, the
+      başmüderris); one who does not (a ders nazırı with session.manage only, or none) gets 403 and the page draws its alert; a
+      404 is Next's not-found page; any other failure draws "Arşiv okunamadı" with a retry (not drawn).
+    invoke: { action: listCourseArchive }
+    on:
+      DONE:
+        - { guard: "mayWeek and holdsHere", target: archive, source: apps/nazar/features/course-archive/components/course-archive-page.tsx:71 }
+        - { guard: mayWeek, target: archiveEmpty, source: apps/nazar/features/course-archive/components/course-archive-page.tsx:71 }
+      FAIL.forbidden: { guard: "not mayWeek", target: archiveRefused, source: apps/nazar/features/course-archive/components/course-archive-page.tsx:62 }
+      FAIL.missing: not_found
+      FAIL.other: archive_read_failed
+    source: apps/nazar/features/course-archive/components/course-archive-page.tsx:43
+
+  archive:
+    title: The Arşiv lists what is hidden
+    description: >-
+      The page: h1 "Arşiv" and its sentence, three tab links in a named <nav> (each its label directly followed by its count, F-A-12;
+      the active one has aria-current="page", which the format cannot say), the table "Gizlenen öğeler" with the item (its title and
+      where it sits: the course for a week, "course · Hafta n · time" for a celse), its kind, who hid it with their role ("Hoca (siz)"
+      for her own) and when, and the button or the sentence. A row she may restore has "Geri al: <title>"; a celse a higher kademe hid
+      has instead "Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir." or "Bunu Medaris yönetimi gizledi; ..." and no
+      button (a hider with no role is Medaris yönetimi). A week hidden with the celses it holds lists once; those celses are not listed
+      until it is restored (`covered`). The page sets no focus (focus-not-set). A toast of the last restore may still be up. Findings
+      read here: F-A-12, F-C-course-a-23, HIDEREST-2, HIDEREST-4.
+    by: human
+    goal: true
+    on:
+      TAB_ALL: { target: readingArchive, effect: [tabAll], say: "they follow Tümü: a whole page load" }
+      TAB_WEEKS: { target: readingArchive, effect: [tabWeeks], say: "they follow Haftalar" }
+      TAB_SESSIONS: { target: readingArchive, effect: [tabSessions], say: "they follow Celseler" }
+      RESTORE_WEEK: { guard: weekOnTab, target: restoringWeek, effect: [clearNote], say: "they press Geri al on a week: nothing is asked first", source: apps/nazar/features/archive/components/archive-list.tsx:152 }
+      RESTORE_SESSION: { guard: sessionOnTab, target: restoringSession, effect: [clearNote], say: "they press Geri al on a celse: nothing is asked first", source: apps/nazar/features/archive/components/archive-list.tsx:152 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/archive/components/archive-list.tsx:185
+
+  archiveEmpty:
+    title: The tab has nothing to list
+    description: >-
+      The table keeps its caption and headers and its one cell says what the tab holds: "Bu derste gizlenmiş bir hafta ya da celse
+      yok." (Tümü), "Bu derste gizlenmiş bir hafta yok." (Haftalar) or "Bu derste gizlenmiş bir celse yok." (Celseler); no pager.
+      The tabs still show their counts. HIDEREST-4 is what the person finds after bringing back a week: the celse hidden on its own
+      is not here yet.
+    by: human
+    on:
+      TAB_ALL: { target: readingArchive, effect: [tabAll], say: "they follow Tümü" }
+      TAB_WEEKS: { target: readingArchive, effect: [tabWeeks], say: "they follow Haftalar" }
+      TAB_SESSIONS: { target: readingArchive, effect: [tabSessions], say: "they follow Celseler" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/archive/components/archive-list.tsx:186
+
+  restoringWeek:
+    title: The week is being brought back
+    description: >-
+      The server action restoreItem calls POST /archive/week/:id/restore (no body; the API decides by kademe, and brings back the
+      celses hidden at the same instant, which is the week's own stamp, and no celse hidden earlier). The row's "Geri al" is busy
+      (aria-disabled, hidden status "Yükleniyor", F-C-course-a-28) and the other buttons stay live. Success: the toast "Geri alındı"
+      with "“<title>” asıl yerinde yeniden görünür." (it does not say which celses came with it, HIDEREST-4), then the page is read
+      again: the row leaves, the counts follow, a celse that was covered gets its own row, and the pressed button left with its row
+      (F-C-course-a-23). ARCHIVE_ITEM_NOT_FOUND: "Bu öğe artık arşivde değil. Liste yenilendi." ARCHIVE_FORBIDDEN and
+      ARCHIVE_RESTORE_LEVEL (a higher kademe hid it, which the list would have said): "Bunu geri alma yetkiniz yok; öğeyi daha üst bir
+      kademe gizlemiş olabilir. Liste yenilendi." ARCHIVE_PARENT_HIDDEN (its köşk or medrese is hidden): "Bu öğenin bağlı olduğu medrese
+      ya da köşk hâlâ gizli, ..." and the list is not read again; every other refusal draws "Bir şeyler ters gitti. Biraz sonra yeniden
+      deneyin." and reads the list again. The call has no try/catch (F-C-course-a-19).
+    invoke: { action: restoreArchiveItem }
+    on:
+      DONE:
+        - { guard: "race != 'restore' and covered == 'covered'", target: archiveSettled, effect: [weekRestoredWith], source: apps/nazar/features/archive/components/archive-list.tsx:67 }
+        - { guard: "race != 'restore'", target: archiveSettled, effect: [weekRestored], source: apps/nazar/features/archive/components/archive-list.tsx:67 }
+      FAIL.gone: { guard: "race == 'restore'", target: archiveSettled, effect: [restoreGone], source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+      FAIL.level: { target: archiveSettled, effect: [restoreLevel], source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+      FAIL.parentHidden: { target: archive, effect: [parentHidden], source: apps/nazar/features/archive/components/archive-list.tsx:79 }
+      FAIL.other: { target: archiveSettled, effect: [restoreFailed], source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+    source: apps/nazar/features/archive/components/archive-list.tsx:64
+
+  restoringSession:
+    title: The celse is being brought back
+    description: >-
+      The same server action for a celse (POST /archive/session/:id/restore): only that celse comes back, to its week, which is
+      shown (a celse under a hidden week is not listed and so cannot be pressed). The answers are the week's.
+    invoke: { action: restoreArchiveItem }
+    on:
+      DONE: { guard: "race != 'restore'", target: archiveSettled, effect: [sessionRestored], source: apps/nazar/features/archive/components/archive-list.tsx:67 }
+      FAIL.gone: { guard: "race == 'restore'", target: archiveSettled, effect: [restoreGone], source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+      FAIL.level: { target: archiveSettled, effect: [restoreLevel], source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+      FAIL.parentHidden: { target: archive, effect: [parentHidden], source: apps/nazar/features/archive/components/archive-list.tsx:79 }
+      FAIL.other: { target: archiveSettled, effect: [restoreFailed], source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+    source: apps/nazar/features/archive/components/archive-list.tsx:64
+
+  archiveSettled:
+    title: The Arşiv follows the answer
+    description: >-
+      router.refresh() reads the page again with the same tab: the table is what the API lists now, or the tab's sentence when
+      nothing is left. After a refusal that says the list has moved the same read happens (every refusal but ARCHIVE_PARENT_HIDDEN).
+    always:
+      - { guard: holdsHere, target: archive, source: apps/nazar/features/archive/components/archive-list.tsx:72 }
+      - { target: archiveEmpty, source: apps/nazar/features/archive/components/archive-list.tsx:72 }
+    source: apps/nazar/features/archive/components/archive-list.tsx:72
+
+  archiveRefused:
+    title: The Arşiv says "Bu sayfaya izniniz yok"
+    description: >-
+      The h1 "Arşiv" and its sentence stay, and under them an alert says "Bu sayfaya izniniz yok" and "Bu sayfayı açma izniniz yok. İzne
+      ihtiyacınız varsa medresenin başmüderrisine başvurun." (the sentence is worded for a medrese's page, F-A-16). No tab, no table, no
+      button. A person who may hide a celse here (session.manage) reaches this page after pressing Arşiv in the sidebar, which every
+      person of the course has (HIDEREST-3, D2). The alert is a neutral status that is in the page at load, so it is not announced
+      (F-A-16).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-archive/components/course-archive-page.tsx:62
+
+  not_found:
+    title: The course is not there
+    type: final
+    leavesPage: true
+    description: A 404 of the read is Next's not-found page (lib/tedrisat-read.ts:43-50).
+
+  hide_read_failed:
+    title: The hide page could not be read
+    type: final
+    description: >-
+      Any other failure of the course read: the title stays and "Müfredat okunamadı" is drawn with a retry. The stack cannot make a
+      read fail.
+
+  archive_read_failed:
+    title: The Arşiv could not be read
+    type: final
+    description: >-
+      Any other failure of the archive read (not a refusal): the title stays and "Arşiv okunamadı" is drawn with a retry. The stack
+      cannot make a read fail.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-week-is-hidden-only-by-week-hide
+    never: "state == 'weekSettled' and holds != 'weekHide' and toast == 'weekHidden'"
+    say: A week is hidden for someone who holds week.hide; the API refuses everyone else, however the page offers the button.
+    source: apps/nazar/features/curriculum-hide/actions.ts:9
+  - id: a-celse-is-hidden-only-by-its-codes
+    never: "toast == 'sessionHidden' and holds == 'neither'"
+    say: A celse is hidden for someone who holds week.hide or session.manage; a ders nazırı with no grant is refused.
+    source: apps/nazar/features/curriculum-hide/actions.ts:29
+  - id: the-archive-is-read-only-with-week-hide
+    never: "(state == 'archive' or state == 'archiveEmpty') and holds != 'weekHide'"
+    say: The Arşiv is drawn only for someone who holds week.hide; the others get its alert.
+    source: apps/nazar/features/course-archive/components/course-archive-page.tsx:62
+  - id: a-covered-celse-needs-a-hidden-week
+    never: "covered == 'covered' and weekRow == 'absent'"
+    say: A celse hidden on its own is out of the list only while a week above it is hidden; restoring that week lists it again.
+    source: apps/nazar/features/archive/archive.ts:227
+  - id: empty-means-no-live-week
+    never: "state == 'empty' and weeks == 'many'"
+    say: The empty line shows only when the last live week went.
+    source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:71

@@ -1,0 +1,39 @@
+# nazar.roster.bulkAdd, the refusal AUTHZ_FORBIDDEN: a ders nazırı who was given enrollment.decide in a course of the walk's own opens
+# Talebeler, types a list, and loses the code before she presses "Ekle". The server answers 403, an error toast says "Bunu yapma izniniz
+# yok." and stays, the dialog and the list stay, nobody is enrolled.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/bulkAdd --bind graphs/nazar/roster/bulkAdd/binding.forbidden.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay; everything is from the code and unverified until a walk.
+#
+# It is a file of its own because the loss of the grant is a `before` of the state the list is typed in (`formReady`), which would run in every
+# walk of a file that held the other scenarios. The course is a course of the medrese with the başmüderris as its hoca (she gives and takes
+# the code, as nazar.course.overview does for the same account); the seeded course's ders nazırı post is not touched. Whether tedrisat
+# answers 403 at once after the grant is taken (it reads the grants on every request; not seen to cache them) is not verified.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.bulkAdd
+
+scenarios:
+  forbidden:
+    given: { may: may, list: few, answer: forbidden, clip: ok }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bulkadd, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi bulkadd"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, enrollment.decide, --as, basmuderris]
+        expect: course-nazir-grants DERS_NAZIR
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bulkadd]
+        expect: course remove bulkadd
+    vars:
+      typed: '{secret.E2E_APPLICANT_H_EMAIL}'
+      seats: 'APPLICANT_H=none'
+
+states:
+  # the dialog is open and the list is typed: take her code away, as the course's hoca would on Ders nazırları
+  formReady:
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none, --as, basmuderris]
+        expect: course-nazir-grants DERS_NAZIR

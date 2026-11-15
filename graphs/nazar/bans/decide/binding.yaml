@@ -1,0 +1,170 @@
+# nazar.bans.decide on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on http://localhost:4002, the başmüderris of
+# "Hadis ve Siyer Medresesi" signed in through Keycloak's real form, on Yasaklamalar of the medrese.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/decide \
+#     --bind graphs/nazar/bans/decide/binding.yaml --main --absent --out <dir>
+#   ... --cover transitions --absent --out <dir>        (every transition the scenarios below can drive)
+# The other bindings of this flow (each a file of its own, because a scenario that adds no transition of its own is not walked by
+# `--cover transitions`, and because their events differ):
+#   binding.moved.yaml  the ban is lifted by someone else before the decision is sent: the five "list moved" refusals, as
+#                       BAN_ALREADY_LIFTED on each of the three decisions             (--cover transitions)
+#   binding.nazir.yaml  a medrese nazır with no grant opens the page and is refused (e2e bans#8)   (--to forbidden)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation here
+# is from the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and
+# walked nothing).
+#
+# Data. Every scenario makes its own course and takes it away, so no seeded course, ban or setting is touched: helpers/course.mjs opens
+# "Deneme dersi bansDecide" in the medrese through the API (published, as the başnazım; the ids are read from
+# graphs/.local/made/bansDecide.json as {made.*}) and ./bans.mjs puts open bans on spare accounts through the API, as the
+# başmüderris (a course ban, or a medrese-wide ban) or as the başnazım (a ban that "Medaris yönetimi" placed). The teardown removes the
+# bans with SQL (no route deletes a ban or takes a request back, and a ban has no foreign key to the course), then deletes the course.
+# What the walk cannot undo: the audit rows of every ban, lift and request (the API has no way to remove them and nothing depends on
+# them), and the notifications a widening sends to a seat of the person (the spare accounts hold none).
+#   applicantC, applicantD, applicantF  talebe, the people the bans are on ("Esma", "Salih", "Tahsin Başvuran"); the same in every scenario
+#                                       (only one scenario runs at a time, each clears them first and last); binding.moved.yaml adds applicantH
+#
+#   decides   (the main story) three course bans the başmüderris placed. LIFT, FILL_IN, SUBMIT, DONE; WIDEN, FILL_IN, SUBMIT, DONE;
+#             REQUEST, FILL_IN, SUBMIT, DONE (bans#4, #5, #6). `--cover transitions` also walks, from this start, the offered
+#             actions of every row (bans#2 a4-a6), Vazgeç, the close icon, an empty reason left (the error) and emptied again.
+#             The list is newest first and a repeated node is pressed on its first item: lift decides the last placed (Tahsin), widen
+#             the next (Salih), request the newest row then (Salih's medrese-wide ban); the effects therefore ask of the three together.
+#   wide      one medrese-wide ban the başmüderris placed: the row offers the lift and the request and no widening; the lift's
+#             dialog says "Medrese düzeyindeki yasak kalkar..." (the other body); lifting the only ban leaves the list empty.
+#   medaris   one course ban the başnazım placed ("Medaris yönetimi"): only "Medreseden de yasakla" and the note "Bu yasağı yalnız
+#             Medaris yönetimi kaldırabilir." (bans#2 a7-a12); widening it works.
+#   staff     a course ban on applicantD, who is then named hoca of the same course (helpers/seat-hoca.mjs, as the başnazım): the row
+#             offers "Medreseden de yasakla" and the API accepts it, so the hoca is barred from the whole medrese. This is the walk
+#             of the finding ban-staff-check-gaps: what the code does, not what it should (it should refuse with BAN_TARGET_INVALID).
+#             The seat is taken away in the teardown before the course goes.
+#   empty     no ban at all: "Etkin yasak yok." (bans#1 a3 reads the table; needs the seed's medrese to hold no open ban, which no
+#             seeded flow makes: a leftover ban of another walk would show here).
+#
+# Not bound, and why:
+#   - `answer: refused` and `answer: failed`: BAN_LIFT_FORBIDDEN and BAN_FORBIDDEN need the başmüderris to lose her grant between the
+#     list and the click; VALIDATION_ERROR and HTTP_400 need a reason the page never lets through. No step of a binding can do any of
+#     them on a walk (the unit specs of the API cover them). BAN_NOT_FOUND (a ban the database no longer has) and BAN_NOT_ESCALATABLE /
+#     BAN_PERMANENT_REQUEST_INVALID (a ban that is not a course ban, a course with no medrese, a ban of tier 4) cannot be reached from a
+#     row the page draws; BAN_PERMANENT_REQUEST_EXISTS is walkable the way BAN_ALREADY_LIFTED is (a request made by the API first)
+#     and takes the same transition, so only the lift's words are walked (binding.moved.yaml).
+#   - `not_found` (a medrese that does not exist: Next's 404 page) and the shell's failed read: nazar.shell.errorStates.
+#   - `row: staff` on a ban that Medaris placed, or on a köşk nazım or a Medaris nazım named after the ban: the same hole, the same
+#     transition; no account of the stack can be made one without changing the seed.
+#   - the focus after a decision (F-B-9) is not drawn, so it is not checked.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.decide
+
+scenarios:
+  decides:
+    given: { read: ok, row: own, answer: done, after: more }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans menu' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"bansDecide"'
+      - run: [node, ../nazar/bans/decide/bans.mjs, up, bansDecide, --course, 'APPLICANT_C,APPLICANT_D,APPLICANT_F']
+        expect: 'ready: 3 open'
+    teardown:
+      - run: [node, ../nazar/bans/decide/bans.mjs, down, bansDecide, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_F']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, bansDecide]
+        expect: 'course remove bansDecide'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: 'APPLICANT_C,APPLICANT_D,APPLICANT_F'
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request
+
+  wide:
+    given: { read: ok, row: wide, answer: done, after: none }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans menu' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"bansDecide"'
+      - run: [node, ../nazar/bans/decide/bans.mjs, up, bansDecide, --wide, APPLICANT_C]
+        expect: 'ready: 1 open'
+    teardown:
+      - run: [node, ../nazar/bans/decide/bans.mjs, down, bansDecide, --people, APPLICANT_C]
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, bansDecide]
+        expect: 'course remove bansDecide'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: MADRASAH lifted
+      widenHas: MADRASAH open
+      askHas: MADRASAH open request
+
+  medaris:
+    given: { read: ok, row: medaris, answer: done, after: more }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans menu' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"bansDecide"'
+      - run: [node, ../nazar/bans/decide/bans.mjs, up, bansDecide, --medaris, APPLICANT_C]
+        expect: 'ready: 1 open'
+    teardown:
+      - run: [node, ../nazar/bans/decide/bans.mjs, down, bansDecide, --people, APPLICANT_C]
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, bansDecide]
+        expect: 'course remove bansDecide'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request
+
+  staff:
+    given: { read: ok, row: staff, answer: done, after: more }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans menu' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"bansDecide"'
+      # the ban first, while the person is a talebe (a ban on a hoca is refused when it is placed), then the post
+      - run: [node, ../nazar/bans/decide/bans.mjs, up, bansDecide, --course, APPLICANT_D]
+        expect: 'ready: 1 open'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantD]
+        expect: 'seat-hoca APPLICANT_D'
+    teardown:
+      - run: [node, helpers/unseat-hoca.mjs, '{made.course}', applicantD]
+        expect: 'unseat-hoca APPLICANT_D'
+      - run: [node, ../nazar/bans/decide/bans.mjs, down, bansDecide, --people, APPLICANT_D]
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, bansDecide]
+        expect: 'course remove bansDecide'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_D
+      liftHas: COURSE lifted
+      # the hole: the API makes the medrese-wide ban over a person who teaches a course of the medrese
+      widenHas: MADRASAH open
+      askHas: open request
+
+  empty:
+    given: { read: ok, row: none, answer: done, after: none }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans menu' }
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request
+
+# the decisions are Next server actions: a POST to the page's own address, held while the busy dialog is checked. Only DONE is walked
+# here (a refusal of a server action is a 200 too, so its status could not be compared); binding.moved.yaml leaves `call` off.
+states:
+  lifting: { call: '{nazar}/medrese/*/yasaklamalar**' }
+  escalating: { call: '{nazar}/medrese/*/yasaklamalar**' }
+  requesting: { call: '{nazar}/medrese/*/yasaklamalar**' }

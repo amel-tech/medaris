@@ -1,0 +1,161 @@
+# The screens of nazar.courses.browse: Dersler of a medrese (/medrese/<id>/dersler) in nazar-web, with the two filters' open lists and a
+# row's open menu. Read from apps/nazar/features/courses (courses-page.tsx, courses-table.tsx, courses.ts), libs/ui/src/mds/{table,select,
+# menu,alert,system-state}.tsx and features/shell/components/{page-problem,load-failed}.tsx. Where a node says "repeat", the page draws it
+# once per row (or per köşk) and the replay finds the rows through the binding.
+#
+# Words: every `Courses.*`, `Problems.*` and `Shell.retry` key is copied from libs/i18n/src/locales/tr/nazar.json (the app reads it as
+# `nazar.<key>`), `common.imamStar.title` from common.json, the key being the path inside the file. Five messages are built in code and
+# are in no i18n file, so they are `composed.*`, each with its code line:
+#   composed.Courses.title  "{title}"   the course's name, from the API, the link in the first cell (courses-table.tsx:83, <bdi>)
+#   composed.Courses.kosk   "{kosk}"    the köşk's name under it, and in a hosting card's row (courses.ts:228, courses-page.tsx:180, <bdi>);
+#                                       " · bugün açıldı" follows it on the day the course was opened (Courses.openedToday, out of view)
+#   composed.Courses.hoca   "{hoca}"    a hoca as the course shows her: with the unvan, or the name and "Hoca" (courses.ts:232,
+#                                       formatHocaName in libs/utils/src/hoca-unvan.js:67, <bdi>)
+#   composed.Courses.exam   "{title}"   the course's name in the exam card (courses-page.tsx:205, <bdi>)
+# The samples are the seed's own names (STACK.md) where the replay reads them. `changes` is absent on purpose: the flow invokes three
+# reads and nothing that writes (the dialogs of the row menu are other flows').
+#
+# The page keeps no focus of its own on load (nothing in features/courses sets one) and after a filter or a menu closes it is the kit's
+# (Base UI) that returns it, which was not verified in a browser, so there is no `initialFocus` and no `focus`: see the rules
+# focus-not-set and focus-after-a-filter. The two filters' lists and the row menu are Base UI popups that leave the page as it is
+# (tedris.discover.applyForKosk lists its page's nodes while the same Select is open, and nazar.shell.scopeAndMenu its sidebar's while a Base UI
+# menu is; that the popups leave the page exposed is from them and from the code, not seen here), so the page's nodes are listed in those states too.
+schema: delurio-graph/0
+kind: ui
+id: nazar.courses.browse
+flow: nazar.courses.browse
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  nameGenitive: Hadis ve Siyer Medresesi’nin
+  courses: "5"
+  kosks: "2"
+  count: "2"
+  title: Bina ve İzhar Şerhi
+  kosk: Süleymaniye Köşkü
+  hoca: Hamdi Müderris Hoca
+  name: Süleymaniye Köşkü
+  exams: "1"
+  taken: "0"
+  absent: "0"
+  average: "80"
+
+nodes:
+  # ---- the page and its header -----------------------------------------------------------------------------------------------
+  coursesPage: { type: page, component: Page, role: main, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu, forbidden, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">: no name, no initialFocus (rule focus-not-set); the binding finds it by the subtitle
+  coursesTitle: { type: text, component: Heading, role: heading, text: { key: Courses.title }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu, forbidden, loadFailed], source: apps/nazar/features/courses/components/courses-page.tsx:102 } # h1
+  subtitle: { type: text, component: Text, text: { key: Courses.subtitle, params: { nameGenitive: medrese.nameGenitive } }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu, forbidden, loadFailed], source: apps/nazar/features/courses/components/courses-page.tsx:103 } # the medrese's name in the Turkish genitive (courses.ts:140); "Medresenin dersleri, …" while the name is unknown (out of view)
+  offsiteLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Courses.offsite }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], emits: OPEN_OFFSITE, source: apps/nazar/features/courses/components/courses-page.tsx:114 } # an <a href> (Button href): a full page load; left out with the list when the list read fails
+  openCourse: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Courses.open }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: canOpen, emits: OPEN_NEW_COURSE, source: apps/nazar/features/courses/components/courses-page.tsx:117 } # a plain link; stays on while the köşk read is refused or fails (F-A-8)
+  openCourseOff: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: Courses.open }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], disabledIn: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "not canOpen", source: apps/nazar/features/courses/components/courses-page.tsx:120 } # no href, aria-disabled, role link kept (button.tsx:76-90): the köşk read answered and holds no köşk
+
+  # ---- the list is refused, or could not be read ------------------------------------------------------------------------------
+  forbiddenTitle: { type: text, component: Text, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # the Alert's title is a <p>, not a heading (F-A-16)
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a neutral Alert is role status and is in the page when it loads, so it is not announced (F-A-16); it has no name of its own, so it is found by its sentence
+  failedRegion: { type: text, component: Text, role: region, name: { labelledBy: failedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:33 } # a <section aria-labelledby> inside the shell's <main>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Courses.loadFailedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:43 } # an <h1>, the second of the page (F-A-1)
+  failedText: { type: text, component: Text, text: { key: Courses.loadFailed }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:46 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 } # busy while router.refresh() runs, with the hidden word "Yükleniyor" from a default outside the catalog (F-A-14)
+
+  # ---- the counter and the two filters -----------------------------------------------------------------------------------------
+  counter: { type: text, component: Text, text: { key: Courses.counter, params: { courses: list.courses, kosks: list.kosks } }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: matches, source: apps/nazar/features/courses/components/courses-table.tsx:191 } # <p data-testid="counter">: not a live region (COURSES-1); the köşks are those of the courses listed (courses.ts:106)
+  counterNone: { type: text, component: Text, text: { key: Courses.counterNone }, in: [emptyAll, emptyFiltered, choosingKosk, choosingStatus], when: "not matches", source: apps/nazar/features/courses/components/courses-table.tsx:191 }
+  filtersGroup: { type: list, component: List, role: group, name: { key: Courses.filters.label }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-table.tsx:194 } # a <fieldset> with a visually hidden <legend>
+  koskSelect: { type: field, component: TextField, role: combobox, text: { key: Courses.filters.kosk.label }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], emits: OPEN_KOSK_FILTER, source: apps/nazar/features/courses/components/courses-table.tsx:198 } # the kit's Select: a button named by its aria-label "Köşk", showing "Köşk: tümü" or "Köşk: {name}"; an address with a ?kosk= that is no option shows "tümü" while the list is filtered (COURSES-2)
+  statusSelect: { type: field, component: TextField, role: combobox, text: { key: Courses.filters.status.label }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], emits: OPEN_STATUS_FILTER, source: apps/nazar/features/courses/components/courses-table.tsx:209 } # the same, showing "Durum: tümü", "Durum: Yayında" or "Durum: Taslak"
+
+  # ---- the Köşk filter's list, open (Base UI Select popup) ---------------------------------------------------------------------------
+  koskList: { type: list, component: List, role: listbox, in: [choosingKosk], source: libs/ui/src/mds/select.tsx:80 } # no name of its own (as tedris.discover.applyForKosk's, which draws the same popup)
+  koskOptionAll: { type: list, component: ListItem, role: option, text: { key: Courses.filters.kosk.all }, checked: "kosk == 'all'", in: [choosingKosk], emits: CHOOSE_KOSK_ALL, source: apps/nazar/features/courses/courses.ts:90 }
+  koskOptionOne: { type: list, component: ListItem, role: option, text: { key: Courses.filters.kosk.one, params: { name: hosting.kosk.name } }, in: [choosingKosk], when: "hosting == 'kosks'", repeat: hosting.kosks, emits: CHOOSE_KOSK_ONE, source: apps/nazar/features/courses/courses.ts:91 } # every köşk that holds a hosting right, not only those of the courses on screen (courses#2 a5); which one is selected is the node's, so no `checked`
+
+  # ---- the Durum filter's list, open ------------------------------------------------------------------------------------------------
+  statusList: { type: list, component: List, role: listbox, in: [choosingStatus], source: libs/ui/src/mds/select.tsx:80 }
+  statusOptionAll: { type: list, component: ListItem, role: option, text: { key: Courses.filters.status.all }, checked: "status == 'all'", in: [choosingStatus], emits: CHOOSE_STATUS_ALL, source: apps/nazar/features/courses/courses.ts:98 }
+  statusOptionPublished: { type: list, component: ListItem, role: option, text: { key: Courses.filters.status.PUBLISHED }, checked: "status == 'published'", in: [choosingStatus], emits: CHOOSE_STATUS_PUBLISHED, source: apps/nazar/features/courses/courses.ts:99 }
+  statusOptionDraft: { type: list, component: ListItem, role: option, text: { key: Courses.filters.status.DRAFT }, checked: "status == 'draft'", in: [choosingStatus], emits: CHOOSE_STATUS_DRAFT, source: apps/nazar/features/courses/courses.ts:99 }
+
+  # ---- the table ---------------------------------------------------------------------------------------------------------------------
+  coursesTable: { type: list, component: List, role: table, name: { key: Courses.caption }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-table.tsx:223 } # responsive="stack": the table, its rows and cells carry explicit roles, and the caption is visually hidden
+  colCourse: { type: text, component: Text, role: columnheader, text: { key: Courses.columns.course }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-table.tsx:71 }
+  colMuderris: { type: text, component: Text, role: columnheader, text: { key: Courses.columns.muderris }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-table.tsx:97 }
+  colStudents: { type: text, component: Text, role: columnheader, text: { key: Courses.columns.students }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-table.tsx:120 }
+  colStatus: { type: text, component: Text, role: columnheader, text: { key: Courses.columns.status }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-table.tsx:146 }
+  colActions: { type: text, component: Text, role: columnheader, text: { key: Courses.columns.actions }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-table.tsx:157 } # visually hidden text, in the accessibility tree
+
+  courseTitle: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.Courses.title, params: { title: course.title } }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: matches, repeat: courses, emits: OPEN_COURSE, source: apps/nazar/features/courses/components/courses-table.tsx:79 } # a link to /ders/<id> in the row header cell, on every row (F-A-9); the binding presses the first row's
+  courseMeta: { type: text, component: Text, text: { key: composed.Courses.kosk, params: { kosk: course.koskName } }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: matches, repeat: courses, source: apps/nazar/features/courses/components/courses-table.tsx:88 } # the köşk, and " · bugün açıldı" on the day it was opened (out of view)
+  hocaName: { type: text, component: Text, text: { key: composed.Courses.hoca, params: { hoca: muderris.name } }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: matches, repeat: course.muderris, source: apps/nazar/features/courses/components/courses-table.tsx:106 }
+  imamStar: { type: action, component: Button, role: button, intent: secondary, name: { key: common.imamStar.title }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: showsStar, repeat: course.muderris, source: apps/nazar/features/courses/components/courses-table.tsx:110 } # a Popover trigger named by its aria-label, only on a course with more than one hoca and only on the imam (showsImamStar)
+  pendingBadge: { type: text, component: Text, text: { key: Courses.pending, params: { count: course.pendingCount } }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: showsWaiting, repeat: courses, source: apps/nazar/features/courses/components/courses-table.tsx:137 } # a warning Badge with a clock icon, under the enrolled count; only while an application waits
+  noStudents: { type: text, component: Text, text: { key: Courses.noStudents }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: showsNobody, repeat: courses, source: apps/nazar/features/courses/components/courses-table.tsx:125 } # a published course nobody is in or waits for: the words are the cell
+  noStudentsDraft: { type: text, component: Text, text: { key: Courses.noStudents }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: showsDraft, repeat: courses, source: apps/nazar/features/courses/components/courses-table.tsx:128 } # a draft with nobody: a dash "—" for the eye (aria-hidden, Nazirs.noValue) and these words, visually hidden
+  statusPublished: { type: text, component: Text, text: { key: Courses.status.PUBLISHED }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: showsPublished, repeat: courses, source: apps/nazar/features/courses/components/courses-table.tsx:149 } # a primary Badge
+  statusDraft: { type: text, component: Text, text: { key: Courses.status.DRAFT }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: showsDraft, repeat: courses, source: apps/nazar/features/courses/components/courses-table.tsx:149 } # an outline Badge
+  rowMenuButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Courses.actions.label, params: { title: course.title } }, in: [listed, choosingKosk, choosingStatus, rowMenu], when: matches, repeat: courses, emits: OPEN_ROW_MENU, source: apps/nazar/features/courses/components/courses-table.tsx:164 } # an icon-only Base UI Menu trigger named by its aria-label; aria-haspopup=menu; on every row whatever the reader holds (F-A-8)
+
+  emptyText: { type: text, component: Text, text: { key: Courses.empty }, in: [emptyAll, choosingKosk, choosingStatus], when: "not matches and not filtered", source: apps/nazar/features/courses/components/courses-table.tsx:241 } # the table's one cell, colspan 5
+  emptyFilteredText: { type: text, component: Text, text: { key: Courses.emptyFiltered }, in: [emptyFiltered, choosingKosk, choosingStatus], when: "not matches and filtered", source: apps/nazar/features/courses/components/courses-table.tsx:231 } # the same cell, with the link under it
+  clearFilters: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Courses.clearFilters }, in: [emptyFiltered, choosingKosk, choosingStatus], when: "not matches and filtered", emits: CLEAR_FILTERS, source: apps/nazar/features/courses/components/courses-table.tsx:232 } # an <a href> to /dersler with no query (Button href variant link): a new document
+
+  # ---- a row's menu, open (Base UI Menu popup) ---------------------------------------------------------------------------------------
+  rowMenuList: { type: list, component: List, role: menu, in: [rowMenu], source: libs/ui/src/mds/menu.tsx:64 } # no name of its own is set (the trigger's id may label it; not verified)
+  menuChangeHocas: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: Courses.actions.muderris }, in: [rowMenu], emits: CHOOSE_CHANGE_HOCAS, source: apps/nazar/features/courses/components/courses-table.tsx:168 }
+  menuHide: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: Courses.actions.hide }, in: [rowMenu], emits: CHOOSE_HIDE, source: apps/nazar/features/courses/components/courses-table.tsx:173 }
+
+  # ---- the note to the Arşiv ------------------------------------------------------------------------------------------------------------
+  hiddenNoteBefore: { type: text, component: Text, text: { key: Courses.hiddenNote.before }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-page.tsx:153 } # the three parts are one <p class="mds-caption">: before, the link, after
+  archiveLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Courses.hiddenNote.link }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], emits: OPEN_ARCHIVE, source: apps/nazar/features/courses/components/courses-page.tsx:154 } # a next/link: a client-side navigation to /medrese/<id>/arsiv
+  hiddenNoteAfter: { type: text, component: Text, text: { key: Courses.hiddenNote.after }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-page.tsx:160 }
+
+  # ---- the card of the köşks that host the medrese ------------------------------------------------------------------------------------
+  hostsRegion: { type: text, component: Text, role: region, name: { labelledBy: hostsTitle }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-page.tsx:39 } # <section aria-labelledby="hosts-heading">; the id is the Pano's too (F-A-15)
+  hostsTitle: { type: text, component: Heading, role: heading, text: { key: Courses.hosts.title }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-page.tsx:43 } # an h2 in the h3 look
+  hostsFailed: { type: alert, component: Alert, role: alert, text: { key: Courses.hosts.failed }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "hosting == 'unreadable'", source: apps/nazar/features/courses/components/courses-page.tsx:166 } # an error Alert (role alert) for a refusal as well as a failure (F-A-8)
+  hostsNone: { type: text, component: Text, text: { key: Courses.hosts.none }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "hosting == 'none'", source: apps/nazar/features/courses/components/courses-page.tsx:170 }
+  hostsList: { type: list, component: List, role: list, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "hosting == 'kosks'", source: apps/nazar/features/courses/components/courses-page.tsx:172 } # <ul data-testid="hosting-kosks">
+  hostName: { type: text, component: Text, text: { key: composed.Courses.kosk, params: { kosk: hosting.kosk.name } }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "hosting == 'kosks'", repeat: hosting.kosks, source: apps/nazar/features/courses/components/courses-page.tsx:180 }
+  hostLine: { type: text, component: Text, text: { key: Courses.hosts.courses, params: { count: hosting.kosk.courseCount } }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "hosting == 'kosks'", repeat: hosting.kosks, source: apps/nazar/features/courses/components/courses-page.tsx:182 } # the medrese's courses there that are not hidden, drafts included (courses#3 a2)
+  hostsText: { type: text, component: Text, text: { key: Courses.hosts.text }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-page.tsx:189 }
+
+  # ---- the card of the exams ---------------------------------------------------------------------------------------------------------------
+  examRegion: { type: text, component: Text, role: region, name: { labelledBy: examTitle }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "exams != 'unread'", source: apps/nazar/features/courses/components/courses-page.tsx:192 } # left out with no word when the exam read is refused or fails
+  examTitle: { type: text, component: Heading, role: heading, text: { key: Courses.examSummaryTitle }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "exams != 'unread'", source: apps/nazar/features/courses/components/courses-page.tsx:193 }
+  examEmpty: { type: text, component: Text, text: { key: Courses.examSummaryEmpty }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "exams == 'empty'", source: apps/nazar/features/courses/components/courses-page.tsx:197 }
+  examList: { type: list, component: List, role: list, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "exams == 'rows'", source: apps/nazar/features/courses/components/courses-page.tsx:199 } # <ul data-testid="exam-summary">
+  examCourse: { type: text, component: Text, text: { key: composed.Courses.exam, params: { title: exam.courseTitle } }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "exams == 'rows'", repeat: exam.rows, source: apps/nazar/features/courses/components/courses-page.tsx:205 }
+  examRowText: { type: text, component: Text, text: { key: Courses.examSummaryRow, params: { exams: exam.examCount, taken: exam.takenCount, absent: exam.absentCount } }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "exams == 'rows'", repeat: exam.rows, source: apps/nazar/features/courses/components/courses-page.tsx:207 } # the row's line in a caption span, then an aria-hidden "·", then the mean
+  examAverage: { type: text, component: Text, text: { oneOf: [Courses.examSummaryAverage, Courses.examSummaryNoAverage] }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], when: "exams == 'rows'", repeat: exam.rows, source: apps/nazar/features/courses/components/courses-page.tsx:215 } # "Ortalama %{average}", or "Ortalama yok" while nobody sat: the binding gives a pattern
+
+  # ---- the card of the course outside the medrese --------------------------------------------------------------------------------------
+  outsideRegion: { type: text, component: Text, role: region, name: { labelledBy: outsideTitle }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-page.tsx:230 }
+  outsideTitle: { type: text, component: Heading, role: heading, text: { key: Courses.outside.title }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-page.tsx:230 }
+  outsideText: { type: text, component: Text, text: { key: Courses.outside.text }, in: [listed, emptyAll, emptyFiltered, choosingKosk, choosingStatus, rowMenu], source: apps/nazar/features/courses/components/courses-page.tsx:231 }
+
+edges:
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { labelledBy: [hostsRegion, hostsTitle] }
+  - { labelledBy: [examRegion, examTitle] }
+  - { labelledBy: [outsideRegion, outsideTitle] }
+  - { triggers: [koskSelect, choosingKosk] }
+  - { triggers: [statusSelect, choosingStatus] }
+  - { triggers: [rowMenuButton, rowMenu] }
+  - { triggers: [retry, readingCourses] }
+
+rules:
+  - { id: F-A-8, rule: "One 403 per read is 'no permission' only on the list. A nazır with madrasah.course_hide or madrasah.muderris_manage and not madrasah.course_open reads the list and is refused the köşk read: the card says 'Köşkler şu an okunamadı. Sayfayı yenileyip yeniden deneyin.' (a refusal told as a failure), 'Medrese dersi aç' stays on and leads to a refused page, and both row-menu items are offered on every row whatever she holds, to be refused with a toast (courses-page.tsx:95-96,112-125,165-168; courses-table.tsx:164-178). Drawn as `hosting: unreadable`; not walked (the stack has no medrese nazır holding one of the codes). Fix: on a 403 of the side read say 'izniniz yok' or leave the control out, and draw a control only for a code the reader holds." }
+  - { id: F-A-9, rule: "The course title is a link to /ders/<id> on every row: `held`, the set the comment calls 'the courses the caller holds a scope in', is `medreseCourseLinks(courses.data.map(id))`, built from the list itself (courses-page.tsx:92-94), so the check in courseRows (courses.ts:224) is always true. For a nazır who may list the courses and holds no seat in them the link leads to a page she may not open. Fix: build `held` from the caller's real scopes (openedScope), or correct the comment." }
+  - { id: F-A-1, rule: "When the list read fails, LoadFailed adds a second <h1> ('Dersler okunamadı') inside the same <main>, beside the page's own <h1> 'Dersler' (load-failed.tsx:28, system-state.tsx:24,43). Fix: headingLevel={2} when `shell` is true." }
+  - { id: F-A-14, rule: "The retry button is busy while router.refresh() runs, and passes no loadingLabel, so its hidden status says 'Yükleniyor' from the kit's hard-coded default, outside the catalog (button.tsx:62, load-failed.tsx:33). Turkish only today." }
+  - { id: F-A-15, rule: "The card's section id is the fixed string 'hosts-heading' (courses-page.tsx:164), the Pano's too; after a client navigation the previous page may stay hidden in the DOM, so aria-labelledby may resolve to the hidden one. Not verified; the replay checks the three regions by name." }
+  - { id: F-A-16, rule: "The refusal 'Bu sayfaya izniniz yok' is a neutral Alert, which is role status, already in the page when it loads, so it is not announced; its title is a <p>, not a heading. The <h1> still names the page (page-problem.tsx:23-28, alert.tsx:23). Fix: render the verdict as a heading or role=alert." }
+  - { id: F-A-12, rule: "Listed for this flow in FLOWS.md and not a finding of this page: it is the Arşiv's tab link, whose text is directly followed by its count (archive-list.tsx:173-184). Dersler has no tabs." }
+  - { id: COURSES-1, rule: "New. Choosing a filter announces nothing. The counter is a plain <p data-testid=counter> (courses-table.tsx:191), the table's `aria-busy` is on a plain div (:188) and aria-busy is not announced, no live region says how many courses are left, and the focus stays on the select's button (not verified), so a screen-reader user who picks 'Durum: Taslak' hears nothing of the new list. Keşfet's count line is an <output> (tedris.discover.browse). Fix: make the counter a status (an <output> or role=status)." }
+  - { id: COURSES-2, rule: "New. An address with ?kosk=<a uuid that is no hosting köşk of the medrese> filters the list by it (filtersOf takes any uuid, courses.ts:47; the API answers an empty list, not a 400, madrasah.repository.ts:1489) while the select shows 'Köşk: tümü' (courses-table.tsx:64-66 falls back to ALL when the value is no option). The page then says 'Bu süzgece uyan ders yok.' with 'Süzgeçleri temizle', and the select says nothing is filtered. From the code; not seen in a browser. Fix: show the raw filter, or drop an unknown köşk in filtersOf." }
+  - { id: COURSES-3, rule: "New. The köşk filter and the card list only the köşks that hold a hosting right (listMadrasahHostingKosks), while the list holds every non-hidden course whatever its köşk's right: a course that stayed in a köşk after its right was withdrawn (KEEP) is listed and counted in 'N köşkte', and the person cannot narrow to that köşk nor see it in the card. A course in a hidden köşk is not listed at all (findCourseList joins the köşk's archivedAt, madrasah.repository.ts:1483-1488), and the note says hidden courses are in the Arşiv, which holds items with their own hidden mark (archive.repository.ts). From the code; not seen. Fix: offer the köşks of the listed courses in the filter (decision D2); say where a course of a hidden köşk went." }
+  - { id: focus-not-set, rule: "The page sets no initial focus: nothing in features/courses moves it, so after a load the focus is at the document's start (and after 'Süzgeçleri temizle' too, a plain link: a new document)." }
+  - { id: focus-after-a-filter, rule: "Choosing a filter or closing the menu returns the focus to the trigger through Base UI; the page is re-read by router.replace in a transition and the client component stays mounted. Not verified in a browser (nazar.md: 'NOT VERIFIED'); the graph draws no `focus`." }
+  - { id: label-in-name, rule: "A control's visible text is in its accessible name: 'Medrese dersi aç' and 'Medrese dışı ders talebi gönder' are links with their own text; the two filters are named 'Köşk' and 'Durum' by their aria-label and show 'Köşk: tümü' and 'Durum: tümü' (WCAG 2.5.3 holds); the row menu is an icon named by its aria-label 'Diğer işlemler: {title}'. Holds." }
+  - { id: table-semantics, rule: "The table has a caption ('Medrese dersleri', visually hidden), column headers, and the course cell is the row header (scope=row); in the stacked layout the roles are explicit. A draft with nobody says a dash for the eye and 'Henüz talebe yok' to a reader of the screen; the pending badge carries a clock icon and its words, never a colour alone. Holds." }
+  - { id: no-confirmation-needed, rule: "This page only reads and filters. The two writes, 'Hocaları değiştir' and 'Dersi gizle' (which asks first), are the dialogs of nazar.courses.changeHocas and nazar.archive.hideAndRestoreCourse." }

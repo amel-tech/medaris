@@ -1,0 +1,105 @@
+# What the walks of nazar.nazirs.dismiss share: the locators of the roster and the dialog, the states' addresses and held calls, the events that
+# no node says, and what a dismissal leaves outside the screen. It has no scenario: binding.yaml (three nazırs), binding.holder.yaml (a nazır who holds
+# permissions and gave nothing) and binding.drop.yaml (the same dismissal answered Düşür) extend it and add theirs. Several files because a walk takes
+# the first scenario of a file for a transition, and holder and drop add no transition of their own to the first file's.
+#
+# NOT RUN: the graphs were written without a replay (the walk phase comes later). Every locator below is from the code and the catalog and is
+# unverified until a walk; what the code leaves in doubt is named in the notes. Run with:
+#   node apps/engine/src/cli.ts replay graphs/nazar/nazirs/dismiss --bind graphs/nazar/nazirs/dismiss/<file> --cover transitions --absent --out <dir>
+#
+# Who is made and who is dismissed. Only spare talebe accounts are ever appointed: APPLICANT_A is the nazır the walk dismisses, APPLICANT_B and
+# APPLICANT_G the two people A gives something to. The seeded nazır (MEDRESE_NAZIR, "Seher Medrese Nazırı", who holds nothing) is on the roster
+# and is never touched: its row is the first, so no locator below can press it, and the band that names the nazırs holding nothing is always up
+# because of it. ./nazirs.mjs, the helper of this folder, makes and takes the rows away through tedrisat's HTTP API, as the person who may:
+# the başmüderris appoints A and gives it madrasah.nazir_appoint and course_nazir.assign; A appoints B a medrese nazır and, in the walk that has a
+# course, G a ders nazırı of the walk's own course (helpers/course.mjs, tag `dismiss`). Neither call is verified against the running API: that A may
+# appoint into a course by a grant of course_nazir.assign is read from apps/tedrisat/src/course/nazir/course-standing.ts:60-80 and the controller
+# (an "appointer"). If it is refused, the walk phase makes the second row a second medrese nazır of a third spare account instead, and notes
+# that the row then reads 'Medrese nazırı' and not 'Ders nazırı'.
+#
+# What a walk leaves behind: the audit rows (`madrasah_nazir.dismiss`, `permission.grant`, `madrasah_nazir.appoint`), which no route removes, and
+# the notifications of none (a nazır is told nothing). `teardown` dismisses A and B again whatever the walk did, takes G's post away, and removes the
+# course; `up` begins with the same, so a crashed walk leaves nothing for the next.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.nazirs.dismiss
+
+# the walk's own course, which helpers/course.mjs records (a file that does not exist yet is allowed until an action reads it)
+data:
+  made: { json: ../.local/made/dismiss.json }
+
+states:
+  roster: { url: '{nazar}/medrese/*/nazirlar' }
+  settled: { url: '{nazar}/medrese/*/nazirlar' }
+  # the two calls are Next server actions: a POST to the page's own address, held while the busy screen is checked. FAIL statuses cannot be compared
+  # there (a server action answers 200), so no refusal is walked from them.
+  asking: { call: '{nazar}/medrese/*/nazirlar' }
+  dismissing: { call: '{nazar}/medrese/*/nazirlar' }
+  left: { url: '{nazar}/bildirimler' }
+
+# The chips are pressed by events, because the nodes cannot say which row: the first answer is the first row's Devral (the medrese nazır B), the last
+# answer the second row's Düşür (the ders nazırı G); CLEAR is sent by the node pressedChip. The rows are in the order the API gives them:
+# the roles the nazır gave, oldest first (nazirs.mjs seats B before G).
+events:
+  ANSWER: [{ click: { role: button, name: Devral, nth: 0, within: { role: dialog, name: '/görevden alınıyor$/' } } }]
+  ANSWER_LAST: [{ click: { role: button, name: Düşür, nth: 1, within: { role: dialog, name: '/görevden alınıyor$/' } } }]
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+
+# Role and name find most nodes; the ones below need more. The people's names are the stack's invented ones (STACK.md), so the sample name of the
+# graph is the nazır's own and the dialog's title reads exactly as the graph says; the patterns are for the cases a name could differ.
+nodes:
+  # the shell's one <main>; the page a walk leaves for has one too, so tell them apart by the title
+  nazirsPage: { role: main, hasText: Medrese nazırları }
+  # the warning band names one nazır or counts several, whatever the walk's rows
+  awaitingBand: { role: status, hasText: '/henüz izin almadı/' }
+  # the caption is "{medrese} nazırları": its {name} is the medrese's
+  nazirsTable: { role: table, name: '/ nazırları$/' }
+  # every row's button, whoever the nazır is (the seeded one is among them: it is only counted, never pressed)
+  dismissRow: { role: button, name: '/^Görevden al: /' }
+  # the row of the nazır the walk made, the only one it presses
+  dismissThis: { role: button, name: '/^Görevden al: Aylin /' }
+  # the success toast's two words; an error toast is an alertdialog named by the same title
+  toastDismissed: { role: dialog, name: Görevden alındı }
+  dismissDialog: { role: dialog, name: '/görevden alınıyor$/' }
+  dismissTitle: { role: heading, name: '/görevden alınıyor$/' }
+  # the medrese's name above the title (dismiss#2 a1)
+  dialogEyebrow: { css: '.mds-eyebrow', hasText: '{seed.titles.madrasah}', within: { role: dialog, name: '/görevden alınıyor$/' } }
+  # the toasts' close buttons are called Kapat too
+  dismissClose: { role: button, name: Kapat, within: { role: dialog, name: '/görevden alınıyor$/' } }
+  # the same hidden word in two states: the loading body, and the busy button's own <output>
+  loadingStatus: { role: status, hasText: Yükleniyor, within: { role: dialog, name: '/görevden alınıyor$/' } }
+  submitBusy: { role: status, hasText: Yükleniyor, within: { role: dialog, name: '/görevden alınıyor$/' } }
+  loadFailedAlert: { role: alert, hasText: Liste okunamadı }
+  # the intro names the nazır; match the sentence, not the name
+  introText: { text: '/şu kişilere rol ve izin vermişti\. Her biri için ne olacağını seçin\./' }
+  introNoneText: { text: '/başkasına rol ya da izin vermemiş; seçilecek bir şey yok\./' }
+  givenList: { testId: given-people }
+  givenPerson: { testId: given-person, count: '{rows}' }
+  # a line of the row: 'Medrese nazırı · <medrese> · süresiz · verildi <date>' (a ders nazırı's names the course)
+  personRole: { css: '[data-testid=given-person] .mds-caption', hasText: '/ · .+ · .+ · verildi /', count: '{rows}' }
+  # only the medrese nazır's row says it (a post in a course holds no permission and has no such line)
+  personNoPermissions: { text: 'Hiç izni yok; medrese nazırı atadığı nazıra izin veremez.', count: 1 }
+  answerGroup: { role: group, name: '/ için seçim$/', count: '{rows}' }
+  takeOver: { role: button, name: Devral, within: { role: dialog, name: '/görevden alınıyor$/' }, count: '{rows}' }
+  drop: { role: button, name: Düşür, within: { role: dialog, name: '/görevden alınıyor$/' }, count: '{rows}' }
+  # the chips that are pressed: none while nothing is chosen
+  pressedChip: { css: '[data-testid=given-person] button[aria-pressed=true]' }
+  # the callout's {what} is the nazır's own holdings, so match the frame of the sentence
+  dropSummary: { role: status, hasText: '/hemen düşer\.$/', within: { role: dialog, name: '/görevden alınıyor$/' } }
+  dropNothing: { role: status, hasText: henüz izin almadığı için düşecek bir izin yok, within: { role: dialog, name: '/görevden alınıyor$/' } }
+
+# What a dismissal leaves outside the screen, read through the API as the başmüderris (./nazirs.mjs state and ders) and, for the audit row, through SQL
+# (no route reads it by person). The scenario's vars say what each walk expects: `expectB` for the medrese nazır it seated (stays, now under the
+# başmüderris, after Devral; gone after Düşür), `expectPost` for the post in the course, `expectAudit` for the last audit row (tookOver/dropped), `course`
+# for the id of the walk's course (or `none`), and `rows` for how many people the dialog lists (the count of its repeated nodes).
+effects:
+  removeMadrasahNazir:
+    - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, state, --madrasah, '{seed.madrasah}', --who, applicantA]
+      expect: 'nazir APPLICANT_A none'
+    - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, state, --madrasah, '{seed.madrasah}', --who, applicantB]
+      expect: '{expectB}'
+    - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, ders, --course, '{course}', --who, applicantG]
+      expect: '{expectPost}'
+    - run: [node, helpers/sql.mjs, "select (details->>'tookOver') || '/' || (details->>'dropped') as outcome from audit_log where action = 'madrasah_nazir.dismiss' and lower(details->>'userId') = lower('{secret.E2E_APPLICANT_A_SUB}') order by seq desc limit 1"]
+      expect: '{expectAudit}'

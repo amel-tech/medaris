@@ -1,0 +1,110 @@
+# The screens of nazar.evaluation.markRecited: Değerlendirme of a course (/ders/<id>/degerlendirme), read from apps/nazar/features/evaluation and
+# libs/ui/src/mds (table, button, empty-state, system-state, alert, toast). The words are copied letter for letter from
+# libs/i18n/src/locales/tr/nazar.json by a script that fails on a missing key (the key is the path inside the file: the app reads it as
+# `nazar.Evaluation`, `nazar.Problems`). Two messages are not in any i18n file:
+#   composed.Evaluation.noteText  the note itself, as the hoca typed it: the visible words of the note toggle once a note exists, in a
+#                                 <bdi> cut to 20 characters by the stylesheet (evaluation-board.tsx:508-510)
+#   Changes.note                  the ONE message authored for this graph, not copied: no message of the app says what a save changes and what
+#                                 follows (a save has no toast and no confirmation), and a flow whose steps write must carry one. It is written in
+#                                 Turkish, from the code (the audit row, the missing notification, the three marks and no way back to "Bekliyor")
+# Only the screens of one talebe's row are drawn: the story follows one talebe, so every node "repeat" is drawn once per talebe, and the count
+# is "{n}/{total} tam" for the board's own numbers. The line under the h1 that names the course (Evaluation.subtitle) is not a node: its {name}
+# is the course's, and the same placeholder is the talebe's name in the rows, and a sample is one value per placeholder.
+# The talebe's name is never an `aria-label` this graph can quote, so the binding finds the rows by their test id.
+schema: delurio-graph/0
+kind: ui
+id: nazar.evaluation.markRecited
+flow: nazar.evaluation.markRecited
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  week: "1"
+  title: Celse 1
+  name: Örnek Talebe
+  note: Son iki satır eksik.
+  full: "18"
+  total: "30"
+
+# The page sets no focus when it opens, and none when a homework is opened, closed or marked (the pressed button stays focused after a mark, and
+# the screen's buttons are unmounted by a change of screen): there is no `initialFocus` and no `focus` for them (`focus-not-set`, F-D1-12). The one
+# place the code moves it is the note box: an effect focuses its textbox as soon as it is mounted (evaluation-board.tsx:470-472).
+focus: { noting: noteInput }
+
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------
+  evalPage: { type: page, component: Page, role: main, in: [overview, column, noting, marking, noColumns, noTalebe, forbidden, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  evalTitle: { type: text, component: Heading, role: heading, text: { key: Evaluation.title }, in: [overview, column, noting, marking, noColumns, noTalebe, forbidden, loadFailed], source: apps/nazar/features/evaluation/components/evaluation-page.tsx:41 } # h1; it stays over a refusal and over a failed read (e2e evaluation#1 a1, evaluation#2 a1)
+  menuEvaluation: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.ders.evaluation }, in: [overview, column, noting, marking, noColumns, noTalebe, loadFailed], source: apps/nazar/features/shell/nav.ts:122 } # the sidebar's entry for this page, drawn only for a holder of session.manage; it carries aria-current=page, which a graph cannot say (e2e evaluation#1 a2)
+
+  # --- the page cannot be shown -----------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert; its title is a <p>, not a heading (e2e evaluation#2 a2)
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:26 } # says whom to ask and gives no way to
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:33 } # a <section aria-labelledby> inside the shell, which owns <main>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Evaluation.loadFailedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:43 } # h1: a second one on the page, under "Değerlendirme" (the same finding as nazar.bans.review's BANS-4)
+  failedText: { type: text, component: Text, text: { key: Evaluation.loadFailed }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:46 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+
+  # --- nothing to mark ---------------------------------------------------------------------------------------------------------------
+  noColumnsLine: { type: text, component: Text, text: { key: Evaluation.noColumns }, in: [noColumns], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:199 } # an EmptyState with an icon: one sentence that says where to set the homework, with no link to the Müfredat
+  noTalebeLine: { type: text, component: Text, text: { key: Evaluation.noTalebe }, in: [noTalebe], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:204 }
+
+  # --- the board: a table ------------------------------------------------------------------------------------------------------------
+  downloadLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Evaluation.download }, in: [overview], emits: DOWNLOAD, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:292 } # a plain <a> with a download icon, at the end of a row above the table; always drawn on the overview, and it never works (evaluation-export-invalid-path)
+  boardTable: { type: list, component: List, role: table, name: { key: Evaluation.caption }, in: [overview], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:302 } # the caption is hidden
+  colTalebe: { type: text, component: Text, role: columnheader, text: { key: Evaluation.talebe }, in: [overview], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:236 }
+  columnButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Evaluation.columnTitle, params: { week: column.weekNumber, title: column.title } }, in: [overview], repeat: board.columns, emits: OPEN_COLUMN, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:244 } # a link-variant button in the column's header; one for each recited homework (a FILE homework is no column: e2e evaluation#1 a3), the binding counts them
+  cellPending: { type: text, component: Text, role: cell, text: { key: Evaluation.pending }, in: [overview], when: "verdict == 'none'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:282 } # a caption, in grey (e2e evaluation#1 a4)
+  cellFull: { type: text, component: Text, role: cell, text: { key: Evaluation.full }, in: [overview], when: "verdict == 'full'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:280 } # a success badge
+  cellIncomplete: { type: text, component: Text, role: cell, text: { key: Evaluation.incomplete }, in: [overview], when: "verdict == 'incomplete'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:280 } # a warning badge
+  cellAbsent: { type: text, component: Text, role: cell, text: { key: Evaluation.absent }, in: [overview], when: "verdict == 'absent'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:280 } # an error badge: the talebe "Vermedi"
+
+  # --- one homework opened --------------------------------------------------------------------------------------------------------------
+  columnRegion: { type: text, component: Text, role: region, name: { labelledBy: columnTitle }, in: [column, noting, marking], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:357 } # a <section aria-labelledby>
+  columnTitle: { type: text, component: Heading, role: heading, text: { key: Evaluation.columnTitle, params: { week: column.weekNumber, title: column.title } }, in: [column, noting, marking], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:372 } # h2; nothing moves the focus to it (F-D1-12)
+  backButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Evaluation.back }, in: [column, noting, marking], emits: BACK, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:364 } # a ghost button with an arrow icon; the screen goes and the focus falls to the document (F-D1-12)
+  count: { type: status, component: Status, role: status, text: { key: Evaluation.count }, in: [column, noting], when: "verdict != 'full'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:380 } # an <output aria-live=polite>, test id evaluation-count: "{n}/{total} tam" with n the rows marked Tam; the walk's course has one talebe, so it reads 0/1 here (e2e evaluation#1 a5, a9)
+  countAll: { type: status, component: Status, role: status, text: { key: Evaluation.count }, in: [column, noting], when: "verdict == 'full'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:380 } # the same output once the talebe is marked Tam: 1/1 (e2e evaluation#1 a6); drawn with the sample numbers, the binding reads the real ones
+  keysHint: { type: text, component: Text, text: { key: Evaluation.keysHint }, in: [column, noting, marking], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:388 } # a caption; it is not linked to the list by aria-describedby (F-D1-27)
+  talebeList: { type: list, component: List, role: list, name: { key: Evaluation.listLabel }, in: [column, noting, marking], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:389 } # a <ul> with no role that says it takes keys (F-D1-27); the arrows and 1, 2, 3 are handled on it, not on a row
+  talebeRow: { type: list, component: ListItem, role: listitem, in: [column, noting, marking], repeat: board.talebe, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:481 } # a focusable <li tabIndex> named by the talebe's own name (an aria-label, no catalog message), test id evaluation-row-<talebe's id>; the one in focus is the one Tab stops at
+  markGroup: { type: text, component: Text, role: group, name: { key: Evaluation.markLegend, params: { name: talebe.name } }, in: [column, noting, marking], repeat: board.talebe, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:428 } # a <fieldset> named by a visually hidden <legend>
+  chipFull: { type: action, component: Button, role: button, intent: secondary, text: { key: Evaluation.full }, in: [column, noting, marking], repeat: board.talebe, emits: MARK_FULL, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:431 } # a chip with aria-pressed and aria-keyshortcuts=1; never disabled
+  chipIncomplete: { type: action, component: Button, role: button, intent: secondary, text: { key: Evaluation.incomplete }, in: [column, noting, marking], repeat: board.talebe, emits: MARK_INCOMPLETE, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:431 } # aria-keyshortcuts=2
+  chipAbsent: { type: action, component: Button, role: button, intent: secondary, text: { key: Evaluation.absent }, in: [column, noting, marking], repeat: board.talebe, emits: MARK_ABSENT, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:431 } # aria-keyshortcuts=3
+  chipFullOn: { type: action, component: Button, role: button, text: { key: Evaluation.full }, in: [column, noting], when: "verdict == 'full'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:435 } # the same chip once it is pressed: aria-pressed=true and the filled look (e2e evaluation#1 a7)
+  chipIncompleteOn: { type: action, component: Button, role: button, text: { key: Evaluation.incomplete }, in: [column, noting], when: "verdict == 'incomplete'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:435 } # pressed: aria-pressed=true
+  chipAbsentOn: { type: action, component: Button, role: button, text: { key: Evaluation.absent }, in: [column, noting], when: "verdict == 'absent'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:435 } # pressed: aria-pressed=true
+  noteToggle: { type: action, component: Button, role: button, intent: secondary, name: { key: Evaluation.noteLabel, params: { name: talebe.name } }, text: { key: Evaluation.note }, in: [column, noting], when: "verdict != 'none' and note == 'none'", emits: TOGGLE_NOTE, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:493 } # a link-variant button with aria-expanded and aria-controls, drawn only once the talebe has a mark; its name is longer than its words ("Not" is in "... için not")
+  noteToggleWritten: { type: action, component: Button, role: button, intent: secondary, name: { key: Evaluation.noteWith, params: { name: talebe.name, note: note } }, text: { key: composed.Evaluation.noteText, params: { note: note } }, in: [column, noting], when: "verdict != 'none' and note == 'written'", emits: TOGGLE_NOTE, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:497 } # its words are the note, cut to 20 characters by the stylesheet; the accessible name carries the whole note
+  noteInput: { type: field, component: TextField, role: textbox, text: { key: Evaluation.noteLabel, params: { name: talebe.name } }, in: [column, noting, marking], when: "verdict != 'none' and box == 'open'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:525 } # <input maxLength=280 dir=auto>, placeholder "Not", named by an aria-label, with no Field around it (F-D1-27); drawn only while the box is open and a mark exists (e2e evaluation#1 a11, a12)
+
+  # --- a save is refused ----------------------------------------------------------------------------------------------------------------------
+  toastSaveFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Evaluation.saveFailed }, in: [overview, column, noting], when: "last == 'failed'", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:132 } # an error toast in the "Bildirimler" region: title "Kaydedilemedi", description the talebe's name; it stays until it is closed (MARK-1)
+
+edges:
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { labelledBy: [columnRegion, columnTitle] }
+  - { triggers: [retry, reading] }
+  - { triggers: [downloadLink, exporting] }
+  - { triggers: [columnButton, column] }
+  - { triggers: [backButton, overview] }
+  - { triggers: [chipFull, marking] }
+  - { triggers: [chipIncomplete, marking] }
+  - { triggers: [chipAbsent, marking] }
+  - { triggers: [noteToggle, noting] }
+
+rules:
+  - { id: focus-not-set, rule: "No code of features/evaluation sets the focus when the page opens, when a homework is opened or closed, or after a mark: the opened screen and the board replace each other and the pressed button leaves with the one it was on (F-D1-12). The only thing that moves it is the note box, whose textbox an effect focuses when it is mounted (evaluation-board.tsx:470-472): drawn as `focus.noting`." }
+  - { id: evaluation-export-invalid-path, rule: "'Excel indir' can never work. Its route (apps/nazar/app/api/files/courses/[courseId]/evaluations/route.ts:24) asks the shared file proxy for /courses/<id>/evaluations/export?lang=tr, and the proxy's isProxiablePath refuses any path with a query (libs/services/src/file-proxy/file-proxy.ts:106-112), so every call answers 400 INVALID_PATH, 'Not a file address', before tedrisat is asked. Seen on the running app with curl, no session: GET answers 400 {code: INVALID_PATH}, and with Sec-Fetch-Dest: document and a same-origin Referer a 303 back to the page with ?fileError=notFound. No spec or e2e downloads the sheet. Fix: send lang as a path-safe segment, or let the proxy take a query the route builds itself; and a test that downloads it." }
+  - { id: F-D1-13, rule: "A refused 'Excel indir' is answered by the proxy with a 303 back to this page with ?fileError=<reason>, but the page does not mount FileErrorNotice (only Müfredat and Ödevler do): the person sees the board again, with ?fileError=notFound left in the address, and no word. With the finding above it is the only thing this link ever does. Fix: mount <FileErrorNotice /> in EvaluationPage, and make the link work." }
+  - { id: F-D1-12, rule: "Opening a homework ('1. hafta · …'), 'Bütün ödevler' and a change of screen unmount the button the person pressed, so the focus falls to the document; no heading of the new screen is focused (evaluation-board.tsx:244-249, :364-371). Fix: focus the new screen's h2 (tabIndex -1) on open and the column's heading button on the way back." }
+  - { id: F-D1-22, rule: "The overview's first column, the talebe's name, is a plain <td> (render <bdi>); the roster tables mark theirs `rowHeader` (roster-table.tsx:115-118), so a marked cell has no row header for a screen reader. Fix: rowHeader: true on the 'talebe' column (evaluation-board.tsx:233-238)." }
+  - { id: F-D1-27, rule: "Each row is a focusable <li tabIndex aria-label> that handles the keys 1, 2, 3 and the arrows, inside a <ul> with no role that says so (listbox or grid); the hint under the title is a <p> not linked to it by aria-describedby, and aria-keyshortcuts sits on the chips, which do not receive the keys. The note box's Input is also used without a Field, outside the primitive's own contract (libs/ui/src/mds/input.tsx). Fix: give the list a role and describe it by the hint, or document the grid pattern." }
+  - { id: MARK-1, rule: "New. A save the API refuses, whatever the cause, is one toast, 'Kaydedilemedi', with the talebe's name (evaluation-board.tsx:131-136, :192-194): the page never learns the code (saveEvaluation answers `success: false`). A homework that was switched back to a file homework (404 MEMORIZATION_NOT_FOUND), a talebe who left (404 EVALUATION_TALEBE_NOT_FOUND) and a permission taken away (403) are different sentences, and each will refuse every later press the same way, while the column goes on offering the chips. Each failed save adds another toast that stays until closed. Fix: keep the code in the outcome, say it in words, and read the board again after a 404. Decision D2." }
+  - { id: MARK-2, rule: "New. Enter in the note box blurs it (evaluation-board.tsx:535): the note is kept, the box stays open and the focus falls to the document. The keys 1, 2, 3 and the arrows are handled on the list (onKeyDown on the <ul>, :392) and reach it only from inside it, so after a note the keyboard model stops working until the person puts the focus back in the list (where a Tab goes from a blurred box is the browser's; not verified). Escape is kinder: it moves the focus to the toggle (:538-541). Fix: after Enter put the focus on the row's <li>. Decision D3." }
+  - { id: MARK-3, rule: "New. The note's limit is `maxLength=280` on the input (evaluation-board.tsx:529): typing stops at 280 with no counter, no help text and no word, and the placeholder is the one word 'Not'. Inside the box the keys 1, 2 and 3 are text (the handler returns for an INPUT, :340), which the hint under the title does not say." }
+  - { id: MARK-4, rule: "New. A save has no success word, by design (evaluation-board.tsx:48-53): the pressed chip and the count are the confirmation. The count counts only 'Tam', and a mark made with a key leaves the focus on the row's <li>, not on a chip, so a screen-reader user hears nothing when 2 or 3 is pressed, or when 'Eksik' replaces 'Vermedi'; only a change in the number of 'Tam' is read aloud. Not verified with a screen reader. Fix: a polite status line that names the talebe and the mark." }
+  - { id: label-in-name, rule: "A chip's visible text is its accessible name ('Tam', 'Eksik', 'Vermedi'; the group names the talebe). The note toggle's visible words 'Not' or the note are contained in its name ('{name} için not', '{name} için not: {note}'), WCAG 2.5.3. Holds." }
+  - { id: no-confirmation-and-no-way-back, rule: "A mark is saved at once on a press, with no confirmation, and cannot be taken back to 'Bekliyor' from the page: the only way off a mark is another mark (the API has no delete of one; taking the homework off deletes every mark of it, tedrisat-learning deleteLessonAssignment). The same press on the pressed chip sends nothing. By design; said in `changes`." }

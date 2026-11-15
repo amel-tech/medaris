@@ -1,0 +1,181 @@
+# nazar.account.settings on the local stack: Hesap ve ayarlar of nazar-web (http://localhost:4002/hesap) as six of the seeded people,
+# each arriving by the person row of the sidebar (the nazar navigation graph's entry frame:medrese->hesap or frame:ders->hesap),
+# except the başnazım, for whom no link leads to the page and who opens it by its address.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/account/settings \
+#     --bind graphs/nazar/account/settings/binding.yaml [--cover transitions] [--absent] --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below, the names of the
+# people, and what the stack shows each of them come from the code, the catalog and GET /me, /me/assignments and
+# /me/effective-permissions read as each person on 15 Nov 2026; none was looked at in a browser.
+#
+# What each scenario starts from (the stack's seed, STACK.md; `--cover transitions` walks one path for each transition of the
+# `sorted` router, so each scenario is walked at least to the page):
+#   head          MEDRESE_BASMUDERRIS: one row 'Medrese başmüderrisi' / 'Etkin' / the başnazım as grantor / 'Süresiz', the note, one
+#                 group of 34 sentences. The main story and the only scenario that chooses a zone: its `setup` keeps what the account
+#                 holds (GET /me answers timeZone null: the page shows İstanbul), sets Europe/Istanbul, and its `teardown` puts the
+#                 kept value back (zone.mjs, a helper of this folder).
+#   medreseNazir  MEDRESE_NAZIR: one row 'Etkin', no note, and no permission at all: the card says there is none (NAZSET-2)
+#   hoca          MUDERRIS: three course rows ('Yayında', the köşk and the medrese), one group 'Hoca' over the three courses, no star
+#   hocaImam      MUDERRIS with a course of the walk's own that has a second hoca (the başmüderris, seated beside the hoca): a fourth row
+#                 with the star. The course is made by helpers/course.mjs (tag nset, one week of one celse, the second köşk) and
+#                 removed in `teardown`; the second hoca goes with it.
+#   dersNazir     DERS_NAZIR: one course row, no note, a group of the three codes the seed gave the post (`setup` sets them again,
+#                 as another walk may have changed them)
+#   chief         SYSTEM_ADMIN, the Medaris başnazım: GET /me/assignments is [] and /me says systemAdmin; no link, no menu, an empty
+#                 table, 'Talebe' in the person card (F-E-4)
+# Nothing is created except the second scenario's course and the kept zone, both removed in `teardown`. What it cannot undo: the
+# invitation mails Mailpit holds for the made course (course.mjs remove clears them).
+#
+# Not walked, with the reason:
+#   FAIL.failed       a save that fails (e2e account#6 aborts the server action with page.route): nothing in the stack makes PATCH /me
+#                     refuse, and a binding cannot abort a request; the transition is bound to no scenario
+#   FAIL.signedOut    a session that ends under the save
+#   read: portalFailed, meFailed, permissionsFailed  no way to make a read of the API fail (as in tedris.account.rolesOverview)
+#   holds: a person drawn from another seed (a role with an end date, a group of grants only, several scopes of a role other than Hoca)
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.account.settings
+
+# course.mjs writes the made course here; the second scenario reads {made.course}
+data:
+  made: { json: ../.local/made/nset.json }
+
+# `samples` give each person's name, roles and e-mail, which the catalog takes as placeholders. The names are the ones the seed
+# invented (STACK.md); the person card shows the session's own name (displayName of the token), not read from the API here.
+scenarios:
+  head:
+    given: { holds: head, read: ok }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->hesap' }
+    samples: { name: 'Nuri Başmüderris', roles: 'Medrese başmüderrisi', email: '{secret.E2E_MEDRESE_BASMUDERRIS_EMAIL}' }
+    setup:
+      - run: [node, ../nazar/account/settings/zone.mjs, keep, basmuderris]
+        expect: 'zone kept MEDRESE_BASMUDERRIS'
+      - run: [node, ../nazar/account/settings/zone.mjs, set, basmuderris, Europe/Istanbul]
+        expect: 'zone set MEDRESE_BASMUDERRIS Europe/Istanbul'
+    teardown:
+      - run: [node, ../nazar/account/settings/zone.mjs, restore, basmuderris]
+        expect: 'zone restored MEDRESE_BASMUDERRIS'
+  medreseNazir:
+    given: { holds: medreseNazir, read: ok }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->hesap' }
+    samples: { name: 'Seher Medrese Nazırı', roles: 'Medrese nazırı', email: '{secret.E2E_MEDRESE_NAZIR_EMAIL}' }
+  hoca:
+    given: { holds: hoca, read: ok }
+    as: muderris
+    open: '{nazar}/ders/{seed.courses.open}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->hesap' }
+    samples: { name: 'Hamdi Müderris', roles: 'Hoca', email: '{secret.E2E_MUDERRIS_EMAIL}' }
+  hocaImam:
+    given: { holds: hocaImam, read: ok }
+    as: muderris
+    open: '{nazar}/ders/{seed.courses.open}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->hesap' }
+    samples: { name: 'Hamdi Müderris', roles: 'Hoca', email: '{secret.E2E_MUDERRIS_EMAIL}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nset, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"nset"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', basmuderris]
+        expect: 'seat-hoca MEDRESE_BASMUDERRIS'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nset]
+        expect: 'course remove nset'
+  dersNazir:
+    given: { holds: dersNazir, read: ok }
+    as: dersNazir
+    open: '{nazar}/ders/{seed.courses.open}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->hesap' }
+    samples: { name: 'Rukiye Ders Nazırı', roles: 'Ders nazırı', email: '{secret.E2E_DERS_NAZIR_EMAIL}' }
+    setup:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{seed.courses.open}', --nazir, dersNazir, --codes, seed]
+        expect: 'course-nazir-grants'
+  chief:
+    given: { holds: chief, read: ok }
+    as: systemAdmin
+    open: '{nazar}/hesap' # no link leads here for the başnazım: the person row of the frame is not a link
+    samples: { name: 'Vedat Başnazım', roles: 'Talebe', email: '{secret.E2E_SYSTEM_ADMIN_EMAIL}' }
+
+events:
+  DISMISS: [{ key: Escape }] # the open list closes
+  CLOSE_STAR: [{ key: Escape }] # the star's bubble closes; the focus is on the star since the press that opened it
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+  # the picks (PICK_ISTANBUL, PICK_NEW_YORK, PICK_OTHER, PICK_TOKYO), OPEN_ZONES, OPEN_LISTED, OPEN_STAR, CLOSE_ALERT and SIGN_OUT are
+  # sent by nodes (the options, the two lists' buttons, the star, the toast's Kapat, the sign-out button)
+
+states:
+  settings: { url: '{nazar}/hesap' }
+  starOpen: { url: '{nazar}/hesap' }
+  # the save is a Next server action: a POST to the page's own address, held while the busy page is checked; the answer is 200
+  # whatever the API said, so no FAIL status is compared here
+  savingZone: { call: '{nazar}/hesap' }
+  # the button posts to /api/auth/signout (a navigation: no `call`), Keycloak ends the session and the browser ends on its login form
+  handed_over.sign_out: { url: '{keycloak}/realms/medaris/**' }
+  left: { url: 'about:blank' }
+
+# What a save leaves outside the screen: what tedrisat holds for the account, read through the API as that account.
+effects:
+  savedIstanbul:
+    - run: [node, ../nazar/account/settings/zone.mjs, get, basmuderris]
+      expect: 'zone MEDRESE_BASMUDERRIS Europe/Istanbul'
+  savedNewYork:
+    - run: [node, ../nazar/account/settings/zone.mjs, get, basmuderris]
+      expect: 'zone MEDRESE_BASMUDERRIS America/New_York'
+  savedTokyo:
+    - run: [node, ../nazar/account/settings/zone.mjs, get, basmuderris]
+      expect: 'zone MEDRESE_BASMUDERRIS Asia/Tokyo'
+
+# Where role and name cannot find a node. Hesap's <main> is found by its subtitle, because the page a walk leaves for has a <main> of
+# its own. The table's cells are found by the kit's own hooks (data-testid on the role and the scope, the cells' places); the
+# permission sentences by a pattern of all forty-two of them (the engine finds a `oneOf` node by its first text only). The
+# list's buttons are found by their label, and by the words they show, which is how the page says which zone it holds.
+nodes:
+  accountPage: { role: main, hasText: 'Görevleriniz, izinleriniz ve saat diliminiz.' }
+  accountTitle: { role: heading, name: '/^Hesap$/' } # 'Hesap ve ayarlar' is the h1 and contains it
+  accountRegion: { role: region, name: '/^Hesap$/' }
+  tasksRegion: { role: region, name: '/^Görevleriniz$/', hasText: 'Her görev bir kapsamda geçerlidir.' } # the table's scroll frame can be a region of the same name
+  columnRole: { role: columnheader, name: '/^Görev$/' }
+  # the rows
+  rowRole: { testId: assignment-role, hasText: '/^(Medrese başmüderrisi|Medrese nazırı|Hoca|Ders nazırı|Medaris nazımı|Köşk nazımı)/' }
+  imamStar: { role: button, name: Dersin imamı, within: { testId: assignment-role }, count: 1 } # the row's own star; the picker's is not a button
+  rowScope: { testId: assignment-scope }
+  rowBadgeActive: { text: '/^Etkin$/' }
+  rowBadgeCourse: { text: '/^(Yayında|Taslak|Gizli)$/' }
+  rowMeta: { css: 'td span.mds-caption' }
+  rowGrantor: { css: 'td:nth-of-type(3) bdi' } # "Kendiniz", the giver's name or "Bilinmiyor": whatever the API gave
+  rowGranted: { css: 'td:nth-of-type(3) time', hasText: '/^\d{1,2} [^ ]+ \d{4}$/' }
+  rowExpires: { css: 'td:nth-of-type(4)', hasText: '/^(Süresiz|\d{1,2} [^ ]+ \d{4})$/' }
+  emptyRow: { role: cell, name: Bu listede henüz bir şey yok. }
+  # the permission groups
+  permissionGroup: { testId: permission-group }
+  groupTitle: { css: '[data-testid=permission-group] h3' }
+  groupScopeLine: { css: '[data-testid=permission-group] p.mds-caption', hasText: '/ olduğunuz /' }
+  permissionLine: { css: 'li[data-permission]', hasText: '/^(Talebeyi dersten yasakla \(dersin yasak listesini görmeyi kapsar\)|Ders yasağını gerekçeyle kaldır|Ders ve köşk düzeyinde yasakla ya da yasağı gerekçeyle kaldır; ders yasağını köşke genişlet|Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi|Köşkteki derslerin içeriğini, celselerini, ders kayıtlarını ve başvurularını yönet|Ders nazırı ata; izin ya da grup ver, kendi izinlerinizi aşmadan|Köşkün medrese dışı derslerinde ders nazırı ata ve izin ver, kendi izinlerinizi aşmadan|Medrese dışı ders aç; hocaları ve imamı seç|Ortak uygulama kodlarını köşkün derslerine bağla|Dersi yayımla ya da taslağa çek|Ders ayarlarını ve kapalı ders bayrağını değiştir|Taslak ya da gizli dersi gör|Ders destesini aç ve düzenle|Köşk destesini aç ve düzenle|Köşk destesi öner|Talebeyi dersi tamamlamış say|Başvuruyu onayla ya da reddet|Talebeyi gerekçeyle dersten çıkar|Barındırma hakkı ver ya da geri al|Köşkü düzenle, gizle ya da geri al|Kabul kurallarını belirle|Köşk kararına itiraz aç|Medrese düzeyinde yasakla; ders yasağını medreseye genişlet|Medrese derslerini gizle, geri al|Medrese dersi aç|Hoca ekle ya da çıkar; imamı değiştir|Medrese nazırı ata|Medrese dışı ders talebi gönder|Kalıcı yasak talebi aç|Medrese ayarlarını ve politikalarını değiştir|Medresenin talebelerini gör|İzin grubu tanımla|Talebelerin sorularını gör ve yanıtla|Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir|Ders kaydı yükle|Yalnız kayıtlılara açık ders kayıtlarını izle|Canlı yayın bağlantısını celseye ekle|Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir|Celse içeriğini ve toplantı bağlantılarını gör|Talebelerin teslim ettiği ödevleri gör, indir ve değerlendir|E-postayla kullanıcı bul|Hafta ve celse gizle, geri al)$/' }
+  permissionCourseEdit: { css: 'li[data-permission="course.edit"]' }
+  permissionNote: { css: 'li[data-permission] span.mds-caption', hasText: '/^(Üst kademenin koyduğu yasağı kaldıramazsınız\.|İçerik okumaların denetim kaydına yazılır\.|Medrese derslerinde izni medrese kadrosu verir\.|Her arama denetim kaydına yazılır\.)$/' }
+  defaultsNote: { css: '[data-testid=permission-group] p.mds-caption', hasText: '/^Hocanın varsayılan izinleri/' }
+  expiryLine: { css: '[data-testid=permission-group] p.mds-caption', hasText: '/^(Bitiş|En yakın bitiş)/' }
+  # the time card: both lists are comboboxes named by their labels; what each shows is told by its text
+  timeRegion: { role: region, name: '/^Saat dilimi$/' }
+  timeTitle: { role: heading, name: '/^Saat dilimi$/' }
+  zoneField: { role: combobox, name: '/^Saat dilimi/' }
+  zoneReadsIstanbul: { role: combobox, name: '/^Saat dilimi/', hasText: İstanbul }
+  zoneReadsNewYork: { role: combobox, name: '/^Saat dilimi/', hasText: New York }
+  zoneReadsOther: { role: combobox, name: '/^Saat dilimi/', hasText: 'Diğer…' }
+  zoneOtherField: { role: combobox, name: '/^Diğer saat dilimleri/' }
+  zoneOtherReadsEmpty: { role: combobox, name: '/^Diğer saat dilimleri/', hasText: 'Diğer…' }
+  zoneOtherReadsTokyo: { role: combobox, name: '/^Diğer saat dilimleri/', hasText: Asia / Tokyo }
+  # the person card: the name and the roles are the only spans of their kinds in the card
+  personName: { css: 'span.font-medium bdi', within: { role: region, name: '/^Hesap$/' } }
+  roleLine: { css: 'span.mds-caption', within: { role: region, name: '/^Hesap$/' } }
+  emailField: { label: E-posta } # the label and the value; the engine does not read `readonly` (e2e account#3 a2)
+  signOutButton: { role: button, name: '/^Çıkış yap$/' }
+  # the toasts: Base UI's roots carry the kit's classes; the close button is inside the error one
+  toastZoneSaved: { css: '.mds-toast--success', hasText: Saat diliminiz kaydedildi. }
+  toastZoneFailed: { css: '.mds-toast--error', hasText: Saat dilimi kaydedilemedi }
+  toastClose: { role: button, name: Kapat, within: { css: '.mds-toast--error' } }
+  # the star's bubble: a Popover popup, a dialog named by its title
+  starBubble: { role: dialog, name: Dersin imamı }

@@ -1,0 +1,76 @@
+# nazar.curriculum.hideRestore on the local stack: the hoca (MUDERRIS, "Hoca" of a course of the walk's own) at http://localhost:4002, on the
+# hide page of her course and on its Arşiv. The walks that succeed, with the busy state of each server action held; refusals.binding.yaml has the
+# ones that are refused or lose a race. Everything shared (data, locators, states, hooks, effects) is in binding.common.yaml, whose header says
+# what is walked, what is made and what is not bound.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/curriculum/hideRestore \
+#     --bind graphs/nazar/curriculum/hideRestore/binding.yaml --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and
+# walked nothing); every locator and every account fact is from the code and unverified until a walk.
+#
+# Three scenarios, one per way the page's world differs (two scenarios must not share a `given`):
+#   hides      (the main story) two weeks of two celses; the walk hides Celse 1 (asking twice: Vazgeç, then Gizle), hides Hafta 1, which holds it,
+#              follows the sidebar's Arşiv, brings Hafta 1 back (Celse 2 returns, Celse 1 stays hidden and gets a row), opens Celseler and brings
+#              Celse 1 back. It enters through the editor's link "Hafta ve celse gizle" (nav entry dersCurriculum->dersCurriculumGizle), as the nav
+#              graph's goal for this flow says: the hoca holds week.hide, which is the link's condition. `--cover transitions` also walks the
+#              dialog's Vazgeç, the close icon and Esc, the three tabs, an Arşiv with nothing in it and the exit.
+#   lastWeek   one week of two celses: hiding it leaves the course with no live week ("Bu dersin henüz haftası yok."), and its row on the Arşiv.
+#   locked     two weeks of two celses; before the walk the köşk's nazım hid Celse 1 and the başnazım Celse 3 (through the API, as themselves), so
+#              the hoca's Arşiv lists two celses with a sentence in place of "Geri al": "Bunu köşk nazımı gizledi; ..." and "Bunu Medaris yönetimi
+#              gizledi; ..." (archive-list.tsx:164, archive.ts:156-172).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.curriculum.hideRestore
+
+scenarios:
+  hides:
+    given: { holds: weekHide, locks: none, weeks: many, nest: inside, race: none }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/mufredat'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'dersCurriculum->dersCurriculumGizle' }
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, helpers/course.mjs, make, hideRestore, --weeks, '2', --lessons, '2']
+        expect: '"tag":"hideRestore"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideRestore]
+        expect: 'course remove hideRestore'
+
+  lastWeek:
+    given: { holds: weekHide, locks: none, weeks: one, nest: inside, race: none }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/mufredat'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'dersCurriculum->dersCurriculumGizle' }
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, helpers/course.mjs, make, hideRestore, --weeks, '1', --lessons, '2']
+        expect: '"tag":"hideRestore"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideRestore]
+        expect: 'course remove hideRestore'
+
+  locked:
+    given: { holds: weekHide, locks: higher, weeks: many, nest: inside, race: none }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/mufredat'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'dersCurriculum->dersCurriculumGizle' }
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, helpers/course.mjs, make, hideRestore, --weeks, '2', --lessons, '2']
+        expect: '"tag":"hideRestore"'
+      # the köşk's nazım (nazım of the seed's second köşk, where the course is) hides Celse 1 at the köşk's kademe, the başnazım Celse 3 at the platform's
+      - run: [node, helpers/api.mjs, koskNazim, DELETE, '/lessons/{made.lessons.0}']
+        expect: '{made.lessons.0}'
+      - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/lessons/{made.lessons.2}']
+        expect: '{made.lessons.2}'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hideRestore]
+        expect: 'course remove hideRestore'
+
+states:
+  # the two hides and the two restores are Next server actions: a POST to the page's own address, held while the busy state is checked; the
+  # page's own reads are GETs with a query (?_rsc=), so this matches only the POST. The window is still open while the call runs.
+  hidingWeek: { call: '{nazar}/ders/*/mufredat/gizle' }
+  hidingSession: { call: '{nazar}/ders/*/mufredat/gizle' }
+  restoringWeek: { call: '{nazar}/ders/*/arsiv**' }
+  restoringSession: { call: '{nazar}/ders/*/arsiv**' }

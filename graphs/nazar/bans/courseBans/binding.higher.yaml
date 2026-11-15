@@ -1,0 +1,44 @@
+# nazar.bans.courseBans, a ban that Medaris administration placed: only the widening, and the note that only Medaris may lift it.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/courseBans \
+#     --bind graphs/nazar/bans/courseBans/binding.higher.yaml --to listed --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# The başnazım (SYSTEM_ADMIN, tier 4) places a course ban on Betül through the medrese's route (../decide/bans.mjs up --medaris); the
+# başmüderris (tier 2) reads it as "Medaris yönetimi", gets "Medreseden de yasakla" and the note "Bu yasağı yalnız Medaris yönetimi
+# kaldırabilir." and neither the lift nor the request (the same row nazar.bans.decide walks as `medaris`). Dilek is left to be barred.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.courseBans
+
+scenarios:
+  higher:
+    given: { read: ok, list: higher, roster: some, banAnswer: done, answer: done, after: more }
+    as: basmuderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, ../nazar/bans/decide/bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE, applicantG]
+        expect: '"APPLICANT_E":"ENROLLED"'
+      - run: [node, ../nazar/bans/decide/bans.mjs, up, cbans, --medaris, APPLICANT_E]
+        expect: 'ready: 1 open'
+    teardown:
+      - run: [node, ../nazar/bans/decide/bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+      - run: [node, ../nazar/bans/courseBans/cbans.mjs, forget, cbans]
+        expect: forgot
+    vars:
+      reasonText: Yeniden değerlendirildi
+      talebe: Dilek Başvuran
+      who: APPLICANT_E
+      placeHas: COURSE open
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request
+
+states:
+  escalating: { call: '{nazar}/ders/*/yasaklamalar**' }

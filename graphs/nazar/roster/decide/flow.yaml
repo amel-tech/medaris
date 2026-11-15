@@ -1,0 +1,327 @@
+# Talebeler of a course in nazar-web (/ders/<id>/talebeler), where the course team decides the applications that wait: "Onayla"
+# takes the talebe in at once, "Reddet" asks first. Written from the code of PR #394 (apps/nazar/features/enrolments, the two
+# actions it borrows from the Pano, and the API's GET /courses/:id/enrollments and the two decision routes). It is the twin of
+# nazar.pano.decideApplications (the same two calls, in the same words, from the Pano's list) and shares its context names
+# (`approval`, `mayDecide`, `last`). It says what the code does today:
+#   - the first value of `approval` is the hand-over of tedris.course.apply and tedris.celse.locked: an application that asks for
+#     approval waits here (and in nizam.courses.decideApplications, nizam.home.decideApplications, the Pano).
+#   - the page opens for anyone who holds one of four codes (course.staff_read, enrollment.decide, enrollment.complete,
+#     enrollment.remove), and draws "Onayla", "Reddet" and "Toplu talebe ekle" only for enrollment.decide. So `mayDecide` has three
+#     readers: the one who decides (a müderris, the başmüderris of the medrese, a ders nazırı granted it), the one who reads (a ders
+#     nazırı holding only enrollment.complete or enrollment.remove) and the one the page shuts out (a ders nazırı holding none).
+#     Unlike the Pano, here the başmüderris is never refused: the page asks the API for what she holds, not for her post.
+#   - findings this flow touches (ui.yaml `rules` carries the same ids):
+#       F-D1-05  after Onayla or Reddet the pressed row leaves and the focus with it; the only word is a toast of six seconds
+#       F-D1-20  no try/catch around the two actions: a call that never reaches the server leaves the row busy (not verified)
+#       F-D1-29  the menu offers Talebeler to a ders nazırı who holds no code, and the page then refuses her (also F-L-20)
+#       F-B-13   the refusal keeps the title, the h1 and the subtitle, and draws no heading or link of its own
+#       F-D1-01  a failed read draws a second <h1> under the page's own (not reachable on the stack)
+#       F-D1-04  does not apply to this tab (no search, sort or paging); it belongs to Kayıtlı and Tamamlayanlar
+#       ROSTER-1 (new) the note reads the course's own approval flag, so it can say "Bu ders onay istemiyor" above waiting rows
+#       ROSTER-2 (new) a barred applicant is listed like any other; Onayla is refused and the toast says "try again later"
+#       ROSTER-3 (new) one `busy` for the whole table: a second press while a first call runs lets the first row's mark go
+# E2E carried: course-scope#3 (a1 the title, a3 the tab and its count, a4 the buttons; a2 and a5 in part, see needs.yaml). The
+# Pano's pano#2 and #3 make the same two calls from the Pano and are carried by nazar.pano.decideApplications. Two more checks touch
+# this page and are carried by their own flows: shell#3 (the menu's "Talebeler" number: nazar.shell.scopeAndMenu) and
+# course-nazirs#4 (a ders nazırı with session.manage is refused Talebeler: nazar.access.dersNazirPages).
+schema: delurio-graph/0
+kind: flow
+id: nazar.roster.decide
+status: captured
+domain: medaris.api
+ui: nazar.roster.decide
+title: Decide a waiting application on the course's Talebeler
+summary: >-
+  The course team opens Talebeler (Başvurular is the first tab): a note says what approving and rejecting mean, the tab and the
+  menu carry the number of applications that wait, and the table lists them newest first with the talebe's name, e-mail and the
+  day. Where the person holds enrollment.decide, each row has "Onayla" and "Reddet": "Onayla" takes the talebe in at once, "Reddet"
+  asks first in an alertdialog that takes no reason. A toast says what happened, the row leaves, the tab's count drops and the
+  menu's number follows after the page is read again. An application someone else settled meanwhile leaves the list with a notice,
+  not an error. A person who holds another enrollment code reads the same list with no buttons; one who holds none meets "Bu sayfaya
+  izniniz yok". The pressed button leaves with its row and the focus with it (F-D1-05).
+
+scope:
+  shows: >-
+    the Başvurular tab of one course's Talebeler: the header, the note, the tabs and their counts, the table with Onayla and Reddet,
+    the reject confirmation, the toasts, the empty table, the refusal and the retry state, and the menu's number
+  world: open
+  outOfView:
+    - "the three other tabs and what they do: Kayıtlı, Tamamlayanlar (search, sort, 'Tamamladı say', 'Yeniden aç') and Erişimi kaldırılanlar: nazar.roster.complete, nazar.roster.remove"
+    - "'Toplu talebe ekle' and its dialog (it is drawn here, only its button): nazar.roster.bulkAdd"
+    - "the same decision from the medrese's Pano and from the köşk: nazar.pano.decideApplications, nizam.courses.decideApplications, nizam.home.decideApplications"
+    - "the talebe applying and being told: tedris.course.apply, tedris.celse.locked, tedris notifications"
+    - "what a ders nazırı sees by what they hold, page by page: nazar.access.dersNazirPages (here only the two readings of Talebeler: reads, and is shut out)"
+    - "a course the person cannot open (the layout answers /erisim-yok or the 404 page before this page reads anything)"
+    - "a passive course (no müderris seated): enrollment.decide is a content code and is stripped from everyone but the köşk's nazım and the Medaris management (libs/common/src/authz/effective-permissions.ts:337-367), while course.staff_read, derived before the strip, stays; the reader is then `mayNot` by the page's own rules, with no word saying why (from the code, not verified)"
+    - "a session that ended under the page (a 401 sends the person to sign in again) and the page when the course read alone fails (no note, the name from the portal's scope)"
+    - "kontenjan: the code gives a seat with no count and no gender rule; needs.yaml carries it as missing (MDRS-284)"
+
+decisions:
+  D1:
+    question: >-
+      Should course staff see the talebe list and the talebe's e-mail by default, or only by permission (MDRS-203, P-18)? Today the
+      page opens for anyone who holds one of four codes, and every row shows the e-mail; a ders nazırı with no code is refused, and
+      the menu still offers her the page (F-D1-29).
+    recommend: >-
+      Decide before building. Either way the menu entry should follow the same rule as the page, and a person who may read the rows
+      should not be shown a count of applications she cannot open.
+    affects: [forbidden, listed]
+  D2:
+    question: >-
+      Should a rejection carry a reason? rejectEnrollment takes an optional one of up to 500 characters and puts it in the talebe's
+      notice and the audit row; the dialog says "Ret için gerekçe alınmaz", so the talebe is never told why. The same question is
+      the Pano's D2.
+    recommend: >-
+      Leave it until the owner decides; if it is wanted, one optional text field in the dialog is enough, the API is ready.
+    affects: [confirmReject]
+
+context:
+  approval:
+    values: [needed, none]
+    initial: any
+    say:
+      needed: "the course asks for approval and an application waits for a decision"
+      none: "no application waits"
+  mayDecide:
+    values: [may, mayNot, shutOut]
+    initial: any
+    say:
+      may: "she holds enrollment.decide in the course (a müderris of it, the başmüderris of its medrese, or a ders nazırı who was granted it): the rows have Onayla and Reddet"
+      mayNot: "the page opens for her (she holds enrollment.complete or enrollment.remove, which bring course.staff_read) but she does not hold enrollment.decide: the rows have no button"
+      shutOut: "she holds none of the four codes the page asks for: the page says Bu sayfaya izniniz yok"
+  note:
+    values: [asks, open]
+    initial: any
+    say:
+      asks: "the course's own approval flag is on: the note says the course needs approval"
+      open: "the course's own approval flag is off: the note says it needs none, whatever else makes an application wait (ROSTER-1)"
+  row:
+    values: [waiting, gone, barred]
+    initial: waiting
+    say:
+      waiting: "the newest waiting application is still waiting on the server, as the page shows it"
+      gone: "someone settled it behind the page's back (a colleague rejected it, or the talebe took it back): the page still draws it"
+      barred: "a ban was placed on its talebe: the page still draws it like any other (ROSTER-2)"
+  last:
+    values: [nothing, approved, rejected, gone, refused, failed]
+    initial: nothing
+    say:
+      nothing: "no decision has been made in this visit, or its toast is gone"
+      approved: "a decision just approved an application"
+      rejected: "a decision just rejected one"
+      gone: "the application was not waiting any more (it had been decided, or withdrawn)"
+      refused: "the API refused the decision for lack of permission"
+      failed: "the API refused it for another reason (a ban, a course that is gone), or failed"
+
+guards:
+  isShutOut: "mayDecide == 'shutOut'"
+  holdsDecide: "mayDecide == 'may'"
+  nobodyWaits: "approval == 'none'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  settledElsewhere: { set: { row: gone } }
+  banPlaced: { set: { row: barred } }
+  approved: { set: { last: approved, row: waiting }, havoc: [approval] } # other applications may still wait, or this was the last
+  rejected: { set: { last: rejected, row: waiting }, havoc: [approval] }
+  gone: { set: { last: gone, row: waiting }, havoc: [approval] }
+  refused: { set: { last: refused } }
+  failed: { set: { last: failed } }
+
+failures:
+  opened:
+    from: listCourseEnrollments
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+    failed: [INTERNAL_ERROR]
+  approving:
+    from: approveEnrollment
+    gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    barred: [BAN_ACTIVE]
+    other: [COURSE_NOT_FOUND]
+  rejecting:
+    from: rejectEnrollment
+    gone: [ENROLLMENT_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND]
+
+# The story the page tells first: a müderris of a course that asks for approval approves the newest waiting application and, after
+# the confirmation, rejects the next; one more still waits.
+main:
+  given: { approval: needed, mayDecide: may, note: asks }
+  events: [DONE, APPROVE, DONE, REJECT, CONFIRM_REJECT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The Talebeler page is read
+    description: >-
+      The page reads four things on the server, behind a skeleton (loading.tsx): what the caller holds in the course
+      (GET /courses/:id/my-permissions), the course itself (GET /courses/:id: its title and its own requiresApproval, for the
+      note), and, only when the caller holds one of the four codes, the roster (GET /courses/:id/enrollments) and the removed list
+      (GET /courses/:id/enrollments/removed). The flow invokes the roster read, whose refusal is the one the gate gives without
+      asking: a caller who holds none of the codes is "forbidden" and the roster is never read (F-D1-29). A 404 on any read is the
+      404 page; any other failure (a 500, a permissions read that failed) draws "Talebeler okunamadı" with a retry (loadFailed); a
+      401 sends the person to sign in again (not drawn).
+    invoke: { action: listCourseEnrollments }
+    on:
+      DONE:
+        - { guard: "mayDecide != 'shutOut' and approval == 'none'", target: empty }
+        - { guard: "mayDecide != 'shutOut'", target: listed }
+      FAIL.forbidden: { guard: isShutOut, target: forbidden, source: apps/nazar/features/account/course-permissions.ts:86 }
+      FAIL.missing: not_found
+      FAIL.failed: loadFailed
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:44
+
+  forbidden:
+    title: The page refuses the person
+    description: >-
+      The header stays (the title, the subtitle) and a neutral alert says "Bu sayfaya izniniz yok" under it, with no table, no tabs
+      and no button and no heading or link of its own (F-B-13). The menu still lists "Talebeler" for her, with no number: the entry
+      carries no `requires` (F-D1-29). The whole story of what a ders nazırı sees by what they hold is nazar.access.dersNazirPages.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:85
+
+  loadFailed:
+    title: The page could not be read
+    description: >-
+      "Talebeler okunamadı" with its sentence and "Yeniden dene", a section inside the shell. It is drawn under the page's own
+      <h1>, so the page has two <h1> while a read has failed (F-D1-01). Pressing "Yeniden dene" reads the page again
+      (router.refresh). Not reachable on the local stack: nothing makes tedrisat fail a read.
+    by: human
+    on:
+      RETRY: { target: opened, say: "they press Yeniden dene" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/shell/components/load-failed.tsx:28
+
+  listed:
+    title: The waiting applications are listed
+    description: >-
+      The page: the header, the note (the course's own approval flag: "Bu derse kayıt için onayınız gerekiyor..." or "Bu ders onay
+      istemiyor..."), the four tabs with the counts of their lists (Başvurular first and selected), the table "Onay bekleyen
+      başvurular" newest first (name, e-mail, the day), and the menu's "Talebeler" with the number of waiting applications.
+      Each row has "Onayla" and "Reddet" where `mayDecide` is `may`, and none where it is `mayNot`; "Toplu talebe ekle" follows
+      the same rule. Findings read here: ROSTER-1 (the note says "Bu ders onay istemiyor" above waiting rows when only the course's
+      own flag is off, though the köşk's privacy, the köşk's or the platform's always-approve policy or the medrese's policy made
+      them wait; the API's rule is in course.service.ts:1544-1560, the page reads one flag), ROSTER-2 (a barred talebe's row has the
+      same buttons; the roster read carries their ban and the page ignores it), ROSTER-3 (one `busy` value serves the table, so a
+      second press while a first call runs takes the first row's busy mark away), F-D1-05 (after a decision the pressed button
+      is gone and the focus with it), F-D1-20 (a call that fails outright, such as a dropped network, is not caught: no toast and
+      the button stays busy; not verified). A toast of the last decision stands in the page for a few seconds (`last`).
+      `SETTLED_ELSEWHERE` and `BAN_PLACED` are what happens to the newest row on the server behind the page: the page does not
+      know until the person presses.
+    by: human
+    goal: true
+    on:
+      APPROVE: { guard: holdsDecide, target: approving, effect: [clearNote], say: "they press Onayla on a row", source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:161 }
+      REJECT: { guard: holdsDecide, target: confirmReject, effect: [clearNote], say: "they press Reddet on a row", source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:174 }
+      SETTLED_ELSEWHERE: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [settledElsewhere], say: "a colleague rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1686 }
+      BAN_PLACED: { guard: "mayDecide == 'may' and row == 'waiting'", target: listed, effect: [banPlaced], say: "the newest application's talebe is barred from the course while this page stays open", source: apps/tedrisat/src/ban/ban.service.ts:616 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:207
+
+  empty:
+    title: Nothing waits
+    description: >-
+      The table says "Onay bekleyen başvuru yok" in its one cell, the tab's count reads 0 and the menu's "Talebeler" has no
+      number. Nothing announces the change when the last row has just left (F-D1-05); the toast of the decision may still be up.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:249
+
+  confirmReject:
+    title: Reddet asks once
+    description: >-
+      An alertdialog, "Başvuru reddedilsin mi?", names the talebe and the course and says "Ret için gerekçe alınmaz." Focus starts
+      on "Vazgeç"; the scrim does not close it. The API would take a reason of up to 500 characters and put it in the talebe's
+      notice (rejectEnrollment's optional body); the page never offers one (decision D2). Cancelling or closing it unmounts it
+      and hands the focus back to the row's button (Base UI; not verified).
+    by: human
+    on:
+      CONFIRM_REJECT: { target: rejecting, say: "they press Reddet in the dialog" }
+      CANCEL: { target: listed, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: listed, say: "they press the close icon" }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:277
+
+  approving:
+    title: The approval is on its way
+    description: >-
+      approveApplication (the Pano's action) calls POST /courses/:id/enrollments/:userId/approve with no body and the API answers
+      201; the talebe is told and the calendar invitations are sent. On the row the button is busy ("Yükleniyor" to a reader of the
+      screen) and its twin is off; the other rows stay live (ROSTER-3). A success removes the row at once and reads the page again.
+      An ENROLLMENT_NOT_FOUND or ENROLLMENT_STATE_CONFLICT (the row is gone, or it is COMPLETED) removes the row too, with an info
+      toast; every other refusal leaves the row, with an error toast. A row someone else already approved is not an error: the API
+      answers 201 again, says nothing to the talebe, and this page says "Başvuru onaylandı". A barred talebe is refused with
+      BAN_ACTIVE and the toast says "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." (ROSTER-2).
+    invoke: { action: approveEnrollment }
+    on:
+      DONE: { guard: "row == 'waiting'", target: settled, effect: [approved], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:82 }
+      FAIL.gone: { guard: "row == 'gone'", target: settled, effect: [gone], source: apps/nazar/features/pano/pano.ts:278 }
+      FAIL.barred: { guard: "row == 'barred'", target: listed, effect: [failed], source: apps/nazar/features/pano/pano.ts:265 }
+      FAIL.forbidden: { target: listed, effect: [refused], source: apps/nazar/features/pano/pano.ts:270 }
+      FAIL.other: { target: listed, effect: [failed], source: apps/nazar/features/pano/pano.ts:272 }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:77
+
+  rejecting:
+    title: The rejection is on its way
+    description: >-
+      The dialog is already closed (it closes before the call); the row's "Reddet" is busy and "Onayla" is off. rejectApplication
+      calls DELETE /courses/:id/enrollments/:userId with no body: the waiting row is deleted, so the talebe may apply again, and is
+      told. The same refusals as an approval, with ENROLLMENT_NOT_FOUND as the one that means "gone" (an approved or withdrawn row
+      is not a waiting application). A ban does not stop a rejection.
+    invoke: { action: rejectEnrollment }
+    on:
+      DONE: { guard: "row != 'gone'", target: settled, effect: [rejected], source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:82 }
+      FAIL.gone: { guard: "row == 'gone'", target: settled, effect: [gone], source: apps/nazar/features/pano/pano.ts:278 }
+      FAIL.forbidden: { target: listed, effect: [refused], source: apps/nazar/features/pano/pano.ts:270 }
+      FAIL.other: { target: listed, effect: [failed], source: apps/nazar/features/pano/pano.ts:272 }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:286
+
+  settled:
+    title: The list follows the decision
+    description: >-
+      The row is taken off the list by the page itself (the `decided` set) and the server components are read again
+      (router.refresh), which recounts the menu's number; the tab's count drops with the row at once. The list is then the table or
+      its empty line. No code moves the focus, and the pressed button is gone (F-D1-05).
+    always:
+      - { guard: nobodyWaits, target: empty }
+      - { target: listed }
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:103
+
+  not_found:
+    title: The course is not there
+    description: "A 404 on any read of the page is Next's not-found page (lib/tedrisat-read.ts:46)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-those-who-may-decide-decide
+    never: "state in ['confirmReject', 'approving', 'rejecting'] and mayDecide != 'may'"
+    say: A row is decided only by someone who holds enrollment.decide; the buttons are not drawn for anyone else.
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:190
+  - id: shut-out-sees-no-rows
+    never: "state in ['listed', 'empty', 'approving', 'rejecting', 'confirmReject'] and mayDecide == 'shutOut'"
+    say: A person who holds none of the page's codes meets the refusal, never the list.
+    source: apps/nazar/features/enrolments/components/enrolments-page.tsx:85
+  - id: refusal-only-when-shut-out
+    never: "state == 'forbidden' and mayDecide != 'shutOut'"
+    say: The refusal is the page's gate; a person who holds a code is never shown it.
+    source: apps/nazar/features/account/course-permissions.ts:94
+  - id: empty-means-nothing-waits
+    never: "state == 'empty' and approval == 'needed'"
+    say: The empty line shows only when nothing waits.
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:249
+  - id: rows-mean-something-waits
+    never: "state == 'listed' and approval == 'none'"
+    say: The list is drawn only while an application waits.
+    source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:244

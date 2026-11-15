@@ -1,0 +1,150 @@
+# What must exist for the staff of a course to open a deck and fill it with cards: the flow's product list (LAYOUT.md section 7). Each need is
+# what the product must do, from the flow's story, its decisions and the findings of the pages, not from what the pages do today; the known gaps
+# go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet. No e2e check of nazar-web
+# touches Ders desteleri, and no replay has been run, so no `walked` entry names one: the unit spec apps/nazar/test/decks.spec.ts, which pins the
+# page's rules (the title and the faces, the paste, the body of a create), is listed as `test:`, not as e2e or replay.
+#
+# missing (no code, Linear key `none`): staff-change-every-card-of-a-course-deck, a-refusal-says-why, a-saved-edit-says-so,
+#   writes-are-announced, required-fields-are-said, cards-have-names, a-failed-call-is-told, the-dialog-starts-in-the-title,
+#   a-deck-page-is-told-by-its-title
+# unwalked (code, no e2e and no replay yet): see-the-decks-of-the-course, open-a-deck, fill-a-deck-with-the-keyboard, paste-a-batch,
+#   edit-a-card-in-place, delete-a-card-after-asking, the-talebe-see-the-published-deck
+kind: needs
+flow: nazar.decks.openAndFill
+status: proposed
+
+needs:
+  - id: see-the-decks-of-the-course
+    need: >-
+      Whoever holds deck.manage_course in a course sees the course's decks, drafts included, each with its size, its type, its week, whether
+      the talebe see it yet and how much of it they have mastered, and the totals above them; a course with no deck says so and says how to
+      begin.
+    drawn: [emptyList, deckList, listSummary, emptyTitle, emptyBody, deckCard, importButton, newButton]
+    built:
+      - action: medaris.api:listCourseDecksForStaff
+      - route: apps/nazar/features/decks/components/decks-page.tsx:30
+    walked:
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: open-a-deck
+    need: >-
+      The same person opens a deck of the course from the list: a title of 5 to 100 characters, an optional description, a card type, an
+      optional week and whether it is a draft; the deck exists at once, the person is told, and lands on its page. A title that is not
+      acceptable is refused before anything is sent.
+    drawn: [newDeck, newDeckProblem, creating, titleField, draftBox, newDeckSubmit, toastCreated, deck, deckPublished, deckDraftLine]
+    built:
+      - action: medaris.api:createCourseDeck
+      - route: apps/nazar/features/decks/components/deck-form-dialog.tsx:74
+    walked:
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: fill-a-deck-with-the-keyboard
+    need: >-
+      Cards go in one after the other with the keyboard alone: both faces typed, Enter, the boxes empty and the focus back on the first, and a
+      line says the card is added; a blank card is refused and the line says so. The cards are on the page as soon as they are added.
+    drawn: [deck, faceProblem, addingCard, cardAdded, addFront, addBack, lineAdded, lineRequired, cardsHeading, tileFront, tileBack]
+    built:
+      - action: medaris.api:createCards
+      - route: apps/nazar/features/decks/components/card-quick-add.tsx:65
+    walked:
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: paste-a-batch
+    need: >-
+      Two columns copied from a spreadsheet become cards in one press; the lines that are no card are named by their number so that the person
+      can correct them, and a paste with no usable line adds nothing and says so. All the cards of a batch are added or none.
+    drawn: [batchReady, batchEmpty, addingBatch, batchAdded, batchFailed, batchSummary, batchNone, batchAddAll, batchDrop, lineBatchAdded]
+    built:
+      - action: medaris.api:createCards
+      - route: apps/nazar/features/decks/components/card-quick-add.tsx:87
+    walked:
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: edit-a-card-in-place
+    need: >-
+      A card is changed where it stands: its two faces open as a form, Enter or "Kaydet" stores them, Escape or "Vazgeç" leaves them as they
+      were, and a face that is not acceptable is refused in the form.
+    drawn: [editing, savingCard, editForm, editFront, editBack, editSave, editCancel]
+    built:
+      - action: medaris.api:updateCard
+      - route: apps/nazar/features/decks/components/card-tile.tsx:46
+    walked:
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: delete-a-card-after-asking
+    need: >-
+      A card is deleted only after the person is asked once, in words that say what happens, and the deck's page and its count follow at
+      once; the person is told it is gone.
+    drawn: [confirmRemove, removing, removeDialog, removeBody, removeConfirm, toastRemoved]
+    built:
+      - action: medaris.api:deleteCard
+      - route: apps/nazar/features/decks/components/deck-detail-screen.tsx:45
+    walked:
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: staff-change-every-card-of-a-course-deck
+    need: >-
+      Whoever holds deck.manage_course in a course can read, add, edit and delete the cards of every deck of the course, whoever opened the
+      deck; today the deck routes allow it and the card routes answer 404 to anyone but the deck's author (OPENFILL-1).
+    drawn: [savingCard, editFailed, removing, removeFailed]
+    missing: none # no issue: the domain's course-deck-staff-card-routes-404 (apps/tedrisat/src/flashcard/flashcard.service.ts:86)
+
+  - id: a-refusal-says-why
+    need: >-
+      A card edit or delete the API refuses says why and what can be done about it, in place of "Tekrar deneyin" for a refusal that trying again
+      never changes (OPENFILL-1, decision D1).
+    drawn: [editLine, removeLine, editFailed, removeFailed]
+    missing: none
+
+  - id: a-saved-edit-says-so
+    need: >-
+      A card edit that was stored says so, and the focus goes somewhere a keyboard user can use (OPENFILL-5, decision D2).
+    drawn: [deck]
+    missing: none
+
+  - id: writes-are-announced
+    need: >-
+      Every outcome of a write on these two pages is announced to a screen-reader user: an error as an alert, a saved edit and a delete as a
+      status, and after a save, a cancel or a delete the focus does not fall to the document (F-D1-11, F-D1-16).
+    drawn: [titleError, editLine, removeLine, newDeckAlert, lineAdded]
+    missing: none
+
+  - id: required-fields-are-said
+    need: >-
+      A screen reader is told which fields of the "Deste aç" dialog are required (F-D1-03).
+    drawn: [titleField, cardTypeField]
+    missing: none
+
+  - id: cards-have-names
+    need: >-
+      Each card's buttons say which card they act on, and the two boxes of the "Kart ekle" row have a visible label (F-D1-25, F-D1-26).
+    drawn: [editCard, removeCard, addFront, addBack]
+    missing: none
+
+  - id: a-failed-call-is-told
+    need: >-
+      When a write cannot reach the server at all, its button stops being busy and the person is told to try again (F-D1-20).
+    drawn: [creating, addingCard, addingBatch, savingCard, removing]
+    missing: none
+
+  - id: the-dialog-starts-in-the-title
+    need: >-
+      The "Deste aç" dialog puts the focus on its first field when it opens (OPENFILL-2).
+    drawn: [newDeckDialog, titleField]
+    missing: none
+
+  - id: a-deck-page-is-told-by-its-title
+    need: >-
+      The document's title of a deck's page names the deck, and the language of the deck's title is not marked with a value that is no
+      language tag (OPENFILL-4, F-D1-14).
+    drawn: [deckHeading]
+    missing: none
+
+  - id: the-talebe-see-the-published-deck
+    need: >-
+      A deck that is not a draft shows at once to the talebe enrolled in the course, and a draft does not (the page says which: "Yayında ·
+      talebe görünür", "Taslak · talebe görünmez"). The talebe's side is tedris.course.deckTab.
+    drawn: [draftBox, deckPublished, deckDraftLine, draftHelp]
+    built:
+      - action: medaris.api:createCourseDeck
+      - route: apps/nazar/features/decks/components/deck-detail-page.tsx:86

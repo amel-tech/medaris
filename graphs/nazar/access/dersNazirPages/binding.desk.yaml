@@ -1,0 +1,39 @@
+# nazar.access.dersNazirPages, the ders nazırı who reads Talebeler, Ödevler, Ders destesi and Arşiv: `applicantD` appointed with enrollment.decide, submission.read,
+# deck.manage_course, week.hide and ban.course. The menu gains Ödevler and Ders destesi (MDRS-290), Müfredat opens read-only (week.hide), and Yasaklamalar refuses
+# her all the same: ban.course opens nothing there (F-D2c-3). The hoca leaves (HOCA_LEAVES): enrollment.decide, submission.read and week.hide are content codes and close, so
+# Talebeler, Ödevler, Arşiv and Müfredat refuse and the Ödevler entry goes; deck.manage_course is not one, so Ders destesi stays. No e2e covers this grant set: the page
+# of each code is walked from the code alone.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/binding.desk.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.dersNazirPages
+
+events:
+  # Someone else's act (the hoca leaves, MDRS-136), and the person opens the page again. No route takes the last müderris out (unseat-hoca.mjs
+  # refuses), so the post is revoked in the database, as e2e course-nazirs#14 and questions#3 do (makePassive); `teardown` puts it back.
+  HOCA_LEAVES:
+    - run: [node, helpers/sql.mjs, "update role_assignments set revoked_at = now(), revoked_by = granted_by where role = 'MUDERRIS' and scope_id = '{dnp.course}' and revoked_at is null"]
+      expect: '"rows":1'
+    - reload: true
+
+scenarios:
+  desk:
+    given: { held: desk }
+    as: applicantD
+    open: '{nazar}/ders/{dnp.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, dnp, --weeks, '2', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, applicantE]
+        expect: '"tag":"dnp"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'enrollment.decide,submission.read,deck.manage_course,week.hide,ban.course']
+        expect: 'course-nazir-grants APPLICANT_D'
+    teardown:
+      - run: [node, helpers/sql.mjs, "update role_assignments set revoked_at = null, revoked_by = null where role = 'MUDERRIS' and scope_id = '{dnp.course}' and revoked_at is not null"]
+      - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, clear, '{dnp.course}']
+      - run: [node, helpers/course.mjs, remove, dnp]
+        expect: course remove dnp
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

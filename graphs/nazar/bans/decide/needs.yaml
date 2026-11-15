@@ -1,0 +1,149 @@
+# What must exist for the başmüderris of a medrese to decide on an open ban from Yasaklamalar (lift it, widen it to the medrese, ask
+# Medaris to make it permanent): the flow's product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's
+# story and the planned work in the inventory (planned.md P-01, P-03), not from what the page does today. The known gaps go to
+# graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+#
+# Gaps of this file, for that merge:
+#   missing:   a-permanent-request-is-answered (MDRS-140), bans-reach-the-people-above (MDRS-113),
+#              widen-refuses-a-person-who-runs-the-course (finding ban-staff-check-gaps, no issue),
+#              a-hoca-is-not-named-over-an-open-ban (same finding, no issue),
+#              an-empty-reason-is-told (F-B-6, no issue), the-focus-follows-a-decision (F-B-9, no issue),
+#              a-busy-dialog-can-be-left-or-says-it-cannot (BANDEC-1, no issue)
+#   unwalked:  every-moved-code-is-told (four of the five codes: BAN_NOT_FOUND, BAN_NOT_ESCALATABLE, BAN_PERMANENT_REQUEST_EXISTS,
+#              BAN_PERMANENT_REQUEST_INVALID; BAN_ALREADY_LIFTED is walked by `alreadyLifted`)
+# Gender separation is given and does not touch this flow: no seat is decided here.
+kind: needs
+flow: nazar.bans.decide
+status: proposed
+
+needs:
+  - id: lift-with-a-reason
+    need: >-
+      The başmüderris lifts an open ban of her medrese with a reason. The ban moves to Kaldırılan with her name and the reason, the
+      person's access comes back, and only the kademe that placed the ban, or a higher one, may do it.
+    drawn: [listed, liftButton, liftDialog, form, formReady, lifting, toastLifted, settled, tabActiveCount, tabLiftedCount]
+    built:
+      - action: medaris.api:liftBan
+      - route: apps/nazar/features/bans/components/reason-dialog.tsx:70
+    walked:
+      - e2e: apps/nazar/e2e/bans.e2e.ts
+        check: 'bans#5'
+      - replay: decides
+      - replay: wide
+
+  - id: widen-to-the-medrese
+    need: >-
+      She widens an open course ban to the whole medrese with a reason of its own: a second, medrese-wide ban is made and the course
+      ban stays; the person cannot reach or apply to any course of the medrese; a person already barred from the medrese gets that ban
+      back, and the row of the widened ban no longer offers the widening.
+    drawn: [listed, widenButton, escalateDialog, form, formReady, escalating, toastWidened, settled, a-medrese-wide-ban-is-not-widened]
+    built:
+      - action: medaris.api:escalateBan
+      - route: apps/nazar/features/bans/components/reason-dialog.tsx:70
+    walked:
+      - e2e: apps/nazar/e2e/bans.e2e.ts
+        check: 'bans#4'
+      - replay: decides
+      - replay: medaris
+
+  - id: a-row-offers-what-its-kademe-reaches
+    need: >-
+      A row offers only the decisions the caller's kademe reaches: the lift where hers reaches the ban's, the widening on an open
+      course ban whose person is not barred from the medrese yet, the request on an open ban placed below Medaris with no request
+      yet; and a ban she cannot lift says who can ("yalnız Medaris yönetimi", "yalnız onu koyan kademe ya da üstü").
+    drawn: [listed, mayLift, mayWiden, mayRequest, liftButton, widenButton, requestButton, rowNote, bannedByAdmin, a-dialog-is-opened-for-what-the-row-offers, a-ban-medaris-placed-is-not-lifted-here]
+    built:
+      - action: medaris.api:listMadrasahBans
+      - route: apps/nazar/features/bans/bans.ts:127
+    walked:
+      - e2e: apps/nazar/e2e/bans.e2e.ts
+        check: 'bans#2'
+      - replay: medaris
+      - replay: wide
+
+  - id: ask-medaris-for-a-permanent-ban
+    need: >-
+      She asks Medaris administration to make a ban permanent, with a reason: one request per ban, the ban stands as it was meanwhile,
+      the row says a request is waiting and offers no second one.
+    drawn: [listed, requestButton, permanentDialog, form, formReady, requesting, toastRequested, permanentBadge, settled]
+    built:
+      - action: medaris.api:requestPermanentBan
+      - route: apps/nazar/features/bans/components/reason-dialog.tsx:70
+    walked:
+      - e2e: apps/nazar/e2e/bans.e2e.ts
+        check: 'bans#6'
+      - replay: decides
+
+  - id: a-permanent-request-is-answered
+    need: >-
+      Medaris administration is told of the request, reads the ban, who placed it and why, and accepts it (the account is disabled in
+      Keycloak, MDRS-197) or rejects it with a note; the başmüderris sees the answer on the row. Until then the page does not say the
+      request was passed on.
+    drawn: [requesting, toastRequested, permanentBody, permanentBadge]
+    missing: MDRS-140
+
+  - id: bans-reach-the-people-above
+    need: >-
+      Every ban, at course, köşk, medrese or platform level, is shown to the people above its level when it is placed (the köşk nazım,
+      Medaris administration), always with its reason (P-01). A medrese-wide ban placed or widened here reaches the köşk nazımları and
+      the Medaris nazımları too; today only a course ban and a köşk ban announce themselves (createMadrasahBan and escalateBan notify
+      no one).
+    drawn: [listed, escalating]
+    missing: MDRS-113
+
+  - id: every-moved-code-is-told
+    need: >-
+      When the ban was decided by someone else meanwhile (lifted, gone, cannot be widened, already asked for), the person is told the
+      list has moved, the dialog closes and the list is read again; none of the five codes is drawn as an error to retry.
+    drawn: [lifting, escalating, requesting, toastMoved, settled]
+    built:
+      - route: apps/nazar/features/bans/bans.ts:373
+      - route: apps/nazar/features/bans/components/reason-dialog.tsx:87
+
+  - id: a-ban-already-lifted-is-told
+    need: >-
+      A lift, a widening or a request on a ban someone lifted first is told in words ("Bu yasak zaten kaldırılmış; liste yenilendi.")
+      and changes nothing.
+    drawn: [lifting, escalating, requesting, toastMoved, settled]
+    built:
+      - action: medaris.api:liftBan
+      - action: medaris.api:escalateBan
+      - action: medaris.api:requestPermanentBan
+    walked:
+      - replay: alreadyLifted
+
+  - id: widen-refuses-a-person-who-runs-the-course
+    need: >-
+      A ban cannot be widened, to the köşk or to the medrese, over a person who runs the course or the medrese (müderris, ders nazırı,
+      medrese nazırı, başmüderris, köşk nazımı, Medaris nazımı, the başnazım), as it cannot be placed over them; a refusal is
+      BAN_TARGET_INVALID and the page words it already.
+    drawn: [escalating, widenButton, toastWidened]
+    missing: none # finding ban-staff-check-gaps: escalateBan and extendBan never read the person's roles (ban.service.ts:515, :270)
+
+  - id: a-hoca-is-not-named-over-an-open-ban
+    need: >-
+      A person an open ban bars from a course or a medrese is not named hoca, başmüderris, köşk nazım or Medaris nazım of it until the
+      ban is lifted, as a ders nazırı and a medrese nazır are refused while barred (COURSE_NAZIR_BARRED, MADRASAH_NAZIR_BARRED);
+      otherwise the ban can later be widened over a person who runs the course.
+    drawn: [listed, escalating]
+    missing: none # finding ban-staff-check-gaps: the müderris, başmüderris and nazım routes look at no ban
+
+  - id: an-empty-reason-is-told
+    need: >-
+      The reason is required, and a person who tries to send it empty is told so where they are, in a way a screen reader announces
+      and with the focus on the field (F-B-6); today the submit is simply off and the message appears silently after the field is left.
+    drawn: [form, reasonRequired, liftSubmit]
+    missing: none
+
+  - id: the-focus-follows-a-decision
+    need: >-
+      After a decision the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the next row's
+      button) and a line on the page, not only a toast, says what was decided and what the counts are now (F-B-9, F-B-4).
+    drawn: [listed, toastLifted, toastWidened, toastRequested, tabActiveCount]
+    missing: none
+
+  - id: a-busy-dialog-can-be-left-or-says-it-cannot
+    need: >-
+      While a decision is on its way, Vazgeç, the close icon and Esc are off, or the dialog says it cannot be closed yet (BANDEC-1).
+    drawn: [lifting, escalating, requesting, busy]
+    missing: none

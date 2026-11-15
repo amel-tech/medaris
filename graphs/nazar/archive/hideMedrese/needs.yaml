@@ -1,0 +1,136 @@
+# What must exist for the başmüderris of a medrese to hide it as a whole and bring it back: the flow's product list (LAYOUT.md section 7).
+# Each need is what the product must do, from the flow's story and the decisions of the flow, not from what the page does today; the known
+# gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+#
+# The replay scenarios `hides` and `lockedByAdmin` are written and have NOT been run, so no need names a replay as walked.
+#
+# missing (no code):  focus-follows-the-hiding (F-A-2, F-A-3), restore-button-says-what-it-shows (HIDEMED-1), already-hidden-has-its-own-title
+#                     (HIDEMED-2), no-dead-controls-while-hiding (HIDEMED-3), a-failed-call-is-told (F-A-10), a-hidden-medrese-says-why-a-course-stays
+#                     (decision D1)
+# unwalked (code, no e2e and no replay passed yet): only-the-head-is-offered-it, the-kademe-rule-is-told, a-race-is-told-honestly
+kind: needs
+flow: nazar.archive.hideMedrese
+status: proposed
+
+needs:
+  - id: hide-the-medrese-after-one-question
+    need: >-
+      The başmüderris can take her whole medrese out of service in one step, after one question that says what follows: the medrese and every
+      course shown in it go out of every list and out of search at one instant, only she and Medaris yönetimi open its pages, nothing is
+      deleted, and the question says who brings it back and that the courses of the Arşiv wait until then.
+    drawn: [shownMedrese, confirmHide, hiding, hidden, hideButton, hideDialog, dialogBody, toastHidden]
+    built:
+      - action: medaris.api:hideMadrasah
+      - route: apps/nazar/features/archive/components/hide-madrasah.tsx:46
+    walked:
+      - e2e: apps/nazar/e2e/archive.e2e.ts
+        check: 'archive#7'
+      - test: apps/nazar/test/archive-page.spec.tsx
+
+  - id: a-hidden-medrese-says-so
+    need: >-
+      The page of a hidden medrese says that it is hidden, who may open it, and that its courses come back with it, and it offers the way back to
+      whoever may take it; the list under it holds the courses that went with it.
+    drawn: [hidden, hiddenAlert, restoreMedrese, rowRestore, archiveTable]
+    built:
+      - action: medaris.api:listMadrasahArchive
+      - route: apps/nazar/features/archive/components/archive-page.tsx:86
+    walked:
+      - e2e: apps/nazar/e2e/archive.e2e.ts
+        check: 'archive#7'
+      - test: apps/nazar/test/archive-page.spec.tsx
+
+  - id: a-course-does-not-come-back-alone
+    need: >-
+      While the medrese is hidden no course of it is brought back one by one; the refusal says that the medrese is the reason and who brings it
+      back.
+    drawn: [restoringCourse, toastParentHidden, rowRestore]
+    built:
+      - action: medaris.api:restoreArchiveItem
+      - route: apps/nazar/features/archive/components/archive-list.tsx:61
+    walked:
+      - e2e: apps/nazar/e2e/archive.e2e.ts
+        check: 'archive#7'
+      - test: apps/nazar/test/archive-page.spec.tsx
+
+  - id: a-hidden-medrese-says-why-a-course-stays
+    need: >-
+      A row of a hidden medrese says in place of its button that the medrese must come back first, so that no press is certain to fail (decision
+      D1).
+    drawn: [hidden, rowRestore]
+    missing: none
+
+  - id: bring-the-medrese-back-with-its-courses
+    need: >-
+      The level that hid the medrese, or one above, brings it back in one step; the courses hidden with it return with it, and a course hidden
+      earlier on its own stays hidden.
+    drawn: [restoring, shownMedrese, restoreMedrese, toastRestored]
+    built:
+      - action: medaris.api:restoreMadrasah
+      - route: apps/nazar/features/archive/components/restore-madrasah.tsx:40
+    walked:
+      - e2e: apps/nazar/e2e/archive.e2e.ts
+        check: 'archive#7'
+      - test: apps/nazar/test/archive-page.spec.tsx
+
+  - id: the-kademe-rule-is-told
+    need: >-
+      A medrese Medaris yönetimi hid is not hers to bring back: the banner and every row say who hid it and give a sentence in place of the
+      button, and the button is never drawn to a level that cannot use it.
+    drawn: [lockedHidden, lockedBannerNote, lockedRowNote]
+    built:
+      - route: apps/nazar/features/archive/archive.ts:179
+    walked:
+      - test: apps/nazar/test/archive-page.spec.tsx
+
+  - id: only-the-head-is-offered-it
+    need: >-
+      "Medreseyi gizle" is offered to the başmüderris (and to Medaris yönetimi) alone; a nazır, whom the API refuses it (madrasah.hide is no
+      grant), meets the list and no such section.
+    drawn: [shownMedrese, hideRegion]
+    built:
+      - route: apps/nazar/features/archive/components/archive-page.tsx:112
+    walked:
+      - test: apps/nazar/test/archive-page.spec.tsx
+
+  - id: a-race-is-told-honestly
+    need: >-
+      When someone else hid or brought back the medrese while her page was open, the refusal names what happened, the page is read again and
+      shows the medrese as it is; the person who pressed "Gizle" is not told she hid it when someone else had.
+    drawn: [hiding, restoring, lockedHidden, toastAlready, toastNotHidden, toastRestoreLevel]
+    built:
+      - route: apps/nazar/features/archive/components/hide-madrasah.tsx:50
+      - route: apps/nazar/features/archive/components/restore-madrasah.tsx:55
+    walked:
+      - test: apps/nazar/test/archive-page.spec.tsx
+
+  - id: already-hidden-has-its-own-title
+    need: >-
+      The answer to a hiding that came too late has a title of its own, not the success title "Medrese gizlendi" (HIDEMED-2, decision D2).
+    drawn: [toastAlready]
+    missing: none
+
+  - id: focus-follows-the-hiding
+    need: >-
+      After the medrese is hidden or brought back, the focus lands on a place a keyboard or screen-reader user can use (the banner's heading or the
+      section's), the banner has a name of its own (F-A-3), and a line on the page, not only a toast of six seconds, says what happened (F-A-2).
+    drawn: [hidden, shownMedrese, hiddenAlert, toastHidden, toastRestored]
+    missing: none
+
+  - id: restore-button-says-what-it-shows
+    need: >-
+      The banner's button is named by the words it shows, so that voice control reaches it (WCAG 2.5.3, HIDEMED-1).
+    drawn: [restoreMedrese]
+    missing: none
+
+  - id: no-dead-controls-while-hiding
+    need: >-
+      While the hiding is on its way, "Vazgeç" and the close icon say that they cannot be used, or work (HIDEMED-3).
+    drawn: [hiding, dialogCancel, dialogClose]
+    missing: none
+
+  - id: a-failed-call-is-told
+    need: >-
+      When the hiding or the restore cannot reach the server at all, the button stops being busy and the person is told to try again (F-A-10).
+    drawn: [hiding, restoring, toastHideFailed, toastRestoreFailed]
+    missing: none

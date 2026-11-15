@@ -1,0 +1,188 @@
+# nazar.decks.publishAndDelete on the local stack: the course's hoca (`muderris`) at http://localhost:4002, on a deck of a course the walk makes for itself.
+#   node apps/engine/src/cli.ts replay graphs/nazar/decks/publishAndDelete --bind graphs/nazar/decks/publishAndDelete/binding.yaml [--cover transitions] --out <dir>
+# NOT RUN in the writing phase (no replay is run in it): nothing below has been walked. Where it rests on the code alone it says so.
+#
+# What a walk makes and takes away. `setup` makes the course `Deneme dersi pubDel` with helpers/course.mjs (PUBLISHED, in the seed's second köşk, one week of one live
+# celse from tomorrow, `MUDERRIS` its hoca, anyone takes a seat, and `applicantG`, a woman with a full profile, seated at once so that the walk can read the talebe's
+# tab through the API) and then one deck of it with ../nazar/decks/publishAndDelete/deck-data.mjs (three cards, `Deneme destesi pubDel`; a draft, or published for
+# the scenario that opens a published deck). Their ids go to graphs/.local/made/pubDel.json and graphs/.local/pub-del.json, read here as {made.*} and {pd.*}.
+# `teardown` removes the deck (deck-data.mjs remove: back to a draft, then DELETE, a 404 is fine because the walk deletes it in some paths) and then the course with
+# its invitation mails (course.mjs remove). A walk that died leaves both files; the next `setup` removes them first. Nothing of the seed is touched and no SQL is
+# used. Every run of these helpers by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# Scenarios, one for each `given` the flow has (two scenarios of a file must differ):
+#   draftDeck      opens a draft: the main story. The hoca comes in through the nav's entry `dersDeck->dersDeckOne` (the deck list, then the deck's card), types a new
+#                  title and picks the week, saves, publishes, takes the deck back, and deletes it after the question. `--cover transitions` also takes the paths of
+#                  DECKPD-1 (publish, then save), the short title, Vazgeç and the close icon, and, with the events below, the deck published or deleted behind the page.
+#   publishedDeck  opens a published deck: "Taslağa çek" first and the line that says it cannot be deleted; then the same paths the other way round.
+#   refusedDeck    the ders nazırı, granted no code at all (helpers/course-nazir-grants.mjs, as the hoca does on Ders nazırları), meets "Bu sayfaya izniniz yok". The page
+#                  is opened by its address: the nazır's menu has "Ders destesi" but the page refuses her, and no card of the list is hers to press.
+# Everything else the flow reaches (typed, sent, behind, alert, last, deck) is made by events of this file or by the page, not by a scenario.
+#
+# What the events do, and a limit worth knowing:
+#   EDIT types the same new title each time ("Deneme destesi pubDel (yeni)") and picks the first week; a walk that has already saved it and types it again sends
+#   nothing, because the form then holds what the deck holds, which the model does not say (typed becomes `valid` again). The planner's shortest paths do not do it.
+#   PUBLISHED_ELSEWHERE and REMOVED_ELSEWHERE are what a colleague does behind the page: a PATCH {draft: false} and a DELETE as the hoca. The page was read before and
+#   still draws the deck as a draft, which is how COURSE_DECK_NOT_DRAFT and DECK_NOT_FOUND are reached. They are events of the flow (the page is stale before the
+#   person presses), not failures injected into a held call.
+#
+# Not bound, so the replay cannot reach them (reported): FAIL.missing of the read and `not_found` (the course and the deck are the walk's own and are there), `sent_to_sign_in`
+# (a session cannot be ended mid-walk), FAIL.failed of "Taslağa çek" (no stack condition makes it fail from this page), the read that fails with no refusal (not in the
+# graph), and the week select's name, which the code gives by its Field's label and which was not verified in a browser.
+# Server actions answer 200 on the page's own address whatever the API said, so `call` here only holds the busy state; the statuses of the refusals (409, 404) cannot
+# be compared (an engine limit, the same as nazar.roster.decide's).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.decks.publishAndDelete
+
+data:
+  made: { json: ../.local/made/pubDel.json }
+  pd: { json: ../.local/pub-del.json }
+
+scenarios:
+  draftDeck:
+    given: { opens: draft, access: granted }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars: { course: '{made.course}', deck: '{pd.deck}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, pubDel, --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, APPLICANT_G]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, make]
+        expect: 'made 1 deck (draft)'
+    teardown:
+      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, pubDel]
+        expect: 'course remove pubDel'
+
+  publishedDeck:
+    given: { opens: published, access: granted }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars: { course: '{made.course}', deck: '{pd.deck}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, pubDel, --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, APPLICANT_G]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, make, --published]
+        expect: 'made 1 deck (published)'
+    teardown:
+      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, pubDel]
+        expect: 'course remove pubDel'
+
+  # holds no code at all in the course: "Bu sayfaya izniniz yok" under the shell, with no heading (F-D1-02)
+  refusedDeck:
+    given: { opens: draft, access: refused }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/deste/{pd.deck}'
+    setup:
+      - run: [node, helpers/course.mjs, make, pubDel, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"title":"Deneme dersi pubDel"'
+      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, make]
+        expect: 'made 1 deck (draft)'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, pubDel]
+        expect: 'course remove pubDel'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in. The title is the deck's own with a suffix, so the form differs from the deck
+  EDIT:
+    - fill: { role: textbox, name: Başlık, value: 'Deneme destesi pubDel (yeni)' }
+    - click: { role: combobox, name: Hafta }
+    - click: { role: option, name: '/^1\. hafta/' }
+  # three letters: shorter than the five the API takes
+  EDIT_SHORT:
+    - fill: { role: textbox, name: Başlık, value: Kısa }
+  # a colleague publishes the draft behind the page: PATCH /courses/:id/decks/:deckId {draft: false} as the hoca; the answer is the deck's refreshed row
+  PUBLISHED_ELSEWHERE:
+    - run: [node, helpers/api.mjs, muderris, PATCH, '/courses/{made.course}/decks/{pd.deck}', '{"draft":false}']
+      expect: '"draft":false'
+  # a colleague deletes the deck behind the page: DELETE as the hoca, which answers 204
+  REMOVED_ELSEWHERE:
+    - run: [node, helpers/api.mjs, muderris, DELETE, '/courses/{made.course}/decks/{pd.deck}']
+      expect: 'HTTP 204'
+  # the course's overview, the page every course scope has
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}'
+
+states:
+  forbidden: { url: '{nazar}/ders/*/deste/*' }
+  # the four writes are Next server actions: a POST to the page's own address, held while the busy state is checked. The page's own reads are GETs with a query, so this
+  # glob (anchored) matches only the POST.
+  saving: { call: '{nazar}/ders/{made.course}/deste/{pd.deck}' }
+  publishing: { call: '{nazar}/ders/{made.course}/deste/{pd.deck}' }
+  unpublishing: { call: '{nazar}/ders/{made.course}/deste/{pd.deck}' }
+  deleting: { call: '{nazar}/ders/{made.course}/deste/{pd.deck}' }
+  # an exit has no nodes of its own to find, so its address is checked too
+  decks_listed: { url: '{nazar}/ders/*/deste' }
+  left: { url: '{nazar}/ders/*' }
+
+# What a write leaves outside the screen, read through the API: as the hoca for the deck's own row, as the seated talebe `applicantG` for what the course shows her.
+effects:
+  # a deck is published: the talebe's list holds it, and the hoca's row says it is not a draft
+  nowPublished:
+    - run: [node, helpers/api.mjs, applicantG, GET, '/courses/{made.course}/decks']
+      expect: '"title":"Deneme destesi pubDel'
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/decks/manage']
+      expect: '"draft":false'
+  # a deck is taken back: the talebe's list is empty (the course has no other deck) and the hoca's row says it is a draft
+  nowDraft:
+    - run: [node, helpers/api.mjs, applicantG, GET, '/courses/{made.course}/decks']
+      expect: '[]'
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/decks/manage']
+      expect: '"draft":true'
+  # DECKPD-1: a save that sent the remembered flag put the deck back, so the same two reads hold
+  backToDraft:
+    - run: [node, helpers/api.mjs, applicantG, GET, '/courses/{made.course}/decks']
+      expect: '[]'
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/decks/manage']
+      expect: '"draft":true'
+  backToPublished:
+    - run: [node, helpers/api.mjs, applicantG, GET, '/courses/{made.course}/decks']
+      expect: '"title":"Deneme destesi pubDel'
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/decks/manage']
+      expect: '"draft":false'
+  # a save that carried the typed title and week: the row holds both (the course has one week, the first)
+  savedTyped:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/decks/manage']
+      expect: '"title":"Deneme destesi pubDel (yeni)"'
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/decks/manage']
+      expect: '"weekNumber":1'
+  # the delete went through: the course has no deck left
+  deletedHere:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/decks/manage']
+      expect: '[]'
+
+# Role and name find most nodes. Below are the ones they cannot find alone.
+nodes:
+  # a bare role main is also matched on the page a walk leaves for (the list, the 404 page): "Deste ayarları" is in this one, the list's summary line in that one
+  deckPage: { role: main, hasText: 'Deste ayarları' }
+  listPage: { role: main, hasText: '/kayıtlı \d+ talebe görür/' }
+  forbiddenPage: { role: main, hasText: 'Bu sayfaya izniniz yok' }
+  # the h1 is the deck's own title, which the walk renames
+  deckTitle: { role: heading, name: '/^Deneme destesi pubDel/' }
+  # the line under the title and the toast of the same words are two elements: this one is the header's
+  stateDraft: { css: 'main header p', hasText: 'Taslak · talebe görünmez' }
+  statePublished: { css: 'main header p', hasText: 'Yayında · talebe görünür' }
+  # "Desteyi sil" is the page's button, the dialog's title and the dialog's confirm button; the last two are found inside the dialog
+  deleteTitle: { role: heading, name: Desteyi sil, within: { role: alertdialog } }
+  deleteBody: { text: 'Taslak deste ve kartları silinir. Bu işlem geri alınamaz.', within: { role: alertdialog } }
+  deleteConfirm: { role: button, name: Desteyi sil, within: { role: alertdialog } }
+  deleteCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  deleteClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  # the hidden <output> of the busy Kaydet, the only status of the page that holds this text
+  busyStatus: { css: output, hasText: Yükleniyor }
+  # an Alert with role alert has no name of its own; the route announcer of Next is also a role alert, so the words pick the page's
+  notDraftAlert: { role: alert, hasText: 'Yayımlanmış deste silinemez. Önce taslağa çekin.' }
+  failedAlert: { role: alert, hasText: 'İşlem tamamlanamadı. Tekrar deneyin.' }
+  # a neutral Alert is a status with no name: found by its words
+  forbiddenAlert: { css: '.mds-alert', hasText: 'Bu sayfaya izniniz yok' }

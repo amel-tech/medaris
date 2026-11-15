@@ -1,0 +1,97 @@
+# What the bindings of nazar.courses.browse share: the events no node sends, the address of every state and exit, and where role and name
+# cannot find a node. It carries no scenario, so it is not walked by itself:
+#   binding.yaml          the başmüderris on the seed's medrese with a second hosting köşk and three courses of the walk's own (the
+#                         main story, e2e courses#1-#3), a medrese of its own with no course (the empty states), and a medrese nazır
+#                         with no grant (the refusal)
+#   binding.seeded.yaml   the başmüderris on the stack's own medrese, no setup: two published courses in one köşk. It adds no transition
+#                         of its own, so it has a file of its own to be walked at all (`--cover transitions` takes the shortest
+#                         scenario per transition, and this one would never be chosen beside `mixed`).
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/courses, libs/ui/src/mds) and is unverified until a walk; where the walk may need a fix, a comment says so.
+#
+# The window is 1440 x 900 (the e2e's size): the table is a table above 768 px and stacked cards below, with the same nodes.
+#
+# Not driven: `loadFailed` and `not_found` (nothing here can make GET /madrasahs/:id/courses fail or the medrese vanish: no scenario
+# gives `list: failed`, and RETRY and FAIL.missing are drawn and not walked); `hosting: unreadable` (F-A-8: it needs a medrese nazır who
+# holds madrasah.course_hide or madrasah.muderris_manage and not madrasah.course_open, and no helper gives a medrese nazır one code: an
+# ask in the report); `exams: unread` (the exam read is refused only with the other two reads, for a person the page refused already).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courses.browse
+
+browser: { width: 1440, height: 900 }
+
+# the köşk and the medrese `fixtures.mjs` made, by their ids and names (graphs/.local/made/cbrowse-fixture.json, git-ignored); it does
+# not exist before a setup has run, and the walk fails, naming the file, only if a value of it is used while it is missing
+data:
+  made: { json: ../.local/made/cbrowse-fixture.json }
+
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+  # Esc closes a Base UI Select popup and a Base UI Menu and returns the focus to the trigger (not verified)
+  CLOSE_FILTER: [{ key: Escape }]
+  CLOSE_MENU: [{ key: Escape }]
+
+states:
+  # An exit has no nodes, so its address is all the replay can check. `*` is one path segment, `**` anything.
+  listed: { url: '{nazar}/medrese/*/dersler**' } # with or without ?kosk= and ?durum=
+  emptyAll: { url: '{nazar}/medrese/*/dersler' } # a medrese with no course and no filter: the plain address
+  emptyFiltered: { url: '{nazar}/medrese/*/dersler?**' } # a filter is in the address
+  choosingKosk: { url: '{nazar}/medrese/*/dersler**' }
+  choosingStatus: { url: '{nazar}/medrese/*/dersler**' }
+  rowMenu: { url: '{nazar}/medrese/*/dersler**' }
+  forbidden: { url: '{nazar}/medrese/*/dersler' }
+  course_opened: { url: '{nazar}/ders/*' } # the first row's title
+  new_course_opened: { url: '{nazar}/medrese/*/dersler/yeni' }
+  offsite_opened: { url: '{nazar}/medrese/*/dersler/talep' }
+  archive_opened: { url: '{nazar}/medrese/*/arsiv' }
+  # the dialogs open over this page: the address does not change
+  handed_over.change_hocas: { url: '{nazar}/medrese/*/dersler**' }
+  handed_over.hide_course: { url: '{nazar}/medrese/*/dersler**' }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot find a node. The rows are data (a course, a köşk, a hoca), so a row's nodes are found by the table's own
+# hook (data-testid="courses", the kit's classes). `{koskOne}` is a scenario's var: the name of the köşk the walk chooses in the filter.
+nodes:
+  # A bare `main` is also the page a walk leaves for: the subtitle is this page's.
+  coursesPage: { role: main, hasText: 'açıldıkları köşkle birlikte' }
+  # The two header buttons share their words and one of them is off while no köşk hosts the medrese: told apart by the address and by
+  # aria-disabled (the off one has no href), not by role and name, which are the same.
+  openCourse: { css: 'header a.mds-btn[href$="/dersler/yeni"]' }
+  openCourseOff: { css: 'header a.mds-btn[aria-disabled=true]', hasText: 'Medrese dersi aç' }
+  # the alert's sentence is its only text that is not its title
+  forbiddenAlert: { role: status, hasText: 'Bu sayfayı açma izniniz yok.' }
+  # the counter and its "nothing" are one <p data-testid="counter">, with one of two sentences
+  counter: { testId: counter, hasText: '/ ders · .+ köşkte$/' }
+  counterNone: { testId: counter, hasText: 'Gösterilecek ders yok' }
+  # the option of the köşk the walk chooses; "Köşk: tümü" is the other option of the list, and the pattern of the graph would match it too
+  koskOptionOne: { role: option, name: 'Köşk: {koskOne}' }
+
+  courseTitle: { css: '[data-testid=courses] tbody th a' } # the first row's is pressed
+  courseMeta: { css: '[data-testid=courses] tbody th .mds-caption' } # "<köşk>" and, on the day it was opened, " · bugün açıldı"
+  hocaName: { css: '[data-testid=courses] tbody td:nth-child(2) bdi' }
+  pendingBadge: { css: '[data-testid=courses] tbody .mds-badge--warning', hasText: '/\d+ onay bekliyor/' }
+  # a published course nobody is in says it as the cell's own words; a draft says it in a hidden span, beside an aria-hidden dash
+  noStudents: { css: '[data-testid=courses] tbody td:not(:has(.mds-visually-hidden))', hasText: 'Henüz talebe yok' }
+  noStudentsDraft: { css: '[data-testid=courses] tbody td .mds-visually-hidden', hasText: 'Henüz talebe yok' }
+  statusPublished: { css: '[data-testid=courses] tbody .mds-badge--primary', hasText: 'Yayında' }
+  statusDraft: { css: '[data-testid=courses] tbody .mds-badge--outline', hasText: 'Taslak' }
+  # the table's one empty cell, with one of two sentences (the second also holds the link)
+  emptyText: { css: 'td.mds-table__empty', hasText: 'Bu medresede henüz ders yok.' }
+  emptyFilteredText: { css: 'td.mds-table__empty', hasText: 'Bu süzgece uyan ders yok.' }
+
+  # the note is one <p class="mds-caption"> of three parts; the sidebar has a link "Arşiv" too, so the one here is told apart by where it is
+  hiddenNoteBefore: { css: 'main p.mds-caption', hasText: 'Gizlenen dersler bu listede yer almaz;' }
+  archiveLink: { css: 'main p.mds-caption a[href$="/arsiv"]' }
+  hiddenNoteAfter: { css: 'main p.mds-caption', hasText: 'de görünür.' }
+
+  # the two lists are <ul data-testid=...>, the rows their <li>
+  hostsList: { testId: hosting-kosks }
+  hostName: { css: '[data-testid=hosting-kosks] li bdi.font-medium' }
+  hostLine: { css: '[data-testid=hosting-kosks] li .mds-caption', hasText: '/ medrese dersi$/' }
+  examList: { testId: exam-summary }
+  examCourse: { css: '[data-testid=exam-summary] li bdi' }
+  examRowText: { css: '[data-testid=exam-summary] li .mds-caption', hasText: '/ sınav · .+ giren · .+ girmeyen/' }
+  # "Ortalama %80", or "Ortalama yok" while nobody sat; one caption span holds it and the line before it
+  examAverage: { css: '[data-testid=exam-summary] li .mds-caption', hasText: '/Ortalama (yok|%\d)/' }

@@ -1,0 +1,186 @@
+# nazar.courses.open on the local stack (graphs/README.md, "The stack and the bindings"): nazar-web at http://localhost:4002, the
+# başmüderris of a medrese made for the walk, and the form "Medrese dersi aç".
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/courses/open \
+#     --bind graphs/nazar/courses/open/binding.yaml --absent --out <dir>                                    (the main story)
+#   ... --cover transitions --absent --out <dir>                                                           (every scenario below)
+#   ... graphs/nazar/courses/open --bind graphs/nazar/courses/open/binding.hostingGone.yaml --cover transitions --out <dir>   (the köşk takes its right back)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every address below is from
+# the code and unverified until the walk phase. The binding loads (`replay <dir> --bind <this file> --emit-spec`, read-only: it writes a
+# spec and walks nothing). The one thing looked at on the running app is a GET with curl for the form's address without a session: it
+# answers 307 to /auth/signin?callbackUrl=%2Fmedrese%2F<id>%2Fdersler%2Fyeni, so the page is behind the sign-in and keeps the address.
+# `--emit-spec` writes the walks that go through `enter` as `fixme` ("enters through cross.ts, not written as a spec yet"): that is the
+# emitter's state in the engine checkout, not a binding problem; the walks without `enter` (noKosk, forbidden, missing) are written out.
+#
+# The data. This flow writes (a course) and sets policies, so none of it happens on the seeded medrese, which other flows read: every
+# scenario that opens a course or fixes a policy makes a medrese of its own in `setup` (walk-data.mjs, tedrisat's HTTP API as the
+# başnazım) and `teardown` removes the courses the walk opened, the medrese and the notifications that point at them. Its başmüderris is
+# APPLICANT_E (a spare talebe account no seeded flow uses), its hocas are APPLICANT_G and APPLICANT_H ("Dilek Başvuran" and "Rıza
+# Başvuran", found by their e-mail addresses in the realm's directory, which is real). The walks that only read (the nazır's refusal and
+# the unknown medrese) use the seeded medrese and the seeded people, and write nothing. `setup` also removes what an earlier walk that
+# died left (it makes the same tag again), so nothing is ever left to be refused.
+#
+# What a walk leaves and cannot remove: audit_log rows (madrasah.create, hosting_right.grant, madrasah.settings.update, user.lookup for each
+# hoca found, course.open, course.delete, madrasah.delete). While a walk runs, APPLICANT_G and APPLICANT_H hold the course role of a hoca of
+# the draft; teardown takes the course away and with it their rows. Nothing is sent to anyone.
+#
+# Scenarios (each adds transitions the others do not, which is why they are in one file; the one that needs a node `before` is
+# binding.hostingGone.yaml):
+#   opens           (the main story) one köşk, no policy: the blank form is refused (the name, the hoca), the name is typed, the hoca search is
+#                   refused, a hoca is found and added, and the draft is opened; the walk also reaches the second hoca, the imam, the unvan, the two
+#                   boxes and the way out, through `--cover transitions`
+#   lockClosed, lockApproval, lockBoth   the medrese's policy fixes a box on: open-course#6, #5 (and both at once)
+#   shortName, longName   one character, and 201: the name's own errors
+#   notFound        an address the realm does not know
+#   twoKosks        two köşks host the medrese: the first (Kubbealtı Köşkü) is chosen, the other can be picked (open-course#1, #3)
+#   noKosk          no köşk hosts the medrese: the alert and no form
+#   forbidden       the seeded nazır, who holds no grant: the köşk read is refused
+#   missing         a medrese id that does not exist: the 404
+# Not bound, and why:
+#   - hosting: unreadable (the retry state) and locks: unknown: tedrisat answers every read the stack makes and the stack cannot make it
+#     refuse the settings of a medrese to a nazır who holds course_open (a grant on the seeded medrese would change other flows' data)
+#   - lookup: down: the realm's directory cannot be made to stop
+#   - answer: unknownUser (an account that vanishes between the search and the press), forbidden (a başmüderris who may not), failed
+#     (SELF_GRANT_REFUSED needs a nazır with a grant; the directory down): nothing the stack can be made to do on request
+#   - the hosting-right walk that needs `before` on the submit button: binding.hostingGone.yaml
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courses.open
+
+scenarios:
+  # The main story: the blank form is refused and the focus goes to the name; the name is typed; the second press sends the focus to the
+  # hoca search; a hoca is found by e-mail address; the draft is opened. `--cover transitions` also walks the second hoca, the imam, the
+  # unvan, the boxes, Çıkar, the way out through Vazgeç and the breadcrumb.
+  opens:
+    given: { hosting: one, locks: none, fields: valid, lookup: found, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, one]
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }
+  # The medrese's policy 'Kapalı ders zorunlu': the box is checked and off limits, the sentence and its link are there (open-course#6),
+  # and the course is opened closed whatever the form shows.
+  lockClosed:
+    given: { hosting: one, locks: closed, fields: valid, lookup: found, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, one, --policies, 'closed']
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":true', wantApproval: '"requiresApproval":' }
+  # 'Kayıt her zaman onaylı' (open-course#5): 'Kayıt onayı gereksin' is checked and off limits; 'Kapalı ders' is free.
+  lockApproval:
+    given: { hosting: one, locks: approval, fields: valid, lookup: found, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, one, --policies, 'approval']
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":true' }
+  # Both policies at once: both boxes are checked and off limits and the sentence names both.
+  lockBoth:
+    given: { hosting: one, locks: both, fields: valid, lookup: found, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, one, --policies, 'closed,approval']
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":true', wantApproval: '"requiresApproval":true' }
+  # One character: nothing is said until the button is pressed, then 'Ders adı en az 2 karakter olmalı.' Nothing is sent, so nothing is
+  # made (the walk never gets a name the API would take).
+  shortName:
+    given: { hosting: one, locks: none, fields: short, lookup: found, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, one]
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: A, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }
+  # 201 characters: 'Ders adı en çok 200 karakter olabilir.'
+  longName:
+    given: { hosting: one, locks: none, fields: long, lookup: found, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, one]
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB', hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }
+  # An address no account has: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the search field, nobody added.
+  notFound:
+    given: { hosting: one, locks: none, fields: valid, lookup: notFound, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, one]
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: kimse.yok@example.test, hocaB: baskasi.yok@example.test, wantClosed: '"closed":', wantApproval: '"requiresApproval":' }
+  # Two köşks host the medrese, Kubbealtı Köşkü and Süleymaniye Köşkü: the first is chosen (open-course#1 a3), the other can be picked
+  # (open-course#3), and the draft is opened in it.
+  twoKosks:
+    given: { hosting: two, locks: none, fields: valid, lookup: found, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, two]
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }
+  # No köşk hosts the medrese: the Dersler list disables its button, so the page is opened by its address.
+  noKosk:
+    given: { hosting: none, locks: none, fields: valid, lookup: found, answer: created }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler/yeni'
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, none]
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }
+  # The seeded nazır of the seeded medrese holds no grant: the köşk read is refused (403) and the page keeps its header under an alert.
+  # Nothing is made or changed, so there is no setup and no teardown.
+  forbidden:
+    given: { hosting: forbidden, locks: none, fields: valid, lookup: found, answer: created }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/dersler/yeni'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }
+  # A medrese id that does not exist: the layout answers the portal's 404 before the page reads anything (as nazar.access.landingScope's
+  # `missing`). Nothing is made.
+  missing:
+    given: { hosting: missing, locks: none, fields: valid, lookup: found, answer: created }
+    as: basmuderris
+    open: '{nazar}/medrese/00000000-0000-4000-8000-000000000000/dersler/yeni'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }

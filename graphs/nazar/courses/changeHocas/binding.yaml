@@ -1,0 +1,199 @@
+# nazar.courses.changeHocas on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on http://localhost:4002, the
+# başmüderris of "Hadis ve Siyer Medresesi" signed in through Keycloak's real form, on the Dersler page of the walk's own course.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/courses/changeHocas \
+#     --bind graphs/nazar/courses/changeHocas/binding.yaml --main --absent --out <dir>
+#   ... --cover transitions --absent --out <dir>       (every transition the scenarios below can drive)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation below
+# is from the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec` wrote a spec and walked nothing).
+#
+# Data. Every scenario makes its own course and takes it away, so no seeded course, hoca or setting is touched: helpers/course.mjs
+# opens "Deneme dersi changeHocas" in the medrese through the API (as the başnazım; published, one week of one celse, MUDERRIS as its
+# one hoca and imam; the ids are read from graphs/.local/made/changeHocas.json as {made.*}), and the teardown deletes it with
+# everything under it (the API deletes the müderris rows and role rows of the course). The people the walk uses are spare accounts that
+# have no other part in the stack:
+#   applicantG  the course's second hoca, seated by setup (helpers/seat-hoca.mjs; the imam stays MUDERRIS)
+#   applicantE  the account the başmüderris finds by e-mail address and adds
+# Their MUDERRIS role rows go with the course. What the walk cannot undo: the audit rows (`user.lookup` of each search, and
+# `course.muderris.update` of a save); the API has no way to remove them and nothing depends on them.
+#
+#   adds            (the main story) pair: MUDERRIS (imam) and applicantG. OPEN_MENU, CHOOSE_HOCAS, SEARCH (applicantE is found and
+#                   added: 3 hoca), SAVE. `--cover transitions` also walks, from this start, the imam's and the other hoca's "Çıkar", the
+#                   radios, the missing imam of two or three accounts, and Vazgeç, the close icon and Esc (courses#4, #5, #8).
+#   unknownAddress  pair; the address nobody has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and the list is as it was (#7 a1).
+#   alreadyListed   pair; applicantG's own address: "Bu kişi zaten listede." and nobody is added.
+#   lone            one hoca (MUDERRIS): "Çıkar" is off, no radio, "Kaydet" is off (courses#5); an account found is added (two hocas).
+#   guest           a hoca with no account only: setup swaps the course's müderris rows for one name, "Konuk Hoca", with SQL (no route can
+#                   make a course with no account on it; the API refuses such a list) and takes the role of MUDERRIS away. The dialog
+#                   shows the name and "Hesabı olmayan hoca; bu listeden değiştirilemez." (courses#6); an account found is added.
+# One address does the finding (`lookupEmail`, applicantE's), so a walk adds one person: a path of the model that adds a second one (the
+# model says `found` each time) would meet "Bu kişi zaten listede." instead; the coverage paths do not need one.
+# Not bound, and why:
+#   - `lookup: down` (the realm's directory does not answer) and every `answer` but `saved` (`gone`, `unknownUser`, `forbidden`,
+#     `invalid`, `other`): the local stack cannot be made to refuse the başmüderris's own list or to lose its directory on request.
+#     (`gone` could be made by hiding the course after the dialog opened; no step of the binding can do that between two presses of one walk.)
+#   - `listed` with a course whose hocas have no account: not a situation (the flow's guard keeps it out).
+#   - a nazır who holds a part of the permissions (F-A-8), the dropped call (F-A-10), the 20-hoca limit: no account, no way to make them.
+#
+# What carries the e2e courses#4 to #8 (apps/nazar/e2e/courses.e2e.ts) and what does not: see the report of this flow.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courses.changeHocas
+
+data:
+  made: { json: ../.local/made/changeHocas.json }
+
+# the title of the walk's course, which every name of the row's menu and every toast carries
+samples:
+  title: '{made.title}'
+
+scenarios:
+  adds:
+    given: { team: pair, lookup: found, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, changeHocas, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"changeHocas"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantG]
+        expect: 'seat-hoca APPLICANT_G'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, changeHocas]
+        expect: 'course remove changeHocas'
+    vars:
+      lookupEmail: '{secret.E2E_APPLICANT_E_EMAIL}'
+
+  unknownAddress:
+    given: { team: pair, lookup: notFound, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, changeHocas, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"changeHocas"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantG]
+        expect: 'seat-hoca APPLICANT_G'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, changeHocas]
+        expect: 'course remove changeHocas'
+    vars:
+      lookupEmail: kimse.yok@example.test
+
+  alreadyListed:
+    given: { team: pair, lookup: listed, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, changeHocas, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"changeHocas"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantG]
+        expect: 'seat-hoca APPLICANT_G'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, changeHocas]
+        expect: 'course remove changeHocas'
+    vars:
+      lookupEmail: '{secret.E2E_APPLICANT_G_EMAIL}'
+
+  lone:
+    given: { team: lone, lookup: found, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, changeHocas, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"changeHocas"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, changeHocas]
+        expect: 'course remove changeHocas'
+    vars:
+      lookupEmail: '{secret.E2E_APPLICANT_E_EMAIL}'
+
+  guest:
+    given: { team: guest, lookup: found, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, changeHocas, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"changeHocas"'
+      # no route makes a course whose only hoca has no account; this is the one use of SQL here (tedrisat's database, through helpers/sql.mjs, one transaction)
+      - run:
+          - node
+          - helpers/sql.mjs
+          - "update role_assignments set revoked_at = now(), revoked_by = granted_by where role = 'MUDERRIS' and scope_id = '{made.course}' and revoked_at is null; delete from course_muderris where course_id = '{made.course}'; insert into course_muderris(course_id, user_id, name, order_index) values ('{made.course}', null, 'Konuk Hoca', 0)"
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, changeHocas]
+        expect: 'course remove changeHocas'
+    vars:
+      lookupEmail: '{secret.E2E_APPLICANT_E_EMAIL}'
+
+# The events no node of the screen sends. Pressing a button is the walk's own: "Çıkar", the radios, Kaydet, Vazgeç and the close icon.
+events:
+  # the address is searched on Enter (it is also searched when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: Hoca, value: '{lookupEmail}' }
+    - key: Enter
+  CLOSE_MENU:
+    - key: Escape
+  NAVIGATE:
+    - goto: '{nazar}/medrese/{seed.madrasah}/talebeler'
+
+states:
+  listed: { url: '{nazar}/medrese/*/dersler' }
+  menu: { url: '{nazar}/medrese/*/dersler' }
+  # the search and the save are Next server actions: a POST to the page's own address, held while the busy state is checked
+  looking: { call: '{nazar}/medrese/*/dersler' }
+  saving: { call: '{nazar}/medrese/*/dersler' }
+  saved: { url: '{nazar}/medrese/*/dersler' }
+  closed: { url: '{nazar}/medrese/*/dersler' }
+  # an exit with no node of its own is checked by its address; the hide question is an alertdialog over this same page
+  hide_dialog_opened: { url: '{nazar}/medrese/*/dersler' }
+  left: { url: '{nazar}/medrese/*/talebeler' }
+
+# Where role and name do not find a node. The page is the medrese's whole list (the seeded courses and any other walk's), so the
+# row of the walk's own course is found by its title; and inside the dialog the page behind is inert, so the dialog is the scope.
+nodes:
+  rowStarBefore: { role: button, name: Dersin imamı, within: { role: row, hasText: '{made.title}' } }
+  rowStarAfter: { role: button, name: Dersin imamı, within: { role: row, hasText: '{made.title}' } }
+  eyebrow: { css: 'p.mds-eyebrow', hasText: '{made.title}', within: { role: dialog, name: Hocaları değiştir } }
+  # a toast has a "Kapat" too: the dialog's own close icon is the one inside the dialog
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: Hocaları değiştir } }
+  # "Hocalar" and an aria-hidden "*" are one paragraph
+  legend: { css: 'p.mds-label', hasText: Hocalar, within: { role: dialog, name: Hocaları değiştir } }
+  # one radio an account, named "Dersin imamı: {name}": two accounts or three
+  imamPickTwo: { role: radio, name: '/^Dersin imamı: /', count: 2 }
+  imamPickThree: { role: radio, name: '/^Dersin imamı: /', count: 3 }
+  # what a press chooses: a radio that is not the imam's. The imam's row is the one with the badge, so these are the radios of the rows
+  # without it (all of them while the imam is missing); pressing the checked one would change nothing
+  imamPickOther: { role: radio, name: '/^Dersin imamı: /', within: { css: '[data-testid=muderris-picker] label:not(:has(.mds-badge))' } }
+  # the badge on the imam's row; the star of the table is a button, this is plain text in a badge
+  imamBadge: { css: '.mds-badge', hasText: Dersin imamı, within: { role: dialog, name: Hocaları değiştir } }
+  guestName: { css: 'bdi', hasText: Konuk Hoca, within: { role: dialog, name: Hocaları değiştir } }
+  # "Çıkar" is told apart by its row, not by a name: the imam's row has the badge (a path may have changed who the imam is)
+  removeImam: { role: button, name: '/^Çıkar: /', within: { css: '[data-testid=muderris-picker] div.items-center:has(.mds-badge)' } }
+  removeOther: { role: button, name: '/^Çıkar: /', within: { css: '[data-testid=muderris-picker] div.items-center:not(:has(.mds-badge))' } }
+  # the one account left: its row is the only one with a button (a hoca with no account has none)
+  removeLast: { role: button, name: '/^Çıkar: /', count: 1 }
+  # the footer's count is one paragraph, its number the count of lines
+  countOne: { text: '/^1 hoca$/' }
+  countTwo: { text: '/^2 hoca$/' }
+  countThree: { text: '/^3 hoca$/' }
+
+# What a save leaves outside the screen, read from tedrisat's database as invariants that hold on every path of a walk (the e2e's
+# lists, which name who stays, hold for one path only): one audit row for the save (courses#4 a12, #7 a7); the course has exactly one
+# imam among those who hold the MUDERRIS role (courses#8 a4); and every account on the list holds the role while no one holds it who is
+# not on the list (the leavers lose it, the newcomer takes it: courses#4 a11, #7 a5).
+effects:
+  setMadrasahCourseMuderris:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'course.muderris.update' and entity_id = '{made.course}'"]
+      expect: '{"n":1}'
+    - run: [node, helpers/sql.mjs, "select count(*) filter (where is_imam)::int as imams from role_assignments where role = 'MUDERRIS' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"imams":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_muderris cm where cm.course_id = '{made.course}' and cm.user_id is not null and not exists (select 1 from role_assignments ra where ra.scope_id = cm.course_id and ra.user_id = cm.user_id and ra.role = 'MUDERRIS' and ra.revoked_at is null)"]
+      expect: '{"n":0}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'MUDERRIS' and ra.scope_id = '{made.course}' and ra.revoked_at is null and not exists (select 1 from course_muderris cm where cm.course_id = ra.scope_id and cm.user_id = ra.user_id)"]
+      expect: '{"n":0}'

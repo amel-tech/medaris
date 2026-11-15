@@ -1,0 +1,39 @@
+# nazar.decks.siga in a "Hadis" deck: the same main story, the deck made with cardType HADEETH. The generator is offered all the same, and the 28
+# cards come out typed HADEETH (`type: deck.cardType`, siga-generator-dialog.tsx:117) with their sîga in `contentMeta`: nothing compares the type
+# with anything (SIGA-2, the domain's no-card-type-match). The effect reads the type through the API.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/decks/siga \
+#     --bind graphs/nazar/decks/siga/binding.hadeeth.yaml --out <dir>
+# A file of its own because its `given` is the main story's and a file takes the first scenario whose `given` fits. NOT RUN in the writing phase.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: nazar.decks.siga
+
+scenarios:
+  # The main story in a Hadis deck: nothing on the page says what the deck's type is, and the cards are written as HADEETH.
+  hadeeth:
+    given: { root: fine, meanings: typed, tenses: both, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'ن ص ر'
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 28 HADEETH metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga, --type, HADEETH]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'

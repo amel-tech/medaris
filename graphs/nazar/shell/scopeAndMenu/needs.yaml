@@ -1,0 +1,210 @@
+# What must exist for a person who looks after a medrese or a course to see which scope they are in, move to another, and be offered
+# the menu they may use: the flow's product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story
+# and the planned work in the inventory (planned.md), not from what the page does today; the known gaps go to graphs/needs.gaps.yaml,
+# which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+#
+# For the gaps merge, the ids that are
+#   missing (no code):     nazir-is-offered-only-what-opens (MDRS-223), and with `none`: the-menu-offers-only-what-opens (F-L-20),
+#                          bildirimler-has-a-name-of-its-own (F-L-6), skip-link-first (F-L-1), landmarks-are-named (F-L-2, F-L-3),
+#                          picker-rows-use-the-router (SCOPE-1), picker-name-carries-the-role (SCOPE-3), one-link-per-page (SCOPE-2)
+#   unwalked (code, no e2e and no replay): unread-is-on-the-bell-and-the-entry (nothing seeded makes an unread notification for these
+#                          accounts; shell#7 only walks the bell with nothing unread)
+# Walked by the e2e alone, because the replay cannot do it: widening-closes-the-sheet (shell#5 a12-a13; no action resizes the window).
+kind: needs
+flow: nazar.shell.scopeAndMenu
+status: proposed
+
+needs:
+  - id: picker-names-the-scope
+    need: >-
+      A person who looks after a medrese or a course always sees which scope the page belongs to and in what role they hold it. With
+      one scope that is a line of text; with two or more it is a control that opens the list of the others.
+    drawn: [wide, bar, pickerButton, pickerCard, roleHead, roleNazir, roleHoca, roleDersNazir]
+    built:
+      - action: medaris.api:getMyAssignments
+      - route: apps/nazar/features/shell/components/scope-picker.tsx:93
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#1'
+      - replay: head
+      - replay: nazir
+
+  - id: picker-lists-what-is-held
+    need: >-
+      Opened, the picker lists exactly the medrese and the courses the person holds, grouped, the current one marked, with a line that
+      says only those are listed. Esc closes it and the focus is on the control again.
+    drawn: [picking, kept, scopeMenu, groupMedrese, groupCourses, rowMedrese, rowCourse, courseDetail, currentMedreseRow, currentCourseRow, scopeNote, a-picker-opens-only-with-several-scopes]
+    built:
+      - action: medaris.api:getMyAssignments
+      - route: apps/nazar/features/shell/components/scope-picker.tsx:113
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#1'
+      - replay: head
+      - replay: hoca
+
+  - id: choosing-a-scope-changes-the-menu
+    need: >-
+      Choosing a course shows the course's menu, with its own page marked, and choosing the medrese brings the medrese's menu back;
+      Pano of a course leads to the Pano of the first medrese the person holds a seat in, and stays on the course for someone who holds none.
+    drawn: [picking, wide, sheetPicking, medrese_opened, course_opened, navPano, currentOverview, currentPano, the-menu-is-of-a-scope-the-person-holds]
+    built:
+      - route: apps/nazar/features/shell/components/scope-picker.tsx:158
+      - route: apps/nazar/features/shell/scope.ts:214
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#2'
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#6'
+      - replay: head
+      - replay: headPhone
+
+  - id: the-menu-differs-per-person
+    need: >-
+      The menu a person is shown is the scope's, and in a course it follows what they hold: fifteen entries for a hoca, twelve for a
+      ders nazırı with no grant, thirteen with the permission to plan celses (Değerlendirme); a medrese has nine, whoever holds the
+      seat.
+    drawn: [navHomework, navEvaluation, navDeck, navOverview, navCourses, wide, sheet]
+    built:
+      - action: medaris.api:getMyCoursePermissions
+      - route: apps/nazar/features/shell/nav.ts:71
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#2'
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#8'
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#9'
+      - replay: hoca
+      - replay: dersBare
+      - replay: dersSeeded
+      - replay: nazir
+
+  - id: nazir-is-offered-only-what-opens
+    need: >-
+      A medrese nazır who was given no permission is not offered a menu of nine pages that all answer "Bu sayfaya izniniz yok": the
+      entries are hidden or marked until the başmüderris grants the permission each page asks (MDRS-223).
+    drawn: [wide, navStudents, navNazirs, navBans, navAppeals, navArchive, navSettings]
+    missing: MDRS-223
+
+  - id: the-menu-offers-only-what-opens
+    need: >-
+      No person is offered a course entry whose page they are refused: Yasaklamalar is not offered to a hoca, nor Ders nazırları and
+      Ders ayarları to a ders nazırı without the permission, nor Celseler, Talebeler, Müfredat, Ders kayıtları and Sorular to one who
+      holds none of their codes (F-L-20, F-D2c-2, F-D2c-3). Today only Ödevler, Değerlendirme and Ders destesi are filtered.
+    drawn: [navBansCourse, navNazirsCourse, navSettingsCourse, navSessions, navStudentsCourse, navCurriculum, navRecordings, navQuestions]
+    missing: none
+
+  - id: badges-are-the-real-counts
+    need: >-
+      Dersler carries the number of courses that hold a waiting application, and Celseler and Talebeler of a course the number of
+      celses with no way in and of waiting applications; each number is the one the API counts, and a person who may not read a count
+      sees no number and no error.
+    drawn: [coursesBadge, sessionsBadge, studentsBadge, reading]
+    built:
+      - action: medaris.api:getMadrasahBadgeCounts
+      - action: medaris.api:getCourseBadgeCounts
+      - route: apps/nazar/features/shell/reads.ts:99
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#3'
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#8'
+      - replay: head
+      - replay: dersSeeded
+      - replay: dersBare
+
+  - id: bell-is-a-link-with-no-number
+    need: >-
+      On a phone the bell is a link to Bildirimler that shows no number.
+    drawn: [bell, bar, barTitleNotifications]
+    built:
+      - route: apps/nazar/features/shell/components/portal-menu.tsx:86
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#7'
+      - replay: headPhone
+
+  - id: unread-is-on-the-bell-and-the-entry
+    need: >-
+      A person with unread notifications is told how many: the bell is named "Bildirimler, {count} okunmamış" and shows no number, and
+      the entry Bildirimler carries the count, with a hidden label.
+    drawn: [bell, navNotifications]
+    built:
+      - action: medaris.api:getNotificationCounts
+      - route: apps/nazar/features/shell/components/portal-frame.tsx:107
+
+  - id: phone-sheet-holds-the-menu
+    need: >-
+      On a phone the same picker, menu and person's row are behind a "Menü" button, in a sheet whose focus starts on "Kapat"; Esc,
+      "Kapat" or a followed link closes it, and it has no "Çıkış yap".
+    drawn: [bar, sheet, sheetClose, menuButton, sheetPicking, signOutButton, personRow]
+    built:
+      - route: libs/ui/src/mds/app-bar.tsx:35
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#5'
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#6'
+      - replay: headPhone
+
+  - id: widening-closes-the-sheet
+    need: Widening the window past 768 px closes the sheet and shows the sidebar.
+    drawn: [sheet, wide]
+    built:
+      - route: libs/ui/src/mds/app-bar.tsx:54
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#5'
+
+  - id: scope-is-remembered
+    need: >-
+      The last scope a person used is remembered, so that the pages that belong to no scope (Bildirimler, Hesap) and the root address
+      show that scope's menu; a scope opened by address is not remembered.
+    drawn: [wide, currentNotifications, barTitleNotifications, onNotifications]
+    built:
+      - route: apps/nazar/features/shell/components/scope-memory.tsx:11
+      - route: apps/nazar/features/shell/components/portal-layout.tsx:118
+    walked:
+      - replay: head
+
+  - id: bildirimler-has-a-name-of-its-own
+    need: >-
+      The toast region is not called "Bildirimler", which is the name of the entry, the bell and the page that lists notifications
+      (F-L-6).
+    drawn: [bell, navNotifications]
+    missing: none
+
+  - id: skip-link-first
+    need: >-
+      A keyboard or screen-reader user can jump past the brand, the picker and the menu to the page's own content from the first tab
+      stop (F-L-1).
+    drawn: [mainPage, sidebar]
+    missing: none
+
+  - id: landmarks-are-named
+    need: >-
+      The sidebar is no unnamed complementary landmark around the navigation, and the sheet's dialog and its navigation do not carry
+      one name (F-L-2, F-L-3).
+    drawn: [sidebar, sheet, menuNav]
+    missing: none
+
+  - id: picker-rows-use-the-router
+    need: >-
+      Choosing a scope is a client navigation, like the menu's links, and does not stream the whole shell as skeletons again (SCOPE-1,
+      MDRS-258 did it for the menu).
+    drawn: [rowMedrese, rowCourse]
+    missing: none
+
+  - id: picker-name-carries-the-role
+    need: >-
+      The picker's accessible name contains the visible role line, so that a person who speaks a control's label can say it (WCAG
+      2.5.3, SCOPE-3).
+    drawn: [pickerButton]
+    missing: none
+
+  - id: one-link-per-page
+    need: >-
+      A hoca who holds no medrese seat is not given two links to one page, Pano and Genel bakış (SCOPE-2).
+    drawn: [navPano, navOverview, currentOverview]
+    missing: none

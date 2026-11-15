@@ -1,0 +1,38 @@
+# nazar.curriculum.resources as a ders nazırı who holds course.edit and not session.manage (resources-data.mjs make noSessions: the
+# walk's own course, and DERS_NAZIR's post in it with that one permission, granted as the hoca grants it). The course's list is live
+# and the celses' lists say that celse management is needed; the page also says so under the title. Its own file, because the scenario
+# adds no transition to the flow's (the same transitions as `adds` are taken by another person) and `--cover transitions` over
+# binding.yaml alone would never open it. See binding.yaml and walk.common.binding.yaml for everything else.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/curriculum/resources \
+#     --bind graphs/nazar/curriculum/resources/binding.noSessions.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written from the code and unverified; it loads.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: nazar.curriculum.resources
+
+scenarios:
+  noSessions:
+    given: { rights: noSessions, answer: saved, store: storage, file: fine }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      linkName: Hâşiye listesi
+      linkUrl: https://kaynak.example.test/hasiye
+      lessonLinkName: Birinci bâb özeti
+      lessonLinkUrl: https://kaynak.example.test/bab-1
+      lessonLinkName2: İkinci bâb özeti
+      lessonLinkUrl2: https://kaynak.example.test/bab-2
+      queued: '0'
+    setup:
+      - run: [node, ../nazar/curriculum/resources/resources-data.mjs, make, noSessions]
+        expect: 'resources-data make noSessions'
+    teardown:
+      - run: [node, ../nazar/curriculum/resources/resources-data.mjs, remove]
+        expect: 'resources-data remove'
+
+states:
+  listed: { url: '{nazar}/ders/*/mufredat' }
+  saving: { call: '{nazar}/ders/*/mufredat' }
+  left: { url: '{nazar}/ders/*' }

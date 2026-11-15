@@ -1,0 +1,63 @@
+# nazar.access.dersNazirPages, the ders nazırı given question.answer (e2e questions#3): Sorular opens (a1) with the waiting question (a2); the nazır answers
+# it (NAZIR_ANSWERS: the same PUT as the form, sent through the API, because the form is nazar.questions.answer's) and the card says “Cevaplandı” (a3), the row
+# holds the answer and who gave it (a4); the course turns passive (HOCA_LEAVES) and Sorular refuses again (a5-a7), the API refuses the list and the answer (a8,
+# a9) and nothing the refused answer said was stored (a10, in the form that holds on every path: the nazır's own answer stays when she gave one).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/binding.answerer.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay. Besides the course and the post, setup makes one waiting question, as the talebe applicantE (questions.mjs of
+# nazar.questions.answer: it is a flow-local helper there, and wants promoting to helpers/ now that two flows use it).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.dersNazirPages
+
+events:
+  NAZIR_ANSWERS:
+    - run: [node, helpers/api.mjs, applicantD, PUT, '/questions/{dnpQ.waiting.0}/answer', '{"body":"Ders nazırından: fetha ile."}']
+      expect: 'Ders nazırından: fetha ile.'
+    - reload: true
+  # Someone else's act (the hoca leaves, MDRS-136), and the person opens the page again. No route takes the last müderris out (unseat-hoca.mjs
+  # refuses), so the post is revoked in the database, as e2e course-nazirs#14 and questions#3 do (makePassive); `teardown` puts it back.
+  HOCA_LEAVES:
+    - run: [node, helpers/sql.mjs, "update role_assignments set revoked_at = now(), revoked_by = granted_by where role = 'MUDERRIS' and scope_id = '{dnp.course}' and revoked_at is null"]
+      expect: '"rows":1'
+    - reload: true
+
+effects:
+  atQuestions:
+    - run: [node, helpers/api.mjs, applicantD, GET, '/courses/{dnp.course}/questions']
+      expect: '"items"'
+  answeredNow:
+    - run: [node, helpers/sql.mjs, "select answered_by from lesson_questions where id = '{dnpQ.waiting.0}'"]
+      expect: '{secret.E2E_APPLICANT_D_SUB}'
+  passiveNow:
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, GET, '/courses/{dnp.course}/questions']
+      expect: '403 AUTHZ_FORBIDDEN'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, PUT, '/questions/{dnpQ.waiting.0}/answer', '{"body":"pasif derste cevap"}']
+      expect: '404 LESSON_QUESTION_NOT_FOUND'
+    # a10 in a form that holds on any path to this transition: the refused answer wrote nothing (when the nazır had answered before, the stored
+    # answer is still hers: e2e questions#3 a10)
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from lesson_questions where id = '{dnpQ.waiting.0}' and answer = 'pasif derste cevap'"]
+      expect: '"n":0'
+
+scenarios:
+  answerer:
+    given: { held: answerer }
+    as: applicantD
+    open: '{nazar}/ders/{dnp.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, dnp, --weeks, '2', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, applicantE]
+        expect: '"tag":"dnp"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'question.answer']
+        expect: 'course-nazir-grants APPLICANT_D'
+      - run: [node, ../nazar/questions/answer/questions.mjs, up, dnp, --talebe, APPLICANT_E, --hoca, MUDERRIS, --waiting, '1', --answered, '0']
+        expect: 'questions up dnp: 1 waiting, 0 answered'
+    teardown:
+      - run: [node, helpers/sql.mjs, "update role_assignments set revoked_at = null, revoked_by = null where role = 'MUDERRIS' and scope_id = '{dnp.course}' and revoked_at is not null"]
+      - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, clear, '{dnp.course}']
+      - run: [node, ../nazar/questions/answer/questions.mjs, down, dnp]
+      - run: [node, helpers/course.mjs, remove, dnp]
+        expect: course remove dnp
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

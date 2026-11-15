@@ -1,0 +1,232 @@
+# nazar.recordings.upload on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web at http://localhost:4002, Ders kayıtları of a
+# course the walk makes for itself, read by the müderris of that course and by a ders nazırı holding one code or none.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/recordings/upload \
+#     --bind graphs/nazar/recordings/upload/binding.yaml --cover transitions --out <dir>
+# NOT RUN in the writing phase: nothing below has been replayed. Every claim about what a page does is read from the code and marked so.
+#
+# WHAT THIS STACK CAN WALK OF THIS FLOW, AND WHAT IT CANNOT.
+#   - The library's keys are unset here (STACK.md), so the two upload routes answer 503 BUNNY_STREAM_NOT_CONFIGURED to a holder of
+#     recording.upload (the permission is asked first: 403 for anyone else). The first scenario's `setup` reads both answers through
+#     helpers/api.mjs, so the walk pins them: the signature route is used for the 503 because, with a library configured, it answers 404 and
+#     writes nothing, where the start route would make a video in Bunny.
+#   - The replay's verbs are goto, reload, click, fill, key, waitUrl, waitText, waitResponse and run; it has none that sets a file input
+#     (Playwright's `fill` refuses it), so the event CHOOSE_FILE is not bound. The walk therefore reaches the dialog and "Yükle" (or "Devam
+#     et") with no file ("Bir video dosyası seçin."), the two tabs, the warnings of "Düzenle", the release radio, and the row's own moves, and
+#     stops there. NOT WALKED, with the reason: CHOOSE_FILE and everything after a chosen file (the release write, beginsUpload, `starting`,
+#     `resigning`, `resuming`, `sending` with its SENT / STOP / NETWORK_DROPS / BUNNY_REFUSES / BUNNY_BREAKS, `stopped`, `failed`,
+#     `failedHalfway`, `processing`): the stack has no Bunny, and no step of the replay could give them a file. `starting` would answer 503 the
+#     moment a file could be chosen (state `failed`, why notConfigured); that is the one refusal this stack gives of the upload routes.
+#   - tedrisat's encoding poll does not run without the library (apps/tedrisat/src/course/recording-encoding.poller.ts:76), so the moves it makes
+#     are done by hand, in the one place a person does not: POLL_READY and POLL_FAILED write the recording's status with helpers/sql.mjs, which is
+#     what the poll's settleBunnyUpload does (recording.repository.ts:617). The page reads itself every 10 seconds while a row is PROCESSING, so
+#     the state that follows is waited for up to the browser timeout. The poll's other writes (the announcement to talebe, the Bunny deletion) are
+#     not made.
+#   - Not bound at all: `not_found` (tedrisat answers every read here). `handed_over.add` is bound by its address only: its transition (SUBMIT_LINK) presses
+#     the paste form's submit, which writes nothing here (an empty link, or nothing changed) and is nazar.recordings.add's story from there.
+#
+# Data. Every scenario makes its own course (helpers/course.mjs make recup: one celse, three days ago at 21:00 Istanbul, no talebe, the müderris as
+# hoca; or, for the ders nazırı, a course of the medrese with the başmüderris as hoca, as nazar.course.overview does) and removes it, which also
+# deletes the recording the scenario wrote (the purge deletes a course's recordings, course-purge.ts:99). The recordings that no API can make are
+# written with helpers/sql.mjs, which is the only SQL here and says why: a Bunny recording needs a video in Bunny, and the stack has none (the check
+# constraint lesson_recordings_provider_columns wants provider BUNNY with a video id, an upload expiry and no url). The seeded courses, the seeded
+# ders nazırı's own post and every other account are never touched. `make` removes a tag a crashed walk left, so `setup` is safe to run twice. Run
+# by hand, these change data: take the replay lock.
+#
+# Scenarios (each has its own `given`; `--cover transitions` walks the shortest way to each transition of it):
+#   adds            the main walk. The müderris opens the course, takes "Ders kayıtları" from the menu, presses "Kayıt ekle", presses "Yükle" with no
+#                   file, takes the other tab and back, picks the release radio, and closes the dialog two ways.
+#   replacesLink    "Düzenle" on a YouTube link the müderris pasted: the dialog opens on the paste tab, the upload tab warns that the video takes
+#                   the link's place.
+#   replacesVideo   "Düzenle" on a READY Bunny video (a row written by SQL): the warning says the current video is deleted from Bunny.
+#   encoding        a Bunny upload left PROCESSING (SQL): "Devam et" (resume mode, the dialog's own help), "Düzenle" (the warning adds "durur"),
+#                   then POLL_READY (the badge turns "Hazır") or POLL_FAILED (the row goes: MDRS-259).
+#   uploadOnly      a ders nazırı granted recording.upload alone: no tabs, no release fields, the upload form alone ("Kayıt ekle").
+#   uploadOnlyEdit  the same ders nazırı on a link: "Düzenle" opens the upload form with the warning.
+#   manageOnly      a ders nazırı granted recording.manage alone: "Burada yükleme yoktur", and "Kayıt ekle" opens the paste form alone.
+#   neither         a ders nazırı granted none: "Bu sayfaya izniniz yok".
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.recordings.upload
+
+# a wide window, so that the course's sidebar (which the main walk enters by) is drawn and not the phone's sheet, and the table keeps its columns
+browser: { width: 1440, height: 900 }
+
+data:
+  recup: { json: ../.local/made/recup.json }
+
+scenarios:
+  adds:
+    given: { can: both, held: nothing, file: video, stored: none, resign: signs }
+    as: muderris
+    open: '{nazar}/ders/{recup.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersRecordings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, recup, --weeks, '1', --lessons, '1', --start, '-3']
+        expect: '"title":"Deneme dersi recup"'
+      # the stack's answer of the upload routes, pinned: 503 for the hoca (the signature route writes nothing either way), 403 for a talebe
+      - run: [node, helpers/api.mjs, muderris, POST, '/lessons/{recup.lessons.0}/recordings/uploads/00000000-0000-4000-8000-000000000000/signature', --any]
+        expect: 'HTTP 503'
+      - run: [node, helpers/api.mjs, talebe, POST, '/lessons/{recup.lessons.0}/recordings/uploads', '{"title":"Deneme"}', --any]
+        expect: 'HTTP 403'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recup]
+        expect: 'course remove recup'
+
+  replacesLink:
+    given: { can: both, held: link, file: video, stored: none, resign: signs }
+    as: muderris
+    open: '{nazar}/ders/{recup.course}/kayitlar'
+    setup:
+      - run: [node, helpers/course.mjs, make, recup, --weeks, '1', --lessons, '1', --start, '-3']
+        expect: '"title":"Deneme dersi recup"'
+      - run: [node, helpers/api.mjs, muderris, POST, '/lessons/{recup.lessons.0}/recordings', '{"title":"Deneme bağlantısı","url":"https://www.youtube.com/watch?v=Ab3dEfGh1jK","visibility":"ENROLLED"}']
+        expect: '"id"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recup]
+        expect: 'course remove recup'
+
+  replacesVideo:
+    given: { can: both, held: video, file: video, stored: none, resign: signs }
+    as: muderris
+    open: '{nazar}/ders/{recup.course}/kayitlar'
+    setup:
+      - run: [node, helpers/course.mjs, make, recup, --weeks, '1', --lessons, '1', --start, '-3']
+        expect: '"title":"Deneme dersi recup"'
+      - run: [node, helpers/sql.mjs, "insert into lesson_recordings (lesson_id, title, provider, url, visibility, status, bunny_video_id, upload_expires_at) values ('{recup.lessons.0}', 'Deneme videosu', 'BUNNY', null, 'ENROLLED', 'READY', gen_random_uuid()::text, now() - interval '1 hour') returning status"]
+        expect: '"status":"READY"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recup]
+        expect: 'course remove recup'
+
+  encoding:
+    given: { can: both, held: encoding, file: video, stored: none, resign: signs }
+    as: muderris
+    open: '{nazar}/ders/{recup.course}/kayitlar'
+    setup:
+      - run: [node, helpers/course.mjs, make, recup, --weeks, '1', --lessons, '1', --start, '-3']
+        expect: '"title":"Deneme dersi recup"'
+      - run: [node, helpers/sql.mjs, "insert into lesson_recordings (lesson_id, title, provider, url, visibility, status, bunny_video_id, upload_expires_at) values ('{recup.lessons.0}', 'Deneme videosu', 'BUNNY', null, 'ENROLLED', 'PROCESSING', gen_random_uuid()::text, now() + interval '20 hours') returning status"]
+        expect: '"status":"PROCESSING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recup]
+        expect: 'course remove recup'
+
+  uploadOnly:
+    given: { can: uploadOnly, held: nothing, file: video, stored: none, resign: signs }
+    as: dersNazir
+    open: '{nazar}/ders/{recup.course}/kayitlar'
+    setup:
+      - run: [node, helpers/course.mjs, make, recup, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1', --start, '-3']
+        expect: '"title":"Deneme dersi recup"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{recup.course}', --nazir, dersNazir, --codes, recording.upload, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recup]
+        expect: 'course remove recup'
+
+  uploadOnlyEdit:
+    given: { can: uploadOnly, held: link, file: video, stored: none, resign: signs }
+    as: dersNazir
+    open: '{nazar}/ders/{recup.course}/kayitlar'
+    setup:
+      - run: [node, helpers/course.mjs, make, recup, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1', --start, '-3']
+        expect: '"title":"Deneme dersi recup"'
+      - run: [node, helpers/api.mjs, basmuderris, POST, '/lessons/{recup.lessons.0}/recordings', '{"title":"Deneme bağlantısı","url":"https://www.youtube.com/watch?v=Ab3dEfGh1jK","visibility":"ENROLLED"}']
+        expect: '"id"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{recup.course}', --nazir, dersNazir, --codes, recording.upload, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recup]
+        expect: 'course remove recup'
+
+  manageOnly:
+    given: { can: manageOnly, held: nothing, file: video, stored: none, resign: signs }
+    as: dersNazir
+    open: '{nazar}/ders/{recup.course}/kayitlar'
+    setup:
+      - run: [node, helpers/course.mjs, make, recup, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1', --start, '-3']
+        expect: '"title":"Deneme dersi recup"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{recup.course}', --nazir, dersNazir, --codes, recording.manage, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recup]
+        expect: 'course remove recup'
+
+  neither:
+    given: { can: neither, held: nothing, file: video, stored: none, resign: signs }
+    as: dersNazir
+    open: '{nazar}/ders/{recup.course}/kayitlar'
+    setup:
+      - run: [node, helpers/course.mjs, make, recup, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1', --start, '-3']
+        expect: '"title":"Deneme dersi recup"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{recup.course}', --nazir, dersNazir, --codes, none, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, recup]
+        expect: 'course remove recup'
+
+# What the person does that no node of the screen sends. CHOOSE_FILE, STOP, SENT, NETWORK_DROPS, BUNNY_REFUSES and BUNNY_BREAKS are not bound: the
+# file input cannot be set, and the browser's and Bunny's own events cannot be made here (header). POLL_READY and POLL_FAILED are tedrisat's poll,
+# which does not run without the library: the same write, by hand, then the page's own refresh (every 10 seconds) shows it.
+events:
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+  POLL_READY:
+    - run: [node, helpers/sql.mjs, "update lesson_recordings set status = 'READY', updated_at = now() where lesson_id = '{recup.lessons.0}' and status = 'PROCESSING'"]
+      expect: '"rows":1'
+  POLL_FAILED:
+    - run: [node, helpers/sql.mjs, "update lesson_recordings set status = 'FAILED', updated_at = now() where lesson_id = '{recup.lessons.0}' and status = 'PROCESSING'"]
+      expect: '"rows":1'
+
+# The page's states are told by the address; the dialog's by what it shows. `opened`, `beginsUpload` and the steps of the upload are not bound.
+states:
+  listed: { url: '{nazar}/ders/*/kayitlar' }
+  forbidden: { url: '{nazar}/ders/*/kayitlar' }
+  linkForm: { url: '{nazar}/ders/*/kayitlar' }
+  choosing: { url: '{nazar}/ders/*/kayitlar' }
+  encoded: { url: '{nazar}/ders/*/kayitlar' }
+  vanished: { url: '{nazar}/ders/*/kayitlar' }
+  handed_over.add: { url: '{nazar}/ders/*/kayitlar' }
+  left: { url: '{nazar}/bildirimler' }
+
+# Where role and name cannot find a node. A bare <main> is also the notifications page's, so the page is told by its own words.
+nodes:
+  recordingsPage: { role: main, hasText: '/Ders kayıtları/' }
+  # the counts are two numbers of one sentence: told apart by the test id; the walk's one celse is missing a recording, or has one
+  summary: { testId: recording-counts, hasText: '/^\d+ celsenin kaydı var, \d+ celsenin yok\.$/' }
+  # a neutral Alert is a status that holds its title and its line as one element
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  # a badge is a span, and "Hazırlanıyor" is also a word of the page's note
+  badgeProcessing: { css: '.mds-badge', hasText: Hazırlanıyor }
+  badgeReady: { css: '.mds-badge', hasText: '/^Hazır$/' }
+  processingBadge: { css: '.mds-badge', hasText: Hazırlanıyor }
+  readyBadge: { css: '.mds-badge', hasText: '/^Hazır$/' }
+  # the week heading is "Hafta 1 · Hafta 1" (the walk's week is titled, as every made course's); the table is named by its hidden caption
+  weekTitle: { role: heading, name: '/^Hafta \d+/' }
+  weekRegion: { role: region, name: '/^Hafta \d+/' }
+  weekTable: { role: table, name: '/^Hafta \d+: celseler ve kayıtları$/' }
+  # the dialog: one component, three titles, one name taken from whichever it shows
+  dialog: { role: dialog, hasText: '/Kayıt ekle|Kaydı düzenle|Yüklemeye devam et/' }
+  dialogTitle: { role: heading, name: '/^(Kayıt ekle|Kaydı düzenle|Yüklemeye devam et)$/' }
+  # the icon button's name is its aria-label
+  dialogClose: { role: button, name: Kapat, within: { role: dialog } }
+  # exact names: "Yükle" is also the start of the row's "Yüklemeye devam et: ..." button
+  submitUpload: { role: button, name: '/^Yükle$/', within: { role: dialog } }
+  submitContinue: { role: button, name: '/^Devam et$/', within: { role: dialog } }
+  cancel: { role: button, name: '/^Vazgeç$/', within: { role: dialog } }
+  # a file input is a native <input type=file>, which the replay can find but not fill
+  fileInput: { css: 'input[type=file]' }
+  # "{name} · {size}" is a loose text (a week heading reads "Hafta 1 · Hafta 1"): told by its test id
+  fileCaption: { testId: upload-file }
+  # the warnings are Alerts (status) whose words are the whole text; the second line of "durur" is a paragraph of the same Alert
+  replacesLinkNote: { role: status, hasText: Yüklediğiniz video bu kaydın bağlantısının yerine geçer }
+  replacesVideoNote: { role: status, hasText: Yüklediğiniz video bu kaydın şimdiki videosunun yerine geçer }
+  stopsUploadNote: { text: Bu kaydın yüklemesi sürüyorsa durur. }
+  # the paste form's two submits leave for nazar.recordings.add (the exit handed_over.add). A walk presses them as they are, which writes nothing: the
+  # link is empty ("Bağlantıyı yapıştırın.") or nothing changed (the dialog just closes). Exact names, so that "Kaydet" matches nothing else
+  submitLinkAdd: { role: button, name: '/^Kaydı ekle$/', within: { role: dialog } }
+  submitLinkEdit: { role: button, name: '/^Kaydet$/', within: { role: dialog } }
+  # the stack's Bunny library is not configured, so a READY Bunny recording has no signed player link: its cell says "Bağlantı yok"
+  readyOpen: { skip: 'drawn only where the library is configured (embedUrl is null without it); locally the row says Bağlantı yok' }
+  # the toast and the nodes of the states after an upload are not reached: no file can be chosen
+  toastUploaded: { skip: 'only after a finished upload, which this stack cannot make' }

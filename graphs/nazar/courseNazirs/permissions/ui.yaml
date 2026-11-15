@@ -1,0 +1,119 @@
+# The screens of nazar.courseNazirs.permissions: the page "Ders nazırları" of a course (/ders/<id>/nazirlar) as the hoca reads it, the dialog
+# "İzinleri düzenle" over it, and the toasts of a save. Read from apps/nazar/features/course-nazirs (course-nazirs-page.tsx,
+# course-nazirs-table.tsx, course-nazir-dialog.tsx, course-nazirs.ts, actions.ts), apps/nazar/features/nazirs/components/permission-section.tsx and
+# libs/ui/src/mds (dialog, checkbox, field, button, table, toast); the words are copied from libs/i18n/src/locales/tr/nazar.json, key for key.
+# Nothing was seen in a browser: every node is "from the code" until the walk phase.
+#
+# What the graph draws of a form of 21 boxes. The course catalog has 21 codes; the graph draws three of them, the ones the walk meets: "Ders kaydı
+# ekle..." (held, never changed here), "Celse ekle..." (held, ticked and unticked) and "Ders ayarlarını..." (not held, never ticked here). The other
+# eighteen are boxes like them; `world: open` leaves them out. The dialog is the same one nazar.courseNazirs.appoint opens (`row === null`): this graph
+# is its edit half, so the e-mail field, the person search and "Seçilen ders nazırı" are that flow's.
+#
+# Composed text (not in any i18n file), each a value the page puts in a place with no message of its own:
+#   composed.Row.person       the <bdi> of the nazır's name in the table (course-nazirs-table.tsx:48)
+#   composed.Row.email        her address, a <bdi dir=ltr> (course-nazirs-table.tsx:51)
+#   composed.Row.permissions  the sentences of the codes held, joined with " · " (course-nazirs.ts:125-128, shown at course-nazirs-table.tsx:68)
+#   composed.Row.endDate      the <time> of the end, a date as dayFormat(locale, zone) writes it (course-nazirs-table.tsx:81); no time of day (CNP-2)
+#   composed.Row.giver        the <bdi> of who appointed (course-nazirs-table.tsx:93)
+#   composed.Editor.eyebrow   the course's title above the dialog's title (course-nazir-dialog.tsx:235)
+#   composed.Editor.person    the nazır's name in the dialog's header (course-nazir-dialog.tsx:268)
+#   composed.Editor.email     her address, a <bdi dir=ltr> (course-nazir-dialog.tsx:271)
+#   composed.Editor.roleLine  "Ders nazırı · Atayan: {giver} · {date}": the message dialog.role, " · " and the sentence of appointedBy that
+#                             course-nazirs.ts:137 builds (course-nazir-dialog.tsx:276)
+# The one message that is authored here is `Changes.note`: no app message says what saving a post changes (see the report).
+#
+# Samples: the replay reads the binding's samples (the nazır's name and address, the course's title, the dates) and matches any text where it has none.
+schema: delurio-graph/0
+kind: ui
+id: nazar.courseNazirs.permissions
+flow: nazar.courseNazirs.permissions
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note } # the one authored message of this catalog: the app has no sentence for what an edit of a post changes
+samples:
+  course: Deneme dersi cnperm
+  name: Rıza Başvuran
+  email: e2e-basvuran-h@medaris.test
+  count: "2"
+  list: Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir · Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir
+  endDate: 15 Aralık 2026
+  giver: Hamdi Müderris
+  date: 15 Kasım 2026
+
+# The page sets no focus when it loads (nothing in features/course-nazirs does), so the page node has no `initialFocus` and there is no `focus`
+# (rule focus-not-set). The dialog opens with the focus on its close icon, the first thing Base UI can focus, because edit mode gives it none
+# (course-nazir-dialog.tsx:242); that is the code's doing, not verified in a browser (F-D2c-15).
+nodes:
+  # --- the page (a dialog makes it inert, so it is drawn only where no dialog is open) ---------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [forbidden, listed, postGone], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:57 } # the shell's one <main id="main">; it has no name
+  title: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.title }, in: [forbidden, listed, postGone], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:61 } # h1; with a failed read a second h1 comes with the retry state (F-D2c-1, not drawn)
+  intro: { type: text, component: Text, text: { key: CourseNazirs.intro, params: { course: course.title } }, in: [listed, postGone], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:63 }
+  appointButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseNazirs.appoint }, in: [listed, postGone], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:433 } # nazar.courseNazirs.appoint; drawn because the list says the hoca may appoint (mayAppoint)
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert
+
+  # --- the table, one post ----------------------------------------------------------------------------------------------------------------------
+  table: { type: list, component: List, role: table, name: { key: CourseNazirs.caption, params: { course: course.title } }, in: [listed, postGone], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:149 } # the caption is hidden; the walk's course has one post
+  emptyLine: { type: text, component: Text, text: { key: CourseNazirs.empty }, in: [postGone], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:154 }
+  rowPerson: { type: text, component: Text, text: { key: composed.Row.person, params: { name: nazir.name } }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:48 }
+  rowEmail: { type: text, component: Text, text: { key: composed.Row.email, params: { email: nazir.email } }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:51 }
+  rowCount: { type: text, component: Text, text: { key: CourseNazirs.permissionCount, params: { count: post.count } }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:66 } # "2 izin" while the post holds the walk's two permissions, "1 izin" after "Celse ..." is taken away; the sample is the first, the binding reads either
+  rowSentences: { type: text, component: Text, text: { key: composed.Row.permissions, params: { list: post.sentences } }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:68 } # one sentence per code held, joined with " · "
+  rowEnd: { type: text, component: Text, text: { key: composed.Row.endDate, params: { endDate: post.endDate } }, in: [listed], when: "heldEnd == 'ahead'", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:81 } # a <time>: the day only, not the hour the access ends (CNP-2)
+  rowForever: { type: text, component: Text, text: { key: CourseNazirs.never }, in: [listed], when: "heldEnd == 'none'", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:83 } # "Süresiz"
+  rowGiver: { type: text, component: Text, text: { key: composed.Row.giver, params: { giver: post.giver } }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:93 }
+  rowGiverYou: { type: text, component: Text, text: { key: CourseNazirs.you }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:94 } # the walk's hoca appointed the post, so the Atayan cell says "(siz)" (e2e course-nazirs#3 a6)
+  editButton: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseNazirs.editLabel, params: { name: nazir.name } }, text: { key: CourseNazirs.edit }, in: [listed], emits: OPEN_EDIT, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:114 } # drawn where the row says the viewer may edit it (mayEdit): not on the viewer's own post, not for one who appoints only
+  endButton: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseNazirs.endLabel, params: { name: nazir.name } }, text: { key: CourseNazirs.end }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:124 } # nazar.courseNazirs.dismiss; no one this post appointed, so it is on
+
+  # --- the toasts: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays -----------------------------------------
+  toastSaved: { type: status, component: Status, role: dialog, name: { key: CourseNazirs.dialog.saved }, text: { key: CourseNazirs.dialog.savedBody, params: { name: nazir.name } }, in: [listed], when: "toast == 'saved'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:185 } # it closes by itself after 6 seconds
+  toastGone: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.saveFailed }, text: { key: CourseNazirs.errors.gone }, in: [postGone], when: "toast == 'gone'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201 } # an error toast stays until closed
+  toastRefused: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.saveFailed }, text: { oneOf: [Problems.actionForbidden, CourseNazirs.errors.exceeds, Problems.selfGrant, Problems.permissionUnknown, CourseNazirs.errors.expiryInvalid] }, in: [editing], when: "toast == 'refused'", source: apps/nazar/features/course-nazirs/course-nazirs.ts:219 } # which sentence depends on the code (courseNazirErrorKey); over a modal dialog (CNP-3); the binding gives them as one pattern
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.saveFailed }, text: { key: Problems.actionGeneric }, in: [editing], when: "toast == 'failed'", source: apps/nazar/features/course-nazirs/course-nazirs.ts:250 }
+
+  # --- the dialog "İzinleri düzenle" -----------------------------------------------------------------------------------------------------------------
+  editor: { type: page, component: Page, role: dialog, name: { labelledBy: editorTitle }, in: [editing, saving], initialFocus: closeIcon, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:227 } # always mounted, `open` while a row is edited; the scrim does not close it; initial focus from the code, not verified (F-D2c-15)
+  editorEyebrow: { type: text, component: Text, text: { key: composed.Editor.eyebrow, params: { course: course.title } }, in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:235 }
+  editorTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.dialog.titleEdit }, in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:236 } # h2; the same words as the table's button
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [editing, saving], emits: CLOSE, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:241 } # an icon button named only by aria-label; while a save runs it stays on and does nothing (course-nazir-dialog.tsx:230)
+  editorPerson: { type: text, component: Text, text: { key: composed.Editor.person, params: { name: nazir.name } }, in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:268 }
+  editorEmail: { type: text, component: Text, text: { key: composed.Editor.email, params: { email: nazir.email } }, in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:271 }
+  editorRole: { type: text, component: Text, text: { key: composed.Editor.roleLine, params: { giver: post.giver, date: post.date } }, in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:276 } # "Ders nazırı · Atayan: {giver} · {date}"
+
+  permissionsGroup: { type: text, component: Text, role: group, name: { key: CourseNazirs.dialog.permissions }, in: [editing, saving], source: apps/nazar/features/nazirs/components/permission-section.tsx:37 } # a <fieldset> with a <legend>; 21 boxes in two columns, three drawn
+  permissionsHelp: { type: text, component: Text, text: { key: CourseNazirs.dialog.permissionsHelp }, in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:379 }
+  permRecording: { type: field, component: TextField, role: checkbox, text: { key: Account.permissions.recording_manage }, checked: true, in: [editing, saving], source: apps/nazar/features/nazirs/components/permission-section.tsx:44 } # held and ticked; the graph never changes it
+  permSession: { type: field, component: TextField, role: checkbox, text: { key: Account.permissions.session_manage }, checked: "session == 'ticked'", in: [editing, saving], emits: TOGGLE_SESSION, source: apps/nazar/features/nazirs/components/permission-section.tsx:44 } # held when the dialog opens; pressing it ticks or unticks it
+  permSettings: { type: field, component: TextField, role: checkbox, text: { key: Account.permissions.course_settings }, checked: false, in: [editing, saving], source: apps/nazar/features/nazirs/components/permission-section.tsx:44 } # a box the hoca may give (she holds it) and this graph leaves unticked
+
+  endBox: { type: field, component: TextField, text: { key: CourseNazirs.dialog.endLabel }, disabledIn: [saving], in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:400 } # <input type=datetime-local name=endsAt>: no role in the accessibility tree, so it is found by its label; its value (the held end on the viewer's clock, or empty) is not a graph check
+  endHelp: { type: text, component: Text, text: { key: CourseNazirs.dialog.endHelp }, in: [editing, saving], when: "not (tried and end == 'past')", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:391 } # the error replaces the help line
+  endError: { type: text, component: Text, text: { key: CourseNazirs.dialog.endProblems.past }, in: [editing, saving], when: "tried and end == 'past'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:393 } # a Field.Error: no role, not live, the focus stays on "Kaydet" (F-D2c-4)
+  note: { type: text, component: Text, text: { key: CourseNazirs.dialog.note }, in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:412 }
+
+  summary: { type: text, component: Text, text: { key: CourseNazirs.dialog.summary, params: { count: form.count } }, in: [editing, saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:243 } # "2 izin seçili" with "Celse ..." ticked, "1 izin seçili" without; a <p> in the footer, not a live region (CNP-4); the sample is the first, the binding reads either
+  busy: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.saving }, in: [saving], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:256 } # the <output> beside the busy button; its words are the app's own, not the kit's default
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseNazirs.dialog.cancel }, in: [editing, saving], emits: CANCEL, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:252 } # while a save runs it looks live and does nothing (course-nazir-dialog.tsx:230)
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseNazirs.dialog.save }, in: [editing, saving], disabledIn: [saving], emits: SAVE, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:253 } # in edit mode it is on whatever the form says; busy (aria-disabled) while it saves
+
+edges:
+  - { labelledBy: [editor, editorTitle] }
+  - { triggers: [editButton, editing] }
+  - { triggers: [save, saving] }
+  - { returnsFocus: [editor, editButton] } # Vazgeç, Esc, the close icon, a save with nothing changed and a save that worked: the row's button stays mounted, so Base UI gives the focus back to it; not verified in a browser
+
+rules:
+  - { id: focus-not-set, rule: "The page sets no focus when it loads. The dialog's `initialFocus` is `undefined` in edit mode (course-nazir-dialog.tsx:242, `row ? undefined : emailRef`), so Base UI's default applies. The graph draws the close icon as the dialog's `initialFocus`, which is what the header order gives (libs/ui/src/mds/dialog.tsx:97-100); not verified in a browser." }
+  - { id: F-D2c-15, rule: "The edit dialog sets no initial focus, so the keyboard user starts on the header's 'Kapat' and not on the work (course-nazir-dialog.tsx:242). Fix: pass `initialFocus` the first box, as the appoint mode gives the e-mail field. Not verified in a browser." }
+  - { id: F-D2c-16, rule: "libs/ui/src/mds/dialog.tsx:103-112 makes BaseDialog.Description wrap the whole body, so aria-describedby is the entire form: the person's card, 21 checkboxes, the end field and the note. A screen reader may read all of it on open. Fix: describe the dialog by the intro line only. Not verified with one." }
+  - { id: F-D2c-4, rule: "'Bitiş zamanı şu andan sonra olmalı.' is a Field.Error with no role and no live region (libs/ui/src/mds/field.tsx:50-52), and the focus stays on 'Kaydet' (course-nazir-dialog.tsx:157-167): nothing announces it when it appears after a blocked save. It replaces the help line and follows the field once 'Kaydet' was pressed. Fix: role=alert on the error, or focus the field." }
+  - { id: F-D2c-18, rule: "'Kaydet' with the same codes and the same end closes the dialog with no write and no word (course-nazir-dialog.tsx:168-171, unchangedPost in course-nazirs.ts:208). Harmless, but the person gets no sign that nothing was saved. Fix: keep it, or say 'Değişiklik yok'." }
+  - { id: CNP-1, rule: "New. When the post was ended elsewhere while the dialog was open (COURSE_NAZIR_NOT_FOUND), the dialog closes, the list is read again and the row and its opener are gone (course-nazir-dialog.tsx:210-213, listMoved in course-nazirs.ts:256); no code chooses where the focus goes, and the only word is an error toast that stays, 'İzinler kaydedilemedi' / 'Bu ders nazırı artık yok; liste yenilendi.'. The same shape as F-D2c-8 for a dismissal. Fix: focus the table or the page's h1 (tabIndex=-1). Not verified in a browser." }
+  - { id: CNP-2, rule: "New. The table's 'Bitiş' cell prints the day only ('15 Aralık 2026', dayFormat = dateStyle long, lib/dates.ts:6), while the dialog edits the day and the hour and the access ends at that hour (course-nazirs.ts:100-103, course-nazirs-table.tsx:81). A post that ends today at 14:00 reads as today, and two posts a day apart in hours look alike; the hour is visible only inside the edit dialog. Fix: print the hour too (timeStyle short) in the <time>." }
+  - { id: CNP-3, rule: "New, not verified. An error toast of a refused save (priority high, an alertdialog) is raised while the modal dialog is open and the dialog stays open (course-nazir-dialog.tsx:201-209). Whether Base UI's modal makes the toast region inert, so that the accessibility tree does not expose it and a screen reader never hears it, is not known from the code. The graph draws the toast in `editing`; the replay's `exposed` check will say. The same open question is PERM-5 of nazar.nazirs.permissions." }
+  - { id: CNP-4, rule: "New. The footer's count ('2 izin seçili', 'İzin seçilmedi') is a <p class=mds-dialog__meta> (libs/ui/src/mds/dialog.tsx:114-116), not a live region: a person who ticks or unticks a box hears nothing of the new count. The same as PERM-2 of nazar.nazirs.permissions. Fix: role=status on it." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'İzinleri düzenle' in 'İzinleri düzenle: {name}', 'Görevden al' in 'Görevden al: {name}' (WCAG 2.5.3). Holds." }
+  - { id: closing-asks-nothing, rule: "Vazgeç, the close icon and Esc drop the form with no question (decision D2); the scrim does not close it, so a stray click loses nothing. While a save runs all three do nothing (course-nazir-dialog.tsx:230)." }
+  - { id: the-end-is-an-instant, rule: "The end goes out as an instant (resolveEnd, libs/utils/src/end-instant.ts:141) or null, never as a basic-format date such as '20261231', so the domain's grant-end-is-an-instant finding is not reachable from this dialog. The field is read on the viewer's clock, and a value equal to the held one goes back as the stored instant, so an end such as 23:59:59 does not drift (e2e course-nazirs#5 a4). A cleared field sends null: the post then has no end (the route requires `endsAt` and null means until taken away, so an edit cannot lift an end by leaving it out)." }
+  - { id: toast-is-the-only-word, rule: "The result of a save is said by a toast, a dialog in the 'Bildirimler' live region: 6 seconds for a success, until closed for an error. Nothing on the page says what changed except the row itself ('1 izin', 'Süresiz')." }

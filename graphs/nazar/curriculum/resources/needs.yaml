@@ -1,0 +1,149 @@
+# What must exist for the hoca of a course to attach resources to it and to its celses: the flow's product list (LAYOUT.md section 7).
+# Each need is what the product must do, from the flow's story and the findings of the inventory, not from what the page does today;
+# the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+# No e2e check covers this flow (the inventory says "e2e: none"); `test:` names the page specs that stub the API, and `replay:` a
+# scenario of binding.yaml, binding.noSessions.yaml or binding.readOnly.yaml that drives it. No replay has run yet (the owner's word),
+# so each `replay:` says what the binding is written to walk, not what passed.
+#
+# missing:  reorder-the-course-list, errors-are-announced, focus-follows-the-panel-and-the-removal, save-keeps-the-place,
+#           row-buttons-say-which-row, kaydet-says-why-it-is-off, a-failed-save-is-told
+# unwalked: attach-a-file, file-refusals-are-worded (code exists and the page specs cover it, but no e2e and no replay can walk it:
+#           the upload route answers 503 here and the replay cannot set a file input)
+kind: needs
+flow: nazar.curriculum.resources
+status: proposed
+
+needs:
+  - id: link-a-resource-to-the-course
+    need: >-
+      The hoca links a book, a PDF or a page to the course: a name, an optional short line and the address it opens, which must start
+      with http:// or https://. Everyone who may see the course reads the names; the links and files open for the talebe enrolled in
+      it. The row is stored with the course's one save.
+    drawn: [listed, drafting, saving, addCourseLink, courseName, courseMeta, courseUrl, toastSaved]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nazar/features/curriculum/components/resources-editor.tsx:235
+    walked:
+      - test: apps/nazar/test/curriculum-page.spec.tsx
+      - replay: adds
+
+  - id: an-incomplete-row-is-not-sent
+    need: >-
+      A link with no name or no address is never sent: "Kaydet" shows what is missing under the fields and writes nothing.
+    drawn: [refused, courseNameError, courseUrlError, lessonNameError, lessonUrlError, nothing-blank-is-sent]
+    built:
+      - route: apps/nazar/features/curriculum/curriculum.ts:441
+    walked:
+      - test: apps/nazar/test/curriculum.spec.ts
+      - replay: adds
+
+  - id: errors-are-announced
+    need: >-
+      What a refused "Kaydet" or a refused file says is announced to a person who cannot see the page, and the focus goes to the
+      first field with a problem (F-C-course-a-01, F-C-course-a-07).
+    drawn: [refused, pickMissingText, courseNameError]
+    missing: none
+
+  - id: reorder-the-celse-list
+    need: >-
+      The hoca puts the resources of a celse in the order the talebe should read them, one step at a time, and the order is stored.
+    drawn: [drafting, saving, lessonMoveUp, lessonMoveDown]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:145
+    walked:
+      - test: apps/nazar/test/curriculum-page.spec.tsx
+      - replay: adds
+
+  - id: reorder-the-course-list
+    need: >-
+      The course's own resources can be put in order too, as a celse's can, without taking them out and adding them again, which
+      would delete a file for good (RESOURCES-1, decision D1).
+    drawn: [listed]
+    missing: none
+
+  - id: attach-a-file
+    need: >-
+      The hoca uploads a file to the course or to a celse (a PDF, an image, a Word, Excel or PowerPoint file or plain text, at most
+      25 MB, the type read from its bytes): it is stored at once, listed last with its type and size, and needs no "Kaydet". A celse
+      that has no id yet says that the curriculum is saved first.
+    drawn: [uploadPanel, uploadingCourse, uploadingLesson, toastUploaded, courseFileLink, freshSession, freshUpload, freshSaveFirst]
+    built:
+      - action: medaris.api:webUploadCourseResourceFile
+      - action: medaris.api:webUploadLessonResourceFile
+      - action: medaris.api:uploadCourseResourceFile
+      - action: medaris.api:uploadLessonResourceFile
+      - route: apps/nazar/app/api/files/courses/[courseId]/resources/route.ts:18
+      - route: apps/nazar/app/api/files/lessons/[lessonId]/resources/route.ts:17
+    walked:
+      - test: apps/nazar/test/curriculum-files.spec.tsx
+      - test: apps/nazar/test/file-routes.spec.ts
+      - replay: adds # only as far as the panel opens, refuses an empty choice and closes, and the celse with no id; the upload itself is unwalked
+
+  - id: file-refusals-are-worded
+    need: >-
+      A file the page or the server refuses (empty, over 25 MB, a type it does not take, no file store, a course or celse that is
+      gone, a lost connection) is told in the panel in words of its own, and the server's message never reaches the page.
+    drawn: [uploadPanel, pickMissingText, pickEmptyText, pickTooLargeText, uploadFailedAlert]
+    built:
+      - route: apps/nazar/features/files/files.ts:209
+    walked:
+      - test: apps/nazar/test/files.spec.ts
+
+  - id: a-file-leaves-after-a-question
+    need: >-
+      Taking a file off the list asks first, because the save that follows deletes the file for good; "Vazgeç" before the save puts
+      it back. The file's object is queued for deletion and nothing is left in the store.
+    drawn: [removeFile, removeDialog, removeConfirm, removeCancel, courseFileLink, drafting, saving, a-file-row-leaves-by-a-question]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nazar/features/curriculum/components/remove-file-dialog.tsx:24
+    walked:
+      - test: apps/nazar/test/curriculum-files.spec.tsx
+      - replay: removesFile
+
+  - id: only-those-who-may-change-a-list
+    need: >-
+      Only a person who may edit the course changes its list; only one who may also manage celses changes a celse's list; anyone
+      else who opens the page reads both lists and is told why nothing can be changed.
+    drawn: [readOnlyNote, sessionsNote, lessonCaptionSessions, only-those-who-may-change-a-list, celse-lists-need-session-manage]
+    built:
+      - route: apps/nazar/features/curriculum/components/curriculum-editor.tsx:885
+    walked:
+      - test: apps/nazar/test/curriculum-files.spec.tsx
+      - replay: noSessions
+      - replay: readOnly
+
+  - id: focus-follows-the-panel-and-the-removal
+    need: >-
+      The focus goes into the upload panel when it opens and back to its button when it closes, and to the list or the next row
+      when a row is taken off (F-C-course-a-14, F-C-course-a-15, F-C-course-a-25).
+    drawn: [uploadPanel, removeFile, courseRemove]
+    missing: none
+
+  - id: row-buttons-say-which-row
+    need: >-
+      Every "Kaynağı çıkar", "Yukarı taşı" and "Aşağı taşı" is named with the row it acts on, so a person who reads the page by its
+      controls can tell the rows apart (F-C-course-a-03).
+    drawn: [courseRemove, lessonRemove, lessonMoveUp, lessonMoveDown]
+    missing: none
+
+  - id: kaydet-says-why-it-is-off
+    need: >-
+      "Kaydet" and the other list's "Dosya yükle" say why they are off while a file uploads or the page is read again
+      (F-C-course-a-30).
+    drawn: [save, courseUpload, lessonUpload]
+    missing: none
+
+  - id: save-keeps-the-place
+    need: >-
+      After a save the person stays where they were: the celse they were editing stays open and the focus is on a place that still
+      exists (RESOURCES-2, decision D2).
+    drawn: [saving, listed, toastSaved]
+    missing: none
+
+  - id: a-failed-save-is-told
+    need: >-
+      When the save cannot reach the server at all the form is unlocked and the person is told to try again (F-C-course-a-19).
+    drawn: [saving, toastFailed]
+    missing: none

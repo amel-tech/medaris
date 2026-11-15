@@ -1,0 +1,173 @@
+# What the eight walks of nazar.access.dersNazirPages share: where the pages' nodes are found, where the states are, and the events that
+# have no node. It has no scenario; binding.yaml (the ders nazırı the hoca gave nothing, the main story) and binding.<grant set>.yaml
+# extend it and add theirs. Eight files, because a walk takes the first scenario of a file whose `given` fits and `--cover transitions`
+# walks the shortest path to a transition, so a second grant set walking the same menu events would never be taken beside the first.
+#
+# NOT RUN: the graphs were written without a replay (the walk phase comes later); every locator below comes from the code and the catalog
+# and is unverified until a walk.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/<file> [--cover transitions] --absent --out <dir>
+#
+# --absent matters here: the whole point of the flow is what a page does not draw for this person (the verdict where the body should be,
+# the menu entries, the buttons), and the nodes that carry `when` conditions in ui.yaml are what `--absent` looks for.
+#
+# Data. Every scenario makes the course `Deneme dersi dnp` with helpers/course.mjs (published, in the seed's second köşk, two weeks of two
+# LIVE celses, the first week three days ago and the second four days from now; MUDERRIS the course's one hoca) with `applicantE` seated as a
+# talebe, and appoints the spare account `applicantD` as its ders nazırı with the grant set of the scenario, as the hoca does on Ders
+# nazırları (helpers/course-nazir-grants.mjs). The ids go to graphs/.local/made/dnp.json, read here as {dnp.course} and {dnp.lessons.0}; a
+# scenario that makes a question has them in graphs/.local/made/dnpQ.json ({dnpQ.waiting.0}). The seeded ders nazırı (DERS_NAZIR, Rukiye)
+# and her post in "Bina ve İzhar Şerhi" are never touched.
+# `teardown` puts the hoca back where a walk took them out, dismisses every post of the course (dnp.mjs clear), removes the course (as the
+# başnazım: its celses, the questions, the talebe's seat, the invitation mails and the notifications that point at it) and clears the
+# notifications and the mailbox of the people it used. The people in the course are applicantD (the ders nazırı), applicantE (the talebe),
+# `other` (a person the nazır appoints), applicantF (a person the hoca appoints) and MUDERRIS; no seeded course is touched.
+# Every command run by hand takes the replay lock.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.access.dersNazirPages
+
+# a wide window, so that the course's sidebar is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+data:
+  dnp: { json: ../.local/made/dnp.json }
+  dnpQ: { json: ../.local/made/dnpQ.json }
+
+# Genel bakış is where the sign-in lands and where the walk opens. A menu entry that is drawn is pressed; one that is not (Ödevler,
+# Değerlendirme and Ders destesi without their code, and Celse planla, which no menu has) is reached by its address, as e2e
+# evaluation#2 does: the replay presses a node when one sends the event, and uses these steps when none does.
+events:
+  OPEN_HOMEWORK: [{ goto: '{nazar}/ders/{dnp.course}/odevler' }]
+  OPEN_EVALUATION: [{ goto: '{nazar}/ders/{dnp.course}/degerlendirme' }]
+  OPEN_DECK: [{ goto: '{nazar}/ders/{dnp.course}/deste' }]
+  OPEN_PLAN: [{ goto: '{nazar}/ders/{dnp.course}/celseler/planla' }]
+  # Bildirimler, the one page outside the course that the menu and the person row lead to
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+
+states:
+  shown: { url: '{nazar}/ders/**' }
+  settingsEditable: { url: '{nazar}/ders/*/ayarlar' }
+  settingsSample: { url: '{nazar}/ders/*/ayarlar' }
+  settingsShut: { url: '{nazar}/ders/*/ayarlar' }
+  left: { url: '{nazar}/bildirimler' }
+
+# Role and name find most nodes. Below are the ones they cannot find alone. The page node `mainPage` (a bare role main, which the page a
+# walk leaves for also has) is told apart by the h1 every page of the course starts with. A page's h1 is found by its own words and not by
+# role and name, because a failed read draws a second h1 under it (F-D1-01) and the h1 of Genel bakış carries the badge.
+nodes:
+  mainPage: { role: main, hasText: '/^\s*(Deneme dersi|Müfredat|Celseler|Celse planla|Talebeler|Sorular|Ödevler|Değerlendirme|Ders kayıtları|Ders desteleri|Yasaklamalar|Arşiv|Ders nazırları|Ders ayarları)/' }
+  mainMenu: { role: navigation, name: Ana menü }
+  # the person row of the sidebar (e2e course-nazirs#4 a1)
+  userRole: { css: 'aside .mds-nav-user__role', hasText: '/^Ders nazırı/' }
+
+  # The menu's links are found inside the sidebar's menu. A number the person may read is appended to the link's name with a hidden label
+  # ("Celseler 4 katılım yolu eksik", "Bildirimler 2 okunmamış"), so those are found by their beginning.
+  menuPano: { role: link, name: '/^Pano$/', within: { role: navigation, name: Ana menü } }
+  menuNotifications: { role: link, name: '/^Bildirimler/', within: { role: navigation, name: Ana menü } }
+  menuOverview: { role: link, name: '/^Genel bakış/', within: { role: navigation, name: Ana menü } }
+  menuCurriculum: { role: link, name: '/^Müfredat/', within: { role: navigation, name: Ana menü } }
+  menuSessions: { role: link, name: '/^Celseler/', within: { role: navigation, name: Ana menü } }
+  menuStudents: { role: link, name: '/^Talebeler/', within: { role: navigation, name: Ana menü } }
+  menuQuestions: { role: link, name: '/^Sorular/', within: { role: navigation, name: Ana menü } }
+  menuHomework: { role: link, name: '/^Ödevler/', within: { role: navigation, name: Ana menü } }
+  menuEvaluation: { role: link, name: '/^Değerlendirme/', within: { role: navigation, name: Ana menü } }
+  menuRecordings: { role: link, name: '/^Ders kayıtları/', within: { role: navigation, name: Ana menü } }
+  menuDeck: { role: link, name: '/^Ders destesi/', within: { role: navigation, name: Ana menü } }
+  menuBans: { role: link, name: '/^Yasaklamalar/', within: { role: navigation, name: Ana menü } }
+  menuArchive: { role: link, name: '/^Arşiv/', within: { role: navigation, name: Ana menü } }
+  menuNazirs: { role: link, name: '/^Ders nazırları/', within: { role: navigation, name: Ana menü } }
+  menuSettings: { role: link, name: '/^Ders ayarları/', within: { role: navigation, name: Ana menü } }
+
+  # the verdict's alert is a status with its title and the sentence inside it
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  forbiddenText: { text: '/Bu sayfayı açma izniniz yok/' }
+
+  # the h1 of each page, by its words
+  overviewTitle: { css: 'main h1', hasText: '/^Deneme dersi dnp/' }
+  curriculumTitle: { css: 'main h1', hasText: '/^Müfredat$/' }
+  sessionsTitle: { css: 'main h1', hasText: '/^Celseler$/' }
+  planTitle: { css: 'main h1', hasText: '/^Celse planla$/' }
+  studentsTitle: { css: 'main h1', hasText: '/^Talebeler$/' }
+  questionsTitle: { css: 'main h1', hasText: '/^Sorular$/' }
+  homeworkTitle: { css: 'main h1', hasText: '/^Ödevler$/' }
+  evaluationTitle: { css: 'main h1', hasText: '/^Değerlendirme$/' }
+  recordingsTitle: { css: 'main h1', hasText: '/^Ders kayıtları$/' }
+  deckTitle: { css: 'main h1', hasText: '/^Ders desteleri$/' }
+  bansTitle: { css: 'main h1', hasText: '/^Yasaklamalar$/' }
+  archiveTitle: { css: 'main h1', hasText: '/^Arşiv$/' }
+  nazirsTitle: { css: 'main h1', hasText: '/^Ders nazırları$/' }
+  settingsTitle: { css: 'main h1', hasText: '/^Ders ayarları$/' }
+
+  # the lines under the titles that name the course, and what only an opened page has
+  curriculumIntro: { text: '/dersinin bilgileri, haftaları ve celseleri\./' }
+  curriculumInfo: { role: heading, name: Ders bilgileri }
+  curriculumReadOnly: { role: status, hasText: '/yalnız okunur/' }
+  curriculumSessionsNote: { role: status, hasText: '/celse yönetimi izni gerekir/' }
+  sessionsLine: { text: '/dersinin bütün celseleri, tarihe göre/' }
+  planLink: { role: link, name: Celse planla }
+  upcomingTitle: { role: heading, name: Yaklaşan celseler }
+  planPreview: { role: heading, name: Önizleme }
+  studentsLine: { text: '/dersinin başvurularını karara bağlayın/' }
+  studentsTabs: { role: tablist, name: Talebe durumu }
+  questionsLine: { text: '/talebelerinin celselerde sorduğu sorular/' }
+  # a card is an article named by who asked; the badge and the buttons are told apart by their words
+  questionCard: { role: article, name: '/ tarafından sorulan soru$/' }
+  waitingBadge: { text: '/^Bekliyor$/' }
+  answerButton: { role: button, name: Cevapla }
+  answeredBadge: { text: '/^Cevaplandı$/' }
+  changeButton: { role: button, name: Cevabı değiştir }
+  homeworkLine: { text: '/dersinde talebelerin celselere teslim ettiği ödevler/' }
+  homeworkEmpty: { role: status, hasText: Henüz ödev yok }
+  evaluationLine: { text: '/dersinin ezber ödevleri/' }
+  evaluationEmpty: { text: '/Bu derste henüz ezber ödevi yok/' }
+  recordingsLine: { text: '/dersinin kayıtları, haftalara göre/' }
+  recordingsNote: { text: '/Burada yükleme yoktur/' }
+  recordingsSummary: { testId: recording-counts }
+  deckSummary: { text: '/deste · .* kart · kayıtlı .* talebe görür/' }
+  deckNew: { role: button, name: Deste aç }
+  deckEmpty: { text: Bu derste henüz deste yok }
+  archiveLine: { text: '/Bu derste gizlenen haftalar ve celseler/' }
+  archiveEmpty: { text: '/Bu derste gizlenmiş bir hafta ya da celse yok/' }
+
+  # Ders nazırları: the table is named by its hidden caption; "(siz)" is in the name cell of a nazır's own row and in the giver cell of the rows
+  # they appointed; "Görevden al" is on the row of the person the nazır appointed, and the binding of the assigner counts exactly one
+  nazirsLine: { text: '/dersinin ders nazırları\. Ders nazırı yalnız kendisine verilen izinlerle çalışır/' }
+  appointOnlyLine: { text: '/Ders nazırı atayabilirsiniz\./' }
+  appointButton: { role: button, name: Ders nazırı ata }
+  nazirsTable: { role: table, name: '/dersinin ders nazırları$/' }
+  youMark: { text: '(siz)' }
+  ownLine: { text: '/Ders nazırı ata; atadığı kişiye izin veremez/' }
+  noPermissions: { text: '/^İzin yok$/' }
+  endAppointee: { role: button, name: '/^Görevden al: /', count: 1 }
+  editRow: { role: button, name: '/^İzinleri düzenle: /' }
+
+  # Ders ayarları. The form and the card "Hocalar ve unvanları" each have a "Kaydet" and a "Vazgeç" (F-D2c-14), told apart by their test ids;
+  # the publish card is course-publish (e2e course-settings#12)
+  settingsIntro: { text: '/dersinin yayın, erişim, kayıt ve saat dilimi ayarları\./' }
+  viewPublic: { role: link, name: '/^Tanıtım sayfasını gör/' }
+  accessHeading: { role: heading, name: 'Erişim, kayıt ve saat dilimi' }
+  needsEditNote: { role: status, hasText: '/Dersi düzenle/' }
+  closedBoxOpen: { role: checkbox, name: Kapalı ders }
+  closedBoxShut: { role: checkbox, name: Kapalı ders }
+  approvalBoxOpen: { role: checkbox, name: Kayıt onayı gereksin }
+  approvalBoxShut: { role: checkbox, name: Kayıt onayı gereksin }
+  inPersonBoxOpen: { role: checkbox, name: Celseler yüz yüze yapılır }
+  inPersonBoxShut: { role: checkbox, name: Celseler yüz yüze yapılır }
+  sampleSelectOpen: { role: combobox, name: Örnek ders }
+  sampleSelectShut: { role: combobox, name: Örnek ders }
+  zoneSelectOpen: { role: combobox, name: Saat dilimi }
+  zoneSelectShut: { role: combobox, name: Saat dilimi }
+  formSave: { role: button, name: Kaydet, within: { testId: course-settings-form } }
+  formCancel: { role: button, name: Vazgeç, within: { testId: course-settings-form } }
+  formReadOnly: { text: '/Bu ayarları değiştirme izniniz yok; yalnız görebilirsiniz\./' }
+  hocasHeading: { role: heading, name: Hocalar ve unvanları }
+  hocaUnvanOpen: { role: combobox, name: '/ için unvan$/' }
+  hocaUnvanShut: { role: combobox, name: '/ için unvan$/' }
+  hocaSave: { role: button, name: Kaydet, within: { testId: hoca-unvan-card } }
+  hocaCancel: { role: button, name: Vazgeç, within: { testId: hoca-unvan-card } }
+  hocaReadOnly: { text: '/Unvanları değiştirme izniniz yok; yalnız görebilirsiniz\./' }
+  publishHeading: { role: heading, name: Yayın }
+  publishStatus: { text: Yayında, within: { testId: course-publish } }
+  publishBody: { text: '/Ders yayında; tanıtım sayfası herkese açık\./' }
+  unpublishButton: { role: button, name: Taslağa çek }

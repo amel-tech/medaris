@@ -1,0 +1,27 @@
+# nazar.access.medreseNazirRefused, the contrast: the başmüderris of "Hadis ve Siyer Medresesi" opens the same ten pages and each draws its body.
+#   node apps/engine/src/cli.ts replay graphs/nazar/access/medreseNazirRefused --bind graphs/nazar/access/medreseNazirRefused/binding.head.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay.
+#
+# A file of its own for the reason binding.appointer.yaml gives. The başmüderris holds every medrese code by role default, so no read answers 403 and
+# the walk draws, on each page, the controls a nazır with no grant does not get (the nodes of ui.yaml with `body == 'drawn'`): "Medrese dersi aç", the
+# waiting applications and the köşk request on Pano and Dersler, the course table, "Dersi aç", "Talebi gönder", "Medreseyi gizle" and the archive's list, the
+# talebe table, "Medrese nazırı ata" with the roster's buttons and "Grup tanımla", "Yasakla", the empty line of İtirazlar, and "Kaydet" with the form's first
+# section. They hold for the seed as it is: the medrese hosts the köşk (the
+# Pano's button is not disabled), is not hidden, has no refused course request, and the seeded nazır still holds nothing ("İzin ver"). It
+# changes nothing, except the same reset of binding.yaml's `setup`, which is a write that a crashed appointer walk may need.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.medreseNazirRefused
+
+scenarios:
+  head:
+    given: { reader: head }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medresePano menu' }
+    setup:
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_H_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":[]}', --any]
+        expect: 'HTTP '

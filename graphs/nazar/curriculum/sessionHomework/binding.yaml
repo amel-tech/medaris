@@ -1,0 +1,140 @@
+# nazar.curriculum.sessionHomework on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on http://localhost:4002, the
+# course's hoca (`muderris`) signed in through Keycloak's real form, and, in one scenario, a ders nazırı who may read the block and not change it.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/curriculum/sessionHomework \
+#     --bind graphs/nazar/curriculum/sessionHomework/binding.yaml [--cover transitions] --out <dir>
+#   (a ders nazırı who holds session.manage and not course.edit is walked by binding.sessionOnly.yaml: its transitions are the hoca's, so it
+#   would never be taken beside them here)
+# NOT RUN: the owner's word is that replays happen once, at the end of the writing, so every locator, every account fact and every expectation
+# below is from the code and unverified until a walk. The binding loads (`replay <dir> --bind <this file> --emit-spec` wrote a spec and walked
+# nothing).
+#
+# Data. Every scenario makes its own course and takes it away, so no seeded course, hoca or setting is touched. `setup` runs
+# ./homework-data.mjs (a helper of this folder, over tedrisat's HTTP API and, for one row, SQL: its header says which and why), which has
+# helpers/course.mjs open "Deneme dersi sess-homework" in the seed's second köşk (published, ONE week of ONE celse from tomorrow, MUDERRIS as its
+# hoca; one celse so that every locator finds one block) and writes graphs/.local/made/sess-homework.json, read below as {made.*}. `teardown` deletes
+# the course with everything under it, as the başnazım, and the storage deletions the walk's one file row queued. Both are idempotent, so a walk that
+# died leaves nothing the next one trips on. What it cannot undo: the audit rows of the writes. Run by hand, they change data: take the replay lock.
+#
+# Scenarios (each adds a transition of its own, so `--cover transitions` takes it):
+#   sets      (the main story) no homework. The hoca opens the details, turns it on, chooses "Ezber", types a description, stores it, turns it off after
+#             the question. `--cover transitions` also walks, from this start, "Dosya", the question answered with Vazgeç and the close icon, the
+#             description put back, and the upload panel opened, pressed with nothing chosen and closed.
+#   kept      a "Dosya" homework with a description and one file (a row written by SQL, "ders-notu.pdf"). The file's trash, the question, Vazgeç and the
+#             close icon, the removal, and then the homework taken off after the question.
+#   recital   an "Ezber" homework with no description and no file, and one talebe (applicantF) marked "Tam" by the hoca. Turned off, it is taken off
+#             with no question, and the mark goes: the effect reads the audit row `lesson_assignment.delete`, which counts the marks (HWSET-1).
+#   viewing   the course's ders nazırı holding `course.edit` and not `session.manage`, on a "Dosya" homework: the read-only block; viewingNone and
+#             viewingRecital are the same reader on a celse with no homework and on a recital (the sentence "Bu celsenin ödevi yok.", and "Ezber").
+# Not bound, with the reason:
+#   - PICK_FILE and so `picked`, `uploading`, FAIL.storage and every state after them: the replay has no action that sets a file input, and the stack
+#     has no storage (a send would answer 503 STORAGE_NOT_CONFIGURED, which is what the panel would then draw). The states hold the address of the
+#     call (`uploading`) for the day it has;
+#   - every FAIL branch (forbidden, gone, alreadyGone, rejected, other): the local stack cannot be made to refuse the hoca's own write, to lose the
+#     celse between two presses or to answer a removal with a 400; and the hoca's call cannot be held long enough to take a permission away;
+#   - `not_found`: the course is the walk's own;
+#   - the Kaydet-while-typing loss of HWSET-8, the stale write of HWSET-4 and the dropped call of HWSET-9: not states of the graph.
+# Not verified: that a Base UI switch (a <span role=switch>) is found by role switch and its name, that the kind chips are found by role button, and that
+# the held server action (`call`) is the page's own POST; that the ders nazırı's grant `course.edit` alone is accepted by the course's nazır route.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.curriculum.sessionHomework
+
+scenarios:
+  sets:
+    given: { start: none, holds: both }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      description: Birinci bâbın çekimlerini yaz; yarın dinleteceğim.
+      undoText: ''
+      marks: '0'
+    setup:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, make, none]
+        expect: homework-data make none
+    teardown:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, remove]
+        expect: homework-data remove
+
+  kept:
+    given: { start: file, holds: both }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      description: Ödevin başka bir yazımı; ikinci bâbı da ekle.
+      # what homework-data.mjs stores as the description of a "Dosya" homework: typing it back leaves the box equal to what is stored
+      undoText: Üçüncü bâbın mâzî çekimlerini deftere yaz ve sonraki derse getir.
+      marks: '0'
+    setup:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, make, file]
+        expect: homework-data make file
+    teardown:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, remove]
+        expect: homework-data remove
+
+  recital:
+    given: { start: recital, holds: both }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      description: Ezber için ikinci satırı da hazırla.
+      undoText: ''
+      marks: '1'
+    setup:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, make, recital]
+        expect: homework-data make recital
+    teardown:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, remove]
+        expect: homework-data remove
+
+  viewing:
+    given: { start: file, holds: editOnly }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      description: Okuyan yazamaz.
+      undoText: ''
+      marks: '0'
+    setup:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, make, file, --nazir, course.edit]
+        expect: homework-data make file
+    teardown:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, remove]
+        expect: homework-data remove
+
+  # the same reader on a celse with no homework ("Bu celsenin ödevi yok."), and on a recital ("Teslim şekli: Ezber", no file, and its help line)
+  viewingNone:
+    given: { start: none, holds: editOnly }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      description: Okuyan yazamaz.
+      undoText: ''
+      marks: '0'
+    setup:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, make, none, --nazir, course.edit]
+        expect: homework-data make none
+    teardown:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, remove]
+        expect: homework-data remove
+
+  viewingRecital:
+    given: { start: recital, holds: editOnly }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      description: Okuyan yazamaz.
+      undoText: ''
+      marks: '1'
+    setup:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, make, recital, --nazir, course.edit]
+        expect: homework-data make recital
+    teardown:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, remove]
+        expect: homework-data remove

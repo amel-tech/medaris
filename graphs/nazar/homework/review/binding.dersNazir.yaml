@@ -1,0 +1,31 @@
+# nazar.homework.review, a ders nazırı who holds submission.read (the seeded `dersNazir`, Rukiye) reviews a hand-in: the same steps as `reviews`, by a
+# person who is not the hoca. It adds no transition of the müderris's walk, so it is walked from a file of its own (a scenario that adds no new
+# transition is not picked by `--cover transitions` in the file that holds the others).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/homework/review \
+#     --bind graphs/nazar/homework/review/binding.dersNazir.yaml [--main] --out <dir>
+# NOT RUN: written without a replay.
+#
+# Data. review-data.mjs make granted: a course of the seeded medrese whose one müderris is the başmüderris (`basmuderris`, who sets the homework and
+# gives the grant), applicantC holding a seat and a hand-in with a file, and the ders nazırı's post in it holding exactly submission.read (helpers/
+# course-nazir-grants.mjs, as the başmüderris). The seeded post of the ders nazırı in "Bina ve İzhar Şerhi" is not touched. The course menu of that
+# person carries Ödevler, which nothing else is hidden by (the nav graph's persona dersNazirHomework). The reviewer's by-line and the talebe's
+# notification name her, not the hoca.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.homework.review
+
+scenarios:
+  granted:
+    given: { handedIn: true, access: granted, before: fresh, answer: saved, upload: noStorage, download: unavailable }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersHomework' }
+    vars:
+      typedNote: Ders nazırı olarak baktım; çekimler doğru.
+    setup:
+      - run: [node, ../nazar/homework/review/review-data.mjs, make, granted]
+        expect: 'review-data make granted'
+    teardown:
+      - run: [node, ../nazar/homework/review/review-data.mjs, remove]
+        expect: 'review-data remove'

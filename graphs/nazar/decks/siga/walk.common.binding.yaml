@@ -1,0 +1,98 @@
+# What every walk of nazar.decks.siga shares (graphs/README.md, "The stack and the bindings"): the walk's own deck and course as data, the
+# events a person types with, the address each state is checked at, and the places the walk finds nodes by. It holds no scenario, so it
+# is not walked by itself:
+#   binding.yaml          the ten walks of the dialog: the main story, one tense, no tense, the four root messages, a refused root with no
+#                         tense, empty meanings
+#   binding.gone.yaml     the deck is deleted while the dialog is open, so the save is refused (`answer: gone`); a file of its own because
+#                         it hooks a state (`before`), which every scenario of a file would share
+#   binding.hadeeth.yaml  the main story in a "Hadis" deck, to read what type the cards get (SIGA-2)
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/decks, libs/ui/src/mds) and the catalog and is unverified until a walk; where a walk may need a fix, a comment says so.
+#
+# Data. Each scenario makes its own course (`helpers/course.mjs make siga`: one week of one celse, in the seed's second köşk, `MUDERRIS` as
+# hoca, nobody enrolled) and, in it, one draft deck "Sîga denemesi" (deck.mjs make siga: POST /courses/:id/decks as `MUDERRIS`). The walk
+# enters as that müderris, who holds deck.manage_course in her own course. Nothing seeded is read or changed: the seeded course
+# "Bina ve İzhar Şerhi" and its deck "Sarf Kavramları" are other flows' data. `teardown` deletes the deck BEFORE the course (the course's delete
+# leaves its decks behind as their author's private decks: decks.course_id is `on delete set null`), then the course. graphs/.local/made/siga.json
+# and siga-deck.json are read here as {made.*} and {deck.*}. The cards the walk writes go with the deck.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.decks.siga
+
+browser: { width: 1280, height: 1000 }
+
+data:
+  made: { json: ../.local/made/siga.json }
+  deck: { json: ../.local/made/siga-deck.json }
+
+events:
+  # fields no node sends an event for: the walk types
+  TYPE:
+    - fill: { role: textbox, name: Kök, value: '{rootText}' }
+    - fill: { role: textbox, name: '/^Mâzî anlamı/', value: '{maziMeaning}' }
+    - fill: { role: textbox, name: '/^Muzâri anlamı/', value: '{muzariMeaning}' }
+  # the meanings left out in step 1, typed after going back (both tenses are ticked in that walk)
+  TYPE_MEANINGS:
+    - fill: { role: textbox, name: '/^Mâzî anlamı/', value: 'yardım etti' }
+    - fill: { role: textbox, name: '/^Muzâri anlamı/', value: 'yardım ediyor' }
+  # a root the generator can read, over the one that was refused
+  RETYPE:
+    - fill: { role: textbox, name: Kök, value: '{goodRoot}' }
+  # the bâb list is a Base UI select: open it, then take the option
+  PICK_BAB:
+    - click: { role: combobox, within: { role: dialog, name: Sîga üretici } }
+    - click: { role: option, name: '/^Daraba/' }
+  # the box of the first draft's meaning (the mâzî, gâib, müzekker, müfred sîga)
+  EDIT:
+    - fill: { role: textbox, name: '/^Anlam$/', nth: 0, value: '{edited}' }
+  # tick "Mâzî" again after the message; the checkbox is a Base UI control named by its label
+  TICK:
+    - click: { role: checkbox, name: '/^Mâzî/' }
+  NAVIGATE:
+    - goto: 'about:blank'
+  # SCRIM is not bound: a click on the scrim outside the dialog needs a position the replay's `click` cannot give (it clicks the middle
+  # of the element, which is the dialog's own place). F-D1-21's transition is therefore not walked.
+
+states:
+  deck: { url: '{nazar}/ders/*/deste/*' }
+  saved: { url: '{nazar}/ders/*/deste/*' }
+  # the save is a Next server action: a POST to the page's own address, held while the busy button is checked. `answer` can only be told by
+  # the screen, since the action answers 200 on the page's own URL whatever the API said
+  saving: { call: '{nazar}/ders/*/deste/*' }
+  left: { url: 'about:blank' }
+
+nodes:
+  # the shell's one <main>; a bare role main is also the page a walk leaves for, so the deck's title tells it
+  deckPage: { css: main, hasText: Sîga denemesi }
+  cardsHeading: { role: heading, name: '/^Kartlar · \d+$/' }
+  # the grid of cards is the one <ul class="grid"> in the page's <main>; the sidebar's menu has lists too
+  cardsGrid: { css: 'main ul.grid' }
+  cardTile: { css: 'main ul.grid > li' }
+  # a toast of Base UI, in the region "Bildirimler"
+  toastSaved: { css: '.mds-toast', hasText: kart eklendi }
+  dialogClose: { role: button, name: Kapat, within: { role: dialog, name: Sîga üretici } }
+  # a Base UI select: its trigger is the dialog's one combobox; its name is not verified, so it is found by its role inside the dialog
+  babSelect: { role: combobox, within: { role: dialog, name: Sîga üretici } }
+  kipMazi: { role: checkbox, name: '/^Mâzî · 14 sîga/' }
+  kipMuzari: { role: checkbox, name: '/^Muzâri · 14 sîga/' }
+  maziMeaningField: { role: textbox, name: '/^Mâzî anlamı/' }
+  muzariMeaningField: { role: textbox, name: '/^Muzâri anlamı/' }
+  # step 2: 28 (or 14) groups with the same two labels; the walk edits the first
+  draftFront: { role: textbox, name: '/^Arapça$/' }
+  draftMeaning: { role: textbox, name: '/^Anlam$/' }
+  maziHeading: { role: heading, name: '/^Mâzî$/', within: { role: dialog, name: Sîga üretici } }
+  muzariHeading: { role: heading, name: '/^Muzâri$/', within: { role: dialog, name: Sîga üretici } }
+  failureAlert: { css: '[role=dialog] [role=alert]', hasText: İşlem tamamlanamadı }
+  # the save button's hidden <output>, which says the word while it is busy
+  savingStatus: { css: '[role=dialog] output', hasText: Yükleniyor }
+  saveAll: { role: button, name: '/kartı kaydet$/' }
+
+# What the save leaves outside the screen, read through the API as the müderris: how many cards the deck holds, their type, and that each
+# carries its sîga (28 different {kok, bab, kip, sahis, cinsiyet, sayi}). The corrected meaning is not asked here: a walk that takes the
+# shortest way to the save does not edit (EDIT is the main story's, and the unit spec siga-generator-dialog.spec.tsx pins that the
+# corrected text is what is sent).
+effects:
+  createCards:
+    - run: [node, ../nazar/decks/siga/deck.mjs, cards, siga]
+      expect: '{expectCards}'

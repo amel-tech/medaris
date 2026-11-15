@@ -1,0 +1,207 @@
+# nazar.evaluation.markRecited on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on :4002, the course's hoca (MUDERRIS)
+# signed in through Keycloak's real form, on Değerlendirme of a course of the walk's own.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/evaluation/markRecited \
+#     --bind graphs/nazar/evaluation/markRecited/binding.yaml --out <dir>            # the main story: the `ready` scenario
+#   ... --cover transitions                                                           # every transition the scenarios below can drive
+# NOT RUN in the writing phase (the owner moved every replay to the end): nothing below has been walked. What rests on the code alone says so.
+#
+# Data. Every scenario makes the course `Deneme dersi mark-recited` with helpers/course.mjs (published, in the seed's second köşk, one week of two
+# LIVE celses from tomorrow at 21:00 Istanbul, MUDERRIS as hoca; `make` removes a course of the same tag first, so a walk that died leaves nothing
+# to be refused as "taken"), and a scenario that needs a seated talebe seats `applicantF` (a spare man with a full profile, no seat and no
+# notification) in it. The ids go to graphs/.local/made/mark-recited.json, read here as {made.course}, {made.lessons.0}, {made.lessons.1}.
+#   ready      the first celse's homework is set as "Ezber" and the second celse's as a FILE homework: the board has the one column, the second
+#              celse being no column (evaluation#1 a3: the node `columnButton` counts one). The main story.
+#   noColumns  no homework at all: the empty state that names where to set one.
+#   noTalebe   the first celse's homework is recited and nobody is seated: the other empty state.
+#   refused    as `dersNazir`, with a post in the course that holds no code (helpers/course-nazir-grants.mjs, `--codes none`): the page's refusal,
+#              reached by its address (the menu has no entry for this reader). It is nazar.access.dersNazirPages's story told from this page.
+#   missing    an address that names no course: Next's 404 page. Nothing is made.
+# `teardown` removes the course (as the başnazım: its celses, the homework, the marks, the talebe's seat, the invitation mails and the notifications
+# that point at it), clears applicantF's notifications and mailbox, and leaves him with no seat. The seeded courses, their homework and every other
+# account are never touched. No SQL is used beyond what course.mjs does itself. Every command run by hand takes the replay lock.
+#
+# What a press leaves outside the screen, read through the API as the talebe (`effects`): the talebe's own read of the mark, waited for (a press is
+# drawn at once and saved a moment later). That is evaluation#1's a14 and a15, and what a8, a10 and a13 read from the database.
+#
+# Not bound, with the reason:
+#   read: unreadable (state loadFailed, `retry`): nothing on the stack makes tedrisat fail a read of the page
+#   FAIL.signedOut of the reads and of a save (state sent_to_sign_in): the session cannot be ended mid-walk
+# The refused save is driven, not guessed: HOMEWORK_SWITCHED has the müderris switch the homework to a file homework through the API while the page
+# is open, after which every save answers 404 MEMORIZATION_NOT_FOUND. The save is a Next server action (a POST that answers 200 on the page's own
+# address), so `states.marking.call` is left off: its status could not be compared. `marking` therefore draws only what does not depend on the
+# mark, and the screen's own mark is read once the answer is in. Not verified: that the board puts the cell back before the walk looks, and the
+# toast's role and name (read from the pano's, as nazar.pano.decideApplications does).
+# Not with --absent: `marking` leaves out the nodes that depend on the mark (the count, the pressed chip, the toggle), which the page has already
+# drawn when the replay looks, so the check that they are absent there would fail on a page that is right.
+# `PRESS_1` to `PRESS_3` click the row's name first, so that the focus is in the list: after a press on a homework's heading the heading is gone
+# and the focus is on the document, where the keys reach nothing (F-D1-12).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.evaluation.markRecited
+
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/mark-recited.json }
+
+scenarios:
+  ready:
+    given: { read: ready }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
+    vars:
+      lesson: '{made.lessons.0}'
+      talebe: '{secret.E2E_APPLICANT_F_SUB}'
+      note: Son iki satır eksik.
+    setup:
+      - run: [node, helpers/course.mjs, make, mark-recited, --weeks, '1', --lessons, '2', --talebe, applicantF]
+        expect: '"course"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.0}/assignment', '{"kind":"MEMORIZE","description":"Birinci bab ezberden okunacak."}']
+        expect: '"kind":"MEMORIZE"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.1}/assignment', '{"kind":"FILE","description":"Çekimleri yazın."}']
+        expect: '"kind":"FILE"'
+      - run: [node, ../nazar/evaluation/markRecited/recited.mjs, wait, '{made.lessons.0}', applicantF, none, --within, '5']
+        expect: mark none
+    teardown:
+      - run: [node, helpers/course.mjs, remove, mark-recited]
+        expect: course remove mark-recited
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+        expect: notify
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+
+  noColumns:
+    given: { read: noColumns }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
+    setup:
+      - run: [node, helpers/course.mjs, make, mark-recited, --weeks, '1', --lessons, '2', --talebe, applicantF]
+        expect: '"course"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, mark-recited]
+        expect: course remove mark-recited
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+        expect: notify
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+
+  noTalebe:
+    given: { read: noTalebe }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
+    setup:
+      - run: [node, helpers/course.mjs, make, mark-recited, --weeks, '1', --lessons, '2']
+        expect: '"course"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.0}/assignment', '{"kind":"MEMORIZE","description":"Birinci bab ezberden okunacak."}']
+        expect: '"kind":"MEMORIZE"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, mark-recited]
+        expect: course remove mark-recited
+
+  refused:
+    given: { read: refused }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/degerlendirme'
+    setup:
+      - run: [node, helpers/course.mjs, make, mark-recited, --weeks, '1', --lessons, '2', --talebe, applicantF]
+        expect: '"course"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.0}/assignment', '{"kind":"MEMORIZE","description":"Birinci bab ezberden okunacak."}']
+        expect: '"kind":"MEMORIZE"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: course-nazir-grants
+    teardown:
+      - run: [node, helpers/course.mjs, remove, mark-recited]
+        expect: course remove mark-recited
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+        expect: notify
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_F_EMAIL}']
+
+  missing:
+    given: { read: missing }
+    as: muderris
+    open: '{nazar}/ders/00000000-0000-4000-8000-000000000000/degerlendirme'
+
+events:
+  # a key mark: the focus must be in the list, so the row's name is clicked first (it is a child of the focusable <li>)
+  PRESS_1:
+    - click: { css: '[data-testid=evaluation-row-{talebe}] > bdi.mds-label' }
+    - key: '1'
+  PRESS_2:
+    - click: { css: '[data-testid=evaluation-row-{talebe}] > bdi.mds-label' }
+    - key: '2'
+  PRESS_3:
+    - click: { css: '[data-testid=evaluation-row-{talebe}] > bdi.mds-label' }
+    - key: '3'
+  # a field the person types in has no node that sends an event: the binding fills it in; Enter blurs the box, which sends the note
+  SAVE_NOTE:
+    - fill: { css: '[data-testid=evaluation-row-{talebe}] input', value: '{note}' }
+    - key: Enter
+  # the focus is in the box since it opened
+  CLOSE_NOTE: [{ key: Escape }]
+  # the course team switches the homework to a file homework in nazar (the same PUT as nazar.curriculum.sessionHomework): the page open here does not change
+  HOMEWORK_SWITCHED:
+    - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{lesson}/assignment', '{"kind":"FILE","description":"Birinci bab ezberden okunacak."}']
+      expect: '"kind":"FILE"'
+  # the course's own page, which every course scope has
+  NAVIGATE: [{ goto: '{nazar}/ders/{made.course}' }]
+
+states:
+  # "Excel indir" ends where it started, with ?fileError=notFound in the address
+  overview: { url: '{nazar}/ders/*/degerlendirme**' }
+  not_found: { url: '{nazar}/ders/*/degerlendirme' }
+  left: { url: '{nazar}/ders/*' }
+
+nodes:
+  # the shell's <main> is also the course page's: told apart by the h1 it starts with
+  evalPage: { role: main, hasText: '/^\s*Değerlendirme/' }
+  # "Değerlendirme okunamadı" is a heading too, so the h1 is found by its whole name
+  evalTitle: { role: heading, name: '/^Değerlendirme$/' }
+  menuEvaluation: { role: link, name: '/^Değerlendirme/', within: { css: aside } }
+  # the board: one column per recited homework, and no column for a file homework (evaluation#1 a3)
+  columnButton: { css: '[data-testid^=evaluation-open-]', count: 1 }
+  cellFull: { role: cell, name: '/^Tam$/' }
+  cellIncomplete: { role: cell, name: '/^Eksik$/' }
+  cellAbsent: { role: cell, name: '/^Vermedi$/' }
+  # the screen of the homework: the count is one <output>, its numbers the walk's (one talebe)
+  count: { testId: evaluation-count, hasText: '/^0\/1 tam$/' }
+  countAll: { testId: evaluation-count, hasText: '/^1\/1 tam$/' }
+  # the row is the talebe's, found by its test id (the name is the talebe's own and is quoted nowhere here)
+  talebeRow: { css: '[data-testid=evaluation-row-{talebe}]' }
+  markGroup: { role: group, name: '/ için durum$/' }
+  chipFull: { role: button, name: '/^Tam$/', within: { css: '[data-testid=evaluation-row-{talebe}]' } }
+  chipIncomplete: { role: button, name: '/^Eksik$/', within: { css: '[data-testid=evaluation-row-{talebe}]' } }
+  chipAbsent: { role: button, name: '/^Vermedi$/', within: { css: '[data-testid=evaluation-row-{talebe}]' } }
+  # the same chip once it is pressed (evaluation#1 a7)
+  chipFullOn: { css: '[data-testid=evaluation-row-{talebe}] button[aria-pressed=true]', hasText: '/^Tam$/' }
+  chipIncompleteOn: { css: '[data-testid=evaluation-row-{talebe}] button[aria-pressed=true]', hasText: '/^Eksik$/' }
+  chipAbsentOn: { css: '[data-testid=evaluation-row-{talebe}] button[aria-pressed=true]', hasText: '/^Vermedi$/' }
+  # the toggle's words are "Not" or the note itself; its accessible name carries the talebe's name
+  noteToggle: { css: '[data-testid=evaluation-note-{talebe}]', hasText: '/^Not$/' }
+  noteToggleWritten: { css: '[data-testid=evaluation-note-{talebe}]', hasText: '{note}' }
+  noteInput: { role: textbox, name: '/ için not$/' }
+
+# What a press leaves outside the screen: the talebe's own read of the mark, as the celse page makes it (helpers of this folder; the API only).
+effects:
+  markFull:
+    - run: [node, ../nazar/evaluation/markRecited/recited.mjs, wait, '{lesson}', applicantF, FULL]
+      expect: mark FULL
+  markIncomplete:
+    - run: [node, ../nazar/evaluation/markRecited/recited.mjs, wait, '{lesson}', applicantF, INCOMPLETE]
+      expect: mark INCOMPLETE
+  markAbsent:
+    - run: [node, ../nazar/evaluation/markRecited/recited.mjs, wait, '{lesson}', applicantF, ABSENT]
+      expect: mark ABSENT
+  # the note typed in `SAVE_NOTE`, with the mark the row holds (a15: the body of the talebe's read)
+  noteWritten:
+    - run: [node, ../nazar/evaluation/markRecited/recited.mjs, wait, '{lesson}', applicantF, any, --note, '{note}']
+      expect: mark
+  # a refused save writes nothing: the board holds no mark (true on the shortest path to it, where it is the first save)
+  saveRefused:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/evaluations']
+      expect: '"marks":[]'
+  # the route answers 400 INVALID_PATH whoever asks (no session needed): the proof that "Excel indir" can never work
+  exportRefused:
+    - run: [curl, -s, -i, '{nazar}/api/files/courses/{made.course}/evaluations']
+      expect: INVALID_PATH

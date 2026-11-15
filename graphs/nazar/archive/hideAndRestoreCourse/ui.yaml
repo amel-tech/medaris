@@ -1,0 +1,156 @@
+# The screens of nazar.archive.hideAndRestoreCourse: Dersler (/medrese/<id>/dersler) with a course's row menu, the window "Dersi gizle" and
+# the toasts that answer it, and Arşiv (/medrese/<id>/arsiv) with its tabs, its table of what is hidden, "Geri al", the sentences that
+# stand where a higher kademe's rows have no button, the pager and the toasts that answer a restore. Read from the code of the branch
+# (the tree of PR #394) on 15 Nov 2026: apps/nazar/features/courses and apps/nazar/features/archive, and libs/ui/src/mds. Nothing was
+# seen in a browser by its writer: every behaviour is "from the code" unless a rule says otherwise.
+#
+# What this file leaves to its neighbours (flow.yaml `scope.outOfView` names them): the table's filters and the side cards of Dersler
+# (nazar.courses.browse), "Medrese dersi aç" (nazar.courses.open), the dialog "Hocaları değiştir" (nazar.courses.changeHocas), the
+# section "Medreseyi gizle" and the banner of a hidden medrese on Arşiv (nazar.archive.hideMedrese), and the refusal a nazır with no
+# grant meets (nazar.access.medreseNazirRefused).
+#
+# Words: every key that has no `composed.` prefix is copied letter for letter from libs/i18n/src/locales/tr/nazar.json (the file the app
+# reads as `nazar`; the key is the path under its root), by <scratchpad>/hrc/catalog.py, except `Changes.note`, the one authored
+# message of this catalog (the app has no one place that says what a hide changes and who can undo it; it is made of the app's own
+# sentences HideCourse.rest, HideCourse.affected, HideCourse.note and Archive.restoredBody). The `composed.*` keys are text the app builds
+# in code from data and messages; each has its code line here, and a placeholder the binding gives no sample for matches any text:
+#   composed.Courses.rowTitle         "{title}"    the course's title, a link in the row (courses-table.tsx:79)
+#   composed.HideCourse.eyebrow       "{name}"     the medrese's name above the window's title (hide-course.tsx:79, alert-dialog.tsx:69)
+#   composed.HideCourse.body          the course's title and HideCourse.rest in one <p> (hide-course.tsx:87-91); {koskGenitive} is the köşk's
+#                                     name in the Turkish genitive (courses.ts:140-149)
+#   composed.HideCourse.bodyAffected  the same <p> with " " and HideCourse.affected after it, while someone is enrolled (hide-course.tsx:90)
+#   composed.Button.loading           "Yükleniyor" the busy button's hidden status, a default of the kit (libs/ui/src/mds/button.tsx:62)
+#   composed.Archive.tabAll|tabCourse|tabWeeks|tabRecordings   a tab link: its label directly followed by the count, no space (tabs.tsx:293-297; F-A-12)
+#   composed.Archive.rowTitle|rowContext|rowHiderName|rowHiderRole|rowWhen   the cells of a row, worded and dated by archive.ts:227-262
+#                                     ("Nûruosmaniye Köşkü · 12 hafta · 14 talebe", the hider's name and role line, "Dün 10:40")
+schema: delurio-graph/0
+kind: ui
+id: nazar.archive.hideAndRestoreCourse
+flow: nazar.archive.hideAndRestoreCourse
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Örnek Ders
+  name: Örnek Medrese
+  courses: '3'
+  kosks: '2'
+  count: '1'
+  koskGenitive: Örnek Köşk’ün
+  context: Örnek Köşk · 1 hafta · 1 talebe
+  role: köşk nazımı
+  when: Dün 10:40
+  from: '1'
+  to: '10'
+  total: '12'
+
+# Neither page sets a focus on load (Dersler and Arşiv: "Initial focus: none"), so no page node carries `initialFocus` (rule focus-not-set).
+# Only the window's `initialFocus`, on Vazgeç, is drawn. The menu moves the focus into its popup by Base UI (rule menu-focus-on-popup), which is
+# not drawn either.
+nodes:
+  # ---- Dersler: what every state of the page draws -------------------------------------------------------------------------------
+  coursesMain: { type: page, component: Page, role: main, in: [listed, menuOpen, listedWithout], source: apps/nazar/features/courses/components/courses-page.tsx:99 } # the shell's one <main>; no name; the binding tells it from Arşiv's by its caption
+  coursesTitle: { type: text, component: Heading, role: heading, text: { key: Courses.title }, in: [listed, menuOpen, listedWithout], source: apps/nazar/features/courses/components/courses-page.tsx:102 } # h1
+  coursesCounter: { type: text, component: Text, text: { key: Courses.counter, params: { courses: courses.count, kosks: courses.kosks } }, in: [listed, menuOpen, listedWithout], source: apps/nazar/features/courses/components/courses-table.tsx:191 } # "3 ders · 2 köşkte", a <p data-testid="counter">: it follows a hide when the list is read again
+  coursesTable: { type: list, component: List, role: table, name: { key: Courses.caption }, in: [listed, menuOpen, listedWithout], source: apps/nazar/features/courses/components/courses-table.tsx:223 } # explicit table roles (responsive="stack"), named by its caption
+  rowTitle: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.Courses.rowTitle, params: { title: course.title } }, in: [listed, menuOpen, listedWithout], repeat: courses.list, source: apps/nazar/features/courses/components/courses-table.tsx:79 } # every row's title is a link to /ders/<id> (F-A-9: `held` is built from the same list, so none is left plain)
+  rowMenu: { type: action, component: Button, role: button, intent: secondary, name: { key: Courses.actions.label, params: { title: course.title } }, in: [listed, menuOpen], emits: OPEN_MENU, source: apps/nazar/features/courses/components/courses-table.tsx:164 } # the "···" of the row the walk hides, aria-haspopup=menu and named by its aria-label. It is one node, not a repeat: after the hide the row is gone and so is this button (the binding finds the walk's own course)
+  hiddenNoteLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Courses.hiddenNote.link }, in: [listed, menuOpen, listedWithout], emits: OPEN_ARCHIVE, source: apps/nazar/features/courses/components/courses-page.tsx:154 } # "Arşiv" inside the sentence "Gizlenen dersler bu listede yer almaz; Arşiv’de görünür." (a next/link, so a navigation inside the app)
+
+  # ---- Dersler: the row's menu, a Base UI Menu opened by rowMenu --------------------------------------------------------------------
+  menuList: { type: list, component: List, role: menu, name: { key: Courses.actions.label, params: { title: course.title } }, in: [menuOpen], source: libs/ui/src/mds/menu.tsx:189 } # a popup named by its trigger; the page behind is not inert and the focus is on the popup, not on an item (menu-focus-on-popup)
+  menuHocas: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: Courses.actions.muderris }, in: [menuOpen], emits: CHOOSE_HOCAS, source: apps/nazar/features/courses/components/courses-table.tsx:168 } # opens "Hocaları değiştir", which nazar.courses.changeHocas draws
+  menuHide: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: Courses.actions.hide }, in: [menuOpen], emits: CHOOSE_HIDE, source: apps/nazar/features/courses/components/courses-table.tsx:173 } # both items are offered on every row whatever the person holds (F-A-8)
+
+  # ---- "Dersi gizle": an AlertDialog, opened by the page's own state (no trigger) --------------------------------------------------------
+  hideDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: hideTitle }, in: [confirmHide, hiding], initialFocus: hideCancel, source: apps/nazar/features/courses/components/hide-course.tsx:74 } # Base UI AlertDialog: modal, never closed by the scrim; the page behind is inert, so no page node is drawn in these states
+  hideEyebrow: { type: text, component: Text, text: { key: composed.HideCourse.eyebrow, params: { name: madrasah.name } }, in: [confirmHide, hiding], source: apps/nazar/features/courses/components/hide-course.tsx:79 } # the medrese's name, above the title
+  hideTitle: { type: text, component: Heading, role: heading, text: { key: HideCourse.title }, in: [confirmHide, hiding], source: libs/ui/src/mds/alert-dialog.tsx:74 } # Base UI's Title, an h2
+  hideBody: { type: text, component: Text, text: { key: composed.HideCourse.body, params: { title: course.title, koskGenitive: kosk.nameGenitive } }, in: [confirmHide, hiding], when: "enrolled == 'none'", source: apps/nazar/features/courses/components/hide-course.tsx:87 } # the title is in <bdi>; it says who the course is hidden from and that the celses leave the talebe's calendar
+  hideBodyAffected: { type: text, component: Text, text: { key: composed.HideCourse.bodyAffected, params: { title: course.title, koskGenitive: kosk.nameGenitive, count: course.enrolled } }, in: [confirmHide, hiding], when: "enrolled == 'some'", source: apps/nazar/features/courses/components/hide-course.tsx:90 } # the same paragraph with the real number of talebe who lose the course (courses#9 a3); the line is left out while nobody is enrolled (courses#10 a1)
+  hideNote: { type: text, component: Text, text: { key: HideCourse.note }, in: [confirmHide, hiding], source: apps/nazar/features/courses/components/hide-course.tsx:92 } # "Hiçbir şey silinmez; Arşiv’den geri alabilirsiniz. Öğeyi gizleyen kademe ya da üstü geri alır."
+  hideClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmHide, hiding], emits: CLOSE, source: libs/ui/src/mds/alert-dialog.tsx:82 } # an icon only, named by its aria-label; closing is ignored while the call runs (HIDE-3)
+  hideCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: HideCourse.cancel }, in: [confirmHide, hiding], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:95 } # the focus starts here; it stays live while the call runs and does nothing (HIDE-3)
+  hideConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: HideCourse.confirm }, in: [confirmHide, hiding], disabledIn: [hiding], emits: CONFIRM_HIDE, source: libs/ui/src/mds/alert-dialog.tsx:101 } # a primary button, not a destructive one: nothing is deleted; busy (aria-disabled) while the call runs
+  hideBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [hiding], source: libs/ui/src/mds/button.tsx:113 } # the visually hidden <output> of the busy button, "Yükleniyor" from the kit's default (F-A-14)
+
+  # ---- the toasts that answer a hide: a region "Bildirimler", each toast a dialog (an error is an alertdialog and stays) ------------------------------
+  toastHidden: { type: status, component: Status, role: dialog, name: { key: HideCourse.done }, text: { key: HideCourse.doneBody, params: { title: course.title } }, in: [listedWithout], when: "toast == 'hidden'", source: apps/nazar/features/courses/components/hide-course.tsx:45 } # success, 6 seconds; the only word that it worked (F-A-2)
+  toastAlready: { type: status, component: Status, role: dialog, name: { key: HideCourse.alreadyTitle }, text: { key: HideCourse.already }, in: [listedWithout], when: "toast == 'alreadyHidden'", source: apps/nazar/features/courses/components/hide-course.tsx:50 } # tone info: it closes by itself, and the list is read again
+  toastHideGone: { type: alert, component: Alert, role: alertdialog, name: { key: HideCourse.failedTitle }, text: { key: Courses.errors.gone }, in: [listedWithout], when: "toast == 'hideGone'", source: apps/nazar/features/courses/components/hide-course.tsx:56 } # tone error: it stays until closed; the list is read again, so the course is not in it
+  toastHideRefused: { type: alert, component: Alert, role: alertdialog, name: { key: HideCourse.failedTitle }, text: { key: Problems.actionForbidden }, in: [listed], when: "toast == 'hideRefused'", source: apps/nazar/features/courses/components/hide-course.tsx:56 } # a nazır who may list the courses but not hide them meets it (F-A-8); the list is not read again
+  toastHideFailed: { type: alert, component: Alert, role: alertdialog, name: { key: HideCourse.failedTitle }, text: { key: Problems.actionGeneric }, in: [listed], when: "toast == 'hideFailed'", source: apps/nazar/features/courses/components/hide-course.tsx:56 }
+
+  # ---- Arşiv: what every state of the page draws -------------------------------------------------------------------------------------
+  archiveMain: { type: page, component: Page, role: main, in: [archive, archiveEmpty, restoring], source: apps/nazar/features/archive/components/archive-page.tsx:71 } # the shell's one <main>; no name; the binding tells it from Dersler's by its caption
+  archiveTitle: { type: text, component: Heading, role: heading, text: { key: Archive.title }, in: [archive, archiveEmpty, restoring], source: apps/nazar/features/archive/components/archive-page.tsx:73 } # h1
+  archiveIntro: { type: text, component: Text, text: { key: Archive.intro }, in: [archive, archiveEmpty, restoring], source: apps/nazar/features/archive/components/archive-page.tsx:74 }
+  coursesLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.courses }, in: [listed, menuOpen, listedWithout, archive, archiveEmpty, restoring], emits: OPEN_COURSES, source: apps/nazar/features/shell/nav.ts:81 } # the sidebar's "Dersler" (the frame is nazar.shell.scopeAndMenu's), drawn on both pages: its name carries the number after it, so the binding finds it by its beginning. On Dersler it is the page's own address (not drawn as a step); from Arşiv it is the only way back to the list
+
+  # the tabs: four links in a named <nav>, full page loads; the one of the page has aria-current="page", which the format cannot say
+  tabsNav: { type: page, component: Page, role: navigation, name: { key: Archive.tabsLabel }, in: [archive, archiveEmpty, restoring], source: apps/nazar/features/archive/components/archive-list.tsx:173 }
+  tabAll: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.Archive.tabAll, params: { count: counts.all } }, in: [archive, archiveEmpty, restoring], emits: TAB_ALL, source: libs/ui/src/mds/tabs.tsx:289 } # "Tümü12": label and count with no space between (F-A-12)
+  tabCourse: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.Archive.tabCourse, params: { count: counts.course } }, in: [archive, archiveEmpty, restoring], emits: TAB_COURSE, source: libs/ui/src/mds/tabs.tsx:289 }
+  tabWeeks: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.Archive.tabWeeks, params: { count: counts.weeks } }, in: [archive, archiveEmpty, restoring], emits: TAB_WEEKS, source: libs/ui/src/mds/tabs.tsx:289 } # weeks and sessions together
+  tabRecordings: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.Archive.tabRecordings, params: { count: counts.recordings } }, in: [archive, archiveEmpty, restoring], emits: TAB_RECORDINGS, source: libs/ui/src/mds/tabs.tsx:289 } # its count is always 0: the API lists no recording (HIDE-2)
+
+  # the table of what is hidden, newest hidden first (its "Gizlendiği tarih" header carries aria-sort="descending")
+  archiveTable: { type: list, component: List, role: table, name: { key: Archive.caption }, in: [archive, archiveEmpty, restoring], source: apps/nazar/features/archive/components/archive-list.tsx:186 }
+  rowItemTitle: { type: text, component: Text, text: { key: composed.Archive.rowTitle, params: { title: item.title } }, in: [archive, restoring], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:97 } # the row header: a course's title, a week's or a session's
+  rowContext: { type: text, component: Text, text: { key: composed.Archive.rowContext, params: { context: item.context } }, in: [archive, restoring], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:100 } # "{köşk} · {n} hafta · {n} talebe" for a course; "{course} · Hafta {n} · {date}" for a session
+  rowType: { type: text, component: Text, text: { oneOf: [Archive.types.course, Archive.types.week, Archive.types.session] }, in: [archive, restoring], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:112 } # a badge with an icon and the kind's word
+  rowHiderName: { type: text, component: Text, text: { key: composed.Archive.rowHiderName, params: { name: item.hider.name } }, in: [archive, restoring], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:127 } # "Gizleyen": the person's name, or "Adı bilinmiyor"
+  rowHiderRole: { type: text, component: Text, text: { key: composed.Archive.rowHiderRole, params: { role: item.hider.role } }, in: [archive, restoring], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:129 } # the role line: "Köşk nazımı", "Medaris yönetimi", or "Medrese başmüderrisi (siz)" for the viewer's own
+  rowWhen: { type: text, component: Text, role: time, text: { key: composed.Archive.rowWhen, params: { when: item.when } }, in: [archive, restoring], repeat: archive.items, source: apps/nazar/features/archive/components/archive-list.tsx:140 } # a <time dateTime>: "Bugün 14:05", "Dün 10:40", "28 Eyl 16:10" in the viewer's own zone
+
+  # the button where the caller's kademe reaches the one that hid the row, the sentence where it does not
+  restoreButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.restoreLabel, params: { title: item.title } }, text: { key: Archive.restore }, in: [archive], repeat: archive.restorable, emits: RESTORE, source: apps/nazar/features/archive/components/archive-list.tsx:153 } # asks nothing first (the design draws no question); the name carries the item's title. The one in flight is rowRestore
+  rowRestore: { type: action, component: Button, role: button, intent: secondary, name: { key: Archive.restoreLabel, params: { title: item.title } }, text: { key: Archive.restore }, in: [restoring], disabledIn: [restoring], source: apps/nazar/features/archive/components/archive-list.tsx:157 } # the row being restored, the first item of restoreButton: busy (aria-disabled) while the call runs; the other rows' buttons stay live
+  restoreBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [restoring], source: libs/ui/src/mds/button.tsx:113 } # "Yükleniyor", the kit's default (F-A-14)
+  lockedKosk: { type: text, component: Text, text: { key: Archive.locked, params: { role: item.hider.role } }, in: [archive, restoring], when: "locks in ['kosk', 'both'] and held in ['courses', 'both'] and tab in ['all', 'course'] and page == 'first'", repeat: archive.lockedByKosk, source: apps/nazar/features/archive/components/archive-list.tsx:164 } # "Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir." (the role lower-cased): no button on that row. The stack's rows of a higher kademe are courses on the first page of Tümü and of Dersler
+  lockedAdmin: { type: text, component: Text, text: { key: Archive.lockedAdmin }, in: [archive, restoring], when: "locks in ['admin', 'both'] and held in ['courses', 'both'] and tab in ['all', 'course'] and page == 'first'", repeat: archive.lockedByAdmin, source: apps/nazar/features/archive/components/archive-list.tsx:164 } # "Bunu Medaris yönetimi gizledi; ..."; a hider with no role is Medaris yönetimi (archive.ts:144-149)
+
+  # nothing to list on this tab: the table keeps its caption and headers and says it in one cell
+  emptyAll: { type: text, component: Text, text: { key: Archive.empty.all }, in: [archiveEmpty], when: "tab == 'all'", source: apps/nazar/features/archive/components/archive-page.tsx:109 }
+  emptyCourse: { type: text, component: Text, text: { key: Archive.empty.course }, in: [archiveEmpty], when: "tab == 'course'", source: apps/nazar/features/archive/components/archive-page.tsx:109 }
+  emptyWeeks: { type: text, component: Text, text: { key: Archive.empty.weeks }, in: [archiveEmpty], when: "tab == 'weeks'", source: apps/nazar/features/archive/components/archive-page.tsx:109 }
+  emptyRecordings: { type: text, component: Text, text: { key: Archive.empty.recordings }, in: [archiveEmpty], when: "tab == 'recordings'", source: apps/nazar/features/archive/components/archive-page.tsx:109 } # always what this tab says (HIDE-2)
+
+  # the pager: only while the list spans more than one page (ten a page); the "Sonraki" link is absent on the last page and "Önceki" on the first
+  pagerNav: { type: page, component: Page, role: navigation, name: { key: Archive.pager.label }, in: [archive, restoring], when: "tab == 'all' and pages == 'two'", source: apps/nazar/features/archive/components/archive-list.tsx:197 }
+  pagerRange: { type: text, component: Text, text: { key: Archive.pager.range, params: { from: page.from, to: page.to, total: page.total } }, in: [archive, restoring], when: "tab == 'all' and pages == 'two'", source: apps/nazar/features/archive/components/archive-list.tsx:201 } # "1–10 / 12"
+  pagerNext: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Archive.pager.next }, in: [archive, restoring], when: "tab == 'all' and pages == 'two' and page == 'first'", emits: NEXT_PAGE, source: apps/nazar/features/archive/components/archive-list.tsx:213 }
+  pagerPrevious: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Archive.pager.previous }, in: [archive, restoring], when: "tab == 'all' and pages == 'two' and page == 'last'", emits: PREVIOUS_PAGE, source: apps/nazar/features/archive/components/archive-list.tsx:204 }
+
+  # ---- the toasts that answer a restore ---------------------------------------------------------------------------------------------------
+  toastRestored: { type: status, component: Status, role: dialog, name: { key: Archive.restored }, text: { key: Archive.restoredBody, params: { title: item.title } }, in: [archive, archiveEmpty], when: "toast == 'restored'", source: apps/nazar/features/archive/components/archive-list.tsx:67 } # success, 6 seconds; the row leaves and the tab counts follow when the page is read again (F-A-2)
+  toastRestoreGone: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Archive.errors.gone }, in: [archive, archiveEmpty], when: "toast == 'restoreGone'", source: apps/nazar/features/archive/components/archive-list.tsx:74 } # tone error: it stays; the list is read again
+  toastRestoreLevel: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Archive.errors.forbidden }, in: [archive, archiveEmpty], when: "toast == 'restoreLevel'", source: apps/nazar/features/archive/components/archive-list.tsx:74 } # ARCHIVE_FORBIDDEN and ARCHIVE_RESTORE_LEVEL say the same words: a higher kademe may have hidden it
+  toastParentHidden: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Archive.errors.parentHidden }, in: [archive, archiveEmpty], when: "toast == 'parentHidden'", source: apps/nazar/features/archive/components/archive-list.tsx:74 } # the one refusal after which the list is not read again
+  toastRestoreFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Archive.restoreFailedTitle }, text: { key: Problems.actionGeneric }, in: [archive, archiveEmpty], when: "toast == 'restoreFailed'", source: apps/nazar/features/archive/components/archive-list.tsx:74 }
+
+edges:
+  - { labelledBy: [hideDialog, hideTitle] }
+  - { triggers: [rowMenu, menuOpen] }
+  - { triggers: [menuHide, confirmHide] }
+  - { triggers: [hideConfirm, hiding] }
+  - { triggers: [restoreButton, restoring] }
+  - { returnsFocus: [hideDialog, rowMenu] } # Vazgeç, Kapat and Esc hand the focus back to the row's "···" (measured on the stack for the same Menu and AlertDialog in tedris.course.leave, whose window is opened from a menu item the same way; not measured here). After a hide the row is gone and so is the button: the focus is lost (F-A-2)
+
+rules:
+  - { id: F-A-2, rule: "After a hide the row and its menu button are gone and after a restore the pressed 'Geri al' leaves with its row; no code moves the focus (hide-course.tsx:40-71, archive-list.tsx:61-83), and the only word is a toast of 6 seconds. A keyboard or screen-reader user falls back to the top of the page. Not measured here. Fix: move the focus to the table's caption or to the next row's button, and keep a status line." }
+  - { id: F-A-3, rule: "Not drawn here. The banner of a hidden medrese (restore-madrasah.tsx:68) is labelled by an id that exists nowhere, so the section has no name; it shows only on a hidden medrese, which nazar.archive.hideMedrese draws. Fix: give the Alert's title the id." }
+  - { id: F-A-8, rule: "'Hocaları değiştir' and 'Dersi gizle' are offered on every row whatever the person holds (courses-table.tsx:167-178). A nazır who holds madrasah.course_hide or madrasah.muderris_manage reads the list but not both rights, and is refused with the toast 'Ders gizlenemedi' / 'Bunu yapma izniniz yok.' (toastHideRefused), not told beforehand. Fix: offer an item only where its permission is held (decision D2 of this flow)." }
+  - { id: F-A-9, rule: "The title of every row is a link to /ders/<id> because `held` is built from the same list it is checked against (courses-page.tsx:92-94), so the link can lead to a course the person may not open. Not an issue for the başmüderris of the medrese." }
+  - { id: F-A-10, rule: "No try/catch around the awaited server action in the window or on 'Geri al' (hide-course.tsx:42, archive-list.tsx:64): when the call itself rejects (the network), the busy state is never cleared and no toast is shown; React hands the error to the nearest boundary. Not verified in a browser." }
+  - { id: F-A-12, rule: "A tab link's content is its label followed by an inline count <span> with no whitespace (tabs.tsx:293-297), so the accessible name reads 'Dersler1' and 'Tümü12' (the e2e asserts the DOM text 'Tümü5' in archive#1 a1). Fix: a visually hidden space, or the count in an aria-label. Not verified in a browser." }
+  - { id: F-A-14, rule: "The busy buttons of the window ('Gizle') and of a row ('Geri al') pass no loadingLabel, so their hidden status says 'Yükleniyor' from the kit's hard-coded default (button.tsx:62), outside the catalog; Turkish only today." }
+  - { id: HIDE-1, rule: "New finding, from the code; not seen in a browser. After 'Geri al' the page is read again with the same ?sayfa (router.refresh, archive-list.tsx:72). When the restored row was the only one on the last page, that page now has no items: the table says Archive.empty.all, 'Bu medresede gizlenmiş bir öğe yok.' (false, ten items are still hidden), and the pager reads '11–10 / 10' with 'Önceki' (pageWindow, archive.ts:71-75, and archive-page.tsx:127-128 draw a pager for any page above 1). Fix: send the person to the last page that has rows." }
+  - { id: HIDE-2, rule: "New finding, from the code. The tab 'Ders kayıtları' can never list anything: its count is always 0 (the API's `recording` is not stored in the archive, 'a recording has no storage yet', madrasah-archive.controller.ts:55) and no route hides a recording. The tab and its sentence 'Bu medresede gizlenmiş bir ders kaydı yok.' are drawn for a feature the API does not have. Fix: leave the tab out until a recording can be hidden." }
+  - { id: HIDE-3, rule: "New finding, from the code. While 'Gizle' is busy the window ignores every way of closing it (onOpenChange does nothing while `pending`, hide-course.tsx:76-78), but 'Vazgeç' and the close icon stay enabled and a press does nothing; only 'Gizle' is marked busy. Fix: mark 'Vazgeç' and the close icon disabled for the length of the call." }
+  - { id: focus-not-set, rule: "Neither Dersler nor Arşiv sets a focus on load (both pages list 'Initial focus: none'), so the page nodes carry no initialFocus and no focus; the replay checks only the window's, on Vazgeç." }
+  - { id: menu-focus-on-popup, rule: "Opened with the pointer, Base UI's menu puts the focus on its popup, not on an item (measured in tedris.course.leave for the same Menu). Opened with the keyboard it is not verified. Not drawn." }
+  - { id: confirm-before-hiding, rule: "'Dersi gizle' asks first, in an alertdialog whose focus starts on 'Vazgeç' and which says who loses the course and how many talebe lose their access; 'Geri al' asks nothing (the design draws no question), because a restore gives access back and deletes nothing." }
+  - { id: label-in-name, rule: "'Geri al' is contained in the name 'Geri al: {title}' (WCAG 2.5.3), and the row's menu button is an icon named by its aria-label 'Diğer işlemler: {title}'. A tab link's name 'Dersler1' contains its visible text (F-A-12 is about the missing space, not the label). Holds." }
+  - { id: toast-is-the-only-word, rule: "The result of a hide and of a restore is said by a toast (a dialog in the 'Bildirimler' live region): it closes after 6 seconds for a success and an info notice and stays for an error. Nothing on the page itself says what was done, but the row and the counters change." }

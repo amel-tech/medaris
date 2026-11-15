@@ -20,10 +20,10 @@
 //   --hoca       the course's one müderris, who is also the imam (default MUDERRIS). The köşk's nazım cannot name themselves.
 //   --talebe     accounts that apply to the course after it is made, so they hold ENROLLED, or PENDING with --approval (several accounts
 //                follow one --talebe, or repeat it, or separate them with commas).
-// remove Deletes the course, as the başnazım alone may, and everything under it; the talebe leave first, and the invitation mails the
+// remove Deletes the course, as the başnazım alone may, and everything under it, its decks included; the talebe leave first, and the invitation mails the
 //        course sent them (subject `<title> — Celse n`) are cleared from Mailpit. Safe to run twice: a tag with nothing recorded is `none`.
 //
-// Only the API is used, besides Mailpit's and that one delete. Run it under the replay lock when walks are running and you run it by hand.
+// Only the API is used, besides Mailpit's and the deletes of the course's decks and notifications. Run it under the replay lock when walks are running and you run it by hand.
 import {
   existsSync,
   mkdirSync,
@@ -126,6 +126,10 @@ async function remove(tag) {
   const made = JSON.parse(readFileSync(file, "utf8"));
   for (const who of Object.keys(made.talebe ?? {}))
     await call(who, "DELETE", `/courses/${made.course}/enrollment`); // a talebe already gone is fine
+  // decks.course_id is `on delete set null`: deleting the course would keep its decks as private decks of their author.
+  // Their cards, labels and users go with them (cascade); a proposal's deck_id is set null.
+  if (made.course)
+    await query(`delete from decks where course_id = '${made.course}'`);
   if (made.course)
     await must(
       "SYSTEM_ADMIN",

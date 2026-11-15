@@ -1,0 +1,145 @@
+# What must exist for the hoca of a course to change a ders nazırı's permissions and end: the flow's product list (LAYOUT.md section 7). Each
+# need is what the product must do, from the flow's story (FLOWS.md, nazar.md part D2) and the findings, not from what the page does today; the known
+# gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+#
+# missing  (no code): nothing-changed-says-so (none, F-D2c-18), keyboard-starts-on-the-work (none, F-D2c-15), end-problem-is-announced (none, F-D2c-4),
+#          the-end-shows-the-hour (none, CNP-2), count-is-announced (none, CNP-4), focus-after-a-stale-save (none, CNP-1),
+#          closing-asks-when-the-form-changed (none, decision D2, product choice)
+# unwalked (code, no e2e and no replay that passed): a-refused-save-keeps-the-form, nothing-changed-writes-nothing, an-end-not-ahead-is-refused-on-the-page
+#          (each has a unit test only), every-change-is-audited (the dialog says so, nothing reads the audit log)
+# walked elsewhere: the-person-meets-the-new-set-at-once is walked by course-nazirs#5 a8-a12, which nazar.access.dersNazirPages carries, not this flow
+kind: needs
+flow: nazar.courseNazirs.permissions
+status: proposed
+
+needs:
+  - id: edit-the-whole-post-in-one-save
+    need: >-
+      The hoca changes everything a ders nazırı holds in her course in one save: ticks and unticks any of the course's permissions she holds herself,
+      and the post's end; what is ticked is what the person holds from then on, and the list says it at once ("{n} izin" and the sentences).
+    drawn: [editButton, editing, permRecording, permSession, permSettings, summary, saving, toastSaved, rowCount, rowSentences]
+    built:
+      - action: medaris.api:updateCourseNazir
+      - route: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:157
+    walked:
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#5'
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+
+  - id: lift-or-move-the-end
+    need: >-
+      The hoca gives the post an end on her own clock, moves it, or lifts it ("Süresiz"); the post and its permissions end together at that moment, and a
+      field she leaves alone sends the stored instant back unchanged.
+    drawn: [endBox, endHelp, rowEnd, rowForever]
+    built:
+      - action: medaris.api:updateCourseNazir
+      - route: libs/utils/src/end-instant.ts:141
+    walked:
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#5'
+      - test: libs/utils/test/end-instant.spec.ts
+
+  - id: an-end-not-ahead-is-refused-on-the-page
+    need: >-
+      An end that is not after now is refused before anything is sent, and the reason stays beside the field while she corrects it; the server refuses it
+      too.
+    drawn: [endError, a-blocked-form-is-never-sent]
+    built:
+      - action: medaris.api:updateCourseNazir
+      - route: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:154
+    walked:
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+
+  - id: a-stale-post-is-told-and-the-list-read-again
+    need: >-
+      A post that was ended elsewhere while the dialog was open is not an error of hers: she is told the post is gone, the dialog closes and the list is
+      read again without the row.
+    drawn: [toastGone, postGone, emptyLine, the-empty-table-follows-a-gone-post]
+    built:
+      - route: apps/nazar/features/course-nazirs/course-nazirs.ts:256
+    walked:
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#7'
+
+  - id: a-refused-save-keeps-the-form
+    need: >-
+      When the server refuses the save (she lost her seat, a code is not hers to give, the course is gone) the form stays as she left it and the toast says
+      why in words, never the server's own message.
+    drawn: [toastRefused, toastFailed, editing, saving]
+    built:
+      - route: apps/nazar/features/course-nazirs/course-nazirs.ts:219
+    walked:
+      - test: apps/nazar/test/course-nazir-dialog.spec.tsx
+
+  - id: nothing-changed-writes-nothing
+    need: >-
+      "Kaydet" with the same permissions and the same end writes nothing, so that the audit log is not given a line for no change.
+    drawn: [save, an-unchanged-form-is-never-sent]
+    built:
+      - route: apps/nazar/features/course-nazirs/course-nazirs.ts:208
+    walked:
+      - test: apps/nazar/test/course-nazirs.spec.ts
+
+  - id: nothing-changed-says-so
+    need: >-
+      "Kaydet" with nothing changed tells the hoca that nothing was saved, not only closes the dialog (F-D2c-18, decision D1).
+    drawn: [save, listed]
+    missing: none
+
+  - id: the-person-meets-the-new-set-at-once
+    need: >-
+      What the ders nazırı may open follows the save at once: a permission taken away shuts its page and the end shuts them all, with no delay.
+    drawn: [saving]
+    built:
+      - action: medaris.api:updateCourseNazir
+    walked:
+      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
+        check: 'course-nazirs#5' # a8-a12, which nazar.access.dersNazirPages carries
+
+  - id: every-change-is-audited
+    need: >-
+      Every permission given and taken back, and every end moved, is written to the audit log with who did it and what it was before, as the dialog's note
+      says.
+    drawn: [note]
+    built:
+      - action: medaris.api:updateCourseNazir
+
+  - id: keyboard-starts-on-the-work
+    need: >-
+      The edit dialog starts the keyboard on the first box, not on the header's close button, and is described by its intro line, not by the whole form
+      (F-D2c-15, F-D2c-16).
+    drawn: [editor, closeIcon]
+    missing: none
+
+  - id: end-problem-is-announced
+    need: >-
+      The message about an end that is not ahead is announced when it appears, or the focus moves to the field (F-D2c-4).
+    drawn: [endError]
+    missing: none
+
+  - id: the-end-shows-the-hour
+    need: >-
+      The "Bitiş" cell of the list says the hour at which the access ends, not only the day, because the hoca sets it to the minute and the access stops
+      at that minute (CNP-2).
+    drawn: [rowEnd]
+    missing: none
+
+  - id: count-is-announced
+    need: >-
+      The count of the permissions ticked ("2 izin seçili") is announced as the boxes change (CNP-4).
+    drawn: [summary]
+    missing: none
+
+  - id: focus-after-a-stale-save
+    need: >-
+      After the dialog closes because the post is gone, the focus lands on something a keyboard or screen-reader user can use, not on the document's start
+      (CNP-1; the same as F-D2c-8 for a dismissal).
+    drawn: [postGone]
+    missing: none
+
+  - id: closing-asks-when-the-form-changed
+    need: >-
+      Closing the dialog after a box was ticked or an end typed asks first, or says that nothing was saved (decision D2: a product choice; the scrim already
+      does not close it).
+    drawn: [cancel, closeIcon]
+    missing: none

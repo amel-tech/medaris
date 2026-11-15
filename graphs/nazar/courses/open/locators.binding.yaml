@@ -1,0 +1,122 @@
+# What every binding of nazar.courses.open shares: the data of the walk's own medrese, how an event with no node of its own is made, the
+# locators that role and name cannot find, the addresses of the states, and the checks of what a step leaves outside the screen. It has no
+# scenario: binding.yaml and binding.hostingGone.yaml extend it and bring theirs (a binding with a different node `before` is a binding of
+# its own, which is why the one walk that needs it is a file of its own).
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator below is from the code and unverified until the walk
+# phase. Where it is a guess it says so.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courses.open
+
+# the medrese a scenario makes in `setup` (walk-data.mjs); a walk on the seeded medrese does not read it
+data:
+  made: { json: ../.local/made/nazar-courses-open.json }
+
+# Events no node sends. The fields have no node that emits: the binding types in them. The names of the hocas below are the stack's spare
+# accounts APPLICANT_G ("Dilek Başvuran") and APPLICANT_H ("Rıza Başvuran"), whose addresses are the `vars` of the scenario.
+events:
+  FILL_IN:
+    - fill: { role: textbox, name: '/^Ders adı/', value: '{courseTitle}' }
+  # the address is searched on Enter (and also when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: '/^Hoca/', value: '{hocaA}' }
+    - key: Enter
+  SEARCH_ANOTHER:
+    - fill: { role: textbox, name: '/^Hoca/', value: '{hocaB}' }
+    - key: Enter
+  PICK_KOSK:
+    - click: { role: radio, name: Süleymaniye Köşkü }
+  PICK_IMAM:
+    - click: { role: radio, name: 'Dersin imamı: Rıza Başvuran' }
+  # a Base UI select: the trigger, then the option in the list it opens
+  CHOOSE_UNVAN:
+    - click: { role: combobox, name: 'Dilek Başvuran için unvan' }
+    - click: { role: option, name: 'Doç. Dr.' }
+  TOGGLE_CLOSED:
+    - click: { role: checkbox, name: Kapalı ders }
+  TOGGLE_APPROVAL:
+    - click: { role: checkbox, name: Kayıt onayı gereksin }
+  NAVIGATE:
+    - goto: '{nazar}/hesap'
+
+nodes:
+  # the form's <main> is told from the Dersler page's by what only it holds: the breadcrumb. A bare role main would match both
+  page: { css: 'main:has(nav[aria-label="Sayfa yolu"])' }
+  coursesPage: { css: 'main:has([data-testid=courses])' }
+  # the sidebar has a link "Dersler" too, and its current page carries aria-current as well
+  breadcrumbCourses: { role: link, name: Dersler, within: { role: navigation, name: Sayfa yolu } }
+  breadcrumbCurrent: { css: '[aria-current=page]', within: { role: navigation, name: Sayfa yolu } }
+  # the medrese's name is data: the walk's own medrese is "Deneme medresesi ...", the seeded one "Hadis ve Siyer Medresesi"
+  intro: { text: '/^Ders .+ adına, barındırma hakkı olan bir köşkte açılır\. Hocaları şimdi seçersiniz\./' }
+  # "* zorunlu alan" and "Seçilen hocalar*": the star is part of the paragraph's text, so the default exact match would miss them
+  requiredNote: { text: '/zorunlu alan/' }
+  teamLegend: { text: '/^Seçilen hocalar/' }
+  # an Alert is a role=status with no accessible name of its own: it is found by the words in it
+  noKoskAlert: { role: status, hasText: Ders açılabilecek köşk yok }
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  # both sentences are in the one paragraph data-testid=policy-lock, with the link and the tail
+  lockClosed: { testId: policy-lock, hasText: Kapalı ders zorunlu }
+  lockApproval: { testId: policy-lock, hasText: Kayıt her zaman onaylı }
+  # the count of the medrese's courses in the seeded köşk moves with other walks; the walk's own medrese has none in either köşk, and each line is told by the row it sits in
+  koskHasCourses: { text: '/medresenin burada \d+ dersi var/' }
+  koskKubbealtiLine: { text: medresenin burada henüz dersi yok, within: { css: label.mds-choice, hasText: Kubbealtı Köşkü } }
+  koskSuleymaniyeLine: { text: medresenin burada henüz dersi yok, within: { css: label.mds-choice, hasText: Süleymaniye Köşkü } }
+  # the hocas' names are the <bdi> of their rows: the same words are in the hidden status and in names
+  hocaARow: { css: 'bdi.font-semibold', hasText: Dilek Başvuran }
+  hocaBRow: { css: 'bdi.font-semibold', hasText: Rıza Başvuran }
+  # the help line says "dersin imamıdır" too, so the badge is told by its class
+  imamBadge: { css: 'span.mds-badge', hasText: Dersin imamı }
+  # the one paragraph of the sentence and its link; the sidebar holds a link "Medrese ayarları" as well
+  lockLink: { role: link, name: Medrese ayarları, within: { testId: policy-lock } }
+  # the same words are in the toast body and in the new row
+  newRowTitle: { css: 'tbody tr bdi', hasText: Deneme dersi aç }
+  newRowStatus: { text: Taslak, within: { css: tr, hasText: Deneme dersi aç } }
+  newRowToday: { text: '/bugün açıldı/', within: { css: tr, hasText: Deneme dersi aç } }
+  coursesTitle: { role: heading, name: '/^Dersler$/' }
+
+states:
+  form: { url: '{nazar}/medrese/*/dersler/yeni' }
+  noKosk: { url: '{nazar}/medrese/*/dersler/yeni' }
+  forbidden: { url: '{nazar}/medrese/*/dersler/yeni' }
+  readFailed: { url: '{nazar}/medrese/*/dersler/yeni' }
+  # the two lookups and the opening are Next server actions: a POST to the page's own address, held while the busy state is checked
+  # (its answer is 200 whatever the API said, so the replay cannot compare statuses there)
+  looking: { call: '{nazar}/medrese/*/dersler/yeni' }
+  lookingAnother: { call: '{nazar}/medrese/*/dersler/yeni' }
+  opening: { call: '{nazar}/medrese/*/dersler/yeni' }
+  # exits with no screen of their own are checked by their address
+  opened: { url: '{nazar}/medrese/*/dersler' }
+  courses_listed: { url: '{nazar}/medrese/*/dersler' }
+  settings_opened: { url: '{nazar}/medrese/*/ayarlar' }
+  left: { url: '{nazar}/hesap' }
+  not_found: { text: Sayfa bulunamadı }
+
+# What a step leaves outside the screen, read through the API as the başnazım (open-course#2 a4, a7; #3 a10-a17; #5 a7-a8; #7 a3).
+effects:
+  # a press that was refused sent nothing: the medrese still has no course
+  attempt:
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/madrasahs/{made.madrasah}/courses']
+      expect: '[]'
+  # the köşk's refusal opened nothing either
+  hostingGone:
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/madrasahs/{made.madrasah}/courses']
+      expect: '[]'
+  # the draft, as the list reads it: its name trimmed, a draft, and the two boxes. A box a policy locks is on whatever the walk did; one
+  # that is free depends on whether the walk checked it, so the scenario's `wantClosed` and `wantApproval` are the whole expectation
+  # (`"closed":true` under a lock) or only the key (`"closed":`)
+  openMadrasahCourse:
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/madrasahs/{made.madrasah}/courses']
+      expect: '"title":"{courseTitle}"'
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/madrasahs/{made.madrasah}/courses']
+      expect: '"status":"DRAFT"'
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/madrasahs/{made.madrasah}/courses']
+      expect: '{wantApproval}'
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/madrasahs/{made.madrasah}/courses']
+      expect: '{wantClosed}'
+    # the audit row of the opening (open-course#3 a17), and exactly one imam among the hocas, whichever way the walk chose
+    - run: [node, helpers/sql.mjs, "select count(*) as n from audit_log where action = 'course.open' and details->>'madrasahId' = '{made.madrasah}'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*) as imams from role_assignments ra join courses c on c.id = ra.scope_id where c.madrasah_id = '{made.madrasah}' and ra.role = 'MUDERRIS' and ra.is_imam and ra.revoked_at is null"]
+      expect: '"imams":1'

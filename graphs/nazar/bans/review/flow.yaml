@@ -1,0 +1,330 @@
+# Yasaklamalar of a medrese in nazar-web (/medrese/<id>/yasaklamalar), read by its başmüderris. Read from the code of PR #394
+# (apps/nazar/features/bans, app/medrese/[medreseId]/yasaklamalar, the API's GET /madrasahs/:id/bans and the ban service behind it).
+# This flow only reads: the four things a person does on the page ("Yasakla", "Yasağı kaldır", "Medreseden de yasakla", "Kalıcı yasak
+# talebi aç") each open a dialog and leave this flow in an exit, where nazar.bans.ban and nazar.bans.decide begin.
+#
+# What the code does today, which the graph draws and does not correct:
+#   - Every row says what the caller may do from the API (`viewerMayLift`, `viewerMayEscalate`, `viewerMayRequestPermanent`), and the
+#     page draws a button only where the flag is true. A ban the caller may not lift shows a sentence instead: "yalnız Medaris
+#     yönetimi" for a Medaris placer, "yalnız onu koyan kademe ya da üstü" for any other.
+#   - `viewerMayEscalate` is true for every open COURSE ban whose person holds no open medrese ban. It does not ask who the person is
+#     now, and the escalate route does not either (finding ban-staff-check-gaps, below the states that touch it).
+#   - The two tabs, the scope filter and the name search are three different mechanisms: a tab is a plain link (a full page load, which
+#     clears the search box), the scope filter is a soft navigation that keeps the box, and the search narrows the rows already read in
+#     the browser. The counts on the tabs are the medrese's whole whatever the filters leave of the list (F-B-4).
+#   - The list has no page limit: the API sends every ban of the medrese (BANS-2).
+schema: delurio-graph/0
+kind: flow
+id: nazar.bans.review
+status: captured
+domain: medaris.api
+ui: nazar.bans.review
+title: Read the medrese's bans
+summary: >-
+  The başmüderris opens Yasaklamalar. Under the title and a notice that says who lifts a ban, two tabs, "Etkin" and
+  "Kaldırılan", each with the medrese's whole count, a search box and a scope filter lead to a table: who is barred, from what
+  (a course, or the whole medrese), why, by whom and when, and, in the Etkin tab, the actions that row's kademe allows (lift,
+  widen to the medrese, ask for a permanent ban) or the sentence that says only a higher kademe may lift it; in the Kaldırılan tab,
+  who lifted it, when and why, and no action. She presses the other tab, narrows by scope (the whole medrese, or one course), types
+  a name to narrow the rows on the screen, and clears the filters when nothing is left. A button on a row, or the header's
+  "Yasakla", opens a dialog that nazar.bans.ban and nazar.bans.decide draw. The page is refused to a reader who holds neither
+  madrasah.ban nor platform.ban_scoped, and says so in place of the list.
+
+scope:
+  shows: >-
+    Yasaklamalar for the başmüderris: the title, the notice, the two tabs and their counts, the search box and the scope filter, the
+    table in both tabs with its empty and narrowed-to-nothing lines, and the refused and unreadable pages
+  world: open
+  outOfView:
+    - "the dialogs a button opens and what they write: Yasakla, Yasağı kaldır, Medreseden de yasakla and Kalıcı yasak talebi aç are nazar.bans.ban and nazar.bans.decide"
+    - "a medrese nazır with no grant, who meets the refused state under the same title: nazar.access.medreseNazirRefused (e2e bans#8)"
+    - "the same list for one course, which a hoca opens: nazar.bans.courseBans"
+    - "the open scope list of the filter (Base UI's popup, which draws 'Bütün kapsamlar', 'Medrese düzeyi' and each course of the medrese) and the loading skeleton (BansLoading)"
+    - "the medrese's courses read, which is a side read: when it fails the filter keeps its two fixed choices and the ban dialog says it cannot offer courses"
+    - "a nazır given madrasah.ban without the permanent-request code, who reads the same page and is offered fewer buttons per row"
+    - "the planned answer to a permanent-ban request (MDRS-140), which nothing lists or decides today"
+
+decisions:
+  D1:
+    question: >-
+      Should a person who now runs the course or the medrese (a müderris, a ders nazırı, a nazır, a başmüderris, a köşk nazımı, a
+      Medaris nazımı) be offered "Medreseden de yasakla", and should the API refuse to widen a ban onto them? The two create routes
+      refuse such a person (BAN_TARGET_INVALID); the widening routes do not look.
+    recommend: >-
+      No: `viewerMayEscalate` is false for a person who holds any of those roles in the medrese or the course, and escalateBan and
+      extendBan answer BAN_TARGET_INVALID as the create routes do, so one check serves all four routes. Until then the page offers a
+      button the API's own rule says should not exist.
+    affects: [listed]
+  D2:
+    question: >-
+      What should "Kalıcı yasak talebi bekliyor" mean while nothing answers a request? Today a request is written and never read:
+      no route lists it, nothing tells Medaris administration, and the badge stays on the row until the ban is lifted.
+    recommend: >-
+      Leave the page as it is until the deciding page exists (MDRS-140); then the badge should carry the date of the request and say
+      who answered, so that a waiting request can be told from a refused one.
+    affects: [listed]
+
+context:
+  read:
+    values: [ok, refused, missing, unreadable]
+    initial: any
+    say:
+      ok: "the list is read"
+      refused: "the API refuses the reader: they hold neither madrasah.ban nor platform.ban_scoped (a nazır the medrese gave no ban permission)"
+      missing: "the medrese is not there"
+      unreadable: "the read fails for any other reason"
+  active:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the medrese has open bans"
+      none: "the medrese has no open ban"
+  lifted:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the medrese has lifted bans"
+      none: "the medrese has no lifted ban"
+  scopeHolds:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the scope they choose holds a ban in the tab they are on"
+      none: "the scope they choose holds no ban in the tab they are on"
+  match:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the name they type is the name of a person on the rows read"
+      none: "the name they type is nobody's on the rows read"
+  mix:
+    values: [full, plain]
+    initial: any
+    say:
+      full: "the rows are of every kind the page draws: the reader's own kademe, a Medaris nazımı's ban, a köşk nazımı's, a medrese-wide ban widened from a course, a request for a permanent ban waiting"
+      plain: "the rows are the reader's own kademe's and a köşk nazımı's only: no Medaris ban, no medrese-wide ban, no request"
+  tab:
+    values: [ACTIVE, LIFTED]
+    initial: ACTIVE
+    say:
+      ACTIVE: "the Etkin tab, which is the address's default"
+      LIFTED: "the Kaldırılan tab (?durum=kaldirilan)"
+  scope:
+    values: [all, madrasah, course]
+    initial: all
+    say:
+      all: "no scope chosen: Bütün kapsamlar"
+      madrasah: "Medrese düzeyi (?kapsam=medrese): the bans over the whole medrese"
+      course: "one course of the medrese (?kapsam=<course id>)"
+  typed:
+    values: [none, some]
+    initial: none
+    say:
+      none: "the search box is empty"
+      some: "a name is typed in the search box"
+
+guards:
+  narrowed: "scope != 'all' or typed == 'some'"
+  holds: "(scope == 'all' and tab == 'ACTIVE' and active == 'some') or (scope == 'all' and tab == 'LIFTED' and lifted == 'some') or (scope != 'all' and scopeHolds == 'some')"
+  hidden: "typed == 'some' and match == 'none'"
+
+effects:
+  toLifted: { set: { tab: LIFTED, typed: none } } # a tab is a plain link: the page loads again and the search box starts empty
+  toActive: { set: { tab: ACTIVE, typed: none } }
+  toAll: { set: { scope: all } }
+  toMedrese: { set: { scope: madrasah } }
+  toCourse: { set: { scope: course } }
+  typedIn: { set: { typed: some } }
+  erased: { set: { typed: none } }
+  cleared: { set: { scope: all, typed: none } } # "Süzgeçleri temizle": the scope and the search, the tab stays
+
+failures:
+  reading:
+    from: listMadrasahBans
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+    unreadable: [HTTP_400]
+# `unreadable` stands for every answer but a 403 and a 404: readOnce makes a failed read of any other kind the retry state, and the
+# list's only other documented refusal is HTTP_400 (a status or a course id the API cannot read, which this page never sends). A
+# refused token is none of these: readOnce sends the person to sign in again (apps/nazar/lib/tedrisat-read.ts:36-40).
+
+# The story the page tells first: the başmüderris reads the open bans, goes to the lifted ones and back, narrows to the bans over the
+# whole medrese and widens again, then types a name.
+main:
+  given: { read: ok, active: some, lifted: some, scopeHolds: some, match: some, mix: full }
+  events: [DONE, OPEN_LIFTED, DONE, OPEN_ACTIVE, DONE, PICK_MEDRESE, DONE, PICK_ALL, DONE, TYPE_NAME]
+
+initial: reading
+
+states:
+  reading:
+    title: The bans are read
+    description: >-
+      The page asks, on the server and in one go, for the person (GET /me, for "(siz)"), the scope's name, the medrese's courses (the
+      filter's choices) and GET /madrasahs/:id/bans with the tab and the scope the address names (`?durum=kaldirilan` gives status
+      LIFTED, `?kapsam=medrese` scope MADRASAH, `?kapsam=<course id>` that course; anything else is the default: Etkin, all). The API
+      answers the medrese-wide bans and the bans on the medrese's courses (hidden courses too, never a köşk-wide ban) with the two
+      counts of the whole medrese and, on every row, what the caller may do. Nothing is on the screen of this step: the loading
+      skeleton (loading.tsx) is out of view. The same step runs again after every tab and every scope: the first is a full page
+      load, the second a soft navigation. The reads of the courses and of the person are side reads: a failure of either leaves the
+      list as it is.
+    invoke: { action: listMadrasahBans }
+    on:
+      DONE: { guard: "read == 'ok'", target: classify }
+      FAIL.forbidden: { guard: "read == 'refused'", target: forbidden, say: "a 403: the page's own refusal under its title", source: apps/nazar/lib/tedrisat-read.ts:45 }
+      FAIL.missing: { guard: "read == 'missing'", target: not_found, say: "a medrese that is not there (or an id that is not a uuid): Next's 404 page", source: apps/nazar/lib/tedrisat-read.ts:46 }
+      FAIL.unreadable: { guard: "read == 'unreadable'", target: loadFailed, say: "any other failure: the retry state, never worded as no access", source: apps/nazar/lib/tedrisat-read.ts:48 }
+    source: apps/nazar/features/bans/components/bans-page.tsx:37
+
+  classify:
+    title: What the list holds decides which screen
+    description: >-
+      Classification only. A list that holds nothing is the empty line of the tab when nothing narrows it, and the "nothing fits" line
+      when the scope or the search does; a list the search leaves empty is the same "nothing fits" line. The search narrows the rows
+      already read, in the browser, by name or e-mail (bans-table.tsx:82-89).
+    always:
+      - { guard: "not holds and narrowed", target: noMatch, source: apps/nazar/features/bans/components/bans-table.tsx:283 }
+      - { guard: "not holds", target: empty, source: apps/nazar/features/bans/components/bans-table.tsx:298 }
+      - { guard: hidden, target: noMatch, source: apps/nazar/features/bans/components/bans-table.tsx:83 }
+      - { target: listed }
+    source: apps/nazar/features/bans/components/bans-table.tsx:82
+
+  listed:
+    title: The bans are listed
+    description: >-
+      The page: the title and its line, "Yasakla", the notice, the tabs with the medrese's two counts, the search box and the scope
+      filter, and a table named by its caption ("Etkin yasaklar" or "Kaldırılan yasaklar"). In the Etkin tab a row has the person (with
+      "Yeni" for a ban placed in the last 24 hours, and "Kalıcı yasak talebi bekliyor" for one with a request waiting), the scope
+      ("Ders" and the course's title, or "Medrese" with "<medrese> bütün dersleri" and, for a widened ban, "<course> dersinden
+      genişletildi"), the reason, who placed it and in what role ("{role} (siz)" when it was the reader), when, and the actions of its
+      kademe: a ban the reader's own kademe placed offers "Yasağı kaldır", "Medreseden de yasakla" (a course ban the person holds no
+      medrese ban over) and "Kalıcı yasak talebi aç" (no request yet); a Medaris nazımı's ban offers only "Medreseden de yasakla"
+      and says "Bu yasağı yalnız Medaris yönetimi kaldırabilir."; a köşk nazımı's offers widen and ask and says "Bu yasağı yalnız onu
+      koyan kademe ya da üstü kaldırabilir."; a medrese-wide ban cannot be widened again, so it offers "Yasağı kaldır" and, until a
+      request exists, "Kalıcı yasak talebi aç". In the Kaldırılan tab a row says who lifted
+      it, when and why, and has no action. No focus is set when the page opens (focus-not-set). The tabs and the scope filter ask the
+      server again (reading); the search narrows the rows on the screen. Findings read here: F-B-4 (the tab counts, the rows left by a
+      filter and the search are never announced), ban-staff-check-gaps (the widen button is drawn for a person who runs the course
+      or the medrese now, and the API takes it), BANS-1 (the notice is true of the başmüderris and false of the başnazım), BANS-2
+      (the API sends every ban of the medrese, with no page), BANS-3 (an address that names a course the filter does not list reads
+      as "Bütün kapsamlar" over a narrowed list), MDRS-140 (the badge of a request nothing answers).
+    by: human
+    goal: true
+    on:
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: reading, effect: [toLifted], say: "they press Kaldırılan", source: libs/ui/src/mds/tabs.tsx:78 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: reading, effect: [toActive], say: "they press Etkin", source: libs/ui/src/mds/tabs.tsx:78 }
+      PICK_ALL: { guard: "scope != 'all'", target: reading, effect: [toAll], say: "they choose Bütün kapsamlar in the scope filter", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
+      PICK_MEDRESE: { guard: "scope != 'madrasah'", target: reading, effect: [toMedrese], say: "they choose Medrese düzeyi", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
+      PICK_COURSE: { target: reading, effect: [toCourse], say: "they choose one of the medrese's courses", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
+      TYPE_NAME: { guard: "typed == 'none'", target: classify, effect: [typedIn], say: "they type a name in Kişi ara", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
+      CLEAR_NAME: { guard: "typed == 'some'", target: classify, effect: [erased], say: "they erase what they typed", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:315 }
+      LIFT: { guard: "tab == 'ACTIVE'", target: handed_over.decide, starts: { flow: nazar.bans.decide }, say: "they press Yasağı kaldır on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
+      ESCALATE: { guard: "tab == 'ACTIVE'", target: handed_over.decide, starts: { flow: nazar.bans.decide }, say: "they press Medreseden de yasakla on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
+      REQUEST_PERMANENT: { guard: "tab == 'ACTIVE'", target: handed_over.decide, starts: { flow: nazar.bans.decide }, say: "they press Kalıcı yasak talebi aç on a row", source: apps/nazar/features/bans/components/bans-table.tsx:108 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/bans-table.tsx:229
+
+  empty:
+    title: The tab holds nothing
+    description: >-
+      Nothing narrows the list and it is empty: the table's one line says "Etkin yasak yok." or "Kaldırılan yasak yok.", and the tabs
+      still carry the medrese's counts (the tab on screen reads 0 here, the other one whatever the medrese holds). The header's
+      "Yasakla", the search box and the scope filter are still there. Same findings as the list that has rows, but no action is drawn.
+    by: human
+    on:
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: reading, effect: [toLifted], say: "they press Kaldırılan", source: libs/ui/src/mds/tabs.tsx:78 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: reading, effect: [toActive], say: "they press Etkin", source: libs/ui/src/mds/tabs.tsx:78 }
+      PICK_MEDRESE: { guard: "scope != 'madrasah'", target: reading, effect: [toMedrese], say: "they choose Medrese düzeyi", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
+      PICK_COURSE: { target: reading, effect: [toCourse], say: "they choose one of the medrese's courses", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
+      TYPE_NAME: { guard: "typed == 'none'", target: classify, effect: [typedIn], say: "they type a name", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:315 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/bans-table.tsx:298
+
+  noMatch:
+    title: Nothing fits the filters
+    description: >-
+      The scope (or the search) leaves no row: the table's one line says "Bu süzgece uyan yasak yok." with a link-style button,
+      "Süzgeçleri temizle", which empties the search box, sets the scope to all and asks the server again, keeping the tab. It is the
+      same line for a scope with no ban and for a name nobody on the list has, and nothing says which filter did it (F-B-4: no
+      announcement of the change either). The tabs still carry the whole medrese's counts, so "Etkin 4" can sit over a table that says
+      nothing fits. BANS-3 reads here: an address that names a course the filter does not list shows this line under "Bütün
+      kapsamlar".
+    by: human
+    on:
+      CLEAR_FILTERS: { target: reading, effect: [cleared], say: "they press Süzgeçleri temizle", source: apps/nazar/features/bans/components/bans-table.tsx:290 }
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: reading, effect: [toLifted], say: "they press Kaldırılan", source: libs/ui/src/mds/tabs.tsx:78 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: reading, effect: [toActive], say: "they press Etkin", source: libs/ui/src/mds/tabs.tsx:78 }
+      PICK_ALL: { guard: "scope != 'all'", target: reading, effect: [toAll], say: "they choose Bütün kapsamlar", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
+      PICK_MEDRESE: { guard: "scope != 'madrasah'", target: reading, effect: [toMedrese], say: "they choose Medrese düzeyi", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
+      PICK_COURSE: { target: reading, effect: [toCourse], say: "they choose one of the medrese's courses", source: apps/nazar/features/bans/components/bans-table.tsx:274 }
+      TYPE_NAME: { guard: "typed == 'none'", target: classify, effect: [typedIn], say: "they type a name", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
+      CLEAR_NAME: { guard: "typed == 'some'", target: classify, effect: [erased], say: "they erase what they typed", source: apps/nazar/features/bans/components/bans-table.tsx:266 }
+      BAN: { target: handed_over.ban, starts: { flow: nazar.bans.ban }, say: "they press Yasakla in the header", source: apps/nazar/features/bans/components/ban-dialog.tsx:315 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/bans-table.tsx:283
+
+  forbidden:
+    title: The page refuses the list
+    description: >-
+      The header stays, "Yasakla" and the list are left out, and under the title a neutral alert says "Bu sayfaya izniniz yok" (a
+      status, with its title in a <p>, not a heading, and no link out: F-B-13). The page keeps its old title and h1 "Yasaklamalar"
+      over a refusal. The reader here is a nazır the medrese gave no ban permission (nazar.access.medreseNazirRefused draws it from
+      their side); the başmüderris is not refused.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/bans/components/bans-page.tsx:67
+
+  loadFailed:
+    title: The list could not be read
+    description: >-
+      The header stays and "Yasakla" is left out. A section named by its own h1, "Yasaklar okunamadı", says the bans cannot be read
+      now and to try again in a few seconds, with "Yeniden dene", which asks the server again (router.refresh). The section's h1 is a
+      second h1 on the page, under the one that says "Yasaklamalar" (BANS-4). Not walked: nothing on the stack makes tedrisat fail a
+      read.
+    by: human
+    on:
+      RETRY: { target: reading, say: "they press Yeniden dene", source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/shell/components/page-problem.tsx:30
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the list read is Next's not-found page (apps/nazar/lib/tedrisat-read.ts:46); an id that is not a uuid is a 404 too, because the guard answers before the pipe."
+    type: final
+    leavesPage: true
+
+  handed_over.ban:
+    title: The ban dialog opens
+    description: "\"Yasakla\" opens the dialog that asks for a person's e-mail first, a course or the whole medrese, and a reason: nazar.bans.ban draws it. The page stays at its address."
+    type: final
+
+  handed_over.decide:
+    title: A decision dialog opens on a row
+    description: "\"Yasağı kaldır\", \"Medreseden de yasakla\" and \"Kalıcı yasak talebi aç\" each open a reason dialog with the ban's summary above it (ReasonDialog, bans-table.tsx:305): nazar.bans.decide draws them. The page stays at its address."
+    type: final
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: actions-only-in-the-etkin-tab
+    never: "state == 'handed_over.decide' and tab == 'LIFTED'"
+    say: A row of the Kaldırılan tab offers no decision; the three buttons are drawn only on an open ban.
+    source: apps/nazar/features/bans/components/bans-table.tsx:179
+  - id: rows-mean-the-list-holds-something
+    never: "state == 'listed' and not holds"
+    say: The table is drawn with rows only when the list holds something.
+    source: apps/nazar/features/bans/components/bans-table.tsx:281
+  - id: empty-means-nothing-narrows
+    never: "state == 'empty' and (holds or narrowed)"
+    say: The tab's own empty line shows only when the list holds nothing and no filter is set.
+    source: apps/nazar/features/bans/components/bans-table.tsx:298
+  - id: nothing-fits-means-a-filter-is-set
+    never: "state == 'noMatch' and not narrowed"
+    say: The "nothing fits" line shows only while the scope or the search is set.
+    source: apps/nazar/features/bans/components/bans-table.tsx:283

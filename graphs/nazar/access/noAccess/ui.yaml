@@ -1,0 +1,65 @@
+# The screens of nazar.access.noAccess: nazar-web's /erisim-yok, "Bu portala erişiminiz yok" (app/erisim-yok/page.tsx,
+# features/access/no-access-page.tsx), drawn with the frame it builds for itself (features/shell/components/portal-frame.tsx with no
+# scope): a sidebar with the brand, the theme toggle and the person, and the verdict in the main area. The retry state it shows when
+# a read fails belongs to nazar.shell.errorStates; the pages a person is sent on to belong to nazar.access.landingScope.
+#
+# Words: every key that is not `composed.*` is copied from libs/i18n/src/locales/tr/nazar.json (the app reads it as `nazar.*`), the key
+# being the path inside that file. The `composed.*` keys are NOT in any i18n file: they are texts the code builds or the kit writes,
+# with their placeholders so a replay can match them (a placeholder with no sample matches any text):
+#   composed.Shell.logo          the brand's accessible name, "Medaris — Nazar": the kit's Logo writes it from its `app` (libs/ui/src/mds/logo.tsx:55)
+#   composed.Shell.themeDark     the theme toggle's name while the page is light, the kit's own Turkish default (libs/ui/src/mds/theme-toggle.tsx:35, F-L-10)
+#   composed.Shell.userName      the person's name in the user row, as the session gives it (user-row.tsx:33)
+#   composed.NoAccess.email      the e-mail the session gives, shown as it is in a code element (no-access-page.tsx:40)
+# This flow only reads: it invokes no writing action, so `changes` is left out.
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nazar.access.noAccess
+flow: nazar.access.noAccess
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Nuri Örnek
+  email: nuri.ornek@example.com
+
+# Nothing on this page takes the focus when it opens (no autofocus in SystemState, none in the page), so the page has no `initialFocus`
+# and the graph says nothing of the focus: see rule focus-not-set.
+nodes:
+  # ---- the page and its frame --------------------------------------------------------------------------------------------
+  pageMain: { type: page, component: Page, role: main, in: [verdict], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main" data-density="compact">; it has no name
+  sidebar: { type: page, component: Page, role: complementary, in: [verdict], source: libs/ui/src/mds/app-shell.tsx:81 } # an <aside> with no name (F-L-2); no <nav> is drawn in it because it has no menu, and no link
+  brand: { type: text, component: Text, role: img, name: { key: composed.Shell.logo }, in: [verdict], source: apps/nazar/features/shell/components/portal-frame.tsx:93 } # the Logo: an image named "Medaris — Nazar"
+  themeToggle: { type: action, component: Button, role: button, intent: secondary, name: { key: composed.Shell.themeDark }, in: [verdict], source: libs/ui/src/mds/theme-toggle.tsx:58 } # the sidebar's one button (e2e access#1 a6, a7); drawn here as the light page has it, its flip is common.shell.theme (F-L-10)
+  userName: { type: text, component: Text, text: { key: composed.Shell.userName, params: { name: person.name } }, in: [verdict], source: apps/nazar/features/shell/components/user-row.tsx:33 }
+  # the role line is one of three texts, so one node each: the code gives "Talebe" when the person holds no role (portal-frame.tsx:53)
+  roleStudent: { type: text, component: Text, text: { key: Roles.STUDENT }, in: [verdict], when: "who == 'noRole' or who == 'chief'", source: apps/nazar/features/shell/components/portal-frame.tsx:53 } # the başnazım too (NOACC-1)
+  roleKosk: { type: text, component: Text, text: { key: Roles.KOSK_NAZIM }, in: [verdict], when: "who == 'kosk'", source: apps/nazar/features/shell/components/user-row.tsx:36 }
+  rolePlatform: { type: text, component: Text, text: { key: Roles.MEDARIS_NAZIM }, in: [verdict], when: "who == 'platform'", source: apps/nazar/features/shell/components/user-row.tsx:36 }
+
+  # ---- the verdict ----------------------------------------------------------------------------------------------------------
+  verdictSection: { type: page, component: Page, role: region, name: { labelledBy: verdictTitle }, in: [verdict], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState in the shell is a <section aria-labelledby>
+  verdictTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [verdict], source: apps/nazar/features/access/no-access-page.tsx:32 } # h1 (headingLevel 1)
+  verdictText: { type: text, component: Text, text: { key: NoAccess.text }, in: [verdict], source: apps/nazar/features/access/no-access-page.tsx:58 }
+  accountLine: { type: text, component: Text, text: { key: NoAccess.account }, in: [verdict], source: apps/nazar/features/access/no-access-page.tsx:38 } # the first words of one paragraph; the e-mail follows in a code element
+  accountEmail: { type: text, component: Text, text: { key: composed.NoAccess.email, params: { email: person.email } }, in: [verdict], source: apps/nazar/features/access/no-access-page.tsx:40 } # left out when the session has no e-mail (out of view)
+  backToTedris: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NoAccess.back }, in: [verdict], emits: BACK_TO_TEDRIS, source: apps/nazar/features/access/no-access-page.tsx:46 } # left out when TEDRIS_URL is empty (out of view)
+  signOut: { type: action, component: Button, role: button, intent: secondary, text: { key: Account.signOut }, in: [verdict], emits: SIGN_OUT, source: apps/nazar/features/access/no-access-page.tsx:50 } # an icon and the words; no confirmation (F-E-18)
+
+edges:
+  - { labelledBy: [verdictSection, verdictTitle] }
+  - { triggers: [signOut, handed_over.sign_out] }
+
+rules:
+  - { id: F-E-17, rule: "The başnazım with no seat is sent to this page from '/' and from its own address and is told he has no access, although the layout lets him open every medrese and course by its address (admin-scope.ts:58-85, portal-layout.tsx:91-106), and Hesap and Bildirimler too; the page never reads GET /me and offers no way to do any of it (no-access-page.tsx:30-33, app/erisim-yok/page.tsx:25-28). The verdict is false for him. Fix: read GET /me on this page and, for roles.systemAdmin, say what he may do and offer a way in, or send him to Nizam. Same finding as F-L-8, which words it by the redirect from '/' (app/page.tsx:16-18, scope.ts:201-205). Seen: the stack's smoke run signed him in at nazar and kept this page with his e-mail." }
+  - { id: F-L-8, rule: "The redirect side of F-E-17: '/' lands a başnazım with no seat on /erisim-yok because landingPath looks only at the assignments (scope.ts:201-205). Fix as F-E-17." }
+  - { id: NOACC-1, rule: "New finding. The başnazım's user row on this page says 'Talebe', and so does the row of anyone who holds no role: the frame falls back to STUDENT when `roles` is empty (portal-frame.tsx:53), and the page passes `portal.roles` (app/erisim-yok/page.tsx:28), which never lists SYSTEM_ADMIN (`heldRoles` has no such entry, scope.ts:58-65). The layout of Hesap and of a scope he opened passes `adminRoles`, a list that ends in SYSTEM_ADMIN, so there the same person is 'Medaris başnazımı' (portal-layout.tsx:73-74): two words for one person, and on the very page that tells him he has no access. Seen: nazar-SYSTEM_ADMIN.png of the smoke run shows his name with 'Talebe' under it. Same family as F-E-4 (the role line of Hesap) and F-L-7; the cause here is this page's own call. Fix: have the page use the layout's `adminRoles` fallback, or ask GET /me (decision D1)." }
+  - { id: F-L-7, rule: "Where the başnazım does get in without a scope, on Hesap and Bildirimler, the frame has no picker, no menu, no bell and a user row that is not a link, so the only way on is the address. Drawn in the exit opened_by_address; nazar.access.landingScope and nazar.account.settings own the screens. Fix: show his role in `heldRoles` when GET /me says so, and give the frame a link home." }
+  - { id: F-E-18, rule: "'Çıkış yap' signs out at once: the button posts /api/auth/signout with no confirmation (sign-out-button.tsx:26-29), while nazar has a confirmation page, /auth/signout, that nothing links to (auth/sign-out-confirm.tsx). Tedris and Nizam ask first. On this page the person may only have signed in with the wrong account, which is what the button is for (MDRS-248), so a missed press costs little; the asymmetry between the apps is the finding. Decision D1 of realm.auth.signOut." }
+  - { id: F-L-1, rule: "No skip link before the sidebar (app-shell.tsx:41, the whole shell). On this page the sidebar holds one control, the theme toggle, so a keyboard user passes one stop before the page's two buttons; the cost is small here and large on every other page. Fix: a first-child link to #main." }
+  - { id: F-L-2, rule: "The sidebar is an <aside> (complementary) with no accessible name (app-shell.tsx:81-103); here it holds the brand, one button and the person. Below 768 px it is display:none and the bar and sheet take its place. Fix: name it or make it a plain element." }
+  - { id: F-L-10, rule: "The theme toggle's name is the kit's Turkish default and flips between 'Koyu temaya geç' and 'Açık temaya geç' with no aria-pressed; nazar passes no labels (portal-frame.tsx:94), so no catalog can reach it. Drawn here as the light page has it. Fix: pass darkLabel and lightLabel from nazar.Shell." }
+  - { id: focus-not-set, rule: "Nothing moves the focus when the page opens, and nothing moves it after a redirect to it: the page node has no `initialFocus` and the graph says nothing of the focus. Recorded so the silence is not read as an omission. A person arriving by keyboard starts at the top of the document, at the theme toggle." }
+  - { id: sidebar-is-brand-and-person, rule: "e2e access#1 a5, a6, a7, a8 and a9: the sidebar is the brand, the theme toggle and the person. It has no <nav> (the Sidebar draws one only when it has children, app-shell.tsx:97-101), exactly one button, no link (the person row is a <div>, not a link, because there is no account page to go to: user-row.tsx:49), and the role line says what the person holds or 'Talebe'. Drawn by the nodes shown here and by the absence of any menu node; an absence is not a node, so a replay with --absent checks it only against nodes some other state shows." }
+  - { id: label-in-name, rule: "The visible text of both buttons is their whole accessible name: 'Tedris’e dön' and 'Çıkış yap' (WCAG 2.5.3). The sign-out icon is decorative. Holds." }
+  - { id: heading-and-landmarks, rule: "One h1, in a section named by it, inside the shell's <main>: the page has one main landmark and one region. The SystemState with `shell` is a <section>, not a second <main> (system-state.tsx:30). Holds." }

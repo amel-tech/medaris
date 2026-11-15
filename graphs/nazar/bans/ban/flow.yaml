@@ -1,0 +1,382 @@
+# The "Yasakla" dialog of nazar-web, read from the code of PR #394 (apps/nazar/features/bans/components/ban-dialog.tsx, its two
+# openers in features/students/components/students-table.tsx and features/bans/components/bans-page.tsx, the actions in
+# features/bans/actions.ts and features/nazirs/actions.ts, and the API's POST /madrasahs/:id/bans in
+# apps/tedrisat/src/ban/madrasah-ban.controller.ts and ban.service.ts). The başmüderris of a medrese bars a talebe from one course of
+# it or from all of them, with a reason, from one of two places:
+#   - Talebeler: the "Yasakla" on a talebe's row opens the dialog for that person, with that talebe's own courses to choose from;
+#   - Yasaklamalar: the "Yasakla" in the page header opens it with nobody chosen: it asks for an e-mail address first, finds the
+#     person in the realm's directory and offers the medrese's courses.
+# It says what the code does today. Where that is wrong for the people who use it, the finding is in ui.yaml `rules` and in the
+# description of the state it touches:
+#   - BAN-1  the ban is told to the talebe and to nobody else. `createInMadrasah` calls `tellBarred` and not `announce`, so neither
+#            the köşk's nazımları nor the Medaris nazımları are told (MDRS-113 asks for "every ban in front of the people above it").
+#            FLOWS.md draws `starts: nizam.notifications.triage` for this flow ("the Medaris persona reads the notice"); no notice
+#            exists, so that start is NOT drawn here and the need is `missing: MDRS-113` in needs.yaml.
+#   - BAN-4  a person already barred in that scope is answered with the standing ban, and the dialog says "Yasak kaydedildi" all the
+#            same: the reason just typed is not recorded and nothing says so.
+#   - BAN-2, BAN-3, BAN-5, and the inventory's F-B-2, F-B-6, F-B-7, F-B-8, F-B-12, F-B-16: see ui.yaml.
+schema: delurio-graph/0
+kind: flow
+id: nazar.bans.ban
+status: captured
+domain: medaris.api
+ui: nazar.bans.ban
+title: Bar a talebe from a course or from the whole medrese
+summary: >-
+  The başmüderris presses "Yasakla" on a talebe's row in Talebeler, or in the header of Yasaklamalar. From a row the dialog knows
+  the person and offers that talebe's own courses; from the header it asks for an exact e-mail address first (searched on Enter or
+  when the field is left; an address with no account and a directory that does not answer are said under the field), then shows
+  the person and offers the medrese's courses. Either way she picks one course or the whole medrese ("Medrese düzeyi"), writes a
+  reason (the button stays off until there is one) and sends it. A toast says "Yasak kaydedildi" and names the person and the
+  scope; the dialog closes and the page reads its list again. A refusal stays in the dialog as an error toast that does not close
+  by itself (not allowed, the person runs the course or is herself, the course is gone, anything else). The talebe is told that
+  their access was removed, never why; nobody above the medrese is told (BAN-1).
+
+scope:
+  shows: >-
+    the Talebeler and Yasaklamalar pages with their "Yasakla" opener, the dialog (the person, the lookup by e-mail, the scope, the
+    reason), the success toast and the refusal toasts
+  world: open
+  outOfView:
+    - "a medrese nazır with no grant meets the forbidden alert on both pages and no 'Yasakla': nazar.access.medreseNazirRefused (students#5, bans#8)"
+    - "the Talebeler list's own filters, paging and counter: nazar.students.browse; the Yasaklamalar tabs, filters and counts: nazar.bans.review"
+    - "lifting, widening to the medrese, asking for a permanent ban, on a row of Yasaklamalar: nazar.bans.decide"
+    - "barring from a course's own Yasaklamalar page: nazar.bans.courseBans"
+    - "the talebe's side of a ban (the notice 'erişimin kaldırıldı', being refused a seat or a celse): tedris.account.notifications, tedris.course.apply"
+    - "a köşk's own ban or a Medaris ban of the whole köşk: nizam.moderation.banStudent"
+    - "an ended session: both server calls send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "a nazır given madrasah.ban reaches the same dialog; the stack has no such nazır and nothing walks it"
+
+decisions:
+  D1:
+    question: >-
+      Should the dialog or its toast say that the person is already barred in that scope? The API answers the standing ban with
+      the same 201 it gives a new one, the page shows "Yasak kaydedildi", and the reason just typed is dropped.
+    recommend: >-
+      Yes: have the API say whether it made the ban, and let the page say that the ban already stands and whose reason it keeps
+      (Yasaklamalar shows it). Today the person who bans believes their reason was recorded.
+    affects: [savedRow, savedHeader]
+  D2:
+    question: >-
+      Should a ban placed from the medrese be put in front of the people above it (the köşk's nazımları and the Medaris nazımları),
+      as MDRS-113 asks? The course route does it (`announce`, COURSE_BAN_PLACED to the köşk's nazımları); the medrese route does
+      not, though a COURSE ban placed here sits in a köşk too.
+    recommend: >-
+      Yes, in the same words as the course route, and for a medrese-wide ban to the Medaris nazımları holding platform.ban_scoped.
+      Until then nizam.notifications.triage has nothing of this flow to show.
+    affects: [savedRow, savedHeader]
+
+context:
+  way:
+    values: [row, email, noCourses, unknown, down]
+    initial: any
+    say:
+      row: "she presses 'Yasakla' on a talebe's row in Talebeler: the person is known, the choices are that talebe's courses"
+      email: "she presses 'Yasakla' in the header of Yasaklamalar and the directory finds the address she types; the choices are the medrese's courses"
+      noCourses: "the same, but the medrese's courses could not be read: only the whole medrese is offered"
+      unknown: "the same, and the realm has no account with the address she types"
+      down: "the same, and the directory does not answer"
+  answer:
+    values: [saved, forbidden, notAllowed, invalidTarget, courseGone, invalid, failed]
+    initial: any
+    say:
+      saved: "the server places the ban, or answers the one that already stands"
+      forbidden: "she holds neither route-level code any more (AUTHZ_FORBIDDEN)"
+      notAllowed: "the service refuses the level she asked for (BAN_FORBIDDEN)"
+      invalidTarget: "the person is herself, or runs the medrese or the course (BAN_TARGET_INVALID)"
+      courseGone: "the course is gone or is another medrese's (COURSE_NOT_FOUND)"
+      invalid: "the body is refused (VALIDATION_ERROR)"
+      failed: "anything else: the medrese is gone, the server does not answer"
+  scope:
+    values: [course, madrasah]
+    initial: any
+    say:
+      course: "she means to bar the talebe from one course"
+      madrasah: "she means to bar the talebe from the whole medrese"
+  who:
+    values: [known, nobody, picked]
+    initial: nobody
+    say:
+      known: "the dialog was opened for a row's talebe"
+      nobody: "nobody is chosen yet: the e-mail field is drawn"
+      picked: "the address found someone, who replaces the field"
+  typed: { values: [true, false], initial: false } # the reason holds something other than white space
+  said: { values: [none, required], initial: none } # "Bir gerekçe yazın." under the reason, after the field was left empty
+  chosen: { values: [course, madrasah], initial: course } # the radio that is on: the first course, else the whole medrese
+  note: { values: [none, notFound, down], initial: none } # what the e-mail search said under the field
+  toast: { values: [none, forbidden, notAllowed, invalidTarget, courseGone, invalid, failed], initial: none }
+
+guards:
+  # `disabled={blank || picked === null}` of ban-dialog.tsx:217
+  ready: "who != 'nobody' and typed"
+  fromRow: "way == 'row'"
+
+effects:
+  openedRow: { set: { who: known } }
+  openedWithoutCourses: { set: { chosen: madrasah } } # `useState(courses[0]?.id ?? MADRASAH_SCOPE)`
+  typedReason: { set: { typed: true, said: none } }
+  leftEmpty: { set: { said: required } }
+  choseCourse: { set: { chosen: course } }
+  choseMadrasah: { set: { chosen: madrasah } }
+  foundPerson: { set: { who: picked, note: none } }
+  nobodyFound: { set: { note: notFound } }
+  directoryDown: { set: { note: down } }
+  removedPerson: { set: { who: nobody, note: none } }
+  clearToast: { set: { toast: none } }
+  forbiddenToast: { set: { toast: forbidden } }
+  notAllowedToast: { set: { toast: notAllowed } }
+  invalidTargetToast: { set: { toast: invalidTarget } }
+  courseGoneToast: { set: { toast: courseGone } }
+  invalidToast: { set: { toast: invalid } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  headerLooking:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN]
+  rowSubmitting:
+    from: createMadrasahBan
+    forbidden: [AUTHZ_FORBIDDEN]
+    notAllowed: [BAN_FORBIDDEN]
+    invalidTarget: [BAN_TARGET_INVALID]
+    courseGone: [COURSE_NOT_FOUND]
+    invalid: [VALIDATION_ERROR]
+    failed: [MADRASAH_NOT_FOUND]
+  headerSubmitting:
+    from: createMadrasahBan
+    forbidden: [AUTHZ_FORBIDDEN]
+    notAllowed: [BAN_FORBIDDEN]
+    invalidTarget: [BAN_TARGET_INVALID]
+    courseGone: [COURSE_NOT_FOUND]
+    invalid: [VALIDATION_ERROR]
+    failed: [MADRASAH_NOT_FOUND]
+
+# The story the e2e tells first (students#4): from a talebe's row, the first course stays chosen, the reason is written, the ban is placed.
+main:
+  given: { way: row, scope: course, answer: saved }
+  events: [OPEN_ROW, TYPE_REASON, SUBMIT, DONE]
+
+initial: start
+
+states:
+  start:
+    title: Which page she is on
+    description: >-
+      Not a screen: the flow starts on Talebeler when the ban is made from a row, and on Yasaklamalar when it is made from the page
+      header. Both pages are read by the başmüderris (and by SYSTEM_ADMIN and a nazır given madrasah.students_view or madrasah.ban).
+    source: apps/nazar/features/students/components/students-table.tsx:169
+    always:
+      - { guard: fromRow, target: studentsPage, say: "the ban is made from a talebe's row" }
+      - { target: bansPage, say: "the ban is made from the header of Yasaklamalar" }
+
+  studentsPage:
+    title: Talebeler, the dialog closed
+    by: human
+    description: >-
+      The list of the medrese's talebe, newest first, each row with "Yasakla" (named "Yasakla: {name}", drawn on every row for
+      everyone who sees the table: the API decides at the send). The list's own filters and paging are nazar.students.browse.
+    source: apps/nazar/features/students/components/students-table.tsx:169
+    on:
+      OPEN_ROW: { target: rowForm, effect: [openedRow], source: apps/nazar/features/students/components/students-table.tsx:174, say: "she presses 'Yasakla' on a talebe's row" }
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+
+  bansPage:
+    title: Yasaklamalar, the dialog closed
+    by: human
+    description: >-
+      The list of the medrese's bans with "Yasakla" in the header (drawn only while the bans could be read: a nazır with no grant
+      meets the forbidden alert instead and no button). The tabs, filters and the row actions are nazar.bans.review and
+      nazar.bans.decide.
+    source: apps/nazar/features/bans/components/bans-page.tsx:58
+    on:
+      OPEN_HEADER:
+        - { guard: "way == 'noCourses'", target: headerForm, effect: [openedWithoutCourses], source: apps/nazar/features/bans/components/bans-page.tsx:63, say: "she presses 'Yasakla' in the header; the courses could not be read, so only the whole medrese is on" }
+        - { target: headerForm, source: apps/nazar/features/bans/components/ban-dialog.tsx:315, say: "she presses 'Yasakla' in the header" }
+      NAVIGATE: { target: left, say: "she follows a link or the menu" }
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the form the button is on or off. "Yasakla" is natively disabled until a person is chosen
+      and the reason holds something other than white space (`disabled={blank || picked === null}`), and nothing says which of the
+      two is missing (F-B-6). The router also tells the two dialogs apart, so that each keeps its own first focus and its own way
+      back.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:217
+    always:
+      - { guard: "fromRow and ready", target: rowReady, say: "the reason is written: the button is on" }
+      - { guard: fromRow, target: rowForm, say: "the reason is empty: the button is off" }
+      - { guard: ready, target: headerReady, say: "a person is chosen and the reason is written: the button is on" }
+      - { target: headerForm, say: "nobody is chosen or the reason is empty: the button is off" }
+
+  rowForm:
+    title: The dialog for a row's talebe, the button off
+    by: human
+    description: >-
+      A dialog named "Yasakla" over the page, its eyebrow the medrese's name: the intro ("Yasak hemen geçerli olur. …"), the
+      person (name and e-mail, no way to remove them), the scope radios (one for each of the talebe's own courses, ongoing then
+      finished, the first on, and "Medrese düzeyi" last) and the reason. The focus starts in the reason. The scrim does not close
+      it; Esc, "Vazgeç" and the close icon do. "Yasakla" is natively disabled. "Bir gerekçe yazın." appears under the reason only
+      once it has been left empty, and is not announced (F-B-6, F-L-12); the red `*` is hidden from assistive technology
+      (F-B-7). The busy word of the button is "Yükleniyor" from the primitive's default, outside the catalog (F-B-2), and the
+      whole body is the dialog's description (F-B-12).
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:198
+    on:
+      TYPE_REASON: { target: settle, effect: [typedReason], source: apps/nazar/features/bans/components/ban-dialog.tsx:290, say: "she writes the reason" }
+      LEAVE_EMPTY: { guard: "not typed", target: settle, effect: [leftEmpty], source: apps/nazar/features/bans/components/ban-dialog.tsx:291, say: "she leaves the empty reason: 'Bir gerekçe yazın.' appears, silently, and the button stays off" }
+      PICK_COURSE: { guard: "scope == 'course'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks one of the talebe's courses" }
+      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks 'Medrese düzeyi'" }
+      CANCEL: { target: closedRow, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to the row's 'Yasakla' (not verified)" }
+      NAVIGATE: { target: left, say: "she leaves the page by its address" }
+
+  rowReady:
+    title: The dialog for a row's talebe, the button on
+    by: human
+    description: The same dialog with "Yasakla" on; pressing it sends the ban.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:214
+    on:
+      PICK_COURSE: { guard: "scope == 'course'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks one of the talebe's courses" }
+      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks 'Medrese düzeyi'" }
+      SUBMIT: { guard: "chosen == scope", target: rowSubmitting, effect: [clearToast], source: apps/nazar/features/bans/components/ban-dialog.tsx:162, say: "she presses 'Yasakla' in the dialog" }
+      CANCEL: { target: closedRow, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "Vazgeç, the close icon or Escape" }
+      NAVIGATE: { target: left, say: "she leaves the page by its address" }
+
+  rowSubmitting:
+    title: The ban is on its way (from a row)
+    description: >-
+      The server action banPerson calls POST /madrasahs/:id/bans with the person, the scope (COURSE with the course, or MADRASAH)
+      and the trimmed reason. The fields are off and "Yasakla" is busy (aria-disabled, "Yükleniyor", F-B-2). "Vazgeç", the close
+      icon and Escape stay on and do nothing (BAN-3). A success closes the dialog, shows the toast and reads the page again; a
+      refusal is an error toast over the dialog, which stays open with what she typed. A server action that cannot be reached at all
+      is not caught on the page (no try/catch around `startTransition`): not verified.
+    invoke: { action: createMadrasahBan }
+    on:
+      DONE: { guard: "answer == 'saved'", target: savedRow, source: apps/nazar/features/bans/components/ban-dialog.tsx:176, say: "the ban stands (new, or the one that was already there: BAN-4)" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: rowReady, effect: [forbiddenToast], source: apps/nazar/features/bans/components/ban-dialog.tsx:190, say: "'Bunu yapma izniniz yok.'" }
+      FAIL.notAllowed: { guard: "answer == 'notAllowed'", target: rowReady, effect: [notAllowedToast], source: apps/nazar/features/bans/bans.ts:356, say: "'Bu yasağı koymak için yetkiniz yok.'" }
+      FAIL.invalidTarget: { guard: "answer == 'invalidTarget'", target: rowReady, effect: [invalidTargetToast], source: apps/nazar/features/bans/bans.ts:360, say: "'Bu kişi yasaklanamaz: …'" }
+      FAIL.courseGone: { guard: "answer == 'courseGone'", target: rowReady, effect: [courseGoneToast], source: apps/nazar/features/bans/bans.ts:364, say: "'Bu ders artık yok ya da medresenin dersi değil. …'; the dialog stays and the list of choices is not read again" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: rowReady, effect: [invalidToast], source: apps/nazar/features/bans/bans.ts:365, say: "'Gerekçeyi denetleyip yeniden deneyin.'" }
+      FAIL.failed: { guard: "answer == 'failed'", target: rowReady, effect: [failedToast], source: apps/nazar/features/bans/bans.ts:367, say: "'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:170
+
+  headerForm:
+    title: The dialog opened from the header, the button off
+    by: human
+    description: >-
+      The same dialog, but nobody is chosen: the first field is "Kişinin e-posta adresi" and it has the focus. The address is
+      searched on Enter and also when the field is left (BAN-2), only when it looks like an address and is not the one just
+      searched; an input that is not an address is neither searched nor told off (BAN-5). The field is not marked required
+      (F-B-7). Once a person is found the field is replaced by their name and e-mail and a "Seçimi kaldır: {name}" button; nothing
+      moves the focus to the next field and nothing says "{name} seçildi" (the message exists and is never drawn: F-B-16, F-B-8).
+      The scope radios are the medrese's courses (the first on) and "Medrese düzeyi", or only the latter and a note when the courses
+      could not be read.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:198
+    on:
+      TYPE_REASON: { target: settle, effect: [typedReason], source: apps/nazar/features/bans/components/ban-dialog.tsx:290, say: "she writes the reason" }
+      LEAVE_EMPTY: { guard: "not typed", target: settle, effect: [leftEmpty], source: apps/nazar/features/bans/components/ban-dialog.tsx:291, say: "she leaves the empty reason: 'Bir gerekçe yazın.' appears, silently" }
+      SEARCH: { guard: "who == 'nobody'", target: headerLooking, source: apps/nazar/features/bans/components/ban-dialog.tsx:55, say: "she types an address and presses Enter, or leaves the field" }
+      REMOVE_PERSON: { guard: "who == 'picked'", target: settle, effect: [removedPerson], source: apps/nazar/features/bans/components/ban-dialog.tsx:244, say: "she presses 'Seçimi kaldır': the e-mail field is back, empty, and the focus is not moved (F-B-8)" }
+      PICK_COURSE: { guard: "scope == 'course' and way != 'noCourses'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks one of the medrese's courses" }
+      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks 'Medrese düzeyi'" }
+      CANCEL: { target: closedHeader, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to the header's 'Yasakla' (not verified)" }
+      NAVIGATE: { target: left, say: "she leaves the page by its address" }
+
+  headerReady:
+    title: The dialog opened from the header, the button on
+    by: human
+    description: >-
+      A person is chosen and the reason is written, so "Yasakla" is on.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:214
+    on:
+      REMOVE_PERSON: { guard: "who == 'picked'", target: settle, effect: [removedPerson], source: apps/nazar/features/bans/components/ban-dialog.tsx:244, say: "she presses 'Seçimi kaldır': the button goes off" }
+      PICK_COURSE: { guard: "scope == 'course' and way != 'noCourses'", target: settle, effect: [choseCourse], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks one of the medrese's courses" }
+      PICK_MADRASAH: { guard: "scope == 'madrasah'", target: settle, effect: [choseMadrasah], source: apps/nazar/features/bans/components/ban-dialog.tsx:259, say: "she picks 'Medrese düzeyi'" }
+      SUBMIT: { guard: "chosen == scope", target: headerSubmitting, effect: [clearToast], source: apps/nazar/features/bans/components/ban-dialog.tsx:162, say: "she presses 'Yasakla' in the dialog" }
+      CANCEL: { target: closedHeader, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "Vazgeç, the close icon or Escape" }
+      NAVIGATE: { target: left, say: "she leaves the page by its address" }
+
+  headerLooking:
+    title: Look the person up
+    description: >-
+      The server action lookupPerson, GET /users/lookup: the realm's directory is searched for the exact address (0 or 1 account)
+      and tedrisat writes the search to the audit log, found or not. The field is disabled and busy while it runs, so it loses the
+      focus (F-B-8), and a hidden output says "Aranıyor". The rest of the dialog stays live: "Vazgeç" still closes it and the
+      answer is then dropped. A found person replaces the field; no account is "Bu e-posta adresiyle kayıtlı bir hesap
+      bulunamadı."; any failure of the directory (it does not answer, it is not configured, the caller may not look up) is "Arama
+      şu an yapılamıyor. Biraz sonra yeniden deneyin." and the same address can be searched again. Both are a Field error: not
+      a live region (F-L-12).
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "way == 'unknown'", target: settle, effect: [nobodyFound], source: apps/nazar/features/bans/components/ban-dialog.tsx:65, say: "no account has that address" }
+        - { guard: "way == 'email' or way == 'noCourses'", target: settle, effect: [foundPerson], source: apps/nazar/features/bans/components/ban-dialog.tsx:63, say: "the person is chosen: their name and e-mail replace the field" }
+      FAIL.unavailable: { guard: "way == 'down'", target: settle, effect: [directoryDown], source: apps/nazar/features/bans/components/ban-dialog.tsx:67, say: "the directory is not reachable: 'Arama şu an yapılamıyor.'" }
+      CANCEL: { target: closedHeader, source: apps/nazar/features/bans/components/ban-dialog.tsx:201, say: "she closes the dialog while the search runs; its answer is dropped" }
+    source: apps/nazar/features/nazirs/actions.ts:43
+
+  headerSubmitting:
+    title: The ban is on its way (from the header)
+    description: >-
+      As rowSubmitting, for the person the address found. The "Seçimi kaldır" button stays live while the ban is sent and takes
+      the person out of the dialog under the call (BAN-3). A success closes the dialog, shows the toast and reads Yasaklamalar
+      again, whose "Etkin" tab then lists the new row (a ban already standing is not a new row: BAN-4).
+    invoke: { action: createMadrasahBan }
+    on:
+      DONE: { guard: "answer == 'saved'", target: savedHeader, source: apps/nazar/features/bans/components/ban-dialog.tsx:176, say: "the ban stands" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: headerReady, effect: [forbiddenToast], source: apps/nazar/features/bans/components/ban-dialog.tsx:190, say: "'Bunu yapma izniniz yok.'" }
+      FAIL.notAllowed: { guard: "answer == 'notAllowed'", target: headerReady, effect: [notAllowedToast], source: apps/nazar/features/bans/bans.ts:356, say: "'Bu yasağı koymak için yetkiniz yok.'" }
+      FAIL.invalidTarget: { guard: "answer == 'invalidTarget'", target: headerReady, effect: [invalidTargetToast], source: apps/nazar/features/bans/bans.ts:360, say: "'Bu kişi yasaklanamaz: …' (she, or a person who runs the course)" }
+      FAIL.courseGone: { guard: "answer == 'courseGone'", target: headerReady, effect: [courseGoneToast], source: apps/nazar/features/bans/bans.ts:364, say: "'Bu ders artık yok ya da medresenin dersi değil. …'" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: headerReady, effect: [invalidToast], source: apps/nazar/features/bans/bans.ts:365, say: "'Gerekçeyi denetleyip yeniden deneyin.'" }
+      FAIL.failed: { guard: "answer == 'failed'", target: headerReady, effect: [failedToast], source: apps/nazar/features/bans/bans.ts:367, say: "'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:170
+
+  savedRow:
+    type: final
+    title: The ban is placed, from a row
+    description: >-
+      A toast "Yasak kaydedildi" says "{name} artık “{course}” dersine erişemez." or "{name} artık medresenin hiçbir dersine
+      erişemez." and closes by itself after 6 seconds; the dialog is gone and the list is read again, but Talebeler draws nothing of
+      a ban, so the toast is the only word (the ban is on Yasaklamalar). The talebe is sent COURSE_ACCESS_REMOVED for each course
+      the ban newly bars, never the reason; nobody else is told (BAN-1). If a ban already stood in that scope the toast is the same
+      and nothing was recorded (BAN-4). The focus goes back to the row's "Yasakla", which is still there (not verified).
+
+  savedHeader:
+    type: final
+    title: The ban is placed, from the header
+    description: >-
+      As savedRow. Yasaklamalar is read again: the "Etkin" tab counts one more and its table lists the person with the scope, the
+      reason and the banner ("Yeni" for 24 hours). The focus goes back to the header's "Yasakla" (not verified).
+
+  closedRow:
+    type: final
+    title: The dialog is closed and nothing was written (from a row)
+    description: The focus goes back to the row's "Yasakla" (Base UI returns it to the element that was focused when the dialog opened; not verified).
+
+  closedHeader:
+    type: final
+    title: The dialog is closed and nothing was written (from the header)
+    description: The focus goes back to the header's "Yasakla" (not verified).
+
+  left:
+    type: final
+    title: She leaves the page
+    leavesPage: true
+
+assertions:
+  - id: never-without-a-person
+    never: "(state == 'rowSubmitting' or state == 'headerSubmitting') and who == 'nobody'"
+    say: A ban is sent only for a person, the row's or the one the address found.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:164
+  - id: never-without-a-reason
+    never: "(state == 'rowSubmitting' or state == 'headerSubmitting') and not typed"
+    say: A ban is never sent without a reason, which has to hold something other than white space.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:165
+  - id: only-the-medrese-when-no-course-is-offered
+    never: "way == 'noCourses' and chosen == 'course' and state in ['headerForm', 'headerReady', 'headerLooking', 'headerSubmitting']"
+    say: When the medrese's courses could not be read only the whole medrese can be chosen.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:156
+  - id: success-only-for-a-ban
+    never: "state == 'savedRow' and answer != 'saved'"
+    say: The success toast is shown only for an answer that placed or confirmed a ban.
+    source: apps/nazar/features/bans/components/ban-dialog.tsx:176

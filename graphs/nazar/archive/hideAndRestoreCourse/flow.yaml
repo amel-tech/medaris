@@ -1,0 +1,444 @@
+# Hiding a course of a medrese from its Dersler page and bringing it back from its Arşiv, in nazar-web, by the medrese's başmüderris.
+# Read from the code of the branch (the tree of PR #394) on 15 Nov 2026: apps/nazar/features/courses (courses-page, courses-table,
+# hide-course), apps/nazar/features/archive (archive-page, archive-list, archive.ts), the shared Menu, AlertDialog, Tabs, Table and Toast
+# of libs/ui/src/mds, and the routes the two buttons call. It says what the code does today. Nothing here was seen in a browser by its
+# writer: every behaviour is "from the code" unless a line says it was measured (the focus after a window opened from a menu item, which
+# tedris.course.leave measured on the same components).
+#
+# What is drawn:
+#   - Dersler: the row's "···" menu, "Dersi gizle", the window that asks first (cancel once, then confirm), the course leaving the list and
+#     the counter, the toast, and the link "Arşiv" under the table.
+#   - Arşiv: the four tabs with their counts, the table of what is hidden (who hid it, when, newest first), "Geri al", the sentences that
+#     stand where the person's kademe is below the one that hid a row, the pager (ten a page), the toast, and the way back to Dersler.
+#   - The refusals of both calls, each with the words the page says.
+#
+# What the story depends on and the graph says plainly:
+#   - A hidden course is not deleted. The başmüderris hides it at the medrese's kademe; the köşk's nazımı and Medaris yönetimi are above her,
+#     so what they hid has no button for her, only a sentence (Archive.locked, Archive.lockedAdmin).
+#   - Four world facts decide what Arşiv draws and never change inside a walk: `held` (which kinds are hidden), `locks` (which higher kademe
+#     hid rows), `pages` (whether Tümü spans two pages) and `enrolled` (whether the window warns of talebe). What the screen remembers
+#     (`tab`, `page`, `toast`) is told by the steps.
+#   - Findings it carries (ui.yaml `rules` has the same ids): F-A-2, F-A-3 (not drawn: the banner of a hidden medrese), F-A-8, F-A-9,
+#     F-A-10, F-A-12, F-A-14 and three of its own: HIDE-1 (restoring the last row of the last page leaves an empty page 2 that says nothing is
+#     hidden), HIDE-2 (the tab "Ders kayıtları" can never list anything) and HIDE-3 (Vazgeç and the close icon stay live and do nothing while
+#     the hide runs).
+schema: delurio-graph/0
+kind: flow
+id: nazar.archive.hideAndRestoreCourse
+status: captured
+domain: medaris.api
+ui: nazar.archive.hideAndRestoreCourse
+title: Hide a course and restore it from the Arşiv
+summary: >-
+  From the medrese's Dersler the başmüderris opens a row's menu and chooses "Dersi gizle". A window asks first, in an alertdialog whose focus
+  starts on "Vazgeç": it says that the course will be hidden from talebe, visitors and the köşk's page, that its celses leave the talebe's
+  calendar, how many talebe lose access, and that nothing is deleted. Cancelling leaves the course where it is; "Gizle" hides it, the window
+  closes, a toast says it was hidden, and the list is read again without the course (the counter follows). The Arşiv lists what is hidden
+  in the medrese in four tabs (Tümü, Dersler, Haftalar ve celseler, Ders kayıtları) with their counts, newest hidden first, ten a page, each
+  row with its kind, who hid it and when. Where her kademe reaches the one that hid a row, "Geri al" brings it back at once, with no
+  question, and a toast says so; where a higher kademe hid it, a sentence says which one stands in the button's place. A call that fails
+  says why in an error toast; the list is read again unless the medrese itself is still hidden. The focus is lost where the pressed
+  control leaves with its row (F-A-2), and nothing says after a few seconds what was done.
+source: apps/nazar/features/courses/components/courses-table.tsx:223
+
+scope:
+  shows: >-
+    Dersler with a row's menu, the window "Dersi gizle" and the toasts of a hide; Arşiv with its tabs, table, "Geri al", the sentences of a
+    higher kademe, the pager and the toasts of a restore; the way from one page to the other
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the filters, the köşk card, the exam card and 'Medrese dersi aç' of Dersler: nazar.courses.browse and nazar.courses.open; its empty line when the last course is hidden"
+    - "the dialog 'Hocaları değiştir', which the row's other menu item opens: nazar.courses.changeHocas (this flow only starts it)"
+    - "the section 'Medreseyi gizle' of Arşiv and the banner of a hidden medrese with 'Medreseyi geri getir': nazar.archive.hideMedrese. ARCHIVE_PARENT_HIDDEN, the refusal of a restore while the medrese is hidden, is drawn here and walked there"
+    - "the same restore in the köşk's and the platform's Arşiv, seen by a person of a higher kademe: nizam.moderation.restoreArchived"
+    - "a medrese nazır with no grant, who meets 'Bu sayfaya izniniz yok' on both pages: nazar.access.medreseNazirRefused. A read that fails for another reason draws 'Dersler okunamadı' or 'Arşiv okunamadı' with a retry (read_failed)"
+    - "a row hidden by a higher kademe that is a week or a session (the stack's are courses), a row with no recorded hider (Archive.lockedUnknown: 'Yalnız gizleyen kademe ya da üstü geri alabilir.'), and a list in which every row is locked and so has no button"
+    - "a list of three pages or more, whose middle page has both 'Önceki' and 'Sonraki'; a pager on a tab other than Tümü (a long 'Haftalar ve celseler' pages the same way)"
+    - "the loading skeletons of both pages, a session that has ended (a server action then sends the person to sign in: realm.auth.sessionEnded), and a hide or a restore that fails outright, such as a dropped network (F-A-10)"
+
+decisions:
+  D1:
+    question: >-
+      Should the tab "Ders kayıtları" be drawn while the API cannot hold a recording in the Arşiv? Its count is always 0 and its sentence says
+      there is none (HIDE-2).
+    recommend: >-
+      Leave it out until a recording can be hidden; then it needs a route that hides one and a row that says which course it belongs to.
+    affects: [archiveEmpty]
+  D2:
+    question: >-
+      Should the row's menu offer only the items the person may use? Both are offered on every row; a nazır who may list the courses but not
+      hide them presses "Dersi gizle", answers the window and is refused with a toast (F-A-8).
+    recommend: >-
+      Offer an item only where its permission is held, as the page does for the buttons of the header; the refusal stays as a safety net.
+    affects: [menuOpen, hiding]
+
+context:
+  start:
+    values: [courses, archive]
+    initial: any
+    say:
+      courses: "the person opens Dersler (/medrese/<id>/dersler), from the menu"
+      archive: "the person opens Arşiv (/medrese/<id>/arsiv) directly, from the menu or an address"
+  enrolled:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the course the window is about has talebe enrolled: the window says how many lose their access"
+      none: "nobody is enrolled in it: the window leaves that line out"
+  held:
+    values: [none, courses, weeks, both]
+    initial: any
+    say:
+      none: "nothing is hidden in the medrese"
+      courses: "hidden courses only"
+      weeks: "hidden weeks or celses only"
+      both: "hidden courses and hidden weeks or celses"
+  locks:
+    values: [none, kosk, admin, both]
+    initial: any
+    say:
+      none: "every hidden course was hidden by the başmüderris, so each has its button"
+      kosk: "the köşk's nazımı hid at least one course: its row has a sentence and no button"
+      admin: "Medaris yönetimi hid at least one course: its row has a sentence and no button"
+      both: "both did"
+  pages:
+    values: [one, two]
+    initial: any
+    say:
+      one: "Tümü fits one page (ten rows or fewer)"
+      two: "Tümü spans two pages: the pager is drawn"
+  tab:
+    values: [all, course, weeks, recordings]
+    initial: all
+    say:
+      all: "Tümü"
+      course: "Dersler"
+      weeks: "Haftalar ve celseler"
+      recordings: "Ders kayıtları"
+  page:
+    values: [first, last]
+    initial: first
+    say:
+      first: "the first page of Tümü"
+      last: "the second and last page of Tümü"
+  toast:
+    values: [none, hidden, alreadyHidden, hideGone, hideRefused, hideFailed, restored, restoreGone, restoreLevel, parentHidden, restoreFailed]
+    initial: none
+    say:
+      none: "no answer is on the screen, or its toast is gone"
+      hidden: "the course was just hidden"
+      alreadyHidden: "it was hidden already, by someone else meanwhile"
+      hideGone: "it is no longer a course of this medrese"
+      hideRefused: "the API refused the hide for lack of permission"
+      hideFailed: "the API refused the hide for another reason"
+      restored: "an item was just brought back"
+      restoreGone: "the item was no longer in the Arşiv"
+      restoreLevel: "a higher kademe hid it"
+      parentHidden: "the medrese is still hidden, so a course cannot come back"
+      restoreFailed: "the API refused the restore for another reason"
+
+guards:
+  # whether the tab being read has rows: Tümü holds any hidden kind, Dersler the courses, Haftalar ve celseler the weeks and celses, and Ders kayıtları never
+  holdsHere: "(tab == 'all' and held != 'none') or (tab == 'course' and held in ['courses', 'both']) or (tab == 'weeks' and held in ['weeks', 'both'])"
+  # whether Tümü has a second page to go to, and the person is on the first
+  nextExists: "tab == 'all' and pages == 'two' and page == 'first'"
+  previousExists: "tab == 'all' and pages == 'two' and page == 'last'"
+
+effects:
+  clearNote: { set: { toast: none } }
+  cancelled: { set: { toast: none } } # the window closed with nothing hidden; an `effects` check reads the course through the API
+  tabAll: { set: { tab: all, page: first, toast: none } }
+  tabCourse: { set: { tab: course, page: first, toast: none } }
+  tabWeeks: { set: { tab: weeks, page: first, toast: none } }
+  tabRecordings: { set: { tab: recordings, page: first, toast: none } }
+  pageNext: { set: { page: last, toast: none } }
+  pagePrevious: { set: { page: first, toast: none } }
+  hidden: { set: { toast: hidden } }
+  alreadyHidden: { set: { toast: alreadyHidden } }
+  hideGone: { set: { toast: hideGone } }
+  hideRefused: { set: { toast: hideRefused } }
+  hideFailed: { set: { toast: hideFailed } }
+  restored: { set: { toast: restored }, havoc: [held, pages] } # the row leaves, so the list may have emptied or fits one page now
+  restoreGone: { set: { toast: restoreGone }, havoc: [held, pages] }
+  restoreLevel: { set: { toast: restoreLevel }, havoc: [held, pages] }
+  parentHidden: { set: { toast: parentHidden } } # the one refusal after which the list is not read again
+  restoreFailed: { set: { toast: restoreFailed }, havoc: [held, pages] }
+
+failures:
+  readingCourses:
+    from: listMadrasahCourses
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+    other: []
+  hiding:
+    from: hideMadrasahCourse
+    already: [MADRASAH_COURSE_ALREADY_HIDDEN]
+    vanished: [MADRASAH_COURSE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND, MADRASAH_NOT_FOUND, HTTP_400]
+  readingArchive:
+    from: listMadrasahArchive
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+    other: []
+  restoring:
+    from: restoreArchiveItem
+    gone: [ARCHIVE_ITEM_NOT_FOUND]
+    level: [ARCHIVE_FORBIDDEN, ARCHIVE_RESTORE_LEVEL]
+    parentHidden: [ARCHIVE_PARENT_HIDDEN]
+    other: [COURSE_NOT_FOUND, HTTP_400]
+
+# The story the page tells first: from Dersler, open a course's menu, ask to hide it, change your mind once, ask again and confirm; open the
+# Arşiv by the link under the table, page to the second page and back, choose the tab Dersler and bring the course back.
+main:
+  given: { start: courses, enrolled: some, held: both, locks: both, pages: two }
+  events: [DONE, OPEN_MENU, CHOOSE_HIDE, CANCEL, OPEN_MENU, CHOOSE_HIDE, CONFIRM_HIDE, DONE, OPEN_ARCHIVE, DONE, NEXT_PAGE, DONE, PREVIOUS_PAGE, DONE, TAB_COURSE, DONE, RESTORE, DONE]
+
+initial: begin
+
+states:
+  begin:
+    title: The person opens one of the two pages
+    description: >-
+      A step with no screen: the person is on Dersler (`start` courses) or on Arşiv (`start` archive), which the menu or an address opens.
+      Nothing is drawn here.
+    always:
+      - { guard: "start == 'archive'", target: readingArchive }
+      - { target: readingCourses }
+    source: apps/nazar/app/medrese/[medreseId]/dersler/page.tsx:12
+
+  readingCourses:
+    title: Dersler is read
+    description: >-
+      The page reads GET /madrasahs/:id/courses on the server, with the köşks and the exam summary beside it, behind a skeleton (no
+      loading.tsx on purpose). The list is the medrese's courses that are not hidden, by title. A 403 keeps the title and draws "Bu sayfaya
+      izniniz yok" and no table (refused; nazar.access.medreseNazirRefused), a 404 is the 404 page (not_found: lib/tedrisat-read.ts:43-50),
+      and any other failure draws "Dersler okunamadı" with a retry under a second h1 (read_failed, F-A-1; not drawn here).
+    invoke: { action: listMadrasahCourses }
+    on:
+      DONE: listed
+      FAIL.forbidden: refused
+      FAIL.missing: not_found
+      FAIL.other: read_failed
+    source: apps/nazar/features/courses/components/courses-page.tsx:75
+
+  listed:
+    title: Dersler lists the course
+    description: >-
+      The page: the title and the counter ("3 ders · 2 köşkte"), the table of the medrese's courses with each row's title (a link to
+      /ders/<id>, F-A-9) and its "···" button, and under it "Gizlenen dersler bu listede yer almaz; Arşiv’de görünür." with the link.
+      The page sets no focus of its own (focus-not-set). A failed hide ends here with its error toast: the refusal for lack of permission
+      (F-A-8) and any other refusal leave the course in the list and read nothing again.
+    by: human
+    goal: true
+    on:
+      OPEN_MENU: { target: menuOpen, effect: [clearNote], say: "they press the row's ··· button" }
+      OPEN_ARCHIVE: { target: readingArchive, effect: [tabAll], say: "they follow the link Arşiv under the table: a navigation inside the app" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/courses/components/courses-table.tsx:223
+
+  menuOpen:
+    title: The row's menu
+    description: >-
+      Base UI's menu, a popup named "Diğer işlemler: <course>" with two items, "Hocaları değiştir" and "Dersi gizle", both on every row (F-A-8).
+      The page behind is not inert and the focus is on the popup, not on an item (menu-focus-on-popup). Esc closes it and Base UI returns the
+      focus to the button; choosing an item closes it and opens that item's dialog, which the page's own state controls.
+    by: human
+    on:
+      CHOOSE_HIDE: { target: confirmHide, effect: [clearNote], say: "they choose Dersi gizle" }
+      CHOOSE_HOCAS:
+        target: hocas_dialog_opened
+        starts: { flow: nazar.courses.changeHocas }
+        say: "they choose Hocaları değiştir: the dialog is nazar.courses.changeHocas's"
+        source: apps/nazar/features/courses/components/courses-table.tsx:168
+      CLOSE_MENU: { target: listed, say: "they press Esc" }
+    source: libs/ui/src/mds/menu.tsx:174
+
+  confirmHide:
+    title: The window "Dersi gizle" asks first
+    description: >-
+      An alertdialog named by its title, with the medrese's name above it. The paragraph says "<course> talebelerden, ziyaretçilerden ve
+      <köşk>’ün sayfasından gizlenecek; celseleri talebelerin takviminden düşecek." and, while someone is enrolled (`enrolled` some), "N talebe
+      celselere ve ders kayıtlarına erişemez." (courses#9, #10); the second paragraph says nothing is deleted, the Arşiv brings the course back and
+      only the kademe that hid it or one above restores it. The focus starts on "Vazgeç", is trapped and returns to the row's "···" button when the
+      window closes without a hide (measured for Vazgeç and Esc on the same components in tedris.course.leave; not measured here). The scrim
+      does not close it. "Gizle" is a primary button, not a destructive one.
+    by: human
+    on:
+      CONFIRM_HIDE: { target: hiding, effect: [clearNote], say: "they press Gizle" }
+      CANCEL: { target: listed, effect: [cancelled], say: "they press Vazgeç" }
+      CLOSE: { target: listed, effect: [cancelled], say: "they press the close icon" }
+      DISMISS: { target: listed, effect: [cancelled], say: "they press Esc" }
+    source: apps/nazar/features/courses/components/hide-course.tsx:74
+
+  hiding:
+    title: The course is being hidden
+    description: >-
+      The server action hideCourse calls POST /madrasahs/:id/courses/:courseId/hide (no body; the course is stamped with the kademe the caller
+      acts at, the medrese's for a başmüderris, its version moves and the audit row course.hide is written; the celses leave the talebe's
+      calendar when the invitation sweep next runs, which this route does not kick: not verified). "Gizle" is busy (aria-disabled, hidden status "Yükleniyor",
+      F-A-14); "Vazgeç" and the close icon stay enabled and do nothing, for the window ignores every way of closing while the call runs
+      (HIDE-3). The window closes in every case and a toast follows. Success: "Ders gizlendi" and the list is read again without the course,
+      and the counter follows. MADRASAH_COURSE_ALREADY_HIDDEN (someone hid it meanwhile): an info toast "Ders zaten gizli" and the same read.
+      MADRASAH_COURSE_NOT_FOUND: an error toast "Bu ders artık yok. Liste yenilendi." and the same read. AUTHZ_FORBIDDEN (F-A-8) and any other
+      refusal: an error toast, the course stays in the list and nothing is read again. The call has no try/catch (F-A-10).
+    invoke: { action: hideMadrasahCourse }
+    on:
+      DONE: { target: listedWithout, effect: [hidden], source: apps/nazar/features/courses/components/hide-course.tsx:44 }
+      FAIL.already: { target: listedWithout, effect: [alreadyHidden], source: apps/nazar/features/courses/components/hide-course.tsx:49 }
+      FAIL.vanished: { target: listedWithout, effect: [hideGone], source: apps/nazar/features/courses/components/hide-course.tsx:55 }
+      FAIL.forbidden: { target: listed, effect: [hideRefused], source: apps/nazar/features/courses/components/hide-course.tsx:55 }
+      FAIL.other: { target: listed, effect: [hideFailed], source: apps/nazar/features/courses/components/hide-course.tsx:55 }
+    source: apps/nazar/features/courses/components/hide-course.tsx:42
+
+  listedWithout:
+    title: Dersler is read again, without the course
+    description: >-
+      The row and its menu button are gone and the counter says one course fewer (courses#10 a3-a5); the toast says what was done. The
+      pressed control left with its row and no code moves the focus (F-A-2). The link "Arşiv" under the table is how the course is found
+      again (courses#10 a8). A second hide on another row goes the same way and is not drawn.
+    by: human
+    goal: true
+    on:
+      OPEN_ARCHIVE: { target: readingArchive, effect: [tabAll], say: "they follow the link Arşiv: a navigation inside the app, which takes the toast down" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/courses/components/courses-table.tsx:60
+
+  readingArchive:
+    title: Arşiv is read
+    description: >-
+      The page reads GET /madrasahs/:id/archive?types=<the tab's>&page=<n>&limit=10 on the server; every tab link and every pager link is a
+      plain <a href>, so each is a whole page load that reads the list again. Newest hidden first, with each item's `canRestore` and the
+      tab counts. 403, 404 and any other failure are the same three exits as Dersler's (an Arşiv that fails draws "Arşiv okunamadı").
+    invoke: { action: listMadrasahArchive }
+    on:
+      DONE:
+        - { guard: holdsHere, target: archive }
+        - { target: archiveEmpty }
+      FAIL.forbidden: refused
+      FAIL.missing: not_found
+      FAIL.other: read_failed
+    source: apps/nazar/features/archive/components/archive-page.tsx:52
+
+  archive:
+    title: Arşiv lists what is hidden
+    description: >-
+      The page: the title and its sentence, four tabs (each its label directly followed by its count, F-A-12), the table "Gizlenen öğeler"
+      (the item and where it sits, its kind, who hid it with their role, when, and the button or the sentence), and the pager "1–10 / 12" while
+      Tümü spans two pages (`pages` two). A row whose kademe the person reaches has "Geri al: <title>"; a row a higher kademe hid has instead
+      "Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir." or "Bunu Medaris yönetimi gizledi; ..." (courses#10, archive#1-#3, #6).
+      A tab link carries aria-current="page" on the active one, which the format cannot say. The page sets no focus (focus-not-set). A toast of
+      the last restore may still be up.
+    by: human
+    goal: true
+    on:
+      TAB_ALL: { target: readingArchive, effect: [tabAll], say: "they follow Tümü: a whole page load" }
+      TAB_COURSE: { target: readingArchive, effect: [tabCourse], say: "they follow Dersler" }
+      TAB_WEEKS: { target: readingArchive, effect: [tabWeeks], say: "they follow Haftalar ve celseler" }
+      TAB_RECORDINGS: { target: readingArchive, effect: [tabRecordings], say: "they follow Ders kayıtları, which can never list anything (HIDE-2)" }
+      NEXT_PAGE: { guard: nextExists, target: readingArchive, effect: [pageNext], say: "they follow Sonraki", source: apps/nazar/features/archive/components/archive-list.tsx:213 }
+      PREVIOUS_PAGE: { guard: previousExists, target: readingArchive, effect: [pagePrevious], say: "they follow Önceki", source: apps/nazar/features/archive/components/archive-list.tsx:204 }
+      RESTORE: { target: restoring, effect: [clearNote], say: "they press Geri al on a row: nothing is asked first", source: apps/nazar/features/archive/components/archive-list.tsx:159 }
+      OPEN_COURSES: { target: courses_opened, say: "they follow Dersler in the sidebar: the course is listed again there" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/archive/components/archive-list.tsx:186
+
+  archiveEmpty:
+    title: The tab has nothing to list
+    description: >-
+      The table keeps its caption and headers and its one cell says what the tab holds: "Bu medresede gizlenmiş bir öğe yok." (Tümü), "... bir
+      ders yok." (Dersler), "... bir hafta ya da celse yok." (Haftalar ve celseler) or "... bir ders kaydı yok." (Ders kayıtları, archive#1 a10),
+      and no pager is drawn. Ders kayıtları is always here, for the API lists no recording (HIDE-2). The tabs still show every count. HIDE-1 draws a
+      page past the end the same way, which this graph does not model: the page number is not a variable of the world.
+    by: human
+    on:
+      TAB_ALL: { target: readingArchive, effect: [tabAll], say: "they follow Tümü" }
+      TAB_COURSE: { target: readingArchive, effect: [tabCourse], say: "they follow Dersler" }
+      TAB_WEEKS: { target: readingArchive, effect: [tabWeeks], say: "they follow Haftalar ve celseler" }
+      TAB_RECORDINGS: { target: readingArchive, effect: [tabRecordings], say: "they follow Ders kayıtları" }
+      OPEN_COURSES: { target: courses_opened, say: "they follow Dersler in the sidebar" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/archive/components/archive-page.tsx:109
+
+  restoring:
+    title: The item is being brought back
+    description: >-
+      The server action restoreItem calls POST /archive/:type/:id/restore (no body; the API decides by kademe: the caller's must reach the one
+      that hid it). The row's "Geri al" is busy (aria-disabled, hidden status "Yükleniyor", F-A-14) and the other rows' buttons stay live.
+      Success: the toast "Geri alındı" ("“<title>” asıl yerinde yeniden görünür."), then the page is read again (router.refresh): the row
+      leaves and the tab counts follow, and the pressed button left with its row (F-A-2). ARCHIVE_ITEM_NOT_FOUND (someone brought it back first):
+      "Bu öğe artık arşivde değil. Liste yenilendi." ARCHIVE_FORBIDDEN and ARCHIVE_RESTORE_LEVEL (a higher kademe hid it, which the list
+      would have said): "Bunu geri alma yetkiniz yok; öğeyi daha üst bir kademe gizlemiş olabilir. Liste yenilendi." ARCHIVE_PARENT_HIDDEN (the
+      medrese is still hidden): "Bu öğenin bağlı olduğu medrese ya da köşk hâlâ gizli, ..." and the list is not read again; every other refusal
+      draws "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." and reads the list again. The call has no try/catch (F-A-10).
+    invoke: { action: restoreArchiveItem }
+    on:
+      DONE: { target: settled, effect: [restored], source: apps/nazar/features/archive/components/archive-list.tsx:66 }
+      FAIL.gone: { target: settled, effect: [restoreGone], source: apps/nazar/features/archive/components/archive-list.tsx:73 }
+      FAIL.level: { target: settled, effect: [restoreLevel], source: apps/nazar/features/archive/components/archive-list.tsx:73 }
+      FAIL.parentHidden: { target: archive, effect: [parentHidden], source: apps/nazar/features/archive/components/archive-list.tsx:79 }
+      FAIL.other: { target: settled, effect: [restoreFailed], source: apps/nazar/features/archive/components/archive-list.tsx:73 }
+    source: apps/nazar/features/archive/components/archive-list.tsx:64
+
+  settled:
+    title: Arşiv follows the answer
+    description: >-
+      The server components are read again (router.refresh) with the same tab and page: the table is what the API now lists, or the tab's sentence
+      when nothing is left. The pager follows the new total, and HIDE-1 is what it does past the end.
+    always:
+      - { guard: holdsHere, target: archive }
+      - { target: archiveEmpty }
+    source: apps/nazar/features/archive/components/archive-list.tsx:72
+
+  refused:
+    title: The page says "Bu sayfaya izniniz yok"
+    type: final
+    description: >-
+      A 403 on the page's own read (a medrese nazır with none of the grants): the title stays, an alert says "Bu sayfaya izniniz yok" under it, and no
+      table, tab or button is drawn. Its whole story is nazar.access.medreseNazirRefused's (courses#11, archive#8, F-A-16).
+
+  read_failed:
+    title: The page could not be read
+    type: final
+    description: >-
+      Any other failure of the page's read (not a refusal): the title stays and "Dersler okunamadı" or "Arşiv okunamadı" is drawn with a retry, as a
+      second h1 (F-A-1). The stack cannot make a read fail.
+
+  not_found:
+    title: The medrese is not there
+    type: final
+    leavesPage: true
+    description: A 404 of the read is Next's not-found page (lib/tedrisat-read.ts:43-50).
+
+  hocas_dialog_opened:
+    title: The dialog "Hocaları değiştir" opens
+    type: final
+    description: >-
+      The menu item opens nazar.courses.changeHocas's dialog on the same page; this flow starts there, and the list under it is still Dersler.
+
+  courses_opened:
+    title: Dersler is opened from the sidebar
+    type: final
+    leavesPage: true
+    description: >-
+      The person goes from Arşiv to Dersler by the sidebar's link, the one way between the pages. A course that was brought back is in the list
+      again (courses#10 a10); that is this exit's check, and the list is this flow's own start.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-tab-with-rows-is-drawn-as-rows
+    never: "state == 'archive' and not holdsHere"
+    say: A list is drawn only while the tab holds something.
+    source: apps/nazar/features/archive/components/archive-page.tsx:109
+  - id: an-empty-tab-says-so
+    never: "state == 'archiveEmpty' and holdsHere"
+    say: The empty sentence shows only when the tab holds nothing.
+    source: apps/nazar/features/archive/components/archive-page.tsx:109
+  - id: no-recording-is-listed
+    never: "state == 'archive' and tab == 'recordings'"
+    say: The tab Ders kayıtları never lists a row, whatever the medrese holds.
+    source: apps/tedrisat/src/archive/madrasah-archive.controller.ts:55

@@ -1,0 +1,99 @@
+# nazar.courseSettings.partnerCodes, the two refusals of an add that the local stack can cause. It extends binding.yaml and adds a
+# scenario for each, which starts as `chiefAdds` does (a course of the walk's own, the partner bound to its köşk, the başnazım on
+# Ders ayarları) with a different `attempt`:
+#   taken            another course holds the code (409 PARTNER_CODE_TAKEN): setup makes a second course, "Deneme dersi
+#                    partnerCodesTaken", in the same köşk and maps `deneme-alinmis-kod` to it; the walk types that code. "Bu kod başka
+#                    bir derse bağlı. Önce o dersten kaldırılması gerekir." stands under the field, the typed text stays and the list
+#                    is as it was. The sentence names no course (the API does not say which).
+#   unknownPartner   the partner is switched off after the page was read (404 PARTNER_UNKNOWN): the card is already drawn when the
+#                    state `empty` is reached, and its `before` switches the partner off (`partner.mjs race off`), so the add that
+#                    follows is refused: "Bu ortak uygulama artık bu köşkle çalışmıyor. Sayfayı yenileyin." The card stays drawn, as
+#                    the page is not read again.
+#   node apps/engine/src/cli.ts replay graphs/nazar/courseSettings/partnerCodes --bind graphs/nazar/courseSettings/partnerCodes/refusals.binding.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml).
+#
+# The states that call drop the `call` of binding.yaml: a Next server action answers 200 on the page's own address whatever it decided,
+# and the replay compares a FAIL class with the call's HTTP status (SPEC.md section 7), which cannot pass here (409 and 404 against
+# 200). The busy states are walked in binding.yaml. `empty` repeats its `url`, because a state's entry replaces the base's whole entry.
+#
+# The scenarios of binding.yaml are inherited and walk here without a race: their `race` is none, which `empty` leaves alone.
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nazar.courseSettings.partnerCodes
+
+data:
+  madeTaken: { json: ../.local/made/partnerCodesTaken.json }
+
+scenarios:
+  taken:
+    given: { reader: chief, partners: some, codes: none, attempt: taken, removal: removedLast }
+    as: systemAdmin
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+      - run: [node, helpers/course.mjs, make, partnerCodesTaken, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodesTaken"'
+      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, add, --course, '{madeTaken.course}', --codes, deneme-alinmis-kod]
+        expect: 'codes'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, helpers/course.mjs, remove, partnerCodesTaken]
+        expect: 'course remove partnerCodesTaken'
+      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi partnerCodes%'"]
+        expect: '"n":0'
+    vars:
+      code: deneme-alinmis-kod
+      afterAdd: deneme-kod-1
+      afterRemoval: none
+      race: none
+
+  unknownPartner:
+    given: { reader: chief, partners: some, codes: none, attempt: unknownPartner, removal: removedLast }
+    as: systemAdmin
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+    vars:
+      code: deneme-kod-1
+      afterAdd: deneme-kod-1
+      afterRemoval: none
+      race: off
+
+states:
+  # a state's entry replaces the base's whole entry: no `call` here
+  adding: {}
+  removing: {}
+  # the race is made when the card is drawn and nothing was sent, before the state is checked; `race none` does nothing
+  empty:
+    url: '{nazar}/ders/*/ayarlar'
+    before:
+      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, race, '{race}']
+        expect: 'race'
+
+# What a refusal leaves outside the screen: nothing was mapped to the course.
+effects:
+  saidTaken:
+    - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, held, --course, '{made.course}']
+      expect: 'held none'
+  saidUnknownPartner:
+    - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, held, --course, '{made.course}']
+      expect: 'held none'

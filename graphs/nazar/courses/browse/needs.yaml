@@ -1,0 +1,158 @@
+# What must exist for the başmüderris of a medrese to read its courses, narrow them and see what stands beside them: the flow's product
+# list (LAYOUT.md section 7), written on 15 Nov 2026. Each need is what the product must do, from the flow's story (the course list, its
+# side cards, the two filters, the filters cleared, the link to the Arşiv) and the findings, not from what the page does today. No
+# planned item of planned.md is about this page, and no seat is decided here, so the per-gender kontenjan (MDRS-284) is not a need of this
+# flow. The gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+#
+# No replay has run on any graph yet (the first walks are a later phase), so no `replay:` entry names a scenario as passed: a need whose
+# only witness would be a replay is unwalked here, and its scenario is named in a comment.
+#
+# missing (no code, or the code is wrong for its users and no issue exists): a-refused-read-is-told-as-a-refusal (F-A-8, F-A-16),
+#   the-controls-follow-what-the-reader-holds (F-A-8), a-filter-says-what-it-found (COURSES-1), the-select-says-what-cuts-the-list
+#   (COURSES-2), a-course-can-be-narrowed-to-by-its-kosk (COURSES-3), a-failed-page-keeps-one-heading (F-A-1),
+#   the-title-links-only-where-the-reader-may-open (F-A-9)
+# unwalked (code, and no e2e and no replay that has run walks it): see-how-the-exams-went (scenario mixed and hosted, not run),
+#   a-failed-read-can-be-retried (nothing on the stack makes the read fail)
+kind: needs
+flow: nazar.courses.browse
+status: proposed
+
+needs:
+  - id: read-the-medreses-courses
+    need: >-
+      The başmüderris reads, on one page, every course of her medrese that is not hidden: its köşk, its hocas (the imam marked where there
+      are several), how many talebe are in and how many applications wait, and whether it is a draft or published, with a count of the
+      courses and the köşks at the top.
+    drawn: [listed, coursesTable, courseTitle, courseMeta, hocaName, imamStar, pendingBadge, noStudents, noStudentsDraft, statusPublished, statusDraft, counter]
+    built:
+      - action: medaris.api:listMadrasahCourses
+      - route: apps/nazar/features/courses/components/courses-page.tsx:75
+      - route: apps/nazar/features/courses/components/courses-table.tsx:68
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#1 (a3, a4, a6, a7, a9, a10, a12, a15, a16 and a18 are carried as nodes of the graph; the exact row count a1, the hidden course a2, "bugün açıldı" a5, a11, a17, the enrolled number a8, the hoca with no account a13 and the row without a badge a14 are not: see the report)'
+
+  - id: narrow-by-kosk-and-by-state
+    need: >-
+      She narrows the list to one köşk, to published or to draft courses, or to both together, and the counter says how many are left; the
+      choice is in the address, so the result is a link, and the list of köşks offers every köşk that hosts the medrese, not only those of
+      the courses on screen.
+    drawn: [choosingKosk, choosingStatus, koskSelect, statusSelect, koskOptionAll, koskOptionOne, statusOptionAll, statusOptionPublished, statusOptionDraft, counter, counterNone]
+    built:
+      - action: medaris.api:listMadrasahCourses
+      - route: apps/nazar/features/courses/components/courses-table.tsx:198
+      - route: apps/nazar/features/courses/courses.ts:47
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#2 (the whole walk is the main story of the graph; the numbers a2, a4, a5 (a count of options), a10, a12 and the address a1, a6 are matched loosely)'
+
+  - id: clear-the-filters-in-one-step
+    need: >-
+      When no course matches, the page says so and offers one step that takes both filters away and brings the whole list back.
+    drawn: [emptyFiltered, emptyFilteredText, clearFilters, counterNone]
+    built:
+      - route: apps/nazar/features/courses/components/courses-table.tsx:232
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#2 (a7, a8, a9)'
+
+  - id: see-where-a-course-can-be-opened
+    need: >-
+      Beside the list she sees the köşks that hold a hosting right of her medrese, how many of the medrese's courses each has, and who
+      gives and takes the right; and she reaches the form that opens a course (off, with the reason, while no köşk hosts the medrese) and
+      the request for a course outside the medrese.
+    drawn: [hostsRegion, hostName, hostLine, hostsNone, hostsFailed, hostsText, openCourse, openCourseOff, offsiteLink, outsideRegion]
+    built:
+      - action: medaris.api:listMadrasahHostingKosks
+      - route: apps/nazar/features/courses/components/courses-page.tsx:164
+      - route: apps/nazar/features/courses/components/courses-page.tsx:112
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#3 (a1, a2, a4, a7, a8 are carried; the köşk that gave no right a5, the hidden köşk a6 and the ilim alanı not shown a3 are not: the graph says what is listed, not who is absent)'
+
+  - id: see-how-the-exams-went
+    need: >-
+      She sees, for each course of the medrese that holds an exam (MDRS-248), how many exams it has, how many talebe sat and how many
+      were absent, and the mean score; or a line that says no exam has been held.
+    drawn: [examRegion, examTitle, examEmpty, examList, examCourse, examRowText, examAverage]
+    built:
+      - action: medaris.api:getMadrasahExamSummary
+      - route: apps/nazar/features/courses/components/courses-page.tsx:191
+    # unwalked: no e2e asserts on the card; scenarios `mixed` (one exam celse, no result: "Ortalama yok") and `seeded`, `fresh`, `hosted` (the empty line) are bound and have not run
+
+  - id: hidden-courses-are-one-step-away
+    need: >-
+      A course she hid is not on the list, and the page says where it went and takes her there in one step.
+    drawn: [hiddenNoteBefore, archiveLink, hiddenNoteAfter, archive_opened]
+    built:
+      - route: apps/nazar/features/courses/components/courses-page.tsx:152
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#1 (a18, the link and its address)'
+
+  - id: each-row-leads-on
+    need: >-
+      From a row she opens the course, changes its hocas or hides it; the page reads again afterwards.
+    drawn: [courseTitle, rowMenuButton, menuChangeHocas, menuHide, rowMenu]
+    built:
+      - route: apps/nazar/features/courses/components/courses-table.tsx:79
+      - route: apps/nazar/features/courses/components/courses-table.tsx:164
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#4 (opens the row menu to change hocas, carried by nazar.courses.changeHocas), courses#9 (the row menu to hide, nazar.archive.hideAndRestoreCourse)'
+
+  - id: a-refused-read-is-told-as-a-refusal
+    need: >-
+      Where one of the page's reads is refused, the page says the person has no permission (not that the read failed) and the control
+      that read feeds is off or left out; the verdict is announced and has a heading (F-A-8, F-A-16).
+    drawn: [forbidden, forbiddenAlert, hostsFailed, openCourse]
+    missing: none # no issue: courses-page.tsx:165-168 words a 403 of the köşk read as "okunamadı"; page-problem.tsx:23 draws a status
+
+  - id: the-controls-follow-what-the-reader-holds
+    need: >-
+      "Hocaları değiştir", "Dersi gizle" and "Medrese dersi aç" are offered only to a reader who holds the code each one asks, so that
+      a nazır with one of the three list codes is not given refusals to click (F-A-8, decision D1).
+    drawn: [rowMenuButton, menuChangeHocas, menuHide, openCourse]
+    missing: none # no issue: the menu items are on every row whatever the nazır holds (courses-table.tsx:164-178)
+
+  - id: a-filter-says-what-it-found
+    need: >-
+      After a filter is chosen, a reader of the screen is told how many courses are left; the counter is a status, as Keşfet's is
+      (COURSES-1).
+    drawn: [counter, counterNone, koskSelect, statusSelect]
+    missing: none # no issue: the counter is a plain <p> and aria-busy sits on a div (courses-table.tsx:188-193)
+
+  - id: the-select-says-what-cuts-the-list
+    need: >-
+      The filter shows what the list is cut by: an address with a köşk that is not among the options does not read "Köşk: tümü" over a
+      list that is empty (COURSES-2).
+    drawn: [koskSelect, emptyFiltered]
+    missing: none # no issue: courses-table.tsx:64-66 shows "tümü" for a value that is no option while the server filters by it
+
+  - id: a-course-can-be-narrowed-to-by-its-kosk
+    need: >-
+      Every course on the list can be reached through the köşk filter and its köşk is on the card, also where the köşk's hosting right
+      was withdrawn and the course stayed; a course of a hidden köşk is not lost without a word (COURSES-3, decision D2).
+    drawn: [koskOptionOne, hostName, counter]
+    missing: none # no issue: the filter and the card come from the hosting list, the list from the courses (courses.ts:86, madrasah.repository.ts:1467)
+
+  - id: a-failed-read-can-be-retried
+    need: >-
+      When the list cannot be read the page says so and gives a button that reads it again, busy while it does.
+    drawn: [loadFailed, failedTitle, failedText, retry]
+    built:
+      - route: apps/nazar/features/shell/components/load-failed.tsx:27
+    # unwalked: nothing on the stack makes GET /madrasahs/:id/courses fail; the state is drawn from the code
+
+  - id: a-failed-page-keeps-one-heading
+    need: >-
+      A page that cannot read its list still has one level-one heading, and the failed state is a section with a heading of the next
+      level (F-A-1); its retry button says it is busy in the app's own words (F-A-14).
+    drawn: [failedTitle, retry]
+    missing: none # no issue: libs/ui/src/mds/system-state.tsx:24,43 draws a second <h1>; button.tsx:62 gives "Yükleniyor" as a default
+
+  - id: the-title-links-only-where-the-reader-may-open
+    need: >-
+      A course's title is a link only where the reader holds a seat in it, as the code's own comment says (F-A-9).
+    drawn: [courseTitle]
+    missing: none # no issue: `held` is built from the list (courses-page.tsx:92-94), so every title is a link

@@ -1,0 +1,138 @@
+# What must exist for a müderris, or a ders nazırı with the right permission, to download the files of a course in nazar-web (a talebe's hand-in, the stored
+# files of the editor, the evaluation sheet): nazar.files.download, written on 15 Nov 2026 in the format of LAYOUT.md section 7. Each need is what the
+# product must do, from the flow's story (FLOWS.md) and the findings of the inventory; none is read off what the page does today. planned.md names no feature
+# of this flow.
+#
+# Missing (no code): download-the-evaluation-sheet (none: evaluation-export-invalid-path), refusal-says-why-on-every-page (none: NFILES-1, F-D1-13),
+#                    refusal-keeps-what-i-was-doing (none: NFILES-2), success-is-confirmed (none: NFILES-3),
+#                    a-download-is-walked-to-its-end (none: the local stack has no file storage)
+# Unwalked (code, and no web e2e and no replay that gets there): download-a-talebes-file and download-the-courses-stored-files (a file served needs storage;
+#                    only unit specs and tedrisat's API e2e read it), staff-read-of-a-handin-is-on-the-record (the audit row is written after the storage
+#                    check, so a stack with no storage never writes it; tedrisat's API e2e reads it), session-over-goes-to-sign-in-and-back (the redirect
+#                    is read with curl as a visitor; the walk cannot end the browser's session)
+#
+# `walked` names an e2e check as `file#n` where the inventory numbers it. The web e2e has NO check of a file (apps/nazar/e2e has no `fileError`, no
+# /api/files and no evaluation-download); tedrisat's API e2e has no inventory number for these and is named by its test title and line. A `replay:` names a
+# scenario of binding.yaml or binding.forbidden.yaml as it is BOUND: none was run in this phase, so the walk phase confirms each or takes it off. The unit specs
+# that pin the pieces are apps/nazar/test/file-routes.spec.ts (the four downloads of Ödevler and Müfredat; NOT the sheet's route and NOT the review file's),
+# test/homework.spec.tsx:306-330 (the toast, once, and the parameter taken off), test/evaluation.spec.tsx:460-474 (the sheet link's address only),
+# test/files.spec.ts and libs/services/test/file-proxy.spec.ts.
+kind: needs
+flow: nazar.files.download
+status: proposed
+
+needs:
+  - id: download-a-talebes-file
+    need: >-
+      A person who holds `submission.read` in the course (the müderris, the köşk's nazım, the başnazım, a ders nazırı who was given it) downloads a file a
+      talebe handed in, from the table of Ödevler, saved as an attachment under its own name, whatever its type says it is; the page stays where it is.
+      The type and the size are on the row before it is pressed. Nobody else is offered the link.
+    drawn: [homeworkListed, submissionFileRow, submissionFileType, submissionFileSize, followingSubmissionFile]
+    built:
+      - action: medaris.api:webDownloadCourseSubmissionFile
+      - route: apps/nazar/features/homework/components/homework-list.tsx:126
+    walked:
+      - e2e: apps/tedrisat/test/e2e/lesson-submissions.e2e.spec.ts
+        check: 'lets the müderris, the köşk nazımı and the başnazım download, each on the record (:400, the API, not the web)'
+      - e2e: apps/tedrisat/test/e2e/lesson-submissions.e2e.spec.ts
+        check: 'refuses staff without submission.read, until a ders nazırı is given it (:419, the API, not the web)'
+
+  - id: download-the-courses-stored-files
+    need: >-
+      A person who may edit the course, or manage a celse, opens from Müfredat the stored files of the course's resources, of a celse's resources and of a
+      celse's homework, each saved as an attachment under its own name; the page stays where it is. A person who may not read the course's content is
+      offered none (the page does not open for them).
+    drawn: [curriculumListed, lessonOpened, courseFileRow, lessonFileRow, assignmentFileRow, followingCourseFile, followingLessonFile, followingAssignmentFile]
+    built:
+      - action: medaris.api:webDownloadCourseResourceFile
+      - action: medaris.api:webDownloadLessonResourceFile
+      - action: medaris.api:webDownloadLessonAssignmentFile
+      - route: apps/nazar/features/curriculum/components/resources-editor.tsx:195
+      - route: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:208
+      - route: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:342
+    walked:
+      - e2e: apps/tedrisat/test/e2e/resource-files.e2e.spec.ts
+        check: 'streams it to the enrolled talebe and the course team as an attachment, with the headers that keep it one (:353, the API, not the web)'
+      - e2e: apps/tedrisat/test/e2e/lesson-assignments.e2e.spec.ts
+        check: 'are uploaded under the homework, never as a resource, and served to a content reader as an attachment (:251, the API, not the web)'
+
+  - id: download-the-evaluation-sheet
+    need: >-
+      The course team downloads the evaluation board as a spreadsheet from Değerlendirme ("Excel indir"), saved as an .xlsx whose headers and words follow the
+      viewer's language, and only a person who may manage the course's celses can.
+    drawn: [evaluationListed, exportLink, exportingBoard, evaluationRefused]
+    missing: none # evaluation-export-invalid-path: tedrisat serves the sheet (apps/tedrisat/test/e2e/exams.e2e.spec.ts:476 downloads it and reads its zip header) and the page offers the link, but the web route between them is refused by the file proxy's own path check on every call
+
+  - id: refusal-says-why-on-the-page
+    need: >-
+      When a download is refused the person is brought back to the page they were on and told, once and in words, why: they may not download it, it is gone,
+      files cannot be reached now and should be tried again later, or something went wrong. The address is cleaned, so a reload or a copied link does not say
+      it again, and the notice stays until the person closes it and is announced as an error.
+    drawn: [onThePage, homeworkListed, curriculumListed, lessonOpened, homeworkForbidden, fileErrorToast, reasonForbidden, reasonNotFound, reasonUnavailable, reasonFailed, toastClose]
+    built:
+      - route: libs/services/src/file-proxy/file-proxy.ts:351
+      - route: apps/nazar/features/files/components/file-error-notice.tsx:19
+    walked:
+      - e2e: apps/nazar/test/homework.spec.tsx
+        check: 'says why a file could not be downloaded, once, and takes ?fileError= off the address (:319, a unit spec)'
+      - replay: homeworkUnavailable
+      - replay: curriculumUnavailable
+      - replay: homeworkForbidden
+
+  - id: refusal-says-why-on-every-page
+    need: >-
+      Whatever page a file link is on, a refused download is worded there, and the address does not keep the reason: Müfredat when the person's permission has
+      gone since the page was drawn, as Ödevler does, and Değerlendirme once its sheet can be downloaded at all.
+    drawn: [curriculumForbidden, evaluationRefused]
+    missing: none # NFILES-1, F-D1-13
+
+  - id: refusal-keeps-what-i-was-doing
+    need: >-
+      A refused download does not reload the page: the focus, the editor's unsaved edits, the celse details that were open and the note typed in a review
+      dialog stay as they were, and the reason is said in the page.
+    drawn: [onThePage, curriculumListed, lessonOpened, homeworkListed]
+    missing: none # NFILES-2 (WRT-10 of tedris)
+
+  - id: success-is-confirmed
+    need: >-
+      A person who presses a file's link is told on the page that the download started and, where the browser leaves it to the page, which file it is.
+    drawn: [onThePage]
+    missing: none # NFILES-3 (FILES-2 of tedris)
+
+  - id: staff-read-of-a-handin-is-on-the-record
+    need: >-
+      A download of a talebe's hand-in by the course team is written to the audit log before the first byte is sent, with the course, the celse, the talebe and
+      the file, so that what staff read of a talebe's work can be answered for; a failed write fails the download.
+    drawn: [followingSubmissionFile]
+    built:
+      - action: medaris.api:downloadCourseSubmissionFile
+      - route: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:290
+    walked:
+      - e2e: apps/tedrisat/test/e2e/lesson-submissions.e2e.spec.ts
+        check: 'lets the müderris, the köşk nazımı and the başnazım download, each on the record (:400, the API, not the web)'
+
+  - id: session-over-goes-to-sign-in-and-back
+    need: >-
+      A person whose session has ended, or whose token tedrisat refused, who follows a file link is sent to sign in and comes back to the page they were on,
+      and is not shown a JSON body or a blank page.
+    drawn: [sent_to_sign_in]
+    built:
+      - route: libs/services/src/file-proxy/file-proxy.ts:360
+
+  - id: address-with-no-page-explains-itself
+    need: >-
+      A file address opened with no page of the app behind it (pasted into a tab, sent in a mail) answers a sentence in the three languages and the refusal's
+      own status, not JSON; a visitor is sent to sign in.
+    drawn: [followingSubmissionFile, followingLessonFile, exportingBoard, sent_to_sign_in]
+    built:
+      - route: libs/services/src/file-proxy/file-proxy.ts:328
+    walked:
+      - replay: homeworkUnavailable
+      - replay: evaluationExport
+
+  - id: a-download-is-walked-to-its-end
+    need: >-
+      The local stack has file storage, so that a download is walked to its end (the file saved under its name, with the headers that keep it an attachment) and
+      not only to the refusal that no storage gives.
+    drawn: [followingSubmissionFile, followingCourseFile, followingLessonFile, followingAssignmentFile]
+    missing: none

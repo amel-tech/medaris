@@ -1,0 +1,179 @@
+# What must exist for the course team to mark the homework a talebe recites to the hoca and for the talebe to read the mark: the flow's product
+# list, from its story (FLOWS.md) and from the domain's rules, never from what the page does today. A need not met is a known gap
+# (graphs/needs.gaps.yaml, merged by the orchestrator).
+#
+# Missing or unwalked, for the orchestrator's gaps merge:
+#   missing:  the-talebe-is-told-of-a-mark (none; decision D4), a-save-that-cannot-pass-says-why (none; MARK-1), keys-and-focus-stay-with-the-person
+#             (none; F-D1-12, F-D1-27, MARK-2), a-mark-is-heard-by-a-screen-reader (none; MARK-4), the-note-limit-is-told (none; MARK-3),
+#             a-cell-has-a-row-header (none; F-D1-22), the-board-can-be-downloaded (none; evaluation-export-invalid-path),
+#             a-refused-download-is-worded (none; F-D1-13)
+#   unwalked: see-who-is-marked (code, e2e evaluation#1 a3 to a5 only; no replay run yet), only-the-course-team-marks (the e2e of evaluation#2 and
+#             #3 belongs to nazar.access.dersNazirPages; no replay run yet)
+# Nothing here is walked by a replay yet: the owner moved every replay to the end, so `walked` holds only e2e checks that exist today. The binding's
+# scenarios (ready, noColumns, noTalebe, refused, missing) are written and load; they are walked in the walk phase.
+# Nothing here carries a kontenjan or a gender rule: a mark decides no seat (MDRS-284 does not apply).
+kind: needs
+flow: nazar.evaluation.markRecited
+status: proposed
+
+needs:
+  - id: see-who-is-marked
+    need: >-
+      The course team reads, on one page, every talebe of the course against every homework recited to the hoca: "Bekliyor" until the hoca
+      has marked it, then the mark. A homework that is handed in as a file is no column, a course with no recited homework or no seated
+      talebe says which is missing and where to set it.
+    drawn:
+      - overview
+      - cellPending
+      - cellFull
+      - cellIncomplete
+      - cellAbsent
+      - columnButton
+      - noColumns
+      - noTalebe
+    built:
+      - action: medaris.api:getEvaluationBoard
+      - route: apps/nazar/features/evaluation/components/evaluation-page.tsx:22
+    walked:
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#1'
+
+  - id: mark-with-a-press-or-a-key
+    need: >-
+      The hoca opens one homework and marks each talebe "Tam", "Eksik" or "Vermedi" with one press or one key, with nothing to confirm and
+      nothing to save; the count of "Tam" follows at once, and a mark can be changed by another mark.
+    drawn:
+      - column
+      - marking
+      - chipFull
+      - chipIncomplete
+      - chipAbsent
+      - chipFullOn
+      - count
+      - countAll
+      - a-save-sends-a-mark
+    built:
+      - action: medaris.api:saveEvaluation
+      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:172
+    walked:
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#1'
+
+  - id: a-note-goes-with-the-mark
+    need: >-
+      The hoca can write a short note of at most 280 characters with a mark, and change it, and the note is kept with the mark and read with it;
+      there is no note without a mark.
+    drawn:
+      - noting
+      - noteToggle
+      - noteToggleWritten
+      - noteInput
+      - a-note-needs-a-mark
+    built:
+      - action: medaris.api:saveEvaluation
+      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:523
+    walked:
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#1'
+
+  - id: the-talebe-reads-their-own-mark
+    need: >-
+      What the hoca saved is what the talebe reads on their own celse page, and only their own: the same status and the same note.
+    drawn:
+      - marking
+    built:
+      - action: medaris.api:getMyEvaluation
+      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:78
+    walked:
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#1'
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#3'
+
+  - id: only-the-course-team-marks
+    need: >-
+      Only a holder of session.manage in the course reads the board and marks; the müderris holds it by role and a ders nazırı by grant. A ders
+      nazırı with none sees no menu entry and, by its address, is refused; a talebe may mark nobody, themselves included, and reads no board.
+    drawn:
+      - forbidden
+      - menuEvaluation
+    built:
+      - action: medaris.api:getEvaluationBoard
+      - action: medaris.api:saveEvaluation
+      - route: apps/nazar/features/evaluation/components/evaluation-page.tsx:33
+    walked:
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#2'
+      - e2e: apps/nazar/e2e/evaluation.e2e.ts
+        check: 'evaluation#3'
+
+  - id: the-talebe-is-told-of-a-mark
+    need: >-
+      A talebe is told when the hoca has marked their recital, as they are told of a review of their hand-in or of released exam results: a
+      notification that leads to the celse, and the open celse page reads the mark again (decision D4; tedris.learn.homeworkMemorize's D1).
+    drawn:
+      - marking
+    missing: none # saveEvaluation writes an audit row and no notification (domain: "No notification"); no notification type exists for a mark
+
+  - id: a-save-that-cannot-pass-says-why
+    need: >-
+      A save the API will never take (the homework is no longer recited, the talebe is no longer seated, the permission is gone) says so in
+      words, and the screen stops offering the press or reads the board again, instead of "Kaydedilemedi" and a name on every press (MARK-1,
+      decision D2).
+    drawn:
+      - marking
+      - toastSaveFailed
+    missing: none
+
+  - id: keys-and-focus-stay-with-the-person
+    need: >-
+      The focus is never lost to the document: opening a homework, going back and writing a note leave it on a place the keyboard can use, and the
+      keys 1, 2, 3 and the arrows keep working after a note; the list that takes the keys says so to a screen reader and is described by its hint
+      (F-D1-12, F-D1-27, MARK-2, decision D3).
+    drawn:
+      - column
+      - noting
+      - talebeList
+      - keysHint
+    missing: none
+
+  - id: a-mark-is-heard-by-a-screen-reader
+    need: >-
+      A mark made with a key, or one that changes no count ("Eksik" for "Vermedi"), is said aloud with the talebe's name and the mark, not only
+      the change in the number of "Tam" (MARK-4).
+    drawn:
+      - count
+      - chipFullOn
+    missing: none
+
+  - id: the-note-limit-is-told
+    need: >-
+      The note's limit of 280 characters is told before the person meets it, and the box says what its placeholder "Not" is for (MARK-3).
+    drawn:
+      - noteInput
+    missing: none
+
+  - id: a-cell-has-a-row-header
+    need: >-
+      A screen-reader user who reads a cell of the table hears whose it is: the talebe's name is the row's header (F-D1-22).
+    drawn:
+      - boardTable
+    missing: none
+
+  - id: the-board-can-be-downloaded
+    need: >-
+      "Excel indir" gives the board as a spreadsheet, a row for each talebe and a column for each recited homework and exam, in the language of
+      the viewer; there is a test that downloads it. Today the link always fails (evaluation-export-invalid-path).
+    drawn:
+      - downloadLink
+      - exporting
+    missing: none # the route and tedrisat's exportEvaluationBoard exist; the route's path has a query the proxy refuses, so no call reaches tedrisat
+
+  - id: a-refused-download-is-worded
+    need: >-
+      A refused download says why on the page it came from, in a toast that stays until it is closed, and the address does not keep the parameter
+      (F-D1-13). Müfredat and Ödevler do it; Değerlendirme does not mount the notice.
+    drawn:
+      - exporting
+      - overview
+    missing: none

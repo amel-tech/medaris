@@ -1,0 +1,17 @@
+{
+  "Appeals.loadFailed": "İtirazlar şu anda alınamıyor. Biraz sonra yeniden deneyin.",
+  "Appeals.loadFailedTitle": "İtirazlar okunamadı",
+  "Appeals.title": "İtirazlar",
+  "NotFound.back": "Ana sayfaya dön",
+  "NotFound.text": "Aradığınız sayfa taşınmış, kaldırılmış ya da görev alanınızın dışında olabilir.",
+  "NotFound.title": "Sayfa bulunamadı",
+  "Shell.errorText": "Sayfa açılırken bir sorun çıktı. Yeniden deneyin; sürerse birkaç dakika sonra tekrar bakın.",
+  "Shell.errorTitle": "Sayfa açılamadı",
+  "Shell.loadFailed": "Görevleriniz şu an okunamadı. Birkaç saniye sonra yeniden deneyin.",
+  "Shell.loadFailedTitle": "Görevleriniz okunamadı",
+  "Shell.navLabel": "Ana menü",
+  "Shell.retry": "Yeniden dene",
+  "common.globalError.retry": "Yeniden dene",
+  "common.globalError.text": "Sunucuya ulaşılamadı. İnternet bağlantınızı denetleyip yeniden deneyin.",
+  "common.globalError.title": "Bir şeyler ters gitti"
+}

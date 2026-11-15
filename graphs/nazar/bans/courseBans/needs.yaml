@@ -1,0 +1,157 @@
+# What must exist for the person who runs a course (its hoca, a ders nazırı, the başmüderris of its medrese) to bar a talebe from it, read the
+# course's bans and decide on them from Yasaklamalar: the flow's product list (LAYOUT.md section 7). Each need is what the product must do,
+# from the flow's story and the planned work in the inventory (planned.md P-01, P-03), not from what the page does today. The known gaps go
+# to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+#
+# Gaps of this file, for that merge:
+#   missing:   the-hoca-reads-and-uses-the-page (F-D2c-3, F-D2c-2: no issue), widen-refuses-a-person-who-runs-the-course (ban-staff-check-gaps:
+#              no issue), a-hoca-is-not-named-over-an-open-ban (ban-staff-check-gaps: no issue), the-picker-leaves-out-who-cannot-be-barred
+#              (COURSEBANS-2: no issue), a-refused-roster-is-told-as-refused (COURSEBANS-1: no issue), the-ban-dialog-says-who-reads-the-reason
+#              (COURSEBANS-3, F-D2c-4, F-D2c-10, F-D2c-12, F-D2c-15: no issue), a-wider-ban-is-visible-where-its-person-vanishes (COURSEBANS-4:
+#              no issue), a-permanent-request-is-answered (MDRS-140), bans-reach-the-people-above (MDRS-113)
+#   unwalked:  every built need below has no e2e check (FLOWS.md: "e2e: none") and no replay has run: only the unit spec
+#              apps/nazar/test/course-bans.spec.tsx pins them: bar-a-talebe-of-the-course, read-the-courses-bans-in-two-tabs, lift-with-a-reason,
+#              widen-to-the-medrese, ask-medaris-for-a-permanent-ban, a-row-offers-what-its-kademe-reaches
+# Gender separation is given and does not touch this flow: no seat is decided here (a ban is not a seat).
+kind: needs
+flow: nazar.bans.courseBans
+status: proposed
+
+needs:
+  - id: the-hoca-reads-and-uses-the-page
+    need: >-
+      The hoca of a course, and a ders nazırı holding ban.course or ban.lift_course, open the course's Yasaklamalar and read the bans of their
+      own course, bar a talebe of it and lift a ban of its level: the page the menu offers them and the permission's own sentence promises
+      ("dersin yasak listesini görmeyi kapsar"). Today the page is refused to them.
+    drawn: [forbidden, readingMedrese, readingKosk, forbiddenAlert, a-ban-is-placed-only-where-the-list-is-read]
+    missing: none
+
+  - id: bar-a-talebe-of-the-course
+    need: >-
+      The başmüderris of the course's medrese (or the başnazım) bars one of the course's talebe from this course with a reason, from the
+      course's own page: the talebe can no longer reach the course's celses, recordings or content, apply again or leave; the köşk's nazımları
+      and the Medaris nazımları are told; the talebe whose seat is barred is told that access was removed, never why.
+    drawn: [listed, empty, banButton, banDialog, banForm, banReady, banning, talebeSelect, banReason, banSubmit, toastPlaced, tabActiveCount]
+    built:
+      - action: medaris.api:createBan
+      - route: apps/nazar/features/bans/components/course-ban-dialog.tsx:60
+    walked:
+      - test: apps/nazar/test/course-bans.spec.tsx
+
+  - id: read-the-courses-bans-in-two-tabs
+    need: >-
+      The reader sees, on one page, the bans of this course that stand and the ones that were lifted, each with the person, the course, the
+      reason, who placed it and when, and (lifted) who lifted it, when and why; the two tabs say how many of each the course has. A course
+      of a medrese reads the medrese's list narrowed to the course; a course with no medrese reads its köşk's list.
+    drawn: [listed, empty, liftedList, liftedEmpty, bansTable, liftedTable, tabActiveCount, tabLiftedCount, rowPerson, rowReason, rowBannedBy, rowWhen, liftedBy, liftedWhy]
+    built:
+      - action: medaris.api:listMadrasahBans
+      - action: medaris.api:listKoskBans
+      - route: apps/nazar/features/bans/components/course-bans-page.tsx:62
+    walked:
+      - test: apps/nazar/test/course-bans.spec.tsx
+
+  - id: a-row-offers-what-its-kademe-reaches
+    need: >-
+      A row offers only the decisions the reader's kademe reaches: the lift where hers reaches the ban's, the widening on an open course ban of
+      a medrese's course whose person is not barred from the medrese yet, the request on an open ban placed below Medaris with no request yet;
+      a ban she cannot lift says who can; a course the köşk keeps for itself offers the lift alone.
+    drawn: [listed, mayLift, mayWiden, mayRequest, liftButton, widenButton, requestButton, rowNote, rowRoleAdmin, a-dialog-is-opened-for-what-the-row-offers, a-course-with-no-medrese-offers-only-the-lift, a-ban-medaris-placed-is-not-lifted-here]
+    built:
+      - action: medaris.api:listMadrasahBans
+      - route: apps/nazar/features/bans/bans.ts:127
+    walked:
+      - test: apps/nazar/test/course-bans.spec.tsx
+
+  - id: lift-with-a-reason
+    need: >-
+      The reader lifts an open ban of the course with a reason. The ban moves to Kaldırılan with her name and the reason, the person's access
+      comes back, and only the kademe that placed the ban, or a higher one, may do it.
+    drawn: [listed, liftButton, liftDialog, reasonForm, reasonReady, lifting, toastLifted, liftedList, liftedBy, liftedWhy, tabActiveCount, tabLiftedCount]
+    built:
+      - action: medaris.api:liftBan
+      - route: apps/nazar/features/bans/components/reason-dialog.tsx:70
+    walked:
+      - test: apps/nazar/test/course-bans.spec.tsx
+
+  - id: widen-to-the-medrese
+    need: >-
+      She widens an open course ban to the whole medrese with a reason of its own: a second, medrese-wide ban is made and the course ban stays;
+      the person cannot reach or apply to any course of the medrese.
+    drawn: [listed, widenButton, escalateDialog, reasonForm, reasonReady, escalating, toastWidened]
+    built:
+      - action: medaris.api:escalateBan
+      - route: apps/nazar/features/bans/components/reason-dialog.tsx:70
+    walked:
+      - test: apps/nazar/test/course-bans.spec.tsx
+
+  - id: ask-medaris-for-a-permanent-ban
+    need: >-
+      She asks Medaris administration to make a ban permanent, with a reason: one request per ban, the ban stands as it was meanwhile, the
+      row says a request is waiting and offers no second one.
+    drawn: [listed, requestButton, permanentDialog, reasonForm, reasonReady, requesting, toastRequested, permanentBadge]
+    built:
+      - action: medaris.api:requestPermanentBan
+      - route: apps/nazar/features/bans/components/reason-dialog.tsx:70
+    walked:
+      - test: apps/nazar/test/course-bans.spec.tsx
+
+  - id: a-permanent-request-is-answered
+    need: >-
+      Medaris administration is told of the request, reads the ban, who placed it and why, and accepts it (the account is disabled in
+      Keycloak, MDRS-197) or rejects it with a note; the reader sees the answer on the row. Until then the page does not say the request was
+      passed on.
+    drawn: [requesting, toastRequested, permanentBadge, permanentBody]
+    missing: MDRS-140
+
+  - id: bans-reach-the-people-above
+    need: >-
+      Every ban and every widening is shown to the köşk's nazımları and to Medaris administration (MDRS-113). The course route this page uses
+      tells them of a ban it places; widening to the medrese tells nobody above the medrese, and a medrese-wide ban placed on the medrese's
+      own page tells nobody either.
+    drawn: [banning, escalating, toastPlaced, toastWidened]
+    missing: MDRS-113
+
+  - id: widen-refuses-a-person-who-runs-the-course
+    need: >-
+      Widening a ban, like placing one, refuses a person who runs the course or the medrese (a hoca, a ders nazırı, a başmüderris, a nazır, a
+      köşk nazımı, a Medaris nazımı), and the row does not offer the button for them. Today the widening routes (escalateBan, extendBan) never
+      read the person's roles.
+    drawn: [listed, widenButton, escalating, toastWidened, rowRoleYou]
+    missing: none
+
+  - id: a-hoca-is-not-named-over-an-open-ban
+    need: >-
+      Naming a hoca (and a başmüderris, a köşk nazım or a Medaris nazım) refuses a person who has an open ban in the course or the medrese, as
+      naming a ders nazırı and a medrese nazır already does, so a ban placed before the post cannot meet the person who now holds it.
+    drawn: [listed, widenButton]
+    missing: none
+
+  - id: the-picker-leaves-out-who-cannot-be-barred
+    need: >-
+      The Yasakla dialog offers only people the API will take: not the course's own ders nazırı or hoca who also hold a seat, so that a person
+      does not type a reason and send it only to be told they cannot bar them.
+    drawn: [banForm, talebeSelect, banning, toastBanError]
+    missing: none
+
+  - id: a-refused-roster-is-told-as-refused
+    need: >-
+      A reader who may bar from the medrese but may not read the course's talebe is told that, not that the roster could not be read "now", and
+      is not left without a way to bar someone the API would let her.
+    drawn: [banButtonOff, rosterFailed, noTalebe, canBan]
+    missing: none
+
+  - id: the-ban-dialog-says-who-reads-the-reason
+    need: >-
+      The Yasakla dialog tells the person who bans that the reason is read by those who see and lift bans and never by the talebe (as the
+      reason dialogs say), says what its asterisk means, names both required fields to a reader of the screen, gives the first field the
+      focus, ties the sentence that explains an off button to the button, and announces its errors.
+    drawn: [banDialog, banReason, banReasonRequired, talebeSelect, banButtonOff, noTalebe, requiredNote]
+    missing: none
+
+  - id: a-wider-ban-is-visible-where-its-person-vanishes
+    need: >-
+      A talebe barred from the whole medrese or köşk, who is therefore missing from this course's picker, is shown here or said to be: the page
+      says why a talebe of the course cannot be chosen and where that ban is lifted.
+    drawn: [listed, banForm, talebeSelect, bansTable]
+    missing: none

@@ -1,0 +1,21 @@
+# nazar.bans.decide as a medrese nazır who holds no grant: the page refuses the list (e2e bans#8: "Bu sayfaya izniniz yok", no list, no
+# "Yasakla"). A scenario that takes no transition of its own that the main file's does is not walked by `--cover transitions`, so
+# this one has a file and a walk of its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/decide \
+#     --bind graphs/nazar/bans/decide/binding.nazir.yaml --to forbidden --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# The seeded medrese nazır (STACK.md) holds the role and no grant, which is what the API refuses (listMadrasahBans asks madrasah.ban or
+# platform.ban_scoped, the role gives neither). Nothing is made or changed. `read: refused` is what picks the failure; `row`, `answer`
+# and `after` are what a successful read would show, and the read is refused, so none is drawn. Taken with `--to forbidden` only.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.decide
+
+scenarios:
+  refused:
+    given: { read: refused, row: own, answer: done, after: more }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans menu' }

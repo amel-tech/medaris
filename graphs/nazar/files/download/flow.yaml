@@ -1,0 +1,478 @@
+# A staff member follows a file link on a course's page in nazar-web, and what a refused download comes to. Read from the code of PR #394 on 15 Nov
+# 2026 (apps/nazar/features/{homework,curriculum,evaluation,files}, apps/nazar/app/api/files, libs/services/src/file-proxy); nothing here is approved.
+# Behaviours seen on the running stack are marked "seen"; every other claim about a page is read from the code and not seen in a browser.
+#   - What it draws: the places a staff member meets a file in the course scope, and the five routes they call (all under nazar-web's /api/files):
+#       Ödevler      /ders/<id>/odevler        a file a talebe handed in            webDownloadCourseSubmissionFile
+#       Müfredat     /ders/<id>/mufredat       a file among the course's resources   webDownloadCourseResourceFile
+#                                              a file among a celse's resources      webDownloadLessonResourceFile   (the celse's details open)
+#                                              a file of a celse's homework          webDownloadLessonAssignmentFile (the celse's details open)
+#       Değerlendirme /ders/<id>/degerlendirme "Excel indir", the board as a sheet   webExportEvaluationBoard
+#     The link of a file is a plain anchor with no `download` attribute, on purpose (file-link.tsx:10-14): the browser asks the route itself, as a page
+#     (`Sec-Fetch-Dest: document`, the page as the `Referer`). A file that is served is an attachment, so the browser saves it and the page stays. A
+#     refusal is a 303 (libs/services/src/file-proxy/file-proxy.ts:351-370): no session, or a token tedrisat refused, goes to sign-in and comes back
+#     to the page; every other refusal goes back to the page with ?fileError=forbidden|notFound|unavailable|failed (by the status: 403; 400, 404, 410;
+#     502, 503, 504; the rest). The whole page loads again.
+#   - What the page does with ?fileError= differs by page, and that is most of this flow:
+#       Ödevler      mounts FileErrorNotice before anything else (homework-page.tsx:55): one error toast "Dosya indirilemedi" with the reason under
+#                    it, which stays until it is closed; the parameter is taken off the address. It is mounted also when the page is the refusal
+#                    ("Bu sayfaya izniniz yok"), so a 403 is worded there.
+#       Müfredat     mounts it only when the editor is drawn (curriculum-page.tsx:62). When the page is the refusal (a 403 means the person no longer
+#                    holds the permission that opens the page), nothing mounts it: no toast and ?fileError=forbidden stays in the address (NFILES-1).
+#                    Whatever the editor held and was not saved is gone, the celse's details are folded again (NFILES-2).
+#       Değerlendirme mounts it never (F-D1-13). It does not matter, because "Excel indir" cannot be served at all: see the next point.
+#   - "Excel indir" can never be downloaded (finding evaluation-export-invalid-path; the domain's web.yaml records it as the invariant
+#     web-every-file-route-builds-a-proxiable-path, holds: false). The route builds /courses/<id>/evaluations/export?lang=<lang>
+#     (app/api/files/courses/[courseId]/evaluations/route.ts:24) and the proxy refuses any path with a query (file-proxy.ts:106-112, `SEGMENTS`
+#     allows letters, digits, - and _ between slashes): 400 INVALID_PATH "Not a file address", before the token is looked at and before tedrisat is
+#     called. A followed link therefore comes back to Değerlendirme with ?fileError=notFound (400 is "notFound"), which no code on that page reads:
+#     the person presses the link, the page loads again and says nothing, and the parameter stays in the address. SEEN on the running stack with
+#     curl, without a session (the check comes before the token): a page request answers 303 `location: /ders/<id>/degerlendirme?fileError=notFound`;
+#     a fetch() answers 400 `{"code":"INVALID_PATH","status":400,"message":"Not a file address"}`; a page request with no page of the app behind it
+#     answers 400 text/plain "Dosya indirilemedi. Dosyanın bulunduğu sayfaya dönüp yeniden deneyin.". No test of the WEB route downloads the sheet:
+#     apps/nazar/test/evaluation.spec.tsx:460-474 pins only the link's address, and test/file-routes.spec.ts has no case for this route (tedrisat's own
+#     API e2e, apps/tedrisat/test/e2e/exams.e2e.spec.ts:476, downloads the sheet from the API with its query, so the API side is covered and the break is
+#     in between). The route was added on 13 November 2026 (MDRS-248, git log), a month after the proxy (12 October, #293). The graph draws what the code
+#     does (the refusal); the product's story, a sheet saved, is not reachable, so `main` is the homework file's.
+#   - What the local stack can walk (STACK.md): there is no file storage (the BUNNY_STORAGE_* keys are not set), so no upload works and nothing is ever
+#     saved. The walk makes the file rows with SQL (files-data.mjs says why) and follows the real links in a browser: tedrisat asks the store first,
+#     so each of the four file routes answers 503 STORAGE_NOT_CONFIGURED, the 303 comes back with ?fileError=unavailable and the toast is on the page.
+#     A 403 is made by taking the permission away from the walk's ders nazırı just before the link is followed (binding.forbidden.yaml). What is NOT
+#     walked: a file that is served (the main story), "the file is gone" and "the course is gone" (the store is asked before them, so locally 503
+#     always comes first), a session that ends (the walk cannot end the browser's session), and a refusal that is none of the four.
+#   - The same routes are also served to tedris (its own half is tedris.files.download) and, for a course's resource, to nizam. The review dialog on
+#     Ödevler has two more file links (a hand-in, and the files of a review); they call the same route and one more
+#     (webDownloadCourseSubmissionReviewFile) and belong to nazar.homework.review.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   evaluation-export-invalid-path  (new, the domain's id) "Excel indir" is a 400 INVALID_PATH on every call; tedrisat never sees it
+#   F-D1-13  a refused "Excel indir" is silent on Değerlendirme: FileErrorNotice is not mounted there, and ?fileError= stays in the address
+#   NFILES-1 (new, provisional id) a 403 on a file of Müfredat comes back to the refusal page, which raises no toast and keeps ?fileError=forbidden
+#   NFILES-2 (new, provisional id) a refused download reloads the whole page: Müfredat's unsaved edits, the open details and the focus are lost;
+#            on Ödevler an open review dialog and its note go (WRT-10 of tedris, here with a long form)
+#   NFILES-3 (new, provisional id) a download that works says nothing on the page: no toast, no status, only the browser's own saving (FILES-2 of tedris)
+#   F-D1-19 and F-C-course-a-14 are named for this flow by FLOWS.md but belong to flows that draw them: the deck sample's silent refusal
+#   (nazar.decks.import) and the upload panel's lost focus (nazar.curriculum.resources). They touch no state here; ui.yaml says so in a rule.
+# E2E carried: none. The web e2e has no check of a file (apps/nazar/e2e has no `fileError`, no /api/files and no evaluation-download); the unit specs
+# test/file-routes.spec.ts (four downloads, not the sheet and not the review file), test/homework.spec.tsx:319 (the toast, once, and the parameter taken
+# off), test/evaluation.spec.tsx:460 (the sheet link's address), test/files.spec.ts and libs/services/test/file-proxy.spec.ts pin the pieces.
+schema: delurio-graph/0
+kind: flow
+id: nazar.files.download
+status: captured
+domain: medaris.api
+ui: nazar.files.download
+title: Download a file as staff, and what a refusal comes to
+summary: >-
+  A müderris (or a ders nazırı who holds the right permission) follows a file link in the course scope. On Ödevler it is a file a talebe handed in; on
+  Müfredat it is a stored file among the course's resources, among a celse's resources (the celse's details open) or among a celse's homework; on
+  Değerlendirme it is "Excel indir". A file that is served is an attachment: the browser saves it and the page stays. When the route refuses, the
+  browser comes back to the page with the reason in the address, the page loads again, and on Ödevler and Müfredat one toast, "Dosya indirilemedi",
+  tells why ("Bu dosyayı indirme izniniz yok.", "Bu dosya artık yok.", "Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden deneyin." or "Bir sorun
+  çıktı. Biraz sonra yeniden deneyin."); it stays until it is closed and the address is cleaned. A session that has ended goes to sign-in and back to
+  the page. A permission taken away while the page was open comes back as "Bu sayfaya izniniz yok", with the toast on Ödevler and without it on Müfredat.
+  "Excel indir" never works: every press is answered 400 INVALID_PATH before tedrisat is called, the page loads again and says nothing.
+
+scope:
+  shows: the three pages' file links, the routes' answers (served, to sign-in, back to the page with a toast, back with nothing said, to another page), and the toast
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of Ödevler: the celse filter, the counts, the notes, the review column, and the review dialog with the talebe's files and the files of a review (they call webDownloadCourseSubmissionFile and webDownloadCourseSubmissionReviewFile): nazar.homework.review"
+    - "the rest of Müfredat: the course's details, the weeks and celses, adding a link, uploading or removing a file, the homework's switch, kind and description, Kaydet: nazar.curriculum.edit, nazar.curriculum.resources, nazar.curriculum.sessionHomework. The two buttons that fold and unfold a celse's details are drawn here only because the two links inside them are the way in"
+    - "the rest of Değerlendirme: the columns of recited homework and of exams, marking, scores, releasing results: nazar.evaluation.markRecited, nazar.evaluation.examScores. A board with no column or no talebe is an empty state with no link, and is not drawn"
+    - "a course whose content is locked (a passive course): Müfredat then lists resource names with no link; and a celse hidden meanwhile"
+    - "the sign-in a refused session goes to, and the 404 page: realm.auth.signIn, nazar.shell.errorStates"
+    - "the deck template's download (/api/decks/sample, an empty 502 behind <a download>, F-D1-19): nazar.decks.import"
+    - "the uploads of the same routes (POST /api/files/...): nazar.curriculum.resources, nazar.curriculum.sessionHomework, nazar.homework.review"
+    - "an address opened with no page of this app behind it (pasted into a tab, sent by mail): the route cannot go back anywhere, so a refusal is plain text in Turkish, English and Arabic with the refusal's status. Read with curl as `effects`, not a screen of this flow"
+    - "an address whose ids are not UUIDs: 404 {\"code\":\"NOT_FOUND\"} before a token is asked for and with no redirect; no link of the app carries one. Read with curl as an `effect`"
+    - "what is saved: a file's bytes, its name and type (tedrisat sets them), and the audit row tedrisat writes before it sends a talebe's hand-in to the course team (recordStaffDownload, lesson-submission.service.ts:290), which a stack with no storage never reaches"
+
+decisions:
+  D1:
+    question: >-
+      How should "Excel indir" reach tedrisat? The route asks for /courses/<id>/evaluations/export?lang=<lang> and the proxy refuses any path with a
+      query, so the link has never worked (it was added on 13 November 2026, a month after the proxy; nothing downloads the sheet).
+    recommend: >-
+      Let the proxy take a query that the route builds from a fixed list (`lang` is tr, en or ar), or send the language as a segment of the path that
+      tedrisat accepts; and add the route to test/file-routes.spec.ts with a case that reaches the proxy for real, as the other four downloads do not.
+      Do not mount FileErrorNotice on Değerlendirme before the path is fixed: it would word the 400 as "Bu dosya artık yok.".
+    affects: [exportingBoard, evaluationRefused]
+  D2:
+    question: >-
+      Should a refused download keep the page as it is (fetch the file and say the reason in the page) instead of loading the page again?
+    recommend: >-
+      Yes, as tedris.files.download asks too. A 303 reloads the whole page, and Müfredat is one long form: an unsaved week, a typed resource name or a
+      new celse is lost with no word (NFILES-2). A link is the right element for a file that works; fetch() would get the JSON refusal that the proxy
+      already keeps for such callers, and the page could raise the same toast without leaving.
+    affects: [followingCourseFile, followingLessonFile, followingAssignmentFile, followingSubmissionFile, onThePage]
+  D3:
+    question: >-
+      Should the page a 303 for a 403 comes back to say why the person came back to it?
+    recommend: >-
+      Yes. Mount FileErrorNotice in the course layout (where the other pages' toasts already work) instead of in two pages' bodies, so the refusal page
+      of Müfredat, and Değerlendirme once its path is fixed, word it as Ödevler does (NFILES-1, F-D1-13).
+    affects: [curriculumForbidden, homeworkForbidden, evaluationRefused]
+
+context:
+  view:
+    values: [homework, curriculum, evaluation]
+    initial: any
+    say:
+      homework: "the person reads Ödevler, /ders/<id>/odevler: a talebe has handed in a file, listed in the table of its celse as a link"
+      curriculum: "the person reads Müfredat, /ders/<id>/mufredat: the editor lists a stored file among the course's resources, and, with a celse's details open, one among the celse's resources and one among its homework"
+      evaluation: "the person reads Değerlendirme, /ders/<id>/degerlendirme: the board has a column of recited homework and a talebe, so the link \"Excel indir\" is drawn"
+  answer:
+    values: [saved, signedOut, forbidden, fileGone, pageGone, unavailable, failed]
+    initial: any
+    say:
+      saved: "the route hands the file back as an attachment (tedrisat answered 200): the browser saves it. Not on this stack (no storage); never for the sheet"
+      signedOut: "the session has no usable token (none, or tedrisat refused the one it was sent: 401): the route redirects to sign-in"
+      forbidden: "the caller may no longer read what the link names (403 AUTHZ_FORBIDDEN): a permission that was taken away since the page was drawn, which is the only way a page that opened has a link the person may not follow"
+      fileGone: "the file is no longer there (404 RESOURCE_FILE_NOT_FOUND, LESSON_ASSIGNMENT_FILE_NOT_FOUND, SUBMISSION_FILE_NOT_FOUND): taken off the list or removed since the page was drawn, or its object lost from the store"
+      pageGone: "the course or the celse is no longer there for this caller (404 COURSE_NOT_FOUND, LESSON_NOT_FOUND): hidden since the page was drawn"
+      unavailable: "storage or tedrisat does not answer (502, 503, 504: TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE). On the local stack, always"
+      failed: "any other refusal (a status that is none of the above, 500 for one)"
+  notice:
+    values: [none, forbidden, notFound, unavailable, failed]
+    initial: none
+    say:
+      none: "no toast about a file is on the page"
+      forbidden: "the toast says \"Bu dosyayı indirme izniniz yok.\""
+      notFound: "the toast says \"Bu dosya artık yok.\""
+      unavailable: "the toast says \"Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden deneyin.\""
+      failed: "the toast says \"Bir sorun çıktı. Biraz sonra yeniden deneyin.\""
+  details:
+    values: [folded, open]
+    initial: folded
+    say:
+      folded: "the celse's details (its resources and its homework) are folded, as a stored celse is when the page loads"
+      open: "the person opened the celse's details with \"Başlık, bağlantı, kaynaklar, ödev\""
+
+guards:
+  noticed: "notice != 'none'"
+  onHomework: "view == 'homework'"
+  detailsOpen: "details == 'open'"
+  onEvaluation: "view == 'evaluation'"
+
+effects:
+  noticeForbidden: { set: { notice: forbidden } }
+  noticeNotFound: { set: { notice: notFound } }
+  noticeUnavailable: { set: { notice: unavailable } }
+  noticeFailed: { set: { notice: failed } }
+  clearNotice: { set: { notice: none } }
+  openDetails: { set: { details: open } }
+  foldDetails: { set: { details: folded } }
+  reloaded: { set: { details: folded, notice: none } } # the page loads again: a celse's details are folded as a stored celse is, and a toast of the page before is gone; a notice effect after it raises the new one
+  exportRefused: { set: { notice: none } } # nothing changes on the page: it marks the refusal of the sheet, where the binding reads the route with curl
+
+# Each following state is one of the five routes. `unauthenticated` is the route's own 401 (no token, or the token tedrisat refused, which adds
+# reauth); the other classes group tedrisat's refusals by the reason the route words them with (file-rules.ts:155). The sheet's route never gets
+# past its own path check, so it has one class and no other (its upstream refusals, AUTHZ_FORBIDDEN, COURSE_NOT_FOUND and the rest, are what
+# tedrisat would answer and the route cannot reach).
+failures:
+  followingSubmissionFile:
+    from: webDownloadCourseSubmissionFile
+    signedOut: [unauthenticated]
+    forbidden: [AUTHZ_FORBIDDEN]
+    fileGone: [SUBMISSION_FILE_NOT_FOUND]
+    pageGone: [COURSE_NOT_FOUND]
+    unavailable: [TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    failed: []
+  followingCourseFile:
+    from: webDownloadCourseResourceFile
+    signedOut: [unauthenticated]
+    forbidden: [AUTHZ_FORBIDDEN]
+    fileGone: [RESOURCE_FILE_NOT_FOUND]
+    pageGone: [COURSE_NOT_FOUND]
+    unavailable: [TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    failed: []
+  followingLessonFile:
+    from: webDownloadLessonResourceFile
+    signedOut: [unauthenticated]
+    forbidden: [AUTHZ_FORBIDDEN]
+    fileGone: [RESOURCE_FILE_NOT_FOUND]
+    pageGone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    unavailable: [TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    failed: []
+  followingAssignmentFile:
+    from: webDownloadLessonAssignmentFile
+    signedOut: [unauthenticated]
+    forbidden: [AUTHZ_FORBIDDEN]
+    fileGone: [LESSON_ASSIGNMENT_FILE_NOT_FOUND]
+    pageGone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    unavailable: [TEDRISAT_UNREACHABLE, STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE]
+    failed: []
+  exportingBoard:
+    from: webExportEvaluationBoard
+    invalidPath: [INVALID_PATH]
+
+# The product's story: a talebe's file is downloaded from Ödevler and saved; the page stays. The local stack has no storage, so this story is not walked
+# as it stands (binding.yaml); its refusal is. The sheet has no such story: it is never served.
+main:
+  given: { view: homework, answer: saved }
+  events: [DOWNLOAD_SUBMISSION_FILE, DONE]
+
+initial: arriving
+states:
+  arriving:
+    title: The page opens
+    source: apps/nazar/app/ders/[dersId]/odevler/page.tsx:11
+    description: >-
+      A step with no screen: the person is on Ödevler (homework), on Müfredat (curriculum) with the celse's details folded, or on the overview of
+      Değerlendirme (evaluation). Nothing is drawn here; the pages are.
+    always:
+      - { guard: "view == 'homework'", target: homeworkListed, source: "apps/nazar/app/ders/[dersId]/odevler/page.tsx:17" }
+      - { guard: "view == 'curriculum'", target: curriculumListed, source: "apps/nazar/app/ders/[dersId]/mufredat/page.tsx:17" }
+      - { target: evaluationListed, source: "apps/nazar/app/ders/[dersId]/degerlendirme/page.tsx:17" }
+
+  homeworkListed:
+    title: Ödevler, with a talebe's file as a link
+    by: human
+    goal: true
+    source: apps/nazar/features/homework/components/homework-list.tsx:126
+    description: >-
+      The page of a person who holds `submission.read` in the course (the müderris by role, a ders nazırı by grant). A celse that has homework or
+      hand-ins is a section named by its h2 ("Hafta 1 · Celse 1"), with a table of the hand-ins; in the "Dosyalar" cell a talebe's files are a list
+      named by the talebe, and each is a link to /api/files/courses/<course>/submissions/<file>, named "<file> dosyasını indir" (the file's name is the
+      visible text), with a type chip ("PDF") and the size ("20 kB") beside it. It is also where the page is after a refusal that comes back here (the
+      file is gone, storage does not answer, anything else): loaded again, with the toast "Dosya indirilemedi" and its reason on it, the parameter
+      already taken off the address, the celse filter, the counts and the table as they were (the page keeps no state of its own across the load). A
+      press on the link when the file is served saves it and shows nothing (NFILES-3). The page sets no focus of its own (focus-not-set).
+    on:
+      DOWNLOAD_SUBMISSION_FILE: { target: followingSubmissionFile, source: apps/nazar/features/homework/components/homework-list.tsx:126 }
+      CLOSE_TOAST: { guard: noticed, target: homeworkListed, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:95 }
+      NAVIGATE: left
+
+  curriculumListed:
+    title: Müfredat, with a stored file among the course's resources
+    by: human
+    goal: true
+    source: apps/nazar/features/curriculum/components/resources-editor.tsx:195
+    description: >-
+      The editor for a person who holds `course.edit`, `session.manage` or `week.hide`. The card "Bağlı kaynaklar" lists the course's resources; a
+      resource that is a stored file shows, under its name and its short line, a link named "<file> dosyasını indir" (to /api/files/courses/<course>/
+      resources/<resource>), a type chip and the size. Each celse is a card whose details (its title, its link, its resources and its homework) are
+      FOLDED: the button "Başlık, bağlantı, kaynaklar, ödev" unfolds them (the files inside are in the page but hidden). The first week that has not ended
+      is open when the page loads (curriculum-editor.tsx:174-183), which the walk's one week, from tomorrow, is. It is also where the page is
+      after a refusal: loaded again, details folded, whatever was typed and not saved gone (NFILES-2), the toast on it and the parameter off the address.
+      The page sets no focus of its own.
+    on:
+      DOWNLOAD_COURSE_FILE: { target: followingCourseFile, source: apps/nazar/features/curriculum/components/resources-editor.tsx:195 }
+      OPEN_DETAILS: { target: lessonOpened, effect: [openDetails], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:748 }
+      CLOSE_TOAST: { guard: noticed, target: curriculumListed, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:95 }
+      NAVIGATE: left
+
+  lessonOpened:
+    title: Müfredat, with a celse's details open
+    by: human
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:774
+    description: >-
+      The same page with the celse's details unfolded (aria-expanded true, the button now says "Ayrıntıları gizle"): the fieldset "Celsenin
+      kaynakları" lists the celse's own resources, a stored file again a link named "<file> dosyasını indir" (to /api/files/lessons/<celse>/resources/
+      <resource>), and the fieldset "Ödev" lists, under "Ödevin dosyaları", the homework's files (to /api/files/lessons/<celse>/assignment/<file>). The
+      course's own file link is still there. A refusal loads the page again and the details fold (curriculumListed); a served file leaves the page
+      as it is.
+    on:
+      DOWNLOAD_COURSE_FILE: { target: followingCourseFile, source: apps/nazar/features/curriculum/components/resources-editor.tsx:195 }
+      DOWNLOAD_LESSON_FILE: { target: followingLessonFile, source: apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:208 }
+      DOWNLOAD_ASSIGNMENT_FILE: { target: followingAssignmentFile, source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:342 }
+      HIDE_DETAILS: { target: curriculumListed, effect: [foldDetails], source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:748 }
+      CLOSE_TOAST: { guard: noticed, target: lessonOpened, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:95 }
+      NAVIGATE: left
+
+  evaluationListed:
+    title: Değerlendirme, with "Excel indir"
+    by: human
+    goal: true
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295
+    description: >-
+      The overview of the board, for a person who holds `session.manage` (the müderris by role, a ders nazırı by grant): a link "Excel indir" (a
+      secondary button that is an <a>, with a download icon) above the table "Talebeler ve ezber ödevleri". It is drawn only when the course has a
+      column (a recited homework or an exam) and a talebe; otherwise the page is an empty state with no link. Pressing it never saves a file
+      (evaluation-export-invalid-path).
+    on:
+      EXPORT_BOARD: { target: exportingBoard, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295 }
+      NAVIGATE: left
+
+  evaluationRefused:
+    title: Değerlendirme again, with nothing said
+    by: human
+    source: apps/nazar/features/evaluation/components/evaluation-page.tsx:41
+    description: >-
+      The page loaded again after "Excel indir", at /ders/<id>/degerlendirme?fileError=notFound. It is the same overview, with no toast and no status:
+      the page never reads the parameter (F-D1-13), so nothing tells the person why no file came, and the address keeps the parameter for a reload or a
+      copied link to carry. A second press does the same again. Were the page to word it, the words would be "Bu dosya artık yok.", which is false:
+      the file was never asked for (evaluation-export-invalid-path).
+    on:
+      EXPORT_BOARD: { target: exportingBoard, source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295 }
+      NAVIGATE: left
+
+  followingSubmissionFile:
+    title: Follow the link of a talebe's file
+    source: apps/nazar/app/api/files/courses/[courseId]/submissions/[fileId]/route.ts:20
+    description: >-
+      The browser follows /api/files/courses/<course>/submissions/<file> as a page (Sec-Fetch-Dest document, the page as the Referer). The route
+      checks that both ids are UUIDs, reads the session's token and calls tedrisat's GET /courses/<course>/submissions/files/<file>
+      (downloadCourseSubmissionFile: `submission.read`; the store is asked first; the read is then written to the audit log before the first byte).
+      Served: the file streams back with tedrisat's content-type, content-length, content-disposition (attachment), x-content-type-options,
+      cache-control and content-security-policy; the browser saves it and the page stays. A refusal is turned into a 303 (file-proxy.ts:351): 401
+      to sign-in with the referring page as the way back (reauth=1 when tedrisat refused the token), any other back to the referring page with
+      ?fileError=, where 403 is forbidden, 400/404/410 notFound, 502/503/504 unavailable and the rest failed. SEEN: a visitor's page request is
+      answered 303 to /auth/signin?callbackUrl=%2Fders%2F<course>%2Fodevler; a fetch() gets 401 {"kind":"unauthenticated"}; a non-UUID id gets 404.
+    invoke: { action: webDownloadCourseSubmissionFile }
+    on:
+      DONE: { guard: "answer == 'saved'", target: onThePage, say: "the browser saves the file; the page shows nothing new (NFILES-3)", source: libs/services/src/file-proxy/file-proxy.ts:419 }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: libs/services/src/file-proxy/file-proxy.ts:360 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: homeworkForbidden, effect: [noticeForbidden], say: "the permission is gone: the page is the refusal now, and the toast says why", source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.fileGone: { guard: "answer == 'fileGone'", target: onThePage, effect: [reloaded, noticeNotFound], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.pageGone: { guard: "answer == 'pageGone'", target: page_not_found, source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.unavailable: { guard: "answer == 'unavailable'", target: onThePage, effect: [reloaded, noticeUnavailable], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.failed: { guard: "answer == 'failed'", target: onThePage, effect: [reloaded, noticeFailed], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+
+  followingCourseFile:
+    title: Follow the link of a course resource's file
+    source: apps/nazar/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:19
+    description: >-
+      The same, for /api/files/courses/<course>/resources/<resource>, which calls tedrisat's GET /courses/<course>/resources/<resource>/file
+      (downloadCourseResourceFile: `course.view_details`, which every content permission brings; the store first). A 403 means the person no longer
+      holds any of the codes that open Müfredat, so the page it comes back to is the refusal, with no toast (NFILES-1).
+    invoke: { action: webDownloadCourseResourceFile }
+    on:
+      DONE: { guard: "answer == 'saved'", target: onThePage, say: "the browser saves the file; the page shows nothing new (NFILES-3)", source: libs/services/src/file-proxy/file-proxy.ts:419 }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: libs/services/src/file-proxy/file-proxy.ts:360 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: curriculumForbidden, effect: [reloaded], say: "the page is the refusal now, and nothing says why (NFILES-1)", source: apps/nazar/features/curriculum/components/curriculum-page.tsx:44 }
+      FAIL.fileGone: { guard: "answer == 'fileGone'", target: onThePage, effect: [reloaded, noticeNotFound], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.pageGone: { guard: "answer == 'pageGone'", target: page_not_found, source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.unavailable: { guard: "answer == 'unavailable'", target: onThePage, effect: [reloaded, noticeUnavailable], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.failed: { guard: "answer == 'failed'", target: onThePage, effect: [reloaded, noticeFailed], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+
+  followingLessonFile:
+    title: Follow the link of a celse resource's file
+    source: apps/nazar/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:18
+    description: >-
+      The same, for /api/files/lessons/<celse>/resources/<resource>, which calls tedrisat's GET /lessons/<celse>/resources/<resource>/file
+      (downloadLessonResourceFile: a celse that is hidden keeps its resources and serves none, LESSON_NOT_FOUND). Only Müfredat has such a link.
+    invoke: { action: webDownloadLessonResourceFile }
+    on:
+      DONE: { guard: "answer == 'saved'", target: onThePage, say: "the browser saves the file; the page, with the details open, shows nothing new (NFILES-3)", source: libs/services/src/file-proxy/file-proxy.ts:419 }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: libs/services/src/file-proxy/file-proxy.ts:360 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: curriculumForbidden, effect: [reloaded], say: "the page is the refusal now, and nothing says why (NFILES-1)", source: apps/nazar/features/curriculum/components/curriculum-page.tsx:44 }
+      FAIL.fileGone: { guard: "answer == 'fileGone'", target: onThePage, effect: [reloaded, noticeNotFound], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.pageGone: { guard: "answer == 'pageGone'", target: page_not_found, source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.unavailable: { guard: "answer == 'unavailable'", target: onThePage, effect: [reloaded, noticeUnavailable], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.failed: { guard: "answer == 'failed'", target: onThePage, effect: [reloaded, noticeFailed], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+
+  followingAssignmentFile:
+    title: Follow the link of a homework file
+    source: apps/nazar/app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts:18
+    description: >-
+      The same, for /api/files/lessons/<celse>/assignment/<file>, which calls tedrisat's GET /lessons/<celse>/assignment/files/<file>
+      (downloadLessonAssignmentFile, on the terms of a celse resource's file). Only Müfredat has such a link here (the talebe's own side is
+      tedris.files.download).
+    invoke: { action: webDownloadLessonAssignmentFile }
+    on:
+      DONE: { guard: "answer == 'saved'", target: onThePage, say: "the browser saves the file; the page, with the details open, shows nothing new (NFILES-3)", source: libs/services/src/file-proxy/file-proxy.ts:419 }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: libs/services/src/file-proxy/file-proxy.ts:360 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: curriculumForbidden, effect: [reloaded], say: "the page is the refusal now, and nothing says why (NFILES-1)", source: apps/nazar/features/curriculum/components/curriculum-page.tsx:44 }
+      FAIL.fileGone: { guard: "answer == 'fileGone'", target: onThePage, effect: [reloaded, noticeNotFound], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.pageGone: { guard: "answer == 'pageGone'", target: page_not_found, source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.unavailable: { guard: "answer == 'unavailable'", target: onThePage, effect: [reloaded, noticeUnavailable], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+      FAIL.failed: { guard: "answer == 'failed'", target: onThePage, effect: [reloaded, noticeFailed], source: libs/services/src/file-proxy/file-proxy.ts:367 }
+
+  exportingBoard:
+    title: Follow "Excel indir"
+    source: apps/nazar/app/api/files/courses/[courseId]/evaluations/route.ts:22
+    description: >-
+      The browser follows /api/files/courses/<course>/evaluations as a page. The route checks the course id, reads the locale cookie (tr unless the
+      locale is en or ar) and hands proxyDownload the path /courses/<course>/evaluations/export?lang=<lang>. The proxy's first step, `precheck`
+      (file-proxy.ts:144-146), is isProxiablePath, which refuses a path with a `?`: it answers 400 INVALID_PATH "Not a file address" BEFORE the token is
+      looked at and without calling tedrisat, so the answer is the same for a person with a session, a person without one and a request that is not
+      a page. For a followed link `answerPage` turns the 400 into a 303 back to the referring page with ?fileError=notFound (400 is "notFound"),
+      and the page does not read it. SEEN on the running stack with curl and no session: 303 `location: /ders/<course>/degerlendirme?fileError=notFound`;
+      a fetch() gets 400 {"code":"INVALID_PATH","status":400,"message":"Not a file address"}; a page request with no referrer gets 400 text/plain
+      "Dosya indirilemedi. Dosyanın bulunduğu sayfaya dönüp yeniden deneyin.". tedrisat's own refusals for this export (403, 404) are never reached.
+      Whatever `answer` says, the route does not read it.
+    invoke: { action: webExportEvaluationBoard }
+    on:
+      FAIL.invalidPath: { guard: onEvaluation, target: evaluationRefused, effect: [exportRefused], say: "the page loads again with ?fileError=notFound in the address and says nothing (F-D1-13, evaluation-export-invalid-path)", source: libs/services/src/file-proxy/file-proxy.ts:146 }
+
+  onThePage:
+    title: Back on the page
+    source: libs/services/src/file-proxy/file-proxy.ts:367
+    description: >-
+      A step with no screen: the person is on the page they followed the link from. After a served file it is the page that never left (a celse's
+      details still open); after a 303 it is that page loaded again, details folded, with the toast of the reason.
+    always:
+      - { guard: onHomework, target: homeworkListed, source: apps/nazar/features/homework/components/homework-page.tsx:55 }
+      - { guard: detailsOpen, target: lessonOpened, source: apps/nazar/features/curriculum/components/curriculum-page.tsx:62 }
+      - { target: curriculumListed, source: apps/nazar/features/curriculum/components/curriculum-page.tsx:62 }
+
+  homeworkForbidden:
+    title: Ödevler comes back as the refusal, with the toast
+    by: human
+    source: apps/nazar/features/homework/components/homework-page.tsx:65
+    description: >-
+      The 303 of a 403 came back to /ders/<id>/odevler?fileError=forbidden. The person no longer holds `submission.read`, so the page is "Bu sayfaya
+      izniniz yok" with its sentence (PageProblem, forbidden); FileErrorNotice is mounted before the page's header whatever the body is
+      (homework-page.tsx:55), so the toast "Dosya indirilemedi" with "Bu dosyayı indirme izniniz yok." is on it and the parameter is off the address.
+    on:
+      CLOSE_TOAST: { guard: noticed, target: homeworkForbidden, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:95 }
+      NAVIGATE: left
+
+  curriculumForbidden:
+    title: Müfredat comes back as the refusal, with nothing said
+    by: human
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:44
+    description: >-
+      The 303 of a 403 came back to /ders/<id>/mufredat?fileError=forbidden. The person holds none of `course.edit`, `session.manage` and `week.hide`
+      any more, so the page is the title "Müfredat" over "Bu sayfaya izniniz yok" (curriculum-page.tsx:44-55, which returns before it reaches
+      <FileErrorNotice /> at :62). Nothing mounts the notice: no toast, and ?fileError=forbidden stays in the address for a reload or a copied link
+      to carry (NFILES-1). Ödevler, the page next to it, does word the same refusal.
+    on:
+      NAVIGATE: left
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    source: libs/services/src/file-proxy/file-proxy.ts:360
+    description: >-
+      303 to /auth/signin?callbackUrl=<the page the link was on>, with reauth=1 when tedrisat refused the token the session held. After signing in
+      the browser comes back to the page, not to the file: the person presses the link again. realm.auth.signIn takes over. Never the sheet's:
+      its path check comes before the token.
+
+  page_not_found:
+    title: The page the link was on is gone
+    type: final
+    leavesPage: true
+    source: apps/nazar/features/shell/components/portal-layout.tsx:108
+    description: >-
+      The refusal said the course or the celse is not there for this caller (a course hidden since the page was drawn), so the 303 comes back to
+      the portal's 404 page ("Sayfa bulunamadı", nazar.shell.errorStates) and the toast is never drawn.
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-toast-follows-only-a-refusal
+    never: "notice != 'none' and answer == 'saved'"
+    say: "The toast of a refused download is drawn only after a refusal: a file that is served leaves the page as it was"
+    source: apps/nazar/features/files/components/file-error-notice.tsx:29
+  - id: the-toast-says-the-reason-of-the-answer
+    never: "(notice == 'forbidden' and answer != 'forbidden') or (notice == 'notFound' and answer != 'fileGone') or (notice == 'unavailable' and answer != 'unavailable') or (notice == 'failed' and answer != 'failed')"
+    say: "The words of the toast are the reason the route gave: 403 forbidden, the file gone notFound, 502/503/504 unavailable, the rest failed"
+    source: libs/services/src/file-rules/file-rules.ts:155
+  - id: signed-out-never-toasts
+    never: "state == 'sent_to_sign_in' and notice != 'none'"
+    say: "A session that has ended goes to sign-in and shows no toast about a file"
+    source: libs/services/src/file-proxy/file-proxy.ts:360
+  - id: evaluation-says-nothing
+    never: "view == 'evaluation' and notice != 'none'"
+    say: "Değerlendirme never words a refused download: it mounts no FileErrorNotice (F-D1-13: the finding is that it should, once the path is fixed)"
+    source: apps/nazar/features/evaluation/components/evaluation-page.tsx:41
+  - id: a-refused-curriculum-says-nothing
+    never: "state == 'curriculumForbidden' and notice != 'none'"
+    say: "The refusal page of Müfredat raises no toast about the file (NFILES-1: the finding is that it should)"
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:44

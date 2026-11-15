@@ -1,0 +1,110 @@
+# What must exist for a medrese to appeal a köşk's refusal of its course request: the flow's product list (LAYOUT.md section 7). Each need
+# is what the product must do, from the flow's story and the planned work in the inventory (planned.md P-04), not from what the page does
+# today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+#
+# Gaps of this file, for that merge:
+#   missing:   appeal-is-told (none), a-missing-reason-is-said (none), the-dialog-says-it-is-final (none),
+#              focus-and-a-word-after-sending (none), other-appeals (MDRS-139)
+#   unwalked:  read-the-refusals, appeal-a-refusal, one-appeal-per-refusal, only-those-allowed-appeal. Code exists for each and no web
+#              e2e opens the page past its menu entry (shell#4 only reaches it). binding.yaml and refusals.binding.yaml bind the scenarios
+#              that will walk them (appeals, empty, refused, exists, notRejected, gone, forbiddenSend); none has run, so none is named as walked.
+# Where the binding cannot make a case on the local stack, its header says so: the failed read (nazar.shell.errorStates draws it), a 404
+# of the medrese, and an answer of "failed" (the server must not answer).
+kind: needs
+flow: nazar.appeals.open
+status: proposed
+
+needs:
+  - id: menu-reaches-appeals
+    need: >-
+      A medrese's başmüderris reaches İtirazlar from the medrese's menu in one step, the page names itself, and the menu shows that it is
+      the current page.
+    drawn: [listed, menuAppeals, appealsTitle]
+    built:
+      - route: apps/nazar/features/shell/nav.ts:86
+      - route: apps/nazar/app/medrese/[medreseId]/itirazlar/page.tsx:11
+    walked:
+      - e2e: apps/nazar/e2e/shell.e2e.ts
+        check: 'shell#4' # a1 (the link reaches **/itirazlar), a2 (the h1 "İtirazlar") and a4 (aria-current, which the graph cannot say); a3 expects a placeholder that no longer exists and is not carried (F-B-14, F-L-4)
+
+  - id: read-the-refusals
+    need: >-
+      The başmüderris reads, in one list, every course request a köşk refused for her medrese, newest first, with the köşk, the köşk's own
+      reason and the state of any appeal against it; where nothing was refused the page says so.
+    drawn: [listed, empty, appealsTable, rowCourse, rowKosk, rowRejectReason, statusNone, emptyLine]
+    built:
+      - action: medaris.api:listMadrasahAppeals
+      - route: apps/nazar/features/appeals/components/appeals-page.tsx:19
+    walked:
+      - test: apps/nazar/test/appeals.spec.tsx # the page as the server renders it, against a stubbed API
+
+  - id: appeal-a-refusal
+    need: >-
+      She appeals a köşk's refusal of a course request of her medrese with a reason; the request's row then says the appeal waits for
+      Medaris management, and the appeal is recorded with her name, the reason and the time.
+    drawn: [form, formReady, sending, listed, toastSent, statusPending, openAppeal, submit]
+    built:
+      - action: medaris.api:createMadrasahAppeal
+      - route: apps/nazar/features/appeals/components/appeal-dialog.tsx:46
+    walked:
+      - test: apps/nazar/test/appeals.spec.tsx # the dialog, against a stubbed action
+      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts # the API half, against a real Postgres (not a web e2e)
+
+  - id: one-appeal-per-refusal
+    need: >-
+      A refusal is appealed once. An appeal opened meanwhile by someone else, a request the köşk no longer holds as refused, and one that is
+      gone are each told in words, the dialog closes and the list is made right; a refusal of the permission is told and keeps what she
+      wrote.
+    drawn: [sending, settled, toastExists, toastNotRejected, toastGone, toastForbidden, toastFailed, only-a-refused-request-is-appealed]
+    built:
+      - action: medaris.api:createMadrasahAppeal
+      - route: apps/nazar/features/appeals/appeals.ts:55
+    walked:
+      - test: apps/nazar/test/appeals.spec.tsx # APPEAL_EXISTS only
+      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts # the API's refusals
+
+  - id: only-those-allowed-appeal
+    need: >-
+      Only the başmüderris, and a nazır who was given madrasah.appeal_open, read and open appeals; any other nazır is told, in words and
+      with a way out, that the page is not theirs.
+    drawn: [forbidden, forbiddenTitle, forbiddenAlert]
+    built:
+      - action: medaris.api:listMadrasahAppeals
+      - route: apps/nazar/features/shell/components/page-problem.tsx:23
+    walked:
+      - test: apps/nazar/test/appeals.spec.tsx # a caller the API refuses
+      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts # the API, per role
+
+  - id: a-missing-reason-is-said
+    need: >-
+      When she tries to send an appeal without a reason she is told so at that moment, in words that are announced and with the focus on
+      the field; the limit of 1000 characters is shown and a cut is said (F-B-6, F-B-appeals-4).
+    drawn: [form, formTouched, reasonRequired, reasonField, submit]
+    missing: none # no issue: the button is disabled instead, and the message shows only after the field was left
+
+  - id: the-dialog-says-it-is-final
+    need: >-
+      Before she sends, the dialog says that a request is appealed once and that an appeal cannot be taken back (decision D2).
+    drawn: [form, formReady]
+    missing: none
+
+  - id: appeal-is-told
+    need: >-
+      Medaris management is told when an appeal opens, and the medrese when it is decided, with the decision note; until then the toast
+      does not say "iletildi" (decision D1, F-B-appeals-5).
+    drawn: [sending, listed, toastSent]
+    missing: none # no issue: no notification and no e-mail is written by createMadrasahAppeal, acceptAppeal or rejectAppeal
+
+  - id: focus-and-a-word-after-sending
+    need: >-
+      After an appeal is sent the focus lands where a keyboard or screen-reader user can use it, and a line on the page, not only a toast
+      of six seconds, says that the row now waits (F-B-9, F-B-appeals-2).
+    drawn: [listed, toastSent, statusPending]
+    missing: none
+
+  - id: other-appeals
+    need: >-
+      A medrese appeals other decisions of a köşk to Medaris management too: hiding its course, banning its talebe, taking its hosting
+      right away (P-04).
+    drawn: [listed]
+    missing: MDRS-139

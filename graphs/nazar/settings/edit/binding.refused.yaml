@@ -1,0 +1,57 @@
+# nazar.settings.edit, the saves the API refuses, on the local stack. Same data as binding.yaml (binding.common.yaml). Each walk opens the
+# page as the başmüderris of a medrese of the walk's own, types, and then something is done to the medrese behind her page, so that
+# "Kaydet" is answered with a refusal: the toast "Ayarlar kaydedilemedi" stays, the form keeps what she typed, and she is back in `dirty`.
+#   head   the başnazım takes her seat (PUT /madrasahs/<id>/head-muderris): the save is AUTHZ_FORBIDDEN, "Bunu yapma izniniz yok.".
+#   gone   the başnazım deletes the medrese: the save is MADRASAH_NOT_FOUND (from the domain; the guard may answer 403 instead, which the
+#          toast would say as "Bunu yapma izniniz yok."), "Bir şeyler ters gitti. Biraz sonra yeniden deneyin."
+# `states.dirty.before` is the something: it runs each time the walk reaches `dirty` (idempotent), after the typing and before Kaydet is
+# pressed. `saving` has no `call` here, so the replay passes through it: a server action answers 200 whatever the API said, and the busy
+# screen is checked in binding.yaml. No effect is bound: once the medrese is deleted the API cannot be asked about it.
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.settings.edit
+
+states:
+  dirty:
+    before:
+      - run: [node, ../nazar/settings/edit/settings-data.mjs, break, '{breakHow}']
+        expect: break
+
+scenarios:
+  # The seat is taken after the page was opened.
+  saveForbidden:
+    given: { reader: head, history: never, courses: empty, flips: closed, attempt: valid, answer: forbidden }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}/ayarlar'
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: 'Düzenlenmiş Medrese Adı'
+      typedDescription: 'Yeni açıklama.'
+      typedAgain: 'Yeni açıklama, bir kez daha.'
+      savedName: 'Düzenlenmiş Medrese Adı'
+      madrasahId: '{made.madrasah}'
+      breakHow: head
+      fixName: 'Düzeltilmiş Medrese Adı'
+      fixDescription: '{made.description}'
+
+  # The medrese is deleted after the page was opened.
+  saveFailed:
+    given: { reader: head, history: never, courses: empty, flips: closed, attempt: valid, answer: failed }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}/ayarlar'
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: 'Düzenlenmiş Medrese Adı'
+      typedDescription: 'Yeni açıklama.'
+      typedAgain: 'Yeni açıklama, bir kez daha.'
+      savedName: 'Düzenlenmiş Medrese Adı'
+      madrasahId: '{made.madrasah}'
+      breakHow: gone
+      fixName: 'Düzeltilmiş Medrese Adı'
+      fixDescription: '{made.description}'

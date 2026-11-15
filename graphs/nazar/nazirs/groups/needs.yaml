@@ -1,0 +1,172 @@
+# What must exist for the başmüderris of a medrese to manage its permission groups: the flow's product list (LAYOUT.md section 7).
+# Each need is what the product must do, from the flow's story, not from what the page does today; the known gaps go to
+# graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+#
+# For the gaps merge:
+#   missing:  group-keeps-its-scope, name-before-people, errors-are-announced, the-dialog-is-described-by-its-intro,
+#             busy-controls-say-so, focus-after-a-delete, error-toast-over-a-modal
+#   unwalked: count-moves-meanwhile (a unit test, no e2e and no replay). groups#2 a3 counts 33 boxes and is stale (the API's own
+#             e2e and the local stack say 11 + 23), so group-codes-are-all-34 rests on the API e2e, not on a web check
+kind: needs
+flow: nazar.nazirs.groups
+status: proposed
+
+needs:
+  - id: define-a-group
+    need: >-
+      The başmüderris defines a named set of permissions for her medrese, to give to nazırs with one choice. A group needs a
+      name and at least one permission, says what is missing before anything is sent, and its name is its own among the
+      medrese's groups, whatever its case.
+    drawn: [createForm, createFormCourse, creating, creatingCourse, listed, empty, nameRequired, nameTaken, permissionsProblem, toastSaved]
+    built:
+      - action: medaris.api:createMadrasahPermissionGroup
+      - route: apps/nazar/features/nazirs/components/group-dialog.tsx:209
+    walked:
+      - e2e: apps/nazar/e2e/groups.e2e.ts
+        check: 'groups#2'
+      - e2e: apps/nazar/e2e/groups.e2e.ts
+        check: 'groups#4'
+      - test: apps/nazar/test/group-dialog.spec.tsx
+      - replay: defines
+      - replay: taken
+
+  - id: scope-limits-the-permissions
+    need: >-
+      The scope of a group says what it may hold: "Medrese" lets in the medrese's permissions and the course ones, "Ders" only the
+      course ones, and choosing "Ders" switches the medrese ones off and unticks them.
+    drawn: [createForm, createFormCourse, scopeMadrasah, scopeCourse, boxCourseOpen, boxNazirAppoint, metaMadrasah, metaCourse]
+    built:
+      - route: apps/nazar/features/nazirs/permissions.ts:316
+    walked:
+      - e2e: apps/nazar/e2e/groups.e2e.ts
+        check: 'groups#3'
+      - test: apps/nazar/test/group-dialog.spec.tsx
+      - replay: defines
+
+  - id: group-codes-are-all-34
+    need: >-
+      The dictionary the dialog draws is the medrese's 11 permissions and the 23 of "Medrese dersleri" (the 21 course codes, "İzin
+      grubu tanımla" and "E-postayla kullanıcı bul"), 34 boxes, and a başmüderris may give all of them.
+    drawn: [madrasahSection, courseSection]
+    built:
+      - action: medaris.api:getMadrasahPermissionCatalog
+      - route: apps/tedrisat/src/assignment/permission-catalog.ts:123
+    walked:
+      - test: apps/tedrisat/test/e2e/madrasah-permission.e2e.spec.ts
+
+  - id: cards-say-what-a-group-holds-and-who-has-it
+    need: >-
+      Each group is a card with its name, its first permissions as sentences and how many permissions and how many nazırs it has,
+      oldest group first, so a başmüderris sees what a group does before giving it.
+    drawn: [listed, groupList, cardName, cardSummary, cardUsage]
+    built:
+      - action: medaris.api:listMadrasahPermissionGroups
+      - route: apps/nazar/features/nazirs/components/permission-groups.tsx:71
+    walked:
+      - e2e: apps/nazar/e2e/groups.e2e.ts
+        check: 'groups#1'
+      - replay: usedCourse
+
+  - id: rename-without-asking
+    need: >-
+      A group can be renamed at once, even while nazırs hold it, because a rename changes no one's permissions.
+    drawn: [editForm, editFormCourse, updating, updatingCourse, a-rename-never-asks]
+    built:
+      - action: medaris.api:updateMadrasahPermissionGroup
+      - route: apps/nazar/features/nazirs/permissions.ts:401
+    walked:
+      - e2e: apps/nazar/e2e/groups.e2e.ts
+        check: 'groups#5'
+      - replay: usedCourse
+
+  - id: change-asks-the-holders
+    need: >-
+      Changing the permissions of a group nazırs hold asks what becomes of them: they keep what the group gives them as single
+      permissions, or lose it; nothing is chosen for her, and nothing is saved until she chooses. A group nobody holds is changed
+      with no question.
+    drawn: [askEdit, askEditChosen, updatingAsked, a-used-group-is-asked-about]
+    built:
+      - action: medaris.api:updateMadrasahPermissionGroup
+      - route: apps/nazar/features/nazirs/components/group-dialog.tsx:400
+    walked:
+      - e2e: apps/nazar/e2e/groups.e2e.ts
+        check: 'groups#6'
+      - test: apps/nazar/test/group-dialog.spec.tsx
+      - replay: usedCourse
+      - replay: usedMedrese
+      - replay: unusedCourse
+
+  - id: delete-asks-the-holders
+    need: >-
+      Deleting a group nazırs hold asks the same, and takes nothing if she goes back; a group nobody holds is deleted after one
+      plain question, which says nobody's permissions change.
+    drawn: [askDelete, askDeleteChosen, askDeleteUnused, deleting, a-used-group-is-deleted-with-an-answer, toastDeleted]
+    built:
+      - action: medaris.api:deleteMadrasahPermissionGroup
+      - route: apps/nazar/features/nazirs/components/group-dialog.tsx:190
+    walked:
+      - e2e: apps/nazar/e2e/groups.e2e.ts
+        check: 'groups#7'
+      - e2e: apps/nazar/e2e/groups.e2e.ts
+        check: 'groups#8'
+      - test: apps/nazar/test/group-dialog.spec.tsx
+      - replay: usedMedrese
+      - replay: unusedCourse
+
+  - id: count-moves-meanwhile
+    need: >-
+      When someone is given the group while its question is not yet open, the API's refusal still opens the question, with the
+      number it counts now, so no one loses permissions unasked.
+    drawn: [updating, deleting, askEdit, askDelete]
+    built:
+      - route: apps/nazar/features/nazirs/components/group-dialog.tsx:177
+    walked:
+      - test: apps/nazar/test/group-dialog.spec.tsx
+
+  - id: group-keeps-its-scope
+    need: >-
+      A group keeps the scope it was made with, so that editing it opens the choice it was made with, and an update cannot put a
+      permission into a group that its scope does not allow (GROUPS-1, decision D1).
+    drawn: [editForm, editFormCourse]
+    missing: none # no issue yet: the API stores no scope and works it out from the codes (madrasah-permission.service.ts)
+
+  - id: name-before-people
+    need: >-
+      The name of a group is checked before the people who hold it are asked about, so a refused name is met at once and not after
+      the answer (GROUPS-3, decision D2).
+    drawn: [askEdit, updatingAsked]
+    missing: none # no issue yet: updateGroup throws USERS_POLICY_REQUIRED before nameTaken
+
+  - id: errors-are-announced
+    need: >-
+      What is wrong with the form is told to a screen-reader and keyboard user: the name error is announced and the focus goes to
+      the first field that is wrong, the name input is marked required, and a box that is off says why (F-B-5, F-B-7, F-B-10).
+    drawn: [nameRequired, nameTaken, nameField, permissionsProblem, boxNazirAppoint]
+    missing: none
+
+  - id: the-dialog-is-described-by-its-intro
+    need: >-
+      The dialog and the question are described by their intro sentence, not by the whole form with its 34 boxes (F-B-12).
+    drawn: [createDialog, editDialog, askEditDialog]
+    missing: none
+
+  - id: busy-controls-say-so
+    need: >-
+      While a save or a delete runs, "Vazgeç" and the close icons say they are busy and the busy word is the app's own, from its
+      catalog (GROUPS-2, F-B-2).
+    drawn: [creating, updating, updatingAsked, deleting, closeIcon, cancel]
+    missing: none
+
+  - id: focus-after-a-delete
+    need: >-
+      After a group is deleted the focus lands on the section's heading or on the next card, and a line on the page, not only a toast
+      of six seconds, says it (F-B-9).
+    drawn: [listed, empty, toastDeleted]
+    missing: none
+
+  - id: error-toast-over-a-modal
+    need: >-
+      A refusal that is not about a field is said inside the dialog it belongs to, where a screen reader reads it (GROUPS-4, not
+      verified).
+    drawn: [creating, updating, deleting]
+    missing: none

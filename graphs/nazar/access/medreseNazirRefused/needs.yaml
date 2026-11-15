@@ -1,0 +1,131 @@
+# What must exist for a medrese nazırı whom the başmüderris gave nothing (or one permission) to open the pages of the medrese and be told, on each,
+# what they may do: the flow's product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the open
+# bugs (planned.md C: MDRS-223), not from what the pages do today. Read by people for now: no checker runs on this file yet.
+#
+# For the orchestrator's gaps merge (nothing here was replayed; the unit tests named under `walked` are the only runs):
+#   missing:  menu-draws-what-opens (MDRS-223), lands-on-a-page-that-opens (none), refusal-says-how-to-ask (none),
+#             awaiting-notice-speaks-to-the-giver (none), partial-courses-grants-say-why (none)
+#   unwalked: appeals-refusal-is-walked (a unit test, no e2e and no replay), nazir-appoint-sees-own-rows (a unit test, no e2e: the replay
+#             scenario `appointer` is written and not run), head-contrast-is-walked (the replay scenario `head` is written and not run)
+# The course menu's twin of menu-draws-what-opens (F-D2c-2: Yasaklamalar, Ders nazırları and Ders ayarları drawn to a ders nazırı with no
+# grant) is a need of nazar.access.dersNazirPages, not of this flow.
+kind: needs
+flow: nazar.access.medreseNazirRefused
+status: proposed
+
+needs:
+  - id: refusal-keeps-the-page
+    need: >-
+      A person who holds none of the codes a page of the medrese asks for is told so on that page, under the page's own title, in one
+      wording for all ten pages, and is given none of the page's body, list, form or buttons; the başmüderris, who holds every medrese
+      code, is never refused.
+    drawn: [shown, forbiddenAlert, forbiddenText, panoTitle, coursesTitle, courseNewTitle, offsiteTitle, archiveTitle, studentsTitle, nazirsTitle, bansTitle, appealsTitle, settingsTitle, a-nazir-with-no-grant-meets-no-body, the-head-is-never-refused]
+    built:
+      - action: medaris.api:getMadrasahDashboard
+      - action: medaris.api:listMadrasahCourses
+      - action: medaris.api:listMadrasahHostingKosks
+      - action: medaris.api:listOffsiteCourseRequests
+      - action: medaris.api:listMadrasahArchive
+      - action: medaris.api:listMadrasahStudents
+      - action: medaris.api:listMadrasahNazirs
+      - action: medaris.api:listMadrasahBans
+      - action: medaris.api:listMadrasahAppeals
+      - action: medaris.api:getMadrasahSettings
+      - route: apps/nazar/features/shell/components/page-problem.tsx:23
+      - route: apps/nazar/lib/tedrisat-read.ts:45
+    walked:
+      - e2e: apps/nazar/e2e/pano.e2e.ts
+        check: 'pano#5'
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#11'
+      - e2e: apps/nazar/e2e/offsite.e2e.ts
+        check: 'offsite#4'
+      - e2e: apps/nazar/e2e/archive.e2e.ts
+        check: 'archive#8'
+      - e2e: apps/nazar/e2e/students.e2e.ts
+        check: 'students#5'
+      - e2e: apps/nazar/e2e/nazirs.e2e.ts
+        check: 'nazirs#6'
+      - e2e: apps/nazar/e2e/bans.e2e.ts
+        check: 'bans#8'
+      - e2e: apps/nazar/e2e/settings.e2e.ts
+        check: 'settings#6'
+      - test: apps/nazar/test/pano.spec.tsx
+      - test: apps/nazar/test/courses-page.spec.tsx
+      - test: apps/nazar/test/open-course.spec.tsx
+      - test: apps/nazar/test/offsite.spec.tsx
+      - test: apps/nazar/test/archive-page.spec.tsx
+      - test: apps/nazar/test/students.spec.tsx
+      - test: apps/nazar/test/nazirs-page.spec.tsx
+      - test: apps/nazar/test/bans.spec.tsx
+      - test: apps/nazar/test/settings-page.spec.tsx
+
+  - id: appeals-refusal-is-walked
+    need: >-
+      Every page of the medrese that can refuse is walked as a person with no grant, İtirazlar included, so that a page added to the menu
+      cannot refuse without anything noticing.
+    drawn: [appealsTitle, appealsLine, forbiddenAlert]
+    built:
+      - action: medaris.api:listMadrasahAppeals
+      - route: apps/nazar/features/appeals/components/appeals-page.tsx:30
+    walked:
+      - test: apps/nazar/test/appeals.spec.tsx
+
+  - id: menu-draws-what-opens
+    need: >-
+      The medrese menu draws, for each person, the entries whose page opens for the codes they hold in the medrese, or marks the others, so
+      that a nazır with no grant is not offered eight pages that all say no (MDRS-223; the course menu already does it for Ödevler,
+      Değerlendirme and Ders destesi, MDRS-290).
+    drawn: [mainMenu, menuPano, menuCourses, menuStudents, menuNazirs, menuBans, menuAppeals, menuArchive, menuSettings]
+    missing: MDRS-223
+
+  - id: lands-on-a-page-that-opens
+    need: >-
+      A nazır with no grant who signs in, or opens "/", lands on a page that opens for them (Bildirimler at the least) or on a Pano that says
+      what they may do, not on the first page that refuses them (REFUSED-1).
+    drawn: [opened, panoTitle, greeting, scopeCard, forbiddenAlert]
+    missing: none
+
+  - id: refusal-says-how-to-ask
+    need: >-
+      The refusal is announced to a person who cannot see it (a heading or an alert), names whom to ask and gives a way to do it, and leads
+      to the first page the person may open; the page's tab title says it too (F-A-16, F-B-13).
+    drawn: [forbiddenAlert, forbiddenText, crumbCourses]
+    missing: none
+
+  - id: nazir-appoint-sees-own-rows
+    need: >-
+      A nazır the başmüderris allowed to appoint (madrasah.nazir_appoint) reads the roster and the permission groups, appoints, and dismisses
+      only the people they seated; they give no permission and define no group, and every other page of the medrese still refuses them
+      (MDRS-108).
+    drawn: [nazirsTable, appointNazir, dismissRow, groupsTitle, awaitingAlert, madrasah-nazir-appoint-opens-the-roster, madrasah-nazir-appoint-opens-the-roster-only]
+    built:
+      - action: medaris.api:listMadrasahNazirs
+      - action: medaris.api:addMadrasahNazir
+      - action: medaris.api:removeMadrasahNazir
+      - route: apps/nazar/features/nazirs/components/nazirs-table.tsx:44
+    walked:
+      - test: apps/nazar/test/nazirs-page.spec.tsx
+
+  - id: awaiting-notice-speaks-to-the-giver
+    need: >-
+      The warning that a nazır "henüz izin almadı" is shown to the person who can give permission, and worded for a nazır who cannot (REFUSED-2).
+    drawn: [awaitingAlert, awaitingText]
+    missing: none
+
+  - id: partial-courses-grants-say-why
+    need: >-
+      A nazır holding some of the courses family of codes (madrasah.course_hide or madrasah.muderris_manage without madrasah.course_open;
+      no madrasah.settings_edit) is told on the controls they cannot use that it is a refusal, not that the köşks or policies "could not be
+      read", and is not offered a button that leads to a refusal (F-A-8).
+    drawn: [coursesTitle, forbiddenAlert]
+    missing: none
+
+  - id: head-contrast-is-walked
+    need: >-
+      The same walk as the başmüderris shows, on each of the ten pages, the control that the nazır with no grant is not given, so that a refusal
+      that leaves a button behind (REFUSED-3) is caught by the walk and not only by the nazır's own.
+    drawn: [openCourseLink, applicationsTitle, offsiteLink, coursesTable, courseNewSubmit, offsiteSubmit, hideMedrese, archiveTable, studentsTable, appointNazir, givePermission, defineGroup, banButton, appealsEmpty, saveSettings, settingsGeneral]
+    built:
+      - route: apps/nazar/features/pano/components/pano-page.tsx:108
+      - route: apps/nazar/features/settings/components/settings-form.tsx:224

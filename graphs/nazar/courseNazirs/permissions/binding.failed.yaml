@@ -1,0 +1,39 @@
+# nazar.courseNazirs.permissions, the course is deleted while the dialog is open. Written without a replay; see locators.binding.yaml for the data and
+# the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/courseNazirs/permissions \
+#     --bind graphs/nazar/courseNazirs/permissions/binding.failed.yaml --cover transitions --absent --out <dir>
+# `before` on "Kaydet" deletes the course (post-data.mjs drop-course, which runs helpers/course.mjs remove cnperm as the başnazım), so the PATCH
+# names a course that is not there: the guard's resolver answers COURSE_NOT_FOUND (404), which the page has no sentence for, and says
+# "İzinler kaydedilemedi" / "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." with the dialog still open. This stands for the whole class `failed`
+# (HTTP_400, VALIDATION_ERROR, COURSE_NOT_FOUND). From the code, not seen: the 404 is read in apps/tedrisat/src/course/course.controller.ts:111.
+# `held same` reads `course-gone`, which the helper recorded; `teardown` finds nothing to dismiss and a course already removed (`none`).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseNazirs.permissions
+
+scenarios:
+  failed:
+    given: { post: dated, answer: failed }
+    as: muderris
+    open: '{nazar}/ders/{cn.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, down]
+        expect: post-data down
+      - run: [node, helpers/course.mjs, make, cnperm, --weeks, '1', --lessons, '1']
+        expect: '"tag":"cnperm"'
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, up]
+        expect: post-data up
+    teardown:
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, down]
+        expect: post-data down
+      - run: [node, helpers/course.mjs, remove, cnperm]
+        expect: course remove cnperm
+
+nodes:
+  save:
+    role: button
+    name: '/^Kaydet$/'
+    within: { role: dialog, name: İzinleri düzenle }
+    before: [{ run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, drop-course], expect: post-data drop-course }]

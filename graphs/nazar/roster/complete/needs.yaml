@@ -1,0 +1,118 @@
+# What must exist for a course's team to mark a talebe's course complete and to reopen it: the flow's product list (LAYOUT.md section 7).
+# Each need is what the product must do, from the flow's story and the planned work in the inventory (planned.md), not from what the page
+# does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+#
+# For the gaps merge:
+#   missing   (no code): tell-the-talebe-about-a-completion (no issue yet, decision D1, ROSCOM-4), say-when-a-course-was-completed (no issue
+#             yet, decision D2, ROSCOM-3), keep-focus-after-a-decision (no issue yet, F-D1-05), say-a-change-out-loud (no issue yet,
+#             F-D1-04), a-barred-talebe-is-told-at-the-row (no issue yet, ROSCOM-2), icazet-record (MDRS-149; also P-P4 of the PRD)
+#   unwalked  (code, no web e2e and no replay passed yet; only vitest specs and the API's own e2e): complete-a-talebes-course,
+#             reopen-a-completion, find-a-talebe-in-the-roster, a-moved-seat-is-told, buttons-follow-the-code
+# No web e2e exists for this flow (the inventory says e2e: none). Five replay scenarios are written and none has run yet (completes,
+# decider, bare, goneMeanwhile, refusedMeanwhile), so none is named under `walked`.
+kind: needs
+flow: nazar.roster.complete
+status: proposed
+
+needs:
+  - id: complete-a-talebes-course
+    need: >-
+      The course team marks a talebe's course complete, and only the team does: reaching 100 percent in the talebe's own progress never
+      completes it. The talebe leaves the enrolled list for the completed one at once, the two counts follow, and the seat's record (the
+      completion) survives later progress writes.
+    drawn: [complete, completing, rowComplete, toastCompleted, rowsCompleted, completedEmpty, countEnrolled, countCompleted, only-the-team-completes]
+    built:
+      - action: medaris.api:setEnrollmentStatus
+      - route: apps/nazar/features/enrolments/components/roster-table.tsx:75
+    walked:
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - test: apps/tedrisat/test/e2e/course-team.e2e.spec.ts
+
+  - id: reopen-a-completion
+    need: >-
+      The course team reopens a completion, and the talebe is enrolled again with the progress they had; a barred talebe is refused. A
+      reopening that cannot be made says why.
+    drawn: [reopen, reopening, rowReopen, toastReopened, toastFailed, completed]
+    built:
+      - action: medaris.api:setEnrollmentStatus
+      - route: apps/nazar/features/enrolments/components/roster-table.tsx:75
+    walked:
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - test: apps/tedrisat/test/e2e/course-team.e2e.spec.ts
+
+  - id: find-a-talebe-in-the-roster
+    need: >-
+      The course team finds a talebe by name or by e-mail address in the roster, sorts the names, and reads a long roster ten rows at a time
+      without asking the server again.
+    drawn: [searchEnrolled, sortByName, moreButton, showing, emptySearch, rowByName, rowByEmail, rowFirstAscending, rowFirstDescending, enrolled]
+    built:
+      - route: apps/nazar/features/enrolments/components/roster-table.tsx:60
+      - route: apps/nazar/features/enrolments/enrolments.ts:151
+    walked:
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+
+  - id: a-moved-seat-is-told
+    need: >-
+      A seat that somebody else moved after the page was read (removed, or never there) leaves the list with a notice that says so, not an
+      error, and the list is read again.
+    drawn: [toastGone, completing, reopening, enrolled]
+    built:
+      - route: apps/nazar/features/enrolments/enrolments.ts:224
+      - route: apps/nazar/features/enrolments/components/roster-table.tsx:94
+    walked:
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+
+  - id: buttons-follow-the-code
+    need: >-
+      A reader sees a button only for what they hold: the müderris all of them, a ders nazırı who was given enrollment.decide the lists and
+      none, and a reader who holds nothing is told so; the API still decides every write.
+    drawn: [complete, remove, reopen, colActions, bulkOpen, forbiddenAlert, forbidden, toastRefused]
+    built:
+      - route: apps/nazar/features/enrolments/enrolments.ts:199
+      - route: apps/nazar/features/enrolments/components/enrolments-page.tsx:44
+    walked:
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+
+  - id: tell-the-talebe-about-a-completion
+    need: >-
+      A talebe is told when their course is marked complete or reopened, and the person who marks it is told what follows for the talebe: the
+      coming celses leave their schedule and their calendar. Today the toast says only that the talebe completed the course (ROSCOM-4,
+      decision D1).
+    drawn: [completing, reopening, toastCompleted, toastReopened]
+    missing: none
+
+  - id: say-when-a-course-was-completed
+    need: >-
+      The roster of those who completed a course says on which day each was marked complete (the API's completedAt), not the day they joined
+      (ROSCOM-3, decision D2).
+    drawn: [completed, colJoined, rowsCompleted]
+    missing: none
+
+  - id: a-barred-talebe-is-told-at-the-row
+    need: >-
+      A talebe who is barred from the course is marked as such on the roster, and a reopening that the ban forbids is not offered, or is refused
+      in words that say the ban is the reason (ROSCOM-2).
+    drawn: [reopen, reopening, toastFailed]
+    missing: none
+
+  - id: keep-focus-after-a-decision
+    need: >-
+      After a completion or a reopening the keyboard focus lands on a place a person can use (the table's caption or the next row's button), and
+      a pressed button is not natively disabled while it is busy (F-D1-05, ROSCOM-1, F-D1-20).
+    drawn: [completing, reopening, rowComplete, rowReopen, moreButton]
+    missing: none
+
+  - id: say-a-change-out-loud
+    need: >-
+      A search, a sort and "Daha fazla göster" are told to a screen-reader user: the count line and the empty-search line are live regions
+      (F-D1-04).
+    drawn: [showing, emptySearch, searchEnrolled, sortByName]
+    missing: none
+
+  - id: icazet-record
+    need: >-
+      A course's team records which talebe received which icazet in the course and from whom, from the roster of those who completed it; the
+      completion date is the first thing it needs. The issue says "Not now" and its questions are open (P-06, MDRS-149; the PRD's public
+      verification of icazetnames, P-P4, is the same work seen from the talebe's side and is gated on scholarly review).
+    drawn: [completed, rowsCompleted, colJoined]
+    missing: MDRS-149

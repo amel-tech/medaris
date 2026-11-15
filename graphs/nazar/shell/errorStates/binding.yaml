@@ -1,0 +1,135 @@
+# nazar.shell.errorStates on the local stack: nazar-web at http://localhost:4002, as the başmüderris (and as nobody, for the 404 of
+# /auth/<unknown>).
+#   node apps/engine/src/cli.ts replay graphs/nazar/shell/errorStates --bind graphs/nazar/shell/errorStates/binding.yaml --absent --out <dir>
+#   ... --cover transitions            every transition this binding can drive (see "Not bound" below)
+#   ... --bind graphs/nazar/shell/errorStates/binding.stays.yaml --cover transitions   the retries that fail again
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Nothing below was seen on the stack; every
+# locator is read from the code and the catalog, and the only thing looked at was the served HTML of the 404 addresses (a read-only
+# GET as the başmüderris, 15 Nov 2026: status, title, headings and landmarks). A later walk checks each of them.
+#
+# The four 404 scenarios need no data and change nothing (access#6 a1 and a3, auth-pages#4 a2). The two failed-read scenarios make
+# their failure through throttle.mjs (this folder): it spends the başmüderris's request budget for one route, so tedrisat answers
+# that route with 429 for the rest of the window (60 s) and every other call is left alone; nazar-web takes any answer but 401 for
+# a failed read. It is written from the code and has not been run: the walk phase proves it, or replaces it. The failure is made in
+# the state's `before`, right before the state is checked, so the time the sign-in and the first compile take does not matter; the
+# retry button's `before` waits for the window to lift, so the retry that works finds a working API. `teardown` waits for the
+# window too, so that the next walk, which signs in as the same account, finds it clear. Replays run under the lock one at a
+# time; that is what makes a blocked route safe to leave for a minute.
+#
+# Not bound, so the replay cannot reach them (reported): pageThrows and layoutThrows (nothing in the stack's nazar-web throws while
+# it renders, so errorShown and shellErrorShown, their nodes below, and the transitions through nextRetrying have no scenario), the
+# roles face at /erisim-yok and under a scoped layout (the same face at another address), and HTTP statuses (the replay does not
+# read a navigation's status: auth-pages#4 a1, ERR-3). The retry that fails again (recovery: stays) is binding.stays.yaml's.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.shell.errorStates
+
+scenarios:
+  # The main story: a section that does not exist in the başmüderris's own medrese (access#6 a3).
+  unknownSection:
+    given: { arrival: unknownSection, recovery: gone }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/yok'
+
+  # A medrese that is not hers (access#6 a1); the course's address (a2) and a medrese-only section on a course (a4) draw the same page.
+  foreignScope:
+    given: { arrival: foreignScope, recovery: gone }
+    as: basmuderris
+    open: '{nazar}/medrese/a0000000-0000-4000-8000-0000000000ff'
+
+  # An address no page owns, signed in.
+  unknownAddress:
+    given: { arrival: unknownAddress, recovery: gone }
+    as: basmuderris
+    open: '{nazar}/olmayan-sayfa'
+
+  # Signed out: the one subtree the proxy lets through (auth-pages#4).
+  visitorAuthAddress:
+    given: { arrival: visitorAuthAddress, recovery: gone }
+    open: '{nazar}/auth/yok'
+
+  # The roles read fails at the root address, and the retry works once the window has lifted.
+  rolesUnreadable:
+    given: { arrival: rolesUnreadable, recovery: gone }
+    as: basmuderris
+    open: '{nazar}/'
+    teardown:
+      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, /me/assignments]
+        expect: 'clear /me/assignments'
+
+  # A page's own read fails (İtirazlar) and the retry works once the window has lifted.
+  readFailed:
+    given: { arrival: readFailed, recovery: gone }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+    teardown:
+      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
+        expect: clear
+
+events:
+  # the roles face and the 404 page have no other link than the address bar. Hesap asks for the roles too, so where the roles read is
+  # being refused the walk first waits for the window to lift (at once, where nothing is refused), or it would arrive at the same face.
+  NAVIGATE:
+    - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, /me/assignments]
+      expect: 'clear /me/assignments'
+    - goto: '{nazar}/hesap'
+
+states:
+  # "/" redirects a person who holds a medrese to it (the seed's başmüderris), when the roles read works
+  scope_opened: { url: '{nazar}/medrese/*' }
+  # the same address as the box, so the empty line is what proves the page was read again (the seed has no refused request to appeal)
+  page_shown: { url: '{nazar}/medrese/*/itirazlar', text: 'Köşkün reddettiği ders talebi yok.' }
+  sign_in_opened: { url: '{keycloak}/realms/medaris/**' }
+  left: { url: '{nazar}/hesap' }
+  # The failure is made right before the state is checked (the page has already been opened once, so the reload is what fails).
+  rolesUnreadable:
+    before:
+      - run: [node, ../nazar/shell/errorStates/throttle.mjs, hold, basmuderris, /me/assignments]
+        expect: held
+      - goto: '{nazar}/'
+  readFailed:
+    before:
+      - run: [node, ../nazar/shell/errorStates/throttle.mjs, hold, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
+        expect: held
+      - goto: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+
+# Where role and name cannot find a node, or would find the wrong one when the graph says a node is absent (--absent): the four
+# faces share the kit's SystemState, the same button name and, for the <main>, the same markup, so each is found by its own words.
+nodes:
+  rolesPage: { css: 'main.mds-system-state--page', hasText: Görevleriniz okunamadı }
+  rolesRetry:
+    role: button
+    name: Yeniden dene
+    within: { css: 'main.mds-system-state--page', hasText: Görevleriniz okunamadı }
+    # the window lifts within 60 s of being spent; the retry that works needs it to have lifted
+    before:
+      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, /me/assignments]
+        expect: 'clear /me/assignments'
+  # The shell's landmarks and the page's own heading are found only where the box sits in them: the page a walk leaves for (the Pano, Hesap,
+  # İtirazlar once it is read) has the same sidebar, menu, <main id="main"> and heading, and --absent would find them there. The loading
+  # skeleton has a <main id="main"> and an <aside> of its own, which the `:has` also leaves out.
+  shellSidebar: { css: 'div:has(> div > main#main section.mds-system-state) > aside' }
+  shellMenu: { css: 'div:has(> div > main#main section.mds-system-state) > aside nav[aria-label="Ana menü"]' }
+  shellMain: { css: 'main#main:has(section.mds-system-state)' }
+  readPageTitle: { css: 'main#main:has(section.mds-system-state) > header h1' }
+  readSection: { css: 'main#main section.mds-system-state' }
+  readRetry:
+    role: button
+    name: Yeniden dene
+    within: { css: 'main#main section.mds-system-state' }
+    before:
+      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
+        expect: clear
+  notFoundPage: { css: 'main.mds-system-state--page', hasText: Sayfa bulunamadı }
+  errorPage: { css: 'main.mds-system-state--page', hasText: Sayfa açılamadı }
+  errorRetry:
+    role: button
+    name: Yeniden dene
+    within: { css: 'main.mds-system-state--page', hasText: Sayfa açılamadı }
+  # the root error document has its own <main>; "Yeniden dene" is the same words as the page's, so its <main> tells them apart
+  docPage: { css: 'main.mds-system-state--page', hasText: Bir şeyler ters gitti }
+  docRetry:
+    role: button
+    name: Yeniden dene
+    within: { css: 'main.mds-system-state--page', hasText: Bir şeyler ters gitti }

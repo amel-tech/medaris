@@ -1,0 +1,566 @@
+# Celseler of a course in nazar-web (/ders/<id>/celseler), where its staff set how each celse is attended: the meeting link, the time,
+# the in-person mark, the YouTube stream and the recording access. Read from the code of PR #394's branch on 15 Nov 2026
+# (apps/nazar/features/sessions/, features/recordings/components/release-dialog.tsx, the API's PATCH /lessons/{id},
+# PUT /lessons/{id}/live-stream, PUT /lessons/{id}/recording-availability). It says what the code does today. What it finds wrong is
+# in ui.yaml `rules` and in the descriptions of the states it touches:
+#   - the four inline forms open BELOW the table, far from the row's button, and move no focus; closing one drops the focus to the page
+#     (F-C-course-a-08, F-L-17); the release dialog is controlled and has no trigger, so where its focus returns is the library's
+#     (F-C-course-a-25); both are from the code, none was seen in a browser;
+#   - a field error is cleared only when a form is opened again, so a corrected value is sent, and a refused write is answered, with the
+#     old sentence still under the field (MANAGE-4);
+#   - a link, a time or an in-person mark written by PATCH /lessons/{id} leaves no audit row, though the stream, the recording access and
+#     the cancel do (MANAGE-1);
+#   - a celse that was hidden meanwhile (LESSON_NOT_FOUND) is worded "Bir şeyler ters gitti" and not read again, while the same code in
+#     the release dialog says the celse is gone and reads the page again (MANAGE-2);
+#   - the calendar invitation names how a celse is attended as of its last send, and a link, a stream or an in-person change alone sends
+#     nothing new (MANAGE-3);
+#   - a meeting link can be replaced and never removed, though the API takes null (MANAGE-5).
+# The talebe's half is tedris.celse.attend; the planner is nazar.sessions.plan; "İptal et" is nazar.sessions.cancel (started below).
+schema: delurio-graph/0
+kind: flow
+id: nazar.sessions.manage
+status: captured
+domain: medaris.api
+ui: nazar.sessions.manage
+title: Set how a celse is attended
+summary: >-
+  The müderris (or a ders nazırı who holds the codes) opens Celseler. Each celse still ahead is a row with its "Katılım": its meeting
+  link, its YouTube stream, the in-person mark, or "Eksik" when it has none. A row has a button for each thing the person may change:
+  "Bağlantı ekle" or "Bağlantıyı güncelle", "Yüz yüze ayarı", "Canlı yayın ekle" or "Canlı yayını güncelle", "Kayıt erişimi",
+  "Tarihi değiştir" and "İptal et". The first four of those open a small form under the table (the meeting link, the stream link,
+  one of three in-person choices, the date and time); "Kayıt erişimi" opens a dialog. "Kaydet" writes one change, a toast says what
+  was saved, the form closes and the table is read again: "Eksik" leaves the row, and the sidebar's number of celses with no way in
+  falls. A write the API refuses is a toast and the form stays open; a link the page can see is wrong is refused before anything is
+  sent, under its field. Which buttons a person sees follows the code each needs: session.manage for the link, the time, the
+  in-person mark and "İptal et"; session.live_link for the stream; recording.manage for "Kayıt erişimi". Nothing moves the focus.
+
+scope:
+  shows: >-
+    Celseler of one course for a person who may open it: the header, the table of celses still ahead with their Katılım, the
+    four inline forms, the "Kayıt erişimi" dialog, the toasts of every write, and the sidebar's number
+  world: open
+  outOfView:
+    - "a course with no celse at all (the Alert 'Bu derste henüz celse yok' and the plan link), the 'Geçmiş celseler' table and its fold, a celse that has begun (it has no 'Tarihi değiştir' and no 'İptal et') and a cancelled one (it has no buttons and says 'İşlem yok'): only the clock and the data decide them"
+    - "'Celse planla' and its page: nazar.sessions.plan; 'İptal et', its note and its make-up: nazar.sessions.cancel (started below); 'Telafisi' and the cancelled celse as the talebe meets it: tedris.celse.cancelled"
+    - "how the talebe meets the link, the stream and the in-person mark: tedris.celse.attend, tedris.celse.watchStream; the recording and its access from Ders kayıtları: nazar.recordings.add"
+    - "a course that is held in person (its first radio then reads 'Ders yüz yüze yapılıyor…' and a celse that follows the course is covered without any other way); this graph draws a course held online"
+    - "pressing another row's button while a form is open (it swaps the form), and every mix of the three codes but the four the context names"
+    - "a read that failed (the retry state 'Celseler okunamadı'), an ended session (both server calls then send the person to sign in: realm.auth.signIn), and a call that fails outright, such as a dropped network (F-C-course-a-19)"
+
+decisions:
+  D1:
+    question: >-
+      Should a meeting link be removable from this page? The API takes null (PATCH /lessons/{id} meetingUrl), the stream has "Bağlantıyı
+      kaldır", and the link form refuses an empty field, so a link pasted by mistake can only be replaced by another https address.
+    recommend: >-
+      Yes: let the form send null for an empty field, or add the same button the stream has, and say in the help that the celse then
+      reads "Eksik" again.
+    affects: [linkForm, savingLink]
+  D2:
+    question: >-
+      Should a change of how a celse is attended (link, stream, in person) reach the talebe, as a change of time does? Today the time
+      sends a notice and a new calendar invitation; the others send nothing, and an invitation already sent says how the celse was
+      attended when it was sent.
+    recommend: >-
+      Yes, in the e-mail notice MDRS-189 plans; until then compare the attendance line in the invitation sweep too (MANAGE-3).
+    affects: [savingLink, savingInPerson, savingStream, removingStream]
+
+context:
+  holds:
+    values: [all, manage, stream, none]
+    initial: any
+    say:
+      all: "the müderris of the course: every course code, so session.manage, session.live_link and recording.manage"
+      manage: "a ders nazırı who holds session.manage and nothing else of these (the seeded one): no stream button, no 'Kayıt erişimi'"
+      stream: "a ders nazırı who holds session.live_link alone: the page opens and offers the stream, nothing else"
+      none: "a person who holds neither session.manage nor session.live_link: the page refuses (nazar.access.dersNazirPages)"
+  changeAnswer:
+    values: [saved, moved, forbidden, failed]
+    initial: any
+    say:
+      saved: "the API takes the change of the link, the time or the in-person mark"
+      moved: "the course was saved by someone else since the page was read: a stale version (409)"
+      forbidden: "the API refuses for lack of session.manage (it was taken away after the page opened)"
+      failed: "the API refuses for any other reason: the celse is gone, the body is refused"
+  streamAnswer:
+    values: [saved, moved, forbidden, failed]
+    initial: any
+    say:
+      saved: "the API takes the stream link, or clears it"
+      moved: "the celse is not a live one any more, or was cancelled meanwhile"
+      forbidden: "the API refuses for lack of session.live_link (it was taken away after the page opened)"
+      failed: "the API refuses for any other reason: the celse is gone, or the server's parser takes the link the page accepted for no stream"
+  releaseAnswer:
+    values: [saved, moved, forbidden, failed]
+    initial: any
+    say:
+      saved: "the API takes the release time"
+      moved: "the celse is gone (LESSON_NOT_FOUND): the dialog closes and the page is read again"
+      forbidden: "the API refuses for lack of recording.manage (it was taken away after the page opened)"
+      failed: "the API refuses for any other reason: the time could not be read"
+  link:
+    values: [none, set]
+    initial: none
+    say: { none: "the celse has no meeting link", set: "the celse has a meeting link" }
+  stream:
+    values: [none, set]
+    initial: none
+    say: { none: "the celse has no stream link", set: "the celse has a stream link" }
+  held:
+    values: [course, yes, no]
+    initial: course
+    say:
+      course: "the celse follows the course's in-person setting (held online here)"
+      yes: "the celse is marked in person"
+      no: "the celse is marked not in person"
+  release:
+    values: [ready, at]
+    initial: ready
+    say: { ready: "the recording opens as soon as it is ready", at: "the recording opens at a time the team set" }
+  picked:
+    values: [course, yes, no]
+    initial: course
+    say: { course: "the in-person form has 'Dersin ayarına uy' chosen", yes: "it has 'Yüz yüze' chosen", no: "it has 'Yüz yüze değil' chosen" }
+  mode:
+    values: [ready, at]
+    initial: ready
+    say: { ready: "the dialog has 'Hazır olunca hemen' chosen", at: "it has 'Şu tarih ve saatte' chosen" }
+  entered:
+    values: [blank, valid, invalid]
+    initial: blank
+    say:
+      blank: "the open form's field is empty"
+      valid: "it holds what the page accepts: an https link, a YouTube video link, a date and a time, a time in the future"
+      invalid: "it holds what the page refuses: a link that is not https, a channel link, no date, a time in the past"
+  said:
+    values: [none, link, time, stream, release]
+    initial: none
+    say:
+      none: "no field error is shown"
+      link: "'Toplantı bağlantısı https:// ile başlamalı…' under the link field"
+      time: "'Tarihi ve saati girin.' under Tarih"
+      stream: "one of the five stream problems under the stream field"
+      release: "one of 'Tarihi ve saati yazın.', 'İleri bir tarih ve saat seçin.', 'Celse … başlıyor; kayıt ondan önce açılamaz.' under the time"
+  toast:
+    values: [none, linkSaved, timeSaved, inPersonSaved, streamSaved, streamRemoved, releaseSaved, moved, forbidden, failed]
+    initial: none
+    say:
+      none: "no toast, or the last one is gone"
+      linkSaved: "'Bağlantı kaydedildi'"
+      timeSaved: "'Celse zamanı değişti'"
+      inPersonSaved: "'Yüz yüze ayarı kaydedildi'"
+      streamSaved: "'Canlı yayın bağlantısı kaydedildi'"
+      streamRemoved: "'Canlı yayın bağlantısı kaldırıldı'"
+      releaseSaved: "'Kayıt erişimi kaydedildi', with when the recording opens"
+      moved: "the error toast of a write the course or celse had moved under"
+      forbidden: "the error toast 'Bunu yapma izniniz yok.'"
+      failed: "the error toast 'Bir şeyler ters gitti…', or the stream problem the server found"
+
+guards:
+  # the buttons are drawn for the code each needs (sessions-table.tsx:446-533): `canManage`, `streams !== null`, `canRelease`
+  maySetWays: "holds == 'all' or holds == 'manage'"
+  mayStream: "holds == 'all' or holds == 'stream'"
+  mayRelease: "holds == 'all'"
+  # "Eksik": a celse still ahead with no meeting link, no stream and no in-person mark (attendance.ts:60-67, attendance-cell.tsx:16)
+  lacksWay: "link == 'none' and stream == 'none' and held != 'yes'"
+
+effects:
+  # a form or the dialog opens: the field starts empty or with what the celse holds, no error shows, the last toast is gone
+  openLink: { set: { entered: blank, said: none, toast: none } }
+  openLinkSet: { set: { entered: valid, said: none, toast: none } }
+  openTime: { set: { entered: valid, said: none, toast: none } }
+  openStream: { set: { entered: blank, said: none, toast: none } }
+  openStreamSet: { set: { entered: valid, said: none, toast: none } }
+  openInPersonCourse: { set: { picked: course, said: none, toast: none } }
+  openInPersonYes: { set: { picked: yes, said: none, toast: none } }
+  openInPersonNo: { set: { picked: no, said: none, toast: none } }
+  openRelease: { set: { mode: ready, entered: blank, said: none, toast: none } }
+  openReleaseAt: { set: { mode: at, entered: valid, said: none, toast: none } }
+  # what is typed and chosen
+  typedValid: { set: { entered: valid } }
+  typedInvalid: { set: { entered: invalid } }
+  typedReleaseValid: { set: { entered: valid, said: none } } # the dialog's error is worked out again on every change (release-dialog.tsx:62)
+  typedReleaseInvalid: { set: { entered: invalid } }
+  pickCourse: { set: { picked: course } }
+  pickYes: { set: { picked: yes } }
+  pickNo: { set: { picked: no } }
+  chooseReady: { set: { mode: ready } }
+  chooseAt: { set: { mode: at } }
+  # a send the page refuses first: only its own sentence under the field
+  saidLink: { set: { said: link } }
+  saidTime: { set: { said: time } }
+  saidStream: { set: { said: stream } }
+  saidRelease: { set: { said: release } }
+  # a send: the last toast goes before the call
+  sends: { set: { toast: none } }
+  # the form or dialog is closed: what it held is dropped, and the toast of a write stays until the next open
+  closeForm: { set: { entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterLink: { set: { link: set, toast: linkSaved, entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterTime: { set: { toast: timeSaved, entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterInPersonCourse: { set: { held: course, toast: inPersonSaved, entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterInPersonYes: { set: { held: yes, toast: inPersonSaved, entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterInPersonNo: { set: { held: no, toast: inPersonSaved, entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterStream: { set: { stream: set, toast: streamSaved, entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterRemoval: { set: { stream: none, toast: streamRemoved, entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterReleaseReady: { set: { release: ready, toast: releaseSaved, entered: blank, said: none, picked: course, mode: ready } }
+  closedAfterReleaseAt: { set: { release: at, toast: releaseSaved, entered: blank, said: none, picked: course, mode: ready } }
+  closedGone: { set: { toast: moved, entered: blank, said: none, picked: course, mode: ready } }
+  # a refused write: the form or dialog stays, with its toast
+  movedToast: { set: { toast: moved } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+  savingLink:
+    from: updateLesson
+    moved: [COURSE_VERSION_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [LESSON_NOT_FOUND, VALIDATION_ERROR, COURSE_NOT_FOUND, WEEK_NOT_FOUND]
+  savingTime:
+    from: updateLesson
+    moved: [COURSE_VERSION_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [LESSON_NOT_FOUND, VALIDATION_ERROR, COURSE_NOT_FOUND, WEEK_NOT_FOUND]
+  savingInPerson:
+    from: updateLesson
+    moved: [COURSE_VERSION_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [LESSON_NOT_FOUND, VALIDATION_ERROR, COURSE_NOT_FOUND, WEEK_NOT_FOUND]
+  savingStream:
+    from: setLessonLiveStream
+    moved: [LESSON_NOT_LIVE, LESSON_CANCELLED]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [LIVE_STREAM_URL_INVALID, LESSON_NOT_FOUND, VALIDATION_ERROR, COURSE_NOT_FOUND]
+  removingStream:
+    from: setLessonLiveStream
+    moved: [LESSON_NOT_LIVE, LESSON_CANCELLED]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [LIVE_STREAM_URL_INVALID, LESSON_NOT_FOUND, VALIDATION_ERROR, COURSE_NOT_FOUND]
+  savingRelease:
+    from: setLessonRecordingAvailability
+    moved: [LESSON_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, COURSE_NOT_FOUND]
+
+# The story the page tells first: the müderris adds the meeting link of a celse that has none, so "Eksik" goes.
+main:
+  given: { holds: all, changeAnswer: saved, streamAnswer: saved, releaseAnswer: saved }
+  events: [DONE, OPEN_LINK, FILL_LINK, SAVE, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: Celseler is read
+    description: >-
+      The page reads the course (GET /courses/{id}, whose version every write of a form carries), what the person holds in it
+      (GET /courses/{id}/my-permissions) and who they are, and, for a holder of session.live_link, the stream links
+      (GET /courses/{id}/live-streams); the course's recordings are read too, to say "Kayıt yok" of a celse that is over. A person who
+      holds neither session.manage nor session.live_link meets the refusal (state forbidden); a 404 is the portal's 404 page; a read
+      that failed is the retry state "Celseler okunamadı" (not drawn: it is not a refusal of the API's). A failed read of the stream
+      links only drops the stream buttons, and a failed read of the recordings says nothing of recordings. Nothing is on screen in
+      this step.
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: "holds == 'none'", target: forbidden, source: apps/nazar/features/account/course-permissions.ts:88, say: "the person holds neither code of the page" }
+        - { target: listed }
+      FAIL.missing: not_found
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:49
+
+  forbidden:
+    title: Celseler refuses its reader
+    description: >-
+      The header stays (the title and, from the course, the subtitle) and under it a neutral alert, a status and not an alert,
+      says "Bu sayfaya izniniz yok" with its sentence; no table, no "Celse planla". The menu still offers "Celseler" to this person,
+      since only three entries of the course menu are left out by permission. The whole story is nazar.access.dersNazirPages.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:97
+
+  listed:
+    title: The celses still ahead, with how each is attended
+    description: >-
+      The page: "Celseler", the subtitle with the course's name and the zone the times are written in, "Celse planla" for a holder of
+      session.manage, and the table "Yaklaşan celseler" with its counts line. Each row has its name, its time, "Katılım" and its state
+      ("Planlandı"), and, in the last column, a button for each thing the person may change (see the context). "Katılım" joins what
+      the celse has with " · ": the meeting link as a platform chip, "YouTube yayını" (or "Yalnız yayın" when it is the only way),
+      "Yüz yüze"; a celse still ahead with none of them wears the warning badge "Eksik", and the sidebar's "Celseler" carries the number
+      of such celses (the same rule on the server). A recording time that is ahead is said under the state ("Kayıt … açılır"). The
+      last write's toast stands for a few seconds. Findings read here: F-C-course-a-08 (the forms open below the table and move no
+      focus), F-C-course-a-27 (the dialog's eyebrow is the long date, not the title), F-C-course-a-28 (the URL placeholders and the
+      busy word are outside the catalog), F-L-17 (after a write the focus is lost and the only word is a toast), MANAGE-5 (no way to
+      remove a link). Acceptance of P-13 (MDRS-118: under 30 seconds on a phone) is not verified.
+    by: human
+    goal: true
+    on:
+      OPEN_LINK:
+        - { guard: "maySetWays and link == 'set'", target: linkForm, effect: [openLinkSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press 'Bağlantıyı güncelle': the form holds the link" }
+        - { guard: maySetWays, target: linkForm, effect: [openLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:170, say: "they press 'Bağlantı ekle': the form is empty" }
+      OPEN_TIME: { guard: maySetWays, target: timeForm, effect: [openTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:178, say: "they press 'Tarihi değiştir': the form holds the celse's date and time on their clock" }
+      OPEN_IN_PERSON:
+        - { guard: "maySetWays and held == 'yes'", target: inPersonForm, effect: [openInPersonYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press 'Yüz yüze ayarı': 'Yüz yüze' is chosen" }
+        - { guard: "maySetWays and held == 'no'", target: inPersonForm, effect: [openInPersonNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press 'Yüz yüze ayarı': 'Yüz yüze değil' is chosen" }
+        - { guard: maySetWays, target: inPersonForm, effect: [openInPersonCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:182, say: "they press 'Yüz yüze ayarı': 'Dersin ayarına uy' is chosen" }
+      OPEN_STREAM:
+        - { guard: "mayStream and stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press 'Canlı yayını güncelle': the form holds the stream link" }
+        - { guard: mayStream, target: streamForm, effect: [openStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press 'Canlı yayın ekle': the form is empty" }
+      OPEN_RELEASE:
+        - { guard: "mayRelease and release == 'at'", target: releaseDialog, effect: [openReleaseAt], source: apps/nazar/features/sessions/components/sessions-table.tsx:504, say: "they press 'Kayıt erişimi': the dialog holds the time the team set" }
+        - { guard: mayRelease, target: releaseDialog, effect: [openRelease], source: apps/nazar/features/sessions/components/sessions-table.tsx:504, say: "they press 'Kayıt erişimi': 'Hazır olunca hemen' is chosen" }
+      CANCEL_CELSE: { guard: maySetWays, target: handed_over.cancel, starts: { flow: nazar.sessions.cancel, given: { holds: "'manage'" } }, source: apps/nazar/features/sessions/components/sessions-table.tsx:525, say: "they press 'İptal et': the cancel dialog opens over this page" }
+      NAVIGATE: { target: left, say: "they follow 'Celse planla' or the menu" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:576
+
+  linkForm:
+    title: The meeting link form
+    description: >-
+      A card under the table with the heading "{date} celsesinin toplantı bağlantısı", one field, "Toplantı bağlantısı" (a mono text
+      field, with a Zoom address as its placeholder, hard-coded: F-C-course-a-28), the help "Yalnız bu celsenin bağlantısı değişir…",
+      and "Vazgeç" and "Kaydet". It is not a dialog: nothing traps or moves the focus, which stays on the row's button above
+      (F-C-course-a-08). "Kaydet" is always on. An address with no scheme gets https://; one that is empty, starts http:// or is not an
+      address is refused under the field, in a sentence that replaces the help and that no screen reader is told of (F-C-course-a-01).
+      The sentence is cleared only when a form is opened again, so a corrected value is sent, and a refused write answered, with it
+      still there (MANAGE-4). The API keeps any https host of up to 500 characters (session-meeting-link-any-https-host); the platform
+      chip is read off the address afterwards. There is no way to send an empty link (MANAGE-5, D1).
+    by: human
+    on:
+      FILL_LINK: { target: linkForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:645, say: "they type an https address" }
+      FILL_LINK_BAD: { target: linkForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:645, say: "they type an address that starts http://" }
+      SAVE:
+        - { guard: "entered == 'valid'", target: savingLink, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:233, say: "they press 'Kaydet' with an address the page accepts" }
+        - { target: linkForm, effect: [saidLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:233, say: "they press 'Kaydet' with the field empty or wrong: the sentence appears under it and nothing is sent" }
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:695, say: "they press 'Vazgeç': the form goes and the focus falls to the page" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:645
+
+  savingLink:
+    title: The link is on its way
+    description: >-
+      changeSession calls PATCH /lessons/{id} with {version, meetingUrl}: the version the page was read at. The course's version is
+      checked and bumped in one statement, so a stale page changes nothing (409). The write leaves NO audit row (MANAGE-1). On the
+      form "Kaydet" is busy (aria-busy and a hidden "Yükleniyor" from a default of the kit, F-C-course-a-28) and "Vazgeç" is off; the
+      field stays live. A success keeps the new version, closes the form, shows the toast and reads the page again: the row's button
+      reads "Bağlantıyı güncelle", its "Katılım" names the platform and, when nothing else was there, "Eksik" is gone. The talebe of the
+      course read the link on the celse page from then on; nobody is told, and no new calendar invitation goes (MANAGE-3).
+    invoke: { action: updateLesson }
+    on:
+      DONE: { guard: "changeAnswer == 'saved'", target: listed, effect: [closedAfterLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:255, say: "the toast 'Bağlantı kaydedildi', the form closes, the page is read again" }
+      FAIL.moved: { guard: "changeAnswer == 'moved'", target: linkForm, effect: [movedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says the course was saved by someone else since, and the page is read again; the form stays open" }
+      FAIL.forbidden: { guard: "changeAnswer == 'forbidden'", target: linkForm, effect: [forbiddenToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says they may not; the form stays open" }
+      FAIL.failed: { guard: "changeAnswer == 'failed'", target: linkForm, effect: [failedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says something went wrong; the form stays open and the page is NOT read again (MANAGE-2)" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:247
+
+  timeForm:
+    title: The date and time form
+    description: >-
+      A card with the heading "{date} celsesinin zamanı", "Tarih" and "Saat" (native date and time inputs, both marked * only by a
+      decorative star: F-C-course-a-07), holding the celse's date and time on the viewer's clock, with "Vazgeç" and "Kaydet". The
+      button is drawn only for a celse that has not begun. A missing date or time is refused under "Tarih" alone ("Tarihi ve saati
+      girin."); there is no check that the new time is ahead, and none of the week the celse sits in. Same focus and stale-error
+      behaviour as the link form (F-C-course-a-08, MANAGE-4).
+    by: human
+    on:
+      FILL_TIME: { target: timeForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:663, say: "they pick another date and time" }
+      FILL_TIME_BAD: { target: timeForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:663, say: "they clear the date" }
+      SAVE:
+        - { guard: "entered == 'valid'", target: savingTime, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:242, say: "they press 'Kaydet' with a date and a time" }
+        - { target: timeForm, effect: [saidTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:242, say: "they press 'Kaydet' with the date or the time missing: the sentence appears under Tarih and nothing is sent" }
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:695, say: "they press 'Vazgeç'" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:663
+
+  savingTime:
+    title: The new time is on its way
+    description: >-
+      changeSession calls PATCH /lessons/{id} with {version, scheduledAt} (an ISO instant worked out on the viewer's clock). Besides
+      the row, a time that moved between two times of a celse that is not cancelled and not over sends the SESSION_RESCHEDULED notice to
+      the enrolled talebe other than the actor, an exam's reminder is armed again, and the invitation sweep sends each talebe a new
+      calendar invitation (the start changed). It writes NO audit row (MANAGE-1). The row's "Zaman" cell reads the new time after
+      the page is read again. Busy and refusals as savingLink.
+    invoke: { action: updateLesson }
+    on:
+      DONE: { guard: "changeAnswer == 'saved'", target: listed, effect: [closedAfterTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:255, say: "the toast 'Celse zamanı değişti', the form closes, the page is read again" }
+      FAIL.moved: { guard: "changeAnswer == 'moved'", target: timeForm, effect: [movedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says the course was saved by someone else since; the form stays open" }
+      FAIL.forbidden: { guard: "changeAnswer == 'forbidden'", target: timeForm, effect: [forbiddenToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says they may not" }
+      FAIL.failed: { guard: "changeAnswer == 'failed'", target: timeForm, effect: [failedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says something went wrong; no new read (MANAGE-2)" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:247
+
+  inPersonForm:
+    title: The in-person form
+    description: >-
+      A card with the heading "{date} celsesinin yüz yüze ayarı" and a radio group "Bu celse" of three bordered options: "Dersin ayarına
+      uy" (described by "Ders yüz yüze yapılmıyor; bu celse de yüz yüze sayılmaz." for a course held online), "Yüz yüze" and "Yüz yüze
+      değil", with the celse's own choice checked (a celse with no mark follows the course). The button is drawn only where the read
+      carried the attendance, which a content-locked read does not. No field, so nothing is refused before the send. "Yüz yüze" is one of
+      the three ways in: it takes "Eksik" away.
+    by: human
+    on:
+      CHOOSE_COURSE: { target: inPersonForm, effect: [pickCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:627, say: "they choose 'Dersin ayarına uy'" }
+      CHOOSE_YES: { target: inPersonForm, effect: [pickYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:627, say: "they choose 'Yüz yüze'" }
+      CHOOSE_NO: { target: inPersonForm, effect: [pickNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:627, say: "they choose 'Yüz yüze değil'" }
+      SAVE: { target: savingInPerson, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:247, say: "they press 'Kaydet'" }
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:695, say: "they press 'Vazgeç'" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:621
+
+  savingInPerson:
+    title: The in-person mark is on its way
+    description: >-
+      changeSession calls PATCH /lessons/{id} with {version, inPersonOverride}: true, false, or null to follow the course. No notice and
+      no new invitation go, and no audit row is written (MANAGE-1, MANAGE-3). The row's "Katılım" then reads "Yüz yüze" for a celse
+      marked in person. Busy and refusals as savingLink.
+    invoke: { action: updateLesson }
+    on:
+      DONE:
+        - { guard: "changeAnswer == 'saved' and picked == 'yes'", target: listed, effect: [closedAfterInPersonYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:255, say: "the toast 'Yüz yüze ayarı kaydedildi': the celse is in person" }
+        - { guard: "changeAnswer == 'saved' and picked == 'no'", target: listed, effect: [closedAfterInPersonNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:255, say: "the toast says so: the celse is marked not in person" }
+        - { guard: "changeAnswer == 'saved'", target: listed, effect: [closedAfterInPersonCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:255, say: "the toast says so: the celse follows the course again" }
+      FAIL.moved: { guard: "changeAnswer == 'moved'", target: inPersonForm, effect: [movedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says the course was saved by someone else since; the form stays open" }
+      FAIL.forbidden: { guard: "changeAnswer == 'forbidden'", target: inPersonForm, effect: [forbiddenToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says they may not" }
+      FAIL.failed: { guard: "changeAnswer == 'failed'", target: inPersonForm, effect: [failedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says something went wrong; no new read (MANAGE-2)" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:247
+
+  streamForm:
+    title: The live stream form
+    description: >-
+      A card with the heading "{date} celsesinin canlı yayın bağlantısı", "Canlı yayın bağlantısı" (a mono text field with a YouTube
+      Studio address as its placeholder, hard-coded: F-C-course-a-28), the help about "yerleştirmeye izin ver", "Vazgeç", "Kaydet" and,
+      once a link is set, "Bağlantıyı kaldır". The page checks the link with the parser tedrisat runs: an empty field, a channel
+      link, another site, http:// and an address with no video are each refused under the field with their own sentence, which no
+      screen reader is told of (F-C-course-a-01); that sentence stays as MANAGE-4 says. The buttons are drawn only to a holder of
+      session.live_link whose read of the stream links worked.
+    by: human
+    on:
+      FILL_STREAM: { target: streamForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:609, say: "they paste a YouTube video link" }
+      FILL_STREAM_BAD: { target: streamForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:609, say: "they paste a YouTube channel link" }
+      SAVE:
+        - { guard: "entered == 'valid'", target: savingStream, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:221, say: "they press 'Kaydet' with a link the parser takes" }
+        - { target: streamForm, effect: [saidStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:221, say: "they press 'Kaydet' with the field empty or wrong: the sentence appears under it and nothing is sent" }
+      REMOVE_STREAM: { guard: "stream == 'set'", target: removingStream, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:704, say: "they press 'Bağlantıyı kaldır': it clears the link at once, with no question" }
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:695, say: "they press 'Vazgeç'" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:603
+
+  savingStream:
+    title: The stream link is on its way
+    description: >-
+      setLiveStream calls PUT /lessons/{id}/live-stream with {liveStreamUrl}. The server parses it again and stores it normalised as
+      https://www.youtube.com/live/<id>; it takes one only for a LIVE celse that is not cancelled. The course's version is neither sent
+      nor bumped. The audit row lesson.live_stream_set is written (unlike the link, MANAGE-1). A success lays the link over the course
+      read at once (the page does not wait for the new read) and clears "Eksik" for a celse with no other way in. A refusal is a toast:
+      the celse is not live or was cancelled meanwhile, or the server's parser takes the link for no stream.
+    invoke: { action: setLessonLiveStream }
+    on:
+      DONE: { guard: "streamAnswer == 'saved'", target: listed, effect: [closedAfterStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:208, say: "the toast 'Canlı yayın bağlantısı kaydedildi', the form closes" }
+      FAIL.moved: { guard: "streamAnswer == 'moved'", target: streamForm, effect: [movedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says only a live celse takes a stream, or that the celse was cancelled; no new read" }
+      FAIL.forbidden: { guard: "streamAnswer == 'forbidden'", target: streamForm, effect: [forbiddenToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says they may not (session.live_link was taken away)" }
+      FAIL.failed: { guard: "streamAnswer == 'failed'", target: streamForm, effect: [failedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says the link shows no stream, or that something went wrong" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:192
+
+  removingStream:
+    title: The stream link is being cleared
+    description: >-
+      The same call with {liveStreamUrl: null}; the audit row is lesson.live_stream_clear. The toast reads "Canlı yayın bağlantısı
+      kaldırıldı" and a celse that had no other way in reads "Eksik" again. "Bağlantıyı kaldır" and "Vazgeç" are off while it runs.
+    invoke: { action: setLessonLiveStream }
+    on:
+      DONE: { guard: "streamAnswer == 'saved'", target: listed, effect: [closedAfterRemoval], source: apps/nazar/features/sessions/components/sessions-table.tsx:208, say: "the toast 'Canlı yayın bağlantısı kaldırıldı', the form closes" }
+      FAIL.moved: { guard: "streamAnswer == 'moved'", target: streamForm, effect: [movedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says the celse is not live or was cancelled" }
+      FAIL.forbidden: { guard: "streamAnswer == 'forbidden'", target: streamForm, effect: [forbiddenToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says they may not" }
+      FAIL.failed: { guard: "streamAnswer == 'failed'", target: streamForm, effect: [failedToast], source: apps/nazar/features/sessions/components/sessions-table.tsx:161, say: "the error toast says something went wrong" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:192
+
+  releaseDialog:
+    title: The recording access dialog
+    description: >-
+      The shared ReleaseDialog (it is Ders kayıtları's too: nazar.recordings.add). A modal "Kayıt erişimi" over the page, whose eyebrow
+      is the celse's date written in full, not its title (F-C-course-a-27); a radio group "Talebe kaydı ne zaman izlesin" with "Hazır olunca
+      hemen" and "Şu tarih ve saatte"; the second shows "Açılış tarihi ve saati" (a date box and a time box, each with its own picker
+      button) and its help in the course's zone; "Vazgeç" and "Kaydet". The scrim does not close it. The dialog is controlled with no
+      trigger element, so where the focus goes on closing is the library's fallback (F-C-course-a-25, not verified). A time that is
+      empty, in the past, or before the celse begins is refused under the field once "Kaydet" was pressed, and then the sentence is
+      worked out again on every change. "Hazır olunca hemen" over a celse that holds no time, or the same time again, only closes the
+      dialog and writes nothing.
+    by: human
+    on:
+      CHOOSE_READY: { target: releaseDialog, effect: [chooseReady], source: apps/nazar/features/recordings/components/release-fields.tsx:49, say: "they choose 'Hazır olunca hemen'" }
+      CHOOSE_AT: { target: releaseDialog, effect: [chooseAt], source: apps/nazar/features/recordings/components/release-fields.tsx:49, say: "they choose 'Şu tarih ve saatte': the date and time boxes appear" }
+      FILL_RELEASE: { guard: "mode == 'at'", target: releaseDialog, effect: [typedReleaseValid], source: apps/nazar/features/recordings/components/release-fields.tsx:86, say: "they type a date and a time after the celse begins" }
+      FILL_RELEASE_BAD: { guard: "mode == 'at'", target: releaseDialog, effect: [typedReleaseInvalid], source: apps/nazar/features/recordings/components/release-fields.tsx:86, say: "they type a date in the past" }
+      SAVE:
+        - { guard: "mode == 'ready' and release == 'ready'", target: listed, effect: [closeForm], source: apps/nazar/features/recordings/components/release-dialog.tsx:67, say: "nothing changed: the dialog closes, no call is made and no toast says anything" }
+        - { guard: "mode == 'ready'", target: savingRelease, effect: [sends], source: apps/nazar/features/recordings/components/release-dialog.tsx:72, say: "they press 'Kaydet' to open the recording as soon as it is ready again" }
+        - { guard: "mode == 'at' and entered == 'valid'", target: savingRelease, effect: [sends], source: apps/nazar/features/recordings/components/release-dialog.tsx:72, say: "they press 'Kaydet' with a time the page accepts" }
+        - { target: releaseDialog, effect: [saidRelease], source: apps/nazar/features/recordings/components/release-dialog.tsx:64, say: "they press 'Kaydet' with the time empty or wrong: the sentence appears under the field and nothing is sent" }
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/recordings/components/release-dialog.tsx:121, say: "they press 'Vazgeç', Esc or the close icon" }
+    source: apps/nazar/features/recordings/components/release-dialog.tsx:109
+
+  savingRelease:
+    title: The recording access is on its way
+    description: >-
+      setRecordingAvailability calls PUT /lessons/{id}/recording-availability with {availableAt}: an ISO time, or null for as soon as
+      the recording is ready. The release time is kept on the celse, so it may be set before any recording exists; the course's version
+      is neither sent nor bumped. The audit row lesson.recording_availability_set is written, and a recording this opens now is announced
+      to the talebe now. "Kaydet" is busy and Esc and the close icon do nothing and say nothing while it runs (F-C-course-a-26). A
+      success closes the dialog, shows "Kayıt erişimi kaydedildi" with when the recording opens, and reads the page again: a time that
+      is ahead is said under the row's state. A celse that is gone closes the dialog too and reads the page again.
+    invoke: { action: setLessonRecordingAvailability }
+    on:
+      DONE:
+        - { guard: "releaseAnswer == 'saved' and mode == 'at'", target: listed, effect: [closedAfterReleaseAt], source: apps/nazar/features/recordings/components/release-dialog.tsx:90, say: "the toast says when the recording opens, the dialog closes" }
+        - { guard: "releaseAnswer == 'saved'", target: listed, effect: [closedAfterReleaseReady], source: apps/nazar/features/recordings/components/release-dialog.tsx:90, say: "the toast says it opens as soon as it is ready, the dialog closes" }
+      FAIL.moved: { guard: "releaseAnswer == 'moved'", target: listed, effect: [closedGone], source: apps/nazar/features/recordings/components/release-dialog.tsx:84, say: "the error toast says the celse or its recording is gone, the dialog closes and the page is read again" }
+      FAIL.forbidden: { guard: "releaseAnswer == 'forbidden'", target: releaseDialog, effect: [forbiddenToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:79, say: "the error toast says they may not; the dialog stays open" }
+      FAIL.failed: { guard: "releaseAnswer == 'failed'", target: releaseDialog, effect: [failedToast], source: apps/nazar/features/recordings/components/release-dialog.tsx:79, say: "the error toast says the time could not be read or that something went wrong; the dialog stays open" }
+    source: apps/nazar/features/recordings/components/release-dialog.tsx:72
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the course read is Next's not-found page (lib/tedrisat-read.ts:43-50)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+  handed_over.cancel:
+    title: The cancel dialog opens
+    description: "'İptal et' opens its own dialog over the same page: the note to the talebe, the make-up and the confirmation are nazar.sessions.cancel."
+    type: final
+
+assertions:
+  - id: link-time-and-in-person-need-session-manage
+    never: "(state == 'savingLink' or state == 'savingTime' or state == 'savingInPerson') and not maySetWays"
+    say: Only a holder of session.manage is offered the link, the time and the in-person mark, so only they send them.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:446
+  - id: the-stream-needs-live-link
+    never: "(state == 'streamForm' or state == 'savingStream' or state == 'removingStream') and not mayStream"
+    say: Only a holder of session.live_link is offered the stream, so only they set or clear it.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:478
+  - id: release-needs-recording-manage
+    never: "(state == 'releaseDialog' or state == 'savingRelease') and not mayRelease"
+    say: Only a holder of recording.manage is offered "Kayıt erişimi".
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:495
+  - id: a-link-is-sent-only-after-the-page-accepts-it
+    never: "state == 'savingLink' and entered != 'valid'"
+    say: An address the page refuses (empty, http:// or not an address) is never sent.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:233
+  - id: a-time-is-sent-only-with-a-date-and-a-time
+    never: "state == 'savingTime' and entered != 'valid'"
+    say: A time with the date or the hour missing is never sent.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:242
+  - id: a-stream-is-sent-only-after-the-parser-accepts-it
+    never: "state == 'savingStream' and entered != 'valid'"
+    say: A stream link the parser refuses is never sent; clearing one is its own button.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:221
+  - id: a-release-time-is-sent-only-when-it-is-ahead
+    never: "state == 'savingRelease' and mode == 'at' and entered != 'valid'"
+    say: A release time that is empty, in the past or before the celse begins is never sent.
+    source: apps/nazar/features/recordings/components/release-dialog.tsx:64
+  - id: a-refusing-page-offers-nothing
+    never: "holds == 'none' and state != 'opened' and state != 'forbidden' and state != 'left' and state != 'not_found'"
+    say: A person who holds neither code meets the refusal and no form, no dialog.
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:97

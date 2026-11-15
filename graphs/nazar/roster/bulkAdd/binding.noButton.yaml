@@ -1,0 +1,32 @@
+# nazar.roster.bulkAdd, the person who may not: a ders nazırı who holds enrollment.complete and no enrollment.decide in a course of the walk's
+# own. The code brings course.staff_read with it (apps/tedrisat's effective-permissions derive it from any enrollment.* code), so Talebeler
+# opens and its tabs are drawn, and the page draws no "Toplu talebe ekle" (`can.decide` is false). The walk ends at the page: there is no way
+# forward, and the absence of the button is what is checked (the unit spec apps/nazar/test/enrolments-page.spec.tsx pins the same).
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/bulkAdd --bind graphs/nazar/roster/bulkAdd/binding.noButton.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay; everything is from the code and unverified until a walk.
+#
+# This scenario adds no transition (roster to left is taken by the other files too), so `--cover transitions` over binding.yaml never walks
+# it; it has a file of its own to be walked. The course is a course of the medrese with the başmüderris as its hoca, who gives the code, as
+# nazar.course.overview does for the same account; the seeded course's ders nazırı post is not touched.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.bulkAdd
+
+scenarios:
+  noButton:
+    given: { may: mayNot, list: few, answer: added, clip: ok }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bulkadd, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi bulkadd"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, enrollment.complete, --as, basmuderris]
+        expect: course-nazir-grants DERS_NAZIR
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bulkadd]
+        expect: course remove bulkadd
+    vars:
+      typed: '{secret.E2E_APPLICANT_H_EMAIL}'
+      seats: 'APPLICANT_H=none'

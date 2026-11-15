@@ -1,0 +1,154 @@
+# What must exist for the başmüderris of a medrese to give a nazır permissions: the flow's product list (LAYOUT.md section 7). Each need
+# is what the product must do, from the flow's story and the planned work in the inventory (planned.md P-17), not from what the page does
+# today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+#
+# missing  (no code): group-the-course-permissions (MDRS-226), say-why-a-permission-is-off (none, F-B-10), say-what-is-wrong-where-it-is
+#          (none, F-B-5), tell-the-count-as-it-changes (none, PERM-2), keep-the-ends-that-differ (none, PERM-3, not verified)
+# unwalked (code, no e2e and no replay that passed): read-all-or-nothing, a-refused-save-says-so, the-roster-refuses-the-wrong-person
+#          (the page's own refusal is walked by nazar.access.medreseNazirRefused, not here)
+kind: needs
+flow: nazar.nazirs.permissions
+status: proposed
+
+needs:
+  - id: give-a-group-and-single-permissions
+    need: >-
+      The başmüderris gives a nazır who holds nothing a ready group of permissions and, on top of it, single permissions; the group's own
+      permissions come ticked and locked so that nothing is given twice, and what the nazır then holds is on their row and off the band
+      that names the nazırs who hold nothing.
+    drawn: [giveButton, groupBox, permDecide, permComplete, permWeekHide, fromGroup, summaryGroupAndExtra, saving, toastSaved, rowGroup, rowExtra, bandMany, bandOne]
+    built:
+      - action: medaris.api:setMadrasahNazirPermissions
+      - action: medaris.api:listMadrasahPermissionGroups
+      - route: apps/nazar/features/nazirs/components/permission-editor.tsx:253
+    walked:
+      - e2e: apps/nazar/e2e/permissions.e2e.ts
+        check: 'permissions#2'
+      - test: apps/nazar/test/permission-editor.spec.tsx
+
+  - id: limit-course-permissions-to-chosen-courses
+    need: >-
+      She can let the course permissions hold in every course of the medrese, later ones too, or only in the courses she chooses; choosing
+      "Seçtiğim dersler" and no course is refused on the page, and the row says which courses the permissions are limited to.
+    drawn: [limitBox, limitHelpAll, limitHelpChosen, limitHelpNeeds, courseList, courseBox, coursesProblem, rowCourseScope, a-chosen-course-limit-needs-a-course]
+    built:
+      - action: medaris.api:setMadrasahNazirPermissions
+      - action: medaris.api:listMadrasahCourses
+      - route: apps/nazar/features/nazirs/permissions.ts:155
+    walked:
+      - e2e: apps/nazar/e2e/permissions.e2e.ts
+        check: 'permissions#5'
+
+  - id: set-an-end
+    need: >-
+      She can give an end, a date and a time on her own clock after which the permissions lapse by themselves; an end that is not ahead is
+      refused on the page, and an empty end means for good. The row says the end, or "Süresiz".
+    drawn: [endBox, endHelp, endError, rowEnd, an-end-in-the-past-is-never-sent]
+    built:
+      - action: medaris.api:setMadrasahNazirPermissions
+      - route: apps/nazar/features/nazirs/permissions.ts:196
+      - route: libs/utils/src/end-instant.ts:141
+    walked:
+      - e2e: apps/nazar/e2e/permissions.e2e.ts
+        check: 'permissions#4' # date-bound: it types 2026-10-01 against a pinned clock and 2027-03-15 as the end; the graph's binding computes both from today
+      - test: libs/utils/test/end-instant.spec.ts
+
+  - id: reopen-and-see-it-as-left
+    need: >-
+      She opens the editor again and sees what the nazır holds as she left it: the group, the single permissions, the limit and the courses,
+      the end; saving it with the end emptied makes the permissions last for good.
+    drawn: [editButton, opened, profileForm, permDecide, courseBox, summaryGroupAndExtra]
+    built:
+      - action: medaris.api:getMadrasahNazirPermissions
+      - route: apps/nazar/features/nazirs/permissions.ts:83
+    walked:
+      - e2e: apps/nazar/e2e/permissions.e2e.ts
+        check: 'permissions#3'
+      - e2e: apps/nazar/e2e/permissions.e2e.ts
+        check: 'permissions#5' # a8 and a9, the reopened limit and course
+
+  - id: cancel-writes-nothing
+    need: >-
+      Vazgeç, the close icon and Esc close the editor and write nothing; the scrim does not close it, so a stray click loses nothing.
+    drawn: [cancel, closeIcon, discard]
+    built:
+      - route: apps/nazar/features/nazirs/components/permission-editor.tsx:198
+    walked:
+      - e2e: apps/nazar/e2e/permissions.e2e.ts
+        check: 'permissions#6'
+
+  - id: the-buttons-are-on-whatever-the-date
+    need: >-
+      "İzin ver" and "İzinleri düzenle" are on whatever the date: the nazır's appointment gates neither (MDRS-215).
+    drawn: [giveButton, editButton]
+    built:
+      - route: apps/nazar/features/nazirs/components/nazirs-table.tsx:147
+    walked:
+      - e2e: apps/nazar/e2e/permissions.e2e.ts
+        check: 'permissions#1' # it pins the clock before the appointment; the graph walks the real date and does not carry the pin
+
+  - id: read-all-or-nothing
+    need: >-
+      The editor reads the dictionary, the groups, what the nazır holds and the courses together; when one cannot be read it says so, offers
+      a retry and saves nothing, since a form half read would save over what it did not show.
+    drawn: [opening, loadFailed, loadFailedAlert, retry]
+    built:
+      - action: medaris.api:getMadrasahNazirPermissions
+      - route: apps/nazar/features/nazirs/actions.ts:144
+    walked:
+      - test: apps/nazar/test/permission-editor.spec.tsx
+
+  - id: a-refused-save-says-so
+    need: >-
+      When the server refuses a save (the group or the nazır is gone, a permission is not hers to give, the courses are not the medrese's, an
+      end that is not ahead) she is told in words and the form stays as it was; a group that is gone reloads the editor, a nazır that is gone
+      closes it.
+    drawn: [toastRefused, toastGroupGone, saving, nazir_gone]
+    built:
+      - route: apps/nazar/features/nazirs/nazirs.ts:357
+      - route: apps/nazar/features/nazirs/components/permission-editor.tsx:176
+    walked:
+      - test: apps/nazar/test/nazirs.spec.ts
+
+  - id: the-roster-refuses-the-wrong-person
+    need: >-
+      A nazır who was not given "Medrese nazırı ata" meets a refusal in place of the roster and has no button here; an unknown medrese is the 404 page.
+    drawn: [forbidden, forbiddenAlert, not_found]
+    built:
+      - action: medaris.api:listMadrasahNazirs
+      - route: apps/nazar/features/nazirs/components/nazirs-page.tsx:69
+    walked:
+      - e2e: apps/nazar/e2e/nazirs.e2e.ts
+        check: 'nazirs#6'
+
+  - id: group-the-course-permissions
+    need: >-
+      The 23 course permissions are grouped, and a group of them can be ticked at once, instead of one flat list of 34 boxes (planned.md P-17,
+      MDRS-226, requested by the owner on 2026-10-03; the issue names nizam-web's list of boxes, and this editor draws a flat list as well, so it is an increment of this dialog too).
+    drawn: [madrasahSection, courseSection]
+    missing: MDRS-226
+
+  - id: say-why-a-permission-is-off
+    need: >-
+      A permission the person may not give says so ("Bu izni veremezsiniz."), as the locked ones say "Gruptan gelir." (F-B-10).
+    drawn: [permDecide]
+    missing: none # no issue; nobody the page admits has a ceiling smaller than the whole dictionary, so it cannot be seen on the stack
+
+  - id: say-what-is-wrong-where-it-is
+    need: >-
+      A save stopped by the page moves the focus to the first field in error or announces the message, the end's as well as the courses' (F-B-5).
+    drawn: [endError, coursesProblem]
+    missing: none
+
+  - id: tell-the-count-as-it-changes
+    need: >-
+      The footer's count of what is ticked ("Gruptan 2 izin ve 1 ek izin") is announced when it changes (PERM-2).
+    drawn: [summaryNone, summarySingle, summaryGroup, summaryGroupAndExtra]
+    missing: none
+
+  - id: keep-the-ends-that-differ
+    need: >-
+      A nazır whose permissions end at different moments keeps those ends when the editor is saved with nothing touched; today it opens
+      with the earliest and sends that one for all (PERM-3, not verified: it needs permissions that end differently, which this page never makes).
+    drawn: [endBox]
+    missing: none

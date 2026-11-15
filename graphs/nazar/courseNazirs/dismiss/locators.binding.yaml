@@ -1,0 +1,124 @@
+# What the walks of nazar.courseNazirs.dismiss share: where the page's nodes are found, the events no node sends, where each exit opens, and
+# what a dismissal leaves outside the screen (read from the database). It carries no scenario, so it is not walked by itself:
+#   binding.yaml           the hoca (MUDERRIS) at a course of the walk's own: plain, handsOn, handsOnUnseen, vanishes
+#   binding.appointer.yaml a ders nazırı who holds only course_nazir.assign dismisses the person they appointed (post: ownAppointee). It takes
+#                          no transition the first file does not, so `--cover transitions` leaves it out and it is walked on its own
+# The page is /ders/<id>/nazirlar of nazar-web at http://localhost:4002, in a wide window (1440 x 900, as the e2e), so the course's sidebar
+# (the walk enters by its "Ders nazırları") and the table, not the phone's cards, are drawn.
+#
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). Every locator, every account fact and every
+# command below comes from the code, the catalog and STACK.md, and is unverified until a walk. The binding loads: `replay <dir> --bind <file>
+# --emit-spec --out <dir>` wrote a spec and walked nothing.
+#
+# The people, all spare talebe accounts that no seeded flow reads (STACK.md): applicantF, "Tahsin Başvuran", is the person the hoca dismisses
+# and the one who holds course_nazir.assign where a person appointed others; applicantE, "Betül Başvuran", is the person they appoint. The
+# names are the seed's own, quoted only where a locator reads them. Taken against the permissions writer (applicantH) and the appoint writer
+# (applicantG); applicantE is also bans.ban's and applicantF overview's, which no walk shares in time (the walks run one at a time).
+# Data. Each scenario's `setup` makes the walk's own and `teardown` takes it away; no seeded course, post or setting is touched, and the
+# seeded ders nazırı (Rukiye) is never appointed here, let alone dismissed:
+#   - the course "Deneme dersi nzdismiss" (helpers/course.mjs make nzdismiss: published, one week of one celse, MUDERRIS as its one hoca, in the
+#     seed's second köşk), whose ids and title are read from graphs/.local/made/nzdismiss.json as {made.course} and {made.title};
+#   - applicantF's post in it, made as the hoca makes it on the page (helpers/course-nazir-grants.mjs, POST /courses/:id/nazirs), and, where the
+#     story needs it, the post applicantF makes for applicantE (helpers/api.mjs as applicantF: a holder of course_nazir.assign by a grant appoints).
+# `make` removes a course left under its tag, and with it the posts, so `setup` is safe to run twice. `teardown` removes the course (which takes
+# its posts and grants with it: apps/tedrisat/src/course/course-purge.ts:125) and then reads the database for any active post or grant that
+# applicantF or applicantE still holds: the line must say 0 and 0, which is how a walk that stopped before its dismissal is proved to leave
+# nothing behind. What no walk can undo: the audit rows (course_nazir.assign, course_nazir.revoke) and the invitation mails of the course.
+#
+# Not bound, each for what the stack cannot be made to do on request:
+#   states forbidden, not_found    a caller with no course_nazir.assign meets the refusal (nazar.access.dersNazirPages walks it), and a course that is not there is the 404 page
+#   FAIL.forbidden, FAIL.notYours, FAIL.other   the caller has no standing, the post is not theirs, or anything else: nothing makes tedrisat answer so for a button the
+#                                  page offered (a post re-appointed by someone else gets a new id, so the stale button finds no post, not another's)
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courseNazirs.dismiss
+
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/nzdismiss.json }
+
+# The course is the walk's own, and the one name of a row is a scenario's (`vars`: person, appointee). Where a catalog text has a placeholder
+# and the node has no locator below, these fill it.
+samples:
+  course: '{made.title}'
+  name: '{person}'
+  count: '1'
+
+events:
+  # The person has appointed someone since the hoca read the page: applicantF, who holds course_nazir.assign, appoints applicantE. The page does
+  # not change (it is read, not live); the API answers 201 with the list.
+  ELSEWHERE_APPOINTS:
+    - run: [node, helpers/api.mjs, applicantF, POST, '/courses/{made.course}/nazirs', '{"userId":"{secret.E2E_APPLICANT_E_SUB}","permissions":[]}', --any]
+      expect: 'HTTP 201'
+  # Someone else has dismissed the person since the hoca read the page (another window, or another giver): the hoca's own account does it through
+  # the API, the way the page's button would. The page does not change.
+  ELSEWHERE_DISMISSES:
+    - run: [node, ../nazar/courseNazirs/dismiss/nazirs.mjs, revoke, --course, '{made.course}', --nazir, applicantF]
+      expect: 'nazirs revoke APPLICANT_F revoked'
+  # The dismissed person opens Nazar's root in their own browser, signed in at that first use (after the dismissal)
+  PERSON_OPENS_PORTAL:
+    - goto: '{nazar}/'
+      as: applicantF
+  # the way out of the page: the notifications page, which every course persona may open
+  NAVIGATE:
+    - goto: '{nazar}/bildirimler'
+
+states:
+  listed: { url: '{nazar}/ders/*/nazirlar' }
+  blocked: { url: '{nazar}/ders/*/nazirlar' }
+  freed: { url: '{nazar}/ders/*/nazirlar' }
+  asking: { url: '{nazar}/ders/*/nazirlar' }
+  # The dismissal is a Next server action: a POST to the page's own address, held while the busy dialog is checked. The page's reads are GETs
+  # with a query, so this matches only the POST. FAIL statuses cannot be compared there (the action answers 200 whatever the API said).
+  dismissing: { call: '{nazar}/ders/*/nazirlar' }
+  removed: { url: '{nazar}/ders/*/nazirlar' }
+  # The dismissed person's own screen: the browser of the account, opened and signed in at the first use
+  handed_over.no_access: { url: '{nazar}/erisim-yok', as: applicantF }
+  left: { url: '{nazar}/bildirimler' }
+
+# Where role and name cannot find a node. The page's <main> is found by its h1's words (a bare role main is also matched on the page a walk leaves
+# for); a row is found by the person's name, which a scenario gives; the dialog's buttons by their place in it, and exactly, because a row's button
+# says "Görevden al: {name}" and the dialog's says "Görevden al"; a toast by its tone's class (the kit's .mds-toast--<tone>) and a word of its text.
+nodes:
+  nazirsPage: { role: main, hasText: '/Ders nazırları/' }
+  personName: { css: '[data-testid=course-nazirs] tbody th bdi', hasText: '{person}' }
+  appointeeName: { css: '[data-testid=course-nazirs] tbody th bdi', hasText: '{appointee}' }
+  rowEdit: { role: button, name: 'İzinleri düzenle: {person}' }
+  rowEnd: { role: button, name: 'Görevden al: {person}' }
+  rowEndFreed: { role: button, name: 'Görevden al: {person}' }
+  rowEndOff: { role: button, name: 'Görevden al: {person}' }
+  appointeeEnd: { role: button, name: 'Görevden al: {appointee}' }
+  endIntro: { text: '/dersindeki ders nazırlığından alınacak\.$/' }
+  endCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Görevden al } }
+  endConfirm: { role: button, name: Görevden al, within: { role: dialog, name: Görevden al } }
+  endBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor, within: { role: dialog, name: Görevden al } }
+  endClose: { role: button, name: Kapat, within: { role: dialog, name: Görevden al } }
+  toastDone: { css: '.mds-toast--success', hasText: Görevden alındı }
+  toastHandedOn: { css: '.mds-toast--error', hasText: Bu ders nazırının atadığı ders nazırları var }
+  toastGone: { css: '.mds-toast--error', hasText: Bu ders nazırı artık yok }
+  toastRefused: { css: '.mds-toast--error', hasText: Bunu yapma izniniz yok }
+  toastNotYours: { css: '.mds-toast--error', hasText: Yalnız kendi atadığınız ders nazırlarını }
+  toastFailed: { css: '.mds-toast--error', hasText: Bir şeyler ters gitti }
+
+# What a dismissal leaves outside the screen: the post and the person's permissions in the course are revoked (the rows are kept as history, so
+# the reads count the ones not revoked), as e2e course-nazirs#11 a5 and a6 read through postsOf and grantsOf. `personSub` and `appointeeSub` are the
+# scenario's.
+effects:
+  dismissedPerson:
+    - run: [node, helpers/sql.mjs, "select count(*) as posts from role_assignments where role = 'DERS_NAZIR' and scope_type = 'course' and scope_id = '{made.course}' and user_id = '{personSub}' and revoked_at is null"]
+      expect: '"posts":0'
+    - run: [node, helpers/sql.mjs, "select count(*) as held from permission_grants where scope_type = 'course' and scope_id = '{made.course}' and user_id = '{personSub}' and revoked_at is null"]
+      expect: '"held":0'
+  dismissedAppointee:
+    - run: [node, helpers/sql.mjs, "select count(*) as posts from role_assignments where role = 'DERS_NAZIR' and scope_type = 'course' and scope_id = '{made.course}' and user_id = '{appointeeSub}' and revoked_at is null"]
+      expect: '"posts":0'
+  # the post was gone already: it is not there now either, and nothing was written for this press
+  gone:
+    - run: [node, helpers/sql.mjs, "select count(*) as posts from role_assignments where role = 'DERS_NAZIR' and scope_type = 'course' and scope_id = '{made.course}' and user_id = '{personSub}' and revoked_at is null"]
+      expect: '"posts":0'
+  # the refusal writes nothing: the person's post is still there (e2e course-nazirs#13 a23)
+  handedOn:
+    - run: [node, helpers/sql.mjs, "select count(*) as posts from role_assignments where role = 'DERS_NAZIR' and scope_type = 'course' and scope_id = '{made.course}' and user_id = '{personSub}' and revoked_at is null"]
+      expect: '"posts":1'

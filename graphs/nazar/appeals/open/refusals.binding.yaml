@@ -1,0 +1,99 @@
+# nazar.appeals.open, the answers of a race: the four refusals of "Gönder" that the local stack can cause. It extends binding.yaml and adds a
+# scenario for each, which starts as `appeals` does (a refused request of the medrese, the başmüderris or a nazır on İtirazlar) with a
+# different `answer`:
+#   exists       the request was appealed in another tab (APPEAL_EXISTS)
+#   notRejected  the köşk's refusal was undone (APPEAL_REQUEST_NOT_REJECTED)
+#   gone         the request is gone (APPEAL_REQUEST_NOT_FOUND)
+#   forbidden    a nazır who held madrasah.appeal_open lost it (AUTHZ_FORBIDDEN)
+#   node apps/engine/src/cli.ts replay graphs/nazar/appeals/open --bind graphs/nazar/appeals/open/refusals.binding.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml).
+#
+# How each is made: the walk is at "formReady" when the dialog has the reason and "Gönder" is on, and a state's `before` runs when the walk
+# reaches the state, before it is checked, so the race is made there: `requests.mjs meanwhile <mode>` does what someone else would do
+# (the başmüderris appeals the same request through the API; the request is un-refused or deleted, the only SQL, as no route does either;
+# the nazır's grant is taken back, as the başmüderris would on Medrese nazırları). The page still holds the row it read, so "Gönder" asks the
+# API about a request that is no longer as the page saw it. Each mode is safe to run twice, because the forbidden walk arrives at
+# "formReady" a second time, after the refusal that keeps the dialog open.
+#
+# `sending` drops the `call` of binding.yaml: a Next server action answers 200 on the page's own address, and the replay compares a FAIL
+# class with the call's HTTP status (SPEC.md section 7), which cannot pass here. The busy state is walked in binding.yaml.
+#
+# The scenarios of binding.yaml are inherited and walk here without a race (their `meanwhile` is `none`), which is why `appeals` has that var.
+# What this file does not do: `answer: failed` (the server must fail without a code) cannot be made on request here.
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nazar.appeals.open
+
+scenarios:
+  exists:
+    given: { rejected: true, read: served, answer: exists }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+    setup:
+      - run: [node, ../nazar/appeals/open/requests.mjs, up]
+        expect: 'ready: Deneme dersi appeals-open REJECTED'
+    teardown:
+      - run: [node, ../nazar/appeals/open/requests.mjs, down]
+        expect: 'restored'
+    vars:
+      reason: Dersin hocası ve programı hazır; köşkün gerekçesini yeniden değerlendirmenizi rica ederiz.
+      meanwhile: appeal
+
+  # the request is no longer refused and is not appealed, so the list is empty once it is read again: `--alone`
+  notRejected:
+    given: { rejected: true, read: served, answer: notRejected }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+    setup:
+      - run: [node, ../nazar/appeals/open/requests.mjs, up, --alone]
+        expect: 'ready: Deneme dersi appeals-open REJECTED'
+    teardown:
+      - run: [node, ../nazar/appeals/open/requests.mjs, down]
+        expect: 'restored'
+    vars:
+      reason: Dersin hocası ve programı hazır; köşkün gerekçesini yeniden değerlendirmenizi rica ederiz.
+      meanwhile: unreject
+
+  gone:
+    given: { rejected: true, read: served, answer: gone }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+    setup:
+      - run: [node, ../nazar/appeals/open/requests.mjs, up, --alone]
+        expect: 'ready: Deneme dersi appeals-open REJECTED'
+    teardown:
+      - run: [node, ../nazar/appeals/open/requests.mjs, down]
+        expect: 'restored'
+    vars:
+      reason: Dersin hocası ve programı hazır; köşkün gerekçesini yeniden değerlendirmenizi rica ederiz.
+      meanwhile: delete
+
+  # The seed's medrese nazır is given madrasah.appeal_open and reads the list; the grant is taken back while the dialog is open. The nazır is
+  # the reader here: the başmüderris holds the permission by her role and nothing can take it back.
+  forbiddenSend:
+    given: { rejected: true, read: served, answer: forbidden }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+    setup:
+      - run: [node, ../nazar/appeals/open/requests.mjs, up]
+        expect: 'ready: Deneme dersi appeals-open REJECTED'
+      - run: [node, ../nazar/appeals/open/requests.mjs, nazir, grant]
+        expect: 'nazir grant'
+    teardown:
+      - run: [node, ../nazar/appeals/open/requests.mjs, nazir, revoke]
+        expect: 'nazir revoke'
+      - run: [node, ../nazar/appeals/open/requests.mjs, down]
+        expect: 'restored'
+    vars:
+      reason: Dersin hocası ve programı hazır; köşkün gerekçesini yeniden değerlendirmenizi rica ederiz.
+      meanwhile: revoke
+
+states:
+  # a state's entry replaces the base's whole entry: no `call` here
+  sending: {}
+  # the race is made when the dialog has the reason and the button is on, before the state is checked
+  formReady:
+    before:
+      - run: [node, ../nazar/appeals/open/requests.mjs, meanwhile, '{meanwhile}']
+        expect: 'meanwhile'

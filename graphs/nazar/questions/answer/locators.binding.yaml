@@ -1,0 +1,97 @@
+# What the bindings of nazar.questions.answer share: the data the walk's helper writes, the events no node sends (typing, the reload, the
+# talebe's delete), the addresses of the states, the checks of what an answer leaves in the database and in the talebe's list, and where
+# role and name cannot find a node. It carries no scenario, so it is not walked by itself:
+#   binding.yaml       the müderris's main story, the course with no question, and the ders nazırı who is refused
+#   binding.many.yaml  a course with 21 answered questions: "Daha fazla göster"
+# They are two files because every scenario adds a transition of its own and a scenario's `nodes` differ (binding.yaml counts the two
+# cards of the main story).
+# WRITTEN IN THE WRITING PHASE, NOT REPLAYED: the owner moved every replay to the walk phase. What follows is from the code and from the
+# e2e (apps/nazar/e2e/questions.e2e.ts); it loads (`--emit-spec`), nothing has been walked.
+#
+# Not bound, so the replay cannot reach them: `loadFailed` and RETRY (the stack cannot make tedrisat fail the read), FAIL.failed and
+# FAIL.invalid of `sending` (nothing local makes the API answer so, and the page stops the two causes of a 400 first), the refused page of
+# "Daha fazla göster" (FAIL.failed of `loadingMore`), `not_found` (the course layout answers a missing course before this page runs) and
+# `sent_to_sign_in` (a session that is over).
+# `sending` and `loadingMore` carry a `call` only to hold the busy state: a Next server action is a POST to the page's own address and
+# answers 200, so a replay cannot compare the 404 of FAIL.gone there (an engine limit; the walk of FAIL.gone reads the alert).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.questions.answer
+
+# a wide window: the sidebar (whose entry "Sorular" the walk enters by) shows from 768 px, and the e2e sets the same size
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/answer.json } # helpers/course.mjs make answer: {course, lessons, ...}
+  q: { json: ../.local/made/answerQ.json } # ./questions.mjs up answer: {course, followed, waiting, answered, ...}
+
+events:
+  # the waiting card's text area, the only one on the page (the answered cards have none)
+  TYPE:
+    - fill: { role: textbox, name: Cevabınız, value: '{answer}' }
+  # the open form of a card being changed, again the only text area
+  REWRITE:
+    - fill: { role: textbox, name: Cevabınız, value: '{replacement}' }
+  EMPTY:
+    - fill: { role: textbox, name: Cevabınız, value: '' }
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+  # the talebe, in tedris, deletes the question this page shows first: the hoca's page does not know (the API call of
+  # tedris.learn.questions' "Sil", made as that talebe)
+  QUESTION_DELETED:
+    - run: [node, ../nazar/questions/answer/questions.mjs, drop, answer]
+      expect: 'questions drop answer'
+
+states:
+  listed: { url: '{nazar}/ders/*/sorular' }
+  empty: { url: '{nazar}/ders/*/sorular' }
+  forbidden: { url: '{nazar}/ders/*/sorular' }
+  # the two server actions are POSTs to the page's own address, held while the busy button is checked
+  sending: { call: '{nazar}/ders/*/sorular' }
+  loadingMore: { call: '{nazar}/ders/*/sorular' }
+  left: { url: '{nazar}/bildirimler' }
+
+# What an answer leaves outside the screen, read as e2e questions#1 reads it (a12 the row, a13 the talebe's list), plus the count of
+# waiting questions (a14, which the screen shows after the reload).
+effects:
+  stored:
+    - run: [node, helpers/sql.mjs, "select answer, answered_by from lesson_questions where id = '{q.followed}'"]
+      expect: '{answer_token}'
+    - run: [node, helpers/sql.mjs, "select answered_by from lesson_questions where id = '{q.followed}'"]
+      expect: '"answered_by":"{secret.E2E_MUDERRIS_SUB}"'
+    - run: [node, helpers/api.mjs, applicantE, GET, '/courses/{q.course}/questions/mine']
+      expect: '{answer_token}'
+    - run: [node, ../nazar/questions/answer/questions.mjs, count, answer]
+      expect: '0 waiting'
+  replaced:
+    - run: [node, helpers/sql.mjs, "select answer from lesson_questions where id = '{q.followed}'"]
+      expect: '{replacement_token}'
+
+# Where role and name cannot find a node, or find too many. The cards of a walk are all the spare talebe's, so one name stands for
+# every article; the order of the first card is told by the list's first <li>.
+nodes:
+  # a bare role main is also matched on the page a walk leaves for: this page's own words start the text of its main
+  questionsPage: { role: main, hasText: '/^Sorular/' }
+  # "Sorular okunamadı" (the retry state) also starts with the word, so the name is anchored
+  questionsTitle: { role: heading, name: '/^Sorular$/' }
+  # the sidebar's entry carries aria-current="page" (e2e questions#1 a2): found by that attribute, which a graph cannot say
+  menuQuestions: { css: 'aside a[aria-current="page"]', hasText: Sorular }
+  # the page's own list, not the sidebar's
+  questionList: { css: '[data-testid=questions] > ul' }
+  # the answer text area of a waiting card and of a card being changed have one role and one name: each is told by its card's badge
+  answerBox: { role: textbox, name: Cevabınız, within: { role: article, hasText: Bekliyor } }
+  changeBox: { role: textbox, name: Cevabınız, within: { role: article, hasText: Cevaplandı } }
+  # the answerer is the walk's own account, with the unvan she carries in the course: each line is matched by its start
+  answerBy: { text: '/^Cevap: /' }
+  # "Bekliyor" and "Cevaplandı" are exact words; a case-insensitive text locator would also match inside a question's words
+  waitingBadge: { text: '/^Bekliyor$/' }
+  answeredBadge: { text: '/^Cevaplandı$/' }
+  # the alerts: the page's route announcer is also a role=alert, so each is found by its words, and the blank one by its full stop
+  blankAlert: { role: alert, hasText: 'Cevap boş olamaz.' }
+  goneAlert: { role: alert, hasText: Bu soru artık yok }
+  # the neutral alert of the refusal has no accessible name: it is a status, found by its title
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  # the busy statuses: every button that drives `loading` has an empty <output>, so each is found by what it says
+  sendingStatus: { role: status, hasText: Gönderiliyor }
+  loadingMoreStatus: { role: status, hasText: Yükleniyor }

@@ -39,7 +39,7 @@ personas:
     setup:
       - run:
           - node
-          - ../../tools/graphs/course-nazir-grants.mjs
+          - helpers/course-nazir-grants.mjs
           - --course
           - '{seed.courses.open}'
           - --nazir
@@ -52,7 +52,7 @@ personas:
     setup:
       - run:
           - node
-          - ../../tools/graphs/course-nazir-grants.mjs
+          - helpers/course-nazir-grants.mjs
           - --course
           - '{seed.courses.open}'
           - --nazir
@@ -65,7 +65,7 @@ personas:
     setup:
       - run:
           - node
-          - ../../tools/graphs/course-nazir-grants.mjs
+          - helpers/course-nazir-grants.mjs
           - --course
           - '{seed.courses.open}'
           - --nazir
@@ -78,7 +78,7 @@ personas:
     setup:
       - run:
           - node
-          - ../../tools/graphs/course-nazir-grants.mjs
+          - helpers/course-nazir-grants.mjs
           - --course
           - '{seed.courses.open}'
           - --nazir

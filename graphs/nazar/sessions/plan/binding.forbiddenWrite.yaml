@@ -1,0 +1,62 @@
+# nazar.sessions.plan, the walk of "the permission was taken away after the page was read": a ders nazırı who holds session.manage on the walk's own course opens
+# the planner, reads the preview, and the hoca takes her permission away just before "3 celse oluştur" is pressed; tedrisat answers 403 AUTHZ_FORBIDDEN, the page
+# says "Celseler oluşturulamadı / Bunu yapma izniniz yok." in a toast, and the form stays as it was.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/sessions/plan \
+#     --bind graphs/nazar/sessions/plan/binding.forbiddenWrite.yaml --cover transitions --out <dir>
+#
+# NOT RUN: written without a replay; the locators and the order of the steps are from the code.
+#
+# Why a file of its own. The refusal needs the grant taken away between two clicks, which nothing on the page does: `nodes.submitOn.before` runs
+# helpers/course-nazir-grants.mjs with --codes none (the hoca, as the default giver, sets the post's whole set) before every press of the button. A binding has one
+# `nodes` for all its scenarios, so the scenario lives where its `before` can. `creating` holds no server call here: walking a FAIL class makes the replay compare the
+# call's HTTP status with the refusal's (403), and a Next server action answers 200 on the page's own address whatever the API said, so only the address is checked.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.sessions.plan
+
+states:
+  creating: { url: '{nazar}/ders/*/celseler/planla' }
+
+nodes:
+  submitOn:
+    role: button
+    name: '/^[1-9]\d* celse oluştur$/'
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: 'course-nazir-grants DERS_NAZIR none'
+
+scenarios:
+  forbiddenWrite:
+    given: { read: ok, plan: weekly, fields: valid, previewed: lines, answer: forbidden }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/celseler/planla'
+    setup:
+      - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi planWk"'
+      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+        expect: 'dates planWk'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, session.manage]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, planWk]
+        expect: 'course remove planWk'
+      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+        expect: 'dates planWk'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      examDate: '{when.exam}'
+      titleText: Haftanın tekrarı
+      firstUrl: https://meet.example.test/plan/ilk
+      score: '100'
+      topics: Birinci bâbın çekimleri
+      fixField: title
+      fixValue: Haftanın tekrarı
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      exams: '0'

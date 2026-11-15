@@ -1,0 +1,95 @@
+# nazar.bans.review on the local stack: Yasaklamalar of "Hadis ve Siyer Medresesi" at http://localhost:4002, read by its başmüderris
+# ("Nuri Medrese Başmüderrisi"). The page only reads; what a walk needs is bans, and the stack seeds none.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/bans/review \
+#     --bind graphs/nazar/bans/review/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. The locators of binding.common.yaml are from the code; see its header for what is not walked.
+#
+# The data. `setup` runs ./bans-data.mjs (a helper of this folder, SQL against tedrisat's database, because no route makes it): seven invented
+# people, "<first name> Yasaklı", none with a Keycloak account. Open: Ömer (a ban of the başmüderris on "Bina ve İzhar Şerhi", 2 hours old:
+# "Yeni" and all three actions), Hatice (a Medaris nazımı's ban on "İsâgûcî ile Mantığa Giriş", 30 hours old: widen only, and "yalnız Medaris
+# yönetimi kaldırabilir"), Mustafa (a köşk nazımı's ban on "Bina ve İzhar Şerhi", 26 hours old: widen and ask, and "yalnız onu koyan kademe ya da
+# üstü kaldırabilir"), Rabia (a medrese-wide ban widened from "Bina ve İzhar Şerhi", with a permanent-ban request waiting: "Kalıcı yasak talebi
+# bekliyor", lift only). Lifted: Kerem (a course ban on "Bina ve İzhar Şerhi"), Sevde (a medrese-wide ban) and Selim (a course ban on
+# "İsâgûcî ile Mantığa Giriş"), so that each scope holds a ban in both tabs. The tabs say "Etkin 4" and "Kaldırılan 3". The same rows serve the
+# e2e checks bans#1 (tabs and counts), bans#2 (the actions of each kademe; the e2e's "Medaris nazımı" row is Hatice's) and bans#3 (the scope,
+# "Süzgeçleri temizle", the name; its second course is "İsâgûcî ile Mantığa Giriş" and holds one open ban here too). The e2e's own exact row
+# counts (2 open, 1 lifted) are not the walk's: the graph asserts no row count. `teardown` removes all of it, and `setup` removes its own rows
+# first, so a crashed walk leaves nothing behind. Nothing of the seed is touched and none of the stack's accounts is barred.
+#
+# Five scenarios, one per way the page answers (two scenarios must not share a `given`, and the first in file order wins):
+#   reads        everything is there; the main story (e2e bans#1, #2, #3 a1-a3, a6-a7; `mix: full`: a row of every kind)
+#   searchEmpty  everything is there and the name typed is nobody's: "Bu süzgece uyan yasak yok." from the search
+#   scopeEmpty   no ban over the medrese and none on "İsâgûcî ile Mantığa Giriş": the scope filter leaves nothing, in either tab (e2e bans#3 a4-a5);
+#                the data has no Medaris ban, no medrese-wide ban and no request (`mix: plain`), which is what leaves both scopes empty
+#   nothing      no ban at all: "Etkin yasak yok." and "Kaldırılan yasak yok."
+#   refused      the seeded nazır, who holds no code, reads the same address: the list answers 403 and the page says "Bu sayfaya izniniz yok"
+#                (e2e bans#8, carried by nazar.access.medreseNazirRefused as well; F-B-13 is read here)
+# The search types "Ömer" in `reads`, which narrows the Etkin list to one row (e2e bans#3 a7); in the Kaldırılan tab the same text would match
+# nobody, which the flow's `match` does not tell apart: a walk takes TYPE_NAME on the Etkin tab, where `--cover transitions` first meets it.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.bans.review
+
+scenarios:
+  reads:
+    given: { read: ok, active: some, lifted: some, scopeHolds: some, match: some, mix: full }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    vars: { typed: Ömer, course: İsâgûcî ile Mantığa Giriş, active: '4', lifted: '3' }
+    setup:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, up]
+        expect: 'ready: 4 open, 3 lifted'
+    teardown:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, down]
+        expect: removed
+  searchEmpty:
+    given: { read: ok, active: some, lifted: some, scopeHolds: some, match: none, mix: full }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    vars: { typed: kimsenin-adi-bu-degil, course: Bina ve İzhar Şerhi, active: '4', lifted: '3' }
+    setup:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, up]
+        expect: 'ready: 4 open, 3 lifted'
+    teardown:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, down]
+        expect: removed
+  scopeEmpty:
+    given: { read: ok, active: some, lifted: some, scopeHolds: none, match: some, mix: plain }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    vars: { typed: Ömer, course: İsâgûcî ile Mantığa Giriş, active: '2', lifted: '1' }
+    setup:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, up, --skip, 'hatice,rabia,sevde,selim']
+        expect: 'ready: 2 open, 1 lifted'
+    teardown:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, down]
+        expect: removed
+  nothing:
+    given: { read: ok, active: none, lifted: none, scopeHolds: none, match: none, mix: plain }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    vars: { typed: Ömer, course: Bina ve İzhar Şerhi, active: '0', lifted: '0' }
+    setup:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, up, --skip, 'omer,hatice,mustafa,rabia,kerem,sevde,selim']
+        expect: 'ready: 0 open, 0 lifted'
+    teardown:
+      - run: [node, ../nazar/bans/review/bans-data.mjs, down]
+        expect: removed
+  # The seeded MEDRESE_NAZIR ("Seher Medrese Nazırı") holds nothing: tedrisat answers the list's read with 403 (the medrese's role matrix gives a nazır
+  # no ban code), the page keeps its title and the alert says so, and "Yasakla" is left out. `setup` puts the nazır's grants back to none, as
+  # nazar.access.medreseNazirRefused does, in case a crashed walk of another flow left one (PUT with an empty list; its answer is not checked:
+  # `--any`). No data of ours is made.
+  refused:
+    given: { read: refused, active: none, lifted: none, scopeHolds: none, match: none, mix: plain }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans' }
+    vars: { typed: Ömer, course: Bina ve İzhar Şerhi, active: '0', lifted: '0' }
+    setup:
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":[]}', --any]
+        expect: 'HTTP '

@@ -1,0 +1,40 @@
+# nazar.roster.remove as a ders nazırı the müderris gave `enrollment.complete` and not `enrollment.remove`: the page opens, the Kayıtlı rows
+# carry "Tamamladı say" and there is no "Dersten çıkar", and the walk stops there. Same course, data, locators and teardown as binding.yaml
+# (see its header); the ders nazırı (Rukiye Ders Nazırı) is appointed with helpers/course-nazir-grants.mjs, as the müderris does on the
+# course's Nazırlar page, and goes with the course.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/remove --bind graphs/nazar/roster/remove/binding.completer.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. A file of its own because the scenario takes transitions `removes` already takes, so `--cover transitions`
+# would never walk it in the file that holds both.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.remove
+
+scenarios:
+  completer:
+    given: { viewer: completer, answer: removed, others: some }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosterremove, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_C":"ENROLLED"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, enrollment.complete]
+        expect: enrollment.complete
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosterremove]
+        expect: course remove rosterremove
+      - run: [node, helpers/sql.mjs, "select count(*) as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+    vars:
+      who: applicantC
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      otherName: Salih Başvuran
+      courseTitle: Deneme dersi rosterremove
+      reason: Bu yazı gönderilmez
+      reasonSaved: Bu yazı gönderilmez
+      removerName: Rukiye Ders Nazırı

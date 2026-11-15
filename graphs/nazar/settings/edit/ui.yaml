@@ -1,0 +1,146 @@
+# The screens of nazar.settings.edit: "Medrese ayarları" (/medrese/<id>/ayarlar), its toasts and the refusal that replaces the form. Read
+# from apps/nazar/features/settings/components/{settings-page,settings-form}.tsx, features/settings/{settings,actions}.ts and the kit's
+# libs/ui/src/mds/{field,checkbox,button,alert,toast}.tsx on 15 Nov 2026, not seen in a browser; the words are copied from
+# libs/i18n/src/locales/tr/nazar.json (namespaces Settings, Problems; the app reads them as nazar.Settings, nazar.Problems).
+#
+# Words that are not in the app's i18n file (catalog keys `composed.*`, each with the code line it comes from):
+#   composed.Settings.name            "{madrasah}"     the medrese's name, drawn as data: the name box's value (settings-form.tsx:148), the third level
+#                                                      (settings-page.tsx:127) and the sidebar's scope (scope-picker.tsx:100)
+#   composed.Settings.newName         "{newMadrasah}"  the same after a save, with the name the walk typed
+#   composed.Settings.description     "{description}"  the description box's value (settings-form.tsx:166)
+#   composed.Settings.viewPageName    "Medrese sayfasını gör (yeni sekmede açılır)"  the link's accessible name: the visible words and a visually
+#                                                      hidden hint after a space (settings-page.tsx:90-94)
+#   composed.Settings.requiredNote    "* zorunlu alan" the star and `Settings.required` (settings-form.tsx:128)
+# `changes` is the app's own `Settings.policiesNote`: the one message that says what a save does ("Politika değişikliği kaydettiğiniz anda
+# geçerli olur ve denetim kaydına yazılır."); nothing in the app says it of the name and the description, whose help lines say who sees them.
+#
+# The page keeps no focus of its own on load and none after "Vazgeç" or a save (F-B-11), so there is no `initialFocus`; the one focus it
+# moves is to the first invalid field after a refused "Kaydet" (`focus` below). Where a node says nothing of its state, the replay finds
+# it through the binding. `limits.*` and `madrasah.*` are the numbers and names the ui's `samples` stand for.
+schema: delurio-graph/0
+kind: ui
+id: nazar.settings.edit
+flow: nazar.settings.edit
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Settings.policiesNote }
+samples:
+  madrasah: Ayarlar Deneme Medresesi
+  newMadrasah: Düzenlenmiş Medrese Adı
+  description: Medrese ayarları sayfasının denemesi için açılan medrese.
+  name: Esma Başvuran
+  date: 15 Kasım 2026
+  min: "2"
+  max: "120"
+
+focus:
+  refused: nameField
+  refusedDescription: descriptionField
+
+nodes:
+
+  # --- the page and its header ---------------------------------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [clean, dirty, refused, refusedDescription, saving, saved, forbidden], source: apps/nazar/features/settings/components/settings-page.tsx:74 } # the shell's one <main>; it has no name (the app labels none)
+  title: { type: text, component: Heading, role: heading, text: { key: Settings.title }, in: [clean, dirty, refused, refusedDescription, saving, saved, forbidden], source: apps/nazar/features/settings/components/settings-page.tsx:77 } # h1
+  subtitle: { type: text, component: Text, text: { key: Settings.subtitle }, in: [clean, dirty, refused, refusedDescription, saving, saved, forbidden], source: apps/nazar/features/settings/components/settings-page.tsx:78 }
+  viewPage: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.Settings.viewPageName }, text: { key: Settings.viewPage }, in: [clean, dirty, refused, refusedDescription, saving, saved, forbidden], emits: OPEN_PUBLIC_PAGE, source: apps/nazar/features/settings/components/settings-page.tsx:83 } # target=_blank rel=noopener; the name carries a hidden '(yeni sekmede açılır)'; left out when TEDRIS_URL is empty; drawn even where the form is refused (REFUSED-3)
+
+  # --- the refusal that replaces the form ----------------------------------------------------------------------------
+  forbiddenTitle: { type: text, component: Text, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # the alert's title paragraph
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, with no accessible name of its own; there is no form and no Kaydet beside it (e2e settings#6)
+
+  # --- Genel: the name and the description ---------------------------------------------------------------------------
+  generalRegion: { type: page, component: Page, role: region, name: { labelledBy: generalTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:120 }
+  generalTitle: { type: text, component: Heading, role: heading, text: { key: Settings.generalTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:125 } # h2
+  requiredNote: { type: text, component: Text, text: { key: composed.Settings.requiredNote }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:128 } # '* zorunlu alan'
+  nameField: { type: field, component: TextField, role: textbox, text: { key: Settings.name }, value: { key: composed.Settings.name, params: { madrasah: madrasah.name } }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:144 } # required (native), autocomplete off; the '*' of its label is decorative; holds the saved name until the walk types in it
+  nameHelp: { type: text, component: Text, text: { key: Settings.nameHelp }, in: [clean, dirty, refused, refusedDescription, saving, saved], when: "said != 'required' and said != 'short' and said != 'long'", source: apps/nazar/features/settings/components/settings-form.tsx:134 } # an error replaces the help line, it does not stack under it
+  nameRequired: { type: text, component: Text, text: { key: Settings.nameProblems.required }, in: [refused], when: "said == 'required'", source: apps/nazar/features/settings/components/settings-form.tsx:137 } # after the first press of Kaydet; no live region of its own: it is read because the focus moved to the field
+  nameShort: { type: text, component: Text, text: { key: Settings.nameProblems.short, params: { min: limits.nameMin } }, in: [refused], when: "said == 'short'", source: apps/nazar/features/settings/components/settings-form.tsx:137 }
+  nameLong: { type: text, component: Text, text: { key: Settings.nameProblems.long, params: { max: limits.nameMax } }, in: [refused], when: "said == 'long'", source: apps/nazar/features/settings/components/settings-form.tsx:137 }
+  nameInvalid: { type: field, component: TextField, role: textbox, text: { key: Settings.name }, in: [refused], source: apps/nazar/features/settings/components/settings-form.tsx:144 } # the same box once it is refused: aria-invalid="true" (Base UI's Field sets it from the error, e2e settings#3 a2); the graph has no key for it, so the binding finds it by that attribute
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: Settings.description }, value: { key: composed.Settings.description, params: { description: madrasah.description } }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:163 } # a text area of five rows; emptied, it clears the description (null in the PATCH)
+  descriptionHelp: { type: text, component: Text, text: { key: Settings.descriptionHelp }, in: [clean, dirty, refused, refusedDescription, saving, saved], when: "said != 'descriptionLong'", source: apps/nazar/features/settings/components/settings-form.tsx:155 }
+  descriptionLong: { type: text, component: Text, text: { key: Settings.descriptionLong, params: { max: limits.descriptionMax } }, in: [refusedDescription], when: "said == 'descriptionLong'", source: apps/nazar/features/settings/components/settings-form.tsx:159 }
+  descriptionInvalid: { type: field, component: TextField, role: textbox, text: { key: Settings.description }, in: [refusedDescription], source: apps/nazar/features/settings/components/settings-form.tsx:163 } # the same for the description
+
+  # --- Politikalar: three checkboxes that wait for Kaydet ------------------------------------------------------------
+  policiesRegion: { type: page, component: Page, role: region, name: { labelledBy: policiesTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:175 }
+  policiesTitle: { type: text, component: Heading, role: heading, text: { key: Settings.policiesTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:179 } # h2
+  policiesIntro: { type: text, component: Text, text: { key: Settings.policiesIntro }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:182 }
+  policiesGroup: { type: text, component: Text, role: group, name: { key: Settings.policiesGroup }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:183 } # the fieldset; its legend is visually hidden and a visible paragraph with the same words is aria-hidden
+  policyClosed: { type: field, component: TextField, role: checkbox, text: { key: Settings.policies.closedCourseRequired.label }, checked: "box != 'loaded' and flips == 'closed'", in: [clean, dirty, refused, refusedDescription, saving, saved], emits: TOGGLE_CLOSED, source: apps/nazar/features/settings/components/settings-form.tsx:192 } # off in both histories; the help is its aria-describedby
+  closedHelp: { type: text, component: Text, text: { key: Settings.policies.closedCourseRequired.help }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:197 }
+  policyApproval: { type: field, component: TextField, role: checkbox, text: { key: Settings.policies.alwaysApproval.label }, checked: "(history == 'saved' and not (box != 'loaded' and flips == 'approval')) or (history == 'never' and box != 'loaded' and flips == 'approval')", in: [clean, dirty, refused, refusedDescription, saving, saved], emits: TOGGLE_APPROVAL, source: apps/nazar/features/settings/components/settings-form.tsx:192 } # on when the medrese was saved before (the e2e's seed has it on), unless the walk pressed it
+  approvalHelp: { type: text, component: Text, text: { key: Settings.policies.alwaysApproval.help }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:197 }
+  policyRecordings: { type: field, component: TextField, role: checkbox, text: { key: Settings.policies.noPublicRecordings.label }, checked: "box != 'loaded' and flips == 'recordings'", in: [clean, dirty, refused, refusedDescription, saving, saved], emits: TOGGLE_RECORDINGS, source: apps/nazar/features/settings/components/settings-form.tsx:192 } # stored, shown and audited, and read by nothing (policy-no-public-recordings-inert)
+  recordingsHelp: { type: text, component: Text, text: { key: Settings.policies.noPublicRecordings.help }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:197 } # says no recording can be made public or uploaded to YouTube: the code does not enforce it
+  policiesNote: { type: text, component: Text, text: { key: Settings.policiesNote }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:207 } # also the flow's `changes` note
+  narrowerTitle: { type: text, component: Text, text: { key: Settings.narrowerTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:212 }
+  narrowerAlert: { type: alert, component: Alert, role: status, text: { key: Settings.narrower }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-form.tsx:212 } # a neutral Alert: a status with no accessible name; its title is a paragraph
+
+  # --- the last change, Vazgeç and Kaydet ----------------------------------------------------------------------------
+  lastChange: { type: text, component: Text, text: { key: Settings.lastChange, params: { date: settings.updatedAt, name: settings.updatedBy } }, in: [clean, dirty, refused, refusedDescription, saving, saved], when: "stamp == 'shown'", source: apps/nazar/features/settings/components/settings-form.tsx:217 } # data-testid=last-change; the paragraph is on the page with no text before the first save; the date is in the viewer's zone
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Settings.cancel }, in: [clean, dirty, refused, refusedDescription, saving, saved], disabledIn: [clean, saving, saved], emits: CANCEL, source: apps/nazar/features/settings/components/settings-form.tsx:221 } # natively disabled while nothing differs and while the save runs; nothing says why (F-B-11)
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: Settings.save }, in: [clean, dirty, refused, refusedDescription, saving, saved], disabledIn: [clean, saving, saved], emits: SUBMIT, source: apps/nazar/features/settings/components/settings-form.tsx:224 } # natively disabled while nothing differs; busy (aria-disabled, aria-busy) while the save runs; after Vazgeç or a successful save the pressed button turns off under the focus (F-B-11)
+  saveBusy: { type: status, component: Status, role: status, text: { key: Settings.saving }, in: [saving], source: apps/nazar/features/settings/components/settings-form.tsx:228 } # the hidden <output> of the busy button
+
+  # --- the toasts of a save: a region 'Bildirimler', each toast a dialog; an error toast is an alertdialog and stays ---
+  toastSaved: { type: status, component: Status, role: dialog, name: { key: Settings.saved }, in: [saved], when: "toast == 'saved'", source: apps/nazar/features/settings/components/settings-form.tsx:84 } # a title only; closes by itself after 6 seconds
+  toastInvalid: { type: alert, component: Alert, role: alertdialog, name: { key: Settings.saveFailedTitle }, text: { key: Settings.saveFailedInvalid }, in: [dirty], when: "toast == 'invalid'", source: apps/nazar/features/settings/components/settings-form.tsx:87 } # the page's own checks make it unreachable
+  toastForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: Settings.saveFailedTitle }, text: { key: Problems.actionForbidden }, in: [dirty], when: "toast == 'forbidden'", source: apps/nazar/features/settings/components/settings-form.tsx:87 }
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Settings.saveFailedTitle }, text: { key: Problems.actionGeneric }, in: [dirty], when: "toast == 'failed'", source: apps/nazar/features/settings/components/settings-form.tsx:87 }
+
+  # --- the side column: the four levels ------------------------------------------------------------------------------
+  tiersRegion: { type: page, component: Page, role: region, name: { labelledBy: tiersTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:115 }
+  tiersTitle: { type: text, component: Heading, role: heading, text: { key: Settings.tiersTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:41 } # h2 (the Card's)
+  tiersIntro: { type: text, component: Text, text: { key: Settings.tiersIntro }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:116 }
+  tiersList: { type: list, component: List, role: list, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:117 } # data-testid=policy-tiers; four items, widest first
+  tierMedaris: { type: list, component: ListItem, role: listitem, text: { key: Settings.tiers.medaris.name }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:118 }
+  tierKosk: { type: list, component: ListItem, role: listitem, text: { key: Settings.tiers.kosk.name }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:118 }
+  tierMedrese: { type: list, component: ListItem, role: listitem, text: { key: composed.Settings.name, params: { madrasah: madrasah.name } }, in: [clean], source: apps/nazar/features/settings/components/settings-page.tsx:127 } # the third item is the medrese's own name, as loaded
+  tierMedreseSaved: { type: list, component: ListItem, role: listitem, text: { key: composed.Settings.newName, params: { newMadrasah: madrasah.newName } }, in: [saved], source: apps/nazar/features/settings/components/settings-page.tsx:127 } # the same item after a save in this visit: the name the walk typed
+  tierDers: { type: list, component: ListItem, role: listitem, text: { key: Settings.tiers.ders.name }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:118 }
+  tierMedarisHelp: { type: text, component: Text, text: { key: Settings.tiers.medaris.help }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:133 }
+  tierKoskHelp: { type: text, component: Text, text: { key: Settings.tiers.kosk.help }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:133 }
+  tierMedreseHelp: { type: text, component: Text, text: { key: Settings.tiers.medrese.help }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:133 }
+  thisPage: { type: text, component: Text, text: { key: Settings.thisPage }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:137 } # a Badge on the medrese's own item
+  tierDersHelp: { type: text, component: Text, text: { key: Settings.tiers.ders.help }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:133 }
+
+  # --- the side column: the courses the policies apply to ------------------------------------------------------------
+  coursesRegion: { type: page, component: Page, role: region, name: { labelledBy: coursesTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:143 }
+  coursesTitle: { type: text, component: Heading, role: heading, text: { key: Settings.coursesTitle }, in: [clean, dirty, refused, refusedDescription, saving, saved], source: apps/nazar/features/settings/components/settings-page.tsx:41 } # h2 (the Card's)
+  courseList: { type: list, component: List, role: list, in: [clean, dirty, refused, refusedDescription, saving, saved], when: "courses == 'listed'", source: apps/nazar/features/settings/components/settings-page.tsx:151 } # data-testid=policy-courses; published and draft courses, a hidden one is not listed (e2e settings#1 a16)
+  coursePublished: { type: list, component: ListItem, role: listitem, text: { key: Settings.status.PUBLISHED }, in: [clean, dirty, refused, refusedDescription, saving, saved], when: "courses == 'listed'", source: apps/nazar/features/settings/components/settings-page.tsx:179 } # a course with its köşk · müderrisler line and a Badge 'Yayında'; the title is not a link (a list of text)
+  courseDraft: { type: list, component: ListItem, role: listitem, text: { key: Settings.status.DRAFT }, in: [clean, dirty, refused, refusedDescription, saving, saved], when: "courses == 'listed'", source: apps/nazar/features/settings/components/settings-page.tsx:179 } # the same with a Badge 'Taslak'
+  coursesEmpty: { type: text, component: Text, text: { key: Settings.coursesEmpty }, in: [clean, dirty, refused, refusedDescription, saving, saved], when: "courses == 'empty'", source: apps/nazar/features/settings/components/settings-page.tsx:149 }
+  coursesFailed: { type: alert, component: Alert, role: alert, text: { key: Settings.coursesFailed }, in: [clean, dirty, refused, refusedDescription, saving, saved], when: "courses == 'failed'", source: apps/nazar/features/settings/components/settings-page.tsx:145 } # the courses read failed or was refused: the words say 'okunamadı, yenileyin' for both (SET-1); the form stays
+  coursesLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Settings.coursesLink }, in: [clean, dirty, refused, refusedDescription, saving, saved], emits: OPEN_COURSES, source: apps/nazar/features/settings/components/settings-page.tsx:190 } # always drawn in the courses card, also beside the failed alert; href /medrese/<id>/dersler
+
+  # --- the sidebar's medrese name (the shell's; drawn here because e2e settings#4 reads it) --------------------------
+  scopeName: { type: text, component: Text, text: { key: composed.Settings.name, params: { madrasah: madrasah.name } }, in: [clean], source: apps/nazar/features/shell/components/scope-picker.tsx:100 } # the card (one scope) or the menu button (several) names the medrese
+  scopeNameSaved: { type: text, component: Text, text: { key: composed.Settings.newName, params: { newMadrasah: madrasah.newName } }, in: [saved], source: apps/nazar/features/shell/components/scope-picker.tsx:100 } # router.refresh() reads the layout again, so the sidebar follows the save
+
+edges:
+  - { labelledBy: [generalRegion, generalTitle] }
+  - { labelledBy: [policiesRegion, policiesTitle] }
+  - { labelledBy: [tiersRegion, tiersTitle] }
+  - { labelledBy: [coursesRegion, coursesTitle] }
+  - { triggers: [submit, saving] }
+  - { triggers: [cancel, reverting] }
+  - { triggers: [coursesLink, courses_opened] }
+
+rules:
+  - { id: F-B-11, rule: "Pressing 'Vazgeç', or 'Kaydet' once it has succeeded, turns the pressed button natively disabled while it holds the focus (`disabled={!dirty || pending}` settings-form.tsx:221, `disabled={!dirty}` :226; after a save `dirty` becomes false, :80-85), and a native `disabled` drops the focus to the page; the kit uses `aria-disabled` only while busy (libs/ui/src/mds/button.tsx:141-146). 'Kaydet' is also off for 'nothing changed' with no stated reason. Fix: `aria-disabled` for both, or move the focus to the name field after Vazgeç and after a save." }
+  - { id: F-B-5, rule: "Holds in this form, unlike the dialogs of the same part: a refused 'Kaydet' moves the focus to the first invalid field (settings-form.tsx:68-74), so the message under it is read through aria-describedby. The message itself is no live region." }
+  - { id: policy-no-public-recordings-inert, rule: "'Ders kayıtları herkese açılamaz' is saved, shown and audited, and its help says no recording can then be made public or uploaded to YouTube, but no handler asks the flag (CourseService.publicRecordingsAllowed reads only the platform's and the köşk's, apps/tedrisat/src/course/course.service.ts:857-867). The page tells the başmüderris her recordings are closed when they are not; 'Politika değişikliği kaydettiğiniz anda geçerli olur' is true of the approval box and, for 'Kapalı ders zorunlu', of the next course opened or saved, not of this one. Domain invariant madrasah-no-public-recordings-closes-recordings (holds: false). Fix: enforce it, or leave the box out." }
+  - { id: patch-madrasah-unaudited, rule: "Not on this page: the form saves through PATCH /madrasahs/{id}/settings, which writes the audit row madrasah.settings.update. The overlapping route PATCH /madrasahs/{id} (name, description, handle, cover) writes none, and no web app calls it (apps/tedrisat/src/madrasah/madrasah.repository.ts:189). Recorded because the page's promise 'denetim kaydına yazılır' is true only of the route it uses." }
+  - { id: madrasah-settings-save-noop, rule: "A save that changes nothing writes nothing: no updatedBy, no updatedAt, no audit row (apps/tedrisat/src/madrasah/madrasah-settings.ts:30). The page never sends one, because 'Kaydet' is off until something differs, whitespace aside (settingsPatch compares trimmed text)." }
+  - { id: SET-1, rule: "The courses card says 'Dersler şu an okunamadı. Sayfayı yenileyerek yeniden deneyin.' for every read that is not 'ok' (settings-page.tsx:144-148), the 403 of a nazır who holds madrasah.settings_edit and none of madrasah.course_open, madrasah.course_hide or madrasah.muderris_manage included: a refusal worded as an outage, and a retry that never works. `readOnce` returns `forbidden` for it. New finding, from the code and the domain (listMadrasahCourses asks any of the three); not verified in a browser, and the stack seeds no such nazır. Fix: say 'Bu listeyi görme izniniz yok' for a 403, as PageProblem does for the form." }
+  - { id: SET-2, rule: "A changed form is lost by anything that leaves it: a menu entry, a link, 'Medrese dersleri', a reload. Nothing warns (no beforeunload and no router guard in features/settings; the recording dialog has one, apps/nazar/features/recordings/components/recording-dialog.tsx:215), and the only sign of an unsaved change is that 'Kaydet' is on. 'Vazgeç' asks nothing either. New finding, from the code; not verified in a browser. Fix: warn when the form differs from the last save." }
+  - { id: REFUSED-3, rule: "Where the API refuses the settings the header link 'Medrese sayfasını gör' stays (settings-page.tsx:82, drawn before the read is judged), so 'no form' is not 'no control'. Harmless: the public page is public. Carried from nazar.access.medreseNazirRefused." }
+  - { id: focus-not-set, rule: "The page sets no initial focus on load, and none after 'Vazgeç' or a successful save (F-B-11); the one focus it moves is to the invalid field after a refused 'Kaydet'. The graph draws no `initialFocus` for it." }
+  - { id: label-in-name, rule: "A control's visible text is contained in its accessible name (WCAG 2.5.3): 'Kaydet', 'Vazgeç', 'Medrese dersleri', and 'Medrese sayfasını gör' in 'Medrese sayfasını gör (yeni sekmede açılır)'. Holds." }
+  - { id: name-is-required-and-said, rule: "The name box carries the native `required` (settings-form.tsx:146) beside the visible '* zorunlu alan', and the form is noValidate, so the refusal is the page's own message under the field: the F-B-7 defect of the dialogs does not occur here." }
+  - { id: checkboxes-not-switches, rule: "The three policies are checkboxes that wait for 'Kaydet', not switches that commit at once (settings-form.tsx:32-36): the page draws what the canvas draws. Each help line is the checkbox's aria-describedby, so a long sentence is read with it." }

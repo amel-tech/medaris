@@ -1,0 +1,78 @@
+# nazar.access.dersNazirPages, the ders nazırı the hoca gave nothing: `applicantD` appointed with no permission at all in a course the walk
+# makes, on the local stack (nazar-web on :4002). The main story of the flow: she lands on Genel bakış and opens each page in turn.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/binding.yaml --absent --out <dir>
+#   (add --cover transitions to take every menu event, not only the main story)
+# NOT RUN: written without a replay; the locators of binding.common.yaml are from the code.
+#
+# This file is the walk of the e2e checks course-nazirs#12 (a1-a5: the page, no button, the API refuses the list and the appointment, no
+# post written), course-settings#11 (the page, no checkbox, no Kaydet), questions#2 (a1-a8), evaluation#2 (a1-a6) and evaluation#3, and it draws the
+# menu of F-D2c-2, F-D1-29 and F-L-20 (nine refusals behind it, three entries missing). The seeded ders nazırı (Rukiye) holds three codes in
+# her own course and is not used here.
+#
+# What the setup makes besides the course and the post: a waiting question (the talebe applicantE asks it, as questions#2 seeds) and a recited
+# homework on the first celse (as evaluation#2 and #3 seed), so that the refusals have something to hide. Everything goes with the course.
+# What the effects check, through tedrisat's API (dnp.mjs try, as the nazır or as the talebe; a refused call is the answer wanted):
+#   atQuestions   GET the list: 403 AUTHZ_FORBIDDEN (a6); PUT an answer: 404 LESSON_QUESTION_NOT_FOUND (a7); the row has no answer (a8)
+#   atEvaluation  GET the board and PUT a mark as the nazır: 403 (evaluation#2 a4, a5); no mark is written (a6); and as the talebe, who marks
+#                 nobody, themselves included, and reads no board (evaluation#3 a1, a2); no mark is written (a6) and her own read of the mark is empty (a3).
+#                 Not carried: the multipart hand-in on a recited homework (evaluation#3 a4, a5): helpers/api.mjs sends JSON only
+#   atNazirs      GET the list and POST an appointment: 403 AUTHZ_FORBIDDEN (course-nazirs#12 a3, a4); no post written (a5)
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.dersNazirPages
+
+scenarios:
+  none:
+    given: { held: none }
+    as: applicantD
+    open: '{nazar}/ders/{dnp.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, dnp, --weeks, '2', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, applicantE]
+        expect: '"tag":"dnp"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'none']
+        expect: 'course-nazir-grants APPLICANT_D'
+      - run: [node, ../nazar/questions/answer/questions.mjs, up, dnp, --talebe, APPLICANT_E, --hoca, MUDERRIS, --waiting, '1', --answered, '0']
+        expect: 'questions up dnp: 1 waiting, 0 answered'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{dnp.lessons.0}/assignment', '{"kind":"MEMORIZE","description":"Birinci bab ezberden okunacak."}']
+        expect: '"kind":"MEMORIZE"'
+    teardown:
+      - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, clear, '{dnp.course}']
+      - run: [node, ../nazar/questions/answer/questions.mjs, down, dnp]
+      - run: [node, helpers/course.mjs, remove, dnp]
+        expect: course remove dnp
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+
+effects:
+  atQuestions:
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, GET, '/courses/{dnp.course}/questions']
+      expect: '403 AUTHZ_FORBIDDEN'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, PUT, '/questions/{dnpQ.waiting.0}/answer', '{"body":"yetkisiz cevap"}']
+      expect: '404 LESSON_QUESTION_NOT_FOUND'
+    - run: [node, helpers/sql.mjs, "select answer, answered_by from lesson_questions where id = '{dnpQ.waiting.0}'"]
+      expect: '"answer":null'
+  atEvaluation:
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, GET, '/courses/{dnp.course}/evaluations']
+      expect: '403 AUTHZ_FORBIDDEN'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, PUT, '/lessons/{dnp.lessons.0}/evaluations/{secret.E2E_APPLICANT_E_SUB}', '{"status":"FULL"}']
+      expect: '403 AUTHZ_FORBIDDEN'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from assignment_evaluations e join lesson_assignments a on a.id = e.assignment_id where a.lesson_id = '{dnp.lessons.0}'"]
+      expect: '"n":0'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantE, GET, '/courses/{dnp.course}/evaluations']
+      expect: '403 AUTHZ_FORBIDDEN'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantE, PUT, '/lessons/{dnp.lessons.0}/evaluations/{secret.E2E_APPLICANT_E_SUB}', '{"status":"FULL"}']
+      expect: '403 AUTHZ_FORBIDDEN'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from assignment_evaluations e join lesson_assignments a on a.id = e.assignment_id where a.lesson_id = '{dnp.lessons.0}'"]
+      expect: '"n":0'
+    - run: [node, helpers/api.mjs, applicantE, GET, '/lessons/{dnp.lessons.0}/evaluation']
+      expect: '"status":null'
+  atNazirs:
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, GET, '/courses/{dnp.course}/nazirs']
+      expect: '403 AUTHZ_FORBIDDEN'
+    - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, try, applicantD, POST, '/courses/{dnp.course}/nazirs', '{"userId":"{secret.E2E_OTHER_SUB}","permissions":[]}']
+      expect: '403 AUTHZ_FORBIDDEN'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments where role = 'DERS_NAZIR' and scope_id = '{dnp.course}' and user_id = '{secret.E2E_OTHER_SUB}' and revoked_at is null"]
+      expect: '"n":0'

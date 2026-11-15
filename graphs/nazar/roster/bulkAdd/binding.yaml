@@ -1,0 +1,135 @@
+# nazar.roster.bulkAdd on the local stack: the müderris of a course of the walk's own, at http://localhost:4002, in the real Keycloak sign-in of
+# local.nazar.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/bulkAdd --bind graphs/nazar/roster/bulkAdd/binding.yaml --cover transitions --absent --out <dir>
+#   (the other two files are walked on their own, each with --cover transitions:
+#      binding.forbidden.yaml   a ders nazırı loses enrollment.decide between the page and the press
+#      binding.noButton.yaml    a ders nazırı with enrollment.complete only: the page has no button)
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code and is unverified
+# until a walk; where the walk may need a fix, a comment says so. The local realm answers the directory lookups: tedrisat's `tedrisat-admin`
+# service account is set up by the stack (STACK.md, "Keycloak: how the realm is made"), so KEYCLOAK_ADMIN_NOT_CONFIGURED is not what a walk meets.
+#
+# The walk adds only SPARE talebe (applicantE, F, G and H) and only to a course of its own, "Deneme dersi bulkadd", which helpers/course.mjs
+# makes through tedrisat's API in `setup` (the müderris as its hoca, in the seed's second köşk, which no seeded flow reads) and takes away in
+# `teardown`, with the seats, the notifications that point at it and the invitation mails of its celses. `make` removes a tag a crashed walk
+# left, so `setup` is safe to run twice. No seeded person is ever put in the box, and the seeded courses are not touched.
+# The people added are mailed the course's calendar invitations a moment after the answer (the invitation sweep), possibly after the course is
+# gone; the last line of each teardown clears whatever that mailed under the course's title.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   mixed      the main story. The course asks for approval. applicantH waits (approved by the list), applicantG has no row (enrolled), applicantF
+#              is already enrolled, applicantE completed the course (skipped, "Dersi tamamlamış"); the list also holds an address no account
+#              has and an entry that is no address, and repeats applicantH's address once. Six distinct addresses: "6 adres". The six lines,
+#              the box with its two entries, "Kopyala" (clipboard ok), "Atlananlar", then "Kapat": the roster is read again.
+#   added      the course takes anyone; one new talebe (applicantH): one line, no box, no skipped list.
+#   unmatched  two entries nobody is enrolled for: the lines "adresle hesap bulunamadı" and "adres e-posta adresi değil", the box, no seat.
+#   many       501 distinct addresses are pasted (bulk.mjs many writes them): the error under the field, the counter, the button off; clearing
+#              the box turns the error off. Nothing is sent.
+#   closed     the course is a draft: COURSE_NOT_FOUND, the toast "Bu derse şu an talebe eklenemez: ders taslakta ya da gizli.", the list kept.
+# Not bound, with the reason (each is drawn in the flow and cannot be made on the local stack):
+#   answer: directory  nothing here can make the realm's directory fail or be unconfigured without changing the stack's .env
+#   answer: failed     a malformed list is stopped by the page before it is sent, and nothing can make the server fail
+#   clip: refused      the walk's browser has no way here to deny the page the clipboard (the replay binds no browser permission); the unit
+#                      spec apps/nazar/test/enrolments-page.spec.tsx pins this branch
+#   answer: forbidden  binding.forbidden.yaml
+# A skipped reason other than "Dersi tamamlamış" (barred, revoked, changed) needs a ban, a removed talebe or a race; not drawn, not bound.
+# The clipboard: `navigator.clipboard.writeText` is asked by "Kopyala". If the replay's browser refuses it (no clipboard-write permission), the
+# walk shows the warning toast instead of "Adresler kopyalandı" and `clip: ok` mismatches: the fix is an engine option to grant the permission.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.bulkAdd
+
+scenarios:
+  mixed:
+    given: { may: may, list: few, answer: mixed, clip: ok }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bulkadd, --approval, --weeks, '1', --lessons, '1', --talebe, applicantH, applicantF, applicantE]
+        expect: '"APPLICANT_H":"PENDING"'
+      # applicantF becomes an enrolled talebe, applicantE one who completed the course; applicantG has no row, applicantH keeps waiting
+      - run: [node, helpers/api.mjs, muderris, POST, '/courses/{made.course}/enrollments/{secret.E2E_APPLICANT_F_SUB}/approve']
+        expect: ENROLLED
+      - run: [node, helpers/api.mjs, muderris, POST, '/courses/{made.course}/enrollments/{secret.E2E_APPLICANT_E_SUB}/approve']
+        expect: ENROLLED
+      - run: [node, helpers/api.mjs, muderris, PATCH, '/courses/{made.course}/enrollments/{secret.E2E_APPLICANT_E_SUB}', '{"status":"COMPLETED"}']
+        expect: COMPLETED
+      - run: [node, ../nazar/roster/bulkAdd/bulk.mjs, seats, --course, '{made.course}', 'APPLICANT_H=PENDING,APPLICANT_G=none,APPLICANT_F=ENROLLED,APPLICANT_E=COMPLETED']
+        expect: seats ok
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bulkadd]
+        expect: course remove bulkadd
+      - run: [node, helpers/mail.mjs, clear, 'subject:"Deneme dersi bulkadd"']
+        expect: clear
+    vars:
+      typed: "{secret.E2E_APPLICANT_H_EMAIL}, {secret.E2E_APPLICANT_G_EMAIL};\n{secret.E2E_APPLICANT_F_EMAIL}\n{secret.E2E_APPLICANT_E_EMAIL}\nbulkadd-yok@medaris.test\nadres-degil\n{secret.E2E_APPLICANT_H_EMAIL}\n\n"
+      seats: 'APPLICANT_H=ENROLLED,APPLICANT_G=ENROLLED,APPLICANT_F=ENROLLED,APPLICANT_E=COMPLETED'
+
+  added:
+    given: { may: may, list: few, answer: added, clip: ok }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bulkadd, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi bulkadd"'
+      - run: [node, ../nazar/roster/bulkAdd/bulk.mjs, seats, --course, '{made.course}', 'APPLICANT_H=none']
+        expect: seats ok
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bulkadd]
+        expect: course remove bulkadd
+      - run: [node, helpers/mail.mjs, clear, 'subject:"Deneme dersi bulkadd"']
+        expect: clear
+    vars:
+      typed: '{secret.E2E_APPLICANT_H_EMAIL}'
+      seats: 'APPLICANT_H=ENROLLED'
+
+  unmatched:
+    given: { may: may, list: few, answer: unmatched, clip: ok }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bulkadd, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi bulkadd"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bulkadd]
+        expect: course remove bulkadd
+    vars:
+      typed: "bulkadd-yok@medaris.test,\nadres-degil"
+      seats: 'APPLICANT_H=none'
+
+  many:
+    given: { may: may, list: many, answer: added, clip: ok }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bulkadd, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi bulkadd"'
+      - run: [node, ../nazar/roster/bulkAdd/bulk.mjs, many]
+        expect: many 501
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bulkadd]
+        expect: course remove bulkadd
+    vars:
+      typed: '{many.list}'
+      seats: 'APPLICANT_H=none'
+
+  # The course is a draft: a talebe could not apply to it on their own, so the whole list is refused with COURSE_NOT_FOUND. The müderris opens
+  # the draft's Talebeler page all the same, and the dialog says why in a toast that stays.
+  closed:
+    given: { may: may, list: few, answer: closed, clip: ok }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bulkadd, --draft, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi bulkadd"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, bulkadd]
+        expect: course remove bulkadd
+    vars:
+      typed: '{secret.E2E_APPLICANT_H_EMAIL}'
+      seats: 'APPLICANT_H=none'

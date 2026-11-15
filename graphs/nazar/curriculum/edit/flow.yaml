@@ -1,0 +1,468 @@
+# The Müfredat editor of a course in nazar-web (/ders/<id>/mufredat), where the course's hoca renames the course, adds a week and a
+# celse, saves them with Kaydet, meets the 409 of a course someone else saved meanwhile and loads the current one; a person who
+# may not edit the course sees the form read-only. Read from the code of PR #394 (apps/nazar/features/curriculum, its page and
+# server action, the API's GET /courses/:id, GET /courses/:id/my-permissions and PUT /courses/:id) on 15 Nov 2026. Nothing here
+# was walked: it says what the code does today, and each finding (ui.yaml `rules`) is where the code is wrong for its people.
+#   - Kaydet sends the WHOLE course in one PUT, with the version the page was read at. A week or celse left out of the form is
+#     hidden by it (never deleted); a resource left out is deleted with its file. The page always sends weeks and resources, so
+#     the API's "a PUT that omits weeks or resources drops them all" is never met here; a binding that saves the course by hand
+#     must send them too (the walk bumps the version with a PATCH instead).
+#   - A refused Kaydet (a blank week or celse title) reveals field errors and nothing else: no toast, no alert, no focus move
+#     (F-C-course-a-01). A save or a reload remounts the whole editor (`key={version}`), so the pressed button is gone and the
+#     only word is a toast of 6 seconds (EDIT-1). The conflict is a role=status alert that appears with its text (EDIT-2). A
+#     week or celse added is silent (EDIT-4). "Haftalık celse üret" and "Hafta ve celse gizle" leave the page with unsaved
+#     edits and no guard (F-C-course-a-13). A person with session.manage and no course.edit is told the page is read-only while
+#     each celse's Ödev block still writes at once (EDIT-3).
+#   - The e2e check course-scope#4 (the opened, nothing-to-save state) is carried by the state `clean`: a1 the heading "Müfredat",
+#     a3 the field "Ders adı", a4 Kaydet disabled. Its a2 (no placeholder text) and a5 (the sidebar's aria-current) are not
+#     expressible in a graph and are not carried.
+schema: delurio-graph/0
+kind: flow
+id: nazar.curriculum.edit
+status: captured
+domain: medaris.api
+ui: nazar.curriculum.edit
+title: Edit the course and its weeks and sessions
+summary: >-
+  The hoca opens Müfredat of a course: the course's name, cover colour and description, its weeks and, in each week, its celses.
+  With course.edit the form is live and starts with Kaydet and Vazgeç off; "Hafta ekle" appends a week, "Celse ekle" a celse
+  (with course.edit and session.manage), and once something differs from what is stored a line says "Kaydedilmemiş değişiklikler
+  var" and both buttons come on. Kaydet with a blank week or celse title only shows the field errors; otherwise it sends the whole
+  course (PUT /courses/:id) with the version it read, says "Müfredat kaydedildi" in a toast and reads the course again. If
+  someone else saved the course meanwhile the API answers 409, nothing is written and a warning says so, with "Güncel dersi
+  yükle", which reads the course again and discards the form. A caller without course.edit (a ders nazırı with only
+  session.manage) sees the same form disabled under a sentence that says it is read-only; one with course.edit and no
+  session.manage can edit but not add or move celses; one with no code of the page meets "Bu sayfaya izniniz yok".
+
+scope:
+  shows: >-
+    the Müfredat page for one course: the header, the notes for a person who may not edit or may not touch celses, the course's
+    own fields, the weeks with their titles and the date, time, length and (for a new celse) title of each celse, "Hafta ekle" and
+    "Celse ekle", the two links that leave, the save bar, the field errors of a blank week or celse title, the conflict warning and
+    the toasts of a save
+  world: open
+  outOfView:
+    - "Bağlı kaynaklar (the course's links and files) and Celsenin kaynakları in each celse, with the file upload and the removal confirmation: nazar.curriculum.resources"
+    - "the Ödev block of each celse, which stores its homework at once and not by Kaydet: nazar.curriculum.sessionHomework (EDIT-3 is about it)"
+    - "Haftalık celse üret (the planner) and Hafta ve celse gizle (the hide page, and the Arşiv a hidden week or celse goes to): nazar.sessions.plan, nazar.curriculum.hideRestore. The buttons 'Haftayı gizle', 'Gizle' and 'Haftayı kopyala' of the editor take the row out of, or copy it into, the draft and are not drawn (F-C-course-a-03, -15, -16 are written against them in ui.yaml)"
+    - "the other errors under a field: 'Ders adı en az iki harften oluşmalı.', a celse's date, time, length and https link, a resource's name and address. They have the shape of the two drawn and are shown the same way (after the first Kaydet, under the field, not announced)"
+    - "after a refused Kaydet the form keeps `sent` until a save or Vazgeç, so a week or celse added later shows its error at once, and typing a title clears it at once; the graph draws the errors only in `invalid` and goes back to `edited` when every blank is filled"
+    - "a conflict followed by more editing: the form stays editable under the warning, every edit leaves the screen as it is and Kaydet stays off; only the warning, the reload button, Vazgeç and Kaydet are drawn there"
+    - "a course with no week ('Bu derste henüz hafta yok.'), a cancelled celse ('İptal edildi' and its note), the badges 'Planlandı' and 'Katılım yolu eksik', the opened week's sticky heading, a read with the content locked (a caller without view_details)"
+    - "a read that fails ('Müfredat okunamadı', 'Yeniden dene'): a retry state, not a refusal of the API's; and the 404 of an unknown or hidden course"
+    - "a holder of week.hide and no course.edit: the same read-only page with 'Hafta ve celse gizle' beside 'Haftalık celse üret'; the graph draws the holder of session.manage alone"
+    - "a refusal for lack of permission between the page and the press (AUTHZ_FORBIDDEN): drawn as the error toast, and not walked, since the stack cannot take a code away from the person while the page is open"
+    - "an upload that is running while Kaydet is pressed (Kaydet waits, F-C-course-a-30)"
+    - "the draft preview in tedris: this page has no link to it. The way there is the overview's 'Tedris’te aç' (nazar.course.overview) and the way back is tedris.course.draftPreview's 'Düzenlemeye dön'"
+    - "the başmüderris of the medrese who also teaches the course, as the e2e's seed makes her (apps/nazar/e2e/seed.ts:83-96): the walk binds the başmüderris who teaches nothing and opens the course by address"
+
+decisions:
+  D1:
+    question: >-
+      Should a refused Kaydet say so out loud? Today it reveals the field errors and moves nothing: no focus on the first invalid
+      field, no summary, no alert, and the field error has no role (F-C-course-a-01), so a screen-reader user presses Kaydet and
+      hears nothing.
+    recommend: >-
+      Move the focus to the first invalid field and show one Alert tone error that counts the problems (role=alert); the same
+      change serves Celse planla and the Celseler forms the finding names.
+    affects: [invalid]
+  D2:
+    question: >-
+      What should happen to the focus and to the word after a save or a reload? Today the editor is remounted (`key={version}`),
+      the pressed button is gone and the only word is a toast of 6 seconds (EDIT-1).
+    recommend: >-
+      Keep the editor mounted and give the stored rows their new ids, or move the focus to the page's heading or to a status line
+      that says "Müfredat kaydedildi" until the next edit.
+    affects: [clean, conflict]
+  D3:
+    question: >-
+      Is a page "yalnız okunur" when the person can still change each celse's homework? A holder of session.manage without
+      course.edit reads the note "bu sayfa yalnız okunur" and finds, under each celse's details, a live Ödev switch, description and
+      file upload that write at once (EDIT-3).
+    recommend: >-
+      Say in the note that the homework and the celse's own resources are kept apart from Kaydet, or fold the homework block
+      into what the note covers.
+    affects: [readOnly]
+
+context:
+  rights:
+    values: [full, noSessions, readOnly, none]
+    initial: any
+    say:
+      full: "the person holds course.edit and session.manage (and week.hide): the course's müderris, or the başmüderris of its medrese opening it by address"
+      noSessions: "the person holds course.edit and not session.manage (a ders nazırı granted only that): the course's own fields and weeks are live, the celses' buttons and their date and time fields are off"
+      readOnly: "the person holds session.manage and not course.edit (the ders nazırı the seed makes): the form is disabled and has no Kaydet"
+      none: "the person holds none of course.edit, session.manage and week.hide (a ders nazırı with no grant): the page refuses"
+  title:
+    values: [stored, typed]
+    initial: stored
+    say:
+      stored: "the course name in the form is the stored one"
+      typed: "the course name in the form is a new one"
+  newWeek:
+    values: [none, blank, named]
+    initial: none
+    say:
+      none: "the form has no week that is not stored"
+      blank: "a week was added and has no title"
+      named: "a week was added and has a title"
+  newSession:
+    values: [none, blank, named]
+    initial: none
+    say:
+      none: "the form has no celse that is not stored"
+      blank: "a celse was added to the first week and has no title (it takes the date of the week's last celse, 21:00 and 60 minutes)"
+      named: "a celse was added and has a title"
+  stale:
+    values: [still, changed]
+    initial: still
+    say:
+      still: "the stored course is the one this page read"
+      changed: "someone else saved the course after this page read it, and this page does not know: the next Kaydet is refused with a 409"
+  last:
+    values: [nothing, saved, refused, failed]
+    initial: nothing
+    say:
+      nothing: "no toast of a save is up"
+      saved: "a toast says the course was saved"
+      refused: "an error toast says the person may not (the API refused the save for lack of permission)"
+      failed: "an error toast says something went wrong (any other refusal of the save)"
+
+guards:
+  # a week or celse without a title stops Kaydet (curriculumErrors, features/curriculum/curriculum.ts:441)
+  blanks: "newWeek == 'blank' or newSession == 'blank'"
+  nameTyped: "title == 'typed'"
+  isStale: "stale == 'changed'"
+  notStale: "stale == 'still'"
+  isFull: "rights == 'full'"
+
+effects:
+  clearToast: { set: { last: nothing } }
+  typedName: { set: { title: typed } }
+  weekAdded: { set: { newWeek: blank } }
+  sessionAdded: { set: { newSession: blank } }
+  weekNamed: { set: { newWeek: named } }
+  sessionNamed: { set: { newSession: named } }
+  putBack: { set: { title: stored, newWeek: none, newSession: none } } # Vazgeç: the saved values are put back
+  savedElsewhere: { set: { stale: changed } }
+  # a saved course is read again and the editor is mounted anew with the stored values, so nothing is typed or blank any more
+  savedWithName: { set: { last: saved, stale: still, title: stored, newWeek: none, newSession: none } }
+  savedKeepingName: { set: { last: saved, stale: still, title: stored, newWeek: none, newSession: none } }
+  readAgain: { set: { stale: still, title: stored, newWeek: none, newSession: none } }
+  conflicted: { set: { last: nothing } }
+  refused: { set: { last: refused } }
+  failed: { set: { last: failed } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+  saving:
+    from: replaceCourse
+    signedOut: [HTTP_401]
+    conflict: [COURSE_VERSION_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND, PLATFORM_POLICY_LOCKED, MUDERRIS_ASSIGNMENT_FORBIDDEN, VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: the hoca renames the course, adds a week and a celse, gives each a title and saves.
+main:
+  given: { rights: full }
+  events: [DONE, RENAME, ADD_WEEK, ADD_SESSION, NAME_WEEK, NAME_SESSION, SAVE, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: Müfredat is read
+    description: >-
+      The page reads, on the server and together, GET /courses/:id (the course with its weeks, celses and resources), GET
+      /courses/:id/my-permissions (what the caller holds there) and GET /me (the time zone the dates are written in), behind
+      loading.tsx's skeleton and its hidden "Yükleniyor". Nothing is on the screen of this step. The page opens for a caller who
+      holds ANY of course.edit, session.manage and week.hide; one who holds none gets the refusal below (`forbidden`); a caller
+      who holds course.edit gets the live form, and the others a read-only one. A 404 of the course read is Next's not-found page.
+      A read that fails draws "Müfredat okunamadı" with "Yeniden dene" (not drawn: it is no refusal of the API's).
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: "rights == 'none'", target: forbidden, source: "apps/nazar/features/curriculum/components/curriculum-page.tsx:44" }
+        - { guard: "rights == 'readOnly'", target: readOnly, source: "apps/nazar/features/curriculum/components/curriculum-page.tsx:66" }
+        - { target: clean }
+      FAIL.missing: not_found
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:32
+
+  forbidden:
+    title: Müfredat refuses the caller
+    description: >-
+      The header and "Müfredat" stay, with the neutral alert "Bu sayfaya izniniz yok" under it and the sentence that says whom to
+      ask. The alert is a role=status that is in the page already when it loads, so it is not announced, and its title is a
+      paragraph, not a heading; the page's own h1 still says "Müfredat" (the same finding as F-A-16 of nazar.access.medreseNazirRefused).
+      The sidebar still lists "Müfredat": the course menu hides only three entries by permission and this is not one of them.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:44
+
+  readOnly:
+    title: The form is read-only
+    description: >-
+      The caller holds session.manage or week.hide and not course.edit. The form is drawn with every text field disabled, a note
+      "Bu dersin bilgilerini ve haftalarını değiştirmek için ders düzenleme izni gerekir; bu sayfa yalnız okunur." (an info Alert,
+      role=status) and no save bar and no "Hafta ekle". Findings read here: F-C-course-a-02 (the "Kapak rengi" radios are never
+      disabled, so a caller can change the colour with no way to save it), EDIT-3 (the note says the page is read-only while each
+      celse's Ödev block, under its details, is live for session.manage and writes at once) and the findings of the form itself
+      (F-C-course-a-03 to -07). With session.manage "Haftalık celse üret" is drawn; the date and time of a celse are disabled.
+    by: human
+    on:
+      PLAN: { target: plan_opened, say: "they press Haftalık celse üret" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:334
+
+  clean:
+    title: The form holds what is stored
+    description: >-
+      The live form with nothing to save: "Ders adı" with its help, the four cover colours, "Tanıtım", then "Haftalar" with its
+      counts and, for each week, its title and summary fields and its celses (date, time and length, the rest of a stored celse
+      folded behind "Başlık, bağlantı, kaynaklar, ödev"). The save bar holds "Vazgeç" and "Kaydet", both disabled, and no line about
+      changes. Nothing sets the focus on load (it stays where the browser puts it, not verified) and there is no `initialFocus`.
+      A person with course.edit and no session.manage reads "Celse eklemek, taşımak, saatini değiştirmek ya da gizlemek için
+      celse yönetimi izni gerekir; bu düğmeler ve tarih ile saat alanları kapalı." under the header and has no "Celse ekle" and no
+      links; the first week's celses are listed but their date and time fields are disabled. A toast of the last save may still
+      be up. The e2e check course-scope#4 reads this state (a1, a3, a4). Findings read here: F-C-course-a-03 (identical names:
+      "Celse ekle" on every week), -04 (a celse's fields repeat the same labels and the `<li>` is no group), -05 (heading order),
+      -06 (the week's list mixes fields, celses and buttons), -07 (required is only a hidden star) and -30.
+    by: human
+    goal: true
+    on:
+      RENAME: { target: edited, effect: [typedName], say: "they type a new name in Ders adı" }
+      ADD_WEEK: { target: edited, effect: [weekAdded], say: "they press Hafta ekle" }
+      ADD_SESSION:
+        guard: isFull
+        target: edited
+        effect: [sessionAdded]
+        say: "they press Celse ekle on the first week"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:930
+      COURSE_CHANGED:
+        guard: notStale
+        target: clean
+        effect: [savedElsewhere]
+        say: "someone else saves the course (another editor, the settings page); this page does not know"
+        source: apps/tedrisat/src/course/course.repository.ts:806
+      PLAN:
+        guard: isFull
+        target: plan_opened
+        say: "they press Haftalık celse üret"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:456
+      HIDE_PAGE:
+        guard: isFull
+        target: hide_page_opened
+        say: "they press Hafta ve celse gizle"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:465
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:318
+
+  edited:
+    title: The form differs from what is stored
+    description: >-
+      Something was changed: the name, the colour, the description or a week's text, a week was added with "Hafta ekle" (it opens,
+      is scrolled to the top and gets no focus, and has no title) or a celse with "Celse ekle" (a new celse is open, takes the date of
+      the week's last celse at 21:00 for 60 minutes, and has no title). The save bar says "Kaydedilmemiş değişiklikler var" (an
+      <output>, a live region) and "Vazgeç" and "Kaydet" come on; "Kaydet" is also disabled while an upload runs or the page is
+      read again, with no reason said (F-C-course-a-30). With celses stored, a caption warns "Kaydedilmemiş değişiklikleriniz var;
+      celse üretmeden önce kaydedin, yoksa bu sayfadaki değişiklikler kaybolur." (not a live region), and the two links that leave
+      do so with the edits and no guard (F-C-course-a-13). A week or celse added is silent: nothing announces it and the focus
+      stays on the button (EDIT-4). In the editor "Haftayı gizle" and "Gizle" only take the row out of the draft, the save hides it
+      and nothing on the button says so (F-C-course-a-16), and the row leaves with its focus (F-C-course-a-15): neither is drawn. An
+      error toast of a refused save stands here, the form as it was.
+    by: human
+    on:
+      RENAME: { target: edited, effect: [typedName], say: "they type a new name in Ders adı" }
+      ADD_WEEK: { target: edited, effect: [weekAdded], say: "they press Hafta ekle" }
+      ADD_SESSION:
+        guard: isFull
+        target: edited
+        effect: [sessionAdded]
+        say: "they press Celse ekle on the first week"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:930
+      NAME_WEEK:
+        guard: "newWeek == 'blank'"
+        target: edited
+        effect: [weekNamed]
+        say: "they type a title in the new week's Hafta başlığı"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:543
+      NAME_SESSION:
+        guard: "newSession == 'blank'"
+        target: edited
+        effect: [sessionNamed]
+        say: "they type a title in the new celse's Celse başlığı"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:797
+      SAVE:
+        - { guard: blanks, target: invalid, say: "they press Kaydet with a blank title: only the field errors show", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:281 }
+        - { target: saving, effect: [clearToast], say: "they press Kaydet", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:285 }
+      CANCEL: { target: clean, effect: [putBack], say: "they press Vazgeç: the saved values are put back" }
+      COURSE_CHANGED:
+        guard: notStale
+        target: edited
+        effect: [savedElsewhere]
+        say: "someone else saves the course; this page does not know"
+        source: apps/tedrisat/src/course/course.repository.ts:806
+      PLAN:
+        guard: isFull
+        target: plan_opened
+        say: "they press Haftalık celse üret: the edits are lost, nothing asks"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:456
+      HIDE_PAGE:
+        guard: isFull
+        target: hide_page_opened
+        say: "they press Hafta ve celse gizle: the edits are lost, nothing asks"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:465
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:1004
+
+  invalid:
+    title: Kaydet was pressed with a blank title
+    description: >-
+      Nothing is sent. `sent` is set, so the field under each blank title says "Hafta başlığını yazın." or "Celse başlığını
+      yazın." (a Field error that replaces the help line, linked to the control by aria-describedby and aria-invalid and with no
+      role); a celse with a problem is forced open; the focus is not moved and no toast or alert says that the save did not happen
+      (F-C-course-a-01, decision D1). The star on the label is aria-hidden and the controls carry no `required` (F-C-course-a-07).
+      The errors go as the titles are filled; the form stays here while one remains. A celse added to an empty week would also lack
+      its date ("Celse tarihini girin."); the walk adds its celse to the first week, which has one.
+    by: human
+    on:
+      RENAME: { target: invalid, effect: [typedName], say: "they type a new name in Ders adı" }
+      ADD_WEEK: { target: invalid, effect: [weekAdded], say: "they press Hafta ekle" }
+      ADD_SESSION:
+        guard: isFull
+        target: invalid
+        effect: [sessionAdded]
+        say: "they press Celse ekle on the first week"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:930
+      NAME_WEEK:
+        - { guard: "newWeek == 'blank' and newSession != 'blank'", target: edited, effect: [weekNamed], say: "the last blank is filled and the error goes", source: apps/nazar/features/curriculum/curriculum.ts:441 }
+        - { guard: "newWeek == 'blank'", target: invalid, effect: [weekNamed], say: "a blank remains", source: apps/nazar/features/curriculum/curriculum.ts:441 }
+      NAME_SESSION:
+        - { guard: "newSession == 'blank' and newWeek != 'blank'", target: edited, effect: [sessionNamed], say: "the last blank is filled and the error goes", source: apps/nazar/features/curriculum/curriculum.ts:441 }
+        - { guard: "newSession == 'blank'", target: invalid, effect: [sessionNamed], say: "a blank remains", source: apps/nazar/features/curriculum/curriculum.ts:441 }
+      SAVE: { target: invalid, say: "they press Kaydet again: the same errors, nothing sent", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:281 }
+      CANCEL: { target: clean, effect: [putBack], say: "they press Vazgeç: the saved values are put back and the errors go" }
+      COURSE_CHANGED:
+        guard: notStale
+        target: invalid
+        effect: [savedElsewhere]
+        say: "someone else saves the course; this page does not know"
+        source: apps/tedrisat/src/course/course.repository.ts:806
+      PLAN:
+        guard: isFull
+        target: plan_opened
+        say: "they press Haftalık celse üret"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:456
+      HIDE_PAGE:
+        guard: isFull
+        target: hide_page_opened
+        say: "they press Hafta ve celse gizle"
+        source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:465
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:281
+
+  saving:
+    title: The course is sent
+    description: >-
+      saveCurriculum calls PUT /courses/:id with the whole course: the name, the colour (coverHue), the description, every week with
+      its celses (the stored ones by id, a new one with none), the müderris rows unchanged (so a PUT never empties the team) and
+      the resources, at the version the page read (a file uploaded meanwhile moves it). "Kaydet" is busy (aria-disabled and
+      aria-busy, never disabled, so it keeps its place; a hidden <output> says "Kaydediliyor…"); the text fields, "Vazgeç", "Hafta
+      ekle" and "Celse ekle" are off; the dirty line stays. The result: 200 saves it, the toast "Müfredat kaydedildi" (6 s) and
+      router.refresh() read the course again inside a transition, while the form is locked; the page then mounts a new editor
+      (`key={version}`), so the pressed button and its focus are gone (EDIT-1) and the form holds the stored values, the new week
+      and celse with their ids. 409 COURSE_VERSION_CONFLICT is the conflict warning and writes nothing. AUTHZ_FORBIDDEN is an error
+      toast "Müfredat kaydedilemedi" with "Bunu yapma izniniz yok."; any other code the same toast with "Bir şeyler ters gitti.
+      Biraz sonra yeniden deneyin."; a session that is over goes to sign-in and back, with no toast. A call that fails outright is
+      not caught: `saving` stays true, the form stays locked and nothing is said (F-C-course-a-19; not verified at runtime).
+    invoke: { action: replaceCourse }
+    on:
+      DONE:
+        - { guard: "notStale and nameTyped", target: clean, effect: [savedWithName], say: "the API saved it; the toast, then the course is read again", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:304 }
+        - { guard: notStale, target: clean, effect: [savedKeepingName], say: "the API saved it; the toast, then the course is read again", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:304 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.conflict: { guard: isStale, target: conflict, effect: [conflicted], say: "the stored course moved on since the page read it: nothing is written", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:293 }
+      FAIL.forbidden: { target: edited, effect: [refused], say: "the API says the caller may not: an error toast, the form as it was", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:297 }
+      FAIL.other: { target: edited, effect: [failed], say: "any other refusal: an error toast, the form as it was", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:297 }
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:286
+
+  conflict:
+    title: The course changed while it was open
+    description: >-
+      No toast. A warning Alert (role=status, not a role=alert, and inserted with its text, EDIT-2) says "Ders, siz düzenlerken
+      değişti" and "Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi; hiçbir şeyin üzerine yazılmadı. Güncel dersi
+      yükleyin: bu sayfadaki kaydedilmemiş değişiklikler silinir." with the button "Güncel dersi yükle"; "Kaydet" is off for good
+      (`conflict`), "Vazgeç" is on and the form stays editable. "Güncel dersi yükle" runs router.refresh() (its button busy with
+      "Yükleniyor…" while it runs): the page mounts a new editor (`key={version}`) with the other person's course, the form's edits
+      are gone and so is the pressed button's focus (EDIT-1). The focus is not moved to the warning when it appears (EDIT-2).
+    by: human
+    on:
+      RELOAD: { target: clean, effect: [readAgain], say: "they press Güncel dersi yükle: the course is read again and the edits go", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:354 }
+      CANCEL: { target: conflictReset, effect: [putBack], say: "they press Vazgeç: the saved values are put back, the warning stays" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:344
+
+  conflictReset:
+    title: The edits are put back, the warning stays
+    description: >-
+      Vazgeç put the stored values (the ones this page read) back; the dirty line goes and "Vazgeç" is off, "Kaydet" stays off
+      and the warning stays, still saying that unsaved edits will be discarded. Only "Güncel dersi yükle" reads the course again.
+    by: human
+    on:
+      RELOAD: { target: clean, effect: [readAgain], say: "they press Güncel dersi yükle: the course is read again", source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:354 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:1009
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the course read is Next's not-found page (lib/tedrisat-read.ts:43-50)."
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    description: "The server action answered 'unauthenticated': handleUnauthenticated goes to sign-in and back, with no toast (realm.auth.sessionEnded)."
+    type: final
+    leavesPage: true
+
+  plan_opened:
+    title: Celse planla opens
+    description: "'Haftalık celse üret' is a link to /ders/<id>/celseler/planla (nazar.sessions.plan); the form's edits are lost with the page (F-C-course-a-13)."
+    type: final
+    leavesPage: true
+
+  hide_page_opened:
+    title: Hafta ve celse gizle opens
+    description: "'Hafta ve celse gizle' is a link to /ders/<id>/mufredat/gizle (nazar.curriculum.hideRestore); the form's edits are lost with the page (F-C-course-a-13)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-the-editors-edit
+    never: "state in ['clean', 'edited', 'invalid', 'saving', 'conflict', 'conflictReset'] and rights in ['readOnly', 'none']"
+    say: The live form, with its save bar, is reached only by a caller who holds course.edit.
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:66
+  - id: session-work-needs-session-manage
+    never: "newSession != 'none' and rights != 'full'"
+    say: A celse is added only where "Celse ekle" is drawn, for a caller who holds both course.edit and session.manage.
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:930
+  - id: nothing-blank-is-sent
+    never: "state == 'saving' and (newWeek == 'blank' or newSession == 'blank')"
+    say: A week or celse without a title is never sent; Kaydet shows the field errors instead.
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:281
+  - id: a-conflict-is-a-stale-save
+    never: "state in ['conflict', 'conflictReset'] and stale == 'still'"
+    say: The conflict warning shows only when someone else saved the course since the page read it.
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:293
+  - id: a-new-week-needs-course-edit
+    never: "newWeek != 'none' and rights in ['readOnly', 'none']"
+    say: A week is added only where "Hafta ekle" is drawn, for a caller who holds course.edit.
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:473

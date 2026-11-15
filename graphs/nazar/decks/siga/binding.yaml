@@ -1,0 +1,281 @@
+# nazar.decks.siga on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on :4002, the müderris of a course of the walk's
+# own, on one draft deck of that course. The main story (the first scenario) and the other cases are walked with
+#   flock /tmp/claude-1001/-home-taha-medaris/ac9ad958-84fd-4c2a-9961-7348d4a92f14/scratchpad/replay.lock nice -n 10 \
+#     node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/decks/siga \
+#     --bind graphs/nazar/decks/siga/binding.yaml [--cover transitions] --out <dir>
+# What is shared (the deck as data, the typing events, the locators, the check of the cards) is in walk.common.binding.yaml; the deck is
+# deleted under the dialog in binding.gone.yaml and made a "Hadis" deck in binding.hadeeth.yaml. NOT RUN in the writing phase.
+#
+# What a walk writes, and how it is taken away. `setup` makes a published course with one week and one celse (`helpers/course.mjs make siga`,
+# in the second köşk, `MUDERRIS` its hoca) and, in it, one draft deck "Sîga denemesi" (deck.mjs). Only a walk that reaches the save writes
+# cards: 28 (14 for one tense) in that deck. `teardown` deletes the deck (and its cards) and then the course. The two helpers are safe to run
+# twice, and `setup` removes what a crashed walk left. Nothing else of the stack is read or changed.
+#
+# `given` has four case variables (flow.yaml): the root typed, whether meanings are typed, which tenses stay ticked, and the API's answer.
+# One scenario for each value that takes a transition of its own; `forbidden` and `failed` are not bound (no way to make the API answer
+# AUTHZ_FORBIDDEN to the hoca of her own course, or HTTP_400/INTERNAL_ERROR to a list the dialog itself builds), and `SCRIM` is not bound
+# (walk.common.binding.yaml).
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: nazar.decks.siga
+
+scenarios:
+  # The main story: a root that reads, both tenses, the 28 drafts, back to the form with what was typed, the drafts again, one meaning corrected, all saved. The toast, the grid and the API's 28 cards are what it reads at the end.
+  generates:
+    given: { root: fine, meanings: typed, tenses: both, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'ن ص ر'
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # Muzâri unticked: 14 drafts, '14 kartı kaydet', 'Kartlar · 14'. The count in the catalog's messages is the scenario's own sample.
+  oneTense:
+    given: { root: fine, meanings: typed, tenses: mazi, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    samples: { count: '14' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'ن ص ر'
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 14 VOCABULARY metas=14 kips=mazi kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # Both tenses unticked: 'En az bir kip seçin.' under the tenses and no meaning field; Mâzî ticked again, the message goes, 14 drafts.
+  noTense:
+    given: { root: fine, meanings: typed, tenses: none, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    samples: { count: '14' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'ن ص ر'
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 14 VOCABULARY metas=14 kips=mazi kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # The root left empty: 'Kökü yazın.' under it, replacing the hint; a root that reads, and the drafts.
+  rootEmpty:
+    given: { root: empty, meanings: typed, tenses: both, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: ''
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # Two letters: 'Kök üç Arapça harf olmalı.'
+  rootLetters:
+    given: { root: letters, meanings: typed, tenses: both, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'نص'
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # A weak letter (قول, with a waw): 'Hemzeli ya da illetli kök bu üreticide yok; yalnız sâlim fiil.'
+  rootWeak:
+    given: { root: weak, meanings: typed, tenses: both, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'قول'
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # A doubled root (مدد): 'Muzâaf kök bu üreticide yok.'
+  rootDoubled:
+    given: { root: doubled, meanings: typed, tenses: both, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'مدد'
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # No meaning typed: the 28 drafts have empty 'Anlam' boxes (SIGA-3); '28 kartı kaydet' stops with 28 messages; back, the meanings typed, the drafts again, saved.
+  blankMeanings:
+    given: { root: fine, meanings: none, tenses: both, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'ن ص ر'
+      maziMeaning: ''
+      muzariMeaning: ''
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # A root that is refused and no tense ticked: both messages stand together; the root is written again (the tenses' message stays), then Mâzî ticked.
+  rootAndTense:
+    given: { root: weak, meanings: typed, tenses: none, answer: created }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/deste'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'dersDeck->dersDeckOne' }
+    samples: { count: '14' }
+    vars:
+      course: '{made.course}'
+      deck: '{deck.deck}'
+      rootText: 'قول'
+      maziMeaning: 'yardım etti'
+      muzariMeaning: 'yardım ediyor'
+      goodRoot: 'ن ص ر'
+      edited: 'O yardım etti'
+      expectCards: 'cards 14 VOCABULARY metas=14 kips=mazi kok=ن ص ر bab=nasara first=نَصَرَ'
+    setup:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course"'
+      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+        expect: '"deck"'
+    teardown:
+      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+        expect: 'deck remove siga'
+      - run: [node, helpers/course.mjs, remove, siga]
+        expect: 'course remove siga'
+
+  # Not bound, with the reason: `answer: forbidden` needs the hoca to lose deck.manage_course between the preview and the save, and the stack's
+  # müderris cannot lose it (she holds it as the course's müderris; helpers/course-nazir-grants.mjs sets a ders nazırı's codes, not a hoca's);
+  # `answer: failed` needs a 400 or a 500 from a list the dialog builds itself. `answer: gone` is binding.gone.yaml.

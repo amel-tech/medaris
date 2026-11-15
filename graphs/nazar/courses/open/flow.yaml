@@ -1,0 +1,468 @@
+# Opening a course of a medrese: the başmüderris's "Medrese dersi aç" page in nazar-web (/medrese/<id>/dersler/yeni), read from
+# the code of PR #394's branch on 15 Nov 2026 (apps/nazar/features/courses/components/open-course-page.tsx, open-course-form.tsx,
+# muderris-picker.tsx; features/courses/courses.ts and team.ts hold the rules). Three buttons lead here: "Medrese dersi aç" on
+# Dersler (the story's start) and on the Pano, and the address itself. The sibling of nizam.courses.open, which opens a köşk's own
+# course; this one opens a course of the medrese in a köşk that hosts it.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - "Dersi aç" is never off: a refused submit writes what is wrong under its field and moves the focus to the name, else to the
+#     hoca search, and the köşk problem moves nothing (F-A-6). The messages are plain text, not live regions, and the hoca list's
+#     error is not tied to the field that gets the focus (F-A-4, F-A-5, F-A-7).
+#   - the hoca is found by exact e-mail address, on Enter and also when the field is left; the field is disabled while it
+#     searches, so it loses the focus; every lookup is written to the audit log (OPEN-4, OPEN-5).
+#   - a medrese policy locks "Kapalı ders" or "Kayıt onayı gereksin" on, and the sentence beside them links to the settings, which
+#     takes the person off the form and drops everything typed (OPEN-1). A nazır who may open courses but not read the settings is
+#     told the policies "could not be read", though the cause is a refusal (F-A-8).
+#   - a köşk that takes its right back after the page opened is refused with a toast and the page re-reads the köşks; when it was
+#     the only one the form is replaced by "Ders açılabilecek köşk yok" and the toast's "başka bir köşk seçin" has nothing to point
+#     at (OPEN-6).
+#   - a nazır who names themselves a hoca without holding every course code is refused with a code the page words as "Bir şeyler
+#     ters gitti" (OPEN-2).
+schema: delurio-graph/0
+kind: flow
+id: nazar.courses.open
+status: captured
+domain: medaris.api
+ui: nazar.courses.open
+title: Open a course of the medrese
+summary: >-
+  The başmüderris opens "Medrese dersi aç": she picks a köşk that hosts her medrese (the first is already chosen), names the
+  course, finds each hoca by exact e-mail address, names the imam when there are several, may give a hoca an unvan, and sets
+  "Kapalı ders" and "Kayıt onayı gereksin" (a medrese policy locks either one on). The button is never off: pressed with something
+  wrong it says what under the field and moves the focus there. The course is opened as a draft and the page goes back to Dersler
+  with a toast. A köşk that took its right back, a hoca whose account is gone, a refused permission or a failure keep the form open
+  with a toast; where no köşk hosts the medrese, or the person may not open courses, or the köşks could not be read, the page says so
+  and draws no form.
+
+scope:
+  shows: >-
+    the page's three reads and what they decide (the form, the "no köşk" alert, the refusal, the retry state), the form with
+    its köşk choice, name, hoca picker, imam choice, unvan select, two checkboxes and policy locks, the refusal under each field
+    and the toast of each refusal, the way out (Vazgeç, the breadcrumb, the settings link) and the Dersler page it ends on
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the Dersler list's own filters, row menu and counters: nazar.courses.browse; the hoca change dialog: nazar.courses.changeHocas"
+    - "a list of three or more hocas, where taking the imam off leaves 'Dersin imamını seçin.' under the legend at once (Team.imamMissing, open-course-form.tsx:202; only one or two hocas are drawn: `team`)"
+    - "the answers the page cannot send: COURSE_IMAM_REQUIRED, COURSE_IMAM_NOT_LISTED, MUDERRIS_DUPLICATE_USER and VALIDATION_ERROR have a toast each in courseErrorKey (courses.ts:374), but the form blocks all four first"
+    - "the 20-hoca limit ('En fazla 20 hoca eklenebilir.', Team.full) and a hoca shown by name alone (only the change dialog draws one)"
+    - "an ended session: the read and both server actions send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "the sidebar and its menu: nazar.shell.scopeAndMenu; what a nazır with a partial grant meets on the Dersler page: F-A-8, recorded here for this page only"
+    - "what the course becomes after it is opened: publishing and the programme (the hocas' pages, nazar.curriculum.*), and when talebe see it (tedris.discover.readKosk)"
+
+decisions:
+  D1:
+    question: >-
+      What should a nazır who holds madrasah.course_open but not madrasah.settings_edit be told about the policies? The page reads
+      the settings with the caller's own permission, so the read is refused and the page says the policies "could not be read" while
+      the API applies them all the same.
+    recommend: >-
+      Say that the policies are applied by the server and cannot be shown to this person (a refusal is not a failed read), or let a
+      course opener read the three policies. The wording of F-A-8 is the smaller change.
+    affects: [form]
+  D2:
+    question: >-
+      Should the lock sentence's link to Medrese ayarları keep what was typed? It leaves the form without asking and the form
+      holds everything in the page's own state.
+    recommend: >-
+      Open the settings in a new tab, or ask before leaving a form with something typed in it (the same goes for Vazgeç and the
+      breadcrumb).
+    affects: [form]
+
+context:
+  hosting:
+    values: [one, two, none, forbidden, missing, unreadable]
+    initial: any
+    say:
+      one: "one köşk hosts the medrese (the local stack's seeded medrese: Süleymaniye Köşkü)"
+      two: "two köşks host it, listed by name: Kubbealtı Köşkü first (the walk's own medrese)"
+      none: "no köşk holds a hosting right for the medrese"
+      forbidden: "the caller may not open courses in this medrese (a nazır with no grant): the köşk read is refused"
+      missing: "the medrese is not there (or not the person's): the 404 page"
+      unreadable: "the köşk read failed for another reason (the API did not answer, an unreadable body)"
+  locks:
+    values: [none, closed, approval, both, unknown]
+    initial: any
+    say:
+      none: "the medrese has no policy that fixes a box"
+      closed: "the policy 'Kapalı ders zorunlu' is on"
+      approval: "the policy 'Kayıt her zaman onaylı' is on"
+      both: "both policies are on"
+      unknown: "the settings read failed or was refused (a nazır without madrasah.settings_edit): nothing is locked in the page"
+  fields:
+    values: [valid, short, long]
+    initial: any
+    say:
+      valid: "the name has 2 to 200 characters once trimmed"
+      short: "the name has one character"
+      long: "the name has more than 200 characters"
+  lookup:
+    values: [found, notFound, down]
+    initial: any
+    say: { found: "the realm has an account with the address typed", notFound: "the realm has none", down: "the directory does not answer" }
+  answer:
+    values: [created, hostingRight, unknownUser, forbidden, failed]
+    initial: any
+    say:
+      created: "the server opens the course as a draft"
+      hostingRight: "the köşk took the medrese's right back after the page was drawn"
+      unknownUser: "a chosen hoca's account is in neither Medaris nor the realm any more"
+      forbidden: "the caller may not open courses here"
+      failed: "anything else: a naming-oneself refusal, the directory down, the server not answering (all worded 'Bir şeyler ters gitti')"
+  typed: { values: [true, false], initial: false } # the name field holds what `fields` says
+  attempted: { values: [true, false], initial: false } # "Dersi aç" was pressed once: the errors are live from then on and never go
+  team:
+    values: [none, a, ab, b]
+    initial: none
+    say:
+      none: "no hoca is on the list"
+      a: "the first person found is on the list (the lone hoca is the imam)"
+      ab: "two people are on the list, the first found first"
+      b: "only the second person found is left (the first was taken off)"
+  imam: { values: [a, b], initial: a } # who the imam is while both are on the list; a lone hoca is always the imam
+  kosk:
+    values: [suleymaniye, kubbealti, none]
+    initial: none
+    say: { suleymaniye: "Süleymaniye Köşkü is chosen", kubbealti: "Kubbealtı Köşkü is chosen", none: "no köşk is chosen (before the read, or after the chosen one left the list)" }
+  gone: { values: [true, false], initial: false } # Kubbealtı Köşkü took its right back and the page has re-read the köşks
+  closedOn: { values: [true, false], initial: false }
+  approvalOn: { values: [true, false], initial: false }
+  last:
+    values: [none, addedA, addedB, notFound, down, listed]
+    initial: none
+    say: { none: "no search yet, or one is running", addedA: "the first person was added", addedB: "the second person was added", notFound: "no account with that address", down: "the directory did not answer", listed: "the person is on the list already" }
+  toasted: { values: [true, false], initial: false } # an error toast is up (it stays until closed)
+
+guards:
+  closedLocked: "locks == 'closed' or locks == 'both'"
+  approvalLocked: "locks == 'approval' or locks == 'both'"
+  locked: "closedLocked or approvalLocked"
+  # titleProblem of courses.ts:271 over what the name field holds
+  titleMissing: "attempted and not typed"
+  titleTooShort: "attempted and typed and fields == 'short'"
+  titleTooLong: "attempted and typed and fields == 'long'"
+  titleWrong: "titleMissing or titleTooShort or titleTooLong"
+  titleBad: "not typed or fields != 'valid'"
+  teamBad: "team == 'none'"
+  koskBad: "kosk == 'none'"
+  koskError: "attempted and kosk == 'none'"
+  # openProblems of courses.ts:318: the form is sent only without any of the three
+  problems: "titleBad or teamBad or koskBad"
+  # the searches the graph draws: a person found twice is listed, a third is not drawn (`team`), and `b` alone is not searched again
+  canSearch: "(lookup == 'found' and team != 'b') or lookup == 'notFound' or lookup == 'down'"
+  searchError: "last == 'notFound' or last == 'down' or last == 'listed'"
+
+effects:
+  firstIsSuleymaniye: { set: { kosk: suleymaniye } }
+  firstIsKubbealti: { set: { kosk: kubbealti } }
+  pickedSuleymaniye: { set: { kosk: suleymaniye } }
+  typedName: { set: { typed: true } }
+  attempt: { set: { attempted: true } }
+  clearNote: { set: { last: none } }
+  addedFirst: { set: { team: a, imam: a, last: addedA } }
+  addedSecond: { set: { team: ab, last: addedB } }
+  noteNotFound: { set: { last: notFound } }
+  noteDown: { set: { last: down } }
+  noteListed: { set: { last: listed } }
+  removedAAlone: { set: { team: none } }
+  removedAOfTwo: { set: { team: b, imam: b } }
+  removedBOfTwo: { set: { team: a, imam: a } }
+  removedBAlone: { set: { team: none } }
+  imamIsB: { set: { imam: b } }
+  closedChecked: { set: { closedOn: true } }
+  closedUnchecked: { set: { closedOn: false } }
+  approvalChecked: { set: { approvalOn: true } }
+  approvalUnchecked: { set: { approvalOn: false } }
+  toastUp: { set: { toasted: true } }
+  hostingGone: { set: { toasted: true, gone: true, kosk: none } }
+
+failures:
+  reading:
+    from: listMadrasahHostingKosks
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+    unreadable: []
+  readingPolicies:
+    from: getMadrasahSettings
+    unreadable: [AUTHZ_FORBIDDEN]
+  looking:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN]
+  opening:
+    from: openMadrasahCourse
+    hostingRight: [HOSTING_RIGHT_REQUIRED]
+    unknownUser: [MUDERRIS_UNKNOWN_USER]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [SELF_GRANT_REFUSED, MADRASAH_NOT_FOUND, MUDERRIS_LIST_INVALID, KEYCLOAK_ADMIN_UNAVAILABLE]
+
+# The story the page tells first, as the e2e tells it (open-course#2 then #3): the başmüderris presses "Dersi aç" on the blank form
+# and is told what is missing, names the course, presses again and is taken to the hoca search, finds one hoca by e-mail address and
+# opens the draft.
+main:
+  given: { hosting: one, locks: none, fields: valid, lookup: found, answer: created }
+  events: [DONE, DONE, SUBMIT, FILL_IN, SUBMIT, SEARCH, DONE, SUBMIT, DONE]
+
+initial: reading
+states:
+  reading:
+    title: The köşks that host the medrese are read
+    description: >-
+      The server reads GET /madrasahs/:id/hosting-kosks (the köşks that hold an unrevoked right for the medrese, hidden köşks
+      left out, by name) together with the medrese's settings and its name, behind loading.tsx (a skeleton and a hidden "Yükleniyor",
+      too brief to stop in: no node is drawn here). This read decides the page: a refusal draws the forbidden alert, a read that failed
+      draws the retry state, an empty list draws "Ders açılabilecek köşk yok", otherwise the form is drawn with the first köşk chosen.
+      A medrese that is not the person's is the layout's 404 (the same `not_found`).
+    invoke: { action: listMadrasahHostingKosks }
+    on:
+      DONE:
+        - { guard: "hosting == 'one'", target: readingPolicies, effect: [firstIsSuleymaniye], source: apps/nazar/features/courses/courses.ts:362, say: "one köşk is listed and the form will start with it chosen (blankForm)" }
+        - { guard: "hosting == 'two'", target: readingPolicies, effect: [firstIsKubbealti], source: apps/nazar/features/courses/courses.ts:362, say: "two köşks are listed, by name; the first, Kubbealtı Köşkü, will be chosen" }
+        - { guard: "hosting == 'none'", target: noKosk, source: apps/nazar/features/courses/components/open-course-page.tsx:60, say: "the list is empty: the page says no köşk hosts the medrese" }
+      FAIL.forbidden: { guard: "hosting == 'forbidden'", target: forbidden, source: apps/nazar/lib/tedrisat-read.ts:45, say: "the caller does not hold madrasah.course_open (the medrese's nazır with no grant)" }
+      FAIL.missing: { guard: "hosting == 'missing'", target: not_found, source: apps/nazar/lib/tedrisat-read.ts:46, say: "there is no such medrese: the portal's 404" }
+      FAIL.unreadable: { guard: "hosting == 'unreadable'", target: readFailed, source: apps/nazar/lib/tedrisat-read.ts:49, say: "any other failure of the read, logged and worded as a failed read" }
+    source: apps/nazar/features/courses/components/open-course-page.tsx:25
+
+  readingPolicies:
+    title: The medrese's policies are read
+    description: >-
+      GET /madrasahs/:id/settings is read in the same breath. It only supplies the two locks of the form; a read that is refused or
+      fails leaves both boxes open and the page says "Medresenin politikaları şu an okunamadı; ders açılırken sunucu uygular." A nazır
+      with madrasah.course_open and no madrasah.settings_edit gets this line though the cause is a refusal (F-A-8, decision D1). No
+      node is drawn in this step.
+    invoke: { action: getMadrasahSettings }
+    on:
+      DONE:
+        - { guard: "locks == 'none'", target: form, source: apps/nazar/features/courses/components/open-course-page.tsx:75, say: "no policy fixes a box: both are free" }
+        - { guard: "locks == 'closed'", target: form, source: apps/nazar/features/courses/courses.ts:294, say: "'Kapalı ders zorunlu' is on: 'Kapalı ders' will be drawn checked and off limits" }
+        - { guard: "locks == 'approval'", target: form, source: apps/nazar/features/courses/courses.ts:294, say: "'Kayıt her zaman onaylı' is on: 'Kayıt onayı gereksin' will be drawn checked and off limits" }
+        - { guard: "locks == 'both'", target: form, source: apps/nazar/features/courses/courses.ts:294, say: "both policies are on: both boxes are checked and off limits, and the sentence names both" }
+      FAIL.unreadable: { guard: "locks == 'unknown'", target: form, source: apps/nazar/features/courses/components/open-course-page.tsx:78, say: "the policies could not be read: nothing is locked and the form says so (policiesUnknown)" }
+    source: apps/nazar/features/courses/components/open-course-page.tsx:28
+
+  noKosk:
+    title: No köşk hosts the medrese
+    by: human
+    description: >-
+      Under the header (breadcrumb, "Medrese dersi aç", the line saying the course is opened in a köşk that hosts the medrese) a
+      warning alert reads "Ders açılabilecek köşk yok" and says no köşk gives the medrese a hosting right and who can give one; a
+      link-button "Derslere dön" leads back. No form is drawn. The Dersler list disables its "Medrese dersi aç" button in this case, so
+      the page is reached by address, by the Pano's button (disabled the same way) or after the only köşk took its right back (OPEN-6).
+      A toast of that refusal can still be on screen.
+    on:
+      BACK: { target: courses_listed, say: "they press 'Derslere dön' or the breadcrumb's 'Dersler'" }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/courses/components/open-course-page.tsx:61
+
+  forbidden:
+    title: The köşk read is refused
+    by: human
+    description: >-
+      The header stays and a neutral alert reads "Bu sayfaya izniniz yok" (a status that is already in the page when it is read, not
+      announced: F-A-16). The page offers no way on except the breadcrumb and the menu. The Dersler list lets such a nazır through to
+      this page by a button that is enabled whatever the nazır holds (F-A-8).
+    on:
+      BACK: { target: courses_listed, say: "they press the breadcrumb's 'Dersler'" }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  readFailed:
+    title: The köşks could not be read
+    by: human
+    description: >-
+      Under the header a section named "Köşkler okunamadı" says the köşks cannot be read for now and offers "Yeniden dene", which asks
+      the server again. Its title is a second h1 in the same main (F-A-1). It is never worded as no access.
+    on:
+      RETRY: { target: reading, say: "they press 'Yeniden dene'" }
+      BACK: { target: courses_listed, say: "they press the breadcrumb's 'Dersler'" }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/shell/components/load-failed.tsx:19
+
+  form:
+    title: The form
+    by: human
+    goal: true
+    description: >-
+      The page: the header, the köşk choice (the first listed köşk is chosen; no radio is marked required, F-A-7), the name field
+      ("Ders adı", help "Talebeler bu adı görür; hocalar sonradan değiştirebilir."), the hoca search with the list of hocas below it,
+      and the card "Ders ayarları" with the two boxes, the policy sentence and the two buttons. "Dersi aç" is never off. Pressed with
+      something wrong it sets `attempted` for good: from then on every problem is written under its field and goes the moment it is
+      fixed (the name error after a fix: open-course#2 a5), and the focus goes to the name field, else to the hoca search (the
+      states `formAtName` and `formAtSearch`); a köşk-only problem moves nothing (F-A-6). The errors are plain text, not live
+      regions, and the hoca list's error is not tied to the search field that gets the focus (F-A-4, F-A-5). The hoca search runs on
+      Enter and when the field is left; the field is disabled while it searches (OPEN-4, OPEN-5). A hoca found is added at once
+      (one hoca is the imam; with two the first is the imam until the second is picked) and each row has "Çıkar: name" (no
+      question asked, no focus moved, the hidden status keeps saying who was added: OPEN-3) and a select of the unvan that hoca will
+      carry in this course (it is sent only when one is chosen). A policy that locks a box draws it checked and disabled with the
+      sentence that says whose it is and a link to Medrese ayarları (OPEN-1). A toast of a refusal may be up; its text is under the
+      state `opening`. The graph draws one or two hocas; the page takes up to 20.
+    on:
+      PICK_KOSK: { guard: "hosting == 'two' and kosk != 'suleymaniye'", target: form, effect: [pickedSuleymaniye], source: apps/nazar/features/courses/components/open-course-form.tsx:159, say: "they choose the other köşk" }
+      FILL_IN:
+        - { guard: "not typed and fields == 'valid'", target: form, effect: [typedName], source: apps/nazar/features/courses/components/open-course-form.tsx:190, say: "they type a name of 2 to 200 characters" }
+        - { guard: "not typed and fields == 'short'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type one character; nothing is said until the button is pressed" }
+        - { guard: "not typed and fields == 'long'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type over 200 characters; nothing is said until the button is pressed" }
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they type a hoca's e-mail address and press Enter, or leave the field" }
+      SEARCH_ANOTHER: { guard: "team == 'a'", target: lookingAnother, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they search for a second hoca by another address" }
+      REMOVE_A:
+        - { guard: "team == 'a'", target: form, effect: [removedAAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the only hoca off: the list is empty again (this form allows it)" }
+        - { guard: "team == 'ab'", target: form, effect: [removedAOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the first of two off: the other is the imam" }
+      REMOVE_B:
+        - { guard: "team == 'ab'", target: form, effect: [removedBOfTwo], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the second of two off: the first is the imam" }
+        - { guard: "team == 'b'", target: form, effect: [removedBAlone], source: apps/nazar/features/courses/components/muderris-picker.tsx:218, say: "they take the last hoca off" }
+      PICK_IMAM: { guard: "team == 'ab' and imam == 'a'", target: form, effect: [imamIsB], source: apps/nazar/features/courses/components/muderris-picker.tsx:270, say: "they choose the second hoca as the imam (open-course#4); choosing the first again is the same move the other way and is not drawn" }
+      CHOOSE_UNVAN: { guard: "team != 'none'", target: form, source: apps/nazar/features/courses/components/muderris-picker.tsx:196, say: "they choose an unvan for the first hoca (sent as muderrisUnvans; the select's value is not drawn)" }
+      TOGGLE_CLOSED:
+        - { guard: "not closedLocked and not closedOn", target: form, effect: [closedChecked], source: apps/nazar/features/courses/components/open-course-form.tsx:229, say: "they check 'Kapalı ders'" }
+        - { guard: "not closedLocked and closedOn", target: form, effect: [closedUnchecked], source: apps/nazar/features/courses/components/open-course-form.tsx:229, say: "they uncheck it" }
+      TOGGLE_APPROVAL:
+        - { guard: "not approvalLocked and not approvalOn", target: form, effect: [approvalChecked], source: apps/nazar/features/courses/components/open-course-form.tsx:240, say: "they check 'Kayıt onayı gereksin'" }
+        - { guard: "not approvalLocked and approvalOn", target: form, effect: [approvalUnchecked], source: apps/nazar/features/courses/components/open-course-form.tsx:240, say: "they uncheck it" }
+      SUBMIT:
+        - { guard: problems, target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' with something wrong: nothing is sent" }
+        - { target: opening, source: apps/nazar/features/courses/components/open-course-form.tsx:115, say: "they press 'Dersi aç' with a köşk, a name and a hoca" }
+      OPEN_SETTINGS: { guard: locked, target: settings_opened, source: apps/nazar/features/courses/components/open-course-form.tsx:249, say: "they follow 'Medrese ayarları' in the sentence about the policy: the form is left and what was typed is lost (OPEN-1)" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç': Dersler opens, nothing is made, what was typed is dropped without a question (OPEN-1)" }
+      BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/courses/components/open-course-form.tsx:52
+
+  refused:
+    title: Where does the focus go after a refusal?
+    description: >-
+      Not a screen. After a refused press the form moves the focus to the name field if the name is wrong, else to the hoca search
+      if no hoca is listed, and moves it nowhere if only the köşk is wrong (the focus stays on 'Dersi aç': F-A-6).
+    source: apps/nazar/features/courses/components/open-course-form.tsx:102
+    always:
+      - { guard: titleBad, target: formAtName, source: apps/nazar/features/courses/components/open-course-form.tsx:103, say: "the name is wrong: it takes the focus" }
+      - { guard: teamBad, target: formAtSearch, source: apps/nazar/features/courses/components/open-course-form.tsx:105, say: "no hoca is listed: the search field takes the focus" }
+      - { target: form, source: apps/nazar/features/courses/components/open-course-form.tsx:107, say: "only the köşk is wrong: the focus is not moved" }
+
+  formAtName:
+    title: The form, the focus on the name
+    by: human
+    description: >-
+      The form as in `form`, drawn after a press that found the name wrong: "Ders adı" has the focus and says under it what is wrong
+      (open-course#2 a1, a3; Base UI ties the message to the field, so it is read when the focus lands). The other errors are written
+      too (the hoca list's, the köşk's), not announced. Only the moves that change what the refusal said are drawn here; the rest of
+      the form's moves are those of `form`.
+    on:
+      FILL_IN:
+        - { guard: "not typed and fields == 'valid'", target: form, effect: [typedName], source: apps/nazar/features/courses/components/open-course-form.tsx:190, say: "they type a good name: its error goes at once" }
+        - { guard: "not typed and fields == 'short'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type one character: the error now says it is too short" }
+        - { guard: "not typed and fields == 'long'", target: form, effect: [typedName], source: apps/nazar/features/courses/courses.ts:271, say: "they type over 200 characters: the error says it is too long" }
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they go to the hoca search and type an address" }
+      SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' again: the name is still wrong, so it is refused again" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç'" }
+      BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/courses/components/open-course-form.tsx:108
+
+  formAtSearch:
+    title: The form, the focus on the hoca search
+    by: human
+    description: >-
+      The form as in `form`, drawn after a press that found the name right and no hoca listed: the hoca search has the focus and the
+      line under "Seçilen hocalar" now reads "En az bir hoca seçin." in the error colour. That line is a plain paragraph that is
+      not the search field's description, so the reason is never read to someone on the field (F-A-5; open-course#2 a2, a6). The name is
+      right here, so only the hoca search, Vazgeç and the breadcrumb are drawn as moves.
+    on:
+      SEARCH: { guard: canSearch, target: looking, effect: [clearNote], source: apps/nazar/features/courses/components/muderris-picker.tsx:95, say: "they type a hoca's address and press Enter, or leave the field" }
+      SUBMIT: { target: refused, effect: [attempt], source: apps/nazar/features/courses/components/open-course-form.tsx:102, say: "they press 'Dersi aç' again with no hoca: it is refused again" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç'" }
+      BACK: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-page.tsx:38, say: "they follow the breadcrumb's 'Dersler'" }
+      NAVIGATE: { target: left, say: "they follow the menu" }
+    source: apps/nazar/features/courses/components/open-course-form.tsx:105
+
+  looking:
+    title: Look the first hoca up
+    description: >-
+      The server action lookupPerson, GET /users/lookup: the realm's directory is searched for the exact address (0 or 1 account;
+      a person who never opened the app is found too) and tedrisat writes the search to the audit log, found or not. The search field
+      is disabled and busy while it runs, so it loses the focus (OPEN-4); a hidden status says "Aranıyor". The rest of the form
+      stays live (not drawn). A person already on the list is not added again: the same address typed twice says "Bu kişi zaten
+      listede." A failure (no directory, no answer) is "Arama şu an yapılamıyor." Both messages are Field errors with no live region
+      (F-A-4).
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "lookup == 'found' and team == 'none'", target: form, effect: [addedFirst], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the person is added at once, the field is emptied and a hidden status says '<name> listeye eklendi'; a lone hoca is the imam" }
+        - { guard: "lookup == 'found' and team != 'none'", target: form, effect: [noteListed], source: apps/nazar/features/courses/components/muderris-picker.tsx:110, say: "the same address again: 'Bu kişi zaten listede.' and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: form, effect: [noteNotFound], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "no account has that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: form, effect: [noteDown], source: apps/nazar/features/courses/components/muderris-picker.tsx:124, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç' while the search runs; its answer is dropped" }
+    source: apps/nazar/features/nazirs/actions.ts:43
+
+  lookingAnother:
+    title: Look the second hoca up
+    description: >-
+      The same search for another address while one hoca is listed. The first search found its person, so this one is drawn as found
+      too (`lookup` is one answer for the whole walk): a failed second search says what a failed first one says and is not drawn
+      again. A found person is added after the first (the first stays the imam until another is chosen, and the two rows show a radio each).
+    invoke: { action: lookupUser }
+    on:
+      DONE: { guard: "lookup == 'found'", target: form, effect: [addedSecond], source: apps/nazar/features/courses/components/muderris-picker.tsx:115, say: "the second person is added: two rows, a radio each, the first the imam" }
+      CANCEL: { target: courses_listed, source: apps/nazar/features/courses/components/open-course-form.tsx:264, say: "they press 'Vazgeç' while the search runs" }
+    source: apps/nazar/features/nazirs/actions.ts:43
+
+  opening:
+    title: Open the draft
+    description: >-
+      The server action openCourse, POST /madrasahs/:id/courses with the köşk, the trimmed name, the hocas and the imam, the unvans
+      chosen, and "closedCourse" and "requiresApproval" (a locked box sent on whatever the form shows); one transaction writes the
+      draft (the API applies the medrese's policies whatever is sent), the hocas' course roles and an audit row. The button is busy
+      (aria-disabled, "Ders açılıyor" for a screen reader) and a second press does nothing. A success shows a toast and
+      goes to Dersler. A refusal keeps the form and shows an error toast (it stays until closed): "Ders açılamadı" with the reason.
+      No try/catch surrounds the call: if the call itself fails outright the busy state never clears and nothing is said
+      (F-A-10). `answer` is one answer for a whole walk: after a köşk's refusal the person may choose the other köşk and press again,
+      and that second press is the `created` branch of another walk, not of this one.
+    invoke: { action: openMadrasahCourse }
+    on:
+      DONE: { guard: "answer == 'created'", target: opened, source: apps/nazar/features/courses/components/open-course-form.tsx:118, say: "the draft exists: a toast says so, the page goes to Dersler" }
+      FAIL.hostingRight:
+        - { guard: "answer == 'hostingRight' and hosting == 'two'", target: form, effect: [hostingGone], source: apps/nazar/features/courses/components/open-course-form.tsx:133, say: "the köşk took its right back: a toast says so, the page reads the köşks again, the köşk is off the list and no köşk is chosen, so 'Bir köşk seçin.' stands under the choice at once; everything else stays" }
+        - { guard: "answer == 'hostingRight' and hosting == 'one'", target: noKosk, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-page.tsx:60, say: "the köşk was the only one: after the refresh no köşk is listed and the form is replaced by the 'no köşk' alert, with everything typed lost; the toast still tells the person to choose another (OPEN-6)" }
+      FAIL.unknownUser: { guard: "answer == 'unknownUser'", target: form, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-form.tsx:128, say: "a toast says one of the hocas has no account; the form stays" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [toastUp], source: apps/nazar/features/courses/components/open-course-form.tsx:128, say: "a toast says they may not do this; the form stays" }
+      FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [toastUp], source: apps/nazar/features/courses/courses.ts:393, say: "a toast says something went wrong, try again; the form stays (a naming-oneself refusal reads the same: OPEN-2)" }
+    source: apps/nazar/features/courses/components/open-course-form.tsx:115
+
+  opened:
+    type: final
+    title: The draft is open and Dersler is shown
+    description: >-
+      Dersler opens (client navigation, router.push) with the toast "Ders taslak olarak açıldı" ("“<name>” Dersler listesinde Taslak
+      olarak görünür.") for 6 seconds and the new course's row in the list, "Taslak", "bugün açıldı", with the köşk's name. The focus is
+      not moved (it falls to the top of the page, F-A-2's family); the toast's close button says "Kapat" in every language (F-L-6,
+      MDRS-233). The list is nazar.courses.browse's page; only what proves this flow's result is drawn.
+
+  courses_listed:
+    type: final
+    title: The person goes back to Dersler and nothing is made
+    leavesPage: true
+    description: >-
+      Vazgeç, the breadcrumb's "Dersler" or "Derslere dön": the list opens and what was typed is dropped.
+
+  settings_opened:
+    type: final
+    title: The person goes to Medrese ayarları
+    leavesPage: true
+    description: >-
+      The link in the policy sentence opens the medrese's settings (nazar.settings.edit); the form and everything typed in it are gone.
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+  not_found:
+    type: final
+    title: The 404 page
+    description: >-
+      The medrese is not there or not the person's: the portal's "Sayfa bulunamadı", in the same words as any route that does not exist
+      (nazar.shell.errorStates).
+
+assertions:
+  - { id: a-draft-has-a-name, never: "state == 'opening' and titleBad", say: "A course is never sent without a name of 2 to 200 characters", source: apps/nazar/features/courses/courses.ts:318 }
+  - { id: a-draft-has-a-hoca, never: "state == 'opening' and team == 'none'", say: "A course is never sent without a hoca", source: apps/nazar/features/courses/courses.ts:318 }
+  - { id: a-draft-has-a-kosk, never: "state == 'opening' and kosk == 'none'", say: "A course is never sent without a köşk chosen from the list", source: apps/nazar/features/courses/components/open-course-form.tsx:76 }
+  - { id: a-locked-box-cannot-be-toggled, never: "(closedLocked and closedOn) or (approvalLocked and approvalOn)", say: "A box a policy locks is never switched by the person: the walk cannot check or uncheck it", source: apps/nazar/features/courses/components/open-course-form.tsx:228 }

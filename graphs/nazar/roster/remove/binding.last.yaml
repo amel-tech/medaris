@@ -1,0 +1,35 @@
+# nazar.roster.remove with a single enrolled talebe: the müderris takes the only one out, and the Kayıtlı table is left with one cell,
+# "Kayıtlı talebe yok". Same course, data, locators and teardown as binding.yaml (see its header); only `others` and the talebe differ.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/remove --bind graphs/nazar/roster/remove/binding.last.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. A file of its own because the scenario takes the same transitions as `removes`, so `--cover transitions`
+# would never walk it in the file that holds both.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.remove
+
+scenarios:
+  removesLast:
+    given: { viewer: remover, answer: removed, others: none }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosterremove, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosterremove]
+        expect: course remove rosterremove
+      - run: [node, helpers/sql.mjs, "select count(*) as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+    vars:
+      who: applicantC
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      otherName: Salih Başvuran
+      courseTitle: Deneme dersi rosterremove
+      reason: Derse kaydolup hiç gelmedi
+      reasonSaved: Derse kaydolup hiç gelmedi
+      removerName: Hamdi Müderris

@@ -1,0 +1,27 @@
+# nazar.roster.decide: the reader who may open Talebeler and may not decide. The seeded ders nazırı's account (Rukiye) is appointed in
+# the walk's own course with enrollment.complete alone; that code brings course.staff_read, so the page opens and lists the two
+# waiting applications, with no "Onayla", no "Reddet", no actions column and no "Toplu talebe ekle" (the buttons follow
+# enrollment.decide only). It adds no transition to binding.yaml's (the same opened -> listed), so it is its own file and is walked
+# on its own, with --absent to check that the buttons are not there:
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/decide --bind graphs/nazar/roster/decide/binding.mayNot.yaml --absent --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.decide
+
+scenarios:
+  mayNot:
+    given: { approval: needed, mayDecide: mayNot, note: asks }
+    as: dersNazir
+    open: '{nazar}/ders/{rosHead.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    vars: { course: '{rosHead.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosHead, --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_D":"PENDING"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{rosHead.course}', --nazir, dersNazir, --codes, enrollment.complete]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosHead]
+        expect: 'course remove rosHead'

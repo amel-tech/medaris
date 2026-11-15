@@ -1,0 +1,129 @@
+# What must exist for the başmüderris of a medrese to change the hocas of one of its courses: the flow's product list (LAYOUT.md
+# section 7). Each need is what the product must do, from the flow's story and the owner's decisions, not from what the page does
+# today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on
+# this file yet.
+#
+# missing:  say-why-kaydet-is-off, say-the-search-outcomes, menu-offers-only-what-the-person-may-do,
+#           search-only-when-asked
+# unwalked: choose-the-imam, a-refusal-is-told-and-the-dialog-stays (code exists; no e2e and no replay has walked them: this phase
+#           runs no replay, and the refusals cannot be made on the local stack)
+kind: needs
+flow: nazar.courses.changeHocas
+status: proposed
+
+needs:
+  - id: see-who-teaches
+    need: >-
+      The başmüderris reads, on the row of each course, who teaches it and who the imam is, and the row follows a change of the list
+      at once.
+    drawn: [listed, rowStarBefore, rowStarAfter, saved]
+    built:
+      - action: medaris.api:listMadrasahCourses
+      - route: apps/nazar/features/courses/components/courses-table.tsx:99
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#1'
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#4'
+
+  - id: add-a-hoca-by-email
+    need: >-
+      She adds a hoca by the exact e-mail address of their account, which must be in the realm; an address nobody has finds no one
+      and says so, and a person already on the list is not added twice. Each search is written to the audit log.
+    drawn: [form, looking, searchField, searchNotFound, searchListed, searchDown, added, countThree]
+    built:
+      - action: medaris.api:lookupUser
+      - action: medaris.api:setMadrasahCourseMuderris
+      - route: apps/nazar/features/courses/components/muderris-picker.tsx:95
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#7'
+
+  - id: take-a-hoca-off
+    need: >-
+      She takes a hoca off the course with one press and saves the list; the person loses the hoca role of the course and the row no
+      longer names them.
+    drawn: [form, formReady, removeImam, removeOther, saving, saved, toastSaved]
+    built:
+      - action: medaris.api:setMadrasahCourseMuderris
+      - route: apps/nazar/features/courses/components/change-muderris.tsx:61
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#4'
+
+  - id: the-last-account-stays
+    need: >-
+      A course always keeps at least one hoca with an account: the last one cannot be taken off, and a list with none is not sent.
+    drawn: [form, removeLast, save, never-without-an-account]
+    built:
+      - route: apps/nazar/features/courses/team.ts:105
+      - action: medaris.api:setMadrasahCourseMuderris
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#5'
+
+  - id: a-hoca-without-an-account-is-left-alone
+    need: >-
+      A hoca who has no account is listed by name, cannot be changed from this list, and stays on the course when the list is saved.
+    drawn: [form, guestName, noAccountNote]
+    built:
+      - route: apps/nazar/features/courses/components/muderris-picker.tsx:164
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#6'
+
+  - id: the-imam-moves
+    need: >-
+      When the imam is taken off and one hoca is left, that hoca is the imam; where several are left the page asks for the imam and
+      does not let the list be saved until one is chosen.
+    drawn: [form, formReady, imamMissing, imamPickTwo, imamPickThree, imamBadge]
+    built:
+      - route: apps/nazar/features/courses/team.ts:57
+      - action: medaris.api:setMadrasahCourseMuderris
+    walked:
+      - e2e: apps/nazar/e2e/courses.e2e.ts
+        check: 'courses#8'
+
+  - id: choose-the-imam
+    need: >-
+      She chooses which of several hocas is the imam with a radio, and the choice alone makes the list saveable.
+    drawn: [imamPickTwo, imamPickThree, formReady]
+    built:
+      - route: apps/nazar/features/courses/components/muderris-picker.tsx:185
+
+  - id: a-refusal-is-told-and-the-dialog-stays
+    need: >-
+      When the server refuses the list (a person who is not in Medaris, a list the API does not take, no permission), a toast says
+      which, in her words, and the dialog stays open with what she built; a course that is gone closes it.
+    drawn: [saving, toastUnknownUser, toastForbidden, toastInvalid, toastOther, toastGone, course_gone]
+    built:
+      - action: medaris.api:setMadrasahCourseMuderris
+      - route: apps/nazar/features/courses/components/change-muderris.tsx:81
+
+  - id: say-the-search-outcomes
+    need: >-
+      The outcome of a search (nobody found, already listed, the directory down, a person added and, equally, a person taken off) is
+      said to a person who cannot see the screen, and the focus stays where she is (F-A-4, HOCAS-2, HOCAS-3).
+    drawn: [looking, searching, added, searchNotFound, searchListed, searchDown]
+    missing: none
+
+  - id: search-only-when-asked
+    need: >-
+      A search of the realm's directory, which the audit log keeps, runs when the person asks for it (Enter or a button) and never
+      because the focus passed through the field (HOCAS-1); a repeated address is searched again once the list has changed (HOCAS-4).
+    drawn: [form, looking, searchField]
+    missing: none
+
+  - id: say-why-kaydet-is-off
+    need: >-
+      Where "Kaydet" is off the page says why in a sentence tied to the list: no account on it (HOCAS-6), or no imam among several
+      (F-A-5, announced), not only by an off button.
+    drawn: [form, imamMissing, legendHelp, save]
+    missing: none
+
+  - id: menu-offers-only-what-the-person-may-do
+    need: >-
+      The row's menu offers "Hocaları değiştir" only to a person who holds madrasah.muderris_manage in the medrese, and "Dersi gizle"
+      only to one who may hide, so that "Bunu yapma izniniz yok." is never the first word they hear (F-A-8, decision D1).
+    drawn: [menu, menuHocas, menuHide]
+    missing: none
