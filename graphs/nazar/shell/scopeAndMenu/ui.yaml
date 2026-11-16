@@ -18,6 +18,7 @@ kind: ui
 id: nazar.shell.scopeAndMenu
 flow: nazar.shell.scopeAndMenu
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

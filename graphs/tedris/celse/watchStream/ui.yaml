@@ -18,6 +18,7 @@ kind: ui
 id: tedris.celse.watchStream
 flow: tedris.celse.watchStream
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

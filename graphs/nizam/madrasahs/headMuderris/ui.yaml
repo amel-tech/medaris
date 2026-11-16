@@ -17,6 +17,7 @@ kind: ui
 id: nizam.madrasahs.headMuderris
 flow: nizam.madrasahs.headMuderris
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: AssignHeadDialog.changedBody }

@@ -21,6 +21,7 @@ kind: ui
 id: nizam.shell.menuPerPersona
 flow: nizam.shell.menuPerPersona
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

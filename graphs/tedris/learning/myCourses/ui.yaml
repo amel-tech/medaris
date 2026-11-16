@@ -19,6 +19,7 @@ kind: ui
 id: tedris.learning.myCourses
 flow: tedris.learning.myCourses
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

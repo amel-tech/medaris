@@ -16,6 +16,7 @@ kind: ui
 id: tedris.course.updateProgress
 flow: tedris.course.updateProgress
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { before: "40", after: "55" }

@@ -27,6 +27,7 @@ kind: ui
 id: nizam.moderation.decideBan
 flow: nizam.moderation.decideBan
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

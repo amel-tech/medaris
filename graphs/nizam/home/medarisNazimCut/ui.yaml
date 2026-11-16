@@ -26,6 +26,7 @@ kind: ui
 id: nizam.home.medarisNazimCut
 flow: nizam.home.medarisNazimCut
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

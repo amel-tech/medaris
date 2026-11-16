@@ -17,6 +17,7 @@ kind: ui
 id: tedris.account.rolesOverview
 flow: tedris.account.rolesOverview
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

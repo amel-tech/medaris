@@ -18,6 +18,7 @@ kind: ui
 id: nizam.platform.policies
 flow: nizam.platform.policies
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { scope: "Politika Deneme Köşkü", names: "Politika Deneme Köşkü", person: "Vedat Başnazım", at: "16 Kas 14:30" }

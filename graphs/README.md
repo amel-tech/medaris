@@ -31,6 +31,7 @@ graphs/
   FINDINGS.md                the register of findings, in Turkish
   needs.gaps.yaml            every need that is missing, by flow (SPEC.md §13)
   delurio.baseline.sarif     the findings of `check` accepted when it was written; renewed only on purpose
+  kit/                       the Medaris kit: how the pages and videos draw a screen (tokens, CSS, a template per component)
   domain/                    the one domain, medaris.api, split over files; planned-*.yaml hold the planned API
   bindings/                  shared bindings (local.<app>.binding.yaml) and helpers/ (Node scripts a binding runs)
   .local/                    git-ignored: links to the stack's accounts and seed, made data, cached tokens
@@ -80,6 +81,19 @@ it (tedris, nazar and nizam) is what the engine's `extract` read from the code, 
 a page draws as well as its menus. Where it reads a link but not the condition the code draws it under, or finds a control a
 hand-written entry already carries, `nav.yaml`'s `extract.entries` lays the condition over the generated entry or leaves it out
 (`skip`), each with the line of code that decides it.
+
+Every `ui.yaml` names the Medaris kit (`kit: ../../../kit`), so the pages `page` writes and the videos drawn from the
+graphs show Medaris screens: the paper ground, the ink text, the lâciverd links and the `.mds-*` components, light and
+dark. `kit.yaml` holds a template per component and per role, written by hand with the classes the apps ship
+(`libs/ui/src/mds`). `tokens.json`, `dark.json` and `kit.css` are generated from `libs/tokens/medaris.css` and
+`libs/ui/src/styles/mds/` by `node tools/graphs/build-kit.mjs`: run it after a change to either, from the repository root.
+A kit fetches nothing, so the fonts the apps load (Instrument Sans, Literata) show only where the machine that draws has
+them installed; elsewhere the stacks' system fallbacks do. The engine's `kit check` draws every screen with the kit and
+checks that each node keeps the role, the name and the state the graph expects:
+
+```bash
+node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirname) --strict   # in the engine's checkout
+```
 
 ## Status
 

@@ -27,6 +27,7 @@ kind: ui
 id: nazar.bans.courseBans
 flow: nazar.bans.courseBans
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

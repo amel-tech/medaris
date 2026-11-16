@@ -17,6 +17,7 @@ kind: ui
 id: realm.auth.forgotPassword
 flow: realm.auth.forgotPassword
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { "0": "10", account: ornek-kullanici }

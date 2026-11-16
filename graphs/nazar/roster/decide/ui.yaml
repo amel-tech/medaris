@@ -9,6 +9,7 @@ kind: ui
 id: nazar.roster.decide
 flow: nazar.roster.decide
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: CourseStudents.applicationsNote } # the app's own sentence on what a decision does (the note over the table); no message is authored here

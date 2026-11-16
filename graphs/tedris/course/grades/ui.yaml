@@ -16,6 +16,7 @@ kind: ui
 id: tedris.course.grades
 flow: tedris.course.grades
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

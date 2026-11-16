@@ -9,6 +9,7 @@ kind: ui
 id: nazar.archive.hideMedrese
 flow: nazar.archive.hideMedrese
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Archive.hide.confirmBody }

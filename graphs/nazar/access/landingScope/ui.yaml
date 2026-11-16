@@ -16,6 +16,7 @@ kind: ui
 id: nazar.access.landingScope
 flow: nazar.access.landingScope
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

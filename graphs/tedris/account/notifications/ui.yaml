@@ -21,6 +21,7 @@ kind: ui
 id: tedris.account.notifications
 flow: tedris.account.notifications
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

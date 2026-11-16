@@ -21,6 +21,7 @@ kind: ui
 id: nazar.access.medreseNazirRefused
 flow: nazar.access.medreseNazirRefused
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

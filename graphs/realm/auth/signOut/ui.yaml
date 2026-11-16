@@ -17,6 +17,7 @@ kind: ui
 id: realm.auth.signOut
 flow: realm.auth.signOut
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: tedrisAccount.AccountProfile.signOutText }

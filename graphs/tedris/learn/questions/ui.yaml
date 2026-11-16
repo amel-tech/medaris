@@ -10,6 +10,7 @@ kind: ui
 id: tedris.learn.questions
 flow: tedris.learn.questions
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

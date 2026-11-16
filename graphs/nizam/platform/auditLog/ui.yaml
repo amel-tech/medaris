@@ -23,6 +23,7 @@ kind: ui
 id: nizam.platform.auditLog
 flow: nizam.platform.auditLog
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { number: "640", when: "Bugün 21:10", name: "Örnek Kişi", person: "Örnek Kişi", scope: "Platform", myNumber: "641" }

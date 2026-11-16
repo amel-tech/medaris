@@ -25,6 +25,7 @@ kind: ui
 id: nizam.moderation.reviewBans
 flow: nizam.moderation.reviewBans
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

@@ -25,6 +25,7 @@ kind: ui
 id: nizam.madrasahs.browse
 flow: nizam.madrasahs.browse
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

@@ -31,6 +31,7 @@ kind: ui
 id: nazar.courseNazirs.appoint
 flow: nazar.courseNazirs.appoint
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: CourseNazirs.dialog.chosenNote } # the app's own sentence says what "Kaydet" does: "Kaydedince bu derste ders nazırı olur ve seçtiğiniz izinleri alır."

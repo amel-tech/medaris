@@ -28,6 +28,7 @@ kind: ui
 id: nazar.curriculum.hideRestore
 flow: nazar.curriculum.hideRestore
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

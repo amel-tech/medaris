@@ -20,6 +20,7 @@ kind: ui
 id: tedris.learn.homeworkHandIn
 flow: tedris.learn.homeworkHandIn
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

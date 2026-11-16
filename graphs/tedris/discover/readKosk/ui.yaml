@@ -26,6 +26,7 @@ kind: ui
 id: tedris.discover.readKosk
 flow: tedris.discover.readKosk
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

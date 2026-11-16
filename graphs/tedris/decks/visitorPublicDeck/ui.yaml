@@ -25,6 +25,7 @@ kind: ui
 id: tedris.decks.visitorPublicDeck
 flow: tedris.decks.visitorPublicDeck
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: PublicDeck.note }

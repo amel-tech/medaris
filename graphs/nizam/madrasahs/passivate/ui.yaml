@@ -17,6 +17,7 @@ kind: ui
 id: nizam.madrasahs.passivate
 flow: nizam.madrasahs.passivate
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

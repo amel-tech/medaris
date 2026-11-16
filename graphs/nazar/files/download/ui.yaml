@@ -22,6 +22,7 @@ kind: ui
 id: nazar.files.download
 flow: nazar.files.download
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

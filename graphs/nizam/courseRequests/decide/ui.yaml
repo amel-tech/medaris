@@ -17,6 +17,7 @@ kind: ui
 id: nizam.courseRequests.decide
 flow: nizam.courseRequests.decide
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: CourseRequestsPage.answerNote }

@@ -13,6 +13,7 @@ kind: ui
 id: tedris.discover.followKosk
 flow: tedris.discover.followKosk
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { kosk: "Kubbealtı Köşkü" }

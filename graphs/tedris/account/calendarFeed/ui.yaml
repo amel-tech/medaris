@@ -19,6 +19,7 @@ kind: ui
 id: tedris.account.calendarFeed
 flow: tedris.account.calendarFeed
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: CalendarSubscription.confirmText }

@@ -18,6 +18,7 @@ kind: ui
 id: tedris.decks.browse
 flow: tedris.decks.browse
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

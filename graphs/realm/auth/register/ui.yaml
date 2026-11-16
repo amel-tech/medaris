@@ -23,6 +23,7 @@ kind: ui
 id: realm.auth.register
 flow: realm.auth.register
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { "0": "defne.kayitli@medaris.test" }

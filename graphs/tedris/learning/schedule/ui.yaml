@@ -22,6 +22,7 @@ kind: ui
 id: tedris.learning.schedule
 flow: tedris.learning.schedule
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

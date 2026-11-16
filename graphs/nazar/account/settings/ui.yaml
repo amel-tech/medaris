@@ -22,6 +22,7 @@ kind: ui
 id: nazar.account.settings
 flow: nazar.account.settings
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Account.timeZoneHelp }

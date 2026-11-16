@@ -17,6 +17,7 @@ kind: ui
 id: nizam.inactive.viewContent
 flow: nizam.inactive.viewContent
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: InactivePage.noticeBody }

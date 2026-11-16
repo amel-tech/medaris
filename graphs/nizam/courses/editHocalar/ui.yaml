@@ -22,6 +22,7 @@ kind: ui
 id: nizam.courses.editHocalar
 flow: nizam.courses.editHocalar
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

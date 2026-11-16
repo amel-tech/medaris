@@ -20,6 +20,7 @@ kind: ui
 id: nizam.madrasahs.open
 flow: nizam.madrasahs.open
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { name: "Tahsin Başvuran", handle: "ornek-acilis", madrasah: "Örnek Açılış Medresesi" } # {name} is the person the picker finds and the list names as head (the seed's spare applicant), {handle} the short name the form is given, {madrasah} the name the form is given

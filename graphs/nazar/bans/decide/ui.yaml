@@ -18,6 +18,7 @@ kind: ui
 id: nazar.bans.decide
 flow: nazar.bans.decide
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

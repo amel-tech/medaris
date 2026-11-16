@@ -24,6 +24,7 @@ kind: ui
 id: nazar.nazirs.permissions
 flow: nazar.nazirs.permissions
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Editor.note } # the app's own words for what a save does: "Aldığı izni başkasına veremez. Verilen ve geri alınan her izin denetim kaydına yazılır."

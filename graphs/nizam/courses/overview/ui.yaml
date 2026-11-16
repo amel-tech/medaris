@@ -34,6 +34,7 @@ kind: ui
 id: nizam.courses.overview
 flow: nizam.courses.overview
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

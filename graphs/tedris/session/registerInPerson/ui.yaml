@@ -16,6 +16,7 @@ kind: ui
 id: tedris.session.registerInPerson
 flow: tedris.session.registerInPerson
 status: proposed
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

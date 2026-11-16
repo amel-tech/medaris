@@ -24,6 +24,7 @@ kind: ui
 id: nizam.inactive.reassign
 flow: nizam.inactive.reassign
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { name: "Nazlı Talebe", person: "Dilek Başvuran", scope: "Deneme köşkü", since: "13 Kasım 2026", email: "dilek.basvuran@example.test", role: "Medaris başnazımı", kind: "Ders", kosk: "Kubbealtı Köşkü", count: "3", action: "Köşk nazımı ata" }

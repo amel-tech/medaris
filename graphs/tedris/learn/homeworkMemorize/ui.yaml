@@ -17,6 +17,7 @@ kind: ui
 id: tedris.learn.homeworkMemorize
 flow: tedris.learn.homeworkMemorize
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

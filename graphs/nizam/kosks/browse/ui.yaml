@@ -31,6 +31,7 @@ kind: ui
 id: nizam.kosks.browse
 flow: nizam.kosks.browse
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

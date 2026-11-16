@@ -13,6 +13,7 @@ kind: ui
 id: landing.site.enterApp
 flow: landing.site.enterApp
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: {}

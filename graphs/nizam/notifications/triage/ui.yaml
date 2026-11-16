@@ -25,6 +25,7 @@ kind: ui
 id: nizam.notifications.triage
 flow: nizam.notifications.triage
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

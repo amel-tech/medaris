@@ -16,6 +16,7 @@ kind: ui
 id: nazar.courses.open
 flow: nazar.courses.open
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { name: "Deneme Medresesi", count: "2", min: "2", max: "200", title: "Deneme dersi aç" }

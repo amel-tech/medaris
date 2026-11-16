@@ -15,6 +15,7 @@ kind: ui
 id: nizam.nazims.dismiss
 flow: nizam.nazims.dismiss
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

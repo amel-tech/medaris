@@ -28,6 +28,7 @@ kind: ui
 id: nizam.partners.registerAndScope
 flow: nizam.partners.registerAndScope
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

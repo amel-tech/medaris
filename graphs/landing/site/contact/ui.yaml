@@ -8,6 +8,7 @@ kind: ui
 id: landing.site.contact
 flow: landing.site.contact
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { address: selam@medaris.app }

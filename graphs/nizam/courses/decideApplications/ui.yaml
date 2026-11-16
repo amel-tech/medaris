@@ -22,6 +22,7 @@ kind: ui
 id: nizam.courses.decideApplications
 flow: nizam.courses.decideApplications
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: ApplicationsPage.intro }

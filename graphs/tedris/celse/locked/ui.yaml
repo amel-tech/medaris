@@ -24,6 +24,7 @@ kind: ui
 id: tedris.celse.locked
 flow: tedris.celse.locked
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

@@ -25,6 +25,7 @@ kind: ui
 id: nizam.courses.manageSessions
 flow: nizam.courses.manageSessions
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

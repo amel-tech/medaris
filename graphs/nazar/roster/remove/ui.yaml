@@ -20,6 +20,7 @@ kind: ui
 id: nazar.roster.remove
 flow: nazar.roster.remove
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: CourseStudents.remove.body }
