@@ -1,5 +1,7 @@
 {
   "Changes.note": "Bağlantı, canlı yayın ve yüz yüze ayarı, derse kayıtlı talebelere celse sayfasında görünür. Celsenin zamanı değişirse kayıtlı talebelere bildirim gider ve takvim davetleri yenilenir. Kayıt erişimi, kaydın talebelere ne zaman açılacağını belirler. Bir toplantı bağlantısı bu sayfadan silinemez, yalnız başka bir bağlantıyla değiştirilir.",
+  "Evaluation.examBadge": "Sınav",
+  "Evaluation.retakeBadge": "Telafi",
   "Nav.ders.sessions": "Celseler",
   "Problems.actionForbidden": "Bunu yapma izniniz yok.",
   "Problems.actionGeneric": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",

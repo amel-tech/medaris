@@ -287,7 +287,7 @@ states:
     source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295
     description: >-
       The overview of the board, for a person who holds `session.manage` (the müderris by role, a ders nazırı by grant): a link "Excel indir" (a
-      secondary button that is an <a>, with a download icon) above the table "Talebeler ve ezber ödevleri". It is drawn only when the course has a
+      secondary button that is an <a>, with a download icon) above the table "Talebeler, ezberler ve sınavlar". It is drawn only when the course has a
       column (a recited homework or an exam) and a talebe; otherwise the page is an empty state with no link. Pressing it never saves a file
       (evaluation-export-invalid-path).
     on:

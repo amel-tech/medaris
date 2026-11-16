@@ -13,7 +13,7 @@ flow: nazar.sessions.manage
 
 scenarios:
   stream:
-    given: { holds: stream, changeAnswer: saved, streamAnswer: saved, releaseAnswer: saved }
+    given: { exam: none, holds: stream, changeAnswer: saved, streamAnswer: saved, releaseAnswer: saved }
     as: dersNazir
     open: '{nazar}/ders/{made.course}/celseler'
     setup:

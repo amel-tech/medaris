@@ -14,7 +14,10 @@
 #     the release dialog says the celse is gone and reads the page again (MANAGE-2);
 #   - the calendar invitation names how a celse is attended as of its last send, and a link, a stream or an in-person change alone sends
 #     nothing new (MANAGE-3);
-#   - a meeting link can be replaced and never removed, though the API takes null (MANAGE-5).
+#   - a meeting link can be replaced and never removed, though the API takes null (MANAGE-5);
+#   - an exam celse wears the badge "Sınav" ("Telafi" for a make-up exam) beside its title, as Tedris and Değerlendirme draw it (fdc6e995; the case
+#     variable `exam`). No scenario holds one: exam-data.mjs of nazar.evaluation.examScores plans its exam a day behind the clock, so it would sit in
+#     the page's second table, which this graph does not draw.
 # The talebe's half is tedris.celse.attend; the planner is nazar.sessions.plan; "İptal et" is nazar.sessions.cancel (started below).
 schema: delurio-graph/0
 kind: flow
@@ -98,6 +101,13 @@ context:
       moved: "the celse is gone (LESSON_NOT_FOUND): the dialog closes and the page is read again"
       forbidden: "the API refuses for lack of recording.manage (it was taken away after the page opened)"
       failed: "the API refuses for any other reason: the time could not be read"
+  exam:
+    values: [none, exam, retake]
+    initial: any
+    say:
+      none: "the celse is a plain lesson"
+      exam: "the celse is an exam (a lesson_exams row, isRetake false): its name carries the badge 'Sınav'"
+      retake: "the celse is a make-up exam (isRetake true): its name carries the badge 'Telafi'"
   link:
     values: [none, set]
     initial: none
@@ -157,7 +167,7 @@ context:
       failed: "the error toast 'Bir şeyler ters gitti…', or the stream problem the server found"
 
 guards:
-  # the buttons are drawn for the code each needs (sessions-table.tsx:446-533): `canManage`, `streams !== null`, `canRelease`
+  # the buttons are drawn for the code each needs (sessions-table.tsx:456-543): `canManage`, `streams !== null`, `canRelease`
   maySetWays: "holds == 'all' or holds == 'manage'"
   mayStream: "holds == 'all' or holds == 'stream'"
   mayRelease: "holds == 'all'"
@@ -286,8 +296,8 @@ states:
     title: The celses still ahead, with how each is attended
     description: >-
       The page: "Celseler", the subtitle with the course's name and the zone the times are written in, "Celse planla" for a holder of
-      session.manage, and the table "Yaklaşan celseler" with its counts line. Each row has its name, its time, "Katılım" and its state
-      ("Planlandı"), and, in the last column, a button for each thing the person may change (see the context). "Katılım" joins what
+      session.manage, and the table "Yaklaşan celseler" with its counts line. Each row has its name (an exam's carries the badge "Sınav", a make-up exam's "Telafi": sessions-table.tsx:277-286,
+      since fdc6e995), its time, "Katılım" and its state ("Planlandı"), and, in the last column, a button for each thing the person may change (see the context). "Katılım" joins what
       the celse has with " · ": the meeting link as a platform chip, "YouTube yayını" (or "Yalnız yayın" when it is the only way),
       "Yüz yüze"; a celse still ahead with none of them wears the warning badge "Eksik", and the sidebar's "Celseler" carries the number
       of such celses (the same rule on the server). A recording time that is ahead is said under the state ("Kayıt … açılır"). The
@@ -310,11 +320,11 @@ states:
         - { guard: "mayStream and stream == 'set'", target: streamForm, effect: [openStreamSet], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press 'Canlı yayını güncelle': the form holds the stream link" }
         - { guard: mayStream, target: streamForm, effect: [openStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:174, say: "they press 'Canlı yayın ekle': the form is empty" }
       OPEN_RELEASE:
-        - { guard: "mayRelease and release == 'at'", target: releaseDialog, effect: [openReleaseAt], source: apps/nazar/features/sessions/components/sessions-table.tsx:504, say: "they press 'Kayıt erişimi': the dialog holds the time the team set" }
-        - { guard: mayRelease, target: releaseDialog, effect: [openRelease], source: apps/nazar/features/sessions/components/sessions-table.tsx:504, say: "they press 'Kayıt erişimi': 'Hazır olunca hemen' is chosen" }
-      CANCEL_CELSE: { guard: maySetWays, target: handed_over.cancel, starts: { flow: nazar.sessions.cancel, given: { holds: "'manage'" } }, source: apps/nazar/features/sessions/components/sessions-table.tsx:525, say: "they press 'İptal et': the cancel dialog opens over this page" }
+        - { guard: "mayRelease and release == 'at'", target: releaseDialog, effect: [openReleaseAt], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press 'Kayıt erişimi': the dialog holds the time the team set" }
+        - { guard: mayRelease, target: releaseDialog, effect: [openRelease], source: apps/nazar/features/sessions/components/sessions-table.tsx:514, say: "they press 'Kayıt erişimi': 'Hazır olunca hemen' is chosen" }
+      CANCEL_CELSE: { guard: maySetWays, target: handed_over.cancel, starts: { flow: nazar.sessions.cancel, given: { holds: "'manage'" } }, source: apps/nazar/features/sessions/components/sessions-table.tsx:535, say: "they press 'İptal et': the cancel dialog opens over this page" }
       NAVIGATE: { target: left, say: "they follow 'Celse planla' or the menu" }
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:576
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:586
 
   linkForm:
     title: The meeting link form
@@ -329,13 +339,13 @@ states:
       chip is read off the address afterwards. There is no way to send an empty link (MANAGE-5, D1).
     by: human
     on:
-      FILL_LINK: { target: linkForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:645, say: "they type an https address" }
-      FILL_LINK_BAD: { target: linkForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:645, say: "they type an address that starts http://" }
+      FILL_LINK: { target: linkForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:655, say: "they type an https address" }
+      FILL_LINK_BAD: { target: linkForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:655, say: "they type an address that starts http://" }
       SAVE:
         - { guard: "entered == 'valid'", target: savingLink, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:233, say: "they press 'Kaydet' with an address the page accepts" }
         - { target: linkForm, effect: [saidLink], source: apps/nazar/features/sessions/components/sessions-table.tsx:233, say: "they press 'Kaydet' with the field empty or wrong: the sentence appears under it and nothing is sent" }
-      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:695, say: "they press 'Vazgeç': the form goes and the focus falls to the page" }
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:645
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:705, say: "they press 'Vazgeç': the form goes and the focus falls to the page" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:655
 
   savingLink:
     title: The link is on its way
@@ -364,13 +374,13 @@ states:
       behaviour as the link form (F-C-course-a-08, MANAGE-4).
     by: human
     on:
-      FILL_TIME: { target: timeForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:663, say: "they pick another date and time" }
-      FILL_TIME_BAD: { target: timeForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:663, say: "they clear the date" }
+      FILL_TIME: { target: timeForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:673, say: "they pick another date and time" }
+      FILL_TIME_BAD: { target: timeForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:673, say: "they clear the date" }
       SAVE:
         - { guard: "entered == 'valid'", target: savingTime, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:242, say: "they press 'Kaydet' with a date and a time" }
         - { target: timeForm, effect: [saidTime], source: apps/nazar/features/sessions/components/sessions-table.tsx:242, say: "they press 'Kaydet' with the date or the time missing: the sentence appears under Tarih and nothing is sent" }
-      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:695, say: "they press 'Vazgeç'" }
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:663
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:705, say: "they press 'Vazgeç'" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:673
 
   savingTime:
     title: The new time is on its way
@@ -398,12 +408,12 @@ states:
       the three ways in: it takes "Eksik" away.
     by: human
     on:
-      CHOOSE_COURSE: { target: inPersonForm, effect: [pickCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:627, say: "they choose 'Dersin ayarına uy'" }
-      CHOOSE_YES: { target: inPersonForm, effect: [pickYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:627, say: "they choose 'Yüz yüze'" }
-      CHOOSE_NO: { target: inPersonForm, effect: [pickNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:627, say: "they choose 'Yüz yüze değil'" }
+      CHOOSE_COURSE: { target: inPersonForm, effect: [pickCourse], source: apps/nazar/features/sessions/components/sessions-table.tsx:637, say: "they choose 'Dersin ayarına uy'" }
+      CHOOSE_YES: { target: inPersonForm, effect: [pickYes], source: apps/nazar/features/sessions/components/sessions-table.tsx:637, say: "they choose 'Yüz yüze'" }
+      CHOOSE_NO: { target: inPersonForm, effect: [pickNo], source: apps/nazar/features/sessions/components/sessions-table.tsx:637, say: "they choose 'Yüz yüze değil'" }
       SAVE: { target: savingInPerson, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:247, say: "they press 'Kaydet'" }
-      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:695, say: "they press 'Vazgeç'" }
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:621
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:705, say: "they press 'Vazgeç'" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:631
 
   savingInPerson:
     title: The in-person mark is on its way
@@ -433,14 +443,14 @@ states:
       session.live_link whose read of the stream links worked.
     by: human
     on:
-      FILL_STREAM: { target: streamForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:609, say: "they paste a YouTube video link" }
-      FILL_STREAM_BAD: { target: streamForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:609, say: "they paste a YouTube channel link" }
+      FILL_STREAM: { target: streamForm, effect: [typedValid], source: apps/nazar/features/sessions/components/sessions-table.tsx:619, say: "they paste a YouTube video link" }
+      FILL_STREAM_BAD: { target: streamForm, effect: [typedInvalid], source: apps/nazar/features/sessions/components/sessions-table.tsx:619, say: "they paste a YouTube channel link" }
       SAVE:
         - { guard: "entered == 'valid'", target: savingStream, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:221, say: "they press 'Kaydet' with a link the parser takes" }
         - { target: streamForm, effect: [saidStream], source: apps/nazar/features/sessions/components/sessions-table.tsx:221, say: "they press 'Kaydet' with the field empty or wrong: the sentence appears under it and nothing is sent" }
-      REMOVE_STREAM: { guard: "stream == 'set'", target: removingStream, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:704, say: "they press 'Bağlantıyı kaldır': it clears the link at once, with no question" }
-      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:695, say: "they press 'Vazgeç'" }
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:603
+      REMOVE_STREAM: { guard: "stream == 'set'", target: removingStream, effect: [sends], source: apps/nazar/features/sessions/components/sessions-table.tsx:714, say: "they press 'Bağlantıyı kaldır': it clears the link at once, with no question" }
+      CANCEL: { target: listed, effect: [closeForm], source: apps/nazar/features/sessions/components/sessions-table.tsx:705, say: "they press 'Vazgeç'" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:613
 
   savingStream:
     title: The stream link is on its way
@@ -535,15 +545,15 @@ assertions:
   - id: link-time-and-in-person-need-session-manage
     never: "(state == 'savingLink' or state == 'savingTime' or state == 'savingInPerson') and not maySetWays"
     say: Only a holder of session.manage is offered the link, the time and the in-person mark, so only they send them.
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:446
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:456
   - id: the-stream-needs-live-link
     never: "(state == 'streamForm' or state == 'savingStream' or state == 'removingStream') and not mayStream"
     say: Only a holder of session.live_link is offered the stream, so only they set or clear it.
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:478
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:488
   - id: release-needs-recording-manage
     never: "(state == 'releaseDialog' or state == 'savingRelease') and not mayRelease"
     say: Only a holder of recording.manage is offered "Kayıt erişimi".
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:495
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:505
   - id: a-link-is-sent-only-after-the-page-accepts-it
     never: "state == 'savingLink' and entered != 'valid'"
     say: An address the page refuses (empty, http:// or not an address) is never sent.

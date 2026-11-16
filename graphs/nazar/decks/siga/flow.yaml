@@ -195,7 +195,7 @@ states:
     description: >-
       One deck of the course at /ders/<id>/deste/<deckId>: the deck's title as the h1 (with the invalid `lang="auto"`, F-D1-14),
       "Taslak · talebe görünmez" under it, then "Kartlar" with the number of cards, the buttons "Sîga üret" and "Excel'den aktar",
-      the quick-add row, the cards (or "Bu destede henüz kart yok. …"), and the deck's settings. "Sîga üret" is always drawn, in a
+      the quick-add row, the cards (or "Bu destede henüz kart yok."), and the deck's settings. "Sîga üret" is always drawn, in a
       "Kelime" deck and a "Hadis" deck alike (D1). Nothing on the page has the focus. Reached by a link of the deck list, so the
       graph starts after the page has been read: its refusals are nazar.access.dersNazirPages's.
     source: apps/nazar/features/decks/components/deck-detail-screen.tsx:68

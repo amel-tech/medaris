@@ -29,6 +29,9 @@
 #     course's version while the form is open (`states.<form>.before`).
 #   - the stream link of a celse that is not live, a celse that has begun (its row has no time and no cancel button), a cancelled celse and a
 #     course held in person: the stack's clock and the course's setting are not the walk's to change; `rowState` is only ever "Planlandı".
+#   - an exam celse (`exam: exam` and `exam: retake`, the badges 'Sınav' and 'Telafi' in the name cell, fdc6e995): every scenario gives `exam: none`. The
+#     only helper that plans an exam (nazar/evaluation/examScores/exam-data.mjs) plans it for yesterday, so it would be in the second table, not the
+#     upcoming one; an exam ahead of the clock needs that helper to take a date, which it does not yet.
 #   - the dropped call (F-C-course-a-19), the 404 page, a failed read of the course.
 # What carries the e2e course-scope#1 (apps/nazar/e2e/course-scope.e2e.ts): a1 (the h1), a3 (the plan link), a4 (the table is named), a6 ("Eksik")
 # are carried; a2 (a text that is absent), a5 and a7 (the seed's celse titles) and a8 (aria-current on the menu entry) are not.
@@ -120,6 +123,9 @@ nodes:
   upcomingCounts: { testId: upcoming-counts }
   missingBadge: { testId: attendance-missing }
   releaseNote: { testId: release-note }
+  # the exam badge in the name cell (data-testid=session-exam-badge); no scenario holds an exam (`exam: none` everywhere), so these are loaded and not walked
+  examBadge: { testId: session-exam-badge, hasText: Sınav }
+  retakeBadge: { testId: session-exam-badge, hasText: Telafi }
   # "Yüz yüze" is also the in-person form's radio: the cell is the one inside the table
   attendanceInPerson: { text: Yüz yüze, within: { role: table, name: Yaklaşan celseler } }
   # a radio's words are its label's, beside it, not inside it: found by role and name (exact, so "Yüz yüze" is not "Yüz yüze değil")

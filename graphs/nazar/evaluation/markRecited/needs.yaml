@@ -71,7 +71,7 @@ needs:
       - a-note-needs-a-mark
     built:
       - action: medaris.api:saveEvaluation
-      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:523
+      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:534
     walked:
       - e2e: apps/nazar/e2e/evaluation.e2e.ts
         check: 'evaluation#1'

@@ -8,7 +8,7 @@
   "SessionPage.curriculumLabel": "Müfredat: Hafta {week} / {weeks}, {title}",
   "SessionPage.elapsed": "{minutes} dakikadır sürüyor",
   "SessionPage.endedLabel": "Sona erdi",
-  "SessionPage.examMaxScore": "{max} puan",
+  "SessionPage.examMaxScore": "Tam puan {max}",
   "SessionPage.examWritten": "Yazılı",
   "SessionPage.inPersonKind": "Yüz yüze",
   "SessionPage.inPersonStreamLiveText": "Bu celse yüz yüze yapılıyor ve YouTube'da canlı yayınlanıyor; sorularını yayının canlı sohbetine yaz.",

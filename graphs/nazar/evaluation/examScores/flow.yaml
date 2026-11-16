@@ -25,7 +25,8 @@
 #   F-D1-27  the exam's key hint is a paragraph tied to nothing (the same as the mark screen's)
 #   F-D1-01  a failed read draws a second h1 (root cause F-L-16)
 #   F-D1-20  the release has no try/catch: a call that never reaches Next leaves its button busy (a save does catch, useCellSaves); from the code
-#   EXAM-1   (new, provisional id) the page still speaks of "ezber ödevleri" only
+#   EXAM-1   (new, provisional id) the page spoke of "ezber ödevleri" only: its subtitle and caption now name exams too (fdc6e995); "Bütün ödevler" and
+#            the empty sentence still speak of homework alone
 #   EXAM-2   (new, provisional id) scores can be changed after release, silently
 #   EXAM-3   (new, provisional id) a refused score is a role=alert paragraph, but the box has aria-invalid and no aria-describedby
 #   EXAM-4   (new, provisional id) the release notification goes to the ENROLLED seats; a COMPLETED talebe reads the grades and is not told (GRADES-3 of
@@ -84,10 +85,10 @@ decisions:
     affects: [scoring, savingScore]
   D3:
     question: >-
-      Should the page speak of exams too? Its subtitle says "{name} dersinin ezber ödevleri", its caption "Talebeler ve ezber ödevleri", the way back "Bütün
-      ödevler", and the empty page sends the hoca to Müfredat to choose "Ezber" and never mentions Celse planla.
+      Should the page speak of exams in all four places? Since fdc6e995 its subtitle says "{name} dersinin ezber ve sınavları" and its caption "Talebeler, ezberler
+      ve sınavlar", but the way back is still "Bütün ödevler", and the empty page still sends the hoca to Müfredat to choose "Ezber" and never mentions Celse planla.
     recommend: >-
-      Name the page "ezber ödevleri ve sınavlar" in all four places, and let the empty sentence say both ways in (EXAM-1).
+      Word the way back for both ("Bütün sütunlar" or the like), and let the empty sentence say both ways in (EXAM-1).
     affects: [overview, noColumns, scoring]
 
 context:
@@ -197,8 +198,8 @@ states:
     title: The table of the course's talebe and their results
     by: human
     description: >-
-      The page: h1 "Değerlendirme", the subtitle "{course} dersinin ezber ödevleri" (EXAM-1), and the link "Excel indir" above a table named by its hidden
-      caption "Talebeler ve ezber ödevleri" (EXAM-1 again: exams are in it). The first column is "Talebe" with each talebe's name, a plain cell and not a row
+      The page: h1 "Değerlendirme", the subtitle "{course} dersinin ezber ve sınavları", and the link "Excel indir" above a table named by its hidden
+      caption "Talebeler, ezberler ve sınavlar" (both widened by fdc6e995: exams are in the table, and the words say so; EXAM-1 keeps the way back and the empty page). The first column is "Talebe" with each talebe's name, a plain cell and not a row
       header (F-D1-22); the exam's column is headed by a button "{week}. hafta · {title} (/{full mark})" with the badge "Sınav" beside it ("Telafi" for a
       make-up); each of its cells says "Bekliyor" while no result is entered for that talebe, "{score}/{full mark}" once one is, or the badge "Girmedi". The
       cells follow what was typed on the exam screen at once, before tedrisat has answered. What "Excel indir" does is nazar.files.download's (F-D1-13). The
@@ -273,14 +274,14 @@ states:
       a score can still be changed and the API takes it (EXAM-2). From here "Bütün ödevler" returns to the table. Read from the code; the focus moves, the
       ordering of the rows and the optimistic cell were not seen in a browser.
     on:
-      ENTER_SCORE: { target: savingScore, effect: [entering], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:686, say: "they type a whole number up to the full mark and press Enter, or leave the box: the cell is drawn at once and the score is sent" }
-      PRESS_ABSENT: { target: savingAbsent, effect: [entering], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:751, say: "they press Girmedi on a row: the box empties and the absence is sent" }
-      ENTER_TOO_HIGH: { target: scoring, effect: [tooHigh], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:693, say: "they type a number above the full mark and press Enter or leave the box: the box says so and nothing is sent; the focus stays in the box" }
-      ENTER_NOT_WHOLE: { target: scoring, effect: [notWhole], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:693, say: "they type a fraction or a negative number: the box says it is not a score and nothing is sent" }
-      RELEASE: { guard: "results == 'closed'", target: releasing, effect: [clearNote], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:623, say: "they press Sonuçları talebelere aç: no question is asked (F-D1-28)" }
+      ENTER_SCORE: { target: savingScore, effect: [entering], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:694, say: "they type a whole number up to the full mark and press Enter, or leave the box: the cell is drawn at once and the score is sent" }
+      PRESS_ABSENT: { target: savingAbsent, effect: [entering], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:759, say: "they press Girmedi on a row: the box empties and the absence is sent" }
+      ENTER_TOO_HIGH: { target: scoring, effect: [tooHigh], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:701, say: "they type a number above the full mark and press Enter or leave the box: the box says so and nothing is sent; the focus stays in the box" }
+      ENTER_NOT_WHOLE: { target: scoring, effect: [notWhole], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:701, say: "they type a fraction or a negative number: the box says it is not a score and nothing is sent" }
+      RELEASE: { guard: "results == 'closed'", target: releasing, effect: [clearNote], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:631, say: "they press Sonuçları talebelere aç: no question is asked (F-D1-28)" }
       BACK: { target: overview, effect: [leavesTheExam], source: apps/nazar/features/evaluation/components/evaluation-board.tsx:216, say: "they press Bütün ödevler: the exam screen unmounts and the table takes its place, the focus falls to the document (F-D1-12)" }
       NAVIGATE: { target: left, say: "they use the menu, the breadcrumb or the address" }
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:558
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:566
 
   savingScore:
     title: The score is on its way
@@ -354,11 +355,11 @@ assertions:
   - id: release-only-while-closed
     never: "state == 'releasing' and results == 'opened'"
     say: The release is asked for only while the button is there; once the results are open the badge takes its place
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:616
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:624
   - id: refused-score-is-not-sent
     never: "state == 'savingScore' and problem != 'none'"
     say: A score the box refuses, above the full mark or not a whole number, is never sent
-    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:692
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:700
   - id: toast-tells-the-truth
     never: "last == 'released' and results == 'closed'"
     say: The toast that says the results are open stands only after the exam screen has the badge

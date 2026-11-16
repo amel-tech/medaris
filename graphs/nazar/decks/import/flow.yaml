@@ -226,8 +226,8 @@ states:
     by: human
     description: >-
       The deck's page: the link back, the h1 with the deck's name (lang="auto", F-D1-14) and its state ("Taslak · talebe görünmez" for the
-      walk's drafts), the h2 "Kartlar · 0" with "Sîga üret" and "Excel'den aktar", the quick-add row, the empty state "Bu destede henüz kart yok.
-      Kart ekleyin ya da Excel'den aktarın." (or the card tiles), and the deck's settings. All but the import button and the card count are
+      walk's drafts), the h2 "Kartlar · 0" with "Sîga üret" and "Excel'den aktar", the quick-add row, the empty state "Bu destede henüz kart yok."
+      (one line since fdc6e995, which dropped the sentence that sent the person to the quick-add row and to this very button) or the card tiles, and the deck's settings. All but the import button and the card count are
       nazar.decks.openAndFill's, siga's and publishAndDelete's. The button opens the same dialog without the deck field: the dialog is made with
       this deck fixed. The page sets no focus.
     source: apps/nazar/features/decks/components/deck-detail-page.tsx:74

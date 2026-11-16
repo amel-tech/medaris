@@ -37,7 +37,7 @@ needs:
     built:
       - action: medaris.api:createSessionBatch
       - action: medaris.api:previewSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:192
+      - route: apps/nazar/features/sessions/components/plan-form.tsx:200
     # replay: weekly (end by date, 3 celses), weeklyCount (4 celses); the effect reads the lessons and weeks in the database
 
   - id: plan-one-celse
@@ -46,7 +46,7 @@ needs:
     drawn: [singleRegion, modeSingle, dateField]
     built:
       - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:395
+      - route: apps/nazar/features/sessions/components/plan-form.tsx:403
     # replay: single
 
   - id: read-the-preview-before-making
@@ -56,7 +56,7 @@ needs:
     drawn: [formReady, previewFailed, previewRow, previewRowCaption, previewCount, previewFailedAlert]
     built:
       - action: medaris.api:previewSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:683
+      - route: apps/nazar/features/sessions/components/plan-form.tsx:691
     # replay: weekly (formReady), previewRefused (previewFailed: a pattern of Monday and Saturday over a Tuesday and a Wednesday)
 
   - id: a-first-link-on-the-first-celse-only
@@ -66,7 +66,7 @@ needs:
     drawn: [linksGroup, linkField, linksNote, previewRowCaption]
     built:
       - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:306
+      - route: apps/nazar/features/sessions/components/plan-form.tsx:314
     # replay: weekly (LINKS_FIRST in the main story)
 
   - id: plan-an-exam
@@ -76,7 +76,7 @@ needs:
     drawn: [examRegion, examPlaceGroup, locationField, detailsToggle, maxScoreField, topicsField, retakeBox, examSubmit]
     built:
       - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:413
+      - route: apps/nazar/features/sessions/components/plan-form.tsx:421
     walked:
       - e2e: apps/nazar/e2e/exam.e2e.ts
         check: 'exam#1' # a1 the exam section, a2 no "Haftalık tekrar", a3 the address is /celseler, a4 the lesson_exams row (2 with the seeded one)
@@ -122,7 +122,7 @@ needs:
     drawn: [creating, formReady, toastPatternRefused, toastForbidden, toastFailed]
     built:
       - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:210
+      - route: apps/nazar/features/sessions/components/plan-form.tsx:218
     walked:
       - test: apps/nazar/test/plan-page.spec.tsx # "stays on the form and says why when the API refuses, and for a caller who may not"
     # replay: binding.forbiddenWrite.yaml (answer: forbidden); patternRefused and failed cannot be made locally (the API cannot be made to refuse a pattern it just previewed)

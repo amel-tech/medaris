@@ -343,7 +343,7 @@ states:
       The page of one deck: "← Ders desteleri", the deck's title as the h1 (a <h1 lang="auto">, F-D1-14) with "Yayında · talebe
       görünür" or "Taslak · talebe görünmez" under it, "Kartlar · n" with "Sîga üret" and "Excel'den aktar", the "Kart ekle" row
       (two boxes with no visible label, F-D1-26, and "Ekle"), a status line under it, the cards as tiles (or "Bu destede henüz kart
-      yok. Kart ekleyin ya da Excel'den aktarın."), then the deck's settings. The document's title is "Ders desteleri · Medaris Nazar"
+      yok.", one line and no instruction: since fdc6e995 the quick-add row above it is the only action the empty deck points to), then the deck's settings. The document's title is "Ders desteleri · Medaris Nazar"
       for every deck (OPENFILL-4). Nothing sets the focus on load. A toast "Deste açıldı", or "Kart silindi" after a delete, is up for
       6 seconds. Each tile's two icon buttons are named just "Düzenle" and "Sil" (F-D1-25); a tile shows the Arabic front with
       lang=ar and dir=rtl, and the back under it. This state is the page at rest: the status line holds whatever the last action

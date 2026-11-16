@@ -373,7 +373,7 @@ needs:
     drawn: [attendanceStream]
     built:
       - action: medaris.api:setLessonLiveStream
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:479
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:489
     walked:
       - e2e: apps/tedrisat/test/e2e/live-stream.e2e.spec.ts
         check: 'PUT /lessons/:id/live-stream: stores a YouTube Studio link as the /live/ link and audits it (:267)'

@@ -184,8 +184,8 @@ states:
     invoke: { action: getCourse }
     on:
       DONE:
-        - { guard: mayCancel, target: listed, say: "the reader holds session.manage: a planned celse has \"İptal et\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:509 }
-        - { target: listedWithoutCancel, say: "the reader holds only the stream permission: the table has no \"İptal et\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:446 }
+        - { guard: mayCancel, target: listed, say: "the reader holds session.manage: a planned celse has \"İptal et\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:519 }
+        - { target: listedWithoutCancel, say: "the reader holds only the stream permission: the table has no \"İptal et\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:456 }
       FAIL.missing: not_found
     source: apps/nazar/features/sessions/components/sessions-page.tsx:43
 
@@ -211,9 +211,9 @@ states:
       toast of the answer. Findings read here: F-C-course-a-25 (the dialog has no trigger element, so where the focus returns is Base UI's
       fallback, not verified), F-L-17 (the focus is lost after a row action).
     on:
-      OPEN: { target: form, effect: [dialogOpened], say: "they press \"İptal et\" on a planned row", source: apps/nazar/features/sessions/components/sessions-table.tsx:521 }
+      OPEN: { target: form, effect: [dialogOpened], say: "they press \"İptal et\" on a planned row", source: apps/nazar/features/sessions/components/sessions-table.tsx:531 }
       NAVIGATE: { target: left, say: "they follow the menu to another page" }
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:509
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:519
 
   form:
     title: İptal et asks once
@@ -312,8 +312,8 @@ states:
       list is the one with the cancelled row; after a refusal that closed the dialog it is the list as the course now stands, with the error
       toast over it.
     always:
-      - { guard: "last == 'cancelled' or last == 'madeUp'", target: cancelledShown, source: apps/nazar/features/sessions/components/sessions-table.tsx:352 }
-      - { target: listed, source: apps/nazar/features/sessions/components/sessions-table.tsx:509 }
+      - { guard: "last == 'cancelled' or last == 'madeUp'", target: cancelledShown, source: apps/nazar/features/sessions/components/sessions-table.tsx:362 }
+      - { target: listed, source: apps/nazar/features/sessions/components/sessions-table.tsx:519 }
     source: apps/nazar/features/sessions/components/sessions-table.tsx:154
 
   cancelledShown:
@@ -331,9 +331,9 @@ states:
       moves to "Geçmiş celseler". The note written in the dialog is what the Pano's list of the next seven days shows for this celse, cut to
       one line (F-A-11, drawn by nazar.pano.decideApplications).
     on:
-      FOLLOW_MAKEUP: { guard: makeUpWanted, target: madeUpFocused, say: "they follow \"Telafisi: <when>\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:360 }
+      FOLLOW_MAKEUP: { guard: makeUpWanted, target: madeUpFocused, say: "they follow \"Telafisi: <when>\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:370 }
       NAVIGATE: { target: left, say: "they follow the menu to another page" }
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:352
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:362
 
   madeUpFocused:
     title: The make-up row has the focus
@@ -345,7 +345,7 @@ states:
       otherwise as in the state before.
     on:
       NAVIGATE: { target: left, say: "they follow the menu to another page" }
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:286
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:296
 
   not_found:
     title: The course is not there
@@ -362,7 +362,7 @@ assertions:
   - id: cancel-only-where-held
     never: "(state == 'form' or state == 'makingUp' or state == 'cancellingAlone' or state == 'cancellingAfterMakeUp') and holds != 'manage'"
     say: The dialog and every write behind it are offered only to a reader who holds session.manage; the stream permission alone gives no cancel.
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:509
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:519
   - id: make-up-comes-first
     never: "state == 'cancellingAfterMakeUp' and makeUp != 'planned'"
     say: A cancel that names a make-up is sent only after the make-up was asked for and made.
@@ -374,8 +374,8 @@ assertions:
   - id: cancelled-row-follows-a-cancel
     never: "state == 'cancelledShown' and last != 'cancelled' and last != 'madeUp'"
     say: The cancelled row is drawn only after a cancel went through.
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:352
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:362
   - id: make-up-link-follows-a-make-up
     never: "state == 'cancelledShown' and ((last == 'cancelled' and makeUp == 'planned') or (last == 'madeUp' and makeUp == 'none'))"
     say: The link "Telafisi" is on the cancelled row exactly when a make-up was added with the cancel.
-    source: apps/nazar/features/sessions/components/sessions-table.tsx:359
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:369

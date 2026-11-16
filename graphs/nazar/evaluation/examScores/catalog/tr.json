@@ -1,7 +1,7 @@
 {
   "Evaluation.title": "Değerlendirme",
-  "Evaluation.subtitle": "{name} dersinin ezber ödevleri",
-  "Evaluation.caption": "Talebeler ve ezber ödevleri",
+  "Evaluation.subtitle": "{name} dersinin ezber ve sınavları",
+  "Evaluation.caption": "Talebeler, ezberler ve sınavlar",
   "Evaluation.talebe": "Talebe",
   "Evaluation.examColumnTitle": "{week}. hafta · {title} (/{max})",
   "Evaluation.examBadge": "Sınav",

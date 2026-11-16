@@ -1,7 +1,7 @@
 {
   "Changes.note": "Yazdığınız kartların hepsi bu desteye eklenir. Deste yayındaysa talebe kartları hemen görür; taslaksa görmez. Kartlar tek tek düzenlenebilir ya da silinebilir; hepsini birden geri alan bir düğme yoktur.",
   "Decks.cancel": "Vazgeç",
-  "Decks.cardsEmpty": "Bu destede henüz kart yok. Kart ekleyin ya da Excel'den aktarın.",
+  "Decks.cardsEmpty": "Bu destede henüz kart yok.",
   "Decks.draftState": "Taslak · talebe görünmez",
   "Decks.failed": "İşlem tamamlanamadı. Tekrar deneyin.",
   "Decks.lengthError": "Bu alan {min} ile {max} karakter arasında olmalı.",

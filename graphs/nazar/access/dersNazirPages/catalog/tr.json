@@ -48,7 +48,7 @@
   "Decks.summary": "{decks} deste · {cards} kart · kayıtlı {students} talebe görür",
   "Decks.title": "Ders desteleri",
   "Evaluation.noColumns": "Bu derste henüz ezber ödevi yok. Müfredat’ta bir celsenin ödevinde Teslim şekli olarak Ezber’i seçin.",
-  "Evaluation.subtitle": "{name} dersinin ezber ödevleri",
+  "Evaluation.subtitle": "{name} dersinin ezber ve sınavları",
   "Evaluation.title": "Değerlendirme",
   "Homework.emptyTitle": "Henüz ödev yok",
   "Homework.subtitle": "{name} dersinde talebelerin celselere teslim ettiği ödevler.",

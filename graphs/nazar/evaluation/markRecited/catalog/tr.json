@@ -2,7 +2,7 @@
   "Changes.note": "Bastığınız işaret (Tam, Eksik ya da Vermedi) ve yazdığınız not hemen kaydedilir; kaydet düğmesi yoktur. Talebe işaretini ve notunu kendi celse sayfasında okur; ona bildirim gitmez. Bir işareti aynı satırdaki başka bir işaretle değiştirebilirsiniz, ama “Bekliyor”a geri döndüremezsiniz. Not, işaretle birlikte tutulur: işaretsiz satıra not yazılamaz.",
   "Evaluation.absent": "Vermedi",
   "Evaluation.back": "Bütün ödevler",
-  "Evaluation.caption": "Talebeler ve ezber ödevleri",
+  "Evaluation.caption": "Talebeler, ezberler ve sınavlar",
   "Evaluation.columnTitle": "{week}. hafta · {title}",
   "Evaluation.count": "{full}/{total} tam",
   "Evaluation.download": "Excel indir",

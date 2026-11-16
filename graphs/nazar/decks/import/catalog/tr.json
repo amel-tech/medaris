@@ -1,6 +1,6 @@
 {
   "Decks.cancel": "Vazgeç",
-  "Decks.cardsEmpty": "Bu destede henüz kart yok. Kart ekleyin ya da Excel'den aktarın.",
+  "Decks.cardsEmpty": "Bu destede henüz kart yok.",
   "Decks.emptyBody": "Talebelerin ezberleyeceği kartları deste olarak ekleyin. Başlamak için bir deste açın.",
   "Decks.emptyTitle": "Bu derste henüz deste yok",
   "Decks.failed": "İşlem tamamlanamadı. Tekrar deneyin.",

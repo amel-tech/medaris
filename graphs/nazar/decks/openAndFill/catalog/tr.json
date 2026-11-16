@@ -7,7 +7,7 @@
   "Decks.cardAdded": "Kart eklendi",
   "Decks.cardRemoved": "Kart silindi",
   "Decks.cardTypeField": "Kart türü",
-  "Decks.cardsEmpty": "Bu destede henüz kart yok. Kart ekleyin ya da Excel'den aktarın.",
+  "Decks.cardsEmpty": "Bu destede henüz kart yok.",
   "Decks.create": "Deste aç",
   "Decks.created": "Deste açıldı",
   "Decks.descriptionField": "Açıklama",

@@ -153,8 +153,8 @@ states:
 nodes:
   # a bare `main` is also matched on the page a walk leaves for: this one begins with the page's h1
   evaluationPage: { role: main, hasText: '/^\s*Değerlendirme/' }
-  # "{course} dersinin ezber ödevleri": the course's name is data
-  subtitle: { text: '/dersinin ezber ödevleri$/' }
+  # "{course} dersinin ezber ve sınavları": the course's name is data
+  subtitle: { text: '/dersinin ezber ve sınavları$/' }
   # the talebe's names and their cells are data: the walk's two spare talebe
   talebeCell: { role: cell, name: '/ Başvuran$/', count: 2 }
   resultCell: { role: cell, name: '/^(Bekliyor|Girmedi|\d+\/\d+)$/', count: 2 }

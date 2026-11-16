@@ -50,7 +50,7 @@ needs:
     drawn: [scoring, savingScore, scoreBox, count, resultCell]
     built:
       - action: medaris.api:saveExamResult
-      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:686
+      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:694
     walked:
       - e2e: apps/nazar/e2e/exam.e2e.ts
         check: 'exam#2 (a3: 85 is kept, a4: "1/1 girildi")'
@@ -63,7 +63,7 @@ needs:
       refused score the focus stays where it is.
     drawn: [scoring, scoreBox]
     built:
-      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:647
+      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:655
     # unwalked: apps/nazar/test/evaluation.spec.tsx ("refuses a score above tam puan, saves one within it with Enter and moves down") is a unit spec; no e2e and no passed replay
 
   - id: girmedi-for-a-talebe-who-did-not-sit
@@ -73,7 +73,7 @@ needs:
     drawn: [scoring, savingAbsent, absentChip, resultCell, count]
     built:
       - action: medaris.api:saveExamResult
-      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:746
+      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:754
     walked:
       - e2e: apps/tedrisat/test/e2e/exams.e2e.spec.ts
         check: 'exams.e2e.spec.ts:289 (Girmedi keeps no score, even when one is sent with it); the chip itself has no browser check'
@@ -182,7 +182,10 @@ needs:
       The page's subtitle, caption and way back, and its empty sentence, name exams as well as recited homework, and the empty sentence says an exam is planned on Celse
       planla.
     drawn: [subtitle, evaluationTable, backButton, noColumns, emptyNoColumns]
-    missing: none # EXAM-1, decision D3
+    built:
+      - route: apps/nazar/features/evaluation/components/evaluation-page.tsx:44 # the subtitle "{ders} dersinin ezber ve sınavları": fdc6e995
+      - route: apps/nazar/features/evaluation/components/evaluation-board.tsx:303 # the caption "Talebeler, ezberler ve sınavlar": fdc6e995
+    missing: none # EXAM-1, decision D3: in part. The subtitle and the caption name exams since fdc6e995; the way back ("Bütün ödevler") and the empty sentence still speak of homework only
 
   - id: keyboard-and-focus-follow-the-person
     need: >-

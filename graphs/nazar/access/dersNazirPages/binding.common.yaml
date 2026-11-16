@@ -119,7 +119,7 @@ nodes:
   changeButton: { role: button, name: Cevabı değiştir }
   homeworkLine: { text: '/dersinde talebelerin celselere teslim ettiği ödevler/' }
   homeworkEmpty: { role: status, hasText: Henüz ödev yok }
-  evaluationLine: { text: '/dersinin ezber ödevleri/' }
+  evaluationLine: { text: '/dersinin ezber ve sınavları/' }
   evaluationEmpty: { text: '/Bu derste henüz ezber ödevi yok/' }
   recordingsLine: { text: '/dersinin kayıtları, haftalara göre/' }
   recordingsNote: { text: '/Burada yükleme yoktur/' }

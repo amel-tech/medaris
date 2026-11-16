@@ -26,7 +26,7 @@ needs:
     drawn: [listed, cancelButton, cancellingAlone, cancelledShown, rowCancelled, noActions]
     built:
       - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:521
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:531
       - route: apps/nazar/features/sessions/actions.ts:62
     walked:
       - test: apps/nazar/test/sessions-page.spec.tsx
@@ -71,7 +71,7 @@ needs:
       From the cancelled celse the hoca reaches its make-up in one step and sees where she landed.
     drawn: [madeUpLink, madeUpFocused, makeUpName]
     built:
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:286
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:296
     walked:
       - test: apps/nazar/test/sessions-page.spec.tsx
 
@@ -82,7 +82,7 @@ needs:
     drawn: [listedWithoutCancel, cancelButton, cancel-only-where-held]
     built:
       - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:509
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:519
     walked:
       - test: apps/nazar/test/sessions-page.spec.tsx
 
@@ -103,7 +103,7 @@ needs:
     drawn: [cancellingAlone, toastCancelFailed, settled]
     built:
       - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/sessions.ts:521
+      - route: apps/nazar/features/sessions/sessions.ts:524
     walked:
       - test: apps/nazar/test/course-actions.spec.ts
 

@@ -8,7 +8,8 @@
 # UNWALKED (code, and no e2e and no replay yet: the scenarios of binding.yaml are written and none was run in this phase, so none is named below;
 #   they are `adds`, `stale`, `noCodes` and, in their own files, `manage` and `stream`): set-the-meeting-link, change-the-time,
 #   mark-in-person, set-or-remove-the-stream, set-the-recording-access, a-stale-page-is-refused, buttons-follow-the-codes,
-#   a-celse-is-flagged-and-the-flag-clears (its e2e course-scope#1 a6 walks the flag, not the clearing), sessions-list-in-30-seconds-on-a-phone.
+#   a-celse-is-flagged-and-the-flag-clears (its e2e course-scope#1 a6 walks the flag, not the clearing), sessions-list-in-30-seconds-on-a-phone,
+#   an-exam-is-marked-in-celseler (two unit specs; no e2e, and no scenario holds an exam).
 kind: needs
 flow: nazar.sessions.manage
 status: proposed
@@ -41,7 +42,7 @@ needs:
     drawn: [inPersonForm, savingInPerson, inPersonButton, radioYes, radioNo, radioCourse, attendanceInPerson]
     built:
       - action: medaris.api:updateLesson
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:621
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:631
     walked: []
 
   - id: set-or-remove-the-stream
@@ -82,7 +83,7 @@ needs:
       can do that one thing and nothing else; the API still decides every write.
     drawn: [addLink, inPersonButton, addStream, releaseButton, changeTimeButton, planLink, a-refusing-page-offers-nothing]
     built:
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:446
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:456
       - route: apps/nazar/features/account/course-permissions.ts:37
     walked: []
 
@@ -93,7 +94,7 @@ needs:
     drawn: [savingLink, savingTime, savingInPerson, toastMoved]
     built:
       - action: medaris.api:updateLesson
-      - route: apps/nazar/features/sessions/sessions.ts:495
+      - route: apps/nazar/features/sessions/sessions.ts:498
     walked: []
 
   - id: sessions-list-in-30-seconds-on-a-phone
@@ -105,12 +106,25 @@ needs:
       - route: apps/nazar/app/ders/[dersId]/celseler/page.tsx:11
     walked: []
 
+  - id: an-exam-is-marked-in-celseler
+    need: >-
+      A celse that is an exam, or a make-up exam, is marked as one beside its title in the Celseler table, in the words Değerlendirme and Tedris use, so the
+      hoca who moves or cancels it knows what it is (MDRS-248).
+    drawn: [examBadge, retakeBadge]
+    built:
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:277
+      - route: apps/nazar/features/sessions/sessions.ts:150
+    walked:
+      - test: apps/nazar/test/sessions-page.spec.tsx # "marks an exam session with the word Sınav, and no other row (MDRS-248)"
+      - test: apps/nazar/test/sessions.spec.ts # "carry an exam and its retake, and nothing for a plain session (MDRS-248)"
+    # unwalked by a browser: no e2e and no scenario (`exam: none` in every one), only the two unit specs; so it is listed with the unwalked ones
+
   - id: a-link-can-be-removed
     need: >-
       A meeting link pasted by mistake can be removed from Celseler, as the stream's can, so that a celse goes back to "Eksik" and the talebe see no
       wrong link (D1, MANAGE-5).
     drawn: [linkForm, linkError]
-    missing: none # no issue; the API takes meetingUrl: null, the page refuses an empty field (sessions.ts:290)
+    missing: none # no issue; the API takes meetingUrl: null, the page refuses an empty field (sessions.ts:293)
 
   - id: a-change-is-recorded
     need: >-
@@ -131,7 +145,7 @@ needs:
       A write on a celse that was hidden or removed while the page was open says that the celse is gone, reads the page again and takes the row away,
       as the recording access dialog does (MANAGE-2).
     drawn: [savingLink, savingTime, savingInPerson, toastFailed]
-    missing: none # no issue; LESSON_NOT_FOUND is worded as a generic failure and the page is not read again (sessions.ts:495, :521)
+    missing: none # no issue; LESSON_NOT_FOUND is worded as a generic failure and the page is not read again (sessions.ts:498, :524)
 
   - id: focus-follows-a-form
     need: >-

@@ -27,7 +27,7 @@ needs:
       - action: medaris.api:updateLesson
       - route: apps/nazar/features/sessions/attendance.ts:25
       - route: apps/nazar/features/sessions/components/attendance-cell.tsx:33
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:468
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:478
       - route: apps/nazar/features/course-settings/components/course-settings-form.tsx:212
     walked: []
     note: >-
@@ -43,7 +43,7 @@ needs:
       - inPersonButton
     built:
       - route: apps/nazar/features/sessions/components/sessions-page.tsx:54
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:466
+      - route: apps/nazar/features/sessions/components/sessions-table.tsx:476
     walked: []
     note: >-
       Built (nazar.sessions.manage draws it, with nazar.access.dersNazirPages); the new button joins it, drawn only for session.manage
