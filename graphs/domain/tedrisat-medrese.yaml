@@ -1173,6 +1173,7 @@ actions:
         requestedByName: { type: [string, "null"], note: "null when the account never signed in to tedrisat" }
         createdAt: { type: string, format: date-time }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah); or the medrese is hidden (madrasah-course.service.ts:179)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
       KOSK_NOT_FOUND: { status: 404, note: "Köşk with id <k> not found: unknown or hidden", source: apps/tedrisat/src/madrasah/course/madrasah-course.service.ts:182 }
       VALIDATION_ERROR: { status: 400, note: "koskId is not a uuid, title outside 2..200, reason blank or over 2000, an unknown property" }
@@ -1209,6 +1210,7 @@ actions:
           requestedByName: { type: [string, "null"], note: "null when the account never signed in to tedrisat" }
           createdAt: { type: string, format: date-time }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       MADRASAH_NOT_FOUND: { status: 404, note: "no such medrese or the id is not a uuid (byExistingMadrasah)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
       AUTHZ_FORBIDDEN: { status: 403, note: "the caller does not hold madrasah.offsite_course_request on the medrese" }
     source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:239
@@ -1446,6 +1448,7 @@ actions:
         pendingCount: { type: integer, note: "the Bekleyen tab's count" }
         decidedCount: { type: integer, note: "the Karara bağlanan tab's count" }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       KOSK_NOT_FOUND: { status: 404, note: "no köşk with that id", source: apps/tedrisat/src/course-request/course-request.service.ts:210 }
       COURSE_REQUEST_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/course-request/course-request.service.ts:214 }
       HTTP_400: { status: 400, note: "the köşk id is not a uuid, or status is not PENDING or DECIDED" }
@@ -1500,6 +1503,7 @@ actions:
     result:
       status: 204
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       COURSE_REQUEST_NOT_FOUND: { status: 404, note: "No course request <id>", source: apps/tedrisat/src/course-request/course-request.service.ts:201 }
       COURSE_REQUEST_FORBIDDEN: { status: 403, note: "You are not a nazım of this köşk", source: apps/tedrisat/src/course-request/course-request.service.ts:214 }
       COURSE_REQUEST_NOT_PENDING: { status: 409, note: "Course request <id> has been answered already: the conditional update found no pending row", source: apps/tedrisat/src/course-request/course-request.service.ts:196 }

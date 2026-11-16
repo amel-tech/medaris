@@ -1,158 +1,199 @@
-# What must exist for the başnazım to switch the two platform-wide policies, see that the change is in force and logged, and see who applies the rules on
-# their own: the flow's product list, written from the flow's story and the open decisions, never from what the page does today (LAYOUT.md section 7). A need
-# that is not met is a gap in graphs/needs.gaps.yaml (the orchestrator merges it; this file does not edit it).
+schema: delurio-graph/0
+kind: needs
+id: nizam.platform.policies
+status: proposed
+summary: >-
+  What must exist for the başnazım to switch the two platform-wide policies, see that the change is in force and logged, and see
+  who applies the rules on their own: the flow's product list, written from the flow's story and the open decisions, never from
+  what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For needs.gaps (written 16 Nov 2026, before any replay of this flow: `walked` names only e2e checks and unit specs, no replay):
-#   missing   a-medaris-nazim-with-the-permission-finds-the-page (POL-7), a-switch-says-it-is-saving (F-W3-6), ask-before-a-platform-wide-change (POL-1),
-#             a-switch-names-who-applies-it (POL-2), the-table-covers-medreses (POL-3), two-switches-do-not-fight (POL-5),
-#             a-change-that-changes-nothing-is-not-logged (POL-6)                                                                            (all: none)
-#   unwalked  see-who-applies-a-rule-on-their-own (a unit spec reads the table; the e2e of the page never looks at it), a-read-that-fails-is-said-and-retried
-#             (a unit spec only; nothing makes a read fail), a-refused-save-puts-the-switch-back (nothing walks it: the stack cannot make the save fail),
-#             a-policy-binds-every-scope-below (tedrisat's own e2e walks the API side; no web flow walks the effect, it is nizam.kosks.editAndHide's and
-#             tedris.course.apply's)
+# missing   a-medaris-nazim-with-the-permission-finds-the-page (POL-7), a-switch-says-it-is-saving (F-W3-6), ask-before-a-platform-wide-change (POL-1),
+# a-switch-names-who-applies-it (POL-2), the-table-covers-medreses (POL-3), two-switches-do-not-fight (POL-5),
+# a-change-that-changes-nothing-is-not-logged (POL-6)                                                                            (all: none)
+# unwalked  see-who-applies-a-rule-on-their-own (a unit spec reads the table; the e2e of the page never looks at it), a-read-that-fails-is-said-and-retried
+# (a unit spec only; nothing makes a read fail), a-refused-save-puts-the-switch-back (nothing walks it: the stack cannot make the save fail),
+# a-policy-binds-every-scope-below (tedrisat's own e2e walks the API side; no web flow walks the effect, it is nizam.kosks.editAndHide's and
+# tedris.course.apply's)
 # e2e: platform-admin#6 (the policies half) and platform-admin#7 are carried; platform-admin#5 is nizam.platform.auditLog's (and stale: it pins the unfilled
 # retention line).
-kind: needs
-flow: nizam.platform.policies
-status: proposed
 
 needs:
   - id: switch-a-platform-policy
     need: >-
-      The başnazım switches each of the two platform-wide policies on and off in one step, and the change is in force at once for every köşk, medrese and
-      course: while "Kayıt her zaman onaylı" is on no enrolment is seated without approval, and while "Ders kayıtları herkese açılamaz" is on no recording is
-      shown outside its course. The page says the change was saved, in words.
-    drawn: [policies, savingApproval, savingRecordings, approvalSwitch, recordingsSwitch, toastOnTitle, toastOffTitle]
-    built:
-      - action: medaris.api:setPlatformPolicy
-      - route: apps/nizam/features/platform-admin/components/policies-view.tsx:66
-    walked:
-      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
-        check: 'platform-admin#7'
+      The başnazım switches each of the two platform-wide policies on and off in one step, and the change is in force at once for
+      every köşk, medrese and course: while "Kayıt her zaman onaylı" is on no enrolment is seated without approval, and while
+      "Ders kayıtları herkese açılamaz" is on no recording is shown outside its course. The page says the change was saved, in
+      words.
+    evidence:
+      - state: policies
+      - state: savingApproval
+      - state: savingRecordings
+      - node: approvalSwitch
+      - node: recordingsSwitch
+      - node: toastOnTitle
+      - node: toastOffTitle
+      - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:70
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:66
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/19 — a switch is saved at once and written to the log, and the table lists the köşks that apply a rule themselves (criteria 1, 4)"
       - test: apps/nizam/test/platform-admin.spec.tsx
       - test: apps/tedrisat/test/e2e/platform-admin.e2e.spec.ts
 
   - id: every-change-is-logged
     need: >-
-      Each change of a policy is written to the audit log in the same transaction as the change, with who switched which policy to what and from what, and the
-      başnazım finds it there as "Politika değişikliği".
-    drawn: [policies, savingApproval, savingRecordings, handed_over.audit_log]
-    built:
-      - action: medaris.api:setPlatformPolicy
-      - route: apps/tedrisat/src/platform-policy/platform-policy.repository.ts:121
-    walked:
-      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
-        check: 'platform-admin#7'
+      Each change of a policy is written to the audit log in the same transaction as the change, with who switched which policy to
+      what and from what, and the başnazım finds it there as "Politika değişikliği".
+    evidence:
+      - state: policies
+      - state: savingApproval
+      - state: savingRecordings
+      - state: handed_over.audit_log
+      - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:70
+      - source: apps/tedrisat/src/platform-policy/platform-policy.repository.ts:121
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/19 — a switch is saved at once and written to the log, and the table lists the köşks that apply a rule themselves (criteria 1, 4)"
       - test: apps/tedrisat/test/e2e/platform-admin.e2e.spec.ts
 
   - id: only-those-who-may-edit-the-policies
     need: >-
-      Only the başnazım, and a Medaris nazımı who was given the permission to change policies, read or change the platform policies; anyone else is told in
-      words that the section is not theirs, and sees no switch.
-    drawn: [reading, refused, refusedTitle, refusedHome]
-    built:
-      - action: medaris.api:listPlatformPolicies
-      - route: apps/nizam/app/ayarlar/platform/page.tsx:24
-    walked:
-      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
-        check: 'platform-admin#6'
+      Only the başnazım, and a Medaris nazımı who was given the permission to change policies, read or change the platform
+      policies; anyone else is told in words that the section is not theirs, and sees no switch.
+    evidence:
+      - state: reading
+      - state: refused
+      - node: refusedTitle
+      - node: refusedHome
+      - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:50
+      - source: apps/nizam/app/ayarlar/platform/page.tsx:24
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/17 — a köşk nazımı has no audit log: 'Bu bölüm için izniniz yok' (criterion 3)"
       - test: apps/tedrisat/test/e2e/platform-admin.e2e.spec.ts
 
   - id: see-who-applies-a-rule-on-their-own
     need: >-
-      The başnazım sees which köşks already apply a rule on their own, who switched it on and when, and the page says so plainly when none does.
-    drawn: [policies, approvalOwnScopes, scopedTable, rowScope, rowKind, rowPolicy, rowBy, rowAt, scopedEmpty]
-    built:
-      - action: medaris.api:listScopedPolicies
-      - route: apps/nizam/features/platform-admin/components/policies-view.tsx:226
-    walked:
+      The başnazım sees which köşks already apply a rule on their own, who switched it on and when, and the page says so plainly
+      when none does.
+    evidence:
+      - state: policies
+      - node: approvalOwnScopes
+      - node: scopedTable
+      - node: rowScope
+      - node: rowKind
+      - node: rowPolicy
+      - node: rowBy
+      - node: rowAt
+      - node: scopedEmpty
+      - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:88
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:226
       - test: apps/nizam/test/platform-admin.spec.tsx
       - test: apps/tedrisat/test/e2e/platform-admin.e2e.spec.ts
 
   - id: a-policy-binds-every-scope-below
     need: >-
-      A policy that is on closes the same permission for every köşk, medrese and course below it: they cannot switch the rule off, and the başnazım, who owns
-      the platform, is never refused.
-    drawn: []
-    built:
-      - action: medaris.api:updateKosk
-      - route: apps/tedrisat/src/platform-policy/platform-policy.service.ts:56
-    walked:
+      A policy that is on closes the same permission for every köşk, medrese and course below it: they cannot switch the rule off,
+      and the başnazım, who owns the platform, is never refused.
+    evidence:
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+      - source: apps/tedrisat/src/platform-policy/platform-policy.service.ts:56
       - test: apps/tedrisat/test/e2e/platform-admin.e2e.spec.ts
 
   - id: a-read-that-fails-is-said-and-retried
     need: >-
       When the settings cannot be read the page says so in words, shows no switch that could be wrong, and offers to try again.
-    drawn: [loadFailed, loadFailedAlert, loadFailedText, retryButton]
-    built:
-      - route: apps/nizam/features/platform-admin/components/policies-view.tsx:134
-    walked:
+    evidence:
+      - state: loadFailed
+      - node: loadFailedAlert
+      - node: loadFailedText
+      - node: retryButton
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:134
       - test: apps/nizam/test/platform-admin.spec.tsx
 
   - id: a-refused-save-puts-the-switch-back
     need: >-
-      A save the server refuses puts the switch back where it was and says so in a message that stays until it is closed; nothing is left half changed.
-    drawn: [savingApproval, savingRecordings, toastFailedTitle, toastForbiddenBody, toastFailedBody, toastClose]
-    built:
-      - route: apps/nizam/features/platform-admin/components/policies-view.tsx:73
-    walked: []
+      A save the server refuses puts the switch back where it was and says so in a message that stays until it is closed; nothing
+      is left half changed.
+    evidence:
+      - state: savingApproval
+      - state: savingRecordings
+      - node: toastFailedTitle
+      - node: toastForbiddenBody
+      - node: toastFailedBody
+      - node: toastClose
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:73
 
   - id: a-medaris-nazim-with-the-permission-finds-the-page
     need: >-
-      DECISION OPEN: a Medaris nazımı who was given the permission to change policies finds "Platform ayarları" in their menu, as the page and the API admit
-      them, or the permission is taken off the Medaris nazımı's list. Today the menu lists it for the başnazım alone.
-    drawn: []
-    built:
-      - route: apps/nizam/lib/shell-nav.ts:304
-    missing: none # POL-7, the family of F-W2-1 and AUDIT-7
+      DECISION OPEN: a Medaris nazımı who was given the permission to change policies finds "Platform ayarları" in their menu, as
+      the page and the API admit them, or the permission is taken off the Medaris nazımı's list. Today the menu lists it for the
+      başnazım alone.
+    evidence:
+      - source: apps/nizam/lib/shell-nav.ts:304
+    missing: no Linear issue; POL-7, the family of F-W2-1 and AUDIT-7; code exists in part
 
   - id: a-switch-says-it-is-saving
     need: >-
-      While a switch saves, a keyboard or screen-reader user is told that it is saving and keeps the focus where it was; the switch is not simply disabled.
-    drawn: [savingApproval, savingRecordings, approvalSwitch, recordingsSwitch]
-    built:
-      - route: apps/nizam/features/platform-admin/components/policies-view.tsx:166
-    missing: none # F-W3-6: disabled while it saves, nothing says so (whether the focus drops is not verified)
+      While a switch saves, a keyboard or screen-reader user is told that it is saving and keeps the focus where it was; the
+      switch is not simply disabled.
+    evidence:
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:166
+    missing: >-
+      no Linear issue; F-W3-6: disabled while it saves, nothing says so (whether the focus drops is not verified); code exists in
+      part
+    note: >-
+      Drawn on the states savingApproval and savingRecordings and on the nodes approvalSwitch and recordingsSwitch, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: ask-before-a-platform-wide-change
     need: >-
-      DECISION OPEN: a press that changes every köşk, medrese and course at once is asked about first, or the line that says so is read before the switches.
-      Today it is one press, and the line sits under the list.
-    drawn: [policies, instantNote]
-    built:
-      - route: apps/nizam/features/platform-admin/components/policies-view.tsx:177
-    missing: none # POL-1
+      DECISION OPEN: a press that changes every köşk, medrese and course at once is asked about first, or the line that says so is
+      read before the switches. Today it is one press, and the line sits under the list.
+    evidence:
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:177
+    missing: no Linear issue; POL-1; code exists in part
+    note: >-
+      Drawn on the state policies and on the node instantNote, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-switch-names-who-applies-it
-    need: >-
-      A person on a switch hears, with its description, which köşks already apply the same rule on their own.
-    drawn: [approvalSwitch, approvalDescription, approvalOwnScopes]
-    built:
-      - route: apps/nizam/features/platform-admin/components/policies-view.tsx:169
-    missing: none # POL-2: the caption is a paragraph beside the switch, not part of its description
+    need: A person on a switch hears, with its description, which köşks already apply the same rule on their own.
+    evidence:
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:169
+    missing: >-
+      no Linear issue; POL-2: the caption is a paragraph beside the switch, not part of its description; code exists in part
+    note: >-
+      Drawn on the nodes approvalSwitch, approvalDescription and approvalOwnScopes, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-table-covers-medreses
     need: >-
-      The table "Köşk ve medrese politikaları" lists every köşk and every medrese that applies a rule on its own, or its heading and its empty line speak of
-      köşks alone.
-    drawn: [scopedHeading, scopedTable, scopedEmpty]
-    built:
-      - action: medaris.api:listScopedPolicies
-    missing: none # POL-3; the domain's invariant platform-policy-scoped-list-covers-every-scope (holds: false)
+      The table "Köşk ve medrese politikaları" lists every köşk and every medrese that applies a rule on its own, or its heading
+      and its empty line speak of köşks alone.
+    evidence:
+      - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:88
+    missing: >-
+      no Linear issue; POL-3; the domain's invariant platform-policy-scoped-list-covers-every-scope (holds: false); code exists in
+      part
+    note: >-
+      Drawn on the nodes scopedHeading, scopedTable and scopedEmpty, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: two-switches-do-not-fight
     need: >-
-      Two switches pressed in quick succession each keep their own busy state and their own answer: neither is enabled while it saves, and an answer to one
-      never undoes the other.
-    drawn: [savingApproval, savingRecordings]
-    built:
-      - route: apps/nizam/features/platform-admin/components/policies-view.tsx:57
-    missing: none # POL-5: one `busy` for both
+      Two switches pressed in quick succession each keep their own busy state and their own answer: neither is enabled while it
+      saves, and an answer to one never undoes the other.
+    evidence:
+      - source: apps/nizam/features/platform-admin/components/policies-view.tsx:57
+    missing: "no Linear issue; POL-5: one `busy` for both; code exists in part"
+    note: >-
+      Drawn on the states savingApproval and savingRecordings, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-change-that-changes-nothing-is-not-logged
-    need: >-
-      A request that sets a policy to the value it already holds changes nothing and writes no row to the audit log.
-    drawn: []
-    built:
-      - action: medaris.api:setPlatformPolicy
-    missing: none # POL-6: the row is written whatever was found
+    need: A request that sets a policy to the value it already holds changes nothing and writes no row to the audit log.
+    evidence:
+      - source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:70
+    missing: "no Linear issue; POL-6: the row is written whatever was found; code exists in part"

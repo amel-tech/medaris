@@ -1,80 +1,98 @@
-# What must exist for a person who holds a role in Medaris and opens Hesap: tedris.account.rolesOverview, written on
-# 15 Nov 2026 in the format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story; none is
-# read off what the page does today. Nothing here comes from planned.md: no planned feature (P-nn) names this page.
-# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
+schema: delurio-graph/0
 kind: needs
-flow: tedris.account.rolesOverview
+id: tedris.account.rolesOverview
 status: proposed
+summary: >-
+  What must exist for a person who holds a role in Medaris and opens Hesap: tedris.account.rolesOverview. Each need is what the
+  product must do, from the flow's story; none is read off what the page does today. Nothing here comes from planned.md: no
+  planned feature (P-nn) names this page.
 
 needs:
   - id: roles-in-one-place
     need: A person reads every role they hold on one page, each with where it holds, who gave it and until when.
-    drawn: [rolesShown, section-only-for-a-role]
-    built:
-      - action: medaris.api:getMyAssignments
-      - route: apps/tedris/features/account/components/roles-section.tsx:89
-    walked:
-      - e2e: apps/tedris/e2e/account.e2e.ts
-        check: 'account#1'
-      - replay: muderris
+    evidence:
+      - state: rolesShown
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/tedris/features/account/components/roles-section.tsx:89
+      - test: apps/tedris/e2e/account.e2e.ts
+        name: "a müderris sees every role with scope, badge, grantor, term and Nazar button"
+      - scenario: muderris
+    note: Also drawn as the assertion section-only-for-a-role.
 
   - id: permissions-in-words
     need: >-
-      A person reads what their roles let them do, in sentences, grouped by role and by where it holds, and sees that a
-      permission they were given is theirs to pass on only within their own.
-    drawn: [rolesShown]
-    built:
-      - action: medaris.api:getMyEffectivePermissions
-      - route: apps/tedris/features/account/components/permissions-list.tsx:49
-    walked:
-      - e2e: apps/tedris/e2e/account.e2e.ts
-        check: 'account#1 (a14, a15, a16), account#2 (a3)'
-      - replay: koskNazim
+      A person reads what their roles let them do, in sentences, grouped by role and by where it holds, and sees that a permission
+      they were given is theirs to pass on only within their own.
+    evidence:
+      - state: rolesShown
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:86
+      - source: apps/tedris/features/account/components/permissions-list.tsx:49
+      - test: apps/tedris/e2e/account.e2e.ts
+        name: "a müderris sees every role with scope, badge, grantor, term and Nazar button"
+      - test: apps/tedris/e2e/account.e2e.ts
+        name: "a köşk nazım opens Nizam in a new tab with the köşk in the address"
+      - scenario: koskNazim
+    note: account.e2e.ts account#1 (a14, a15, a16), account#2 (a3)
 
   - id: platform-permissions-in-words
-    need: A Medaris nazımı reads what their role lets them do in the same sentences as everyone else, and is not shown a heading with nothing under it.
-    drawn: [rolesShown]
-    missing: none # ROLES-1: the replay of the seeded Medaris nazımı shows "Etkin izinlerin" and its introduction with no group; no Linear issue
+    need: >-
+      A Medaris nazımı reads what their role lets them do in the same sentences as everyone else, and is not shown a heading with
+      nothing under it.
+    missing: >-
+      ROLES-1: the replay of the seeded Medaris nazımı shows "Etkin izinlerin" and its introduction with no group; no Linear issue
+    note: >-
+      Drawn on the state rolesShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: no-section-without-a-role
     need: A person who holds no role is not shown a section about roles, and is not told they lack one.
-    drawn: [plainAccount, no-role-no-section]
-    built:
-      - route: apps/tedris/features/account/components/roles-section.tsx:36
-    walked:
-      - e2e: apps/tedris/e2e/account.e2e.ts
-        check: 'account#3'
-      - replay: talebe
+    evidence:
+      - state: plainAccount
+      - source: apps/tedris/features/account/components/roles-section.tsx:36
+      - test: apps/tedris/e2e/account.e2e.ts
+        name: "someone with no role sees no roles section"
+      - scenario: talebe
+    note: Also drawn as the assertion no-role-no-section.
 
   - id: open-the-other-app
     need: >-
-      From a role, one press opens the app where that role is carried out, in a new tab, and for a köşk role at that
-      köşk; the page Hesap stays where it is.
-    drawn: [rolesShown]
-    built:
-      - route: apps/tedris/features/account/assignment-view.ts:31
-      - route: apps/tedris/features/account/components/assignments-table.tsx:121
-    walked:
-      - e2e: apps/tedris/e2e/account.e2e.ts
-        check: 'account#1 (a11-a13), account#2 (a4)'
-      - replay: koskNazim # the button is found and pressed; the new tab is not followed and its address is not read (an engine limit)
+      From a role, one press opens the app where that role is carried out, in a new tab, and for a köşk role at that köşk; the
+      page Hesap stays where it is.
+    evidence:
+      - state: rolesShown
+      - source: apps/tedris/features/account/assignment-view.ts:31
+      - source: apps/tedris/features/account/components/assignments-table.tsx:121
+      - test: apps/tedris/e2e/account.e2e.ts
+        name: "a müderris sees every role with scope, badge, grantor, term and Nazar button"
+      - test: apps/tedris/e2e/account.e2e.ts
+        name: "a köşk nazım opens Nizam in a new tab with the köşk in the address"
+      - scenario: koskNazim
+    note: |-
+      account.e2e.ts account#1 (a11-a13), account#2 (a4)
+      koskNazim: the button is found and pressed; the new tab is not followed and its address is not read (an engine limit)
 
   - id: failed-read-says-so
     need: When the roles cannot be read the person is told so in the section's place, and the rest of Hesap still works.
-    drawn: [rolesUnreadable, box-only-after-a-failed-read, a-failed-read-draws-no-roles]
-    built:
-      - route: apps/tedris/features/account/components/roles-section.tsx:27
-    # walked: nothing. The unit spec apps/tedris/test/account-page.spec.ts ("says so, in the section, when the roles cannot be
-    # read") proves the markup; no e2e and no replay makes tedrisat fail, and the stack's API cannot be made to.
+    evidence:
+      - state: rolesUnreadable
+      - source: apps/tedris/features/account/components/roles-section.tsx:27
+    note: |-
+      Also drawn as the assertion box-only-after-a-failed-read, the assertion a-failed-read-draws-no-roles.
+      walked: nothing. The unit spec apps/tedris/test/account-page.spec.ts ("says so, in the section, when the roles cannot be
+      read") proves the markup; no e2e and no replay makes tedrisat fail, and the stack's API cannot be made to.
 
   - id: new-tab-is-announced
     need: A control that opens a new tab says so in the name a screen reader gives it.
-    drawn: [rolesShown]
-    missing: none # ACC-08, no Linear issue
+    missing: ACC-08, no Linear issue
+    note: >-
+      Drawn on the state rolesShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: chief-finds-their-role
     need: >-
-      The Medaris başnazım, whose role is not a row, finds that role on Hesap and a way into Nizam from it (decision
-      D1 of the flow).
-    drawn: [plainAccount]
-    missing: none # ROLES-2, a decision: no Linear issue yet
+      The Medaris başnazım, whose role is not a row, finds that role on Hesap and a way into Nizam from it (decision D1 of the
+      flow).
+    missing: "ROLES-2, a decision: no Linear issue yet"
+    note: >-
+      Drawn on the state plainAccount, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

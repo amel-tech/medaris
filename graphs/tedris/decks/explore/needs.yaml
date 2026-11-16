@@ -1,151 +1,198 @@
-# What must exist for a talebe who explores decks and collects them: tedris.decks.explore, written on 15 Nov 2026 in the format of LAYOUT.md section 7.
-# Each need is what the product must do, from the flow's story; none is read off what the page does today. Nothing here comes from planned.md: no planned
-# feature (P-nn) names this page; the one item that file lists for it (planned.md:134, "// TODO: handle pagination") is the need lists-are-paged.
-# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
-#   missing:  collect-is-announced (DCK-08), filtering-is-announced (DCK-11), failed-read-is-a-page (DCK-12), lists-are-paged (planned.md:134),
-#             collection-state-is-the-api (EXPL-1), refusal-says-why (EXPL-2)
-#   unwalked: narrow-by-a-word (no e2e: decks#3 is the same box on Desteler, not this page), refused-change-is-undone (no e2e; the stack cannot make
-#             tedrisat refuse a collect), failed-read-says-so (no e2e; the stack cannot make the read fail), open-a-deck-from-the-list (no e2e on this
-#             page: decks#22-#26 start on the deck's own page), and every need below that names a replay scenario: the scenarios `mixed` and `publicOnly` are
-#             bound and have not been replayed (no replay in the writing phase), so none is named as walked
+schema: delurio-graph/0
 kind: needs
-flow: tedris.decks.explore
+id: tedris.decks.explore
 status: proposed
+summary: >-
+  What must exist for a talebe who explores decks and collects them: tedris.decks.explore. Each need is what the product must do,
+  from the flow's story; none is read off what the page does today. Nothing here comes from planned.md: no planned feature (P-nn)
+  names this page; the one item that file lists for it (planned.md:134, "// TODO: handle pagination") is the need lists-are-paged.
 
 needs:
   - id: see-what-my-courses-share
     need: >-
-      A talebe sees in one place the decks that the courses, köşks and medreses they are in share with them, each with where it comes from (the course
-      and its hoca) and how many cards it has, and sees no other person's private deck.
-    drawn: [explored, courseSection, courseKind, courseContext]
-    built:
-      - action: medaris.api:exploreDecks
-      - route: apps/tedris/features/flashcards/components/explore-decks-page.tsx:256
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#6 (a3, a4, a5, a10, a11 on the e2e fixture; a10 and a11, the absent private decks, are not carried)'
-    # replay: mixed (bound, not replayed)
+      A talebe sees in one place the decks that the courses, köşks and medreses they are in share with them, each with where it
+      comes from (the course and its hoca) and how many cards it has, and sees no other person's private deck.
+    evidence:
+      - state: explored
+      - node: courseSection
+      - node: courseKind
+      - node: courseContext
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:157
+      - source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:256
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "shows the decks of the caller's courses and the published ones, with counts"
+    note: |-
+      decks.e2e.ts decks#6 (a3, a4, a5, a10, a11 on the e2e fixture; a10 and a11, the absent private decks, are not carried)
+      replay: mixed (bound, not replayed)
 
   - id: see-the-published-decks
     need: >-
-      A talebe sees every deck that Medaris management published, with a count, and finds their own among them marked as theirs, with no collection
-      control on it.
-    drawn: [explored, publicSection, yours]
-    built:
-      - action: medaris.api:exploreDecks
-      - route: apps/tedris/features/flashcards/components/explore-decks-page.tsx:264
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#6 (a7, a8, a9, a12)'
-    # replay: mixed, publicOnly (bound, not replayed)
+      A talebe sees every deck that Medaris management published, with a count, and finds their own among them marked as theirs,
+      with no collection control on it.
+    evidence:
+      - state: explored
+      - node: publicSection
+      - node: yours
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:157
+      - source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:264
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "shows the decks of the caller's courses and the published ones, with counts"
+    note: |-
+      decks.e2e.ts decks#6 (a7, a8, a9, a12)
+      replay: mixed, publicOnly (bound, not replayed)
 
   - id: narrow-by-card-type
     need: >-
-      A talebe narrows both sections to decks of Kelime or Hadis, and the choice is in the address, so a narrowed page is a link; an address with a value that
-      is neither is the page with no filter.
-    drawn: [explored, reading, chipAll, chipVocabulary, chipHadeeth]
-    built:
-      - action: medaris.api:exploreDecks
-      - route: apps/tedris/app/decks/(medaris)/(liste)/explore/page.tsx:15
-      - route: apps/tedris/features/flashcards/components/explore-decks-page.tsx:100
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#7'
-    # replay: mixed (bound, not replayed)
+      A talebe narrows both sections to decks of Kelime or Hadis, and the choice is in the address, so a narrowed page is a link;
+      an address with a value that is neither is the page with no filter.
+    evidence:
+      - state: explored
+      - state: reading
+      - node: chipAll
+      - node: chipVocabulary
+      - node: chipHadeeth
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:157
+      - source: "apps/tedris/app/decks/(medaris)/(liste)/explore/page.tsx:15"
+      - source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:100
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "the card-type chips narrow both sections, and the address carries the choice"
+    note: "replay: mixed (bound, not replayed)"
 
   - id: narrow-by-a-word
     need: >-
-      A talebe narrows both sections by a word of a deck's name or description, sees the counts follow, and is told in each section when no deck matches.
-    drawn: [explored, searchBox, courseEmptySearch, publicEmptySearch]
-    built:
-      - route: apps/tedris/features/flashcards/deck-model.ts:26
-      - route: apps/tedris/features/flashcards/components/explore-decks-page.tsx:128
-    # walked: nothing. test/explore-decks-page.spec.ts pins the markup; no e2e types in this box (decks#3 does it on Desteler); replay mixed is bound, not replayed
+      A talebe narrows both sections by a word of a deck's name or description, sees the counts follow, and is told in each
+      section when no deck matches.
+    evidence:
+      - state: explored
+      - node: searchBox
+      - node: courseEmptySearch
+      - node: publicEmptySearch
+      - source: apps/tedris/features/flashcards/deck-model.ts:26
+      - source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:128
+    note: >-
+      walked: nothing. test/explore-decks-page.spec.ts pins the markup; no e2e types in this box (decks#3 does it on Desteler);
+      replay mixed is bound, not replayed
 
   - id: collect-a-deck
     need: >-
-      A talebe adds a deck of somebody else's to their collection from the list, sees at once that it is in, and finds it still in after a reload and on
-      Desteler under their collection; the deck and its cards are not changed.
-    drawn: [adding, addButton, collectedBadge, removeButton]
-    built:
-      - action: medaris.api:collectDeck
-      - route: apps/tedris/features/flashcards/components/explore-decks-page.tsx:75
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#8 (a1, a2, a3; a3, the row under "Koleksiyonum" on Desteler, is tedris.decks.browse''s page and is read as a row by the replay effect)'
-    # replay: mixed (bound, not replayed)
+      A talebe adds a deck of somebody else's to their collection from the list, sees at once that it is in, and finds it still in
+      after a reload and on Desteler under their collection; the deck and its cards are not changed.
+    evidence:
+      - state: adding
+      - node: addButton
+      - node: collectedBadge
+      - node: removeButton
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:303
+      - source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:75
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "'Koleksiyona ekle' survives a reload and shows under Koleksiyonum; 'Çıkar' takes it out again"
+    note: |-
+      decks.e2e.ts decks#8 (a1, a2, a3; a3, the row under "Koleksiyonum" on Desteler, is tedris.decks.browse's page and is read as
+      a row by the replay effect)
+      replay: mixed (bound, not replayed)
 
   - id: take-a-deck-out
-    need: A talebe takes a deck out of their collection from the list, and the deck stays where it was, listed and ready to be added again.
-    drawn: [removing, addButton, removeButton]
-    built:
-      - action: medaris.api:uncollectDeck
-      - route: apps/tedris/features/flashcards/components/explore-decks-page.tsx:144
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#8 (a4, a5)'
-    # replay: mixed (bound, not replayed)
+    need: >-
+      A talebe takes a deck out of their collection from the list, and the deck stays where it was, listed and ready to be added
+      again.
+    evidence:
+      - state: removing
+      - node: addButton
+      - node: removeButton
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:457
+      - source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:144
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "'Koleksiyona ekle' survives a reload and shows under Koleksiyonum; 'Çıkar' takes it out again"
+    note: |-
+      decks.e2e.ts decks#8 (a4, a5)
+      replay: mixed (bound, not replayed)
 
   - id: refused-change-is-undone
     need: >-
-      When adding or removing a deck is refused, the control goes back to what it was and a message says so, and the message stays until the person has read
-      it.
-    drawn: [explored, addFailedToast, removeFailedToast, toastClose]
-    built:
-      - route: apps/tedris/features/flashcards/components/explore-decks-page.tsx:92
-    # walked: nothing. test/explore-decks-page.spec.ts pins it; the stack has no way to make tedrisat refuse a collect of a listed deck
+      When adding or removing a deck is refused, the control goes back to what it was and a message says so, and the message stays
+      until the person has read it.
+    evidence:
+      - state: explored
+      - node: addFailedToast
+      - node: removeFailedToast
+      - node: toastClose
+      - source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:92
+    note: >-
+      walked: nothing. test/explore-decks-page.spec.ts pins it; the stack has no way to make tedrisat refuse a collect of a listed
+      deck
 
   - id: collect-is-announced
     need: >-
-      Adding or removing a deck is told to a person who cannot see the page, and the focus stays where they pressed, or goes to the control that replaced the
-      one they pressed.
-    drawn: [adding, removing]
-    missing: none # DCK-08, no Linear issue
+      Adding or removing a deck is told to a person who cannot see the page, and the focus stays where they pressed, or goes to
+      the control that replaced the one they pressed.
+    missing: DCK-08, no Linear issue
+    note: >-
+      Drawn on the states adding and removing, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: filtering-is-announced
     need: When a word or a chip changes how many decks a section holds, the new count is told to a person who cannot see the page.
-    drawn: [explored, courseCount, publicCount]
-    missing: none # DCK-11, no Linear issue
+    missing: DCK-11, no Linear issue
+    note: >-
+      Drawn on the state explored and on the nodes courseCount and publicCount, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: failed-read-says-so
     need: When the decks cannot be read, the person is told so in the page's place and can ask again from there.
-    drawn: [readFailed, box-only-after-a-failed-read, a-failed-read-draws-no-decks]
-    built:
-      - route: apps/tedris/features/flashcards/components/explore-decks-page.tsx:111
-    # walked: nothing. test/explore-decks-page.spec.ts pins the markup; no e2e and no replay makes the explore read fail
+    evidence:
+      - state: readFailed
+      - source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:111
+    note: |-
+      Also drawn as the assertion box-only-after-a-failed-read, the assertion a-failed-read-draws-no-decks.
+      walked: nothing. test/explore-decks-page.spec.ts pins the markup; no e2e and no replay makes the explore read fail
 
   - id: failed-read-is-a-page
     need: >-
-      The box that replaces the page has a first-level heading and says that it is reading again, so that a person who cannot see the page knows where they are
-      and that "Yeniden dene" did something.
-    drawn: [readFailed, failedTitle, retryButton]
-    missing: none # DCK-12, no Linear issue
+      The box that replaces the page has a first-level heading and says that it is reading again, so that a person who cannot see
+      the page knows where they are and that "Yeniden dene" did something.
+    missing: DCK-12, no Linear issue
+    note: >-
+      Drawn on the state readFailed and on the nodes failedTitle and retryButton, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: open-a-deck-from-the-list
     need: >-
-      A deck's name opens the deck's page, which is the reader's page for somebody else's deck and the author's page for the person's own.
-    drawn: [explored, courseLink, publicLink, ownLink]
-    built:
-      - route: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72
-    # walked: nothing on this page. decks#22-#26 and decks#13 start on the deck's own page; replay mixed is bound, not replayed
+      A deck's name opens the deck's page, which is the reader's page for somebody else's deck and the author's page for the
+      person's own.
+    evidence:
+      - state: explored
+      - node: courseLink
+      - node: publicLink
+      - node: ownLink
+      - source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72
+    note: >-
+      walked: nothing on this page. decks#22-#26 and decks#13 start on the deck's own page; replay mixed is bound, not replayed
 
   - id: lists-are-paged
     need: >-
-      The two lists do not grow with the platform: the page reads a bounded number of decks at a time and the person can read on, instead of one answer that
-      holds every published deck.
-    drawn: [explored, courseSection, publicSection]
-    missing: none # planned.md:134 (TODO in the code, no Linear issue): findSharedWithCaller and findPublished have no limit (flashcard-deck-summary.repository.ts:132-163)
+      The two lists do not grow with the platform: the page reads a bounded number of decks at a time and the person can read on,
+      instead of one answer that holds every published deck.
+    missing: >-
+      planned.md:134 (TODO in the code, no Linear issue): findSharedWithCaller and findPublished have no limit
+      (flashcard-deck-summary.repository.ts:132-163)
+    note: >-
+      Drawn on the state explored and on the nodes courseSection and publicSection, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: collection-state-is-the-api
     need: >-
-      What the page says of a deck's collection state is what the server holds: a deck taken out in another tab or on Desteler is not still "Koleksiyonunda"
-      here after the page is read again.
-    drawn: [explored, collectedBadge, addButton]
-    missing: none # EXPL-1, proposed id, no Linear issue
+      What the page says of a deck's collection state is what the server holds: a deck taken out in another tab or on Desteler is
+      not still "Koleksiyonunda" here after the page is read again.
+    missing: EXPL-1, proposed id, no Linear issue
+    note: >-
+      Drawn on the state explored and on the nodes collectedBadge and addButton, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: refusal-says-why
     need: >-
-      A refusal of adding or removing tells the person what is wrong when it is something they can act on, such as a deck that is no longer there, and the
-      list stops showing it.
-    drawn: [adding, removing, addFailedToast, removeFailedToast]
-    missing: none # EXPL-2, proposed id, no Linear issue
+      A refusal of adding or removing tells the person what is wrong when it is something they can act on, such as a deck that is
+      no longer there, and the list stops showing it.
+    missing: EXPL-2, proposed id, no Linear issue
+    note: >-
+      Drawn on the states adding and removing and on the nodes addFailedToast and removeFailedToast, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

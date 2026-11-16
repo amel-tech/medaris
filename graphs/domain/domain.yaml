@@ -2,8 +2,10 @@
 # the head (this file: title, policies, cross-cutting invariants), entities-*.yaml (one file per group of tables), tedrisat-*.yaml (the
 # actions of the nine handler areas of apps/tedrisat), teskilat.yaml (the two routes of apps/teskilat) and web.yaml (the routes the web
 # apps answer themselves). Maps merge by key and `policies` and `invariants` join, so an id or a key is given once.
-# The actions of tedrisat do not repeat the 401 of AuthGuard (HTTP_401; invariant access-token-only) nor the 429 of the throttlers
-# (HTTP_429; invariant rate-limit-before-auth); a route with a budget of its own lists its 429. Routes are written with {param}.
+# Every route behind AuthGuard can answer its 401 (HTTP_401; invariant access-token-only), and any route the 429 of the throttlers
+# (HTTP_429; invariant rate-limit-before-auth); a route with a budget of its own lists its 429. An action lists HTTP_401 where a flow
+# draws what a signed-out caller meets, since a flow's failure class may name only a refusal of the action it calls (@delurio/cli
+# 0.9.0, refusal-unknown); the other actions leave it to the invariant. Routes are written with {param}.
 #
 # Shared refusal sites. Many handlers reach the same refusal; the area chapters cite them by tag, and each action lists them in
 # its own `refusals`. The tags are the inventory's, from call-graph reachability (they over-report; the corrections of

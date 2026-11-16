@@ -1,275 +1,393 @@
-# What must exist for a köşk's nazım (and the başnazım) to change a course's settings, publish it and take it back, and hide it, from Ders ayarları in nizam: the flow's
-# product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the decisions it leaves open, not from what the page does today;
-# the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nizam.courses.settingsAndPublish
+status: proposed
+summary: >-
+  What must exist for a köşk's nazım (and the başnazım) to change a course's settings, publish it and take it back, and hide it,
+  from Ders ayarları in nizam: the flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # The e2e checks of this page (courses#6, #7, #8, #9, #20) are NOT stale: unlike nazar's (F-D2c-14), this page has one Kaydet and one Vazgeç, so each check names its button
 # by role and name and finds one. They are listed under `walked` where they pin the behaviour. They read the course through the database, not through a reload, so the
 # "read back after a reload" half of a story is the replay's effect check. No replay scenario is named under `walked`: none has run (the replays are one phase, at the end).
 #
 # missing (the need has no code; none has an issue): the-recordings-policy-is-kept-on-the-write (SETPUB-5), a-locked-rule-is-worded (SETPUB-2), a-refusal-reads-the-page-again
-#   (SETPUB-3, D3), the-warning-says-who-loses-the-course (SETPUB-4, D2), opening-the-page-writes-no-second-audit-row (SETPUB-1), focus-after-a-save (F-W4-8),
-#   leaving-a-changed-form-asks (F-W4-5), the-tab-names-the-course (F-W4-17), a-new-tab-is-said (SETPUB-9), cancel-and-close-say-they-are-busy (SETPUB-6),
-#   a-hidden-course-says-so (SETPUB-8), the-page-has-its-own-skeleton (SETPUB-7), the-zone-list-is-usable (F-D2c-17 of nazar, the same util), the-policy-saves-with-its-own-word (D1)
+# (SETPUB-3, D3), the-warning-says-who-loses-the-course (SETPUB-4, D2), opening-the-page-writes-no-second-audit-row (SETPUB-1), focus-after-a-save (F-W4-8),
+# leaving-a-changed-form-asks (F-W4-5), the-tab-names-the-course (F-W4-17), a-new-tab-is-said (SETPUB-9), cancel-and-close-say-they-are-busy (SETPUB-6),
+# a-hidden-course-says-so (SETPUB-8), the-page-has-its-own-skeleton (SETPUB-7), the-zone-list-is-usable (F-D2c-17 of nazar, the same util), the-policy-saves-with-its-own-word (D1)
 # unwalked (code, no e2e or replay that passes): kaydet-waits-for-a-change (unit spec only), the-sample-moves-with-the-version-and-a-stale-page-is-told (no e2e: the
-#   replay's `stale`), the-kosk-policy-holds-the-approval-box (unit spec; the replay's `fixed`), a-hoca-who-is-a-nazim-elsewhere-gets-the-limited-page (unit spec; no replay),
-#   the-enrolled-count-is-in-the-warning (no e2e; the replay's `saves`), the-hide-that-finds-it-done-is-done (the replay's `alreadyHidden`), the-recordings-policy-is-changed-by-the-manager
-#   (no e2e; the replay's `saves`), the-public-page-link (no e2e)
+# replay's `stale`), the-kosk-policy-holds-the-approval-box (unit spec; the replay's `fixed`), a-hoca-who-is-a-nazim-elsewhere-gets-the-limited-page (unit spec; no replay),
+# the-enrolled-count-is-in-the-warning (no e2e; the replay's `saves`), the-hide-that-finds-it-done-is-done (the replay's `alreadyHidden`), the-recordings-policy-is-changed-by-the-manager
+# (no e2e; the replay's `saves`), the-public-page-link (no e2e)
 # The scenarios that will walk the rest are named in comments, not under `walked`, because none has run.
-kind: needs
-flow: nizam.courses.settingsAndPublish
-status: proposed
 
 needs:
   - id: change-settings-in-one-save
     need: >-
-      The köşk's nazım changes whether the course is closed, whether enrolment waits for approval, its sample session, whether its celses are in person and its time zone,
-      and one Kaydet saves them all: the sample first (held to the version the page was read at), then the course's own fields, only what differs; the person is told in a toast.
-    drawn: [clean, dirty, sending, sendingSample, afterSample, sendingCourse, afterCourse, closedBox, approvalBox, inPersonBox, sampleField, zoneField, submit, savedTitle, savedBody]
-    built:
-      - action: medaris.api:updateLesson
-      - action: medaris.api:updateCourse
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:106
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#6' # a1 to a6: the page opens with approval ticked and closed not; both are changed and saved; the toast; the course holds requiresApproval false and isClosed true
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#9' # a1 to a6: Berlin and "Bağlantılı celse" are chosen and saved; the zone and the sample are stored
-      - test: apps/nizam/test/course-settings-in-person.spec.tsx # the box alone in the PATCH, and cleared with false (MDRS-283; no e2e touches it)
-    # replay: saves (written, not run)
+      The köşk's nazım changes whether the course is closed, whether enrolment waits for approval, its sample session, whether its
+      celses are in person and its time zone, and one Kaydet saves them all: the sample first (held to the version the page was
+      read at), then the course's own fields, only what differs; the person is told in a toast.
+    evidence:
+      - state: clean
+      - state: dirty
+      - state: sending
+      - state: sendingSample
+      - state: afterSample
+      - state: sendingCourse
+      - state: afterCourse
+      - node: closedBox
+      - node: approvalBox
+      - node: inPersonBox
+      - node: sampleField
+      - node: zoneField
+      - node: submit
+      - node: savedTitle
+      - node: savedBody
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/tedrisat/src/course/course.controller.ts:300
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:106
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1–2: the page opens with the course's values and saves approval and closed"
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 5: the time zone is saved and the sample session is chosen"
+      - test: apps/nizam/test/course-settings-in-person.spec.tsx
+    note: |-
+      courses#6: a1 to a6: the page opens with approval ticked and closed not; both are changed and saved; the toast; the course
+      holds requiresApproval false and isClosed true
+      courses#9: a1 to a6: Berlin and "Bağlantılı celse" are chosen and saved; the zone and the sample are stored
+      apps/nizam/test/course-settings-in-person.spec.tsx: the box alone in the PATCH, and cleared with false (MDRS-283; no e2e
+      touches it)
+      replay: saves (written, not run)
 
   - id: kaydet-waits-for-a-change
     need: >-
-      Kaydet and Vazgeç are off until something differs from what is stored, in the form or in the köşk's policy box, and Vazgeç puts back what the page read.
-    drawn: [clean, dirty, reverting, submit, cancel]
-    built:
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:90
-    walked:
+      Kaydet and Vazgeç are off until something differs from what is stored, in the form or in the köşk's policy box, and Vazgeç
+      puts back what the page read.
+    evidence:
+      - state: clean
+      - state: dirty
+      - state: reverting
+      - node: submit
+      - node: cancel
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:90
       - test: apps/nizam/test/course-settings-in-person.spec.tsx
-    # replay: saves (written, not run)
+    note: "replay: saves (written, not run)"
 
   - id: read-back-after-a-save
-    need: >-
-      After a save, and after a reload, every control shows what was saved, read from the API and not kept by the browser.
-    drawn: [clean, reloading, closedBox, approvalBox, inPersonBox, sampleField, zoneField, neverPublicBox]
-    built:
-      - route: "apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx:29"
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#6' # a6 and courses#9 a5, a6 read the stored course through the database
-    # replay: saves (written, not run): the effects `savedAll` and `reloadedSaved` read the course and the köşk through the API
+    need: After a save, and after a reload, every control shows what was saved, read from the API and not kept by the browser.
+    evidence:
+      - state: clean
+      - state: reloading
+      - node: closedBox
+      - node: approvalBox
+      - node: inPersonBox
+      - node: sampleField
+      - node: zoneField
+      - node: neverPublicBox
+      - source: "apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx:29"
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1–2: the page opens with the course's values and saves approval and closed"
+    note: |-
+      courses#6: a6 and courses#9 a5, a6 read the stored course through the database
+      replay: saves (written, not run): the effects `savedAll` and `reloadedSaved` read the course and the köşk through the API
 
   - id: the-sample-moves-with-the-version-and-a-stale-page-is-told
     need: >-
-      Choosing the sample session writes with the course version the page was read at, so that a page that is out of date changes nothing and the person is told to reload;
-      the course's own fields never conflict (the last save wins).
-    drawn: [sendingSample, staleBody, failedTitle, dirty, reloading]
-    built:
-      - action: medaris.api:updateLesson
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:113
-    walked: []
-    # replay: stale (written, not run). No e2e names it (courses#9 saves the sample on a fresh page).
+      Choosing the sample session writes with the course version the page was read at, so that a page that is out of date changes
+      nothing and the person is told to reload; the course's own fields never conflict (the last save wins).
+    evidence:
+      - state: sendingSample
+      - node: staleBody
+      - node: failedTitle
+      - state: dirty
+      - state: reloading
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:113
+    note: "replay: stale (written, not run). No e2e names it (courses#9 saves the sample on a fresh page)."
 
   - id: the-recordings-policy-is-changed-by-the-manager
     need: >-
-      The köşk's nazım (and the başnazım) ticks "Ders kayıtları herkese açılamaz" on a course's settings and it is saved with the rest as the köşk's own policy, for every course
-      of the köşk; a hoca who does not manage the köşk sees it shut.
-    drawn: [neverPublicBox, neverPublicDesc, policyTitle, policyIntro, policyLink, sendingPolicy]
-    built:
-      - action: medaris.api:updateKosk
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:152
-    walked:
-      - test: apps/nizam/test/course-views.spec.tsx # "leaves the manager's boxes out for a müderris" (:248)
-    # replay: saves (written, not run); no e2e touches the box
+      The köşk's nazım (and the başnazım) ticks "Ders kayıtları herkese açılamaz" on a course's settings and it is saved with the
+      rest as the köşk's own policy, for every course of the köşk; a hoca who does not manage the köşk sees it shut.
+    evidence:
+      - node: neverPublicBox
+      - node: neverPublicDesc
+      - node: policyTitle
+      - node: policyIntro
+      - node: policyLink
+      - state: sendingPolicy
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:340
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:152
+      - test: apps/nizam/test/course-views.spec.tsx
+    note: |-
+      apps/nizam/test/course-views.spec.tsx: "leaves the manager's boxes out for a müderris" (:248)
+      replay: saves (written, not run); no e2e touches the box
 
   - id: the-recordings-policy-is-kept-on-the-write
     need: >-
-      While the köşk's policy "Ders kayıtları herkese açılamaz" is on, no recording of any course of the köşk can be made public by anyone, and the switch that makes it
-      public is shut; it is not enough that a visitor's read withholds it.
-    drawn: [neverPublicBox, neverPublicDesc]
-    missing: none
-    # SETPUB-5, the köşk's side of RECADD-1 (ledger/security.md); the read side is built (course.service.ts:857-867)
+      While the köşk's policy "Ders kayıtları herkese açılamaz" is on, no recording of any course of the köşk can be made public
+      by anyone, and the switch that makes it public is shut; it is not enough that a visitor's read withholds it.
+    missing: no Linear issue; SETPUB-5
+    note: |-
+      Drawn on the nodes neverPublicBox and neverPublicDesc, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+      SETPUB-5, the köşk's side of RECADD-1 (ledger/security.md); the read side is built (course.service.ts:857-867)
 
   - id: the-policy-saves-with-its-own-word
     need: >-
-      A save that changed the köşk's policy says so ("Köşk politikası da değişti"), because it covers every course of the köşk and the toast names only this course.
-    drawn: [savedBody, neverPublicBox]
-    missing: none
-    # D1
+      A save that changed the köşk's policy says so ("Köşk politikası da değişti"), because it covers every course of the köşk and
+      the toast names only this course.
+    missing: no Linear issue; D1
+    note: |-
+      Drawn on the nodes savedBody and neverPublicBox, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      D1
 
   - id: the-kosk-policy-holds-the-approval-box
     need: >-
-      When the köşk's policy "Kayıt her zaman onaylı" is on, the approval box is ticked and shut and says why, whatever the course's own flag holds.
-    drawn: [readFixed, approvalBox, approvalFixedDesc]
-    built:
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:248
-      - route: apps/nizam/features/courses/present.ts:1184
-    walked:
-      - test: apps/nizam/test/course-views.spec.tsx # "checks and locks the approval box under the köşk policy" (:283)
+      When the köşk's policy "Kayıt her zaman onaylı" is on, the approval box is ticked and shut and says why, whatever the
+      course's own flag holds.
+    evidence:
+      - state: readFixed
+      - node: approvalBox
+      - node: approvalFixedDesc
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:248
+      - source: apps/nizam/features/courses/present.ts:1184
+      - test: apps/nizam/test/course-views.spec.tsx
       - test: apps/nizam/test/course-settings-in-person.spec.tsx
-    # replay: fixed (written, not run)
+    note: |-
+      apps/nizam/test/course-views.spec.tsx: "checks and locks the approval box under the köşk policy" (:283)
+      replay: fixed (written, not run)
 
   - id: a-locked-rule-is-worded
     need: >-
-      A switch-off that a policy holds (approval under the köşk's or the platform's policy, the köşk's recordings policy under the platform's) is refused in words that name the
-      policy, the page is read again, and the box shows its lock; "try again" is never said of a thing that will be refused every time.
-    drawn: [sendingCourse, dirty, genericBody, failedTitle]
-    missing: none
-    # SETPUB-2, F-W3-3; replay: policyLate (written, not run) draws the refusal as the page words it today
+      A switch-off that a policy holds (approval under the köşk's or the platform's policy, the köşk's recordings policy under the
+      platform's) is refused in words that name the policy, the page is read again, and the box shows its lock; "try again" is
+      never said of a thing that will be refused every time.
+    missing: no Linear issue; SETPUB-2
+    note: |-
+      Drawn on the states sendingCourse and dirty and on the nodes genericBody and failedTitle, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      SETPUB-2, F-W3-3; replay: policyLate (written, not run) draws the refusal as the page words it today
 
   - id: a-refusal-reads-the-page-again
     need: >-
-      After a refused write the page is read again, keeps the controls that still apply, and says what was saved and what was not; a retry is never a conflict that the person
-      did not cause.
-    drawn: [dirty, sendingSample, sendingCourse, staleBody, genericBody]
-    missing: none
-    # SETPUB-3, D3
+      After a refused write the page is read again, keeps the controls that still apply, and says what was saved and what was not;
+      a retry is never a conflict that the person did not cause.
+    missing: no Linear issue; SETPUB-3, D3
+    note: |-
+      Drawn on the states dirty, sendingSample and sendingCourse and on the nodes staleBody and genericBody, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      SETPUB-3, D3
 
   - id: take-back-to-draft-after-asking
     need: >-
-      The nazım takes a published course back to draft after being asked once, with the focus of the question on "Vazgeç"; from then on the course shows only to its staff, the
-      köşk's nazım and Medaris's management. Cancelling leaves everything as it was; the question stays open under an error toast when the write is refused.
-    drawn: [asking, drafting, unpublishDialog, unpublishCancel, unpublishConfirm, unpublishClose, draftedTitle, draftedBody, statusDraft]
-    built:
-      - action: medaris.api:updateCourse
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:170
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#7' # a1 to a4: "Taslağa çek", the alertdialog's confirm, "Ders taslağa çekildi", the course is DRAFT in the database
-    # replay: saves, gone (written, not run)
+      The nazım takes a published course back to draft after being asked once, with the focus of the question on "Vazgeç"; from
+      then on the course shows only to its staff, the köşk's nazım and Medaris's management. Cancelling leaves everything as it
+      was; the question stays open under an error toast when the write is refused.
+    evidence:
+      - state: asking
+      - state: drafting
+      - node: unpublishDialog
+      - node: unpublishCancel
+      - node: unpublishConfirm
+      - node: unpublishClose
+      - node: draftedTitle
+      - node: draftedBody
+      - node: statusDraft
+      - source: apps/tedrisat/src/course/course.controller.ts:300
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:170
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 3: 'Taslağa çek' makes the course a draft, and it can be published again"
+    note: |-
+      courses#7: a1 to a4: "Taslağa çek", the alertdialog's confirm, "Ders taslağa çekildi", the course is DRAFT in the database
+      replay: saves, gone (written, not run)
 
   - id: publish-again
     need: >-
-      The nazım publishes a draft at once, with no question, and the course is public again; the card, the toast and a visitor of Tedris all say so.
-    drawn: [publishing, publishButton, publishedTitle, publishedBody2, statusPublished]
-    built:
-      - action: medaris.api:updateCourse
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:356
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#7' # a5 and a6: "Yayımla", "Ders yayımlandı", the course is PUBLISHED again
-      - test: apps/nizam/test/course-views.spec.tsx # "offers Yayımla for a draft" (:248)
-    # replay: draft, saves, goneDraft (written, not run)
+      The nazım publishes a draft at once, with no question, and the course is public again; the card, the toast and a visitor of
+      Tedris all say so.
+    evidence:
+      - state: publishing
+      - node: publishButton
+      - node: publishedTitle
+      - node: publishedBody2
+      - node: statusPublished
+      - source: apps/tedrisat/src/course/course.controller.ts:300
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:356
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 3: 'Taslağa çek' makes the course a draft, and it can be published again"
+      - test: apps/nizam/test/course-views.spec.tsx
+    note: |-
+      courses#7: a5 and a6: "Yayımla", "Ders yayımlandı", the course is PUBLISHED again
+      apps/nizam/test/course-views.spec.tsx: "offers Yayımla for a draft" (:248)
+      replay: draft, saves, goneDraft (written, not run)
 
   - id: the-enrolled-count-is-in-the-warning
     need: >-
-      Above "Taslağa çek" the page says how many talebe are enrolled and lose the course, read with the page; when it could not be read it says what taking the course back does
-      and no number.
-    drawn: [unpublishNoteCount, unpublishNote]
-    built:
-      - action: medaris.api:getCourseStats
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:340
-    walked: []
-    # replay: saves (two enrolled talebe, written, not run); `count: unread` cannot be made on the stack
+      Above "Taslağa çek" the page says how many talebe are enrolled and lose the course, read with the page; when it could not be
+      read it says what taking the course back does and no number.
+    evidence:
+      - node: unpublishNoteCount
+      - node: unpublishNote
+      - source: apps/tedrisat/src/course/course.controller.ts:543
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:340
+    note: "replay: saves (two enrolled talebe, written, not run); `count: unread` cannot be made on the stack"
 
   - id: the-warning-says-who-loses-the-course
     need: >-
-      The question the person answers says how many talebe lose the course, counts every seat that is not removed (a completed talebe too), and has its own sentence for none.
-    drawn: [unpublishBody, unpublishNoteCount]
-    missing: none
-    # D2, SETPUB-4
+      The question the person answers says how many talebe lose the course, counts every seat that is not removed (a completed
+      talebe too), and has its own sentence for none.
+    missing: no Linear issue; SETPUB-4, D2
+    note: |-
+      Drawn on the nodes unpublishBody and unpublishNoteCount, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+      D2, SETPUB-4
 
   - id: hide-the-course-after-asking
     need: >-
-      The nazım hides the course after being asked once; the course leaves every list and waits in the Arşiv, nothing is deleted, and she lands on the list of courses with the toast.
-    drawn: [confirmingHide, hiding, hideDialog, hideConfirm, hideCancel, hideClose, hideButton, dersler_opened]
-    built:
-      - action: medaris.api:hideCourse
-      - route: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#8' # a1 to a3: "Dersi gizle", the alertdialog's "Gizle", the address ends /dersler, the course is archived
-    # replay: saves, gone (written, not run)
+      The nazım hides the course after being asked once; the course leaves every list and waits in the Arşiv, nothing is deleted,
+      and she lands on the list of courses with the toast.
+    evidence:
+      - state: confirmingHide
+      - state: hiding
+      - node: hideDialog
+      - node: hideConfirm
+      - node: hideCancel
+      - node: hideClose
+      - node: hideButton
+      - state: dersler_opened
+      - source: apps/tedrisat/src/course/course.controller.ts:421
+      - source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 4: 'Dersi gizle' moves the course to the Arşiv"
+    note: |-
+      courses#8: a1 to a3: "Dersi gizle", the alertdialog's "Gizle", the address ends /dersler, the course is archived
+      replay: saves, gone (written, not run)
 
   - id: the-hide-that-finds-it-done-is-done
     need: >-
-      A hide that finds the course already hidden (someone else hid it meanwhile) is told as done, and the person is where a hide of her own would have left her.
-    drawn: [hiding, dersler_opened]
-    built:
-      - route: apps/nizam/features/kosks/components/hide-course-dialog.tsx:42
-    walked: []
-    # replay: alreadyHidden (written, not run)
+      A hide that finds the course already hidden (someone else hid it meanwhile) is told as done, and the person is where a hide
+      of her own would have left her.
+    evidence:
+      - state: hiding
+      - state: dersler_opened
+      - source: apps/nizam/features/kosks/components/hide-course-dialog.tsx:42
+    note: "replay: alreadyHidden (written, not run)"
 
   - id: only-a-nazim-gets-the-page
     need: >-
-      A person with no nazım role, a course of another köşk or an unknown one are told "Bu bölüm için izniniz yok"; the status is 403 where the layout refuses.
-    drawn: [entered, no_access]
-    built:
-      - route: apps/nizam/app/kosks/layout.tsx:20
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#20' # the talebe: /yetki-yok, then /ayarlar answers 403 (the replay reads the words, not the status)
-    # replay: outsider (written, not run)
+      A person with no nazım role, a course of another köşk or an unknown one are told "Bu bölüm için izniniz yok"; the status is
+      403 where the layout refuses.
+    evidence:
+      - state: entered
+      - state: no_access
+      - source: apps/nizam/app/kosks/layout.tsx:20
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "a caller who is not on the course gets the no-access screen"
+    note: |-
+      courses#20: the talebe: /yetki-yok, then /ayarlar answers 403 (the replay reads the words, not the status)
+      replay: outsider (written, not run)
 
   - id: a-hoca-who-is-a-nazim-elsewhere-gets-the-limited-page
     need: >-
-      A nazım of another köşk who teaches this course sees the settings and the status card, and does not see "Hocaları düzenle", "Dersi gizle" or an open recordings-policy box.
-    drawn: [readLimited, neverPublicBox, editTeam, hideRegion]
-    built:
-      - route: apps/nizam/features/courses/reads.ts:48
-    walked:
-      - test: apps/nizam/test/course-views.spec.tsx # "leaves the manager's boxes out for a müderris" (:248)
-    # no replay: needs a third köşk (see binding.yaml)
+      A nazım of another köşk who teaches this course sees the settings and the status card, and does not see "Hocaları düzenle",
+      "Dersi gizle" or an open recordings-policy box.
+    evidence:
+      - state: readLimited
+      - node: neverPublicBox
+      - node: editTeam
+      - node: hideRegion
+      - source: apps/nizam/features/courses/reads.ts:48
+      - test: apps/nizam/test/course-views.spec.tsx
+    note: |-
+      apps/nizam/test/course-views.spec.tsx: "leaves the manager's boxes out for a müderris" (:248)
+      no replay: needs a third köşk (see binding.yaml)
 
   - id: the-public-page-link
     need: >-
-      "Tanıtım sayfasını gör" opens the course's page in Tedris in a new tab, says so, and for a draft leads a staff member to the preview and not to "Sayfa bulunamadı".
-    drawn: [viewPublic]
-    built:
-      - route: apps/nizam/features/courses/components/course-settings-page.tsx:205
-    walked: []
-    # no e2e of nizam names it; SETPUB-9 and DRAFT-1 are the gaps
+      "Tanıtım sayfasını gör" opens the course's page in Tedris in a new tab, says so, and for a draft leads a staff member to the
+      preview and not to "Sayfa bulunamadı".
+    evidence:
+      - node: viewPublic
+      - source: apps/nizam/features/courses/components/course-settings-page.tsx:205
+    note: no e2e of nizam names it; SETPUB-9 and DRAFT-1 are the gaps
 
   - id: a-new-tab-is-said
     need: The link that opens a new tab says so in its name.
-    drawn: [viewPublic]
-    missing: none
-    # SETPUB-9
+    missing: no Linear issue; SETPUB-9
+    note: |-
+      Drawn on the node viewPublic, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      SETPUB-9
 
   - id: opening-the-page-writes-no-second-audit-row
     need: >-
-      Opening Ders ayarları writes the one audit row of reading the course, not a second one to word a caption; the count is read when the person asks for it.
-    drawn: [opened]
-    missing: none
-    # SETPUB-1
+      Opening Ders ayarları writes the one audit row of reading the course, not a second one to word a caption; the count is read
+      when the person asks for it.
+    missing: no Linear issue; SETPUB-1
+    note: |-
+      Drawn on the state opened, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      SETPUB-1
 
   - id: focus-after-a-save
     need: After a save the focus is on something the person can use, and the page says so in words a screen reader reads.
-    drawn: [clean, submit, savedTitle]
-    missing: none
-    # F-W4-8, F-X-8
+    missing: no Linear issue; F-W4-8
+    note: |-
+      Drawn on the state clean and on the nodes submit and savedTitle, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+      F-W4-8, F-X-8
 
   - id: leaving-a-changed-form-asks
     need: A reload, a breadcrumb or a menu entry does not drop pressed controls without a word.
-    drawn: [dirty]
-    missing: none
-    # F-W4-5
+    missing: no Linear issue; F-W4-5
+    note: |-
+      Drawn on the state dirty, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      F-W4-5
 
   - id: the-tab-names-the-course
     need: The title of the tab and the page's heading name the course, so two tabs can be told apart.
-    drawn: [title, intro]
-    missing: none
-    # F-W4-17
+    missing: no Linear issue; F-W4-17
+    note: |-
+      Drawn on the nodes title and intro, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
+      F-W4-17
 
   - id: cancel-and-close-say-they-are-busy
-    need: While a status or a hide is written, "Vazgeç" and the close icon of the question are off, so a press that does nothing is not offered.
-    drawn: [drafting, hiding, unpublishCancel, unpublishClose, hideCancel, hideClose]
-    missing: none
-    # SETPUB-6
+    need: >-
+      While a status or a hide is written, "Vazgeç" and the close icon of the question are off, so a press that does nothing is
+      not offered.
+    missing: no Linear issue; SETPUB-6
+    note: |-
+      Drawn on the states drafting and hiding and on the nodes unpublishCancel, unpublishClose, hideCancel and hideClose, which
+      the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
+      SETPUB-6
 
   - id: a-hidden-course-says-so
     need: The settings page of a hidden course says it is hidden and offers "Geri al", not "Dersi gizle".
-    drawn: [hideButton]
-    missing: none
-    # SETPUB-8
+    missing: no Linear issue; SETPUB-8
+    note: |-
+      Drawn on the node hideButton, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      SETPUB-8
 
   - id: the-page-has-its-own-skeleton
     need: While the page reads, the person sees a skeleton shaped like it, not the course overview's.
-    drawn: [opened]
-    missing: none
-    # SETPUB-7
+    missing: no Linear issue; SETPUB-7
+    note: |-
+      Drawn on the state opened, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      SETPUB-7
 
   - id: the-zone-list-is-usable
     need: The zone list names each zone with its region, in the order of the labels, and can be searched.
-    drawn: [choosingZone, optBerlin]
-    missing: none
-    # F-D2c-17 of nazar: libs/utils/src/time-zone.ts is the same util
+    missing: no Linear issue; F-D2c-17 of nazar, the same util
+    note: |-
+      Drawn on the state choosingZone and on the node optBerlin, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+      F-D2c-17 of nazar: libs/utils/src/time-zone.ts is the same util

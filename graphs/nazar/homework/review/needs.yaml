@@ -1,184 +1,243 @@
-# What must exist for the course team to read what the talebe handed in and to send a review of it: the flow's product list (LAYOUT.md section 7). Each
-# need is what the product must do, from the flow's story and the findings of Ödevler, not from what the page does today; the known gaps go to
-# graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
-# The `replay:` entries name the scenarios of binding.yaml and binding.dersNazir.yaml. None has been run yet (the writing phase runs no replay), so none
-# is a proof; they are what will walk the need. No e2e spec exists for Ödevler (apps/nazar/e2e has none); test/homework.spec.tsx pins it with the
-# actions mocked.
+schema: delurio-graph/0
+kind: needs
+id: nazar.homework.review
+status: proposed
+summary: >-
+  What must exist for the course team to read what the talebe handed in and to send a review of it: the flow's product list. The
+  `replay:` entries name the scenarios of binding.yaml and binding.dersNazir.yaml. None has been run yet (the writing phase runs
+  no replay), so none is a proof; they are what will walk the need. No e2e spec exists for Ödevler (apps/nazar/e2e has none);
+  test/homework.spec.tsx pins it with the actions mocked.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # missing (no code, no issue yet): the-list-change-is-announced, a-refused-download-keeps-the-page, file-changes-say-who-sees-them,
-#   a-sent-review-is-never-emptied, the-review-limit-is-worded, a-typed-note-is-kept, the-dialog-works-for-keyboard-and-screen-reader
+# a-sent-review-is-never-emptied, the-review-limit-is-worded, a-typed-note-is-kept, the-dialog-works-for-keyboard-and-screen-reader
 # unwalked (code, no e2e and no replay can walk it: the stack has no file store and the replay cannot set a file input): a-served-download-is-saved,
-#   a-file-is-uploaded-and-listed, a-failed-send-is-told
-kind: needs
-flow: nazar.homework.review
-status: proposed
+# a-file-is-uploaded-and-listed, a-failed-send-is-told
 
 needs:
   - id: read-the-handins-by-celse
     need: >-
-      The course team reads, on one page, what each talebe handed in, celse by celse in programme order: whether homework was set, how many of the
-      enrolled talebe handed in, how many hand-ins still await a review, and for each talebe the files, the note, when they last changed their work and
-      where the review stands. A celse with homework and no hand-in is listed too.
-    drawn: [listed, sessionRegion, handedInCount, awaitingBadge, hwTable, talebeName, fileLink, changedTime, noteText, badgeNone, sessionEmpty]
-    built:
-      - action: medaris.api:listCourseSubmissions
-      - route: apps/nazar/features/homework/components/homework-list.tsx:46
-    walked:
-      - replay: reviews
+      The course team reads, on one page, what each talebe handed in, celse by celse in programme order: whether homework was set,
+      how many of the enrolled talebe handed in, how many hand-ins still await a review, and for each talebe the files, the note,
+      when they last changed their work and where the review stands. A celse with homework and no hand-in is listed too.
+    evidence:
+      - state: listed
+      - node: sessionRegion
+      - node: handedInCount
+      - node: awaitingBadge
+      - node: hwTable
+      - node: talebeName
+      - node: fileLink
+      - node: changedTime
+      - node: noteText
+      - node: badgeNone
+      - node: sessionEmpty
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:293
+      - source: apps/nazar/features/homework/components/homework-list.tsx:46
+      - scenario: reviews
 
   - id: only-readers-of-hand-ins-read-them
     need: >-
-      Only a holder of submission.read on the course (the müderris, the köşk's nazım, the başmüderris, a ders nazırı who was given it) reads the hand-ins
-      and reviews them; everyone else meets a refusal, not an empty page; the menu offers Ödevler to no one else.
-    drawn: [opened, forbidden, forbiddenAlert, a-refused-reader-reviews-nothing]
-    built:
-      - action: medaris.api:listCourseSubmissions
-      - route: apps/nazar/features/homework/components/homework-page.tsx:44
-    walked:
-      - replay: refused
-      - replay: granted
+      Only a holder of submission.read on the course (the müderris, the köşk's nazım, the başmüderris, a ders nazırı who was given
+      it) reads the hand-ins and reviews them; everyone else meets a refusal, not an empty page; the menu offers Ödevler to no one
+      else.
+    evidence:
+      - state: opened
+      - state: forbidden
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:293
+      - source: apps/nazar/features/homework/components/homework-page.tsx:44
+      - scenario: refused
+      - scenario: granted
+        binding: graphs/nazar/homework/review/binding.dersNazir.yaml
+    note: Also drawn as the assertion a-refused-reader-reviews-nothing.
 
   - id: nothing-handed-in-is-told
-    need: >-
-      A course with no homework and no hand-in says so, and where homework is given and where hand-ins will appear.
-    drawn: [empty, emptyAlert]
-    built:
-      - route: apps/nazar/features/homework/components/homework-list.tsx:77
-    walked:
-      - replay: nothing
+    need: A course with no homework and no hand-in says so, and where homework is given and where hand-ins will appear.
+    evidence:
+      - state: empty
+      - node: emptyAlert
+      - source: apps/nazar/features/homework/components/homework-list.tsx:77
+      - scenario: nothing
 
   - id: narrow-to-one-celse
-    need: >-
-      The course team narrows the page to one celse, even one that holds nothing yet, and back to all.
-    drawn: [choosing, filtered, filteredQuiet, optionAll, optionBusy, optionQuiet]
-    built:
-      - route: apps/nazar/features/homework/homework.ts:202
-    walked:
-      - replay: reviews
+    need: The course team narrows the page to one celse, even one that holds nothing yet, and back to all.
+    evidence:
+      - state: choosing
+      - state: filtered
+      - state: filteredQuiet
+      - node: optionAll
+      - node: optionBusy
+      - node: optionQuiet
+      - source: apps/nazar/features/homework/homework.ts:202
+      - scenario: reviews
 
   - id: the-list-change-is-announced
     need: >-
-      When the filter changes the page, a screen-reader user is told what is now listed, and the counts line follows the filter (F-D1-04).
-    drawn: [choosing, filtered, countsLine, sessionFilter]
-    missing: none
+      When the filter changes the page, a screen-reader user is told what is now listed, and the counts line follows the filter
+      (F-D1-04).
+    missing: no Linear issue; findings F-D1-04
+    note: >-
+      Drawn on the states choosing and filtered and on the nodes countsLine and sessionFilter, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: read-a-handin-file-or-hear-why-not
     need: >-
-      A file a talebe handed in is downloaded by the course team, and the download is audited before it is sent; where the store cannot give it, the
-      person is told why with their place kept (the local stack always refuses with "Dosyalara şu an ulaşılamıyor").
-    drawn: [downloading, reloading, fileLink, toastFileUnavailable, handedInFile]
-    built:
-      - action: medaris.api:downloadCourseSubmissionFile
-      - action: medaris.api:webDownloadCourseSubmissionFile
-      - route: apps/nazar/app/api/files/courses/[courseId]/submissions/[fileId]/route.ts:12
-    walked:
-      - replay: reviews
-      - replay: draft
+      A file a talebe handed in is downloaded by the course team, and the download is audited before it is sent; where the store
+      cannot give it, the person is told why with their place kept (the local stack always refuses with "Dosyalara şu an
+      ulaşılamıyor").
+    evidence:
+      - state: downloading
+      - state: reloading
+      - node: fileLink
+      - node: toastFileUnavailable
+      - node: handedInFile
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:318
+      - source: "apps/nazar/app/api/files/courses/[courseId]/submissions/[fileId]/route.ts:12"
+      - scenario: reviews
+      - scenario: draft
 
   - id: a-served-download-is-saved
     need: >-
-      A file that the store gives is saved by the browser and the page stays as it was, from the list and from the dialog, for a talebe's file and for a
-      file of a review.
-    drawn: [downloading, dialogHandInDownload, dialogReviewDownload]
-    built:
-      - action: medaris.api:downloadCourseSubmissionReviewFile
-      - route: libs/services/src/file-proxy/file-proxy.ts:373
+      A file that the store gives is saved by the browser and the page stays as it was, from the list and from the dialog, for a
+      talebe's file and for a file of a review.
+    evidence:
+      - state: downloading
+      - state: dialogHandInDownload
+      - state: dialogReviewDownload
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:441
+      - source: libs/services/src/file-proxy/file-proxy.ts:373
 
   - id: a-refused-download-keeps-the-page
     need: >-
-      A refused download from the dialog does not close it and does not throw away the note typed in it; the reason is told where the person is
-      (NHWREV-1, decision D1; nazar.files.download asks the same of the list's link).
-    drawn: [dialogHandInDownload, dialogReviewDownload, reloading]
-    missing: none
+      A refused download from the dialog does not close it and does not throw away the note typed in it; the reason is told where
+      the person is (NHWREV-1, decision D1; nazar.files.download asks the same of the list's link).
+    missing: no Linear issue; findings NHWREV-1
+    note: >-
+      Drawn on the states dialogHandInDownload, dialogReviewDownload and reloading, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: write-and-send-the-review
     need: >-
-      The course team writes a note to the talebe, sends it, and the talebe is told; the row says it is reviewed, who sent it and when; sending again
-      replaces the note and tells the talebe again. A review needs a note or a file.
-    drawn: [reviewing, reviewingEmpty, sending, sentToTalebe, submitFirst, submitAgain, badgeSent, sentBy, toastSent, a-review-is-sent-only-with-a-note-or-a-file]
-    built:
-      - action: medaris.api:sendSubmissionReview
-      - route: apps/nazar/features/homework/components/review-dialog.tsx:152
-    walked:
-      - replay: reviews
-      - replay: draft
-      - replay: sent
-      - replay: changed
-      - replay: granted
+      The course team writes a note to the talebe, sends it, and the talebe is told; the row says it is reviewed, who sent it and
+      when; sending again replaces the note and tells the talebe again. A review needs a note or a file.
+    evidence:
+      - state: reviewing
+      - state: reviewingEmpty
+      - state: sending
+      - state: sentToTalebe
+      - node: submitFirst
+      - node: submitAgain
+      - node: badgeSent
+      - node: sentBy
+      - node: toastSent
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:344
+      - source: apps/nazar/features/homework/components/review-dialog.tsx:152
+      - scenario: reviews
+      - scenario: draft
+      - scenario: sent
+      - scenario: changed
+      - scenario: granted
+        binding: graphs/nazar/homework/review/binding.dersNazir.yaml
+    note: Also drawn as the assertion a-review-is-sent-only-with-a-note-or-a-file.
 
   - id: a-changed-handin-is-told
-    need: >-
-      A hand-in that the talebe changed after the last review is marked, and counted among those awaiting a review.
-    drawn: [badgeChanged, awaitingBadge, sentNote]
-    built:
-      - route: apps/nazar/features/homework/homework.ts:47
-    walked:
-      - replay: changed
+    need: A hand-in that the talebe changed after the last review is marked, and counted among those awaiting a review.
+    evidence:
+      - node: badgeChanged
+      - node: awaitingBadge
+      - node: sentNote
+      - source: apps/nazar/features/homework/homework.ts:47
+      - scenario: changed
 
   - id: return-corrected-files-with-the-review
     need: >-
-      The course team attaches up to five files to a review (the talebe's work corrected, or anything else), sees them listed, follows them and removes
-      them; the talebe sees them when the review is sent.
-    drawn: [uploadPanel, removing, reviewFileLink, removeFile, filesEmptyLine, uploadButton]
-    built:
-      - action: medaris.api:addSubmissionReviewFile
-      - action: medaris.api:deleteSubmissionReviewFile
-      - route: apps/nazar/features/homework/components/review-dialog.tsx:278
-    walked:
-      - replay: draft
-      - replay: sent
+      The course team attaches up to five files to a review (the talebe's work corrected, or anything else), sees them listed,
+      follows them and removes them; the talebe sees them when the review is sent.
+    evidence:
+      - state: uploadPanel
+      - state: removing
+      - node: reviewFileLink
+      - node: removeFile
+      - node: filesEmptyLine
+      - node: uploadButton
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:387
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:411
+      - source: apps/nazar/features/homework/components/review-dialog.tsx:278
+      - scenario: draft
+      - scenario: sent
 
   - id: a-file-is-uploaded-and-listed
     need: >-
-      A file chosen in the panel is stored at once, shown in the review's list and told in a toast; the sixth file, a file of the wrong type and a
-      failing store each say what is wrong.
-    drawn: [uploading, uploadPanel, toastUploaded, alertNoStorage, alertType, alertGeneric]
-    built:
-      - action: medaris.api:addSubmissionReviewFile
-      - action: medaris.api:webAddSubmissionReviewFile
-      - route: apps/nazar/app/api/files/courses/[courseId]/reviews/[submissionId]/route.ts:17
+      A file chosen in the panel is stored at once, shown in the review's list and told in a toast; the sixth file, a file of the
+      wrong type and a failing store each say what is wrong.
+    evidence:
+      - state: uploading
+      - state: uploadPanel
+      - node: toastUploaded
+      - node: alertNoStorage
+      - node: alertType
+      - node: alertGeneric
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:387
+      - source: "apps/nazar/app/api/files/courses/[courseId]/reviews/[submissionId]/route.ts:17"
 
   - id: file-changes-say-who-sees-them
     need: >-
-      The dialog and the upload panel say when a file added or removed reaches the talebe at once (a review already sent), instead of saying that the
-      talebe sees the files when the review is sent (NHWREV-2, decision D2).
-    drawn: [panelNote, sentNote, uploading, removing]
-    missing: none
+      The dialog and the upload panel say when a file added or removed reaches the talebe at once (a review already sent), instead
+      of saying that the talebe sees the files when the review is sent (NHWREV-2, decision D2).
+    missing: no Linear issue; findings NHWREV-2
+    note: >-
+      Drawn on the states uploading and removing and on the nodes panelNote and sentNote, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-sent-review-is-never-emptied
     need: >-
-      Removing the last file of a sent review that has no note is refused or asked about, so that no review reads "Değerlendirildi" over nothing
-      (NHWREV-3, HWREVIEW-1 of the talebe's page); the row of a review that was never sent and has lost its last file reads "Değerlendirilmedi" again
-      (NHWREV-7).
-    drawn: [removing, badgeSent, badgeDraft]
-    missing: none
+      Removing the last file of a sent review that has no note is refused or asked about, so that no review reads
+      "Değerlendirildi" over nothing (NHWREV-3, HWREVIEW-1 of the talebe's page); the row of a review that was never sent and has
+      lost its last file reads "Değerlendirilmedi" again (NHWREV-7).
+    missing: no Linear issue; findings NHWREV-3, HWREVIEW-1, NHWREV-7
+    note: >-
+      Drawn on the state removing and on the nodes badgeSent and badgeDraft, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-review-limit-is-worded
     need: >-
-      The sixth file of a review is told as "en çok 5 dosya" and "Dosya yükle" is closed at five, instead of the generic "Bir şeyler ters gitti"
-      (NHWREV-4).
-    drawn: [uploadPanel, alertGeneric, uploadButton]
-    missing: none
+      The sixth file of a review is told as "en çok 5 dosya" and "Dosya yükle" is closed at five, instead of the generic "Bir
+      şeyler ters gitti" (NHWREV-4).
+    missing: no Linear issue; findings NHWREV-4
+    note: >-
+      Drawn on the state uploadPanel and on the nodes alertGeneric and uploadButton, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-typed-note-is-kept
     need: >-
-      A note typed in the dialog survives closing it, as a draft on the review or by a question before it is thrown away (NHWREV-6, decision D3); and
-      closing is not offered while a call runs without saying why (NHWREV-5).
-    drawn: [reviewing, closeIcon, closeFooter, sending]
-    missing: none
+      A note typed in the dialog survives closing it, as a draft on the review or by a question before it is thrown away
+      (NHWREV-6, decision D3); and closing is not offered while a call runs without saying why (NHWREV-5).
+    missing: no Linear issue; findings NHWREV-6, NHWREV-5
+    note: >-
+      Drawn on the states reviewing and sending and on the nodes closeIcon and closeFooter, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-send-is-told
     need: >-
-      A review, a removal or a download that fails is told in words that fit the failure, and the dialog keeps what was typed; a call that cannot reach
-      the server ends and says so (F-D1-20).
-    drawn: [sending, removing, toastSaveEmpty, toastSaveRefused, toastSaveFailed]
-    built:
-      - route: apps/nazar/features/homework/components/review-dialog.tsx:140
+      A review, a removal or a download that fails is told in words that fit the failure, and the dialog keeps what was typed; a
+      call that cannot reach the server ends and says so (F-D1-20).
+    evidence:
+      - state: sending
+      - state: removing
+      - node: toastSaveEmpty
+      - node: toastSaveRefused
+      - node: toastSaveFailed
+      - source: apps/nazar/features/homework/components/review-dialog.tsx:140
 
   - id: the-dialog-works-for-keyboard-and-screen-reader
     need: >-
-      The review dialog's names, focus and errors work for a keyboard and a screen-reader user: the button's name holds its visible words, the focus goes
-      to a sensible place on open, after a removal and after the panel opens or folds, and the field's error is announced (F-D1-09, F-D1-10, F-D1-31,
-      F-C-course-a-14).
-    drawn: [openReview, reviewDialog, removeFile, uploadButton, noteEmpty, noNoteDash]
-    missing: none
+      The review dialog's names, focus and errors work for a keyboard and a screen-reader user: the button's name holds its
+      visible words, the focus goes to a sensible place on open, after a removal and after the panel opens or folds, and the
+      field's error is announced (F-D1-09, F-D1-10, F-D1-31, F-C-course-a-14).
+    missing: no Linear issue; findings F-D1-09, F-D1-10, F-D1-31
+    note: >-
+      Drawn on the nodes openReview, reviewDialog, removeFile, uploadButton, noteEmpty and noNoteDash, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

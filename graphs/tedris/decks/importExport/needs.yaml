@@ -1,183 +1,227 @@
-# What must exist for a deck's author to move cards in and out of their deck as files: tedris.decks.importExport, written on 15 Nov 2026 in the
-# format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story (FLOWS.md) and from what a person using Excel
-# in Turkey would expect; none is read off what the page does today. No planned feature (P-nn) names the import or the export.
-# Nothing was replayed in the writing phase: `walked` names the e2e check (decks#20) and no replay, because none has passed.
-# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
-#   missing:  export-in-both-formats (DCK-21), export-failure-is-told (DCK-21), template-links-say-what-they-are (DCK-23),
-#             file-needs-are-said (IMPEXP-2), refusals-are-told-by-cause (DCK-20), csv-is-read-by-its-name (IMPEXP-1),
-#             csv-survives-excel (IMPEXP-3), a-cell-is-told-as-what-it-is (IMPEXP-4), closing-while-sending-is-honest (IMPEXP-5),
-#             export-file-keeps-the-name (IMPEXP-6), the-dialog-is-accessible (DCK-06, DCK-07, DCK-19, DCK-24)
-#   unwalked: template-in-both-formats (no e2e; deck-file-routes.spec.ts is a unit spec; the replay's probes are written, not run),
-#             limits-are-held (5 MB, 1000 rows and the file types are the API's: no e2e, probes written, not run)
-#   partly walked: author-only-moves-cards (decks#21 walks the page's forbidden screen; the routes' own refusal of a stranger is a unit spec)
+schema: delurio-graph/0
 kind: needs
-flow: tedris.decks.importExport
+id: tedris.decks.importExport
 status: proposed
+summary: >-
+  What must exist for a deck's author to move cards in and out of their deck as files: tedris.decks.importExport. Each need is
+  what the product must do, from the flow's story (FLOWS.md) and from what a person using Excel in Turkey would expect; none is
+  read off what the page does today. No planned feature (P-nn) names the import or the export. Nothing was replayed in the writing
+  phase: `walked` names the e2e check (decks#20) and no replay, because none has passed.
 
 needs:
   - id: export-the-deck
     need: >-
-      The author can save the whole deck as a spreadsheet file, named after the deck, whose three columns are the ones the import reads, so that
-      what is exported can be edited and imported again.
-    drawn: [cards, exporting, exportLink]
-    built:
-      - action: medaris.api:webExportCards
-      - action: medaris.api:exportCards
-      - route: apps/tedris/features/flashcards/components/deck-cards-page.tsx:83
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#20'
-    # replay: scenario exportThenImport has the probes (the xlsx is a zip named Aktarma_denemesi.xlsx; the CSV has the header and the deck's cards); not run
+      The author can save the whole deck as a spreadsheet file, named after the deck, whose three columns are the ones the import
+      reads, so that what is exported can be edited and imported again.
+    evidence:
+      - state: cards
+      - state: exporting
+      - node: exportLink
+      - source: "apps/tedris/app/api/decks/[id]/export/route.ts:7"
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:411
+      - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:83
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "'Dışa aktar' downloads the deck and 'İçe aktar' adds the rows of a file"
+    note: >-
+      replay: scenario exportThenImport has the probes (the xlsx is a zip named Aktarma_denemesi.xlsx; the CSV has the header and
+      the deck's cards); not run
 
   - id: export-in-both-formats
-    need: >-
-      The author can choose between an Excel file and a CSV when saving the deck, as they can for the template.
-    drawn: [exportLink]
-    missing: none # DCK-21: the route gives a CSV (export/route.ts:12), the page offers the xlsx alone; no Linear issue
+    need: The author can choose between an Excel file and a CSV when saving the deck, as they can for the template.
+    missing: "DCK-21: the route gives a CSV (export/route.ts:12), the page offers the xlsx alone; no Linear issue"
+    note: >-
+      Drawn on the node exportLink, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: export-failure-is-told
     need: >-
-      When the deck cannot be saved (it is gone, the session has ended, too many requests in a short time, the service is down) the person is told so
-      on the page, in a sentence, and not left with a download that holds an error.
-    drawn: [exporting]
-    missing: none # DCK-21 (decision D1): a refusal is a JSON body behind <a download>; no Linear issue
+      When the deck cannot be saved (it is gone, the session has ended, too many requests in a short time, the service is down)
+      the person is told so on the page, in a sentence, and not left with a download that holds an error.
+    missing: "DCK-21 (decision D1): a refusal is a JSON body behind <a download>; no Linear issue"
+    note: >-
+      Drawn on the state exporting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: export-file-keeps-the-name
     need: >-
-      The saved file's name is the deck's name as the person wrote it, with Turkish and Arabic letters, and not underscores in their place.
-    drawn: [exporting]
-    missing: none # IMPEXP-6: the name keeps only a-z, 0-9, "_" and "-" (excel.service.ts:106); no Linear issue
+      The saved file's name is the deck's name as the person wrote it, with Turkish and Arabic letters, and not underscores in
+      their place.
+    missing: "IMPEXP-6: the name keeps only a-z, 0-9, \"_\" and \"-\" (excel.service.ts:106); no Linear issue"
+    note: >-
+      Drawn on the state exporting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: template-in-both-formats
     need: >-
-      The author can take a template, as an Excel file or a CSV, with the three header names and two example rows, the same for every deck, so
-      that they know what to fill in.
-    drawn: [dialog, sampling, sampleXlsx, sampleCsv]
-    built:
-      - action: medaris.api:webDownloadCardSample
-      - action: medaris.api:downloadCardSample
-      - route: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:136
-    # walked: nothing. No e2e opens the dialog's links (decks#20 does not follow them); test/deck-file-routes.spec.ts is the routes' unit spec.
+      The author can take a template, as an Excel file or a CSV, with the three header names and two example rows, the same for
+      every deck, so that they know what to fill in.
+    evidence:
+      - state: dialog
+      - state: sampling
+      - node: sampleXlsx
+      - node: sampleCsv
+      - source: apps/tedris/app/api/decks/sample/route.ts:5
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:386
+      - source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:136
+    note: >-
+      walked: nothing. No e2e opens the dialog's links (decks#20 does not follow them); test/deck-file-routes.spec.ts is the
+      routes' unit spec.
 
   - id: template-links-say-what-they-are
     need: >-
-      The two links name what they give (the template, as Excel or as CSV), in words from the catalog, so that a person who skips the sentence before
-      them and a screen reader that lists links still know.
-    drawn: [sampleXlsx, sampleCsv]
-    missing: none # DCK-23: "Excel (.xlsx)" and "CSV (.csv)" are literals in the code, in no catalog
+      The two links name what they give (the template, as Excel or as CSV), in words from the catalog, so that a person who skips
+      the sentence before them and a screen reader that lists links still know.
+    missing: "no Linear issue; DCK-23: \"Excel (.xlsx)\" and \"CSV (.csv)\" are literals in the code, in no catalog"
+    note: >-
+      Drawn on the nodes sampleXlsx and sampleCsv, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: import-a-clean-file
     need: >-
-      The author can give a CSV or Excel file whose rows are right, and all its rows become cards of the deck at once; they are told how many
-      were added and see them in the list at once.
-    drawn: [dialog, importing, imported, importButton, submit, importedText, cardsTable]
-    built:
-      - action: medaris.api:webImportCards
-      - action: medaris.api:importCards
-      - route: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:62
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#20'
-    # replay: scenario exportThenImport, up to CHOOSE_FILE (the engine cannot put a file in a file input); not run
+      The author can give a CSV or Excel file whose rows are right, and all its rows become cards of the deck at once; they are
+      told how many were added and see them in the list at once.
+    evidence:
+      - state: dialog
+      - state: importing
+      - state: imported
+      - node: importButton
+      - node: submit
+      - node: importedText
+      - node: cardsTable
+      - source: "apps/tedris/app/api/decks/[id]/import/route.ts:7"
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+      - source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:62
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "'Dışa aktar' downloads the deck and 'İçe aktar' adds the rows of a file"
+    note: "replay: scenario exportThenImport, up to CHOOSE_FILE (the engine cannot put a file in a file input); not run"
 
   - id: import-adds-nothing-when-a-row-is-bad
     need: >-
-      A file with a bad row adds no card at all, not the good rows either, so that a file can be fixed and sent again without a half-filled deck.
-    drawn: [importing, dialog, bad-file-adds-nothing, rowAlert]
-    built:
-      - action: medaris.api:importCards
-      - route: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:63
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#20'
+      A file with a bad row adds no card at all, not the good rows either, so that a file can be fixed and sent again without a
+      half-filled deck.
+    evidence:
+      - state: importing
+      - state: dialog
+      - node: rowAlert
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+      - source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:63
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "'Dışa aktar' downloads the deck and 'İçe aktar' adds the rows of a file"
+    note: Also drawn as the assertion bad-file-adds-nothing.
 
   - id: bad-rows-are-named
     need: >-
-      Every bad row is listed with its row number as the spreadsheet shows it and with what is wrong in it, all together, in the person's words.
-    drawn: [rowAlert, rowAlertTitle, rowItem]
-    built:
-      - route: apps/tedris/features/flashcards/deck-model.ts:285
-      - action: medaris.api:importCards
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#20'
+      Every bad row is listed with its row number as the spreadsheet shows it and with what is wrong in it, all together, in the
+      person's words.
+    evidence:
+      - node: rowAlert
+      - node: rowAlertTitle
+      - node: rowItem
+      - source: apps/tedris/features/flashcards/deck-model.ts:285
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "'Dışa aktar' downloads the deck and 'İçe aktar' adds the rows of a file"
 
   - id: no-file-says-so
     need: Pressing the send button with no file chosen sends nothing and says that a file is needed.
-    drawn: [dialog, fileError, a-file-is-needed-to-send]
-    built:
-      - route: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:66
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#20'
+    evidence:
+      - state: dialog
+      - node: fileError
+      - source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:66
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "'Dışa aktar' downloads the deck and 'İçe aktar' adds the rows of a file"
+    note: Also drawn as the assertion a-file-is-needed-to-send.
 
   - id: file-needs-are-said
     need: >-
-      The dialog says what the file must hold: the three column names, the two card types, at most 1000 rows and at most 5 MB, and a file with more
-      rows is told as "too many rows", not as a bad row 1002.
-    drawn: [fileHelp, rowItem]
-    missing: none # IMPEXP-2 (decision D2); no Linear issue
+      The dialog says what the file must hold: the three column names, the two card types, at most 1000 rows and at most 5 MB, and
+      a file with more rows is told as "too many rows", not as a bad row 1002.
+    missing: IMPEXP-2 (decision D2); no Linear issue
+    note: >-
+      Drawn on the nodes fileHelp and rowItem, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: refusals-are-told-by-cause
     need: >-
-      A refusal that is not a bad row says why in a sentence of its own: no data rows, too large, not a spreadsheet, too many requests (and when to
-      try again), the deck is gone, the session has ended (and the person is sent to sign in).
-    drawn: [failedAlert, importing]
-    missing: none # DCK-20 (decision D2): every one of them is "Dosya içe aktarılamadı / Bir sorun oluştu. Yeniden dene."; no Linear issue
+      A refusal that is not a bad row says why in a sentence of its own: no data rows, too large, not a spreadsheet, too many
+      requests (and when to try again), the deck is gone, the session has ended (and the person is sent to sign in).
+    missing: >-
+      DCK-20 (decision D2): every one of them is "Dosya içe aktarılamadı / Bir sorun oluştu. Yeniden dene."; no Linear issue
+    note: >-
+      Drawn on the state importing and on the node failedAlert, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: csv-is-read-by-its-name
     need: >-
-      A CSV is read as a CSV whatever type the browser or the system gives it, and a file that cannot be opened is a refusal that says so, not a
-      server error.
-    drawn: [importing, failedAlert]
-    missing: none # IMPEXP-1 (decision D4): application/vnd.ms-excel reaches the workbook reader and answers 500; the domain records the same on importCards
+      A CSV is read as a CSV whatever type the browser or the system gives it, and a file that cannot be opened is a refusal that
+      says so, not a server error.
+    missing: >-
+      no Linear issue; IMPEXP-1 (decision D4): application/vnd.ms-excel reaches the workbook reader and answers 500; the domain
+      records the same on importCards
+    note: >-
+      Drawn on the state importing and on the node failedAlert, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: csv-survives-excel
     need: >-
-      A CSV that the template or the export gave opens in Excel with its Turkish and Arabic letters whole, and a CSV that Excel saves in a Turkish
-      locale (semicolons) imports.
-    drawn: [sampling, sampleCsv, importing]
-    missing: none # IMPEXP-3 (decision D4): no byte-order mark, commas only
+      A CSV that the template or the export gave opens in Excel with its Turkish and Arabic letters whole, and a CSV that Excel
+      saves in a Turkish locale (semicolons) imports.
+    missing: "no Linear issue; IMPEXP-3 (decision D4): no byte-order mark, commas only"
+    note: >-
+      Drawn on the states sampling and importing and on the node sampleCsv, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-cell-is-told-as-what-it-is
     need: >-
-      A cell that is a number, a date, a formula or formatted text is read as the text it shows, or told as "not text", and never as "empty".
-    drawn: [rowItem]
-    missing: none # IMPEXP-4: "must be a string" is worded "boş" (deck-model.ts:300)
+      A cell that is a number, a date, a formula or formatted text is read as the text it shows, or told as "not text", and never
+      as "empty".
+    missing: "no Linear issue; IMPEXP-4: \"must be a string\" is worded \"boş\" (deck-model.ts:300)"
+    note: >-
+      Drawn on the node rowItem, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: closing-while-sending-is-honest
     need: >-
-      Closing the dialog while the file is being sent either waits for the answer or stops the send, so that cards are never added after the person
-      said Vazgeç and a refusal is never lost.
-    drawn: [importing, abandoned, cancel, closeIcon]
-    missing: none # IMPEXP-5 (decision D3); the same family as DCK-30
+      Closing the dialog while the file is being sent either waits for the answer or stops the send, so that cards are never added
+      after the person said Vazgeç and a refusal is never lost.
+    missing: no Linear issue; IMPEXP-5 (decision D3); the same family as DCK-30
+    note: >-
+      Drawn on the states importing and abandoned and on the nodes cancel and closeIcon, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: limits-are-held
     need: >-
-      The API refuses a file over 5 MB, one that is not a spreadsheet and one with more than 1000 rows, before anything is written.
-    drawn: [importing, dialog]
-    built:
-      - action: medaris.api:importCards
-      - route: apps/tedrisat/src/flashcard/flashcard.controller.ts:488
-    # walked: nothing. No e2e sends such a file; the probes of deck-files.mjs (tooMany, empty) are written, not run.
+      The API refuses a file over 5 MB, one that is not a spreadsheet and one with more than 1000 rows, before anything is
+      written.
+    evidence:
+      - state: importing
+      - state: dialog
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:488
+    note: "walked: nothing. No e2e sends such a file; the probes of deck-files.mjs (tooMany, empty) are written, not run."
 
   - id: author-only-moves-cards
     need: >-
-      Only the deck's author can export and import its cards; a reader of the deck, course staff and a stranger are refused by the API and are not
-      offered the buttons.
-    drawn: [cards, exportLink, importButton]
-    built:
-      - action: medaris.api:exportCards
-      - action: medaris.api:importCards
-      - route: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:41"
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#21'
-    # decks#21 is the forbidden page of the cards address (tedris.decks.accessRefusals); the routes' own 403 and 404 are test/deck-file-routes.spec.ts, a unit spec
+      Only the deck's author can export and import its cards; a reader of the deck, course staff and a stranger are refused by the
+      API and are not offered the buttons.
+    evidence:
+      - state: cards
+      - node: exportLink
+      - node: importButton
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:411
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+      - source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:41"
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "somebody else's deck has no card list for them: the forbidden page"
+    note: >-
+      decks#21 is the forbidden page of the cards address (tedris.decks.accessRefusals); the routes' own 403 and 404 are
+      test/deck-file-routes.spec.ts, a unit spec
 
   - id: the-dialog-is-accessible
     need: >-
-      The import dialog starts with the focus on its file field, says that the field is required, announces "Bir dosya seç." when it appears and
-      describes itself in one short sentence.
-    drawn: [importDialog, fileField, fileError]
-    missing: none # DCK-06, DCK-07, DCK-19, DCK-24; no Linear issue
+      The import dialog starts with the focus on its file field, says that the field is required, announces "Bir dosya seç." when
+      it appears and describes itself in one short sentence.
+    missing: DCK-06, DCK-07, DCK-19, DCK-24; no Linear issue
+    note: >-
+      Drawn on the nodes importDialog, fileField and fileError, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).

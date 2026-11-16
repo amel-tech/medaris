@@ -1,138 +1,176 @@
-# What must exist for a talebe who opens a link or downloads a file from a course or a celse: tedris.files.download, written on 15 Nov 2026 in the
-# format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story (FLOWS.md) and the findings of the inventory;
-# none is read off what the page does today. planned.md names no feature of this flow.
+schema: delurio-graph/0
+kind: needs
+id: tedris.files.download
+status: proposed
+summary: >-
+  What must exist for a talebe who opens a link or downloads a file from a course or a celse: tedris.files.download. Each need is
+  what the product must do, from the flow's story (FLOWS.md) and the findings of the inventory; none is read off what the page
+  does today. planned.md names no feature of this flow.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): refusal-keeps-what-i-was-doing (none: WRT-10, FILES-3), refusal-reason-reaches-everyone (none: FILES-1),
-#                    refusal-is-announced-in-their-language (none: DSC-20, CRS-13), success-is-confirmed (none: FILES-2),
-#                    a-download-is-walked-to-its-end (none: the local stack has no file storage)
+# refusal-is-announced-in-their-language (none: DSC-20, CRS-13), success-is-confirmed (none: FILES-2),
+# a-download-is-walked-to-its-end (none: the local stack has no file storage)
 # Unwalked (code, and no web e2e and no replay that gets there): open-a-link-resource (the replay presses the link and does not follow the new
-#                    tab), download-a-file-resource and download-the-homework-files (the success needs storage; only unit specs and tedrisat's
-#                    e2e read it), session-over-goes-to-sign-in-and-back (the redirect is read with curl; the walk cannot end the browser's session)
+# tab), download-a-file-resource and download-the-homework-files (the success needs storage; only unit specs and tedrisat's
+# e2e read it), session-over-goes-to-sign-in-and-back (the redirect is read with curl; the walk cannot end the browser's session)
 #
 # `walked` names an e2e check as `file#n` where the inventory numbers it. The web e2e has NO check of a file (apps/tedris/e2e has no `fileError`
 # and no /api/files); tedrisat's API e2e (apps/tedrisat/test/e2e/resource-files.e2e.spec.ts, lesson-assignments.e2e.spec.ts) has no inventory
 # number: it is named by its test title and line. A `replay:` names a scenario of binding.yaml or binding.forbidden.yaml as it is BOUND: none was
 # run in this phase, so the walk phase confirms each or takes it off. The unit specs that pin the pieces are apps/tedris/test/file-routes.spec.ts,
 # file-error-notice.spec.ts, course-resources.spec.ts and libs/services/test/file-proxy.spec.ts, file-rules.spec.ts.
-kind: needs
-flow: tedris.files.download
-status: proposed
 
 needs:
   - id: open-a-link-resource
     need: >-
-      A talebe who reads a course or a celse opens a resource that is a link at its own address, in a new tab, without leaving the page, and is
-      told before pressing that it opens in a new tab. Only an address that starts with http or https is a link.
-    drawn: [courseListed, celseListed]
-    built:
-      - route: apps/tedris/features/courses/components/course-resources.tsx:159
-    walked:
-      - replay: celseUnavailable
+      A talebe who reads a course or a celse opens a resource that is a link at its own address, in a new tab, without leaving the
+      page, and is told before pressing that it opens in a new tab. Only an address that starts with http or https is a link.
+    evidence:
+      - state: courseListed
+      - state: celseListed
+      - source: apps/tedris/features/courses/components/course-resources.tsx:159
+      - scenario: celseUnavailable
 
   - id: download-a-file-resource
     need: >-
-      A talebe who holds a seat downloads a file that the course team added as a resource of the course or of a celse, and it is saved under its
-      own name as an attachment, whatever its type says it is; the page stays where it is. The type and the size are on the row before it is
-      pressed. A talebe never holds a link they cannot follow: the row of a person who may not read the content has no link.
-    drawn: [courseListed, celseListed, followingCourseFile, followingLessonFile]
-    built:
-      - action: medaris.api:webDownloadCourseResourceFile
-      - action: medaris.api:webDownloadLessonResourceFile
-      - route: apps/tedris/features/courses/components/course-resources.tsx:124
-    walked:
-      - e2e: apps/tedrisat/test/e2e/resource-files.e2e.spec.ts
-        check: 'streams it to the enrolled talebe and the course team as an attachment, with the headers that keep it one (:353, the API, not the web)'
+      A talebe who holds a seat downloads a file that the course team added as a resource of the course or of a celse, and it is
+      saved under its own name as an attachment, whatever its type says it is; the page stays where it is. The type and the size
+      are on the row before it is pressed. A talebe never holds a link they cannot follow: the row of a person who may not read
+      the content has no link.
+    evidence:
+      - state: courseListed
+      - state: celseListed
+      - state: followingCourseFile
+      - state: followingLessonFile
+      - source: "apps/tedris/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:11"
+      - source: "apps/tedris/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts:10"
+      - source: apps/tedris/features/courses/components/course-resources.tsx:124
+      - test: apps/tedrisat/test/e2e/resource-files.e2e.spec.ts
+    note: >-
+      resource-files.e2e.spec.ts streams it to the enrolled talebe and the course team as an attachment, with the headers that
+      keep it one (:353, the API, not the web)
 
   - id: download-the-homework-files
     need: >-
-      A talebe who holds a seat downloads the files the müderris set with the homework of a celse, from "Ödev", on the same terms as a resource's
-      file; the files the talebe handed in themselves and the ones the course team returned with a review are the homework flows' own.
-    drawn: [celseListed, followingAssignmentFile]
-    built:
-      - action: medaris.api:webDownloadLessonAssignmentFile
-      - route: apps/tedris/features/courses/components/session-homework.tsx:848
-    walked:
-      - e2e: apps/tedrisat/test/e2e/lesson-assignments.e2e.spec.ts
-        check: 'are uploaded under the homework, never as a resource, and served to a content reader as an attachment (:251, the API, not the web)'
+      A talebe who holds a seat downloads the files the müderris set with the homework of a celse, from "Ödev", on the same terms
+      as a resource's file; the files the talebe handed in themselves and the ones the course team returned with a review are the
+      homework flows' own.
+    evidence:
+      - state: celseListed
+      - state: followingAssignmentFile
+      - source: "apps/tedris/app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts:11"
+      - source: apps/tedris/features/courses/components/session-homework.tsx:848
+      - test: apps/tedrisat/test/e2e/lesson-assignments.e2e.spec.ts
+    note: >-
+      lesson-assignments.e2e.spec.ts are uploaded under the homework, never as a resource, and served to a content reader as an
+      attachment (:251, the API, not the web)
 
   - id: refusal-says-why-on-the-page
     need: >-
-      When a download is refused the talebe is brought back to the page they were on and told, once and in words, why: they may not download it,
-      it is gone, files cannot be reached now and should be tried again later, or something went wrong. The address is cleaned, so a reload or a
-      copied link does not say it again, and the notice stays until the talebe closes it.
-    drawn: [onThePage, courseListed, celseListed, namesOnly, fileErrorToast, reasonForbidden, reasonNotFound, reasonUnavailable, reasonFailed, toastClose]
-    built:
-      - route: libs/services/src/file-proxy/file-proxy.ts:351
-      - route: apps/tedris/features/courses/components/file-error-notice.tsx:26
-    walked:
-      - replay: celseUnavailable
-      - replay: courseUnavailable
-      - replay: courseForbidden
+      When a download is refused the talebe is brought back to the page they were on and told, once and in words, why: they may
+      not download it, it is gone, files cannot be reached now and should be tried again later, or something went wrong. The
+      address is cleaned, so a reload or a copied link does not say it again, and the notice stays until the talebe closes it.
+    evidence:
+      - state: onThePage
+      - state: courseListed
+      - state: celseListed
+      - state: namesOnly
+      - node: fileErrorToast
+      - node: reasonForbidden
+      - node: reasonNotFound
+      - node: reasonUnavailable
+      - node: reasonFailed
+      - node: toastClose
+      - source: libs/services/src/file-proxy/file-proxy.ts:351
+      - source: apps/tedris/features/courses/components/file-error-notice.tsx:26
+      - scenario: celseUnavailable
+      - scenario: courseUnavailable
+      - scenario: courseForbidden
+        binding: graphs/tedris/files/download/binding.forbidden.yaml
 
   - id: refusal-keeps-what-i-was-doing
     need: >-
-      A refused download does not reload the page: the focus, the tab the talebe chose and what they were typing in a note, a question or the
-      homework's note stay as they were, and the reason is said in the page.
-    drawn: [onThePage, courseListed, celseListed]
-    missing: none # WRT-10, FILES-3
+      A refused download does not reload the page: the focus, the tab the talebe chose and what they were typing in a note, a
+      question or the homework's note stay as they were, and the reason is said in the page.
+    missing: no Linear issue; WRT-10, FILES-3
+    note: >-
+      Drawn on the states onThePage, courseListed and celseListed, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: refusal-reason-reaches-everyone
     need: >-
-      A talebe whose seat was taken away while the page was open, and who then follows a file link, is told why nothing was downloaded, on the
-      celse page as on the course page, and the page does not keep a reason in its address.
-    drawn: [celse_locked]
-    missing: none # FILES-1
+      A talebe whose seat was taken away while the page was open, and who then follows a file link, is told why nothing was
+      downloaded, on the celse page as on the course page, and the page does not keep a reason in its address.
+    missing: no Linear issue; FILES-1
+    note: >-
+      Drawn on the state celse_locked, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: refusal-is-announced-in-their-language
     need: >-
-      The notice of a refused download is announced to a screen-reader user as an error, at once, in a region that is named in the page's
-      language.
-    drawn: [fileErrorToast]
-    missing: none # DSC-20, CRS-13
+      The notice of a refused download is announced to a screen-reader user as an error, at once, in a region that is named in the
+      page's language.
+    missing: no Linear issue; DSC-20, CRS-13
+    note: >-
+      Drawn on the node fileErrorToast, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: success-is-confirmed
     need: >-
-      A talebe who presses a file's link is told on the page that the download started and, where the browser leaves it to the page, which file it is.
-    drawn: [onThePage]
-    missing: none # FILES-2
+      A talebe who presses a file's link is told on the page that the download started and, where the browser leaves it to the
+      page, which file it is.
+    missing: no Linear issue; FILES-2
+    note: >-
+      Drawn on the state onThePage, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: visitor-sees-names-only
     need: >-
-      A person who may not read the content (a visitor, a person with no seat, a waiting or removed talebe) sees the names of the resources and
-      who opens them, never an address or a file; the page does not draw a link they cannot follow.
-    drawn: [namesOnly, nameOfCourseLink, nameOfCourseFile, resourcesLocked]
-    built:
-      - route: apps/tedris/features/courses/components/course-resources.tsx:134
-      - route: apps/tedris/features/courses/components/course-resources.tsx:208
-    walked:
-      - e2e: apps/tedrisat/test/e2e/resource-files.e2e.spec.ts
-        check: 'gives the file and its route to a content reader, and only the name to everyone else (:332, the API, not the web)'
-      - replay: visitor
+      A person who may not read the content (a visitor, a person with no seat, a waiting or removed talebe) sees the names of the
+      resources and who opens them, never an address or a file; the page does not draw a link they cannot follow.
+    evidence:
+      - state: namesOnly
+      - node: nameOfCourseLink
+      - node: nameOfCourseFile
+      - node: resourcesLocked
+      - source: apps/tedris/features/courses/components/course-resources.tsx:134
+      - source: apps/tedris/features/courses/components/course-resources.tsx:208
+      - test: apps/tedrisat/test/e2e/resource-files.e2e.spec.ts
+      - scenario: visitor
+    note: >-
+      resource-files.e2e.spec.ts gives the file and its route to a content reader, and only the name to everyone else (:332, the
+      API, not the web)
 
   - id: session-over-goes-to-sign-in-and-back
     need: >-
-      A person whose session has ended, or whose token tedrisat refused, who follows a file link is sent to sign in and comes back to the page they
-      were on, and is not shown a JSON body or a blank page.
-    drawn: [sent_to_sign_in]
-    built:
-      - route: libs/services/src/file-proxy/file-proxy.ts:360
-    walked:
-      - replay: visitor
+      A person whose session has ended, or whose token tedrisat refused, who follows a file link is sent to sign in and comes back
+      to the page they were on, and is not shown a JSON body or a blank page.
+    evidence:
+      - state: sent_to_sign_in
+      - source: libs/services/src/file-proxy/file-proxy.ts:360
+      - scenario: visitor
 
   - id: address-with-no-page-explains-itself
     need: >-
-      A file address opened with no page of the app behind it (pasted into a tab, sent in a mail) answers a sentence in the three languages and the
-      refusal's own status, not JSON; a visitor is sent to sign in.
-    drawn: [followingCourseFile, followingLessonFile, followingAssignmentFile, sent_to_sign_in]
-    built:
-      - route: libs/services/src/file-proxy/file-proxy.ts:328
-    walked:
-      - replay: celseUnavailable
-      - replay: visitor
+      A file address opened with no page of the app behind it (pasted into a tab, sent in a mail) answers a sentence in the three
+      languages and the refusal's own status, not JSON; a visitor is sent to sign in.
+    evidence:
+      - state: followingCourseFile
+      - state: followingLessonFile
+      - state: followingAssignmentFile
+      - state: sent_to_sign_in
+      - source: libs/services/src/file-proxy/file-proxy.ts:328
+      - scenario: celseUnavailable
+      - scenario: visitor
 
   - id: a-download-is-walked-to-its-end
     need: >-
-      The local stack has file storage, so that a download is walked to its end (the file saved under its name, with the headers that keep it an
-      attachment) and not only to the refusal that no storage gives.
-    drawn: [followingCourseFile, followingLessonFile, followingAssignmentFile]
-    missing: none
+      The local stack has file storage, so that a download is walked to its end (the file saved under its name, with the headers
+      that keep it an attachment) and not only to the refusal that no storage gives.
+    missing: no Linear issue; the local stack has no file storage
+    note: >-
+      Drawn on the states followingCourseFile, followingLessonFile and followingAssignmentFile, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

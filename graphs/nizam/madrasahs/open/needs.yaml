@@ -1,178 +1,227 @@
-# What must exist for the başnazım (and a Medaris nazımı who holds platform.madrasah_create) in nizam.madrasahs.open: the flow's product list,
-# written from the flow's story and the open decisions, never from what the page does today. A need that is not met is a gap in
-# graphs/needs.gaps.yaml (the orchestrator merges it; this file does not edit it).
+schema: delurio-graph/0
+kind: needs
+id: nizam.madrasahs.open
+status: proposed
+summary: >-
+  What must exist for the başnazım (and a Medaris nazımı who holds platform.madrasah_create) in nizam.madrasahs.open: the flow's
+  product list, written from the flow's story and the open decisions, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Gaps of this file, for that merge:
-#   missing:   the-form-says-what-is-missing, lookup-only-on-request, a-search-answer-is-always-said, a-refusal-is-announced,
-#              the-refusal-of-self-naming-says-what-happened, an-empty-short-name-is-explained, the-head-is-an-account-of-the-realm,
-#              the-list-names-every-head
-#   unwalked:  an-empty-short-name-is-made-from-the-name, a-medaris-nazim-with-the-permission-opens, a-medaris-nazim-cannot-name-themselves,
-#              a-person-who-may-not-open-is-told, a-directory-that-does-not-answer-is-said
-#              (the first three have a replay scenario written, `noHandle`, `medarisNazim` and `selfNamed`; none has been run, since the
-#              owner's word is that replays come once, at the end; they leave this list when they pass. The last two cannot be driven on the
-#              local stack, and no e2e covers them)
-kind: needs
-flow: nizam.madrasahs.open
-status: proposed
+# missing:   the-form-says-what-is-missing, lookup-only-on-request, a-search-answer-is-always-said, a-refusal-is-announced,
+# the-refusal-of-self-naming-says-what-happened, an-empty-short-name-is-explained, the-head-is-an-account-of-the-realm,
+# the-list-names-every-head
+# unwalked:  an-empty-short-name-is-made-from-the-name, a-medaris-nazim-with-the-permission-opens, a-medaris-nazim-cannot-name-themselves,
+# a-person-who-may-not-open-is-told, a-directory-that-does-not-answer-is-said
+# (the first three have a replay scenario written, `noHandle`, `medarisNazim` and `selfNamed`; none has been run, since the
+# owner's word is that replays come once, at the end; they leave this list when they pass. The last two cannot be driven on the
+# local stack, and no e2e covers them)
 
 needs:
   - id: open-a-medrese-with-its-head
     need: >-
-      The başnazım opens a medrese in one step: a name, a short name that may be left out, a description and one başmüderris. The medrese
-      and the başmüderris's role exist together or not at all, the başmüderris can manage the medrese from Nazar at once, and the
-      Medreseler list shows the new medrese as Etkin with its head.
-    drawn: [form, opening, opened, never-without-a-head]
-    built:
-      - action: medaris.api:createMadrasah
-      - route: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:74
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#7'
-      # replay: opened (written, not run)
+      The başnazım opens a medrese in one step: a name, a short name that may be left out, a description and one başmüderris. The
+      medrese and the başmüderris's role exist together or not at all, the başmüderris can manage the medrese from Nazar at once,
+      and the Medreseler list shows the new medrese as Etkin with its head.
+    evidence:
+      - state: form
+      - state: opening
+      - state: opened
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:399
+      - source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:74
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/08 — opening a medrese lists it, writes each search to the audit log, and a taken short name answers under its field (criteria 4 to 6)"
+    note: |-
+      Also drawn as the assertion never-without-a-head.
+      replay: opened (written, not run)
 
   - id: find-the-head-by-exact-email
     need: >-
-      The başmüderris is found by the exact e-mail address of an account in the realm, even one that has never opened the app; an address
-      with no account is said in words, and every search is written to the audit log, found or not.
-    drawn: [looking, form]
-    built:
-      - action: medaris.api:lookupUser
-      - route: apps/nizam/features/madrasahs/components/head-picker.tsx:53
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#6'
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#7'
-      # replay: notFound (written, not run)
+      The başmüderris is found by the exact e-mail address of an account in the realm, even one that has never opened the app; an
+      address with no account is said in words, and every search is written to the audit log, found or not.
+    evidence:
+      - state: looking
+      - state: form
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/madrasahs/components/head-picker.tsx:53
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/08 — the form is off until the name, the short name and the başmüderris are right (criteria 1 to 3)"
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/08 — opening a medrese lists it, writes each search to the audit log, and a taken short name answers under its field (criteria 4 to 6)"
+    note: "replay: notFound (written, not run)"
 
   - id: the-form-is-off-until-it-is-right
     need: >-
-      Nothing half-right is sent: the name has at least two letters, a short name that is typed fits the rule, and a başmüderris is
-      chosen; a name or short name that is wrong is said under its field once the person has left it.
-    drawn: [form, formReady, settle, a-form-that-is-on-is-the-one-sent, never-without-a-head]
-    built:
-      - route: apps/nizam/features/madrasahs/present.ts:280
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#6'
-      # replay: noName, shortName, badHandle (written, not run)
+      Nothing half-right is sent: the name has at least two letters, a short name that is typed fits the rule, and a başmüderris
+      is chosen; a name or short name that is wrong is said under its field once the person has left it.
+    evidence:
+      - state: form
+      - state: formReady
+      - state: settle
+      - source: apps/nizam/features/madrasahs/present.ts:280
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/08 — the form is off until the name, the short name and the başmüderris are right (criteria 1 to 3)"
+    note: |-
+      Also drawn as the assertion a-form-that-is-on-is-the-one-sent, the assertion never-without-a-head.
+      replay: noName, shortName, badHandle (written, not run)
 
   - id: a-taken-short-name-is-said-under-its-field
     need: >-
-      A short name another medrese uses is refused under its own field in words, nothing is written, and what the person typed is kept;
-      the button stays off until the field is edited.
-    drawn: [form, opening, a-refused-short-name-is-not-sent-again]
-    built:
-      - action: medaris.api:createMadrasah
-      - route: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:86
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#7'
-      # replay: handleTaken (written, not run)
+      A short name another medrese uses is refused under its own field in words, nothing is written, and what the person typed is
+      kept; the button stays off until the field is edited.
+    evidence:
+      - state: form
+      - state: opening
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:399
+      - source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:86
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/08 — opening a medrese lists it, writes each search to the audit log, and a taken short name answers under its field (criteria 4 to 6)"
+    note: |-
+      Also drawn as the assertion a-refused-short-name-is-not-sent-again.
+      replay: handleTaken (written, not run)
 
   - id: an-empty-short-name-is-made-from-the-name
     need: >-
-      A person who leaves the short name empty gets one made from the name, never refused as taken: the server transliterates the Turkish
-      letters and numbers it -2, -3 until it is free, and the list shows it.
-    drawn: [form, opening, opened]
-    built:
-      - action: medaris.api:createMadrasah
-      - route: apps/tedrisat/src/madrasah/madrasah.service.ts:168
-    # walked: none yet (replay: noHandle written, not run); no e2e covers it
+      A person who leaves the short name empty gets one made from the name, never refused as taken: the server transliterates the
+      Turkish letters and numbers it -2, -3 until it is free, and the list shows it.
+    evidence:
+      - state: form
+      - state: opening
+      - state: opened
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:399
+      - source: apps/tedrisat/src/madrasah/madrasah.service.ts:168
+    note: "walked: none yet (replay: noHandle written, not run); no e2e covers it"
 
   - id: an-empty-short-name-is-explained
     need: >-
-      The form says that the short name may be left empty and what then happens (it is made from the name), before the person sends it,
-      and names the address the medrese got.
-    drawn: [form]
-    missing: none # F-W2-open-3: the field has no mark, the help line is silent, and the address shows only in the new row
+      The form says that the short name may be left empty and what then happens (it is made from the name), before the person
+      sends it, and names the address the medrese got.
+    missing: >-
+      no Linear issue; F-W2-open-3: the field has no mark, the help line is silent, and the address shows only in the new row
+    note: >-
+      Drawn on the state form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: a-medaris-nazim-with-the-permission-opens
     need: >-
-      A Medaris nazımı who holds platform.madrasah_create is offered "Medrese aç" and opens a medrese the way the başnazım does (the
-      permission the API asks for); one who does not hold it is offered nothing.
-    drawn: [madrasahsPage, form]
-    built:
-      - action: medaris.api:createMadrasah
-      - route: apps/nizam/features/madrasahs/present.ts:99
-    # walked: none yet (replay: binding.medarisNazim.yaml written, not run); madrasahs#8 covers only the refusal of a nazım with no permission, in another flow
+      A Medaris nazımı who holds platform.madrasah_create is offered "Medrese aç" and opens a medrese the way the başnazım does
+      (the permission the API asks for); one who does not hold it is offered nothing.
+    evidence:
+      - state: madrasahsPage
+      - node: madrasahsPage
+      - state: form
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:399
+      - source: apps/nizam/features/madrasahs/present.ts:99
+    note: >-
+      walked: none yet (replay: binding.medarisNazim.yaml written, not run); madrasahs#8 covers only the refusal of a nazım with
+      no permission, in another flow
 
   - id: a-medaris-nazim-cannot-name-themselves
     need: >-
-      A Medaris nazımı cannot make themselves the başmüderris of a medrese they open (the başnazım may); nothing is written and the attempt is
-      on record.
-    drawn: [opening, failedSelfNamed]
-    built:
-      - action: medaris.api:createMadrasah
-      - route: libs/common/src/authz/self-grant.guard.ts:60
-    # walked: none yet (replay: selfNamed written, not run); no e2e covers it
+      A Medaris nazımı cannot make themselves the başmüderris of a medrese they open (the başnazım may); nothing is written and
+      the attempt is on record.
+    evidence:
+      - state: opening
+      - node: failedSelfNamed
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:399
+      - source: libs/common/src/authz/self-grant.guard.ts:60
+    note: "walked: none yet (replay: selfNamed written, not run); no e2e covers it"
 
   - id: the-refusal-of-self-naming-says-what-happened
     need: >-
-      The person who named themselves is told so in words that fit the act ("you cannot appoint yourself"), not in the words of a head
-      change ("take over", "drop") that this form has not.
-    drawn: [opening, failedSelfNamed]
-    missing: none # F-W2-open-2: MadrasahsPage.errors.selfTakeOver is mapped to SELF_GRANT_REFUSED (present.ts:307)
+      The person who named themselves is told so in words that fit the act ("you cannot appoint yourself"), not in the words of a
+      head change ("take over", "drop") that this form has not.
+    missing: "no Linear issue; F-W2-open-2: MadrasahsPage.errors.selfTakeOver is mapped to SELF_GRANT_REFUSED (present.ts:307)"
+    note: >-
+      Drawn on the state opening and on the node failedSelfNamed, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-form-says-what-is-missing
     need: >-
-      A person who cannot send the form is told in words what is missing (the name, a başmüderris, a short name that is wrong), and a
-      keyboard or screen-reader user can reach the button and the message. Nothing that blocks them is silent.
-    drawn: [form, settle]
-    missing: none # F-X-3, F-W2-open-8: the button is natively disabled, the head's own error is never passed, and the head field is starred but not marked required for assistive technology
+      A person who cannot send the form is told in words what is missing (the name, a başmüderris, a short name that is wrong),
+      and a keyboard or screen-reader user can reach the button and the message. Nothing that blocks them is silent.
+    missing: >-
+      no Linear issue; F-X-3, F-W2-open-8: the button is natively disabled, the head's own error is never passed, and the head
+      field is starred but not marked required for assistive technology
+    note: >-
+      Drawn on the states form and settle, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: lookup-only-on-request
     need: >-
-      A person's address is searched in the realm only when the person asks (Enter or a button), never because they tabbed through the
-      field, since every search is written to the audit log; the result is announced and the focus is kept.
-    drawn: [looking]
-    missing: none # F-W2-3, F-X-14, F-X-8: the field searches when it is left, is disabled while it does, and the success is a hidden output mounted with its card
+      A person's address is searched in the realm only when the person asks (Enter or a button), never because they tabbed through
+      the field, since every search is written to the audit log; the result is announced and the focus is kept.
+    missing: >-
+      no Linear issue; F-W2-3, F-X-14, F-X-8: the field searches when it is left, is disabled while it does, and the success is a
+      hidden output mounted with its card
+    note: >-
+      Drawn on the state looking, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: a-search-answer-is-always-said
     need: >-
-      The answer of a search ("no account with that address", "cannot search now") is said whether or not somebody is already chosen, and
-      an address that was not found can be searched again once the account has been made.
-    drawn: [looking, form]
-    missing: none # F-W2-open-1, F-W2-open-7: the answer is drawn only while nobody is chosen, and an address that was not found is never searched twice
+      The answer of a search ("no account with that address", "cannot search now") is said whether or not somebody is already
+      chosen, and an address that was not found can be searched again once the account has been made.
+    missing: >-
+      no Linear issue; F-W2-open-1, F-W2-open-7: the answer is drawn only while nobody is chosen, and an address that was not
+      found is never searched twice
+    note: >-
+      Drawn on the states looking and form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: a-refusal-is-announced
     need: >-
-      A refusal the server gives (a taken short name, a self-naming, no permission) is announced to a screen reader inside the form and the
-      focus goes to what the person must correct.
-    drawn: [form]
-    missing: none # F-X-2, F-X-4, F-W2-open-6: the field error is no live region, the other refusals are a sticky toast in another portal, the focus is lost
+      A refusal the server gives (a taken short name, a self-naming, no permission) is announced to a screen reader inside the
+      form and the focus goes to what the person must correct.
+    missing: >-
+      no Linear issue; F-X-2, F-X-4, F-W2-open-6: the field error is no live region, the other refusals are a sticky toast in
+      another portal, the focus is lost
+    note: >-
+      Drawn on the state form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: the-head-is-an-account-of-the-realm
     need: >-
-      A medrese is never opened with a head whom the realm does not know: the API checks the account named by headMuderrisUserId, as the
-      routes that appoint a müderris and a köşk nazımı do.
-    drawn: [opening]
-    built:
-      - action: medaris.api:createMadrasah
-    missing: none # the domain's finding head-account-not-checked: POST /madrasahs and PUT /madrasahs/:id/head-muderris check neither the users table nor the realm
+      A medrese is never opened with a head whom the realm does not know: the API checks the account named by headMuderrisUserId,
+      as the routes that appoint a müderris and a köşk nazımı do.
+    evidence:
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:399
+    missing: >-
+      no Linear issue; the domain's finding head-account-not-checked: POST /madrasahs and PUT /madrasahs/:id/head-muderris check
+      neither the users table nor the realm; code exists in part
+    note: >-
+      Drawn on the state opening, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: the-list-names-every-head
     need: >-
-      The Medreseler list names the başmüderris of a new medrese by the name the realm gave, also for a head who has never signed in, as
-      the toast does.
-    drawn: [opened]
-    missing: none # F-W2-open-4: the name comes from the users table; a head with no row there reads "Adı bilinmiyor"
+      The Medreseler list names the başmüderris of a new medrese by the name the realm gave, also for a head who has never signed
+      in, as the toast does.
+    missing: >-
+      no Linear issue; F-W2-open-4: the name comes from the users table; a head with no row there reads "Adı bilinmiyor"
+    note: >-
+      Drawn on the state opened, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: a-person-who-may-not-open-is-told
     need: >-
-      A person whom the API refuses (no platform.madrasah_create) is told in words that they may not, nothing is written, and the form stays
-      open; the page does not offer the button to them in the first place.
-    drawn: [opening, failedForbidden]
-    built:
-      - action: medaris.api:createMadrasah
-      - route: apps/nizam/features/madrasahs/present.ts:309
-    # walked: none (a başnazım who may not cannot be made on the local stack); F-W2-2 is how the button reaches someone who may not
+      A person whom the API refuses (no platform.madrasah_create) is told in words that they may not, nothing is written, and the
+      form stays open; the page does not offer the button to them in the first place.
+    evidence:
+      - state: opening
+      - node: failedForbidden
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:399
+      - source: apps/nizam/features/madrasahs/present.ts:309
+    note: >-
+      walked: none (a başnazım who may not cannot be made on the local stack); F-W2-2 is how the button reaches someone who may
+      not
 
   - id: a-directory-that-does-not-answer-is-said
-    need: >-
-      When the realm's directory cannot be reached the picker says "Arama şu an yapılamıyor" and the person can try again.
-    drawn: [looking]
-    built:
-      - action: medaris.api:lookupUser
-      - route: apps/nizam/features/madrasahs/components/head-picker.tsx:68
-    # walked: none (the directory cannot be made to fail on the local stack)
+    need: When the realm's directory cannot be reached the picker says "Arama şu an yapılamıyor" and the person can try again.
+    evidence:
+      - state: looking
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/madrasahs/components/head-picker.tsx:68
+    note: "walked: none (the directory cannot be made to fail on the local stack)"

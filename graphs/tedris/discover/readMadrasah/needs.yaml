@@ -1,5 +1,13 @@
-# What must exist for anyone to read a medrese's page: tedris.discover.readMadrasah, written on 15 Nov 2026 in the format of LAYOUT.md section 7.
-# Each need is what the product must do, from the flow's story; none is read off what the page does today.
+schema: delurio-graph/0
+kind: needs
+id: tedris.discover.readMadrasah
+status: proposed
+summary: >-
+  What must exist for anyone to read a medrese's page: tedris.discover.readMadrasah. Each need is what the product must do, from
+  the flow's story; none is read off what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): address-by-handle (P-22, MDRS-294), outage-is-not-a-404 (DSC-10), approval-notice-is-true (MAD-1),
 # head-id-is-not-public (overview-exposes-head-id). Each `missing: none` has no Linear issue found; none was searched for.
@@ -7,145 +15,182 @@
 # outage-is-not-a-404 is both missing and unwalked (the stack cannot make a read fail).
 # Walked by replay: scenarios member (the main story), visitor (to handed_over.sign_in) and unknown (to notFoundPage) passed in the second invocation
 # (the first invocation's main story failed on two binding locators, fixed; see the report).
-kind: needs
-flow: tedris.discover.readMadrasah
-status: proposed
 
 needs:
   - id: head-and-courses-on-one-page
     need: Anyone reads what a medrese is, who heads it and which of its courses are open, on one page, with no account.
-    drawn: [readByVisitor, readByMember, page-only-after-both-reads]
-    built:
-      - action: medaris.api:getMadrasah
-      - action: medaris.api:getMadrasahOverview
-      - route: apps/tedris/features/courses/components/madrasah-page.tsx:136
-    walked:
-      - e2e: apps/tedris/e2e/madrasah.e2e.ts
-        check: 'madrasah#1'
-      - e2e: apps/tedris/e2e/anonymous.e2e.ts
-        check: 'anonymous#14'
-      - replay: member
-      - replay: visitor
+    evidence:
+      - state: readByVisitor
+      - state: readByMember
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:333
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:355
+      - source: apps/tedris/features/courses/components/madrasah-page.tsx:136
+      - test: apps/tedris/e2e/madrasah.e2e.ts
+        name: "shows the medrese, its head müderris and its courses"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "shows the medrese with no enrollment badge, and invites the visitor"
+      - scenario: member
+      - scenario: visitor
+    note: Also drawn as the assertion page-only-after-both-reads.
 
   - id: next-celse-on-each-card
-    need: Each course of the medrese says when its next celse is, in the viewer's own weekday and clock, or says there is none planned.
-    drawn: [readByVisitor, readByMember]
-    built:
-      - route: apps/tedris/features/courses/components/madrasah-page.tsx:98
-      - route: apps/tedris/features/courses/next-session.ts:41
-    walked:
-      - e2e: apps/tedris/e2e/madrasah.e2e.ts
-        check: 'madrasah#2 (the weekday and clock; the raw-body check of the e2e marker is not carried)'
-      - replay: member # "Planlı celse yok" is not walked: no seeded listed course lacks a celse ahead
+    need: >-
+      Each course of the medrese says when its next celse is, in the viewer's own weekday and clock, or says there is none
+      planned.
+    evidence:
+      - state: readByVisitor
+      - state: readByMember
+      - source: apps/tedris/features/courses/components/madrasah-page.tsx:98
+      - source: apps/tedris/features/courses/next-session.ts:7
+      - test: apps/tedris/e2e/madrasah.e2e.ts
+        name: "writes the next session as weekday and clock, and never sends the meeting link"
+      - scenario: member
+    note: |-
+      madrasah.e2e.ts madrasah#2 (the weekday and clock; the raw-body check of the e2e marker is not carried)
+      member: "Planlı celse yok" is not walked: no seeded listed course lacks a celse ahead
 
   - id: no-meeting-link-on-a-public-page
     need: A medrese page never carries a meeting link, whoever reads it.
-    drawn: [readingOverview]
-    built:
-      - action: medaris.api:getMadrasahOverview # "never part of this response"
-    walked:
-      - e2e: apps/tedris/e2e/madrasah.e2e.ts
-        check: 'madrasah#2 (the meeting link half)'
-      - replay: member # the effect getMadrasahOverview: page-check.mjs on the HTML and the flight payload
+    evidence:
+      - state: readingOverview
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:355
+      - test: apps/tedris/e2e/madrasah.e2e.ts
+        name: "writes the next session as weekday and clock, and never sends the meeting link"
+      - scenario: member
+    note: |-
+      madrasah.e2e.ts madrasah#2 (the meeting link half)
+      medaris.api:getMadrasahOverview: "never part of this response"
+      member: the effect getMadrasahOverview: page-check.mjs on the HTML and the flight payload
 
   - id: own-seat-on-the-card
     need: A signed-in person sees on a course's card whether they are in it or have applied, and a visitor sees no such mark.
-    drawn: [readByMember, readByVisitor]
-    built:
-      - route: apps/tedris/features/courses/madrasah-enrollment.ts:17
-      - route: apps/tedris/features/courses/components/madrasah-page.tsx:75
-    walked:
-      - e2e: apps/tedris/e2e/madrasah.e2e.ts
-        check: 'madrasah#6'
-      - e2e: apps/tedris/e2e/anonymous.e2e.ts
-        check: 'anonymous#14 (no badge)'
-      - replay: member
-      - replay: visitor
+    evidence:
+      - state: readByMember
+      - state: readByVisitor
+      - source: apps/tedris/features/courses/madrasah-enrollment.ts:17
+      - source: apps/tedris/features/courses/components/madrasah-page.tsx:75
+      - test: apps/tedris/e2e/madrasah.e2e.ts
+        name: "a signed-in talebe sees Devam ediyor and Onay bekliyor on their courses"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "shows the medrese with no enrollment badge, and invites the visitor"
+      - scenario: member
+      - scenario: visitor
+    note: anonymous.e2e.ts anonymous#14 (no badge)
 
   - id: kosks-of-the-medrese
     need: The page lists the köşks the medrese has a listed course in, each with the titles of those courses, and no other.
-    drawn: [readByVisitor, readByMember]
-    built:
-      - route: apps/tedris/features/courses/components/madrasah-page.tsx:263
-    walked:
-      - e2e: apps/tedris/e2e/madrasah.e2e.ts
-        check: 'madrasah#3 (the köşks listed; "Gizli Köşk is absent" is not carried: the seed has no unlisted köşk with a course)'
-      - e2e: apps/tedris/e2e/anonymous.e2e.ts
-        check: 'anonymous#15 (the köşk link)'
-      - replay: member
+    evidence:
+      - state: readByVisitor
+      - state: readByMember
+      - source: apps/tedris/features/courses/components/madrasah-page.tsx:263
+      - test: apps/tedris/e2e/madrasah.e2e.ts
+        name: "lists only the köşks the medrese has a listed course in"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "goes from a course row to the course page, and from a köşk to its page"
+      - scenario: member
+    note: |-
+      madrasah.e2e.ts madrasah#3 (the köşks listed; "Gizli Köşk is absent" is not carried: the seed has no unlisted köşk with a
+      course)
+      anonymous.e2e.ts anonymous#15 (the köşk link)
 
   - id: go-on-to-a-course
     need: From a course on the page a reader goes to that course, signed in or not.
-    drawn: [readByVisitor, readByMember, course_opened]
-    built:
-      - route: apps/tedris/features/courses/components/madrasah-page.tsx:71
-    walked:
-      - e2e: apps/tedris/e2e/madrasah.e2e.ts
-        check: 'madrasah#4'
-      - e2e: apps/tedris/e2e/anonymous.e2e.ts
-        check: 'anonymous#15 (the course link)'
-      - replay: member
+    evidence:
+      - state: readByVisitor
+      - state: readByMember
+      - state: course_opened
+      - source: apps/tedris/features/courses/components/madrasah-page.tsx:71
+      - test: apps/tedris/e2e/madrasah.e2e.ts
+        name: "a course row leads to its course page"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "goes from a course row to the course page, and from a köşk to its page"
+      - scenario: member
+    note: anonymous.e2e.ts anonymous#15 (the course link)
 
   - id: visitor-is-invited-to-sign-in
     need: A visitor is told that applying needs an account and is sent to sign in, and to come back to this page, or to register.
-    drawn: [readByVisitor, handed_over.sign_in, handed_over.register]
-    built:
-      - route: apps/tedris/components/anonymous-invite.tsx:25
-      - route: apps/tedris/lib/invite-hrefs.ts:9
-    walked:
-      - e2e: apps/tedris/e2e/anonymous.e2e.ts
-        check: 'anonymous#14 (the hint and the invitation sentence)'
-      - replay: visitor # "kayıt ol" (handed_over.register) is not walked
+    evidence:
+      - state: readByVisitor
+      - state: handed_over.sign_in
+      - state: handed_over.register
+      - source: apps/tedris/components/anonymous-invite.tsx:25
+      - source: apps/tedris/lib/invite-hrefs.ts:9
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "shows the medrese with no enrollment badge, and invites the visitor"
+      - scenario: visitor
+    note: |-
+      anonymous.e2e.ts anonymous#14 (the hint and the invitation sentence)
+      visitor: "kayıt ol" (handed_over.register) is not walked
 
   - id: unknown-medrese-is-a-404
     need: An address that matches no medrese, or is not an id at all, answers 404 with the not-found page, and does not break.
-    drawn: [notFoundPage, not-found-only-after-a-failed-read]
-    built:
-      - route: apps/tedris/app/madrasahs/[madrasahId]/layout.tsx:20
-    walked:
-      - e2e: apps/tedris/e2e/madrasah.e2e.ts
-        check: 'madrasah#5 (the status and the text; the console-error list is not carried)'
-      - e2e: apps/tedris/e2e/anonymous.e2e.ts
-        check: 'anonymous#16'
-      - replay: unknown
+    evidence:
+      - state: notFoundPage
+      - source: "apps/tedris/app/madrasahs/[madrasahId]/layout.tsx:20"
+      - test: apps/tedris/e2e/madrasah.e2e.ts
+        name: "an unknown or malformed medrese id answers 404 with the not-found state and no page error"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "answers a medrese that does not exist with 404"
+      - scenario: unknown
+    note: |-
+      Also drawn as the assertion not-found-only-after-a-failed-read.
+      madrasah.e2e.ts madrasah#5 (the status and the text; the console-error list is not carried)
 
   - id: in-person-label
     need: A course held in person says so on its card, publicly, like its title.
-    drawn: [readByVisitor, readByMember]
-    built:
-      - route: apps/tedris/features/courses/components/madrasah-page.tsx:119
-    # walked: nothing. No seeded course is held in person, and the e2e fixture has none on this page either.
+    evidence:
+      - state: readByVisitor
+      - state: readByMember
+      - source: apps/tedris/features/courses/components/madrasah-page.tsx:119
+    note: "walked: nothing. No seeded course is held in person, and the e2e fixture has none on this page either."
 
   - id: empty-medrese-says-so
     need: A medrese with no listed course says that it has not opened one yet, and draws no köşk list.
-    drawn: [readByVisitor, readByMember]
-    built:
-      - route: apps/tedris/features/courses/components/madrasah-page.tsx:219
-    # walked: nothing. The seeded medrese has courses, and the stack has no second medrese without one.
+    evidence:
+      - state: readByVisitor
+      - state: readByMember
+      - source: apps/tedris/features/courses/components/madrasah-page.tsx:219
+    note: "walked: nothing. The seeded medrese has courses, and the stack has no second medrese without one."
 
   - id: unnamed-head-is-left-out
     need: A medrese whose head has never signed in shows no name for them and no empty card.
-    drawn: [readByVisitor, readByMember]
-    built:
-      - route: apps/tedris/features/courses/components/madrasah-page.tsx:175
-    # walked: nothing. The seeded head has signed in.
+    evidence:
+      - state: readByVisitor
+      - state: readByMember
+      - source: apps/tedris/features/courses/components/madrasah-page.tsx:175
+    note: "walked: nothing. The seeded head has signed in."
 
   - id: outage-is-not-a-404
-    need: When tedrisat cannot be reached the page says so and offers a retry, and never tells the reader that a medrese that exists is gone.
-    drawn: [notFoundPage, not-found-only-after-a-failed-read]
-    missing: none # DSC-10, decision D2; no Linear issue found. Not walkable: the stack's API answers every read.
+    need: >-
+      When tedrisat cannot be reached the page says so and offers a retry, and never tells the reader that a medrese that exists
+      is gone.
+    missing: "DSC-10, decision D2; no Linear issue found. Not walkable: the stack's API answers every read."
+    note: |-
+      Drawn on the state notFoundPage, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      Also drawn as the assertion not-found-only-after-a-failed-read.
 
   - id: approval-notice-is-true
     need: The page tells a reader that enrolment needs approval only for the courses and the medrese where it does.
-    drawn: [readByVisitor, readByMember]
-    missing: none # MAD-1, decision D1; no Linear issue found. The seeded medrese has an open course next to the one that asks.
+    missing: MAD-1, decision D1; no Linear issue found. The seeded medrese has an open course next to the one that asks.
+    note: >-
+      Drawn on the states readByVisitor and readByMember, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: head-id-is-not-public
-    need: Nobody who calls the API without a token learns the başmüderris's account id from the medrese page's data; the page needs the name and the count only.
-    drawn: [readingOverview]
-    missing: none # overview-exposes-head-id, decision D3; a finding of the domain, confirmed on the stack. No Linear issue found.
+    need: >-
+      Nobody who calls the API without a token learns the başmüderris's account id from the medrese page's data; the page needs
+      the name and the count only.
+    missing: overview-exposes-head-id, decision D3; a finding of the domain, confirmed on the stack. No Linear issue found.
+    note: >-
+      Drawn on the state readingOverview, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: address-by-handle
-    need: A medrese can be opened by its short name (its handle) as well as by its id, so that its page has an address a person can say.
-    drawn: [readingMadrasah]
-    missing: MDRS-294 # P-22 of planned.md; the medrese already has a `handle` (GET /madrasahs lists it) and no route reads by it
+    need: >-
+      A medrese can be opened by its short name (its handle) as well as by its id, so that its page has an address a person can
+      say.
+    missing: MDRS-294; P-22 of planned.md; the medrese already has a `handle` (GET /madrasahs lists it) and no route reads by it
+    note: >-
+      Drawn on the state readingMadrasah, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).

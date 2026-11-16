@@ -75,9 +75,9 @@ nodes:
   noKoskAlert: { type: alert, component: Alert, role: status, name: { key: Offsite.noKoskTitle }, text: { key: Offsite.noKosk }, in: [noKosk], source: apps/nazar/features/offsite/components/offsite-page.tsx:70 } # tone warning: still a status
   noKoskBack: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Offsite.back }, in: [noKosk], emits: BACK, source: apps/nazar/features/offsite/components/offsite-page.tsx:72 }
 
-  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:36 } # a <section aria-labelledby> inside the shell's <main>
-  failedTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.loadFailedTitle }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:48 } # h1, under the page's own h1 (F-A-1, F-L-16)
-  failedText: { type: text, component: Text, text: { key: Offsite.loadFailed }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:51 }
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:33 } # a <section aria-labelledby> inside the shell's <main>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.loadFailedTitle }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:43 } # h1, under the page's own h1 (F-A-1, F-L-16)
+  failedText: { type: text, component: Text, text: { key: Offsite.loadFailed }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:46 }
   retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [unreadable], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 }
 
   # ---- the toasts: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays until it is closed -----
@@ -96,7 +96,7 @@ edges:
 
 rules:
   - { id: focus-not-set, rule: "No page here sets an initial focus: after the load the focus is on the document (from the code: nothing in features/offsite calls focus() except the refused send). After a refused 'Talebi gönder' the focus goes to the first wrong text field, the name or else the reason (offsite-form.tsx:62-70, e2e offsite#2 a3); a köşk-only problem would move it nowhere. After a send the form is gone with the page, and Dersler opens with the focus where Next leaves it. The graph says only the focus of the refused send." }
-  - { id: F-A-1, rule: "= F-L-16. When a read fails the page draws LoadFailed beside its own header, and its SystemState heading is an h1 (system-state.tsx:48, headingLevel defaults to 1) under the page's h1 (offsite-page.tsx:58): two level-1 headings. Fix: pass headingLevel={2} when the state is inside the shell." }
+  - { id: F-A-1, rule: "= F-L-16. When a read fails the page draws LoadFailed beside its own header, and its SystemState heading is an h1 (system-state.tsx:43, headingLevel defaults to 1) under the page's h1 (offsite-page.tsx:58): two level-1 headings. Fix: pass headingLevel={2} when the state is inside the shell." }
   - { id: F-A-4, rule: "Does not touch this page. It is the hoca picker's search outcomes (features/courses/components/muderris-picker.tsx), a control of the open-course form; the offsite form has no picker. FLOWS.md lists F-A-4, F-A-5 and F-A-6 under this flow, apparently for the shared field-error shape; the field-error finding that does apply is F-L-12." }
   - { id: F-A-5, rule: "Does not touch this page (the open-course form's hoca-list errors, open-course-form.tsx:102-111). Here the title and reason errors are drawn by the kit's Field, are tied to their boxes by aria-describedby, and the refused send puts the focus on the first of them, so that error is read; the second wrong field's error is read only when she reaches it (F-L-12, F-L-18)." }
   - { id: F-A-6, rule: "Does not touch this page (the köşk RadioGroup of the open-course form, open-course-form.tsx:147-170). Here the köşk is a Select inside a Field; its own error line would be a Field error too, and a köşk-only problem moves the focus nowhere (offsite-form.tsx:62-70), but that problem cannot be reached (OFFSITE-3)." }

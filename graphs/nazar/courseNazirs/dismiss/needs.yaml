@@ -1,129 +1,170 @@
-# What must exist for a hoca (or a ders nazırı who may appoint) to dismiss a ders nazırı, and for the dismissed person to meet the consequence: the flow's
-# product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the planned work in the inventory (planned.md),
-# not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs
-# on this file yet. No replay has run, so `walked` names the e2e checks only.
+schema: delurio-graph/0
+kind: needs
+id: nazar.courseNazirs.dismiss
+status: proposed
+summary: >-
+  What must exist for a hoca (or a ders nazırı who may appoint) to dismiss a ders nazırı, and for the dismissed person to meet the
+  consequence: the flow's product list. No replay has run, so `walked` names the e2e checks only.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # missing (no code): the-person-is-told, a-post-already-gone-is-info, focus-follows-the-row-leaving, confirmation-is-announced-as-one,
-#   a-busy-dialog-says-so, blocked-row-is-reachable-and-names-who, adopt-or-drop-what-was-handed-on
+# a-busy-dialog-says-so, blocked-row-is-reachable-and-names-who, adopt-or-drop-what-was-handed-on
 # unwalked (code, no e2e and no replay): a-refusal-is-worded
-kind: needs
-flow: nazar.courseNazirs.dismiss
-status: proposed
 
 needs:
   - id: dismiss-after-one-question
     need: >-
-      The hoca ends a ders nazırı's post after one question that starts on the safe answer. The post and every permission the person holds in the course end
-      together, the rows stay as history, the action goes to the audit log, and a toast says so; nothing is written before the hoca confirms.
-    drawn: [listed, asking, endDialog, endCancel, endConfirm, dismissing, removed, toastDone]
-    built:
-      - action: medaris.api:revokeCourseNazir
-      - route: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:79
-    walked:
-      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
-        check: 'course-nazirs#11'
+      The hoca ends a ders nazırı's post after one question that starts on the safe answer. The post and every permission the
+      person holds in the course end together, the rows stay as history, the action goes to the audit log, and a toast says so;
+      nothing is written before the hoca confirms.
+    evidence:
+      - state: listed
+      - state: asking
+      - node: endDialog
+      - node: endCancel
+      - node: endConfirm
+      - state: dismissing
+      - state: removed
+      - node: toastDone
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:159
+      - source: apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:79
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "the müderris dismisses the ders nazırı, asking first, and post and permissions end together (criterion 4)"
 
   - id: no-scope-after-dismissal
     need: >-
-      A person dismissed from their only post finds no scope in Nazar and is told so ("Bu portala erişiminiz yok"), not shown a page of the course that is no longer
-      theirs; a person who holds another seat is sent to that scope.
-    drawn: [removed, handed_over.no_access]
-    built:
-      - action: medaris.api:getMyAssignments
-      - route: apps/nazar/app/page.tsx:16
-    walked:
-      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
-        check: 'course-nazirs#11'
+      A person dismissed from their only post finds no scope in Nazar and is told so ("Bu portala erişiminiz yok"), not shown a
+      page of the course that is no longer theirs; a person who holds another seat is sent to that scope.
+    evidence:
+      - state: removed
+      - state: handed_over.no_access
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nazar/app/page.tsx:16
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "the müderris dismisses the ders nazırı, asking first, and post and permissions end together (criterion 4)"
 
   - id: dismiss-in-order
     need: >-
-      A person who appointed others is dismissed after them, never before: the page says so on the row before the press (the button off, with the sentence),
-      and when the page is stale the API refuses the dismissal, writes nothing and the page shows the row as it is now.
-    drawn: [blocked, rowEndOff, endBlockedNote, appointeeEnd, freed, toastHandedOn, a-blocked-row-has-an-appointee, a-post-leaves-only-when-nothing-hangs-on-it]
-    built:
-      - action: medaris.api:revokeCourseNazir
-      - action: medaris.api:listCourseNazirs
-      - route: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131
-    walked:
-      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
-        check: 'course-nazirs#13'
+      A person who appointed others is dismissed after them, never before: the page says so on the row before the press (the
+      button off, with the sentence), and when the page is stale the API refuses the dismissal, writes nothing and the page shows
+      the row as it is now.
+    evidence:
+      - state: blocked
+      - node: rowEndOff
+      - node: endBlockedNote
+      - node: appointeeEnd
+      - state: freed
+      - node: toastHandedOn
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:159
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:71
+      - source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "given course_nazir.assign, a ders nazırı appoints with no permission and ends only their own appointee; their own post stays out of reach"
+    note: Also drawn as the assertion a-blocked-row-has-an-appointee, the assertion a-post-leaves-only-when-nothing-hangs-on-it.
 
   - id: appointer-ends-own-appointees
     need: >-
-      A ders nazırı who may only appoint ends the people they appointed, with the same question, and never their own post or another's: their own row has no
-      button, and the API refuses the rest.
-    drawn: [introAppointOnly, rowEnd, rowEdit, removed]
-    built:
-      - action: medaris.api:revokeCourseNazir
-      - route: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123
-    walked:
-      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
-        check: 'course-nazirs#13'
+      A ders nazırı who may only appoint ends the people they appointed, with the same question, and never their own post or
+      another's: their own row has no button, and the API refuses the rest.
+    evidence:
+      - node: introAppointOnly
+      - node: rowEnd
+      - node: rowEdit
+      - state: removed
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:159
+      - source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "given course_nazir.assign, a ders nazırı appoints with no permission and ends only their own appointee; their own post stays out of reach"
 
   - id: page-refuses-a-caller-without-the-code
     need: >-
-      A ders nazırı without course_nazir.assign is refused the page, with no list and no button, and the menu does not offer them an entry that only refuses
-      (F-D2c-2). The refusal is the story of nazar.access.dersNazirPages; this flow draws it as the state `forbidden`.
-    drawn: [forbidden, forbiddenAlert]
-    built:
-      - action: medaris.api:listCourseNazirs
-      - route: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:77
-    walked:
-      - e2e: apps/nazar/e2e/course-nazirs.e2e.ts
-        check: 'course-nazirs#12'
+      A ders nazırı without course_nazir.assign is refused the page, with no list and no button, and the menu does not offer them
+      an entry that only refuses (F-D2c-2). The refusal is the story of nazar.access.dersNazirPages; this flow draws it as the
+      state `forbidden`.
+    evidence:
+      - state: forbidden
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:71
+      - source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:77
+      - test: apps/nazar/e2e/course-nazirs.e2e.ts
+        name: "a ders nazırı without course_nazir.assign is refused the page and sees no button; the API refuses the list and the appointment (403)"
 
   - id: a-refusal-is-worded
     need: >-
-      A dismissal the API refuses for lack of standing, because the post is not the caller's, or for any other reason says so in words the person can act on, and the
-      dialog stays open with the question as it was.
-    drawn: [asking, toastRefused, toastNotYours, toastFailed]
-    built:
-      - route: apps/nazar/features/course-nazirs/course-nazirs.ts:219
-    # unwalked: nothing makes tedrisat answer so for a button the page offered; a unit spec (apps/nazar/test/course-nazir-dialog.spec.tsx:568-634) pins the words
+      A dismissal the API refuses for lack of standing, because the post is not the caller's, or for any other reason says so in
+      words the person can act on, and the dialog stays open with the question as it was.
+    evidence:
+      - state: asking
+      - node: toastRefused
+      - node: toastNotYours
+      - node: toastFailed
+      - source: apps/nazar/features/course-nazirs/course-nazirs.ts:219
+    note: >-
+      unwalked: nothing makes tedrisat answer so for a button the page offered; a unit spec
+      (apps/nazar/test/course-nazir-dialog.spec.tsx:568-634) pins the words
 
   - id: a-post-already-gone-is-info
     need: >-
-      A dismissal that finds the post already gone says so as information, not as a failure, and the list is read again: the outcome is the one the hoca wanted
-      (CNDIS-4).
-    drawn: [removed, toastGone]
-    missing: none
+      A dismissal that finds the post already gone says so as information, not as a failure, and the list is read again: the
+      outcome is the one the hoca wanted (CNDIS-4).
+    missing: no Linear issue; findings CNDIS-4
+    note: >-
+      Drawn on the state removed and on the node toastGone, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-follows-the-row-leaving
     need: >-
-      After a dismissal the focus lands where a keyboard or screen-reader user can use it (the table's caption or the next row's button), and a line on the page, not
-      only a toast of six seconds, says who was dismissed (F-D2c-8).
-    drawn: [removed, freed, toastDone]
-    missing: none
+      After a dismissal the focus lands where a keyboard or screen-reader user can use it (the table's caption or the next row's
+      button), and a line on the page, not only a toast of six seconds, says who was dismissed (F-D2c-8).
+    missing: no Linear issue; findings F-D2c-8
+    note: >-
+      Drawn on the states removed and freed and on the node toastDone, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: confirmation-is-announced-as-one
     need: >-
-      The question is announced as the confirmation it is (an alertdialog, as the Pano's Reddet), not as an ordinary dialog (CNDIS-1).
-    drawn: [endDialog]
-    missing: none
+      The question is announced as the confirmation it is (an alertdialog, as the Pano's Reddet), not as an ordinary dialog
+      (CNDIS-1).
+    missing: no Linear issue; findings CNDIS-1
+    note: >-
+      Drawn on the node endDialog, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: a-busy-dialog-says-so
     need: >-
-      While the dismissal is on its way, the buttons that cannot close the dialog say so (Vazgeç and the close icon are off), and the busy word comes from the app's
-      own catalog, not from the kit's default (CNDIS-3, F-D2c-13).
-    drawn: [dismissing, endBusy, endCancel, endClose]
-    missing: none
+      While the dismissal is on its way, the buttons that cannot close the dialog say so (Vazgeç and the close icon are off), and
+      the busy word comes from the app's own catalog, not from the kit's default (CNDIS-3, F-D2c-13).
+    missing: no Linear issue; findings CNDIS-3, F-D2c-13
+    note: >-
+      Drawn on the state dismissing and on the nodes endBusy, endCancel and endClose, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: blocked-row-is-reachable-and-names-who
     need: >-
-      A row whose person appointed others says, where a keyboard user can reach it, which people to dismiss first, by name, not only how many (CNDIS-2).
-    drawn: [blocked, rowEndOff, endBlockedNote]
-    missing: none
+      A row whose person appointed others says, where a keyboard user can reach it, which people to dismiss first, by name, not
+      only how many (CNDIS-2).
+    missing: no Linear issue; findings CNDIS-2
+    note: >-
+      Drawn on the state blocked and on the nodes rowEndOff and endBlockedNote, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-person-is-told
     need: >-
-      A person dismissed from a post learns it from Medaris, not at their next request: tedrisat writes the audit row and no notice today.
-    drawn: [removed, handed_over.no_access]
-    missing: none
+      A person dismissed from a post learns it from Medaris, not at their next request: tedrisat writes the audit row and no
+      notice today.
+    missing: no Linear issue
+    note: >-
+      Drawn on the states removed and handed_over.no_access, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: adopt-or-drop-what-was-handed-on
     need: >-
-      Where a ders nazırı appointed others, the hoca adopts or drops each of them in the same dialog, as the medrese's dismissal asks (Devral or Düşür), instead of
-      dismissing them one by one first (MDRS-201, "show what they granted, and let the remover adopt, edit or drop each grant"; whether the issue names the course
-      dialog was not verified).
-    drawn: [blocked, endBlockedNote, asking]
+      Where a ders nazırı appointed others, the hoca adopts or drops each of them in the same dialog, as the medrese's dismissal
+      asks (Devral or Düşür), instead of dismissing them one by one first (MDRS-201, "show what they granted, and let the remover
+      adopt, edit or drop each grant"; whether the issue names the course dialog was not verified).
     missing: MDRS-201
+    note: >-
+      Drawn on the states blocked and asking and on the node endBlockedNote, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).

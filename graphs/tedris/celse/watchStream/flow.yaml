@@ -38,7 +38,7 @@ scope:
     - "the second line under the release sentence that gives the course's zone and the viewer's own clock when they differ (recording-release.tsx:19-25)"
     - "the loading skeleton while the reads run (izle/loading.tsx), and the minute counter ticking every 30 s"
     - "whether the stream can be watched at all: the broadcast, YouTube's own refusals (a video that cannot be embedded, a sign-in prompt) and its chat's \"cannot be used in this browser\" page are inside YouTube's frames"
-    - "what the server decides inside `liveStreamFor`: the link is sent from the scheduled start until a recording is open or 24 hours after the scheduled end (recording.ts:223-241); drawn as the four answers of `watch`"
+    - "what the server decides inside `liveStreamFor`: the link is sent from the scheduled start until a recording is open or 24 hours after the scheduled end (recording.ts:223-238); drawn as the four answers of `watch`"
 
 decisions:
   D1:

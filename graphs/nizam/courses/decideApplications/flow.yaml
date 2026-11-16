@@ -174,7 +174,7 @@ failures:
     from: getCourseStats
     forbidden: [AUTHZ_FORBIDDEN]
     missing: [COURSE_NOT_FOUND]
-    failed: [INTERNAL_ERROR, HTTP_400]
+    failed: [INTERNAL_ERROR]
   openedStudents:
     from: listCourseEnrollments
     forbidden: [AUTHZ_FORBIDDEN]

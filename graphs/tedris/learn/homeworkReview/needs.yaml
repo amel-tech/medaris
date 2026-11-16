@@ -1,99 +1,103 @@
-# What must exist for a talebe who reads the hoca's review of their homework: the flow's product list, from its story and from the findings,
-# never from what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by the orchestrator).
+schema: delurio-graph/0
+kind: needs
+id: tedris.learn.homeworkReview
+status: proposed
+summary: >-
+  What must exist for a talebe who reads the hoca's review of their homework: the flow's product list, from its story and from the
+  findings, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing or unwalked (for the orchestrator's gaps merge):
-#   missing:  refused-download-keeps-the-page (none: WRT-10, WRT-13), review-appears-without-reload (none: HWREVIEW-3),
-#             a-sent-review-is-never-empty (none: HWREVIEW-1), change-after-review-is-announced (none: HWREVIEW-2)
-#   unwalked: review-reaches-the-talebe-when-sent (scenario beforeSent), read-the-review (afterReview, noteOnly),
-#             download-a-returned-file (refused walks the refusal; the file itself cannot come out of this stack: no file store),
-#             review-names-the-version-it-answers (afterReview)
+# missing:  refused-download-keeps-the-page (none: WRT-10, WRT-13), review-appears-without-reload (none: HWREVIEW-3),
+# a-sent-review-is-never-empty (none: HWREVIEW-1), change-after-review-is-announced (none: HWREVIEW-2)
+# unwalked: review-reaches-the-talebe-when-sent (scenario beforeSent), read-the-review (afterReview, noteOnly),
+# download-a-returned-file (refused walks the refusal; the file itself cannot come out of this stack: no file store),
+# review-names-the-version-it-answers (afterReview)
 # Walked: nothing yet. The scenarios are written and load (replay --emit-spec), and none has been run: the owner moved every replay to the
 # end of the writing phase. No e2e check names the review (apps/tedris/test/homework-card.spec.ts:742-902 is a unit spec).
-kind: needs
-flow: tedris.learn.homeworkReview
-status: proposed
 
 needs:
   - id: review-reaches-the-talebe-when-sent
     need: >-
-      A talebe sees nothing of the course team's review of their homework, not its note and not a file already attached to it, until the
-      team sends it; once it is sent the talebe is told, and finds the review on the celse page where they handed the homework in.
-    drawn:
-      - reading
-      - waiting
-      - reviewShown
-    built:
-      - action: medaris.api:getMySubmission
-      - action: medaris.api:sendSubmissionReview
-      - route: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:71
-      - route: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:416
+      A talebe sees nothing of the course team's review of their homework, not its note and not a file already attached to it,
+      until the team sends it; once it is sent the talebe is told, and finds the review on the celse page where they handed the
+      homework in.
+    evidence:
+      - state: reading
+      - state: waiting
+      - state: reviewShown
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:99
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:344
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:71
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:416
 
   - id: read-the-review
     need: >-
-      The talebe reads the review as the hoca sent it: that it is a review, who sent it and when, the note as written, and the files the
-      hoca returned with the corrected work, each by its name, its type and its size; a review with only a note or only files reads as well.
-    drawn:
-      - reviewShown
-    built:
-      - action: medaris.api:getMySubmission
-      - route: apps/tedris/features/courses/components/session-homework.tsx:679
+      The talebe reads the review as the hoca sent it: that it is a review, who sent it and when, the note as written, and the
+      files the hoca returned with the corrected work, each by its name, its type and its size; a review with only a note or only
+      files reads as well.
+    evidence:
+      - state: reviewShown
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:99
+      - source: apps/tedris/features/courses/components/session-homework.tsx:679
 
   - id: download-a-returned-file
     need: >-
-      The talebe downloads each file the hoca returned, and only their own; a file that cannot be given (no longer there, no permission, the
-      store not answering, any other failure) is told in words that say which.
-    drawn:
-      - reviewShown
-      - downloading
-      - reading
-    built:
-      - action: medaris.api:webDownloadMySubmissionReviewFile
-      - action: medaris.api:downloadMySubmissionReviewFile
-      - route: apps/tedris/app/api/files/lessons/[lessonId]/submission/review-files/[fileId]/route.ts:11
-      - route: apps/tedris/features/courses/components/file-error-notice.tsx:26
+      The talebe downloads each file the hoca returned, and only their own; a file that cannot be given (no longer there, no
+      permission, the store not answering, any other failure) is told in words that say which.
+    evidence:
+      - state: reviewShown
+      - state: downloading
+      - state: reading
+      - source: "apps/tedris/app/api/files/lessons/[lessonId]/submission/review-files/[fileId]/route.ts:11"
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:244
+      - source: apps/tedris/features/courses/components/file-error-notice.tsx:26
 
   - id: review-names-the-version-it-answers
     need: >-
-      When the talebe changes the homework after the review was sent, the review stays and the page says that it was written for the
-      earlier version, until the hoca sends a review again.
-    drawn:
-      - drafting
-      - saving
-      - reviewShown
-    built:
-      - action: medaris.api:saveMySubmissionNote
-      - route: apps/tedris/features/courses/components/session-homework.tsx:661
+      When the talebe changes the homework after the review was sent, the review stays and the page says that it was written for
+      the earlier version, until the hoca sends a review again.
+    evidence:
+      - state: drafting
+      - state: saving
+      - state: reviewShown
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:138
+      - source: apps/tedris/features/courses/components/session-homework.tsx:661
 
   - id: refused-download-keeps-the-page
     need: >-
       A refused download says why where the talebe is, without loading the page again and without losing what they were typing.
-    drawn:
-      - downloading
-      - reading
-      - reviewShown
-    missing: none
+    missing: no Linear issue; WRT-10, WRT-13
+    note: >-
+      Drawn on the states downloading, reading and reviewShown, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: review-appears-without-reload
     need: >-
-      A review that the course team sends while the talebe has the celse page open appears on it without the talebe loading the page
-      again, or the notification they get leads to a page that has it.
-    drawn:
-      - waiting
-    missing: none
+      A review that the course team sends while the talebe has the celse page open appears on it without the talebe loading the
+      page again, or the notification they get leads to a page that has it.
+    missing: no Linear issue; HWREVIEW-3
+    note: >-
+      Drawn on the state waiting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: a-sent-review-is-never-empty
     need: >-
-      A review that was sent always holds a note or a file: the course team cannot take away the last file of a note-less review after
-      sending it, so the talebe never reads a review with nothing in it.
-    drawn:
-      - reviewShown
-    missing: none
+      A review that was sent always holds a note or a file: the course team cannot take away the last file of a note-less review
+      after sending it, so the talebe never reads a review with nothing in it.
+    missing: no Linear issue; HWREVIEW-1
+    note: >-
+      Drawn on the state reviewShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: change-after-review-is-announced
     need: >-
-      What follows the talebe's own change to the homework after a review (that the note was saved, and that the review now answers the
-      earlier version) is announced to a person who cannot see the page, and the focus does not rest on a control that has just turned off.
-    drawn:
-      - saving
-      - reviewShown
-    missing: none
+      What follows the talebe's own change to the homework after a review (that the note was saved, and that the review now
+      answers the earlier version) is announced to a person who cannot see the page, and the focus does not rest on a control that
+      has just turned off.
+    missing: no Linear issue; HWREVIEW-2
+    note: >-
+      Drawn on the states saving and reviewShown, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

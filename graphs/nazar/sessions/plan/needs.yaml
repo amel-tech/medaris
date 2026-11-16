@@ -1,153 +1,225 @@
-# What must exist for a hoca to plan the celses of her course, one by one, as a weekly repeat or as an exam: the flow's product list
-# (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the inventory's planned work (planned.md), not from what
-# the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+schema: delurio-graph/0
+kind: needs
+id: nazar.sessions.plan
+status: proposed
+summary: >-
+  What must exist for a hoca to plan the celses of her course, one by one, as a weekly repeat or as an exam: the flow's product
+  list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): button-says-what-is-missing, preview-is-announced, a-field-in-error-is-announced, no-celse-in-the-past-unasked,
-#   quota-per-gender-when-planning.
+# quota-per-gender-when-planning.
 # Unwalked (code, no e2e and no replay that has run): open-the-planner (one e2e check covers the link only), plan-a-weekly-repeat, plan-one-celse,
-#   a-first-link-on-the-first-celse-only, read-the-preview-before-making, a-title-or-link-that-is-wrong-is-said, a-refused-write-leaves-the-form,
-#   the-planner-is-for-those-who-may-manage-sessions.
+# a-first-link-on-the-first-celse-only, read-the-preview-before-making, a-title-or-link-that-is-wrong-is-said, a-refused-write-leaves-the-form,
+# the-planner-is-for-those-who-may-manage-sessions.
 # Walked: plan-an-exam (e2e exam#1) and the closed button (e2e course-scope#2).
 # The scenarios that will walk them are in comments below; none is named as walked because no replay has run (the walks are a later phase).
-kind: needs
-flow: nazar.sessions.plan
-status: proposed
 
 needs:
   - id: open-the-planner
     need: >-
-      From a course's Celseler, a hoca with the permission to manage celses reaches the planner with one press, and from the planner she can go back to
-      Celseler without making anything.
-    drawn: [form, sessions_opened, breadcrumbRoot, cancel]
-    built:
-      - route: apps/nazar/features/sessions/components/sessions-page.tsx:88
-      - route: apps/nazar/app/ders/[dersId]/celseler/planla/page.tsx:7
-    walked:
-      - e2e: apps/nazar/e2e/course-scope.e2e.ts
-        check: 'course-scope#1' # a3 only: the link "Celse planla" leads to /ders/<id>/celseler/planla; the table's own checks are nazar.sessions.manage
-      - e2e: apps/nazar/e2e/course-scope.e2e.ts
-        check: 'course-scope#2' # a1: the h1 "Celse planla" is there
-    # replay: weekly (enters through the nav entry dersSessions->dersSessionsPlanla), then CANCEL/BREADCRUMB in the cover run
+      From a course's Celseler, a hoca with the permission to manage celses reaches the planner with one press, and from the
+      planner she can go back to Celseler without making anything.
+    evidence:
+      - state: form
+      - state: sessions_opened
+      - node: breadcrumbRoot
+      - node: cancel
+      - source: apps/nazar/features/sessions/components/sessions-page.tsx:88
+      - source: "apps/nazar/app/ders/[dersId]/celseler/planla/page.tsx:7"
+      - test: apps/nazar/e2e/course-scope.e2e.ts
+        name: "Celseler lists the course's sessions, says which has no link, and offers to plan more"
+      - test: apps/nazar/e2e/course-scope.e2e.ts
+        name: "Celse planla opens its form under the course's Celseler"
+    note: |-
+      course-scope#1: a3 only: the link "Celse planla" leads to /ders/<id>/celseler/planla; the table's own checks are
+      nazar.sessions.manage
+      course-scope#2: a1: the h1 "Celse planla" is there
+      replay: weekly (enters through the nav entry dersSessions->dersSessionsPlanla), then CANCEL/BREADCRUMB in the cover run
 
   - id: plan-a-weekly-repeat
     need: >-
-      She chooses the days of the week, the start time and length, the first date and an end (a date, or a number of celses) and the course gets one celse
-      for each, titled as she wrote, each in the week its date falls in, in one step.
-    drawn: [form, previewing, formReady, creating, landed, repeatRegion, startDateField, endDateField, endByCount, countField, dayChip]
-    built:
-      - action: medaris.api:createSessionBatch
-      - action: medaris.api:previewSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:200
-    # replay: weekly (end by date, 3 celses), weeklyCount (4 celses); the effect reads the lessons and weeks in the database
+      She chooses the days of the week, the start time and length, the first date and an end (a date, or a number of celses) and
+      the course gets one celse for each, titled as she wrote, each in the week its date falls in, in one step.
+    evidence:
+      - state: form
+      - state: previewing
+      - state: formReady
+      - state: creating
+      - state: landed
+      - node: repeatRegion
+      - node: startDateField
+      - node: endDateField
+      - node: endByCount
+      - node: countField
+      - node: dayChip
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/tedrisat/src/course/lesson.controller.ts:300
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:200
+    note: "replay: weekly (end by date, 3 celses), weeklyCount (4 celses); the effect reads the lessons and weeks in the database"
 
   - id: plan-one-celse
     need: >-
-      She can add a single celse by its date and time, without a repeat, to the same place in the programme the repeat would have put it.
-    drawn: [singleRegion, modeSingle, dateField]
-    built:
-      - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:403
-    # replay: single
+      She can add a single celse by its date and time, without a repeat, to the same place in the programme the repeat would have
+      put it.
+    evidence:
+      - node: singleRegion
+      - node: modeSingle
+      - node: dateField
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:403
+    note: "replay: single"
 
   - id: read-the-preview-before-making
     need: >-
-      Before anything is made she reads, as a list, the date, week and length of each celse the pattern gives and whether the first has a link, and she sees
-      at once when the pattern gives none.
-    drawn: [formReady, previewFailed, previewRow, previewRowCaption, previewCount, previewFailedAlert]
-    built:
-      - action: medaris.api:previewSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:691
-    # replay: weekly (formReady), previewRefused (previewFailed: a pattern of Monday and Saturday over a Tuesday and a Wednesday)
+      Before anything is made she reads, as a list, the date, week and length of each celse the pattern gives and whether the
+      first has a link, and she sees at once when the pattern gives none.
+    evidence:
+      - state: formReady
+      - state: previewFailed
+      - node: previewRow
+      - node: previewRowCaption
+      - node: previewCount
+      - node: previewFailedAlert
+      - source: apps/tedrisat/src/course/lesson.controller.ts:300
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:691
+    note: >-
+      replay: weekly (formReady), previewRefused (previewFailed: a pattern of Monday and Saturday over a Tuesday and a Wednesday)
 
   - id: a-first-link-on-the-first-celse-only
     need: >-
-      She can give the first celse its meeting link when she plans, and the others stay empty, because a link is a week's and changes every week; she is
-      told so on the form.
-    drawn: [linksGroup, linkField, linksNote, previewRowCaption]
-    built:
-      - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:314
-    # replay: weekly (LINKS_FIRST in the main story)
+      She can give the first celse its meeting link when she plans, and the others stay empty, because a link is a week's and
+      changes every week; she is told so on the form.
+    evidence:
+      - node: linksGroup
+      - node: linkField
+      - node: linksNote
+      - node: previewRowCaption
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:314
+    note: "replay: weekly (LINKS_FIRST in the main story)"
 
   - id: plan-an-exam
     need: >-
-      She can plan an exam as one celse with a date, a time and a place, and with its format, full score, topics and whether it is a make-up folded under a
-      line she can open; the talebe of the course are told of it.
-    drawn: [examRegion, examPlaceGroup, locationField, detailsToggle, maxScoreField, topicsField, retakeBox, examSubmit]
-    built:
-      - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:421
-    walked:
-      - e2e: apps/nazar/e2e/exam.e2e.ts
-        check: 'exam#1' # a1 the exam section, a2 no "Haftalık tekrar", a3 the address is /celseler, a4 the lesson_exams row (2 with the seeded one)
-    # replay: exam (a row in lesson_exams for the walk's own course); noScore and noPlace walk the open details
+      She can plan an exam as one celse with a date, a time and a place, and with its format, full score, topics and whether it is
+      a make-up folded under a line she can open; the talebe of the course are told of it.
+    evidence:
+      - node: examRegion
+      - node: examPlaceGroup
+      - node: locationField
+      - node: detailsToggle
+      - node: maxScoreField
+      - node: topicsField
+      - node: retakeBox
+      - node: examSubmit
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:421
+      - test: apps/nazar/e2e/exam.e2e.ts
+        name: "the müderris plans an exam with Sınav in the same flow"
+    note: |-
+      exam#1: a1 the exam section, a2 no "Haftalık tekrar", a3 the address is /celseler, a4 the lesson_exams row (2 with the
+      seeded one)
+      replay: exam (a row in lesson_exams for the walk's own course); noScore and noPlace walk the open details
 
   - id: button-says-what-is-missing
     need: >-
-      When the form cannot be made yet, the button can still be reached and the page says what is missing, so a keyboard or screen-reader user is not left
-      with a disabled button that reads "0 celse oluştur" and no reason (F-C-course-a-09, decision D1).
-    drawn: [form, previewFailed, submitOff]
-    walked:
-      - e2e: apps/nazar/e2e/course-scope.e2e.ts
-        check: 'course-scope#2' # a2 pins today's behaviour: the button "0 celse oluştur" is disabled; it will change with the fix
-    missing: none
+      When the form cannot be made yet, the button can still be reached and the page says what is missing, so a keyboard or
+      screen-reader user is not left with a disabled button that reads "0 celse oluştur" and no reason (F-C-course-a-09, decision
+      D1).
+    evidence:
+      - test: apps/nazar/e2e/course-scope.e2e.ts
+        name: "Celse planla opens its form under the course's Celseler"
+    missing: no Linear issue; findings F-C-course-a-09
+    note: |-
+      Drawn on the states form and previewFailed and on the node submitOff, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      course-scope#2: a2 pins today's behaviour: the button "0 celse oluştur" is disabled; it will change with the fix
 
   - id: preview-is-announced
     need: >-
       A change to the number of celses the pattern gives is announced to a screen-reader user, not only drawn (F-C-course-a-10).
-    drawn: [formReady, previewCount]
-    missing: none
+    missing: no Linear issue; findings F-C-course-a-10
+    note: >-
+      Drawn on the state formReady and on the node previewCount, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-field-in-error-is-announced
     need: >-
-      A title, link, score or place that is wrong is announced when the button is pressed and the focus goes to the first field in error (PLAN-1).
-    drawn: [titleError, linkError, scoreError, placeError]
-    missing: none
+      A title, link, score or place that is wrong is announced when the button is pressed and the focus goes to the first field in
+      error (PLAN-1).
+    missing: no Linear issue; findings PLAN-1
+    note: >-
+      Drawn on the nodes titleError, linkError, scoreError and placeError, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-title-or-link-that-is-wrong-is-said
     need: >-
-      A title that is empty, a first-celse link that is not https, an exam's score outside 1 to 1000 or an in-person exam with no place are refused with a
-      word under the field, and nothing is made, until each is corrected.
-    drawn: [formReady, titleError, linkError, scoreError, placeError, a-refused-form-is-not-sent]
-    built:
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:164
-    walked:
-      - test: apps/nazar/test/plan-page.spec.tsx # "asks for a title before it creates anything", "opens the details when a folded field is wrong, and creates nothing"
-    # replay: noTitle, badLink, noScore, noPlace
+      A title that is empty, a first-celse link that is not https, an exam's score outside 1 to 1000 or an in-person exam with no
+      place are refused with a word under the field, and nothing is made, until each is corrected.
+    evidence:
+      - state: formReady
+      - node: titleError
+      - node: linkError
+      - node: scoreError
+      - node: placeError
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:164
+      - test: apps/nazar/test/plan-page.spec.tsx
+    note: |-
+      Also drawn as the assertion a-refused-form-is-not-sent.
+      apps/nazar/test/plan-page.spec.tsx: "asks for a title before it creates anything", "opens the details when a folded field is
+      wrong, and creates nothing"
+      replay: noTitle, badLink, noScore, noPlace
 
   - id: a-refused-write-leaves-the-form
     need: >-
-      When the API refuses the write (the pattern gives no celse, the permission was taken away, anything else) she is told in a toast and the form is as she
-      left it, so she can correct it and try again.
-    drawn: [creating, formReady, toastPatternRefused, toastForbidden, toastFailed]
-    built:
-      - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/plan-form.tsx:218
-    walked:
-      - test: apps/nazar/test/plan-page.spec.tsx # "stays on the form and says why when the API refuses, and for a caller who may not"
-    # replay: binding.forbiddenWrite.yaml (answer: forbidden); patternRefused and failed cannot be made locally (the API cannot be made to refuse a pattern it just previewed)
+      When the API refuses the write (the pattern gives no celse, the permission was taken away, anything else) she is told in a
+      toast and the form is as she left it, so she can correct it and try again.
+    evidence:
+      - state: creating
+      - state: formReady
+      - node: toastPatternRefused
+      - node: toastForbidden
+      - node: toastFailed
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/nazar/features/sessions/components/plan-form.tsx:218
+      - test: apps/nazar/test/plan-page.spec.tsx
+    note: |-
+      apps/nazar/test/plan-page.spec.tsx: "stays on the form and says why when the API refuses, and for a caller who may not"
+      replay: binding.forbiddenWrite.yaml (answer: forbidden); patternRefused and failed cannot be made locally (the API cannot be
+      made to refuse a pattern it just previewed)
 
   - id: the-planner-is-for-those-who-may-manage-sessions
     need: >-
-      Only a person who may manage the course's celses sees the planner; another reader is told she has no access, and a course that is not hers is the
-      portal's 404.
-    drawn: [forbidden, not_found, loadFailed]
-    built:
-      - route: apps/nazar/features/sessions/components/plan-page.tsx:31
-    walked:
-      - test: apps/nazar/test/plan-page.spec.tsx # "is that state for a caller without session.manage...", the retry states
-    # replay: forbidden (a ders nazırı with no grant, on the walk's own course), unknownCourse (404); loadFailed cannot be walked locally
+      Only a person who may manage the course's celses sees the planner; another reader is told she has no access, and a course
+      that is not hers is the portal's 404.
+    evidence:
+      - state: forbidden
+      - state: not_found
+      - state: loadFailed
+      - source: apps/nazar/features/sessions/components/plan-page.tsx:31
+      - test: apps/nazar/test/plan-page.spec.tsx
+    note: |-
+      apps/nazar/test/plan-page.spec.tsx: "is that state for a caller without session.manage...", the retry states
+      replay: forbidden (a ders nazırı with no grant, on the walk's own course), unknownCourse (404); loadFailed cannot be walked
+      locally
 
   - id: no-celse-in-the-past-unasked
     need: >-
-      A repeat or a celse whose first date is already past is not made without her being asked, because the celses would be over before they began and the
-      talebe would be mailed invitations for them (PLAN-4, decision D2).
-    drawn: [formReady, creating]
-    missing: none
+      A repeat or a celse whose first date is already past is not made without her being asked, because the celses would be over
+      before they began and the talebe would be mailed invitations for them (PLAN-4, decision D2).
+    missing: no Linear issue; findings PLAN-4
+    note: >-
+      Drawn on the states formReady and creating, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: quota-per-gender-when-planning
     need: >-
-      Where a celse is held in person, planning it also gives its kontenjan: one number for women and one for men, never one pooled count, and a weekly repeat
-      carries the same pair for every celse it makes (MDRS-284; the planner sends no in-person mark and no seat count today).
-    drawn: [formReady, creating]
+      Where a celse is held in person, planning it also gives its kontenjan: one number for women and one for men, never one
+      pooled count, and a weekly repeat carries the same pair for every celse it makes (MDRS-284; the planner sends no in-person
+      mark and no seat count today).
     missing: MDRS-284
+    note: >-
+      Drawn on the states formReady and creating, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

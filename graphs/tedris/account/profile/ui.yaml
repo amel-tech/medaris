@@ -108,14 +108,14 @@ nodes:
 
   # ---- the first list, open (the kit's Select popup, Base UI; modal by default, so only the list is drawn: not verified in a browser) ----
   zoneList: { type: list, component: List, role: listbox, in: [choosingZone], source: libs/ui/src/mds/select.tsx:79 } # no name of its own
-  optIstanbul: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.istanbul }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:60 }
-  optBerlin: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.berlin }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:61 }
-  optAmsterdam: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.amsterdam }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:62 }
-  optBrussels: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.brussels }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:63 }
-  optParis: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.paris }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:64 }
-  optVienna: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.vienna }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:65 }
-  optLondon: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.london }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:66 }
-  optNewYork: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.newYork }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:67 }
+  optIstanbul: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.istanbul }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:15 }
+  optBerlin: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.berlin }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:16 }
+  optAmsterdam: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.amsterdam }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:17 }
+  optBrussels: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.brussels }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:18 }
+  optParis: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.paris }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:19 }
+  optVienna: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.vienna }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:20 }
+  optLondon: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.london }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:21 }
+  optNewYork: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.newYork }, in: [choosingZone], source: apps/tedris/features/account/profile-model.ts:22 }
   optOther: { type: field, component: ListItem, role: option, text: { key: AccountProfile.zones.other }, in: [choosingZone], source: apps/tedris/features/account/components/account-settings.tsx:197 } # "Diğer…", the ninth: it saves nothing
 
   # ---- the second list, open: every zone the runtime lists, none drawn as a node ----

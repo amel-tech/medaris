@@ -1,29 +1,41 @@
-# What must exist for the başmüderris of a medrese to read its talebe: the flow's product list (LAYOUT.md section 7). Each need is what
-# the product must do, from the flow's story and the findings of the inventory, not from what the page does today; the known gaps go to
-# graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.students.browse
+status: proposed
+summary: "What must exist for the başmüderris of a medrese to read its talebe: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For the gaps merge:
-#   missing   (no code; every one is a finding, no Linear key yet): say-a-change-out-loud, say-why-it-is-refused-or-failed,
-#             reading-leaves-a-trace, ban-only-where-it-may-be-given, a-page-change-keeps-the-place,
-#             a-long-word-or-page-is-held, the-course-filter-for-every-reader
-#   unwalked  (code, no e2e and no replay passed yet): narrow-by-course, say-there-are-no-talebe-yet, retry-a-failed-read
+# missing   (no code; every one is a finding, no Linear key yet): say-a-change-out-loud, say-why-it-is-refused-or-failed,
+# reading-leaves-a-trace, ban-only-where-it-may-be-given, a-page-change-keeps-the-place,
+# a-long-word-or-page-is-held, the-course-filter-for-every-reader
+# unwalked  (code, no e2e and no replay passed yet): narrow-by-course, say-there-are-no-talebe-yet, retry-a-failed-read
 # The planned seat rule (kontenjan per gender, MDRS-284) does not reach this page: it lists the talebe who hold a seat and decides none.
-kind: needs
-flow: nazar.students.browse
-status: proposed
 
 needs:
   - id: read-the-medreses-talebe
     need: >-
       The başmüderris reads, in one place, everyone who attends or has finished one of her medrese's courses, newest first, a page
       at a time, with how many there are over every page and which of them a page shows.
-    drawn: [firstPage, middlePage, lastPage, onePage, counter, pagerRange, previous, next, rowsFull, rowsLast, rowNewest, rowEleventh]
-    built:
-      - action: medaris.api:listMadrasahStudents
-      - route: apps/nazar/features/students/components/students-page.tsx:33
-    walked:
-      - e2e: apps/nazar/e2e/students.e2e.ts
-        check: 'students#1'
+    evidence:
+      - state: firstPage
+      - state: middlePage
+      - state: lastPage
+      - state: onePage
+      - node: counter
+      - node: pagerRange
+      - node: previous
+      - node: next
+      - node: rowsFull
+      - node: rowsLast
+      - node: rowNewest
+      - node: rowEleventh
+      - source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67
+      - source: apps/nazar/features/students/components/students-page.tsx:33
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — the first of five pages lists the newest ten, the counter says 48, and 'Sonraki' reads 11–20 (criteria 1, 2)"
       - test: apps/nazar/test/students.spec.tsx
 
   - id: see-who-finished-what
@@ -31,137 +43,169 @@ needs:
       A talebe's row says the courses they attend and the courses they finished, each finished one with the day the course team
       marked it, and says so plainly ("Yok") when they finished nothing; it says that the talebe's courses outside the medrese are
       not in the list.
-    drawn: [finishedCourse, finishedDay, noneCompleted, tableNote]
-    built:
-      - action: medaris.api:listMadrasahStudents
-      - route: apps/nazar/features/students/components/students-table.tsx:130
-    walked:
-      - e2e: apps/nazar/e2e/students.e2e.ts
-        check: 'students#2'
+    evidence:
+      - node: finishedCourse
+      - node: finishedDay
+      - node: noneCompleted
+      - node: tableNote
+      - source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67
+      - source: apps/nazar/features/students/components/students-table.tsx:130
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — a talebe who finished a course names it with the day, and the others say 'Yok' (criterion 3)"
       - test: apps/nazar/test/students.spec.tsx
 
   - id: narrow-by-state-and-name
     need: >-
       She narrows the list to the talebe who finished a course, or to a name or an e-mail address, from the first page, and the
       count follows; choosing "Bütün durumlar" or emptying the box brings the whole list back.
-    drawn: [statusFilter, choosingStatus, statusCompleted, statusAll, searchBox, narrowing, onePage, counter]
-    built:
-      - action: medaris.api:listMadrasahStudents
-      - route: apps/nazar/features/students/components/students-table.tsx:63
-    walked:
-      - e2e: apps/nazar/e2e/students.e2e.ts
-        check: 'students#3'
+    evidence:
+      - node: statusFilter
+      - state: choosingStatus
+      - node: statusCompleted
+      - node: statusAll
+      - node: searchBox
+      - state: narrowing
+      - state: onePage
+      - node: counter
+      - source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67
+      - source: apps/nazar/features/students/components/students-table.tsx:63
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — the state filter and the search narrow the list, from the first page, and the counter follows"
       - test: apps/nazar/test/students.spec.tsx
 
   - id: narrow-by-course
     need: >-
       She narrows the list to the talebe of one course of the medrese, and the choice lists every course of the medrese, also one
       that nobody holds a seat in yet.
-    drawn: [courseFilter, choosingCourse, courseEach, courseAll, onePage]
-    built:
-      - action: medaris.api:listMadrasahCourses
-      - route: apps/nazar/features/students/components/students-table.tsx:210
-    walked:
-      - test: apps/nazar/test/students.spec.tsx # no e2e picks a course; the replay scenario `many` does, once it has run
+    evidence:
+      - node: courseFilter
+      - state: choosingCourse
+      - node: courseEach
+      - node: courseAll
+      - state: onePage
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:664
+      - source: apps/nazar/features/students/components/students-table.tsx:210
+      - test: apps/nazar/test/students.spec.tsx
+    note: "apps/nazar/test/students.spec.tsx: no e2e picks a course; the replay scenario `many` does, once it has run"
 
   - id: clear-the-filters
-    need: >-
-      A list that a filter has emptied says so, and one control takes every filter off at once.
-    drawn: [nobody, nobodyLine, clearFilters]
-    built:
-      - route: apps/nazar/features/students/components/students-table.tsx:245
-    walked:
-      - e2e: apps/nazar/e2e/students.e2e.ts
-        check: 'students#3'
+    need: A list that a filter has emptied says so, and one control takes every filter off at once.
+    evidence:
+      - state: nobody
+      - node: nobodyLine
+      - node: clearFilters
+      - source: apps/nazar/features/students/components/students-table.tsx:245
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — the state filter and the search narrow the list, from the first page, and the counter follows"
 
   - id: say-there-are-no-talebe-yet
-    need: >-
-      A medrese that no talebe holds a seat in says so, in other words than a filter that has hidden everyone.
-    drawn: [empty, emptyLine]
-    built:
-      - route: apps/nazar/features/students/components/students-table.tsx:259
-    walked:
-      - test: apps/nazar/test/students.spec.tsx # no e2e: the e2e's medrese always has talebe
+    need: A medrese that no talebe holds a seat in says so, in other words than a filter that has hidden everyone.
+    evidence:
+      - state: empty
+      - node: emptyLine
+      - source: apps/nazar/features/students/components/students-table.tsx:259
+      - test: apps/nazar/test/students.spec.tsx
+    note: "apps/nazar/test/students.spec.tsx: no e2e: the e2e's medrese always has talebe"
 
   - id: bar-a-talebe-from-the-row
     need: >-
       From a talebe's row she opens the ban dialog for that person, with the courses they hold a seat in and the whole medrese to
       choose from.
-    drawn: [ban, handed_over.ban]
-    built:
-      - route: apps/nazar/features/students/components/students-table.tsx:169
-      - route: apps/nazar/features/students/components/students-table.tsx:297
-    walked:
-      - e2e: apps/nazar/e2e/students.e2e.ts
-        check: 'students#4' # the dialog's own story, carried by nazar.bans.ban
+    evidence:
+      - node: ban
+      - state: handed_over.ban
+      - source: apps/nazar/features/students/components/students-table.tsx:169
+      - source: apps/nazar/features/students/components/students-table.tsx:297
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — 'Yasakla' opens the dialog with the talebe's courses, wants a reason, and bars them from the course chosen (criterion 4)"
+    note: "students#4: the dialog's own story, carried by nazar.bans.ban"
 
   - id: refuse-who-may-not-read
     need: >-
       A reader the medrese has not trusted with the list (a nazır who was given nothing) is refused with a notice, and sees no
       talebe, no filter and no button.
-    drawn: [forbidden, forbiddenAlert, no-list-without-a-read]
-    built:
-      - action: medaris.api:listMadrasahStudents
-      - route: apps/nazar/features/students/components/students-page.tsx:84
-    walked:
-      - e2e: apps/nazar/e2e/students.e2e.ts
-        check: 'students#5' # carried by nazar.access.medreseNazirRefused
+    evidence:
+      - state: forbidden
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67
+      - source: apps/nazar/features/students/components/students-page.tsx:84
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — a medrese nazır is refused: a notice and no list"
       - test: apps/nazar/test/students.spec.tsx
+    note: |-
+      Also drawn as the assertion no-list-without-a-read.
+      students#5: carried by nazar.access.medreseNazirRefused
 
   - id: retry-a-failed-read
-    need: >-
-      A read that fails is said to be a failure, never an absence of permission, and the person can ask again from the page.
-    drawn: [loadFailed, failedRegion, retry]
-    built:
-      - route: apps/nazar/features/shell/components/load-failed.tsx:13
-    walked:
-      - test: apps/nazar/test/students.spec.tsx # the stack cannot make the API fail for one account, so no replay reaches it
+    need: A read that fails is said to be a failure, never an absence of permission, and the person can ask again from the page.
+    evidence:
+      - state: loadFailed
+      - node: failedRegion
+      - node: retry
+      - source: apps/nazar/features/shell/components/load-failed.tsx:13
+      - test: apps/nazar/test/students.spec.tsx
+    note: "apps/nazar/test/students.spec.tsx: the stack cannot make the API fail for one account, so no replay reaches it"
 
   - id: say-a-change-out-loud
     need: >-
       When a filter, a word or a page changes the list, a person who cannot see the screen is told the new count and the range
       (F-B-4).
-    drawn: [counter, pagerRange, narrowing]
-    missing: none
+    missing: no Linear issue; findings F-B-4
+    note: >-
+      Drawn on the state narrowing and on the nodes counter and pagerRange, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: say-why-it-is-refused-or-failed
     need: >-
       A refusal and a failed read are each a heading with the sentence under it and a way on; the page has one h1, and a refused
       reader's title is not "Talebeler" over a polite status line (F-B-1, F-B-13).
-    drawn: [forbidden, forbiddenTitle, forbiddenAlert, loadFailed, failedTitle, studentsTitle]
-    missing: none
+    missing: no Linear issue; findings F-B-1, F-B-13
+    note: >-
+      Drawn on the states forbidden and loadFailed and on the nodes forbiddenTitle, forbiddenAlert, failedTitle and studentsTitle,
+      which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
 
   - id: reading-leaves-a-trace
     need: >-
       Reading the names and e-mail addresses of the whole medrese's talebe writes an audit row, as reading a course roster does
       (students-read-unaudited, decision D1).
-    drawn: [reading]
-    missing: none
+    missing: no Linear issue; findings students-read-unaudited
+    note: >-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: ban-only-where-it-may-be-given
     need: >-
       "Yasakla" is drawn only for a reader who holds the permission to ban, not for everyone who may read the list (STUDENTS-2,
       decision D2).
-    drawn: [ban]
-    missing: none
+    missing: no Linear issue; findings STUDENTS-2
+    note: >-
+      Drawn on the node ban, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out
+      what only missing needs name).
 
   - id: a-page-change-keeps-the-place
     need: >-
       Going to the next or the previous page keeps the focus and the filters where they are and says that the page changed
       (STUDENTS-1).
-    drawn: [previous, next, pagerRange, reading]
-    missing: none
+    missing: no Linear issue; findings STUDENTS-1
+    note: >-
+      Drawn on the state reading and on the nodes previous, next and pagerRange, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-long-word-or-page-is-held
     need: >-
       A word of more than a hundred characters and a page number the database cannot hold are cut or refused by the page itself
       and never make it ask again and again, or fail for ever (STUDENTS-4, STUDENTS-5).
-    drawn: [searchBox, narrowing, loadFailed]
-    missing: none
+    missing: no Linear issue; findings STUDENTS-4, STUDENTS-5
+    note: >-
+      Drawn on the states narrowing and loadFailed and on the node searchBox, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-course-filter-for-every-reader
     need: >-
       A nazır who may read the list can also choose a course in the filter, without being given the course codes as well
       (STUDENTS-3).
-    drawn: [courseFilter, choosingCourse, courseAll]
-    missing: none
+    missing: no Linear issue; findings STUDENTS-3
+    note: >-
+      Drawn on the state choosingCourse and on the nodes courseFilter and courseAll, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

@@ -1,5 +1,5 @@
 # nizam.moderation.banStudent where no celse is still to come: the course's one celse is 30 days ago (helpers/course.mjs make --start -30), so
-# `nextSessionAt` is null (present.ts:245-259) and the window has no warning "Sıradaki celsenin toplantı bağlantısını yenileyin". The story is
+# `nextSessionAt` is null (present.ts:159-173) and the window has no warning "Sıradaki celsenin toplantı bağlantısını yenileyin". The story is
 # the main one; the scenario is a file of its own because it adds no transition to `--cover transitions` (only a node less), so it would not
 # be walked in binding.yaml.
 #   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/banStudent \

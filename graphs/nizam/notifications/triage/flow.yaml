@@ -227,7 +227,7 @@ states:
       other and draws nothing on the screen of this step. Any failure of either read is kept as `null`, and the page then draws the
       first-read box (state readFailed); a token tedrisat refuses is sent to sign in again, which is not that box (out of view).
     includes: ["each row's id, type, target, params, read time and creation time", "the list's cursor"]
-    source: apps/nizam/features/notifications/reads.ts:137
+    source: apps/nizam/features/notifications/reads.ts:24
     invoke: { action: listNotifications }
     on:
       DONE: { guard: listRead, target: readingCounts }
@@ -239,7 +239,7 @@ states:
       How many ban notices the person has and how many of them are unread; the first fills the tab "Tümü", the second the tab
       "Okunmamış" and decides whether the button "Tümünü okundu say" is enabled. The call asks for the same two types, so a talebe-side
       notice in the same table is not counted. The page makes this call together with the list; the graph draws it after.
-    source: apps/nizam/features/notifications/reads.ts:141
+    source: apps/nizam/features/notifications/reads.ts:28
     invoke: { action: getNotificationCounts }
     on:
       DONE: { guard: countsRead, target: sorting }

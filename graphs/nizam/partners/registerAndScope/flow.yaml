@@ -176,7 +176,7 @@ context:
       failed: "'Kaydedilemedi' with the generic sentence"
 
 guards:
-  # sameKosks(held, chosen) of present.ts:99: an unchanged selection just closes the dialog
+  # sameKosks(held, chosen) of present.ts:44: an unchanged selection just closes the dialog
   unchanged: "(ticked == 'none' and kosks == 'none') or (ticked == 'some' and kosks == 'some')"
   # a row exists to press something on
   hasRow: "row != 'none'"
@@ -256,8 +256,8 @@ failures:
     gone: [PARTNER_UNKNOWN]
     forbidden: [AUTHZ_FORBIDDEN]
     failed: [VALIDATION_ERROR, KOSK_NOT_FOUND]
-# `forbidden` of `reading` is the 403 the page turns into forbidden() (reads.ts:122); `unreadable` stands for every other failure, which the
-# page treats alike (a null, reads.ts:125). The writes map a refusal by its `code` (present.ts:94): the codes the page words are
+# `forbidden` of `reading` is the 403 the page turns into forbidden() (reads.ts:19-20); `unreadable` stands for every other failure, which the
+# page treats alike (a null, reads.ts:23). The writes map a refusal by its `code` (present.ts:30-41): the codes the page words are
 # PARTNER_EXISTS, PARTNER_FRONT_END_CLIENT, PARTNER_UNKNOWN, KOSK_NOT_FOUND, VALIDATION_ERROR and AUTHZ_FORBIDDEN, anything else is the
 # generic sentence. The graph draws the three sentences it can tell apart (gone, forbidden, generic) and leaves the other two to
 # outOfView: they stand in the same places.
@@ -277,15 +277,15 @@ states:
       The page's server side asks tedrisat for GET /nizam/partner-applications (page.tsx:22): every registered partner, open or not, by
       name and then client id, each with the köşks it works with, and every köşk, hidden ones included, by name, to choose from.
       tedrisat asks platform.partner_manage: the başnazım passes, a Medaris nazımı only when granted it, nobody else. A 403 is told apart
-      and the page calls forbidden() (page.tsx:23); any other failure is a null that the page draws as a box (reads.ts:125). Nothing is on
+      and the page calls forbidden() (page.tsx:23); any other failure is a null that the page draws as a box (reads.ts:23). Nothing is on
       the screen of this step: the loading skeleton (loading.tsx) is out of view.
     includes: ["the partners with their köşks", "every köşk to choose from"]
     source: apps/nizam/app/ayarlar/ortak-uygulamalar/page.tsx:22
     invoke: { action: listPartnerApplications }
     on:
       DONE: { guard: "read == 'ok'", target: arrived }
-      FAIL.forbidden: { guard: "read == 'forbidden'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'section'" } }, say: "a 403: the page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" (nizam.shell.noAccessAndNotFound)", source: apps/nizam/features/partners/reads.ts:122 }
-      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "any other failure is a null: the page still draws its header and a box in place of the form and the table", source: apps/nizam/features/partners/reads.ts:125 }
+      FAIL.forbidden: { guard: "read == 'forbidden'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'section'" } }, say: "a 403: the page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" (nizam.shell.noAccessAndNotFound)", source: apps/nizam/features/partners/reads.ts:19 }
+      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "any other failure is a null: the page still draws its header and a box in place of the form and the table", source: apps/nizam/features/partners/reads.ts:23 }
 
   arrived:
     title: What the answer holds
@@ -332,8 +332,8 @@ states:
       SUBMIT_ADD:
         - { guard: "typed == 'valid'", target: adding, effect: [clearToast], say: "they press Ekle (or Enter in a field): the form is right and goes to tedrisat", source: apps/nizam/features/partners/components/partners-view.tsx:271 }
         - { guard: "typed == 'empty'", target: addProblem, effect: [saidEmpty, clearToast], say: "they press Ekle with nothing typed: both fields say what is missing and nothing is sent", source: apps/nizam/features/partners/components/partners-view.tsx:264 }
-        - { guard: "typed == 'badShape'", target: addProblem, effect: [saidBadShape, clearToast], say: "the client id says it may hold only letters, digits, dot, underscore and hyphen", source: apps/nizam/features/partners/present.ts:67 }
-        - { guard: "typed == 'noName'", target: addProblem, effect: [saidNoName, clearToast], say: "the name says 'Bir ad yazın.'", source: apps/nizam/features/partners/present.ts:73 }
+        - { guard: "typed == 'badShape'", target: addProblem, effect: [saidBadShape, clearToast], say: "the client id says it may hold only letters, digits, dot, underscore and hyphen", source: apps/nizam/features/partners/present.ts:14 }
+        - { guard: "typed == 'noName'", target: addProblem, effect: [saidNoName, clearToast], say: "the name says 'Bir ad yazın.'", source: apps/nizam/features/partners/present.ts:20 }
       TURN_OFF: { guard: "row == 'on'", target: turningOff, effect: [pressOff], say: "they press the row's switch: it moves at once and the call goes", source: apps/nizam/features/partners/components/partners-view.tsx:83 }
       TURN_ON: { guard: "row == 'off'", target: turningOn, effect: [pressOn], say: "they press the row's switch: it moves at once and the call goes", source: apps/nizam/features/partners/components/partners-view.tsx:83 }
       CHOOSE_KOSKS:

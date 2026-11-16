@@ -676,6 +676,7 @@ actions:
       status: 200
       note: "the refreshed list, as listPlatformPolicies. In force at once: the engine loads platform_policies on every decision, nothing is cached, and no existing enrollment or recording is rewritten"
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "S14; given only after the path and the body pass their pipes" }
       HTTP_400: { status: 400, source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:73, note: "key is neither ALWAYS_REQUIRE_APPROVAL nor RECORDINGS_NEVER_PUBLIC" }
       VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "enabled missing or not a boolean, an unknown property" }

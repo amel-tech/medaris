@@ -205,7 +205,7 @@ states:
       names (the person's own copy when they saved one, else the token's), the e-mail address, tedrisat's copy of the gender, the
       time zone and the invitation switch (on when absent). A token tedrisat refuses is not a failure: it sends the person to sign in
       again with reauth (out of view). Any other failure leaves the page with no profile to draw.
-    source: apps/tedris/features/account/reads.ts:178
+    source: apps/tedris/features/account/reads.ts:45
     invoke: { action: getMe }
     on:
       DONE: { guard: readable, target: account, say: "the cards are drawn from the answer", source: apps/tedris/app/account/page.tsx:45 }
@@ -247,7 +247,7 @@ states:
       OPEN_CALENDAR: { target: handed_over.calendar_feed, starts: { flow: tedris.account.calendarFeed }, say: "'Takvim bağlantını yönet': /account/calendar, in the same tab (e2e profile#3)", source: apps/tedris/features/account/components/account-settings.tsx:313 }
       SIGN_OUT: { target: handed_over.sign_out, starts: { flow: realm.auth.signOut, given: { app: "'tedris'", entry: "'confirmationPage'" } }, say: "'Çıkış yap': /auth/signout, the confirmation page; nothing ends here (e2e profile#3)", source: apps/tedris/features/account/components/account-settings.tsx:372 }
       RELOAD: { target: readingProfile, effect: [pageFresh], say: "the page is read again and the boxes hold what the API holds (e2e profile#1, #2)", source: apps/tedris/app/account/page.tsx:12 }
-      NAVIGATE: { target: left, say: "they go on to another page", source: apps/tedris/app/account/layout.tsx:75 }
+      NAVIGATE: { target: left, say: "they go on to another page", source: apps/tedris/app/account/layout.tsx:28 }
 
   profileUnreadable:
     title: The account could not be read
@@ -264,7 +264,7 @@ states:
       this box (apps/tedris/test/account-messages-parity.spec.ts only checks that its two messages exist in the three languages).
     on:
       RELOAD: { target: readingProfile, effect: [again], say: "they reload the page, as the box tells them", source: apps/tedris/app/account/page.tsx:12 }
-      NAVIGATE: { target: left, say: "they go on to another page", source: apps/tedris/app/account/layout.tsx:75 }
+      NAVIGATE: { target: left, say: "they go on to another page", source: apps/tedris/app/account/layout.tsx:28 }
 
   choosingZone:
     title: The first time-zone list is open

@@ -1,173 +1,240 @@
-# What must exist for a permanent-ban request to be decided in nizam: the flow's product list (LAYOUT.md section 7). Written graph-first: no code
-# stands behind this flow, so almost every need is `missing`. Each need is what the product must do, from the story (FLOWS.md), planned.md
-# (P-01, P-02, P-03, P-35), and the issues MDRS-140, MDRS-197, MDRS-113, MDRS-125 and MDRS-205 (read in Linear on 16 Nov 2026), not from what a
-# page does today. `built` only for what exists today. Read by people for now: no checker runs on this file.
+schema: delurio-graph/0
+kind: needs
+id: nizam.moderation.decidePermanentBan
+status: proposed
+summary: >-
+  What must exist for a permanent-ban request to be decided in nizam: the flow's product list. Written graph-first: no code stands
+  behind this flow, so almost every need is `missing`. Each need is what the product must do, from the story (FLOWS.md),
+  planned.md (P-01, P-02, P-03, P-35), and the issues MDRS-140, MDRS-197, MDRS-113, MDRS-125 and MDRS-205 (read in Linear on 16
+  Nov 2026), not from what a page does today. `built` only for what exists today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Gaps of this file, for the orchestrator's merge into graphs/needs.gaps.yaml:
-#   missing:  deciders-are-told-and-read-the-request (MDRS-140), decider-holds-the-ban-permission (MDRS-140),
-#             approve-closes-the-account (MDRS-197), closing-is-fail-closed-and-repeatable (MDRS-197),
-#             person-is-checked-where-it-bites (MDRS-140), reject-with-a-note-ban-stays (MDRS-140), requester-sees-the-outcome (MDRS-140),
-#             every-step-is-audited (MDRS-140), page-behind-the-menu-entry (MDRS-140), medaris-home-card-counts (MDRS-140),
-#             closed-account-is-not-appointed (MDRS-197), closed-account-keeps-no-session (MDRS-197),
-#             a-lift-reopens-the-account (MDRS-197), device-follows-the-platform-ban (MDRS-125),
-#             platform-ban-is-listed (MDRS-113), a-lifted-ban-withdraws-its-request (none: open decision), who-may-ask (none: open decision),
-#             the-service-account-may-disable-only (none: open decision)
-#   unwalked: none (nothing is code, so nothing can be walked; the two built needs carry the e2e checks that exist)
+# missing:  deciders-are-told-and-read-the-request (MDRS-140), decider-holds-the-ban-permission (MDRS-140),
+# approve-closes-the-account (MDRS-197), closing-is-fail-closed-and-repeatable (MDRS-197),
+# person-is-checked-where-it-bites (MDRS-140), reject-with-a-note-ban-stays (MDRS-140), requester-sees-the-outcome (MDRS-140),
+# every-step-is-audited (MDRS-140), page-behind-the-menu-entry (MDRS-140), medaris-home-card-counts (MDRS-140),
+# closed-account-is-not-appointed (MDRS-197), closed-account-keeps-no-session (MDRS-197),
+# a-lift-reopens-the-account (MDRS-197), device-follows-the-platform-ban (MDRS-125),
+# platform-ban-is-listed (MDRS-113), a-lifted-ban-withdraws-its-request (none: open decision), who-may-ask (none: open decision),
+# the-service-account-may-disable-only (none: open decision)
+# unwalked: none (nothing is code, so nothing can be walked; the two built needs carry the e2e checks that exist)
 # Gender separation is given and does not touch this flow: no seat is decided here.
-kind: needs
-flow: nizam.moderation.decidePermanentBan
-status: proposed
 
 needs:
   - id: request-is-filed
     need: >-
-      A başmüderris, or a nazır given madrasah.permanent_ban_request, asks Medaris administration to make a ban in or over their medrese
-      permanent, with a reason: one request per ban, the ban stands as it was meanwhile, and the row says a request is waiting.
-    drawn: []
-    built:
-      - action: medaris.api:requestPermanentBan
-      - route: apps/nazar/features/bans/components/reason-dialog.tsx:70
-    walked:
-      - e2e: apps/nazar/e2e/bans.e2e.ts
-        check: 'bans#6'
-    # Drawn by nazar.bans.decide (the dialog, the toast, the badge) and nazar.bans.courseBans; this flow is what its start leads to.
+      A başmüderris, or a nazır given madrasah.permanent_ban_request, asks Medaris administration to make a ban in or over their
+      medrese permanent, with a reason: one request per ban, the ban stands as it was meanwhile, and the row says a request is
+      waiting.
+    evidence:
+      - source: apps/tedrisat/src/ban/ban.controller.ts:243
+      - source: apps/nazar/features/bans/components/reason-dialog.tsx:70
+      - test: apps/nazar/e2e/bans.e2e.ts
+        name: "nazir/11 — 'Kalıcı yasak talebi aç' records the request with the reason, and the row says it is waiting"
+    note: >-
+      Drawn by nazar.bans.decide (the dialog, the toast, the badge) and nazar.bans.courseBans; this flow is what its start leads
+      to.
 
   - id: who-may-ask
     need: >-
-      Anyone who bans at course, köşk or medrese level can ask for a permanent platform ban, from their own ban or from one at their level
-      (MDRS-140: "its author or anyone who may ban at that level"). Today only a başmüderris or a nazır holding the permission can, and only on
-      a ban in or over a medrese; a köşk nazım, a müderris and a ban at köşk level are refused (BAN_PERMANENT_REQUEST_INVALID, BAN_FORBIDDEN).
-    drawn: []
-    missing: none # an open decision: the story says "a köşk, medrese or course admin", the code says the medrese's heads only
+      Anyone who bans at course, köşk or medrese level can ask for a permanent platform ban, from their own ban or from one at
+      their level (MDRS-140: "its author or anyone who may ban at that level"). Today only a başmüderris or a nazır holding the
+      permission can, and only on a ban in or over a medrese; a köşk nazım, a müderris and a ban at köşk level are refused
+      (BAN_PERMANENT_REQUEST_INVALID, BAN_FORBIDDEN).
+    missing: >-
+      no Linear issue; an open decision: the story says "a köşk, medrese or course admin", the code says the medrese's heads only
 
   - id: page-behind-the-menu-entry
     need: >-
-      The menu entry "Kalıcı yasak talepleri" opens a page, the one this flow draws. The entry is the başnazım's and a Medaris nazımı's who holds
-      the ban permission, and it exists already.
-    drawn: [menu, navPermanentBans, reading, shown]
-    missing: MDRS-140 # the entry is built (lib/shell-nav.ts:122; pinned by nizam e2e shell#9 and shell#10 as a label); the page behind it is not
+      The menu entry "Kalıcı yasak talepleri" opens a page, the one this flow draws. The entry is the başnazım's and a Medaris
+      nazımı's who holds the ban permission, and it exists already.
+    evidence:
+      - state: menu
+      - node: navPermanentBans
+      - state: reading
+      - state: shown
+    missing: >-
+      MDRS-140; the entry is built (lib/shell-nav.ts:122; pinned by nizam e2e shell#9 and shell#10 as a label); the page behind it
+      is not
 
   - id: decider-holds-the-ban-permission
     need: >-
-      Reading the waiting requests, accepting one and rejecting one need the same permission, asked first and in one place: the başnazım, or a
-      Medaris nazımı holding platform.ban_account by a grant or a group whose role is still held. Nobody else sees a request, a person or a
-      reason: a köşk nazım, a medrese nazır and a talebe meet "Bu bölüm için izniniz yok". Whether the code stays platform.ban_account, which only
-      reads bans today, or becomes one of its own, is the başnazım's to decide before release.
-    drawn: [reading, no_access, approving, rejecting]
+      Reading the waiting requests, accepting one and rejecting one need the same permission, asked first and in one place: the
+      başnazım, or a Medaris nazımı holding platform.ban_account by a grant or a group whose role is still held. Nobody else sees
+      a request, a person or a reason: a köşk nazım, a medrese nazır and a talebe meet "Bu bölüm için izniniz yok". Whether the
+      code stays platform.ban_account, which only reads bans today, or becomes one of its own, is the başnazım's to decide before
+      release.
+    evidence:
+      - state: reading
+      - state: no_access
+      - state: approving
+      - state: rejecting
     missing: MDRS-140
 
   - id: deciders-are-told-and-read-the-request
     need: >-
-      When a request is filed the people who decide are told, and only they: the başnazım and the Medaris nazımları holding the permission, not
-      every Medaris nazım, and with no reason in the notice. They read the person, the lower ban (its scope and place, who placed it in which
-      role, when and why) and the request (who asked, when and why) on the page, newest decision first on the decided tab.
-    drawn: [reading, shown, waitingDetail, decidedDetail, requestList, row, detailRegion, requestRegion]
-    missing: MDRS-140 # today the request is a row nobody reads (BANDEC-4); the notices of the ban routes go to every Medaris nazımı with every reason (TRIAGE-2) and never to the başnazım (TRIAGE-1)
+      When a request is filed the people who decide are told, and only they: the başnazım and the Medaris nazımları holding the
+      permission, not every Medaris nazım, and with no reason in the notice. They read the person, the lower ban (its scope and
+      place, who placed it in which role, when and why) and the request (who asked, when and why) on the page, newest decision
+      first on the decided tab.
+    evidence:
+      - state: reading
+      - state: shown
+      - state: waitingDetail
+      - state: decidedDetail
+      - node: requestList
+      - node: row
+      - node: detailRegion
+      - node: requestRegion
+    missing: >-
+      MDRS-140; today the request is a row nobody reads (BANDEC-4); the notices of the ban routes go to every Medaris nazımı with
+      every reason (TRIAGE-2) and never to the başnazım (TRIAGE-1)
 
   - id: person-is-checked-where-it-bites
     need: >-
-      The person whose account would close is checked when the decision is made, not when the ban was placed: not the person deciding, not
-      the başnazım (a Keycloak realm role, found by the person's id and not through role_assignments, where it is never a row), and nobody who
-      holds any role at any scope (müderris, ders nazırı, medrese nazırı, başmüderris, köşk nazımı, Medaris nazımı), whatever place the lower
-      ban sits in. The directory failing refuses; it never lets the check pass. The same check gives the page its "Kabul et" or its note why not,
-      and a request over such a person can still be rejected.
-    drawn: [waitingDetail, blockedSelf, blockedChief, blockedPost, approveButton, approving]
-    missing: MDRS-140 # drawn so as to repeat none of: ban-staff-check-gaps (extend and escalate skip the check, rolesHeld never finds SYSTEM_ADMIN), BANDEC-3 (the medrese-wide ban reads no course or köşk role), NDB-1 (createBan reads only the ban's own course's scopes)
+      The person whose account would close is checked when the decision is made, not when the ban was placed: not the person
+      deciding, not the başnazım (a Keycloak realm role, found by the person's id and not through role_assignments, where it is
+      never a row), and nobody who holds any role at any scope (müderris, ders nazırı, medrese nazırı, başmüderris, köşk nazımı,
+      Medaris nazımı), whatever place the lower ban sits in. The directory failing refuses; it never lets the check pass. The same
+      check gives the page its "Kabul et" or its note why not, and a request over such a person can still be rejected.
+    evidence:
+      - state: waitingDetail
+      - node: blockedSelf
+      - node: blockedChief
+      - node: blockedPost
+      - node: approveButton
+      - state: approving
+    missing: >-
+      MDRS-140; drawn so as to repeat none of: ban-staff-check-gaps (extend and escalate skip the check, rolesHeld never finds
+      SYSTEM_ADMIN), BANDEC-3 (the medrese-wide ban reads no course or köşk role), NDB-1 (createBan reads only the ban's own
+      course's scopes)
 
   - id: approve-closes-the-account
     need: >-
-      "Kabul et" asks "Hesap kapatılsın mı?" and, once confirmed, disables the person's account in Keycloak, places a platform-wide ban with the
-      request's reason (tier 4: only Medaris administration lifts it), tells the requester and leaves the lower ban open. The person can no longer
-      sign in to tedris, nazar or nizam.
-    drawn: [approveButton, approveConfirm, approveDialog, approveSubmit, approving, toastApproved]
-    missing: MDRS-197 # "Deferred screens: platform-wide ban via Keycloak account disable"; no Keycloak write exists (invariant keycloak-is-read-only) and tedrisat-admin holds view-users, query-users and view-realm only
+      "Kabul et" asks "Hesap kapatılsın mı?" and, once confirmed, disables the person's account in Keycloak, places a
+      platform-wide ban with the request's reason (tier 4: only Medaris administration lifts it), tells the requester and leaves
+      the lower ban open. The person can no longer sign in to tedris, nazar or nizam.
+    evidence:
+      - node: approveButton
+      - state: approveConfirm
+      - node: approveDialog
+      - node: approveSubmit
+      - state: approving
+      - node: toastApproved
+    missing: >-
+      MDRS-197; "Deferred screens: platform-wide ban via Keycloak account disable"; no Keycloak write exists (invariant
+      keycloak-is-read-only) and tedrisat-admin holds view-users, query-users and view-realm only
 
   - id: closing-is-fail-closed-and-repeatable
     need: >-
-      The account is disabled before anything is written; if Keycloak does not answer nothing is written, nothing is half done and the request
-      stays waiting, so the same press can be repeated; if the write fails after the disable, repeating finishes it. A platform ban never exists
-      for an account that is still open.
-    drawn: [approving, toastDirectory]
+      The account is disabled before anything is written; if Keycloak does not answer nothing is written, nothing is half done and
+      the request stays waiting, so the same press can be repeated; if the write fails after the disable, repeating finishes it. A
+      platform ban never exists for an account that is still open.
+    evidence:
+      - state: approving
+      - node: toastDirectory
     missing: MDRS-197
 
   - id: the-service-account-may-disable-only
     need: >-
-      The credential tedrisat uses to disable an account holds no more than that needs. Keycloak cannot narrow manage-users to the enabled flag,
-      so the credential that disables could also change passwords and addresses of every account: a client of its own for this one step, or
-      Keycloak's finer permissions (26.2 and later, not verified here), is to be chosen. The tedrisat-admin client is not in the repository's
-      provisioning (config/keycloak/ has no such client), so every environment needs the change by hand.
-    drawn: []
-    missing: none # an open decision
+      The credential tedrisat uses to disable an account holds no more than that needs. Keycloak cannot narrow manage-users to the
+      enabled flag, so the credential that disables could also change passwords and addresses of every account: a client of its
+      own for this one step, or Keycloak's finer permissions (26.2 and later, not verified here), is to be chosen. The
+      tedrisat-admin client is not in the repository's provisioning (config/keycloak/ has no such client), so every environment
+      needs the change by hand.
+    missing: no Linear issue; an open decision
 
   - id: closed-account-keeps-no-session
     need: >-
-      The closed person's sessions end with the disable. The API checks an access token offline and a token lives 300 s, and a web session renews
-      with its refresh token until Keycloak refuses it, so without a logout of the person's sessions a closed account works for up to five minutes.
-    drawn: [approving]
-    missing: MDRS-197 # config/keycloak/realms/_base.json accessTokenLifespan 300; from the code and the config, not measured against a realm
+      The closed person's sessions end with the disable. The API checks an access token offline and a token lives 300 s, and a web
+      session renews with its refresh token until Keycloak refuses it, so without a logout of the person's sessions a closed
+      account works for up to five minutes.
+    evidence:
+      - state: approving
+    missing: >-
+      MDRS-197; config/keycloak/realms/_base.json accessTokenLifespan 300; from the code and the config, not measured against a
+      realm
 
   - id: closed-account-is-not-appointed
     need: >-
-      A person with a standing platform ban is never given a post, and the refusal says why. Today the exact-e-mail lookup skips a disabled
-      account (keycloak-admin.service.ts:97), so appointing them fails as "no such account"; nothing says it is a ban, and the lookup by id does not
-      skip them. The same direction as the open gap "nothing checks a ban when a müderris is seated" (ban-staff-check-gaps).
-    drawn: []
-    missing: MDRS-197
+      A person with a standing platform ban is never given a post, and the refusal says why. Today the exact-e-mail lookup skips a
+      disabled account (keycloak-admin.service.ts:97), so appointing them fails as "no such account"; nothing says it is a ban,
+      and the lookup by id does not skip them. The same direction as the open gap "nothing checks a ban when a müderris is seated"
+      (ban-staff-check-gaps).
+    missing: MDRS-197; findings ban-staff-check-gaps
 
   - id: reject-with-a-note-ban-stays
     need: >-
-      "Reddet" asks for a note the requester reads; the lower ban stays exactly as it was, nothing is called in Keycloak, and the request is
-      closed (it cannot be asked about again: one request per ban).
-    drawn: [rejectButton, rejectForm, rejectFormReady, rejectDialog, rejectSubmit, rejecting, toastRejected]
+      "Reddet" asks for a note the requester reads; the lower ban stays exactly as it was, nothing is called in Keycloak, and the
+      request is closed (it cannot be asked about again: one request per ban).
+    evidence:
+      - node: rejectButton
+      - state: rejectForm
+      - state: rejectFormReady
+      - node: rejectDialog
+      - node: rejectSubmit
+      - state: rejecting
+      - node: toastRejected
     missing: MDRS-140
 
   - id: requester-sees-the-outcome
     need: >-
-      The requester is told the outcome, with the note when it was rejected, and the row on their Yasaklamalar page shows it (it says "Kalıcı yasak
-      talebi bekliyor" until then, and nothing after). The banned person is told nothing by Medaris.
-    drawn: [approving, rejecting]
-    missing: MDRS-140 # the badge and the toast are nazar.bans.decide's; their words after a decision are not drawn anywhere yet
+      The requester is told the outcome, with the note when it was rejected, and the row on their Yasaklamalar page shows it (it
+      says "Kalıcı yasak talebi bekliyor" until then, and nothing after). The banned person is told nothing by Medaris.
+    evidence:
+      - state: approving
+      - state: rejecting
+    missing: MDRS-140; the badge and the toast are nazar.bans.decide's; their words after a decision are not drawn anywhere yet
 
   - id: every-step-is-audited
     need: >-
-      Every step goes to the audit log under the decider's name: permanent_ban.approve and permanent_ban.reject, which the audit page's existing
-      type "Kalıcı yasak talebi ve kararı" already filters by, and the request's own row (today ban.permanent_request, which that type does not
-      match: PBAN-1).
-    drawn: [approving, rejecting, approveBody]
-    missing: MDRS-140
+      Every step goes to the audit log under the decider's name: permanent_ban.approve and permanent_ban.reject, which the audit
+      page's existing type "Kalıcı yasak talebi ve kararı" already filters by, and the request's own row (today
+      ban.permanent_request, which that type does not match: PBAN-1).
+    evidence:
+      - state: approving
+      - state: rejecting
+      - node: approveBody
+    missing: MDRS-140; findings PBAN-1
 
   - id: a-lifted-ban-withdraws-its-request
     need: >-
-      When the lower ban is lifted while its request waits, the request is closed as withdrawn in the same transaction, and a decider who
-      opened it meanwhile meets "decided meanwhile". Otherwise a request over a lifted ban could still close an account.
-    drawn: [approving, rejecting, toastAnswered]
-    missing: none # an open decision (O7); it changes liftBan
+      When the lower ban is lifted while its request waits, the request is closed as withdrawn in the same transaction, and a
+      decider who opened it meanwhile meets "decided meanwhile". Otherwise a request over a lifted ban could still close an
+      account.
+    evidence:
+      - state: approving
+      - state: rejecting
+      - node: toastAnswered
+    missing: no Linear issue; an open decision (O7); it changes liftBan
 
   - id: platform-ban-is-listed
     need: >-
-      The platform ban an approval places reads on the Medaris Yasaklamalar like any ban: its scope ("Platform"), the person, the reason (the
-      request's), who placed it in which role, and a lift that only Medaris administration may make. Today the list knows Ders and Köşk only
-      (a medrese-wide ban already reads as a Köşk row with no köşk, NDB-4) and Ban.scope has no PLATFORM value.
-    drawn: []
-    missing: MDRS-113 # nizam.moderation.reviewBans and decideBan; the platform scope of the ban table is MDRS-113's
+      The platform ban an approval places reads on the Medaris Yasaklamalar like any ban: its scope ("Platform"), the person, the
+      reason (the request's), who placed it in which role, and a lift that only Medaris administration may make. Today the list
+      knows Ders and Köşk only (a medrese-wide ban already reads as a Köşk row with no köşk, NDB-4) and Ban.scope has no PLATFORM
+      value.
+    missing: nizam.moderation.reviewBans and decideBan; the platform scope of the ban table is MDRS-113's
 
   - id: a-lift-reopens-the-account
-    need: >-
-      Lifting a platform ban, which only Medaris administration may do, enables the Keycloak account again.
-    drawn: []
-    missing: MDRS-197 # nizam.moderation.decideBan; not drawn here
+    need: Lifting a platform ban, which only Medaris administration may do, enables the Keycloak account again.
+    missing: MDRS-197; nizam.moderation.decideBan; not drawn here
 
   - id: medaris-home-card-counts
     need: >-
-      The Medaris home's card "Kalıcı yasak talepleri" counts the waiting requests and leads to this page; today it always says "Bekleyen kalıcı
-      yasak talebi yok." (F-W1-15) because the count is a constant 0.
-    drawn: [emptyWaiting]
-    missing: MDRS-140
+      The Medaris home's card "Kalıcı yasak talepleri" counts the waiting requests and leads to this page; today it always says
+      "Bekleyen kalıcı yasak talebi yok." (F-W1-15) because the count is a constant 0.
+    evidence:
+      - node: emptyWaiting
+    missing: MDRS-140; findings F-W1-15
 
   - id: device-follows-the-platform-ban
     need: >-
-      When a platform ban is placed, every device the banned person has used is restricted, and a different account that signs in on it sees "Bu
-      bilgisayar erişim kısıtlamasına alınmıştır. Lütfen sistem yöneticisiyle görüşün."; accounts that used the device before the ban are not
-      blocked, and the restriction ends when the ban is lifted (MDRS-125, owner's decision of 3 Oct).
-    drawn: []
-    missing: MDRS-125 # needs.yaml only, as the story says: it begins at the step `approving` and has no screen of its own here
+      When a platform ban is placed, every device the banned person has used is restricted, and a different account that signs in
+      on it sees "Bu bilgisayar erişim kısıtlamasına alınmıştır. Lütfen sistem yöneticisiyle görüşün."; accounts that used the
+      device before the ban are not blocked, and the restriction ends when the ban is lifted (MDRS-125, owner's decision of 3
+      Oct).
+    missing: "MDRS-125; needs.yaml only, as the story says: it begins at the step `approving` and has no screen of its own here"

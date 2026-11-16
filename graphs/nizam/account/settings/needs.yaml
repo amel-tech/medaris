@@ -1,216 +1,271 @@
-# What must exist for a signed-in person of nizam to read what they hold and set the time zone their celse times are shown in: the flow's
-# product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the owner's decisions in the
-# inventory (planned.md), not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges.
-# Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nizam.account.settings
+status: proposed
+summary: >-
+  What must exist for a signed-in person of nizam to read what they hold and set the time zone their celse times are shown in: the
+  flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For needs.gaps (written 15 Nov 2026, before any replay of this flow: `walked` names only e2e checks and unit specs, no replay):
-#   missing   medaris-nazim-reads-their-permissions, a-save-is-visibly-busy-and-keeps-the-focus, the-second-list-follows-the-zone-held,
-#             sign-out-survives-a-failed-read, new-tab-is-said, page-structure-is-in-order, loading-is-announced (none);
-#             choose-the-language (MDRS-295)
-#   unwalked  a-failed-save-restores-the-zone (no e2e and no unit spec; the engine cannot make PATCH /me refuse), dates-follow-the-zone
-#             (nothing asserts a date after a save), the-imam-star-explains-itself (a unit spec marks the star, nothing opens the bubble),
-#             a-failed-read-is-told-and-retried (nothing makes a read fail), a-hoca-goes-to-nazar (a unit spec reads the link; no e2e
-#             and no replay presses it), no-role-is-told-and-keeps-the-rest (a unit spec only)
-kind: needs
-flow: nizam.account.settings
-status: proposed
+# missing   medaris-nazim-reads-their-permissions, a-save-is-visibly-busy-and-keeps-the-focus, the-second-list-follows-the-zone-held,
+# sign-out-survives-a-failed-read, new-tab-is-said, page-structure-is-in-order, loading-is-announced (none);
+# choose-the-language (MDRS-295)
+# unwalked  a-failed-save-restores-the-zone (no e2e and no unit spec; the engine cannot make PATCH /me refuse), dates-follow-the-zone
+# (nothing asserts a date after a save), the-imam-star-explains-itself (a unit spec marks the star, nothing opens the bubble),
+# a-failed-read-is-told-and-retried (nothing makes a read fail), a-hoca-goes-to-nazar (a unit spec reads the link; no e2e
+# and no replay presses it), no-role-is-told-and-keeps-the-rest (a unit spec only)
 
 needs:
   - id: read-my-roles
     need: >-
       A signed-in person reads every role they hold in one table: the role, the köşk, medrese or course it holds in and that
       course's state, who gave it and when, and until when. The widest role comes first in the line under their name.
-    drawn: [settings, tasksTable, columnRole, rowRole, rowScope, rowBadge, rowMeta, rowGrantor, rowGranted, rowExpires, roleLine]
-    built:
-      - action: medaris.api:getMyAssignments
-      - route: apps/nizam/features/account/components/account-page.tsx:66
-    walked:
-      - e2e: apps/nizam/e2e/account.e2e.ts
-        check: 'account#1'
+    evidence:
+      - state: settings
+      - node: tasksTable
+      - node: columnRole
+      - node: rowRole
+      - node: rowScope
+      - node: rowBadge
+      - node: rowMeta
+      - node: rowGrantor
+      - node: rowGranted
+      - node: rowExpires
+      - node: roleLine
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nizam/features/account/components/account-page.tsx:66
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/36 — the person row leads to 'Hesap ve ayarlar', which lists the köşk nazımı's roles with scope, grantor and term (criterion 1)"
       - test: apps/nizam/test/account.spec.tsx
 
   - id: permissions-in-words
     need: >-
       The person reads, for each role and scope they hold, the permissions it gives them as plain sentences, grouped under one
       heading, with when the role ends. A permission the page has no sentence for is never shown as a bare code.
-    drawn: [settings, permissionsRegion, permissionGroup, groupTitle, groupScopeLine, permissionLine, permissionKoskManage, permissionUserLookup, permissionNote, defaultsNote, expiryLine]
-    built:
-      - action: medaris.api:getMyEffectivePermissions
-      - route: apps/nizam/features/account/components/permissions-list.tsx:94
-    walked:
-      - e2e: apps/nizam/e2e/account.e2e.ts
-        check: 'account#2'
+    evidence:
+      - state: settings
+      - node: permissionsRegion
+      - node: permissionGroup
+      - node: groupTitle
+      - node: groupScopeLine
+      - node: permissionLine
+      - node: permissionKoskManage
+      - node: permissionUserLookup
+      - node: permissionNote
+      - node: defaultsNote
+      - node: expiryLine
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:86
+      - source: apps/nizam/features/account/components/permissions-list.tsx:94
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/36 — the active permissions come from the roles, grouped, with the köşk nazımı's sentences (criterion 2)"
       - test: apps/nizam/test/account.spec.tsx
 
   - id: chief-reads-what-they-are
     need: >-
-      The Medaris başnazım, whose role the sign-in system defines and no assignment holds, reads it as a role of its own: "Platform",
-      "Giriş sisteminde tanımlı", "Süresiz", and that it gives every permission in every scope.
-    drawn: [chiefRole, chiefScope, chiefGrantor, chiefExpires, chiefGroup, chiefGroupTitle, chiefPermissions, permissionsIntroChief]
-    built:
-      - route: apps/nizam/features/account/components/account-page.tsx:67
-      - route: apps/nizam/features/account/components/permissions-list.tsx:83
-    walked:
-      - e2e: apps/nizam/e2e/account.e2e.ts
-        check: 'account#8'
+      The Medaris başnazım, whose role the sign-in system defines and no assignment holds, reads it as a role of its own:
+      "Platform", "Giriş sisteminde tanımlı", "Süresiz", and that it gives every permission in every scope.
+    evidence:
+      - node: chiefRole
+      - node: chiefScope
+      - node: chiefGrantor
+      - node: chiefExpires
+      - node: chiefGroup
+      - node: chiefGroupTitle
+      - node: chiefPermissions
+      - node: permissionsIntroChief
+      - source: apps/nizam/features/account/components/account-page.tsx:67
+      - source: apps/nizam/features/account/components/permissions-list.tsx:83
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/47 — the başnazım's row says the role is defined in the sign-in system and never ends"
       - test: apps/nizam/test/account.spec.tsx
 
   - id: medaris-nazim-reads-their-permissions
     need: >-
-      A Medaris nazımı reads the platform permissions they hold, in words, on Hesap, as a köşk nazımı reads theirs; the card does not
-      tell a person who holds five permissions that no group was given to them (NIZSET-2).
-    drawn: [permissionsEmpty, permissionsIntroOther]
-    missing: none
+      A Medaris nazımı reads the platform permissions they hold, in words, on Hesap, as a köşk nazımı reads theirs; the card does
+      not tell a person who holds five permissions that no group was given to them (NIZSET-2).
+    missing: no Linear issue; findings NIZSET-2
+    note: >-
+      Drawn on the nodes permissionsEmpty and permissionsIntroOther, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: no-role-is-told-and-keeps-the-rest
     need: >-
-      A person who holds no role is told so in one sentence, has no permissions card and no role line, and still has their address,
-      the time zone and "Çıkış yap".
-    drawn: [noTasks, emailField, zoneField, signOutLink]
-    built:
-      - route: apps/nizam/features/account/components/account-page.tsx:155
-    walked:
+      A person who holds no role is told so in one sentence, has no permissions card and no role line, and still has their
+      address, the time zone and "Çıkış yap".
+    evidence:
+      - node: noTasks
+      - node: emailField
+      - node: zoneField
+      - node: signOutLink
+      - source: apps/nizam/features/account/components/account-page.tsx:155
       - test: apps/nizam/test/account.spec.tsx
 
   - id: my-email-is-shown-and-not-editable
     need: >-
-      The person sees the address their account is signed in with, and is told it cannot be changed here. (e2e account#5 a4 to a6, a
-      read-only language field, are stale and are not part of this need: F-W1-9b.)
-    drawn: [settings, emailField, emailHelp]
-    built:
-      - route: apps/nizam/features/account/components/account-page.tsx:231
-    walked:
-      - e2e: apps/nizam/e2e/account.e2e.ts
-        check: 'account#5'
+      The person sees the address their account is signed in with, and is told it cannot be changed here. (e2e account#5 a4 to a6,
+      a read-only language field, are stale and are not part of this need: F-W1-9b.)
+    evidence:
+      - state: settings
+      - node: emailField
+      - node: emailHelp
+      - source: apps/nizam/features/account/components/account-page.tsx:231
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/36 — the e-mail is read only and the language is fixed to Turkish (criterion 4)"
 
   - id: time-zone-is-saved-when-chosen
     need: >-
       The person chooses a time zone from a short list of cities, or from the full list behind "Diğer…", and it is saved at that
-      moment, with no Kaydet; a toast says so, and the zone is still chosen after a reload, the full list open when the zone is not
-      one of the short list's.
-    drawn: [settings, choosingZone, choosingListed, savingZone, zoneField, zoneOtherField, zoneReadsIstanbul, zoneReadsBerlin, zoneReadsOther, zoneOtherReads, toastZoneSaved]
-    built:
-      - action: medaris.api:updateMe
-      - route: apps/nizam/features/account/components/time-zone-form.tsx:50
-    walked:
-      - e2e: apps/nizam/e2e/account.e2e.ts
-        check: 'account#3'
-      - e2e: apps/nizam/e2e/account.e2e.ts
-        check: 'account#4'
+      moment, with no Kaydet; a toast says so, and the zone is still chosen after a reload, the full list open when the zone is
+      not one of the short list's.
+    evidence:
+      - state: settings
+      - state: choosingZone
+      - state: choosingListed
+      - state: savingZone
+      - node: zoneField
+      - node: zoneOtherField
+      - node: zoneReadsIstanbul
+      - node: zoneReadsBerlin
+      - node: zoneReadsOther
+      - node: zoneOtherReads
+      - node: toastZoneSaved
+      - source: apps/tedrisat/src/user/me.controller.ts:40
+      - source: apps/nizam/features/account/components/time-zone-form.tsx:50
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/36 — the time zone is saved the moment it is chosen and is still there after a reload (criterion 3)"
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/36 — 'Diğer…' opens the full list, and a zone from it is saved too"
 
   - id: dates-follow-the-zone
     need: >-
-      Once a zone is saved, every date the page shows (when a role was given, when it ends) is written in that zone at once, not at
-      the next visit.
-    drawn: [savingZone, rowGranted, rowExpires]
-    built:
-      - route: apps/nizam/features/account/actions.ts:30
-    walked: []
+      Once a zone is saved, every date the page shows (when a role was given, when it ends) is written in that zone at once, not
+      at the next visit.
+    evidence:
+      - state: savingZone
+      - node: rowGranted
+      - node: rowExpires
+      - source: apps/nizam/features/account/actions.ts:30
 
   - id: a-failed-save-restores-the-zone
     need: >-
-      When the save cannot be made, the zone that was held is put back in the lists and a toast that stays says that the previous zone
-      is still in force.
-    drawn: [savingZone, toastZoneFailed, toastFailedTitle, toastFailedText, toastClose]
-    built:
-      - route: apps/nizam/features/account/components/time-zone-form.tsx:66
-    walked: []
+      When the save cannot be made, the zone that was held is put back in the lists and a toast that stays says that the previous
+      zone is still in force.
+    evidence:
+      - state: savingZone
+      - node: toastZoneFailed
+      - node: toastFailedTitle
+      - node: toastFailedText
+      - node: toastClose
+      - source: apps/nizam/features/account/components/time-zone-form.tsx:66
 
   - id: a-save-is-visibly-busy-and-keeps-the-focus
     need: >-
       While a zone is being saved the person is told it is being saved, and the list they were using keeps the focus (F-W1-7: both
       lists are disabled while PATCH /me runs and nothing says "saving").
-    drawn: [savingZone, zoneField, zoneOtherField]
-    missing: none
+    missing: no Linear issue; findings F-W1-7
+    note: >-
+      Drawn on the state savingZone and on the nodes zoneField and zoneOtherField, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-second-list-follows-the-zone-held
     need: >-
       The second list is on the page exactly when the zone held is outside the short list, also after a refused save (NIZSET-1: a
-      refusal of a pick made in the first list while the second was open leaves it out), and it is announced and given the focus when
-      "Diğer…" draws it.
-    drawn: [choosingZone, savingZone, zoneOtherField, zoneReadsOther]
-    missing: none
+      refusal of a pick made in the first list while the second was open leaves it out), and it is announced and given the focus
+      when "Diğer…" draws it.
+    missing: no Linear issue; findings NIZSET-1
+    note: >-
+      Drawn on the states choosingZone and savingZone and on the nodes zoneOtherField and zoneReadsOther, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-imam-star-explains-itself
     need: >-
-      A hoca who is the imam of a course that has other hocas sees a star after "Hoca" on that course's row, and it says what an imam
-      is when it is hovered, focused or pressed; a lone hoca has no star.
-    drawn: [imamStar, starOpen, starBubble, starBubbleTitle, starBubbleBody]
-    built:
-      - route: libs/ui/src/mds/imam-star.tsx:67
-    walked:
+      A hoca who is the imam of a course that has other hocas sees a star after "Hoca" on that course's row, and it says what an
+      imam is when it is hovered, focused or pressed; a lone hoca has no star.
+    evidence:
+      - node: imamStar
+      - state: starOpen
+      - node: starBubble
+      - node: starBubbleTitle
+      - node: starBubbleBody
+      - source: libs/ui/src/mds/imam-star.tsx:67
       - test: apps/nizam/test/account.spec.tsx
 
   - id: a-hoca-goes-to-nazar
     need: >-
       A person who holds a hoca's role reads that their celse, talebe and recordings are managed in Nazar, and a button takes them
       there; the page says that it opens a new tab (F-W1-14).
-    drawn: [teachingTitle, teachingText, openNazar]
-    built:
-      - route: apps/nizam/features/account/components/account-page.tsx:241
-    walked:
+    evidence:
+      - node: teachingTitle
+      - node: teachingText
+      - node: openNazar
+      - source: apps/nizam/features/account/components/account-page.tsx:241
       - test: apps/nizam/test/account.spec.tsx
 
   - id: new-tab-is-said
-    need: >-
-      A link that opens a new tab says so to a person who cannot see the icon (F-W1-14, the cross-cutting F-X-15).
-    drawn: [openNazar]
-    missing: none
+    need: A link that opens a new tab says so to a person who cannot see the icon (F-W1-14, the cross-cutting F-X-15).
+    missing: no Linear issue; findings new-tab-is-said, F-W1-14, F-X-15
+    note: >-
+      Drawn on the node openNazar, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: sign-out-from-hesap
     need: >-
-      From Hesap the person reaches the sign-out confirmation, is asked once, and after confirming a protected page asks them to sign
-      in. (What the confirmation page does is realm.auth.signOut's; this flow draws the link and its exit.)
-    drawn: [signOutNote, signOutLink, handed_over.sign_out]
-    built:
-      - route: apps/nizam/features/account/components/account-page.tsx:264
-    walked:
-      - e2e: apps/nizam/e2e/account.e2e.ts
-        check: 'account#6'
+      From Hesap the person reaches the sign-out confirmation, is asked once, and after confirming a protected page asks them to
+      sign in. (What the confirmation page does is realm.auth.signOut's; this flow draws the link and its exit.)
+    evidence:
+      - node: signOutNote
+      - node: signOutLink
+      - state: handed_over.sign_out
+      - source: apps/nizam/features/account/components/account-page.tsx:264
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/36 — 'Çıkış yap' asks once, then ends the session and returns to sign-in; a protected page then asks for sign-in (criterion 5)"
 
   - id: a-visitor-is-sent-to-sign-in
     need: >-
-      A person who is not signed in and opens /hesap is sent to sign in and, once signed in, comes back to Hesap. (Out of view: the
-      proxy answers before the page runs; a GET of /hesap with no session was seen on the stack as a 307 to
+      A person who is not signed in and opens /hesap is sent to sign in and, once signed in, comes back to Hesap. (Out of view:
+      the proxy answers before the page runs; a GET of /hesap with no session was seen on the stack as a 307 to
       /auth/signin?callbackUrl=%2Fhesap.)
-    drawn: []
-    built:
-      - route: apps/nizam/proxy.ts:25
-    walked:
-      - e2e: apps/nizam/e2e/account.e2e.ts
-        check: 'account#7'
+    evidence:
+      - source: apps/nizam/proxy.ts:25
+      - test: apps/nizam/e2e/account.e2e.ts
+        name: "nizam/47 — a signed-out visitor is sent to sign in (criterion 6)"
 
   - id: a-failed-read-is-told-and-retried
-    need: >-
-      When the page cannot read what it shows, the person is told so and can try again.
-    drawn: [loadFailed, failedPage, failedAlert, retry]
-    built:
-      - route: apps/nizam/app/hesap/page.tsx:30
-    walked: []
+    need: When the page cannot read what it shows, the person is told so and can try again.
+    evidence:
+      - state: loadFailed
+      - node: failedPage
+      - node: failedAlert
+      - node: retry
+      - source: apps/nizam/app/hesap/page.tsx:30
 
   - id: sign-out-survives-a-failed-read
     need: >-
-      A person whose account cannot be read can still leave: the sign-out card (and the time zone) does not depend on the failed read
-      (NIZSET-4; today the only link to the confirmation page in nizam is on the card that the failure removes).
-    drawn: [loadFailed, signOutLink]
-    missing: none
+      A person whose account cannot be read can still leave: the sign-out card (and the time zone) does not depend on the failed
+      read (NIZSET-4; today the only link to the confirmation page in nizam is on the card that the failure removes).
+    missing: no Linear issue; findings NIZSET-4
+    note: >-
+      Drawn on the state loadFailed and on the node signOutLink, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: page-structure-is-in-order
     need: >-
       The page's headings go down one level at a time and its landmarks are its cards, not one for every permission group (F-W1-9,
       NIZSET-3).
-    drawn: [permissionGroup, groupTitle, chiefGroup, chiefGroupTitle]
-    missing: none
+    missing: no Linear issue; findings F-W1-9, NIZSET-3
+    note: >-
+      Drawn on the nodes permissionGroup, groupTitle, chiefGroup and chiefGroupTitle, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: loading-is-announced
-    need: >-
-      While the page loads, a person who cannot see the skeleton hears that it is loading (F-W1-8).
-    drawn: []
-    missing: none
+    need: While the page loads, a person who cannot see the skeleton hears that it is loading (F-W1-8).
+    missing: no Linear issue; findings F-W1-8
 
   - id: choose-the-language
     need: >-
       The person chooses the language of the interface (the design's read-only "Dil" field was removed from the page; the owner's
       decision of 21 Oct 2026 moves the language into a cookie, MDRS-295, whose text was not read for a control on Hesap).
-    drawn: []
-    missing: MDRS-295
+    missing: MDRS-295; findings read-only

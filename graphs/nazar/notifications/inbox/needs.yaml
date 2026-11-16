@@ -1,158 +1,200 @@
-# What must exist for a person with a seat in Nazar to triage their notifications: the flow's product list (LAYOUT.md section 7). Each
-# need is what the product must do, from the flow's story and the open decisions, not from what the page does today; the known gaps go
-# to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.notifications.inbox
+status: proposed
+summary: "What must exist for a person with a seat in Nazar to triage their notifications: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # No e2e file covers Bildirimler (nazar-web has none), so every `walked` here is the unit spec apps/nazar/test/notifications.spec.tsx
 # (read from the code, not run), and no replay scenario is named: the replays of this phase were not run. The scenarios the binding
 # writes (triage, openLink, lastUnread, allRead, empty; refused in refused.binding.yaml) are what the walk phase turns into `walked`.
 #
 # For graphs/needs.gaps.yaml:
-#   missing:  d2-hocas-are-told-what-waits, a-refused-mark-on-a-link-is-told, a-row-names-its-course, a-taken-mark-is-told,
-#             every-kind-has-a-sentence, a-row-opens-like-a-link, focus-after-a-mark, email-copy-of-a-notice (MDRS-189)
-#   unwalked: read-the-list, switch-the-tabs, open-a-row-and-leave, mark-a-row-with-no-address, mark-every-row-read,
-#             read-the-next-rows, the-number-follows-the-marks, every-failure-is-told (only the refused mark can be made locally)
-kind: needs
-flow: nazar.notifications.inbox
-status: proposed
+# missing:  d2-hocas-are-told-what-waits, a-refused-mark-on-a-link-is-told, a-row-names-its-course, a-taken-mark-is-told,
+# every-kind-has-a-sentence, a-row-opens-like-a-link, focus-after-a-mark, email-copy-of-a-notice (MDRS-189)
+# unwalked: read-the-list, switch-the-tabs, open-a-row-and-leave, mark-a-row-with-no-address, mark-every-row-read,
+# read-the-next-rows, the-number-follows-the-marks, every-failure-is-told (only the refused mark can be made locally)
 
 needs:
   - id: read-the-list
     need: >-
-      A person with a seat reads, in one place, what has happened that concerns them, newest first, a screen at a time, with how many
-      there are and how many they have not read, and a plain sentence when there is nothing.
-    drawn: [readingList, readingCounts, listed, allRead, emptyAll, rowList, rowTitle, rowTime, rowNew, emptyText]
-    built:
-      - action: medaris.api:listNotifications
-      - action: medaris.api:getNotificationCounts
-      - route: apps/nazar/features/notifications/components/notifications-page.tsx:15
-    walked:
+      A person with a seat reads, in one place, what has happened that concerns them, newest first, a screen at a time, with how
+      many there are and how many they have not read, and a plain sentence when there is nothing.
+    evidence:
+      - state: readingList
+      - state: readingCounts
+      - state: listed
+      - state: allRead
+      - state: emptyAll
+      - node: rowList
+      - node: rowTitle
+      - node: rowTime
+      - node: rowNew
+      - node: emptyText
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/tedrisat/src/notification/notification.controller.ts:135
+      - source: apps/nazar/features/notifications/components/notifications-page.tsx:15
       - test: apps/nazar/test/notifications.spec.tsx
 
   - id: switch-the-tabs
-    need: >-
-      They can look at everything, or only at what they have not read, and each choice says how many it holds.
-    drawn: [tabList, tabAll, tabUnread, loadingTab, listed, allRead]
-    built:
-      - action: medaris.api:listNotifications
-      - route: apps/nazar/features/notifications/components/notifications-list.tsx:84
-    walked:
+    need: They can look at everything, or only at what they have not read, and each choice says how many it holds.
+    evidence:
+      - node: tabList
+      - node: tabAll
+      - node: tabUnread
+      - state: loadingTab
+      - state: listed
+      - state: allRead
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/nazar/features/notifications/components/notifications-list.tsx:84
       - test: apps/nazar/test/notifications.spec.tsx
 
   - id: open-a-row-and-leave
     need: >-
-      A notification that is about a course, a celse, a deck or a köşk takes the person to that page of Tedris and counts as read; one
-      that is already read only takes them there.
-    drawn: [rowLinkUnread, rowLinkRead, markingLink, tedris_opened]
-    built:
-      - action: medaris.api:markNotificationRead
-      - route: apps/nazar/features/notifications/components/notifications-list.tsx:133
-    walked:
+      A notification that is about a course, a celse, a deck or a köşk takes the person to that page of Tedris and counts as read;
+      one that is already read only takes them there.
+    evidence:
+      - node: rowLinkUnread
+      - node: rowLinkRead
+      - state: markingLink
+      - state: tedris_opened
+      - source: apps/tedrisat/src/notification/notification.controller.ts:190
+      - source: apps/nazar/features/notifications/components/notifications-list.tsx:133
       - test: apps/nazar/test/notifications.spec.tsx
 
   - id: mark-a-row-with-no-address
     need: >-
-      A notification that leads nowhere can be marked read by itself, so that the number the menu and the bell carry can reach zero.
-    drawn: [rowButton, markingOne, markingLast]
-    built:
-      - action: medaris.api:markNotificationRead
-      - route: apps/nazar/features/notifications/components/notifications-list.tsx:321
-    walked:
+      A notification that leads nowhere can be marked read by itself, so that the number the menu and the bell carry can reach
+      zero.
+    evidence:
+      - node: rowButton
+      - state: markingOne
+      - state: markingLast
+      - source: apps/tedrisat/src/notification/notification.controller.ts:190
+      - source: apps/nazar/features/notifications/components/notifications-list.tsx:321
       - test: apps/nazar/test/notifications.spec.tsx
 
   - id: mark-every-row-read
     need: >-
       They can mark every notification read at once, those past the first screen included, and the number on the menu and the bell
       falls to zero.
-    drawn: [markAll, markingAll, allRead]
-    built:
-      - action: medaris.api:markAllNotificationsRead
-      - route: apps/nazar/features/notifications/components/notifications-list.tsx:143
-    walked:
+    evidence:
+      - node: markAll
+      - state: markingAll
+      - state: allRead
+      - source: apps/tedrisat/src/notification/notification.controller.ts:164
+      - source: apps/nazar/features/notifications/components/notifications-list.tsx:143
       - test: apps/nazar/test/notifications.spec.tsx
 
   - id: read-the-next-rows
-    need: >-
-      A person with more than twenty notifications can read the next twenty, without seeing a row twice.
-    drawn: [loadMore, loadingMore, moreFailed]
-    built:
-      - action: medaris.api:listNotifications
-      - route: apps/nazar/features/notifications/components/notifications-list.tsx:91
-    walked:
+    need: A person with more than twenty notifications can read the next twenty, without seeing a row twice.
+    evidence:
+      - node: loadMore
+      - state: loadingMore
+      - state: moreFailed
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/nazar/features/notifications/components/notifications-list.tsx:91
       - test: apps/nazar/test/notifications.spec.tsx
 
   - id: the-number-follows-the-marks
     need: >-
       The unread number on the menu entry and the bell's name always say how many notifications the person has not read, and fall
       when they read one.
-    drawn: [menuCount, bellUnread, bell]
-    built:
-      - action: medaris.api:getNotificationCounts
-      - route: apps/nazar/features/shell/reads.ts:97
-    walked: []
+    evidence:
+      - node: menuCount
+      - node: bellUnread
+      - node: bell
+      - source: apps/tedrisat/src/notification/notification.controller.ts:135
+      - source: apps/nazar/features/shell/reads.ts:97
 
   - id: every-failure-is-told
     need: >-
-      When the first read, a tab, the next rows, a mark or "Tümünü okundu say" fails, the person is told in words and can try again,
-      and nothing they saw as marked stays marked when the API refused it.
-    drawn: [readFailed, forbidden, retrying, tabFailed, moreFailed, markingOne, markingAll, rowFailedToast, allFailedToast]
-    built:
-      - route: apps/nazar/features/notifications/components/notifications-list.tsx:129
-    walked:
+      When the first read, a tab, the next rows, a mark or "Tümünü okundu say" fails, the person is told in words and can try
+      again, and nothing they saw as marked stays marked when the API refused it.
+    evidence:
+      - state: readFailed
+      - state: forbidden
+      - state: retrying
+      - state: tabFailed
+      - state: moreFailed
+      - state: markingOne
+      - state: markingAll
+      - node: rowFailedToast
+      - node: allFailedToast
+      - source: apps/nazar/features/notifications/components/notifications-list.tsx:129
       - test: apps/nazar/test/notifications.spec.tsx
 
   - id: a-refused-mark-on-a-link-is-told
     need: >-
       When the API refuses the mark of a row that is also a link, the person is told, or the link is followed in a way that cannot
       lose the answer (INBOX-1, decision D1).
-    drawn: [markingLink, tedris_opened]
-    missing: none
+    missing: no Linear issue; findings INBOX-1
+    note: >-
+      Drawn on the states markingLink and tedris_opened, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-row-names-its-course
     need: >-
       A notification says which course, celse, deck or köşk it is about, not only what kind of event it was, so that a person with
       several courses can tell them apart, and so that a row with no link still says what it is about (INBOX-3).
-    drawn: [rowTitle]
-    missing: none
+    missing: no Linear issue; findings INBOX-3
+    note: >-
+      Drawn on the node rowTitle, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: a-taken-mark-is-told
     need: >-
       After a mark is taken, a short status line says so and the focus lands on a place a keyboard or screen-reader user can use
       (INBOX-4, F-E-8).
-    drawn: [markingOne, markingLast, markingAll, allRead]
-    missing: none
+    missing: no Linear issue; findings INBOX-4, F-E-8
+    note: >-
+      Drawn on the states markingOne, markingLast, markingAll and allRead, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: every-kind-has-a-sentence
     need: >-
       Every kind of notification the API writes has a sentence on the page, the exam notices (EXAM_SCHEDULED, EXAM_REMINDER,
       EXAM_RESULTS_RELEASED) among them (F-E-20).
-    drawn: [rowTitle]
-    missing: none
+    missing: no Linear issue; findings F-E-20
+    note: >-
+      Drawn on the node rowTitle, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: a-row-opens-like-a-link
     need: >-
       A row that leads to Tedris can be opened in a new tab and its address copied, with the keyboard or the mouse, and the page
       still marks it read (F-E-5, decision D1).
-    drawn: [rowLinkUnread, rowLinkRead]
-    missing: none
+    missing: no Linear issue; findings F-E-5
+    note: >-
+      Drawn on the nodes rowLinkUnread and rowLinkRead, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-after-a-mark
     need: >-
       After a row is marked on Okunmamış, after "Tümünü okundu say" and after the last page is added, the focus stays on a control
       that is still there (F-E-8, F-E-9).
-    drawn: [markingOne, markingLast, markingAll, loadingMore]
-    missing: none
+    missing: no Linear issue; findings F-E-8, F-E-9
+    note: >-
+      Drawn on the states markingOne, markingLast, markingAll and loadingMore, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: d2-hocas-are-told-what-waits
     need: >-
       A hoca or a nazır is told here what is waiting for them (an application, a hand-in, a question), if the owner decides this
-      inbox is where it belongs; today the Pano's counters and the menu's numbers say it and no notification of that kind is written
-      (decision D2).
-    drawn: [emptyAll, listed]
-    missing: none
+      inbox is where it belongs; today the Pano's counters and the menu's numbers say it and no notification of that kind is
+      written (decision D2).
+    missing: no Linear issue
+    note: >-
+      Drawn on the states emptyAll and listed, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: email-copy-of-a-notice
     need: >-
       A notice that tedrisat writes also reaches the person by e-mail, where they chose it: session invitations, changes and ban
       notices (planned.md P-29; the invitation mail is built, the ban and change notices are not verified).
-    drawn: [listed]
     missing: MDRS-189
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

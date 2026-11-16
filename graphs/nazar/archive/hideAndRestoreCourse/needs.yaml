@@ -1,162 +1,219 @@
-# What must exist for the başmüderris of a medrese to hide a course from its list and bring it back from the Arşiv: the flow's product
-# list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and what the e2e and the findings ask,
-# not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for
-# now: no checker runs on this file.
+schema: delurio-graph/0
+kind: needs
+id: nazar.archive.hideAndRestoreCourse
+status: proposed
+summary: >-
+  What must exist for the başmüderris of a medrese to hide a course from its list and bring it back from the Arşiv: the flow's
+  product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): focus-follows-a-hide-or-a-restore, a-failed-call-is-told, a-tab-name-has-its-count-apart, last-row-of-a-page,
-#   recordings-can-be-hidden, a-nazir-is-offered-what-they-hold.
+# recordings-can-be-hidden, a-nazir-is-offered-what-they-hold.
 # Unwalked (code, and neither an e2e check nor a replay scenario that can drive it): two halves only, MADRASAH_COURSE_NOT_FOUND of a hide
-#   (inside a-hide-someone-else-made-is-told) and ARCHIVE_PARENT_HIDDEN of a restore (inside a-restore-refused-says-why), and the refusals of
-#   a page's own read (nazar.access.medreseNazirRefused's). Nothing was replayed when this file was written (the first walks are a later
-#   phase), so every `replay:` below names the scenario that will walk it, not one that passed.
-kind: needs
-flow: nazar.archive.hideAndRestoreCourse
-status: proposed
+# (inside a-hide-someone-else-made-is-told) and ARCHIVE_PARENT_HIDDEN of a restore (inside a-restore-refused-says-why), and the refusals of
+# a page's own read (nazar.access.medreseNazirRefused's). Nothing was replayed when this file was written (the first walks are a later
+# phase), so every `replay:` below names the scenario that will walk it, not one that passed.
 
 needs:
   - id: hide-asks-first
     need: >-
       The başmüderris hides a course from the list of her medrese's courses only after being asked once. The question says who the
-      course is hidden from (talebe, visitors, the köşk's page), that its celses leave the talebe's calendar, how many talebe lose their
-      access and that nothing is deleted; she may cancel, and the course then stays where it is.
-    drawn: [menuOpen, confirmHide, hideDialog, hideBody, hideBodyAffected, hideNote, hideCancel, hideConfirm]
-    built:
-      - route: apps/nazar/features/courses/components/hide-course.tsx:74
-      - action: medaris.api:hideMadrasahCourse
-    walked:
-      - e2e: apps/nazar/e2e/courses.e2e.ts
-        check: 'courses#9'
-      - replay: hides
-      - replay: quiet
+      course is hidden from (talebe, visitors, the köşk's page), that its celses leave the talebe's calendar, how many talebe lose
+      their access and that nothing is deleted; she may cancel, and the course then stays where it is.
+    evidence:
+      - state: menuOpen
+      - state: confirmHide
+      - node: hideDialog
+      - node: hideBody
+      - node: hideBodyAffected
+      - node: hideNote
+      - node: hideCancel
+      - node: hideConfirm
+      - source: apps/nazar/features/courses/components/hide-course.tsx:74
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:177
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/18 — 'Dersi gizle' asks first with the real number of talebe, and 'Vazgeç' leaves the course where it is"
+      - scenario: hides
+      - scenario: quiet
+        binding: graphs/nazar/archive/hideAndRestoreCourse/binding.quiet.yaml
 
   - id: hide-takes-the-course-off-the-list
     need: >-
-      Once she confirms, the course leaves the list and everything that lists it (the köşk's page, the talebe's calendar, searches), the counter
-      follows, a toast says it was hidden and the Arşiv shows it; nothing is deleted and the hide is on the audit record.
-    drawn: [hiding, listedWithout, toastHidden, coursesCounter, hiddenNoteLink]
-    built:
-      - action: medaris.api:hideMadrasahCourse
-      - route: apps/nazar/features/courses/components/courses-table.tsx:60
-    walked:
-      - e2e: apps/nazar/e2e/courses.e2e.ts
-        check: 'courses#10'
-      - replay: hides
+      Once she confirms, the course leaves the list and everything that lists it (the köşk's page, the talebe's calendar,
+      searches), the counter follows, a toast says it was hidden and the Arşiv shows it; nothing is deleted and the hide is on the
+      audit record.
+    evidence:
+      - state: hiding
+      - state: listedWithout
+      - node: toastHidden
+      - node: coursesCounter
+      - node: hiddenNoteLink
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:177
+      - source: apps/nazar/features/courses/components/courses-table.tsx:60
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/18 — 'Gizle' takes the course off the list and into the Arşiv, deletes nothing, and 'Geri al' brings it back (criteria 2, 3)"
+      - scenario: hides
 
   - id: the-arsiv-says-who-hid-what-and-when
     need: >-
-      The Arşiv lists what is hidden in the medrese (courses, and the weeks and celses in them) newest first, in tabs that carry their counts,
-      each row saying what it is, where it sits, who hid it with their role and when, in the person's own zone.
-    drawn: [archive, tabsNav, tabAll, tabCourse, tabWeeks, tabRecordings, archiveTable, rowItemTitle, rowContext, rowType, rowHiderName, rowHiderRole, rowWhen]
-    built:
-      - action: medaris.api:listMadrasahArchive
-      - route: apps/nazar/features/archive/components/archive-list.tsx:173
-    walked:
-      - e2e: apps/nazar/e2e/archive.e2e.ts
-        check: 'archive#1'
-      - e2e: apps/nazar/e2e/archive.e2e.ts
-        check: 'archive#2'
-      - replay: hides
-      - replay: opensArchive
+      The Arşiv lists what is hidden in the medrese (courses, and the weeks and celses in them) newest first, in tabs that carry
+      their counts, each row saying what it is, where it sits, who hid it with their role and when, in the person's own zone.
+    evidence:
+      - state: archive
+      - node: tabsNav
+      - node: tabAll
+      - node: tabCourse
+      - node: tabWeeks
+      - node: tabRecordings
+      - node: archiveTable
+      - node: rowItemTitle
+      - node: rowContext
+      - node: rowType
+      - node: rowHiderName
+      - node: rowHiderRole
+      - node: rowWhen
+      - source: apps/tedrisat/src/archive/madrasah-archive.controller.ts:74
+      - source: apps/nazar/features/archive/components/archive-list.tsx:173
+      - test: apps/nazar/e2e/archive.e2e.ts
+        name: "nazir/12 — the tabs count what is hidden, and each asks for its own kind"
+      - test: apps/nazar/e2e/archive.e2e.ts
+        name: "nazir/12 — each row names the item, its kind, who hid it and when, newest first (criterion 4)"
+      - scenario: hides
+      - scenario: opensArchive
 
   - id: a-higher-kademe-keeps-what-it-hid
     need: >-
-      What a higher kademe hid (the köşk's nazımı, Medaris yönetimi) shows no button to the başmüderris, only a sentence that names the
-      kademe; what she hid herself has "Geri al".
-    drawn: [lockedKosk, lockedAdmin, restoreButton]
-    built:
-      - action: medaris.api:listMadrasahArchive
-      - route: apps/nazar/features/archive/archive.ts:156
-    walked:
-      - e2e: apps/nazar/e2e/archive.e2e.ts
-        check: 'archive#3'
-      - replay: hides
+      What a higher kademe hid (the köşk's nazımı, Medaris yönetimi) shows no button to the başmüderris, only a sentence that
+      names the kademe; what she hid herself has "Geri al".
+    evidence:
+      - node: lockedKosk
+      - node: lockedAdmin
+      - node: restoreButton
+      - source: apps/tedrisat/src/archive/madrasah-archive.controller.ts:74
+      - source: apps/nazar/features/archive/archive.ts:156
+      - test: apps/nazar/e2e/archive.e2e.ts
+        name: "nazir/12 — a kademe below the one that hid an item gets the sentence, not the button (criterion 2)"
+      - scenario: hides
 
   - id: restore-brings-it-back
     need: >-
-      "Geri al" brings an item back where it was, at once and without a question, a toast says so, the row leaves the Arşiv and the tab counts
-      follow; the course is in the list again.
-    drawn: [restoring, restoreButton, rowRestore, toastRestored, courses_opened]
-    built:
-      - action: medaris.api:restoreArchiveItem
-      - route: apps/nazar/features/archive/components/archive-list.tsx:61
-    walked:
-      - e2e: apps/nazar/e2e/courses.e2e.ts
-        check: 'courses#10'
-      - e2e: apps/nazar/e2e/archive.e2e.ts
-        check: 'archive#4'
-      - e2e: apps/nazar/e2e/archive.e2e.ts
-        check: 'archive#5'
-      - replay: hides
-      - replay: opensArchive
+      "Geri al" brings an item back where it was, at once and without a question, a toast says so, the row leaves the Arşiv and
+      the tab counts follow; the course is in the list again.
+    evidence:
+      - state: restoring
+      - node: restoreButton
+      - node: rowRestore
+      - node: toastRestored
+      - state: courses_opened
+      - source: apps/tedrisat/src/archive/archive.controller.ts:246
+      - source: apps/nazar/features/archive/components/archive-list.tsx:61
+      - test: apps/nazar/e2e/courses.e2e.ts
+        name: "nazir/18 — 'Gizle' takes the course off the list and into the Arşiv, deletes nothing, and 'Geri al' brings it back (criteria 2, 3)"
+      - test: apps/nazar/e2e/archive.e2e.ts
+        name: "nazir/12 — 'Geri al' brings a week back at once: it leaves the list and shows in its place (criterion 1)"
+      - test: apps/nazar/e2e/archive.e2e.ts
+        name: "nazir/12 — 'Geri al' brings a course back, with the weeks it holds; the tab counts follow"
+      - scenario: hides
+      - scenario: opensArchive
 
   - id: a-long-list-pages
     need: >-
       A list longer than ten rows is paged ten at a time with the range ("1–10 / 12"), "Sonraki" and "Önceki", and the tab stays.
-    drawn: [pagerNav, pagerRange, pagerNext, pagerPrevious]
-    built:
-      - route: apps/nazar/features/archive/components/archive-list.tsx:196
-    walked:
-      - e2e: apps/nazar/e2e/archive.e2e.ts
-        check: 'archive#6'
-      - replay: hides
+    evidence:
+      - node: pagerNav
+      - node: pagerRange
+      - node: pagerNext
+      - node: pagerPrevious
+      - source: apps/nazar/features/archive/components/archive-list.tsx:196
+      - test: apps/nazar/e2e/archive.e2e.ts
+        name: "nazir/12 — a long list is paged ten at a time"
+      - scenario: hides
 
   - id: a-hide-someone-else-made-is-told
     need: >-
-      When the course was hidden by someone else while the window was open, or is no longer a course of the medrese, the person is told so
-      plainly (an info notice, not an error) and the list is read again without it.
-    drawn: [toastAlready, toastHideGone, listedWithout]
-    built:
-      - action: medaris.api:hideMadrasahCourse
-      - route: apps/nazar/features/courses/components/hide-course.tsx:49
-    walked:
-      - replay: staleHide # the already-hidden half only; MADRASAH_COURSE_NOT_FOUND cannot be made without deleting a course under the open page
+      When the course was hidden by someone else while the window was open, or is no longer a course of the medrese, the person is
+      told so plainly (an info notice, not an error) and the list is read again without it.
+    evidence:
+      - node: toastAlready
+      - node: toastHideGone
+      - state: listedWithout
+      - source: apps/tedrisat/src/madrasah/course/madrasah-course.controller.ts:177
+      - source: apps/nazar/features/courses/components/hide-course.tsx:49
+      - scenario: staleHide
+        binding: graphs/nazar/archive/hideAndRestoreCourse/binding.staleHide.yaml
+    note: >-
+      staleHide: the already-hidden half only; MADRASAH_COURSE_NOT_FOUND cannot be made without deleting a course under the open
+      page
 
   - id: a-restore-refused-says-why
     need: >-
-      A restore the API refuses says why in the person's words (a higher kademe hid it; it is no longer in the Arşiv; the medrese is still
-      hidden) and reads the list again, except while the medrese is hidden.
-    drawn: [toastRestoreGone, toastRestoreLevel, toastParentHidden, toastRestoreFailed]
-    built:
-      - action: medaris.api:restoreArchiveItem
-      - route: apps/nazar/features/archive/archive.ts:277
-    walked:
-      - replay: staleRestore # brought back first (FAIL.gone) and hidden again by the köşk's nazımı (FAIL.level); ARCHIVE_PARENT_HIDDEN is unwalked here (it needs a hidden medrese: nazar.archive.hideMedrese)
+      A restore the API refuses says why in the person's words (a higher kademe hid it; it is no longer in the Arşiv; the medrese
+      is still hidden) and reads the list again, except while the medrese is hidden.
+    evidence:
+      - node: toastRestoreGone
+      - node: toastRestoreLevel
+      - node: toastParentHidden
+      - node: toastRestoreFailed
+      - source: apps/tedrisat/src/archive/archive.controller.ts:246
+      - source: apps/nazar/features/archive/archive.ts:277
+      - scenario: staleRestore
+        binding: graphs/nazar/archive/hideAndRestoreCourse/binding.staleRestore.yaml
+    note: >-
+      staleRestore: brought back first (FAIL.gone) and hidden again by the köşk's nazımı (FAIL.level); ARCHIVE_PARENT_HIDDEN is
+      unwalked here (it needs a hidden medrese: nazar.archive.hideMedrese)
 
   - id: a-nazir-is-offered-what-they-hold
     need: >-
-      A nazır who may list the courses but not hide them is not offered "Dersi gizle" (F-A-8, decision D2) and is not asked a question that
-      ends in a refusal.
-    drawn: [menuHide, toastHideRefused]
-    missing: none # no issue: both menu items are drawn on every row (courses-table.tsx:167-178)
+      A nazır who may list the courses but not hide them is not offered "Dersi gizle" (F-A-8, decision D2) and is not asked a
+      question that ends in a refusal.
+    missing: "no issue: both menu items are drawn on every row (courses-table.tsx:167-178)"
+    note: >-
+      Drawn on the nodes menuHide and toastHideRefused, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-follows-a-hide-or-a-restore
     need: >-
-      After a hide or a restore the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the next row's
-      button), and a line on the page, not only a toast of six seconds, says what was done (F-A-2).
-    drawn: [listedWithout, archive, toastHidden, toastRestored]
-    missing: none
+      After a hide or a restore the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the
+      next row's button), and a line on the page, not only a toast of six seconds, says what was done (F-A-2).
+    missing: no Linear issue; findings F-A-2
+    note: >-
+      Drawn on the states listedWithout and archive and on the nodes toastHidden and toastRestored, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-call-is-told
     need: >-
-      When a hide or a restore cannot reach the server at all, the button stops being busy and the person is told to try again (F-A-10).
-    drawn: [hiding, restoring, toastHideFailed, toastRestoreFailed]
-    missing: none
+      When a hide or a restore cannot reach the server at all, the button stops being busy and the person is told to try again
+      (F-A-10).
+    missing: no Linear issue; findings F-A-10
+    note: >-
+      Drawn on the states hiding and restoring and on the nodes toastHideFailed and toastRestoreFailed, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-tab-name-has-its-count-apart
     need: >-
-      A tab's accessible name reads its label and its count apart ("Dersler, 1", not "Dersler1"), and the page it opens is the current one (F-A-12).
-    drawn: [tabAll, tabCourse, tabWeeks, tabRecordings]
-    missing: none
+      A tab's accessible name reads its label and its count apart ("Dersler, 1", not "Dersler1"), and the page it opens is the
+      current one (F-A-12).
+    missing: no Linear issue; findings F-A-12
+    note: >-
+      Drawn on the nodes tabAll, tabCourse, tabWeeks and tabRecordings, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: last-row-of-a-page
     need: >-
-      Restoring the only row of the last page sends the person to the page that still has rows, not to an empty page that says nothing is
-      hidden and a range that runs backwards (HIDE-1).
-    drawn: [settled, archiveEmpty, pagerRange]
-    missing: none
+      Restoring the only row of the last page sends the person to the page that still has rows, not to an empty page that says
+      nothing is hidden and a range that runs backwards (HIDE-1).
+    missing: no Linear issue; findings HIDE-1
+    note: >-
+      Drawn on the states settled and archiveEmpty and on the node pagerRange, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: recordings-can-be-hidden
     need: >-
-      A course recording can be hidden and brought back like a course, and only then does the tab "Ders kayıtları" appear (HIDE-2, decision D1).
-    drawn: [tabRecordings, emptyRecordings]
-    missing: none # no issue: the API stores no hidden recording ("a recording has no storage yet")
+      A course recording can be hidden and brought back like a course, and only then does the tab "Ders kayıtları" appear (HIDE-2,
+      decision D1).
+    missing: "no issue: the API stores no hidden recording (\"a recording has no storage yet\")"
+    note: >-
+      Drawn on the nodes tabRecordings and emptyRecordings, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).

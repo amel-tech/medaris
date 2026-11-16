@@ -13,7 +13,7 @@
 # component or the behaviour). What differs on this page, from the code:
 #   - the köşk's İzinler page reads the posts of ALL the köşk's medrese-free courses and the nazım picks the course in the dialog ("Ders", a select);
 #     the hoca's page is one course's. A medrese's courses are not here: a note names them (the medrese's staff give those posts);
-#   - "Kaydet" is off until a person, a course AND at least one permission are there (canSaveGrant, present.ts:220). The hoca's page lets a person be
+#   - "Kaydet" is off until a person, a course AND at least one permission are there (canSaveGrant, present.ts:72). The hoca's page lets a person be
 #     appointed holding nothing; this one never does: a post here always carries a permission (the API's own rule, minItems 1);
 #   - the dialog's search is nizam's HeadPicker, which says nothing for text that is no address and never warns that the person found is the viewer
 #     (GRANTS-1, GRANTS-3); nazar's warns before sending;
@@ -200,7 +200,7 @@ context:
       refused: "an error toast with the sentence of another refusal"
 
 guards:
-  # `canSaveGrant` of present.ts:220 for an assignment: a person, a course, at least one permission, and an end that is not wrong
+  # `canSaveGrant` of present.ts:72 for an assignment: a person, a course, at least one permission, and an end that is not wrong
   formComplete: "course == 'chosen' and boxes != 'zero' and until != 'past'"
   # grants-view.tsx:181: the button is drawn unless the row is the viewer's own and the viewer is not the başnazım
   mayEdit: "row == 'other' or (row == 'own' and start == 'chiefOwn')"
@@ -284,9 +284,9 @@ states:
         - { guard: "start == 'held' or start == 'handedOn'", target: listed, effect: [rowHeld], source: apps/nizam/features/grants/components/grants-view.tsx:256, say: "the list has a post of another person (two for handedOn; the graph draws one row)" }
         - { guard: "start == 'own' or start == 'chiefOwn'", target: listed, effect: [rowOwn], source: apps/nizam/features/grants/components/grants-view.tsx:181, say: "the list has the viewer's own post" }
         - { guard: "start == 'empty' or start == 'note'", target: listed, source: apps/nizam/features/grants/components/grants-view.tsx:256, say: "the köşk's own courses have no ders nazırı yet: the table says so" }
-      FAIL.forbidden: { guard: "start == 'medaris'", target: refused, source: apps/nizam/features/grants/reads.ts:142, say: "403: the Medaris nazımı with no grant, or the nazım of another köşk" }
-      FAIL.missing: { guard: "start == 'missing'", target: not_found, source: apps/nizam/features/grants/reads.ts:143, say: "404: the köşk is not there, for the nazım and the başnazım alike" }
-      FAIL.unavailable: { guard: "start == 'failed'", target: loadFailed, source: apps/nizam/features/grants/reads.ts:145, say: "any other failure is `null`: the page's own error" }
+      FAIL.forbidden: { guard: "start == 'medaris'", target: refused, source: apps/nizam/features/grants/reads.ts:22, say: "403: the Medaris nazımı with no grant, or the nazım of another köşk" }
+      FAIL.missing: { guard: "start == 'missing'", target: not_found, source: apps/nizam/features/grants/reads.ts:23, say: "404: the köşk is not there, for the nazım and the başnazım alike" }
+      FAIL.unavailable: { guard: "start == 'failed'", target: loadFailed, source: apps/nizam/features/grants/reads.ts:26, say: "any other failure is `null`: the page's own error" }
     source: apps/nizam/app/kosks/[id]/izinler/page.tsx:28
 
   listed:
@@ -387,12 +387,12 @@ states:
   check:
     title: The form is read for "Kaydet"
     description: >-
-      Not a screen: `canSaveGrant` (present.ts:220) decides whether "Kaydet" is on: the person, a course and at least one permission, and an end that is not
+      Not a screen: `canSaveGrant` (present.ts:72) decides whether "Kaydet" is on: the person, a course and at least one permission, and an end that is not
       past or half typed.
     always:
-      - { guard: formComplete, target: ready, source: apps/nizam/features/grants/present.ts:220, say: "a person, a course, a box and a fine end: 'Kaydet' is on" }
-      - { target: picked, source: apps/nizam/features/grants/present.ts:220, say: "something is still missing or wrong: 'Kaydet' stays off" }
-    source: apps/nizam/features/grants/present.ts:220
+      - { guard: formComplete, target: ready, source: apps/nizam/features/grants/present.ts:72, say: "a person, a course, a box and a fine end: 'Kaydet' is on" }
+      - { target: picked, source: apps/nizam/features/grants/present.ts:72, say: "something is still missing or wrong: 'Kaydet' stays off" }
+    source: apps/nizam/features/grants/present.ts:72
 
   ready:
     title: The form is ready to be saved
@@ -427,7 +427,7 @@ states:
         - { guard: "person == 'fresh'", target: listed, effect: [appointedOpen], source: apps/nizam/features/grants/components/grant-dialog.tsx:131, say: "the same with no end: the row says 'Süresiz'" }
       FAIL.exists: { guard: "person == 'member'", target: ready, effect: [existsToast], source: apps/nizam/features/grants/components/grant-dialog.tsx:123, say: "COURSE_NAZIR_EXISTS: an error toast 'Ders nazırı atanamadı' says 'Bu kişi bu dersin ders nazırı zaten.'; the dialog stays open, the list is not read again (GRANTS-2)" }
       FAIL.refused: { guard: "person == 'refused'", target: ready, effect: [refusedToast], source: apps/nizam/features/grants/components/grant-dialog.tsx:123, say: "any other refusal: an error toast 'Ders nazırı atanamadı' with the sentence of its code, or 'Bir şeyler ters gitti.' for SELF_GRANT_REFUSED and the codes the page does not word (GRANTS-1); the dialog stays open" }
-    source: apps/nizam/features/grants/actions.ts:82
+    source: apps/nizam/features/grants/actions.ts:16
 
   editReady:
     title: The dialog "İzinleri düzenle" is open and can be saved
@@ -454,10 +454,10 @@ states:
     description: >-
       Not a screen: `canSaveGrant` for a post being edited needs at least one permission and an end that is not wrong; the person and the course are the post's.
     always:
-      - { guard: "until == 'past'", target: editPast, source: apps/nizam/features/grants/present.ts:220, say: "the end is not after the moment the dialog opened" }
-      - { guard: "boxes == 'zero'", target: editNone, source: apps/nizam/features/grants/present.ts:229, say: "no box is ticked: a post here always carries a permission" }
-      - { target: editReady, source: apps/nizam/features/grants/present.ts:220, say: "a permission and a fine end: 'Kaydet' is on" }
-    source: apps/nizam/features/grants/present.ts:220
+      - { guard: "until == 'past'", target: editPast, source: apps/nizam/features/grants/present.ts:82, say: "the end is not after the moment the dialog opened" }
+      - { guard: "boxes == 'zero'", target: editNone, source: apps/nizam/features/grants/present.ts:81, say: "no box is ticked: a post here always carries a permission" }
+      - { target: editReady, source: apps/nizam/features/grants/present.ts:72, say: "a permission and a fine end: 'Kaydet' is on" }
+    source: apps/nizam/features/grants/present.ts:72
 
   editNone:
     title: No permission is ticked in the edit dialog
@@ -471,7 +471,7 @@ states:
       TYPE_PAST_END: { guard: "until != 'past'", target: checkEdit, effect: [endPast], source: apps/nizam/features/grants/components/grant-dialog.tsx:228, say: "they type an end in the past" }
       CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/grants/components/grant-dialog.tsx:141, say: "Vazgeç, the close icon or Escape" }
       NAVIGATE: { target: left, say: "they leave the page" }
-    source: apps/nizam/features/grants/present.ts:229
+    source: apps/nizam/features/grants/present.ts:81
 
   editPast:
     title: The end typed in the edit dialog is in the past
@@ -503,7 +503,7 @@ states:
         - { guard: "edit == 'saved'", target: listed, effect: [editedTwo], source: apps/nizam/features/grants/components/grant-dialog.tsx:131, say: "the same with two permissions and no end" }
       FAIL.gone: { guard: "edit == 'gone'", target: editReady, effect: [goneToast], source: apps/nizam/features/grants/components/grant-dialog.tsx:123, say: "COURSE_NAZIR_NOT_FOUND: an error toast 'İzinler kaydedilemedi' says 'Bu ders nazırı artık yok.'; the dialog stays open on a post that is gone and nothing is read again (GRANTS-2)" }
       FAIL.refused: { guard: "edit == 'refused'", target: editReady, effect: [refusedToast], source: apps/nizam/features/grants/components/grant-dialog.tsx:123, say: "any other refusal: an error toast 'İzinler kaydedilemedi' with the sentence of its code or 'Bir şeyler ters gitti.'; the dialog stays open" }
-    source: apps/nizam/features/grants/actions.ts:94
+    source: apps/nizam/features/grants/actions.ts:28
 
   revoking:
     title: The dialog "Görevden al" asks first
@@ -511,13 +511,13 @@ states:
       A modal "Görevden al" with the course's title above it, "{name}, {course} dersindeki ders nazırlığından alınacak.", "Görev ve bütün izinleri aynı anda biter.", the
       footer's line "Görevden alma denetim kaydına yazılır." and "Vazgeç" and "Görevden al". The focus starts on "Vazgeç" (`initialFocus={cancelRef}`; e2e grants#8
       a1), the scrim does not close it and "Vazgeç" changes nothing. It is a form Dialog, not an alertdialog (CNDIS-1). A ders nazırı can hand nothing on from here, so
-      there is no Devral/Düşür question (revoke-dialog.tsx:264-270). A refusal keeps the dialog open: the toast stays and nothing is read again (GRANTS-2).
+      there is no Devral/Düşür question (revoke-dialog.tsx:22-28). A refusal keeps the dialog open: the toast stays and nothing is read again (GRANTS-2).
     by: human
     on:
-      CONFIRM: { target: dismissing, effect: [clearToast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:329, say: "they press 'Görevden al' in the dialog" }
-      CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/grants/components/revoke-dialog.tsx:328, say: "Vazgeç, the close icon or Escape: nothing is written, the focus goes back to the row's button" }
+      CONFIRM: { target: dismissing, effect: [clearToast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:87, say: "they press 'Görevden al' in the dialog" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/grants/components/revoke-dialog.tsx:86, say: "Vazgeç, the close icon or Escape: nothing is written, the focus goes back to the row's button" }
       NAVIGATE: { target: left, say: "they leave the page" }
-    source: apps/nizam/features/grants/components/revoke-dialog.tsx:313
+    source: apps/nizam/features/grants/components/revoke-dialog.tsx:71
 
   dismissing:
     title: The post is being ended
@@ -529,12 +529,12 @@ states:
     invoke: { action: revokeKoskGrant }
     on:
       DONE:
-        - { guard: "revoke == 'saved' and start == 'handedOn'", target: listed, effect: [revokedKeep], source: apps/nizam/features/grants/components/revoke-dialog.tsx:302, say: "a toast says 'Görevden alındı' and '{name} artık {course} dersinin ders nazırı değil.'; the other post is still listed" }
-        - { guard: "revoke == 'saved'", target: listed, effect: [revokedLast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:302, say: "the same: the row goes and the list says 'Henüz ders nazırı yok.' (e2e grants#8)" }
-      FAIL.gone: { guard: "revoke == 'gone'", target: revoking, effect: [goneToast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:296, say: "COURSE_NAZIR_NOT_FOUND: an error toast 'Görevden alınamadı' says 'Bu ders nazırı artık yok.'; the dialog stays open and the row stays on the page (GRANTS-2)" }
-      FAIL.handedOn: { guard: "revoke == 'handedOn'", target: revoking, effect: [handedOnToast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:296, say: "DISMISS_SEAT_HANDED_ON: an error toast says the people the person appointed are still in post and to end them first; the dialog stays open" }
-      FAIL.refused: { guard: "revoke == 'refused'", target: revoking, effect: [refusedToast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:296, say: "any other refusal: an error toast 'Görevden alınamadı' with the sentence of its code or 'Bir şeyler ters gitti.'" }
-    source: apps/nizam/features/grants/actions.ts:111
+        - { guard: "revoke == 'saved' and start == 'handedOn'", target: listed, effect: [revokedKeep], source: apps/nizam/features/grants/components/revoke-dialog.tsx:60, say: "a toast says 'Görevden alındı' and '{name} artık {course} dersinin ders nazırı değil.'; the other post is still listed" }
+        - { guard: "revoke == 'saved'", target: listed, effect: [revokedLast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:60, say: "the same: the row goes and the list says 'Henüz ders nazırı yok.' (e2e grants#8)" }
+      FAIL.gone: { guard: "revoke == 'gone'", target: revoking, effect: [goneToast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:54, say: "COURSE_NAZIR_NOT_FOUND: an error toast 'Görevden alınamadı' says 'Bu ders nazırı artık yok.'; the dialog stays open and the row stays on the page (GRANTS-2)" }
+      FAIL.handedOn: { guard: "revoke == 'handedOn'", target: revoking, effect: [handedOnToast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:54, say: "DISMISS_SEAT_HANDED_ON: an error toast says the people the person appointed are still in post and to end them first; the dialog stays open" }
+      FAIL.refused: { guard: "revoke == 'refused'", target: revoking, effect: [refusedToast], source: apps/nizam/features/grants/components/revoke-dialog.tsx:54, say: "any other refusal: an error toast 'Görevden alınamadı' with the sentence of its code or 'Bir şeyler ters gitti.'" }
+    source: apps/nizam/features/grants/actions.ts:45
 
   refused:
     title: The page says "Bu bölüm için izniniz yok"
@@ -560,11 +560,11 @@ assertions:
   - id: kaydet-sends-only-a-complete-form
     never: "state == 'appointing' and (course == 'none' or boxes == 'zero')"
     say: "Kaydet sends a new post only with a person, a course and at least one permission."
-    source: apps/nizam/features/grants/present.ts:220
+    source: apps/nizam/features/grants/present.ts:72
   - id: an-edit-keeps-a-permission
     never: "state == 'saving' and boxes == 'zero'"
     say: "An edit is never sent with no permission: a post here always carries at least one."
-    source: apps/nizam/features/grants/present.ts:229
+    source: apps/nizam/features/grants/present.ts:81
   - id: a-past-end-is-not-sent
     never: "(state == 'appointing' or state == 'saving') and until == 'past'"
     say: "An end that is not after the moment the dialog opened is told in the dialog and never sent."
@@ -580,4 +580,4 @@ assertions:
   - id: ending-the-last-post-empties-the-list
     never: "state == 'listed' and toast == 'revoked' and start != 'handedOn' and row != 'none'"
     say: "After 'Görevden alındı' of the only post the list says 'Henüz ders nazırı yok.'."
-    source: apps/nizam/features/grants/components/revoke-dialog.tsx:302
+    source: apps/nizam/features/grants/components/revoke-dialog.tsx:60

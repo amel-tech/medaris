@@ -1,241 +1,297 @@
-# What must exist for a hoca to put a recording on a celse of her course and say who may watch it and when: the flow's product list
-# (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the planned work (planned.md P-11, P-26), not from
-# what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs
-# on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.recordings.add
+status: proposed
+summary: >-
+  What must exist for a hoca to put a recording on a celse of her course and say who may watch it and when: the flow's product
+  list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code):   the-medrese-policy-keeps-recordings-private (none; RECADD-1), a-recording-that-is-not-ready-says-so (none; RECADD-2),
-#                      the-bunny-video-leaves-with-its-recording (MDRS-260), publish-to-the-medaris-channel (MDRS-204),
-#                      the-problem-is-heard (none; field-errors-not-announced), focus-follows-a-write (none; F-C-course-a-25, -26),
-#                      a-wrong-recording-can-be-taken-back (none; D2)
+# the-bunny-video-leaves-with-its-recording (MDRS-260), publish-to-the-medaris-channel (MDRS-204),
+# the-problem-is-heard (none; field-errors-not-announced), focus-follows-a-write (none; F-C-course-a-25, -26),
+# a-wrong-recording-can-be-taken-back (none; D2)
 # Unwalked (code, and no e2e and no replay has walked it): the-stream-is-one-click, only-holders-of-the-codes, a-problem-is-said-under-the-field,
-#                      a-celse-that-is-gone-is-told, a-read-that-fails-can-be-retried, a-time-before-the-celse-is-refused,
-#                      a-closed-course-keeps-the-switch-off. Replays are not run in this phase: a `# replay, not run` line names the scenario of
-#                      binding.yaml that will walk the need; it is not evidence. The stack cannot make a read fail, nor LESSON_NOT_FOUND,
-#                      LESSON_CANCELLED or RECORDING_NOT_FOUND on request, and the walk's celse is over, so no scenario walks the time before a
-#                      celse starts.
+# a-celse-that-is-gone-is-told, a-read-that-fails-can-be-retried, a-time-before-the-celse-is-refused,
+# a-closed-course-keeps-the-switch-off. Replays are not run in this phase: a `# replay, not run` line names the scenario of
+# binding.yaml that will walk the need; it is not evidence. The stack cannot make a read fail, nor LESSON_NOT_FOUND,
+# LESSON_CANCELLED or RECORDING_NOT_FOUND on request, and the walk's celse is over, so no scenario walks the time before a
+# celse starts.
 #
 # `walked` names a web e2e check as `file#n` where the inventory numbers it. The tedrisat API e2e (apps/tedrisat/test/e2e/recording-write.e2e.spec.ts,
 # recording-release.e2e.spec.ts) has no inventory number: it is named by its test title and line. The only web e2e of this page is
 # course-scope#5, which opens the page and reads its heading, its note and its sidebar entry; nothing in a web e2e writes a recording.
-kind: needs
-flow: nazar.recordings.add
-status: proposed
 
 needs:
   - id: read-the-recordings-by-week
     need: >-
-      A hoca reads, on one page, the course's celses week by week, newest week first, with the recording each holds (its title, where it is
-      kept, whether it is ready, who may watch it, when it opens) and which celses that have begun have none, so that she finds the celse she
-      still has to record.
-    drawn: [listed, empty, counts, weekTable, recordingTitle, providerChip, visibilityBadge, access, noRecording]
-    built:
-      - action: medaris.api:listCourseRecordings
-      - route: apps/nazar/features/recordings/components/recordings-page.tsx:43
-    walked:
-      - e2e: apps/nazar/e2e/course-scope.e2e.ts
-        check: 'course-scope#5 (a1: the heading; a2: the dead placeholder is not drawn, a node no state shows, checked by --absent; a3: the note a holder of recording.upload reads; a4: the sidebar entry is the current page, found in the binding by its aria-current)'
-      # replay, not run in this phase: adds
-      # replay, not run in this phase: empty
+      A hoca reads, on one page, the course's celses week by week, newest week first, with the recording each holds (its title,
+      where it is kept, whether it is ready, who may watch it, when it opens) and which celses that have begun have none, so that
+      she finds the celse she still has to record.
+    evidence:
+      - state: listed
+      - state: empty
+      - node: counts
+      - node: weekTable
+      - node: recordingTitle
+      - node: providerChip
+      - node: visibilityBadge
+      - node: access
+      - node: noRecording
+      - source: apps/tedrisat/src/course/lesson.controller.ts:257
+      - source: apps/nazar/features/recordings/components/recordings-page.tsx:43
+      - test: apps/nazar/e2e/course-scope.e2e.ts
+        name: "Ders kayıtları lists the course's sessions by week and says the video goes to Bunny from here"
+    note: |-
+      course-scope.e2e.ts course-scope#5 (a1: the heading; a2: the dead placeholder is not drawn, a node no state shows, checked
+      by --absent; a3: the note a holder of recording.upload reads; a4: the sidebar entry is the current page, found in the
+      binding by its aria-current)
+      replay, not run in this phase: adds replay, not run in this phase: empty
 
   - id: paste-a-link
     need: >-
-      A hoca adds a recording to a finished celse by pasting its https link and giving it a title; the platform is read from the address, the
-      recording is ready at once, and the row and a toast say it is there. A celse holds one recording.
-    drawn: [addUpload, addForm, adding, listed, titleFieldAdd, linkField, detectedChip, submitAdd, toastAdded]
-    built:
-      - action: medaris.api:createLessonRecording
-      - route: apps/nazar/features/recordings/components/recording-dialog.tsx:313
-    walked:
-      - e2e: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
-        check: 'POST /lessons/:id/recordings: stores a pasted link READY, reads its provider off the host, and audits it (:398)'
-      # replay, not run in this phase: adds
-      # replay, not run in this phase: manager
+      A hoca adds a recording to a finished celse by pasting its https link and giving it a title; the platform is read from the
+      address, the recording is ready at once, and the row and a toast say it is there. A celse holds one recording.
+    evidence:
+      - state: addUpload
+      - state: addForm
+      - state: adding
+      - state: listed
+      - node: titleFieldAdd
+      - node: linkField
+      - node: detectedChip
+      - node: submitAdd
+      - node: toastAdded
+      - source: apps/tedrisat/src/course/recording.controller.ts:102
+      - source: apps/nazar/features/recordings/components/recording-dialog.tsx:313
+      - test: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
+    note: |-
+      recording-write.e2e.spec.ts POST /lessons/:id/recordings: stores a pasted link READY, reads its provider off the host, and
+      audits it (:398)
+      replay, not run in this phase: adds replay, not run in this phase: manager
 
   - id: say-who-may-watch
     need: >-
-      She says whether everyone may watch a recording or only the course's talebe and team, when she adds it and when she changes it; the row
-      says which.
-    drawn: [publicSwitch, publicHelp, visibilityBadge]
-    built:
-      - action: medaris.api:createLessonRecording
-      - action: medaris.api:updateRecording
-      - route: apps/nazar/features/recordings/components/recording-dialog.tsx:617
-    walked:
-      - e2e: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
-        check: 'PATCH /recordings/:id: opens a recording to everyone and closes it again, each change audited (:636)'
-      # replay, not run in this phase: adds
+      She says whether everyone may watch a recording or only the course's talebe and team, when she adds it and when she changes
+      it; the row says which.
+    evidence:
+      - node: publicSwitch
+      - node: publicHelp
+      - node: visibilityBadge
+      - source: apps/tedrisat/src/course/recording.controller.ts:102
+      - source: apps/tedrisat/src/course/recording.controller.ts:126
+      - source: apps/nazar/features/recordings/components/recording-dialog.tsx:617
+      - test: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
+    note: |-
+      recording-write.e2e.spec.ts PATCH /recordings/:id: opens a recording to everyone and closes it again, each change audited
+      (:636)
+      replay, not run in this phase: adds
 
   - id: say-when-talebe-may-watch
     need: >-
-      She chooses, for a celse with or without a recording, whether the talebe may watch it as soon as it is ready or from a date and time on
-      the course's clock; never before the celse starts; the talebe are told once when it opens. The choice is made when she adds or edits a
-      recording, and on its own from the list.
-    drawn: [releaseGroup, releaseReady, releaseAt, whenDate, whenTime, releaseDialog, releasing, toastReleasedAt, access]
-    built:
-      - action: medaris.api:setLessonRecordingAvailability
-      - route: apps/nazar/features/recordings/components/release-dialog.tsx:29
-    walked:
-      - e2e: apps/tedrisat/test/e2e/recording-release.e2e.spec.ts
-        check: 'PUT /lessons/:id/recording-availability sets the time under recording.manage, audited, the course version untouched (:455)'
-      # replay, not run in this phase: addsLater
+      She chooses, for a celse with or without a recording, whether the talebe may watch it as soon as it is ready or from a date
+      and time on the course's clock; never before the celse starts; the talebe are told once when it opens. The choice is made
+      when she adds or edits a recording, and on its own from the list.
+    evidence:
+      - node: releaseGroup
+      - node: releaseReady
+      - node: releaseAt
+      - node: whenDate
+      - node: whenTime
+      - node: releaseDialog
+      - state: releasing
+      - node: toastReleasedAt
+      - node: access
+      - source: apps/tedrisat/src/course/recording.controller.ts:147
+      - source: apps/nazar/features/recordings/components/release-dialog.tsx:29
+      - test: apps/tedrisat/test/e2e/recording-release.e2e.spec.ts
+    note: |-
+      recording-release.e2e.spec.ts PUT /lessons/:id/recording-availability sets the time under recording.manage, audited, the
+      course version untouched (:455)
+      replay, not run in this phase: addsLater
 
   - id: edit-a-recording
     need: >-
-      She renames a recording, replaces its link or changes who may watch it and when; only what changed is sent, and nothing changed sends
-      nothing.
-    drawn: [editForm, saving, titleFieldEdit, linkFieldEdit, submitEdit, toastSaved]
-    built:
-      - action: medaris.api:updateRecording
-      - route: apps/nazar/features/recordings/components/recording-dialog.tsx:324
-    walked:
-      - e2e: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
-        check: 'PATCH /recordings/:id: renames a recording and leaves the rest alone (:623)'
-      # replay, not run in this phase: edits
+      She renames a recording, replaces its link or changes who may watch it and when; only what changed is sent, and nothing
+      changed sends nothing.
+    evidence:
+      - state: editForm
+      - state: saving
+      - node: titleFieldEdit
+      - node: linkFieldEdit
+      - node: submitEdit
+      - node: toastSaved
+      - source: apps/tedrisat/src/course/recording.controller.ts:126
+      - source: apps/nazar/features/recordings/components/recording-dialog.tsx:324
+      - test: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
+    note: |-
+      recording-write.e2e.spec.ts PATCH /recordings/:id: renames a recording and leaves the rest alone (:623)
+      replay, not run in this phase: edits
 
   - id: the-stream-is-one-click
     need: >-
-      For a finished celse whose YouTube stream she set, one press adds the stream as its recording for the course's talebe, so that she does
-      not paste a link she already gave.
-    drawn: [addStream, rowStream, addingStream, streamNote, toastFromStream]
-    built:
-      - action: medaris.api:createLessonRecording
-      - action: medaris.api:listCourseLiveStreams
-      - route: apps/nazar/features/recordings/components/recordings-table.tsx:113
-    walked:
-      # replay, not run in this phase: fromStream
+      For a finished celse whose YouTube stream she set, one press adds the stream as its recording for the course's talebe, so
+      that she does not paste a link she already gave.
+    evidence:
+      - node: addStream
+      - node: rowStream
+      - state: addingStream
+      - node: streamNote
+      - node: toastFromStream
+      - source: apps/tedrisat/src/course/recording.controller.ts:102
+      - source: apps/tedrisat/src/course/live-stream.controller.ts:67
+      - source: apps/nazar/features/recordings/components/recordings-table.tsx:113
+    note: "replay, not run in this phase: fromStream"
 
   - id: only-holders-of-the-codes
     need: >-
-      Only a person who holds recording.manage or recording.upload opens the page, and only recording.manage pastes a link, edits a recording
-      or changes when it opens; the others are told they may not, and the API decides every write.
-    drawn: [forbidden, forbiddenAlert, tabs, addStream]
-    built:
-      - route: apps/nazar/features/recordings/components/recordings-page.tsx:57
-      - action: medaris.api:getMyCoursePermissions
-    walked:
-      # replay, not run in this phase: forbidden
-      # replay, not run in this phase: manager
+      Only a person who holds recording.manage or recording.upload opens the page, and only recording.manage pastes a link, edits
+      a recording or changes when it opens; the others are told they may not, and the API decides every write.
+    evidence:
+      - state: forbidden
+      - node: forbiddenAlert
+      - node: tabs
+      - node: addStream
+      - source: apps/nazar/features/recordings/components/recordings-page.tsx:57
+      - source: apps/tedrisat/src/course/course.controller.ts:283
+    note: "replay, not run in this phase: forbidden replay, not run in this phase: manager"
 
   - id: a-problem-is-said-under-the-field
     need: >-
-      A form with a problem sends nothing and says what is wrong where it is: the empty link, the empty title, a link that does not start with
-      https://, a time that is empty or has passed.
-    drawn: [titleError, linkEmptyError, linkError, releaseEmptyError, releasePastError]
-    built:
-      - route: apps/nazar/features/recordings/recordings.ts:472
-      - route: apps/nazar/features/recordings/recordings.ts:381
-    walked:
-      # replay, not run in this phase: titleEmpty
-      # replay, not run in this phase: notHttps
-      # replay, not run in this phase: releaseEmpty
-      # replay, not run in this phase: releasePast
+      A form with a problem sends nothing and says what is wrong where it is: the empty link, the empty title, a link that does
+      not start with https://, a time that is empty or has passed.
+    evidence:
+      - node: titleError
+      - node: linkEmptyError
+      - node: linkError
+      - node: releaseEmptyError
+      - node: releasePastError
+      - source: apps/nazar/features/recordings/recordings.ts:472
+      - source: apps/nazar/features/recordings/recordings.ts:381
+    note: >-
+      replay, not run in this phase: titleEmpty replay, not run in this phase: notHttps replay, not run in this phase:
+      releaseEmpty replay, not run in this phase: releasePast
 
   - id: the-problem-is-heard
     need: >-
-      The messages under the fields are announced to a screen reader when they appear, and the focus goes to the first field with a problem
-      (field-errors-not-announced).
-    drawn: [titleError, linkEmptyError, linkError, releaseEmptyError, releasePastError]
-    missing: none
+      The messages under the fields are announced to a screen reader when they appear, and the focus goes to the first field with
+      a problem (field-errors-not-announced).
+    missing: no Linear issue; field-errors-not-announced
+    note: >-
+      Drawn on the nodes titleError, linkEmptyError, linkError, releaseEmptyError and releasePastError, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-refusal-is-told-and-the-dialog-stays
     need: >-
-      When tedrisat refuses a write, a toast says why in her words: a link it cannot store (an address that names no video), a recording that
-      was added meanwhile, a permission she lost; the form stays where the link can be corrected, and a celse that moved closes it and reads the
-      page again.
-    drawn: [adding, saving, addingStream, toastLinkInvalid, toastMoved, toastRefused, toastFailed]
-    built:
-      - action: medaris.api:createLessonRecording
-      - route: apps/nazar/features/recordings/recordings.ts:649
-    walked:
-      - e2e: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
-        check: 'keeps the one recording a session has: 409 RECORDING_EXISTS names it (:560)'
-      - e2e: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
-        check: 'refuses a new link that cannot be stored with 400 RECORDING_LINK_INVALID, and keeps the old one (:702)'
-      # replay, not run in this phase: linkInvalid
-      # replay, not run in this phase: exists
-      # replay, not run in this phase: streamMoved
-      # replay, not run in this phase: refused
-      # replay, not run in this phase: refusedEdit
-      # replay, not run in this phase: refusedLater
-      # replay, not run in this phase: editLinkInvalid
+      When tedrisat refuses a write, a toast says why in her words: a link it cannot store (an address that names no video), a
+      recording that was added meanwhile, a permission she lost; the form stays where the link can be corrected, and a celse that
+      moved closes it and reads the page again.
+    evidence:
+      - state: adding
+      - state: saving
+      - state: addingStream
+      - node: toastLinkInvalid
+      - node: toastMoved
+      - node: toastRefused
+      - node: toastFailed
+      - source: apps/tedrisat/src/course/recording.controller.ts:102
+      - source: apps/nazar/features/recordings/recordings.ts:649
+      - test: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
+    note: |-
+      recording-write.e2e.spec.ts keeps the one recording a session has: 409 RECORDING_EXISTS names it (:560)
+      recording-write.e2e.spec.ts refuses a new link that cannot be stored with 400 RECORDING_LINK_INVALID, and keeps the old one
+      (:702)
+      replay, not run in this phase: linkInvalid replay, not run in this phase: exists replay, not run in this phase: streamMoved
+      replay, not run in this phase: refused replay, not run in this phase: refusedEdit replay, not run in this phase:
+      refusedLater replay, not run in this phase: editLinkInvalid
 
   - id: a-celse-that-is-gone-is-told
     need: >-
       A celse that was cancelled, archived or removed while the dialog was open says so in a toast, and the page is read again.
-    drawn: [toastMoved, toastReleaseGone]
-    built:
-      - route: apps/nazar/features/recordings/recordings.ts:677
-    # the API's refusal is pinned by apps/tedrisat/test/e2e/recording-write.e2e.spec.ts (:577, :586); the page's toast and the refresh are not walked
+    evidence:
+      - node: toastMoved
+      - node: toastReleaseGone
+      - source: apps/nazar/features/recordings/recordings.ts:677
+    note: >-
+      the API's refusal is pinned by apps/tedrisat/test/e2e/recording-write.e2e.spec.ts (:577, :586); the page's toast and the
+      refresh are not walked
 
   - id: a-read-that-fails-can-be-retried
-    need: >-
-      When a read of the page fails, she is told it failed (not that she has no access) and can try again.
-    drawn: [loadFailed, failedTitle, failedText, retry]
-    built:
-      - route: apps/nazar/features/shell/components/load-failed.tsx:19
+    need: When a read of the page fails, she is told it failed (not that she has no access) and can try again.
+    evidence:
+      - state: loadFailed
+      - node: failedTitle
+      - node: failedText
+      - node: retry
+      - source: apps/nazar/features/shell/components/load-failed.tsx:19
 
   - id: a-time-before-the-celse-is-refused
-    need: >-
-      A time earlier than the celse's start is refused with the start named, because the recording never opens before it.
-    drawn: []
-    built:
-      - route: apps/nazar/features/recordings/recordings.ts:381
+    need: A time earlier than the celse's start is refused with the start named, because the recording never opens before it.
+    evidence:
+      - source: apps/nazar/features/recordings/recordings.ts:381
 
   - id: a-closed-course-keeps-the-switch-off
-    need: >-
-      In a closed course "Herkese açık" is off and locked and says why; a recording already public can still be closed.
-    drawn: []
-    built:
-      - route: apps/nazar/features/recordings/recordings.ts:487
+    need: In a closed course "Herkese açık" is off and locked and says why; a recording already public can still be closed.
+    evidence:
+      - source: apps/nazar/features/recordings/recordings.ts:487
 
   - id: the-talebe-are-told-once
     need: >-
-      The course's enrolled talebe get "Kayıt eklendi" once, when a recording first becomes watchable (at the write, or at the time she set).
-    drawn: []
-    built:
-      - action: medaris.api:createLessonRecording
-    walked:
-      - e2e: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
-        check: 'RECORDING_ADDED: tells the enrolled talebe once when a pasted link is saved, and not again when it is edited or replaced (:1148)'
+      The course's enrolled talebe get "Kayıt eklendi" once, when a recording first becomes watchable (at the write, or at the
+      time she set).
+    evidence:
+      - source: apps/tedrisat/src/course/recording.controller.ts:102
+      - test: apps/tedrisat/test/e2e/recording-write.e2e.spec.ts
+    note: >-
+      recording-write.e2e.spec.ts RECORDING_ADDED: tells the enrolled talebe once when a pasted link is saved, and not again when
+      it is edited or replaced (:1148)
 
   - id: the-medrese-policy-keeps-recordings-private
     need: >-
-      Where a medrese has set "Ders kayıtları herkese açılamaz", no recording of its courses is made public: the switch is locked with a
-      reason and the write is refused (RECADD-1, decision D1).
-    drawn: [publicSwitch]
-    missing: none # MDRS-207 left it for the recordings work, per the code's comment; no open issue was checked
+      Where a medrese has set "Ders kayıtları herkese açılamaz", no recording of its courses is made public: the switch is locked
+      with a reason and the write is refused (RECADD-1, decision D1).
+    missing: MDRS-207 left it for the recordings work, per the code's comment; no open issue was checked
+    note: >-
+      Drawn on the node publicSwitch, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: a-recording-that-is-not-ready-says-so
     need: >-
-      A stream added as a recording says on its row, until it plays, that it plays only when YouTube has archived it, and the talebe are not
-      told it is there before it does (RECADD-2).
-    drawn: [streamNote, toastFromStream, stateBadge]
-    missing: none
+      A stream added as a recording says on its row, until it plays, that it plays only when YouTube has archived it, and the
+      talebe are not told it is there before it does (RECADD-2).
+    missing: no Linear issue; RECADD-2
+    note: >-
+      Drawn on the nodes streamNote, toastFromStream and stateBadge, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-wrong-recording-can-be-taken-back
     need: >-
       A recording added by mistake can be removed or hidden, not only replaced (decision D2; no route deletes or hides one today).
-    drawn: [listed]
-    missing: none
+    missing: no Linear issue; D2
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: focus-follows-a-write
     need: >-
-      After a dialog closes the focus is on a place she can use (the row, or the table), and the close controls say why they are ignored while a
-      write runs (F-C-course-a-25, F-C-course-a-26).
-    drawn: [addDialog, editDialog, releaseDialog, dialogClose, cancel]
-    missing: none
+      After a dialog closes the focus is on a place she can use (the row, or the table), and the close controls say why they are
+      ignored while a write runs (F-C-course-a-25, F-C-course-a-26).
+    missing: no Linear issue; F-C-course-a-25, -26
+    note: >-
+      Drawn on the nodes addDialog, editDialog, releaseDialog, dialogClose and cancel, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-bunny-video-leaves-with-its-recording
     need: >-
-      When a recording that is a Bunny video is replaced by a link here, or removed, its video is deleted from Bunny, and no video stays that no
-      recording owns (planned.md P-11). The replace path is built (updateRecording queues the old video); the purge, the reconciler and the
-      audit rows are not.
-    drawn: []
+      When a recording that is a Bunny video is replaced by a link here, or removed, its video is deleted from Bunny, and no video
+      stays that no recording owns (planned.md P-11). The replace path is built (updateRecording queues the old video); the purge,
+      the reconciler and the audit rows are not.
     missing: MDRS-260
 
   - id: publish-to-the-medaris-channel
     need: >-
-      A recording can be published to the Medaris YouTube channel through the API (planned.md P-26). The owner decided on 2026-10-03 that
-      medreses upload their own videos and Medaris embeds the link, so this is deferred.
-    drawn: []
+      A recording can be published to the Medaris YouTube channel through the API (planned.md P-26). The owner decided on
+      2026-10-03 that medreses upload their own videos and Medaris embeds the link, so this is deferred.
     missing: MDRS-204

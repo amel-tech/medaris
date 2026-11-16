@@ -263,7 +263,7 @@ states:
         - { guard: "answer == 'saved'", target: savedRow, starts: { flow: nizam.notifications.triage, given: { scope: "'platform'", holds: "'one'" } }, source: apps/nizam/features/bans/components/ban-dialog.tsx:100, say: "the ban stands; the Medaris nazımı's Bildirimler holds one new notice for it" }
       FAIL.notAllowed: { guard: "answer == 'notAllowed'", target: formReady, effect: [notAllowedToast], source: apps/nizam/features/bans/components/ban-dialog.tsx:94, say: "'Bu yasağı koymak için yetkiniz yok.'" }
       FAIL.invalidTarget: { guard: "answer == 'invalidTarget'", target: formReady, effect: [invalidTargetToast], source: apps/nizam/features/bans/components/ban-dialog.tsx:94, say: "'Bu kişi yasaklanamaz.', for the caller or a person who runs the course" }
-      FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nizam/features/bans/present.ts:198, say: "'İşlem tamamlanamadı.': COURSE_NOT_FOUND and the refused body have no words of their own here, so they read as the generic line" }
+      FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nizam/features/bans/present.ts:117, say: "'İşlem tamamlanamadı.': COURSE_NOT_FOUND and the refused body have no words of their own here, so they read as the generic line" }
     source: apps/nizam/features/bans/components/ban-dialog.tsx:84
 
   savedRow:

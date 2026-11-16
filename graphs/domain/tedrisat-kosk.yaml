@@ -180,6 +180,7 @@ actions:
       köşk exists is checked, not that it is shown: see the note.
     result: { status: 201, type: boolean, note: "always true" }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       KOSK_NOT_FOUND: { status: 404, note: "unknown uuid (role resolver for a caller who is not SYSTEM_ADMIN) or no such köşk (service)", source: apps/tedrisat/src/kosk/kosk.service.ts:103 }
       HTTP_400: { status: 400, note: "the id is no uuid" }
     note: >-
@@ -194,6 +195,7 @@ actions:
     description: Deletes the caller's own KoskFollower row. True when a row was deleted, false when there was none; a missing köşk is simply false.
     result: { status: 200, type: boolean }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       HTTP_400: { status: 400, note: "the id is no uuid" }
     source: apps/tedrisat/src/kosk/kosk.controller.ts:487
 
@@ -797,6 +799,7 @@ actions:
         id: { type: string, format: uuid, references: KoskApplication }
         status: { const: PENDING }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       VALIDATION_ERROR: { status: 400, note: "a field missing, blank or over its length, field not one of the eleven, a bad e-mail or phone, another property" }
     source: apps/tedrisat/src/kosk-application/kosk-application.controller.ts:28
 

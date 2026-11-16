@@ -1,7 +1,14 @@
-# What must exist for a talebe's public profile: tedris.account.publicProfile, written on 15 Nov 2026 in the format of LAYOUT.md
-# section 7. Each need is what the product must do, from the flow's story (FLOWS.md) and from the issue MDRS-141 ("Public ilmî
-# künye and gender, a private-by-default profile, and who can see which icazetnames", Backlog, label authz-matrix-v2); none is read
-# off what a page does today.
+schema: delurio-graph/0
+kind: needs
+id: tedris.account.publicProfile
+status: proposed
+summary: >-
+  What must exist for a talebe's public profile: tedris.account.publicProfile. Each need is what the product must do, from the
+  flow's story (FLOWS.md) and from the issue MDRS-141 ("Public ilmî künye and gender, a private-by-default profile, and who can
+  see which icazetnames", Backlog, label authz-matrix-v2); none is read off what a page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # The profile is BUILT AND SWITCHED OFF (features/public-profile/availability.ts:14, API__PUBLIC_PROFILE_ENABLED=false), so this
 # file is where its switched-on behaviour lives. A need of the switched-on page has `built` (the code that is there, in the tree,
@@ -11,171 +18,192 @@
 # The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
 #
 # missing (the capability is off, or there is no code):
-#   switched off, code in the tree: kunye-is-chosen, kunye-is-unique, gender-follows-the-account, others-are-private-by-default,
-#     preview-of-what-others-see, others-see-only-what-is-open, consent-covers-the-kunye
-#   no code, or code that does the opposite: a-profile-has-a-page-to-read (MDRS-141), kunye-at-registration (MDRS-141),
-#     personal-data-reads-are-permissioned-and-audited (MDRS-141), icazet-visibility (MDRS-149), gender-is-always-set (MDRS-284),
-#     gender-decision-before-switch-on (MDRS-141, PUBPROF-1), kunye-null-is-a-400 (none, the domain's unreadable-input-500),
-#     switched-on-from-one-place (none, PUBPROF-2)
+# switched off, code in the tree: kunye-is-chosen, kunye-is-unique, gender-follows-the-account, others-are-private-by-default,
+# preview-of-what-others-see, others-see-only-what-is-open, consent-covers-the-kunye
+# no code, or code that does the opposite: a-profile-has-a-page-to-read (MDRS-141), kunye-at-registration (MDRS-141),
+# personal-data-reads-are-permissioned-and-audited (MDRS-141), icazet-visibility (MDRS-149), gender-is-always-set (MDRS-284),
+# gender-decision-before-switch-on (MDRS-141, PUBPROF-1), kunye-null-is-a-400 (none, the domain's unreadable-input-500),
+# switched-on-from-one-place (none, PUBPROF-2)
 # unwalked (code, and no e2e check and no replay takes it): hidden-until-decided (its web half: the not-found page at this address;
-#   the API half is walked by tedrisat's own e2e), visitor-asked-to-sign-in-first, no-link-to-a-hidden-page (a unit spec only)
-kind: needs
-flow: tedris.account.publicProfile
-status: proposed
+# the API half is walked by tedrisat's own e2e), visitor-asked-to-sign-in-first, no-link-to-a-hidden-page (a unit spec only)
 
 needs:
-  # ---- what the code does today, with the profile off: drawn ----
   - id: hidden-until-decided
     need: >-
       Until the owner decides, nobody can open or change a public profile, in the app or through the API, and the answer tells a
       person nothing about whether a profile exists.
-    drawn: [notFound, homeLink, home_opened, signed-in-is-not-sent-to-sign-in]
-    built:
-      - route: apps/tedris/app/account/public-profile/page.tsx:25
-      - route: apps/tedris/features/public-profile/availability.ts:14
-      - route: apps/tedrisat/src/user/public-profile-enabled.guard.ts:19
-      - action: medaris.api:getMyPublicProfile
-      - action: medaris.api:updateMyPublicProfile
-      - action: medaris.api:getUserPublicProfile
-    walked:
-      - e2e: apps/tedrisat/test/e2e/public-profile-hidden.e2e.spec.ts
-        check: 'the API half: the three routes answer 404 PUBLIC_PROFILE_UNAVAILABLE for a signed-in student and for the başnazım, 401 with no token, and write nothing (not numbered in the inventory; not run by me)'
-    # unwalked, the web half: apps/tedris/test/public-profile-hidden.spec.ts (a unit spec) proves the page calls notFound() before it
-    # reads anything; no e2e check opens the address (profile#4 is skipped) and the replay scenario `member` is bound and was not run.
+    evidence:
+      - state: notFound
+      - node: homeLink
+      - state: home_opened
+      - source: apps/tedris/app/account/public-profile/page.tsx:25
+      - source: apps/tedris/features/public-profile/availability.ts:14
+      - source: apps/tedrisat/src/user/public-profile-enabled.guard.ts:19
+      - source: apps/tedrisat/src/user/profile.controller.ts:55
+      - source: apps/tedrisat/src/user/profile.controller.ts:74
+      - source: apps/tedrisat/src/user/profile.controller.ts:90
+      - test: apps/tedrisat/test/e2e/public-profile-hidden.e2e.spec.ts
+    note: |-
+      Also drawn as the assertion signed-in-is-not-sent-to-sign-in.
+      public-profile-hidden.e2e.spec.ts the API half: the three routes answer 404 PUBLIC_PROFILE_UNAVAILABLE for a signed-in
+      student and for the başnazım, 401 with no token, and write nothing (not numbered in the inventory; not run by me)
+      ---- what the code does today, with the profile off: drawn ---- unwalked, the web half:
+      apps/tedris/test/public-profile-hidden.spec.ts (a unit spec) proves the page calls notFound() before it reads anything; no
+      e2e check opens the address (profile#4 is skipped) and the replay scenario `member` is bound and was not run.
 
   - id: visitor-asked-to-sign-in-first
-    need: A person with no session who types the address is asked to sign in, like for any page that is not public, and is told nothing about the page.
-    drawn: [handed_over.sign_in, visitor-asked-to-sign-in-first]
-    built:
-      - route: apps/tedris/lib/public-paths.ts:12
-      - route: apps/tedris/proxy.ts:28
-    # unwalked: seen once as a 307 to /auth/signin?callbackUrl=%2Faccount%2Fpublic-profile (curl, 15 Nov 2026); the replay scenario
-    # `visitor` is bound and was not run.
+    need: >-
+      A person with no session who types the address is asked to sign in, like for any page that is not public, and is told
+      nothing about the page.
+    evidence:
+      - state: handed_over.sign_in
+      - source: apps/tedris/lib/public-paths.ts:12
+      - source: apps/tedris/proxy.ts:28
+    note: |-
+      Also drawn as the assertion visitor-asked-to-sign-in-first.
+      unwalked: seen once as a 307 to /auth/signin?callbackUrl=%2Faccount%2Fpublic-profile (curl, 15 Nov 2026); the replay
+      scenario `visitor` is bound and was not run.
 
   - id: no-link-to-a-hidden-page
     need: Nothing in any Medaris app links to a page that answers not found, so a person is not led to a dead end.
-    drawn: []
-    built:
-      - route: apps/tedris/features/account/components/account-settings.tsx:430
-    # walked: nothing but a unit spec (apps/tedris/test/public-profile-hidden.spec.ts "leaves the card and its link out of Hesap").
-    # Hesap itself is drawn by tedris.account.profile.
+    evidence:
+      - source: apps/tedris/features/account/components/account-settings.tsx:372
+    note: >-
+      walked: nothing but a unit spec (apps/tedris/test/public-profile-hidden.spec.ts "leaves the card and its link out of
+      Hesap"). Hesap itself is drawn by tedris.account.profile.
 
-  # ---- the switched-on page: the code is there, nobody can reach it (MDRS-141) ----
   - id: kunye-is-chosen
     need: >-
       A talebe chooses an ilmî künye, a name like a username that need not be their own; it is the one required field of the
       profile, and a blank one is refused on the page before anything is sent.
-    drawn: []
-    built:
-      - route: apps/tedris/features/public-profile/components/public-profile-page.tsx:171
-      - route: apps/tedris/features/public-profile/model.ts:38
-      - action: medaris.api:updateMyPublicProfile
-    missing: MDRS-141 # switched off; ACC-02 (the error is not announced). profile#4 a1 would walk it and is skipped
+    evidence:
+      - source: apps/tedris/features/public-profile/components/public-profile-page.tsx:171
+      - source: apps/tedris/features/public-profile/model.ts:38
+      - source: apps/tedrisat/src/user/profile.controller.ts:74
+    missing: >-
+      MDRS-141; switched off; ACC-02 (the error is not announced). profile#4 a1 would walk it and is skipped; code exists in part
+    note: "---- the switched-on page: the code is there, nobody can reach it (MDRS-141) ----"
 
   - id: kunye-is-unique
     need: No two talebe share a künye, whatever the case of its letters; the second is told on the field that it is taken.
-    drawn: []
-    built:
-      - route: apps/tedris/features/public-profile/components/public-profile-page.tsx:102
-      - route: apps/tedrisat/src/database/schema/user-profile.schema.ts:50
-      - action: medaris.api:updateMyPublicProfile
-    missing: MDRS-141 # switched off; the 409 KUNYE_TAKEN is mapped to the field for any 409 but GENDER_MANAGED_BY_ACCOUNT
+    evidence:
+      - source: apps/tedris/features/public-profile/components/public-profile-page.tsx:102
+      - source: apps/tedrisat/src/database/schema/user-profile.schema.ts:50
+      - source: apps/tedrisat/src/user/profile.controller.ts:74
+    missing: >-
+      MDRS-141; switched off; the 409 KUNYE_TAKEN is mapped to the field for any 409 but GENDER_MANAGED_BY_ACCOUNT; code exists in
+      part
 
   - id: kunye-null-is-a-400
     need: A künye the API cannot read, such as null, is refused 400 and never fails as a 500.
-    drawn: []
-    built:
-      - action: medaris.api:updateMyPublicProfile
-    missing: none # the domain's unreadable-input-500: dto/public-profile.dto.ts:140-145 lets null through and user-profile.service.ts:67 trims it; the page never sends null; no Linear issue
+    evidence:
+      - source: apps/tedrisat/src/user/profile.controller.ts:74
+    missing: >-
+      the domain's unreadable-input-500: dto/public-profile.dto.ts:140-145 lets null through and user-profile.service.ts:67 trims
+      it; the page never sends null; no Linear issue; code exists in part
 
   - id: kunye-at-registration
     need: A person gives their künye together with their gender when they register, so that every talebe has one.
-    drawn: []
-    missing: MDRS-141 # no code: the realm's registration collects neither (the künye is first chosen on this page), "Collect it together with gender at registration"
+    missing: >-
+      MDRS-141; no code: the realm's registration collects neither (the künye is first chosen on this page), "Collect it together
+      with gender at registration"
 
   - id: gender-follows-the-account
     need: >-
       A talebe's gender is the one their account holds; it is shown read-only on the profile, changed only on the account's own
       profile page, from which the person comes back to the profile, and a person whose account has none picks one on the profile.
-    drawn: []
-    built:
-      - route: apps/tedris/features/public-profile/components/public-profile-page.tsx:191
-      - route: apps/tedrisat/src/user/user-profile.service.ts:62
-      - action: medaris.api:updateMyPublicProfile
-    missing: MDRS-141 # switched off; GENDER_MANAGED_BY_ACCOUNT refuses the whole save; "Değiştir" goes to realm.auth.profileUpdate and returns here
+    evidence:
+      - source: apps/tedris/features/public-profile/components/public-profile-page.tsx:191
+      - source: apps/tedrisat/src/user/user-profile.service.ts:62
+      - source: apps/tedrisat/src/user/profile.controller.ts:74
+    missing: >-
+      MDRS-141; switched off; GENDER_MANAGED_BY_ACCOUNT refuses the whole save; "Değiştir" goes to realm.auth.profileUpdate and
+      returns here; code exists in part
 
   - id: gender-is-always-set
     need: Every talebe has a gender, FEMALE or MALE, and the profile never shows a person without one (gender is always required).
-    drawn: []
-    built:
-      - route: config/keycloak/user-profile.json:26 # the realm requires it at registration
-    missing: MDRS-284 # tedrisat's column is nullable (user-profile.schema.ts:33, "per MDRS-284") and the profile's radio has no required check (public-profile-page.tsx:225-235)
+    evidence:
+      - source: config/keycloak/user-profile.json:26
+    missing: >-
+      tedrisat's column is nullable (user-profile.schema.ts:33, "per MDRS-284") and the profile's radio has no required check
+      (public-profile-page.tsx:225-235); code exists in part
+    note: "config/keycloak/user-profile.json:26: the realm requires it at registration"
 
   - id: others-are-private-by-default
     need: >-
-      Every field of a profile but the künye and the gender (name, city, about, courses) is private until the person opens it,
-      one field at a time, with a switch that saves the moment it is flipped and goes back if the save is refused.
-    drawn: []
-    built:
-      - route: apps/tedris/features/public-profile/components/public-profile-page.tsx:120
-      - route: apps/tedris/features/public-profile/actions.ts:33
-      - action: medaris.api:updateMyPublicProfile
-    missing: MDRS-141 # switched off; all four default to off; ACC-10, ACC-12, ACC-13 (four switches named alike). profile#4 a6-a9 would walk it and is skipped
+      Every field of a profile but the künye and the gender (name, city, about, courses) is private until the person opens it, one
+      field at a time, with a switch that saves the moment it is flipped and goes back if the save is refused.
+    evidence:
+      - source: apps/tedris/features/public-profile/components/public-profile-page.tsx:120
+      - source: apps/tedris/features/public-profile/actions.ts:33
+      - source: apps/tedrisat/src/user/profile.controller.ts:74
+    missing: >-
+      MDRS-141; switched off; all four default to off; ACC-10, ACC-12, ACC-13 (four switches named alike). profile#4 a6-a9 would
+      walk it and is skipped; code exists in part
 
   - id: preview-of-what-others-see
     need: While they edit, a person sees what other people will see of their profile and which fields stay hidden.
-    drawn: []
-    built:
-      - route: apps/tedris/features/public-profile/components/public-profile-page.tsx:345
-    missing: MDRS-141 # switched off; profile#4 a3-a5, a7, a8 would walk it and is skipped
+    evidence:
+      - source: apps/tedris/features/public-profile/components/public-profile-page.tsx:345
+    missing: MDRS-141; switched off; profile#4 a3-a5, a7, a8 would walk it and is skipped; code exists in part
 
   - id: others-see-only-what-is-open
     need: >-
       Another signed-in person reads a talebe's künye and gender and only the fields the talebe opened; a field that is closed is
       absent from the answer, not empty, and a talebe with no künye has no profile.
-    drawn: []
-    built:
-      - action: medaris.api:getUserPublicProfile
-      - route: apps/tedrisat/src/user/user-profile.service.ts:91
-    missing: MDRS-141 # switched off; the second-person API call of profile#4 (a10) is skipped and is not carried (a direct fetch with a bearer token)
+    evidence:
+      - source: apps/tedrisat/src/user/profile.controller.ts:90
+      - source: apps/tedrisat/src/user/user-profile.service.ts:91
+    missing: >-
+      MDRS-141; switched off; the second-person API call of profile#4 (a10) is skipped and is not carried (a direct fetch with a
+      bearer token); code exists in part
 
   - id: a-profile-has-a-page-to-read
-    need: A person, a signed-out visitor included, reads a talebe's public profile on a page of the app, and sees the künye and the gender and nothing else unless the talebe opened it.
-    drawn: []
-    missing: MDRS-141 # no code: no page of any app calls getUserPublicProfile, and the route needs a token (AuthGuard), so a visitor cannot be served; the issue's first acceptance criterion
+    need: >-
+      A person, a signed-out visitor included, reads a talebe's public profile on a page of the app, and sees the künye and the
+      gender and nothing else unless the talebe opened it.
+    missing: >-
+      MDRS-141; no code: no page of any app calls getUserPublicProfile, and the route needs a token (AuthGuard), so a visitor
+      cannot be served; the issue's first acceptance criterion
 
   - id: consent-covers-the-kunye
     need: >-
-      The consent a person gives at registration covers a künye that cannot be hidden, in words the association's legal contact has
-      confirmed (KVKK Art. 6, special-category data), and the profile page names that document for real.
-    drawn: []
-    built:
-      - route: apps/tedris/features/public-profile/components/public-profile-page.tsx:237
-    missing: MDRS-141 # the note carries the placeholder "[Açık rıza metninin adı]" (ACC-14); the wording waits for the legal contact; see also MDRS-102 and MDRS-191
+      The consent a person gives at registration covers a künye that cannot be hidden, in words the association's legal contact
+      has confirmed (KVKK Art. 6, special-category data), and the profile page names that document for real.
+    evidence:
+      - source: apps/tedris/features/public-profile/components/public-profile-page.tsx:237
+    missing: >-
+      MDRS-141; the note carries the placeholder "[Açık rıza metninin adı]" (ACC-14); the wording waits for the legal contact; see
+      also MDRS-102 and MDRS-191; code exists in part
 
   - id: gender-decision-before-switch-on
     need: >-
       The owner's decision on whether the gender is public on a profile is taken, and the privacy notice, the profile page and the
       API all say the same thing about it.
-    drawn: [notFound]
-    missing: MDRS-141 # decision D1 of the flow; PUBPROF-1: the notice says it is not shown (aydinlatma-metni.ts:105), the API always returns it (user-profile.service.ts:97)
+    missing: >-
+      MDRS-141; decision D1 of the flow; PUBPROF-1: the notice says it is not shown (aydinlatma-metni.ts:105), the API always
+      returns it (user-profile.service.ts:97)
+    note: >-
+      Drawn on the state notFound, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: switched-on-from-one-place
     need: The profile is on or off in one place, and the page and the API never disagree about it.
-    drawn: []
-    built:
-      - route: apps/tedris/features/public-profile/availability.ts:14
-      - route: apps/tedrisat/src/config/config.ts:89
-    missing: none # PUBPROF-2: two switches (a web constant, an API environment value); with only the web one on the page tells the person to retry a permanent refusal; no Linear issue
+    evidence:
+      - source: apps/tedris/features/public-profile/availability.ts:14
+      - source: apps/tedrisat/src/config/config.ts:89
+    missing: >-
+      PUBPROF-2: two switches (a web constant, an API environment value); with only the web one on the page tells the person to
+      retry a permanent refusal; no Linear issue; code exists in part
 
   - id: personal-data-reads-are-permissioned-and-audited
     need: >-
-      Anything beyond the künye and the gender, such as a talebe's e-mail address, is read only with a permission of its own, a read
-      without it is refused 403, and every read with it is written to the audit log.
-    drawn: []
-    missing: MDRS-141 # no code (item 4 of the issue: "Personal data access"); the user lookups are a separate, narrower feature (domain: lookup-callers)
+      Anything beyond the künye and the gender, such as a talebe's e-mail address, is read only with a permission of its own, a
+      read without it is refused 403, and every read with it is written to the audit log.
+    missing: >-
+      MDRS-141; no code (item 4 of the issue: "Personal data access"); the user lookups are a separate, narrower feature (domain:
+      lookup-callers)
 
   - id: icazet-visibility
     need: Who received which icazetname is visible to medreses and müderrisler, by a rule fixed together with the icazet record.
-    drawn: []
-    missing: MDRS-149 # no code; MDRS-141 defers it to the icazet record
+    missing: MDRS-149; no code; MDRS-141 defers it to the icazet record

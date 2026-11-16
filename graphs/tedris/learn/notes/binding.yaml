@@ -24,7 +24,7 @@ flow: tedris.learn.notes
 
 scenarios:
   writes:
-    given: { surface: celseLater, typing: ok, answer: saved }
+    given: { surface: celseLater, typing: ok, answer: saved, held: none }
     as: applicantF
     open: '{tedris}/courses/{made.course}'
     enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
@@ -47,7 +47,7 @@ scenarios:
         expect: course remove learnnotes
 
   refused:
-    given: { surface: celseLater, typing: badTime, answer: saved }
+    given: { surface: celseLater, typing: badTime, answer: saved, held: none }
     as: applicantF
     open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
     vars:

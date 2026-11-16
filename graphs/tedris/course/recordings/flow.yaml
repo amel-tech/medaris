@@ -247,7 +247,7 @@ assertions:
   - id: seat-list-is-for-a-seat
     never: "state == 'listForSeat' and reader == 'outsider'"
     say: "The list of every recording is drawn only for a person who may read the course's content"
-    source: apps/tedris/src/course/course.service.ts:808
+    source: apps/tedrisat/src/course/course.service.ts:809
   - id: no-watch-page-for-an-outsider
     never: "state == 'watch_opened' and reader == 'outsider'"
     say: "A person with no seat is never sent to a watch page by this tab: their rows open the host in a new tab"

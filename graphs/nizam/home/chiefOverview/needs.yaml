@@ -1,8 +1,14 @@
-# What must exist for the Medaris başnazım to open Ana sayfa and see what the platform holds and what waits for them: the flow's product
-# list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story, the inventory's findings (nizam.md part W1)
-# and the planned work (planned.md P-P8), not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the
-# orchestrator merges. Read by people for now: no checker runs on this file yet. No replay has run: a `replay:` entry is named only once a
-# scenario has passed, so none is named here, and an e2e check or a unit spec is the only evidence of a walk.
+schema: delurio-graph/0
+kind: needs
+id: nizam.home.chiefOverview
+status: proposed
+summary: >-
+  What must exist for the Medaris başnazım to open Ana sayfa and see what the platform holds and what waits for them: the flow's
+  product list. No replay has run: a `replay:` entry is named only once a scenario has passed, so none is named here, and an e2e
+  check or a unit spec is the only evidence of a walk.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # What the e2e checks of this flow do and do not carry (apps/nizam/e2e/dashboard.e2e.ts): dashboard#1 assertion 3 (the five sections of
 # the sidebar) is nizam.shell.menuPerPersona's; assertions 6-9 compare the numbers with SQL counts, and the binding compares them with
@@ -12,178 +18,264 @@
 # by SQL; the walk of this flow may not create data, so every row, the warning and its healing are unwalked until the seed has them.
 #
 # missing (no code, or a finding the code does not meet): every-waiting-request-has-a-way-in (CHIEF-1, decision D2),
-#   a-row-opens-its-own-item (F-W1-10, CHIEF-2), the-warning-names-every-scope (CHIEF-3), a-failed-home-has-a-heading (CHIEF-4),
-#   a-failed-roles-read-says-so (F-W1-1), every-word-is-in-the-catalog (F-W1-12, F-X-17), the-greeting-fits-the-person (decision D1),
-#   reports-and-dashboards (P-P8: no Linear key)
+# a-row-opens-its-own-item (F-W1-10, CHIEF-2), the-warning-names-every-scope (CHIEF-3), a-failed-home-has-a-heading (CHIEF-4),
+# a-failed-roles-read-says-so (F-W1-1), every-word-is-in-the-catalog (F-W1-12, F-X-17), the-greeting-fits-the-person (decision D1),
+# reports-and-dashboards (P-P8: no Linear key)
 # unwalked (code, no e2e and no replay that passes): reach-the-lists-of-the-platform (a unit spec only; the replay `seed` takes both
-#   links, not run yet), a-failed-home-says-so (the stack cannot make tedrisat refuse a read; no e2e and no unit spec draws the box)
+# links, not run yet), a-failed-home-says-so (the stack cannot make tedrisat refuse a read; no e2e and no unit spec draws the box)
 # walked by e2e only, and not by a replay that can pass on the seed as it is: newest-rows-of-each-queue, open-a-queue (the İncele half),
-#   know-a-scope-has-no-manager, warning-goes-when-a-manager-is-given (the replays `rows` and `queues` fail until the stack holds the rows:
-#   ask: data)
-kind: needs
-flow: nizam.home.chiefOverview
-status: proposed
+# know-a-scope-has-no-manager, warning-goes-when-a-manager-is-given (the replays `rows` and `queues` fail until the stack holds the rows:
+# ask: data)
 
 needs:
   - id: platform-at-a-glance
     need: >-
-      On arriving, the başnazım reads how many köşks, medreses, courses and enrolled talebe the platform holds, with a note where some
-      köşks are unlisted or some medreses and courses have no manager, and the numbers are the platform's, not stale or invented.
-    drawn: [homeClear, homeWarned, counts, statKoskValue, statMadrasahValue, statCourseValue, statStudentsValue, statKoskUnlisted, statMadrasahPassive, statCoursePassive]
-    built:
-      - action: medaris.api:getNizamDashboard
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:249
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#1 (a1, a2, a6-a9: against SQL counts there, against the API''s answer in the binding)'
-      - test: apps/nizam/test/dashboard-views.spec.tsx # "draws the four numbers with their notes and links"
+      On arriving, the başnazım reads how many köşks, medreses, courses and enrolled talebe the platform holds, with a note where
+      some köşks are unlisted or some medreses and courses have no manager, and the numbers are the platform's, not stale or
+      invented.
+    evidence:
+      - state: homeClear
+      - state: homeWarned
+      - node: counts
+      - node: statKoskValue
+      - node: statMadrasahValue
+      - node: statCourseValue
+      - node: statStudentsValue
+      - node: statKoskUnlisted
+      - node: statMadrasahPassive
+      - node: statCoursePassive
+      - source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.controller.ts:35
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:249
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — the başnazım's home page: menu, greeting, numbers and cards agree with the database (criteria 1, 2, 4, 7)"
+      - test: apps/nizam/test/dashboard-views.spec.tsx
+    note: |-
+      dashboard.e2e.ts dashboard#1 (a1, a2, a6-a9: against SQL counts there, against the API's answer in the binding)
+      apps/nizam/test/dashboard-views.spec.tsx: "draws the four numbers with their notes and links"
 
   - id: waiting-count-in-the-greeting
     need: >-
       The başnazım is told in one sentence how many requests wait for their decision, or that none does, and is greeted by name.
-    drawn: [greeting, pendingLine, pendingNoneLine]
-    built:
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:302
-      - route: apps/nizam/features/dashboard/present.ts:29
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#1 (a4, a5; a4 sums two queues, the page sums three: CHIEF-1)'
-      - test: apps/nizam/test/dashboard-views.spec.tsx # "greets by name and adds the queues: 3 + 2 + 0 + 0 = 5"
+    evidence:
+      - node: greeting
+      - node: pendingLine
+      - node: pendingNoneLine
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:302
+      - source: apps/nizam/features/dashboard/present.ts:29
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — the başnazım's home page: menu, greeting, numbers and cards agree with the database (criteria 1, 2, 4, 7)"
+      - test: apps/nizam/test/dashboard-views.spec.tsx
+    note: |-
+      dashboard.e2e.ts dashboard#1 (a4, a5; a4 sums two queues, the page sums three: CHIEF-1)
+      apps/nizam/test/dashboard-views.spec.tsx: "greets by name and adds the queues: 3 + 2 + 0 + 0 = 5"
 
   - id: every-waiting-request-has-a-way-in
     need: >-
-      Everything the greeting counts as waiting has a card or a link on the same page, so a başnazım who reads "1 talep var" can find it
-      without leaving the home to look (the appeals are counted and have none).
-    drawn: [pendingLine, applicationsCard, decksCard]
-    missing: none # CHIEF-1, decision D2; no Linear issue
+      Everything the greeting counts as waiting has a card or a link on the same page, so a başnazım who reads "1 talep var" can
+      find it without leaving the home to look (the appeals are counted and have none).
+    missing: CHIEF-1, decision D2; no Linear issue
+    note: >-
+      Drawn on the nodes pendingLine, applicationsCard and decksCard, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: newest-rows-of-each-queue
     need: >-
-      Each queue that waits for the başnazım (köşk applications, deck publish requests, new bans) shows its newest rows with the name, who
-      and when, and says in one sentence that nothing waits when it is empty.
-    drawn: [applicationsList, applicationRow, applicationCaption, applicationsEmpty, decksList, deckRow, deckCaption, decksEmpty, bansList, banRow, banCaption, banReason, bansEmpty]
-    built:
-      - action: medaris.api:getNizamDashboard
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:59
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:103
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:214
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#1 (a15-a18)'
-      - test: apps/nizam/test/dashboard-views.spec.tsx # "draws the cards with the dates of the design and a button that goes to the right record", "keeps a card when its list is empty and says why (criterion 5)"
+      Each queue that waits for the başnazım (köşk applications, deck publish requests, new bans) shows its newest rows with the
+      name, who and when, and says in one sentence that nothing waits when it is empty.
+    evidence:
+      - node: applicationsList
+      - node: applicationRow
+      - node: applicationCaption
+      - node: applicationsEmpty
+      - node: decksList
+      - node: deckRow
+      - node: deckCaption
+      - node: decksEmpty
+      - node: bansList
+      - node: banRow
+      - node: banCaption
+      - node: banReason
+      - node: bansEmpty
+      - source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.controller.ts:35
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:59
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:103
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:214
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — the başnazım's home page: menu, greeting, numbers and cards agree with the database (criteria 1, 2, 4, 7)"
+      - test: apps/nizam/test/dashboard-views.spec.tsx
+    note: |-
+      dashboard.e2e.ts dashboard#1 (a15-a18)
+      apps/nizam/test/dashboard-views.spec.tsx: "draws the cards with the dates of the design and a button that goes to the right
+      record", "keeps a card when its list is empty and says why (criterion 5)"
 
   - id: open-a-queue
     need: >-
       From a card the başnazım opens the whole list of that queue, and from a row the very request, in one press, to decide it.
-    drawn: [applicationsAll, applicationReview, decksAll, deckReview, passiveAll, bansAll, banReview, kosk_application_opened, kosk_applications_opened, deck_request_opened, deck_requests_opened, inactive_scopes_opened, bans_opened]
-    built:
-      - route: apps/nizam/features/dashboard/components/home-parts.tsx:34
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:87
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#2 (a1, a3: the other half, a2, is the next page''s)'
-      - test: apps/nizam/test/dashboard-views.spec.tsx # "links only to its own pages, never to a //host"
+    evidence:
+      - node: applicationsAll
+      - node: applicationReview
+      - node: decksAll
+      - node: deckReview
+      - node: passiveAll
+      - node: bansAll
+      - node: banReview
+      - state: kosk_application_opened
+      - state: kosk_applications_opened
+      - state: deck_request_opened
+      - state: deck_requests_opened
+      - state: inactive_scopes_opened
+      - state: bans_opened
+      - source: apps/nizam/features/dashboard/components/home-parts.tsx:34
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:87
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — 'İncele' opens the application it points at, 'Tümünü gör' the list, and 'Köşk aç' the form (criterion 4)"
+      - test: apps/nizam/test/dashboard-views.spec.tsx
+    note: |-
+      dashboard.e2e.ts dashboard#2 (a1, a3: the other half, a2, is the next page's)
+      apps/nizam/test/dashboard-views.spec.tsx: "links only to its own pages, never to a //host"
 
   - id: a-row-opens-its-own-item
     need: >-
-      A button on a row that is named after an item ("İncele: {name}", "Hoca ata: {name}") opens that item, selected, and not the list it is
-      in: the passive scopes and the bans do not, the applications and the deck requests do.
-    drawn: [passiveAssign, banReview, applicationReview, deckReview]
-    missing: none # F-W1-10, CHIEF-2; no Linear issue
+      A button on a row that is named after an item ("İncele: {name}", "Hoca ata: {name}") opens that item, selected, and not the
+      list it is in: the passive scopes and the bans do not, the applications and the deck requests do.
+    missing: F-W1-10, CHIEF-2; no Linear issue
+    note: >-
+      Drawn on the nodes passiveAssign, banReview, applicationReview and deckReview, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: know-a-scope-has-no-manager
     need: >-
-      When a köşk, a medrese or a course has no manager, the başnazım is told at the top of the home, by name, that its content is closed
-      to its enrolled talebe too, and is offered the way to give it a manager from the row.
-    drawn: [homeWarned, passiveAlert, passiveAlertBody, passiveCard, passiveRow, passiveCaption, passiveAssign, warning-only-for-a-passive-scope, no-warning-with-a-passive-scope]
-    built:
-      - action: medaris.api:getNizamDashboard
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:315
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:154
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#1 (a10-a14)'
-      - test: apps/nizam/test/dashboard-views.spec.tsx # "warns about the two passive scopes by name (criterion 3)"
+      When a köşk, a medrese or a course has no manager, the başnazım is told at the top of the home, by name, that its content is
+      closed to its enrolled talebe too, and is offered the way to give it a manager from the row.
+    evidence:
+      - state: homeWarned
+      - node: passiveAlert
+      - node: passiveAlertBody
+      - node: passiveCard
+      - node: passiveRow
+      - node: passiveCaption
+      - node: passiveAssign
+      - source: apps/tedrisat/src/nizam-dashboard/nizam-dashboard.controller.ts:35
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:315
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:154
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — the başnazım's home page: menu, greeting, numbers and cards agree with the database (criteria 1, 2, 4, 7)"
+      - test: apps/nizam/test/dashboard-views.spec.tsx
+    note: |-
+      Also drawn as the assertion warning-only-for-a-passive-scope, the assertion no-warning-with-a-passive-scope.
+      dashboard.e2e.ts dashboard#1 (a10-a14)
+      apps/nizam/test/dashboard-views.spec.tsx: "warns about the two passive scopes by name (criterion 3)"
 
   - id: the-warning-names-every-scope
     need: >-
-      The warning's sentence names every scope its title counts, or says how many more there are, so the title and the sentence agree.
-    drawn: [passiveAlert, passiveAlertBody]
-    missing: none # CHIEF-3; no Linear issue
+      The warning's sentence names every scope its title counts, or says how many more there are, so the title and the sentence
+      agree.
+    missing: CHIEF-3; no Linear issue
+    note: >-
+      Drawn on the nodes passiveAlert and passiveAlertBody, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: warning-goes-when-a-manager-is-given
     need: >-
-      When the last scope with no manager is given one, the warning is gone at the next read of the home and the card says no scope is
-      without one.
-    drawn: [homeClear, passiveEmpty, no-warning-with-a-passive-scope]
-    built:
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:315
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:161
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#3 (a1-a3)'
-      - test: apps/nizam/test/dashboard-views.spec.tsx # "leaves out the alert and says so when nothing is passive (criterion 3)"
+      When the last scope with no manager is given one, the warning is gone at the next read of the home and the card says no
+      scope is without one.
+    evidence:
+      - state: homeClear
+      - node: passiveEmpty
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:315
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:161
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — with nothing passive the warning is not drawn, and the card says so (criterion 3)"
+      - test: apps/nizam/test/dashboard-views.spec.tsx
+    note: |-
+      Also drawn as the assertion no-warning-with-a-passive-scope.
+      dashboard.e2e.ts dashboard#3 (a1-a3)
+      apps/nizam/test/dashboard-views.spec.tsx: "leaves out the alert and says so when nothing is passive (criterion 3)"
 
   - id: open-a-kosk-from-the-home
     need: >-
-      The başnazım, and nobody else, opens the form that makes a köşk straight from the home, in one press, with the form already open.
-    drawn: [openKosk, kosk_form_opened]
-    built:
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:308
-      - route: apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts:28
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#2 (a4, a5)'
-      - test: apps/nizam/test/dashboard-views.spec.tsx # "offers Köşk aç, which opens the form on the Köşkler page"
+      The başnazım, and nobody else, opens the form that makes a köşk straight from the home, in one press, with the form already
+      open.
+    evidence:
+      - node: openKosk
+      - state: kosk_form_opened
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:308
+      - source: apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts:28
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — 'İncele' opens the application it points at, 'Tümünü gör' the list, and 'Köşk aç' the form (criterion 4)"
+      - test: apps/nizam/test/dashboard-views.spec.tsx
+    note: |-
+      dashboard.e2e.ts dashboard#2 (a4, a5)
+      apps/nizam/test/dashboard-views.spec.tsx: "offers Köşk aç, which opens the form on the Köşkler page"
 
   - id: reach-the-lists-of-the-platform
-    need: >-
-      Under the köşk and the medrese numbers the başnazım finds a link to the list those numbers count.
-    drawn: [goKosks, goMadrasahs, kosks_opened, madrasahs_opened]
-    built:
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:266
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:278
-    walked:
-      - test: apps/nizam/test/dashboard-views.spec.tsx # "draws the four numbers with their notes and links"
+    need: Under the köşk and the medrese numbers the başnazım finds a link to the list those numbers count.
+    evidence:
+      - node: goKosks
+      - node: goMadrasahs
+      - state: kosks_opened
+      - state: madrasahs_opened
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:266
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:278
+      - test: apps/nizam/test/dashboard-views.spec.tsx
+    note: "apps/nizam/test/dashboard-views.spec.tsx: \"draws the four numbers with their notes and links\""
 
   - id: a-failed-home-says-so
     need: >-
-      When the home cannot be read the başnazım is told so, under a heading, and can try again without leaving the page; the menu around
-      it still works.
-    drawn: [loadFailed, loadFailedAlert, loadFailedText, retry, box-only-after-a-failed-dashboard]
-    built:
-      - route: apps/nizam/features/kosks/components/load-failed.tsx:23
-    # walked: nothing. No e2e makes tedrisat fail and no unit spec draws LoadFailed for this page; the stack cannot make tedrisat refuse a read.
-    # The box has no heading (CHIEF-4).
+      When the home cannot be read the başnazım is told so, under a heading, and can try again without leaving the page; the menu
+      around it still works.
+    evidence:
+      - state: loadFailed
+      - node: loadFailedAlert
+      - node: loadFailedText
+      - node: retry
+      - source: apps/nizam/features/kosks/components/load-failed.tsx:23
+    note: |-
+      Also drawn as the assertion box-only-after-a-failed-dashboard.
+      walked: nothing. No e2e makes tedrisat fail and no unit spec draws LoadFailed for this page; the stack cannot make tedrisat
+      refuse a read. The box has no heading (CHIEF-4).
 
   - id: a-failed-home-has-a-heading
-    need: A page that cannot draw what it is about still says what page it is, as a heading, so a person who reads by headings knows where they are.
-    drawn: [loadFailed, loadFailedAlert, welcomeLine]
-    missing: none # CHIEF-4, F-W1-1; no Linear issue
+    need: >-
+      A page that cannot draw what it is about still says what page it is, as a heading, so a person who reads by headings knows
+      where they are.
+    missing: CHIEF-4, F-W1-1; no Linear issue
+    note: >-
+      Drawn on the state loadFailed and on the nodes loadFailedAlert and welcomeLine, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-roles-read-says-so
     need: >-
-      When the page cannot tell who is signed in, it says so and offers a retry, and does not greet a başnazım with a bare line as if
-      nothing were wrong.
-    drawn: [bareWelcome, welcomeLine, bare-line-only-after-failed-roles]
-    missing: none # F-W1-1 (and F-P0-9 in nizam.shell.landingByRole); no Linear issue
+      When the page cannot tell who is signed in, it says so and offers a retry, and does not greet a başnazım with a bare line as
+      if nothing were wrong.
+    missing: F-W1-1 (and F-P0-9 in nizam.shell.landingByRole); no Linear issue
+    note: |-
+      Drawn on the state bareWelcome and on the node welcomeLine, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Also drawn as the assertion bare-line-only-after-failed-roles.
 
   - id: every-word-is-in-the-catalog
     need: >-
-      Every word on the home, the field of an application, the tab title and the busy button's word included, comes from the language
-      catalog, so another language shows its own.
-    drawn: [applicationCaption, retry]
-    missing: none # F-W1-12, F-X-17, F-UI-W1-3; no Linear issue
+      Every word on the home, the field of an application, the tab title and the busy button's word included, comes from the
+      language catalog, so another language shows its own.
+    missing: F-W1-12, F-X-17, F-UI-W1-3; no Linear issue
+    note: >-
+      Drawn on the nodes applicationCaption and retry, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-greeting-fits-the-person
-    need: >-
-      The greeting uses the form that fits the person it greets, or none that assumes one (decision D1 of the flow).
-    drawn: [greeting]
-    missing: none # a decision: no Linear issue yet
+    need: The greeting uses the form that fits the person it greets, or none that assumes one (decision D1 of the flow).
+    missing: "a decision: no Linear issue yet"
+    note: >-
+      Drawn on the node greeting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: reports-and-dashboards
     need: >-
-      The başnazım reads the platform's course over time and takes it away as a file: widgets, exports to PDF and CSV and analytics, not
-      only today's numbers and the newest three rows of each queue (planned.md P-P8, PRD section 6 M14 and section 11 phase 3.6).
-    drawn: [homeClear, homeWarned]
-    missing: none # P-P8: partly built (the home's numbers and rows); no Linear key
+      The başnazım reads the platform's course over time and takes it away as a file: widgets, exports to PDF and CSV and
+      analytics, not only today's numbers and the newest three rows of each queue (planned.md P-P8, PRD section 6 M14 and section
+      11 phase 3.6).
+    missing: "P-P8: partly built (the home's numbers and rows); no Linear key"
+    note: >-
+      Drawn on the states homeClear and homeWarned, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

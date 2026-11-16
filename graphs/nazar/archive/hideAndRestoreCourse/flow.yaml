@@ -252,7 +252,7 @@ states:
         say: "they choose Hocaları değiştir: the dialog is nazar.courses.changeHocas's"
         source: apps/nazar/features/courses/components/courses-table.tsx:168
       CLOSE_MENU: { target: listed, say: "they press Esc" }
-    source: libs/ui/src/mds/menu.tsx:174
+    source: libs/ui/src/mds/menu.tsx:64
 
   confirmHide:
     title: The window "Dersi gizle" asks first

@@ -1,171 +1,239 @@
-# What must exist for a talebe who opens tedris-web and lands on Ana sayfa: tedris.shell.home, written on 15 Nov 2026 in the format of
-# LAYOUT.md section 7. Each need is what the product must do, from the flow's story; none is read off what the page does today. No
-# planned feature (P-nn) names Ana sayfa. The gaps are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
+schema: delurio-graph/0
+kind: needs
+id: tedris.shell.home
+status: proposed
+summary: >-
+  What must exist for a talebe who opens tedris-web and lands on Ana sayfa: tedris.shell.home. Each need is what the product must
+  do, from the flow's story; none is read off what the page does today. No planned feature (P-nn) names Ana sayfa.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): retry-one-section (SHL-08), failed-celses-are-an-alert (HOME-1), a-visitor-takes-one-hop (SHL-05),
-#   the-page-has-its-own-title (SHL-01), an-in-person-celse-is-called-so (HOME-2).
+# the-page-has-its-own-title (SHL-01), an-in-person-celse-is-called-so (HOME-2).
 # Unwalked (code, and no e2e and no replay): a-celse-opens-the-meeting-ten-minutes-before (the seeded celses are fixed in time, so
-#   `joinable` and `live` are not reached on the stack), a-celse-without-a-link-says-why (the first celse of the person the walk uses has
-#   a link, so `elsewhere` is not reached), each-part-fails-alone (the unit spec home-sections.spec.ts proves the markup; nothing on the
-#   stack can make a read fail).
+# `joinable` and `live` are not reached on the stack), a-celse-without-a-link-says-why (the first celse of the person the walk uses has
+# a link, so `elsewhere` is not reached), each-part-fails-alone (the unit spec home-sections.spec.ts proves the markup; nothing on the
+# stack can make a read fail).
 # Walked by an e2e only, not by a replay: the-page-fits-a-phone (learn#6 stays an e2e: a layout metric the graph does not state).
 # Replays that passed (15 Nov 2026): `member` (the main story, 67 nodes of `home` and the exit `celse_opened`) and `visitor`
 # (`--to sent_to_discover`, with the five curl checks of the two redirects). `talebe` and `empty` are bound and not replayed: their
 # screens were read by hand with the same locators (counts and texts), which is not a replay.
-kind: needs
-flow: tedris.shell.home
-status: proposed
 
 needs:
   - id: land-on-the-persons-own-page
     need: >-
-      A person who signs in is taken to a page that is theirs: it greets them by first name and says in one sentence when
-      their next celse is, or that none is planned.
-    drawn: [home, greeting, introNext, introNone, introLive]
-    built:
-      - action: medaris.api:listMyUpcomingLessons
-      - route: apps/tedris/features/schedule/components/home-sessions.tsx:77
-    walked:
-      - e2e: apps/tedris/e2e/schedule.e2e.ts
-        check: 'schedule#16 (a1, a2)'
-      - replay: member
+      A person who signs in is taken to a page that is theirs: it greets them by first name and says in one sentence when their
+      next celse is, or that none is planned.
+    evidence:
+      - state: home
+      - node: greeting
+      - node: introNext
+      - node: introNone
+      - node: introLive
+      - source: apps/tedrisat/src/schedule/schedule.controller.ts:88
+      - source: apps/tedris/features/schedule/components/home-sessions.tsx:77
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "Ana sayfa shows the next session as a card with its page and the calendar"
+      - scenario: member
+    note: schedule.e2e.ts schedule#16 (a1, a2)
 
   - id: the-next-celse-with-its-way-in
     need: >-
       The next celse is shown with its day and hour, how long until it starts, where it is held, and either the way in or the
       reason there is none yet; a link leads to its page, and it can be added to a calendar before it starts.
-    drawn: [nextSection, joinCard, joinCountdown, joinOpens, addToCalendar, sessionLink, courseLink]
-    built:
-      - route: libs/ui/src/mds/session-join.tsx:124
-      - route: apps/tedris/features/schedule/components/home-sessions.tsx:132
-    walked:
-      - e2e: apps/tedris/e2e/schedule.e2e.ts
-        check: 'schedule#16 (a3, a4, a5)'
-      - replay: member # `waiting` only: the card counts down and says when the link opens
+    evidence:
+      - node: nextSection
+      - node: joinCard
+      - node: joinCountdown
+      - node: joinOpens
+      - node: addToCalendar
+      - node: sessionLink
+      - node: courseLink
+      - source: libs/ui/src/mds/session-join.tsx:124
+      - source: apps/tedris/features/schedule/components/home-sessions.tsx:132
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "Ana sayfa shows the next session as a card with its page and the calendar"
+      - scenario: member
+    note: |-
+      schedule.e2e.ts schedule#16 (a3, a4, a5)
+      member: `waiting` only: the card counts down and says when the link opens
 
   - id: a-celse-opens-the-meeting-ten-minutes-before
     need: >-
-      Ten minutes before a celse starts, and while it runs, the card offers "Celseye katıl", which opens the meeting in a new tab and
-      says so in its name; the link can be shown as text.
-    drawn: [joinLink, joinReveal, joinLive, joinElapsed, canJoin]
-    built:
-      - route: libs/ui/src/mds/session-join.tsx:344
-    # walked: nothing. The seeded celses are fixed in time (Tuesdays, Thursdays, Mondays and Wednesdays), so `joinable` and `live` are
-    # not reached on the stack, and the e2e seed of celse-states.e2e.ts makes its own celse at the clock's moment, which is not on Ana sayfa.
+      Ten minutes before a celse starts, and while it runs, the card offers "Celseye katıl", which opens the meeting in a new tab
+      and says so in its name; the link can be shown as text.
+    evidence:
+      - node: joinLink
+      - node: joinReveal
+      - node: joinLive
+      - node: joinElapsed
+      - source: libs/ui/src/mds/session-join.tsx:344
+    note: |-
+      Also drawn as the guard canJoin.
+      walked: nothing. The seeded celses are fixed in time (Tuesdays, Thursdays, Mondays and Wednesdays), so `joinable` and `live`
+      are not reached on the stack, and the e2e seed of celse-states.e2e.ts makes its own celse at the clock's moment, which is
+      not on Ana sayfa.
 
   - id: a-celse-without-a-link-says-why
     need: >-
       A celse with no meeting link says how it is attended instead (a stream, face to face, or that the link is not added yet), in
       words that send the person to the celse page where the stream and the recording are.
-    drawn: [elsewhereNote]
-    built:
-      - route: apps/tedris/features/courses/session-join-labels.ts:159
-      - route: libs/ui/src/mds/session-join.tsx:326
-    # walked: nothing on Ana sayfa. The stack's first celse for the persons the walk uses has a link.
+    evidence:
+      - node: elsewhereNote
+      - source: apps/tedris/features/courses/session-join-labels.ts:159
+      - source: libs/ui/src/mds/session-join.tsx:326
+    note: "walked: nothing on Ana sayfa. The stack's first celse for the persons the walk uses has a link."
 
   - id: later-celses-and-the-whole-programme
-    need: The celses after the next one are listed, each with its course, week and moment, and one link leads to the whole programme.
-    drawn: [laterSection, laterRow, laterLink, scheduleLink]
-    built:
-      - route: apps/tedris/features/schedule/components/home-sessions.tsx:163
-    walked:
-      - e2e: apps/tedris/e2e/schedule.e2e.ts
-        check: 'schedule#16 (a6: the link to Programım)'
-      - replay: member
+    need: >-
+      The celses after the next one are listed, each with its course, week and moment, and one link leads to the whole programme.
+    evidence:
+      - node: laterSection
+      - node: laterRow
+      - node: laterLink
+      - node: scheduleLink
+      - source: apps/tedris/features/schedule/components/home-sessions.tsx:163
+      - test: apps/tedris/e2e/schedule.e2e.ts
+        name: "Ana sayfa shows the next session as a card with its page and the calendar"
+      - scenario: member
+    note: "schedule.e2e.ts schedule#16 (a6: the link to Programım)"
 
   - id: pick-up-the-courses-in-progress
     need: >-
       The courses the person is in and has not finished are listed, up to three, with who teaches them, their progress and the
       next celse; a person with none is told so and sent to Keşfet.
-    drawn: [continueSection, continueCardLink, continueProgress, continueNext, continueEmpty, continueDiscover]
-    built:
-      - action: medaris.api:listEnrolledCourses
-      - route: apps/tedris/features/home/components/home-sections.tsx:192
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#1, learn#2'
-      - replay: member
+    evidence:
+      - node: continueSection
+      - node: continueCardLink
+      - node: continueProgress
+      - node: continueNext
+      - node: continueEmpty
+      - node: continueDiscover
+      - source: apps/tedrisat/src/course/course.controller.ts:226
+      - source: apps/tedris/features/home/components/home-sections.tsx:192
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "shows the three sections under the sessions, with their links"
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "'Kaldığın yerden devam et' lists the course in progress with its progress and next session"
+      - scenario: member
+    note: learn.e2e.ts learn#1, learn#2
 
   - id: decks-to-study-today
     need: >-
       The decks with cards waiting for a repeat, and the collected decks that grew, are listed with what each waits with, and each
       has a way straight into its study page.
-    drawn: [decksSection, deckLink, deckCaption, deckStudy, decksEmpty]
-    built:
-      - action: medaris.api:listDecksDueToday
-      - route: apps/tedris/features/home/components/home-sections.tsx:262
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#1, learn#3, learn#4'
-      - replay: member
+    evidence:
+      - node: decksSection
+      - node: deckLink
+      - node: deckCaption
+      - node: deckStudy
+      - node: decksEmpty
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:131
+      - source: apps/tedris/features/home/components/home-sections.tsx:262
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "shows the three sections under the sessions, with their links"
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "'Bugün çalışılacak desteler' lists the decks with cards waiting, then the one that grew"
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "'Çalış' opens that deck's study page"
+      - scenario: member
+    note: learn.e2e.ts learn#1, learn#3, learn#4
 
   - id: new-courses-of-the-koskler-i-follow
     need: >-
       The courses of the köşks the person follows, which they are not already in, are listed with the köşk and the hoca, so a
       follow is read back where the person lands (tedris.discover.followKosk).
-    drawn: [followedSection, followedCourse, followedCaption, followedEmpty]
-    built:
-      - action: medaris.api:listFollowedKoskCourses
-      - route: apps/tedris/features/home/components/home-sections.tsx:378
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#1, learn#5'
-      - replay: member
+    evidence:
+      - node: followedSection
+      - node: followedCourse
+      - node: followedCaption
+      - node: followedEmpty
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:218
+      - source: apps/tedris/features/home/components/home-sections.tsx:378
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "shows the three sections under the sessions, with their links"
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "'Takip ettiğin köşklerden' lists a course of a followed köşk, and leaves out the one the talebe is in"
+      - scenario: member
+    note: learn.e2e.ts learn#1, learn#5
 
   - id: each-part-fails-alone
     need: >-
       When one of the page's reads fails, that part says so in its own place and the others are drawn as usual; the failure is
       announced when it appears.
-    drawn: [continueFailed, decksFailed, followedFailed, anySectionFailed]
-    built:
-      - route: apps/tedris/features/home/components/home-sections.tsx:53
-      - route: apps/tedris/app/home/page.tsx:40
-    # walked: nothing. The unit spec apps/tedris/test/home-sections.spec.ts ("the sections are independent", "says it could not be read,
-    # with a retry, when the read fails") proves the markup; no e2e and no replay makes tedrisat fail, and the stack's API cannot be made to.
+    evidence:
+      - node: continueFailed
+      - node: decksFailed
+      - node: followedFailed
+      - source: apps/tedris/features/home/components/home-sections.tsx:53
+      - source: apps/tedris/app/home/page.tsx:40
+    note: |-
+      Also drawn as the guard anySectionFailed.
+      walked: nothing. The unit spec apps/tedris/test/home-sections.spec.ts ("the sections are independent", "says it could not be
+      read, with a retry, when the read fails") proves the markup; no e2e and no replay makes tedrisat fail, and the stack's API
+      cannot be made to.
 
   - id: retry-one-section
     need: >-
-      A failed section can be read again on its own, with a control that says what it does, and the other sections are left as they are.
-    drawn: [continueRetry, decksRetry, followedRetry]
-    missing: none # SHL-08 and decision D1: "Yeniden dene" is a link to the page's own address and reloads everything; no Linear issue
+      A failed section can be read again on its own, with a control that says what it does, and the other sections are left as
+      they are.
+    missing: >-
+      SHL-08 and decision D1: "Yeniden dene" is a link to the page's own address and reloads everything; no Linear issue
+    note: >-
+      Drawn on the nodes continueRetry, decksRetry and followedRetry, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: failed-celses-are-an-alert
     need: >-
-      When the celses cannot be read, the person is told in the same kind of box as a failed section, announced, with a way to read
-      them again, and it cannot be mistaken for "no celse is planned".
-    drawn: [introFailed, introNone]
-    missing: none # HOME-1 and decision D2: one <p> under the greeting; no Linear issue
+      When the celses cannot be read, the person is told in the same kind of box as a failed section, announced, with a way to
+      read them again, and it cannot be mistaken for "no celse is planned".
+    missing: "HOME-1 and decision D2: one <p> under the greeting; no Linear issue"
+    note: >-
+      Drawn on the nodes introFailed and introNone, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-visitor-starts-at-keshfet
     need: A person with no session who asks for the home page is sent to Keşfet and sees nothing of anyone's data.
-    drawn: [sent_to_discover, only-a-member-reads-the-page, a-visitor-goes-to-discover]
-    built:
-      - route: apps/tedris/app/home/page.tsx:26
-    walked:
-      - e2e: apps/tedris/e2e/anonymous.e2e.ts
-        check: 'anonymous#21'
-      - replay: visitor
+    evidence:
+      - state: sent_to_discover
+      - source: apps/tedris/app/home/page.tsx:26
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+      - scenario: visitor
+    note: |-
+      Also drawn as the assertion only-a-member-reads-the-page, the assertion a-visitor-goes-to-discover.
+      anonymous.e2e.ts anonymous#21
 
   - id: a-visitor-takes-one-hop
-    need: A visitor who opens the app's address reaches Keşfet in one redirect, and the redirect is not remembered by the browser for good.
-    drawn: [sent_to_discover]
-    missing: none # SHL-05: `/` is a permanent redirect to /home and /home a temporary one to /discover; no Linear issue
+    need: >-
+      A visitor who opens the app's address reaches Keşfet in one redirect, and the redirect is not remembered by the browser for
+      good.
+    missing: "SHL-05: `/` is a permanent redirect to /home and /home a temporary one to /discover; no Linear issue"
+    note: >-
+      Drawn on the state sent_to_discover, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: an-in-person-celse-is-called-so
     need: A celse held face to face is called so wherever it is announced, as the celse page calls it.
-    drawn: [joinEyebrow, laterRow]
-    missing: none # HOME-2: the eyebrow and the rows say "Canlı ders" for every celse; no Linear issue (the in-person mark is MDRS-283, built; seats are MDRS-284)
+    missing: >-
+      HOME-2: the eyebrow and the rows say "Canlı ders" for every celse; no Linear issue (the in-person mark is MDRS-283, built;
+      seats are MDRS-284)
+    note: >-
+      Drawn on the nodes joinEyebrow and laterRow, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-page-has-its-own-title
     need: The browser tab and a screen reader name the page "Ana sayfa", not the application.
-    drawn: [homePage]
-    missing: none # SHL-01 (WCAG 2.4.2): no title of its own; no Linear issue
+    missing: "SHL-01 (WCAG 2.4.2): no title of its own; no Linear issue"
+    note: >-
+      Drawn on the node homePage, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: the-page-fits-a-phone
     need: On a phone the page is one column and does not scroll sideways.
-    drawn: [homePage]
-    built:
-      - route: apps/tedris/features/schedule/components/home-sessions.tsx:99
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#6 (kept as an e2e: a layout metric the graph does not state)'
+    evidence:
+      - node: homePage
+      - source: apps/tedris/features/schedule/components/home-sessions.tsx:99
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "on a phone it is one column and does not scroll sideways"
+    note: "learn.e2e.ts learn#6 (kept as an e2e: a layout metric the graph does not state)"

@@ -1,176 +1,236 @@
-# What must exist for the staff of a course to set how each celse is attended on Celseler: the flow's product list (LAYOUT.md section 7). Each need
-# is what the product must do, from the flow's story and the planned work in the inventory (planned.md: P-13, P-29), not from what the page does
-# today; the gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.sessions.manage
+status: proposed
+summary: "What must exist for the staff of a course to set how each celse is attended on Celseler: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # MISSING (no code): a-link-can-be-removed (none; MANAGE-5, D1), a-change-is-recorded (none; MANAGE-1), a-change-of-way-in-is-told (MDRS-189;
-#   MANAGE-3, D2), focus-follows-a-form (none; F-C-course-a-08, F-L-17), a-refused-send-is-announced (none; F-C-course-a-01),
-#   a-gone-celse-is-told (none; MANAGE-2), a-field-error-goes-when-the-field-is-right (none; MANAGE-4), a-button-is-named-by-its-words (none; MANAGE-6).
+# MANAGE-3, D2), focus-follows-a-form (none; F-C-course-a-08, F-L-17), a-refused-send-is-announced (none; F-C-course-a-01),
+# a-gone-celse-is-told (none; MANAGE-2), a-field-error-goes-when-the-field-is-right (none; MANAGE-4), a-button-is-named-by-its-words (none; MANAGE-6).
 # UNWALKED (code, and no e2e and no replay yet: the scenarios of binding.yaml are written and none was run in this phase, so none is named below;
-#   they are `adds`, `stale`, `noCodes` and, in their own files, `manage` and `stream`): set-the-meeting-link, change-the-time,
-#   mark-in-person, set-or-remove-the-stream, set-the-recording-access, a-stale-page-is-refused, buttons-follow-the-codes,
-#   a-celse-is-flagged-and-the-flag-clears (its e2e course-scope#1 a6 walks the flag, not the clearing), sessions-list-in-30-seconds-on-a-phone,
-#   an-exam-is-marked-in-celseler (two unit specs; no e2e, and no scenario holds an exam).
-kind: needs
-flow: nazar.sessions.manage
-status: proposed
+# they are `adds`, `stale`, `noCodes` and, in their own files, `manage` and `stream`): set-the-meeting-link, change-the-time,
+# mark-in-person, set-or-remove-the-stream, set-the-recording-access, a-stale-page-is-refused, buttons-follow-the-codes,
+# a-celse-is-flagged-and-the-flag-clears (its e2e course-scope#1 a6 walks the flag, not the clearing), sessions-list-in-30-seconds-on-a-phone,
+# an-exam-is-marked-in-celseler (two unit specs; no e2e, and no scenario holds an exam).
 
 needs:
   - id: set-the-meeting-link
     need: >-
-      The müderris adds or replaces the meeting link of a celse in one step, from the list of celses, without opening a larger form; the link is
-      an https address of any host, and the talebe of the course read it on the celse page.
-    drawn: [listed, linkForm, savingLink, addLink, updateLink, linkField, attendanceChip]
-    built:
-      - action: medaris.api:updateLesson
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:216
-    walked: []
+      The müderris adds or replaces the meeting link of a celse in one step, from the list of celses, without opening a larger
+      form; the link is an https address of any host, and the talebe of the course read it on the celse page.
+    evidence:
+      - state: listed
+      - state: linkForm
+      - state: savingLink
+      - node: addLink
+      - node: updateLink
+      - node: linkField
+      - node: attendanceChip
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:216
 
   - id: change-the-time
     need: >-
-      The müderris moves a celse that has not begun to another date and hour; the enrolled talebe are told by a notice and a new calendar
-      invitation, and a moved exam is reminded again.
-    drawn: [timeForm, savingTime, changeTimeButton, timeField, dateField]
-    built:
-      - action: medaris.api:updateLesson
-      - route: apps/tedrisat/src/course/course.service.ts:1177
-    walked: []
+      The müderris moves a celse that has not begun to another date and hour; the enrolled talebe are told by a notice and a new
+      calendar invitation, and a moved exam is reminded again.
+    evidence:
+      - state: timeForm
+      - state: savingTime
+      - node: changeTimeButton
+      - node: timeField
+      - node: dateField
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/tedrisat/src/course/course.service.ts:1177
 
   - id: mark-in-person
     need: >-
-      The müderris marks a celse as held in person, as not held in person, or as following the course; "Yüz yüze" is one of the three ways in and
-      takes the "Eksik" flag away.
-    drawn: [inPersonForm, savingInPerson, inPersonButton, radioYes, radioNo, radioCourse, attendanceInPerson]
-    built:
-      - action: medaris.api:updateLesson
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:631
-    walked: []
+      The müderris marks a celse as held in person, as not held in person, or as following the course; "Yüz yüze" is one of the
+      three ways in and takes the "Eksik" flag away.
+    evidence:
+      - state: inPersonForm
+      - state: savingInPerson
+      - node: inPersonButton
+      - node: radioYes
+      - node: radioNo
+      - node: radioCourse
+      - node: attendanceInPerson
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:631
 
   - id: set-or-remove-the-stream
     need: >-
-      Whoever holds session.live_link sets a celse's YouTube stream from any usual form of the link (the Studio address included), is told in
-      words what is wrong with one the parser refuses, and clears it again; only a live celse that is not cancelled takes one.
-    drawn: [streamForm, savingStream, removingStream, addStream, updateStream, streamError, streamRemove]
-    built:
-      - action: medaris.api:setLessonLiveStream
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:192
-    walked: []
+      Whoever holds session.live_link sets a celse's YouTube stream from any usual form of the link (the Studio address included),
+      is told in words what is wrong with one the parser refuses, and clears it again; only a live celse that is not cancelled
+      takes one.
+    evidence:
+      - state: streamForm
+      - state: savingStream
+      - state: removingStream
+      - node: addStream
+      - node: updateStream
+      - node: streamError
+      - node: streamRemove
+      - source: apps/tedrisat/src/course/live-stream.controller.ts:91
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:192
 
   - id: set-the-recording-access
     need: >-
-      Whoever holds recording.manage sets, before the recording exists, when the talebe may watch it: as soon as it is ready, or at a time
-      after the celse begins; the dialog is the one Ders kayıtları shares.
-    drawn: [releaseDialog, savingRelease, releaseButton, releaseNote, releaseDate, releaseTime]
-    built:
-      - action: medaris.api:setLessonRecordingAvailability
-      - route: apps/nazar/features/recordings/components/release-dialog.tsx:109
-    walked: []
+      Whoever holds recording.manage sets, before the recording exists, when the talebe may watch it: as soon as it is ready, or
+      at a time after the celse begins; the dialog is the one Ders kayıtları shares.
+    evidence:
+      - state: releaseDialog
+      - state: savingRelease
+      - node: releaseButton
+      - node: releaseNote
+      - node: releaseDate
+      - node: releaseTime
+      - source: apps/tedrisat/src/course/recording.controller.ts:147
+      - source: apps/nazar/features/recordings/components/release-dialog.tsx:109
 
   - id: a-celse-is-flagged-and-the-flag-clears
     need: >-
-      A celse still ahead with no way in (no meeting link, no stream, not in person) is flagged "Eksik" in its row and in the course menu's number,
-      so that the müderris sees what is left to do; the flag clears as soon as one of the three is set, and comes back when it is taken away.
-    drawn: [missingBadge, sessionsBadge, listed]
-    built:
-      - route: apps/nazar/features/sessions/components/attendance-cell.tsx:16
-      - route: apps/nazar/features/sessions/attendance.ts:59
-    walked:
-      - e2e: apps/nazar/e2e/course-scope.e2e.ts
-        check: 'course-scope#1' # a6, the "Eksik" state of the seed's first celse; no e2e sets a way in and sees it clear
+      A celse still ahead with no way in (no meeting link, no stream, not in person) is flagged "Eksik" in its row and in the
+      course menu's number, so that the müderris sees what is left to do; the flag clears as soon as one of the three is set, and
+      comes back when it is taken away.
+    evidence:
+      - node: missingBadge
+      - node: sessionsBadge
+      - state: listed
+      - source: apps/nazar/features/sessions/components/attendance-cell.tsx:16
+      - source: apps/nazar/features/sessions/attendance.ts:59
+      - test: apps/nazar/e2e/course-scope.e2e.ts
+        name: "Celseler lists the course's sessions, says which has no link, and offers to plan more"
+    note: "course-scope#1: a6, the \"Eksik\" state of the seed's first celse; no e2e sets a way in and sees it clear"
 
   - id: buttons-follow-the-codes
     need: >-
-      A person is offered only the controls their codes allow, and a ders nazırı who holds one code (the stream alone, or the link and time alone)
-      can do that one thing and nothing else; the API still decides every write.
-    drawn: [addLink, inPersonButton, addStream, releaseButton, changeTimeButton, planLink, a-refusing-page-offers-nothing]
-    built:
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:456
-      - route: apps/nazar/features/account/course-permissions.ts:37
-    walked: []
+      A person is offered only the controls their codes allow, and a ders nazırı who holds one code (the stream alone, or the link
+      and time alone) can do that one thing and nothing else; the API still decides every write.
+    evidence:
+      - node: addLink
+      - node: inPersonButton
+      - node: addStream
+      - node: releaseButton
+      - node: changeTimeButton
+      - node: planLink
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:456
+      - source: apps/nazar/features/account/course-permissions.ts:37
+    note: Also drawn as the assertion a-refusing-page-offers-nothing.
 
   - id: a-stale-page-is-refused
     need: >-
-      A change of a link, a time or an in-person mark saved from a page the course has moved under (somebody else saved it since) is refused,
-      the page is read again and nothing of the other person's work is overwritten; the person is told so in words.
-    drawn: [savingLink, savingTime, savingInPerson, toastMoved]
-    built:
-      - action: medaris.api:updateLesson
-      - route: apps/nazar/features/sessions/sessions.ts:498
-    walked: []
+      A change of a link, a time or an in-person mark saved from a page the course has moved under (somebody else saved it since)
+      is refused, the page is read again and nothing of the other person's work is overwritten; the person is told so in words.
+    evidence:
+      - state: savingLink
+      - state: savingTime
+      - state: savingInPerson
+      - node: toastMoved
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/nazar/features/sessions/sessions.ts:498
 
   - id: sessions-list-in-30-seconds-on-a-phone
     need: >-
-      The müderris changes this week's meeting link in under 30 seconds on a phone (a 390 px screen), reading the state of each celse from labels
-      (link missing, live, over, cancelled) (P-13, MDRS-118; the issue's own checks are not verified).
-    drawn: [listed, upcomingTable, rowState, missingBadge, addLink]
-    built:
-      - route: apps/nazar/app/ders/[dersId]/celseler/page.tsx:11
-    walked: []
+      The müderris changes this week's meeting link in under 30 seconds on a phone (a 390 px screen), reading the state of each
+      celse from labels (link missing, live, over, cancelled) (P-13, MDRS-118; the issue's own checks are not verified).
+    evidence:
+      - state: listed
+      - node: upcomingTable
+      - node: rowState
+      - node: missingBadge
+      - node: addLink
+      - source: "apps/nazar/app/ders/[dersId]/celseler/page.tsx:11"
 
   - id: an-exam-is-marked-in-celseler
     need: >-
-      A celse that is an exam, or a make-up exam, is marked as one beside its title in the Celseler table, in the words Değerlendirme and Tedris use, so the
-      hoca who moves or cancels it knows what it is (MDRS-248).
-    drawn: [examBadge, retakeBadge]
-    built:
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:277
-      - route: apps/nazar/features/sessions/sessions.ts:150
-    walked:
-      - test: apps/nazar/test/sessions-page.spec.tsx # "marks an exam session with the word Sınav, and no other row (MDRS-248)"
-      - test: apps/nazar/test/sessions.spec.ts # "carry an exam and its retake, and nothing for a plain session (MDRS-248)"
-    # unwalked by a browser: no e2e and no scenario (`exam: none` in every one), only the two unit specs; so it is listed with the unwalked ones
+      A celse that is an exam, or a make-up exam, is marked as one beside its title in the Celseler table, in the words
+      Değerlendirme and Tedris use, so the hoca who moves or cancels it knows what it is (MDRS-248).
+    evidence:
+      - node: examBadge
+      - node: retakeBadge
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:277
+      - source: apps/nazar/features/sessions/sessions.ts:150
+      - test: apps/nazar/test/sessions-page.spec.tsx
+      - test: apps/nazar/test/sessions.spec.ts
+    note: |-
+      apps/nazar/test/sessions-page.spec.tsx: "marks an exam session with the word Sınav, and no other row (MDRS-248)"
+      apps/nazar/test/sessions.spec.ts: "carry an exam and its retake, and nothing for a plain session (MDRS-248)"
+      unwalked by a browser: no e2e and no scenario (`exam: none` in every one), only the two unit specs; so it is listed with the
+      unwalked ones
 
   - id: a-link-can-be-removed
     need: >-
-      A meeting link pasted by mistake can be removed from Celseler, as the stream's can, so that a celse goes back to "Eksik" and the talebe see no
-      wrong link (D1, MANAGE-5).
-    drawn: [linkForm, linkError]
-    missing: none # no issue; the API takes meetingUrl: null, the page refuses an empty field (sessions.ts:293)
+      A meeting link pasted by mistake can be removed from Celseler, as the stream's can, so that a celse goes back to "Eksik" and
+      the talebe see no wrong link (D1, MANAGE-5).
+    missing: "no issue; the API takes meetingUrl: null, the page refuses an empty field (sessions.ts:293)"
+    note: >-
+      Drawn on the state linkForm and on the node linkError, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-change-is-recorded
     need: >-
-      Every change of a celse's meeting link, time or in-person mark is written to the audit log with who made it and what it was, as the stream, the
-      recording access and the cancel already are (MANAGE-1).
-    drawn: [savingLink, savingTime, savingInPerson]
-    missing: none # no issue; PATCH /lessons/{id} writes no audit row (course.repository.ts:1555)
+      Every change of a celse's meeting link, time or in-person mark is written to the audit log with who made it and what it was,
+      as the stream, the recording access and the cancel already are (MANAGE-1).
+    missing: no issue; PATCH /lessons/{id} writes no audit row (course.repository.ts:1555)
+    note: >-
+      Drawn on the states savingLink, savingTime and savingInPerson, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-change-of-way-in-is-told
     need: >-
-      A change of how a celse is attended (a link added or replaced, a stream set, the in-person mark) reaches the enrolled talebe as a change of
-      time does, in the e-mail notices MDRS-189 plans, and the calendar invitation names how the celse is attended now (D2, MANAGE-3, P-29).
-    drawn: [savingLink, savingInPerson, savingStream, removingStream]
-    missing: MDRS-189
+      A change of how a celse is attended (a link added or replaced, a stream set, the in-person mark) reaches the enrolled talebe
+      as a change of time does, in the e-mail notices MDRS-189 plans, and the calendar invitation names how the celse is attended
+      now (D2, MANAGE-3, P-29).
+    missing: MDRS-189; MANAGE-3, D2
+    note: >-
+      Drawn on the states savingLink, savingInPerson, savingStream and removingStream, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-gone-celse-is-told
     need: >-
-      A write on a celse that was hidden or removed while the page was open says that the celse is gone, reads the page again and takes the row away,
-      as the recording access dialog does (MANAGE-2).
-    drawn: [savingLink, savingTime, savingInPerson, toastFailed]
-    missing: none # no issue; LESSON_NOT_FOUND is worded as a generic failure and the page is not read again (sessions.ts:498, :524)
+      A write on a celse that was hidden or removed while the page was open says that the celse is gone, reads the page again and
+      takes the row away, as the recording access dialog does (MANAGE-2).
+    missing: no issue; LESSON_NOT_FOUND is worded as a generic failure and the page is not read again (sessions.ts:498, :524)
+    note: >-
+      Drawn on the states savingLink, savingTime and savingInPerson and on the node toastFailed, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-follows-a-form
     need: >-
-      A keyboard or screen-reader user who opens a form from a row has the focus put in its first field, and when it closes the focus returns to the
-      row's button; after a write the one word that it was made is a status line, not a toast of six seconds (F-C-course-a-08, F-L-17, F-C-course-a-25).
-    drawn: [linkForm, timeForm, inPersonForm, streamForm, releaseModal]
-    missing: none
+      A keyboard or screen-reader user who opens a form from a row has the focus put in its first field, and when it closes the
+      focus returns to the row's button; after a write the one word that it was made is a status line, not a toast of six seconds
+      (F-C-course-a-08, F-L-17, F-C-course-a-25).
+    missing: no Linear issue; F-C-course-a-08, F-L-17
+    note: >-
+      Drawn on the states linkForm, timeForm, inPersonForm and streamForm and on the node releaseModal, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-refused-send-is-announced
     need: >-
-      When "Kaydet" is refused for a field the page can see is wrong, the sentence under the field is announced and the focus goes to the field
-      (F-C-course-a-01, F-C-course-a-07).
-    drawn: [linkError, timeError, streamError, releaseError]
-    missing: none
+      When "Kaydet" is refused for a field the page can see is wrong, the sentence under the field is announced and the focus goes
+      to the field (F-C-course-a-01, F-C-course-a-07).
+    missing: no Linear issue; F-C-course-a-01
+    note: >-
+      Drawn on the nodes linkError, timeError, streamError and releaseError, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-field-error-goes-when-the-field-is-right
     need: >-
-      A sentence under a field goes away as soon as the field is corrected, so that a form the page now sends, or one the API refuses for another
-      reason, never shows an old complaint (MANAGE-4).
-    drawn: [linkError, streamError, timeError]
-    missing: none
+      A sentence under a field goes away as soon as the field is corrected, so that a form the page now sends, or one the API
+      refuses for another reason, never shows an old complaint (MANAGE-4).
+    missing: no Linear issue; MANAGE-4
+    note: >-
+      Drawn on the nodes linkError, streamError and timeError, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-button-is-named-by-its-words
     need: >-
-      Every row button's accessible name starts with the words it shows ("Tarihi değiştir: {when}"), so that a voice-control user who says what they
-      read presses it (WCAG 2.5.3; MANAGE-6).
-    drawn: [updateLink, addStream, updateStream, changeTimeButton]
-    missing: none
+      Every row button's accessible name starts with the words it shows ("Tarihi değiştir: {when}"), so that a voice-control user
+      who says what they read presses it (WCAG 2.5.3; MANAGE-6).
+    missing: no Linear issue; MANAGE-6
+    note: >-
+      Drawn on the nodes updateLink, addStream, updateStream and changeTimeButton, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

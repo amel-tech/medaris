@@ -466,7 +466,7 @@ assertions:
   - id: unread-rows-are-listed-as-unread
     never: "state == 'listed' and left == 'none'"
     say: "The list that still has unread rows is never drawn as having none, and the button is never disabled over it"
-    source: apps/tedris/features/notifications/notification-state.ts:307
+    source: apps/tedris/features/notifications/notification-state.ts:79
   - id: more-only-with-a-next-page
     never: "state in ['loadingMore', 'moreFailed'] and pages == 'one'"
     say: "\"Daha fazla göster\" is pressed only when the API gave a cursor, which it does when more than the first twenty exist"

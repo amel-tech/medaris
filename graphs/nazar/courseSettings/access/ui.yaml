@@ -9,7 +9,7 @@
 #   composed.CourseSettings.sampleSecond  "Hafta {week} · {secondTitle}"   course-settings-form.tsx:191) once for each of the two sessions of the
 #                                                                         walk's course; two keys because a replay fills a sample by its placeholder's name
 #   composed.CourseSettings.zoneCity      "{city}"                          a zone's label, the last part of its IANA id with the underscores as spaces
-#                                                                         (`timeZoneCity`, libs/utils/src/time-zone.ts:150; form.tsx:231-237)
+#                                                                         (`timeZoneCity`, libs/utils/src/time-zone.ts:150; course-settings-form.tsx:231-237)
 # `changes` is `Changes.note`, the one message authored for this catalog: no message of the app says what Kaydet changes as a whole (its own
 # `savedBody` says only that the settings were updated, after the fact), so one short note puts the page's own descriptions (closedDesc,
 # sampleHelp, approvalDesc, inPersonDesc, zoneHelp, versionConflict) together.

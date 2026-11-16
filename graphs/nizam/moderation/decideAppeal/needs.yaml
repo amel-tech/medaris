@@ -1,202 +1,285 @@
-# What must exist for the başnazım to decide a medrese's appeal against a köşk's refusal of a course request: the flow's product list (LAYOUT.md
-# section 7). Each need is what the product must do, from the flow's story and from what the code leaves undone, not from what the page does
-# today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
-# planned.md names the appeals of other köşk decisions (P-04, MDRS-139) and the deferred nizam screens (P-34, MDRS-193, MDRS-194); the
-# course-request appeal is built on both sides, the rest are increments (the last need).
+schema: delurio-graph/0
+kind: needs
+id: nizam.moderation.decideAppeal
+status: proposed
+summary: >-
+  What must exist for the başnazım to decide a medrese's appeal against a köşk's refusal of a course request: the flow's product
+  list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For graphs/needs.gaps.yaml, flow nizam.moderation.decideAppeal:
-#   missing  (no code): every-holder-is-led-to-the-list (CHIEF-1, MCUT-2, F-W5-12, none), the-deciders-are-told-an-appeal-waits (none),
-#            the-people-concerned-are-told-the-decision (DAPP-2, none), accept-asks-first-and-may-carry-a-note (DAPP-1, none),
-#            the-koskss-card-says-it-was-sent-back (DAPP-4, none), a-second-refusal-is-appealable-or-said (DAPP-5, none),
-#            the-card-names-the-author-and-the-day (DAPP-8, none), one-decision-at-a-time (DAPP-6, none),
-#            the-note-has-its-own-error (DAPP-7, none), the-focus-and-a-word-follow-a-decision (F-W5-5, F-W5-6, F-W5-7, none),
-#            the-notes-error-is-announced (F-W5-4, F-X-2, none), a-failed-decision-is-told-where-it-is-read (F-W5-3, none),
-#            appeals-of-other-decisions (MDRS-139, MDRS-194)
-#   unwalked (code, no e2e check and no replay that has passed): the-menu-leads-to-the-list, read-the-waiting-appeals,
-#            accept-an-appeal, refuse-an-appeal-with-a-note, an-appeal-decided-meanwhile-is-told, the-decided-appeals-keep-their-outcome,
-#            only-those-allowed-decide, a-failed-read-is-told-and-retried. No web e2e visits /talepler/itirazlar at all (the inventory says
-#            so), and no replay has run yet (the graphs were written without one): the scenarios `rejects`, `accepts`, `opens`, `empty`,
-#            `refused`, `unreadable` (binding.yaml), `answered` and `gone` (races.binding.yaml) and `rejectedBefore` and `acceptedBefore`
-#            (decided.binding.yaml) are bound and are named below as comments, not as `walked`, until a walk has passed them. The tedrisat
-#            API suite (apps/tedrisat/test/e2e/appeals.e2e.spec.ts) tests the API half against a real database; it is not a web e2e and is
-#            named as `test`.
-kind: needs
-flow: nizam.moderation.decideAppeal
-status: proposed
+# missing  (no code): every-holder-is-led-to-the-list (CHIEF-1, MCUT-2, F-W5-12, none), the-deciders-are-told-an-appeal-waits (none),
+# the-people-concerned-are-told-the-decision (DAPP-2, none), accept-asks-first-and-may-carry-a-note (DAPP-1, none),
+# the-koskss-card-says-it-was-sent-back (DAPP-4, none), a-second-refusal-is-appealable-or-said (DAPP-5, none),
+# the-card-names-the-author-and-the-day (DAPP-8, none), one-decision-at-a-time (DAPP-6, none),
+# the-note-has-its-own-error (DAPP-7, none), the-focus-and-a-word-follow-a-decision (F-W5-5, F-W5-6, F-W5-7, none),
+# the-notes-error-is-announced (F-W5-4, F-X-2, none), a-failed-decision-is-told-where-it-is-read (F-W5-3, none),
+# appeals-of-other-decisions (MDRS-139, MDRS-194)
+# unwalked (code, no e2e check and no replay that has passed): the-menu-leads-to-the-list, read-the-waiting-appeals,
+# accept-an-appeal, refuse-an-appeal-with-a-note, an-appeal-decided-meanwhile-is-told, the-decided-appeals-keep-their-outcome,
+# only-those-allowed-decide, a-failed-read-is-told-and-retried. No web e2e visits /talepler/itirazlar at all (the inventory says
+# so), and no replay has run yet (the graphs were written without one): the scenarios `rejects`, `accepts`, `opens`, `empty`,
+# `refused`, `unreadable` (binding.yaml), `answered` and `gone` (races.binding.yaml) and `rejectedBefore` and `acceptedBefore`
+# (decided.binding.yaml) are bound and are named below as comments, not as `walked`, until a walk has passed them. The tedrisat
+# API suite (apps/tedrisat/test/e2e/appeals.e2e.spec.ts) tests the API half against a real database; it is not a web e2e and is
+# named as `test`.
 
 needs:
   - id: the-menu-leads-to-the-list
     need: >-
-      The başnazım reaches the list of appeals from the menu in one step, in a group that says what it is (Talepler), and the page names itself.
-    drawn: [listed, pageTitle]
-    built:
-      - route: apps/nizam/lib/shell-nav.ts:116
-      - route: apps/nizam/app/talepler/itirazlar/page.tsx:22
-    # replay: rejects (enters through nav entry frame:shell->appeals; bound, not walked yet)
+      The başnazım reaches the list of appeals from the menu in one step, in a group that says what it is (Talepler), and the page
+      names itself.
+    evidence:
+      - state: listed
+      - node: pageTitle
+      - source: apps/nizam/lib/shell-nav.ts:116
+      - source: apps/nizam/app/talepler/itirazlar/page.tsx:22
+    note: "replay: rejects (enters through nav entry frame:shell->appeals; bound, not walked yet)"
 
   - id: every-holder-is-led-to-the-list
     need: >-
-      Everyone who may decide appeals is led to them: the Medaris home shows how many wait and links to them, the menu offers the entry to every
-      holder of platform.appeal_decide and not only the başnazım, and a number that counts them leads to a page that lists them.
-    drawn: [listed, noAccess]
-    missing: none # CHIEF-1 (nizam.home.chiefOverview), MCUT-2 (nizam.home.medarisNazimCut), F-W5-12, F-X-12; decision D1; no Linear issue
+      Everyone who may decide appeals is led to them: the Medaris home shows how many wait and links to them, the menu offers the
+      entry to every holder of platform.appeal_decide and not only the başnazım, and a number that counts them leads to a page
+      that lists them.
+    missing: >-
+      CHIEF-1 (nizam.home.chiefOverview), MCUT-2 (nizam.home.medarisNazimCut), F-W5-12, F-X-12; decision D1; no Linear issue
+    note: >-
+      Drawn on the states listed and noAccess, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-deciders-are-told-an-appeal-waits
     need: >-
-      When a medrese opens an appeal, the people who may decide it are told (a notification and a count), so that an appeal does not wait until
-      someone happens to open the page.
-    drawn: [opened, listed]
-    missing: none # decision D1; nothing writes a notification when an appeal is created (appeal.repository.ts:116-140)
+      When a medrese opens an appeal, the people who may decide it are told (a notification and a count), so that an appeal does
+      not wait until someone happens to open the page.
+    missing: no Linear issue; decision D1; nothing writes a notification when an appeal is created (appeal.repository.ts:116-140)
+    note: >-
+      Drawn on the states opened and listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: read-the-waiting-appeals
     need: >-
-      The person who decides reads, in one list, the appeals that wait, oldest first, with the course the medrese asked for, the medrese, the
-      köşk, the köşk's reason for refusing and the medrese's reason for appealing, and the number of each kind on its tab.
-    drawn: [listed, empty, tabs, pendingCount, decidedCount, waitingCard, waitingMadrasah, waitingKosk, waitingRejectReason, waitingAppealReason]
-    built:
-      - action: medaris.api:listAppeals
-      - route: apps/nizam/features/appeals/components/appeals-view.tsx:35
-    walked:
-      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts # the API half (the list and its counts), against a real Postgres; not a web e2e
-    # replay: rejects, opens, empty (bound, not walked yet)
+      The person who decides reads, in one list, the appeals that wait, oldest first, with the course the medrese asked for, the
+      medrese, the köşk, the köşk's reason for refusing and the medrese's reason for appealing, and the number of each kind on its
+      tab.
+    evidence:
+      - state: listed
+      - state: empty
+      - node: tabs
+      - node: pendingCount
+      - node: decidedCount
+      - node: waitingCard
+      - node: waitingMadrasah
+      - node: waitingKosk
+      - node: waitingRejectReason
+      - node: waitingAppealReason
+      - source: apps/tedrisat/src/appeal/appeal.controller.ts:116
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:35
+      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts
+    note: |-
+      apps/tedrisat/test/e2e/appeals.e2e.spec.ts: the API half (the list and its counts), against a real Postgres; not a web e2e
+      replay: rejects, opens, empty (bound, not walked yet)
 
   - id: the-card-names-the-author-and-the-day
     need: >-
-      The card of an appeal says who of the medrese appealed and on what day, as the köşk's card names the person who sent a request.
-    drawn: [waitingCard, decidedCard]
-    missing: none # DAPP-8: the API sends createdBy and the page never draws it
+      The card of an appeal says who of the medrese appealed and on what day, as the köşk's card names the person who sent a
+      request.
+    missing: "no Linear issue; DAPP-8: the API sends createdBy and the page never draws it"
+    note: >-
+      Drawn on the nodes waitingCard and decidedCard, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: accept-an-appeal
     need: >-
-      The person who decides accepts an appeal; the course request goes back to the köşk as a waiting one, the appeal leaves the waiting list and
-      is kept as accepted, and a toast says it was done.
-    drawn: [accept, accepting, acceptedHandOver, toastAccepted, toastAcceptedBody]
-    built:
-      - action: medaris.api:acceptAppeal
-      - route: apps/nizam/features/appeals/components/appeals-view.tsx:115
-    walked:
-      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts # the API half (the request goes back to PENDING), against a real Postgres; not a web e2e
-    # replay: accepts, opens (bound, not walked yet)
+      The person who decides accepts an appeal; the course request goes back to the köşk as a waiting one, the appeal leaves the
+      waiting list and is kept as accepted, and a toast says it was done.
+    evidence:
+      - node: accept
+      - state: accepting
+      - state: acceptedHandOver
+      - node: toastAccepted
+      - node: toastAcceptedBody
+      - source: apps/tedrisat/src/appeal/appeal.controller.ts:139
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:115
+      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts
+    note: |-
+      apps/tedrisat/test/e2e/appeals.e2e.spec.ts: the API half (the request goes back to PENDING), against a real Postgres; not a
+      web e2e
+      replay: accepts, opens (bound, not walked yet)
 
   - id: accept-asks-first-and-may-carry-a-note
     need: >-
-      "Kabul et" says what it will do before it does it, and may carry a note that the medrese and the köşk's nazım read; it is not a bare click
-      on a decision that cannot be undone.
-    drawn: [listed, accept, accepting]
-    missing: none # DAPP-1, decision D2
+      "Kabul et" says what it will do before it does it, and may carry a note that the medrese and the köşk's nazım read; it is
+      not a bare click on a decision that cannot be undone.
+    missing: no Linear issue; DAPP-1, decision D2
+    note: >-
+      Drawn on the states listed and accepting and on the node accept, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-koskss-card-says-it-was-sent-back
     need: >-
-      A request that an accepted appeal sent back is marked as such for the köşk's nazım, with the appeal's reason, so that she decides it knowing
-      why it is there again.
-    drawn: [acceptedHandOver]
-    missing: none # DAPP-4 (nizam.courseRequests.decide's card)
+      A request that an accepted appeal sent back is marked as such for the köşk's nazım, with the appeal's reason, so that she
+      decides it knowing why it is there again.
+    missing: no Linear issue; DAPP-4 (nizam.courseRequests.decide's card)
+    note: >-
+      Drawn on the state acceptedHandOver, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: a-second-refusal-is-appealable-or-said
     need: >-
-      Where a request is appealed once only, the person who accepts is told that a second refusal by the köşk is final, and the medrese is told so
-      on its row; or a second refusal can be appealed again.
-    drawn: [listed, acceptedHandOver]
-    missing: none # DAPP-5, decision D3
+      Where a request is appealed once only, the person who accepts is told that a second refusal by the köşk is final, and the
+      medrese is told so on its row; or a second refusal can be appealed again.
+    missing: no Linear issue; DAPP-5, decision D3
+    note: >-
+      Drawn on the states listed and acceptedHandOver, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: refuse-an-appeal-with-a-note
     need: >-
-      The person who decides refuses an appeal with a note that is required and kept as written (trimmed); the appeal leaves the waiting list, the
-      next one is selected, the numbers on the tabs follow, a toast says it was done, and the medrese can read the note.
-    drawn: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting, toastRejected, toastRejectedBody, reasonRequired]
-    built:
-      - action: medaris.api:rejectAppeal
-      - route: apps/nizam/features/deck-review/components/reject-dialog.tsx:78
-      - route: apps/nizam/features/appeals/components/appeals-view.tsx:131
-    walked:
-      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts # the API half (the note is required and kept), against a real Postgres; not a web e2e
-    # replay: rejects, opens (bound, not walked yet)
+      The person who decides refuses an appeal with a note that is required and kept as written (trimmed); the appeal leaves the
+      waiting list, the next one is selected, the numbers on the tabs follow, a toast says it was done, and the medrese can read
+      the note.
+    evidence:
+      - state: confirmReject
+      - state: confirmRejectTouched
+      - state: confirmRejectReady
+      - state: rejecting
+      - node: toastRejected
+      - node: toastRejectedBody
+      - node: reasonRequired
+      - source: apps/tedrisat/src/appeal/appeal.controller.ts:158
+      - source: apps/nizam/features/deck-review/components/reject-dialog.tsx:78
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:131
+      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts
+    note: |-
+      apps/tedrisat/test/e2e/appeals.e2e.spec.ts: the API half (the note is required and kept), against a real Postgres; not a web
+      e2e
+      replay: rejects, opens (bound, not walked yet)
 
   - id: the-note-has-its-own-error
-    need: >-
-      The dialog's error for a missing note says "note", where the field says "Karar notu".
-    drawn: [confirmRejectTouched, reasonRequired]
-    missing: none # DAPP-7
+    need: The dialog's error for a missing note says "note", where the field says "Karar notu".
+    missing: no Linear issue; DAPP-7
+    note: >-
+      Drawn on the state confirmRejectTouched and on the node reasonRequired, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-notes-error-is-announced
     need: >-
-      Where a refusal is sent with no note, the page says so where a screen reader hears it (the error is announced and the focus goes to the
-      field), instead of keeping the button off with only a help line to hint why.
-    drawn: [confirmReject, confirmRejectTouched, reasonRequired, rejectSubmit]
-    missing: none # F-W5-4, F-X-2, F-X-3
+      Where a refusal is sent with no note, the page says so where a screen reader hears it (the error is announced and the focus
+      goes to the field), instead of keeping the button off with only a help line to hint why.
+    missing: no Linear issue; F-W5-4, F-X-2, F-X-3
+    note: >-
+      Drawn on the states confirmReject and confirmRejectTouched and on the nodes reasonRequired and rejectSubmit, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-people-concerned-are-told-the-decision
     need: >-
-      The medrese's başmüderris, and the nazırs who may appeal, are told when the appeal is decided, with the note; the köşk's nazım is told when a
-      request is sent back; and a toast says only what is true (it does not say "iletildi" while nothing is sent).
-    drawn: [toastAcceptedBody, toastRejectedBody, acceptedHandOver]
-    missing: none # DAPP-2, decision D1; also nazar.appeals.open's D1 and F-B-appeals-5
+      The medrese's başmüderris, and the nazırs who may appeal, are told when the appeal is decided, with the note; the köşk's
+      nazım is told when a request is sent back; and a toast says only what is true (it does not say "iletildi" while nothing is
+      sent).
+    missing: no Linear issue; DAPP-2, decision D1; also nazar.appeals.open's D1 and F-B-appeals-5
+    note: >-
+      Drawn on the state acceptedHandOver and on the nodes toastAcceptedBody and toastRejectedBody, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: one-decision-at-a-time
-    need: >-
-      While one decision on an appeal runs, the other button is off, so that two decisions are not started on the same appeal.
-    drawn: [accepting, accept, rejectBesideBusy]
-    missing: none # DAPP-6
+    need: While one decision on an appeal runs, the other button is off, so that two decisions are not started on the same appeal.
+    missing: no Linear issue; DAPP-6
+    note: >-
+      Drawn on the state accepting and on the nodes accept and rejectBesideBusy, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: an-appeal-decided-meanwhile-is-told
     need: >-
-      An appeal that someone else decided while the dialog was open, or one that is gone, is told in a sentence that says which, leaves the list,
-      and does not count as the person's own decision.
-    drawn: [accepting, rejecting, toastAnswered, toastGone, toastErrorTitle]
-    built:
-      - route: apps/nizam/features/appeals/components/appeals-view.tsx:107
-      - route: apps/nizam/features/appeals/present.ts:51
-    walked:
-      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts # APPEAL_NOT_PENDING and APPEAL_NOT_FOUND of the API, against a real Postgres; not a web e2e
-    # replay: answered, gone (races.binding.yaml, bound for "Reddet" only, not walked yet); the gone one adds one to the decided count by mistake (DAPP-3)
+      An appeal that someone else decided while the dialog was open, or one that is gone, is told in a sentence that says which,
+      leaves the list, and does not count as the person's own decision.
+    evidence:
+      - state: accepting
+      - state: rejecting
+      - node: toastAnswered
+      - node: toastGone
+      - node: toastErrorTitle
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:107
+      - source: apps/nizam/features/appeals/present.ts:8
+      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts
+    note: |-
+      apps/tedrisat/test/e2e/appeals.e2e.spec.ts: APPEAL_NOT_PENDING and APPEAL_NOT_FOUND of the API, against a real Postgres; not
+      a web e2e
+      replay: answered, gone (races.binding.yaml, bound for "Reddet" only, not walked yet); the gone one adds one to the decided
+      count by mistake (DAPP-3)
 
   - id: a-failed-decision-is-told-where-it-is-read
-    need: >-
-      A decision that fails is told inside the dialog or beside the button, as well as in a toast.
-    drawn: [confirmRejectReady, toastForbidden, toastFailed]
-    missing: none # F-W5-3, F-X-4
+    need: A decision that fails is told inside the dialog or beside the button, as well as in a toast.
+    missing: no Linear issue; F-W5-3, F-X-4
+    note: >-
+      Drawn on the state confirmRejectReady and on the nodes toastForbidden and toastFailed, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-decided-appeals-keep-their-outcome
     need: >-
-      The decided appeals stay on a second tab with their outcome, the day they were decided and, for a refusal, the note that was written.
-    drawn: [loadingDecided, decidedList, decidedEmpty, decidedOutcomeRejected, decidedOutcomeAccepted, decisionNoteAlert]
-    built:
-      - action: medaris.api:listAppeals
-      - route: apps/nizam/features/appeals/components/appeals-view.tsx:90
-    # replay: rejects, opens, rejectedBefore, acceptedBefore (bound, not walked yet)
+      The decided appeals stay on a second tab with their outcome, the day they were decided and, for a refusal, the note that was
+      written.
+    evidence:
+      - state: loadingDecided
+      - state: decidedList
+      - state: decidedEmpty
+      - node: decidedOutcomeRejected
+      - node: decidedOutcomeAccepted
+      - node: decisionNoteAlert
+      - source: apps/tedrisat/src/appeal/appeal.controller.ts:116
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:90
+    note: "replay: rejects, opens, rejectedBefore, acceptedBefore (bound, not walked yet)"
 
   - id: only-those-allowed-decide
     need: >-
-      Only the başnazım and a Medaris nazımı who holds platform.appeal_decide read and decide appeals; every other person meets the same
-      sentence, "Bu bölüm için izniniz yok".
-    drawn: [noAccess, noAccessSection, noAccessTitle, noAccessBody, noAccessBack]
-    built:
-      - action: medaris.api:listAppeals
-      - route: apps/nizam/app/talepler/itirazlar/page.tsx:24
-    walked:
-      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts # the API, per role, against a real Postgres; not a web e2e
-    # replay: refused (the seeded Medaris nazımı, who holds five other codes; bound, not walked yet)
+      Only the başnazım and a Medaris nazımı who holds platform.appeal_decide read and decide appeals; every other person meets
+      the same sentence, "Bu bölüm için izniniz yok".
+    evidence:
+      - state: noAccess
+      - node: noAccessSection
+      - node: noAccessTitle
+      - node: noAccessBody
+      - node: noAccessBack
+      - source: apps/tedrisat/src/appeal/appeal.controller.ts:116
+      - source: apps/nizam/app/talepler/itirazlar/page.tsx:24
+      - test: apps/tedrisat/test/e2e/appeals.e2e.spec.ts
+    note: |-
+      apps/tedrisat/test/e2e/appeals.e2e.spec.ts: the API, per role, against a real Postgres; not a web e2e
+      replay: refused (the seeded Medaris nazımı, who holds five other codes; bound, not walked yet)
 
   - id: a-failed-read-is-told-and-retried
     need: >-
-      A read that fails says so in one place, with a way to try again, and does not take away what was already read; where the answered tab
-      cannot be read, the tabs stay.
-    drawn: [unreadable, retrying, decidedFailed, retryingDecided, loadAlert, retry, toastLoadFailed]
-    built:
-      - route: apps/nizam/features/appeals/components/appeals-view.tsx:247
-    # replay: unreadable (bound through the throttle helper of nazar.shell.errorStates, not walked yet); the failed read of the answered tab cannot be made on the local stack
+      A read that fails says so in one place, with a way to try again, and does not take away what was already read; where the
+      answered tab cannot be read, the tabs stay.
+    evidence:
+      - state: unreadable
+      - state: retrying
+      - state: decidedFailed
+      - state: retryingDecided
+      - node: loadAlert
+      - node: retry
+      - node: toastLoadFailed
+      - source: apps/nizam/features/appeals/components/appeals-view.tsx:247
+    note: >-
+      replay: unreadable (bound through the throttle helper of nazar.shell.errorStates, not walked yet); the failed read of the
+      answered tab cannot be made on the local stack
 
   - id: the-focus-and-a-word-follow-a-decision
     need: >-
-      After a decision the focus lands where a keyboard or screen-reader user can use it, a line on the page (not only a toast of six seconds)
-      says what was decided, and the tabs and the list are announced as what they are.
-    drawn: [listed, empty, tabs, waitingItem, toastAccepted, toastRejected]
-    missing: none # F-W5-5, F-W5-6, F-W5-7, F-X-1
+      After a decision the focus lands where a keyboard or screen-reader user can use it, a line on the page (not only a toast of
+      six seconds) says what was decided, and the tabs and the list are announced as what they are.
+    missing: no Linear issue; F-W5-5, F-W5-6, F-W5-7, F-X-1
+    note: >-
+      Drawn on the states listed and empty and on the nodes tabs, waitingItem, toastAccepted and toastRejected, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: appeals-of-other-decisions
     need: >-
-      A medrese appeals other decisions of a köşk to Medaris management too (hiding its course, banning its talebe, taking its hosting right
-      away), and the same page decides them; the permanent-ban request of a köşk, medrese or course admin has its own deciding screen
-      (nizam.moderation.decidePermanentBan).
-    drawn: [listed]
-    missing: MDRS-139 # P-04; MDRS-193 and MDRS-194 (P-34) are the deferred screens of the same work
+      A medrese appeals other decisions of a köşk to Medaris management too (hiding its course, banning its talebe, taking its
+      hosting right away), and the same page decides them; the permanent-ban request of a köşk, medrese or course admin has its
+      own deciding screen (nizam.moderation.decidePermanentBan).
+    missing: MDRS-139; P-04; MDRS-193 and MDRS-194 (P-34) are the deferred screens of the same work
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

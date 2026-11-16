@@ -1,147 +1,182 @@
-# What must exist for the hoca of a course to take it back to draft and publish it again from Ders ayarları: the flow's product list
-# (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the decisions it leaves open, not from what the
-# page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on
-# this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.courseSettings.publish
+status: proposed
+summary: >-
+  What must exist for the hoca of a course to take it back to draft and publish it again from Ders ayarları: the flow's product
+  list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For the gaps merge:
-#   missing:  draft-link-leads-staff-to-the-draft (DRAFT-1, D2), drafting-says-how-many-talebe (D1), public-link-address-is-current (PUB-1),
-#             cancel-and-close-say-they-are-busy (PUB-2), busy-words-are-in-the-catalog (F-D2c-13)
-#   unwalked: a-failed-status-change-is-worded (unit specs only; the four scenarios of binding.refused.yaml and binding.failed.yaml are
-#             written and not run)
-#   named but not drawn here: closed-course-hides-public-recording has an e2e (course-settings#6 a3 to a10, which needs E2E_TEDRIS_URL and a
-#             visitor's browser), and nothing of it is in this graph, see the flow's header
+# missing:  draft-link-leads-staff-to-the-draft (DRAFT-1, D2), drafting-says-how-many-talebe (D1), public-link-address-is-current (PUB-1),
+# cancel-and-close-say-they-are-busy (PUB-2), busy-words-are-in-the-catalog (F-D2c-13)
+# unwalked: a-failed-status-change-is-worded (unit specs only; the four scenarios of binding.refused.yaml and binding.failed.yaml are
+# written and not run)
+# named but not drawn here: closed-course-hides-public-recording has an e2e (course-settings#6 a3 to a10, which needs E2E_TEDRIS_URL and a
+# visitor's browser), and nothing of it is in this graph, see the flow's header
 # The scenarios that will walk the rest are named in comments, not under `walked`, because none has run.
-kind: needs
-flow: nazar.courseSettings.publish
-status: proposed
 
 needs:
   - id: draft-after-asking
     need: >-
-      The hoca takes a published course back to draft after being asked once, with the focus of the question on "Vazgeç"; from then on
-      the course shows only to its staff, the köşk's nazım and Medaris's management, and an enrolled talebe no longer reaches its celses
-      and recordings. Cancelling leaves everything as it was.
-    drawn: [asking, drafting, draft, unpublishDialog, unpublishCancel, unpublishConfirm, toastDrafted]
-    built:
-      - action: medaris.api:updateCourse
-      - route: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
-    walked:
-      - e2e: apps/nazar/e2e/course-settings.e2e.ts
-        check: 'course-settings#5'
+      The hoca takes a published course back to draft after being asked once, with the focus of the question on "Vazgeç"; from
+      then on the course shows only to its staff, the köşk's nazım and Medaris's management, and an enrolled talebe no longer
+      reaches its celses and recordings. Cancelling leaves everything as it was.
+    evidence:
+      - state: asking
+      - state: drafting
+      - state: draft
+      - node: unpublishDialog
+      - node: unpublishCancel
+      - node: unpublishConfirm
+      - node: toastDrafted
+      - source: apps/tedrisat/src/course/course.controller.ts:300
+      - source: apps/nazar/features/course-settings/components/course-publish-card.tsx:42
+      - test: apps/nazar/e2e/course-settings.e2e.ts
+        name: "'Taslağa çek' asks first with the focus on 'Vazgeç', and each status is read back after a reload"
       - test: apps/nazar/test/course-settings-form.spec.tsx
-    # replay: unpublishes (written, not run)
+    note: "replay: unpublishes (written, not run)"
 
   - id: publish-again
     need: >-
-      The hoca publishes a draft at once, with no question, and the course is public again; the card, the toast and a visitor of Tedris
-      all say so.
-    drawn: [draft, publishing, published, publishButton, toastPublished]
-    built:
-      - action: medaris.api:updateCourse
-      - route: apps/nazar/features/course-settings/components/course-publish-card.tsx:105
-    walked:
-      - e2e: apps/nazar/e2e/course-settings.e2e.ts
-        check: 'course-settings#5'
+      The hoca publishes a draft at once, with no question, and the course is public again; the card, the toast and a visitor of
+      Tedris all say so.
+    evidence:
+      - state: draft
+      - state: publishing
+      - state: published
+      - node: publishButton
+      - node: toastPublished
+      - source: apps/tedrisat/src/course/course.controller.ts:300
+      - source: apps/nazar/features/course-settings/components/course-publish-card.tsx:105
+      - test: apps/nazar/e2e/course-settings.e2e.ts
+        name: "'Taslağa çek' asks first with the focus on 'Vazgeç', and each status is read back after a reload"
       - test: apps/nazar/test/course-settings-form.spec.tsx
-    # replay: startsDraft, unpublishes (written, not run)
+    note: "replay: startsDraft, unpublishes (written, not run)"
 
   - id: unsaved-edits-survive
     need: >-
-      A change the person has made in the access form and not saved is still there, with its Kaydet on, after the course is taken back to
-      draft and after it is published again, and nothing of it has been sent to the API.
-    drawn: [publishedEdited, draftEdited, publishingEdited, approvalBox, accessSave, accessCancel, edits-follow-the-form, a-clean-form-has-no-edit]
-    built:
-      - route: apps/nazar/features/course-settings/components/course-settings-page.tsx:108
-    walked:
-      - e2e: apps/nazar/e2e/course-settings.e2e.ts
-        check: 'course-settings#4'
+      A change the person has made in the access form and not saved is still there, with its Kaydet on, after the course is taken
+      back to draft and after it is published again, and nothing of it has been sent to the API.
+    evidence:
+      - state: publishedEdited
+      - state: draftEdited
+      - state: publishingEdited
+      - node: approvalBox
+      - node: accessSave
+      - node: accessCancel
+      - source: apps/nazar/features/course-settings/components/course-settings-page.tsx:108
+      - test: apps/nazar/e2e/course-settings.e2e.ts
+        name: "'Yayımla' and 'Taslağa çek' keep a change that is not saved yet"
       - test: apps/nazar/test/course-settings-page.spec.tsx
-    # course-settings#4 a2, a6 and a8 have stale locators (F-D2c-14): the behaviour is carried, the locators are scoped to the form.
+    note: |-
+      Also drawn as the assertion edits-follow-the-form, the assertion a-clean-form-has-no-edit.
+      course-settings#4 a2, a6 and a8 have stale locators (F-D2c-14): the behaviour is carried, the locators are scoped to the
+      form.
 
   - id: only-who-may-publish-sees-the-buttons
     need: >-
-      The card shows its two buttons only to a caller who may use them (course.edit and course.publish), and anyone else sees the status
-      alone; the API refuses a status change by anyone else.
-    drawn: [unpublishButton, publishButton, statusPublished, statusDraft]
-    built:
-      - action: medaris.api:updateCourse
-      - route: apps/nazar/features/course-settings/controls.ts:52
-    walked:
-      - e2e: apps/nazar/e2e/course-settings.e2e.ts
-        check: 'course-settings#7'
-      - e2e: apps/nazar/e2e/course-settings.e2e.ts
-        check: 'course-settings#8'
+      The card shows its two buttons only to a caller who may use them (course.edit and course.publish), and anyone else sees the
+      status alone; the API refuses a status change by anyone else.
+    evidence:
+      - node: unpublishButton
+      - node: publishButton
+      - node: statusPublished
+      - node: statusDraft
+      - source: apps/tedrisat/src/course/course.controller.ts:300
+      - source: apps/nazar/features/course-settings/controls.ts:52
+      - test: apps/nazar/e2e/course-settings.e2e.ts
+        name: "a ders nazırı with session.manage alone may change the sample session, and nothing else"
+      - test: apps/nazar/e2e/course-settings.e2e.ts
+        name: "a ders nazırı with course.edit and course.settings changes the two boxes and the zone, and may not publish"
       - test: apps/nazar/test/course-settings-page.spec.tsx
-    # the persona views are nazar.access.dersNazirPages's; the replay of the refusal is binding.refused.yaml
+    note: the persona views are nazar.access.dersNazirPages's; the replay of the refusal is binding.refused.yaml
 
   - id: a-failed-status-change-is-worded
     need: >-
-      A status change the API refuses (the hoca's permission was taken back) or cannot make (the course was hidden meanwhile) is told in
-      words, in a toast that stays; the question closes and the card is left as it was.
-    drawn: [drafting, publishing, publishingEdited, toastRefused, toastFailed]
-    built:
-      - action: medaris.api:updateCourse
-      - route: apps/nazar/features/course-settings/components/course-publish-card.tsx:47
-    walked:
+      A status change the API refuses (the hoca's permission was taken back) or cannot make (the course was hidden meanwhile) is
+      told in words, in a toast that stays; the question closes and the card is left as it was.
+    evidence:
+      - state: drafting
+      - state: publishing
+      - state: publishingEdited
+      - node: toastRefused
+      - node: toastFailed
+      - source: apps/tedrisat/src/course/course.controller.ts:300
+      - source: apps/nazar/features/course-settings/components/course-publish-card.tsx:47
       - test: apps/nazar/test/course-settings-form.spec.tsx
-    # replay: refusedPublished, refusedDraft (binding.refused.yaml), hiddenPublished, hiddenDraft (binding.failed.yaml): written, not run
+    note: >-
+      replay: refusedPublished, refusedDraft (binding.refused.yaml), hiddenPublished, hiddenDraft (binding.failed.yaml): written,
+      not run
 
   - id: public-page-link
     need: >-
-      The hoca follows "Tanıtım sayfasını gör" to the course's public page in Tedris, in a new tab that the link's name says, with the
-      Nazar tab left where it was.
-    drawn: [viewPublic]
-    built:
-      - route: apps/nazar/features/course-settings/components/course-settings-page.tsx:91
-    walked:
-      - e2e: apps/nazar/e2e/course-settings.e2e.ts
-        check: 'course-settings#6'
+      The hoca follows "Tanıtım sayfasını gör" to the course's public page in Tedris, in a new tab that the link's name says, with
+      the Nazar tab left where it was.
+    evidence:
+      - node: viewPublic
+      - source: apps/nazar/features/course-settings/components/course-settings-page.tsx:91
+      - test: apps/nazar/e2e/course-settings.e2e.ts
+        name: "a closed course hides its public recording from a visitor in tedris, and opening it shows it again"
       - test: apps/nazar/test/course-settings-page.spec.tsx
 
   - id: closed-course-hides-public-recording
     need: >-
-      A closed course shows a visitor of its public page its introduction and no recording, and opening it again brings the recording back;
-      the hoca sees the effect from the same page that holds the closed box and the public link.
-    drawn: [viewPublic]
-    built:
-      - route: apps/tedrisat/src/course/course.service.ts:857
-    walked:
-      - e2e: apps/nazar/e2e/course-settings.e2e.ts
-        check: 'course-settings#6'
-    # a3 to a10 of the check are not drawn in this graph: they close the course with the access form's Kaydet (nazar.courseSettings.access)
-    # and read a visitor's recordings tab (tedris.course.recordings)
+      A closed course shows a visitor of its public page its introduction and no recording, and opening it again brings the
+      recording back; the hoca sees the effect from the same page that holds the closed box and the public link.
+    evidence:
+      - node: viewPublic
+      - source: apps/tedrisat/src/course/course.service.ts:857
+      - test: apps/nazar/e2e/course-settings.e2e.ts
+        name: "a closed course hides its public recording from a visitor in tedris, and opening it shows it again"
+    note: >-
+      a3 to a10 of the check are not drawn in this graph: they close the course with the access form's Kaydet
+      (nazar.courseSettings.access) and read a visitor's recordings tab (tedris.course.recordings)
 
   - id: draft-link-leads-staff-to-the-draft
     need: >-
-      For a draft, the header link opens the preview the course's staff may read, and does not tell them "Sayfa bulunamadı": it is named
-      for what it opens and sends the person through Tedris's own sign-in with the course as the way back (DRAFT-1, decision D2).
-    drawn: [viewPublic, draft, draftEdited]
-    missing: none
+      For a draft, the header link opens the preview the course's staff may read, and does not tell them "Sayfa bulunamadı": it is
+      named for what it opens and sends the person through Tedris's own sign-in with the course as the way back (DRAFT-1, decision
+      D2).
+    missing: no Linear issue; DRAFT-1, D2
+    note: >-
+      Drawn on the states draft and draftEdited and on the node viewPublic, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: public-link-address-is-current
     need: >-
-      The link is built from Tedris's present address scheme ({TEDRIS_URL}/courses/<id>), not from the language segment MDRS-248 took out,
-      so it does not depend on a compatibility redirect (PUB-1).
-    drawn: [viewPublic]
-    missing: none
+      The link is built from Tedris's present address scheme ({TEDRIS_URL}/courses/<id>), not from the language segment MDRS-248
+      took out, so it does not depend on a compatibility redirect (PUB-1).
+    missing: no Linear issue; PUB-1
+    note: >-
+      Drawn on the node viewPublic, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: drafting-says-how-many-talebe
     need: >-
-      The question that takes a course back to draft says how many talebe lose it, in the words the hide window of a course already uses
-      (decision D1).
-    drawn: [asking, unpublishBody]
-    missing: none
+      The question that takes a course back to draft says how many talebe lose it, in the words the hide window of a course
+      already uses (decision D1).
+    missing: no Linear issue; D1
+    note: >-
+      Drawn on the state asking and on the node unpublishBody, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: cancel-and-close-say-they-are-busy
     need: >-
-      While the status is being written, "Vazgeç" and the close icon of the question are marked off, as the confirming button is, so that
-      a press that does nothing is not offered (PUB-2).
-    drawn: [drafting, unpublishCancel, unpublishClose]
-    missing: none
+      While the status is being written, "Vazgeç" and the close icon of the question are marked off, as the confirming button is,
+      so that a press that does nothing is not offered (PUB-2).
+    missing: no Linear issue; PUB-2
+    note: >-
+      Drawn on the state drafting and on the nodes unpublishCancel and unpublishClose, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: busy-words-are-in-the-catalog
     need: >-
-      The busy words of "Yayımla" and of the question's confirming button come from the app's own catalog, as the access form's Kaydet's
-      do, so that they are translated when the language menu is built (F-D2c-13).
-    drawn: [publishBusy, unpublishBusy]
-    missing: none
+      The busy words of "Yayımla" and of the question's confirming button come from the app's own catalog, as the access form's
+      Kaydet's do, so that they are translated when the language menu is built (F-D2c-13).
+    missing: no Linear issue; F-D2c-13
+    note: >-
+      Drawn on the nodes publishBusy and unpublishBusy, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).

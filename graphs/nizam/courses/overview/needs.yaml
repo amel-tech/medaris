@@ -1,156 +1,224 @@
-# What must exist for a köşk nazımı to read a course's overview: the flow's product list (LAYOUT.md section 7). Each need is what the product must
-# do, from the flow's story and planned.md, not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator
-# merges. Read by people for now: no checker runs on this file yet. Parsed with a YAML parser before delivery.
+schema: delurio-graph/0
+kind: needs
+id: nizam.courses.overview
+status: proposed
+summary: >-
+  What must exist for a köşk nazımı to read a course's overview: the flow's product list. Parsed with a YAML parser before
+  delivery.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Gaps for the merge:
-#   missing (no code that meets the need): cards-link-to-talebeler (MDRS-291), links-open-the-page-they-name, numbers-say-what-they-count,
-#     a-failed-read-is-not-a-refusal, a-link-only-where-it-opens, the-tab-names-the-course, kontenjan-per-gender (MDRS-284), gender-always-required (MDRS-284)
-#   unwalked (code, and no e2e or passed replay): see-the-course-at-a-glance, warn-of-a-celse-nobody-can-join, open-the-course-in-nazar,
-#     refuse-a-course-the-reader-may-not-read, retry-an-unreadable-overview, decide-from-the-overview
+# missing (no code that meets the need): cards-link-to-talebeler (MDRS-291), links-open-the-page-they-name, numbers-say-what-they-count,
+# a-failed-read-is-not-a-refusal, a-link-only-where-it-opens, the-tab-names-the-course, kontenjan-per-gender (MDRS-284), gender-always-required (MDRS-284)
+# unwalked (code, and no e2e or passed replay): see-the-course-at-a-glance, warn-of-a-celse-nobody-can-join, open-the-course-in-nazar,
+# refuse-a-course-the-reader-may-not-read, retry-an-unreadable-overview, decide-from-the-overview
 # No replay has run yet (the first walks are a later phase), so `walked` names only the e2e checks and the unit specs that exist; the replay
 # scenarios that will walk each need are in the comment beside it. A need with an e2e check is not `unwalked` for the merge even though that
 # check has not been run against the graphs' stack. Of the inventory's e2e checks: kosk-view#11, #13, #14 and #15 are carried (#14 at the
 # hand-over: its second half, the numbers after Onayla, is nizam.courses.decideApplications's); #12 is STALE (it waits for the /edit address,
 # which a redirect never commits) and is not carried as written: the graph carries what the code does, the redirect to Müfredat.
-kind: needs
-flow: nizam.courses.overview
-status: proposed
 
 needs:
   - id: see-the-course-at-a-glance
     need: >-
-      A köşk nazımı opens one of the köşk's courses and sees, on one page, what it is and how it stands: its name and state (published or draft),
-      how many talebe are enrolled, how many applications wait and how many of its weeks have begun, the next celses with the way in to each, the
-      applications to decide, who teaches it and what its settings are.
-    drawn: [overview, pageTitle, badgePublished, badgeDraft, courseLine, statsRegion, valueStudents, valuePending, valueWeeks, weeksOf, nextSection, sessionsTable, pendingSection, teamSection, imamStar, settingsSection]
-    built:
-      - action: medaris.api:getCourse
-      - action: medaris.api:getCourseStats
-      - action: medaris.api:listCourseEnrollments
-      - action: medaris.api:getKoskCourseRoster
-      - action: medaris.api:getMe
-      - route: apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:40
-      - route: apps/nizam/features/kosks/components/course-overview.tsx:253
-    walked:
-      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
-        check: 'kosk-view#11'
-      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
-        check: 'kosk-view#15'
-      - test: apps/nizam/test/kosk-overview.spec.tsx # "Genel bakış (nizam 53)", :732; replay: triage, chief and draft will walk it, not run
+      A köşk nazımı opens one of the köşk's courses and sees, on one page, what it is and how it stands: its name and state
+      (published or draft), how many talebe are enrolled, how many applications wait and how many of its weeks have begun, the
+      next celses with the way in to each, the applications to decide, who teaches it and what its settings are.
+    evidence:
+      - state: overview
+      - node: pageTitle
+      - node: badgePublished
+      - node: badgeDraft
+      - node: courseLine
+      - node: statsRegion
+      - node: valueStudents
+      - node: valuePending
+      - node: valueWeeks
+      - node: weeksOf
+      - node: nextSection
+      - node: sessionsTable
+      - node: pendingSection
+      - node: teamSection
+      - node: imamStar
+      - node: settingsSection
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedrisat/src/course/course.controller.ts:543
+      - source: apps/tedrisat/src/course/course.controller.ts:562
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:234
+      - source: apps/tedrisat/src/user/me.controller.ts:30
+      - source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:40"
+      - source: apps/nizam/features/kosks/components/course-overview.tsx:253
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/53 — the overview draws the course, warns about the session nobody can attend and lists the next sessions (criteria 1, 2, 3, 6)"
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/53 — a draft course shows the draft badge"
+      - test: apps/nizam/test/kosk-overview.spec.tsx
+    note: >-
+      apps/nizam/test/kosk-overview.spec.tsx: "Genel bakış (nizam 53)", :732; replay: triage, chief and draft will walk it, not
+      run
 
   - id: warn-of-a-celse-nobody-can-join
     need: >-
-      A celse ahead that no talebe can join (no meeting link, no live stream, not held in person) is warned about above the numbers, naming the
-      first of them, and its row says what is missing and offers the way to add a link (MDRS-283).
-    drawn: [missingAlert, missingBody, attendanceMissing, rowAdd]
-    built:
-      - route: apps/nizam/features/kosks/components/course-overview.tsx:305
-      - route: apps/nizam/features/kosks/overview-present.ts:251
-      - route: apps/nizam/features/courses/components/attendance-cell.tsx:25
-    walked:
-      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
-        check: 'kosk-view#11'
-      - test: apps/nizam/test/kosk-overview.spec.tsx # :788 and :801; replay: triage will walk it, not run
+      A celse ahead that no talebe can join (no meeting link, no live stream, not held in person) is warned about above the
+      numbers, naming the first of them, and its row says what is missing and offers the way to add a link (MDRS-283).
+    evidence:
+      - node: missingAlert
+      - node: missingBody
+      - node: attendanceMissing
+      - node: rowAdd
+      - source: apps/nizam/features/kosks/components/course-overview.tsx:305
+      - source: apps/nizam/features/kosks/overview-present.ts:251
+      - source: apps/nizam/features/courses/components/attendance-cell.tsx:25
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/53 — the overview draws the course, warns about the session nobody can attend and lists the next sessions (criteria 1, 2, 3, 6)"
+      - test: apps/nizam/test/kosk-overview.spec.tsx
+    note: "apps/nizam/test/kosk-overview.spec.tsx: :788 and :801; replay: triage will walk it, not run"
 
   - id: decide-from-the-overview
     need: >-
-      The köşk nazımı answers a waiting application where they read about it, with Onayla or Reddet on its row, and the numbers above follow.
-    drawn: [pendingTable, rowName, rowApplied, approveRow, rejectRow, handed_over.decide_applications]
-    built:
-      - action: medaris.api:approveEnrollment
-      - action: medaris.api:rejectEnrollment
-      - route: apps/nizam/features/kosks/components/course-overview.tsx:220
-      - route: apps/nizam/features/applications/use-decisions.ts:34
-    walked:
-      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
-        check: 'kosk-view#14' # the whole check; this flow draws the hand-over and nizam.courses.decideApplications walks what follows; replay: triage presses both buttons, not run
+      The köşk nazımı answers a waiting application where they read about it, with Onayla or Reddet on its row, and the numbers
+      above follow.
+    evidence:
+      - node: pendingTable
+      - node: rowName
+      - node: rowApplied
+      - node: approveRow
+      - node: rejectRow
+      - state: handed_over.decide_applications
+      - source: apps/tedrisat/src/course/course.controller.ts:633
+      - source: apps/tedrisat/src/course/course.controller.ts:687
+      - source: apps/nizam/features/kosks/components/course-overview.tsx:220
+      - source: apps/nizam/features/applications/use-decisions.ts:34
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/53 — 'Onayla' takes the application off the list and adds one to Kayıtlı talebe; 'Reddet' only takes it off (criterion 4)"
+    note: >-
+      kosk-view#14: the whole check; this flow draws the hand-over and nizam.courses.decideApplications walks what follows;
+      replay: triage presses both buttons, not run
 
   - id: open-the-course-in-nazar
     need: >-
-      The Medaris başnazım, who may open every course's pages in nazar, reaches them from the course overview in a new tab, and the link says it
-      opens a new tab; nobody else is offered it, and it is left out where nazar's address is not set (MDRS-270).
-    drawn: [openInNazar]
-    built:
-      - route: apps/nizam/features/kosks/overview-present.ts:331
-      - route: apps/nizam/features/kosks/components/course-overview.tsx:277
-    walked:
-      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
-        check: 'kosk-view#13' # replay: chief will press it, not run
+      The Medaris başnazım, who may open every course's pages in nazar, reaches them from the course overview in a new tab, and
+      the link says it opens a new tab; nobody else is offered it, and it is left out where nazar's address is not set (MDRS-270).
+    evidence:
+      - node: openInNazar
+      - source: apps/nizam/features/kosks/overview-present.ts:331
+      - source: apps/nizam/features/kosks/components/course-overview.tsx:277
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/53 — the başnazım is offered 'Nazar’da aç', a new tab on the course's Ders nazırları in nazar; the köşk nazımı is not (MDRS-270)"
+    note: "kosk-view#13: replay: chief will press it, not run"
 
   - id: refuse-a-course-the-reader-may-not-read
     need: >-
-      A course the reader holds no right in, a course that is not there and a course of another köşk than the one in the address are one answer,
-      "Bu bölüm için izniniz yok", so that the page never says which ids exist.
-    drawn: [refused, refusedTitle, refusedBody, refusedBack]
-    built:
-      - action: medaris.api:getCourseStats
-      - route: apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:49
-      - route: apps/nizam/components/errors/no-access.tsx:25
-    walked:
-      - test: apps/nizam/test/kosk-overview.spec.tsx # none of its cases draws the page's refusal; replay: refused and elsewhere will walk it, not run
+      A course the reader holds no right in, a course that is not there and a course of another köşk than the one in the address
+      are one answer, "Bu bölüm için izniniz yok", so that the page never says which ids exist.
+    evidence:
+      - state: refused
+      - node: refusedTitle
+      - node: refusedBody
+      - node: refusedBack
+      - source: apps/tedrisat/src/course/course.controller.ts:543
+      - source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:49"
+      - source: apps/nizam/components/errors/no-access.tsx:25
+      - test: apps/nizam/test/kosk-overview.spec.tsx
+    note: >-
+      apps/nizam/test/kosk-overview.spec.tsx: none of its cases draws the page's refusal; replay: refused and elsewhere will walk
+      it, not run
 
   - id: retry-an-unreadable-overview
     need: >-
-      When the numbers, the waiting applications or the whole page cannot be read, the page says which, in place, with a button that reads again.
-    drawn: [statsFailedAlert, rosterFailedAlert, loadFailed, loadFailedAlert, loadFailedRetry]
-    built:
-      - route: apps/nizam/features/kosks/components/course-overview.tsx:332
-      - route: apps/nizam/features/kosks/components/course-overview.tsx:404
-      - route: apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:53
-    walked:
-      - test: apps/nizam/test/kosk-overview.spec.tsx # :925 and :961; nothing in the stack makes a read fail, so no replay walks it
+      When the numbers, the waiting applications or the whole page cannot be read, the page says which, in place, with a button
+      that reads again.
+    evidence:
+      - node: statsFailedAlert
+      - node: rosterFailedAlert
+      - state: loadFailed
+      - node: loadFailedAlert
+      - node: loadFailedRetry
+      - source: apps/nizam/features/kosks/components/course-overview.tsx:332
+      - source: apps/nizam/features/kosks/components/course-overview.tsx:404
+      - source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:53"
+      - test: apps/nizam/test/kosk-overview.spec.tsx
+    note: "apps/nizam/test/kosk-overview.spec.tsx: :925 and :961; nothing in the stack makes a read fail, so no replay walks it"
 
-  # ---- what is planned or wrong (the flow draws what the code does) ----
   - id: cards-link-to-talebeler
     need: >-
-      The cards "Kayıtlı talebe" and "Bekleyen başvuru" are links to the course's Talebeler, and each opens on the matching tab (Kayıtlı and
-      Başvurular), so that a nazım who reads a number can go straight to the people behind it (MDRS-291). The tab has to be part of the
-      address for a link to name it.
-    drawn: [statStudents, valueStudents, statPending, valuePending, studentsLink, handed_over.roster]
-    missing: MDRS-291 # planned (Backlog): the cards are plain numbers (course-overview.tsx:344-353) and the tab is component state (students-tabs.tsx:57)
+      The cards "Kayıtlı talebe" and "Bekleyen başvuru" are links to the course's Talebeler, and each opens on the matching tab
+      (Kayıtlı and Başvurular), so that a nazım who reads a number can go straight to the people behind it (MDRS-291). The tab has
+      to be part of the address for a link to name it.
+    missing: >-
+      MDRS-291; planned (Backlog): the cards are plain numbers (course-overview.tsx:344-353) and the tab is component state
+      (students-tabs.tsx:57)
+    note: |-
+      Drawn on the state handed_over.roster and on the nodes statStudents, valueStudents, statPending, valuePending and
+      studentsLink, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only
+      missing needs name).
+      ---- what is planned or wrong (the flow draws what the code does) ----
 
   - id: links-open-the-page-they-name
     need: >-
-      "Celse planla" opens Celse planla, "Ders ayarları" opens the course's settings, and a row's "Toplantı bağlantısı ekle" opens the place where a
-      link is added, not the curriculum (F-W4-1, F-X-19; decision D1).
-    drawn: [planSession, settingsLink, rowAdd, rowEdit, handed_over.curriculum]
-    missing: none # no issue: all four are the address /edit (course-overview.tsx:81), which only redirects to Müfredat
+      "Celse planla" opens Celse planla, "Ders ayarları" opens the course's settings, and a row's "Toplantı bağlantısı ekle" opens
+      the place where a link is added, not the curriculum (F-W4-1, F-X-19; decision D1).
+    missing: "no issue: all four are the address /edit (course-overview.tsx:81), which only redirects to Müfredat"
+    note: >-
+      Drawn on the state handed_over.curriculum and on the nodes planSession, settingsLink, rowAdd and rowEdit, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: numbers-say-what-they-count
     need: >-
-      A card's words and its number say the same thing: "Devam eden hafta" shows the weeks under way, or the card says "Başlayan hafta" (KOVERVIEW-1).
-    drawn: [statWeeks, valueWeeks, weeksOf]
-    missing: none # no issue: the card shows startedWeekCount, the weeks that have begun, under a label that reads as the weeks in progress
+      A card's words and its number say the same thing: "Devam eden hafta" shows the weeks under way, or the card says "Başlayan
+      hafta" (KOVERVIEW-1).
+    missing: >-
+      no issue: the card shows startedWeekCount, the weeks that have begun, under a label that reads as the weeks in progress
+    note: >-
+      Drawn on the nodes statWeeks, valueWeeks and weeksOf, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-read-is-not-a-refusal
     need: >-
-      A failed read of the course or of the köşk, while the numbers answer, is told as a failure with a retry, not as "Bu bölüm için izniniz yok"
-      (KOVERVIEW-3), and the box that says nothing could be read has a heading (KOVERVIEW-2).
-    drawn: [refused, loadFailed, loadFailedAlert]
-    missing: none # no issue: getCourse and getKoskById return null on any error, and a null is notFound() whenever the numbers answered
+      A failed read of the course or of the köşk, while the numbers answer, is told as a failure with a retry, not as "Bu bölüm
+      için izniniz yok" (KOVERVIEW-3), and the box that says nothing could be read has a heading (KOVERVIEW-2).
+    missing: >-
+      no issue: getCourse and getKoskById return null on any error, and a null is notFound() whenever the numbers answered
+    note: >-
+      Drawn on the states refused and loadFailed and on the node loadFailedAlert, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-link-only-where-it-opens
     need: >-
-      A course's title in Dersler is a link only for a reader the overview opens for: a Medaris nazımı who may read the köşk's courses but not their
-      numbers is not led from the list to "Bu bölüm için izniniz yok" (KOVERVIEW-5).
-    drawn: [refused, refusedTitle]
-    missing: none # no issue: the link is drawn whatever the reader holds (kosk-course-table.tsx:122-126) and the page refuses on arrival
+      A course's title in Dersler is a link only for a reader the overview opens for: a Medaris nazımı who may read the köşk's
+      courses but not their numbers is not led from the list to "Bu bölüm için izniniz yok" (KOVERVIEW-5).
+    missing: >-
+      no issue: the link is drawn whatever the reader holds (kosk-course-table.tsx:122-126) and the page refuses on arrival
+    note: >-
+      Drawn on the state refused and on the node refusedTitle, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-tab-names-the-course
     need: >-
       The tab's title and the page's h1 name the course, so that a nazım with several courses open can tell them apart (F-W4-17).
-    drawn: [pageTitle, crumbCurrent]
-    missing: none # no issue: the title is the catalog's "Genel bakış" for every course (page.tsx:22)
+    missing: "no issue: the title is the catalog's \"Genel bakış\" for every course (page.tsx:22)"
+    note: >-
+      Drawn on the nodes pageTitle and crumbCurrent, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: kontenjan-per-gender
     need: >-
-      A seat is counted per gender, as the owner decided: Onayla gives a seat only while the applicant's gender still has a free one, and the
-      overview says how many seats of each gender are taken and free.
-    drawn: [approveRow, valueStudents, valuePending]
-    missing: MDRS-284 # planned: the code has no kontenjan rule anywhere (domain invariant seat-quota-per-gender)
+      A seat is counted per gender, as the owner decided: Onayla gives a seat only while the applicant's gender still has a free
+      one, and the overview says how many seats of each gender are taken and free.
+    missing: "MDRS-284; planned: the code has no kontenjan rule anywhere (domain invariant seat-quota-per-gender)"
+    note: >-
+      Drawn on the nodes approveRow, valueStudents and valuePending, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: gender-always-required
     need: >-
-      Every applicant carries a gender, so that the count per gender can always be made: the row of a waiting application shows it.
-    drawn: [rowName]
-    missing: MDRS-284 # planned: Keycloak's profile requires gender, but tedrisat's column is nullable (user-profile.schema.ts:33; domain invariant gender-always-known) and the row does not show it
+      Every applicant carries a gender, so that the count per gender can always be made: the row of a waiting application shows
+      it.
+    missing: >-
+      MDRS-284; planned: Keycloak's profile requires gender, but tedrisat's column is nullable (user-profile.schema.ts:33; domain
+      invariant gender-always-known) and the row does not show it
+    note: >-
+      Drawn on the node rowName, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

@@ -26,7 +26,7 @@
 #   composed.GrantsPage.giverDay     the day it was given (grants-view.tsx:165)
 #   composed.GrantDialog.person      a person's name: the chosen block (head-picker.tsx:140) and the post's card (grant-dialog.tsx:169)
 #   composed.GrantDialog.address     their address (head-picker.tsx:145, grant-dialog.tsx:172)
-#   composed.RevokeDialog.eyebrow    the course's title above the title of "Görevden al" (revoke-dialog.tsx:321)
+#   composed.RevokeDialog.eyebrow    the course's title above the title of "Görevden al" (revoke-dialog.tsx:79)
 #   composed.Button.loading          "Yükleniyor": the word the kit's Button writes in its hidden status while it is busy, `loadingLabel`'s default
 #                                    (libs/ui/src/mds/button.tsx:62); none of these buttons passes one
 # `changes` is the app's own sentence, KoskGrantDialog.chosenNote, which says what "Kaydet" does: "Kaydedince bu derste ders nazırı olur ve seçtiğiniz izinleri alır.".
@@ -56,7 +56,7 @@ samples:
 
 # The page sets no focus of its own when it opens (nothing in features/grants or in app/kosks/[id]/izinler does), so the page has no `initialFocus` and no
 # `focus`. The dialogs "Ders nazırı ata" and "İzinleri düzenle" are opened with no `initialFocus` (grant-dialog.tsx:139-159 passes none), so Base UI's default,
-# the first thing the dialog can focus, is the close icon in its header; "Görevden al" gives it to "Vazgeç" (revoke-dialog.tsx:324).
+# the first thing the dialog can focus, is the close icon in its header; "Görevden al" gives it to "Vazgeç" (revoke-dialog.tsx:82).
 nodes:
   # ---- the page, the dialogs closed -----------------------------------------------------------------------------------------------
   page: { type: page, component: Page, role: main, in: [listed, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">, with no name; the page's own root is <div data-testid=grants>
@@ -94,8 +94,8 @@ nodes:
   toastAssignedBody: { type: status, component: Status, text: { key: KoskGrantDialog.assignedBody, params: { name: person.name } }, in: [listed], when: "toast == 'assigned'", source: apps/nizam/features/grants/components/grant-dialog.tsx:132 }
   toastEditedTitle: { type: status, component: Status, text: { key: KoskGrantDialog.saved }, in: [listed], when: "toast == 'edited'", source: apps/nizam/features/grants/components/grant-dialog.tsx:131 }
   toastEditedBody: { type: status, component: Status, text: { key: KoskGrantDialog.savedBody, params: { name: person.name } }, in: [listed], when: "toast == 'edited'", source: apps/nizam/features/grants/components/grant-dialog.tsx:132 }
-  toastRevokedTitle: { type: status, component: Status, text: { key: KoskRevokeDialog.revoked }, in: [listed], when: "toast == 'revoked'", source: apps/nizam/features/grants/components/revoke-dialog.tsx:302 }
-  toastRevokedBody: { type: status, component: Status, text: { key: KoskRevokeDialog.revokedBody, params: { name: person.name, course: course.title } }, in: [listed], when: "toast == 'revoked'", source: apps/nizam/features/grants/components/revoke-dialog.tsx:303 }
+  toastRevokedTitle: { type: status, component: Status, text: { key: KoskRevokeDialog.revoked }, in: [listed], when: "toast == 'revoked'", source: apps/nizam/features/grants/components/revoke-dialog.tsx:60 }
+  toastRevokedBody: { type: status, component: Status, text: { key: KoskRevokeDialog.revokedBody, params: { name: person.name, course: course.title } }, in: [listed], when: "toast == 'revoked'", source: apps/nizam/features/grants/components/revoke-dialog.tsx:61 }
 
   # ---- the dialog "Ders nazırı ata" and the dialog "İzinleri düzenle": one component, two modes ------------------------------------
   assignDialog: { type: page, component: Page, role: dialog, name: { labelledBy: assignTitle }, in: [asking, searching, picked, ready, appointing], initialFocus: closeIcon, source: apps/nizam/features/grants/components/grant-dialog.tsx:139 } # a form dialog; the scrim does not close it; its whole body is its description (F-UI-W1-1); it opens on the close icon (F-W2-12)
@@ -153,22 +153,22 @@ nodes:
   # a refusal: an error toast over the dialog, which stays open; it stays until it is closed. One title for each dialog, one sentence for each code the page words
   toastAssignFailed: { type: status, component: Status, text: { key: KoskGrantDialog.assignFailed }, in: [ready], when: "toast in ['exists', 'refused']", source: apps/nizam/features/grants/components/grant-dialog.tsx:124 }
   toastEditFailed: { type: status, component: Status, text: { key: KoskGrantDialog.failed }, in: [editReady], when: "toast in ['gone', 'refused']", source: apps/nizam/features/grants/components/grant-dialog.tsx:124 }
-  toastRevokeFailed: { type: status, component: Status, text: { key: KoskRevokeDialog.failed }, in: [revoking], when: "toast in ['gone', 'handedOn', 'refused']", source: apps/nizam/features/grants/components/revoke-dialog.tsx:296 }
-  toastExists: { type: status, component: Status, text: { key: KoskGrantsPage.errors.exists }, in: [ready], when: "toast == 'exists'", source: apps/nizam/features/grants/present.ts:238 } # COURSE_NAZIR_EXISTS
-  toastGone: { type: status, component: Status, text: { key: KoskGrantsPage.errors.notFound }, in: [editReady, revoking], when: "toast == 'gone'", source: apps/nizam/features/grants/present.ts:239 } # COURSE_NAZIR_NOT_FOUND
-  toastHandedOn: { type: status, component: Status, text: { key: KoskGrantsPage.errors.handedOn }, in: [revoking], when: "toast == 'handedOn'", source: apps/nizam/features/grants/present.ts:243 } # DISMISS_SEAT_HANDED_ON
-  toastRefused: { type: status, component: Status, text: { oneOf: [KoskGrantsPage.errors.exceeds, KoskGrantsPage.errors.unknownPermission, KoskGrantsPage.errors.courseInvalid, KoskGrantsPage.errors.expiryInvalid, KoskGrantsPage.errors.unknownAccount, KoskGrantsPage.errors.forbidden, KoskGrantsPage.errors.generic] }, in: [ready, editReady, revoking], when: "toast == 'refused'", source: apps/nizam/features/grants/present.ts:247 } # which sentence depends on the code (grantErrorKey); SELF_GRANT_REFUSED is the generic one (GRANTS-1); the binding gives them as one pattern
+  toastRevokeFailed: { type: status, component: Status, text: { key: KoskRevokeDialog.failed }, in: [revoking], when: "toast in ['gone', 'handedOn', 'refused']", source: apps/nizam/features/grants/components/revoke-dialog.tsx:54 }
+  toastExists: { type: status, component: Status, text: { key: KoskGrantsPage.errors.exists }, in: [ready], when: "toast == 'exists'", source: apps/nizam/features/grants/present.ts:90 } # COURSE_NAZIR_EXISTS
+  toastGone: { type: status, component: Status, text: { key: KoskGrantsPage.errors.notFound }, in: [editReady, revoking], when: "toast == 'gone'", source: apps/nizam/features/grants/present.ts:91 } # COURSE_NAZIR_NOT_FOUND
+  toastHandedOn: { type: status, component: Status, text: { key: KoskGrantsPage.errors.handedOn }, in: [revoking], when: "toast == 'handedOn'", source: apps/nizam/features/grants/present.ts:95 } # DISMISS_SEAT_HANDED_ON
+  toastRefused: { type: status, component: Status, text: { oneOf: [KoskGrantsPage.errors.exceeds, KoskGrantsPage.errors.unknownPermission, KoskGrantsPage.errors.courseInvalid, KoskGrantsPage.errors.expiryInvalid, KoskGrantsPage.errors.unknownAccount, KoskGrantsPage.errors.forbidden, KoskGrantsPage.errors.generic] }, in: [ready, editReady, revoking], when: "toast == 'refused'", source: apps/nizam/features/grants/present.ts:99 } # which sentence depends on the code (grantErrorKey); SELF_GRANT_REFUSED is the generic one (GRANTS-1); the binding gives them as one pattern
 
   # ---- the dialog "Görevden al" ----------------------------------------------------------------------------------------------------------
-  revokeDialog: { type: page, component: Page, role: dialog, name: { labelledBy: revokeTitle }, in: [revoking, dismissing], initialFocus: revokeCancel, source: apps/nizam/features/grants/components/revoke-dialog.tsx:313 } # a form dialog (CNDIS-1), size sm; the scrim does not close it; the focus starts on "Vazgeç" (e2e grants#8 a1)
-  revokeEyebrow: { type: text, component: Text, text: { key: composed.RevokeDialog.eyebrow, params: { title: course.title } }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:321 } # the course's title above the title (data, not a message)
-  revokeTitle: { type: text, component: Heading, role: heading, text: { key: KoskRevokeDialog.title }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:322 } # h2
-  revokeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: KoskRevokeDialog.close }, in: [revoking, dismissing], emits: CANCEL, source: apps/nizam/features/grants/components/revoke-dialog.tsx:323 } # ignored while the call is on and nothing marks it (CNDIS-3)
-  revokeIntro: { type: text, component: Text, text: { key: KoskRevokeDialog.intro, params: { name: person.name, course: course.title } }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:336 }
-  revokeEffect: { type: text, component: Text, text: { key: KoskRevokeDialog.effect }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:341 } # a caption
-  revokeMeta: { type: text, component: Text, text: { key: KoskRevokeDialog.auditNote }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:325 } # the footer's <p class=mds-dialog__meta>
-  revokeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: KoskRevokeDialog.cancel }, in: [revoking, dismissing], emits: CANCEL, source: apps/nizam/features/grants/components/revoke-dialog.tsx:328 } # the focus starts here; while the call is on it does nothing and does not look off (CNDIS-3)
-  confirmRevoke: { type: action, component: Button, role: button, intent: dismiss, text: { key: KoskRevokeDialog.submit }, in: [revoking, dismissing], disabledIn: [dismissing], emits: CONFIRM, source: apps/nizam/features/grants/components/revoke-dialog.tsx:329 } # "Görevden al", busy in `dismissing`
+  revokeDialog: { type: page, component: Page, role: dialog, name: { labelledBy: revokeTitle }, in: [revoking, dismissing], initialFocus: revokeCancel, source: apps/nizam/features/grants/components/revoke-dialog.tsx:71 } # a form dialog (CNDIS-1), size sm; the scrim does not close it; the focus starts on "Vazgeç" (e2e grants#8 a1)
+  revokeEyebrow: { type: text, component: Text, text: { key: composed.RevokeDialog.eyebrow, params: { title: course.title } }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:79 } # the course's title above the title (data, not a message)
+  revokeTitle: { type: text, component: Heading, role: heading, text: { key: KoskRevokeDialog.title }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:80 } # h2
+  revokeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: KoskRevokeDialog.close }, in: [revoking, dismissing], emits: CANCEL, source: apps/nizam/features/grants/components/revoke-dialog.tsx:81 } # ignored while the call is on and nothing marks it (CNDIS-3)
+  revokeIntro: { type: text, component: Text, text: { key: KoskRevokeDialog.intro, params: { name: person.name, course: course.title } }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:94 }
+  revokeEffect: { type: text, component: Text, text: { key: KoskRevokeDialog.effect }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:99 } # a caption
+  revokeMeta: { type: text, component: Text, text: { key: KoskRevokeDialog.auditNote }, in: [revoking, dismissing], source: apps/nizam/features/grants/components/revoke-dialog.tsx:83 } # the footer's <p class=mds-dialog__meta>
+  revokeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: KoskRevokeDialog.cancel }, in: [revoking, dismissing], emits: CANCEL, source: apps/nizam/features/grants/components/revoke-dialog.tsx:86 } # the focus starts here; while the call is on it does nothing and does not look off (CNDIS-3)
+  confirmRevoke: { type: action, component: Button, role: button, intent: dismiss, text: { key: KoskRevokeDialog.submit }, in: [revoking, dismissing], disabledIn: [dismissing], emits: CONFIRM, source: apps/nizam/features/grants/components/revoke-dialog.tsx:87 } # "Görevden al", busy in `dismissing`
 
   # ---- the refusal: the title of the app's own screen, which nizam.shell.noAccessAndNotFound draws whole ------------------------------
   refusalPage: { type: page, component: Page, role: main, in: [refused, not_found], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's <main>; the face is a section inside it
@@ -196,7 +196,7 @@ rules:
     rule: >-
       Nothing in features/grants moves the focus when the page opens or when a toast shows. The two dialogs "Ders nazırı ata" and "İzinleri düzenle" are opened with no
       `initialFocus` (grant-dialog.tsx:139-159, libs/ui/src/mds/dialog.tsx:138 gives Base UI `undefined` for a form), so the focus is on the close icon, not the e-mail field:
-      the same as F-W2-12 of nizam.madrasahs.headMuderris. Only "Görevden al" names its first stop, "Vazgeç" (revoke-dialog.tsx:324; e2e grants#8 a1). Not verified in a browser.
+      the same as F-W2-12 of nizam.madrasahs.headMuderris. Only "Görevden al" names its first stop, "Vazgeç" (revoke-dialog.tsx:82; e2e grants#8 a1). Not verified in a browser.
   - id: F-W2-12
     rule: >-
       The assignment and the edit open on the header's close icon, one stop before the field a keyboard or screen-reader user came for (grant-dialog.tsx:139, libs/ui/src/mds/dialog.tsx:138).
@@ -218,7 +218,7 @@ rules:
       enabled and name what is missing when it is pressed, or tie the reason to it with aria-describedby.
   - id: CAPPOINT-1
     rule: >-
-      While a call is on, "Vazgeç", the close icon and Esc do nothing (`onOpenChange` ignores a close while `saving`, grant-dialog.tsx:141-143 and revoke-dialog.tsx:315-317), and are neither disabled nor
+      While a call is on, "Vazgeç", the close icon and Esc do nothing (`onOpenChange` ignores a close while `saving`, grant-dialog.tsx:141-143 and revoke-dialog.tsx:73-75), and are neither disabled nor
       marked; only "Kaydet" / "Görevden al" look busy and the boxes, the select and the end field are disabled. The same as CAPPOINT-1 and CNDIS-3. Fix: disable them with aria-disabled while it is pending.
   - id: CAPPOINT-3
     rule: >-
@@ -255,14 +255,14 @@ rules:
       is not told it is a confirmation. e2e grants#8 finds it as a dialog. Fix: AlertDialog with a busy confirm button, as nazar's Pano does.
   - id: GRANTS-1
     rule: >-
-      New. SELF_GRANT_REFUSED, and every other code the page does not word, is "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." (grantErrorKey, present.ts:234-253: the nine codes it names are not SELF_GRANT_REFUSED,
+      New. SELF_GRANT_REFUSED, and every other code the page does not word, is "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." (grantErrorKey, present.ts:86-105: the nine codes it names are not SELF_GRANT_REFUSED,
       VALIDATION_ERROR, KEYCLOAK_ADMIN_UNAVAILABLE or KOSK_NOT_FOUND). The nazım who types his own address is shown himself as "Seçilen ders nazırı" with no warning (HeadPicker knows no viewer; nazar's dialog warns before
       sending, "Kendinizi ders nazırı yapamazsınız."), picks a course and boxes, presses "Kaydet" and is told to try again later, when the server has refused him for good (kosk-grants.controller.ts:98-104) and written an
       audit row `permission.self_grant_refused`. The başnazım may do it (SYSTEM_ADMIN is not asked, self-grant.guard.ts:67). Fix: compare the person's id with `viewerId`, which the page has, and warn beside the person;
       give SELF_GRANT_REFUSED its own sentence (decision D1; HEAD-4 is the same habit on the medrese's pages).
   - id: GRANTS-2
     rule: >-
-      New. A refused write re-reads nothing. On any failure each dialog shows a toast and returns (grant-dialog.tsx:123-129, revoke-dialog.tsx:295-300), with no `onSaved`, so the list stays as the page had it.
+      New. A refused write re-reads nothing. On any failure each dialog shows a toast and returns (grant-dialog.tsx:123-129, revoke-dialog.tsx:53-58), with no `onSaved`, so the list stays as the page had it.
       COURSE_NAZIR_NOT_FOUND (a post that was ended elsewhere) leaves the dialog open on a row that is gone, and "Görevden al" can be pressed again with the same answer for ever; COURSE_NAZIR_EXISTS leaves the
       person off a list that does not show the post made elsewhere. nazar's page closes the dialog and reads the list again on both codes (CNP-1, CNDIS-4). Fix: on those two codes call `onSaved` and close, and
       keep the toast (decision D2).
@@ -279,7 +279,7 @@ rules:
   - id: GRANTS-5
     rule: >-
       New. "Görevden al" is on for a person who has appointed others (a ders nazırı who holds `course_nazir.assign`), and the refusal comes only after the nazım has confirmed: "Bu ders nazırının atadığı kişiler hâlâ görevde;
-      önce onları görevden alın." (DISMISS_SEAT_HANDED_ON, revoke-dialog.tsx:295-300, present.ts:243), without naming them. nazar's table disables the button and counts them (CNDIS-2, with its own finding that a disabled button
+      önce onları görevden alın." (DISMISS_SEAT_HANDED_ON, revoke-dialog.tsx:53-58, present.ts:95), without naming them. nazar's table disables the button and counts them (CNDIS-2, with its own finding that a disabled button
       leaves the tab order). The list does show the appointees as rows with the giver's name, so the nazım can find them. Fix: mark the row, or name the appointees in the toast.
   - id: GRANTS-6
     rule: >-

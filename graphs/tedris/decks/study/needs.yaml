@@ -1,130 +1,187 @@
-# What the study round must do, in the product's words, and where the code and the checks stand (graphs/LAYOUT.md §7). Written on 15 Nov 2026 from the
-# flow's story, the inventory's findings and the code's own comments; nothing was replayed, so no `walked` entry names a replay.
+schema: delurio-graph/0
+kind: needs
+id: tedris.decks.study
+status: proposed
+summary: >-
+  Written on 15 Nov 2026 from the flow's story, the inventory's findings and the code's own comments; nothing was replayed, so no
+  `walked` entry names a replay.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For the orchestrator's gaps merge (graphs/needs.gaps.yaml, flow tedris.decks.study):
-#   missing:  refused-write-can-be-skipped (STUDY-1), network-failure-resets-the-buttons (DCK-02), turn-and-rate-are-announced (DCK-01, DCK-03, DCK-04, DCK-05),
-#             empty-deck-says-so (DCK-27), hard-card-returns-in-the-round (decision D1), caption-counts-the-round (STUDY-2)
-#   unwalked: failed-write-keeps-the-card (a unit spec only; the stack cannot refuse a rating without binding.failed.yaml, which was not run),
-#             session-over-goes-back-to-the-round (no e2e, no replay: the session cannot be ended from a walk)
-#   partly:   turn-the-card (learn#8 and #9 walk the button and the space bar; the click on the card is walked by nothing),
-#             rating-writes-the-card-once (learn#10 reads the rows but counts no writes: LE-02 of the inventory)
+# missing:  refused-write-can-be-skipped (STUDY-1), network-failure-resets-the-buttons (DCK-02), turn-and-rate-are-announced (DCK-01, DCK-03, DCK-04, DCK-05),
+# empty-deck-says-so (DCK-27), hard-card-returns-in-the-round (decision D1), caption-counts-the-round (STUDY-2)
+# unwalked: failed-write-keeps-the-card (a unit spec only; the stack cannot refuse a rating without binding.failed.yaml, which was not run),
+# session-over-goes-back-to-the-round (no e2e, no replay: the session cannot be ended from a walk)
+# partly:   turn-the-card (learn#8 and #9 walk the button and the space bar; the click on the card is walked by nothing),
+# rating-writes-the-card-once (learn#10 reads the rows but counts no writes: LE-02 of the inventory)
 # Gender separation does not touch this flow: a deck has no seat.
-kind: needs
-flow: tedris.decks.study
-status: proposed
+
 needs:
   - id: rating-writes-the-card-once
     need: >-
-      Rating a card "Zor", "Orta" or "Kolay" writes that one card's progress at once and exactly once, and the API, not the page, decides the card's status and
-      when it is due again (HARD one day, MEDIUM at least three, EASY at least seven, never over 180). The smallest scheme that answers "what waits for me
-      today" is what exists; the code's own comment says whether it is the one the product wants is not decided.
-    drawn: [rating, saved, hard, medium, easy, a-round-ends-only-through-saved-ratings]
-    built:
-      - action: medaris.api:saveCardProgress
-      - route: apps/tedris/features/flashcards/actions/index.ts:186
-      - route: apps/tedrisat/src/flashcard/domain/review-schedule.ts:28
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#10'
+      Rating a card "Zor", "Orta" or "Kolay" writes that one card's progress at once and exactly once, and the API, not the page,
+      decides the card's status and when it is due again (HARD one day, MEDIUM at least three, EASY at least seven, never over
+      180). The smallest scheme that answers "what waits for me today" is what exists; the code's own comment says whether it is
+      the one the product wants is not decided.
+    evidence:
+      - state: rating
+      - state: saved
+      - node: hard
+      - node: medium
+      - node: easy
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:234
+      - source: apps/tedris/features/flashcards/actions/index.ts:186
+      - source: apps/tedrisat/src/flashcard/domain/review-schedule.ts:28
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "rating a card writes its progress once, schedules it, and moves on; the round ends with a summary"
+    note: Also drawn as the assertion a-round-ends-only-through-saved-ratings.
+
   - id: round-order
     need: >-
-      A round starts with the cards waiting for a repeat (the never-rated ones first, then the oldest due), then at most ten cards the person has never studied,
-      and shows the first one face up with its back hidden.
-    drawn: [opening, front, subtitleDue, subtitleNew, badgeLearning, badgeNew, roundBar]
-    built:
-      - action: medaris.api:getStudyRound
-      - route: apps/tedris/features/flashcards/components/study-session.tsx:117
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#7'
+      A round starts with the cards waiting for a repeat (the never-rated ones first, then the oldest due), then at most ten cards
+      the person has never studied, and shows the first one face up with its back hidden.
+    evidence:
+      - state: opening
+      - state: front
+      - node: subtitleDue
+      - node: subtitleNew
+      - node: badgeLearning
+      - node: badgeNew
+      - node: roundBar
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:175
+      - source: apps/tedris/features/flashcards/components/study-session.tsx:117
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "starts with the cards waiting for a repeat, then the unstarted one; the back is hidden"
+
   - id: turn-the-card
     need: >-
-      The back is shown by the button "Arka yüzü göster", by the space bar or by a click on the card, and the three ratings come with it; the space bar turns
-      the card back again.
-    drawn: [front, back, showBack, hard, medium, easy]
-    built:
-      - route: apps/tedris/features/flashcards/components/study-session.tsx:74
-      - route: apps/tedris/features/flashcards/components/study-session.tsx:238
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#8'
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#9'
+      The back is shown by the button "Arka yüzü göster", by the space bar or by a click on the card, and the three ratings come
+      with it; the space bar turns the card back again.
+    evidence:
+      - state: front
+      - state: back
+      - node: showBack
+      - node: hard
+      - node: medium
+      - node: easy
+      - source: apps/tedris/features/flashcards/components/study-session.tsx:74
+      - source: apps/tedris/features/flashcards/components/study-session.tsx:238
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "turning a card over shows its back and the three ratings"
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "the space bar turns the card over"
+
   - id: leave-the-round
-    need: >-
-      "Çalışmayı bitir" leaves for the deck's page at any moment and leaves the cards not rated as they were.
-    drawn: [finishLink, deck_page_opened]
-    built:
-      - route: apps/tedris/features/flashcards/components/study-session.tsx:135
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#11'
+    need: "\"Çalışmayı bitir\" leaves for the deck's page at any moment and leaves the cards not rated as they were."
+    evidence:
+      - node: finishLink
+      - state: deck_page_opened
+      - source: apps/tedris/features/flashcards/components/study-session.tsx:135
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "'Çalışmayı bitir' leaves the cards that are left as they are"
+
   - id: end-of-round
     need: >-
-      After the last card the page says the round is done and how many cards were studied, and a later visit to the same address finds nothing due and says so.
-    drawn: [finished, doneTitle, doneText, nothing, nothingTitle]
-    built:
-      - route: apps/tedris/features/flashcards/components/study-session.tsx:166
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#10'
+      After the last card the page says the round is done and how many cards were studied, and a later visit to the same address
+      finds nothing due and says so.
+    evidence:
+      - state: finished
+      - node: doneTitle
+      - node: doneText
+      - state: nothing
+      - node: nothingTitle
+      - source: apps/tedris/features/flashcards/components/study-session.tsx:166
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "rating a card writes its progress once, schedules it, and moves on; the round ends with a summary"
+
   - id: refused-deck-is-not-found
     need: >-
-      A deck that is not there for the person (no such id, an id that is no uuid, another person's private deck, a shared deck that has been hidden) is the page
-      "Sayfa bulunamadı", the same page for each, and says nothing of whether the deck exists.
-    drawn: [notFound, notFoundTitle, goHome]
-    built:
-      - action: medaris.api:getStudyRound
-      - route: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:58"
-    walked:
-      - e2e: apps/tedris/e2e/learn.e2e.ts
-        check: 'learn#12'
+      A deck that is not there for the person (no such id, an id that is no uuid, another person's private deck, a shared deck
+      that has been hidden) is the page "Sayfa bulunamadı", the same page for each, and says nothing of whether the deck exists.
+    evidence:
+      - state: notFound
+      - node: notFoundTitle
+      - node: goHome
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:175
+      - source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:58"
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "another person's private deck is the not-found page"
+
   - id: failed-write-keeps-the-card
     need: >-
-      A rating the API refuses keeps the card, its back and the buttons where they were and raises one error toast, so the person can try again; a later
-      success does not hide the toast, and the toast can be closed.
-    drawn: [back, failedToast, failedTitle, failedText, failedClose]
-    built:
-      - route: apps/tedris/features/flashcards/components/study-session.tsx:97
-    # the unit spec test/study-session.spec.ts ("keeps the card and says so when the write fails") pins it; no e2e and no replay walks it
+      A rating the API refuses keeps the card, its back and the buttons where they were and raises one error toast, so the person
+      can try again; a later success does not hide the toast, and the toast can be closed.
+    evidence:
+      - state: back
+      - node: failedToast
+      - node: failedTitle
+      - node: failedText
+      - node: failedClose
+      - source: apps/tedris/features/flashcards/components/study-session.tsx:97
+    note: >-
+      the unit spec test/study-session.spec.ts ("keeps the card and says so when the write fails") pins it; no e2e and no replay
+      walks it
+
   - id: session-over-goes-back-to-the-round
     need: >-
-      A session that ends while a rating is written sends the person to sign in and back to the same round, in which the cards already rated are no longer due.
-    drawn: [sent_to_sign_in, rating]
-    built:
-      - route: apps/tedris/features/flashcards/components/study-session.tsx:95
+      A session that ends while a rating is written sends the person to sign in and back to the same round, in which the cards
+      already rated are no longer due.
+    evidence:
+      - state: sent_to_sign_in
+      - state: rating
+      - source: apps/tedris/features/flashcards/components/study-session.tsx:95
+
   - id: refused-write-can-be-skipped
     need: >-
-      When the API answers a rating with 404 (the author deleted the card) or 403 (the deck stopped being readable), a retry can never work: the round must let
-      the person go past the card, or say that it cannot be saved. Today the toast says "Yeniden dene" and the card blocks the round (STUDY-1, decision D2).
-    drawn: [back, failedText, rating]
-    missing: none
+      When the API answers a rating with 404 (the author deleted the card) or 403 (the deck stopped being readable), a retry can
+      never work: the round must let the person go past the card, or say that it cannot be saved. Today the toast says "Yeniden
+      dene" and the card blocks the round (STUDY-1, decision D2).
+    missing: no Linear issue; STUDY-1
+    note: >-
+      Drawn on the states back and rating and on the node failedText, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
   - id: network-failure-resets-the-buttons
     need: >-
-      A rating whose call never comes back (the network is down) must give the buttons back and raise the same toast as any refusal; today they stay disabled
-      for good and nothing says why (DCK-02).
-    drawn: [stuck, rating]
-    missing: none
+      A rating whose call never comes back (the network is down) must give the buttons back and raise the same toast as any
+      refusal; today they stay disabled for good and nothing says why (DCK-02).
+    missing: no Linear issue; DCK-02
+    note: >-
+      Drawn on the states stuck and rating, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
+
   - id: turn-and-rate-are-announced
     need: >-
-      Turning a card, rating it and ending the round move the focus or announce what appeared, and the space bar and the click on the card have a keyboard and
-      a screen-reader way that is named in the page (DCK-01, DCK-03, DCK-04, DCK-05).
-    drawn: [front, back, finished, nothing, showBack]
-    missing: none
+      Turning a card, rating it and ending the round move the focus or announce what appeared, and the space bar and the click on
+      the card have a keyboard and a screen-reader way that is named in the page (DCK-01, DCK-03, DCK-04, DCK-05).
+    missing: no Linear issue; DCK-01, DCK-03, DCK-04, DCK-05
+    note: >-
+      Drawn on the states front, back, finished and nothing and on the node showBack, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
   - id: empty-deck-says-so
-    need: >-
-      A deck with no cards says it has none and offers a way to add one, not "come back tomorrow" (DCK-27).
-    drawn: [nothing, nothingText]
-    missing: none
+    need: A deck with no cards says it has none and offers a way to add one, not "come back tomorrow" (DCK-27).
+    missing: no Linear issue; DCK-27
+    note: >-
+      Drawn on the state nothing and on the node nothingText, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
   - id: hard-card-returns-in-the-round
     need: >-
-      Decide whether a card rated "Zor" is asked again later in the same round: the queue is fixed when the page opens and "Zor" only makes the card due in a day
-      (decision D1).
-    drawn: [back, counted]
-    missing: none
+      Decide whether a card rated "Zor" is asked again later in the same round: the queue is fixed when the page opens and "Zor"
+      only makes the card due in a day (decision D1).
+    missing: no Linear issue; decision D1
+    note: >-
+      Drawn on the states back and counted, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
+
   - id: caption-counts-the-round
     need: >-
-      The caption under "Çalışma" names the whole round, or says which part it counts: "Bugün tekrar bekleyen 2 kart" over a bar of "0 / 3 kart" counts the repeats
-      only (STUDY-2).
-    drawn: [subtitleDue, roundBar]
-    missing: none
+      The caption under "Çalışma" names the whole round, or says which part it counts: "Bugün tekrar bekleyen 2 kart" over a bar
+      of "0 / 3 kart" counts the repeats only (STUDY-2).
+    missing: no Linear issue; STUDY-2
+    note: >-
+      Drawn on the nodes subtitleDue and roundBar, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

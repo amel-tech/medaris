@@ -1,165 +1,222 @@
-# What must exist for a köşk nazımı to change the hocas of one of her köşk's courses: the flow's product list (LAYOUT.md section 7).
-# Each need is what the product must do, from the flow's story and the owner's decisions, not from what the page does today; the
-# known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nizam.courses.editHocalar
+status: proposed
+summary: "What must exist for a köşk nazımı to change the hocas of one of her köşk's courses: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # missing:  search-only-when-asked, say-the-search-outcomes, say-why-kaydet-is-off, offer-the-button-to-those-who-may,
-#           keep-what-the-dialog-does-not-show, read-only-the-hocas, a-gone-course-is-told (all `missing: none`, no Linear key)
+# keep-what-the-dialog-does-not-show, read-only-the-hocas, a-gone-course-is-told (all `missing: none`, no Linear key)
 # unwalked: see-who-teaches, take-a-hoca-off, a-refusal-is-told-by-its-code, a-moved-course-is-not-overwritten (code exists; no e2e
-#           and no replay has walked them: courses#5 presses "Çıkar" on the one hoca but no check saves a removal, and courses#4 never
-#           reads the row. This phase runs no replay. The refusals other than the moved version and the 403 cannot be made on the
-#           local stack)
-kind: needs
-flow: nizam.courses.editHocalar
-status: proposed
+# and no replay has walked them: courses#5 presses "Çıkar" on the one hoca but no check saves a removal, and courses#4 never
+# reads the row. This phase runs no replay. The refusals other than the moved version and the 403 cannot be made on the
+# local stack)
 
 needs:
   - id: see-who-teaches
     need: >-
-      The nazım reads, on the row of each of the köşk's own courses, who teaches it and who the imam is, and the row follows a change
-      of the list at once, without a reload (MDRS-221).
-    drawn: [listed, rowEdit, saved]
-    built:
-      - action: medaris.api:getKoskCourseRoster
-      - route: apps/nizam/features/kosks/components/kosk-course-table.tsx:152
-      - route: apps/nizam/features/kosks/components/kosk-course-table.tsx:381
+      The nazım reads, on the row of each of the köşk's own courses, who teaches it and who the imam is, and the row follows a
+      change of the list at once, without a reload (MDRS-221).
+    evidence:
+      - state: listed
+      - node: rowEdit
+      - state: saved
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:234
+      - source: apps/nizam/features/kosks/components/kosk-course-table.tsx:152
+      - source: apps/nizam/features/kosks/components/kosk-course-table.tsx:381
 
   - id: open-the-dialog-on-a-course
     need: >-
       From the course's row she opens a dialog that lists the course's hocas as they are now, with the imam marked, and that takes
       the course's version, so that what she saves is judged against what she saw.
-    drawn: [reading, form, hocasDialog, eyebrow, teamGroup, radioImam, imamBadge, auditNote]
-    built:
-      - action: medaris.api:getCourse
-      - route: apps/nizam/features/courses/components/muderris-dialog.tsx:64
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#4'
-      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
-        check: 'kosk-view#8'
+    evidence:
+      - state: reading
+      - state: form
+      - node: hocasDialog
+      - node: eyebrow
+      - node: teamGroup
+      - node: radioImam
+      - node: imamBadge
+      - node: auditNote
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/nizam/features/courses/components/muderris-dialog.tsx:64
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1–3, 5: the dialog shows the imam, adds a person, moves the imam, and the change is audited"
+      - test: apps/nizam/e2e/kosk-view.e2e.ts
+        name: "nizam/23 — a medrese's course has Dersi gör and no Düzenle; an own one has them all"
 
   - id: add-a-hoca-by-email
     need: >-
       She adds a hoca by the exact e-mail address of their account, which must be in the realm; an address nobody has finds no one
       and says so, and a person already on the list is not added twice. Each search is written to the audit log.
-    drawn: [form, looking, searchField, searchNotFoundField, searchNotFoundAlert, searchListedAlert, searchDownAlert, added]
-    built:
-      - action: medaris.api:lookupUser
-      - route: apps/nizam/features/courses/components/team-picker.tsx:80
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#4'
+    evidence:
+      - state: form
+      - state: looking
+      - node: searchField
+      - node: searchNotFoundField
+      - node: searchNotFoundAlert
+      - node: searchListedAlert
+      - node: searchDownAlert
+      - node: added
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/courses/components/team-picker.tsx:80
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1–3, 5: the dialog shows the imam, adds a person, moves the imam, and the change is audited"
 
   - id: move-the-imam
     need: >-
-      She marks which of several hocas is the imam with a radio, the choice alone makes the list saveable, and a single hoca is the
-      imam.
-    drawn: [form, formReady, radioSole, radioImam, radioOther, radioUnset, imamBadge, imamRequired]
-    built:
-      - route: apps/nizam/features/courses/present.ts:289
-      - route: apps/nizam/features/courses/components/team-picker.tsx:182
-      - action: medaris.api:setCourseMuderris
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#4'
+      She marks which of several hocas is the imam with a radio, the choice alone makes the list saveable, and a single hoca is
+      the imam.
+    evidence:
+      - state: form
+      - state: formReady
+      - node: radioSole
+      - node: radioImam
+      - node: radioOther
+      - node: radioUnset
+      - node: imamBadge
+      - node: imamRequired
+      - source: apps/nizam/features/courses/present.ts:289
+      - source: apps/nizam/features/courses/components/team-picker.tsx:182
+      - source: apps/tedrisat/src/course/course.controller.ts:368
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1–3, 5: the dialog shows the imam, adds a person, moves the imam, and the change is audited"
 
   - id: take-a-hoca-off
     need: >-
-      She takes a hoca off the course with one press and saves the list; the person loses the hoca role of the course and the row no
-      longer names them. When the imam is taken off and one hoca is left that hoca is the imam; where several are left the page
+      She takes a hoca off the course with one press and saves the list; the person loses the hoca role of the course and the row
+      no longer names them. When the imam is taken off and one hoca is left that hoca is the imam; where several are left the page
       asks for the imam.
-    drawn: [form, formReady, removeImam, removeOther, imamRequired, saving, saved]
-    built:
-      - action: medaris.api:setCourseMuderris
-      - route: apps/nizam/features/courses/present.ts:310
+    evidence:
+      - state: form
+      - state: formReady
+      - node: removeImam
+      - node: removeOther
+      - node: imamRequired
+      - state: saving
+      - state: saved
+      - source: apps/tedrisat/src/course/course.controller.ts:368
+      - source: apps/nizam/features/courses/present.ts:310
 
   - id: the-list-cannot-be-saved-empty
     need: >-
-      A course always keeps at least one hoca: when the last one is taken off the page says so at once and does not let the list be
-      saved, and the API refuses an empty list as well.
-    drawn: [form, emptyError, save, an-empty-list-is-never-sent]
-    built:
-      - route: apps/nizam/features/courses/present.ts:321
-      - action: medaris.api:setCourseMuderris
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#5'
+      A course always keeps at least one hoca: when the last one is taken off the page says so at once and does not let the list
+      be saved, and the API refuses an empty list as well.
+    evidence:
+      - state: form
+      - node: emptyError
+      - node: save
+      - source: apps/nizam/features/courses/present.ts:321
+      - source: apps/tedrisat/src/course/course.controller.ts:368
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 4: the list cannot be saved empty"
+    note: Also drawn as the assertion an-empty-list-is-never-sent.
 
   - id: the-save-is-audited
     need: >-
       A save of the list is written to the audit log with the list before and after and the imam, and so is every e-mail search.
-    drawn: [saving, auditNote, looking]
-    built:
-      - action: medaris.api:setCourseMuderris
-      - action: medaris.api:lookupUser
-    walked:
-      - e2e: apps/nizam/e2e/courses.e2e.ts
-        check: 'courses#4'
+    evidence:
+      - state: saving
+      - node: auditNote
+      - state: looking
+      - source: apps/tedrisat/src/course/course.controller.ts:368
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1–3, 5: the dialog shows the imam, adds a person, moves the imam, and the change is audited"
 
   - id: a-refusal-is-told-by-its-code
     need: >-
-      When the server refuses the list (an account that is not in Medaris, a person listed twice, a list with no imam, no permission),
-      a toast says which, in her words, and the dialog stays open with what she built.
-    drawn: [saving, toastFailedTitle, toastUnknownUser, toastDuplicate, toastInvalid, toastForbidden, toastOther]
-    built:
-      - action: medaris.api:setCourseMuderris
-      - route: apps/nizam/features/courses/present.ts:1219
-      - route: apps/nizam/features/courses/components/muderris-dialog.tsx:102
+      When the server refuses the list (an account that is not in Medaris, a person listed twice, a list with no imam, no
+      permission), a toast says which, in her words, and the dialog stays open with what she built.
+    evidence:
+      - state: saving
+      - node: toastFailedTitle
+      - node: toastUnknownUser
+      - node: toastDuplicate
+      - node: toastInvalid
+      - node: toastForbidden
+      - node: toastOther
+      - source: apps/tedrisat/src/course/course.controller.ts:368
+      - source: apps/nizam/features/courses/present.ts:1219
+      - source: apps/nizam/features/courses/components/muderris-dialog.tsx:102
 
   - id: a-moved-course-is-not-overwritten
     need: >-
-      A list built on a course that somebody else has saved since is refused, says so, and the dialog reads the course again so that
-      she sees what is there now.
-    drawn: [form, formReady, saving, reading, toastConflict, a-moved-course-is-never-overwritten]
-    built:
-      - action: medaris.api:setCourseMuderris
-      - route: apps/nizam/features/courses/components/muderris-dialog.tsx:108
+      A list built on a course that somebody else has saved since is refused, says so, and the dialog reads the course again so
+      that she sees what is there now.
+    evidence:
+      - state: form
+      - state: formReady
+      - state: saving
+      - state: reading
+      - node: toastConflict
+      - source: apps/tedrisat/src/course/course.controller.ts:368
+      - source: apps/nizam/features/courses/components/muderris-dialog.tsx:108
+    note: Also drawn as the assertion a-moved-course-is-never-overwritten.
 
   - id: search-only-when-asked
     need: >-
       A search of the realm's directory, which the audit log keeps, runs when the person asks for it (Enter or a button) and never
       because the focus passed through the field (F-W4-20); an address that is not valid is told so.
-    drawn: [form, looking, searchField]
-    missing: none
+    missing: no Linear issue; findings F-W4-20
+    note: >-
+      Drawn on the states form and looking and on the node searchField, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: say-the-search-outcomes
     need: >-
-      The outcome of a search (nobody found, already listed, the directory down, a person added and, equally, a person taken off) is
-      said to a person who cannot see the screen, whether the list is empty or not, and the focus stays where she is (F-UI-W4-1,
-      F-W4-hocalar-6, F-W4-hocalar-8), and so is the read of the course.
-    drawn: [reading, looking, searching, added, searchNotFoundField, searchNotFoundAlert, searchDownField, searchDownAlert]
-    missing: none
+      The outcome of a search (nobody found, already listed, the directory down, a person added and, equally, a person taken off)
+      is said to a person who cannot see the screen, whether the list is empty or not, and the focus stays where she is
+      (F-UI-W4-1, F-W4-hocalar-6, F-W4-hocalar-8), and so is the read of the course.
+    missing: no Linear issue; findings F-UI-W4-1, F-W4-hocalar-6, F-W4-hocalar-8
+    note: >-
+      Drawn on the states reading and looking and on the nodes searching, added, searchNotFoundField, searchNotFoundAlert,
+      searchDownField and searchDownAlert, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: say-why-kaydet-is-off
     need: >-
       Where "Kaydet" is off the page says why in a sentence tied to the list (nothing changed, the list is empty, no imam among
       several), not only by an off button (F-X-3).
-    drawn: [form, emptyError, imamRequired, save]
-    missing: none
+    missing: no Linear issue; findings F-X-3
+    note: >-
+      Drawn on the state form and on the nodes emptyError, imamRequired and save, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: offer-the-button-to-those-who-may
     need: >-
       Dersler offers "Hocaları düzenle" only to a person who holds the right to change a course's hocas in that köşk, as Ders
       ayarları does, so that "Bu işlem için yetkiniz yok." is never the first word they hear (F-W4-hocalar-3, decision D1).
-    drawn: [listed, rowEdit, toastForbidden]
-    missing: none
+    missing: no Linear issue; findings F-W4-hocalar-3
+    note: >-
+      Drawn on the state listed and on the nodes rowEdit and toastForbidden, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: keep-what-the-dialog-does-not-show
     need: >-
       A hoca with no account, and the unvan each hoca carries in this course, are not destroyed by a list that does not show them:
       they are shown, or kept, or the person is told before they go (F-W4-hocalar-4, F-W4-hocalar-5, decision D2).
-    drawn: [form, formReady, teamGroup, saving]
-    missing: none
+    missing: no Linear issue; findings F-W4-hocalar-4, F-W4-hocalar-5
+    note: >-
+      Drawn on the states form, formReady and saving and on the node teamGroup, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: read-only-the-hocas
     need: >-
-      Opening the dialog reads only what it needs, the hocas and the version, and does not write a content read of the whole course
-      to the audit log each time (F-W4-hocalar-1).
-    drawn: [reading]
-    missing: none
+      Opening the dialog reads only what it needs, the hocas and the version, and does not write a content read of the whole
+      course to the audit log each time (F-W4-hocalar-1).
+    missing: no Linear issue; findings F-W4-hocalar-1
+    note: >-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: a-gone-course-is-told
     need: >-
       A course that is gone while the dialog is open is told in its own words and the dialog closes and the list is read again; a
       read that fails says why in a way a screen reader hears (F-W4-hocalar-2, F-W4-hocalar-9).
-    drawn: [reading, readFailed, readFailedAlert, saving, toastOther]
-    missing: none
+    missing: "all `missing: none`, no Linear key"
+    note: >-
+      Drawn on the states reading, readFailed and saving and on the nodes readFailedAlert and toastOther, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

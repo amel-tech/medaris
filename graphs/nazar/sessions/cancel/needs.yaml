@@ -1,205 +1,247 @@
-# What must exist for a müderris to cancel a celse and, in the same step, tell the talebe why and give them a make-up: nazar.sessions.cancel,
-# written on 15 Nov 2026 in the format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story and the planned
-# work (planned.md); none is read off what the page does today, and the ones the page does not meet say so under `missing`.
-# No replay has run (the owner's word: replays happen once, at the end), so no replay scenario is named under `walked`; the Vitest page spec
-# apps/nazar/test/sessions-page.spec.tsx and the action spec apps/nazar/test/course-actions.spec.ts, which run with the API stubbed, are named
-# as `test:`. No web e2e touches a cancellation (apps/nazar/e2e/course-scope.e2e.ts says so in its header).
-# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
-#   missing:  make-up-has-a-way-in (CANCEL-1), a-stale-page-is-refused-with-a-make-up (CANCEL-2), a-failed-cancel-leaves-no-stray-make-up
-#             (CANCEL-2), a-make-up-date-is-sane (CANCEL-5), the-date-error-clears-and-names-its-field (CANCEL-3, F-L-12),
-#             the-dialog-says-it-is-final (CANCEL-4), the-confirm-looks-final (F-C-course-a-20), the-note-limit-is-shown (CANCEL-6),
-#             focus-after-a-cancel (F-C-course-a-25, F-L-17), a-busy-dialog-says-so (F-C-course-a-26, -28), cancel-only-a-live-celse
-#             (cancel-no-type-check), refusal-says-why-in-its-own-words (lesson-cancelled-text-streams-only), a-cancel-frees-in-person-seats
-#             (MDRS-284)
-#   unwalked: cancel-keeps-the-celse, confirm-before-cancelling, the-note-reaches-the-talebe, make-up-in-the-same-step,
-#             telafi-leads-to-the-make-up, only-session-managers-cancel, a-refused-make-up-cancels-nothing, a-stale-page-is-refused,
-#             a-failed-cancel-after-a-make-up-is-told (code, and a Vitest spec with the API stubbed; no e2e and no replay yet)
+schema: delurio-graph/0
 kind: needs
-flow: nazar.sessions.cancel
+id: nazar.sessions.cancel
 status: proposed
+summary: >-
+  What must exist for a müderris to cancel a celse and, in the same step, tell the talebe why and give them a make-up:
+  nazar.sessions.cancel. Each need is what the product must do, from the flow's story and the planned work (planned.md); none is
+  read off what the page does today, and the ones the page does not meet say so under `missing`. No replay has run (the owner's
+  word: replays happen once, at the end), so no replay scenario is named under `walked`; the Vitest page spec
+  apps/nazar/test/sessions-page.spec.tsx and the action spec apps/nazar/test/course-actions.spec.ts, which run with the API
+  stubbed, are named as `test:`. No web e2e touches a cancellation (apps/nazar/e2e/course-scope.e2e.ts says so in its header).
 
 needs:
   - id: cancel-keeps-the-celse
     need: >-
-      A müderris can cancel a celse that has not begun. It stays in the programme marked as cancelled, so that the weeks do not renumber, nobody
-      turns up for it, and the talebe can still find it and read why.
-    drawn: [listed, cancelButton, cancellingAlone, cancelledShown, rowCancelled, noActions]
-    built:
-      - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:531
-      - route: apps/nazar/features/sessions/actions.ts:62
-    walked:
+      A müderris can cancel a celse that has not begun. It stays in the programme marked as cancelled, so that the weeks do not
+      renumber, nobody turns up for it, and the talebe can still find it and read why.
+    evidence:
+      - state: listed
+      - node: cancelButton
+      - state: cancellingAlone
+      - state: cancelledShown
+      - node: rowCancelled
+      - node: noActions
+      - source: apps/tedrisat/src/course/lesson.controller.ts:389
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:531
+      - source: apps/nazar/features/sessions/actions.ts:62
       - test: apps/nazar/test/sessions-page.spec.tsx
       - test: apps/nazar/test/course-actions.spec.ts
 
   - id: confirm-before-cancelling
     need: >-
-      A cancellation is asked for once, with the celse it acts on named, before anything is sent; the person can still change their mind.
-    drawn: [form, cancelDialog, dialogEyebrow, dialogBody, submit, cancel]
-    built:
-      - route: apps/nazar/features/sessions/components/cancel-dialog.tsx:139
-    walked:
+      A cancellation is asked for once, with the celse it acts on named, before anything is sent; the person can still change
+      their mind.
+    evidence:
+      - state: form
+      - node: cancelDialog
+      - node: dialogEyebrow
+      - node: dialogBody
+      - node: submit
+      - node: cancel
+      - source: apps/nazar/features/sessions/components/cancel-dialog.tsx:139
       - test: apps/nazar/test/sessions-page.spec.tsx
 
   - id: the-note-reaches-the-talebe
     need: >-
-      The hoca can write why, for the talebe, and the reason reaches them whole where they will look: in the notification, in the calendar mail
-      and on the celse's own page; an emptied note sends none.
-    drawn: [noteField, form, cancellingAlone, cancelledShown]
-    built:
-      - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/actions.ts:68
-      - route: apps/nazar/features/sessions/components/cancel-dialog.tsx:164
-    walked:
+      The hoca can write why, for the talebe, and the reason reaches them whole where they will look: in the notification, in the
+      calendar mail and on the celse's own page; an emptied note sends none.
+    evidence:
+      - node: noteField
+      - state: form
+      - state: cancellingAlone
+      - state: cancelledShown
+      - source: apps/tedrisat/src/course/lesson.controller.ts:389
+      - source: apps/nazar/features/sessions/actions.ts:68
+      - source: apps/nazar/features/sessions/components/cancel-dialog.tsx:164
       - test: apps/nazar/test/sessions-page.spec.tsx
       - test: apps/nazar/test/course-actions.spec.ts
 
   - id: make-up-in-the-same-step
     need: >-
-      The hoca can add the make-up celse while cancelling, on the date she chooses (a week later, at the same hour, to start with); the
-      cancelled celse is linked to it and the talebe are told of both.
-    drawn: [form, makeUpBox, dateField, timeField, makingUp, cancellingAfterMakeUp, madeUpLink]
-    built:
-      - action: medaris.api:createSessionBatch
-      - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/components/cancel-dialog.tsx:83
-    walked:
+      The hoca can add the make-up celse while cancelling, on the date she chooses (a week later, at the same hour, to start
+      with); the cancelled celse is linked to it and the talebe are told of both.
+    evidence:
+      - state: form
+      - node: makeUpBox
+      - node: dateField
+      - node: timeField
+      - state: makingUp
+      - state: cancellingAfterMakeUp
+      - node: madeUpLink
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/tedrisat/src/course/lesson.controller.ts:389
+      - source: apps/nazar/features/sessions/components/cancel-dialog.tsx:83
       - test: apps/nazar/test/sessions-page.spec.tsx
 
   - id: telafi-leads-to-the-make-up
-    need: >-
-      From the cancelled celse the hoca reaches its make-up in one step and sees where she landed.
-    drawn: [madeUpLink, madeUpFocused, makeUpName]
-    built:
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:296
-    walked:
+    need: From the cancelled celse the hoca reaches its make-up in one step and sees where she landed.
+    evidence:
+      - node: madeUpLink
+      - state: madeUpFocused
+      - node: makeUpName
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:296
       - test: apps/nazar/test/sessions-page.spec.tsx
 
   - id: only-session-managers-cancel
     need: >-
-      Only someone who holds the session permission is offered the cancel, and the API refuses anyone else; a person who holds only the stream
-      permission reads the same list without it.
-    drawn: [listedWithoutCancel, cancelButton, cancel-only-where-held]
-    built:
-      - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:519
-    walked:
+      Only someone who holds the session permission is offered the cancel, and the API refuses anyone else; a person who holds
+      only the stream permission reads the same list without it.
+    evidence:
+      - state: listedWithoutCancel
+      - node: cancelButton
+      - source: apps/tedrisat/src/course/lesson.controller.ts:389
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:519
       - test: apps/nazar/test/sessions-page.spec.tsx
+    note: Also drawn as the assertion cancel-only-where-held.
 
   - id: a-refused-make-up-cancels-nothing
-    need: >-
-      When the make-up cannot be made, nothing is cancelled and the person is told so, in words, with the reason.
-    drawn: [makingUp, toastMakeUpFailed, form]
-    built:
-      - action: medaris.api:createSessionBatch
-      - route: apps/nazar/features/sessions/components/cancel-dialog.tsx:84
-    walked:
+    need: When the make-up cannot be made, nothing is cancelled and the person is told so, in words, with the reason.
+    evidence:
+      - state: makingUp
+      - node: toastMakeUpFailed
+      - state: form
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/nazar/features/sessions/components/cancel-dialog.tsx:84
       - test: apps/nazar/test/sessions-page.spec.tsx
 
   - id: a-stale-page-is-refused
     need: >-
-      A cancel made from a page that went stale (someone else saved the course or cancelled the celse meanwhile) is refused, and the page is
-      read again, so that nobody cancels what they have not seen.
-    drawn: [cancellingAlone, toastCancelFailed, settled]
-    built:
-      - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/sessions.ts:524
-    walked:
+      A cancel made from a page that went stale (someone else saved the course or cancelled the celse meanwhile) is refused, and
+      the page is read again, so that nobody cancels what they have not seen.
+    evidence:
+      - state: cancellingAlone
+      - node: toastCancelFailed
+      - state: settled
+      - source: apps/tedrisat/src/course/lesson.controller.ts:389
+      - source: apps/nazar/features/sessions/sessions.ts:524
       - test: apps/nazar/test/course-actions.spec.ts
 
   - id: a-failed-cancel-after-a-make-up-is-told
     need: >-
-      When the cancel fails after the make-up was made, the person is told which half stands, so that they know what the talebe were sent.
-    drawn: [cancellingAfterMakeUp, toastAfterMakeUpFailed]
-    built:
-      - action: medaris.api:cancelLesson
-      - route: apps/nazar/features/sessions/components/cancel-dialog.tsx:108
-    walked:
+      When the cancel fails after the make-up was made, the person is told which half stands, so that they know what the talebe
+      were sent.
+    evidence:
+      - state: cancellingAfterMakeUp
+      - node: toastAfterMakeUpFailed
+      - source: apps/tedrisat/src/course/lesson.controller.ts:389
+      - source: apps/nazar/features/sessions/components/cancel-dialog.tsx:108
       - test: apps/nazar/test/sessions-page.spec.tsx
 
   - id: a-stale-page-is-refused-with-a-make-up
     need: >-
-      The refusal of a stale page holds whether or not a make-up is added: a celse that was rescheduled or cancelled since the page was read is
-      not cancelled from the old page (CANCEL-2).
-    drawn: [cancellingAfterMakeUp]
-    missing: none # the cancel with a make-up carries the version the batch left (cancel-dialog.tsx:98)
+      The refusal of a stale page holds whether or not a make-up is added: a celse that was rescheduled or cancelled since the
+      page was read is not cancelled from the old page (CANCEL-2).
+    missing: no Linear issue; the cancel with a make-up carries the version the batch left (cancel-dialog.tsx:98)
+    note: >-
+      Drawn on the state cancellingAfterMakeUp, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-cancel-leaves-no-stray-make-up
     need: >-
-      A make-up that was made for a cancel that then fails is either undone or offered for removal from the same page; today it stays in the
-      programme, linked to nothing, and the talebe have been invited to it (CANCEL-2).
-    drawn: [cancellingAfterMakeUp, toastAfterMakeUpFailed]
-    missing: none # the page has no way to hide the make-up; the hide is on the Müfredat page
+      A make-up that was made for a cancel that then fails is either undone or offered for removal from the same page; today it
+      stays in the programme, linked to nothing, and the talebe have been invited to it (CANCEL-2).
+    missing: no Linear issue; the page has no way to hide the make-up; the hide is on the Müfredat page
+    note: >-
+      Drawn on the state cancellingAfterMakeUp and on the node toastAfterMakeUpFailed, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: make-up-has-a-way-in
     need: >-
-      A make-up announced with the cancel arrives with a way in: it takes the cancelled celse's meeting link, or the dialog asks for one, or
-      says plainly that it has none yet, so that the talebe are not invited to a celse that nobody can join (CANCEL-1, decision D1).
-    drawn: [makeUpHelp, makeUpName, cancelledShown]
-    missing: none # makeUpRequest sends no link; createSessionBatch gives one only to what the body carries
+      A make-up announced with the cancel arrives with a way in: it takes the cancelled celse's meeting link, or the dialog asks
+      for one, or says plainly that it has none yet, so that the talebe are not invited to a celse that nobody can join (CANCEL-1,
+      decision D1).
+    missing: no Linear issue; makeUpRequest sends no link; createSessionBatch gives one only to what the body carries
+    note: >-
+      Drawn on the state cancelledShown and on the nodes makeUpHelp and makeUpName, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-make-up-date-is-sane
-    need: >-
-      A make-up's date is a date that can be attended: not in the past and not before the celse it makes up for (CANCEL-5).
-    drawn: [dateField, timeField, makingUp]
-    missing: none # no `min` on the field, no rule in the batch
+    need: "A make-up's date is a date that can be attended: not in the past and not before the celse it makes up for (CANCEL-5)."
+    missing: no Linear issue; no `min` on the field, no rule in the batch
+    note: >-
+      Drawn on the state makingUp and on the nodes dateField and timeField, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-date-error-clears-and-names-its-field
     need: >-
-      The message for a missing date or time goes when the field is corrected, stands under the field that is empty, and is announced when it
-      appears (CANCEL-3, F-L-12).
-    drawn: [dateProblem, dateField, timeField]
-    missing: none
+      The message for a missing date or time goes when the field is corrected, stands under the field that is empty, and is
+      announced when it appears (CANCEL-3, F-L-12).
+    missing: no Linear issue; CANCEL-3, F-L-12
+    note: >-
+      Drawn on the nodes dateProblem, dateField and timeField, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-dialog-says-it-is-final
     need: >-
-      Before the cancel is sent the dialog says that it cannot be taken back and that the talebe are told at once (CANCEL-4, decision D2).
-    drawn: [dialogBody, form]
-    missing: none # no route un-cancels a celse; the dialog says only that the celse stays as "İptal edildi"
+      Before the cancel is sent the dialog says that it cannot be taken back and that the talebe are told at once (CANCEL-4,
+      decision D2).
+    missing: no Linear issue; no route un-cancels a celse; the dialog says only that the celse stays as "İptal edildi"
+    note: >-
+      Drawn on the state form and on the node dialogBody, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-confirm-looks-final
-    need: >-
-      The button that cancels looks like the final act it is, apart from the buttons that save (F-C-course-a-20).
-    drawn: [submit]
-    missing: none
+    need: The button that cancels looks like the final act it is, apart from the buttons that save (F-C-course-a-20).
+    missing: no Linear issue; F-C-course-a-20
+    note: >-
+      Drawn on the node submit, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: the-note-limit-is-shown
     need: >-
-      The limit of the note (500 characters) is said before the person meets it, with a counter or a line under the field (CANCEL-6).
-    drawn: [noteField]
-    missing: none
+      The limit of the note (500 characters) is said before the person meets it, with a counter or a line under the field
+      (CANCEL-6).
+    missing: no Linear issue; CANCEL-6
+    note: >-
+      Drawn on the node noteField, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: focus-after-a-cancel
     need: >-
-      After the cancel the focus lands on a place a keyboard or screen-reader user can use (the cancelled row, or the table's caption), and a line
-      on the page, not only a toast of six seconds, says what was done (F-C-course-a-25, F-L-17).
-    drawn: [cancelledShown, toastCancelled, toastMadeUp]
-    missing: none
+      After the cancel the focus lands on a place a keyboard or screen-reader user can use (the cancelled row, or the table's
+      caption), and a line on the page, not only a toast of six seconds, says what was done (F-C-course-a-25, F-L-17).
+    missing: no Linear issue; F-C-course-a-25, F-L-17
+    note: >-
+      Drawn on the state cancelledShown and on the nodes toastCancelled and toastMadeUp, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-busy-dialog-says-so
     need: >-
-      While the calls run, the controls that do nothing say so (disabled, with a word), and the busy word is the app's own, in its language
-      (F-C-course-a-26, F-C-course-a-28).
-    drawn: [makingUp, cancellingAlone, cancellingAfterMakeUp, busy, closeIcon, cancel]
-    missing: none
+      While the calls run, the controls that do nothing say so (disabled, with a word), and the busy word is the app's own, in its
+      language (F-C-course-a-26, F-C-course-a-28).
+    missing: no Linear issue; F-C-course-a-26, -28
+    note: >-
+      Drawn on the states makingUp, cancellingAlone and cancellingAfterMakeUp and on the nodes busy, closeIcon and cancel, which
+      the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
 
   - id: cancel-only-a-live-celse
     need: >-
-      Only a live celse can be cancelled by the API, as only live celses are sessions (cancel-no-type-check); this page cannot cancel another
-      kind, the API still can.
-    drawn: [cancellingAlone]
-    missing: none # domain invariant session-cancel-takes-live-sessions-only (holds: false), finding cancel-no-type-check
+      Only a live celse can be cancelled by the API, as only live celses are sessions (cancel-no-type-check); this page cannot
+      cancel another kind, the API still can.
+    missing: >-
+      no Linear issue; domain invariant session-cancel-takes-live-sessions-only (holds: false), finding cancel-no-type-check
+    note: >-
+      Drawn on the state cancellingAlone, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: refusal-says-why-in-its-own-words
     need: >-
-      A refusal of a cancelled celse says what was refused: the sentence of LESSON_CANCELLED names the stream even when a recording or a link
-      was being added (lesson-cancelled-text-streams-only).
-    drawn: [toastCancelFailed]
-    missing: none # domain invariant session-cancelled-message-fits-its-route (holds: false); this dialog never meets the sentence
+      A refusal of a cancelled celse says what was refused: the sentence of LESSON_CANCELLED names the stream even when a
+      recording or a link was being added (lesson-cancelled-text-streams-only).
+    missing: >-
+      no Linear issue; domain invariant session-cancelled-message-fits-its-route (holds: false); this dialog never meets the
+      sentence
+    note: >-
+      Drawn on the node toastCancelFailed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: a-cancel-frees-in-person-seats
     need: >-
-      Once a celse can be registered for in person, with seats per gender and given at approval in the order of application, cancelling the
-      celse releases its seats and tells those who held one. Inferred from the plan: MDRS-284 does not say it.
-    drawn: [cancellingAlone, cancellingAfterMakeUp]
+      Once a celse can be registered for in person, with seats per gender and given at approval in the order of application,
+      cancelling the celse releases its seats and tells those who held one. Inferred from the plan: MDRS-284 does not say it.
     missing: MDRS-284
+    note: >-
+      Drawn on the states cancellingAlone and cancellingAfterMakeUp, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).

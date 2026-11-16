@@ -1,108 +1,129 @@
-# What must exist for a person who opens the address of a deck they may not read or use: tedris.decks.accessRefusals, written on 15 Nov 2026
-# in the format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story; none is read off what the page does today.
-# Nothing here comes from planned.md: no planned feature (P-nn) names these screens.
-# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
-#   missing:  hidden-public-deck-is-gone (ACCREF-1), forbidden-words-are-true (DCK-14), refusals-are-a-page (DCK-16), one-screen-for-every-refusal (DCK-15)
-#   unwalked: unavailable-screen (no e2e and no replay: the API's 403 cannot be made on the stack), missing-id-is-not-found (binding.missing.yaml is
-#             written and was not replayed; decks#17 covers it), the public deck's forbidden screen inside forbidden-screen-names-the-deck (the
-#             stack seeds no public deck; system-pages#9 covers it)
+schema: delurio-graph/0
 kind: needs
-flow: tedris.decks.accessRefusals
+id: tedris.decks.accessRefusals
 status: proposed
+summary: >-
+  What must exist for a person who opens the address of a deck they may not read or use: tedris.decks.accessRefusals. Each need is
+  what the product must do, from the flow's story; none is read off what the page does today. Nothing here comes from planned.md:
+  no planned feature (P-nn) names these screens.
 
 needs:
   - id: private-deck-looks-absent
     need: >-
-      A person who opens another person's private deck is told exactly what they are told for an id that does not exist, in the same words
-      and with the same way back, so that they learn nothing about whether the deck is there.
-    drawn: [notFound, unreadable-looks-alike, private-looks-absent]
-    built:
-      - action: medaris.api:getDeck
-      - route: apps/tedris/features/flashcards/deck-page-data.ts:36
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#17'
-      - replay: privateDeck
+      A person who opens another person's private deck is told exactly what they are told for an id that does not exist, in the
+      same words and with the same way back, so that they learn nothing about whether the deck is there.
+    evidence:
+      - state: notFound
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:184
+      - source: apps/tedris/features/flashcards/deck-page-data.ts:36
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "an id that is not there is the not-found page"
+      - scenario: privateDeck
+    note: Also drawn as the assertion unreadable-looks-alike, the rule private-looks-absent.
 
   - id: missing-id-is-not-found
-    need: A deck address whose id is no deck, or no uuid at all, is the same "not found" page as any other refusal, not an error page.
-    drawn: [notFound, reading]
-    built:
-      - action: medaris.api:getDeck
-      - route: apps/tedris/features/flashcards/reads.ts:80
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#17'
-    # replay: binding.missing.yaml (missingDeck) is written and was not replayed: unwalked by a replay
+    need: >-
+      A deck address whose id is no deck, or no uuid at all, is the same "not found" page as any other refusal, not an error page.
+    evidence:
+      - state: notFound
+      - state: reading
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:184
+      - source: apps/tedris/features/flashcards/reads.ts:80
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "an id that is not there is the not-found page"
+    note: "replay: binding.missing.yaml (missingDeck) is written and was not replayed: unwalked by a replay"
 
   - id: hidden-shared-deck-is-gone
     need: >-
-      A deck that was shared with a talebe through a course, a köşk or a medrese and has since been hidden stops being readable by them at
-      once, and looks like a deck that is not there.
-    drawn: [notFound, reading]
-    built:
-      - action: medaris.api:getDeck
-      - route: apps/tedrisat/src/flashcard/deck-sharing.ts:35
-    walked:
-      - replay: hiddenDeck # binding.hidden.yaml
+      A deck that was shared with a talebe through a course, a köşk or a medrese and has since been hidden stops being readable by
+      them at once, and looks like a deck that is not there.
+    evidence:
+      - state: notFound
+      - state: reading
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:184
+      - source: apps/tedrisat/src/flashcard/deck-sharing.ts:35
+      - scenario: hiddenDeck
+        binding: graphs/tedris/decks/accessRefusals/binding.hidden.yaml
+    note: "hiddenDeck: binding.hidden.yaml"
 
   - id: hidden-public-deck-is-gone
-    need: A deck that has been hidden is not read by anyone with its address, public or not, except by those who may open hidden things.
-    drawn: [forbiddenShown, reader_page_opened]
-    missing: none # ACCREF-1 (decision D2): measured, no Linear issue yet
+    need: >-
+      A deck that has been hidden is not read by anyone with its address, public or not, except by those who may open hidden
+      things.
+    missing: "ACCREF-1 (decision D2): measured, no Linear issue yet"
+    note: >-
+      Drawn on the states forbiddenShown and reader_page_opened, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: forbidden-screen-names-the-deck
     need: >-
-      A reader who may read a deck but not edit it, opening its cards or edit address, is told so by name and is offered the way back to the
-      deck's page, instead of being shown controls that would be refused.
-    drawn: [forbiddenShown, forbidden-only-for-a-reader, author-is-never-refused, deck-page-has-no-forbidden-screen]
-    built:
-      - route: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:41"
-      - route: "apps/tedris/app/decks/(medaris)/[id]/edit/page.tsx:24"
-      - route: apps/tedris/features/errors/system-page.tsx:75
-    walked:
-      - e2e: apps/tedris/e2e/system-pages.e2e.ts
-        check: 'system-pages#9'
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#21'
-      - replay: sharedDeck # a shared (course) deck; the public deck of system-pages#9 is not seeded on the stack
+      A reader who may read a deck but not edit it, opening its cards or edit address, is told so by name and is offered the way
+      back to the deck's page, instead of being shown controls that would be refused.
+    evidence:
+      - state: forbiddenShown
+      - source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:41"
+      - source: "apps/tedris/app/decks/(medaris)/[id]/edit/page.tsx:24"
+      - source: apps/tedris/features/errors/system-page.tsx:75
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "somebody else's deck has no card list for them: the forbidden page"
+      - scenario: sharedDeck
+    note: |-
+      Also drawn as the assertion forbidden-only-for-a-reader, the assertion author-is-never-refused, the assertion
+      deck-page-has-no-forbidden-screen.
+      system-pages.e2e.ts system-pages#9
+      sharedDeck: a shared (course) deck; the public deck of system-pages#9 is not seeded on the stack
 
   - id: forbidden-words-are-true
-    need: The words of the forbidden screen are true of every deck a reader may be sent away from, a shared one as well as a public one.
-    drawn: [forbiddenShown]
-    missing: none # DCK-14: the replay of the seeded course deck, which is not public, reads "herkese açık"; no Linear issue
+    need: >-
+      The words of the forbidden screen are true of every deck a reader may be sent away from, a shared one as well as a public
+      one.
+    missing: "DCK-14: the replay of the seeded course deck, which is not public, reads \"herkese açık\"; no Linear issue"
+    note: >-
+      Drawn on the state forbiddenShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: author-opens-their-own-pages
     need: The author of a deck opens its page, its cards and its edit dialog and is never sent to a refusal.
-    drawn: [deciding, owner_page_opened, author-is-never-refused]
-    built:
-      - route: apps/tedris/features/flashcards/deck-page-data.ts:39
-    walked:
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#13'
-      - e2e: apps/tedris/e2e/decks.e2e.ts
-        check: 'decks#18'
-    # decks#13 and decks#18 are carried by tedris.decks.editOrDelete and tedris.decks.manageCards; this flow only draws the exit. A replay
-    # (ownDeck) is bound and was not replayed.
+    evidence:
+      - state: deciding
+      - state: owner_page_opened
+      - source: apps/tedris/features/flashcards/deck-page-data.ts:39
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "shows the author's progress, sample cards and the publication state"
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists every card with its own status, and adds, edits and deletes one"
+    note: |-
+      Also drawn as the assertion author-is-never-refused.
+      decks#13 and decks#18 are carried by tedris.decks.editOrDelete and tedris.decks.manageCards; this flow only draws the exit.
+      A replay (ownDeck) is bound and was not replayed.
 
   - id: unavailable-screen
     need: >-
-      When the API refuses a deck outright the person is told the deck cannot be reached, in words that do not tell a private deck from a
-      missing one, and is offered Desteler.
-    drawn: [unavailable]
-    built:
-      - route: apps/tedris/features/flashcards/components/deck-unavailable.tsx:13
-    # walked: nothing. No e2e file has the screen and no replay reaches it: both deck reads answer 404 for every refusal a person can make,
-    # and the 403 the page maps to it is the API's second lock, reached by a race.
+      When the API refuses a deck outright the person is told the deck cannot be reached, in words that do not tell a private deck
+      from a missing one, and is offered Desteler.
+    evidence:
+      - state: unavailable
+      - source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:13
+    note: >-
+      walked: nothing. No e2e file has the screen and no replay reaches it: both deck reads answer 404 for every refusal a person
+      can make, and the 403 the page maps to it is the API's second lock, reached by a race.
 
   - id: one-screen-for-every-refusal
     need: >-
-      The three refusals a person cannot tell apart (missing, private, hidden) and the 403 the API keeps as a second lock are one screen, as the code's
-      comments promise (decision D1).
-    drawn: [notFound, unavailable, unreadable-looks-alike]
-    missing: none # DCK-15: the comments say one screen, the code draws two; no Linear issue
+      The three refusals a person cannot tell apart (missing, private, hidden) and the 403 the API keeps as a second lock are one
+      screen, as the code's comments promise (decision D1).
+    missing: "DCK-15: the comments say one screen, the code draws two; no Linear issue"
+    note: |-
+      Drawn on the states notFound and unavailable, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      Also drawn as the assertion unreadable-looks-alike.
 
   - id: refusals-are-a-page
-    need: A refusal screen is the page's main landmark and has a title that says what it is, so a screen reader announces it as a page.
-    drawn: [notFoundPage, forbiddenPage, unavailable]
-    missing: none # DCK-16 (no <main> on /decks), DCK-28 (the edit address has no title of its own); no Linear issue
+    need: >-
+      A refusal screen is the page's main landmark and has a title that says what it is, so a screen reader announces it as a
+      page.
+    missing: DCK-16 (no <main> on /decks), DCK-28 (the edit address has no title of its own); no Linear issue
+    note: >-
+      Drawn on the state unavailable and on the nodes notFoundPage and forbiddenPage, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

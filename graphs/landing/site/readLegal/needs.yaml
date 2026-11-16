@@ -1,209 +1,301 @@
-# What must exist for a visitor who reads the terms, the cookies page and the privacy notice of the public site:
-# landing.site.readLegal, written on 15 Nov 2026 in the format of LAYOUT.md section 7. Each need is what the product must do,
-# from the flow's story, the inventory findings (apps/landing, section 7: L5, L10, L15) and planned.md (P-02, P-21, P-32);
-# none is read off what a page says today. The gaps it leaves are reported to the orchestrator, who merges them into
-# graphs/needs.gaps.yaml (this file does not edit it).
+schema: delurio-graph/0
+kind: needs
+id: landing.site.readLegal
+status: proposed
+summary: >-
+  What must exist for a visitor who reads the terms, the cookies page and the privacy notice of the public site:
+  landing.site.readLegal. Each need is what the product must do, from the flow's story, the inventory findings (apps/landing,
+  section 7: L5, L10, L15) and planned.md (P-02, P-21, P-32); none is read off what a page says today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Landing has no browser e2e: its checks are Vitest specs in apps/landing/test that render a page, so `e2e:` below names
 # one of those and `check` is the inventory's number (landing.md section 6, file#n, the file without .spec.ts).
 #
 # missing:    terms-acceptance-at-sign-in (MDRS-191), terms-reacceptance-after-a-change (MDRS-191),
-#             device-restriction-before-it-is-promised (MDRS-125), cookies-page-is-exact (none: LEGAL-1, LEGAL-2),
-#             new-tab-is-announced (none: L5), counsel-approves-the-texts (none)
+# device-restriction-before-it-is-promised (MDRS-125), cookies-page-is-exact (none: LEGAL-1, LEGAL-2),
+# new-tab-is-announced (none: L5), counsel-approves-the-texts (none)
 # unwalked:   none (every need that is built is carried by a spec of apps/landing or by the replay; the production build
-#             was not walked, see drafts-are-for-developers-only)
-kind: needs
-flow: landing.site.readLegal
-status: proposed
+# was not walked, see drafts-are-for-developers-only)
 
 needs:
   - id: legal-texts-open-to-anyone
     need: >-
-      Anyone, signed in or not, can read the terms, the cookies page and the privacy notice, each at an address of its own;
-      the privacy notice's address does not change with the visitor's language, because the registration form and the other
-      Medaris apps link to it.
-    drawn: [arriving, terms, cookies, privacy]
-    built:
-      - route: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:10
-      - route: apps/landing/app/[locale]/cerezler/page.tsx:11
-      - route: apps/landing/app/aydinlatma-metni/page.tsx:21
-      - route: apps/landing/middleware.ts:13
-    walked:
-      - e2e: apps/landing/test/privacy-notice.spec.ts
-        check: 'privacy-notice#1, #2'
-      - replay: fromFooterTerms
+      Anyone, signed in or not, can read the terms, the cookies page and the privacy notice, each at an address of its own; the
+      privacy notice's address does not change with the visitor's language, because the registration form and the other Medaris
+      apps link to it.
+    evidence:
+      - state: arriving
+      - state: terms
+      - state: cookies
+      - state: privacy
+      - source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:10"
+      - source: "apps/landing/app/[locale]/cerezler/page.tsx:11"
+      - source: apps/landing/app/aydinlatma-metni/page.tsx:21
+      - source: apps/landing/middleware.ts:13
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "is published under the path the apps link to"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "is outside the locale middleware, so it is served as is to anyone"
+      - scenario: fromFooterTerms
+    note: "privacy-notice.spec.ts privacy-notice#1, #2"
 
   - id: footer-reaches-every-legal-page
     need: >-
-      The footer of every page of the site links to the three legal texts, the questions and the contact page, and marks
-      the link of the page the reader is on, for those who read it with assistive technology too.
-    drawn: [footerNav, footerPrivacy, footerTerms, footerCookies, footerFaq, footerContact, footerPrivacyHere, footerTermsHere, footerCookiesHere]
-    built:
-      - route: apps/landing/components/site-footer.tsx:17
-    walked:
-      - e2e: apps/landing/test/privacy-notice.spec.ts
-        check: 'privacy-notice#19 (the footer links to the notice; the replay pressed the notice link at the foot of the cookies page, not the footer''s)'
-      - e2e: apps/landing/test/site-footer.spec.ts
-        check: 'site-footer#2'
-      - replay: fromFooterTerms # the footer's three page links and the aria-current of the page, on each of the three pages
+      The footer of every page of the site links to the three legal texts, the questions and the contact page, and marks the link
+      of the page the reader is on, for those who read it with assistive technology too.
+    evidence:
+      - node: footerNav
+      - node: footerPrivacy
+      - node: footerTerms
+      - node: footerCookies
+      - node: footerFaq
+      - node: footerContact
+      - node: footerPrivacyHere
+      - node: footerTermsHere
+      - node: footerCookiesHere
+      - source: apps/landing/components/site-footer.tsx:17
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "points at the same URL"
+      - test: apps/landing/test/site-footer.spec.ts
+        name: "keeps the repository out of the page links, which are all inside the site"
+      - scenario: fromFooterTerms
+    note: |-
+      privacy-notice.spec.ts privacy-notice#19 (the footer links to the notice; the replay pressed the notice link at the foot of
+      the cookies page, not the footer's)
+      fromFooterTerms: the footer's three page links and the aria-current of the page, on each of the three pages
 
   - id: contents-list-takes-to-sections
     need: >-
       A long text has a contents list in which every entry takes the reader to its section, and the address then names the
       section, so that it can be shared.
-    drawn: [termsToc, tocLink, termsHeading]
-    built:
-      - route: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:52
-    walked:
-      - replay: fromFooterTerms # READ_SECTION on the first entry; the other ten are counted, not pressed
+    evidence:
+      - node: termsToc
+      - node: tocLink
+      - node: termsHeading
+      - source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:52"
+      - scenario: fromFooterTerms
+    note: "fromFooterTerms: READ_SECTION on the first entry; the other ten are counted, not pressed"
 
   - id: terms-state-what-an-account-asks
     need: >-
-      The terms say what an account asks for, that the gender is chosen as woman or man and is required (and asked once of
-      older accounts), why it is asked and who sees it, and that it is not on the public profile.
-    drawn: [termsAccount, termsGender]
-    built:
-      - route: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:189
-    walked:
-      - e2e: apps/landing/test/kullanim-sartlari.spec.ts
-        check: 'kullanim-sartlari#1, #2, #3'
-      - replay: fromFooterTerms
+      The terms say what an account asks for, that the gender is chosen as woman or man and is required (and asked once of older
+      accounts), why it is asked and who sees it, and that it is not on the public profile.
+    evidence:
+      - node: termsAccount
+      - node: termsGender
+      - source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:189"
+      - test: apps/landing/test/kullanim-sartlari.spec.ts
+        name: "asks it at registration, required, and once from older accounts"
+      - test: apps/landing/test/kullanim-sartlari.spec.ts
+        name: "says why it is asked and who sees it"
+      - test: apps/landing/test/kullanim-sartlari.spec.ts
+        name: "keeps it off the public profile and away from anyone but those staff"
+      - scenario: fromFooterTerms
+    note: "kullanim-sartlari.spec.ts kullanim-sartlari#1, #2, #3"
 
   - id: partner-sharing-is-stated
     need: >-
-      The terms and the privacy notice say what a partner application receives (name, e-mail address and gender, only after
-      the person agrees on the consent screen, never the user name or the language), on what that rests, and where the person
+      The terms and the privacy notice say what a partner application receives (name, e-mail address and gender, only after the
+      person agrees on the consent screen, never the user name or the language), on what that rests, and where the person
       withdraws it.
-    drawn: [termsPartners, privacyPartners, privacyBasis, privacyRightsClosing]
-    built:
-      - route: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:230
-      - route: apps/landing/content/aydinlatma-metni.ts:132
-    walked:
-      - e2e: apps/landing/test/kullanim-sartlari.spec.ts
-        check: 'kullanim-sartlari#4, #5'
-      - e2e: apps/landing/test/privacy-notice.spec.ts
-        check: 'privacy-notice#12, #13, #14 (a statement of section 3 is not drawn)'
-      - replay: fromFooterTerms
+    evidence:
+      - node: termsPartners
+      - node: privacyPartners
+      - node: privacyBasis
+      - node: privacyRightsClosing
+      - source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:230"
+      - source: apps/landing/content/aydinlatma-metni.ts:132
+      - test: apps/landing/test/kullanim-sartlari.spec.ts
+        name: "shares only the name, e-mail and gender, and only with permission"
+      - test: apps/landing/test/kullanim-sartlari.spec.ts
+        name: "says where the permission is withdrawn, and that nothing new follows"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "never receive the user name or the language"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "rest on explicit consent, which the person withdraws under Tedris → Hesap → Bağlı uygulamalar"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "are not named: no domain on the page but medaris.app"
+      - scenario: fromFooterTerms
+    note: |-
+      kullanim-sartlari.spec.ts kullanim-sartlari#4, #5
+      privacy-notice.spec.ts privacy-notice#12, #13, #14 (a statement of section 3 is not drawn)
 
   - id: notice-names-the-controller-and-the-law
     need: >-
-      The privacy notice is in Turkish, has the title the law gives it, names the data controller and the law (KVKK), and
-      has the seven parts the law asks for: the controller, the data processed, the purposes, the transfers, the method and
-      the legal basis, the rights under article 11 and how to apply.
-    drawn: [privacyTitle, privacyHeading, privacyController, privacyApply]
-    built:
-      - route: apps/landing/content/aydinlatma-metni.ts:69
-    walked:
-      - e2e: apps/landing/test/privacy-notice.spec.ts
-        check: 'privacy-notice#3, #4 (the replay counts seven numbered headings; their words were checked against the page only when the catalog was written)'
-      - replay: fromFooterTerms
+      The privacy notice is in Turkish, has the title the law gives it, names the data controller and the law (KVKK), and has the
+      seven parts the law asks for: the controller, the data processed, the purposes, the transfers, the method and the legal
+      basis, the rights under article 11 and how to apply.
+    evidence:
+      - node: privacyTitle
+      - node: privacyHeading
+      - node: privacyController
+      - node: privacyApply
+      - source: apps/landing/content/aydinlatma-metni.ts:69
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "renders in Turkish"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "names the data categories and the recipients the issue lists"
+      - scenario: fromFooterTerms
+    note: >-
+      privacy-notice.spec.ts privacy-notice#3, #4 (the replay counts seven numbered headings; their words were checked against the
+      page only when the catalog was written)
 
   - id: notice-lists-the-data-and-who-gets-it
     need: >-
-      The privacy notice lists the data it keeps (identity, contact, account and use, education records, correspondence,
-      technical records) and every field of the account record, and says who receives it: the hosting service, the file
-      storage abroad, the identity server, the mail service, the staff of a course, the partner applications and the
-      services abroad the browser reaches (Google Fonts, YouTube and Google Drive, Bunny).
-    drawn: [privacyIdentity, privacyContact, privacyAccountData, privacyEducation, privacyRecordFields, privacyHosting, privacyFiles, privacyAuth, privacyStaff, privacyAbroad]
-    built:
-      - route: apps/landing/content/aydinlatma-metni.ts:81
-      - route: apps/landing/content/aydinlatma-metni.ts:119
-    walked:
-      - e2e: apps/landing/test/privacy-notice.spec.ts
-        check: 'privacy-notice#5, #6 (#7 compares the sentence with tedrisat''s users table and is not carried)'
-      - replay: fromFooterTerms
+      The privacy notice lists the data it keeps (identity, contact, account and use, education records, correspondence, technical
+      records) and every field of the account record, and says who receives it: the hosting service, the file storage abroad, the
+      identity server, the mail service, the staff of a course, the partner applications and the services abroad the browser
+      reaches (Google Fonts, YouTube and Google Drive, Bunny).
+    evidence:
+      - node: privacyIdentity
+      - node: privacyContact
+      - node: privacyAccountData
+      - node: privacyEducation
+      - node: privacyRecordFields
+      - node: privacyHosting
+      - node: privacyFiles
+      - node: privacyAuth
+      - node: privacyStaff
+      - node: privacyAbroad
+      - source: apps/landing/content/aydinlatma-metni.ts:81
+      - source: apps/landing/content/aydinlatma-metni.ts:119
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "says where uploaded course and homework files are kept (owner, 12 October)"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "lists every column tedrisat keeps about a user (MDRS-104)"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "gives the owner's two reasons among the purposes"
+      - scenario: fromFooterTerms
+    note: "privacy-notice.spec.ts privacy-notice#5, #6 (#7 compares the sentence with tedrisat's users table and is not carried)"
 
   - id: notice-explains-the-gender
     need: >-
-      The privacy notice says why the gender is asked (to count women's and men's places apart in in-person lessons, and so
-      that a medrese or köşk knows which of its staff writes to which talebe), where it is kept, who sees it, how it is
-      collected, on what legal basis and how it is corrected, and that it is not shown on the public profile.
-    drawn: [privacyGenderPurpose, privacyRecordFields, privacyStaff, privacyCollection, privacyBasis, privacyRightsClosing]
-    built:
-      - route: apps/landing/content/aydinlatma-metni.ts:105
-    walked:
-      - e2e: apps/landing/test/privacy-notice.spec.ts
-        check: 'privacy-notice#8, #9, #10, #11 (the sentences that must not be there are not carried)'
-      - replay: fromFooterTerms
+      The privacy notice says why the gender is asked (to count women's and men's places apart in in-person lessons, and so that a
+      medrese or köşk knows which of its staff writes to which talebe), where it is kept, who sees it, how it is collected, on
+      what legal basis and how it is corrected, and that it is not shown on the public profile.
+    evidence:
+      - node: privacyGenderPurpose
+      - node: privacyRecordFields
+      - node: privacyStaff
+      - node: privacyCollection
+      - node: privacyBasis
+      - node: privacyRightsClosing
+      - source: apps/landing/content/aydinlatma-metni.ts:105
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "says where it is kept, who sees it and how it is collected"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "names a legal basis for it and tells how to correct it"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "is not shown on the public profile, nor to anyone but those staff"
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "receive only the name, e-mail and gender, and only after the consent screen"
+      - scenario: fromFooterTerms
+    note: "privacy-notice.spec.ts privacy-notice#8, #9, #10, #11 (the sentences that must not be there are not carried)"
 
   - id: texts-show-their-dates
     need: >-
       Each legal text shows when it was last changed, the terms also when they take effect, and a person using assistive
       technology can read the date as a date.
-    drawn: [termsDates, cookiesDate, privacyDate]
-    built:
-      - route: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:29
-      - route: apps/landing/app/[locale]/cerezler/page.tsx:32
-      - route: apps/landing/app/aydinlatma-metni/page.tsx:28
-    walked:
-      - e2e: apps/landing/test/kullanim-sartlari.spec.ts
-        check: 'kullanim-sartlari#7 (the <time datetime> of the terms; the replay reads the words, not the attribute; the notice shows its date as plain text)'
-      - replay: fromFooterTerms
+    evidence:
+      - node: termsDates
+      - node: cookiesDate
+      - node: privacyDate
+      - source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:29"
+      - source: "apps/landing/app/[locale]/cerezler/page.tsx:32"
+      - source: apps/landing/app/aydinlatma-metni/page.tsx:28
+      - test: apps/landing/test/kullanim-sartlari.spec.ts
+        name: "is last updated on 15 October 2026"
+      - scenario: fromFooterTerms
+    note: >-
+      kullanim-sartlari.spec.ts kullanim-sartlari#7 (the <time datetime> of the terms; the replay reads the words, not the
+      attribute; the notice shows its date as plain text)
 
   - id: cookies-are-listed
     need: >-
-      The cookies page lists every cookie and every browser storage key that Medaris sets, in groups (necessary,
-      preferences, browser storage), with what each is for, who sets it and for how long, and says that no analytics,
-      measurement or advertising cookie is used.
-    drawn: [cookiesNote, requiredTable, preferenceTable, storageTable, requiredName, requiredPurpose, requiredSetBy, requiredLifetime]
-    built:
-      - route: apps/landing/app/[locale]/cerezler/page.tsx:50
-      - route: apps/landing/content/cerezler.ts:50
-    walked:
-      - e2e: apps/landing/test/cerezler.spec.ts
-        check: 'cerezler#2, #8'
-      - replay: fromFooterTerms # every row of the three tables, word for word
+      The cookies page lists every cookie and every browser storage key that Medaris sets, in groups (necessary, preferences,
+      browser storage), with what each is for, who sets it and for how long, and says that no analytics, measurement or
+      advertising cookie is used.
+    evidence:
+      - node: cookiesNote
+      - node: requiredTable
+      - node: preferenceTable
+      - node: storageTable
+      - node: requiredName
+      - node: requiredPurpose
+      - node: requiredSetBy
+      - node: requiredLifetime
+      - source: "apps/landing/app/[locale]/cerezler/page.tsx:50"
+      - source: apps/landing/content/cerezler.ts:50
+      - test: apps/landing/test/cerezler.spec.ts
+        name: "lists every cookie the code sets, with a lifetime for each"
+      - test: apps/landing/test/cerezler.spec.ts
+        name: "claims no analytics or advertising cookie"
+      - scenario: fromFooterTerms
+    note: |-
+      cerezler.spec.ts cerezler#2, #8
+      fromFooterTerms: every row of the three tables, word for word
 
   - id: cookies-page-is-exact
     need: >-
-      The cookies page lists only cookies that code sets, and names the apps that set them correctly: a cookie nothing
-      writes (`medaris-locale`, while the language menu is gone) is not listed, and `NEXT_LOCALE` is credited to the site's
-      own pages that set it, not to Tedris and Nizam, which do not (LEGAL-1, LEGAL-2). When the language menu returns
-      (MDRS-295, P-21), the rows become true and the text is checked again.
-    drawn: [preferenceName, preferenceSetBy]
-    missing: none # LEGAL-1, LEGAL-2: no Linear issue; MDRS-295 changes which cookies exist
+      The cookies page lists only cookies that code sets, and names the apps that set them correctly: a cookie nothing writes
+      (`medaris-locale`, while the language menu is gone) is not listed, and `NEXT_LOCALE` is credited to the site's own pages
+      that set it, not to Tedris and Nizam, which do not (LEGAL-1, LEGAL-2). When the language menu returns (MDRS-295, P-21), the
+      rows become true and the text is checked again.
+    missing: "LEGAL-1, LEGAL-2: no Linear issue; MDRS-295 changes which cookies exist"
+    note: >-
+      Drawn on the nodes preferenceName and preferenceSetBy, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: terms-acceptance-at-sign-in
     need: >-
-      A person accepts the terms when they register or sign in for the first time, and the date of the acceptance is kept
-      on their account; the terms say so only when it is so.
-    drawn: [terms, termsIntro, termsAcceptance]
-    missing: MDRS-191 # L10: "Deferred screens: profile consent attribute and terms acceptance" (P-32, Backlog)
+      A person accepts the terms when they register or sign in for the first time, and the date of the acceptance is kept on their
+      account; the terms say so only when it is so.
+    missing: "MDRS-191; L10: \"Deferred screens: profile consent attribute and terms acceptance\" (P-32, Backlog)"
+    note: >-
+      Drawn on the state terms and on the nodes termsIntro and termsAcceptance, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: terms-reacceptance-after-a-change
     need: >-
-      When the terms change in a way that matters, a signed-in person is asked to accept them again before they go on, and
-      the terms say so only when it is so.
-    drawn: [termsChanges]
-    missing: MDRS-191 # L10, section 10 of the terms
+      When the terms change in a way that matters, a signed-in person is asked to accept them again before they go on, and the
+      terms say so only when it is so.
+    missing: MDRS-191; L10, section 10 of the terms
+    note: >-
+      Drawn on the node termsChanges, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: device-restriction-before-it-is-promised
     need: >-
-      A banned person's device is recognised and kept from registering a new account in the scope of the ban, with a short
-      notice that does not give the reason, and lifted with the ban; the terms describe this as in force only when it is.
-    drawn: [termsDevice, termsDeviceBlocked]
-    missing: MDRS-125 # LEGAL-3 (P-02, Backlog): "Recognise a banned person's device, and stop them returning under another account"
+      A banned person's device is recognised and kept from registering a new account in the scope of the ban, with a short notice
+      that does not give the reason, and lifted with the ban; the terms describe this as in force only when it is.
+    missing: >-
+      MDRS-125; LEGAL-3 (P-02, Backlog): "Recognise a banned person's device, and stop them returning under another account"
+    note: >-
+      Drawn on the nodes termsDevice and termsDeviceBlocked, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: drafts-are-for-developers-only
-    need: >-
-      A visitor never sees a legal text marked as a draft: the draft notes show in a development build only.
-    drawn: []
-    built:
-      - route: apps/landing/content/aydinlatma-metni.ts:35
-    walked:
-      - e2e: apps/landing/test/privacy-notice.spec.ts
-        check: 'privacy-notice#18 (the constant IS_DRAFT in a production and a development environment; no build was walked: L15)'
+    need: "A visitor never sees a legal text marked as a draft: the draft notes show in a development build only."
+    evidence:
+      - source: apps/landing/content/aydinlatma-metni.ts:35
+      - test: apps/landing/test/privacy-notice.spec.ts
+        name: "links to the notice"
+    note: >-
+      privacy-notice.spec.ts privacy-notice#18 (the constant IS_DRAFT in a production and a development environment; no build was
+      walked: L15)
 
   - id: new-tab-is-announced
-    need: >-
-      A link that opens another tab says so, to everyone, before it is followed (the footer's GitHub link, L5).
-    drawn: [footerGithub]
-    missing: none # L5, no Linear issue
+    need: A link that opens another tab says so, to everyone, before it is followed (the footer's GitHub link, L5).
+    missing: L5, no Linear issue
+    note: >-
+      Drawn on the node footerGithub, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: counsel-approves-the-texts
     need: >-
       A lawyer approves the terms and the privacy notice before they are relied on, and the draft notes and the "hukuk onayı
       bekliyor" words are taken out when they do. The code calls both texts drafts (content/aydinlatma-metni.ts:10-11,
       kullanim-sartlari/page.tsx:43).
-    drawn: []
-    missing: none # no Linear issue found
+    missing: no Linear issue found

@@ -1,141 +1,175 @@
-# What must exist for a person who opens a course's recordings tab: tedris.course.recordings, written on 15 Nov 2026 in the format of LAYOUT.md
-# section 7. Each need is what the product must do, from the flow's story; none is read off what the page does today, except that planned.md
-# names no feature of this tab (MDRS-259, the one issue it lists, is the staff's side). The gaps it leaves go to the orchestrator, who merges
-# them into graphs/needs.gaps.yaml.
+schema: delurio-graph/0
+kind: needs
+id: tedris.course.recordings
+status: proposed
+summary: >-
+  What must exist for a person who opens a course's recordings tab: tedris.course.recordings. Each need is what the product must
+  do, from the flow's story; none is read off what the page does today, except that planned.md names no feature of this tab
+  (MDRS-259, the one issue it lists, is the staff's side).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): failed-upload-is-seen-by-staff (MDRS-259), medrese-policy-hides-public-recordings (none, RECS-1),
-#                    retry-says-what-happened (none, RECS-2), public-and-host-reach-the-name (none, RECS-3)
+# retry-says-what-happened (none, RECS-2), public-and-host-reach-the-name (none, RECS-3)
 # Unwalked (code, and no e2e and no replay): failed-read-offers-retry (a unit spec proves the markup, the stack cannot make the read fail),
-#                    bunny-rows (the signed link, the chip, an upload in progress: the stack has no Bunny), policies-platform-and-closed
-#                    (the platform's switch and a closed course are not switched on in the replay; the köşk's is)
+# bunny-rows (the signed link, the chip, an upload in progress: the stack has no Bunny), policies-platform-and-closed
+# (the platform's switch and a closed course are not switched on in the replay; the köşk's is)
 #
 # `walked` names a web e2e check as `file#n` where the inventory numbers it. The tedrisat API e2e (apps/tedrisat/test/e2e/recordings.e2e.spec.ts)
 # has no inventory number: it is named by its test title and line.
-kind: needs
-flow: tedris.course.recordings
-status: proposed
 
 needs:
   - id: recordings-by-week
     need: >-
-      A person who may see a course's recordings reads them week by week, the newest week first and the newest recording first inside a
-      week, each with its date, its length and where it is hosted, so that they find the celse they missed.
-    drawn: [listForSeat, listForOutsider]
-    built:
-      - action: medaris.api:listCourseRecordings
-      - route: apps/tedris/features/courses/components/recordings-tab.tsx:125
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#5 (a1-a3)'
-      - replay: seat
+      A person who may see a course's recordings reads them week by week, the newest week first and the newest recording first
+      inside a week, each with its date, its length and where it is hosted, so that they find the celse they missed.
+    evidence:
+      - state: listForSeat
+      - state: listForOutsider
+      - source: apps/tedrisat/src/course/lesson.controller.ts:257
+      - source: apps/tedris/features/courses/components/recordings-tab.tsx:125
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/24: the tab lists the recordings by week, the one being prepared offering nothing, and a row opens its watch page (MDRS-285)"
+      - scenario: seat
+    note: celse-states.e2e.ts celse-states#5 (a1-a3)
 
   - id: watch-in-medaris
     need: >-
-      A talebe with a seat opens a ready recording in Medaris, on its celse's own page with their notes and questions beside it, and not
-      at the host it is stored on.
-    drawn: [listForSeat, watch_opened]
-    built:
-      - route: apps/tedris/features/courses/components/recordings-tab.tsx:277
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#5 (a6; a7 is the player and STALE, youtube-nocookie.com against www.youtube.com, and belongs to tedris.celse.watchRecording)'
-      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
-        check: 'lesson-notes#3'
-      - replay: seat
+      A talebe with a seat opens a ready recording in Medaris, on its celse's own page with their notes and questions beside it,
+      and not at the host it is stored on.
+    evidence:
+      - state: listForSeat
+      - state: watch_opened
+      - source: apps/tedris/features/courses/components/recordings-tab.tsx:277
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/24: the tab lists the recordings by week, the one being prepared offering nothing, and a row opens its watch page (MDRS-285)"
+      - test: apps/tedris/e2e/lesson-notes.e2e.ts
+        name: "on the recordings tab: a row opens its session's watch page, whose panel takes the session's note (MDRS-285)"
+      - scenario: seat
+    note: >-
+      celse-states.e2e.ts celse-states#5 (a6; a7 is the player and STALE, youtube-nocookie.com against www.youtube.com, and
+      belongs to tedris.celse.watchRecording)
 
   - id: outsider-sees-public-only
     need: >-
-      A visitor, a signed-in stranger, a pending or removed talebe sees only the recordings the course team marked for everyone, and each
-      opens at the host it is stored on, in a new tab, with the new tab said in its name.
-    drawn: [listForOutsider]
-    built:
-      - action: medaris.api:listCourseRecordings
-      - route: apps/tedris/features/courses/components/recordings-tab.tsx:290
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#7'
-      - e2e: apps/tedrisat/test/e2e/recordings.e2e.spec.ts
-        check: 'lists only PUBLIC recordings for a visitor with no token (:211)'
-      - replay: visitor
+      A visitor, a signed-in stranger, a pending or removed talebe sees only the recordings the course team marked for everyone,
+      and each opens at the host it is stored on, in a new tab, with the new tab said in its name.
+    evidence:
+      - state: listForOutsider
+      - source: apps/tedrisat/src/course/lesson.controller.ts:257
+      - source: apps/tedris/features/courses/components/recordings-tab.tsx:290
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/24: the tab shows only the public recording, opening it at its host, and no private link is in the page"
+      - test: apps/tedrisat/test/e2e/recordings.e2e.spec.ts
+      - scenario: visitor
+    note: recordings.e2e.spec.ts lists only PUBLIC recordings for a visitor with no token (:211)
 
   - id: not-ready-offers-nothing
     need: >-
-      A recording that is still being prepared, or that the course team holds back until a time, is listed without a way in: the first says it
-      is being prepared, the second says when it opens, and nobody is sent to a page with nothing to play.
-    drawn: [listForSeat, listForOutsider]
-    built:
-      - route: apps/tedris/features/courses/components/recordings-tab.tsx:216
-      - route: apps/tedrisat/src/course/domain/recording.ts:176
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#5 (a4, the recording being prepared; the held one has a unit spec only, apps/tedris/test/recordings-tab.spec.ts)'
-      - replay: seat
+      A recording that is still being prepared, or that the course team holds back until a time, is listed without a way in: the
+      first says it is being prepared, the second says when it opens, and nobody is sent to a page with nothing to play.
+    evidence:
+      - state: listForSeat
+      - state: listForOutsider
+      - source: apps/tedris/features/courses/components/recordings-tab.tsx:216
+      - source: apps/tedrisat/src/course/domain/recording.ts:176
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/24: the tab lists the recordings by week, the one being prepared offering nothing, and a row opens its watch page (MDRS-285)"
+      - scenario: seat
+    note: >-
+      celse-states.e2e.ts celse-states#5 (a4, the recording being prepared; the held one has a unit spec only,
+      apps/tedris/test/recordings-tab.spec.ts)
 
   - id: empty-is-said
-    need: A person for whom nothing is listed is told that there is no published recording, and is not shown a box that looks like a failure.
-    drawn: [recordingsEmpty, empty-only-when-nothing-is-listed]
-    built:
-      - route: apps/tedris/features/courses/components/recordings-tab.tsx:102
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#7 (a3, the ENROLLED recording is not listed)'
-      - replay: koskHides
+    need: >-
+      A person for whom nothing is listed is told that there is no published recording, and is not shown a box that looks like a
+      failure.
+    evidence:
+      - state: recordingsEmpty
+      - source: apps/tedris/features/courses/components/recordings-tab.tsx:102
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/24: the tab shows only the public recording, opening it at its host, and no private link is in the page"
+      - scenario: koskHides
+    note: |-
+      Also drawn as the assertion empty-only-when-nothing-is-listed.
+      celse-states.e2e.ts celse-states#7 (a3, the ENROLLED recording is not listed)
 
   - id: failed-read-offers-retry
     need: When the recordings cannot be read the tab says so, never that there are none, and offers a retry.
-    drawn: [recordingsFailed, retrying, failed-read-draws-no-rows, failed-box-only-after-a-failed-read]
-    built:
-      - route: apps/tedris/features/courses/components/recordings-failed.tsx:14
-    # walked: nothing. The unit spec apps/tedris/test/recordings-tab.spec.ts ("says it failed and offers a retry, not the empty state") proves
-    # the markup; no e2e and no replay makes tedrisat fail, and the stack's API cannot be made to.
+    evidence:
+      - state: recordingsFailed
+      - state: retrying
+      - source: apps/tedris/features/courses/components/recordings-failed.tsx:14
+    note: |-
+      Also drawn as the assertion failed-read-draws-no-rows, the assertion failed-box-only-after-a-failed-read.
+      walked: nothing. The unit spec apps/tedris/test/recordings-tab.spec.ts ("says it failed and offers a retry, not the empty
+      state") proves the markup; no e2e and no replay makes tedrisat fail, and the stack's API cannot be made to.
 
   - id: retry-says-what-happened
     need: >-
-      After "Yeniden dene" the person is told what came of it: the list is announced and the focus goes to it when the read works, and the
-      box says it tried when it fails again.
-    drawn: [retrying]
-    missing: none # RECS-2, read from the code; no Linear issue
+      After "Yeniden dene" the person is told what came of it: the list is announced and the focus goes to it when the read works,
+      and the box says it tried when it fails again.
+    missing: RECS-2, read from the code; no Linear issue
+    note: >-
+      Drawn on the state retrying, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: policies-hide-public-recordings
     need: >-
-      A recording marked for everyone is not shown to people with no seat while the course is closed, or the platform, the köşk or the medrese
-      has switched "Ders kayıtları herkese açılamaz" on, whichever level it was switched on at.
-    drawn: [listForOutsider, recordingsEmpty, koskplatform-policy-hides-public-recordings]
-    built:
-      - action: medaris.api:listCourseRecordings
-      - route: apps/tedrisat/src/course/course.service.ts:857
-    walked:
-      - e2e: apps/tedrisat/test/e2e/recordings.e2e.spec.ts
-        check: 'lists no PUBLIC recording to a visitor once the course is closed, and all of them to the talebe (:223)'
-      - replay: koskHides # the köşk's switch only; the platform's switch is read from the code
+      A recording marked for everyone is not shown to people with no seat while the course is closed, or the platform, the köşk or
+      the medrese has switched "Ders kayıtları herkese açılamaz" on, whichever level it was switched on at.
+    evidence:
+      - state: listForOutsider
+      - state: recordingsEmpty
+      - source: apps/tedrisat/src/course/lesson.controller.ts:257
+      - source: apps/tedrisat/src/course/course.service.ts:857
+      - test: apps/tedrisat/test/e2e/recordings.e2e.spec.ts
+      - scenario: koskHides
+    note: |-
+      Also drawn as the assertion koskplatform-policy-hides-public-recordings.
+      recordings.e2e.spec.ts lists no PUBLIC recording to a visitor once the course is closed, and all of them to the talebe
+      (:223)
+      koskHides: the köşk's switch only; the platform's switch is read from the code
 
   - id: medrese-policy-hides-public-recordings
     need: >-
-      The medrese's switch "Ders kayıtları herkese açılamaz" keeps the PUBLIC recordings of its courses from people with no seat, as its
-      settings page says, and no recording of its courses can be marked for everyone while it is on.
-    drawn: [listForOutsider]
-    missing: none # RECS-1; the domain's findings policy-no-public-recordings-inert and medrese-recordings-policy-unread; MDRS-207 (Done) left the guard to the recordings work and nothing wired it. No open Linear issue
+      The medrese's switch "Ders kayıtları herkese açılamaz" keeps the PUBLIC recordings of its courses from people with no seat,
+      as its settings page says, and no recording of its courses can be marked for everyone while it is on.
+    missing: >-
+      RECS-1; the domain's findings policy-no-public-recordings-inert and medrese-recordings-policy-unread; MDRS-207 (Done) left
+      the guard to the recordings work and nothing wired it. No open Linear issue
+    note: >-
+      Drawn on the state listForOutsider, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: failed-upload-is-seen-by-staff
     need: >-
-      A recording whose upload failed or stalled is not left out of the lists the course team reads: they see it with the reason and can retry,
-      and only a recording that can be played is a row for talebe.
-    drawn: [recordingsEmpty]
+      A recording whose upload failed or stalled is not left out of the lists the course team reads: they see it with the reason
+      and can retry, and only a recording that can be played is a row for talebe.
     missing: MDRS-259
+    note: >-
+      Drawn on the state recordingsEmpty, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: public-and-host-reach-the-name
     need: >-
-      A person who reads the list with a screen reader or by voice is told that a recording is public and where it is hosted, as a person who
-      sees the chips is.
-    drawn: [listForSeat, listForOutsider]
-    missing: none # RECS-3, not verified with a screen reader; no Linear issue
+      A person who reads the list with a screen reader or by voice is told that a recording is public and where it is hosted, as a
+      person who sees the chips is.
+    missing: RECS-3, not verified with a screen reader; no Linear issue
+    note: >-
+      Drawn on the states listForSeat and listForOutsider, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: bunny-rows
     need: >-
-      A recording stored on Bunny plays for the people the API signs it for: a seat reaches it on the watch page, a person with no seat at the
-      signed link, and a recording being uploaded says it is being prepared.
-    drawn: [listForSeat, listForOutsider]
-    built:
-      - route: apps/tedris/features/courses/components/recordings-tab.tsx:264
-    # walked: nothing. apps/tedris/test/recordings-tab.spec.ts ("recordings tab, Bunny recordings") proves a seat's row; the outsider's row, which
-    # opens the signed link itself, has no spec, no e2e and no replay (the stack has no Bunny library: STACK.md).
+      A recording stored on Bunny plays for the people the API signs it for: a seat reaches it on the watch page, a person with no
+      seat at the signed link, and a recording being uploaded says it is being prepared.
+    evidence:
+      - state: listForSeat
+      - state: listForOutsider
+      - source: apps/tedris/features/courses/components/recordings-tab.tsx:264
+    note: >-
+      walked: nothing. apps/tedris/test/recordings-tab.spec.ts ("recordings tab, Bunny recordings") proves a seat's row; the
+      outsider's row, which opens the signed link itself, has no spec, no e2e and no replay (the stack has no Bunny library:
+      STACK.md).

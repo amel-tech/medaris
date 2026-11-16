@@ -23,7 +23,8 @@
 # checked against the code of this branch; many `libs/common` and schema anchors of the inventory were stale and are re-anchored here.
 #
 # 401 HTTP_401 (libs/common/src/auth-guard/auth-guard.ts:41, :46, :54: a Nest UnauthorizedException, type HTTP_ERROR) and the 429 of the
-# throttlers are listed on no action: the pipeline invariants access-token-only and rate-limit-before-auth of domain.yaml cover them.
+# throttlers are covered by the pipeline invariants access-token-only and rate-limit-before-auth of domain.yaml. An action lists HTTP_401
+# only where a flow draws what a signed-out caller meets (domain.yaml says why).
 # The other refusals every guarded route can give are written on each action that can really give them, and not once here:
 #   403 AUTHZ_FORBIDDEN     libs/common/src/authz/authz.guard.ts:92 (the permission the route asks is not held on the course)
 #   404 COURSE_NOT_FOUND    a course of a hidden köşk answers 404 before the permission is asked, to everyone but a holder of course.hide or

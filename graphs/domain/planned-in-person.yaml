@@ -115,6 +115,7 @@ actions:
       caller's own row only
     result: { status: 201, returns: InPersonRegistration }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       IN_PERSON_NOT_ENROLLED: { status: 403, note: "proposed code: the caller holds no ENROLLED seat in the course (pending, removed, barred, completed, a stranger, staff who are not enrolled)" }
       GENDER_REQUIRED: { status: 409, note: "proposed code and status: the caller's profile has no gender; nothing is written. The fix is the account's own profile page (Keycloak holds the attribute)" }
       IN_PERSON_NOT_OPEN: { status: 409, note: "proposed code: the celse is not held in person, has no seats set, has begun or is cancelled" }
@@ -137,6 +138,7 @@ actions:
     needs: course.view on the lesson's course, which every signed-in caller holds; the row is the caller's own
     result: { status: 200, type: boolean, const: true }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       IN_PERSON_REGISTRATION_NOT_FOUND: { status: 404, note: "proposed code: the caller has no registration for the celse (taken back already, or the seat ended)" }
       LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
       COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk" }

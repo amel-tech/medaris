@@ -1,6 +1,6 @@
 # nizam.moderation.banStudent where the course is gone: the nazım presses "Yasakla" on the talebe's row, and the course is deleted while the ban
 # is on its way, so the server answers 404 COURSE_NOT_FOUND, which the window words as the generic "İşlem tamamlanamadı." (it has no line of its
-# own for that code, present.ts:188-204) and stays open with what was typed.
+# own for that code, present.ts:102-118) and stays open with what was typed.
 #   node apps/engine/src/cli.ts replay graphs/nizam/moderation/banStudent --bind graphs/nizam/moderation/banStudent/binding.courseGone.yaml --cover transitions --out <dir>
 # NOT RUN, and the least sure of the bindings: the deletion is the `before` of the state `submitting`, which the replay runs while the server
 # action is held (replay.ts: `before`, then the check, then the release of the held call), so the POST reaches the API after the course is gone.

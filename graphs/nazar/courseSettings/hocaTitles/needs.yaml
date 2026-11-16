@@ -1,123 +1,152 @@
-# What must exist for the hoca of a course to give each hoca a title in Ders ayarları: the flow's product list (LAYOUT.md section 7). Each
-# need is what the product must do, from the flow's story and the owner's decisions of 15 Oct 2026 (the memory note "Hoca + unvan
-# kararları": on screens the teacher is "hoca"; the unvan is per course and changed in Ders ayarları, gated by course.settings; the eight
-# titles are written before the name, the same in every language; no title is "{name} Hoca"; the title shows only where the person appears
-# as that course's hoca), not from what the page does today. The known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges.
-# Read by people for now: no checker runs on this file yet. No replay has been run, so no `walked` entry names one: the unit spec of the card
-# and the API's own e2e spec are listed as `test:` and are not web e2e or replay.
+schema: delurio-graph/0
+kind: needs
+id: nazar.courseSettings.hocaTitles
+status: proposed
+summary: >-
+  What must exist for the hoca of a course to give each hoca a title in Ders ayarları: the flow's product list. Each need is what
+  the product must do, from the flow's story and the owner's decisions of 15 Oct 2026 (the memory note "Hoca + unvan kararları":
+  on screens the teacher is "hoca"; the unvan is per course and changed in Ders ayarları, gated by course.settings; the eight
+  titles are written before the name, the same in every language; no title is "{name} Hoca"; the title shows only where the person
+  appears as that course's hoca), not from what the page does today. No replay has been run, so no `walked` entry names one: the
+  unit spec of the card and the API's own e2e spec are listed as `test:` and are not web e2e or replay.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Not in this file, and where it is: setting a title when a course is opened (the select beside each hoca of "Dersi aç", the owner's other
 # half of the same decision) is nazar.courses.open's and nizam.courses.open's; the old free-text `title` badge of a hoca ("remove badge",
 # the column stays) is not on any screen this flow draws and was not looked for.
 #
 # missing (no code, Linear key `none`): a-refused-save-says-what-is-stored, a-save-keeps-the-place-and-says-it,
-#   an-unsaved-choice-is-not-lost-silently, a-button-that-is-off-says-why
+# an-unsaved-choice-is-not-lost-silently, a-button-that-is-off-says-why
 # unwalked (code, no web e2e and no replay yet): a-title-belongs-to-one-course, the-eight-titles-and-the-plain-hoca,
-#   see-the-name-before-saving, only-course-settings-changes-titles, a-hoca-with-no-account-keeps-the-name,
-#   the-title-shows-where-the-person-is-the-hoca
-kind: needs
-flow: nazar.courseSettings.hocaTitles
-status: proposed
+# see-the-name-before-saving, only-course-settings-changes-titles, a-hoca-with-no-account-keeps-the-name,
+# the-title-shows-where-the-person-is-the-hoca
 
 needs:
   - id: a-title-belongs-to-one-course
     need: >-
-      The hoca of a course gives each hoca of it a title in that course only: the same person may be "Prof. Dr." in one course and have no
-      title in another, and a change in this course touches no other. A title saved is stored for the next visit and for every reader of
-      the course.
-    drawn: [card, dirty, saving, saved, a-saved-card-has-nothing-to-save]
-    built:
-      - action: medaris.api:setMuderrisUnvan
-      - route: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:73
-      - route: apps/tedrisat/src/course/course.controller.ts:395
-    walked:
+      The hoca of a course gives each hoca of it a title in that course only: the same person may be "Prof. Dr." in one course and
+      have no title in another, and a change in this course touches no other. A title saved is stored for the next visit and for
+      every reader of the course.
+    evidence:
+      - state: card
+      - node: card
+      - state: dirty
+      - state: saving
+      - state: saved
+      - source: apps/tedrisat/src/course/course.controller.ts:395
+      - source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:73
       - test: apps/nazar/test/hoca-unvan-card.spec.tsx
       - test: apps/tedrisat/test/e2e/course-muderris-unvan.e2e.spec.ts
+    note: Also drawn as the assertion a-saved-card-has-nothing-to-save.
 
   - id: the-eight-titles-and-the-plain-hoca
     need: >-
-      A hoca has no title ("{name} Hoca") or one of eight, Prof. Dr., Doç. Dr., Dr., Müderris, Molla, Müftü, Şeyh and Hafız, each written
-      before the name and the same in every language. The select lists the plain "Hoca" first, then the eight in that order, and offers
-      nothing else.
-    drawn: [choosing, choosingDirty, optionUntitled, optionProfDr, optionHafiz]
-    built:
-      - route: apps/nazar/features/course-settings/hoca-unvan.ts:60
-      - route: libs/utils/src/hoca-unvan.js:33
-    walked:
+      A hoca has no title ("{name} Hoca") or one of eight, Prof. Dr., Doç. Dr., Dr., Müderris, Molla, Müftü, Şeyh and Hafız, each
+      written before the name and the same in every language. The select lists the plain "Hoca" first, then the eight in that
+      order, and offers nothing else.
+    evidence:
+      - state: choosing
+      - state: choosingDirty
+      - node: optionUntitled
+      - node: optionProfDr
+      - node: optionHafiz
+      - source: apps/nazar/features/course-settings/hoca-unvan.ts:60
+      - source: libs/utils/src/hoca-unvan.js:33
       - test: apps/nazar/test/hoca-unvan-card.spec.tsx
 
   - id: see-the-name-before-saving
     need: >-
-      Under each hoca the card says how the course will show their name, and the line follows the choice at once, so that the hoca sees the
-      result ("Prof. Dr. Hamdi Müderris", "Hamdi Müderris Hoca") before Kaydet. Vazgeç takes the choices back without a question.
-    drawn: [helpFirstPlain, helpFirstTitled, helpSecondPlain, helpSecondTitled, cancel]
-    built:
-      - route: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:133
-      - route: apps/nazar/features/course-settings/hoca-unvan.ts:52
-    walked:
+      Under each hoca the card says how the course will show their name, and the line follows the choice at once, so that the hoca
+      sees the result ("Prof. Dr. Hamdi Müderris", "Hamdi Müderris Hoca") before Kaydet. Vazgeç takes the choices back without a
+      question.
+    evidence:
+      - node: helpFirstPlain
+      - node: helpFirstTitled
+      - node: helpSecondPlain
+      - node: helpSecondTitled
+      - node: cancel
+      - source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:133
+      - source: apps/nazar/features/course-settings/hoca-unvan.ts:52
       - test: apps/nazar/test/hoca-unvan-card.spec.tsx
 
   - id: only-course-settings-changes-titles
     need: >-
-      Only someone who holds course.settings in the course (its hoca, the başmüderris, the köşk's nazım, a ders nazırı given the code) can
-      change a title, and the API decides it; anyone else who opens the page sees the same card with the selects shut and is told they may
-      only look.
-    drawn: [readOnly, readOnlyNote, a-caller-without-the-code-never-sends, a-caller-with-the-code-is-shut-out-only-by-a-refusal]
-    built:
-      - action: medaris.api:getMyCoursePermissions
-      - route: apps/nazar/features/course-settings/components/course-settings-page.tsx:118
-      - route: apps/tedrisat/src/course/course.controller.ts:394
-    walked:
+      Only someone who holds course.settings in the course (its hoca, the başmüderris, the köşk's nazım, a ders nazırı given the
+      code) can change a title, and the API decides it; anyone else who opens the page sees the same card with the selects shut
+      and is told they may only look.
+    evidence:
+      - state: readOnly
+      - node: readOnlyNote
+      - source: apps/tedrisat/src/course/course.controller.ts:283
+      - source: apps/nazar/features/course-settings/components/course-settings-page.tsx:118
+      - source: apps/tedrisat/src/course/course.controller.ts:394
       - test: apps/nazar/test/hoca-unvan-card.spec.tsx
       - test: apps/tedrisat/test/e2e/course-muderris-unvan.e2e.spec.ts
+    note: >-
+      Also drawn as the assertion a-caller-without-the-code-never-sends, the assertion
+      a-caller-with-the-code-is-shut-out-only-by-a-refusal.
 
   - id: a-hoca-with-no-account-keeps-the-name
     need: >-
-      A hoca who was typed in by name before accounts were required keeps their name on the course and is not blocked by it: the card shows
-      them, says why their title cannot be changed (the title is set by account), and saves the others.
-    drawn: [guestSelect, guestHelp, a-hoca-with-no-account-is-never-titled]
-    built:
-      - route: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:147
-      - route: apps/nazar/features/course-settings/hoca-unvan.ts:77
-    walked:
+      A hoca who was typed in by name before accounts were required keeps their name on the course and is not blocked by it: the
+      card shows them, says why their title cannot be changed (the title is set by account), and saves the others.
+    evidence:
+      - node: guestSelect
+      - node: guestHelp
+      - source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:147
+      - source: apps/nazar/features/course-settings/hoca-unvan.ts:77
       - test: apps/nazar/test/hoca-unvan-card.spec.tsx
+    note: Also drawn as the assertion a-hoca-with-no-account-is-never-titled.
 
   - id: the-title-shows-where-the-person-is-the-hoca
     need: >-
-      The title is written wherever the person appears as this course's hoca (the course page and its celse pages, Derslerim, the home page, the
-      köşk and medrese pages, the course tables of Nizam and Nazar, the answers a hoca gives) and nowhere else: a person who is a hoca in two
-      courses shows with each course's own title, and in any other role (talebe, nazır) shows with none.
-    drawn: [toastSaved]
-    built:
-      - route: apps/tedris/features/courses/components/course-page.tsx:308
-      - route: apps/tedrisat/src/course/dto/course-response.dto.ts:202
-    walked:
+      The title is written wherever the person appears as this course's hoca (the course page and its celse pages, Derslerim, the
+      home page, the köşk and medrese pages, the course tables of Nizam and Nazar, the answers a hoca gives) and nowhere else: a
+      person who is a hoca in two courses shows with each course's own title, and in any other role (talebe, nazır) shows with
+      none.
+    evidence:
+      - node: toastSaved
+      - source: apps/tedris/features/courses/components/course-page.tsx:308
+      - source: apps/tedrisat/src/course/dto/course-response.dto.ts:202
       - test: apps/tedrisat/test/e2e/course-muderris-unvan.e2e.spec.ts
 
   - id: a-refused-save-says-what-is-stored
     need: >-
-      When a title cannot be saved the card says which one and what the course has now: the titles written before the refusal are said to be
-      saved, the ones after are said not to be, and the card shows what is stored (not the choice that was refused), whether the person is no
-      longer a hoca, no longer holds course.settings or the call failed. Nothing is left on the screen as if the course had it.
-    drawn: [refusedGone, readOnly, toastGone, toastForbidden, toastInvalid, toastFailed]
-    missing: none
+      When a title cannot be saved the card says which one and what the course has now: the titles written before the refusal are
+      said to be saved, the ones after are said not to be, and the card shows what is stored (not the choice that was refused),
+      whether the person is no longer a hoca, no longer holds course.settings or the call failed. Nothing is left on the screen as
+      if the course had it.
+    missing: no Linear issue
+    note: >-
+      Drawn on the states refusedGone and readOnly and on the nodes toastGone, toastForbidden, toastInvalid and toastFailed, which
+      the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
 
   - id: a-save-keeps-the-place-and-says-it
     need: >-
-      After Kaydet the person who pressed it is still where they were: the focus is not lost to the page when the card is read again, and the
-      outcome is said in the card as well as in a toast of six seconds.
-    drawn: [saved, toastSaved]
-    missing: none
+      After Kaydet the person who pressed it is still where they were: the focus is not lost to the page when the card is read
+      again, and the outcome is said in the card as well as in a toast of six seconds.
+    missing: no Linear issue
+    note: >-
+      Drawn on the state saved and on the node toastSaved, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: an-unsaved-choice-is-not-lost-silently
     need: >-
-      A title chosen and not saved is not thrown away by a menu entry, a link or a reload without a word: the page warns before it is left.
-    drawn: [dirty]
-    missing: none
+      A title chosen and not saved is not thrown away by a menu entry, a link or a reload without a word: the page warns before it
+      is left.
+    missing: no Linear issue
+    note: >-
+      Drawn on the state dirty, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: a-button-that-is-off-says-why
     need: >-
-      Kaydet and Vazgeç that are off say why ("Değişiklik yok") to someone who cannot see the grey, and the button that was pressed does not
-      turn off under the person's hand.
-    drawn: [card, save, cancel]
-    missing: none
+      Kaydet and Vazgeç that are off say why ("Değişiklik yok") to someone who cannot see the grey, and the button that was
+      pressed does not turn off under the person's hand.
+    missing: no Linear issue
+    note: >-
+      Drawn on the state card and on the nodes card, save and cancel, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).

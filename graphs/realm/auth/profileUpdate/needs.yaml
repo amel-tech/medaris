@@ -1,161 +1,149 @@
-# What must exist for a person whose account is missing a profile answer, or who wants to change their profile: the closed product
-# list of realm.auth.profileUpdate, written on 2026-11-15 in the format LAYOUT.md section 7 fixes. Each need is what the product
-# must do, from the flow's story, never from what the page does today; a finding the flow touches is a need with `missing: none`
-# where the code does not meet it (its id is in the need). Not read by `delurio check`.
+schema: delurio-graph/0
+kind: needs
+id: realm.auth.profileUpdate
+status: proposed
+summary: >-
+  Each need is what the product must do, from the flow's story, never from what the page does today; a finding the flow touches is
+  a need with `missing: none` where the code does not meet it (its id is in the need). Not read by `delurio check`.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For the orchestrator's gaps merge (graphs/needs.gaps.yaml):
-#   missing (no code, no Linear key): tell-what-is-missing-near-the-button (K7), a-box-to-tick-says-so-in-its-own-words
-#     (PROFILE-3), one-title-per-page (K2), focus-on-the-first-missing-field (PROFILE-1), busy-state-while-saving (PROFILE-2),
-#     the-notice-link-is-the-environments-own (K13)
-#   unwalked (code, no e2e, no replay): the-tokens-carry-the-saved-profile
+# missing (no code, no Linear key): tell-what-is-missing-near-the-button (K7), a-box-to-tick-says-so-in-its-own-words
+# (PROFILE-3), one-title-per-page (K2), focus-on-the-first-missing-field (PROFILE-1), busy-state-while-saving (PROFILE-2),
+# the-notice-link-is-the-environments-own (K13)
+# unwalked (code, no e2e, no replay): the-tokens-carry-the-saved-profile
 # Walked by an e2e check only, with no replay because the stack cannot make the account: choose-a-gender-before-continuing
 # (giris#16 runs on a mock page of the theme; no account the stack can make lacks a gender, and Keycloak's admin API refuses to
 # remove it).
-kind: needs
-flow: realm.auth.profileUpdate
-status: proposed
 
 needs:
   - id: stopped-once-to-complete-the-profile
     need: >-
       An account that lacks an answer the realm's profile requires is stopped once, after its password, on a page that asks for
       what is missing; when it is given, the person goes on to the page they came for, and the next sign-in does not stop them.
-    drawn:
-      - profileForm
-      - profileReady
-      - saving
-      - finishingRoundTrip
-      - back_in_app
-    built:
-      - route: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:51
-      - action: medaris.api:finishSignIn
-      - route: config/keycloak/user-profile.json:60
-    walked:
-      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
-        check: 'giris#16'
-      - replay: signInPrivacyNotice
+    evidence:
+      - state: profileForm
+      - state: profileReady
+      - state: saving
+      - state: finishingRoundTrip
+      - state: back_in_app
+      - source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:51
+      - source: libs/auth/src/server/routes.ts:277
+      - source: config/keycloak/user-profile.json:60
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "an account without gender chooses it and saves"
+      - scenario: signInPrivacyNotice
 
   - id: read-the-privacy-notice-before-continuing
     need: >-
       A person cannot continue before they say they have read the privacy notice, and the notice can be read without losing the
       page: its link opens in a new tab and says so.
-    drawn:
-      - profileForm
-      - profileReady
-    built:
-      - route: apps/keycloak-theme/src/login/components/linkedOptionLabel.tsx:57
-      - route: config/keycloak/user-profile.json:60
-    walked:
-      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
-        check: 'giris#11' # the registration page's box, drawn by the same component
-      - replay: signInPrivacyNotice
+    evidence:
+      - state: profileForm
+      - state: profileReady
+      - source: apps/keycloak-theme/src/login/components/linkedOptionLabel.tsx:57
+      - source: config/keycloak/user-profile.json:60
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "the privacy notice link opens in a new tab"
+      - scenario: signInPrivacyNotice
+    note: "giris#11: the registration page's box, drawn by the same component"
 
   - id: choose-a-gender-before-continuing
     need: >-
-      A person whose account has no gender cannot continue before they choose one of the two; the choice is kept in the account and
-      the app's tokens carry it.
-    drawn:
-      - profileForm
-      - profileReady
-      - genderRequired
-    built:
-      - route: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:77
-      - route: config/keycloak/user-profile.json:26
-    walked:
-      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
-        check: 'giris#16'
+      A person whose account has no gender cannot continue before they choose one of the two; the choice is kept in the account
+      and the app's tokens carry it.
+    evidence:
+      - state: profileForm
+      - state: profileReady
+      - node: genderRequired
+      - source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:77
+      - source: config/keycloak/user-profile.json:26
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "an account without gender chooses it and saves"
 
   - id: change-the-profile-from-the-app-and-come-back
     need: >-
       A signed-in person can ask for the profile page from the app's account page, change what they want, and come back to the
       page they were on, with the app holding a session that knows the change.
-    drawn:
-      - startingAccountAction
-      - profileReady
-      - saving
-      - finishingRoundTrip
-      - back_in_app
-    built:
-      - action: medaris.api:startSignIn
-      - route: apps/tedris/features/account/components/account-settings.tsx:87
-      - route: libs/auth/src/shared/account-action.ts:44
-    walked:
-      - replay: accountCancel # the cancel, not the save
+    evidence:
+      - state: startingAccountAction
+      - state: profileReady
+      - state: saving
+      - state: finishingRoundTrip
+      - state: back_in_app
+      - source: libs/auth/src/server/routes.ts:146
+      - source: apps/tedris/features/account/components/account-settings.tsx:80
+      - source: libs/auth/src/shared/account-action.ts:44
+      - scenario: accountCancel
+    note: "accountCancel: the cancel, not the save"
 
   - id: cancel-and-change-nothing
-    need: >-
-      A person who asked for the profile page can leave it without a change and is taken back to where they were.
-    drawn:
-      - cancelling
-      - back_in_app
-    built:
-      - route: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:86
-    walked:
-      - replay: accountCancel
+    need: A person who asked for the profile page can leave it without a change and is taken back to where they were.
+    evidence:
+      - state: cancelling
+      - state: back_in_app
+      - source: apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:86
+      - scenario: accountCancel
 
   - id: the-tokens-carry-the-saved-profile
     need: >-
       After a save from the account page the app's tokens carry what was saved (the gender claim), so the page the person lands on
       already shows it.
-    drawn:
-      - finishingRoundTrip
-      - back_in_app
-    built:
-      - action: medaris.api:finishSignIn
-      - route: libs/auth/src/server/routes.ts:277
-    walked: []
+    evidence:
+      - state: finishingRoundTrip
+      - state: back_in_app
+      - source: libs/auth/src/server/routes.ts:277
 
   - id: tell-what-is-missing-near-the-button
     need: >-
       When the save button is off, the person is told what is missing where they are working: the missing field is named and
       announced, and a keyboard or screen-reader person can reach the reason. K7.
-    drawn:
-      - profileForm
-      - noticeRequired
-      - genderRequired
-    walked: []
-    missing: none
+    missing: no Linear issue; K7
+    note: >-
+      Drawn on the state profileForm and on the nodes noticeRequired and genderRequired, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-box-to-tick-says-so-in-its-own-words
     need: >-
       A box to tick that is left or taken back says what is asked of the person in the words written for it, not a message about
       values with half its placeholders left in it. PROFILE-3.
-    drawn:
-      - noticeBroken
-    walked: []
-    missing: none
+    missing: no Linear issue; PROFILE-3
+    note: >-
+      Drawn on the node noticeBroken, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: one-title-per-page
-    need: >-
-      Each page of the realm has a tab title of its own, so this page cannot be mistaken for the sign-in form. K2.
-    drawn:
-      - profileForm
-    walked: []
-    missing: none
+    need: Each page of the realm has a tab title of its own, so this page cannot be mistaken for the sign-in form. K2.
+    missing: no Linear issue; K2
+    note: >-
+      Drawn on the state profileForm, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: focus-on-the-first-missing-field
     need: >-
       The page opens with the focus on the first field that is missing, or on the first field, and says when the save button comes
       on. PROFILE-1.
-    drawn:
-      - profileForm
-    walked: []
-    missing: none
+    missing: no Linear issue; PROFILE-1
+    note: >-
+      Drawn on the state profileForm, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: busy-state-while-saving
     need: >-
       While the profile is on its way to Keycloak the save button shows that it is busy and a second press does nothing, as the
       sign-in, registration and new-password pages do. PROFILE-2.
-    drawn:
-      - saving
-    walked: []
-    missing: none
+    missing: no Linear issue; PROFILE-2
+    note: >-
+      Drawn on the state saving, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: the-notice-link-is-the-environments-own
     need: >-
       The link of the privacy notice points at the notice of the environment the person is in, not at the production address on
       every environment. K13.
-    drawn:
-      - privacyLink
-    walked: []
-    missing: none
+    missing: no Linear issue; K13
+    note: >-
+      Drawn on the node privacyLink, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

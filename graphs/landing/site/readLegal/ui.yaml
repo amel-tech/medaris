@@ -8,7 +8,7 @@
 # local dev server renders; the keys are the writer's: Terms.*, Cookies.*, Privacy.*, Link.* and Footer.nav. The keys that
 # are NOT one literal but a text the code puts together are `composed.*`:
 #   composed.Terms.dates                   terms page.tsx:29-31 ("Son güncelleme: <time>15 Ekim 2026</time> · Yürürlük tarihi: " and
-#                                          legal.termsEffectiveDate, content/legal.ts:189)
+#                                          legal.termsEffectiveDate, content/legal.ts:14)
 #   composed.Cookies.required.1.lifetime,  content/cerezler.ts:62 and :82: a template literal over sessionCookieMax and
 #   composed.Cookies.required.4.lifetime   sessionEnds (:33), which are built from sessionIdle, sessionMax, rememberIdle and rememberMax (:21-24)
 #   composed.Privacy.updated               privacy page.tsx:28 ("Son güncelleme: " and LAST_UPDATED, content/aydinlatma-metni.ts:39)

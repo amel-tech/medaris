@@ -12,7 +12,7 @@ flow: tedris.learn.notes
 
 scenarios:
   live:
-    given: { surface: celseLive, typing: badTime, answer: saved }
+    given: { surface: celseLive, typing: badTime, answer: saved, held: none }
     as: applicantF
     open: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}'
     vars:

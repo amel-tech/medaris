@@ -1,152 +1,196 @@
-# needs of tedris.celse.watchStream (LAYOUT.md section 7): what the product must do for a person who watches a celse's live stream, from the story, the
-# decisions D1 and D2 of flow.yaml and planned.md (P-24, P-25). Not read by `delurio check`.
-# Missing (no code): stream-states-come-from-the-broadcast (MDRS-239, phase 2 of P-25), a-live-lesson-shows-its-timestamp-and-chat (MDRS-147, P-24, research),
-#   the-page-says-live-only-when-it-is (none, CLS-08), the-frame-keeps-its-name (none, WATCH-1), the-line-matches-the-panel (none, WATCH-2),
-#   the-page-finds-the-recording-by-itself (none, WATCH-3), a-chat-only-column-is-not-named-twice (none, WATCH-4).
-# Unwalked (code, no e2e, and no replay passed: every replay is for the walk phase):
-#   the-end-of-the-stream-is-told-by-the-player, a-held-recording-says-when-it-opens, the-hoca-sees-the-chat-only, a-celse-with-nothing-to-watch-goes-back,
-#   a-stream-that-cannot-be-framed-has-a-link. (Their replay scenarios `reader`, `held`, `nothing` and `unframed` are bound and load, and were not run.)
+schema: delurio-graph/0
 kind: needs
-flow: tedris.celse.watchStream
+id: tedris.celse.watchStream
 status: proposed
+summary: >-
+  needs of tedris.celse.watchStream: what the product must do for a person who watches a celse's live stream, from the story, the
+  decisions D1 and D2 of flow.yaml and planned.md (P-24, P-25). Not read by `delurio check`. Missing (no code):
+  stream-states-come-from-the-broadcast (MDRS-239, phase 2 of P-25), a-live-lesson-shows-its-timestamp-and-chat (MDRS-147, P-24,
+  research), the-page-says-live-only-when-it-is (none, CLS-08), the-frame-keeps-its-name (none, WATCH-1),
+  the-line-matches-the-panel (none, WATCH-2), the-page-finds-the-recording-by-itself (none, WATCH-3),
+  a-chat-only-column-is-not-named-twice (none, WATCH-4). Unwalked (code, no e2e, and no replay passed: every replay is for the
+  walk phase): the-end-of-the-stream-is-told-by-the-player, a-held-recording-says-when-it-opens, the-hoca-sees-the-chat-only,
+  a-celse-with-nothing-to-watch-goes-back, a-stream-that-cannot-be-framed-has-a-link. (Their replay scenarios `reader`, `held`,
+  `nothing` and `unframed` are bound and load, and were not run.)
+
 needs:
   - id: the-stream-plays-beside-the-notes
     need: >-
-      A talebe on a celse that is on air watches its YouTube stream with the chat and their notes beside it, without leaving Medaris, and the page has no way into the meeting.
-    drawn: [streamLive, watchPage, streamFrame, chatFrame, notesSection, backLink, detailsLink]
-    built:
-      - route: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:18
-      - route: apps/tedris/features/courses/components/watch-view.tsx:82
-      - action: medaris.api:getSession
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#1'
-      - e2e: apps/tedris/e2e/lesson-notes.e2e.ts
-        check: 'lesson-notes#9'
+      A talebe on a celse that is on air watches its YouTube stream with the chat and their notes beside it, without leaving
+      Medaris, and the page has no way into the meeting.
+    evidence:
+      - state: streamLive
+      - node: watchPage
+      - node: streamFrame
+      - node: chatFrame
+      - node: notesSection
+      - node: backLink
+      - node: detailsLink
+      - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:18"
+      - source: apps/tedris/features/courses/components/watch-view.tsx:82
+      - source: apps/tedrisat/src/course/lesson.controller.ts:230
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/16: a session on air says so, opens the meeting in a new tab, and leads to the stream on its watch page (MDRS-285)"
+      - test: apps/tedris/e2e/lesson-notes.e2e.ts
+        name: "while a session is on air with a live stream: the detail page keeps the meeting link and leads to the watch page, whose panel is beside the stream and takes a note (MDRS-285)"
 
   - id: the-chat-is-youtubes-own
     need: >-
-      The chat beside the stream is the broadcast's own YouTube chat, framed, with a link that opens it on YouTube for a viewer whose browser keeps YouTube's sign-in out of a frame.
-    drawn: [chatSection, chatTitle, chatFrame, chatPopout]
-    built:
-      - route: apps/tedris/features/courses/components/live-chat.tsx:47
-      - route: apps/tedris/features/courses/recordings-model.ts:313
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#1'
+      The chat beside the stream is the broadcast's own YouTube chat, framed, with a link that opens it on YouTube for a viewer
+      whose browser keeps YouTube's sign-in out of a frame.
+    evidence:
+      - node: chatSection
+      - node: chatTitle
+      - node: chatFrame
+      - node: chatPopout
+      - source: apps/tedris/features/courses/components/live-chat.tsx:47
+      - source: apps/tedris/features/courses/recordings-model.ts:313
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/16: a session on air says so, opens the meeting in a new tab, and leads to the stream on its watch page (MDRS-285)"
 
   - id: the-hoca-sees-the-chat-only
-    need: >-
-      Someone who may read the course but holds no seat sees the stream and the chat, and no notes and no questions.
-    drawn: [asideChatOnly, isReader]
-    built:
-      - route: apps/tedris/features/courses/components/watch-page.tsx:44
-    walked: []
+    need: Someone who may read the course but holds no seat sees the stream and the chat, and no notes and no questions.
+    evidence:
+      - node: asideChatOnly
+      - source: apps/tedris/features/courses/components/watch-page.tsx:44
+    note: Also drawn as the guard isReader.
 
   - id: the-end-of-the-stream-is-told-by-the-player
     need: >-
-      When the stream ends the page says so and gives the talebe a place to ask: the chat gives way to "Soru sor". The end is the viewer's player's to tell; nothing is asked of YouTube's Data API and nothing is kept on the server (the owner's decision of MDRS-285).
-    drawn: [streamEnded, endedBadge, endedAnnouncer, questionsSection, asideQuestions]
-    built:
-      - route: apps/tedris/features/courses/watch-model.ts:72
-      - route: apps/tedris/features/courses/components/watch-view.tsx:122
-    walked: []
+      When the stream ends the page says so and gives the talebe a place to ask: the chat gives way to "Soru sor". The end is the
+      viewer's player's to tell; nothing is asked of YouTube's Data API and nothing is kept on the server (the owner's decision of
+      MDRS-285).
+    evidence:
+      - state: streamEnded
+      - node: endedBadge
+      - node: endedAnnouncer
+      - node: questionsSection
+      - node: asideQuestions
+      - source: apps/tedris/features/courses/watch-model.ts:72
+      - source: apps/tedris/features/courses/components/watch-view.tsx:122
 
   - id: no-chat-beside-a-stream-on-air-and-no-questions-panel
     need: >-
-      While the stream is on air a talebe sees the chat and not "Soru sor"; the questions panel appears only once the chat is gone.
-    drawn: [streamLive, questionsSection]
-    built:
-      - route: apps/tedris/features/courses/components/watch-view.tsx:126
-    walked:
-      - e2e: apps/tedris/e2e/lesson-questions.e2e.ts
-        check: 'lesson-questions#3'
+      While the stream is on air a talebe sees the chat and not "Soru sor"; the questions panel appears only once the chat is
+      gone.
+    evidence:
+      - state: streamLive
+      - node: questionsSection
+      - source: apps/tedris/features/courses/components/watch-view.tsx:126
+      - test: apps/tedris/e2e/lesson-questions.e2e.ts
+        name: "on a recording's watch page: asks in Soru sor with no session to pick, reads it there and on Sorularım; beside a stream on air the live chat stands there instead (MDRS-285)"
 
   - id: a-celse-with-nothing-to-watch-goes-back
     need: >-
-      A celse that has not begun, has no stream link, or is cancelled has no watch page: its address sends the person back to the celse's page, which says when the stream opens.
-    drawn: [deciding, sent_to_details.nothing]
-    built:
-      - route: apps/tedris/features/courses/watch-model.ts:36
-      - route: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:33
-    walked: []
+      A celse that has not begun, has no stream link, or is cancelled has no watch page: its address sends the person back to the
+      celse's page, which says when the stream opens.
+    evidence:
+      - state: deciding
+      - state: sent_to_details.nothing
+      - source: apps/tedris/features/courses/watch-model.ts:36
+      - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:33"
 
   - id: a-caller-with-no-seat-is-sent-to-the-locked-card
     need: >-
-      The watch page keeps the celse page's gating: a caller the course holds its content from is sent to the celse's page, which draws the locked card, and nothing of the stream is in what they get.
-    drawn: [deciding, sent_to_details.locked]
-    built:
-      - route: apps/tedris/features/courses/lesson-lock.ts:13
-      - route: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#6'
+      The watch page keeps the celse page's gating: a caller the course holds its content from is sent to the celse's page, which
+      draws the locked card, and nothing of the stream is in what they get.
+    evidence:
+      - state: deciding
+      - state: sent_to_details.locked
+      - source: apps/tedris/features/courses/lesson-lock.ts:13
+      - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31"
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/19: the locked session names no link, no stream and no recording, and apply opens the window of tedris/07"
 
   - id: the-recording-takes-the-stream-place
     need: >-
-      When the celse has a recording that is open to the person, the same address plays the recording and the stream is no longer sent.
-    drawn: [deciding, handed_over.recording]
-    built:
-      - route: apps/tedris/features/courses/watch-model.ts:43
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#3'
+      When the celse has a recording that is open to the person, the same address plays the recording and the stream is no longer
+      sent.
+    evidence:
+      - state: deciding
+      - state: handed_over.recording
+      - source: apps/tedris/features/courses/watch-model.ts:43
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/17: a session that is over leads to its recording on the watch page (MDRS-285)"
 
   - id: a-held-recording-says-when-it-opens
     need: >-
-      While a recording is held back, a talebe keeps the stream and the header says when the recording opens, in the course's clock and the viewer's own.
-    drawn: [releaseNote, endedPlayerLineHeld, recordingHeld]
-    built:
-      - route: apps/tedris/features/courses/components/watch-page.tsx:90
-      - route: apps/tedris/features/courses/recordings-model.ts:174
-    walked: []
+      While a recording is held back, a talebe keeps the stream and the header says when the recording opens, in the course's
+      clock and the viewer's own.
+    evidence:
+      - node: releaseNote
+      - node: endedPlayerLineHeld
+      - source: apps/tedris/features/courses/components/watch-page.tsx:90
+      - source: apps/tedris/features/courses/recordings-model.ts:174
+    note: Also drawn as the guard recordingHeld.
 
   - id: a-stream-that-cannot-be-framed-has-a-link
     need: >-
-      A stream the page cannot frame shows a placeholder and a link to the stream, and the talebe still has their notes and a place to ask.
-    drawn: [streamUnframed, framePlaceholder, openStream]
-    built:
-      - route: apps/tedris/features/courses/components/media-player.tsx:71
-    walked: []
+      A stream the page cannot frame shows a placeholder and a link to the stream, and the talebe still has their notes and a
+      place to ask.
+    evidence:
+      - state: streamUnframed
+      - node: framePlaceholder
+      - node: openStream
+      - source: apps/tedris/features/courses/components/media-player.tsx:71
 
   - id: the-page-says-live-only-when-it-is
     need: >-
-      The page does not say "Canlı" and count minutes before anything has shown the stream is on, nor after its scheduled end, and a stream with no frame is not called live for ever (CLS-08, D1).
-    drawn: [liveBadge, liveAnnouncer, streamUnframed]
-    missing: none
+      The page does not say "Canlı" and count minutes before anything has shown the stream is on, nor after its scheduled end, and
+      a stream with no frame is not called live for ever (CLS-08, D1).
+    missing: no Linear issue; CLS-08
+    note: >-
+      Drawn on the state streamUnframed and on the nodes liveBadge and liveAnnouncer, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-frame-keeps-its-name
     need: >-
-      The player's frame keeps the name the page gives it ("Canlı yayın") after YouTube's player script has attached to it (WATCH-1).
-    drawn: [streamFrame]
-    missing: none
+      The player's frame keeps the name the page gives it ("Canlı yayın") after YouTube's player script has attached to it
+      (WATCH-1).
+    missing: no Linear issue; WATCH-1
+    note: >-
+      Drawn on the node streamFrame, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: the-line-matches-the-panel
     need: >-
       The line under the player points to the panel the viewer has: the chat, or "Soru sor" when there is no chat (WATCH-2).
-    drawn: [livePlayerLine, streamUnframed]
-    missing: none
+    missing: no Linear issue; WATCH-2
+    note: >-
+      Drawn on the state streamUnframed and on the node livePlayerLine, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-page-finds-the-recording-by-itself
     need: >-
-      When the stream has ended and the recording is added, the page shows it without a reload, as its own line promises (WATCH-3, D2).
-    drawn: [streamEnded, endedPlayerLine]
-    missing: none
+      When the stream has ended and the recording is added, the page shows it without a reload, as its own line promises (WATCH-3,
+      D2).
+    missing: no Linear issue; WATCH-3
+    note: >-
+      Drawn on the state streamEnded and on the node endedPlayerLine, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-chat-only-column-is-not-named-twice
-    need: >-
-      The column a chat-only viewer has is not given the same name as the chat card inside it (WATCH-4).
-    drawn: [asideChatOnly, chatSection]
-    missing: none
+    need: The column a chat-only viewer has is not given the same name as the chat card inside it (WATCH-4).
+    missing: no Linear issue; WATCH-4
+    note: >-
+      Drawn on the nodes asideChatOnly and chatSection, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: stream-states-come-from-the-broadcast
     need: >-
-      Whether a lesson is live, ended, or has a recording follows the YouTube broadcast itself (its lifecycle), not each viewer's player: a broadcast created from nizam for each celse, its link set on the celse, and its recording attached to the celse afterwards (P-25: MDRS-195, phases 1 to 3 MDRS-238, MDRS-239, MDRS-240).
-    drawn: [streamLive, streamEnded]
-    missing: MDRS-239
+      Whether a lesson is live, ended, or has a recording follows the YouTube broadcast itself (its lifecycle), not each viewer's
+      player: a broadcast created from nizam for each celse, its link set on the celse, and its recording attached to the celse
+      afterwards (P-25: MDRS-195, phases 1 to 3 MDRS-238, MDRS-239, MDRS-240).
+    missing: MDRS-239, phase 2 of P-25
+    note: >-
+      Drawn on the states streamLive and streamEnded, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-live-lesson-shows-its-timestamp-and-chat
     need: >-
-      A live YouTube lesson is shown inside Medaris with its timestamp and live chat (P-24: MDRS-147, a research issue with two decisions still open). The page frames the stream and YouTube's own chat today, with the notes' time read from the player.
-    drawn: [streamLive, chatSection, notesSection]
-    missing: MDRS-147
+      A live YouTube lesson is shown inside Medaris with its timestamp and live chat (P-24: MDRS-147, a research issue with two
+      decisions still open). The page frames the stream and YouTube's own chat today, with the notes' time read from the player.
+    missing: MDRS-147, P-24, research
+    note: >-
+      Drawn on the state streamLive and on the nodes chatSection and notesSection, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

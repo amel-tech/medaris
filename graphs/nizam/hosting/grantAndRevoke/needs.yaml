@@ -1,199 +1,258 @@
-# What must exist for a köşk's people to give a medrese the right to open courses in the köşk and to take it back: the flow's product list
-# (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the findings of the page, not from what the page
-# does today. The known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges; this file does not edit it. Read by people for
-# now: no checker runs on this file yet. `replay:` entries name the scenarios of the binding as written: none has been run (the first
-# walks are a later phase), so none is a pass.
+schema: delurio-graph/0
+kind: needs
+id: nizam.hosting.grantAndRevoke
+status: proposed
+summary: >-
+  What must exist for a köşk's people to give a medrese the right to open courses in the köşk and to take it back: the flow's
+  product list. Each need is what the product must do, from the flow's story and the findings of the page, not from what the page
+  does today. `replay:` entries name the scenarios of the binding as written: none has been run (the first walks are a later
+  phase), so none is a pass.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Gaps of this file, for that merge:
-#   missing:   the-reason-a-button-is-off-is-said (F-W3-1, F-X-3), the-focus-survives-a-withdrawal (HOST-1), a-refusal-brings-the-page-up-to-date
-#              (HOST-4), a-failed-list-can-be-tried-again-in-place (HOST-5), the-page-names-its-kosk (F-W3-9), a-call-in-flight-is-not-answered-by-a-live-button
-#              (HOST-2), the-grant-window-starts-on-its-list (HOST-6), the-list-of-medreses-is-read-when-needed (HOST-3) (each `missing: none`),
-#              appeal-a-withdrawn-right (MDRS-139)
-#   unwalked:  a-medaris-nazim-with-the-code-works-the-page (code; no account holds platform.hosting_grant alone), no-medrese-left-is-said and
-#              a-failed-list-is-said (code; the stack cannot make the case without touching the seeded medrese or failing a read)
-kind: needs
-flow: nizam.hosting.grantAndRevoke
-status: proposed
+# missing:   the-reason-a-button-is-off-is-said (F-W3-1, F-X-3), the-focus-survives-a-withdrawal (HOST-1), a-refusal-brings-the-page-up-to-date
+# (HOST-4), a-failed-list-can-be-tried-again-in-place (HOST-5), the-page-names-its-kosk (F-W3-9), a-call-in-flight-is-not-answered-by-a-live-button
+# (HOST-2), the-grant-window-starts-on-its-list (HOST-6), the-list-of-medreses-is-read-when-needed (HOST-3) (each `missing: none`),
+# appeal-a-withdrawn-right (MDRS-139)
+# unwalked:  a-medaris-nazim-with-the-code-works-the-page (code; no account holds platform.hosting_grant alone), no-medrese-left-is-said and
+# a-failed-list-is-said (code; the stack cannot make the case without touching the seeded medrese or failing a read)
 
 needs:
   - id: give-a-medrese-the-right
     need: >-
       A köşk's nazımı, the başnazım, or a Medaris nazımı holding the code gives a medrese the right to open courses in the köşk by
-      choosing it from the open medreses that hold none. The right is given at once, written to the audit log with the role the person
-      acted as, and the page says so and lists the medrese. Giving it again changes nothing. A medrese that was hidden meanwhile is
-      refused in words.
-    drawn: [grantForm, choosing, grantReady, granting, listed, toastGranted, a-right-needs-a-medrese]
-    built:
-      - action: medaris.api:grantKoskHostingRight
-      - route: apps/nizam/features/hosting/components/grant-dialog.tsx:50
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#10'
-      - replay: grantsAndKeeps
-      - replay: chiefGrantsAndKeeps
-      - replay: madrasahGone
+      choosing it from the open medreses that hold none. The right is given at once, written to the audit log with the role the
+      person acted as, and the page says so and lists the medrese. Giving it again changes nothing. A medrese that was hidden
+      meanwhile is refused in words.
+    evidence:
+      - state: grantForm
+      - state: choosing
+      - state: grantReady
+      - state: granting
+      - state: listed
+      - node: toastGranted
+      - source: apps/tedrisat/src/hosting/hosting.controller.ts:92
+      - source: apps/nizam/features/hosting/components/grant-dialog.tsx:50
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/26 — 'Barındırma hakkı ver' adds the medrese to the list (criterion 2)"
+      - scenario: grantsAndKeeps
+      - scenario: chiefGrantsAndKeeps
+        binding: graphs/nizam/hosting/grantAndRevoke/binding.chief.yaml
+      - scenario: madrasahGone
+        binding: graphs/nizam/hosting/grantAndRevoke/binding.madrasahGone.yaml
+    note: Also drawn as the assertion a-right-needs-a-medrese.
 
   - id: read-who-holds-a-right-and-what-is-open
     need: >-
-      The page lists every medrese that holds a right in the köşk with its başmüderris, who gave the right and in what role, the date,
-      and how many courses it has open there, published and draft. A right that was withdrawn, a hidden medrese and a medrese with none
-      are not listed.
-    drawn: [listed, table, rowName, rowHead, rowGrantedBy, rowGrantedRole, rowDate, rowCount, rowSummary]
-    built:
-      - action: medaris.api:listKoskHostingRights
-      - route: apps/nizam/features/hosting/components/hosting-view.tsx:157
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#9'
-      - replay: hides
-      - replay: withOther
+      The page lists every medrese that holds a right in the köşk with its başmüderris, who gave the right and in what role, the
+      date, and how many courses it has open there, published and draft. A right that was withdrawn, a hidden medrese and a
+      medrese with none are not listed.
+    evidence:
+      - state: listed
+      - node: table
+      - node: rowName
+      - node: rowHead
+      - node: rowGrantedBy
+      - node: rowGrantedRole
+      - node: rowDate
+      - node: rowCount
+      - node: rowSummary
+      - source: apps/tedrisat/src/hosting/hosting.controller.ts:72
+      - source: apps/nizam/features/hosting/components/hosting-view.tsx:157
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/26 — the köşk nazımı sees the medreses with a right here: who gave it and when, and the open courses (criterion 1)"
+      - scenario: hides
+      - scenario: withOther
 
   - id: a-right-gives-no-power-over-the-kosk
     need: >-
-      The page and the grant window say, in the words a nazım reads before giving it, that the right lets the medrese open courses and
-      gives it no authority over the köşk.
-    drawn: [intro, grantIntro]
-    built:
-      - route: apps/nizam/features/hosting/components/hosting-view.tsx:169
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#9'
+      The page and the grant window say, in the words a nazım reads before giving it, that the right lets the medrese open courses
+      and gives it no authority over the köşk.
+    evidence:
+      - node: intro
+      - node: grantIntro
+      - source: apps/nizam/features/hosting/components/hosting-view.tsx:169
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/26 — the köşk nazımı sees the medreses with a right here: who gave it and when, and the open courses (criterion 1)"
 
   - id: withdraw-and-say-what-becomes-of-the-open-courses
     need: >-
-      Withdrawing a right names the medrese, lists its open courses with their talebe and imam, and asks what becomes of them: they carry
-      on as they are, or they are hidden (drafts too, at the level the person acts at, so that the medrese's own başmüderris cannot bring
-      them back) and come back from the Arşiv; nothing is deleted. No answer is chosen for the person. With no open course nothing is
-      asked. The medrese can open no new course in the köşk afterwards, and the choice is written to the audit log.
-    drawn: [revokeAsk, revokeReady, revokeNoCourses, revoking, introSome, introNone, courseList, choicesGroup, choiceKeep, choiceHide, open-courses-need-an-answer, toastRevoked]
-    built:
-      - action: medaris.api:revokeKoskHostingRight
-      - route: apps/nizam/features/hosting/components/revoke-dialog.tsx:72
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#11'
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#12'
-      - replay: grantsAndKeeps
-      - replay: hides
-      - replay: noCourses
-      - replay: chiefGrantsAndKeeps
-      - replay: notHeld
+      Withdrawing a right names the medrese, lists its open courses with their talebe and imam, and asks what becomes of them:
+      they carry on as they are, or they are hidden (drafts too, at the level the person acts at, so that the medrese's own
+      başmüderris cannot bring them back) and come back from the Arşiv; nothing is deleted. No answer is chosen for the person.
+      With no open course nothing is asked. The medrese can open no new course in the köşk afterwards, and the choice is written
+      to the audit log.
+    evidence:
+      - state: revokeAsk
+      - state: revokeReady
+      - state: revokeNoCourses
+      - state: revoking
+      - node: introSome
+      - node: introNone
+      - node: courseList
+      - node: choicesGroup
+      - node: choiceKeep
+      - node: choiceHide
+      - node: toastRevoked
+      - source: apps/tedrisat/src/hosting/hosting.controller.ts:143
+      - source: apps/nizam/features/hosting/components/revoke-dialog.tsx:72
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/27 — no answer is chosen for the nazım: the button is off until one is, and 'Dersler sürsün' takes the right and leaves the courses (criteria 1 to 3, 5)"
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/27 — 'Dersleri gizle' hides the medrese's courses here (criterion 4) and 'Vazgeç' and Escape change nothing"
+      - scenario: grantsAndKeeps
+      - scenario: hides
+      - scenario: noCourses
+      - scenario: chiefGrantsAndKeeps
+        binding: graphs/nizam/hosting/grantAndRevoke/binding.chief.yaml
+      - scenario: notHeld
+        binding: graphs/nizam/hosting/grantAndRevoke/binding.notHeld.yaml
+    note: Also drawn as the assertion open-courses-need-an-answer.
 
   - id: leaving-a-window-changes-nothing
-    need: >-
-      Vazgeç, the close icon and Escape close either window and leave the rights, the courses and the list as they were.
-    drawn: [grantForm, grantReady, revokeAsk, revokeReady, revokeNoCourses, listed]
-    built:
-      - route: apps/nizam/features/hosting/components/grant-dialog.tsx:78
-      - route: apps/nizam/features/hosting/components/revoke-dialog.tsx:98
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#12'
-      - replay: grantsAndKeeps
-      - replay: hides
+    need: Vazgeç, the close icon and Escape close either window and leave the rights, the courses and the list as they were.
+    evidence:
+      - state: grantForm
+      - state: grantReady
+      - state: revokeAsk
+      - state: revokeReady
+      - state: revokeNoCourses
+      - state: listed
+      - source: apps/nizam/features/hosting/components/grant-dialog.tsx:78
+      - source: apps/nizam/features/hosting/components/revoke-dialog.tsx:98
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/27 — 'Dersleri gizle' hides the medrese's courses here (criterion 4) and 'Vazgeç' and Escape change nothing"
+      - scenario: grantsAndKeeps
+      - scenario: hides
 
   - id: only-the-kosks-own-people-manage-its-rights
     need: >-
-      A person who is not a nazım of the köşk, and holds no platform.hosting_grant, is told "Bu bölüm için izniniz yok" and sees no right;
-      a köşk that is not there gets the same words, so the page never tells which köşks exist.
-    drawn: [forbidden, not_found, noAccessTitle]
-    built:
-      - action: medaris.api:listKoskHostingRights
-      - route: apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:40
-    walked:
-      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
-        check: 'madrasahs#13'
-      - replay: refused
-      - replay: gone
+      A person who is not a nazım of the köşk, and holds no platform.hosting_grant, is told "Bu bölüm için izniniz yok" and sees
+      no right; a köşk that is not there gets the same words, so the page never tells which köşks exist.
+    evidence:
+      - state: forbidden
+      - state: not_found
+      - node: noAccessTitle
+      - source: apps/tedrisat/src/hosting/hosting.controller.ts:72
+      - source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:40"
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/26 — someone who does not manage the köşk gets 'Bu bölüm için izniniz yok' (criterion 4)"
+      - scenario: refused
+      - scenario: gone
 
   - id: the-list-of-medreses-is-complete
     need: >-
-      The grant window offers every open medrese that holds no right in the köşk and none that is hidden, however many medreses there are.
-    drawn: [readingMedreses, madrasahList, optMadrasah]
-    built:
-      - action: medaris.api:listMadrasahs
-      - route: apps/nizam/features/hosting/reads.ts:43
-    walked:
-      - replay: grantsAndKeeps
+      The grant window offers every open medrese that holds no right in the köşk and none that is hidden, however many medreses
+      there are.
+    evidence:
+      - state: readingMedreses
+      - node: madrasahList
+      - node: optMadrasah
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:204
+      - source: apps/nizam/features/hosting/reads.ts:43
+      - scenario: grantsAndKeeps
 
   - id: a-medaris-nazim-with-the-code-works-the-page
     need: >-
       A Medaris nazımı who holds platform.hosting_grant and no other köşk code opens this page from the köşk's address, gives and
       withdraws rights, and is not shown settings pages they cannot open.
-    drawn: [crumbSettingsText, tabsNav, listed]
-    built:
-      - route: apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:54
-      - action: medaris.api:grantKoskHostingRight
+    evidence:
+      - node: crumbSettingsText
+      - node: tabsNav
+      - state: listed
+      - source: "apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx:54"
+      - source: apps/tedrisat/src/hosting/hosting.controller.ts:92
 
   - id: no-medrese-left-is-said
     need: >-
-      When every open medrese already holds a right, the grant window says there is no other medrese to give it to, with nothing to choose.
-    drawn: [grantNone, grantNoneText]
-    built:
-      - route: apps/nizam/features/hosting/components/grant-dialog.tsx:101
+      When every open medrese already holds a right, the grant window says there is no other medrese to give it to, with nothing
+      to choose.
+    evidence:
+      - state: grantNone
+      - node: grantNoneText
+      - source: apps/nizam/features/hosting/components/grant-dialog.tsx:101
 
   - id: a-failed-list-is-said
-    need: >-
-      When the list of medreses cannot be read, the grant window says so and gives nothing to choose.
-    drawn: [grantFailed, grantFailedAlert]
-    built:
-      - route: apps/nizam/features/hosting/components/grant-dialog.tsx:97
+    need: When the list of medreses cannot be read, the grant window says so and gives nothing to choose.
+    evidence:
+      - state: grantFailed
+      - node: grantFailedAlert
+      - source: apps/nizam/features/hosting/components/grant-dialog.tsx:97
 
   - id: the-reason-a-button-is-off-is-said
     need: >-
-      "Barındırma hakkı ver" and "Barındırma hakkını geri al" never sit dead with nothing saying why: the missing choice is named, to a
-      keyboard or a screen reader as to the eye, and the person is taken to it.
-    drawn: [grantForm, revokeAsk, grantSubmit, revokeSubmit]
-    missing: none
+      "Barındırma hakkı ver" and "Barındırma hakkını geri al" never sit dead with nothing saying why: the missing choice is named,
+      to a keyboard or a screen reader as to the eye, and the person is taken to it.
+    missing: no Linear issue; F-W3-1, F-X-3
+    note: >-
+      Drawn on the states grantForm and revokeAsk and on the nodes grantSubmit and revokeSubmit, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-focus-survives-a-withdrawal
     need: >-
-      After a withdrawal the focus lands somewhere that says what happened (the table's caption or the heading, with a status line), not on
-      a button that went with its row.
-    drawn: [afterRevoke, listed, rowRevoke]
-    missing: none
+      After a withdrawal the focus lands somewhere that says what happened (the table's caption or the heading, with a status
+      line), not on a button that went with its row.
+    missing: no Linear issue; HOST-1
+    note: >-
+      Drawn on the states afterRevoke and listed and on the node rowRevoke, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-refusal-brings-the-page-up-to-date
     need: >-
-      When the call is refused because the world moved (the medrese is gone or hidden, the right is already withdrawn), the page is read
-      again, so that the list and the table show what is true and the person's next press is not refused for the same reason.
-    drawn: [granting, revoking, toastGrantMadrasahGone, toastRevokeNotHeld]
-    missing: none
+      When the call is refused because the world moved (the medrese is gone or hidden, the right is already withdrawn), the page
+      is read again, so that the list and the table show what is true and the person's next press is not refused for the same
+      reason.
+    missing: no Linear issue; HOST-4
+    note: >-
+      Drawn on the states granting and revoking and on the nodes toastGrantMadrasahGone and toastRevokeNotHeld, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-list-can-be-tried-again-in-place
-    need: >-
-      The grant window's failed list has a way to read it again without leaving the page.
-    drawn: [grantFailed, grantFailedAlert]
-    missing: none
+    need: The grant window's failed list has a way to read it again without leaving the page.
+    missing: no Linear issue; HOST-5
+    note: >-
+      Drawn on the state grantFailed and on the node grantFailedAlert, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-call-in-flight-is-not-answered-by-a-live-button
     need: >-
-      While the call runs, the controls that do nothing (Vazgeç, the close icon) say so by being off, or they are allowed to close the window.
-    drawn: [granting, revoking, grantCancel, revokeCancel]
-    missing: none
+      While the call runs, the controls that do nothing (Vazgeç, the close icon) say so by being off, or they are allowed to close
+      the window.
+    missing: no Linear issue; HOST-2
+    note: >-
+      Drawn on the states granting and revoking and on the nodes grantCancel and revokeCancel, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-grant-window-starts-on-its-list
-    need: >-
-      The grant window opens with the focus on its select, as the withdrawal window opens on its safe button.
-    drawn: [grantDialog, grantClose, madrasahField]
-    missing: none
+    need: The grant window opens with the focus on its select, as the withdrawal window opens on its safe button.
+    missing: no Linear issue; HOST-6
+    note: >-
+      Drawn on the nodes grantDialog, grantClose and madrasahField, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-page-names-its-kosk
-    need: >-
-      The tab title and the heading name the köşk, so a nazım of several köşks knows which page they are on.
-    drawn: [pageTitle, listed]
-    missing: none
+    need: The tab title and the heading name the köşk, so a nazım of several köşks knows which page they are on.
+    missing: no Linear issue; F-W3-9
+    note: >-
+      Drawn on the state listed and on the node pageTitle, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-list-of-medreses-is-read-when-needed
     need: >-
-      The page does not read every page of every open medrese on each load and each refresh when the grant window may never be opened.
-    drawn: [readingMedreses]
-    missing: none
+      The page does not read every page of every open medrese on each load and each refresh when the grant window may never be
+      opened.
+    missing: no Linear issue; HOST-3
+    note: >-
+      Drawn on the state readingMedreses, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: appeal-a-withdrawn-right
     need: >-
-      A medrese whose hosting right was withdrawn can appeal the decision to Medaris management (planned.md P-04); nothing of it is built
-      for hosting.
-    drawn: [afterRevoke]
+      A medrese whose hosting right was withdrawn can appeal the decision to Medaris management (planned.md P-04); nothing of it
+      is built for hosting.
     missing: MDRS-139
+    note: >-
+      Drawn on the state afterRevoke, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

@@ -1,139 +1,184 @@
-# What must exist for the course team to decide the applications that wait on a course's Talebeler: the flow's product list
-# (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the planned work in the inventory
-# (planned.md), not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges.
-# Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.roster.decide
+status: proposed
+summary: >-
+  What must exist for the course team to decide the applications that wait on a course's Talebeler: the flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): menu-follows-the-page-rule, note-says-what-makes-an-application-wait, a-barred-applicant-is-shown-as-barred,
-#   one-busy-mark-per-row, focus-follows-a-decision, a-failed-call-is-told, staff-see-the-talebe-list-by-permission-or-by-default
-#   (MDRS-203), seats-per-gender-at-approval (MDRS-284), a-rejection-may-carry-a-reason.
+# one-busy-mark-per-row, focus-follows-a-decision, a-failed-call-is-told, staff-see-the-talebe-list-by-permission-or-by-default
+# (MDRS-203), seats-per-gender-at-approval (MDRS-284), a-rejection-may-carry-a-reason.
 # Unwalked (code, no e2e, no replay yet): decide-in-place, a-decision-already-made-is-told, a-reader-without-the-decide-code-sees-no-button,
-#   refuse-who-holds-no-code. The last three have only a spec with mocked actions (apps/nazar/test/enrolments-page.spec.tsx).
+# refuse-who-holds-no-code. The last three have only a spec with mocked actions (apps/nazar/test/enrolments-page.spec.tsx).
 # Walked: read-the-waiting-applications (e2e course-scope#3, a1, a3, a4; a2 and a5 in part, see its note).
 # No replay has run in this phase, so none is named under `walked`; binding.yaml (decides, empty, shutOut), binding.mayNot.yaml,
 # binding.gone.yaml and binding.barred.yaml are written to walk the first four and the findings behind the next three.
-kind: needs
-flow: nazar.roster.decide
-status: proposed
 
 needs:
   - id: read-the-waiting-applications
     need: >-
-      The course team reads, on the course's Talebeler, who is waiting for a decision: a note that says what approving and rejecting
-      do, the number of waiting applications on the tab and on the menu, and a table of them newest first, with the talebe's name,
-      e-mail and the day they applied.
-    drawn: [listed, empty, applicationsNote, tabApplications, applicationsTable, colStudent, colEmail, colApplied, studentsBadge]
-    built:
-      - action: medaris.api:listCourseEnrollments
-      - action: medaris.api:getMyCoursePermissions
-      - route: apps/nazar/features/enrolments/components/enrolments-page.tsx:33
-    walked:
-      # a1 the title is visible, a3 the tab "Başvurular" holds the count, a4 the buttons "Onayla: ..." are there. a2 (the placeholder
-      # text "Bu sayfa henüz hazır değil." is absent) is the page winning over the shared [bolum] route; the graph has no node for an
-      # absence, so it is only implied by the page's own title. a5 (the sidebar link has aria-current="page") has no key in the
-      # graph's ui. a4's count of 2 is the e2e seed's; the graph's repeated node accepts any number from one.
-      - e2e: apps/nazar/e2e/course-scope.e2e.ts
-        check: 'course-scope#3'
+      The course team reads, on the course's Talebeler, who is waiting for a decision: a note that says what approving and
+      rejecting do, the number of waiting applications on the tab and on the menu, and a table of them newest first, with the
+      talebe's name, e-mail and the day they applied.
+    evidence:
+      - state: listed
+      - state: empty
+      - node: applicationsNote
+      - node: tabApplications
+      - node: applicationsTable
+      - node: colStudent
+      - node: colEmail
+      - node: colApplied
+      - node: studentsBadge
+      - source: apps/tedrisat/src/course/course.controller.ts:562
+      - source: apps/tedrisat/src/course/course.controller.ts:283
+      - source: apps/nazar/features/enrolments/components/enrolments-page.tsx:33
+      - test: apps/nazar/e2e/course-scope.e2e.ts
+        name: "Talebeler counts the waiting applications and lists them under Başvurular"
+    note: >-
+      a1 the title is visible, a3 the tab "Başvurular" holds the count, a4 the buttons "Onayla: ..." are there. a2 (the
+      placeholder text "Bu sayfa henüz hazır değil." is absent) is the page winning over the shared [bolum] route; the graph has
+      no node for an absence, so it is only implied by the page's own title. a5 (the sidebar link has aria-current="page") has no
+      key in the graph's ui. a4's count of 2 is the e2e seed's; the graph's repeated node accepts any number from one.
 
   - id: decide-in-place
     need: >-
       The course team approves a waiting application in one press, and rejects one after being asked once. The talebe is told
       either way; the row leaves, the tab's count drops and the menu's number follows; a toast says what was decided.
-    drawn: [approve, reject, rejectDialog, approving, rejecting, settled, toastApproved, toastRejected]
-    built:
-      - action: medaris.api:approveEnrollment
-      - action: medaris.api:rejectEnrollment
-      - route: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:75
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx # "an application": approved with the Pano's action, rejected only after the confirmation (mocked actions)
+    evidence:
+      - node: approve
+      - node: reject
+      - node: rejectDialog
+      - state: approving
+      - state: rejecting
+      - state: settled
+      - node: toastApproved
+      - node: toastRejected
+      - source: apps/tedrisat/src/course/course.controller.ts:633
+      - source: apps/tedrisat/src/course/course.controller.ts:687
+      - source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:75
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+    note: >-
+      apps/nazar/test/enrolments-page.spec.tsx: "an application": approved with the Pano's action, rejected only after the
+      confirmation (mocked actions)
 
   - id: a-decision-already-made-is-told
     need: >-
-      An application that someone else settled first, or that its talebe took back, leaves the list with a notice that says so, not
-      an error, and the counters are recounted.
-    drawn: [toastGone, settled]
-    built:
-      - route: apps/nazar/features/pano/pano.ts:278
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx # "leaves the list with a notice, not an error, when somebody decided it first" (mocked actions)
+      An application that someone else settled first, or that its talebe took back, leaves the list with a notice that says so,
+      not an error, and the counters are recounted.
+    evidence:
+      - node: toastGone
+      - state: settled
+      - source: apps/nazar/features/pano/pano.ts:278
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+    note: >-
+      apps/nazar/test/enrolments-page.spec.tsx: "leaves the list with a notice, not an error, when somebody decided it first"
+      (mocked actions)
 
   - id: a-reader-without-the-decide-code-sees-no-button
     need: >-
       A person who holds only another enrollment code reads the same list and is given no button to decide, and no "Toplu talebe
       ekle"; the API would refuse her anyway.
-    drawn: [listed, approve, reject, colActions, bulkOpen]
-    built:
-      - route: apps/nazar/features/enrolments/components/enrolments-page.tsx:101
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx # "what each permission shows" (mocked actions)
+    evidence:
+      - state: listed
+      - node: approve
+      - node: reject
+      - node: colActions
+      - node: bulkOpen
+      - source: apps/nazar/features/enrolments/components/enrolments-page.tsx:101
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+    note: "apps/nazar/test/enrolments-page.spec.tsx: \"what each permission shows\" (mocked actions)"
 
   - id: refuse-who-holds-no-code
-    need: >-
-      A ders nazırı who holds none of the roster and enrollment codes is told "Bu sayfaya izniniz yok" and reads no roster.
-    drawn: [forbidden, forbiddenAlert]
-    built:
-      - route: apps/nazar/features/account/course-permissions.ts:86
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx # "is that state for a caller who holds neither the roster nor an enrollment permission" (mocked actions)
+    need: A ders nazırı who holds none of the roster and enrollment codes is told "Bu sayfaya izniniz yok" and reads no roster.
+    evidence:
+      - state: forbidden
+      - node: forbiddenAlert
+      - source: apps/nazar/features/account/course-permissions.ts:86
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+    note: >-
+      apps/nazar/test/enrolments-page.spec.tsx: "is that state for a caller who holds neither the roster nor an enrollment
+      permission" (mocked actions)
 
   - id: menu-follows-the-page-rule
     need: >-
       The course menu offers "Talebeler" only to someone the page will open for, as it already does for Ödevler, Değerlendirme and
       Ders destesi (F-D1-29).
-    drawn: [forbidden, studentsLink]
-    missing: none # no issue: nav.ts:109 has no `requires`
+    missing: "no issue: nav.ts:109 has no `requires`"
+    note: >-
+      Drawn on the state forbidden and on the node studentsLink, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: note-says-what-makes-an-application-wait
     need: >-
-      The note over the applications says that the course asks for approval whenever an application waits, whatever made it wait: the
-      course's own flag, a private köşk, the köşk's or the platform's always-approve policy, or the medrese's (ROSTER-1).
-    drawn: [applicationsNote, applicationsNoteOpen, listed]
-    missing: none # no issue: enrolments-page.tsx:97 reads only the course's own flag
+      The note over the applications says that the course asks for approval whenever an application waits, whatever made it wait:
+      the course's own flag, a private köşk, the köşk's or the platform's always-approve policy, or the medrese's (ROSTER-1).
+    missing: "no issue: enrolments-page.tsx:97 reads only the course's own flag"
+    note: >-
+      Drawn on the state listed and on the nodes applicationsNote and applicationsNoteOpen, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-barred-applicant-is-shown-as-barred
     need: >-
-      A row whose talebe is barred from the course says so and has no live "Onayla", or the refusal says why, instead of "try again
-      later" (ROSTER-2).
-    drawn: [approve, toastFailed, listed]
-    missing: none # no issue: listsOf drops the ban the roster read carries
+      A row whose talebe is barred from the course says so and has no live "Onayla", or the refusal says why, instead of "try
+      again later" (ROSTER-2).
+    missing: "no issue: listsOf drops the ban the roster read carries"
+    note: >-
+      Drawn on the state listed and on the nodes approve and toastFailed, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: one-busy-mark-per-row
-    need: >-
-      Two decisions pressed one after the other each keep their own busy mark until their own call returns (ROSTER-3).
-    drawn: [rowApprove, rowReject, approving, rejecting]
-    missing: none # no issue: `busy` is one value for the whole table
+    need: Two decisions pressed one after the other each keep their own busy mark until their own call returns (ROSTER-3).
+    missing: "no issue: `busy` is one value for the whole table"
+    note: >-
+      Drawn on the states approving and rejecting and on the nodes rowApprove and rowReject, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-follows-a-decision
     need: >-
       After a decision the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the next row's
       button), and a line on the page, not only a toast of six seconds, says what was decided (F-D1-05).
-    drawn: [listed, empty, settled, toastApproved, toastRejected]
-    missing: none
+    missing: no Linear issue; findings F-D1-05
+    note: >-
+      Drawn on the states listed, empty and settled and on the nodes toastApproved and toastRejected, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-call-is-told
     need: >-
       When a decision cannot reach the server at all, the button stops being busy and the person is told to try again (F-D1-20).
-    drawn: [approving, rejecting, toastFailed]
-    missing: none
+    missing: no Linear issue; findings F-D1-20
+    note: >-
+      Drawn on the states approving and rejecting and on the node toastFailed, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: staff-see-the-talebe-list-by-permission-or-by-default
     need: >-
       Decide whether course staff see the talebe list and the e-mails by default or by permission (P-18, MDRS-203). This is a
       decision, not a feature: no build until it is taken.
-    drawn: [listed, forbidden]
     missing: MDRS-203
+    note: >-
+      Drawn on the states listed and forbidden, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: seats-per-gender-at-approval
     need: >-
-      Where a seat is counted, the kontenjan is two counts, one per gender, and gender is always known; "Onayla" is one of the places
-      that gives a seat, so the person deciding sees each applicant's gender and the seats left for it, and an approval that would
-      overfill one gender's count is refused (MDRS-284, planned per celse and weekly; the code has no kontenjan rule and the roster
-      read carries no gender today).
-    drawn: [approve, listed]
+      Where a seat is counted, the kontenjan is two counts, one per gender, and gender is always known; "Onayla" is one of the
+      places that gives a seat, so the person deciding sees each applicant's gender and the seats left for it, and an approval
+      that would overfill one gender's count is refused (MDRS-284, planned per celse and weekly; the code has no kontenjan rule
+      and the roster read carries no gender today).
     missing: MDRS-284
+    note: >-
+      Drawn on the state listed and on the node approve, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-rejection-may-carry-a-reason
     need: >-
-      Decide whether a rejection carries a reason the talebe is told: the API takes one of up to 500 characters and the dialog says
-      none is taken (flow decision D2, the Pano's D2 too).
-    drawn: [confirmReject, rejectBody]
-    missing: none # a decision of this flow, no issue
+      Decide whether a rejection carries a reason the talebe is told: the API takes one of up to 500 characters and the dialog
+      says none is taken (flow decision D2, the Pano's D2 too).
+    missing: a decision of this flow, no issue
+    note: >-
+      Drawn on the state confirmReject and on the node rejectBody, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).

@@ -1,176 +1,283 @@
-# What must exist for the başnazım to read who is in office as a Medaris nazımı and to appoint one, give them a ready group and single
-# permissions and an end: the flow's product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story (FLOWS.md),
-# the inventory's findings (F-W2-1, F-W2-3, F-W2-7, F-W2-11, F-W2-12, F-X-14) and the flow's own (MAPPT-1 to MAPPT-10), not from what the page does
-# today. Read by people for now: no checker runs on this file yet. Planned in planned.md: P-16 (a ceiling on what a Medaris nazımı may give,
-# MDRS-209) is this flow's; P-15 (MDRS-201, adopt, edit or drop what a removed nazım gave) is the dismissal's, and P-17 (MDRS-226, group the course
-# permissions) the groups page's.
+schema: delurio-graph/0
+kind: needs
+id: nizam.nazims.appoint
+status: proposed
+summary: >-
+  What must exist for the başnazım to read who is in office as a Medaris nazımı and to appoint one, give them a ready group and
+  single permissions and an end: the flow's product list. Each need is what the product must do, from the flow's story (FLOWS.md),
+  the inventory's findings (F-W2-1, F-W2-3, F-W2-7, F-W2-11, F-W2-12, F-X-14) and the flow's own (MAPPT-1 to MAPPT-10), not from
+  what the page does today. Planned in planned.md: P-16 (a ceiling on what a Medaris nazımı may give, MDRS-209) is this flow's;
+  P-15 (MDRS-201, adopt, edit or drop what a removed nazım gave) is the dismissal's, and P-17 (MDRS-226, group the course
+  permissions) the groups page's.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For the orchestrator's gaps merge (nothing here was replayed; the e2e checks, the API's e2e and the unit specs named under `walked` are the only
 # runs, and the replay scenarios of binding.yaml and binding.groupGone.yaml are written and not run):
-#   missing:  lookup-only-on-request (none), kaydet-says-why-it-is-off (none), a-refusal-is-announced (none), the-dialog-opens-on-its-field
-#             (none), the-person-is-checked-before-sending (none), only-a-known-account-is-appointed (none),
-#             a-ceiling-on-what-a-medaris-nazim-may-give (MDRS-209)
-#   unwalked: an-empty-office-says-so (a unit spec only), an-end-not-ahead-is-told-where-typed (unit specs and the edit dialog's e2e, permissions#8;
-#             no web e2e of the appoint dialog), a-refusal-keeps-the-dialog (the API's own e2e; the replay scenarios `already` and `groupGone`
-#             are written and not run)
-kind: needs
-flow: nizam.nazims.appoint
-status: proposed
+# missing:  lookup-only-on-request (none), kaydet-says-why-it-is-off (none), a-refusal-is-announced (none), the-dialog-opens-on-its-field
+# (none), the-person-is-checked-before-sending (none), only-a-known-account-is-appointed (none),
+# a-ceiling-on-what-a-medaris-nazim-may-give (MDRS-209)
+# unwalked: an-empty-office-says-so (a unit spec only), an-end-not-ahead-is-told-where-typed (unit specs and the edit dialog's e2e, permissions#8;
+# no web e2e of the appoint dialog), a-refusal-keeps-the-dialog (the API's own e2e; the replay scenarios `already` and `groupGone`
+# are written and not run)
 
 needs:
   - id: read-who-is-in-office
     need: >-
-      The başnazım reads, in one list, who holds the Medaris nazımı seat now: each person by name and address, the groups and the single
-      permissions they hold, when it ends, who gave it and on what day. A person whose end has passed is not listed.
-    drawn: [listed, rosterTable, rowPerson, rowAddress, seedGrants, rowNever, rowGiver, rowGiverDay, count]
-    built:
-      - action: medaris.api:listMedarisNazims
-      - route: apps/nizam/features/permissions/components/nazims-view.tsx:236
-    walked:
-      - e2e: apps/nizam/e2e/permissions.e2e.ts
-        check: 'permissions#1' # e2e lines 104-138: the rows, their groups and singles, the giver; the fixed dates ("31 Aralık 2026", line 127) and the seed's three people in order are the stale part, F-W2-7, not carried
-      - test: apps/nizam/test/permissions.spec.tsx # :485-530, the rows, the chips, the giver and the two buttons
-      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts # :484, the API's list in order, with its groups and singles
+      The başnazım reads, in one list, who holds the Medaris nazımı seat now: each person by name and address, the groups and the
+      single permissions they hold, when it ends, who gave it and on what day. A person whose end has passed is not listed.
+    evidence:
+      - state: listed
+      - node: rosterTable
+      - node: rowPerson
+      - node: rowAddress
+      - node: seedGrants
+      - node: rowNever
+      - node: rowGiver
+      - node: rowGiverDay
+      - node: count
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:81
+      - source: apps/nizam/features/permissions/components/nazims-view.tsx:236
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — the list shows who is in office, in order, with their groups, single permissions, end and giver (criteria 1, 2, 3)"
+      - test: apps/nizam/test/permissions.spec.tsx
+      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts
+    note: |-
+      permissions#1: e2e lines 104-138: the rows, their groups and singles, the giver; the fixed dates ("31 Aralık 2026", line
+      127) and the seed's three people in order are the stale part, F-W2-7, not carried
+      apps/nizam/test/permissions.spec.tsx: :485-530, the rows, the chips, the giver and the two buttons
+      apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts: :484, the API's list in order, with its groups and singles
 
   - id: an-end-is-warned-about-in-days
     need: >-
-      The list says "Süresiz" for no end and the day for an end, and warns in words, "Bugün bitiyor" or "{n} gün kaldı", when the end is inside
-      30 days, so the başnazım sees what is about to lapse; counted in calendar days in the viewer's zone, never a negative number.
-    drawn: [rowNever, rowEndDate, rowDaysLeft, rowEndsToday]
-    built:
-      - route: apps/nizam/features/permissions/present.ts:95
-    walked:
-      - e2e: apps/nizam/e2e/permissions.e2e.ts
-        check: 'permissions#1' # e2e lines 132-135: "Süresiz" and the days-left assertion on the second person ("1[34] gün kaldı", which depends on the seed's own dates, not on today)
-      - test: apps/nizam/test/permissions.spec.tsx # :116-150, the calendar days, "Süresiz", the date, the warning within thirty days, never negative
+      The list says "Süresiz" for no end and the day for an end, and warns in words, "Bugün bitiyor" or "{n} gün kaldı", when the
+      end is inside 30 days, so the başnazım sees what is about to lapse; counted in calendar days in the viewer's zone, never a
+      negative number.
+    evidence:
+      - node: rowNever
+      - node: rowEndDate
+      - node: rowDaysLeft
+      - node: rowEndsToday
+      - source: apps/nizam/features/permissions/present.ts:95
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/11 — the list shows who is in office, in order, with their groups, single permissions, end and giver (criteria 1, 2, 3)"
+      - test: apps/nizam/test/permissions.spec.tsx
+    note: |-
+      permissions#1: e2e lines 132-135: "Süresiz" and the days-left assertion on the second person ("1[34] gün kaldı", which
+      depends on the seed's own dates, not on today)
+      apps/nizam/test/permissions.spec.tsx: :116-150, the calendar days, "Süresiz", the date, the warning within thirty days,
+      never negative
 
   - id: an-empty-office-says-so
     need: >-
-      A list with nobody in office says "Henüz görevde Medaris nazımı yok." and still offers "Medaris nazımı ata"; a list that cannot be read says so
-      with "Yeniden dene" and does not draw a table.
-    drawn: [emptyLine, loadFailed, loadFailedAlert, retry]
-    built:
-      - route: apps/nizam/features/permissions/components/nazims-view.tsx:241
-    walked:
-      - test: apps/nizam/test/permissions.spec.tsx # :543, the empty line and the error state; no e2e (the stack's own Medaris nazımı is always in office)
+      A list with nobody in office says "Henüz görevde Medaris nazımı yok." and still offers "Medaris nazımı ata"; a list that
+      cannot be read says so with "Yeniden dene" and does not draw a table.
+    evidence:
+      - node: emptyLine
+      - state: loadFailed
+      - node: loadFailedAlert
+      - node: retry
+      - source: apps/nizam/features/permissions/components/nazims-view.tsx:241
+      - test: apps/nizam/test/permissions.spec.tsx
+    note: >-
+      apps/nizam/test/permissions.spec.tsx: :543, the empty line and the error state; no e2e (the stack's own Medaris nazımı is
+      always in office)
 
   - id: find-by-exact-address
     need: >-
-      The başnazım finds the person by their exact e-mail address in the realm's directory, which holds people who never opened the app, sees who
-      was found by name and address before doing anything, and is told when no account has the address and when the directory does not answer;
-      nobody is chosen from an address that was not found.
-    drawn: [asking, searching, picked, pickerField, pickerNotFound, pickerDown, searchingStatus, chosenRegion, chosenName, chosenAddress, removePerson]
-    built:
-      - action: medaris.api:lookupUser
-      - route: apps/nizam/features/permissions/components/nazim-picker.tsx:39
-    walked:
-      - e2e: apps/nizam/e2e/permissions.e2e.ts
-        check: 'permissions#9' # e2e lines 445-460: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and "Kaydet" off, then the person found and "Kaydet" on; the e2e uses the seeded köşk nazımı, the walk a spare applicant
+      The başnazım finds the person by their exact e-mail address in the realm's directory, which holds people who never opened
+      the app, sees who was found by name and address before doing anything, and is told when no account has the address and when
+      the directory does not answer; nobody is chosen from an address that was not found.
+    evidence:
+      - state: asking
+      - state: searching
+      - state: picked
+      - node: pickerField
+      - node: pickerNotFound
+      - node: pickerDown
+      - node: searchingStatus
+      - node: chosenRegion
+      - node: chosenName
+      - node: chosenAddress
+      - node: removePerson
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/permissions/components/nazim-picker.tsx:39
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/12 — appointing finds the person by e-mail in the realm, gives a group, a single permission and an end, and the list shows it (criteria 4, 5)"
+    note: >-
+      permissions#9: e2e lines 445-460: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and "Kaydet" off, then the person
+      found and "Kaydet" on; the e2e uses the seeded köşk nazımı, the walk a spare applicant
 
   - id: lookup-only-on-request
     need: >-
-      A person's address is searched in the realm only when the başnazım asks (Enter or a button), never because they tabbed through the field or
-      pressed "Vazgeç" with an address in it, since every search is written to the audit log; the result is announced and the focus is kept.
-    drawn: [searching, searchingStatus]
-    missing: none # F-X-14, F-W2-3, F-X-8: the field searches on blur and is disabled while it does
+      A person's address is searched in the realm only when the başnazım asks (Enter or a button), never because they tabbed
+      through the field or pressed "Vazgeç" with an address in it, since every search is written to the audit log; the result is
+      announced and the focus is kept.
+    missing: "no Linear issue; F-X-14, F-W2-3, F-X-8: the field searches on blur and is disabled while it does"
+    note: >-
+      Drawn on the state searching and on the node searchingStatus, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: appoint-with-a-group-boxes-and-an-end
     need: >-
-      The başnazım appoints a person a Medaris nazımı with a ready platform group (its permissions ticked and locked), single permissions beside it
-      and an end, in one step; the appointment and its permissions end together, the footer counts what was given ("Gruptan {n} izin ve {m} ek izin"),
-      the appointment is written to the audit log, and the list shows the new row: its group, its box, the end, the giver.
-    drawn: [picked, appointing, appointed, groupSelect, permKoskCreate, permKoskEdit, permAudit, lockedNote, endField, summaryNone, summaryTicked, summaryGroup, summaryGroupTicked, save, toastAppointed, toastAppointedBody, rowGroup, rowSinglesAfterGroup, rowEndDate, rowDaysLeft, rowEndsToday, rowGiver]
-    built:
-      - action: medaris.api:appointMedarisNazim
-      - route: apps/nizam/features/permissions/actions.ts:27
-      - route: apps/nizam/features/permissions/components/permissions-dialog.tsx:136
-    walked:
-      - e2e: apps/nizam/e2e/permissions.e2e.ts
-        check: 'permissions#9' # e2e lines 462-487: "Gruptan 4 izin ve 1 ek izin", the dialog closes, the row has the group and the box, the grants and the seat in the database, one audit row of each kind; the re-opened edit dialog (lines 489-496) is nizam.nazims.editPermissions's
-      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts # :484, post, grants, end, audit, order
+      The başnazım appoints a person a Medaris nazımı with a ready platform group (its permissions ticked and locked), single
+      permissions beside it and an end, in one step; the appointment and its permissions end together, the footer counts what was
+      given ("Gruptan {n} izin ve {m} ek izin"), the appointment is written to the audit log, and the list shows the new row: its
+      group, its box, the end, the giver.
+    evidence:
+      - state: picked
+      - state: appointing
+      - state: appointed
+      - node: groupSelect
+      - node: permKoskCreate
+      - node: permKoskEdit
+      - node: permAudit
+      - node: lockedNote
+      - node: endField
+      - node: summaryNone
+      - node: summaryTicked
+      - node: summaryGroup
+      - node: summaryGroupTicked
+      - node: save
+      - node: toastAppointed
+      - node: toastAppointedBody
+      - node: rowGroup
+      - node: rowSinglesAfterGroup
+      - node: rowEndDate
+      - node: rowDaysLeft
+      - node: rowEndsToday
+      - node: rowGiver
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:96
+      - source: apps/nizam/features/permissions/actions.ts:27
+      - source: apps/nizam/features/permissions/components/permissions-dialog.tsx:136
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/12 — appointing finds the person by e-mail in the realm, gives a group, a single permission and an end, and the list shows it (criteria 4, 5)"
+      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts
+    note: |-
+      permissions#9: e2e lines 462-487: "Gruptan 4 izin ve 1 ek izin", the dialog closes, the row has the group and the box, the
+      grants and the seat in the database, one audit row of each kind; the re-opened edit dialog (lines 489-496) is
+      nizam.nazims.editPermissions's
+      apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts: :484, post, grants, end, audit, order
 
   - id: an-end-not-ahead-is-told-where-typed
     need: >-
-      An end that is not ahead is said under the end field the moment it is typed, "Kaydet" stays off until it is fixed, and nothing is sent; the
-      server refuses it too.
-    drawn: [pickedBadEnd, endError, endHelp, save]
-    built:
-      - route: apps/nizam/features/permissions/components/permissions-dialog.tsx:106
-      - route: libs/utils/src/end-instant.ts:128
-    walked:
-      - test: libs/utils/test/end-instant.spec.ts # resolveEnd and endProblem
-      - e2e: apps/nizam/e2e/permissions.e2e.ts
-        check: 'permissions#8' # the same field and wording in the edit dialog; the appoint dialog has no web e2e for it
+      An end that is not ahead is said under the end field the moment it is typed, "Kaydet" stays off until it is fixed, and
+      nothing is sent; the server refuses it too.
+    evidence:
+      - state: pickedBadEnd
+      - node: endError
+      - node: endHelp
+      - node: save
+      - source: apps/nizam/features/permissions/components/permissions-dialog.tsx:106
+      - source: libs/utils/src/end-instant.ts:128
+      - test: libs/utils/test/end-instant.spec.ts
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/12 — an end date after the appointment's, or not in the future, is refused where it is typed (criterion 3)"
+    note: |-
+      libs/utils/test/end-instant.spec.ts: resolveEnd and endProblem
+      permissions#8: the same field and wording in the edit dialog; the appoint dialog has no web e2e for it
 
   - id: kaydet-says-why-it-is-off
     need: >-
-      A person who cannot send the form is told in words what is missing (nobody chosen, an end not ahead), and a keyboard or screen-reader user can
-      reach the button and the message. Nothing that blocks them is silent.
-    drawn: [asking, searching, pickedBadEnd, save]
-    missing: none # MAPPT-1, F-X-3: "Kaydet" is natively disabled and the only word is the end's error
+      A person who cannot send the form is told in words what is missing (nobody chosen, an end not ahead), and a keyboard or
+      screen-reader user can reach the button and the message. Nothing that blocks them is silent.
+    missing: "no Linear issue; MAPPT-1, F-X-3: \"Kaydet\" is natively disabled and the only word is the end's error"
+    note: >-
+      Drawn on the states asking, searching and pickedBadEnd and on the node save, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-person-is-checked-before-sending
     need: >-
-      DECISION OPEN: the dialog warns beside the person chosen, before "Kaydet", when they are a Medaris nazımı already or are the başnazım himself,
-      and the API refuses the başnazım's own id, as the ders nazırı dialog of nazar does for its own cases. Today the page lets him choose both and
-      only the server's 409 answers the first, after sending; the second is appointed.
-    drawn: [picked, pickedBadEnd, appointing, appointed]
-    built:
-      - action: medaris.api:appointMedarisNazim
-    missing: none # MAPPT-2, MAPPT-3: the routes' order of checks has no self-grant step (ledger/security.md); D1
+      DECISION OPEN: the dialog warns beside the person chosen, before "Kaydet", when they are a Medaris nazımı already or are the
+      başnazım himself, and the API refuses the başnazım's own id, as the ders nazırı dialog of nazar does for its own cases.
+      Today the page lets him choose both and only the server's 409 answers the first, after sending; the second is appointed.
+    evidence:
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:96
+    missing: >-
+      no Linear issue; MAPPT-2, MAPPT-3: the routes' order of checks has no self-grant step (ledger/security.md); D1; code exists
+      in part
+    note: >-
+      Drawn on the states picked, pickedBadEnd, appointing and appointed, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: only-a-known-account-is-appointed
     need: >-
-      A Medaris nazımı is an account the app or the realm knows, as every other appointment route checks (ders nazırı, medrese nazır, köşk grant). The
-      page cannot send an unknown id (it offers only a found account); the API accepts any uuid.
-    drawn: [picked, appointing]
-    built:
-      - action: medaris.api:lookupUser
-    missing: none # domain invariant medaris-nazim-is-a-known-account (holds: false, finding medaris-nazim-account-unchecked)
+      A Medaris nazımı is an account the app or the realm knows, as every other appointment route checks (ders nazırı, medrese
+      nazır, köşk grant). The page cannot send an unknown id (it offers only a found account); the API accepts any uuid.
+    evidence:
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+    missing: >-
+      no Linear issue; domain invariant medaris-nazim-is-a-known-account (holds: false, finding medaris-nazim-account-unchecked);
+      code exists in part
+    note: >-
+      Drawn on the states picked and appointing, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-refusal-keeps-the-dialog
     need: >-
-      A person who is a Medaris nazımı already, a group that was deleted meanwhile and any other refusal are told in a toast in words, the dialog stays
-      open with what was typed, and nothing is written.
-    drawn: [appointing, picked, toastFailed, toastAlready, toastGroupGone, toastRefused]
-    built:
-      - action: medaris.api:appointMedarisNazim
-      - route: apps/nizam/features/permissions/present.ts:365
-    walked:
-      - e2e: apps/nizam/e2e/permissions.e2e.ts
-        check: 'permissions#9' # e2e lines 499-501 only: the test cancels the edit dialog and counts one row; a comment says the API refuses a second appointment and the page's toast is not asserted anywhere
-      - test: apps/nizam/test/permissions.spec.tsx # :337, the API's codes to the messages
-      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts # :550, the 409, a past end, an unknown code and a non-platform group at the API
+      A person who is a Medaris nazımı already, a group that was deleted meanwhile and any other refusal are told in a toast in
+      words, the dialog stays open with what was typed, and nothing is written.
+    evidence:
+      - state: appointing
+      - state: picked
+      - node: toastFailed
+      - node: toastAlready
+      - node: toastGroupGone
+      - node: toastRefused
+      - source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:96
+      - source: apps/nizam/features/permissions/present.ts:365
+      - test: apps/nizam/e2e/permissions.e2e.ts
+        name: "nizam/12 — appointing finds the person by e-mail in the realm, gives a group, a single permission and an end, and the list shows it (criteria 4, 5)"
+      - test: apps/nizam/test/permissions.spec.tsx
+      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts
+    note: |-
+      permissions#9: e2e lines 499-501 only: the test cancels the edit dialog and counts one row; a comment says the API refuses a
+      second appointment and the page's toast is not asserted anywhere
+      apps/nizam/test/permissions.spec.tsx: :337, the API's codes to the messages
+      apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts: :550, the 409, a past end, an unknown code and a non-platform group at
+      the API
 
   - id: a-refusal-is-announced
     need: >-
-      A refusal and an answer under a field ("no account", "not available", the end) are announced to a screen reader and the focus goes to what the
-      person must correct.
-    drawn: [pickerNotFound, pickerDown, endError, toastFailed]
-    missing: none # F-UI-W3-1: the Field error has no live region and the focus stays where it was
+      A refusal and an answer under a field ("no account", "not available", the end) are announced to a screen reader and the
+      focus goes to what the person must correct.
+    missing: "no Linear issue; F-UI-W3-1: the Field error has no live region and the focus stays where it was"
+    note: >-
+      Drawn on the nodes pickerNotFound, pickerDown, endError and toastFailed, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-dialog-opens-on-its-field
     need: >-
-      When "Medaris nazımı ata" opens, the focus is on the e-mail field, so a keyboard user can type at once; the dialog is described by its lead
-      line, not by its whole body.
-    drawn: [dialog, closeIcon, pickerField]
-    missing: none # F-W2-12, F-W2-13: the dialog opens on its close icon and describes itself by every field
+      When "Medaris nazımı ata" opens, the focus is on the e-mail field, so a keyboard user can type at once; the dialog is
+      described by its lead line, not by its whole body.
+    missing: "no Linear issue; F-W2-12, F-W2-13: the dialog opens on its close icon and describes itself by every field"
+    note: >-
+      Drawn on the nodes dialog, closeIcon and pickerField, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-appointed-person-gets-the-cut-home
     need: >-
-      The person appointed opens Nizam and finds a menu, a home and numbers cut to exactly what she was given, and, with nothing given, a home that
-      says so. The başnazım's own home and menu are not the same page.
-    drawn: [appointed, handed_over.cut]
-    built:
-      - route: apps/nizam/features/dashboard/components/medaris-home.tsx:349
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#8' # nizam.home.medarisNazimCut carries it; this flow starts that flow (granted: some, or none for an appointment with nothing)
+      The person appointed opens Nizam and finds a menu, a home and numbers cut to exactly what she was given, and, with nothing
+      given, a home that says so. The başnazım's own home and menu are not the same page.
+    evidence:
+      - state: appointed
+      - state: handed_over.cut
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:349
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/05 — a Medaris nazımı sees only the sections their permissions open, and their own permissions (criteria 1, 2, 3, 4, 6)"
+    note: >-
+      dashboard#8: nizam.home.medarisNazimCut carries it; this flow starts that flow (granted: some, or none for an appointment
+      with nothing)
 
   - id: a-ceiling-on-what-a-medaris-nazim-may-give
     need: >-
-      DECISION OPEN (the owner's reading is awaited): a permission that lets a Medaris nazımı give permissions to others ("Medrese nazırına izin ver")
-      can carry a ceiling on what she may give, set by the başnazım when he appoints her, so that giving on is never wider than the başnazım meant.
-      Today the dialog offers no ceiling, and its audit note says only that she cannot give on what she was given.
-    drawn: [auditNote, groupSelect]
-    missing: MDRS-209 # P-16, "Cap what a Medaris nazımı may give": status Ready to Test in Linear, no screen found in this dialog
+      DECISION OPEN (the owner's reading is awaited): a permission that lets a Medaris nazımı give permissions to others ("Medrese
+      nazırına izin ver") can carry a ceiling on what she may give, set by the başnazım when he appoints her, so that giving on is
+      never wider than the başnazım meant. Today the dialog offers no ceiling, and its audit note says only that she cannot give
+      on what she was given.
+    missing: >-
+      MDRS-209; P-16, "Cap what a Medaris nazımı may give": status Ready to Test in Linear, no screen found in this dialog
+    note: >-
+      Drawn on the nodes auditNote and groupSelect, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

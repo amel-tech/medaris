@@ -463,6 +463,7 @@ actions:
               url: { type: string, format: uri, maxLength: 500, pattern: "^https?://", note: "a stored file takes none" }
     result: { status: 200, returns: Course }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       AUTHZ_FORBIDDEN:
         status: 403
         note: >-
@@ -663,6 +664,7 @@ actions:
       inherit; a barred or REVOKED talebe falls back to it)
     result: { status: 201, returns: Enrollment }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       COURSE_NOT_FOUND: { status: 404, note: "S1, S3, S4: a DRAFT or hidden course is 404 to a caller who may not see it (staff who can see a DRAFT can enrol in it); a course of a hidden köşk", source: apps/tedrisat/src/course/course.service.ts:306 }
       BAN_ACTIVE: { status: 403, note: "\"You are barred from this course\": an open ban on the course, its köşk or its medrese", source: apps/tedrisat/src/ban/ban.service.ts:616 }
       ENROLLMENT_STATE_CONFLICT: { status: 409, note: "the caller holds a REVOKED row: the team took them out and only the team brings them back", source: apps/tedrisat/src/course/course.service.ts:1541 }
@@ -683,6 +685,7 @@ actions:
     needs: course.view on the course, which every signed-in caller holds; the row is the caller's own
     result: { status: 200, type: boolean, const: true }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit; getDetail does not run here", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
       BAN_ACTIVE: { status: 403, note: "an open ban bars the caller from the course", source: apps/tedrisat/src/ban/ban.service.ts:616 }
       ENROLLMENT_NOT_FOUND: { status: 404, note: "no row (course.service.ts:1804), or it went between the read and the write (:1818 via lostRace)", source: apps/tedrisat/src/course/course.service.ts:1804 }
@@ -703,6 +706,7 @@ actions:
     needs: course.view on the course, which every signed-in caller holds; the row is the caller's own
     result: { status: 200, type: boolean, const: true }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       COURSE_NOT_FOUND: { status: 404, note: "the guard's resolver: a missing course, or a course of a hidden köşk to a caller without course.hide or platform.kosk_edit", source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397 }
       BAN_ACTIVE: { status: 403, note: "an open ban bars the caller from the course: a barred talebe cannot withdraw their own request either", source: apps/tedrisat/src/ban/ban.service.ts:616 }
       ENROLLMENT_NOT_FOUND: { status: 404, note: "no row, or it is no longer PENDING: an approved seat is a 404 and stays", source: apps/tedrisat/src/course/course.service.ts:1833 }
@@ -729,6 +733,7 @@ actions:
         status: { enum: [PENDING, ENROLLED, COMPLETED, REVOKED], deprecated: true, note: "accepted only when it equals the stored status" }
     result: { status: 200, returns: Enrollment }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       AUTHZ_FORBIDDEN: { status: 403, note: "course.view_details is not held: a PENDING, REVOKED or barred talebe, a stranger" }
       ENROLLMENT_NOT_FOUND: { status: 404, note: "no row, or it is PENDING or REVOKED, or it went before the write (:1894)", source: apps/tedrisat/src/course/course.service.ts:1865 }
       ENROLLMENT_STATUS_FORBIDDEN: { status: 403, note: "\"Only the course team sets the status of an enrollment in course <id>\": a status that differs from the stored one", source: apps/tedrisat/src/course/course.service.ts:1868 }

@@ -257,7 +257,7 @@ states:
       of their oldest role (MENU-2). Findings read here: F-P0-8, F-UI-P0-1, F-X-9, F-P0-4, F-X-11, F-X-12, MENU-1, MENU-2,
       MENU-3, MENU-5.
     on:
-      OPEN_PICKER: { guard: pickerMenu, target: picking, say: "they press the picker's button", source: libs/ui/src/mds/scope-picker.tsx:134 }
+      OPEN_PICKER: { guard: pickerMenu, target: picking, say: "they press the picker's button", source: libs/ui/src/mds/scope-picker.tsx:60 }
       PICK_HOME: { target: wide, effect: [backHome], say: "Ana sayfa: the entry of the page is marked and, on Bildirimler, the home opens", source: apps/nizam/components/shell/shell-frame.tsx:126 }
       PICK_NOTIFICATIONS: { target: wide, effect: [onNotifications], say: "Bildirimler opens; its address names no köşk, so a köşk nazımı's menu now names the newest köşk (MENU-2)", source: apps/nizam/components/shell/shell-frame.tsx:126 }
       PICK_PAGE: { target: page_opened, say: "they follow another entry of the menu (Köşkler, or Dersler for a köşk nazımı); every entry is a link", source: apps/nizam/components/shell/shell-frame.tsx:126 }
@@ -276,13 +276,13 @@ states:
       (/kosks/<id>/ana-sayfa), anywhere else /kosks/<id>, which redirects a köşk nazımı to that köşk's Dersler. The popup does not
       make the page inert (Base UI leaves its focus manager non-modal for a plain menu: not seen here), so the sidebar stays.
     on:
-      ESCAPE: { target: kept, say: "Esc closes the popup", source: libs/ui/src/mds/scope-picker.tsx:133 }
+      ESCAPE: { target: kept, say: "Esc closes the popup", source: libs/ui/src/mds/scope-picker.tsx:59 }
       CHOOSE_KOSK:
         - { guard: "place == 'notifications'", target: courses_opened, say: "on Bildirimler a row opens /kosks/<id>, which redirects to that köşk's Dersler", source: apps/nizam/components/shell/shell-frame.tsx:149 }
         - { guard: "scope == 'landing'", target: wide, effect: [toNewest], say: "on a köşk's home the other row opens that köşk's home, drawn in this frame again", source: apps/nizam/components/shell/shell-frame.tsx:149 }
         - { target: wide, effect: [toLanding], say: "the other row opens the other köşk's home", source: apps/nizam/components/shell/shell-frame.tsx:149 }
       NAVIGATE: { target: left, say: "they leave" }
-    source: libs/ui/src/mds/scope-picker.tsx:133
+    source: libs/ui/src/mds/scope-picker.tsx:59
 
   kept:
     title: The picker is closed again
@@ -291,13 +291,13 @@ states:
       The popup went away on Esc and Base UI returns the focus to the trigger (Base UI's menu; not seen here). The frame is the
       sidebar's, whatever the focus.
     on:
-      OPEN_PICKER: { guard: pickerMenu, target: picking, say: "they press the button again", source: libs/ui/src/mds/scope-picker.tsx:134 }
+      OPEN_PICKER: { guard: pickerMenu, target: picking, say: "they press the button again", source: libs/ui/src/mds/scope-picker.tsx:60 }
       PICK_HOME: { target: wide, effect: [backHome], say: "Ana sayfa", source: apps/nizam/components/shell/shell-frame.tsx:126 }
       PICK_NOTIFICATIONS: { target: wide, effect: [onNotifications], say: "Bildirimler opens, and the menu names the newest köşk (MENU-2)", source: apps/nizam/components/shell/shell-frame.tsx:126 }
       PICK_PAGE: { target: page_opened, say: "they follow another entry of the menu", source: apps/nizam/components/shell/shell-frame.tsx:126 }
       PICK_PERSON: { target: account_opened, say: "they follow the person's row", source: apps/nizam/components/shell/shell-frame.tsx:159 }
       NAVIGATE: { target: left, say: "they leave" }
-    source: libs/ui/src/mds/scope-picker.tsx:134
+    source: libs/ui/src/mds/scope-picker.tsx:60
 
   bar:
     title: The phone's bar
@@ -331,7 +331,7 @@ states:
     on:
       CLOSE_SHEET: { target: bar, say: "they press Kapat", source: libs/ui/src/mds/app-bar.tsx:82 }
       ESCAPE: { target: bar, say: "Esc closes the sheet", source: libs/ui/src/mds/app-bar.tsx:62 }
-      OPEN_PICKER: { guard: pickerMenu, target: sheetPicking, say: "they press the picker's button inside the sheet", source: libs/ui/src/mds/scope-picker.tsx:134 }
+      OPEN_PICKER: { guard: pickerMenu, target: sheetPicking, say: "they press the picker's button inside the sheet", source: libs/ui/src/mds/scope-picker.tsx:60 }
       PICK_PAGE: { target: page_opened, say: "they follow an entry of the menu: the sheet closes and the page opens", source: libs/ui/src/mds/app-bar.tsx:92 }
       PICK_HOME: { target: home_opened, say: "Ana sayfa, in the sheet: the sheet closes and the page opens", source: libs/ui/src/mds/app-bar.tsx:92 }
       PICK_NOTIFICATIONS: { target: notifications_opened, say: "Bildirimler, in the sheet: the sheet closes and the page opens", source: libs/ui/src/mds/app-bar.tsx:92 }
@@ -349,12 +349,12 @@ states:
       return to the bar: a return would claim that the focus is on "Menü", and a whole page load leaves it on the document's
       start.
     on:
-      ESCAPE: { target: sheet, say: "Esc closes the popup only", source: libs/ui/src/mds/scope-picker.tsx:133 }
+      ESCAPE: { target: sheet, say: "Esc closes the popup only", source: libs/ui/src/mds/scope-picker.tsx:59 }
       CHOOSE_KOSK:
         - { guard: "place == 'notifications'", target: courses_opened, say: "a row opens /kosks/<id>, which redirects to that köşk's Dersler", source: apps/nizam/components/shell/shell-frame.tsx:149 }
         - { target: kosk_home_opened, say: "a row opens that köşk's home", source: apps/nizam/components/shell/shell-frame.tsx:149 }
       NAVIGATE: { target: left, say: "they leave" }
-    source: libs/ui/src/mds/scope-picker.tsx:140
+    source: libs/ui/src/mds/scope-picker.tsx:66
 
   menu_not_drawn:
     title: The frame is drawn with no menu
@@ -406,7 +406,7 @@ assertions:
   - id: the-picker-opens-only-for-several-kosks
     never: "(state == 'picking' or state == 'sheetPicking') and not pickerMenu"
     say: The picker is a control only for a köşk nazımı of two köşks or more; with one köşk it is a plain label that cannot be opened.
-    source: libs/ui/src/mds/scope-picker.tsx:129
+    source: libs/ui/src/mds/scope-picker.tsx:55
   - id: a-cut-menu-is-never-the-whole-menu
     never: "framed and who == 'nazimCut' and held == 'read' and widerMenu"
     say: A Medaris nazımı whose permissions were read and who holds only some of them never gets Talepler or Denetim; the whole Medaris menu is drawn only when the permissions allow it or could not be read.

@@ -1,146 +1,198 @@
-# What must exist for a staff member of nazar to read what they hold and set the time zone their celse times are shown in: the flow's
-# product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the planned work in the
-# inventory (planned.md), not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator
-# merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.account.settings
+status: proposed
+summary: >-
+  What must exist for a staff member of nazar to read what they hold and set the time zone their celse times are shown in: the
+  flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For needs.gaps (written 15 Nov 2026, before any replay of this flow: `walked` names only e2e checks and unit specs, no replay):
-#   missing   chief-is-told-what-they-are, nazir-is-told-whom-to-ask, sign-out-asks-first, a-save-is-visibly-busy-and-keeps-the-focus,
-#             a-failed-read-says-what-failed (none); role-names-in-english-and-arabic (MDRS-202); v2-role-names-everywhere (MDRS-144)
-#   unwalked  the-imam-star-explains-itself (e2e account#1 a5 and a6 assert only that a lone hoca has no star; nothing opens the
-#             bubble); a-failed-save-restores-the-zone for a replay (e2e account#6 walks it with page.route; the engine cannot make
-#             PATCH /me refuse)
-kind: needs
-flow: nazar.account.settings
-status: proposed
+# missing   chief-is-told-what-they-are, nazir-is-told-whom-to-ask, sign-out-asks-first, a-save-is-visibly-busy-and-keeps-the-focus,
+# a-failed-read-says-what-failed (none); role-names-in-english-and-arabic (MDRS-202); v2-role-names-everywhere (MDRS-144)
+# unwalked  the-imam-star-explains-itself (e2e account#1 a5 and a6 assert only that a lone hoca has no star; nothing opens the
+# bubble); a-failed-save-restores-the-zone for a replay (e2e account#6 walks it with page.route; the engine cannot make
+# PATCH /me refuse)
 
 needs:
   - id: read-my-roles
     need: >-
-      A person with a seat in the portal reads every role they hold in one table: the role, the medrese, köşk or course it holds in
-      and that course's state, who gave it and when, and until when. The medrese roles come first, then the courses. A person who
-      holds no nazır role is told so, in a line under the table.
-    drawn: [settings, tasksTable, rowRole, rowScope, rowBadgeActive, rowBadgeCourse, rowMeta, rowGrantor, rowGranted, rowExpires, noNazirNote]
-    built:
-      - action: medaris.api:getMyAssignments
-      - route: apps/nazar/features/account/components/account-page.tsx:98
-    walked:
-      - e2e: apps/nazar/e2e/account.e2e.ts
-        check: 'account#1'
+      A person with a seat in the portal reads every role they hold in one table: the role, the medrese, köşk or course it holds
+      in and that course's state, who gave it and when, and until when. The medrese roles come first, then the courses. A person
+      who holds no nazır role is told so, in a line under the table.
+    evidence:
+      - state: settings
+      - node: tasksTable
+      - node: rowRole
+      - node: rowScope
+      - node: rowBadgeActive
+      - node: rowBadgeCourse
+      - node: rowMeta
+      - node: rowGrantor
+      - node: rowGranted
+      - node: rowExpires
+      - node: noNazirNote
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+      - source: apps/nazar/features/account/components/account-page.tsx:98
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "the roles table is the person's real assignments, the medrese first, with the 'no nazırlık' note"
       - test: apps/nazar/test/account-page.spec.tsx
 
   - id: permissions-in-words
     need: >-
       The person reads, for each role and scope they hold, the permissions it gives them as plain sentences, grouped under one
       heading, with when the role ends. A permission the page has no sentence for is never shown as a bare code.
-    drawn: [settings, permissionGroup, groupTitle, groupScopeLine, permissionLine, permissionCourseEdit, permissionNote, defaultsNote, expiryLine]
-    built:
-      - action: medaris.api:getMyEffectivePermissions
-      - route: apps/nazar/features/account/components/permissions-list.tsx:22
-    walked:
-      - e2e: apps/nazar/e2e/account.e2e.ts
-        check: 'account#2'
+    evidence:
+      - state: settings
+      - node: permissionGroup
+      - node: groupTitle
+      - node: groupScopeLine
+      - node: permissionLine
+      - node: permissionCourseEdit
+      - node: permissionNote
+      - node: defaultsNote
+      - node: expiryLine
+      - source: apps/tedrisat/src/assignment/me-assignments.controller.ts:86
+      - source: apps/nazar/features/account/components/permissions-list.tsx:22
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "the permission sentences come from the person's courses, grouped under one heading"
       - test: apps/nazar/test/account.spec.ts
 
   - id: my-email-is-shown-and-not-editable
-    need: >-
-      The person sees the address their account is signed in with, and is told it cannot be changed here.
-    drawn: [settings, emailField, emailHelp]
-    built:
-      - route: apps/nazar/features/account/components/account-page.tsx:178
-    walked:
-      - e2e: apps/nazar/e2e/account.e2e.ts
-        check: 'account#3'
+    need: The person sees the address their account is signed in with, and is told it cannot be changed here.
+    evidence:
+      - state: settings
+      - node: emailField
+      - node: emailHelp
+      - source: apps/nazar/features/account/components/account-page.tsx:178
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "the e-mail is read-only and the language is Türkçe"
 
   - id: time-zone-is-saved-when-chosen
     need: >-
       The person chooses a time zone from a short list of cities, or from the full list behind "Diğer…", and it is saved at that
       moment, with no Kaydet; a toast says so, the zone is still chosen after a reload, and the dates of the page follow it.
-    drawn: [settings, choosingZone, choosingListed, savingZone, zoneField, zoneOtherField, zoneReadsIstanbul, zoneReadsNewYork, zoneReadsOther, zoneOtherReadsEmpty, zoneOtherReadsTokyo, toastZoneSaved]
-    built:
-      - action: medaris.api:updateMe
-      - route: apps/nazar/features/account/components/time-zone-form.tsx:55
-    walked:
-      - e2e: apps/nazar/e2e/account.e2e.ts
-        check: 'account#4'
-      - e2e: apps/nazar/e2e/account.e2e.ts
-        check: 'account#5'
+    evidence:
+      - state: settings
+      - state: choosingZone
+      - state: choosingListed
+      - state: savingZone
+      - node: zoneField
+      - node: zoneOtherField
+      - node: zoneReadsIstanbul
+      - node: zoneReadsNewYork
+      - node: zoneReadsOther
+      - node: zoneOtherReadsEmpty
+      - node: zoneOtherReadsTokyo
+      - node: toastZoneSaved
+      - source: apps/tedrisat/src/user/me.controller.ts:40
+      - source: apps/nazar/features/account/components/time-zone-form.tsx:55
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "the time zone saves the moment it is chosen and is still chosen after a reload"
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "'Diğer…' opens the full list of zones, and a zone from it is kept too"
 
   - id: a-failed-save-restores-the-zone
     need: >-
       When the save cannot be made, the zone that was held is put back in the lists and a toast that stays says that the previous
       zone is still in force.
-    drawn: [savingZone, toastZoneFailed, toastClose]
-    built:
-      - route: apps/nazar/features/account/components/time-zone-form.tsx:70
-    walked:
-      - e2e: apps/nazar/e2e/account.e2e.ts
-        check: 'account#6'
+    evidence:
+      - state: savingZone
+      - node: toastZoneFailed
+      - node: toastClose
+      - source: apps/nazar/features/account/components/time-zone-form.tsx:70
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "a failed save puts the previous zone back and says so"
 
   - id: sign-out-from-hesap
     need: >-
-      The person signs out of Medaris from their account page, with a sentence that says what it does, and ends on the sign-in page.
-    drawn: [settings, signOutNote, signOutButton, handed_over.sign_out]
-    built:
-      - action: medaris.api:signOut
-      - route: apps/nazar/features/account/components/sign-out-button.tsx:26
-    walked:
-      - e2e: apps/nazar/e2e/account.e2e.ts
-        check: 'account#7'
+      The person signs out of Medaris from their account page, with a sentence that says what it does, and ends on the sign-in
+      page.
+    evidence:
+      - state: settings
+      - node: signOutNote
+      - node: signOutButton
+      - state: handed_over.sign_out
+      - source: libs/auth/src/server/routes.ts:351
+      - source: apps/nazar/features/account/components/sign-out-button.tsx:26
+      - test: apps/nazar/e2e/account.e2e.ts
+        name: "the sign-out card has the sentence and no confirmation window; the button ends both sessions and the back button does not return to the page"
 
   - id: the-imam-star-explains-itself
     need: >-
-      Where a course has more than one hoca, the hoca who is its imam is marked, and the mark says in words what an imam is when it
-      is hovered, focused or pressed.
-    drawn: [settings, imamStar, starOpen, starBubble, starBubbleTitle, starBubbleBody]
-    built:
-      - route: libs/ui/src/mds/imam-star.tsx:67
-    walked: []
+      Where a course has more than one hoca, the hoca who is its imam is marked, and the mark says in words what an imam is when
+      it is hovered, focused or pressed.
+    evidence:
+      - state: settings
+      - node: imamStar
+      - state: starOpen
+      - node: starBubble
+      - node: starBubbleTitle
+      - node: starBubbleBody
+      - source: libs/ui/src/mds/imam-star.tsx:67
 
   - id: chief-is-told-what-they-are
     need: >-
-      The Medaris başnazım, who may open every medrese and course though no seat is theirs, reads on their account page that they are
-      the başnazım, not a talebe, with a link into the places they may open and a table that says why it is empty (F-E-4, F-E-13, F-E-17).
-    drawn: [settings, roleLine, emptyRow]
-    missing: none
+      The Medaris başnazım, who may open every medrese and course though no seat is theirs, reads on their account page that they
+      are the başnazım, not a talebe, with a link into the places they may open and a table that says why it is empty (F-E-4,
+      F-E-13, F-E-17).
+    missing: no Linear issue; findings F-E-4, F-E-13, F-E-17
+    note: >-
+      Drawn on the state settings and on the nodes roleLine and emptyRow, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: nazir-is-told-whom-to-ask
     need: >-
-      A medrese nazırı who holds no permission reads, where the permissions would be, that they come from the medrese's başmüderris
-      and whom to ask for one (NAZSET-2).
-    drawn: [settings, permissionsEmpty]
-    missing: none
+      A medrese nazırı who holds no permission reads, where the permissions would be, that they come from the medrese's
+      başmüderris and whom to ask for one (NAZSET-2).
+    missing: no Linear issue; findings NAZSET-2
+    note: >-
+      Drawn on the state settings and on the node permissionsEmpty, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: sign-out-asks-first
     need: >-
-      "Çıkış yap" asks "Çıkış yapılsın mı?" before it ends the session, as it does in tedris and nizam, through the confirmation page
-      nazar already has (F-E-18; decision D2).
-    drawn: [settings, signOutButton]
-    missing: none
+      "Çıkış yap" asks "Çıkış yapılsın mı?" before it ends the session, as it does in tedris and nizam, through the confirmation
+      page nazar already has (F-E-18; decision D2).
+    missing: no Linear issue; findings F-E-18
+    note: >-
+      Drawn on the state settings and on the node signOutButton, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-save-is-visibly-busy-and-keeps-the-focus
     need: >-
-      While a zone is being saved the lists show it is busy, a second choice waits, "Diğer…" moves or announces the second list, and a
-      refusal leaves the focus on a control that is still there (F-E-12, NAZSET-1).
-    drawn: [savingZone, choosingZone, choosingListed]
-    missing: none
+      While a zone is being saved the lists show it is busy, a second choice waits, "Diğer…" moves or announces the second list,
+      and a refusal leaves the focus on a control that is still there (F-E-12, NAZSET-1).
+    missing: no Linear issue; findings F-E-12, NAZSET-1
+    note: >-
+      Drawn on the states savingZone, choosingZone and choosingListed, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-read-says-what-failed
     need: >-
       When only the permissions cannot be read, the alert says so (not that the roles failed), and a skeleton that waits for the
       permissions says it is loading (F-E-11, F-E-16).
-    drawn: [permissionsFailed]
-    missing: none
+    missing: no Linear issue; findings F-E-11, F-E-16
+    note: >-
+      Drawn on the node permissionsFailed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
 
   - id: role-names-in-english-and-arabic
     need: >-
       The roles' names and the sentences of the account page are shown in English and Arabic as well as Turkish when the language
       menu exists (P-19). Today the catalog has them in tr, en and ar and the page shows tr only.
-    drawn: [rowRole, groupTitle, roleLine, permissionLine]
     missing: MDRS-202
+    note: >-
+      Drawn on the nodes rowRole, groupTitle, roleLine and permissionLine, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: v2-role-names-everywhere
     need: >-
       The v2 role names are used in the API's enums, the Turkish copy and the docs alike (P-20); the page words them through
       nazar.Roles.
-    drawn: [rowRole, groupTitle, roleLine]
     missing: MDRS-144
+    note: >-
+      Drawn on the nodes rowRole, groupTitle and roleLine, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).

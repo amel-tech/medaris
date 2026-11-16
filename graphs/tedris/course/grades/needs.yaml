@@ -1,137 +1,157 @@
-# What must exist for a talebe to read their own grades in a course: tedris.course.grades, written on 15 Nov 2026 in the format of LAYOUT.md
-# section 7. Each need is what the product must do, from the flow's story; none is read off what the page does today. Nothing here comes
-# from planned.md: no planned feature (P-nn) is about this tab (P-P2, İmtihan, is PRD-only and belongs to nazar.evaluation.examScores).
-# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
-#   missing:  failed-read-is-told (GRADES-2), release-leads-to-grades (GRADES-1), completed-talebe-is-told (GRADES-3),
-#             grades-have-one-name (GRADES-4), tab-is-in-the-address (PROG-1)
-#   unwalked: empty-says-so and passive-scope-shuts-grades (bound in binding.empty.yaml and binding.refused.yaml, not replayed in this
-#             phase; read by hand with a browser on the stack), absent-and-not-entered-are-said and marks-eksik-and-vermedi (no e2e, no unit spec and no replay draws "Girmedi", "Girilmedi",
-#             "Eksik" or "Vermedi"), a-retake-says-so (the unit spec apps/tedris/test/exam-grades.spec.tsx only),
-#             grades-are-the-talebes-own (the API's suite only, not a browser), grades-on-an-address (the address start `?tab=notlarim`
-#             is not bound)
+schema: delurio-graph/0
 kind: needs
-flow: tedris.course.grades
+id: tedris.course.grades
 status: proposed
+summary: >-
+  What must exist for a talebe to read their own grades in a course: tedris.course.grades. Each need is what the product must do,
+  from the flow's story; none is read off what the page does today. Nothing here comes from planned.md: no planned feature (P-nn)
+  is about this tab (P-P2, İmtihan, is PRD-only and belongs to nazar.evaluation.examScores).
 
 needs:
   - id: read-released-score
     need: A talebe reads, in the course, the score of an exam out of its maximum once the course team has released the results.
-    drawn: [gradesShown]
-    built:
-      - action: medaris.api:getMyGrades
-      - route: apps/tedris/features/courses/components/exam-grades.tsx:96
-    walked:
-      - e2e: apps/tedris/e2e/exam.e2e.ts
-        check: 'exam#2 (a1: 17/20)'
-      - replay: seated
+    evidence:
+      - state: gradesShown
+      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedris/features/courses/components/exam-grades.tsx:96
+      - test: apps/tedris/e2e/exam.e2e.ts
+        name: "Notlarım shows a released score and keeps a closed one hidden"
+      - scenario: seated
+    note: "exam.e2e.ts exam#2 (a1: 17/20)"
 
   - id: closed-result-stays-closed
     need: >-
-      Until the course team releases the results of an exam the talebe is told that the result is not yet announced, and is sent no
-      score, whatever the team has entered.
-    drawn: [gradesShown]
-    built:
-      - action: medaris.api:getMyGrades
-      - route: apps/tedrisat/src/exam/exam.repository.ts:392
-    walked:
-      - e2e: apps/tedris/e2e/exam.e2e.ts
-        check: 'exam#2 (a2: "Sonuç henüz açıklanmadı", a3: 64 not on the page)'
-      - replay: seated # a3 by the effect on getMyGrades, which reads the API's answer
+      Until the course team releases the results of an exam the talebe is told that the result is not yet announced, and is sent
+      no score, whatever the team has entered.
+    evidence:
+      - state: gradesShown
+      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedrisat/src/exam/exam.repository.ts:392
+      - test: apps/tedris/e2e/exam.e2e.ts
+        name: "Notlarım shows a released score and keeps a closed one hidden"
+      - scenario: seated
+    note: |-
+      exam.e2e.ts exam#2 (a2: "Sonuç henüz açıklanmadı", a3: 64 not on the page)
+      seated: a3 by the effect on getMyGrades, which reads the API's answer
 
   - id: read-memorisation-marks
-    need: A talebe reads the mark the hoca gave on each memorisation homework of the course, and which of them are still waiting for one.
-    drawn: [gradesShown]
-    built:
-      - action: medaris.api:getMyGrades
-      - route: apps/tedris/features/courses/components/exam-grades.tsx:116
-    walked:
-      - replay: seated # Tam and Bekliyor; nothing draws Eksik or Vermedi
+    need: >-
+      A talebe reads the mark the hoca gave on each memorisation homework of the course, and which of them are still waiting for
+      one.
+    evidence:
+      - state: gradesShown
+      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedris/features/courses/components/exam-grades.tsx:116
+      - scenario: seated
+    note: "seated: Tam and Bekliyor; nothing draws Eksik or Vermedi"
 
   - id: marks-eksik-and-vermedi
     need: A mark that is incomplete or not given at all is told to the talebe in its own words and look, not only the full one.
-    drawn: [gradesShown]
-    built:
-      - route: apps/tedris/features/courses/components/exam-grades.tsx:130
-    # walked: nothing. No e2e, no unit spec (apps/tedris/test/exam-grades.spec.tsx draws Tam and Bekliyor) and no replay of this flow marks a
-    # homework Eksik or Vermedi (the replay's data has Tam and a waiting one).
+    evidence:
+      - state: gradesShown
+      - source: apps/tedris/features/courses/components/exam-grades.tsx:130
+    note: >-
+      walked: nothing. No e2e, no unit spec (apps/tedris/test/exam-grades.spec.tsx draws Tam and Bekliyor) and no replay of this
+      flow marks a homework Eksik or Vermedi (the replay's data has Tam and a waiting one).
 
   - id: absent-and-not-entered-are-said
-    need: A talebe the course team marked absent, or for whom no result was entered, is told which of the two once the results are released.
-    drawn: [gradesShown]
-    built:
-      - route: apps/tedris/features/courses/components/exam-grades.tsx:98
-    # walked: nothing. No e2e, no unit spec and no replay draws "Girmedi" or "Girilmedi" (the spec's released exam has a score, its other exam
-    # is closed); the replay's data has neither.
+    need: >-
+      A talebe the course team marked absent, or for whom no result was entered, is told which of the two once the results are
+      released.
+    evidence:
+      - state: gradesShown
+      - source: apps/tedris/features/courses/components/exam-grades.tsx:98
+    note: >-
+      walked: nothing. No e2e, no unit spec and no replay draws "Girmedi" or "Girilmedi" (the spec's released exam has a score,
+      its other exam is closed); the replay's data has neither.
 
   - id: a-retake-says-so
     need: A make-up exam is named as one in the list of exams.
-    drawn: [gradesShown]
-    built:
-      - route: apps/tedris/features/courses/components/exam-grades.tsx:93
-    # walked: nothing by a browser. The unit spec apps/tedris/test/exam-grades.spec.tsx draws the retake's row ("Telafi"); the replay's data
-    # has no retake.
+    evidence:
+      - state: gradesShown
+      - source: apps/tedris/features/courses/components/exam-grades.tsx:93
+    note: >-
+      walked: nothing by a browser. The unit spec apps/tedris/test/exam-grades.spec.tsx draws the retake's row ("Telafi"); the
+      replay's data has no retake.
 
   - id: empty-says-so
     need: A course with no exam and no memorisation homework tells the talebe so, with the tab still there.
-    drawn: [gradesEmpty, empty-only-with-nothing-listed]
-    built:
-      - route: apps/tedris/features/courses/components/exam-grades.tsx:57
-    # walked: nothing by the replay yet. binding.empty.yaml is written for `--to gradesEmpty` and was not run (the round's three runs went to
-    # the main story); a browser read by hand of a course with nothing to grade showed the tab and the sentence "Henüz sınav ya da ezber yok."
-    # and no section.
+    evidence:
+      - state: gradesEmpty
+      - source: apps/tedris/features/courses/components/exam-grades.tsx:57
+    note: |-
+      Also drawn as the assertion empty-only-with-nothing-listed.
+      walked: nothing by the replay yet. binding.empty.yaml is written for `--to gradesEmpty` and was not run (the round's three
+      runs went to the main story); a browser read by hand of a course with nothing to grade showed the tab and the sentence
+      "Henüz sınav ya da ezber yok." and no section.
 
   - id: grades-are-the-talebes-own
     need: A talebe reads only their own grades, never another talebe's, and the content a passive scope shuts stays shut.
-    drawn: [reading, tab-needs-the-read]
-    built:
-      - action: medaris.api:getMyGrades
-      - route: apps/tedrisat/src/exam/exam.controller.ts:117
-    walked:
-      - e2e: apps/tedrisat/test/e2e/exams.e2e.spec.ts
-        check: 'exams (e2e) > results and their release > "keeps a talebe''s score from them until it is released, then shows them their own alone" and "tells a caller the content is closed to of no exam or homework but their own"'
+    evidence:
+      - state: reading
+      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
+    note: |-
+      Also drawn as the assertion tab-needs-the-read.
+      exams.e2e.spec.ts exams (e2e) > results and their release > "keeps a talebe's score from them until it is released, then
+      shows them their own alone" and "tells a caller the content is closed to of no exam or homework but their own"
 
   - id: passive-scope-shuts-grades
     need: A talebe of a passive scope is not shown grades the scope's content rule shuts from them.
-    drawn: [noGradesTab, no-tab-after-a-refused-read]
-    built:
-      - action: medaris.api:getMyGrades
-      - route: apps/tedrisat/src/exam/exam.service.ts:89
-    # walked: nothing by the replay yet. binding.refused.yaml is written for `--to noGradesTab` and was not run; a browser read by hand of a
-    # passive scope showed the tabs Müfredat, Ders kayıtları, Ders destesi and Hocalar (no Notlarım, no Sorularım), and `?tab=notlarim`
-    # fell back to Müfredat.
+    evidence:
+      - state: noGradesTab
+      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedrisat/src/exam/exam.service.ts:89
+    note: |-
+      Also drawn as the assertion no-tab-after-a-refused-read.
+      walked: nothing by the replay yet. binding.refused.yaml is written for `--to noGradesTab` and was not run; a browser read by
+      hand of a passive scope showed the tabs Müfredat, Ders kayıtları, Ders destesi and Hocalar (no Notlarım, no Sorularım), and
+      `?tab=notlarim` fell back to Müfredat.
 
   - id: grades-on-an-address
     need: A talebe can open the course on the grades by its address, to come back to or to share.
-    drawn: [sorting]
-    built:
-      - route: apps/tedris/features/courses/components/course-page.tsx:194
-    # walked: nothing. The address start (`tabParam: grades`) is drawn and carries no binding in this phase; the typed address was read by hand
-    # on the stack (a probe selected Notlarım from `?tab=notlarim`), which is no scenario.
+    evidence:
+      - state: sorting
+      - source: apps/tedris/features/courses/components/course-page.tsx:194
+    note: >-
+      walked: nothing. The address start (`tabParam: grades`) is drawn and carries no binding in this phase; the typed address was
+      read by hand on the stack (a probe selected Notlarım from `?tab=notlarim`), which is no scenario.
 
   - id: tab-is-in-the-address
     need: The tab a talebe chose is in the address, so that a reload, the way back or a shared link lands on it.
-    drawn: [gradesShown]
-    missing: none # PROG-1, a finding of tedris.course.readProgramme; no Linear issue
+    missing: PROG-1, a finding of tedris.course.readProgramme; no Linear issue
+    note: >-
+      Drawn on the state gradesShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: failed-read-is-told
     need: >-
-      When the grades cannot be read the talebe is told so in the course page and can try again, instead of finding the tab gone with no word.
-    drawn: [noGradesTab, curriculum]
-    missing: none # GRADES-2, a finding of this flow; no Linear issue
+      When the grades cannot be read the talebe is told so in the course page and can try again, instead of finding the tab gone
+      with no word.
+    missing: GRADES-2, a finding of this flow; no Linear issue
+    note: >-
+      Drawn on the states noGradesTab and curriculum, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: release-leads-to-grades
     need: >-
-      A talebe told that results are released is taken to where they read them, not to the exam's celse page, and the celse page of an exam
-      links to the grades.
-    drawn: [gradesShown]
-    missing: none # GRADES-1, a finding of this flow; no Linear issue
+      A talebe told that results are released is taken to where they read them, not to the exam's celse page, and the celse page
+      of an exam links to the grades.
+    missing: GRADES-1, a finding of this flow; no Linear issue
+    note: >-
+      Drawn on the state gradesShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: completed-talebe-is-told
     need: A talebe who completed the course, and can still read its grades, is told when an exam's results are released.
-    drawn: [gradesShown]
-    missing: none # GRADES-3, a finding of this flow; no Linear issue
+    missing: GRADES-3, a finding of this flow; no Linear issue
+    note: >-
+      Drawn on the state gradesShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: grades-have-one-name
     need: The grades and a talebe's private notes on a celse are not called by the same word.
-    drawn: [curriculum]
-    missing: none # GRADES-4, a finding of this flow; no Linear issue
+    missing: GRADES-4, a finding of this flow; no Linear issue
+    note: >-
+      Drawn on the state curriculum, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

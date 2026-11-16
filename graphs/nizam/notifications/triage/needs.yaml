@@ -1,6 +1,13 @@
-# What must exist for a nazım (a köşk nazımı, a Medaris nazımı, the başnazım) to triage the ban notices they are told of: the flow's product
-# list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the open decisions, not from what the page
-# does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+schema: delurio-graph/0
+kind: needs
+id: nizam.notifications.triage
+status: proposed
+summary: >-
+  What must exist for a nazım (a köşk nazımı, a Medaris nazımı, the başnazım) to triage the ban notices they are told of: the
+  flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # The e2e file apps/nizam/e2e/notifications.e2e.ts has seven checks (notifications#1 to #7); `walked` names the ones each need rests on.
 # They run against a real tedrisat, Keycloak and database and are not replayed by this flow. No replay scenario is named: the replays of this
@@ -13,214 +20,270 @@
 # writes them).
 #
 # For graphs/needs.gaps.yaml:
-#   missing:   the-basnazim-is-told, a-notice-leads-where-the-person-may-read, a-taken-mark-is-told, a-retry-says-it-ran,
-#              a-title-opens-with-its-mark-kept, a-chip-narrows-or-is-not-drawn, a-failed-read-never-leaves-the-skeleton,
-#              more-kinds-of-notice (all `none`), email-copy-of-a-ban-notice (MDRS-189)
-#   unwalked:  read-the-next-notices, every-failure-is-told (unit specs only; of the failures only the refused mark can be made locally)
-kind: needs
-flow: nizam.notifications.triage
-status: proposed
+# missing:   the-basnazim-is-told, a-notice-leads-where-the-person-may-read, a-taken-mark-is-told, a-retry-says-it-ran,
+# a-title-opens-with-its-mark-kept, a-chip-narrows-or-is-not-drawn, a-failed-read-never-leaves-the-skeleton,
+# more-kinds-of-notice (all `none`), email-copy-of-a-ban-notice (MDRS-189)
+# unwalked:  read-the-next-notices, every-failure-is-told (unit specs only; of the failures only the refused mark can be made locally)
 
 needs:
   - id: read-the-notices-by-day
     need: >-
-      A nazım reads, in one place, the ban notices that concern them, newest first, grouped by day, a page at a time, with how many there
-      are and how many they have not read, who barred whom from which course or köşk and why, and a plain sentence when there is nothing.
-    drawn: [readingList, readingCounts, listed, allRead, emptyAll, dayGroup, dayHeading, rowItem, rowBody, rowSource, rowTime, emptyText]
-    built:
-      - action: medaris.api:listNotifications
-      - action: medaris.api:getNotificationCounts
-      - route: apps/nizam/features/notifications/components/notifications-page.tsx:253
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#1'
+      A nazım reads, in one place, the ban notices that concern them, newest first, grouped by day, a page at a time, with how
+      many there are and how many they have not read, who barred whom from which course or köşk and why, and a plain sentence when
+      there is nothing.
+    evidence:
+      - state: readingList
+      - state: readingCounts
+      - state: listed
+      - state: allRead
+      - state: emptyAll
+      - node: dayGroup
+      - node: dayHeading
+      - node: rowItem
+      - node: rowBody
+      - node: rowSource
+      - node: rowTime
+      - node: emptyText
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/tedrisat/src/notification/notification.controller.ts:135
+      - source: apps/nizam/features/notifications/components/notifications-page.tsx:253
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — the list groups the köşk nazımı's notifications by day, newest first, with the sentence of each (criterion 1)"
       - test: apps/nizam/test/notifications.spec.tsx
 
   - id: only-what-this-app-words
     need: >-
-      The page lists, counts and marks only the kinds of notice a nazım is told here (a ban in a course, a ban in a köşk), so that a notice
-      of another kind in the same person's table is never drawn, counted in a tab, the menu or the bell, or marked by "Tümünü okundu say".
-    drawn: [readingList, readingCounts, markingAll, menuCount, bellUnread]
-    built:
-      - action: medaris.api:listNotifications
-      - action: medaris.api:markAllNotificationsRead
-      - route: apps/nizam/features/notifications/notification-view.ts:143
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#1 (the sixth seeded row, a talebe-side kind, is neither drawn nor counted: five rows)'
+      The page lists, counts and marks only the kinds of notice a nazım is told here (a ban in a course, a ban in a köşk), so that
+      a notice of another kind in the same person's table is never drawn, counted in a tab, the menu or the bell, or marked by
+      "Tümünü okundu say".
+    evidence:
+      - state: readingList
+      - state: readingCounts
+      - state: markingAll
+      - node: menuCount
+      - node: bellUnread
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/tedrisat/src/notification/notification.controller.ts:164
+      - source: apps/nizam/features/notifications/notification-view.ts:143
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — the list groups the köşk nazımı's notifications by day, newest first, with the sentence of each (criterion 1)"
       - test: apps/nizam/test/notifications.spec.tsx
+    note: >-
+      notifications.e2e.ts notifications#1 (the sixth seeded row, a talebe-side kind, is neither drawn nor counted: five rows)
 
   - id: narrow-to-the-unread
     need: >-
-      They can look at everything, or only at what they have not read, and each choice says how many it holds; the choice reads the list
-      again, so what is shown is what the server holds.
-    drawn: [tabList, tabAll, tabUnread, loadingList, listed, allRead, emptyUnreadText]
-    built:
-      - action: medaris.api:listNotifications
-      - route: apps/nizam/features/notifications/components/notifications-page.tsx:193
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#2'
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#5'
+      They can look at everything, or only at what they have not read, and each choice says how many it holds; the choice reads
+      the list again, so what is shown is what the server holds.
+    evidence:
+      - node: tabList
+      - node: tabAll
+      - node: tabUnread
+      - state: loadingList
+      - state: listed
+      - state: allRead
+      - node: emptyUnreadText
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/nizam/features/notifications/components/notifications-page.tsx:193
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — 'Okunmamış' lists only the unread, and the tab counts agree with the rows (criterion 2)"
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — the 'Yasaklar' chip keeps the ban rows and leaves out other kinds; with 'Okunmamış' the two narrow together (criterion 5)"
 
   - id: open-a-notice-at-the-bans
     need: >-
-      A notice's title takes the nazım to the bans of the köşk it is about, and an unread notice counts as read as they go; a notice that is
-      already read only takes them there.
-    drawn: [rowLinkUnread, rowLinkRead, markingLink, kosk_bans_opened]
-    built:
-      - action: medaris.api:markNotificationRead
-      - route: apps/nizam/features/notifications/notification-view.ts:165
-      - route: apps/nizam/features/notifications/components/notification-row.tsx:58
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#1 (the first row'' title has the href /kosks/<id>/yasaklamalar; the click itself is not walked)'
+      A notice's title takes the nazım to the bans of the köşk it is about, and an unread notice counts as read as they go; a
+      notice that is already read only takes them there.
+    evidence:
+      - node: rowLinkUnread
+      - node: rowLinkRead
+      - state: markingLink
+      - state: kosk_bans_opened
+      - source: apps/tedrisat/src/notification/notification.controller.ts:190
+      - source: apps/nizam/features/notifications/notification-view.ts:165
+      - source: apps/nizam/features/notifications/components/notification-row.tsx:58
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — the list groups the köşk nazımı's notifications by day, newest first, with the sentence of each (criterion 1)"
       - test: apps/nizam/test/notifications.spec.tsx
+    note: >-
+      notifications.e2e.ts notifications#1 (the first row' title has the href /kosks/<id>/yasaklamalar; the click itself is not
+      walked)
 
   - id: mark-one-notice-read
     need: >-
-      They can mark one notice read by itself, and it stays read: the row loses its badge and its button, the tab's count and the number
-      on the menu and the bell fall by one, and a reload still has one fewer unread.
-    drawn: [rowMarkRead, markingOne, markingLast, listed, allRead]
-    built:
-      - action: medaris.api:markNotificationRead
-      - route: apps/nizam/features/notifications/components/notifications-page.tsx:148
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#3'
+      They can mark one notice read by itself, and it stays read: the row loses its badge and its button, the tab's count and the
+      number on the menu and the bell fall by one, and a reload still has one fewer unread.
+    evidence:
+      - node: rowMarkRead
+      - state: markingOne
+      - state: markingLast
+      - state: listed
+      - state: allRead
+      - source: apps/tedrisat/src/notification/notification.controller.ts:190
+      - source: apps/nizam/features/notifications/components/notifications-page.tsx:148
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — 'Okundu say' makes one row read and lowers every counter: tab, menu badge and the bell's name (criterion 3)"
 
   - id: mark-every-notice-read
     need: >-
-      They can mark every unread ban notice read at once, those past the first screen included, and the number on the menu and the bell
-      falls to zero; "Tümünü okundu say" then has nothing to do.
-    drawn: [markAll, markingAll, allRead, emptyUnreadText]
-    built:
-      - action: medaris.api:markAllNotificationsRead
-      - route: apps/nizam/features/notifications/components/notifications-page.tsx:171
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#4'
+      They can mark every unread ban notice read at once, those past the first screen included, and the number on the menu and the
+      bell falls to zero; "Tümünü okundu say" then has nothing to do.
+    evidence:
+      - node: markAll
+      - state: markingAll
+      - state: allRead
+      - node: emptyUnreadText
+      - source: apps/tedrisat/src/notification/notification.controller.ts:164
+      - source: apps/nizam/features/notifications/components/notifications-page.tsx:171
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — 'Tümünü okundu say' reads everything: no 'Yeni', zero unread, the bell says only 'Bildirimler' (criterion 4)"
 
   - id: the-number-follows-the-marks
     need: >-
-      The unread number on the menu entry and the bell's name always say how many ban notices the person has not read, and fall when they
-      read one.
-    drawn: [menuCount, bellUnread, bell]
-    built:
-      - action: medaris.api:getNotificationCounts
-      - route: apps/nizam/components/shell/nizam-shell.tsx:68
-      - route: apps/nizam/features/notifications/reads.ts:152
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#3'
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#4'
+      The unread number on the menu entry and the bell's name always say how many ban notices the person has not read, and fall
+      when they read one.
+    evidence:
+      - node: menuCount
+      - node: bellUnread
+      - node: bell
+      - source: apps/tedrisat/src/notification/notification.controller.ts:135
+      - source: apps/nizam/components/shell/nizam-shell.tsx:68
+      - source: apps/nizam/features/notifications/reads.ts:39
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — 'Okundu say' makes one row read and lowers every counter: tab, menu badge and the bell's name (criterion 3)"
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — 'Tümünü okundu say' reads everything: no 'Yeni', zero unread, the bell says only 'Bildirimler' (criterion 4)"
 
   - id: read-the-next-notices
     need: >-
-      A person with more than twenty notices can read the next twenty, without seeing a row twice, and an answer that arrives after they
-      chose another tab or chip is not mixed into the new list.
-    drawn: [loadMore, loadingMore, moreFailed]
-    built:
-      - action: medaris.api:listNotifications
-      - route: apps/nizam/features/notifications/components/notifications-page.tsx:113
-    walked:
+      A person with more than twenty notices can read the next twenty, without seeing a row twice, and an answer that arrives
+      after they chose another tab or chip is not mixed into the new list.
+    evidence:
+      - node: loadMore
+      - state: loadingMore
+      - state: moreFailed
+      - source: apps/tedrisat/src/notification/notification.controller.ts:88
+      - source: apps/nizam/features/notifications/components/notifications-page.tsx:113
       - test: apps/nizam/test/notifications-races.spec.tsx
       - test: apps/nizam/test/notifications.spec.tsx
 
   - id: every-failure-is-told
     need: >-
-      When the first read, a tab or chip, the next rows, a mark or "Tümünü okundu say" fails, the person is told in words and can try
-      again, and nothing they saw as marked stays marked when the API refused it.
-    drawn: [readFailed, retrying, listFailed, moreFailed, markingOne, markingAll, rowFailedToast, allFailedToast]
-    built:
-      - route: apps/nizam/features/notifications/components/notifications-page.tsx:160
-    walked:
+      When the first read, a tab or chip, the next rows, a mark or "Tümünü okundu say" fails, the person is told in words and can
+      try again, and nothing they saw as marked stays marked when the API refused it.
+    evidence:
+      - state: readFailed
+      - state: retrying
+      - state: listFailed
+      - state: moreFailed
+      - state: markingOne
+      - state: markingAll
+      - node: rowFailedToast
+      - node: allFailedToast
+      - source: apps/nizam/features/notifications/components/notifications-page.tsx:160
       - test: apps/nizam/test/notifications.spec.tsx
       - test: apps/nizam/test/notifications-races.spec.tsx
 
   - id: a-visitor-is-sent-to-sign-in
-    need: >-
-      A visitor who opens Bildirimler is sent to sign in, and once signed in lands on it.
-    drawn: [sent_to_sign_in]
-    built:
-      - route: apps/nizam/proxy.ts:25
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#6'
+    need: A visitor who opens Bildirimler is sent to sign in, and once signed in lands on it.
+    evidence:
+      - state: sent_to_sign_in
+      - source: apps/nizam/proxy.ts:25
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/37 — a signed-out visitor is sent to sign in"
 
   - id: a-ban-reaches-the-nazims
     need: >-
-      When a ban is placed in a köşk, the köşk's nazımları and the Medaris nazımları are told, with the real sentence, who was barred, from
-      which course or köşk, and the reason; the one who placed the ban is not told of their own act.
-    drawn: [listed, rowBody, rowSource]
-    built:
-      - action: medaris.api:createBan
-      - route: apps/tedrisat/src/ban/ban.service.ts:350
-    walked:
-      - e2e: apps/nizam/e2e/notifications.e2e.ts
-        check: 'notifications#7'
-    # nizam.moderation.banStudent places the ban and starts this flow; scenario `platform` reads the rows as the producer writes them
+      When a ban is placed in a köşk, the köşk's nazımları and the Medaris nazımları are told, with the real sentence, who was
+      barred, from which course or köşk, and the reason; the one who placed the ban is not told of their own act.
+    evidence:
+      - state: listed
+      - node: rowBody
+      - node: rowSource
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/tedrisat/src/ban/ban.service.ts:350
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/46 — a ban placed by the köşk nazımı reaches the Medaris nazımı's list with the real sentence, and the köşk nazımı gets none of their own (criterion 6)"
+    note: >-
+      nizam.moderation.banStudent places the ban and starts this flow; scenario `platform` reads the rows as the producer writes
+      them
 
   - id: the-basnazim-is-told
     need: >-
-      The başnazım, who runs every köşk, is told of a ban like the nazımları below them (TRIAGE-1, decision D1); until then their page is
-      drawn and is empty for good.
-    drawn: [emptyAll, emptyText, subtitlePlatform]
-    missing: none
+      The başnazım, who runs every köşk, is told of a ban like the nazımları below them (TRIAGE-1, decision D1); until then their
+      page is drawn and is empty for good.
+    missing: no Linear issue; findings TRIAGE-1
+    note: >-
+      Drawn on the state emptyAll and on the nodes emptyText and subtitlePlatform, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-notice-leads-where-the-person-may-read
     need: >-
-      A nazım is told of a ban only when they may read it, and the notice's title leads to a page that opens for them; a Medaris nazımı with
-      no ban permission is neither told who was barred and why nor sent to a refusal (TRIAGE-2, decision D1).
-    drawn: [rowLinkUnread, rowLinkRead, kosk_bans_opened]
-    missing: none
+      A nazım is told of a ban only when they may read it, and the notice's title leads to a page that opens for them; a Medaris
+      nazımı with no ban permission is neither told who was barred and why nor sent to a refusal (TRIAGE-2, decision D1).
+    missing: no Linear issue; findings TRIAGE-2
+    note: >-
+      Drawn on the state kosk_bans_opened and on the nodes rowLinkUnread and rowLinkRead, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-taken-mark-is-told
     need: >-
-      After a mark is taken, a short status line says so and the focus lands on a place a keyboard or screen-reader user can use; "Tümünü
-      okundu say" does not disable itself under the focus (F-W1-5, F-W1-6, F-X-8).
-    drawn: [markingOne, markingLast, markingAll, allRead]
-    missing: none
+      After a mark is taken, a short status line says so and the focus lands on a place a keyboard or screen-reader user can use;
+      "Tümünü okundu say" does not disable itself under the focus (F-W1-5, F-W1-6, F-X-8).
+    missing: no Linear issue; findings F-W1-5, F-W1-6, F-X-8
+    note: >-
+      Drawn on the states markingOne, markingLast, markingAll and allRead, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-retry-says-it-ran
     need: >-
-      When "Yeniden dene" on the first read fails again, the person is told it was tried and failed, not left with the same box and a
-      button that has stopped spinning (F-W1-16).
-    drawn: [retrying, readFailed]
-    missing: none
+      When "Yeniden dene" on the first read fails again, the person is told it was tried and failed, not left with the same box
+      and a button that has stopped spinning (F-W1-16).
+    missing: no Linear issue; findings F-W1-16
+    note: >-
+      Drawn on the states retrying and readFailed, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-title-opens-with-its-mark-kept
     need: >-
-      A notice opened by its title is marked read in a way that cannot be lost with the page, or the person is told when it was not (F-W1-17,
-      decision D2).
-    drawn: [markingLink, kosk_bans_opened]
-    missing: none
+      A notice opened by its title is marked read in a way that cannot be lost with the page, or the person is told when it was
+      not (F-W1-17, decision D2).
+    missing: no Linear issue; findings F-W1-17
+    note: >-
+      Drawn on the states markingLink and kosk_bans_opened, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-chip-narrows-or-is-not-drawn
-    need: >-
-      The chips narrow the list, or are not drawn while there is one kind of notice (TRIAGE-3, decision D3).
-    drawn: [chipGroup, chipAll, chipBans, loadingList]
-    missing: none
+    need: The chips narrow the list, or are not drawn while there is one kind of notice (TRIAGE-3, decision D3).
+    missing: no Linear issue; findings TRIAGE-3
+    note: >-
+      Drawn on the state loadingList and on the nodes chipGroup, chipAll and chipBans, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-read-never-leaves-the-skeleton
     need: >-
-      A tab, chip or mark whose request never reaches the server is treated as a refusal: the skeleton does not stay for good and an
-      optimistic mark is put back with a word (TRIAGE-5).
-    drawn: [loadingList, markingOne, markingAll]
-    missing: none
+      A tab, chip or mark whose request never reaches the server is treated as a refusal: the skeleton does not stay for good and
+      an optimistic mark is put back with a word (TRIAGE-5).
+    missing: no Linear issue; findings TRIAGE-5
+    note: >-
+      Drawn on the states loadingList, markingOne and markingAll, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: more-kinds-of-notice
     need: >-
-      A nazım is told in this same place what else waits for them (an application, a deck request, an appeal), if the owner decides this
-      inbox is where it belongs; the designs show chips for those kinds, whose events have no model yet, so today only bans are worded.
-    drawn: [chipGroup, listed]
-    missing: none
+      A nazım is told in this same place what else waits for them (an application, a deck request, an appeal), if the owner
+      decides this inbox is where it belongs; the designs show chips for those kinds, whose events have no model yet, so today
+      only bans are worded.
+    missing: no Linear issue; all `none`
+    note: >-
+      Drawn on the state listed and on the node chipGroup, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: email-copy-of-a-ban-notice
     need: >-
-      A ban notice that tedrisat writes also reaches the nazım by e-mail, where they chose it (planned.md P-29; the invitation mail is built,
-      the ban notice is not verified).
-    drawn: [listed]
+      A ban notice that tedrisat writes also reaches the nazım by e-mail, where they chose it (planned.md P-29; the invitation
+      mail is built, the ban notice is not verified).
     missing: MDRS-189
+    note: >-
+      Drawn on the state listed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

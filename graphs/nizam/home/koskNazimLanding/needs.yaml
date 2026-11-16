@@ -1,165 +1,205 @@
-# What must exist for a köşk nazımı to read their köşk's home: nizam.home.koskNazimLanding, written on 15 Nov 2026 in the format of
-# LAYOUT.md section 7. Each need is what the product must do, from the flow's story; none is read off what the page does today.
-# Nothing here comes from planned.md: no planned feature (P-nn) names this page (the permanent-ban card and the YouTube entry are on the
-# Medaris home, nizam.home.chiefOverview).
-# Walked means an e2e check that exists. The replay has not been run for any flow yet, so no `replay:` is named; where a scenario is bound
-# for a need it is said in a comment.
-# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
-#   missing:  no-heading-when-the-read-fails (KOSKHOME-3), list-says-how-much-it-shows (KOSKHOME-2, MDRS-211),
-#             tab-switch-is-not-an-audited-read (KOSKHOME-1), tabs-control-a-panel (F-X-1, F-W1-2), loading-is-announced (F-X-10, F-W1-8),
-#             cancelled-celse-says-so-in-words (F-W1-11), row-button-reaches-the-celse (F-W1-10)
-#   unwalked: read-cancelled-celse (the seed has none; the unit spec test/dashboard-views.spec.tsx draws the markup), failed-read-says-so (no e2e
-#             and the stack cannot make a read fail; test/kosk-overview.spec.tsx draws the LoadFailed box, nothing draws the tab's own),
-#             another-kosk-is-refused for a köşk that exists and is someone else's (403: the seed has none), read-the-whole-week-covered
-#             (unit spec only), see-the-hocas (a20 reads "1 ders" of a fixture; the seed's hoca has three courses)
+schema: delurio-graph/0
 kind: needs
-flow: nizam.home.koskNazimLanding
+id: nizam.home.koskNazimLanding
 status: proposed
+summary: >-
+  What must exist for a köşk nazımı to read their köşk's home: nizam.home.koskNazimLanding. Each need is what the product must do,
+  from the flow's story; none is read off what the page does today. Nothing here comes from planned.md: no planned feature (P-nn)
+  names this page (the permanent-ban card and the YouTube entry are on the Medaris home, nizam.home.chiefOverview). Walked means
+  an e2e check that exists. The replay has not been run for any flow yet, so no `replay:` is named; where a scenario is bound for
+  a need it is said in a comment.
 
 needs:
   - id: land-on-own-kosk
     need: >-
-      A köşk nazımı who opens Nizam's root is taken to the home of a köşk they manage, the first they were given, and not to a page of
-      the platform. (That the menu then keeps that köşk, and does not name the newest one on the next page, is MENU-2: the need
-      menu-keeps-the-kosk-the-person-works-in of nizam.shell.menuPerPersona.)
-    drawn: [start, home]
-    built:
-      - route: apps/nizam/app/(home)/page.tsx:56
-      - action: medaris.api:getKoskDashboard
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#4 (a1, a2)'
-    # replay: binding.yaml `seeded`, which opens "/"
+      A köşk nazımı who opens Nizam's root is taken to the home of a köşk they manage, the first they were given, and not to a
+      page of the platform. (That the menu then keeps that köşk, and does not name the newest one on the next page, is MENU-2: the
+      need menu-keeps-the-kosk-the-person-works-in of nizam.shell.menuPerPersona.)
+    evidence:
+      - state: start
+      - state: home
+      - source: "apps/nizam/app/(home)/page.tsx:56"
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — the köşk nazımı lands on their köşk's home page with the numbers, the alert and the celse table (criteria 1, 2)"
+    note: |-
+      dashboard.e2e.ts dashboard#4 (a1, a2)
+      replay: binding.yaml `seeded`, which opens "/"
 
   - id: read-the-numbers
     need: >-
-      On one page the nazım reads how many courses their köşk has, how many talebe are enrolled in them, how many celse start in the
-      next seven days and how many applications wait, and the greeting says how many celse the week holds.
-    drawn: [home]
-    built:
-      - action: medaris.api:getKoskDashboard
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:434
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#4 (a5, a6, a7, a8, a9), compared with SQL counts there and with the API'
-    # replay: `seeded`, `empty` (binding.empty.yaml)
+      On one page the nazım reads how many courses their köşk has, how many talebe are enrolled in them, how many celse start in
+      the next seven days and how many applications wait, and the greeting says how many celse the week holds.
+    evidence:
+      - state: home
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:434
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — the köşk nazımı lands on their köşk's home page with the numbers, the alert and the celse table (criteria 1, 2)"
+    note: |-
+      dashboard.e2e.ts dashboard#4 (a5, a6, a7, a8, a9), compared with SQL counts there and with the API
+      replay: `seeded`, `empty` (binding.empty.yaml)
 
   - id: see-celse-with-no-way-in
     need: >-
-      The nazım is told, before the celse starts, that a celse of the coming week cannot be attended (no meeting link, no live stream and not
-      held in person): how many, which one is first, and which rows lack a way in, so that they can add one.
-    drawn: [home, missingAlert, attendanceMissing]
-    built:
-      - action: medaris.api:getKoskDashboard
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:419
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#4 (a9, a10, a12, a13)'
-    # replay: `seeded` (four of five celse of the week have no way in)
+      The nazım is told, before the celse starts, that a celse of the coming week cannot be attended (no meeting link, no live
+      stream and not held in person): how many, which one is first, and which rows lack a way in, so that they can add one.
+    evidence:
+      - state: home
+      - node: missingAlert
+      - node: attendanceMissing
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:419
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — the köşk nazımı lands on their köşk's home page with the numbers, the alert and the celse table (criteria 1, 2)"
+    note: |-
+      dashboard.e2e.ts dashboard#4 (a9, a10, a12, a13)
+      replay: `seeded` (four of five celse of the week have no way in)
 
   - id: read-the-celse-list
-    need: The nazım reads the celse of the coming week, with when, how each is attended, how many talebe and what state it is in, and reads those behind them.
-    drawn: [home, readingTab]
-    built:
-      - action: medaris.api:getKoskDashboard
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:449
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#4 (a11, a14, a16, a18)'
-    # replay: `seeded` (Yaklaşan and Geçmiş). a14 asserts "Zoom": the seed's links are on meet.example.test, which the page names "Bilinmeyen platform".
+    need: >-
+      The nazım reads the celse of the coming week, with when, how each is attended, how many talebe and what state it is in, and
+      reads those behind them.
+    evidence:
+      - state: home
+      - state: readingTab
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:449
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — the köşk nazımı lands on their köşk's home page with the numbers, the alert and the celse table (criteria 1, 2)"
+    note: |-
+      dashboard.e2e.ts dashboard#4 (a11, a14, a16, a18)
+      replay: `seeded` (Yaklaşan and Geçmiş). a14 asserts "Zoom": the seed's links are on meet.example.test, which the page names
+      "Bilinmeyen platform".
 
   - id: read-cancelled-celse
-    need: The nazım reads the celse that were cancelled, and the cell that says how they were to be attended says in words that they were cancelled.
-    drawn: [home, cancelledCell, emptyCancelled]
-    built:
-      - action: medaris.api:getKoskDashboard
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:270
-    # walked: nothing. e2e dashboard#4 a17 asserts a row "İptal edildi" with a fixture's cancelled celse; the seeded köşk has none, so the replay
-    # reads the empty sentence, and the owner's word is not to create data. The unit spec test/dashboard-views.spec.tsx draws the markup.
+    need: >-
+      The nazım reads the celse that were cancelled, and the cell that says how they were to be attended says in words that they
+      were cancelled.
+    evidence:
+      - state: home
+      - node: cancelledCell
+      - node: emptyCancelled
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:270
+    note: >-
+      walked: nothing. e2e dashboard#4 a17 asserts a row "İptal edildi" with a fixture's cancelled celse; the seeded köşk has
+      none, so the replay reads the empty sentence, and the owner's word is not to create data. The unit spec
+      test/dashboard-views.spec.tsx draws the markup.
 
   - id: cancelled-celse-says-so-in-words
     need: The Katılım cell of a cancelled celse says so in words a screen reader reads, not a bare dash.
-    drawn: [home, cancelledCell]
-    missing: none # F-W1-11, no Linear issue
+    missing: F-W1-11, no Linear issue
+    note: >-
+      Drawn on the state home and on the node cancelledCell, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: go-to-the-celse-list
     need: From a celse's row the nazım reaches that course's celse list, where the way in can be added.
-    drawn: [home, handed_over.manage_sessions]
-    built:
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:299
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#4 (a15)'
-    # replay: `seeded` takes the first row's button and checks the address by a pattern, not the exact ids a15 asserts
+    evidence:
+      - state: home
+      - state: handed_over.manage_sessions
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:299
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — the köşk nazımı lands on their köşk's home page with the numbers, the alert and the celse table (criteria 1, 2)"
+    note: |-
+      dashboard.e2e.ts dashboard#4 (a15)
+      replay: `seeded` takes the first row's button and checks the address by a pattern, not the exact ids a15 asserts
 
   - id: row-button-reaches-the-celse
     need: The button of a row leads to that celse, not to the list of the course's celse where the person must find it again.
-    drawn: [home, actionUpcoming, actionPast, actionCancelled]
-    missing: none # F-W1-10, no Linear issue
+    missing: F-W1-10, no Linear issue
+    note: >-
+      Drawn on the state home and on the nodes actionUpcoming, actionPast and actionCancelled, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: see-the-hocas
     need: The nazım reads who teaches in their köşk, with the medrese, how many courses and how many talebe each has.
-    drawn: [home, muderrisRow]
-    built:
-      - action: medaris.api:getKoskDashboard
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:516
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#4 (a19, a20)'
+    evidence:
+      - state: home
+      - node: muderrisRow
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:516
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — the köşk nazımı lands on their köşk's home page with the numbers, the alert and the celse table (criteria 1, 2)"
+    note: dashboard.e2e.ts dashboard#4 (a19, a20)
 
   - id: another-kosk-is-refused
     need: >-
-      The address of a köşk the nazım does not manage, or of one that is not there, shows "Bu bölüm için izniniz yok" and nothing of the köşk,
-      the same words for both, so the page never says which ids exist; a button leads back to their own home.
-    drawn: [refused, foreign-kosk-is-never-drawn, refusal-only-for-a-foreign-kosk]
-    built:
-      - action: medaris.api:getKoskDashboard
-      - route: apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:30
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#7 (a1, a2)'
-    # replay: `foreign`, which opens an id nobody has (404); the 403 of a köşk that exists and is someone else's is the same line of code, not walked
+      The address of a köşk the nazım does not manage, or of one that is not there, shows "Bu bölüm için izniniz yok" and nothing
+      of the köşk, the same words for both, so the page never says which ids exist; a button leads back to their own home.
+    evidence:
+      - state: refused
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:30"
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — a köşk the nazım does not manage is the 'izniniz yok' screen, and on a phone the menu is a drawer (criteria 6, 7)"
+    note: |-
+      Also drawn as the assertion foreign-kosk-is-never-drawn, the assertion refusal-only-for-a-foreign-kosk.
+      dashboard.e2e.ts dashboard#7 (a1, a2)
+      replay: `foreign`, which opens an id nobody has (404); the 403 of a köşk that exists and is someone else's is the same line
+      of code, not walked
 
   - id: menu-on-a-phone
     need: On a phone the menu is a button that opens a sheet with the same entries, and the sidebar is not drawn.
-    drawn: [sheet, the-sheet-is-a-phone-thing]
-    built:
-      - route: libs/ui/src/mds/app-bar.tsx:62
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#7 (a3, a4, a6, a7; a5, the computed display of a row, is not a replay check)'
-    # replay: binding.phone.yaml `phone`
+    evidence:
+      - state: sheet
+      - source: libs/ui/src/mds/app-bar.tsx:62
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — a köşk the nazım does not manage is the 'izniniz yok' screen, and on a phone the menu is a drawer (criteria 6, 7)"
+    note: |-
+      Also drawn as the assertion the-sheet-is-a-phone-thing.
+      dashboard.e2e.ts dashboard#7 (a3, a4, a6, a7; a5, the computed display of a row, is not a replay check)
+      replay: binding.phone.yaml `phone`
 
   - id: failed-read-says-so
-    need: When the home, or the list of another tab, cannot be read, the nazım is told so and can ask again, and the rest of the page stays as it is.
-    drawn: [loadFailed, tabUnreadable, a-failed-read-draws-no-home]
-    built:
-      - route: apps/nizam/features/kosks/components/load-failed.tsx:19
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:468
-    # walked: nothing. The stack cannot make tedrisat refuse a read, and no e2e does; the boxes are drawn only in the graph.
+    need: >-
+      When the home, or the list of another tab, cannot be read, the nazım is told so and can ask again, and the rest of the page
+      stays as it is.
+    evidence:
+      - state: loadFailed
+      - state: tabUnreadable
+      - source: apps/nizam/features/kosks/components/load-failed.tsx:19
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:468
+    note: |-
+      Also drawn as the assertion a-failed-read-draws-no-home.
+      walked: nothing. The stack cannot make tedrisat refuse a read, and no e2e does; the boxes are drawn only in the graph.
 
   - id: no-heading-when-the-read-fails
-    need: The box that says the home could not be read has a heading, so a screen-reader user who opens the page by its address has somewhere to land.
-    drawn: [loadFailed]
-    missing: none # KOSKHOME-3, no Linear issue
+    need: >-
+      The box that says the home could not be read has a heading, so a screen-reader user who opens the page by its address has
+      somewhere to land.
+    missing: KOSKHOME-3, no Linear issue
+    note: >-
+      Drawn on the state loadFailed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: list-says-how-much-it-shows
-    need: >-
-      A tab whose badge counts more celse than the list holds says how many it shows and where the rest is.
-    drawn: [home, tabPast, tabCancelled]
-    missing: MDRS-211 # the köşk-wide Celseler page; KOSKHOME-2
+    need: A tab whose badge counts more celse than the list holds says how many it shows and where the rest is.
+    missing: MDRS-211; the köşk-wide Celseler page; KOSKHOME-2
+    note: >-
+      Drawn on the state home and on the nodes tabPast and tabCancelled, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: tab-switch-is-not-an-audited-read
-    need: Opening another tab of the celse list does not record that the nazım read the applicants again, when the page shows them nothing new.
-    drawn: [readingTab]
-    missing: none # KOSKHOME-1, no Linear issue
+    need: >-
+      Opening another tab of the celse list does not record that the nazım read the applicants again, when the page shows them
+      nothing new.
+    missing: KOSKHOME-1, no Linear issue
+    note: >-
+      Drawn on the state readingTab, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: tabs-control-a-panel
     need: The three tabs of the celse list are tabs of a panel, and choosing one is announced.
-    drawn: [home, tabList, tabUpcoming, tabPast, tabCancelled]
-    missing: none # F-X-1 and F-W1-2, no Linear issue
+    missing: F-X-1 and F-W1-2, no Linear issue
+    note: >-
+      Drawn on the state home and on the nodes tabList, tabUpcoming, tabPast and tabCancelled, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: loading-is-announced
     need: While the home is read, a screen reader hears that the page is loading.
-    drawn: [reading]
-    missing: none # F-X-10 and F-W1-8, no Linear issue
+    missing: F-X-10 and F-W1-8, no Linear issue
+    note: >-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

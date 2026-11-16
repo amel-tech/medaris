@@ -168,12 +168,12 @@ states:
       comes with their account id as well, to a caller with no token too; the page reads only the name and the count and sends the id to
       nobody (overview-exposes-head-id, D3). A null answer is `notFound()` again, now from the page itself, which the layout's own
       comment says arrives after the response head is sent (a 200 with the not-found markup; not run, no way to make it happen here).
-    source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:58"
+    source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:36"
     invoke: { action: getMadrasahOverview }
     on:
       DONE: { guard: "read == 'ok'", target: sorting }
-      FAIL.unreadable: { guard: "read == 'overviewFailed'", target: notFoundPage, say: "page.tsx:63 calls notFound() when either read is null", source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:63" }
-      FAIL.notFound: { guard: "read == 'overviewFailed'", target: notFoundPage, say: "the same page: the answer's status is not looked at", source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:63" }
+      FAIL.unreadable: { guard: "read == 'overviewFailed'", target: notFoundPage, say: "page.tsx:63 calls notFound() when either read is null", source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:41" }
+      FAIL.notFound: { guard: "read == 'overviewFailed'", target: notFoundPage, say: "the same page: the answer's status is not looked at", source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:41" }
 
   sorting:
     title: See whether the viewer holds a token
@@ -242,7 +242,7 @@ assertions:
   - id: page-only-after-both-reads
     never: "state in ['readByVisitor', 'readByMember'] and read != 'ok'"
     say: "The medrese page is drawn only when both reads answered"
-    source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:63"
+    source: "apps/tedris/app/madrasahs/[madrasahId]/page.tsx:41"
   - id: not-found-only-after-a-failed-read
     never: "state == 'notFoundPage' and read == 'ok'"
     say: "The not-found page is drawn only after a read failed or answered 404"

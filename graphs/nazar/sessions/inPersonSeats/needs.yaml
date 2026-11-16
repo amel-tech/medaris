@@ -1,9 +1,17 @@
-# What must exist for the hoca (or a ders nazırı who holds session.manage) to set a celse's in-person seats and give them in order: the
-# product list of MDRS-284, from its Linear text, the owner's decisions kept in it and planned.md (P-08), never from what the page does
-# today. The flow draws it graph-first; nothing here is built except the parts marked `built`. Nothing is walked: there is no binding, and
-# no e2e check of the feature.
-# Gender separation is given: kontenjan is always two counts, one per gender, and gender is always required. So every need that decides a
-# seat is `missing: MDRS-284`; a need whose shape the owner has not decided is `missing: none`, with the open decision in its note.
+schema: delurio-graph/0
+kind: needs
+id: nazar.sessions.inPersonSeats
+status: proposed
+summary: >-
+  What must exist for the hoca (or a ders nazırı who holds session.manage) to set a celse's in-person seats and give them in
+  order: the product list of MDRS-284, from its Linear text, the owner's decisions kept in it and planned.md (P-08), never from
+  what the page does today. The flow draws it graph-first; nothing here is built except the parts marked `built`. Nothing is
+  walked: there is no binding, and no e2e check of the feature. Gender separation is given: kontenjan is always two counts, one
+  per gender, and gender is always required. So every need that decides a seat is `missing: MDRS-284`; a need whose shape the
+  owner has not decided is `missing: none`, with the open decision in its note.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # MISSING (no code; the orchestrator merges these into graphs/needs.gaps.yaml): set-the-seats-per-gender, see-the-applications-in-order,
 # give-a-seat-at-approval, a-full-quota-refuses-its-gender-only, parallel-approvals-never-pass-the-quota, a-seat-ends-with-the-course-seat,
@@ -11,209 +19,199 @@
 # (none), a-count-below-the-seats-given (none), approve-off-when-full (none), which-permission-gives-a-seat (none), declining-an-application
 # (none), a-celse-cancelled-or-unmarked (none).
 # UNWALKED (code exists, nothing walks it yet): the-celse-is-marked-in-person, who-opens-celseler.
-kind: needs
-flow: nazar.sessions.inPersonSeats
-status: proposed
 
 needs:
   - id: the-celse-is-marked-in-person
     need: >-
-      The team marks a celse as held in person, by the course's setting or by the celse's own, and Celseler says "Yüz yüze" in its Katılım
-      cell. This is the base the seats stand on: only a celse held in person can have seats.
-    drawn:
-      - rowInPerson
-      - inPersonButton
-    built:
-      - action: medaris.api:updateLesson
-      - route: apps/nazar/features/sessions/attendance.ts:25
-      - route: apps/nazar/features/sessions/components/attendance-cell.tsx:33
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:478
-      - route: apps/nazar/features/course-settings/components/course-settings-form.tsx:212
-    walked: []
+      The team marks a celse as held in person, by the course's setting or by the celse's own, and Celseler says "Yüz yüze" in its
+      Katılım cell. This is the base the seats stand on: only a celse held in person can have seats.
+    evidence:
+      - node: rowInPerson
+      - node: inPersonButton
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/nazar/features/sessions/attendance.ts:25
+      - source: apps/nazar/features/sessions/components/attendance-cell.tsx:33
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:478
+      - source: apps/nazar/features/course-settings/components/course-settings-form.tsx:212
     note: >-
-      MDRS-283 built it: a label only, no address and no seats. "Celseler yüz yüze yapılır" is drawn by nazar.courseSettings.access and
-      "Yüz yüze ayarı" by nazar.sessions.manage; their replays are walk phase.
+      MDRS-283 built it: a label only, no address and no seats. "Celseler yüz yüze yapılır" is drawn by
+      nazar.courseSettings.access and "Yüz yüze ayarı" by nazar.sessions.manage; their replays are walk phase.
 
   - id: who-opens-celseler
     need: >-
-      Celseler opens for a person who holds session.manage or session.live_link in the course, and the buttons of a row follow the code each
-      one needs; a person who holds neither is refused.
-    drawn:
-      - celselerPage
-      - inPersonButton
-    built:
-      - route: apps/nazar/features/sessions/components/sessions-page.tsx:54
-      - route: apps/nazar/features/sessions/components/sessions-table.tsx:476
-    walked: []
+      Celseler opens for a person who holds session.manage or session.live_link in the course, and the buttons of a row follow the
+      code each one needs; a person who holds neither is refused.
+    evidence:
+      - node: celselerPage
+      - node: inPersonButton
+      - source: apps/nazar/features/sessions/components/sessions-page.tsx:54
+      - source: apps/nazar/features/sessions/components/sessions-table.tsx:476
     note: >-
-      Built (nazar.sessions.manage draws it, with nazar.access.dersNazirPages); the new button joins it, drawn only for session.manage
-      (assertion seats-only-for-session-manage).
+      Built (nazar.sessions.manage draws it, with nazar.access.dersNazirPages); the new button joins it, drawn only for
+      session.manage (assertion seats-only-for-session-manage).
 
   - id: set-the-seats-per-gender
     need: >-
-      The team sets a celse's in-person seats separately for women and for men: two whole numbers, both needed, no total and no way to give
-      one number for both; the first save opens the celse to registration, and until then it takes none. The page shows the counts as given
-      against seats, "Kadın 18/25 · Erkek 30/40".
-    drawn:
-      - unset
-      - applications
-      - saving
-      - seatsRegion
-      - femaleSeats
-      - maleSeats
-      - saveSeats
-      - counts
+      The team sets a celse's in-person seats separately for women and for men: two whole numbers, both needed, no total and no
+      way to give one number for both; the first save opens the celse to registration, and until then it takes none. The page
+      shows the counts as given against seats, "Kadın 18/25 · Erkek 30/40".
+    evidence:
+      - state: unset
+      - state: applications
+      - state: saving
+      - node: seatsRegion
+      - node: femaleSeats
+      - node: maleSeats
+      - node: saveSeats
+      - node: counts
     missing: MDRS-284
     note: >-
-      Owner decisions 1 and 2. Linear's outline: "seats per celse for women and men, set on the course and overridable per celse". Drawn:
-      per celse only (seats-on-the-course-or-the-celse). Domain: InPersonSeats, setInPersonSeats (graphs/domain/planned-in-person.yaml).
+      Owner decisions 1 and 2. Linear's outline: "seats per celse for women and men, set on the course and overridable per celse".
+      Drawn: per celse only (seats-on-the-course-or-the-celse). Domain: InPersonSeats, setInPersonSeats
+      (graphs/domain/planned-in-person.yaml).
 
   - id: see-the-applications-in-order
     need: >-
-      The team sees a celse's in-person applications in the order they came, with an order number, the talebe's name, the time and whether a
-      seat is given, one list for women and one for men; a gender with nothing waiting says so.
-    drawn:
-      - applications
-      - applicationsRegion
-      - womenTable
-      - menTable
-      - womenPosition
-      - menPosition
-      - womenStatus
-      - menStatus
-      - emptyWomen
-      - emptyMen
+      The team sees a celse's in-person applications in the order they came, with an order number, the talebe's name, the time and
+      whether a seat is given, one list for women and one for men; a gender with nothing waiting says so.
+    evidence:
+      - state: applications
+      - node: applicationsRegion
+      - node: womenTable
+      - node: menTable
+      - node: womenPosition
+      - node: menPosition
+      - node: womenStatus
+      - node: menStatus
+      - node: emptyWomen
+      - node: emptyMen
     missing: MDRS-284
     note: >-
-      Owner decision 4 and Linear's acceptance check: "the approval list shows applications in arrival order with their order number". Two lists
-      because the seats are two counts; the position is counted in each (a choice, not a decision). Domain: listInPersonRegistrations.
+      Owner decision 4 and Linear's acceptance check: "the approval list shows applications in arrival order with their order
+      number". Two lists because the seats are two counts; the position is counted in each (a choice, not a decision). Domain:
+      listInPersonRegistrations.
 
   - id: give-a-seat-at-approval
     need: >-
-      A seat is given when the team approves a waiting application, counted against the quota of the application's own gender; the talebe is
-      told, and the row reads "Yer verildi".
-    drawn:
-      - approving
-      - seat_given
-      - approveFemale
-      - approveMale
-      - rowApproveFemale
-      - rowApproveMale
+      A seat is given when the team approves a waiting application, counted against the quota of the application's own gender; the
+      talebe is told, and the row reads "Yer verildi".
+    evidence:
+      - state: approving
+      - state: seat_given
+      - node: approveFemale
+      - node: approveMale
+      - node: rowApproveFemale
+      - node: rowApproveMale
     missing: MDRS-284
     note: >-
-      Owner decision 4. Domain: approveInPersonRegistration, notification IN_PERSON_SEAT_GIVEN (proposed). The talebe's side of it is
-      tedris.session.registerInPerson (the seat card, read on the next load).
+      Owner decision 4. Domain: approveInPersonRegistration, notification IN_PERSON_SEAT_GIVEN (proposed). The talebe's side of it
+      is tedris.session.registerInPerson (the seat card, read on the next load).
 
   - id: a-full-quota-refuses-its-gender-only
     need: >-
-      When every seat of a gender is given, approving a row of that gender is refused and nothing is written; rows of the other gender
-      are approved as usual.
-    drawn:
-      - approving
-      - toastFull
+      When every seat of a gender is given, approving a row of that gender is refused and nothing is written; rows of the other
+      gender are approved as usual.
+    evidence:
+      - state: approving
+      - node: toastFull
     missing: MDRS-284
     note: >-
-      Assertions a-seat-never-goes-past-its-gender-quota and a-full-refusal-names-a-full-gender. The refusal code IN_PERSON_QUOTA_FULL is
-      proposed; the same code refuses an application.
+      Assertions a-seat-never-goes-past-its-gender-quota and a-full-refusal-names-a-full-gender. The refusal code
+      IN_PERSON_QUOTA_FULL is proposed; the same code refuses an application.
 
   - id: parallel-approvals-never-pass-the-quota
     need: >-
-      Concurrent approvals cannot give more seats of a gender than its quota: the count is taken under a lock on the celse's seat row.
-    drawn:
-      - approving
+      Concurrent approvals cannot give more seats of a gender than its quota: the count is taken under a lock on the celse's seat
+      row.
+    evidence:
+      - state: approving
     missing: MDRS-284
     note: >-
-      Linear's first acceptance check: "a spec with parallel requests". Domain invariant in-person-seat-counted-at-approval. No code, so no spec.
+      Linear's first acceptance check: "a spec with parallel requests". Domain invariant in-person-seat-counted-at-approval. No
+      code, so no spec.
 
   - id: a-seat-ends-with-the-course-seat
     need: >-
-      When a talebe leaves the course, is removed or is banned, their in-person registrations go with the seat, and a given seat is free for
-      the next approval.
-    drawn: []
+      When a talebe leaves the course, is removed or is banned, their in-person registrations go with the seat, and a given seat
+      is free for the next approval.
     missing: MDRS-284
     note: >-
-      Not drawn: it happens in other flows (tedris.course.leave, nazar.roster.remove, the bans) and changes those actions (leaveCourse,
-      removeEnrollment). Linear decision 3 and the lifecycle of InPersonRegistration.
+      Not drawn: it happens in other flows (tedris.course.leave, nazar.roster.remove, the bans) and changes those actions
+      (leaveCourse, removeEnrollment). Linear decision 3 and the lifecycle of InPersonRegistration.
 
   - id: move-a-talebe-between-remote-and-in-person
     need: >-
-      The team changes a talebe between remote and in person after a course becomes in person: existing enrolments stay remote and staff
-      change them afterwards.
-    drawn: []
+      The team changes a talebe between remote and in person after a course becomes in person: existing enrolments stay remote and
+      staff change them afterwards.
     missing: MDRS-284
     note: Owner decision 5; Linear's outline for nazar and nizam. Not in the story of this flow and not drawn.
 
   - id: the-same-list-in-nizam
-    need: >-
-      A köşk's own team sees and approves the same applications from nizam, as it decides a course application there today.
-    drawn: []
+    need: A köşk's own team sees and approves the same applications from nizam, as it decides a course application there today.
     missing: MDRS-284
     note: >-
-      Linear: "nazar and nizam: per celse, the in-person applications in arrival order". The sibling of nazar.sessions.manage there is
-      nizam.courses.manageSessions; the actions are the same, so the quota is one.
+      Linear: "nazar and nizam: per celse, the in-person applications in arrival order". The sibling of nazar.sessions.manage
+      there is nizam.courses.manageSessions; the actions are the same, so the quota is one.
 
   - id: the-order-is-a-rule-or-advice
     need: >-
-      Either the API enforces the order (a later application of a gender cannot be approved while an earlier one waits), or the list shows
-      it and the team follows it.
-    drawn:
-      - applications
-      - approving
-    missing: none
-    note: "Open decision D3. Drawn: advice; any waiting row may be approved. The owner's words: the team must be ABLE to approve in that order."
+      Either the API enforces the order (a later application of a gender cannot be approved while an earlier one waits), or the
+      list shows it and the team follows it.
+    evidence:
+      - state: applications
+      - state: approving
+    missing: no Linear issue
+    note: >-
+      Open decision D3. Drawn: advice; any waiting row may be approved. The owner's words: the team must be ABLE to approve in
+      that order.
 
   - id: seats-on-the-course-or-the-celse
-    need: >-
-      Seats are set on the celse only, or on the course with an override per celse, as the in-person mark is.
-    drawn:
-      - unset
-      - applications
-    missing: none
+    need: Seats are set on the celse only, or on the course with an override per celse, as the in-person mark is.
+    evidence:
+      - state: unset
+      - state: applications
+    missing: no Linear issue
     note: "Open decision D2. Drawn: on the celse only. Linear's outline says \"set on the course and overridable per celse\"."
 
   - id: a-count-below-the-seats-given
-    need: >-
-      The team may lower a count below the seats already given, and what happens to the seats given is decided.
-    drawn:
-      - saving
-      - applications
-    missing: none
+    need: The team may lower a count below the seats already given, and what happens to the seats given is decided.
+    evidence:
+      - state: saving
+      - state: applications
+    missing: no Linear issue
     note: >-
-      Open decision D4. Drawn: accepted, nothing is taken back, the quota reads full. Linear asks whether staff may knowingly exceed a quota
-      (an "askıda ders" does, showing before, after and limit).
+      Open decision D4. Drawn: accepted, nothing is taken back, the quota reads full. Linear asks whether staff may knowingly
+      exceed a quota (an "askıda ders" does, showing before, after and limit).
 
   - id: approve-off-when-full
-    need: >-
-      "Onayla" is off on a row whose gender's seats are all given, with the reason in the counts line.
-    drawn:
-      - approveFemale
-      - approveMale
-    missing: none
+    need: "\"Onayla\" is off on a row whose gender's seats are all given, with the reason in the counts line."
+    evidence:
+      - node: approveFemale
+      - node: approveMale
+    missing: no Linear issue
     note: "Open decision D5. Drawn: it stays on and the API refuses (a stale click is refused too)."
 
   - id: which-permission-gives-a-seat
-    need: >-
-      The permission that opens the page and gives the seat is decided: session.manage, enrollment.decide, or a new code.
-    drawn:
-      - listed
-      - reading
-    missing: none
+    need: "The permission that opens the page and gives the seat is decided: session.manage, enrollment.decide, or a new code."
+    evidence:
+      - state: listed
+      - state: reading
+    missing: no Linear issue
     note: >-
-      Open decision D6. Drawn: session.manage, as the owner's story says (the hoca and a ders nazırı who holds it). A ders nazırı who holds
-      enrollment.decide only would not see the page.
+      Open decision D6. Drawn: session.manage, as the owner's story says (the hoca and a ders nazırı who holds it). A ders nazırı
+      who holds enrollment.decide only would not see the page.
 
   - id: declining-an-application
-    need: >-
-      The team may decline a waiting application, with or without a reason, and the talebe is told.
-    drawn: []
-    missing: none
-    note: Not in the story and not decided. A waiting application that is never approved stays in the list until the talebe withdraws.
+    need: The team may decline a waiting application, with or without a reason, and the talebe is told.
+    missing: no Linear issue
+    note: >-
+      Not in the story and not decided. A waiting application that is never approved stays in the list until the talebe withdraws.
 
   - id: a-celse-cancelled-or-unmarked
     need: >-
-      What happens to a celse's registrations when it is cancelled, moves, or loses its in-person mark: they are kept, released, or told.
-    drawn: []
-    missing: none
+      What happens to a celse's registrations when it is cancelled, moves, or loses its in-person mark: they are kept, released,
+      or told.
+    missing: no Linear issue
     note: >-
       Not decided. cancelLesson and updateLesson would change. The API refuses new applications and approvals for such a celse
       (IN_PERSON_NOT_OPEN, LESSON_NOT_IN_PERSON).

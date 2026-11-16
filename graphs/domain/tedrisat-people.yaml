@@ -13,7 +13,7 @@
 # user-row-follows-the-token); it is not repeated under each action, and "the handler writes nothing" means that row apart.
 #
 # Not written as a refusal of every action: the 401 of AuthGuard (HTTP_401, no token or a token that does not verify; invariant
-# access-token-only), the address throttle (3000 a minute per route and address, 429, invariant rate-limit-before-auth) and the per-user
+# access-token-only; an action lists it where a flow draws what a signed-out caller meets), the address throttle (3000 a minute per route and address, 429, invariant rate-limit-before-auth) and the per-user
 # throttle (100 a minute, 429), which any route can answer. The partner routes have their own 429 and list it. A guard refuses before a
 # pipe runs, so a request with no token is 401 whatever its body or path says.
 #
@@ -143,6 +143,7 @@ actions:
         assignments: { type: array, items: { type: object } }
         permissions: { type: array, items: { type: object } }
     refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
       VALIDATION_ERROR: { status: 400, note: "a blank or over-long name, an unknown time zone or locale, lessonInvitationEmails null, any other property; a name sent as null passes validation and fails as a 500 (invariant unreadable-input-is-a-400)" }
       USER_NOT_FOUND: { status: 404, note: "as GET /me", source: apps/tedrisat/src/user/user.service.ts:134 }
     sideEffects:

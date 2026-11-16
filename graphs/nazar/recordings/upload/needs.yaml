@@ -1,191 +1,245 @@
-# What must exist for a person who may upload to put a session's video into the platform's video library from Ders kayıtları, and for the page to
-# say how it went: the flow's product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the planned work in
-# the inventory (planned.md: P-11, MDRS-259, MDRS-260), not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the
-# orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.recordings.upload
+status: proposed
+summary: >-
+  What must exist for a person who may upload to put a session's video into the platform's video library from Ders kayıtları, and
+  for the page to say how it went: the flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # missing (no code; the key of the planned work, or none):
-#   a-change-of-status-is-told, a-failed-upload-stays-visible (MDRS-259), no-upload-on-a-cancelled-celse, unheld-videos-leave-the-library (MDRS-260),
-#   release-time-saved-is-said, continue-only-an-unfinished-upload
+# a-change-of-status-is-told, a-failed-upload-stays-visible (MDRS-259), no-upload-on-a-cancelled-celse, unheld-videos-leave-the-library (MDRS-260),
+# release-time-saved-is-said, continue-only-an-unfinished-upload
 # unwalked (code, and no e2e of the web apps and no passed replay; a unit or tedrisat spec pins them):
-#   choose-a-video-and-be-told-what-is-wrong, release-time-never-opens-early, start-a-signed-upload, without-a-library-the-person-is-told,
-#   stop-and-continue-an-upload, replace-a-link-or-a-video, see-an-upload-through-processing, replaced-videos-leave-the-library,
-#   upload-only-where-held
+# choose-a-video-and-be-told-what-is-wrong, release-time-never-opens-early, start-a-signed-upload, without-a-library-the-person-is-told,
+# stop-and-continue-an-upload, replace-a-link-or-a-video, see-an-upload-through-processing, replaced-videos-leave-the-library,
+# upload-only-where-held
 # The graph's replay scenarios are named in comments, not under `walked`, because none has run (no replay in the writing phase). What no scenario
 # can ever walk on this stack: everything after a file is chosen (the replay cannot set a file input, and there is no Bunny).
-kind: needs
-flow: nazar.recordings.upload
-status: proposed
 
 needs:
   - id: say-where-the-file-goes
     need: >-
-      A person who may upload is told on the recordings page that the video goes from her browser straight to the video library, and that the celse
-      says "Hazırlanıyor" until it is ready; a person who may paste a link but not upload is told there is no upload here.
-    drawn: [uploadNote, manageNote]
-    built:
-      - route: apps/nazar/features/recordings/components/recordings-page.tsx:90
-    walked:
-      - e2e: apps/nazar/e2e/course-scope.e2e.ts
-        check: 'course-scope#5' # a3: the sentence "dosya tarayıcınızdan doğrudan Bunny"; a1, a2 and a4 (the h1, no placeholder, the menu link) are nazar.recordings.add's
+      A person who may upload is told on the recordings page that the video goes from her browser straight to the video library,
+      and that the celse says "Hazırlanıyor" until it is ready; a person who may paste a link but not upload is told there is no
+      upload here.
+    evidence:
+      - node: uploadNote
+      - node: manageNote
+      - source: apps/nazar/features/recordings/components/recordings-page.tsx:90
+      - test: apps/nazar/e2e/course-scope.e2e.ts
+        name: "Ders kayıtları lists the course's sessions by week and says the video goes to Bunny from here"
       - test: apps/nazar/test/recordings-page.spec.tsx
-    # replay scenarios that will walk it: adds (the müderris's sentence), manageOnly (the other wording)
+    note: |-
+      course-scope#5: a3: the sentence "dosya tarayıcınızdan doğrudan Bunny"; a1, a2 and a4 (the h1, no placeholder, the menu
+      link) are nazar.recordings.add's
+      replay scenarios that will walk it: adds (the müderris's sentence), manageOnly (the other wording)
 
   - id: upload-only-where-held
     need: >-
-      Only a holder of recording.upload in the course can start or continue an upload; a holder of recording.manage alone is shown the paste form, and a
-      person with neither is refused the page. The server asks the permission before it looks at the celse or at the library.
-    drawn: [rowAdd, rowEdit, rowResume, tabList, manageNote, forbiddenAlert]
-    built:
-      - action: medaris.api:startRecordingUpload
-      - action: medaris.api:resignRecordingUpload
-      - route: apps/tedrisat/src/course/recording-upload.controller.ts:77
-      - route: apps/nazar/features/recordings/components/recordings-page.tsx:57
-    walked:
-      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts # 403 for a talebe and a stranger, before Bunny is called, and still 403 with no library
+      Only a holder of recording.upload in the course can start or continue an upload; a holder of recording.manage alone is shown
+      the paste form, and a person with neither is refused the page. The server asks the permission before it looks at the celse
+      or at the library.
+    evidence:
+      - node: rowAdd
+      - node: rowEdit
+      - node: rowResume
+      - node: tabList
+      - node: manageNote
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/course/recording-upload.controller.ts:81
+      - source: apps/tedrisat/src/course/recording-upload.controller.ts:106
+      - source: apps/tedrisat/src/course/recording-upload.controller.ts:77
+      - source: apps/nazar/features/recordings/components/recordings-page.tsx:57
+      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts
       - test: apps/nazar/test/recordings-page.spec.tsx
-    # replay scenarios that will walk it: uploadOnly, manageOnly, neither; adds pins the 403 and the 503 of the routes in its `setup`
+    note: |-
+      apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts: 403 for a talebe and a stranger, before Bunny is called, and still 403
+      with no library
+      replay scenarios that will walk it: uploadOnly, manageOnly, neither; adds pins the 403 and the 503 of the routes in its
+      `setup`
 
   - id: choose-a-video-and-be-told-what-is-wrong
     need: >-
-      The file is checked before anything is sent: it must be a video, not empty and within 10 GB, and the person is told which of the three it is, in a
-      way a screen-reader user hears (F-C-course-a-01).
-    drawn: [fileInput, fileHelp, fileErrorEmpty, fileErrorType, fileErrorSize, fileCaption]
-    built:
-      - route: apps/nazar/features/recordings/bunny-upload.ts:160
-    walked:
+      The file is checked before anything is sent: it must be a video, not empty and within 10 GB, and the person is told which of
+      the three it is, in a way a screen-reader user hears (F-C-course-a-01).
+    evidence:
+      - node: fileInput
+      - node: fileHelp
+      - node: fileErrorEmpty
+      - node: fileErrorType
+      - node: fileErrorSize
+      - node: fileCaption
+      - source: apps/nazar/features/recordings/bunny-upload.ts:160
       - test: apps/nazar/test/bunny-upload.spec.ts
       - test: apps/nazar/test/recordings-upload.spec.tsx
-    # replay: adds walks only "Yükle" with no file (the empty sentence); a file cannot be chosen by the replay
+    note: "replay: adds walks only \"Yükle\" with no file (the empty sentence); a file cannot be chosen by the replay"
 
   - id: release-time-never-opens-early
     need: >-
-      When talebe may watch the recording is written before the video exists, so the video is never open to them before its time while Bunny prepares it;
-      only a holder of recording.manage changes it.
-    drawn: [releaseGroup, releaseReady, releaseAt, savingRelease]
-    built:
-      - action: medaris.api:setLessonRecordingAvailability
-      - route: apps/nazar/features/recordings/components/recording-dialog.tsx:259
-    walked:
+      When talebe may watch the recording is written before the video exists, so the video is never open to them before its time
+      while Bunny prepares it; only a holder of recording.manage changes it.
+    evidence:
+      - node: releaseGroup
+      - node: releaseReady
+      - node: releaseAt
+      - state: savingRelease
+      - source: apps/tedrisat/src/course/recording.controller.ts:147
+      - source: apps/nazar/features/recordings/components/recording-dialog.tsx:259
       - test: apps/nazar/test/recordings-upload.spec.tsx
       - test: apps/tedrisat/test/e2e/recording-release.e2e.spec.ts
-    # replay: adds presses the radio "Şu tarih ve saatte"; the write itself needs a chosen file
+    note: "replay: adds presses the radio \"Şu tarih ve saatte\"; the write itself needs a chosen file"
 
   - id: release-time-saved-is-said
     need: >-
-      When the release time is saved before an upload and the upload is then refused, the person is told that the time was saved (UPLOAD-3), or it is
-      written only once the upload has started.
-    drawn: [savingRelease, failed]
-    missing: none
+      When the release time is saved before an upload and the upload is then refused, the person is told that the time was saved
+      (UPLOAD-3), or it is written only once the upload has started.
+    missing: no Linear issue; findings UPLOAD-3
+    note: >-
+      Drawn on the states savingRelease and failed, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: start-a-signed-upload
     need: >-
-      The server creates the video in the library, records it as the celse's one recording (PROCESSING, in the place of a link or a failed upload), and
-      signs a TUS upload that lasts 24 hours and goes from the browser straight to the library, never through the server; a refusal says why.
-    drawn: [starting, sending]
-    built:
-      - action: medaris.api:startRecordingUpload
-      - route: apps/tedrisat/src/course/recording-upload.service.ts:73
-    walked:
-      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts # with a stand-in for Bunny
+      The server creates the video in the library, records it as the celse's one recording (PROCESSING, in the place of a link or
+      a failed upload), and signs a TUS upload that lasts 24 hours and goes from the browser straight to the library, never
+      through the server; a refusal says why.
+    evidence:
+      - state: starting
+      - state: sending
+      - source: apps/tedrisat/src/course/recording-upload.controller.ts:81
+      - source: apps/tedrisat/src/course/recording-upload.service.ts:73
+      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts
       - test: apps/nazar/test/recordings-upload.spec.tsx
-    # no replay can reach it on this stack (no library, no file)
+    note: |-
+      apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts: with a stand-in for Bunny
+      no replay can reach it on this stack (no library, no file)
 
   - id: without-a-library-the-person-is-told
     need: >-
-      Where the video library is not set up the upload is refused before anything is made, and the person is told so and pointed to the paste form
-      ("Video kütüphanesi ayarlı değil. Şimdilik kaydın bağlantısını yapıştırın.").
-    drawn: [starting, failed]
-    built:
-      - route: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:78
-      - route: apps/nazar/features/recordings/recordings.ts:688
-    walked:
-      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts # "answers 503 when the server has no Bunny library, and still 403 to a talebe"
+      Where the video library is not set up the upload is refused before anything is made, and the person is told so and pointed
+      to the paste form ("Video kütüphanesi ayarlı değil. Şimdilik kaydın bağlantısını yapıştırın.").
+    evidence:
+      - state: starting
+      - state: failed
+      - source: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:78
+      - source: apps/nazar/features/recordings/recordings.ts:688
+      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts
       - test: apps/nazar/test/course-actions.spec.ts
-    # replay: adds pins the 503 (the signature route) and the 403 in its `setup`; the sentence needs a chosen file
+    note: |-
+      apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts: "answers 503 when the server has no Bunny library, and still 403 to a
+      talebe"
+      replay: adds pins the 503 (the signature route) and the 403 in its `setup`; the sentence needs a chosen file
 
   - id: stop-and-continue-an-upload
     need: >-
-      A running upload can be stopped, and one that stopped, lost its connection or was left halfway (a reload, another day) continues where it stopped,
-      with the same video signed again, until its 24 hours pass; after that the dialog says it cannot go on.
-    drawn: [sending, stopped, failedHalfway, resuming, resigning, rowResume]
-    built:
-      - action: medaris.api:resignRecordingUpload
-      - route: apps/nazar/features/recordings/bunny-upload.ts:268
-    walked:
+      A running upload can be stopped, and one that stopped, lost its connection or was left halfway (a reload, another day)
+      continues where it stopped, with the same video signed again, until its 24 hours pass; after that the dialog says it cannot
+      go on.
+    evidence:
+      - state: sending
+      - state: stopped
+      - state: failedHalfway
+      - state: resuming
+      - state: resigning
+      - node: rowResume
+      - source: apps/tedrisat/src/course/recording-upload.controller.ts:106
+      - source: apps/nazar/features/recordings/bunny-upload.ts:268
       - test: apps/nazar/test/bunny-upload.spec.ts
       - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts
-    # replay: encoding walks "Devam et" as far as the dialog and its help; nothing beyond
+    note: "replay: encoding walks \"Devam et\" as far as the dialog and its help; nothing beyond"
 
   - id: continue-only-an-unfinished-upload
     need: >-
-      "Devam et" is offered only while an upload has bytes left to send; an upload that finished and is only being encoded says "işleniyor" and offers
-      nothing to continue (UPLOAD-2).
-    drawn: [rowResume, processingResume]
-    missing: none
+      "Devam et" is offered only while an upload has bytes left to send; an upload that finished and is only being encoded says
+      "işleniyor" and offers nothing to continue (UPLOAD-2).
+    missing: no Linear issue; findings UPLOAD-2
+    note: >-
+      Drawn on the nodes rowResume and processingResume, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: replace-a-link-or-a-video
     need: >-
-      A wrong link or a wrong video can be replaced by a new upload from "Düzenle", after a warning of what goes; a replaced Bunny video leaves the library
-      once the new upload is over.
-    drawn: [replacesLinkNote, replacesVideoNote, stopsUploadNote, rowEdit]
-    built:
-      - action: medaris.api:startRecordingUpload
-      - route: apps/nazar/features/recordings/recordings.ts:252
-    walked:
+      A wrong link or a wrong video can be replaced by a new upload from "Düzenle", after a warning of what goes; a replaced Bunny
+      video leaves the library once the new upload is over.
+    evidence:
+      - node: replacesLinkNote
+      - node: replacesVideoNote
+      - node: stopsUploadNote
+      - node: rowEdit
+      - source: apps/tedrisat/src/course/recording-upload.controller.ts:81
+      - source: apps/nazar/features/recordings/recordings.ts:252
       - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts
       - test: apps/nazar/test/recordings-upload.spec.tsx
-    # replay scenarios that will walk the warnings: replacesLink, replacesVideo, encoding, uploadOnlyEdit
+    note: "replay scenarios that will walk the warnings: replacesLink, replacesVideo, encoding, uploadOnlyEdit"
 
   - id: replaced-videos-leave-the-library
     need: >-
-      A Bunny video that leaves its recording (replaced by an upload or by a link) is queued and deleted from the library once nothing waits on it, and
-      never while a recording holds it.
-    drawn: [starting]
-    built:
-      - route: apps/tedrisat/src/course/recording-encoding.poller.ts:185
-      - route: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:133
-    walked:
-      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts # "deleting a replaced video"
+      A Bunny video that leaves its recording (replaced by an upload or by a link) is queued and deleted from the library once
+      nothing waits on it, and never while a recording holds it.
+    evidence:
+      - state: starting
+      - source: apps/tedrisat/src/course/recording-encoding.poller.ts:185
+      - source: apps/tedrisat/src/bunny-stream/bunny-stream.client.ts:133
+      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts
       - test: apps/tedrisat/test/unit/course/recording-encoding-poller.spec.ts
+    note: "apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts: \"deleting a replaced video\""
 
   - id: unheld-videos-leave-the-library
     need: >-
-      A video that no recording holds is deleted from the library too: the empty video left when a refusal comes after it was created (UPLOAD-1), a
-      video whose upload never began or failed and was never retried, and the videos of a purged course; a reconciler clears what slipped through
-      (P-11, MDRS-260).
-    drawn: [starting, vanished]
-    missing: MDRS-260
+      A video that no recording holds is deleted from the library too: the empty video left when a refusal comes after it was
+      created (UPLOAD-1), a video whose upload never began or failed and was never retried, and the videos of a purged course; a
+      reconciler clears what slipped through (P-11, MDRS-260).
+    missing: MDRS-260; findings UPLOAD-1
+    note: >-
+      Drawn on the states starting and vanished, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: see-an-upload-through-processing
     need: >-
-      After the last byte the celse says "Hazırlanıyor" and the page follows the encoding by itself, until the server's poll settles it: "Hazır" and, where
-      the library is set up, a signed player link; the course's talebe are told when it is released.
-    drawn: [processing, encoded, toastUploaded, badgeProcessing, badgeReady]
-    built:
-      - route: apps/nazar/features/recordings/use-refresh-while.ts:14
-      - route: apps/tedrisat/src/course/recording-encoding.poller.ts:100
-    walked:
-      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts # "the encoding poll"
+      After the last byte the celse says "Hazırlanıyor" and the page follows the encoding by itself, until the server's poll
+      settles it: "Hazır" and, where the library is set up, a signed player link; the course's talebe are told when it is
+      released.
+    evidence:
+      - state: processing
+      - state: encoded
+      - node: toastUploaded
+      - node: badgeProcessing
+      - node: badgeReady
+      - source: apps/nazar/features/recordings/use-refresh-while.ts:14
+      - source: apps/tedrisat/src/course/recording-encoding.poller.ts:100
+      - test: apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts
       - test: apps/nazar/test/recordings-page.spec.tsx
-    # replay: encoding walks POLL_READY with a status written by hand (the poll does not run without the library); the toast is not reachable
+    note: |-
+      apps/tedrisat/test/e2e/recording-upload.e2e.spec.ts: "the encoding poll"
+      replay: encoding walks POLL_READY with a status written by hand (the poll does not run without the library); the toast is
+      not reachable
 
   - id: a-change-of-status-is-told
     need: >-
-      The change of a row from "Hazırlanıyor" to "Hazır", or its loss, is announced to a screen-reader user (a status, or a toast), not only drawn
-      (F-C-course-a-21).
-    drawn: [processing, encoded, vanished]
-    missing: none
+      The change of a row from "Hazırlanıyor" to "Hazır", or its loss, is announced to a screen-reader user (a status, or a
+      toast), not only drawn (F-C-course-a-21).
+    missing: no Linear issue; findings F-C-course-a-21
+    note: >-
+      Drawn on the states processing, encoded and vanished, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-upload-stays-visible
     need: >-
-      An upload that failed, or whose 24 hours passed with no file, stays on Ders kayıtları for the course team with its reason and a retry that says it
-      replaces it, instead of the row going back to "Kayıt yok" (MDRS-259).
-    drawn: [vanished, goneNone, goneAdd]
-    missing: MDRS-259
+      An upload that failed, or whose 24 hours passed with no file, stays on Ders kayıtları for the course team with its reason
+      and a retry that says it replaces it, instead of the row going back to "Kayıt yok" (MDRS-259).
+    missing: MDRS-259; findings MDRS-259
+    note: >-
+      Drawn on the state vanished and on the nodes goneNone and goneAdd, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: no-upload-on-a-cancelled-celse
     need: >-
-      A cancelled celse takes no upload, as it takes no pasted link: the server refuses with LESSON_CANCELLED and the dialog says so
-      (upload-on-cancelled-session).
-    drawn: [starting]
-    missing: none
+      A cancelled celse takes no upload, as it takes no pasted link: the server refuses with LESSON_CANCELLED and the dialog says
+      so (upload-on-cancelled-session).
+    missing: no Linear issue; findings upload-on-cancelled-session
+    note: >-
+      Drawn on the state starting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

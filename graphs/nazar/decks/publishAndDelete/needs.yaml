@@ -1,124 +1,168 @@
-# What must exist for the hoca of a course to publish a deck to its talebe, take it back, change its title and week, and delete a draft: the flow's product list
-# (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the API's own description of its routes, not from what the page does
-# today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.decks.publishAndDelete
+status: proposed
+summary: >-
+  What must exist for the hoca of a course to publish a deck to its talebe, take it back, change its title and week, and delete a
+  draft: the flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code, Linear key `none`): a-save-sends-only-what-was-typed (DECKPD-1), a-refusal-leaves-the-page-true (DECKPD-2),
-#   a-write-in-flight-keeps-the-focus (DECKPD-3), a-refused-form-is-told (F-D1-16), the-page-loads-without-a-second-shell (F-D1-17),
-#   the-delete-dialog-speaks-the-catalog (F-D1-24), a-vanished-deck-is-told (DECKPD-4).
+# a-write-in-flight-keeps-the-focus (DECKPD-3), a-refused-form-is-told (F-D1-16), the-page-loads-without-a-second-shell (F-D1-17),
+# the-delete-dialog-speaks-the-catalog (F-D1-24), a-vanished-deck-is-told (DECKPD-4).
 # Unwalked (code, no e2e, no replay yet): publish-to-the-talebe, take-it-back-to-a-draft, retitle-and-reweek (its rules are pinned by a unit spec of the pure
-#   functions alone), delete-a-draft-after-asking, a-published-deck-says-why-it-cannot-be-deleted, a-reader-without-the-code-is-told.
+# functions alone), delete-a-draft-after-asking, a-published-deck-says-why-it-cannot-be-deleted, a-reader-without-the-code-is-told.
 # Walked: none. The inventory names no e2e check for Deste (nothing renders DeckSettings), and no replay has run in this phase, so none is named under `walked`;
-#   binding.yaml (draftDeck, publishedDeck, refusedDeck) is written to walk the six unwalked needs and to show the findings behind four of the missing ones.
-kind: needs
-flow: nazar.decks.publishAndDelete
-status: proposed
+# binding.yaml (draftDeck, publishedDeck, refusedDeck) is written to walk the six unwalked needs and to show the findings behind four of the missing ones.
 
 needs:
   - id: publish-to-the-talebe
     need: >-
-      The hoca makes a draft deck visible to the course's enrolled talebe in one press, so that they find it in their tab at once; the page says that the deck is
-      now visible to them and a toast confirms it. A deck is published to the talebe of the course it belongs to and to no one else.
-    drawn: [draft, publishButton, publishing, statePublished, toastPublished, published]
-    built:
-      - action: medaris.api:updateCourseDeck
-      - action: medaris.api:listCourseDecks
-      - route: apps/nazar/features/decks/components/deck-settings.tsx:81
-    walked: []
+      The hoca makes a draft deck visible to the course's enrolled talebe in one press, so that they find it in their tab at once;
+      the page says that the deck is now visible to them and a toast confirms it. A deck is published to the talebe of the course
+      it belongs to and to no one else.
+    evidence:
+      - state: draft
+      - node: publishButton
+      - state: publishing
+      - node: statePublished
+      - node: toastPublished
+      - state: published
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:106
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:145
+      - source: apps/nazar/features/decks/components/deck-settings.tsx:81
 
   - id: take-it-back-to-a-draft
     need: >-
-      The hoca takes a published deck away from the talebe in one press, to correct it, without losing what the talebe have learnt from it (the API keeps their
-      progress); the page says the deck is a draft again and a toast confirms it. Whether it should ask first is decision D1.
-    drawn: [published, unpublishButton, unpublishing, stateDraft, toastUnpublished]
-    built:
-      - action: medaris.api:updateCourseDeck
-      - route: apps/nazar/features/decks/components/deck-settings.tsx:81
-    walked: []
+      The hoca takes a published deck away from the talebe in one press, to correct it, without losing what the talebe have learnt
+      from it (the API keeps their progress); the page says the deck is a draft again and a toast confirms it. Whether it should
+      ask first is decision D1.
+    evidence:
+      - state: published
+      - node: unpublishButton
+      - state: unpublishing
+      - node: stateDraft
+      - node: toastUnpublished
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:106
+      - source: apps/nazar/features/decks/components/deck-settings.tsx:81
 
   - id: retitle-and-reweek
     need: >-
-      The hoca changes a deck's title and the week it belongs to in one save. A title the API would refuse (fewer than five or more than a hundred characters) is
-      refused on the page, at the field, before anything is sent; only what changed is sent; a toast confirms the save.
-    drawn: [titleField, weekField, titleError, saveButton, saving, toastSaved]
-    built:
-      - action: medaris.api:updateCourseDeck
-      - route: apps/nazar/features/decks/components/deck-settings.tsx:72
-      - route: apps/nazar/features/decks/decks.ts:99
-    walked:
+      The hoca changes a deck's title and the week it belongs to in one save. A title the API would refuse (fewer than five or
+      more than a hundred characters) is refused on the page, at the field, before anything is sent; only what changed is sent; a
+      toast confirms the save.
+    evidence:
+      - node: titleField
+      - node: weekField
+      - node: titleError
+      - node: saveButton
+      - state: saving
+      - node: toastSaved
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:106
+      - source: apps/nazar/features/decks/components/deck-settings.tsx:72
+      - source: apps/nazar/features/decks/decks.ts:99
       - test: apps/nazar/test/decks.spec.ts
 
   - id: delete-a-draft-after-asking
     need: >-
-      The hoca deletes a draft deck with its cards after being asked once, in a dialog whose focus starts on the safe answer; she lands on the list of the course's
-      decks with a word that the deck is gone.
-    drawn: [deleteHelp, deleteButton, confirmDelete, deleteDialog, deleting, decks_listed, toastDeleted]
-    built:
-      - action: medaris.api:deleteCourseDeck
-      - route: apps/nazar/features/decks/components/deck-settings.tsx:88
-    walked: []
+      The hoca deletes a draft deck with its cards after being asked once, in a dialog whose focus starts on the safe answer; she
+      lands on the list of the course's decks with a word that the deck is gone.
+    evidence:
+      - node: deleteHelp
+      - node: deleteButton
+      - state: confirmDelete
+      - node: deleteDialog
+      - state: deleting
+      - state: decks_listed
+      - node: toastDeleted
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:126
+      - source: apps/nazar/features/decks/components/deck-settings.tsx:88
 
   - id: a-published-deck-says-why-it-cannot-be-deleted
     need: >-
-      A published deck offers no delete and says why and what to do first (take it back to a draft); if the delete is still asked for, because the deck was
-      published meanwhile, the API refuses it with COURSE_DECK_NOT_DRAFT and the page says the same words.
-    drawn: [blockedHelp, notDraftAlert, deleting]
-    built:
-      - action: medaris.api:deleteCourseDeck
-      - route: apps/nazar/features/decks/components/deck-settings.tsx:188
-      - route: apps/nazar/features/decks/decks.ts:255
-    walked: []
+      A published deck offers no delete and says why and what to do first (take it back to a draft); if the delete is still asked
+      for, because the deck was published meanwhile, the API refuses it with COURSE_DECK_NOT_DRAFT and the page says the same
+      words.
+    evidence:
+      - node: blockedHelp
+      - node: notDraftAlert
+      - state: deleting
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:126
+      - source: apps/nazar/features/decks/components/deck-settings.tsx:188
+      - source: apps/nazar/features/decks/decks.ts:255
 
   - id: a-reader-without-the-code-is-told
     need: >-
-      A person who holds no deck code in the course (a ders nazırı granted nothing) is refused the deck page and told so, with a heading and a way back to the list.
-    drawn: [forbidden, forbiddenAlert]
-    built:
-      - action: medaris.api:listCourseDecksForStaff
-      - route: apps/nazar/features/decks/components/deck-detail-page.tsx:53
-    walked: []
+      A person who holds no deck code in the course (a ders nazırı granted nothing) is refused the deck page and told so, with a
+      heading and a way back to the list.
+    evidence:
+      - state: forbidden
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:68
+      - source: apps/nazar/features/decks/components/deck-detail-page.tsx:53
 
   - id: a-save-sends-only-what-was-typed
     need: >-
-      A save changes only what the hoca changed in the form. Publishing or taking back a deck, and then saving a new title, leaves the deck as published or taken
-      back; a save with nothing typed sends nothing (DECKPD-1).
-    drawn: [saving, saveButton, published, draft]
-    missing: none # deck-settings.tsx:51 and decks.ts:158 send the flag the form remembers from when it opened
+      A save changes only what the hoca changed in the form. Publishing or taking back a deck, and then saving a new title, leaves
+      the deck as published or taken back; a save with nothing typed sends nothing (DECKPD-1).
+    missing: no Linear issue; deck-settings.tsx:51 and decks.ts:158 send the flag the form remembers from when it opened
+    note: >-
+      Drawn on the states saving, published and draft and on the node saveButton, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-refusal-leaves-the-page-true
     need: >-
-      When the API refuses a write because the deck is not what the page drew, the page is read again, so that what it draws and what the alert says agree
-      (DECKPD-2).
-    drawn: [notDraftAlert, settled]
-    missing: none # deck-settings.tsx:95-98 sets the failure and returns with no router.refresh()
+      When the API refuses a write because the deck is not what the page drew, the page is read again, so that what it draws and
+      what the alert says agree (DECKPD-2).
+    missing: no Linear issue; deck-settings.tsx:95-98 sets the failure and returns with no router.refresh()
+    note: >-
+      Drawn on the state settled and on the node notDraftAlert, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-write-in-flight-keeps-the-focus
     need: >-
-      A button that was pressed stays focusable while its write runs and the person is told, in the catalog's words, that it is running; the same for every
-      button of the form, not only "Kaydet" (DECKPD-3, F-D1-24).
-    drawn: [publishButton, unpublishButton, deleteButton, busyStatus]
-    missing: none
+      A button that was pressed stays focusable while its write runs and the person is told, in the catalog's words, that it is
+      running; the same for every button of the form, not only "Kaydet" (DECKPD-3, F-D1-24).
+    missing: no Linear issue; DECKPD-3
+    note: >-
+      Drawn on the nodes publishButton, unpublishButton, deleteButton and busyStatus, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-refused-form-is-told
     need: >-
-      A form that cannot be sent says so where a screen-reader user will hear it, and moves the focus to the first field that is wrong (F-D1-16).
-    drawn: [titleError, saveButton]
-    missing: none
+      A form that cannot be sent says so where a screen-reader user will hear it, and moves the focus to the first field that is
+      wrong (F-D1-16).
+    missing: no Linear issue; F-D1-16
+    note: >-
+      Drawn on the nodes titleError and saveButton, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-page-loads-without-a-second-shell
     need: >-
-      While a deck page is read, the page shows its own skeleton inside the shell that is already there, not a whole shell of its own (F-D1-17).
-    drawn: [opened]
-    missing: none
+      While a deck page is read, the page shows its own skeleton inside the shell that is already there, not a whole shell of its
+      own (F-D1-17).
+    missing: no Linear issue; F-D1-17
+    note: >-
+      Drawn on the state opened, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
 
   - id: the-delete-dialog-speaks-the-catalog
     need: >-
-      The delete dialog's "Vazgeç" and "Kapat", and the busy buttons' "Yükleniyor", come from the app's catalog like every other word, so that they follow the
-      language when the language menu is built (F-D1-24).
-    drawn: [deleteCancel, deleteClose, busyStatus]
-    missing: none
+      The delete dialog's "Vazgeç" and "Kapat", and the busy buttons' "Yükleniyor", come from the app's catalog like every other
+      word, so that they follow the language when the language menu is built (F-D1-24).
+    missing: no Linear issue; F-D1-24
+    note: >-
+      Drawn on the nodes deleteCancel, deleteClose and busyStatus, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-vanished-deck-is-told
     need: >-
-      A write on a deck that someone else deleted says that the deck is gone and leads to the list, not "Tekrar deneyin", which cannot work (DECKPD-4).
-    drawn: [failedAlert, settled]
-    missing: none # decks.ts:255-258 words every code but COURSE_DECK_NOT_DRAFT as "İşlem tamamlanamadı. Tekrar deneyin."
+      A write on a deck that someone else deleted says that the deck is gone and leads to the list, not "Tekrar deneyin", which
+      cannot work (DECKPD-4).
+    missing: >-
+      no Linear issue; decks.ts:255-258 words every code but COURSE_DECK_NOT_DRAFT as "İşlem tamamlanamadı. Tekrar deneyin."
+    note: >-
+      Drawn on the state settled and on the node failedAlert, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).

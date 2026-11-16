@@ -102,10 +102,11 @@ context:
       chief: "the başnazım, on the Medaris list: she may lift anything, and widens through a dialog with a reason"
       medaris: "a Medaris nazım holding platform.ban_scoped, on the Medaris list: she lifts a köşk ban and no course ban, and widens through the dialog"
   read:
-    values: [ok, forbidden, missing]
+    values: [ok, forbidden, missing, failed]
     initial: any
     say:
       ok: "the API answers the list"
+      failed: "the read fails some other way (the API answers 5xx or does not answer): the page's own alert 'Yasaklar yüklenemedi'"
       forbidden: "the API refuses the person (a köşk nazım at the Medaris list, a müderris at a köşk's list): the screen 'Bu bölüm için izniniz yok'"
       missing: "there is no such köşk: the same screen"
   row:
@@ -181,9 +182,11 @@ failures:
     from: listKoskBans
     forbidden: [BAN_FORBIDDEN]
     missing: [KOSK_NOT_FOUND]
+    failed: [5xx, network]
   openedAll:
     from: listAllBans
     forbidden: [BAN_FORBIDDEN]
+    failed: [5xx, network]
   lifting:
     from: liftBan
     moved: [BAN_NOT_FOUND, BAN_ALREADY_LIFTED]
@@ -235,6 +238,7 @@ states:
         - { target: listed, source: "apps/nizam/features/bans/components/bans-view.tsx:295" }
       FAIL.forbidden: { guard: "read == 'forbidden'", target: no_access, source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:35" }
       FAIL.missing: { guard: "read == 'missing'", target: no_access, source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:34" }
+      FAIL.failed: { guard: "read == 'failed'", target: load_failed, source: apps/nizam/features/bans/reads.ts:43 }
     source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:30"
 
   openedAll:
@@ -250,6 +254,7 @@ states:
         - { guard: "row == 'none'", target: empty, source: "apps/nizam/features/bans/components/all-bans-view.tsx:340" }
         - { target: listed, source: "apps/nizam/features/bans/components/all-bans-view.tsx:330" }
       FAIL.forbidden: { guard: "read == 'forbidden'", target: no_access, source: apps/nizam/app/yasaklamalar/page.tsx:25 }
+      FAIL.failed: { guard: "read == 'failed'", target: load_failed, source: apps/nizam/features/bans/reads.ts:26 }
     source: apps/nizam/app/yasaklamalar/page.tsx:24
 
   listed:

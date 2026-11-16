@@ -1,161 +1,218 @@
-# What must exist for a köşk's nazım to decide a medrese's request for a course outside the medrese: the flow's product list (LAYOUT.md section 7).
-# Each need is what the product must do, from the flow's story and what the code leaves undone, not from what the page does today; the known gaps
-# go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file. planned.md names no
-# planned feature for this page; the appeal of a refusal is nazar.appeals.open's and nizam.moderation.decideAppeal's (P-04, MDRS-139).
+schema: delurio-graph/0
+kind: needs
+id: nizam.courseRequests.decide
+status: proposed
+summary: >-
+  What must exist for a köşk's nazım to decide a medrese's request for a course outside the medrese: the flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For graphs/needs.gaps.yaml, flow nizam.courseRequests.decide:
-#   missing  (no code): the-medrese-is-told-of-the-answer (CREQ-1, none), an-accepted-request-names-its-course (CREQ-6, none),
-#            a-failed-read-keeps-the-tabs (CREQ-3, none), the-page-says-which-kosk (F-W3-9, none), a-change-of-tab-or-row-is-announced
-#            (F-W3-5, none), the-focus-follows-an-answer (CREQ-2, none), kabul-et-says-what-it-does (CREQ-4, none),
-#            the-reasons-error-is-announced (F-X-2, none)
-#   unwalked (code, no e2e check and no replay that has passed): a-request-answered-meanwhile-is-told, a-failed-read-is-told-and-retried.
-#            No replay has run yet (the graphs were written without one): the scenarios `rejects`, `opens`,
-#            `empty`, `refused`, `missing`, `unreadable` (binding.yaml), `answered` and `gone` (races.binding.yaml) and `accepted`
-#            (accepted.binding.yaml) are bound and are named below as comments, not as `walked`, until a walk has passed them; every e2e check
-#            named here was read, not run (the nizam suite is not run in CI).
-kind: needs
-flow: nizam.courseRequests.decide
-status: proposed
+# missing  (no code): the-medrese-is-told-of-the-answer (CREQ-1, none), an-accepted-request-names-its-course (CREQ-6, none),
+# a-failed-read-keeps-the-tabs (CREQ-3, none), the-page-says-which-kosk (F-W3-9, none), a-change-of-tab-or-row-is-announced
+# (F-W3-5, none), the-focus-follows-an-answer (CREQ-2, none), kabul-et-says-what-it-does (CREQ-4, none),
+# the-reasons-error-is-announced (F-X-2, none)
+# unwalked (code, no e2e check and no replay that has passed): a-request-answered-meanwhile-is-told, a-failed-read-is-told-and-retried.
+# No replay has run yet (the graphs were written without one): the scenarios `rejects`, `opens`,
+# `empty`, `refused`, `missing`, `unreadable` (binding.yaml), `answered` and `gone` (races.binding.yaml) and `accepted`
+# (accepted.binding.yaml) are bound and are named below as comments, not as `walked`, until a walk has passed them; every e2e check
+# named here was read, not run (the nizam suite is not run in CI).
 
 needs:
   - id: read-the-requests-sent-to-the-kosk
     need: >-
-      The köşk's nazım reads, in one list, the course requests that medreses sent to the köşk: the ones that wait, oldest first, and the
-      ones that were answered, newest decision first, each with the medrese, the person who sent it, the day, the köşk it was sent to and the
-      reason, and the number of each kind on its tab.
-    drawn: [listed, empty, tabs, pendingCount, decidedCount, waitingCard, waitingSender, waitingReason]
-    built:
-      - action: medaris.api:listCourseRequests
-      - route: apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:27
-      - route: apps/nizam/features/platform-admin/components/course-requests-view.tsx:41
-    walked:
-      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
-        check: 'platform-admin#8'
-    # replay: rejects, opens, empty (bound, not walked yet)
+      The köşk's nazım reads, in one list, the course requests that medreses sent to the köşk: the ones that wait, oldest first,
+      and the ones that were answered, newest decision first, each with the medrese, the person who sent it, the day, the köşk it
+      was sent to and the reason, and the number of each kind on its tab.
+    evidence:
+      - state: listed
+      - state: empty
+      - node: tabs
+      - node: pendingCount
+      - node: decidedCount
+      - node: waitingCard
+      - node: waitingSender
+      - node: waitingReason
+      - source: apps/tedrisat/src/course-request/course-request.controller.ts:86
+      - source: "apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:27"
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:41
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/39 — the köşk nazımı sees the medrese's request with its sender and counts both tabs (criterion 1)"
+    note: "replay: rejects, opens, empty (bound, not walked yet)"
 
   - id: only-the-koskss-own-nazim-reads-and-decides
     need: >-
-      Only the nazım of this köşk and the başnazım read and answer its course requests. A nazım of another köşk, a Medaris nazımı, a person
-      with no role here and a köşk that does not exist all meet the same sentence, "Bu bölüm için izniniz yok", so that the page never tells
-      which köşks exist.
-    drawn: [noAccess, noAccessSection, noAccessTitle, noAccessBody, noAccessBack]
-    built:
-      - action: medaris.api:listCourseRequests
-      - route: apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:28
-      - route: apps/nizam/app/kosks/layout.tsx:20
-    walked:
-      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
-        check: 'platform-admin#11'
-    # replay: refused, missing (bound, not walked yet)
+      Only the nazım of this köşk and the başnazım read and answer its course requests. A nazım of another köşk, a Medaris nazımı,
+      a person with no role here and a köşk that does not exist all meet the same sentence, "Bu bölüm için izniniz yok", so that
+      the page never tells which köşks exist.
+    evidence:
+      - state: noAccess
+      - node: noAccessSection
+      - node: noAccessTitle
+      - node: noAccessBody
+      - node: noAccessBack
+      - source: apps/tedrisat/src/course-request/course-request.controller.ts:86
+      - source: "apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx:28"
+      - source: apps/nizam/app/kosks/layout.tsx:20
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/39 — a köşk nazımı of another köşk gets 'Bu bölüm için izniniz yok' (criterion 5)"
+    note: "replay: refused, missing (bound, not walked yet)"
 
   - id: accept-by-opening-the-course
     need: >-
-      The nazım accepts a request by opening the course from it: "Kabul et" opens the Ders aç form with the request's title as the course's
-      name, and the request becomes accepted when that course exists, so a request is never accepted without a course and a course answers
-      one request.
-    drawn: [listed, accept, answerNote, acceptHandOver, handed_over.open_course]
-    built:
-      - route: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234
-      - route: apps/nizam/features/platform-admin/present.ts:292
-      - action: medaris.api:acceptCourseRequest
-    walked:
-      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
-        check: 'platform-admin#9' # a1 (the address /kosks/<id>/courses/new?talep=<id>) here; a2 (the form's "Ders adı" holds the title) is nizam.courses.open's
-    # replay: opens (bound, not walked yet)
+      The nazım accepts a request by opening the course from it: "Kabul et" opens the Ders aç form with the request's title as the
+      course's name, and the request becomes accepted when that course exists, so a request is never accepted without a course and
+      a course answers one request.
+    evidence:
+      - state: listed
+      - node: accept
+      - node: answerNote
+      - state: acceptHandOver
+      - state: handed_over.open_course
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234
+      - source: apps/nizam/features/platform-admin/present.ts:292
+      - source: apps/tedrisat/src/course-request/course-request.controller.ts:113
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/39 — Kabul et opens the course form with the request's name (criterion 2)"
+    note: |-
+      platform-admin#9: a1 (the address /kosks/<id>/courses/new?talep=<id>) here; a2 (the form's "Ders adı" holds the title) is
+      nizam.courses.open's
+      replay: opens (bound, not walked yet)
 
   - id: kabul-et-says-what-it-does
     need: >-
-      Before the nazım presses it, the button says what it does: it opens the course form and accepts nothing yet; and the form says that the
-      request is not accepted until the course is made.
-    drawn: [accept, answerNote]
-    missing: none # CREQ-4, decision D2
+      Before the nazım presses it, the button says what it does: it opens the course form and accepts nothing yet; and the form
+      says that the request is not accepted until the course is made.
+    missing: no Linear issue; CREQ-4, decision D2
+    note: >-
+      Drawn on the nodes accept and answerNote, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: refuse-with-a-reason-the-medrese-reads
     need: >-
-      The nazım refuses a request with a reason that is required and kept as written (trimmed); the request leaves the waiting list, the next one
-      is selected, the numbers on the tabs follow, a toast says it was done, and the başmüderris of the medrese can read the reason.
-    drawn: [confirmReject, confirmRejectTouched, confirmRejectReady, rejecting, rejectedHandOver, toastRejected, reasonRequired]
-    built:
-      - action: medaris.api:rejectCourseRequest
-      - route: apps/nizam/features/deck-review/components/reject-dialog.tsx:78
-      - route: apps/nizam/features/platform-admin/components/course-requests-view.tsx:113
-    walked:
-      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
-        check: 'platform-admin#10'
-    # replay: rejects, opens (bound, not walked yet)
+      The nazım refuses a request with a reason that is required and kept as written (trimmed); the request leaves the waiting
+      list, the next one is selected, the numbers on the tabs follow, a toast says it was done, and the başmüderris of the medrese
+      can read the reason.
+    evidence:
+      - state: confirmReject
+      - state: confirmRejectTouched
+      - state: confirmRejectReady
+      - state: rejecting
+      - state: rejectedHandOver
+      - node: toastRejected
+      - node: reasonRequired
+      - source: apps/tedrisat/src/course-request/course-request.controller.ts:132
+      - source: apps/nizam/features/deck-review/components/reject-dialog.tsx:78
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:113
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/39 — Reddet needs a reason and moves the request to Karara bağlanan (criteria 3, 4)"
+    note: "replay: rejects, opens (bound, not walked yet)"
 
   - id: the-reasons-error-is-announced
     need: >-
-      Where a refusal is sent with no reason, the page says so where a screen reader hears it (the error is announced and the focus goes to the
-      field), instead of keeping the button off with only a help line to hint why.
-    drawn: [confirmReject, confirmRejectTouched, reasonRequired, rejectSubmit]
-    missing: none # F-X-2
+      Where a refusal is sent with no reason, the page says so where a screen reader hears it (the error is announced and the
+      focus goes to the field), instead of keeping the button off with only a help line to hint why.
+    missing: no Linear issue; F-X-2
+    note: >-
+      Drawn on the states confirmReject and confirmRejectTouched and on the nodes reasonRequired and rejectSubmit, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-medrese-is-told-of-the-answer
     need: >-
-      The başmüderris of the medrese, and the nazırs who may ask for a course, are told when the köşk accepts or refuses their request, with the
-      reason; the toast of the refusal says only what is true.
-    drawn: [toastRejectedBody, rejectedHandOver]
-    missing: none # CREQ-1, decision D1; also nazar.offsite.requestCourse's OFFSITE-1 and nazar.appeals.open's D1
+      The başmüderris of the medrese, and the nazırs who may ask for a course, are told when the köşk accepts or refuses their
+      request, with the reason; the toast of the refusal says only what is true.
+    missing: no Linear issue; CREQ-1, decision D1; also nazar.offsite.requestCourse's OFFSITE-1 and nazar.appeals.open's D1
+    note: >-
+      Drawn on the state rejectedHandOver and on the node toastRejectedBody, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-request-answered-meanwhile-is-told
     need: >-
-      A request that someone else answered while the dialog was open, or one that is gone, is told in a sentence that says which, leaves the
-      list, and does not count as the nazım's own answer.
-    drawn: [rejecting, toastAnswered, toastGone, toastErrorTitle]
-    built:
-      - route: apps/nizam/features/platform-admin/components/course-requests-view.tsx:118
-      - route: apps/nizam/features/platform-admin/present.ts:43
-    # replay: answered, gone (races.binding.yaml, bound, not walked yet); the gone one adds one to the answered count by mistake (CREQ-5)
+      A request that someone else answered while the dialog was open, or one that is gone, is told in a sentence that says which,
+      leaves the list, and does not count as the nazım's own answer.
+    evidence:
+      - state: rejecting
+      - node: toastAnswered
+      - node: toastGone
+      - node: toastErrorTitle
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:118
+      - source: apps/nizam/features/platform-admin/present.ts:43
+    note: >-
+      replay: answered, gone (races.binding.yaml, bound, not walked yet); the gone one adds one to the answered count by mistake
+      (CREQ-5)
 
   - id: an-accepted-request-names-its-course
-    need: >-
-      The card of an accepted request names the course that answers it and leads to it.
-    drawn: [decidedCard, decidedBadgeAccepted]
-    missing: none # CREQ-6: the API sends courseId, the page does not read it
+    need: The card of an accepted request names the course that answers it and leads to it.
+    missing: "no Linear issue; CREQ-6: the API sends courseId, the page does not read it"
+    note: >-
+      Drawn on the nodes decidedCard and decidedBadgeAccepted, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-answered-tab-keeps-the-outcome
     need: >-
-      The answered requests stay on a second tab with their outcome, the day they were decided and, for a refusal, the reason that was written.
-    drawn: [loadingDecided, decidedList, decidedEmpty, decidedOutcomeRejected, decidedOutcomeAccepted, rejectReasonAlert]
-    built:
-      - action: medaris.api:listCourseRequests
-      - route: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96
-    walked:
-      - e2e: apps/nizam/e2e/platform-admin.e2e.ts
-        check: 'platform-admin#10' # a4 and a5: after the refusal the request is listed under "Karara bağlanan"
-    # replay: rejects, opens, accepted (accepted.binding.yaml) (bound, not walked yet)
+      The answered requests stay on a second tab with their outcome, the day they were decided and, for a refusal, the reason that
+      was written.
+    evidence:
+      - state: loadingDecided
+      - state: decidedList
+      - state: decidedEmpty
+      - node: decidedOutcomeRejected
+      - node: decidedOutcomeAccepted
+      - node: rejectReasonAlert
+      - source: apps/tedrisat/src/course-request/course-request.controller.ts:86
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:96
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/39 — Reddet needs a reason and moves the request to Karara bağlanan (criteria 3, 4)"
+    note: |-
+      platform-admin#10: a4 and a5: after the refusal the request is listed under "Karara bağlanan"
+      replay: rejects, opens, accepted (accepted.binding.yaml) (bound, not walked yet)
 
   - id: a-failed-read-is-told-and-retried
-    need: >-
-      A read that fails says so in one place, with a way to try again, and does not take away what was already read.
-    drawn: [unreadable, retrying, decidedFailed, retryingDecided, loadAlert, retry, toastLoadFailed]
-    built:
-      - route: apps/nizam/features/platform-admin/components/course-requests-view.tsx:262
-    # replay: unreadable (bound, not walked yet); the failed read of the answered tab cannot be made on the local stack
+    need: A read that fails says so in one place, with a way to try again, and does not take away what was already read.
+    evidence:
+      - state: unreadable
+      - state: retrying
+      - state: decidedFailed
+      - state: retryingDecided
+      - node: loadAlert
+      - node: retry
+      - node: toastLoadFailed
+      - source: apps/nizam/features/platform-admin/components/course-requests-view.tsx:262
+    note: "replay: unreadable (bound, not walked yet); the failed read of the answered tab cannot be made on the local stack"
 
   - id: a-failed-read-keeps-the-tabs
     need: >-
-      When the answered tab cannot be read, the tabs stay and the error stands under them, so that the person can go back to the waiting list.
-    drawn: [decidedFailed]
-    missing: none # CREQ-3
+      When the answered tab cannot be read, the tabs stay and the error stands under them, so that the person can go back to the
+      waiting list.
+    missing: no Linear issue; CREQ-3
+    note: >-
+      Drawn on the state decidedFailed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: the-page-says-which-kosk
     need: >-
-      The heading, the tab title and the first line say which köşk's requests the page lists, so that a nazım of several köşks can tell.
-    drawn: [pageTitle, pageIntro]
-    missing: none # F-W3-9
+      The heading, the tab title and the first line say which köşk's requests the page lists, so that a nazım of several köşks can
+      tell.
+    missing: no Linear issue; F-W3-9
+    note: >-
+      Drawn on the nodes pageTitle and pageIntro, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-change-of-tab-or-row-is-announced
     need: >-
-      Choosing a tab or a row tells a screen reader what now shows (how many requests, which one), the tabs control a panel, and the focus
-      goes where the person is working.
-    drawn: [tabs, tabPending, tabDecided, waitingList, waitingItem]
-    missing: none # F-W3-5, F-X-1
+      Choosing a tab or a row tells a screen reader what now shows (how many requests, which one), the tabs control a panel, and
+      the focus goes where the person is working.
+    missing: no Linear issue; F-W3-5, F-X-1
+    note: >-
+      Drawn on the nodes tabs, tabPending, tabDecided, waitingList and waitingItem, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-focus-follows-an-answer
     need: >-
-      After a request is answered the focus goes to the next row, the empty line or the tab, and a line on the page (not only a toast of six
-      seconds) says what was decided.
-    drawn: [rejecting, listed, empty, toastRejected]
-    missing: none # CREQ-2
+      After a request is answered the focus goes to the next row, the empty line or the tab, and a line on the page (not only a
+      toast of six seconds) says what was decided.
+    missing: no Linear issue; CREQ-2
+    note: >-
+      Drawn on the states rejecting, listed and empty and on the node toastRejected, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

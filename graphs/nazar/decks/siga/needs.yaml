@@ -1,140 +1,186 @@
-# What must exist for a müderris to generate the sîga cards of a root and save them in a course deck: nazar.decks.siga, written on 15 Nov 2026 in
-# the format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story (the inventory's `deste/siga-generator`) and from
-# the decisions still open (D1 to D3 of flow.yaml); none is read off what the dialog does today, and the ones it does not meet say so under
-# `missing`. planned.md holds no item for this flow.
-# No replay has run (the owner's word: replays happen once, at the end), so no replay scenario is named under `walked`: the Vitest specs, which run
-# with the API stubbed (apps/nazar/test/siga-generator-dialog.spec.tsx, siga.spec.ts) and apps/tedris/test/siga-table.spec.ts, are named as `test:`.
-# No web e2e touches the deck pages (apps/nazar/e2e has none for Ders desteleri).
-# The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml:
-#   missing:  a-sîga-card-has-a-decided-type (D1, SIGA-2), the-generator-knows-what-the-deck-holds (D2, SIGA-1), a-meaning-is-asked-for-early
-#             (D3, SIGA-3), a-problem-is-announced-and-focused (SIGA-4, F-D1-16), going-back-keeps-the-corrections (SIGA-5),
-#             the-drafts-are-not-thrown-away-by-a-stray-click-or-key (F-D1-21, SIGA-6), a-refusal-says-why-and-where (SIGA-7),
-#             the-dialog-meets-the-rules-of-its-primitives (F-D1-03, F-D1-24, F-B-12, focus-not-set)
-#   unwalked: generate-the-sigas-of-a-root, refuse-a-root-it-cannot-conjugate, choose-the-tenses, review-and-correct-the-drafts,
-#             save-all-or-none-with-the-sîga-kept, the-talebe-reads-a-table (code, and Vitest specs with the API stubbed; no e2e and no replay yet)
+schema: delurio-graph/0
 kind: needs
-flow: nazar.decks.siga
+id: nazar.decks.siga
 status: proposed
+summary: >-
+  What must exist for a müderris to generate the sîga cards of a root and save them in a course deck: nazar.decks.siga. Each need
+  is what the product must do, from the flow's story (the inventory's `deste/siga-generator`) and from the decisions still open
+  (D1 to D3 of flow.yaml); none is read off what the dialog does today, and the ones it does not meet say so under `missing`.
+  planned.md holds no item for this flow. No replay has run (the owner's word: replays happen once, at the end), so no replay
+  scenario is named under `walked`: the Vitest specs, which run with the API stubbed
+  (apps/nazar/test/siga-generator-dialog.spec.tsx, siga.spec.ts) and apps/tedris/test/siga-table.spec.ts, are named as `test:`. No
+  web e2e touches the deck pages (apps/nazar/e2e has none for Ders desteleri).
 
 needs:
   - id: generate-the-sigas-of-a-root
     need: >-
-      A müderris can make, from a root and a bâb, every sîga of a sülâsî mücerred sâlim verb in the ma'lûm, fourteen for the mâzî and fourteen for the
-      muzâri, fully vowelled, with the Turkish meaning given to the person each sîga is for, as draft cards of a course deck; the generator drafts
-      them in the browser and saves nothing until she says so.
-    drawn: [rootStep, rootTyped, checking, preview, rootField, babSelect, maziMeaningField, muzariMeaningField, previewButton, draftFront, draftMeaning]
-    built:
-      - route: apps/nazar/features/decks/siga.ts:370
-      - route: apps/nazar/features/decks/components/siga-generator-dialog.tsx:99
-    walked:
+      A müderris can make, from a root and a bâb, every sîga of a sülâsî mücerred sâlim verb in the ma'lûm, fourteen for the mâzî
+      and fourteen for the muzâri, fully vowelled, with the Turkish meaning given to the person each sîga is for, as draft cards
+      of a course deck; the generator drafts them in the browser and saves nothing until she says so.
+    evidence:
+      - state: rootStep
+      - state: rootTyped
+      - state: checking
+      - state: preview
+      - node: rootField
+      - node: babSelect
+      - node: maziMeaningField
+      - node: muzariMeaningField
+      - node: previewButton
+      - node: draftFront
+      - node: draftMeaning
+      - source: apps/nazar/features/decks/siga.ts:370
+      - source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:99
       - test: apps/nazar/test/siga.spec.ts
       - test: apps/nazar/test/siga-generator-dialog.spec.tsx
 
   - id: refuse-a-root-it-cannot-conjugate
     need: >-
-      A root the generator would conjugate wrongly (empty, not three Arabic letters, with a hamza or a weak letter, or doubled) is refused before any
-      draft is made, and the message says which of these it is, so that nothing wrong is ever written into a deck.
-    drawn: [rootRequired, rootLetters, rootWeak, rootDoubled, checking, rootHelp]
-    built:
-      - route: apps/nazar/features/decks/siga.ts:141
-      - route: apps/nazar/features/decks/components/siga-generator-dialog.tsx:257
-    walked:
+      A root the generator would conjugate wrongly (empty, not three Arabic letters, with a hamza or a weak letter, or doubled) is
+      refused before any draft is made, and the message says which of these it is, so that nothing wrong is ever written into a
+      deck.
+    evidence:
+      - node: rootRequired
+      - node: rootLetters
+      - node: rootWeak
+      - node: rootDoubled
+      - state: checking
+      - node: rootHelp
+      - source: apps/nazar/features/decks/siga.ts:141
+      - source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:257
       - test: apps/nazar/test/siga.spec.ts
       - test: apps/nazar/test/siga-generator-dialog.spec.tsx
 
   - id: choose-the-tenses
     need: >-
-      She can make the mâzî, the muzâri or both, and the form tells her when she has ticked none; the meaning of a tense she did not tick is not asked.
-    drawn: [kipsGroup, kipMazi, kipMuzari, kipsRequired, maziMeaningField, muzariMeaningField]
-    built:
-      - route: apps/nazar/features/decks/components/siga-generator-dialog.tsx:294
-    walked:
+      She can make the mâzî, the muzâri or both, and the form tells her when she has ticked none; the meaning of a tense she did
+      not tick is not asked.
+    evidence:
+      - node: kipsGroup
+      - node: kipMazi
+      - node: kipMuzari
+      - node: kipsRequired
+      - node: maziMeaningField
+      - node: muzariMeaningField
+      - source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:294
       - test: apps/nazar/test/siga-generator-dialog.spec.tsx
 
   - id: review-and-correct-the-drafts
     need: >-
-      Before anything is saved she reads every draft with the sîga it is for, and corrects a vowel or a meaning in place, in an Arabic box that is set
-      right to left; what she saves is what she corrected.
-    drawn: [preview, previewHint, maziHeading, muzariHeading, draftFront, draftMeaning]
-    built:
-      - route: apps/nazar/features/decks/components/siga-generator-dialog.tsx:188
-    walked:
+      Before anything is saved she reads every draft with the sîga it is for, and corrects a vowel or a meaning in place, in an
+      Arabic box that is set right to left; what she saves is what she corrected.
+    evidence:
+      - state: preview
+      - node: previewHint
+      - node: maziHeading
+      - node: muzariHeading
+      - node: draftFront
+      - node: draftMeaning
+      - source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:188
       - test: apps/nazar/test/siga-generator-dialog.spec.tsx
 
-  - id: save-all-or-none-with-the-sîga-kept
+  - id: save-all-or-none-with-the-siga-kept
     need: >-
-      All the drafts are added to the deck in one step, every card or none, each carrying the sîga it stands for (root, bâb, tense, person, gender,
-      number) so that the deck can be laid out as a sarf table; she is told how many cards were added and the deck shows them at once.
-    drawn: [saving, saved, saveAll, savingStatus, toastSaved, cardsHeading, cardTile]
-    built:
-      - action: medaris.api:createCards
-      - route: apps/nazar/features/decks/actions.ts:122
-      - route: apps/nazar/features/decks/components/siga-generator-dialog.tsx:108
-    walked:
+      All the drafts are added to the deck in one step, every card or none, each carrying the sîga it stands for (root, bâb,
+      tense, person, gender, number) so that the deck can be laid out as a sarf table; she is told how many cards were added and
+      the deck shows them at once.
+    evidence:
+      - state: saving
+      - state: saved
+      - node: saveAll
+      - node: savingStatus
+      - node: toastSaved
+      - node: cardsHeading
+      - node: cardTile
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:199
+      - source: apps/nazar/features/decks/actions.ts:122
+      - source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:108
       - test: apps/nazar/test/siga-generator-dialog.spec.tsx
+    note: id was save-all-or-none-with-the-sîga-kept (the format takes ASCII kebab-case)
 
   - id: the-talebe-reads-a-table
     need: >-
-      A talebe who opens the course's deck sees a card written here in the cell of its sîga, in one table for each root, bâb and tense, instead of in
-      a plain grid. (The reading is tedris.course.deckTab's; this flow writes the contract it reads.)
-    drawn: [saved, cardTile]
-    built:
-      - route: apps/tedris/features/courses/siga-table.ts:123
-    walked:
+      A talebe who opens the course's deck sees a card written here in the cell of its sîga, in one table for each root, bâb and
+      tense, instead of in a plain grid. (The reading is tedris.course.deckTab's; this flow writes the contract it reads.)
+    evidence:
+      - state: saved
+      - node: cardTile
+      - source: apps/tedris/features/courses/siga-table.ts:123
       - test: apps/tedris/test/siga-table.spec.ts
 
-  - id: a-sîga-card-has-a-decided-type
+  - id: a-siga-card-has-a-decided-type
     need: >-
-      The product decides what a sîga card is: a card of its own kind, or a vocabulary card marked by its sîga, and offers the generator only in the
-      decks where its cards belong; a card's kind then never disagrees with the deck's, and the deck page says which kind a deck is (D1, SIGA-2).
-    drawn: [sigaButton, rootStep, saving]
-    missing: none
+      The product decides what a sîga card is: a card of its own kind, or a vocabulary card marked by its sîga, and offers the
+      generator only in the decks where its cards belong; a card's kind then never disagrees with the deck's, and the deck page
+      says which kind a deck is (D1, SIGA-2).
+    missing: no Linear issue; D1, SIGA-2
+    note: |-
+      Drawn on the states rootStep and saving and on the node sigaButton, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      id was a-sîga-card-has-a-decided-type (the format takes ASCII kebab-case)
 
   - id: the-generator-knows-what-the-deck-holds
     need: >-
-      The generator is told which sîgas the deck already has, says so before she saves, and does not write a second card into a cell that is filled
-      unless she asks for it (D2, SIGA-1).
-    drawn: [preview, saving, saved]
-    missing: none
+      The generator is told which sîgas the deck already has, says so before she saves, and does not write a second card into a
+      cell that is filled unless she asks for it (D2, SIGA-1).
+    missing: no Linear issue; D2, SIGA-1
+    note: >-
+      Drawn on the states preview, saving and saved, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-meaning-is-asked-for-early
     need: >-
-      If a card needs a meaning, step 1 says so and marks the fields required; if it does not, a card with an empty back can be saved; either way she
-      is not told only after "Önizle" and the save, 28 times (D3, SIGA-3).
-    drawn: [maziMeaningField, muzariMeaningField, preview, lengthErrors]
-    missing: none
+      If a card needs a meaning, step 1 says so and marks the fields required; if it does not, a card with an empty back can be
+      saved; either way she is not told only after "Önizle" and the save, 28 times (D3, SIGA-3).
+    missing: no Linear issue; D3, SIGA-3
+    note: >-
+      Drawn on the state preview and on the nodes maziMeaningField, muzariMeaningField and lengthErrors, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-problem-is-announced-and-focused
     need: >-
-      A message about the root, the tenses or the drafts is announced to a screen reader when it appears and the focus goes to the first thing to
-      correct, in both steps; the root's message does not hide the hint with the example root (SIGA-4, the family of F-D1-16).
-    drawn: [rootRequired, rootLetters, rootWeak, rootDoubled, kipsRequired, lengthErrors]
-    missing: none
+      A message about the root, the tenses or the drafts is announced to a screen reader when it appears and the focus goes to the
+      first thing to correct, in both steps; the root's message does not hide the hint with the example root (SIGA-4, the family
+      of F-D1-16).
+    missing: no Linear issue; SIGA-4, F-D1-16
+    note: >-
+      Drawn on the nodes rootRequired, rootLetters, rootWeak, rootDoubled, kipsRequired and lengthErrors, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: going-back-keeps-the-corrections
     need: >-
-      "Geri" does not lose what she corrected in the drafts: either the drafts are kept while the typed values are unchanged, or the dialog says that
-      going back builds them again (SIGA-5).
-    drawn: [backButton, preview, previewHint]
-    missing: none
+      "Geri" does not lose what she corrected in the drafts: either the drafts are kept while the typed values are unchanged, or
+      the dialog says that going back builds them again (SIGA-5).
+    missing: no Linear issue; SIGA-5
+    note: >-
+      Drawn on the state preview and on the nodes backButton and previewHint, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-drafts-are-not-thrown-away-by-a-stray-click-or-key
     need: >-
-      A click beside the dialog, Esc or the close icon does not discard 28 corrected drafts without a question, and Enter in a draft's box does not
-      write 28 cards (F-D1-21, SIGA-6).
-    drawn: [preview, dialogClose, saveAll]
-    missing: none
+      A click beside the dialog, Esc or the close icon does not discard 28 corrected drafts without a question, and Enter in a
+      draft's box does not write 28 cards (F-D1-21, SIGA-6).
+    missing: no Linear issue; F-D1-21, SIGA-6
+    note: >-
+      Drawn on the state preview and on the nodes dialogClose and saveAll, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-refusal-says-why-and-where
     need: >-
-      When the API refuses the save, the dialog says the reason in its own words (the deck is gone, she may no longer write in it, try again) next to
-      the button she pressed, and the busy button says it is busy in the catalog's words (SIGA-7, F-D1-24, F-D1-20).
-    drawn: [failureAlert, saving, savingStatus]
-    missing: none
+      When the API refuses the save, the dialog says the reason in its own words (the deck is gone, she may no longer write in it,
+      try again) next to the button she pressed, and the busy button says it is busy in the catalog's words (SIGA-7, F-D1-24,
+      F-D1-20).
+    missing: no Linear issue; SIGA-7
+    note: >-
+      Drawn on the state saving and on the nodes failureAlert and savingStatus, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-dialog-meets-the-rules-of-its-primitives
     need: >-
-      The dialog's required fields are required to a screen reader, its close icon and busy button take their words from the catalog, its first focus
-      is a field and it is described by its first sentence, not by all 56 boxes (F-D1-03, F-D1-24, F-B-12, focus-not-set).
-    drawn: [dialog, dialogClose, rootField, babSelect, savingStatus]
-    missing: none
+      The dialog's required fields are required to a screen reader, its close icon and busy button take their words from the
+      catalog, its first focus is a field and it is described by its first sentence, not by all 56 boxes (F-D1-03, F-D1-24,
+      F-B-12, focus-not-set).
+    missing: no Linear issue; F-D1-03, F-D1-24, F-B-12, focus-not-set
+    note: >-
+      Drawn on the nodes dialog, dialogClose, rootField, babSelect and savingStatus, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

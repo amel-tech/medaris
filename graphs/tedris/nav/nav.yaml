@@ -455,8 +455,8 @@ entries:
   - { from: myCourses, to: accountCalendar, how: link, label: CalendarSubscription.link, source: apps/tedris/features/courses/components/my-courses-page.tsx:207 }
   - { from: myCourses, to: discover, how: link, label: MyCoursesPage.goDiscover, data: true, source: apps/tedris/features/courses/components/my-courses-page.tsx:226 } # the empty state
   - { from: schedule, to: celse, how: link, label: "A celse of the week", data: true, source: apps/tedris/features/schedule/components/schedule-page.tsx:90 }
-  - { from: schedule, to: account, how: link, label: SchedulePage.changeZone, source: apps/tedris/features/schedule/components/schedule-page.tsx:232 }
-  - { from: schedule, to: accountCalendar, how: link, label: CalendarSubscription.link, source: apps/tedris/features/schedule/components/schedule-page.tsx:239 }
+  - { from: schedule, to: account, how: link, label: SchedulePage.changeZone, source: apps/tedris/features/schedule/components/schedule-page.tsx:234 }
+  - { from: schedule, to: accountCalendar, how: link, label: CalendarSubscription.link, source: apps/tedris/features/schedule/components/schedule-page.tsx:241 }
   - { from: schedule, to: accountCalendar, how: button, label: AddToCalendar.subscribe, data: true, source: apps/tedris/features/courses/components/calendar-menu.tsx:133 }
   - { from: schedule, to: lessonCalendar, how: button, label: AddToCalendar.apple, data: true, source: apps/tedris/features/courses/components/calendar-menu.tsx:124 } # a menu item of "Takvime ekle": it fetches the file and saves it, and navigates only when the handler redirects to sign-in
 
@@ -467,9 +467,9 @@ entries:
   - { from: decks, to: deckStudy, how: link, label: "Çalış: a deck card", data: true, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:167 }
   - { from: decksExplore, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/explore-decks-page.tsx:221 } # breadcrumb
   - { from: decksExplore, to: deck, how: link, label: "A deck card", data: true, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 }
-  - { from: decksCreate, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:121 } # breadcrumb
-  - { from: decksCreate, to: decks, how: link, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:209 }
-  - { from: decksCreate, to: deck, how: button, label: Decks.submit, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:104 } # the new deck's page
+  - { from: decksCreate, to: decks, how: link, label: Decks.title, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:103 } # breadcrumb
+  - { from: decksCreate, to: decks, how: link, label: Decks.cancel, back: true, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:197 }
+  - { from: decksCreate, to: deck, how: button, label: Decks.submit, source: apps/tedris/features/flashcards/components/create-deck-page.tsx:86 } # the new deck's page
   - { from: deck, to: decks, how: link, label: Decks.title, when: signedIn, source: apps/tedris/features/flashcards/components/deck-header.tsx:50 } # breadcrumb
   - { from: deck, to: discover, how: link, label: PhoneMenu.discover, when: not signedIn, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:56 } # a visitor's breadcrumb starts at Keşfet
   - { from: deck, to: deckStudy, how: link, label: Decks.study, source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:63 }
@@ -507,13 +507,13 @@ entries:
   - { from: deckStudy, to: decks, how: link, label: DeckUnavailable.backToDecks, data: true, when: signedIn, source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26 }
 
   # ---- Hesap, the calendar subscription, Bildirimler ----
-  - { from: account, to: accountCalendar, how: link, label: AccountProfile.calendarManage, source: apps/tedris/features/account/components/account-settings.tsx:342 }
-  - { from: account, to: signOut, how: link, label: AccountProfile.signOut, source: apps/tedris/features/account/components/account-settings.tsx:403 }
-  - { from: account, to: realmProfileUpdate, how: link, label: PublicProfile.genderChange, source: apps/tedris/features/account/components/account-settings.tsx:87 } # "Ekle" (AccountProfile.genderAdd) when the account has no gender
-  - { from: account, to: realmAccountConsole, how: link, label: AccountProfile.connectedManage, source: apps/tedris/features/account/components/account-settings.tsx:386 }
+  - { from: account, to: accountCalendar, how: link, label: AccountProfile.calendarManage, source: apps/tedris/features/account/components/account-settings.tsx:313 }
+  - { from: account, to: signOut, how: link, label: AccountProfile.signOut, source: apps/tedris/features/account/components/account-settings.tsx:374 }
+  - { from: account, to: realmProfileUpdate, how: link, label: PublicProfile.genderChange, source: apps/tedris/features/account/components/account-settings.tsx:80 } # "Ekle" (AccountProfile.genderAdd) when the account has no gender
+  - { from: account, to: realmAccountConsole, how: link, label: AccountProfile.connectedManage, source: apps/tedris/features/account/components/account-settings.tsx:357 }
   - { from: account, to: nizamApp, how: link, label: AccountPage.open.nizam, data: true, source: apps/tedris/features/account/components/assignments-table.tsx:122 } # a row of the roles table, only when NIZAM_URL is set, in a new tab; the accessible name is the aria-label "Nizam’da aç: <role>, <scope>"
   - { from: account, to: nazarApp, how: link, label: AccountPage.open.nazar, data: true, source: apps/tedris/features/account/components/assignments-table.tsx:122 } # the same, "Nazar’da aç: <role>, <scope>"
-  - { from: account, to: accountPublicProfile, how: link, label: "The address /account/public-profile, typed in or bookmarked (the Hesap card that links to it is not drawn while the switch is off)", data: true, source: apps/tedris/features/account/components/account-settings.tsx:430 }
+  - { from: account, to: accountPublicProfile, how: link, label: "The address /account/public-profile, typed in or bookmarked (the Hesap card that links to it is not drawn while the switch is off)", data: true, source: apps/tedris/features/account/components/account-settings.tsx:372 }
   - { from: accountCalendar, to: account, how: link, label: CalendarSubscription.breadcrumbAccount, source: apps/tedris/app/account/calendar/page.tsx:26 }
   - { from: accountCalendar, to: calendarFeed, how: link, label: CalendarSubscription.appleOpen, data: true, source: apps/tedris/features/courses/components/calendar-subscription.tsx:185 } # the webcal link, shown once when the link is created
   - { from: notifications, to: course, how: link, label: "A notification about a course", data: true, source: apps/tedris/features/notifications/notification-view.ts:64 }

@@ -41,7 +41,7 @@ nodes:
   # the item of the page, the same link as one of the five with `aria-current="page"`: the format has no key for it, so it is a node of its own
   # and the binding finds it by the attribute. Which of the five is current follows the address (member-phone-menu.tsx:21-31); a visitor's is
   # Keşfet always (SHL-10); on a page of none of the five nothing is marked
-  currentItem: { type: action, component: LinkButton, role: link, text: { oneOf: [PhoneMenu.home, PhoneMenu.discover, PhoneMenu.courses, PhoneMenu.schedule, PhoneMenu.decks] }, in: [wideBar, phoneSheet], when: placed, source: apps/tedris/libs/ui/src/mds/nav-item.tsx:56 }
+  currentItem: { type: action, component: LinkButton, role: link, text: { oneOf: [PhoneMenu.home, PhoneMenu.discover, PhoneMenu.courses, PhoneMenu.schedule, PhoneMenu.decks] }, in: [wideBar, phoneSheet], when: placed, source: libs/ui/src/mds/nav-item.tsx:56 }
 
   # ---- the bell, in both bars: its name is the same for a person with nothing unread and with some (SHL-04) ----
   bell: { type: action, component: LinkButton, role: link, name: { key: PhoneMenu.notifications }, in: [wideBar, phoneBar], when: isMember, emits: OPEN_NOTIFICATIONS, source: apps/tedris/components/phone-menu/desktop-bar.tsx:83 } # the count is in the older header only, which is hidden here
@@ -75,8 +75,8 @@ nodes:
   legacyTabDecks: { type: action, component: LinkButton, role: link, text: { key: TabView.decks }, in: [errorPage], when: isMember, emits: TAB_DECKS, source: apps/tedris/components/tab-view/index.tsx:70 }
 
   # ---- the error box (tedris.shell.systemPages draws it in full): a section, not a main, since the boundary is inside the shell ----
-  errorSection: { type: page, component: Page, role: region, name: { labelledBy: errorTitle }, in: [errorPage], source: libs/ui/src/mds/system-state.tsx:107 }
-  errorTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.errorTitle }, in: [errorPage], source: libs/ui/src/mds/system-state.tsx:117 } # h1
+  errorSection: { type: page, component: Page, role: region, name: { labelledBy: errorTitle }, in: [errorPage], source: libs/ui/src/mds/system-state.tsx:33 }
+  errorTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.errorTitle }, in: [errorPage], source: libs/ui/src/mds/system-state.tsx:43 } # h1
   errorText: { type: text, component: Text, text: { key: SystemPages.errorText }, in: [errorPage], source: apps/tedris/features/errors/system-page.tsx:106 }
   errorRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: SystemPages.errorAction }, in: [errorPage], emits: RETRY, source: apps/tedris/features/errors/system-page.tsx:106 }
 

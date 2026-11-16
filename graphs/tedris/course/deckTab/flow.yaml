@@ -308,7 +308,7 @@ states:
 
   rated:
     title: The round is complete, or not
-    source: apps/tedris/features/courses/self-test.ts:378
+    source: apps/tedris/features/courses/self-test.ts:51
     description: >-
       summarize() says the round is done when every card of it is marked (`done`). A flow cannot count the deck's cards, so the mark that completes a round is the one after which `round` is `done`
       (a round of one card ends at its first mark). A step with no screen of its own.
@@ -379,4 +379,4 @@ assertions:
   - id: a-missed-card-needs-a-mark
     never: "missed == 'some' and marked == 'none'"
     say: "a round holds a missed card only after a mark was made in it"
-    source: apps/tedris/features/courses/self-test.ts:361
+    source: apps/tedris/features/courses/self-test.ts:45

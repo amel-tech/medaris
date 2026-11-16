@@ -183,7 +183,7 @@ failures:
     forbidden: [AUTHZ_FORBIDDEN]
     failed: [HTTP_400, VALIDATION_ERROR, PERMISSION_UNKNOWN, PERMISSION_GROUP_SCOPE_INVALID]
 # `unreadable` stands for any answer but a refused token: a failed read of any of the page's three reads (the list, the catalog, the groups) is
-# `null`, which draws the load-failed box (reads.ts:224-226). The web app words the codes in permissionErrorKey (present.ts:348-371): the four named
+# `null`, which draws the load-failed box (reads.ts:34-35). The web app words the codes in permissionErrorKey (present.ts:348-371): the four named
 # ones have a sentence of their own, everything else is "Bir şeyler ters gitti. Biraz sonra yeniden deneyin."
 
 # The story the page tells first (permissions#6, #7, #8 without their dates): the başnazım opens the dialog, takes the group away, unticks
@@ -208,7 +208,7 @@ states:
         - { guard: "seat == 'forever'", target: listed, effect: [holdsForever], source: apps/nizam/features/permissions/components/nazims-view.tsx:133, say: "the seat has no end: the row says 'Süresiz'" }
         - { target: listed, source: apps/nizam/features/permissions/components/nazims-view.tsx:133, say: "the seat ends twenty days ahead: the row says the day and '20 gün kaldı'" }
       FAIL.forbidden: { target: no_access, source: apps/nizam/app/medaris-nazimlari/page.tsx:28, say: "a 403 of one of the reads: forbidden(), the screen 'Bu bölüm için izniniz yok'" }
-      FAIL.unreadable: { target: loadFailed, source: apps/nizam/features/permissions/reads.ts:224, say: "a read failed: the page draws 'Medaris nazımları yüklenemedi' with 'Yeniden dene'" }
+      FAIL.unreadable: { target: loadFailed, source: apps/nizam/features/permissions/reads.ts:35, say: "a read failed: the page draws 'Medaris nazımları yüklenemedi' with 'Yeniden dene'" }
 
   loadFailed:
     title: The list could not be read

@@ -278,7 +278,7 @@ states:
       still be up. The talebe's own side of this is tedris.course.readProgramme (access withdrawn).
     on:
       NAVIGATE: { target: left, say: "she follows a link or the menu" }
-    source: apps/nazar/features/enrolments/components/removed-table.tsx:212
+    source: apps/nazar/features/enrolments/components/removed-table.tsx:70
 
   left:
     title: She leaves the page

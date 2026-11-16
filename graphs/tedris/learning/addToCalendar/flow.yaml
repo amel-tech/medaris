@@ -120,7 +120,7 @@ states:
     title: Programım, with the calendar button on a row
     by: human
     goal: true
-    source: apps/tedris/features/schedule/components/schedule-page.tsx:173
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:175
     description: >-
       The row of an upcoming celse ("Planlandı") ends in the icon button "Takvime ekle: <celse>"; a row that is cancelled,
       live or over has none. The page sets no focus of its own on load (focus-not-set). Back here after a menu closed and after

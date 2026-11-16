@@ -195,11 +195,11 @@ states:
       list and changes only the draft; Esc closes it and changes nothing. The card behind has "Kaydet" and "Vazgeç" off.
     on:
       CHOOSE_TITLE:
-        - { guard: "which == 'first'", target: settle, effect: [firstTitled], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the first hoca" }
-        - { target: settle, effect: [secondTitled], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the second hoca" }
+        - { guard: "which == 'first'", target: settle, effect: [firstTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the first hoca" }
+        - { target: settle, effect: [secondTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the second hoca" }
       CHOOSE_UNTITLED:
-        - { guard: "which == 'first'", target: settle, effect: [firstPlain], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the first hoca" }
-        - { target: settle, effect: [secondPlain], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the second hoca" }
+        - { guard: "which == 'first'", target: settle, effect: [firstPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the first hoca" }
+        - { target: settle, effect: [secondPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the second hoca" }
       CLOSE_LIST: { target: card, say: "Esc: the list closes and the select keeps its value" }
     source: libs/ui/src/mds/select.tsx:79
 
@@ -211,11 +211,11 @@ states:
       `choosing` only because the buttons behind it are on here and off there.
     on:
       CHOOSE_TITLE:
-        - { guard: "which == 'first'", target: settle, effect: [firstTitled], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the first hoca" }
-        - { target: settle, effect: [secondTitled], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the second hoca" }
+        - { guard: "which == 'first'", target: settle, effect: [firstTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the first hoca" }
+        - { target: settle, effect: [secondTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose one of the eight titles for the second hoca" }
       CHOOSE_UNTITLED:
-        - { guard: "which == 'first'", target: settle, effect: [firstPlain], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the first hoca" }
-        - { target: settle, effect: [secondPlain], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the second hoca" }
+        - { guard: "which == 'first'", target: settle, effect: [firstPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the first hoca" }
+        - { target: settle, effect: [secondPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:66, say: "they choose 'Hoca (unvansız)' for the second hoca" }
       CLOSE_LIST: { target: dirty, say: "Esc: the list closes and the select keeps its value" }
     source: libs/ui/src/mds/select.tsx:79
 
@@ -227,7 +227,7 @@ states:
     always:
       - { guard: differs, target: dirty, source: apps/nazar/features/course-settings/hoca-unvan.ts:73, say: "a title differs from the stored one: the buttons are on" }
       - { target: card, source: apps/nazar/features/course-settings/hoca-unvan.ts:73, say: "nothing differs: the buttons are off" }
-    source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:63
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:63
 
   dirty:
     title: A title differs from the stored one
@@ -238,12 +238,12 @@ states:
       word (HOCA-4). After a refusal of the generic kind this is where the person is, with the error toast over the page (it stays until
       closed) and the choices as they were; the toast of such a refusal is not drawn in the steps after this one.
     on:
-      OPEN_FIRST: { target: choosingDirty, effect: [openedFirst], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:143, say: "they open the first hoca's select" }
-      OPEN_SECOND: { guard: pair, target: choosingDirty, effect: [openedSecond], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:143, say: "they open the second hoca's select" }
-      SUBMIT: { target: saving, effect: [clearToast], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:73, say: "they press Kaydet: one write for each hoca whose title differs" }
-      CANCEL: { target: reverting, source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:160, say: "they press Vazgeç: the stored titles come back and nothing asks first" }
+      OPEN_FIRST: { target: choosingDirty, effect: [openedFirst], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143, say: "they open the first hoca's select" }
+      OPEN_SECOND: { guard: pair, target: choosingDirty, effect: [openedSecond], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143, say: "they open the second hoca's select" }
+      SUBMIT: { target: saving, effect: [clearToast], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:73, say: "they press Kaydet: one write for each hoca whose title differs" }
+      CANCEL: { target: reverting, source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "they press Vazgeç: the stored titles come back and nothing asks first" }
       NAVIGATE: { target: left, say: "they leave the page: the choices are lost and nothing warned them (HOCA-4)" }
-    source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:155
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:155
 
   reverting:
     title: Vazgeç puts the stored titles back
@@ -251,11 +251,11 @@ states:
       Not a screen: the draft becomes what the card was mounted with, or what the last save in this visit left (`setDraft(saved)`).
       Vazgeç is natively off once nothing differs, so the pressed button turns off under the focus (HOCA-3).
     always:
-      - { guard: "storedFirst == 'plain' and storedSecond == 'plain'", target: card, effect: [allPlainPlain], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:160, say: "back to no title for either" }
-      - { guard: "storedFirst == 'titled' and storedSecond == 'plain'", target: card, effect: [allTitledPlain], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:160, say: "back to the first hoca's title" }
-      - { guard: "storedFirst == 'plain' and storedSecond == 'titled'", target: card, effect: [allPlainTitled], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:160, say: "back to the second hoca's title" }
-      - { target: card, effect: [allTitledTitled], source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:160, say: "back to both titles" }
-    source: apps/nazar/features/course-settings/hoca-unvan-card.tsx:160
+      - { guard: "storedFirst == 'plain' and storedSecond == 'plain'", target: card, effect: [allPlainPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "back to no title for either" }
+      - { guard: "storedFirst == 'titled' and storedSecond == 'plain'", target: card, effect: [allTitledPlain], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "back to the first hoca's title" }
+      - { guard: "storedFirst == 'plain' and storedSecond == 'titled'", target: card, effect: [allPlainTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "back to the second hoca's title" }
+      - { target: card, effect: [allTitledTitled], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160, say: "back to both titles" }
+    source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:160
 
   saving:
     title: The titles are on their way

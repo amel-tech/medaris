@@ -1,151 +1,204 @@
-# What must exist for a köşk's nazım to decide the applications that wait, from the köşk home: the flow's product list (LAYOUT.md
-# section 7). Each need is what the product must do, from the flow's story and the planned work in the inventory (planned.md), not
-# from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for
-# now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nizam.home.decideApplications
+status: proposed
+summary: "What must exist for a köşk's nazım to decide the applications that wait, from the köşk home: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): the-reason-reaches-who-the-dialog-says (HOME-4, decision D1), a-barred-talebe-is-told-so (HOME-1),
-#   the-list-follows-the-server (HOME-2, D3), one-busy-mark-per-row (HOME-3), focus-follows-a-decision (F-W1-4, F-X-7),
-#   a-failed-save-is-told-in-the-dialog (F-W1-13, F-X-4), a-locked-page-says-why (HOME-6), seats-per-gender-at-approval (MDRS-284).
+# the-list-follows-the-server (HOME-2, D3), one-busy-mark-per-row (HOME-3), focus-follows-a-decision (F-W1-4, F-X-7),
+# a-failed-save-is-told-in-the-dialog (F-W1-13, F-X-4), a-locked-page-says-why (HOME-6), seats-per-gender-at-approval (MDRS-284).
 # Unwalked (code, no e2e, no replay yet): a-decision-already-made-is-told and a-failed-call-keeps-the-row-and-the-reason (only the
-#   unit spec apps/nizam/test/kosk-home-decisions.spec.tsx, with mocked actions; binding.gone.yaml is written to walk the first),
-#   a-row-the-viewer-may-not-decide-says-why (only the unit spec; HOME-5 says no real reader reaches it),
-#   the-applicants-card-is-for-the-kosks-own-management (binding.yaml's `locked`).
+# unit spec apps/nizam/test/kosk-home-decisions.spec.tsx, with mocked actions; binding.gone.yaml is written to walk the first),
+# a-row-the-viewer-may-not-decide-says-why (only the unit spec; HOME-5 says no real reader reaches it),
+# the-applicants-card-is-for-the-kosks-own-management (binding.yaml's `locked`).
 # Walked: approve-in-one-press (e2e dashboard#5), reject-with-or-without-a-reason (e2e dashboard#6).
 # No replay has run in this phase, so no replay is named under `walked`; binding.yaml (decides, empty, locked), binding.gone.yaml,
 # binding.barred.yaml and binding.passive.yaml are written to walk them.
-kind: needs
-flow: nizam.home.decideApplications
-status: proposed
 
 needs:
   - id: read-the-waiting-applications-on-the-home
     need: >-
-      The köşk's nazım sees, on the home of her köşk, the newest applications that wait for her decision, who applied to which course
-      and when, and how many wait in all, in the page and in the sidebar.
-    drawn: [listed, empty, applicationsTable, applicationsRegion, pendingLabel, pendingNumber, sidebarApplications, sidebarBadge]
-    built:
-      - action: medaris.api:getKoskDashboard
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:499
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#5' # the number "Bekleyen başvuru" before the press; the page itself is read by nizam.home.koskNazimLanding (dashboard#4)
+      The köşk's nazım sees, on the home of her köşk, the newest applications that wait for her decision, who applied to which
+      course and when, and how many wait in all, in the page and in the sidebar.
+    evidence:
+      - state: listed
+      - state: empty
+      - node: applicationsTable
+      - node: applicationsRegion
+      - node: pendingLabel
+      - node: pendingNumber
+      - node: sidebarApplications
+      - node: sidebarBadge
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:499
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — Onayla answers at once: the row goes, the number falls by one, the seat is taken (criterion 3)"
+    note: >-
+      dashboard#5: the number "Bekleyen başvuru" before the press; the page itself is read by nizam.home.koskNazimLanding
+      (dashboard#4)
 
   - id: approve-in-one-press
     need: >-
       She approves a waiting application in one press: the talebe takes a seat in the course and is told, the row leaves the list,
       the number and the sidebar's badge fall by one and a toast says what was done.
-    drawn: [approve, approving, settled, toastApproved, rowApprove, rowReject, rowBusy]
-    built:
-      - action: medaris.api:approveEnrollment
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:145
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#5' # assertions 1-5: the button is gone, the number falls by one, the seat is ENROLLED, the badge follows
+    evidence:
+      - node: approve
+      - state: approving
+      - state: settled
+      - node: toastApproved
+      - node: rowApprove
+      - node: rowReject
+      - node: rowBusy
+      - source: apps/tedrisat/src/course/course.controller.ts:633
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:145
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — Onayla answers at once: the row goes, the number falls by one, the seat is taken (criterion 3)"
+    note: "dashboard#5: assertions 1-5: the button is gone, the number falls by one, the seat is ENROLLED, the badge follows"
 
   - id: reject-with-or-without-a-reason
     need: >-
       She rejects a waiting application after being asked once, and may write why or leave it empty; the button is never held back
       by an empty field. The application is deleted so the talebe may apply again, is told, and the reason is kept for the record.
-    drawn: [reject, rejectDialog, reasonField, rejectSubmit, rejecting, toastRejected]
-    built:
-      - action: medaris.api:rejectEnrollment
-      - route: apps/nizam/features/dashboard/components/reject-application-dialog.tsx:44
-    walked:
-      - e2e: apps/nizam/e2e/dashboard.e2e.ts
-        check: 'dashboard#6' # assertions 1-12: the dialog and its field, the reason kept in the audit row, the bare rejection leaves a null reason
+    evidence:
+      - node: reject
+      - node: rejectDialog
+      - node: reasonField
+      - node: rejectSubmit
+      - state: rejecting
+      - node: toastRejected
+      - source: apps/tedrisat/src/course/course.controller.ts:687
+      - source: apps/nizam/features/dashboard/components/reject-application-dialog.tsx:44
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/02 — Reddet asks for a reason that may stay empty; the reason is kept, the row goes (criterion 4)"
+    note: >-
+      dashboard#6: assertions 1-12: the dialog and its field, the reason kept in the audit row, the bare rejection leaves a null
+      reason
 
   - id: the-reason-reaches-who-the-dialog-says
     need: >-
       The dialog says truly who reads the reason she writes. Either the talebe is told why (and the dialog says so), or only the
       record keeps it (and the API puts it nowhere else): decision D1.
-    drawn: [rejectBody, confirmReject]
-    missing: none # no issue: HOME-4, nizam.json Dashboard.reject.body against course-notifier.ts:56
+    missing: "no issue: HOME-4, nizam.json Dashboard.reject.body against course-notifier.ts:56"
+    note: >-
+      Drawn on the state confirmReject and on the node rejectBody, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-decision-already-made-is-told
     need: >-
       An application someone else settled first, or the talebe took back, leaves the list when she presses and a notice says so,
       and the dialog she had opened closes with it; the number and the sidebar are recounted.
-    drawn: [toastGone, settled, approving, rejecting]
-    built:
-      - route: apps/nizam/features/applications/present.ts:176
-    walked:
-      - test: apps/nizam/test/kosk-home-decisions.spec.tsx # "drops the row of an application someone else already decided", "closes the Reddet dialog with the row…" (mocked actions)
+    evidence:
+      - node: toastGone
+      - state: settled
+      - state: approving
+      - state: rejecting
+      - source: apps/nizam/features/applications/present.ts:176
+      - test: apps/nizam/test/kosk-home-decisions.spec.tsx
+    note: >-
+      apps/nizam/test/kosk-home-decisions.spec.tsx: "drops the row of an application someone else already decided", "closes the
+      Reddet dialog with the row…" (mocked actions)
 
   - id: a-barred-talebe-is-told-so
     need: >-
       When the talebe has been barred from the course the approval is refused and the nazım is told that, not that she lacks the
       authority (HOME-1); a row of a barred talebe says so before she presses.
-    drawn: [toastRefused, approving]
-    missing: none # no issue: decisionErrorKey words every 403 as "no authority" (present.ts:183)
-    walked:
-      - test: apps/nizam/test/kosk-home-decisions.spec.tsx # only the AUTHZ_FORBIDDEN refusal, not BAN_ACTIVE
+    evidence:
+      - test: apps/nizam/test/kosk-home-decisions.spec.tsx
+    missing: "no issue: decisionErrorKey words every 403 as \"no authority\" (present.ts:183)"
+    note: |-
+      Drawn on the state approving and on the node toastRefused, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+      apps/nizam/test/kosk-home-decisions.spec.tsx: only the AUTHZ_FORBIDDEN refusal, not BAN_ACTIVE
 
   - id: a-failed-call-keeps-the-row-and-the-reason
     need: >-
-      When a decision cannot be saved (a refusal, an unknown failure, a dropped network) the row stays, the busy mark goes, what she
-      typed is kept and she is told to try again.
-    drawn: [toastRefused, toastFailed, confirmReject]
-    built:
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:145
-    walked:
-      - test: apps/nizam/test/kosk-home-decisions.spec.tsx # "keeps the Reddet dialog and the row open on a refusal", "falls back to the unknown sentence" (mocked actions)
+      When a decision cannot be saved (a refusal, an unknown failure, a dropped network) the row stays, the busy mark goes, what
+      she typed is kept and she is told to try again.
+    evidence:
+      - node: toastRefused
+      - node: toastFailed
+      - state: confirmReject
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:145
+      - test: apps/nizam/test/kosk-home-decisions.spec.tsx
+    note: >-
+      apps/nizam/test/kosk-home-decisions.spec.tsx: "keeps the Reddet dialog and the row open on a refusal", "falls back to the
+      unknown sentence" (mocked actions)
 
   - id: a-failed-save-is-told-in-the-dialog
     need: >-
       A rejection that could not be saved is told inside the dialog, where she is looking, and not only in a toast of another
       portal (F-W1-13, F-X-4).
-    drawn: [confirmReject, toastRefused, toastFailed]
-    missing: none
+    missing: no Linear issue; F-W1-13, F-X-4
+    note: >-
+      Drawn on the state confirmReject and on the nodes toastRefused and toastFailed, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-list-follows-the-server
     need: >-
       The card and the number are what the server says after a decision: a waiting application that was not among the five shown
       appears when a place frees up, and the card never says nothing waits while the number says otherwise (HOME-2, decision D3).
-    drawn: [empty, emptyLine, pendingNumber, settled]
-    missing: none
+    missing: no Linear issue; HOME-2, D3
+    note: >-
+      Drawn on the states empty and settled and on the nodes emptyLine and pendingNumber, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: one-busy-mark-per-row
-    need: >-
-      Two decisions pressed on two rows each keep their own busy mark until their own call ends (HOME-3).
-    drawn: [rowApprove, rowReject, approving]
-    missing: none
+    need: Two decisions pressed on two rows each keep their own busy mark until their own call ends (HOME-3).
+    missing: no Linear issue; HOME-3
+    note: >-
+      Drawn on the state approving and on the nodes rowApprove and rowReject, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-follows-a-decision
     need: >-
       After a decision the focus lands on a place a keyboard or screen-reader user can use (the next row's first button, or the
       card's heading), and a line on the page, not only a toast, says what was decided (F-W1-4, F-X-7).
-    drawn: [listed, toastApproved, toastRejected, rejectDialog]
-    missing: none
+    missing: no Linear issue; F-W1-4, F-X-7
+    note: >-
+      Drawn on the state listed and on the nodes toastApproved, toastRejected and rejectDialog, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-row-the-viewer-may-not-decide-says-why
     need: >-
-      A row she may not decide carries a sentence that says why, in place of the buttons: the scope is passive, or the viewer holds no
-      authority over the course.
-    drawn: [passiveReason, forbiddenReason]
-    built:
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:356
-    walked:
-      - test: apps/nizam/test/kosk-home-decisions.spec.tsx # the three rows of "a row of the köşk home's applications" (mocked rows; HOME-5: no real reader reaches the first two)
+      A row she may not decide carries a sentence that says why, in place of the buttons: the scope is passive, or the viewer
+      holds no authority over the course.
+    evidence:
+      - node: passiveReason
+      - node: forbiddenReason
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:356
+      - test: apps/nizam/test/kosk-home-decisions.spec.tsx
+    note: >-
+      apps/nizam/test/kosk-home-decisions.spec.tsx: the three rows of "a row of the köşk home's applications" (mocked rows;
+      HOME-5: no real reader reaches the first two)
 
   - id: the-applicants-card-is-for-the-kosks-own-management
     need: >-
       A Medaris nazım who reads the home by platform.kosk_edit alone sees the numbers and none of the applicants, who are personal
       data; the page says why there is no card (HOME-6).
-    drawn: [locked, pendingNumber]
-    built:
-      - action: medaris.api:getKoskDashboard # contentLocked
-      - route: apps/nizam/features/dashboard/components/kosk-home.tsx:499
+    evidence:
+      - state: locked
+      - node: pendingNumber
+      - source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:204
+      - source: apps/nizam/features/dashboard/components/kosk-home.tsx:499
+    note: "medaris.api:getKoskDashboard: contentLocked"
 
   - id: a-locked-page-says-why
     need: >-
       Where the number says applications wait and the page draws no card for them, a line says why and who may decide (HOME-6).
-    drawn: [locked, pendingNumber]
-    missing: none
+    missing: no Linear issue; HOME-6
+    note: >-
+      Drawn on the state locked and on the node pendingNumber, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: seats-per-gender-at-approval
     need: >-
       Where a seat is counted, the kontenjan is two counts, one per gender, and a seat is given at approval in the order of
-      application; the köşk home's Onayla is one of the places that gives it, so it follows the same rule as the roster and the Pano
-      (MDRS-284, per celse and weekly; no kontenjan rule exists in the code today).
-    drawn: [approve]
+      application; the köşk home's Onayla is one of the places that gives it, so it follows the same rule as the roster and the
+      Pano (MDRS-284, per celse and weekly; no kontenjan rule exists in the code today).
     missing: MDRS-284
+    note: >-
+      Drawn on the node approve, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

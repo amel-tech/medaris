@@ -1,99 +1,131 @@
-# What must exist for a müderris to triage a course from Genel bakış: the flow's product list (LAYOUT.md section 7). Each need is what
-# the product must do, from the flow's story, not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the
-# orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.course.overview
+status: proposed
+summary: "What must exist for a müderris to triage a course from Genel bakış: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Gaps for the merge:
-#   missing (no code that meets the need): box-leads-where-the-reader-may-go, box-name-carries-its-number, a-failed-read-is-told,
-#     tab-names-the-course
-#   unwalked (code, and no e2e or passed replay): see-what-waits, follow-a-box-to-the-work, nothing-waiting-is-said,
-#     open-the-course-in-tedris, retry-an-unreadable-course
+# missing (no code that meets the need): box-leads-where-the-reader-may-go, box-name-carries-its-number, a-failed-read-is-told,
+# tab-names-the-course
+# unwalked (code, and no e2e or passed replay): see-what-waits, follow-a-box-to-the-work, nothing-waiting-is-said,
+# open-the-course-in-tedris, retry-an-unreadable-course
 # No replay has run yet (the first walks are a later phase), so `walked` names only the unit specs, which stub the API; the replay
 # scenarios that will walk each need are in the comment beside it. The inventory has no e2e check for this page (course-scope.e2e.ts
 # has none; shell#4 only follows the menu's entry).
-kind: needs
-flow: nazar.course.overview
-status: proposed
 
 needs:
   - id: see-what-waits
     need: >-
       A müderris opens the course and sees, on one page, what is waiting for her in it: the applications to decide, the homework
-      not yet reviewed, the celses ahead that nobody can join yet and the time of the next celse, each as a box with its number, and
-      the course's name and state above them.
-    drawn: [listed, courseTitle, courseStatus, boxList, boxApplications, boxHomework, boxLacking, boxNext, valueApplications, valueHomework, valueLacking, valueNext]
-    built:
-      - action: medaris.api:getCourse
-      - action: medaris.api:getCourseBadgeCounts
-      - action: medaris.api:getMyCoursePermissions
-      - action: medaris.api:listCourseSubmissions
-      - route: apps/nazar/features/course-overview/components/course-overview-page.tsx:33
-      - route: apps/nazar/features/course-overview/course-overview.ts:61
-    walked:
-      - test: apps/nazar/test/course-overview.spec.tsx # stubs the API; replay: triage will walk it, not run
+      not yet reviewed, the celses ahead that nobody can join yet and the time of the next celse, each as a box with its number,
+      and the course's name and state above them.
+    evidence:
+      - state: listed
+      - node: courseTitle
+      - node: courseStatus
+      - node: boxList
+      - node: boxApplications
+      - node: boxHomework
+      - node: boxLacking
+      - node: boxNext
+      - node: valueApplications
+      - node: valueHomework
+      - node: valueLacking
+      - node: valueNext
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedrisat/src/course/course.controller.ts:603
+      - source: apps/tedrisat/src/course/course.controller.ts:283
+      - source: apps/tedrisat/src/lesson-submission/lesson-submission.controller.ts:293
+      - source: apps/nazar/features/course-overview/components/course-overview-page.tsx:33
+      - source: apps/nazar/features/course-overview/course-overview.ts:61
+      - test: apps/nazar/test/course-overview.spec.tsx
+    note: "apps/nazar/test/course-overview.spec.tsx: stubs the API; replay: triage will walk it, not run"
 
   - id: follow-a-box-to-the-work
     need: >-
-      A box takes her to the section where its work is done, in one press: Talebeler for the applications, Ödevler for the homework,
-      Celseler for the celses.
-    drawn: [boxApplications, boxHomework, boxLacking, boxNext, students_opened, homework_opened, sessions_opened]
-    built:
-      - route: apps/nazar/features/course-overview/course-overview.ts:72
-    walked:
-      - test: apps/nazar/test/course-overview.spec.tsx # the hrefs only; replay: triage will walk the four boxes, not run
+      A box takes her to the section where its work is done, in one press: Talebeler for the applications, Ödevler for the
+      homework, Celseler for the celses.
+    evidence:
+      - node: boxApplications
+      - node: boxHomework
+      - node: boxLacking
+      - node: boxNext
+      - state: students_opened
+      - state: homework_opened
+      - state: sessions_opened
+      - source: apps/nazar/features/course-overview/course-overview.ts:72
+      - test: apps/nazar/test/course-overview.spec.tsx
+    note: "apps/nazar/test/course-overview.spec.tsx: the hrefs only; replay: triage will walk the four boxes, not run"
 
   - id: nothing-waiting-is-said
-    need: >-
-      A course with nothing waiting says so in a line, under the same title and state.
-    drawn: [empty, emptyLine]
-    built:
-      - route: apps/nazar/features/course-overview/components/course-overview-page.tsx:116
-    walked:
-      - test: apps/nazar/test/course-overview.spec.tsx # replay: quiet will walk it, not run
+    need: A course with nothing waiting says so in a line, under the same title and state.
+    evidence:
+      - state: empty
+      - node: emptyLine
+      - source: apps/nazar/features/course-overview/components/course-overview-page.tsx:116
+      - test: apps/nazar/test/course-overview.spec.tsx
+    note: "apps/nazar/test/course-overview.spec.tsx: replay: quiet will walk it, not run"
 
   - id: open-the-course-in-tedris
     need: >-
-      From Genel bakış she opens the course as a talebe sees it, in a new tab, and the link says it opens a new tab; it is left out
-      where Tedris's address is not set.
-    drawn: [openInTedris]
-    built:
-      - route: apps/nazar/features/course-overview/components/course-overview-page.tsx:99
-    walked:
-      - test: apps/nazar/test/course-overview.spec.tsx # replay: quiet will press it, not run
+      From Genel bakış she opens the course as a talebe sees it, in a new tab, and the link says it opens a new tab; it is left
+      out where Tedris's address is not set.
+    evidence:
+      - node: openInTedris
+      - source: apps/nazar/features/course-overview/components/course-overview-page.tsx:99
+      - test: apps/nazar/test/course-overview.spec.tsx
+    note: "apps/nazar/test/course-overview.spec.tsx: replay: quiet will press it, not run"
 
   - id: box-leads-where-the-reader-may-go
     need: >-
       A box is drawn only for a reader who may open the page it leads to, so that no one is led from the course's first page to a
-      refusal: "Sıradaki celse" and "Katılım yolu eksik celse" only for a holder of session.manage or session.live_link (decision D1,
-      OVERVIEW-1).
-    drawn: [boxLacking, boxNext, sessions_refused]
-    missing: none # no issue: the boxes are drawn from the course read and the counts; Celseler asks session.manage or session.live_link
+      refusal: "Sıradaki celse" and "Katılım yolu eksik celse" only for a holder of session.manage or session.live_link (decision
+      D1, OVERVIEW-1).
+    missing: >-
+      no issue: the boxes are drawn from the course read and the counts; Celseler asks session.manage or session.live_link
+    note: >-
+      Drawn on the state sessions_refused and on the nodes boxLacking and boxNext, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: box-name-carries-its-number
     need: >-
       A box's link says its number or time to a screen reader, and the boxes sit under the page's h1 at the next heading level
       (F-C-course-a-18).
-    drawn: [boxApplications, boxHomework, boxLacking, boxNext]
-    missing: none # no issue: the value is a paragraph outside the link, and the Card title is an h3
+    missing: "no issue: the value is a paragraph outside the link, and the Card title is an h3"
+    note: >-
+      Drawn on the nodes boxApplications, boxHomework, boxLacking and boxNext, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-read-is-told
     need: >-
-      A read that failed (not one that was refused) is not told as "nothing is waiting": the page says it could not look and offers
-      the retry it has for the course (decision D2, OVERVIEW-3).
-    drawn: [empty, emptyLine, loadFailed]
-    missing: none # no issue: a count that could not be read is dropped as a zero is
+      A read that failed (not one that was refused) is not told as "nothing is waiting": the page says it could not look and
+      offers the retry it has for the course (decision D2, OVERVIEW-3).
+    missing: "no issue: a count that could not be read is dropped as a zero is"
+    note: >-
+      Drawn on the states empty and loadFailed and on the node emptyLine, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: tab-names-the-course
-    need: >-
-      The tab's title names the course, so that a müderris with several courses open can tell them apart (OVERVIEW-2).
-    drawn: [overviewPage]
-    missing: none # no issue: generateMetadata reads only the catalog
+    need: The tab's title names the course, so that a müderris with several courses open can tell them apart (OVERVIEW-2).
+    missing: "no issue: generateMetadata reads only the catalog"
+    note: >-
+      Drawn on the node overviewPage, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: retry-an-unreadable-course
     need: >-
       When the course cannot be read, the page says so under its own heading and a button reads it again; the sidebar stays. A
       course that is not there is the 404 page.
-    drawn: [loadFailed, failedPageTitle, failedTitle, failedText, retryButton, not_found]
-    built:
-      - route: apps/nazar/features/course-overview/components/course-overview-page.tsx:45
-    walked:
-      - test: apps/nazar/test/course-overview.spec.tsx # nothing in the stack makes the read fail; not walkable locally
+    evidence:
+      - state: loadFailed
+      - node: failedPageTitle
+      - node: failedTitle
+      - node: failedText
+      - node: retryButton
+      - state: not_found
+      - source: apps/nazar/features/course-overview/components/course-overview-page.tsx:45
+      - test: apps/nazar/test/course-overview.spec.tsx
+    note: "apps/nazar/test/course-overview.spec.tsx: nothing in the stack makes the read fail; not walkable locally"

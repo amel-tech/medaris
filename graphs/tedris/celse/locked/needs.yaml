@@ -1,5 +1,13 @@
-# What must exist for a person who opens a celse they may not read: the flow's product list, from its story and from planned.md, never from
-# what the page does today. A need not met is a known gap (graphs/needs.gaps.yaml, merged by the orchestrator).
+schema: delurio-graph/0
+kind: needs
+id: tedris.celse.locked
+status: proposed
+summary: >-
+  What must exist for a person who opens a celse they may not read: the flow's product list, from its story and from planned.md,
+  never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): enrolled-locked-talebe-is-told-why (MDRS-265), pending-card-says-the-right-thing (none), applicant-can-take-it-back-here
 # (none), focus-and-announcement-after-applying (none), every-locked-celse-offers-the-way-in (none), seats-are-separate-per-gender (MDRS-284).
@@ -11,169 +19,156 @@
 # Gender separation is given: kontenjan is always two counts, one per gender, and gender is always required. The code has no kontenjan rule
 # in enrolment (domain invariants seat-quota-per-gender and gender-always-known, `holds: false`), so the need below is `missing`; no quota is
 # invented in the flow.
-kind: needs
-flow: tedris.celse.locked
-status: proposed
 
 needs:
   - id: outsider-sees-the-lock-and-nothing-behind-it
     need: >-
-      A person with no seat who opens a celse sees why they cannot read it and how to get in, and finds none of what the lock protects in
-      the page: no meeting link, no agenda, no stream, no recording, no address of the watch page. The programme beside it stays readable.
-    drawn:
-      - applyCard
-      - joinLink
-      - watchLink
-      - agendaTitle
-    built:
-      - action: medaris.api:getSession
-      - action: medaris.api:getCourse
-      - route: apps/tedris/features/courses/components/lesson-locked.tsx:169
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#6'
-      - e2e: apps/tedris/e2e/session.e2e.ts
-        check: 'session#11'
+      A person with no seat who opens a celse sees why they cannot read it and how to get in, and finds none of what the lock
+      protects in the page: no meeting link, no agenda, no stream, no recording, no address of the watch page. The programme
+      beside it stays readable.
+    evidence:
+      - state: applyCard
+      - node: joinLink
+      - node: watchLink
+      - node: agendaTitle
+      - source: apps/tedrisat/src/course/lesson.controller.ts:230
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedris/features/courses/components/lesson-locked.tsx:169
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/19: the locked session names no link, no stream and no recording, and apply opens the window of tedris/07"
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "a PENDING applicant gets the locked card, with no link and no agenda in the page"
     note: >-
-      The page's HTML is scanned by the e2e for the meeting link, the stream id, the recording id and an /izle href; the replay carries the
-      same as nodes that must be absent (--absent), not as a scan of the raw HTML.
+      The page's HTML is scanned by the e2e for the meeting link, the stream id, the recording id and an /izle href; the replay
+      carries the same as nodes that must be absent (--absent), not as a scan of the raw HTML.
 
   - id: visitor-signs-in-and-comes-back
     need: >-
-      A visitor who opens a celse's address is sent to sign in and, once signed in, is brought back to that celse, and meets the card their
-      standing gives them.
-    drawn:
-      - signInGate
-    built:
-      - route: apps/tedris/proxy.ts:15
-      - route: apps/tedris/lib/public-paths.ts:29
-    walked:
-      - e2e: apps/tedris/e2e/session.e2e.ts
-        check: 'session#1'
+      A visitor who opens a celse's address is sent to sign in and, once signed in, is brought back to that celse, and meets the
+      card their standing gives them.
+    evidence:
+      - state: signInGate
+      - source: apps/tedris/proxy.ts:15
+      - source: apps/tedris/lib/public-paths.ts:29
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "sends a signed-out visitor to sign in, and the link survives"
     note: session#1 asserts only that the address holds /signin/; the replay also checks the address the callback returns to.
 
   - id: apply-from-the-locked-celse
     need: >-
-      A person who may apply can do it from the celse they came for: the application is sent, they are told it was received and that the
-      course team will decide, and the card then says the application waits. Where the course asks for no approval they are in at once.
-    drawn:
-      - applyCard
-      - enrolling
-      - received
-      - pendingCard
-    built:
-      - action: medaris.api:enrollInCourse
-      - route: apps/tedris/features/courses/components/lesson-locked.tsx:87
-      - route: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#6'
+      A person who may apply can do it from the celse they came for: the application is sent, they are told it was received and
+      that the course team will decide, and the card then says the application waits. Where the course asks for no approval they
+      are in at once.
+    evidence:
+      - state: applyCard
+      - state: enrolling
+      - state: received
+      - state: pendingCard
+      - source: apps/tedrisat/src/course/course.controller.ts:497
+      - source: apps/tedris/features/courses/components/lesson-locked.tsx:87
+      - source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/19: the locked session names no link, no stream and no recording, and apply opens the window of tedris/07"
 
   - id: the-team-hears-of-the-application
     need: >-
-      The application reaches the people who decide it, in nazar and in nizam, and the talebe is told when it is decided. (Both screens are
-      other flows; this flow starts them.)
-    drawn:
-      - reachesNazar
-      - reachesNizam
-    built:
-      - action: medaris.api:listCourseEnrollments
-      - action: medaris.api:approveEnrollment
-    walked: []
+      The application reaches the people who decide it, in nazar and in nizam, and the talebe is told when it is decided. (Both
+      screens are other flows; this flow starts them.)
+    evidence:
+      - state: reachesNazar
+      - state: reachesNizam
+      - source: apps/tedrisat/src/course/course.controller.ts:562
+      - source: apps/tedrisat/src/course/course.controller.ts:633
     note: The talebe's notice on a decision is not drawn here; the decision flows own it.
 
   - id: pending-and-removed-are-told-apart
     need: >-
-      A person whose application waits is told so and given no way to apply again; a person the course team took out is told their access was
-      withdrawn and is given no way to apply.
-    drawn:
-      - pendingCard
-      - revokedCard
-    built:
-      - action: medaris.api:getCourse
-      - route: apps/tedris/features/courses/lesson-lock.ts:13
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#6'
-      - e2e: apps/tedris/e2e/session.e2e.ts
-        check: 'session#11'
+      A person whose application waits is told so and given no way to apply again; a person the course team took out is told their
+      access was withdrawn and is given no way to apply.
+    evidence:
+      - state: pendingCard
+      - state: revokedCard
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedris/features/courses/lesson-lock.ts:13
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/19: the locked session names no link, no stream and no recording, and apply opens the window of tedris/07"
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "a PENDING applicant gets the locked card, with no link and no agenda in the page"
     note: The revoked card has no e2e at all; the replay scenario `revoked` is written and not yet run.
 
   - id: watch-address-sends-outsiders-back
     need: >-
-      The address of a celse's watch page does not open for a person who may not read the course: it sends them back to the celse's own page,
-      which says why.
-    drawn:
-      - applyCard
-      - pendingCard
-      - revokedCard
-    built:
-      - route: apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31
-    walked:
-      - e2e: apps/tedris/e2e/celse-states.e2e.ts
-        check: 'celse-states#6'
+      The address of a celse's watch page does not open for a person who may not read the course: it sends them back to the
+      celse's own page, which says why.
+    evidence:
+      - state: applyCard
+      - state: pendingCard
+      - state: revokedCard
+      - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31"
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/19: the locked session names no link, no stream and no recording, and apply opens the window of tedris/07"
 
   - id: enrolled-locked-talebe-is-told-why
     need: >-
-      An enrolled talebe whose course's content is closed (a passive scope, or a ban on them) is told that it is closed and why, and is not
-      offered an application that changes nothing.
-    drawn:
-      - applyCard
-      - enrolling
-    missing: MDRS-265
-    note: >-
-      Today they get the stranger's card and its button (CLS-02). Pinned as an expected failure by lesson-notes#15 for the passive scope; the
-      barred talebe has no test, and the API refuses them with BAN_ACTIVE.
+      An enrolled talebe whose course's content is closed (a passive scope, or a ban on them) is told that it is closed and why,
+      and is not offered an application that changes nothing.
+    missing: MDRS-265; findings CLS-02
+    note: |-
+      Drawn on the states applyCard and enrolling, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      Today they get the stranger's card and its button (CLS-02). Pinned as an expected failure by lesson-notes#15 for the passive
+      scope; the barred talebe has no test, and the API refuses them with BAN_ACTIVE.
 
   - id: barred-talebe-is-refused-kindly
     need: >-
-      A talebe barred from a course who opens one of its celses is told they are barred, by whom to ask, and what their ban is, instead of an
-      application button that fails with "İşlem tamamlanamadı".
-    drawn:
-      - enrolling
-    built:
-      - action: medaris.api:enrollInCourse
-    walked: []
+      A talebe barred from a course who opens one of its celses is told they are barred, by whom to ask, and what their ban is,
+      instead of an application button that fails with "İşlem tamamlanamadı".
+    evidence:
+      - state: enrolling
+      - source: apps/tedrisat/src/course/course.controller.ts:497
     note: The refusal exists (BAN_ACTIVE, 403) and the toast shows; the explanation does not. Not walked on the stack.
 
   - id: pending-card-says-the-right-thing
-    need: >-
-      The card of a person whose application waits does not tell them to enrol: its sentence is its own (LOCKED-2).
-    drawn:
-      - pendingCard
-    missing: none
+    need: "The card of a person whose application waits does not tell them to enrol: its sentence is its own (LOCKED-2)."
+    missing: no Linear issue; findings LOCKED-2
+    note: >-
+      Drawn on the state pendingCard, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: applicant-can-take-it-back-here
     need: >-
-      The window "Başvurun alındı" promises that the application can be taken back from this page; either the page offers it or the window
-      sends the person to the course page (CLS-12).
-    drawn:
-      - received
-      - pendingCard
-    missing: none
+      The window "Başvurun alındı" promises that the application can be taken back from this page; either the page offers it or
+      the window sends the person to the course page (CLS-12).
+    missing: no Linear issue; findings CLS-12
+    note: >-
+      Drawn on the states received and pendingCard, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-and-announcement-after-applying
     need: >-
-      After the window closes the focus lands on something the person can use, and an application accepted at once, or one that waits, is
-      announced to a screen reader (CLS-19, CLS-10).
-    drawn:
-      - received
-      - pendingCard
-      - session_opened
-    missing: none
+      After the window closes the focus lands on something the person can use, and an application accepted at once, or one that
+      waits, is announced to a screen reader (CLS-19, CLS-10).
+    missing: no Linear issue; findings CLS-19, CLS-10
+    note: >-
+      Drawn on the states received, pendingCard and session_opened, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: every-locked-celse-offers-the-way-in
     need: >-
-      Whatever the celse's own state (no start time, cancelled), a person who may apply is told why they cannot read it and is offered the
-      application on that page (LOCKED-1, LOCKED-3).
-    drawn:
-      - applyCard
-    missing: none
+      Whatever the celse's own state (no start time, cancelled), a person who may apply is told why they cannot read it and is
+      offered the application on that page (LOCKED-1, LOCKED-3).
+    missing: no Linear issue; findings LOCKED-1, LOCKED-3
+    note: >-
+      Drawn on the state applyCard, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: seats-are-separate-per-gender
     need: >-
-      Where seats are counted, kontenjan is two counts, one per gender, and a person's gender is always known when a seat is decided.
-    drawn:
-      - enrolling
+      Where seats are counted, kontenjan is two counts, one per gender, and a person's gender is always known when a seat is
+      decided.
     missing: MDRS-284
-    note: The code gives a seat with no count and no gender rule; see the domain's invariants seat-quota-per-gender and gender-always-known.
+    note: |-
+      Drawn on the state enrolling, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      The code gives a seat with no count and no gender rule; see the domain's invariants seat-quota-per-gender and
+      gender-always-known.

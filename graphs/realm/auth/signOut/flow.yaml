@@ -134,7 +134,7 @@ states:
       first. Nazar's buttons on Hesap and on the no-access page skip it and post at once (F-E-18, decision D1); no other app
       has a button that signs out without asking. The page is public in all three apps, so it still opens when the session
       ended before the person got there (`session: gone`).
-    source: apps/tedris/features/account/components/account-settings.tsx:403
+    source: apps/tedris/features/account/components/account-settings.tsx:374
     always:
       - { target: signingOut, guard: direct, say: "nazar's button posts at once" }
       - { target: confirmPage, say: "the confirmation page opens" }

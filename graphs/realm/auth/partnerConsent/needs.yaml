@@ -1,20 +1,22 @@
-# What must exist for a person who signs in to a partner application with their Medaris account and is asked what it may see:
-# the closed product list of realm.auth.partnerConsent, written on 2026-11-15 in the format LAYOUT.md section 7 fixes. Each need is
-# what the product must do, from the flow's story and from planned.md, never from what the page does today; a finding the flow
-# touches is a need with `missing: none` where the code does not meet it (its id is in the need). A need that nothing walks and a
-# need with no code are the flow's gaps, reported to the orchestrator for graphs/needs.gaps.yaml (this flow does not edit it).
+schema: delurio-graph/0
+kind: needs
+id: realm.auth.partnerConsent
+status: proposed
+summary: >-
+  Each need is what the product must do, from the flow's story and from planned.md, never from what the page does today; a finding
+  the flow touches is a need with `missing: none` where the code does not meet it (its id is in the need).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # needs.gaps for graphs/needs.gaps.yaml:
-#   missing:  partner-client-gives-terms (CONSENT-3), consent-texts-read-in-the-console (CONSENT-2),
-#             the-page-opens-where-they-read (CONSENT-1, K2), a-language-of-their-own (MDRS-202)
-#   unwalked: the-partners-terms-are-shown (the stack's example client gives no terms address; showing the line means editing the
-#             realm's client), take-the-consent-back (Hesap's link was followed once by hand, not by a replay),
-#             wrong-request-goes-back-to-the-partner and sign-in-first (their scenarios are written in binding.yaml and not walked)
+# missing:  partner-client-gives-terms (CONSENT-3), consent-texts-read-in-the-console (CONSENT-2),
+# the-page-opens-where-they-read (CONSENT-1, K2), a-language-of-their-own (MDRS-202)
+# unwalked: the-partners-terms-are-shown (the stack's example client gives no terms address; showing the line means editing the
+# realm's client), take-the-consent-back (Hesap's link was followed once by hand, not by a replay),
+# wrong-request-goes-back-to-the-partner and sign-in-first (their scenarios are written in binding.yaml and not walked)
 # Replays walked on 2026-11-15, all pass: consentNotYetGiven (the main story, İzin ver, and again to returned_to_partner.declined
 # for Vazgeç) and consentRemembered (to returned_to_partner.remembered).
-kind: needs
-flow: realm.auth.partnerConsent
-status: proposed
 
 needs:
   - id: say-what-is-shared-before-sharing
@@ -22,145 +24,132 @@ needs:
       Before anything leaves Medaris, a person who signs in to a partner application sees, in that application's name, which of
       their details it will see (their name, their e-mail address and their gender, and nothing else: no user name, no language),
       each in plain words.
-    drawn:
-      - consentPage
-      - consentHeading
-      - consentLead
-      - scopesList
-      - scopeGender
-      - scopeEmail
-      - scopeFullName
-    built:
-      - route: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:17
-      - route: libs/ui/src/giris/consent-form.tsx:53
-      - route: config/keycloak/clients/local/ornek-uygulama.json:46
-    walked:
-      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
-        check: 'giris#17'
-      - replay: consentNotYetGiven
+    evidence:
+      - state: consentPage
+      - node: consentPage
+      - node: consentHeading
+      - node: consentLead
+      - node: scopesList
+      - node: scopeGender
+      - node: scopeEmail
+      - node: scopeFullName
+      - source: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:17
+      - source: libs/ui/src/giris/consent-form.tsx:53
+      - source: config/keycloak/clients/local/ornek-uygulama.json:46
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "İzin ver posts the code and accept"
+      - scenario: consentNotYetGiven
 
   - id: allow-and-be-sent-back
     need: >-
       A person who allows is sent back to the partner application with what it needs to sign them in, and Medaris remembers that
       they allowed.
-    drawn:
-      - accept
-      - granting
-      - returned_to_partner.allowed
-    built:
-      - route: libs/ui/src/giris/consent-form.tsx:92
-    walked:
-      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
-        check: 'giris#17'
-      - replay: consentNotYetGiven
+    evidence:
+      - node: accept
+      - state: granting
+      - state: returned_to_partner.allowed
+      - source: libs/ui/src/giris/consent-form.tsx:92
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "İzin ver posts the code and accept"
+      - scenario: consentNotYetGiven
 
   - id: decline-and-share-nothing
     need: >-
       A person who declines is sent back to the partner application told that they said no, and none of their details goes with
       them.
-    drawn:
-      - decline
-      - declining
-      - returned_to_partner.declined
-    built:
-      - route: libs/ui/src/giris/consent-form.tsx:100
-    walked:
-      - replay: consentNotYetGiven
+    evidence:
+      - node: decline
+      - state: declining
+      - state: returned_to_partner.declined
+      - source: libs/ui/src/giris/consent-form.tsx:100
+      - scenario: consentNotYetGiven
 
   - id: asked-once-per-partner
     need: >-
       A person who allowed a partner application is not asked again for the same details: their next sign-in there goes straight
       back, until they take the consent back.
-    drawn:
-      - returned_to_partner.remembered
-    built:
-      - route: config/keycloak/clients/local/ornek-uygulama.json:7
-    walked:
-      - replay: consentRemembered
+    evidence:
+      - state: returned_to_partner.remembered
+      - source: config/keycloak/clients/local/ornek-uygulama.json:7
+      - scenario: consentRemembered
 
   - id: the-partners-terms-are-shown
     need: >-
       When the partner application has published its terms of use and its privacy policy, the person can open them from the
       consent page before they answer, in a new tab, with a hint that they open in one.
-    drawn:
-      - linksIntro
-      - termsLink
-      - policyLink
-      - linksNote
-    built:
-      - route: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:34
-      - route: libs/ui/src/giris/consent-form.tsx:71
+    evidence:
+      - node: linksIntro
+      - node: termsLink
+      - node: policyLink
+      - node: linksNote
+      - source: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:34
+      - source: libs/ui/src/giris/consent-form.tsx:71
 
   - id: partner-client-gives-terms
     need: >-
-      A partner application's client in the realm carries its terms and privacy addresses, so that the line above is not dead code:
-      the runbook that connects a partner says where to put them and the example client has them (finding CONSENT-3).
-    drawn:
-      - linksIntro
-    missing: none
+      A partner application's client in the realm carries its terms and privacy addresses, so that the line above is not dead
+      code: the runbook that connects a partner says where to put them and the example client has them (finding CONSENT-3).
+    missing: no Linear issue; CONSENT-3
+    note: >-
+      Drawn on the node linksIntro, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: take-the-consent-back
     need: >-
       A person who allowed a partner application can see which applications hold their consent and take it back, from their own
       Hesap.
-    drawn: []
-    built:
-      - route: apps/tedris/features/account/connected-apps.ts:8
-      - route: apps/tedris/features/account/components/account-settings.tsx:386
+    evidence:
+      - source: apps/tedris/features/account/connected-apps.ts:8
+      - source: apps/tedris/features/account/components/account-settings.tsx:357
 
   - id: consent-texts-read-in-the-console
     need: >-
       Where the person reviews the consent they gave, each detail reads in the same plain words as on the consent page, not as a
       message key (finding CONSENT-2: Keycloak's account console lists '${genderScopeConsentText}' and
       '${fullNameScopeConsentText}').
-    drawn: []
-    missing: none
+    missing: no Linear issue; CONSENT-2
 
   - id: wrong-request-goes-back-to-the-partner
     need: >-
       A partner application whose request is wrong (a scope its client does not have, no PKCE) is told so by Keycloak, and the
       person is not shown a consent page for a request that cannot succeed; a redirect address the client did not register gets
       Keycloak's own error page, never a redirect.
-    drawn:
-      - returned_to_partner.refused
-      - handed_over.error_page
-    built:
-      - route: config/keycloak/clients/local/ornek-uygulama.json:11
-      - route: config/keycloak/clients/local/ornek-uygulama.json:14
+    evidence:
+      - state: returned_to_partner.refused
+      - state: handed_over.error_page
+      - source: config/keycloak/clients/local/ornek-uygulama.json:11
+      - source: config/keycloak/clients/local/ornek-uygulama.json:14
 
   - id: sign-in-first
     need: >-
       A person with no session is asked to sign in first, with the same form as the three apps, and then reaches the consent page
       (or goes straight back to the partner when they allowed it before).
-    drawn:
-      - handed_over.sign_in
-    built:
-      - route: apps/keycloak-theme/src/login/pages/Login.tsx:14
+    evidence:
+      - state: handed_over.sign_in
+      - source: apps/keycloak-theme/src/login/pages/Login.tsx:14
 
   - id: the-page-opens-where-they-read
     need: >-
-      The consent page opens with the focus on its heading, so a keyboard or screen-reader user starts at the question, and its tab
-      has a title of its own (findings CONSENT-1 and K2).
-    drawn:
-      - consentPage
-    missing: none
+      The consent page opens with the focus on its heading, so a keyboard or screen-reader user starts at the question, and its
+      tab has a title of its own (findings CONSENT-1 and K2).
+    missing: no Linear issue; CONSENT-1, K2
+    note: >-
+      Drawn on the state consentPage and on the node consentPage, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: fits-a-phone-in-arabic
     need: >-
       The consent page reads right to left in Arabic and does not scroll sideways at 375 px (the language comes from the partner's
       request; the graph's catalog is Turkish only for now, so this is walked by the theme's own e2e check, not by a replay).
-    drawn: []
-    built:
-      - route: apps/keycloak-theme/src/login/i18n.ts:459
-    walked:
-      - e2e: apps/keycloak-theme/e2e/giris.e2e.ts
-        check: 'giris#18'
+    evidence:
+      - source: apps/keycloak-theme/src/login/i18n.ts:459
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "the card has no horizontal scroll at 375 px in Arabic"
 
   - id: a-language-of-their-own
     need: >-
       The person can read the page in English or Arabic when they want to, not only when the partner asked for it, and a person
       who lands on the page directly can change the language (finding K12).
-    drawn: []
-    built:
-      - route: apps/keycloak-theme/src/login/i18n.ts:173
-    missing: MDRS-202
+    evidence:
+      - source: apps/keycloak-theme/src/login/i18n.ts:173
+    missing: MDRS-202; findings K12; code exists in part

@@ -1,170 +1,238 @@
-# What must exist for Medaris administration to read every ban on the platform: the flow's product list (LAYOUT.md section 7). Each need is what the product must do,
-# from the flow's story (FLOWS.md, "Read every ban as Medaris"), the inventory (nizam.md W5, F-W5-1, F-W5-10) and the planned work (planned.md P-01, P-02), not from what
-# the page does today. The known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nizam.moderation.reviewBans
+status: proposed
+summary: >-
+  What must exist for Medaris administration to read every ban on the platform: the flow's product list. Each need is what the
+  product must do, from the flow's story (FLOWS.md, "Read every ban as Medaris"), the inventory (nizam.md W5, F-W5-1, F-W5-10) and
+  the planned work (planned.md P-01, P-02), not from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # For the gaps merge:
-#   missing   a-medrese-wide-ban-reads-as-medrese (none: REVBANS-2 = NDB-4), a-widening-is-offered-only-where-it-changes-something (none: REVBANS-1),
-#             a-row-says-what-it-lacks (none: REVBANS-3 = NDB-5), the-lifted-tab-is-ordered-as-it-shows (none: REVBANS-5), the-last-page-keeps-the-focus (none: REVBANS-4),
-#             a-change-of-the-list-is-told (none: F-W5-10), a-reader-sees-only-what-her-permission-is-for (none: TRIAGE-2, decision D1),
-#             platform-level-bans-have-a-chip (MDRS-113), a-banned-device-is-read-here (MDRS-125)
-#   unwalked  a-medaris-nazim-with-one-permission-reads (code, a unit spec for the row's flags and no e2e: binding.scoped.yaml and binding.reader.yaml load and are not run),
-#             an-unreadable-list-recovers (code and a unit spec; nothing on the stack makes tedrisat fail a read)
-#   Every other need names the e2e check that asserts it. No replay has run on this flow, so no replay scenario is named.
-kind: needs
-flow: nizam.moderation.reviewBans
-status: proposed
+# missing   a-medrese-wide-ban-reads-as-medrese (none: REVBANS-2 = NDB-4), a-widening-is-offered-only-where-it-changes-something (none: REVBANS-1),
+# a-row-says-what-it-lacks (none: REVBANS-3 = NDB-5), the-lifted-tab-is-ordered-as-it-shows (none: REVBANS-5), the-last-page-keeps-the-focus (none: REVBANS-4),
+# a-change-of-the-list-is-told (none: F-W5-10), a-reader-sees-only-what-her-permission-is-for (none: TRIAGE-2, decision D1),
+# platform-level-bans-have-a-chip (MDRS-113), a-banned-device-is-read-here (MDRS-125)
+# unwalked  a-medaris-nazim-with-one-permission-reads (code, a unit spec for the row's flags and no e2e: binding.scoped.yaml and binding.reader.yaml load and are not run),
+# an-unreadable-list-recovers (code and a unit spec; nothing on the stack makes tedrisat fail a read)
+# Every other need names the e2e check that asserts it. No replay has run on this flow, so no replay scenario is named.
 
 needs:
   - id: read-every-ban
     need: >-
-      Medaris administration reads, on one page, every ban of every köşk, the ones that stand and the ones that were lifted: the person, what they are barred from (a course
-      with its köşk, or a whole köşk), the reason, who placed it in what role and when and, for a lifted one, who lifted it, when and why. The newest comes first.
-    drawn: [listed, tableActive, tableLifted, rowPerson, rowScopeCourse, rowScopeKosk, rowReason, rowBannedBy, rowRole, rowWhen, rowLiftedBy, rowLiftReason]
-    built:
-      - action: medaris.api:listAllBans
-      - route: apps/nizam/app/yasaklamalar/page.tsx:24
-    walked:
-      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
-        check: 'bans-medaris#1'
+      Medaris administration reads, on one page, every ban of every köşk, the ones that stand and the ones that were lifted: the
+      person, what they are barred from (a course with its köşk, or a whole köşk), the reason, who placed it in what role and when
+      and, for a lifted one, who lifted it, when and why. The newest comes first.
+    evidence:
+      - state: listed
+      - node: tableActive
+      - node: tableLifted
+      - node: rowPerson
+      - node: rowScopeCourse
+      - node: rowScopeKosk
+      - node: rowReason
+      - node: rowBannedBy
+      - node: rowRole
+      - node: rowWhen
+      - node: rowLiftedBy
+      - node: rowLiftReason
+      - source: apps/tedrisat/src/ban/ban.controller.ts:135
+      - source: apps/nizam/app/yasaklamalar/page.tsx:24
+      - test: apps/nizam/e2e/bans-medaris.e2e.ts
+        name: "nizam/48 — the başnazım sees every köşk's bans with scope, reason, who and when (criterion 1)"
       - test: apps/nizam/test/all-bans.spec.tsx
 
   - id: the-tabs-say-how-many
     need: >-
-      Each tab carries how many bans the platform holds in it, and the number is the length of the unfiltered list, so that "Etkin 3" and "3 etkin yasak" never disagree
-      before the person narrows anything.
-    drawn: [tabActive, tabActiveCount, tabLifted, tabLiftedCount, summaryActive, summaryLifted]
-    built:
-      - action: medaris.api:listAllBans
-      - route: apps/nizam/features/bans/components/all-bans-view.tsx:390
-    walked:
-      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
-        check: 'bans-medaris#2'
+      Each tab carries how many bans the platform holds in it, and the number is the length of the unfiltered list, so that "Etkin
+      3" and "3 etkin yasak" never disagree before the person narrows anything.
+    evidence:
+      - node: tabActive
+      - node: tabActiveCount
+      - node: tabLifted
+      - node: tabLiftedCount
+      - node: summaryActive
+      - node: summaryLifted
+      - source: apps/tedrisat/src/ban/ban.controller.ts:135
+      - source: apps/nizam/features/bans/components/all-bans-view.tsx:390
+      - test: apps/nizam/e2e/bans-medaris.e2e.ts
+        name: "nizam/48 — the tab's count equals the unfiltered list's length (criterion 2)"
 
   - id: narrow-by-kind-and-by-name
     need: >-
-      The person narrows the list to the bans of one kind (a course, a whole köşk) and by a name or an e-mail address, and takes the narrowing off again; a narrowing that
-      leaves nothing says so and the way back is plain.
-    drawn: [chipAll, chipCourse, chipKosk, searchField, noMatch, noMatchLine, narrowing]
-    built:
-      - action: medaris.api:listAllBans
-      - route: apps/nizam/features/bans/components/all-bans-view.tsx:420
-    walked:
-      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
-        check: 'bans-medaris#3'
+      The person narrows the list to the bans of one kind (a course, a whole köşk) and by a name or an e-mail address, and takes
+      the narrowing off again; a narrowing that leaves nothing says so and the way back is plain.
+    evidence:
+      - node: chipAll
+      - node: chipCourse
+      - node: chipKosk
+      - node: searchField
+      - state: noMatch
+      - node: noMatchLine
+      - state: narrowing
+      - source: apps/tedrisat/src/ban/ban.controller.ts:135
+      - source: apps/nizam/features/bans/components/all-bans-view.tsx:420
+      - test: apps/nizam/e2e/bans-medaris.e2e.ts
+        name: "nizam/48 — the Kapsam chips narrow the list: Köşk keeps none of the course bans, Ders brings them back (criterion 1)"
       - test: apps/nizam/test/all-bans.spec.tsx
 
   - id: a-long-list-comes-in-pages
     need: >-
-      A list of more than twenty bans is read twenty at a time, and "Daha fazla göster" adds the next twenty below the first, until none is left.
-    drawn: [loadMore, moreBusy, loadingMore, listed]
-    built:
-      - action: medaris.api:listAllBans
-      - route: apps/nizam/features/bans/components/all-bans-view.tsx:343
-    walked:
-      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
-        check: 'bans-medaris#4'
+      A list of more than twenty bans is read twenty at a time, and "Daha fazla göster" adds the next twenty below the first,
+      until none is left.
+    evidence:
+      - node: loadMore
+      - node: moreBusy
+      - state: loadingMore
+      - state: listed
+      - source: apps/tedrisat/src/ban/ban.controller.ts:135
+      - source: apps/nizam/features/bans/components/all-bans-view.tsx:343
+      - test: apps/nizam/e2e/bans-medaris.e2e.ts
+        name: "nizam/48 — 'Daha fazla göster' brings the next page of a long list"
       - test: apps/nizam/test/all-bans.spec.tsx
 
   - id: only-those-who-may-read-read
     need: >-
-      A person who may not read the platform's bans (a köşk nazımı, a Medaris nazımı with neither ban permission, anyone else) is refused with a screen that says so; the
-      menu entry is drawn for the başnazım and for the Medaris nazımı who holds one of the two permissions.
-    drawn: [reading, handed_over.no_access]
-    built:
-      - action: medaris.api:listAllBans
-      - route: apps/nizam/app/yasaklamalar/page.tsx:25
-    walked:
-      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
-        check: 'bans-medaris#8'
+      A person who may not read the platform's bans (a köşk nazımı, a Medaris nazımı with neither ban permission, anyone else) is
+      refused with a screen that says so; the menu entry is drawn for the başnazım and for the Medaris nazımı who holds one of the
+      two permissions.
+    evidence:
+      - state: reading
+      - state: handed_over.no_access
+      - source: apps/tedrisat/src/ban/ban.controller.ts:135
+      - source: apps/nizam/app/yasaklamalar/page.tsx:25
+      - test: apps/nizam/e2e/bans-medaris.e2e.ts
+        name: "nizam/48 — a signed-out visitor is sent to sign in and the köşk nazımı gets the no-access screen (criterion 6)"
 
   - id: a-row-offers-what-the-viewer-may-do
     need: >-
       Each open row offers the viewer the lift and the widening only where the API says they may, and a lifted row offers nothing.
-    drawn: [lift, extend, noteHigher, notePlatform]
-    built:
-      - action: medaris.api:listAllBans
-      - route: apps/nizam/features/bans/present.ts:137
-    walked:
-      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
-        check: 'bans-medaris#1'
+    evidence:
+      - node: lift
+      - node: extend
+      - node: noteHigher
+      - node: notePlatform
+      - source: apps/tedrisat/src/ban/ban.controller.ts:135
+      - source: apps/nizam/features/bans/present.ts:137
+      - test: apps/nizam/e2e/bans-medaris.e2e.ts
+        name: "nizam/48 — the başnazım sees every köşk's bans with scope, reason, who and when (criterion 1)"
       - test: apps/nizam/test/all-bans.spec.tsx
 
   - id: a-medaris-nazim-with-one-permission-reads
     need: >-
-      A Medaris nazımı who holds platform.ban_scoped or platform.ban_account opens the page, and is drawn only what her permission is for: she who may lift köşk bans sees
-      those buttons, she who may do nothing sees none.
-    drawn: [lift, extend, noteHigher, notePlatform, listed]
-    built:
-      - action: medaris.api:listAllBans
-      - route: apps/tedrisat/src/ban/ban.service.ts:639
-    walked:
+      A Medaris nazımı who holds platform.ban_scoped or platform.ban_account opens the page, and is drawn only what her permission
+      is for: she who may lift köşk bans sees those buttons, she who may do nothing sees none.
+    evidence:
+      - node: lift
+      - node: extend
+      - node: noteHigher
+      - node: notePlatform
+      - state: listed
+      - source: apps/tedrisat/src/ban/ban.controller.ts:135
+      - source: apps/tedrisat/src/ban/ban.service.ts:639
       - test: apps/nizam/test/all-bans.spec.tsx
 
   - id: an-unreadable-list-recovers
     need: >-
-      A list that cannot be read says so, in the table's place and not as a blank page, keeps the tabs and the filters, and "Yeniden dene" asks the same question again.
-    drawn: [loadFailed, failedAlert, failedText, retry, toastFailed]
-    built:
-      - route: apps/nizam/features/bans/components/all-bans-view.tsx:438
-    walked:
+      A list that cannot be read says so, in the table's place and not as a blank page, keeps the tabs and the filters, and
+      "Yeniden dene" asks the same question again.
+    evidence:
+      - state: loadFailed
+      - node: failedAlert
+      - node: failedText
+      - node: retry
+      - node: toastFailed
+      - source: apps/nizam/features/bans/components/all-bans-view.tsx:438
       - test: apps/nizam/test/all-bans.spec.tsx
 
   - id: a-change-of-the-list-is-told
     need: >-
-      What a tab, a chip, the search or "Daha fazla göster" does to the list is said where a screen reader hears it: how many bans came, and what the tab's number counts
-      (F-W5-10, REVBANS-4).
-    drawn: [summaryActive, summaryLifted, tabActiveCount, tabLiftedCount, searchField, busyText, loadMore]
-    missing: none # no issue: the line over the table is no live region and the skeleton's word sits in an aria-busy <div> (all-bans-view.tsx:332,446)
+      What a tab, a chip, the search or "Daha fazla göster" does to the list is said where a screen reader hears it: how many bans
+      came, and what the tab's number counts (F-W5-10, REVBANS-4).
+    missing: >-
+      no issue: the line over the table is no live region and the skeleton's word sits in an aria-busy <div>
+      (all-bans-view.tsx:332,446)
+    note: >-
+      Drawn on the nodes summaryActive, summaryLifted, tabActiveCount, tabLiftedCount, searchField, busyText and loadMore, which
+      the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
 
   - id: the-last-page-keeps-the-focus
     need: >-
-      The button that adds the last rows does not take the focus away with it: the focus goes to the first new row, or the button stays with a word that says everything is
-      shown (REVBANS-4).
-    drawn: [loadMore, loadingMore]
-    missing: none # no issue: the button is drawn only while rows are left (all-bans-view.tsx:343)
+      The button that adds the last rows does not take the focus away with it: the focus goes to the first new row, or the button
+      stays with a word that says everything is shown (REVBANS-4).
+    missing: "no issue: the button is drawn only while rows are left (all-bans-view.tsx:343)"
+    note: >-
+      Drawn on the state loadingMore and on the node loadMore, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-medrese-wide-ban-reads-as-medrese
     need: >-
-      A ban that bars a person from a whole medrese is listed with its own words and its medrese's name, and the kind chips find it (REVBANS-2, which nizam.moderation.decideBan
-      finds as NDB-4).
-    drawn: [rowScopeKosk, chipKosk, chipCourse, listed]
-    missing: none # no issue: scopeParts labels every scope that is not COURSE "Köşk" (present.ts:90), and no chip sends scope MADRASAH
+      A ban that bars a person from a whole medrese is listed with its own words and its medrese's name, and the kind chips find
+      it (REVBANS-2, which nizam.moderation.decideBan finds as NDB-4).
+    missing: >-
+      no issue: scopeParts labels every scope that is not COURSE "Köşk" (present.ts:90), and no chip sends scope MADRASAH
+    note: >-
+      Drawn on the state listed and on the nodes rowScopeKosk, chipKosk and chipCourse, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: platform-level-bans-have-a-chip
     need: >-
       A ban at the platform's level (P-01: course, köşk, medrese and platform) is listed and has its chip beside Ders and Köşk.
-    drawn: [chipAll, chipCourse, chipKosk]
-    missing: MDRS-113 # the page's own comment says the Medrese and Platform chips wait for bans of those scopes; a platform scope does not exist in the model
+    missing: >-
+      MDRS-113; the page's own comment says the Medrese and Platform chips wait for bans of those scopes; a platform scope does
+      not exist in the model
+    note: >-
+      Drawn on the nodes chipAll, chipCourse and chipKosk, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-widening-is-offered-only-where-it-changes-something
     need: >-
-      "Yasağı genişlet" is drawn on a course ban only when the person is not already barred from the köşk, whichever rows the list happens to hold (REVBANS-1).
-    drawn: [extend, listed]
-    missing: none # no issue: the API builds its set of standing köşk bans from the page's own rows (ban.service.ts:251)
+      "Yasağı genişlet" is drawn on a course ban only when the person is not already barred from the köşk, whichever rows the list
+      happens to hold (REVBANS-1).
+    missing: "no issue: the API builds its set of standing köşk bans from the page's own rows (ban.service.ts:251)"
+    note: >-
+      Drawn on the state listed and on the node extend, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-row-says-what-it-lacks
     need: >-
-      Where a row has no lift, the sentence says which thing is missing, the placer's kademe or the viewer's permission: a Medaris nazımı above the müderris is not told
-      that only the kademe that placed the ban may lift it (REVBANS-3, which nizam.moderation.decideBan finds as NDB-5).
-    drawn: [noteHigher, notePlatform]
-    missing: none # no issue: cannotLiftNote knows two reasons (present.ts:51)
+      Where a row has no lift, the sentence says which thing is missing, the placer's kademe or the viewer's permission: a Medaris
+      nazımı above the müderris is not told that only the kademe that placed the ban may lift it (REVBANS-3, which
+      nizam.moderation.decideBan finds as NDB-5).
+    missing: "no issue: cannotLiftNote knows two reasons (present.ts:51)"
+    note: >-
+      Drawn on the nodes noteHigher and notePlatform, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-lifted-tab-is-ordered-as-it-shows
     need: >-
       The Kaldırılan tab shows the time the order follows, the time the ban was lifted, in the column that is sorted (REVBANS-5).
-    drawn: [columnWhen, rowWhen, rowLiftedWhen, tableLifted]
-    missing: none # no issue: the API orders by lifted_at (ban.repository.ts:419), the column shows created_at (all-bans-view.tsx:268)
+    missing: "no issue: the API orders by lifted_at (ban.repository.ts:419), the column shows created_at (all-bans-view.tsx:268)"
+    note: >-
+      Drawn on the nodes columnWhen, rowWhen, rowLiftedWhen and tableLifted, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-reader-sees-only-what-her-permission-is-for
     need: >-
-      The person, the e-mail address and the reason of every ban on the platform reach only those who may act on it, and the notice of a new ban goes only to those who may
-      read the ban (TRIAGE-2, decision D1). Today one of two permissions opens everything, and every Medaris nazımı is told the reason whatever she holds.
-    drawn: [rowEmail, rowReason, listed, handed_over.no_access]
-    missing: none # no issue: ban.service.ts:233 asks one of two codes, ban_account bans and lifts nothing yet; notifications triage flow TRIAGE-2
+      The person, the e-mail address and the reason of every ban on the platform reach only those who may act on it, and the
+      notice of a new ban goes only to those who may read the ban (TRIAGE-2, decision D1). Today one of two permissions opens
+      everything, and every Medaris nazımı is told the reason whatever she holds.
+    missing: >-
+      no issue: ban.service.ts:233 asks one of two codes, ban_account bans and lifts nothing yet; notifications triage flow
+      TRIAGE-2
+    note: >-
+      Drawn on the states listed and handed_over.no_access and on the nodes rowEmail and rowReason, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-banned-device-is-read-here
     need: >-
-      The people above a course read, beside a ban, which device the banned person used, and a device event tab lists the attempts to come back under another account (P-02).
-      The page's own comment says the tab waits for a device-trace backend and is not drawn.
-    drawn: [tabList]
-    missing: MDRS-125 # MDRS-199 is the deferred-screens issue of the same work
+      The people above a course read, beside a ban, which device the banned person used, and a device event tab lists the attempts
+      to come back under another account (P-02). The page's own comment says the tab waits for a device-trace backend and is not
+      drawn.
+    missing: MDRS-125; MDRS-199 is the deferred-screens issue of the same work
+    note: >-
+      Drawn on the node tabList, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

@@ -1,7 +1,14 @@
-# What must exist for the course team to take a talebe out of a course (nazar.roster.remove): the flow's product list (LAYOUT.md section
-# 7). Each need is what the product must do, from the flow's story and the planned work in the inventory (planned.md P-18), not from what
-# the page does today. A need that is not met is a gap in graphs/needs.gaps.yaml, which the orchestrator merges; this file does not edit it.
-# Read by people for now: no checker runs on it.
+schema: delurio-graph/0
+kind: needs
+id: nazar.roster.remove
+status: proposed
+summary: >-
+  What must exist for the course team to take a talebe out of a course (nazar.roster.remove): the flow's product list. Each need
+  is what the product must do, from the flow's story and the planned work in the inventory (planned.md P-18), not from what the
+  page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # The `replay:` names are the scenarios of binding.yaml and its three siblings; NO REPLAY HAS RUN (the first walks are a later phase), so
 # none of them is a proof yet. No e2e check exists for this flow (FLOWS.md "e2e: none", apps/nazar/e2e has none for Talebeler beyond
@@ -9,137 +16,189 @@
 # `test:`, which is not an e2e check.
 #
 # Gaps of this file, for that merge:
-#   missing:   a-removal-can-be-taken-back (RMV-2, none), the-reason-says-who-reads-it (RMV-1, none), the-form-says-what-is-missing
-#              (F-D1-06, none), focus-follows-a-removal (F-D1-05, none), a-failed-call-is-told (F-D1-20, none), a-busy-dialog-says-so
-#              (RMV-3, none), the-length-limit-is-said (RMV-4, none), staff-see-the-roster-by-decision (MDRS-203, a decision)
-#   unwalked:  remove-with-a-reason, the-record-of-removals, only-a-holder-is-offered-it, a-moved-seat-is-told, a-refused-removal-says-why
-#              (code, no e2e, no replay yet: the unit spec is the only walker)
-#   Gender separation (kontenjan per gender, MDRS-284): not applicable, a removal gives no seat; it frees one, and no kontenjan exists to
-#   count it back into (the code has no capacity rule at all).
-kind: needs
-flow: nazar.roster.remove
-status: proposed
+# missing:   a-removal-can-be-taken-back (RMV-2, none), the-reason-says-who-reads-it (RMV-1, none), the-form-says-what-is-missing
+# (F-D1-06, none), focus-follows-a-removal (F-D1-05, none), a-failed-call-is-told (F-D1-20, none), a-busy-dialog-says-so
+# (RMV-3, none), the-length-limit-is-said (RMV-4, none), staff-see-the-roster-by-decision (MDRS-203, a decision)
+# unwalked:  remove-with-a-reason, the-record-of-removals, only-a-holder-is-offered-it, a-moved-seat-is-told, a-refused-removal-says-why
+# (code, no e2e, no replay yet: the unit spec is the only walker)
+# Gender separation (kontenjan per gender, MDRS-284): not applicable, a removal gives no seat; it frees one, and no kontenjan exists to
+# count it back into (the code has no capacity rule at all).
 
 needs:
   - id: remove-with-a-reason
     need: >-
-      The course team takes an enrolled talebe out of the course in one step, and must say why. The reason is required and kept with who
-      wrote it and when; the seat goes at once (the celses, the meeting links and the recordings close to them, the calendar entries are
-      cancelled), the record of their seat and progress stays, and the talebe is told.
-    drawn: [enrolled, form, formReady, submitting, reading, afterRemoval, rowRemove, dialog, reasonField, submit, never-without-a-reason, the-removal-toast-is-for-a-removal]
-    built:
-      - action: medaris.api:removeEnrollment
-      - route: apps/nazar/features/enrolments/components/roster-table.tsx:178
-      - route: apps/nazar/features/enrolments/components/remove-dialog.tsx:49
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx:534-627
-      - replay: removes
-      - replay: removesLast
+      The course team takes an enrolled talebe out of the course in one step, and must say why. The reason is required and kept
+      with who wrote it and when; the seat goes at once (the celses, the meeting links and the recordings close to them, the
+      calendar entries are cancelled), the record of their seat and progress stays, and the talebe is told.
+    evidence:
+      - state: enrolled
+      - state: form
+      - state: formReady
+      - state: submitting
+      - state: reading
+      - state: afterRemoval
+      - node: rowRemove
+      - node: dialog
+      - node: reasonField
+      - node: submit
+      - source: apps/tedrisat/src/course/course.controller.ts:739
+      - source: apps/nazar/features/enrolments/components/roster-table.tsx:178
+      - source: apps/nazar/features/enrolments/components/remove-dialog.tsx:49
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: removes
+      - scenario: removesLast
+        binding: graphs/nazar/roster/remove/binding.last.yaml
+    note: |-
+      Also drawn as the assertion never-without-a-reason, the assertion the-removal-toast-is-for-a-removal.
+      enrolments-page.spec.tsx lines 534-627
 
   - id: the-record-of-removals
     need: >-
-      The team reads who was taken out of the course, when, why and by whom, newest first, one row for each person; a talebe the team
-      has taken back no longer appears there.
-    drawn: [removedList, removedPerson, removedEmail, removedDay, removedReason, removedBy, removedEmpty, colStudent, colRemovedAt, colReason, colRemovedBy]
-    built:
-      - action: medaris.api:listRemovedEnrollments
-      - route: apps/nazar/features/enrolments/components/removed-table.tsx:157
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx:629-682
-      - replay: removes
+      The team reads who was taken out of the course, when, why and by whom, newest first, one row for each person; a talebe the
+      team has taken back no longer appears there.
+    evidence:
+      - state: removedList
+      - node: removedPerson
+      - node: removedEmail
+      - node: removedDay
+      - node: removedReason
+      - node: removedBy
+      - node: removedEmpty
+      - node: colStudent
+      - node: colRemovedAt
+      - node: colReason
+      - node: colRemovedBy
+      - source: apps/tedrisat/src/course/course.controller.ts:581
+      - source: apps/nazar/features/enrolments/components/removed-table.tsx:15
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: removes
+    note: enrolments-page.spec.tsx lines 629-682
 
   - id: only-a-holder-is-offered-it
     need: >-
-      "Dersten çıkar" is offered only to a person who holds the permission to remove a talebe in this course (the müderris, or a ders
-      nazırı the müderris gave `enrollment.remove`); a person who may only complete or decide a seat does not see it, and the API still
-      decides every removal.
-    drawn: [rowRemove, enrolled, only-a-remover-opens-the-dialog, forbidden]
-    built:
-      - route: apps/nazar/features/enrolments/enrolments.ts:199
-      - route: apps/nazar/features/enrolments/components/enrolments-page.tsx:100
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx:722-765
-      - replay: completer
-      - replay: none
+      "Dersten çıkar" is offered only to a person who holds the permission to remove a talebe in this course (the müderris, or a
+      ders nazırı the müderris gave `enrollment.remove`); a person who may only complete or decide a seat does not see it, and the
+      API still decides every removal.
+    evidence:
+      - node: rowRemove
+      - state: enrolled
+      - state: forbidden
+      - source: apps/nazar/features/enrolments/enrolments.ts:199
+      - source: apps/nazar/features/enrolments/components/enrolments-page.tsx:100
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: completer
+        binding: graphs/nazar/roster/remove/binding.completer.yaml
+      - scenario: none
+    note: |-
+      Also drawn as the assertion only-a-remover-opens-the-dialog.
+      enrolments-page.spec.tsx lines 722-765
 
   - id: a-moved-seat-is-told
     need: >-
-      A removal that meets a seat that is no longer as the page showed it (the talebe left, or the course was completed for them) says
-      so in the plain words of an information, not an error, closes the dialog and shows the list as it is now.
-    drawn: [submitting, reading, afterRemoval, toastGone]
-    built:
-      - route: apps/nazar/features/enrolments/components/remove-dialog.tsx:74
-      - route: apps/nazar/features/enrolments/enrolments.ts:224
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx:606-619
-      - replay: gone
+      A removal that meets a seat that is no longer as the page showed it (the talebe left, or the course was completed for them)
+      says so in the plain words of an information, not an error, closes the dialog and shows the list as it is now.
+    evidence:
+      - state: submitting
+      - state: reading
+      - state: afterRemoval
+      - node: toastGone
+      - source: apps/nazar/features/enrolments/components/remove-dialog.tsx:74
+      - source: apps/nazar/features/enrolments/enrolments.ts:224
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: gone
+        binding: graphs/nazar/roster/remove/binding.gone.yaml
+    note: enrolments-page.spec.tsx lines 606-619
 
   - id: a-refused-removal-says-why
     need: >-
-      When the removal is refused (the person no longer holds the permission, the course is gone, the server fails) the dialog stays with
-      what was typed and an error that stays until it is closed says which of these it is.
-    drawn: [submitting, formReady, toastRefused, toastFailed]
-    built:
-      - route: apps/nazar/features/enrolments/components/remove-dialog.tsx:74
-      - route: apps/nazar/features/enrolments/enrolments.ts:211
-    walked:
-      - test: apps/nazar/test/enrolments-page.spec.tsx:589-605
-      - replay: refused
-      - replay: failed
+      When the removal is refused (the person no longer holds the permission, the course is gone, the server fails) the dialog
+      stays with what was typed and an error that stays until it is closed says which of these it is.
+    evidence:
+      - state: submitting
+      - state: formReady
+      - node: toastRefused
+      - node: toastFailed
+      - source: apps/nazar/features/enrolments/components/remove-dialog.tsx:74
+      - source: apps/nazar/features/enrolments/enrolments.ts:211
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: refused
+        binding: graphs/nazar/roster/remove/binding.refused.yaml
+      - scenario: failed
+        binding: graphs/nazar/roster/remove/binding.failed.yaml
+    note: enrolments-page.spec.tsx lines 589-605
 
   - id: a-removal-can-be-taken-back
     need: >-
-      The course team can bring a removed talebe back from a screen, which tells the talebe, as the dialog and the removed tab already
-      promise ("yeri ancak ders kadrosu onaylarsa geri gelir"); until then a removal made by mistake cannot be undone from the product
-      (RMV-2, decision D1).
-    drawn: [form, removedList]
-    missing: none # the API reinstates a REVOKED seat on POST .../approve (course.service.ts:1627-1668); no screen calls it for one
+      The course team can bring a removed talebe back from a screen, which tells the talebe, as the dialog and the removed tab
+      already promise ("yeri ancak ders kadrosu onaylarsa geri gelir"); until then a removal made by mistake cannot be undone from
+      the product (RMV-2, decision D1).
+    missing: >-
+      no Linear issue; the API reinstates a REVOKED seat on POST .../approve (course.service.ts:1627-1668); no screen calls it for
+      one
+    note: >-
+      Drawn on the states form and removedList, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-reason-says-who-reads-it
     need: >-
-      The person who writes the reason is told who will read it, the course team and the talebe (or the talebe is not sent it), before
-      she sends it (RMV-1, decision D2).
-    drawn: [form, formReady, reasonHelp]
-    missing: none
+      The person who writes the reason is told who will read it, the course team and the talebe (or the talebe is not sent it),
+      before she sends it (RMV-1, decision D2).
+    missing: no Linear issue; RMV-1, none
+    note: >-
+      Drawn on the states form and formReady and on the node reasonHelp, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-form-says-what-is-missing
     need: >-
-      The dialog says why "Dersten çıkar" is off and, when the reason is missing, says so where a screen reader hears it and puts the
-      focus in the field (F-D1-06).
-    drawn: [form, reasonRequired, submit]
-    missing: none
+      The dialog says why "Dersten çıkar" is off and, when the reason is missing, says so where a screen reader hears it and puts
+      the focus in the field (F-D1-06).
+    missing: no Linear issue; F-D1-06, none
+    note: >-
+      Drawn on the state form and on the nodes reasonRequired and submit, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-follows-a-removal
     need: >-
-      After a removal the focus lands on a place a keyboard or screen-reader user can use (the table's caption, the next row's button or
-      the removed tab), and a line on the page, not only a toast of six seconds, says the talebe is out and where to read the record
-      (F-D1-05).
-    drawn: [afterRemoval, toastRemoved]
-    missing: none
+      After a removal the focus lands on a place a keyboard or screen-reader user can use (the table's caption, the next row's
+      button or the removed tab), and a line on the page, not only a toast of six seconds, says the talebe is out and where to
+      read the record (F-D1-05).
+    missing: no Linear issue; F-D1-05, none
+    note: >-
+      Drawn on the state afterRemoval and on the node toastRemoved, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-failed-call-is-told
     need: >-
       When the removal cannot reach the server at all, the button stops being busy and the person is told to try again (F-D1-20).
-    drawn: [submitting, toastFailed]
-    missing: none
+    missing: no Linear issue; F-D1-20, none
+    note: >-
+      Drawn on the state submitting and on the node toastFailed, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-busy-dialog-says-so
     need: >-
-      While a removal is on its way the dialog is plainly busy: "Vazgeç", the close icon and Escape are off with the rest of the form,
-      or say why they do nothing (RMV-3).
-    drawn: [submitting, cancel, closeIcon, reasonField]
-    missing: none
+      While a removal is on its way the dialog is plainly busy: "Vazgeç", the close icon and Escape are off with the rest of the
+      form, or say why they do nothing (RMV-3).
+    missing: no Linear issue; RMV-3, none
+    note: >-
+      Drawn on the state submitting and on the nodes cancel, closeIcon and reasonField, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: the-length-limit-is-said
     need: >-
-      The reason box says how long a reason may be and how much is left, instead of cutting a long note at 500 characters in silence
-      (RMV-4).
-    drawn: [form, reasonField]
-    missing: none
+      The reason box says how long a reason may be and how much is left, instead of cutting a long note at 500 characters in
+      silence (RMV-4).
+    missing: no Linear issue; RMV-4, none
+    note: >-
+      Drawn on the state form and on the node reasonField, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: staff-see-the-roster-by-decision
     need: >-
-      Whether course staff see the talebe list, with e-mail addresses, by default or only by permission is decided (P-18); today the
-      Kayıtlı and the removed lists show the name and e-mail of every talebe to any holder of a roster code, and the read is audited.
-    drawn: [enrolled, rowEmail, removedEmail]
-    missing: MDRS-203 # a decision, not a feature; no build until it is made
+      Whether course staff see the talebe list, with e-mail addresses, by default or only by permission is decided (P-18); today
+      the Kayıtlı and the removed lists show the name and e-mail of every talebe to any holder of a roster code, and the read is
+      audited.
+    missing: MDRS-203; a decision, not a feature; no build until it is made
+    note: >-
+      Drawn on the state enrolled and on the nodes rowEmail and removedEmail, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).

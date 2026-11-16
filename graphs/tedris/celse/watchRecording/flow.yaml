@@ -143,11 +143,11 @@ states:
       link; a caller who may not, with neither, except the PUBLIC recording of a sample celse (course.service.ts:697-761). A READY Bunny recording
       carries a player link signed for this response; a recording before its release time has no link, except for the course team. Any failure of
       the read is turned into the not-found page (CLS-01).
-    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:76"
+    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:23"
     invoke: { action: getSession }
     on:
       DONE: { guard: "read == 'ok'", target: sorting, source: apps/tedris/features/courses/public-reads.ts:92 }
-      FAIL.notFound: { guard: "read == 'failed'", target: not_found, say: "the layout calls notFound(): a real 404 before the page streams", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:80" }
+      FAIL.notFound: { guard: "read == 'failed'", target: not_found, say: "the layout calls notFound(): a real 404 before the page streams", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27" }
 
   sorting:
     title: See what the person is given
@@ -160,9 +160,9 @@ states:
       - { guard: "recordingPlays and entry == 'celse'", target: celseCard, say: "the celse page offers the recording", source: apps/tedris/features/courses/components/session-action-card.tsx:233 }
       - { guard: "recordingPlays and viewer == 'talebe'", target: playerTalebe, say: "the watch page's address plays the recording", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:34" }
       - { guard: recordingPlays, target: playerTeam, say: "the watch page's address plays the recording", source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:34" }
-      - { guard: "stream == 'sent'", target: stream_opened, starts: { flow: tedris.celse.watchStream }, say: "nothing to play yet, but the stream link is sent: the celse page is the stream card and the watch page plays the stream", source: apps/tedris/features/courses/watch-model.ts:143 }
-      - { guard: "recording == 'held'", target: celseHeld, say: "no link was sent, so the celse page says when the recording opens; the watch page's address redirects to it", source: apps/tedris/features/courses/watch-model.ts:139 }
-      - { target: celsePreparing, say: "no link was sent, so the celse page says the recording is being prepared; the watch page's address redirects to it", source: apps/tedris/features/courses/watch-model.ts:139 }
+      - { guard: "stream == 'sent'", target: stream_opened, starts: { flow: tedris.celse.watchStream }, say: "nothing to play yet, but the stream link is sent: the celse page is the stream card and the watch page plays the stream", source: apps/tedris/features/courses/watch-model.ts:47 }
+      - { guard: "recording == 'held'", target: celseHeld, say: "no link was sent, so the celse page says when the recording opens; the watch page's address redirects to it", source: apps/tedris/features/courses/watch-model.ts:43 }
+      - { target: celsePreparing, say: "no link was sent, so the celse page says the recording is being prepared; the watch page's address redirects to it", source: apps/tedris/features/courses/watch-model.ts:43 }
 
   celseCard:
     title: The celse page offers the recording
@@ -286,7 +286,7 @@ assertions:
   - id: nobody-is-played-a-recording-being-prepared
     never: "(state == 'playerTalebe' or state == 'playerTeam' or state == 'celseCard') and recording == 'preparing'"
     say: "A recording that is still being prepared is offered to no one"
-    source: apps/tedris/features/courses/watch-model.ts:139
+    source: apps/tedris/features/courses/watch-model.ts:43
   - id: only-the-team-plays-a-held-recording
     never: "(state == 'playerTeam' or state == 'celseCard') and recording == 'held' and viewer != 'team'"
     say: "A held recording is played, and offered, only to the course team"
@@ -302,4 +302,4 @@ assertions:
   - id: failed-read-draws-no-page
     never: "(state == 'celseCard' or state == 'celseHeld' or state == 'celsePreparing' or state == 'playerTalebe' or state == 'playerTeam' or state == 'lockedPlayer') and read == 'failed'"
     say: "A failed read draws none of the pages: it is the not-found page"
-    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:80"
+    source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:27"

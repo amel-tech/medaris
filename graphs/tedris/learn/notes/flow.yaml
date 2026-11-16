@@ -73,7 +73,7 @@ context:
       failed: "anything else: a 404 (the note or the celse is gone), a 400, a server that does not answer"
   held:
     values: [none, one, two]
-    initial: none
+    initial: any
     say:
       none: "the list is empty"
       one: "one note is listed (the timed one, in this flow's story)"
@@ -130,7 +130,7 @@ failures:
 # The main story: the panel is read (empty), a timed note and an untimed one are written, the timed one is changed and one note
 # is deleted after the question, and the panel is read again after a reload.
 main:
-  given: { surface: celseLater, typing: ok, answer: saved }
+  given: { surface: celseLater, typing: ok, answer: saved, held: none }
   events: [DONE, TYPE, SUBMIT, DONE, TYPE_MORE, SUBMIT, DONE, EDIT, CHANGE, SAVE, DONE, DELETE, CONFIRM, DONE, RELOAD, DONE]
 
 initial: reading

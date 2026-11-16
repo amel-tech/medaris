@@ -13,7 +13,7 @@ flow: tedris.learn.notes
 
 scenarios:
   typed:
-    given: { surface: watchTyped, typing: ok, answer: saved }
+    given: { surface: watchTyped, typing: ok, answer: saved, held: none }
     as: applicantF
     open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}/izle'
     vars:

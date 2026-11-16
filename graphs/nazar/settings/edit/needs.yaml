@@ -1,153 +1,200 @@
-# What must exist for the başmüderris of a medrese to read and change its settings: the flow's product list (LAYOUT.md section 7). Each
-# need is what the product must do, from the flow's story and the planned work in the inventory (planned.md), not from what the page does
-# today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+schema: delurio-graph/0
+kind: needs
+id: nazar.settings.edit
+status: proposed
+summary: "What must exist for the başmüderris of a medrese to read and change its settings: the flow's product list."
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
 #
 # Missing (no code): no-public-recordings-is-enforced (none), leaving-a-changed-form-warns (none), focus-stays-usable-after-vazgec-and-save (none),
-#   a-refused-courses-read-is-told-as-a-refusal (none), admission-rules (MDRS-138).
+# a-refused-courses-read-is-told-as-a-refusal (none), admission-rules (MDRS-138).
 # Unwalked (code, and neither an e2e nor a replay that passed): refusals-keep-the-draft-and-are-told (unit tests only) and
-#   the-two-working-policies-reach-courses (nothing walks the medrese's own flags; the platform's approval lock has an e2e of its own).
+# the-two-working-policies-reach-courses (nothing walks the medrese's own flags; the platform's approval lock has an e2e of its own).
 # Partly walked: a-wrong-name-is-refused-under-its-field (the e2e walks the blank name; the short name, the long name and the long description
-#   have unit tests only). No replay has passed yet, so none is named under `walked`.
-kind: needs
-flow: nazar.settings.edit
-status: proposed
+# have unit tests only). No replay has passed yet, so none is named under `walked`.
 
 needs:
   - id: read-the-settings
     need: >-
-      The başmüderris reads, on one page, what her medrese holds: its name and description, the three policies (all off until the first
-      save), who saved last and when, the four levels a policy must pass before a permission is used, and the courses the policies apply to
-      (published and draft, never a hidden one).
-    drawn: [clean, nameField, descriptionField, policyClosed, policyApproval, policyRecordings, lastChange, tiersList, tierMedrese, thisPage, courseList, coursePublished, courseDraft, coursesEmpty, coursesLink]
-    built:
-      - action: medaris.api:getMadrasahSettings
-      - action: medaris.api:listMadrasahCourses
-      - route: apps/nazar/features/settings/components/settings-page.tsx:57
-    walked:
-      - e2e: apps/nazar/e2e/settings.e2e.ts
-        check: 'settings#1'
+      The başmüderris reads, on one page, what her medrese holds: its name and description, the three policies (all off until the
+      first save), who saved last and when, the four levels a policy must pass before a permission is used, and the courses the
+      policies apply to (published and draft, never a hidden one).
+    evidence:
+      - state: clean
+      - node: nameField
+      - node: descriptionField
+      - node: policyClosed
+      - node: policyApproval
+      - node: policyRecordings
+      - node: lastChange
+      - node: tiersList
+      - node: tierMedrese
+      - node: thisPage
+      - node: courseList
+      - node: coursePublished
+      - node: courseDraft
+      - node: coursesEmpty
+      - node: coursesLink
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:626
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:664
+      - source: apps/nazar/features/settings/components/settings-page.tsx:57
+      - test: apps/nazar/e2e/settings.e2e.ts
+        name: "nazir/04 — the form shows what is saved, the last change, the four levels and the courses the policies apply to"
       - test: apps/nazar/test/settings-page.spec.tsx
 
   - id: change-and-take-back
     need: >-
-      She changes a value and sees that something differs (the two buttons turn on); one press of Vazgeç puts everything back to the last save,
-      and nothing is sent until she presses Kaydet.
-    drawn: [clean, dirty, reverting, cancel, submit, policyClosed]
-    built:
-      - route: apps/nazar/features/settings/components/settings-form.tsx:61
-      - route: apps/nazar/features/settings/components/settings-form.tsx:96
-    walked:
-      - e2e: apps/nazar/e2e/settings.e2e.ts
-        check: 'settings#2'
+      She changes a value and sees that something differs (the two buttons turn on); one press of Vazgeç puts everything back to
+      the last save, and nothing is sent until she presses Kaydet.
+    evidence:
+      - state: clean
+      - state: dirty
+      - state: reverting
+      - node: cancel
+      - node: submit
+      - node: policyClosed
+      - source: apps/nazar/features/settings/components/settings-form.tsx:61
+      - source: apps/nazar/features/settings/components/settings-form.tsx:96
+      - test: apps/nazar/e2e/settings.e2e.ts
+        name: "nazir/04 — Kaydet waits for a change, and Vazgeç takes it back"
       - test: apps/nazar/test/settings-form.spec.tsx
 
   - id: save-and-see-it-kept
     need: >-
-      She saves the name, the description and the policies in one press; only what differs is sent, the save is audited, a toast says so, the
-      line "Son değişiklik" moves to today and her name, the sidebar carries the new medrese name, and everything is still there after a reload.
-      An emptied description clears it and a policy switched off leaves the others as they were.
-    drawn: [saving, saved, toastSaved, lastChange, scopeNameSaved, tierMedreseSaved, policyClosed, policyApproval]
-    built:
-      - action: medaris.api:updateMadrasahSettings
-      - route: apps/nazar/features/settings/components/settings-form.tsx:77
-      - route: apps/nazar/features/settings/actions.ts:16
-    walked:
-      - e2e: apps/nazar/e2e/settings.e2e.ts
-        check: 'settings#4'
-      - e2e: apps/nazar/e2e/settings.e2e.ts
-        check: 'settings#5'
+      She saves the name, the description and the policies in one press; only what differs is sent, the save is audited, a toast
+      says so, the line "Son değişiklik" moves to today and her name, the sidebar carries the new medrese name, and everything is
+      still there after a reload. An emptied description clears it and a policy switched off leaves the others as they were.
+    evidence:
+      - state: saving
+      - state: saved
+      - node: toastSaved
+      - node: lastChange
+      - node: scopeNameSaved
+      - node: tierMedreseSaved
+      - node: policyClosed
+      - node: policyApproval
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:643
+      - source: apps/nazar/features/settings/components/settings-form.tsx:77
+      - source: apps/nazar/features/settings/actions.ts:16
+      - test: apps/nazar/e2e/settings.e2e.ts
+        name: "nazir/04 — Kaydet writes the name, the description and a policy, moves 'Son değişiklik', and it is still there after a reload (criteria 2, 3)"
+      - test: apps/nazar/e2e/settings.e2e.ts
+        name: "nazir/04 — emptying the description clears it, and switching a policy off keeps the others"
       - test: apps/nazar/test/settings-form.spec.tsx
 
   - id: a-wrong-name-is-refused-under-its-field
     need: >-
-      A name that is blank, one character or over 120 characters, and a description over 1000, are refused under their field before anything is
-      sent, with the focus moved to the field, and typing it right takes the message away; nothing is saved and no audit row is written.
-    drawn: [refused, refusedDescription, nameRequired, nameShort, nameLong, descriptionLong, nameInvalid, descriptionInvalid]
-    built:
-      - route: apps/nazar/features/settings/settings.ts:66
-      - route: apps/nazar/features/settings/components/settings-form.tsx:68
-    walked:
-      - e2e: apps/nazar/e2e/settings.e2e.ts
-        check: 'settings#3'
+      A name that is blank, one character or over 120 characters, and a description over 1000, are refused under their field
+      before anything is sent, with the focus moved to the field, and typing it right takes the message away; nothing is saved and
+      no audit row is written.
+    evidence:
+      - state: refused
+      - state: refusedDescription
+      - node: nameRequired
+      - node: nameShort
+      - node: nameLong
+      - node: descriptionLong
+      - node: nameInvalid
+      - node: descriptionInvalid
+      - source: apps/nazar/features/settings/settings.ts:66
+      - source: apps/nazar/features/settings/components/settings-form.tsx:68
+      - test: apps/nazar/e2e/settings.e2e.ts
+        name: "nazir/04 — a blank name is refused under its field and nothing is saved (criterion 1)"
       - test: apps/nazar/test/settings-form.spec.tsx
       - test: apps/nazar/test/settings.spec.ts
 
   - id: refusals-keep-the-draft-and-are-told
     need: >-
-      When the server refuses the save (the seat was taken meanwhile, the medrese is gone, the body is wrong) a toast that stays says it in the
-      page's own words, and the form keeps what she typed so that she can try again.
-    drawn: [saving, dirty, toastInvalid, toastForbidden, toastFailed]
-    built:
-      - route: apps/nazar/features/settings/settings.ts:107
-      - route: apps/nazar/features/settings/components/settings-form.tsx:86
-    walked:
+      When the server refuses the save (the seat was taken meanwhile, the medrese is gone, the body is wrong) a toast that stays
+      says it in the page's own words, and the form keeps what she typed so that she can try again.
+    evidence:
+      - state: saving
+      - state: dirty
+      - node: toastInvalid
+      - node: toastForbidden
+      - node: toastFailed
+      - source: apps/nazar/features/settings/settings.ts:107
+      - source: apps/nazar/features/settings/components/settings-form.tsx:86
       - test: apps/nazar/test/settings-form.spec.tsx
 
   - id: see-the-public-page
-    need: >-
-      From the settings she can open her medrese's public page, in a new tab, and from the courses card go to Dersler.
-    drawn: [viewPage, coursesLink, courses_opened]
-    built:
-      - route: apps/nazar/features/settings/components/settings-page.tsx:83
-      - route: apps/nazar/features/settings/components/settings-page.tsx:190
-    walked:
-      - e2e: apps/nazar/e2e/settings.e2e.ts
-        check: 'settings#1'
+    need: From the settings she can open her medrese's public page, in a new tab, and from the courses card go to Dersler.
+    evidence:
+      - node: viewPage
+      - node: coursesLink
+      - state: courses_opened
+      - source: apps/nazar/features/settings/components/settings-page.tsx:83
+      - source: apps/nazar/features/settings/components/settings-page.tsx:190
+      - test: apps/nazar/e2e/settings.e2e.ts
+        name: "nazir/04 — the form shows what is saved, the last change, the four levels and the courses the policies apply to"
 
   - id: a-nazir-with-no-grant-is-told
     need: >-
-      A medrese nazır the API does not let read the settings meets a notice where the form would be and no Kaydet; the form is the başmüderris's
-      (and of a nazır given madrasah.settings_edit).
-    drawn: [forbidden, forbiddenTitle, forbiddenAlert]
-    built:
-      - action: medaris.api:getMadrasahSettings
-      - route: apps/nazar/features/settings/components/settings-page.tsx:99
-    walked:
-      - e2e: apps/nazar/e2e/settings.e2e.ts
-        check: 'settings#6'
+      A medrese nazır the API does not let read the settings meets a notice where the form would be and no Kaydet; the form is the
+      başmüderris's (and of a nazır given madrasah.settings_edit).
+    evidence:
+      - state: forbidden
+      - node: forbiddenTitle
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:626
+      - source: apps/nazar/features/settings/components/settings-page.tsx:99
+      - test: apps/nazar/e2e/settings.e2e.ts
+        name: "nazir/04 — a medrese nazır is refused: a notice, no form (criterion 4)"
       - test: apps/nazar/test/settings-page.spec.tsx
 
   - id: the-two-working-policies-reach-courses
     need: >-
-      "Kayıt her zaman onaylı" makes every new enrolment in the medrese's courses wait for approval from the moment it is saved, and "Kapalı ders
-      zorunlu" makes a course the medrese opens closed and refuses a save that opens it again.
-    drawn: [policyClosed, policyApproval, closedHelp, approvalHelp]
-    built:
-      - action: medaris.api:updateMadrasahSettings
-      - route: apps/tedrisat/src/course/course.service.ts:995
-    walked: []
+      "Kayıt her zaman onaylı" makes every new enrolment in the medrese's courses wait for approval from the moment it is saved,
+      and "Kapalı ders zorunlu" makes a course the medrese opens closed and refuses a save that opens it again.
+    evidence:
+      - node: policyClosed
+      - node: policyApproval
+      - node: closedHelp
+      - node: approvalHelp
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:643
+      - source: apps/tedrisat/src/course/course.service.ts:995
 
   - id: no-public-recordings-is-enforced
     need: >-
-      "Ders kayıtları herkese açılamaz" does what its help line says: while it is on, no recording of the medrese's courses can be made public or
-      uploaded to YouTube. Today it is saved and audited and nothing reads it (policy-no-public-recordings-inert; decision D1).
-    drawn: [policyRecordings, recordingsHelp]
-    missing: none # no issue found for the medrese's own flag; the köşk's and the platform's flags are read (course.service.ts:857)
+      "Ders kayıtları herkese açılamaz" does what its help line says: while it is on, no recording of the medrese's courses can be
+      made public or uploaded to YouTube. Today it is saved and audited and nothing reads it (policy-no-public-recordings-inert;
+      decision D1).
+    missing: no issue found for the medrese's own flag; the köşk's and the platform's flags are read (course.service.ts:857)
+    note: >-
+      Drawn on the nodes policyRecordings and recordingsHelp, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: leaving-a-changed-form-warns
     need: >-
-      A form that differs from the last save is not lost to a menu entry, a link or a reload without a warning (SET-2; decision D2).
-    drawn: [dirty, refused, refusedDescription]
-    missing: none
+      A form that differs from the last save is not lost to a menu entry, a link or a reload without a warning (SET-2; decision
+      D2).
+    missing: no Linear issue; findings SET-2
+    note: >-
+      Drawn on the states dirty, refused and refusedDescription, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: focus-stays-usable-after-vazgec-and-save
     need: >-
-      After Vazgeç or a successful Kaydet the focus is somewhere a keyboard or screen-reader user can go on from (the name field, or the buttons
-      stay focusable), and "Kaydet" says why it is off (F-B-11).
-    drawn: [cancel, submit, clean, saved]
-    missing: none
+      After Vazgeç or a successful Kaydet the focus is somewhere a keyboard or screen-reader user can go on from (the name field,
+      or the buttons stay focusable), and "Kaydet" says why it is off (F-B-11).
+    missing: no Linear issue; findings F-B-11
+    note: >-
+      Drawn on the states clean and saved and on the nodes cancel and submit, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
 
   - id: a-refused-courses-read-is-told-as-a-refusal
     need: >-
-      A person who may change the settings but not read the course list is told that she may not, not that the list "could not be read, refresh"
-      (SET-1).
-    drawn: [coursesFailed]
-    missing: none
+      A person who may change the settings but not read the course list is told that she may not, not that the list "could not be
+      read, refresh" (SET-1).
+    missing: no Linear issue; findings SET-1
+    note: >-
+      Drawn on the node coursesFailed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
 
   - id: admission-rules
     need: >-
-      A medrese sets rules over its own courses: prerequisites, and enrolment without approval for a talebe who holds an icazet (P-05, MDRS-138,
-      with MDRS-149 for the icazet record). The permission madrasah.admission_rules exists and gates nothing; there is no screen and the issue says
-      "not now".
-    drawn: []
+      A medrese sets rules over its own courses: prerequisites, and enrolment without approval for a talebe who holds an icazet
+      (P-05, MDRS-138, with MDRS-149 for the icazet record). The permission madrasah.admission_rules exists and gates nothing;
+      there is no screen and the issue says "not now".
     missing: MDRS-138
