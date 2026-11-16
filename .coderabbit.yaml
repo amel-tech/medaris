@@ -128,7 +128,7 @@ reviews:
     # ── Shared framing — every file ─────────────────────────────────────────
     - path: "**"
       instructions: |
-        THE STACK: one pnpm workspace on Nx 23 with Biome, 17 packages listed
+        THE STACK: one pnpm workspace on Nx 24 with Biome, 17 packages listed
         explicitly in pnpm-workspace.yaml (no globs, ADR-001 §D11). apps/tedrisat
         and apps/teskilat are NestJS 11 + Drizzle/PostgreSQL services authenticated
         by Keycloak JWT; apps/tedris, apps/nizam, apps/nazar and apps/landing are
