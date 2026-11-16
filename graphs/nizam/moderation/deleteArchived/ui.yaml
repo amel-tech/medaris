@@ -1,0 +1,133 @@
+# The screens of nizam.moderation.deleteArchived: Arşiv for the başnazım (/arsiv, features/archive/components/archive-view.tsx in its
+# "platform" mode) with its two selects and its table, the alertdialog "Dersi kalıcı olarak sil" over it with the count of what goes,
+# and the toasts that answer a delete. Read from apps/nizam/app/arsiv/page.tsx, apps/nizam/features/archive/{components/archive-view.tsx,
+# present.ts} and libs/ui/src/mds/{alert-dialog,button,select,table,alert}.tsx on 16 Nov 2026. Nothing was seen in a browser by its
+# writer: every behaviour is "from the code" unless a rule says otherwise.
+#
+# What this file leaves to its neighbours (flow.yaml `scope.outOfView` names them): "Geri al" and the sentence of a higher kademe
+# (nizam.moderation.restoreArchived, which draws the same page), the köşk's own archive, the search box typed in, "Daha fazla göster",
+# the table's column headers, a refused or failed first read, and a row of another kind than a course or a week.
+#
+# Words: every key that has no `composed.` prefix is copied letter for letter from libs/i18n/src/locales/tr/nizam.json (the file the app
+# reads as `nizam`; the key is the path under its root), by <scratchpad>/mkcat/mkcat-deleteArchived.py, except `Changes.note`, the one
+# authored message of this catalog: the app says in two places what a delete does (the dialog's body: "ve ona bağlı her şey kalıcı olarak
+# silinecek. Bu işlem geri alınamaz." and its audit sentence) but in none that names what goes and says it in one breath, so the note is
+# made of the app's own words (dialog.body, dialog.weeks, dialog.sessions, dialog.students, dialog.audit). The `composed.*` keys are text
+# the app builds in code from data and messages; each has its code line here, and a placeholder the binding gives no sample for matches
+# any text:
+#   composed.ArchivePage.rowTitle       "{title}"    the item's title, <bdi class="font-semibold"> in the row header (archive-view.tsx:276)
+#   composed.ArchivePage.rowLine        "{line}"     the grey line under it: the kind, then what it holds, joined with " · ": "Ders · 2 hafta · 3 talebe"
+#                                                    (archive-view.tsx:271-278, present.ts contextParts)
+#   composed.ArchivePage.rowKosk        "{kosk}"     the Kapsam cell: the köşk's name (and the medrese's under it, which a köşk's course has none of)
+#                                                    (archive-view.tsx:298)
+#   composed.ArchivePage.rowHider       "{who}"      the Gizleyen cell: the hider's name (archive-view.tsx:326); the başnazım holds no role in any scope,
+#                                                    so there is no second line under it
+#   composed.ArchivePage.scopeOption    "{kosk}"     the scope select's text once a köşk is chosen: the option's label is the köşk's own name (archive-view.tsx:259-262)
+#   composed.ArchivePage.dialogEyebrow  "{kosk}"     the köşk's name above the dialog's title (archive-view.tsx:512)
+#   composed.ArchivePage.deleteError    "{message}"  the failed delete's toast text: whatever the API answered, in the API's language (archive-view.tsx:245)
+#   composed.Button.loading             "Yükleniyor" the busy button's hidden status, a default of the kit (libs/ui/src/mds/button.tsx:62)
+# The dialog's body, "<b>{title}</b> ve ona bağlı her şey kalıcı olarak silinecek. ...", is a rich-text message (tm.rich with <b>); the
+# graph draws it as one text node and the binding finds it by its ending.
+#
+# The dialog is modal, so the page behind it is inert: the page nodes are not listed in the four dialog states. The toasts are Sonner's
+# (libs/ui/src/components/sonner.tsx): a title and a body each, no role of their own, so they are `status` nodes that the binding finds by
+# their text.
+schema: delurio-graph/0
+kind: ui
+id: nizam.moderation.deleteArchived
+flow: nizam.moderation.deleteArchived
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Maksûd okumaları # the course's title; the walk's own is "Deneme dersi delItem" (the binding matches that)
+  count: "2"
+  value: tümü
+  kosk: Kubbealtı Köşkü
+  who: Selma Başnazımı # an invented name; the walk's hider is the seeded başnazım
+  time: "09:05"
+  total: "1"
+  shown: "1"
+  name: Maksûd okumaları, 2 hafta · 3 talebe # what "Kalıcı olarak sil: {name}" names: the title, then the line's parts
+  line: Ders · 2 hafta · 3 talebe
+  message: Internal Server Error # the API's message under "Silinemedi" when a purge fails; English, not the app's
+
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------------------------
+  archivePage: { type: page, component: Page, role: main, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/app/arsiv/page.tsx:30 } # the shell's one <main>; it has no name and the page sets no focus (focus-not-set)
+  archiveTitle: { type: text, component: Heading, role: heading, text: { key: ArchivePage.title }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:407 } # h1
+  archiveIntro: { type: text, component: Text, text: { key: ArchivePage.platformIntro }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:408 } # the one place the page says that a permanent delete cannot be undone, before any row is pressed
+  archiveRegion: { type: page, component: Page, role: region, name: { labelledBy: regionHeading }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:413 } # <section aria-labelledby="archive-heading">
+  regionHeading: { type: text, component: Heading, role: heading, text: { key: ArchivePage.heading }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:417 } # h2, visually hidden
+
+  # --- the search box and the two selects ---------------------------------------------------------------------------------------------------
+  searchField: { type: field, component: TextField, role: searchbox, text: { key: ArchivePage.searchLabel }, value: { literal: "" }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:423 } # type=search, named by an aria-label; the placeholder says "Gizlenen öğenin adıyla ara"; typing is not drawn
+  scopeField: { type: field, component: TextField, role: combobox, text: { key: ArchivePage.scopeFilterLabel }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:434 } # a Base UI Select: a combobox named by its aria-label; its options are the köşks and then the medreses that hold something hidden, by name only
+  scopeAll: { type: text, component: Text, text: { key: ArchivePage.scopeFilter, params: { value: all } }, in: [listed, filtering, listedAfter, listEmpty], when: "scope == 'all'", source: apps/nizam/features/archive/components/archive-view.tsx:258 } # the select's shown value
+  scopeChosen: { type: text, component: Text, text: { key: composed.ArchivePage.scopeOption, params: { kosk: entry.koskName } }, in: [listed, filtering, listedAfter, listEmpty], when: "scope == 'chosen'", source: apps/nizam/features/archive/components/archive-view.tsx:259 } # the select's shown value: the köşk's name
+  typeField: { type: field, component: TextField, role: combobox, text: { key: ArchivePage.typeFilterLabel }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:441 } # the seven kinds of the platform list and "Tür: tümü"
+  typeAll: { type: text, component: Text, text: { key: ArchivePage.typeFilter, params: { value: all } }, in: [listed, filtering, listedAfter, listEmpty], when: "type == 'all'", source: apps/nizam/features/archive/components/archive-view.tsx:251 }
+  typeCourse: { type: text, component: Text, text: { key: ArchivePage.types.course }, in: [listed, filtering, listedAfter, listEmpty], when: "type == 'chosen' and item == 'course'", source: apps/nizam/features/archive/components/archive-view.tsx:254 }
+  typeWeek: { type: text, component: Text, text: { key: ArchivePage.types.week }, in: [listed, filtering, listedAfter, listEmpty], when: "type == 'chosen' and item == 'blockedWeek'", source: apps/nizam/features/archive/components/archive-view.tsx:254 }
+  count: { type: status, component: Status, text: { key: ArchivePage.count, params: { count: archive.total } }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:447 } # <p aria-live="polite">: the one thing a screen reader is told when a row leaves (F-W5-5)
+
+  # --- the table: the row that is deleted --------------------------------------------------------------------------------------------------------
+  table: { type: list, component: List, role: table, name: { key: ArchivePage.platformCaption }, in: [listed, filtering, listedAfter, listEmpty], source: apps/nizam/features/archive/components/archive-view.tsx:475 } # the caption is visually hidden; the table has "stack" roles
+  rowTitle: { type: text, component: Text, text: { key: composed.ArchivePage.rowTitle, params: { title: entry.title } }, in: [listed], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:276 }
+  rowLine: { type: text, component: Text, text: { key: composed.ArchivePage.rowLine, params: { line: entry.line } }, in: [listed], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:278 } # "Ders · 2 hafta · 3 talebe": the kind first, because the platform list holds every kind
+  rowKosk: { type: text, component: Text, text: { key: composed.ArchivePage.rowKosk, params: { kosk: entry.koskName } }, in: [listed], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:298 }
+  rowHider: { type: text, component: Text, text: { key: composed.ArchivePage.rowHider, params: { who: entry.archivedBy } }, in: [listed], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:326 }
+  rowWhen: { type: text, component: Text, text: { key: ArchivePage.today, params: { time: entry.hiddenTime } }, in: [listed], repeat: archive.items, source: apps/nizam/features/archive/components/archive-view.tsx:336 } # "Bugün 09:05" for what was hidden today; yesterday and older rows read "Dün ..." and "29 Eyl 14:05"
+  deleteButton: { type: action, component: Button, role: button, intent: secondary, name: { key: ArchivePage.permanentDeleteLabel, params: { name: entry.label } }, text: { key: ArchivePage.permanentDelete }, in: [listed], repeat: archive.items, emits: ASK_DELETE, source: apps/nizam/features/archive/components/archive-view.tsx:367 } # a link-style small button on every row, the title and the line in its name; it shows no busy state while the count is asked for
+  showing: { type: text, component: Text, text: { key: ArchivePage.showing, params: { total: archive.total, shown: archive.shown } }, in: [listed, filtering, listedAfter], source: apps/nizam/features/archive/components/archive-view.tsx:487 } # while the list has a row
+  emptyFilteredLine: { type: text, component: Text, text: { key: ArchivePage.emptyFiltered }, in: [listEmpty], when: filtered, source: apps/nizam/features/archive/components/archive-view.tsx:394 } # the table's one cell
+  emptyLine: { type: text, component: Text, text: { key: ArchivePage.empty }, in: [listEmpty], when: "scope == 'all' and type == 'all'", source: apps/nizam/features/archive/components/archive-view.tsx:395 }
+
+  # --- the alertdialog ------------------------------------------------------------------------------------------------------------------------
+  deleteDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: dialogTitle }, in: [readingImpact, confirming, confirmingBlind, deleting], initialFocus: dialogCancel, source: libs/ui/src/mds/alert-dialog.tsx:62 } # opens at once, before the count is known
+  dialogEyebrow: { type: text, component: Text, text: { key: composed.ArchivePage.dialogEyebrow, params: { kosk: entry.koskName } }, in: [readingImpact, confirming, confirmingBlind, deleting], source: libs/ui/src/mds/alert-dialog.tsx:70 } # the köşk's name; a row with no köşk has none
+  dialogTitle: { type: text, component: Heading, role: heading, text: { oneOf: [ArchivePage.dialog.titles.course, ArchivePage.dialog.titles.week] }, in: [readingImpact, confirming, confirmingBlind, deleting], source: libs/ui/src/mds/alert-dialog.tsx:74 } # h2, named for the kind of the row; the binding finds it by a pattern of the two
+  dialogClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: ArchivePage.dialog.close }, in: [readingImpact, confirming, confirmingBlind, deleting], emits: CLOSE, source: libs/ui/src/mds/alert-dialog.tsx:82 } # an icon button named only by aria-label; it stays live and does nothing while the delete runs (PURGE-4)
+  dialogBody: { type: text, component: Text, text: { key: ArchivePage.dialog.body, params: { title: entry.title } }, in: [readingImpact, confirming, confirmingBlind, deleting], source: apps/nizam/features/archive/components/archive-view.tsx:524 } # the title is in <strong>
+  loadingLine: { type: text, component: Text, text: { key: ArchivePage.dialog.loadingImpact }, in: [readingImpact], source: apps/nizam/features/archive/components/archive-view.tsx:531 } # a caption, not a status: nothing announces it
+  impactFailed: { type: alert, component: Alert, role: status, text: { key: ArchivePage.dialog.impactFailed }, in: [confirmingBlind, deleting], when: "counts == 'unknown'", source: apps/nizam/features/archive/components/archive-view.tsx:533 } # a warning Alert is a status, not an alert; it does not say that the item may be gone
+  impactList: { type: list, component: List, role: list, in: [confirming, deleting], when: "counts == 'read'", source: apps/nizam/features/archive/components/archive-view.tsx:535 } # <ul data-testid="impact-lines"> of the kinds above zero, in this order: weeks, talebe records, celses; for a week: the week, its celses
+  impactWeeks: { type: list, component: ListItem, role: listitem, text: { key: ArchivePage.dialog.weeks, params: { count: impact.weeks } }, in: [confirming, deleting], when: "counts == 'read' and item == 'course'", source: apps/nizam/features/archive/present.ts:188 } # "Ders sayfası, tanıtımı ve N haftalık müfredatı"
+  impactWeeksOnly: { type: list, component: ListItem, role: listitem, text: { key: ArchivePage.dialog.weeksOnly, params: { count: impact.weeks } }, in: [confirming, deleting], when: "counts == 'read' and item == 'blockedWeek'", source: apps/nizam/features/archive/present.ts:188 } # "N hafta"
+  impactStudents: { type: list, component: ListItem, role: listitem, text: { key: ArchivePage.dialog.students, params: { count: impact.students } }, in: [confirming, deleting], when: "counts == 'read' and item == 'course'", source: apps/nizam/features/archive/present.ts:189 } # every enrolment of the course, whatever its status; none for a week
+  impactSessions: { type: list, component: ListItem, role: listitem, text: { key: ArchivePage.dialog.sessions, params: { count: impact.sessions } }, in: [confirming, deleting], when: "counts == 'read'", source: apps/nizam/features/archive/present.ts:190 } # the celses of the course, or of the week
+  auditNote: { type: text, component: Text, text: { key: ArchivePage.dialog.audit }, in: [readingImpact, confirming, confirmingBlind, deleting], source: apps/nizam/features/archive/components/archive-view.tsx:543 }
+  dialogCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: ArchivePage.dialog.cancel }, in: [readingImpact, confirming, confirmingBlind, deleting], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:95 } # the focus starts here; it stays live and does nothing while the delete runs (PURGE-4)
+  dialogConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: ArchivePage.dialog.confirm }, in: [readingImpact, confirming, confirmingBlind, deleting], disabledIn: [readingImpact, deleting], emits: CONFIRM, source: libs/ui/src/mds/alert-dialog.tsx:101 } # destructive; natively disabled while the count is read, busy (aria-disabled) while the delete runs
+  confirmBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [deleting], source: libs/ui/src/mds/button.tsx:113 } # the visually hidden <output> of the busy button, "Yükleniyor" from the kit's default (F-UI-W1-3)
+
+  # --- the toasts of the answers --------------------------------------------------------------------------------------------------------------------
+  toastDeletedTitle: { type: status, component: Status, text: { key: ArchivePage.deleted }, in: [listedAfter, listEmpty], when: "toast == 'deleted'", source: apps/nizam/features/archive/components/archive-view.tsx:232 } # a Sonner toast of 6 seconds
+  toastDeletedBody: { type: status, component: Status, text: { key: ArchivePage.deletedBody, params: { title: entry.title } }, in: [listedAfter, listEmpty], when: "toast == 'deleted'", source: apps/nizam/features/archive/components/archive-view.tsx:233 }
+  toastGoneTitle: { type: status, component: Status, text: { key: ArchivePage.deleteFailed }, in: [listedAfter, listEmpty], when: "toast == 'alreadyGone'", source: apps/nizam/features/archive/components/archive-view.tsx:236 } # an error toast that stays until closed: "already gone" is told as a failure (PURGE-3)
+  toastGoneBody: { type: status, component: Status, text: { key: ArchivePage.deleteGone }, in: [listedAfter, listEmpty], when: "toast == 'alreadyGone'", source: apps/nizam/features/archive/components/archive-view.tsx:237 }
+  toastFailedTitle: { type: status, component: Status, text: { key: ArchivePage.deleteFailed }, in: [confirming, listed], when: "toast == 'failed'", source: apps/nizam/features/archive/components/archive-view.tsx:244 } # over the open dialog, and after "Vazgeç" still on the page; it stays until closed (F-W5-3)
+  toastFailedBody: { type: status, component: Status, text: { key: composed.ArchivePage.deleteError, params: { message: failure.message } }, in: [confirming, listed], when: "toast == 'failed'", source: apps/nizam/features/archive/components/archive-view.tsx:245 }
+
+edges:
+  - { labelledBy: [archiveRegion, regionHeading] }
+  - { labelledBy: [deleteDialog, dialogTitle] }
+  - { triggers: [deleteButton, readingImpact] }
+  - { triggers: [dialogConfirm, deleting] }
+  - { returnsFocus: [deleteDialog, deleteButton] } # Vazgeç, Esc or the close icon: Base UI hands the focus back to the element that had it when the dialog opened, the row's button, which is still there; not verified in a browser
+
+rules:
+  - { id: focus-not-set, rule: "The page sets no initial focus: nothing in archive-view.tsx or page.tsx moves it on load, so a keyboard or screen-reader user starts from the top of the document and tabs through the whole sidebar first (F-UI-P0-1). Not drawn as an initialFocus, because the app gives none." }
+  - { id: F-W5-5, rule: "archive-view.tsx:228-241: after a delete (and after a restore) the pressed 'Kalıcı olarak sil' leaves with its row, the dialog closes and nothing moves the focus, so it falls to the page (not verified). What a screen reader hears is the live count 'N gizli öğe' (aria-live polite) and a toast of six seconds in Sonner's English-named region. Fix: move the focus to the table caption, the next row's button or the count after a delete, and keep the count live." }
+  - { id: F-W5-3, rule: "archive-view.tsx:244-247: a delete the server refuses leaves the dialog open and is told by a toast alone: 'Silinemedi' that stays until it is closed, whose text is the server's own message (result.error, English, in no catalog), in another portal than the dialog; nothing inside the dialog says it failed and no node is marked. While a modal dialog is open Base UI makes the rest of the document inert, so the toast may be unreachable by keyboard and hidden from assistive technology (not verified). Fix: an Alert tone=error inside the dialog body with a message from the catalog, keyed by the code." }
+  - { id: MDRS-244, rule: "archive.repository.ts:747-808: purging a hidden WEEK or SESSION deletes its notes, questions, resources, hand-ins, homework and lessons but not its recording (a course's purge does: course-purge.ts:89-102), so a week or session with a recording is refused by the foreign key and the call answers a server error. The dialog counts it as deletable (its `recordings` count is a constant 0), the person presses 'Kalıcı olarak sil', and gets the toast of F-W5-3. Drawn as `deleting` FAIL.other for item blockedWeek. Fix: delete the recording row in the week's and the session's purge, and count it." }
+  - { id: PURGE-1, rule: "new: archive.repository.ts:629-681 and present.ts:169-195: the dialog says '<title> ve ona bağlı her şey kalıcı olarak silinecek' and then lists weeks, talebe records and celses; the API's `recordings` is a constant 0 (:678), so the line 'N ders kaydı' of dialog.recordings can never show, and the notes, questions, homework with the talebe's files, exams, course resources and role assignments that purgeCourses deletes (course-purge.ts) are not counted at all. A course with recordings, hand-ins and files reads like one with only its syllabus. Fix: count each kind the purge deletes, or say which kinds the count leaves out." }
+  - { id: PURGE-2, rule: "new: archive-view.tsx:228-230, 490-497: after a delete the page removes the row from its own list and counts the total down, and reads nothing again. 'Daha fazla göster' then asks for page (page + 1) of a list that is one row shorter, so the row that moved up into the gap is never loaded; and a row someone else hid meanwhile is not in the list until the page is reloaded. The same applies after 'Geri al'. Not drawn (a list of more than ten rows). Fix: read the list again after a delete, or ask for the next page by the number of rows already held." }
+  - { id: PURGE-3, rule: "new: archive-view.tsx:225-241: an item that is gone already (ARCHIVE_ITEM_NOT_FOUND: deleted by someone else, or brought back) is told with the error toast 'Silinemedi' / 'Bu öğe zaten silinmiş ya da artık gizli değil.' that stays until it is closed, while the dialog closes and the row leaves the list as for a success. The person asked for the item to be gone and it is; and 'artık gizli değil' (it was brought back) is the opposite and is not told apart from it. Fix: a neutral notice that closes by itself, and a different sentence for an item that is shown again." }
+  - { id: PURGE-4, rule: "new: archive-view.tsx:509-511: 'Vazgeç', the close icon and Esc stay enabled while the delete runs and do nothing (`if (!open && !deleting) closeDialog()`); only 'Kalıcı olarak sil' is busy. The same as F-W3-hide-1 in the köşk's hide dialog and HIDE-3 in Nazar's. Fix: disable them while the call runs, or let them wait for it." }
+  - { id: PURGE-5, rule: "new: archive-view.tsx:200-209: askDelete takes no ticket (fetchPage does, :123): if the dialog of one row is closed before its count arrives and another row's dialog is open, the late answer replaces `impact` and the second dialog lists the first item's counts under the second item's name, with 'Kalıcı olarak sil' on. A window of a few hundred milliseconds; not reproduced. Fix: compare the target before setting the count." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Kalıcı olarak sil' in 'Kalıcı olarak sil: {title}, {context}' (WCAG 2.5.3). Holds." }
+  - { id: confirm-before-delete, rule: "The delete asks first, in an alertdialog whose focus starts on 'Vazgeç', that says it cannot be undone, counts what goes and says it is written to the audit log under the person's name; the confirm is natively off until the count is read. Holds." }
+  - { id: F-UI-W1-3, rule: "libs/ui/src/mds/button.tsx:62: the busy confirm's hidden status says 'Yükleniyor' from a hard-coded default (the dialog passes no loadingLabel), and the dialog's close icon says 'Kapat' from the catalog but a toast's close button says it from the kit." }
+  - { id: scope-list-is-flat, rule: "archive-view.tsx:257-267: the scope select lists the köşks and then the medreses of the archive in one list, each by its name alone and with no group or kind, so a köşk and a medrese that share a word in their names cannot be told apart. Product wording, not a defect of the walk." }

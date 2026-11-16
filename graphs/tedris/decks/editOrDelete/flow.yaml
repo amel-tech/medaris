@@ -1,0 +1,345 @@
+# A talebe changes the name and description of their own deck, or deletes it: the owner's page of a deck (/decks/<id>) with the
+# "Desteyi düzenle" dialog (opened by /decks/<id>/edit) and the "Desteyi sil?" confirmation over it. Written from the code of PR #394's branch
+# on 15 Nov 2026 (apps/tedris/features/flashcards: deck-owner-overview.tsx, deck-edit-dialog.tsx, deck-detail-page.tsx, actions/index.ts,
+# attempt.ts, deck-model.ts; the route app/decks/(medaris)/[id]/edit/page.tsx; the API's PATCH and DELETE /flashcard/decks/:id). No replay has
+# been run on this flow: everything below is read from the code unless a state says it was seen.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - "Düzenle" is a plain link, so the dialog opens by a full page load of /decks/<id>/edit; every way out of it is a client navigation back to
+#     /decks/<id>, so there is no opener to give the focus back to (DCK-18). The route has no title of its own (DCK-28).
+#   - A refused name is said under the field and nothing moves the focus; Base UI's Field.Error is no live region (DCK-06), and the control does not
+#     carry `required` (DCK-07).
+#   - "Vazgeç", "Kapat" and Esc stay live while the call is out, in both dialogs, and do not cancel it: a delete the person called off goes on
+#     (DCK-30), and a save they called off goes on with the dialog gone, so its failure toast says "yazdıkların korundu" over a form that is no
+#     longer there (EDITDEL-1).
+#   - A successful delete says nothing: no toast, the page just becomes /decks (EDITDEL-2), where a save has "Deste güncellendi" and a card's
+#     delete has "Kart silindi".
+#   - The API takes a name of five spaces (EDITDEL-3, derived by reading; the page trims, so only an API client gets there), answers a PATCH with
+#     nothing to change with a 500 (accepted-write-500, which this page can never send: it always sends both fields), and does not set the deck's
+#     `updatedAt` on an edit, though a köşk's deck list is ordered by it (deck-edit-updated-at; the domain invariant deck-edit-bumps-updated-at
+#     holds: false).
+#   - After a delete, the action revalidates /decks/[id], the page the person is on, whose deck is gone: the page may draw "Sayfa bulunamadı" for a
+#     moment before the push to /decks (EDITDEL-4, not verified).
+# E2E carried: decks#14 (edit, pending request stays) and decks#16 (delete). Their database assertions are `effects` of the binding.
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.editOrDelete
+status: captured
+domain: medaris.api
+ui: tedris.decks.editOrDelete
+title: Edit or delete my deck
+summary: >-
+  A talebe who wrote a deck opens its page. "Düzenle" opens a dialog over it, filled with the deck's name and description (and, while a request for
+  publication waits, a note that an edit does not disturb it). A name that is empty or has fewer than five characters is refused under its field
+  and nothing is sent; a form that changed nothing closes without a word; a changed one is saved, the toast says "Deste güncellendi", and the page
+  shows the new name and description with the publication status as it was. A refused save keeps the dialog and the typed words and raises an error
+  toast that stays. "Desteyi sil" asks first, in an alertdialog whose focus starts on "Vazgeç"; "Vazgeç" keeps the deck, and the confirmation deletes the
+  deck and its cards for good and takes the person back to Desteler, with no word that it is done. A refused delete closes the dialog and raises an error toast.
+
+scope:
+  shows: >-
+    the owner's page of one deck with the edit dialog (a name, a description, the publication note) and the delete confirmation over it, the two
+    server calls, their toasts and the ways out
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the cards, the study button and the import and export of the deck: tedris.decks.manageCards, tedris.decks.importExport, tedris.decks.study; the owner's header, tabs, progress, sample cards and the aside's publication buttons are not drawn here (tedris.decks.publish owns the buttons)"
+    - "a deck whose request was PUBLISHED or REJECTED: its badge, its text and its button belong to tedris.decks.publish; an edit of a PUBLISHED deck is saved and stays public, with no new review and no note in the dialog (decision D1)"
+    - "the page of someone who is not the author, a missing or private deck, and the unavailable screen: tedris.decks.accessRefusals; the reader's view: tedris.decks.readAndCopy"
+    - "deleting after a rename in the same visit: the dialog is the same, with the new name in its text (the replay would need a second heading and a second sentence); and a second edit after a save"
+    - "a deck with no cards: the owner page shows an empty state and the delete text says '0 kart'"
+    - "the typed address /decks/<id>/edit as a way in: the page loads anew, as when 'Düzenle' is pressed, so every state below follows from it; tedris.nav enters the dialog's page by the author's link (deck->deckEdit)"
+    - "the sidebar, the top bar and the footer of the app: tedris.shell.frame; the toast region's chrome"
+    - "the list /decks after the delete and the renamed deck's row in it (decks#14 step 14): tedris.decks.browse"
+    - "a title of more than 100 characters: the field's maxLength stops it, so the 'tooLong' answer of titleProblem is never shown"
+
+decisions:
+  D1:
+    question: >-
+      Should an edit of a PUBLISHED deck be reviewed again, or the dialog say so? The API's PATCH changes what every reader sees at once and
+      leaves the deck PUBLISHED and public; the dialog warns only for a PENDING deck ("Değişiklik isteği bozmaz"), and says nothing for a published one.
+    recommend: >-
+      Decide with the Medaris başnazım: either a note like the pending one ("Bu deste herkese açık; değişiklik hemen herkese görünür"), or take the
+      deck back to PENDING on an edit. The code does neither today (flashcard-deck.service.ts:338-345).
+    affects: [saving, saved]
+  D2:
+    question: >-
+      Should the delete confirmation say what the delete takes beyond the cards? A PUBLISHED deck leaves the collections of everyone who added it, a
+      PENDING one drops out of the reviewers' list, and the cards' progress rows are left behind (the domain's progress-orphans). The text says only
+      "“{title}” destesi ve içindeki {count} kart silinecek. Bu işlem geri alınamaz."
+    recommend: >-
+      Add the reader count for a published deck, or make the delete of a PUBLISHED deck go through "Özele çek" first, as a course deck's delete does
+      (COURSE_DECK_NOT_DRAFT).
+    affects: [confirmDelete]
+  D3:
+    question: >-
+      Should closing a dialog while its call is out cancel the call, or be ignored until the call answers? Today it does neither (DCK-30, EDITDEL-1).
+    recommend: Ignore "Vazgeç", "Kapat" and Esc while the button is busy, as the kit's busy buttons already ignore their own click.
+    affects: [saving, deleting, savingClosed, deletingClosed]
+
+context:
+  publication:
+    values: [private, pending]
+    initial: any
+    say:
+      private: "the deck is private and no request for publication waits (badge 'Özel')"
+      pending: "the author asked for the deck to be published and the request waits (badge 'Yayın isteği bekliyor')"
+  fields:
+    values: [changed, unchanged, noName, shortName]
+    initial: any
+    say:
+      changed: "a new name and a new description are typed"
+      unchanged: "nothing is changed before 'Kaydet' is pressed"
+      noName: "the name is cleared (or only spaces are left)"
+      shortName: "the name has fewer than five characters once trimmed"
+  answer:
+    values: [ok, refused]
+    initial: any
+    say:
+      ok: "tedrisat does what is asked (the save, or the delete)"
+      refused: "tedrisat refuses or fails: the deck is gone meanwhile, the author lost the right, or the call fails"
+  said:
+    values: [none, noName, shortName]
+    initial: none
+    say:
+      none: "no error is shown under the name"
+      noName: "'Bir deste adı yaz.' is shown under the name"
+      shortName: "'Deste adı en az 5 karakter olmalı.' is shown under the name"
+  last:
+    values: [nothing, saveFailed, deleteFailed]
+    initial: nothing
+    say:
+      nothing: "no error toast stands from a refused call"
+      saveFailed: "the error toast 'Kaydedilemedi' stands: the save was refused"
+      deleteFailed: "the error toast 'Silinemedi' stands: the delete was refused"
+  asked:
+    values: [true, false]
+    initial: false
+    say: { "true": "the delete confirmation was shown for this delete", "false": "no confirmation was shown" }
+
+effects:
+  opened: { set: { said: none, last: nothing } }
+  cleared: { set: { said: none, last: nothing } }
+  saidNoName: { set: { said: noName } }
+  saidShort: { set: { said: shortName } }
+  saveRefused: { set: { last: saveFailed } }
+  ask: { set: { asked: true, last: nothing } }
+  dropAsk: { set: { asked: false } }
+  deleteRefused: { set: { last: deleteFailed, asked: false } }
+
+failures:
+  saving:
+    from: updateDeck
+    signedOut: [HTTP_401]
+    failed: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_404, HTTP_400, VALIDATION_ERROR, INTERNAL_ERROR]
+  savingClosed:
+    from: updateDeck
+    signedOut: [HTTP_401]
+    failed: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_404, HTTP_400, VALIDATION_ERROR, INTERNAL_ERROR]
+  deleting:
+    from: deleteDeck
+    signedOut: [HTTP_401]
+    failed: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400]
+  deletingClosed:
+    from: deleteDeck
+    signedOut: [HTTP_401]
+    failed: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400]
+
+# The story the page tells first: a deck whose publication waits is renamed and described anew, and the request stays.
+main:
+  given: { publication: pending, fields: changed, answer: ok }
+  events: [EDIT, FILL_IN, SUBMIT, DONE]
+
+initial: overview
+
+states:
+  overview:
+    title: The owner's page of the deck
+    description: >-
+      /decks/<id> read by the author: the name as the h1, the description, the badge of the request ("Özel" or "Yayın isteği bekliyor"), and in the aside's
+      "Deste" card "Düzenle" (a link) and "Desteyi sil" (a button). The page keeps no focus of its own on load. After a refused delete the error toast
+      "Silinemedi" stands over it (`last`) and the confirmation is gone; after "Vazgeç" in the edit dialog the page is as it was, and the focus is on
+      nothing (DCK-18).
+    by: human
+    goal: true
+    on:
+      EDIT: { target: editForm, effect: [opened], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240, say: "they press Düzenle: it is a link, so the browser loads /decks/<id>/edit, which draws this page again with the dialog open" }
+      DELETE: { target: confirmDelete, effect: [ask], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:250, say: "they press Desteyi sil: nothing is sent, the confirmation opens" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:55
+
+  editForm:
+    title: The edit dialog, as it opens
+    description: >-
+      "Desteyi düzenle" over the deck's page (the page behind is inert): the name box and the description box hold the deck's own words and the focus
+      starts in the name box (deck-edit-dialog.tsx:105). While the request waits, a status note "Yayın isteğin bekliyor" says the edit does not disturb it.
+      The scrim does not close the dialog. "Vazgeç", the close icon and Esc all go back to /decks/<id> (`router.replace`); the page was loaded anew to open
+      the dialog, so there is no opener and the focus falls on nothing (DCK-18, not verified in a browser). The tab's title is the app's own "Medaris
+      Tedris" (DCK-28). The dialog's whole body is its description for assistive technology (DCK-24).
+    by: human
+    on:
+      FILL_IN: { guard: "fields != 'unchanged'", target: filled, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:123, say: "they type a name and a description (what `fields` says)" }
+      SUBMIT: { guard: "fields == 'unchanged'", target: overview, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:72, say: "they press Kaydet with nothing changed: the dialog closes with no request and no toast" }
+      CANCEL: { target: overview, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:56, say: "Vazgeç, or Esc: back to /decks/<id>, nothing is sent" }
+      CLOSE: { target: overview, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:97, say: "the close icon: the same" }
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:95
+
+  filled:
+    title: The edit dialog, typed in
+    description: >-
+      The same dialog with the person's own words in the two boxes. Nothing validates while they type: the name is checked only when "Kaydet" is pressed.
+      After a refused save the dialog is this state again with the typed words kept and the error toast "Kaydedilemedi / Bir sorun oluştu; yazdıkların
+      korundu. Yeniden dene." standing (`last`): a toast of tone error stays until closed, is high priority and is portaled outside the modal dialog, so
+      whether the keyboard reaches it was not verified.
+    by: human
+    on:
+      SUBMIT: { target: checking, effect: [cleared], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:67, say: "they press Kaydet, or Enter in the name box" }
+      CANCEL: { target: overview, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:56, say: "Vazgeç, or Esc: what was typed is lost and nothing is sent" }
+      CLOSE: { target: overview, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:97, say: "the close icon: the same" }
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:123
+
+  checking:
+    title: The name is checked
+    description: >-
+      Not a screen. `submit` marks the form attempted, checks the trimmed name (titleProblem: empty is "required", under five characters is "tooShort",
+      over a hundred "tooLong", which the field's maxLength never lets happen) and returns without sending when it is wrong; the error then shows under
+      the name and goes on following what is typed. A name that is fine goes to the call. The page trims the name and the description before it sends them
+      (actions/index.ts:56-58); the API does not (EDITDEL-3).
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:67
+    always:
+      - { guard: "fields == 'noName'", target: invalid, effect: [saidNoName], source: apps/tedris/features/flashcards/deck-model.ts:157, say: "the name is empty: 'Bir deste adı yaz.' shows under it and nothing is sent" }
+      - { guard: "fields == 'shortName'", target: invalid, effect: [saidShort], source: apps/tedris/features/flashcards/deck-model.ts:158, say: "the name has fewer than five characters: 'Deste adı en az 5 karakter olmalı.' shows under it" }
+      - { target: saving, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:76, say: "the name is fine: the request goes out" }
+
+  invalid:
+    title: The name is refused
+    description: >-
+      The error replaces the help line under "Deste adı" ("Bir deste adı yaz." or "Deste adı en az 5 karakter olmalı."); the dialog stays and nothing was
+      sent. The message is no live region and the focus is not moved to the field, so a screen-reader user does not hear it until they tab back (DCK-06);
+      the control is not marked `required` (DCK-07). Pressing "Kaydet" again gives the same answer.
+    by: human
+    on:
+      SUBMIT: { target: checking, effect: [cleared], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:67, say: "they press Kaydet again" }
+      CANCEL: { target: overview, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:56, say: "Vazgeç, or Esc" }
+      CLOSE: { target: overview, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:97, say: "the close icon" }
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:71
+
+  saving:
+    title: The save is on its way
+    description: >-
+      updateDeck is a server action over PATCH /flashcard/decks/:id with the trimmed name and description (an emptied description clears it; the tags and
+      the card type are not sent). "Kaydet" is busy (aria-disabled, aria-busy, a hidden status "Yükleniyor"); the fields stay editable. The publication
+      status is not touched by the write. The API does not set `updatedAt` (deck-edit-updated-at). `attempt()` turns a rejected call into a refusal and a
+      session that is over into a trip to sign-in. "Vazgeç", "Kapat" and Esc are live and close the dialog without stopping the call (EDITDEL-1).
+    invoke: { action: updateDeck }
+    on:
+      DONE: { guard: "answer == 'ok'", target: saved, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89, say: "the deck is saved" }
+      FAIL.failed: { guard: "answer == 'refused'", target: filled, effect: [saveRefused], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:81, say: "an error toast says it could not be saved; the dialog stays with the typed words" }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over: the person is sent to sign in and back, and nothing else is drawn" }
+      CANCEL: { target: savingClosed, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:97, say: "Vazgeç or Esc while it is out: the dialog closes, the call goes on (EDITDEL-1)" }
+      CLOSE: { target: savingClosed, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:97, say: "the close icon while it is out: the same" }
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:77
+
+  savingClosed:
+    title: The save goes on with the dialog closed
+    description: >-
+      The person closed the dialog while the call was out: `close()` replaced the address with /decks/<id> and the dialog is gone, but nothing
+      cancelled the call (EDITDEL-1). The page behind shows the deck as it was, until the call answers (not drawn: whether its read comes before or after
+      the write is a race). A success raises "Deste güncellendi" and refreshes the page (the new name appears); a refusal raises the error toast
+      "Kaydedilemedi" whose text says "yazdıkların korundu", over a page with no form.
+    invoke: { action: updateDeck }
+    on:
+      DONE: { guard: "answer == 'ok'", target: saved, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89, say: "the deck is saved although they closed the dialog" }
+      FAIL.failed: { guard: "answer == 'refused'", target: overview, effect: [saveRefused], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:81, say: "the toast says what they typed was kept, and there is nothing to keep it in" }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over" }
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:97
+
+  saved:
+    title: The deck is saved
+    description: >-
+      The toast "Deste güncellendi" (success, closes after six seconds) stands, the address is /decks/<id> again and the page was refreshed: the h1 and the
+      description are the new words, and the badge is what it was: a waiting request is still "Yayın isteği bekliyor" (e2e decks#14). The toast was fired
+      after the person's last keystroke, so the route change does not dismiss it (use-dismiss-stale-toasts.ts). The focus is on nothing (DCK-18). The deck's
+      `updatedAt` is unchanged (deck-edit-updated-at; the page shows no date, so the person cannot see it, a köşk's deck list orders by it).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89
+
+  confirmDelete:
+    title: Desteyi sil? asks once
+    description: >-
+      An alertdialog over the page: the eyebrow is the deck's name, the title "Desteyi sil?", the text "“{name}” destesi ve içindeki {n} kart silinecek. Bu işlem
+      geri alınamaz.", then "Vazgeç" and the destructive "Desteyi sil", and the close icon. The focus starts on "Vazgeç"; the scrim does not close it; Esc and
+      the close icon do. The words "Vazgeç", "Kapat" and "Yükleniyor" are the kit's constants, not catalog texts (DCK-23). The text says nothing of readers or
+      requests that go with the deck (decision D2). The dialog's opener is a plain button, so on "Vazgeç", "Kapat" or Esc Base UI gives the focus back to
+      it (not verified in a browser).
+    by: human
+    on:
+      CONFIRM_DELETE: { target: deleting, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:262, say: "they press Desteyi sil in the dialog" }
+      CANCEL: { target: overview, effect: [dropAsk], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:256, say: "Vazgeç, or Esc: the deck is kept and the dialog closes" }
+      CLOSE: { target: overview, effect: [dropAsk], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:256, say: "the close icon: the same" }
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254
+
+  deleting:
+    title: The delete is on its way
+    description: >-
+      deleteDeck is a server action over DELETE /flashcard/decks/:id: the deck, its cards, its collection rows and its label rows go; the cards' progress rows
+      stay behind (progress-orphans) and no audit row is written. The confirm button is busy ("Yükleniyor" for a reader of the screen) and the dialog stays
+      open until the page changes address. A success calls `router.push('/decks')` with no toast (EDITDEL-2). The action revalidates /decks/[id], the page
+      the person is on, whose deck is already gone: Next may redraw it as "Sayfa bulunamadı" before the push lands (EDITDEL-4, not verified).
+      "Vazgeç", "Kapat" and Esc are live and close the dialog without stopping the call (DCK-30).
+    invoke: { action: deleteDeck }
+    on:
+      DONE: { guard: "answer == 'ok'", target: decks_opened, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:90, say: "the deck and its cards are gone; the browser goes to /decks" }
+      FAIL.failed: { guard: "answer == 'refused'", target: overview, effect: [deleteRefused], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:93, say: "the dialog closes and an error toast says it could not be deleted" }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over: the confirm button stays busy until the browser leaves" }
+      CANCEL: { target: deletingClosed, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:256, say: "Vazgeç or Esc while it is out: the dialog closes, the delete goes on (DCK-30)" }
+      CLOSE: { target: deletingClosed, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:256, say: "the close icon while it is out: the same" }
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:88
+
+  deletingClosed:
+    title: The delete goes on with the dialog closed
+    description: >-
+      The person pressed "Vazgeç", "Kapat" or Esc while the delete was out: `onOpenChange={setConfirmOpen}` closed the dialog and nothing cancelled the call
+      (DCK-30). The page shows the deck as before. When the call answers the deck is gone and the page leaves for /decks, though the person said no; a refusal
+      raises the error toast "Silinemedi".
+    invoke: { action: deleteDeck }
+    on:
+      DONE: { guard: "answer == 'ok'", target: decks_opened, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:90, say: "the deck is deleted although they called it off" }
+      FAIL.failed: { guard: "answer == 'refused'", target: overview, effect: [deleteRefused], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:93, say: "an error toast says it could not be deleted" }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/flashcards/attempt.ts:28, say: "the session is over" }
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:256
+
+  decks_opened:
+    title: Back on Desteler, the deck gone
+    type: final
+    description: >-
+      `router.push('/decks')`: the list of the author's decks and their collection, without the deck. No toast and no live text say that the deck was
+      deleted (EDITDEL-2). The deck's address now answers "Sayfa bulunamadı". tedris.decks.browse draws the list.
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to the page they were on, and draws
+      nothing. The edit address /decks/<id>/edit comes back as the dialog, the page as the page. realm.auth.signIn takes over.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: nothing-is-sent-for-a-bad-or-unchanged-name
+    never: "(state == 'saving' or state == 'savingClosed') and fields != 'changed'"
+    say: A save goes out only for a name that is fine and a form that changed; an empty name, a short one and an unchanged form send nothing.
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:71
+  - id: delete-only-after-the-confirmation
+    never: "(state == 'deleting' or state == 'deletingClosed') and not asked"
+    say: A deck is deleted only after the confirmation was shown; pressing "Desteyi sil" on the page sends nothing.
+    source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:250
+  - id: a-refused-name-shows-its-reason
+    never: "state == 'invalid' and said == 'none'"
+    say: A name that is refused says why under its field.
+    source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:59

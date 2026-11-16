@@ -1,0 +1,27 @@
+# nizam.kosks.nazims, the refusal of "Ekle": the başnazım finds the address of the köşk's own nazım (APPLICANT_E, "Betül Başvuran"), who
+# holds the post already, chooses her like anyone and presses "Ekle" (kosks.e2e.ts#12, the last step): tedrisat answers 409 KOSK_NAZIM_EXISTS
+# and writes nothing, the toast "Köşk nazımı eklenemedi" says "Seçilen kişi zaten bu köşkün nazımı.", and the dialog stays open with the person
+# still chosen. The effect `existsToast` reads the köşk's list back: one nazım still.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/nazims \
+#     --bind graphs/nizam/kosks/nazims/binding.exists.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml). A file of its own because `adding` has no held `call` here: a server action answers 200 on the page's own
+# address whatever the API says, so the replay could not compare the 409 if the call were held (binding.yaml holds it for the other paths).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.nazims
+
+scenarios:
+  exists:
+    given: { viewer: chief, read: ok, lookup: found, answer: exists }
+    as: systemAdmin
+    open: '{nizam}/kosks/{nz.kosk}/ayarlar/nazimlar'
+    setup:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, up]
+        expect: 'nznazims up'
+    teardown:
+      - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, down]
+        expect: 'nznazims down'
+    vars:
+      nazimEmail: '{nz.first.email}'
+      anotherEmail: '{nz.more.email}'

@@ -1,0 +1,267 @@
+# Allowing or declining a partner application ("ortak uygulama") on the realm's consent page, as the code and the stack's
+# Keycloak do it today (status captured; the code is PR #394's). A partner application is a separate site whose person signs
+# in with their Medaris account; its Keycloak client (`ornek-uygulama` on the local stack, config/keycloak/clients/local/
+# ornek-uygulama.json) has consent required, so the first time Keycloak asks the person what the application may see
+# (apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx, libs/ui/src/giris/consent-form.tsx).
+#
+# How Keycloak is drawn. As in realm.auth.signIn, Keycloak is this flow's environment, not a domain: the authorization
+# endpoint the partner sends the browser to and the form post of the consent page are not routes of medaris.api, so the
+# states that stand for them `invoke` `{ external: keycloak.* }`. This flow invokes no action of the domain: the partner's
+# own server calls tedrisat afterwards (the /integrations routes, which a partner registered in nizam may use), and that is
+# the partner's flow, not the person's.
+#
+# What the walk can reach on the local stack (measured on 2026-11-15, Keycloak 26.6.3). The example partner's redirect
+# address is `https://ornek.example/auth/medaris/callback`, which does not resolve here: the page is reached by the
+# authorization address, and the way back is a 302 whose target the browser cannot follow, so it ends on the browser's own
+# error page (the address chrome-error://chromewebdata/). That Keycloak answered with the 302 is checked on the wire; what
+# the 302 carries (`code` and `state`, or `error=access_denied`) was read once from a probe and is not replayed.
+#
+# Where this flow stops. The login form (a person with no Keycloak session sees it first), the pages of a required action that
+# can hold the person after the password, Keycloak's own error page, and the partner's own page are other flows or other
+# people's code: this flow ends in an exit named handed_over.* or returned_to_partner.* where they begin.
+schema: delurio-graph/0
+kind: flow
+id: realm.auth.partnerConsent
+status: captured
+domain: medaris.api
+ui: realm.auth.partnerConsent
+title: Allow or decline a partner application on the realm's page
+summary: >-
+  A person signs in to a partner application with their Medaris account. The partner's page sends the browser to Keycloak's
+  authorization address. A person with no session types their password first (realm.auth.signIn draws that form). Then,
+  the first time, Keycloak shows "Bilgilerin Örnek Uygulama ile paylaşılsın mı?": the sentence "Örnek Uygulama, Medaris
+  hesabındaki şu bilgileri görecek:", one line per detail the partner asks for (here the name, the e-mail address and the
+  gender) and, when the partner gave them, links to its terms and privacy policy. "İzin ver" sends the browser back to the
+  partner with a code, and Keycloak remembers the consent; "Vazgeç" sends it back with the error access_denied and shares
+  nothing. A person who consented once is not asked again for the same details.
+scope:
+  shows: >-
+    The page the person answers, the two answers and where each sends the browser, and the cases that decide whether the
+    page is shown at all: no session yet, a consent remembered, a request Keycloak refuses, a form posted a second time.
+  world: open
+  outOfView:
+    - "the partner's own page: its 'Medaris ile giriş yap' button, the redirect it receives, the exchange of the code for tokens with its client secret, and the page it shows after access_denied"
+    - "what the partner does with the person afterwards: its calls to tedrisat's /integrations routes (a partner not registered in nizam is refused there with 404; registering it is nizam's Ortak uygulamalar page, not needed for this page to open)"
+    - "the login form a person with no session meets first (realm.auth.signIn) and the pages of a required action that can come between the password and this page (realm.auth.profileUpdate, the verify-e-mail and new-password pages)"
+    - "Keycloak's own error page for an address it does not know (error.ftl, realm.auth.signInFailures)"
+    - "taking the consent back: tedris Hesap > Bağlı uygulamalar leads to Keycloak's account console (tedris.account.profile), which is Keycloak's stock theme and is not drawn here (CONSENT-2)"
+    - "the page in English and Arabic (the theme has both, the graph's catalog is tr; giris.e2e#18 is the Arabic card at 375 px) and the scope texts the example client does not ask for (profile, roles, offline access, phone, address, organization)"
+    - "a scope with a parameter (a dynamic scope), which the page writes after its text; no Medaris partner client asks for one"
+    - "the partner's own terms and privacy pages, which open in a new tab"
+
+context:
+  request:
+    values: [valid, refusedToPartner, refusedHere]
+    initial: any
+    say:
+      valid: "the partner's request is the one its client allows: its registered redirect address, PKCE with S256 and scopes the client has"
+      refusedToPartner: "the partner's request is wrong in a way Keycloak reports to the partner (no code_challenge_method, or a scope the client does not have)"
+      refusedHere: "the partner's redirect address is not one its client registered, so Keycloak cannot report to it"
+  session:
+    values: [held, none]
+    initial: any
+    say:
+      held: "the browser already holds a Keycloak session (they signed in to a Medaris app or to the partner earlier)"
+      none: "the browser holds no Keycloak session"
+  consent:
+    values: [asked, stored]
+    initial: any
+    say:
+      asked: "Keycloak holds no consent of this person for this partner (or for these details)"
+      stored: "Keycloak remembers an earlier İzin ver for the same details"
+  terms:
+    values: [none, linked]
+    initial: any
+    say:
+      none: "the partner's client gives no terms or privacy address (the stack's example client)"
+      linked: "the partner's client gives a terms address and a privacy address that start with http:// or https://"
+  code:
+    values: [fresh, spent]
+    initial: any
+    say:
+      fresh: "the page's one-time code is still good"
+      spent: "the page's one-time code was used already or its sign-in session ended (the page was posted twice, or left open too long)"
+  answer:
+    values: [none, allowed, declined]
+    initial: none
+    say:
+      none: ""
+      allowed: "they pressed İzin ver"
+      declined: "they pressed Vazgeç"
+
+guards:
+  validRequest: "request == 'valid'"
+  pageIsNeeded: "request == 'valid' and session == 'held' and consent == 'asked'"
+
+effects:
+  allows: { set: { answer: allowed } }
+  declines: { set: { answer: declined } }
+
+main:
+  given: { request: valid, session: held, consent: asked, terms: none, code: fresh }
+  events: [DONE, ACCEPT, DONE]
+
+initial: openAuthorization
+states:
+  openAuthorization:
+    title: The partner sends the person to Keycloak
+    description: >-
+      The person presses the partner's own sign-in button. The partner's server answers with a redirect to Keycloak's
+      authorization endpoint (/realms/medaris/protocol/openid-connect/auth) with its client id, its redirect address, the
+      response type code, `scope=openid email full-name gender`, a state and a PKCE challenge (S256, which its client
+      requires). Everything before this is the partner's code.
+    source: config/keycloak/clients/local/ornek-uygulama.json:5
+    always:
+      - { target: asking, say: "the browser follows the redirect to Keycloak" }
+
+  asking:
+    title: Keycloak reads the request
+    description: >-
+      GET on the authorization endpoint. Keycloak checks the client, the redirect address, PKCE and the scopes, then the
+      session and the consent. A person with no session is shown the login form first, and after the password the same
+      question is asked again. With a session and no consent for these details it answers 302 to
+      /login-actions/required-action?execution=OAUTH_GRANT, which draws the consent page (measured). With a remembered
+      consent it answers 302 straight to the partner's redirect address with a new code and no page (measured, a second
+      authorization of the same person). A request the client does not allow is not shown to the person: a wrong
+      scope or a missing code_challenge_method is answered 302 to the partner with error=invalid_scope or
+      error=invalid_request (measured), an unregistered redirect address with Keycloak's own error page, status 400
+      (measured). The consent is asked only because the client has consent required (consentRequired, ornek-uygulama.json:7).
+    source: config/keycloak/clients/local/ornek-uygulama.json:7
+    invoke: { external: keycloak.authorize }
+    on:
+      DONE:
+        - { target: handed_over.sign_in, guard: "validRequest and session == 'none'", say: "no session: Keycloak shows its login form first" }
+        - { target: returned_to_partner.remembered, guard: "validRequest and session == 'held' and consent == 'stored'", say: "the person consented before: straight back to the partner, no page" }
+        - { target: consentPage, guard: pageIsNeeded, say: "Keycloak asks what the partner may see" }
+      FAIL.sentBack: { target: returned_to_partner.refused, guard: "request == 'refusedToPartner'", say: "Keycloak tells the partner its request is wrong" }
+      FAIL.errorPage: { target: handed_over.error_page, guard: "request == 'refusedHere'", say: "Keycloak shows its own error page" }
+
+  consentPage:
+    title: Keycloak asks whether to share the person's details
+    description: >-
+      login-oauth-grant.ftl on the Medaris theme: one card, the logo with no app name under it (a partner's client is none of
+      tedris, nizam or nazar), the heading "Bilgilerin Örnek Uygulama ile paylaşılsın mı?" (the client's display name, else its client id), the sentence
+      "Örnek Uygulama, Medaris hesabındaki şu bilgileri görecek:" and under it one line per scope the client asks for: for the
+      example client "Cinsiyetin", "E-posta adresin" and "Adın ve soyadın", in Keycloak's order (the profile scope, which
+      would add the user name and the language, is removed from the client). When the client gives terms and privacy addresses a line
+      "Örnek Uygulama bunları nasıl kullandığını anlatıyor:" follows with two links that open in a new tab. Two buttons, both native
+      submits of one form with the one-time code: "İzin ver" (primary) and "Vazgeç". Nothing has the focus (CONSENT-1); the tab's
+      title is the login title (K2); the language is not changeable on the page (K12). Findings the page touches: CONSENT-1,
+      CONSENT-2 (what follows), CONSENT-3 (the terms line is never set), K2, K12.
+    source: apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:17
+    by: human
+    on:
+      ACCEPT: { target: granting, effect: [allows], say: "they press İzin ver" }
+      DECLINE: { target: declining, effect: [declines], say: "they press Vazgeç" }
+      NAVIGATE: { target: left, say: "they close the page" }
+
+  granting:
+    title: Keycloak records the consent and sends the browser back
+    description: >-
+      POST /realms/medaris/login-actions/consent with the one-time code and accept=. Keycloak stores the consent (it shows
+      under the person's applications in the account console), then answers 302 to the partner's redirect address with `code`,
+      the partner's `state`, `session_state` and `iss` (measured; the browser cannot follow it here, see the head of this file).
+      The person is on the partner's page from here. A code that was used already or whose sign-in session ended is not
+      answered with a page: Keycloak redirects to the partner with error=temporarily_unavailable and
+      error_description=authentication_expired (measured with a second post of the same form and with a made-up code).
+    source: libs/ui/src/giris/consent-form.tsx:92
+    invoke: { external: keycloak.oauthAction }
+    on:
+      DONE: { target: returned_to_partner.allowed, guard: "code == 'fresh'", say: "Keycloak redirects to the partner with a code" }
+      FAIL.spentCode: { target: returned_to_partner.expired, guard: "code == 'spent'", say: "Keycloak redirects to the partner with authentication_expired" }
+
+  declining:
+    title: Keycloak sends the browser back with no consent
+    description: >-
+      POST /realms/medaris/login-actions/consent with the one-time code and cancel=. Keycloak stores nothing and answers 302 to the
+      partner's redirect address with error=access_denied, the partner's `state` and `iss` (measured). A consent the person gave
+      earlier is not undone by this answer (measured: the stored consent was still there after a Vazgeç on a page forced with
+      prompt=consent). The expired-code answer of the previous state is the same code path; it was measured only for İzin ver.
+    source: libs/ui/src/giris/consent-form.tsx:100
+    invoke: { external: keycloak.oauthAction }
+    on:
+      DONE: { target: returned_to_partner.declined, guard: "code == 'fresh'", say: "Keycloak redirects to the partner with access_denied" }
+      FAIL.spentCode: { target: returned_to_partner.expired, guard: "code == 'spent'", say: "Keycloak redirects to the partner with authentication_expired" }
+
+  returned_to_partner.allowed:
+    type: final
+    title: The browser is back at the partner, with a code
+    description: >-
+      Signed in at the partner. The partner exchanges the code for tokens on its own server (not drawn). The partner then sees
+      the person's name, e-mail address and gender, and may call tedrisat's /integrations routes if nizam registered it.
+    redirect: success
+    carries: [code, state]
+
+  returned_to_partner.remembered:
+    type: final
+    title: The browser is back at the partner, with a code, and no page was shown
+    description: >-
+      The person had answered İzin ver before and the partner asks for the same details, so Keycloak does not ask again. The
+      person can take the consent back from tedris Hesap > Bağlı uygulamalar (Keycloak's account console, CONSENT-2). A partner that asks
+      for another scope later makes the page appear again (not measured).
+    redirect: success
+    carries: [code, state]
+
+  returned_to_partner.declined:
+    type: final
+    title: The browser is back at the partner, told the person said no
+    description: >-
+      The partner receives error=access_denied and shows its own page; it holds no code and none of the person's details.
+    redirect: error
+    code: access_denied
+
+  returned_to_partner.expired:
+    type: final
+    title: The browser is back at the partner, told the sign-in ran out
+    description: >-
+      The page's code was used already or its session ended. The partner receives error=temporarily_unavailable with
+      error_description=authentication_expired and starts again; the person never sees a Medaris page for it.
+    redirect: error
+    code: temporarily_unavailable
+
+  returned_to_partner.refused:
+    type: final
+    title: The browser is back at the partner, told its request was wrong
+    description: >-
+      Keycloak sent invalid_scope or invalid_request to the partner's redirect address; the person sees the partner's page, not a
+      Medaris one.
+    redirect: error
+    code: invalid_scope | invalid_request
+
+  handed_over.sign_in:
+    type: final
+    title: Keycloak shows the login form first
+    description: >-
+      A person with no session sees login.ftl, drawn by realm.auth.signIn for tedris, nizam and nazar; for a partner's client the same
+      card has no app name under the logo (measured). After the right password, and any required action, Keycloak asks the question of
+      `asking` again: the consent page if no consent is stored (measured), else the partner at once.
+
+  handed_over.error_page:
+    type: final
+    title: Keycloak shows its own error page
+    description: >-
+      The redirect address is not one the client registered. Keycloak answers 400 with error.ftl and does not redirect, because it
+      cannot trust the address. realm.auth.signInFailures draws error.ftl.
+
+  left:
+    type: final
+    title: They close the page
+    leavesPage: true
+
+assertions:
+  - id: page-needs-a-session
+    never: "state == 'consentPage' and session == 'none'"
+    say: "The consent page is never shown to a person Keycloak does not know: the login form comes first."
+    source: config/keycloak/clients/local/ornek-uygulama.json:7
+  - id: asked-once
+    never: "state == 'consentPage' and consent == 'stored'"
+    say: "A person whose consent Keycloak remembers is not shown the page again for the same details; they go straight back to the partner."
+    source: config/keycloak/clients/local/ornek-uygulama.json:7
+  - id: no-code-after-decline
+    never: "state == 'returned_to_partner.allowed' and answer == 'declined'"
+    say: "A person who pressed Vazgeç never sends the partner back a code."
+    source: libs/ui/src/giris/consent-form.tsx:100
+  - id: no-page-for-a-wrong-request
+    never: "state == 'consentPage' and request != 'valid'"
+    say: "A request Keycloak refuses never reaches the consent page: the partner is told, or Keycloak's error page is shown."
+    source: config/keycloak/clients/local/ornek-uygulama.json:11

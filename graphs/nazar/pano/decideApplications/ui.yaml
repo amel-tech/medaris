@@ -1,0 +1,106 @@
+# The screens of nazar.pano.decideApplications: the Pano of a medrese (/medrese/<id>), its reject confirmation and the toasts
+# of a decision. Read from apps/nazar/features/pano; the words are copied from libs/i18n/src/locales/tr/nazar.json.
+# Where a node says "repeat", the page draws it once per row of that list; the replay finds the rows through the binding.
+schema: delurio-graph/0
+kind: ui
+id: nazar.pano.decideApplications
+flow: nazar.pano.decideApplications
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note } # the one authored message of this catalog: no app message says what a decision changes (see the report)
+samples:
+  name: Selma Medaris Nazımı
+  course: İsâgûcî ile Mantığa Giriş
+  title: İsâgûcî ile Mantığa Giriş
+  sessions: "3"
+  applications: "2"
+  count: "2"
+  courses: "1"
+  kosks: "1"
+
+# The page keeps no focus of its own on load (nothing in features/pano sets it) and none after a decision (F-A-2), so there
+# is no `initialFocus` on the page and no `focus` here: the graph says nothing of what the code does not say.
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------
+  panoPage: { type: page, component: Page, role: main, in: [listed, empty, approving, rejecting, forbidden], source: apps/nazar/features/pano/components/pano-page.tsx:90 } # the shell's one <main id="main">; it has no name
+  panoTitle: { type: text, component: Heading, role: heading, text: { key: Pano.title }, in: [listed, empty, approving, rejecting, forbidden], source: apps/nazar/features/pano/components/pano-page.tsx:94 }
+  greeting: { type: text, component: Text, text: { key: Pano.greeting, params: { name: viewer.givenName } }, in: [listed, empty, approving, rejecting, forbidden], source: apps/nazar/features/pano/pano.ts:34 } # always "{name} Hoca", also for a nazır or the başnazım (F-A-17)
+  greetingSummary: { type: text, component: Text, text: { key: Pano.summary, params: { sessions: dashboard.sessions, applications: dashboard.applications } }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/pano.ts:34 } # the same paragraph; only with the dashboard
+  openCourse: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Pano.open }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:109 } # left out when the dashboard is refused; no href (aria-disabled) while no köşk hosts the medrese
+  coursesLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.medrese.courses }, in: [listed, empty, approving, rejecting, forbidden], source: apps/nazar/features/shell/nav.ts:81 } # the sidebar's entry; its name carries the number below, so it is found by its beginning
+  coursesBadge: { type: text, component: Text, text: { key: Shell.countCoursesWithApplications }, in: [listed, approving, rejecting], when: "approval == 'needed'", source: libs/ui/src/mds/nav-item.tsx:60 } # the number of courses that hold an application, with a hidden label; only above zero
+
+  # --- the scope cards ----------------------------------------------------------------------------------------------------
+  scopesRegion: { type: text, component: Text, role: region, name: { labelledBy: scopesTitle }, in: [listed, empty, approving, rejecting, forbidden], source: apps/nazar/features/pano/components/pano-page.tsx:119 }
+  scopesTitle: { type: text, component: Heading, role: heading, text: { key: Pano.scopesTitle }, in: [listed, empty, approving, rejecting, forbidden], source: apps/nazar/features/pano/components/pano-page.tsx:119 }
+  scopesHint: { type: text, component: Text, text: { key: Pano.scopesHint }, in: [listed, empty, approving, rejecting, forbidden], source: apps/nazar/features/pano/components/pano-page.tsx:119 }
+  madrasahRole: { type: text, component: Text, text: { key: Roles.MEDRESE_BASMUDERRIS }, in: [listed, empty, approving, rejecting, forbidden], source: apps/nazar/features/pano/components/pano-page.tsx:145 }
+  madrasahNazirs: { type: text, component: Text, text: { key: Pano.madrasah.nazirs, params: { count: dashboard.nazirCount } }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:148 }
+  madrasahCourses: { type: text, component: Text, text: { key: Pano.madrasah.courses, params: { courses: dashboard.courseCount, kosks: dashboard.hostingKosks } }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:138 }
+
+  # --- the celses of the next seven days --------------------------------------------------------------------------------------
+  sessionsRegion: { type: text, component: Text, role: region, name: { labelledBy: sessionsTitle }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:194 }
+  sessionsTitle: { type: text, component: Heading, role: heading, text: { key: Pano.sessions.title }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:194 }
+  sessionsHint: { type: text, component: Text, text: { key: Pano.sessions.hint }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:194 }
+  sessionsTable: { type: list, component: List, role: table, name: { key: Pano.sessions.caption }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-tables.tsx:128 }
+  sessionEdit: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: Pano.sessions.editLabel, params: { title: session.title } }, text: { key: Pano.sessions.edit }, in: [listed, empty, approving, rejecting], repeat: dashboard.upcomingSessions, source: apps/nazar/features/pano/components/pano-tables.tsx:115 } # on every row whatever the person holds (F-A-9)
+
+  # --- the waiting applications -----------------------------------------------------------------------------------------------
+  applicationsRegion: { type: text, component: Text, role: region, name: { labelledBy: applicationsTitle }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-tables.tsx:282 }
+  applicationsTitle: { type: text, component: Heading, role: heading, text: { key: Pano.applications.title }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-tables.tsx:288 }
+  applicationsCounter: { type: text, component: Text, text: { key: Pano.applications.hint, params: { count: dashboard.pendingApplicationCount, courses: dashboard.pendingCourseCount } }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-tables.tsx:291 } # follows a decision at once, before the dashboard is read again
+  applicationsTable: { type: list, component: List, role: table, name: { key: Pano.applications.caption }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-tables.tsx:295 }
+  emptyLine: { type: text, component: Text, text: { key: Pano.applications.empty }, in: [empty], source: apps/nazar/features/pano/components/pano-tables.tsx:300 }
+  approve: { type: action, component: Button, role: button, intent: confirm, name: { key: Pano.applications.approveLabel, params: { name: application.name } }, text: { key: Pano.applications.approve }, in: [listed], when: "mayDecide == 'may'", repeat: dashboard.pendingApplications, emits: APPROVE, source: apps/nazar/features/pano/components/pano-tables.tsx:251 } # one per row; while a row is being decided only that row's two buttons are off, and the others stay live (see rowApprove)
+  reject: { type: action, component: Button, role: button, intent: secondary, name: { key: Pano.applications.rejectLabel, params: { name: application.name } }, text: { key: Pano.applications.reject }, in: [listed], when: "mayDecide == 'may'", repeat: dashboard.pendingApplications, emits: REJECT, source: apps/nazar/features/pano/components/pano-tables.tsx:263 }
+  rowApprove: { type: action, component: Button, role: button, intent: confirm, name: { key: Pano.applications.approveLabel, params: { name: application.name } }, text: { key: Pano.applications.approve }, in: [approving, rejecting], disabledIn: [approving, rejecting], when: "mayDecide == 'may'", source: apps/nazar/features/pano/components/pano-tables.tsx:251 } # the row being decided, the first item of approve: busy (aria-disabled, "Yükleniyor" from a hard-coded default, F-A-14) while it is approved, disabled while it is rejected
+  rowReject: { type: action, component: Button, role: button, intent: secondary, name: { key: Pano.applications.rejectLabel, params: { name: application.name } }, text: { key: Pano.applications.reject }, in: [approving, rejecting], disabledIn: [approving, rejecting], when: "mayDecide == 'may'", source: apps/nazar/features/pano/components/pano-tables.tsx:263 } # the same row's Reddet
+
+  # --- the köşks that host the medrese ----------------------------------------------------------------------------------------
+  hostsRegion: { type: text, component: Text, role: region, name: { labelledBy: hostsTitle }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:221 }
+  hostsTitle: { type: text, component: Heading, role: heading, text: { key: Pano.hosts.title }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:221 }
+  hostsText: { type: text, component: Text, text: { key: Pano.hosts.text }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:252 }
+  offsiteLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Pano.hosts.offsite }, in: [listed, empty, approving, rejecting], source: apps/nazar/features/pano/components/pano-page.tsx:224 } # a bare <a>, so a full page load
+
+  # --- the dashboard is refused -------------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert
+
+  # --- the toasts of a decision: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays --------
+  toastApproved: { type: status, component: Status, role: dialog, name: { key: Pano.applications.approved }, text: { key: Pano.applications.approvedBody, params: { name: application.name, course: application.course } }, in: [listed, empty], when: "last == 'approved'", source: apps/nazar/features/pano/components/pano-tables.tsx:184 }
+  toastRejected: { type: status, component: Status, role: dialog, name: { key: Pano.applications.rejected }, text: { key: Pano.applications.rejectedBody, params: { name: application.name, course: application.course } }, in: [listed, empty], when: "last == 'rejected'", source: apps/nazar/features/pano/components/pano-tables.tsx:184 }
+  toastGone: { type: status, component: Status, role: dialog, name: { key: Pano.applications.failedTitle }, text: { key: Pano.applications.errors.gone }, in: [listed, empty], when: "last == 'gone'", source: apps/nazar/features/pano/components/pano-tables.tsx:198 } # tone info: it closes by itself
+  toastRefused: { type: alert, component: Alert, role: alertdialog, name: { key: Pano.applications.failedTitle }, text: { key: Problems.actionForbidden }, in: [listed], when: "last == 'refused'", source: apps/nazar/features/pano/components/pano-tables.tsx:198 } # tone error: it stays until closed
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: Pano.applications.failedTitle }, text: { key: Problems.actionGeneric }, in: [listed], when: "last == 'failed'", source: apps/nazar/features/pano/components/pano-tables.tsx:198 }
+
+  # --- Reddet asks once ---------------------------------------------------------------------------------------------------------
+  rejectDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: rejectTitle }, in: [confirmReject], initialFocus: rejectCancel, source: apps/nazar/features/pano/components/pano-tables.tsx:309 }
+  rejectTitle: { type: text, component: Heading, role: heading, text: { key: Pano.applications.rejectTitle }, in: [confirmReject], source: apps/nazar/features/pano/components/pano-tables.tsx:314 }
+  rejectBody: { type: text, component: Text, text: { key: Pano.applications.rejectBody, params: { name: application.name, course: application.course } }, in: [confirmReject], source: apps/nazar/features/pano/components/pano-tables.tsx:325 }
+  rejectCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Pano.applications.rejectCancel }, in: [confirmReject], emits: CANCEL, source: apps/nazar/features/pano/components/pano-tables.tsx:316 } # the focus starts here
+  rejectConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Pano.applications.reject }, in: [confirmReject], emits: CONFIRM_REJECT, source: apps/nazar/features/pano/components/pano-tables.tsx:315 }
+  rejectClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [confirmReject], emits: CLOSE, source: apps/nazar/features/pano/components/pano-tables.tsx:317 } # an icon button named only by aria-label
+
+edges:
+  - { labelledBy: [scopesRegion, scopesTitle] }
+  - { labelledBy: [sessionsRegion, sessionsTitle] }
+  - { labelledBy: [applicationsRegion, applicationsTitle] }
+  - { labelledBy: [hostsRegion, hostsTitle] }
+  - { labelledBy: [rejectDialog, rejectTitle] }
+  - { triggers: [approve, approving] }
+  - { triggers: [reject, confirmReject] }
+  - { triggers: [rejectConfirm, rejecting] }
+  - { returnsFocus: [rejectDialog, reject] } # Vazgeç, Esc or the close icon: the row's Reddet is still there; not verified in the browser
+
+rules:
+  - { id: F-A-2, rule: "After a decision the pressed button leaves with its row and no code moves the focus; the only word is a toast of 6 seconds (a keyboard or screen-reader user falls back to the top of the page). Fix: move focus to the table caption or the next row's button, and keep a status line." }
+  - { id: F-A-9, rule: "'Düzenle' is documented as left out where the person holds no scope in the course, but `held` is built from the sessions it is checked against, so every celse row has it, and the link can lead to a course the person may not open." }
+  - { id: F-A-10, rule: "No try/catch around the server action: when the call itself fails (the network), the busy state is never cleared and no toast is shown; React hands the error to the nearest boundary. Not verified in a browser." }
+  - { id: F-A-11, rule: "A cancelled celse's note is `truncate`d, with the whole text only in `title`: sighted keyboard and touch users cannot read it. Not drawn in this graph (no celse is cancelled in the stack)." }
+  - { id: F-A-14, rule: "A busy button passes no loadingLabel, so its hidden status says 'Yükleniyor' from a hard-coded default, outside the catalog." }
+  - { id: F-A-15, rule: "The section ids are fixed strings shared across pages ('hosts-heading' is on the Pano and on Dersler); after a client navigation the previous page stays hidden in the DOM, so aria-labelledby may resolve to the hidden one. Not verified; the replay checks the four regions by name." }
+  - { id: F-A-17, rule: "The greeting always says '{name} Hoca', also for a medrese nazır or the başnazım. Product wording, not an accessibility defect." }
+  - { id: viewer-may-decide-skips-head, rule: "viewerMayDecide counts a müderris of the course, the köşk's nazım and the başnazım; it ignores the başmüderris although approveEnrollment and rejectEnrollment accept her (enrollment.decide), and ignores a grant to a nazır. The Pano lists rows she cannot act on and says nothing (apps/tedrisat/src/madrasah/portal/madrasah-portal.service.ts:93-97). The comment of approveApplication (actions.ts:9-13) still says she gets AUTHZ_FORBIDDEN. New finding (not in the inventory's F-A list); the domain carries it on getMadrasahDashboard." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Onayla' in 'Onayla: {name}', 'Reddet' in 'Reddet: {name}', 'Düzenle' in 'Düzenle: {title}' (WCAG 2.5.3). Holds." }
+  - { id: confirm-before-rejecting, rule: "Reddet asks first, in an alertdialog whose focus starts on 'Vazgeç'; Onayla does not ask, because an approval gives a seat and a refusal cannot be taken back. A rejection takes no reason although the API would carry one." }
+  - { id: toast-is-the-only-word, rule: "The result of a decision is said by a toast (a dialog in the 'Bildirimler' live region): it closes after 6 seconds for a success and an info notice, and stays for an error. Nothing on the page itself says what was decided." }

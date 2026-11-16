@@ -1,0 +1,362 @@
+# "Medrese ayarları" in nazar-web (/medrese/<id>/ayarlar), read from the code of the branch (the tree of PR #394) on 15 Nov 2026
+# (apps/nazar/features/settings, the API's GET and PATCH /madrasahs/:id/settings and GET /madrasahs/:id/courses). Nothing here is
+# approved, and nothing was walked in a browser: "from the code" is the only source of every behaviour below, apart from the
+# unit specs the e2e cannot reach (apps/nazar/test/settings*.spec.ts*).
+#
+# What the page does: the başmüderris reads the saved name, the description, the three policies of her medrese ("Kapalı ders
+# zorunlu", "Kayıt her zaman onaylı", "Ders kayıtları herkese açılamaz"), the line "Son değişiklik <date> · <who>", the four
+# levels a policy must pass and the courses it applies to; she changes values, takes them back with "Vazgeç" or saves them with
+# "Kaydet"; a name that is blank, one character or over 120 is refused under its field before anything is sent; "Kaydet" is
+# answered with a toast, the line moves and the sidebar's medrese name follows. A header link opens the medrese's public page in
+# a new tab, and a link in the courses card goes to Dersler.
+#
+# The world this graph draws is one reader, the başmüderris. A medrese nazır with no grant meets the refusal (`forbidden`, drawn
+# here for the page's own read, its whole story is nazar.access.medreseNazirRefused, which carries e2e settings#6); an address that
+# names no medrese is the 404 page.
+#
+# What is not drawn is in `scope.outOfView`. Findings this flow touches (ui.yaml `rules` has the same ids): F-B-11 (the pressed
+# button turns off under the focus; Kaydet is off with no stated reason), F-B-5 (this form already moves focus to the first
+# invalid field), policy-no-public-recordings-inert (the third box promises what nothing enforces), patch-madrasah-unaudited (the
+# page saves through the route that is audited, the overlapping one is not), and two of its own, SET-1 (the courses card calls a
+# refusal "okunamadı") and SET-2 (leaving a changed form loses it without a word).
+schema: delurio-graph/0
+kind: flow
+id: nazar.settings.edit
+status: captured
+domain: medaris.api
+ui: nazar.settings.edit
+title: Edit the medrese's settings
+summary: >-
+  The başmüderris opens "Medrese ayarları" and reads what her medrese holds: its name and description, three policies (all off
+  until the first save), "Son değişiklik" once it has been saved, the four levels a policy passes (Medaris, the köşk, her medrese,
+  the course) and the courses the policies apply to (published and draft, never a hidden one). "Kaydet" and "Vazgeç" are off
+  while nothing differs from the last save. She changes a value and either takes it back with "Vazgeç" or saves it: only what
+  differs is sent, the save is audited, a toast says "Ayarlar kaydedildi.", the line "Son değişiklik" moves to today and the
+  sidebar carries the new name. A blank name, one of a single character, one over 120 characters or a description over 1000 is
+  refused under its field with the focus moved there, and nothing is sent. A refusal from the server (the seat was taken
+  meanwhile, the medrese is gone) is a toast that stays, and the form keeps what she typed. The link "Medrese sayfasını gör"
+  opens the public page in a new tab. Leaving a changed form asks nothing (SET-2); the box "Ders kayıtları herkese açılamaz"
+  is saved and shown but nothing reads it (policy-no-public-recordings-inert).
+
+scope:
+  shows: >-
+    the settings page of one medrese for its başmüderris: the form (Genel, Politikalar, the last change, Vazgeç and Kaydet), the
+    four-level explanation, the courses card, the toasts of a save, the header link and the refusal that replaces the form
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "a medrese nazır with no grant meets 'Bu sayfaya izniniz yok' where the form would be: nazar.access.medreseNazirRefused (e2e settings#6); here it is the state `forbidden`, read-only, from the seeded medrese"
+    - "a read that fails outright (a 5xx, the network) draws the retry state 'Medrese ayarları okunamadı' with 'Yeniden dene' in place of the form: nazar.shell.errorStates; unit-tested in apps/nazar/test/settings-page.spec.tsx:233, not drawn here"
+    - "the loading skeleton (loading.tsx, an output 'Yükleniyor' and bars) that shows while the settings are read, and the phone layout below 768 px"
+    - "the sidebar, the menu and the scope picker as a whole: nazar.shell.scopeAndMenu; only the sidebar's medrese name is drawn here, because e2e settings#4 reads it"
+    - "a nazır who holds madrasah.settings_edit and none of the three course codes: the settings read but the courses card says 'Dersler şu an okunamadı' (SET-1); the stack seeds no such nazır, so `courses: failed` is drawn and not walked"
+    - "the other pages of the medrese, which the courses link and the menu lead to: nazar.courses.browse and the rest of graphs/nazar"
+    - "what the public page shows: tedris.discover.readMadrasah, which the header link opens in a new tab"
+    - "the API's other write on the same fields, PATCH /madrasahs/{id} (updateMadrasah): no web app calls it, and it writes no audit row (patch-madrasah-unaudited)"
+    - "a request that changes nothing: Kaydet is off then, so the page never sends one; the API would write nothing and leave 'Son değişiklik' alone (invariant madrasah-settings-save-noop)"
+    - "an ended session (a 401): every read and the save send the person to sign in again (realm.auth.signIn, realm.auth.sessionEnded)"
+
+decisions:
+  D1:
+    question: >-
+      Should a policy that nothing enforces be offered? "Ders kayıtları herkese açılamaz" is saved, shown and audited, and its
+      help says that no recording can then be made public or uploaded to YouTube, but no handler reads the flag
+      (policy-no-public-recordings-inert; CourseService.publicRecordingsAllowed reads only the platform's and the köşk's flags).
+    recommend: >-
+      Either enforce it where recordings are made public, or leave the box out (or mark it "yakında") until then; the page is
+      telling the başmüderris her recordings are closed when they are not.
+    affects: [clean, dirty, saved]
+  D2:
+    question: >-
+      Should leaving a changed form ask first? A menu entry, a link or a reload drops the draft with no word, and "Vazgeç"
+      also drops it without a question (SET-2).
+    recommend: >-
+      Warn on leaving a form that differs from the last save, as the recording dialog already does (beforeunload,
+      apps/nazar/features/recordings/components/recording-dialog.tsx:215), and keep "Vazgeç" as it is.
+    affects: [dirty, refused, refusedDescription]
+
+context:
+  reader:
+    values: [head, nazir, gone]
+    initial: any
+    say:
+      head: "the başmüderris of the medrese, who holds madrasah.settings_edit and reads the settings"
+      nazir: "a medrese nazır the API refuses the settings (the seeded one holds nothing)"
+      gone: "the address names no medrese: the API answers MADRASAH_NOT_FOUND"
+  history:
+    values: [never, saved]
+    initial: any
+    say:
+      never: "the medrese was never saved: every policy reads off, there is no 'Son değişiklik' line"
+      saved: "someone saved it before: 'Kayıt her zaman onaylı' is on and 'Son değişiklik' names who and when"
+  courses:
+    values: [listed, empty, failed]
+    initial: any
+    say:
+      listed: "the medrese has a published and a draft course (a hidden one is not listed)"
+      empty: "the medrese has no course yet"
+      failed: "the course list cannot be read (a nazır holding the settings and no course code, or an outage)"
+  flips:
+    values: [closed, approval, recordings]
+    initial: any
+    say:
+      closed: "the box the person presses is 'Kapalı ders zorunlu'"
+      approval: "the box the person presses is 'Kayıt her zaman onaylı'"
+      recordings: "the box the person presses is 'Ders kayıtları herkese açılamaz'"
+  attempt:
+    values: [valid, blankName, shortName, longName, longDescription]
+    initial: any
+    say:
+      valid: "what they type is accepted by the page"
+      blankName: "the name is replaced by spaces"
+      shortName: "the name is one character"
+      longName: "the name is over 120 characters"
+      longDescription: "the description is over 1000 characters"
+  answer:
+    values: [saved, invalid, forbidden, failed]
+    initial: any
+    say:
+      saved: "the API saves what was sent"
+      invalid: "the API refuses the body (VALIDATION_ERROR), which the page's own checks make unreachable"
+      forbidden: "the API refuses the person (AUTHZ_FORBIDDEN): her seat was taken after the page was opened"
+      failed: "anything else: the medrese is gone (MADRASAH_NOT_FOUND) or the server does not answer"
+  stamp: { values: [hidden, shown], initial: hidden } # the line "Son değişiklik" is on the page
+  base: { values: [loaded, savedNow], initial: loaded } # the values the form was loaded with, or what a save in this visit left
+  box: { values: [loaded, changed, kept], initial: loaded } # the box `flips` names: as loaded, pressed and not saved, pressed and saved
+  said: { values: [none, required, short, long, descriptionLong], initial: none } # the message under a field
+  toast: { values: [none, saved, invalid, forbidden, failed], initial: none } # the toast the last save left
+  fixed: { values: ["no", "yes"], initial: "no" } # a refused field was typed again, so the next Kaydet is accepted
+
+guards:
+  accepted: "attempt == 'valid' or fixed == 'yes'"
+
+effects:
+  stampOn: { set: { stamp: shown } }
+  clearToast: { set: { toast: none } }
+  boxChanged: { set: { box: changed } }
+  boxLoaded: { set: { box: loaded } }
+  noSaid: { set: { said: none } }
+  revertedLoaded: { set: { said: none } }
+  fixedOn: { set: { said: none, fixed: "yes" } }
+  saidRequired: { set: { said: required, toast: none } }
+  saidShort: { set: { said: short, toast: none } }
+  saidLong: { set: { said: long, toast: none } }
+  saidDescriptionLong: { set: { said: descriptionLong, toast: none } }
+  savedText: { set: { stamp: shown, base: savedNow, toast: saved, said: none } }
+  savedBox: { set: { stamp: shown, base: savedNow, box: kept, toast: saved, said: none } }
+  toastInvalid: { set: { toast: invalid } }
+  toastForbidden: { set: { toast: forbidden } }
+  toastFailed: { set: { toast: failed } }
+
+failures:
+  opened:
+    from: getMadrasahSettings
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+  saving:
+    from: updateMadrasahSettings
+    invalid: [VALIDATION_ERROR]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [MADRASAH_NOT_FOUND]
+
+# The story the page tells first: the başmüderris opens a medrese that was never saved, changes the name and the description,
+# presses "Kapalı ders zorunlu", saves, and reloads to see it kept (e2e settings#4).
+main:
+  given: { reader: head, history: never, courses: empty, flips: closed, attempt: valid, answer: saved }
+  events: [DONE, EDIT, TOGGLE_CLOSED, SUBMIT, DONE, RELOAD, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The settings are read
+    description: >-
+      The page reads GET /madrasahs/:id/settings and GET /madrasahs/:id/courses on the server, with the person's own record
+      (for the time zone of "Son değişiklik"), behind a loading skeleton (loading.tsx). Nothing is on the screen of this step.
+      Whoever holds madrasah.settings_edit reads it: the başmüderris, a nazır given the code, the başnazım. A 403 leaves the
+      heading and the header link and puts an alert where the form would be (state forbidden); a 404 is the portal's 404 page
+      (lib/tedrisat-read.ts:46); any other failure is the retry state, drawn by nazar.shell.errorStates. The courses read is
+      independent: if it fails the form stays and only the courses card says so (SET-1). After a save in this visit, a reload
+      comes back here and the form is read again with what was saved (state saved).
+    invoke: { action: getMadrasahSettings }
+    on:
+      DONE:
+        - { guard: "reader == 'head' and base == 'savedNow'", target: saved, effect: [clearToast], say: "after a save and a reload the form holds what the API now has", source: apps/nazar/features/settings/components/settings-page.tsx:109 }
+        - { guard: "reader == 'head' and history == 'saved'", target: clean, effect: [stampOn], say: "a medrese saved before shows its last change", source: apps/nazar/features/settings/components/settings-form.tsx:101 }
+        - { guard: "reader == 'head'", target: clean, say: "a medrese never saved shows no last change and every policy off", source: apps/nazar/features/settings/settings.ts:45 }
+      FAIL.forbidden: { guard: "reader == 'nazir'", target: forbidden, source: apps/nazar/features/settings/components/settings-page.tsx:99 }
+      FAIL.missing: { guard: "reader == 'gone'", target: not_found, source: apps/nazar/lib/tedrisat-read.ts:46 }
+    source: apps/nazar/features/settings/components/settings-page.tsx:63
+
+  forbidden:
+    title: The API refuses the settings
+    by: human
+    description: >-
+      The heading, the subtitle and "Medrese sayfasını gör" stay; where the form and the side cards would be, an alert says
+      "Bu sayfaya izniniz yok" (Problems.forbiddenTitle) and tells the person to ask the medrese's başmüderris. There is no form and no "Kaydet" (e2e settings#6). The link out is still drawn (REFUSED-3). The page is
+      nazar.access.medreseNazirRefused's; here it is the other half of the read, from the seeded medrese and its nazır, which
+      this flow only reads.
+    on:
+      OPEN_PUBLIC_PAGE: { target: forbidden, say: "the link opens the public page in a new tab; this tab stays", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  clean:
+    title: The form holds what is saved
+    by: human
+    description: >-
+      The page as it was loaded: "Medrese adı" and "Açıklama" hold what the API has, the three policy boxes show it, the line
+      "Son değişiklik <date> · <who>" is there once the medrese was saved (and empty before: the paragraph is on the page with no
+      text), the four levels list "Bu sayfa" on the medrese's own, and the courses card lists the published and the draft courses
+      with their köşk, müderrisler and "Yayında" or "Taslak", or says the medrese has none yet, or says they could not be read
+      (SET-1). "Vazgeç" and "Kaydet" are natively disabled while nothing differs from the saved values, and nothing says why
+      (F-B-11). No node has the focus: the page sets none (focus-not-set). A box can be pressed first as well; the graph draws
+      the box after a first typed change (the form is then `dirty`), so that a walk's save always carries a typed value.
+      Findings read here: policy-no-public-recordings-inert (the third box), SET-1, SET-2.
+    on:
+      EDIT: { target: dirty, say: "they type in the name or the description", source: apps/nazar/features/settings/components/settings-form.tsx:148 }
+      OPEN_PUBLIC_PAGE: { target: clean, say: "'Medrese sayfasını gör' opens the public page in a new tab (target=_blank); this tab stays", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
+      OPEN_COURSES: { target: courses_opened, say: "'Medrese dersleri' in the courses card", source: apps/nazar/features/settings/components/settings-page.tsx:190 }
+      NAVIGATE: { target: left, say: "they follow the menu, a breadcrumb or the address bar" }
+    source: apps/nazar/features/settings/components/settings-form.tsx:113
+
+  dirty:
+    title: Something differs from the last save
+    by: human
+    description: >-
+      The form differs from the saved values: "Kaydet" and "Vazgeç" are on (a value typed back by hand turns them off again;
+      not drawn). Nothing is sent until "Kaydet", and the only sign of an unsaved change is that the buttons are on. A change
+      is lost by leaving the page without a word (SET-2). After a refused save this is where the person is, with the toast of
+      the refusal over the page (it stays until closed) and her draft intact.
+    on:
+      TOGGLE_CLOSED: { guard: "flips == 'closed' and box == 'loaded'", target: dirty, effect: [boxChanged], source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_APPROVAL: { guard: "flips == 'approval' and box == 'loaded'", target: dirty, effect: [boxChanged], source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      TOGGLE_RECORDINGS: { guard: "flips == 'recordings' and box == 'loaded'", target: dirty, effect: [boxChanged], source: apps/nazar/features/settings/components/settings-form.tsx:199 }
+      SUBMIT:
+        - { guard: accepted, target: saving, effect: [clearToast], say: "they press Kaydet: the page sends only what differs, the name and the description trimmed, an emptied description as null", source: apps/nazar/features/settings/components/settings-form.tsx:75 }
+        - { guard: "attempt == 'blankName'", target: refused, effect: [saidRequired], say: "the name is blank: 'Medrese adı boş olamaz.' under it, the focus moves to it, nothing is sent", source: apps/nazar/features/settings/settings.ts:66 }
+        - { guard: "attempt == 'shortName'", target: refused, effect: [saidShort], say: "one character: 'Medrese adı en az 2 karakter olmalı.'", source: apps/nazar/features/settings/settings.ts:69 }
+        - { guard: "attempt == 'longName'", target: refused, effect: [saidLong], say: "over 120: 'Medrese adı en çok 120 karakter olabilir.'", source: apps/nazar/features/settings/settings.ts:70 }
+        - { guard: "attempt == 'longDescription'", target: refusedDescription, effect: [saidDescriptionLong], say: "the name is right and the description is over 1000: the message is under the description and the focus goes there", source: apps/nazar/features/settings/settings.ts:73 }
+      CANCEL: { target: reverting, say: "they press Vazgeç: nothing asks first", source: apps/nazar/features/settings/components/settings-form.tsx:96 }
+      OPEN_PUBLIC_PAGE: { target: dirty, say: "the link opens in a new tab; the draft stays here", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
+      NAVIGATE: { target: left, say: "they leave the page: the draft is lost and nothing warned them (SET-2)" }
+    source: apps/nazar/features/settings/components/settings-form.tsx:61
+
+  refused:
+    title: The name is refused under its field
+    by: human
+    description: >-
+      After the first press of "Kaydet" with a wrong name the page sets `attempted`: the message replaces the help line under
+      "Medrese adı" and the field is marked invalid (aria-invalid), and the focus moves to it, so a screen reader reads it
+      (F-B-5 holds in this form). Nothing is sent; no audit row is written (e2e settings#3). The message follows the typing
+      from then on. The message is no live region of its own: it is read because the focus moved.
+    on:
+      FIX: { target: dirty, effect: [fixedOn], say: "they type a name the page accepts: the message goes", source: apps/nazar/features/settings/components/settings-form.tsx:62 }
+      CANCEL: { target: reverting, say: "Vazgeç puts the saved values back and clears the message", source: apps/nazar/features/settings/components/settings-form.tsx:96 }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/settings/components/settings-form.tsx:68
+
+  refusedDescription:
+    title: The description is refused under its field
+    by: human
+    description: >-
+      The name is right and the description, trimmed, is over 1000 characters: "Açıklama en çok 1000 karakter olabilir." replaces the
+      help line under "Açıklama" and the focus goes to the description (settings-form.tsx:69, the second field of the pair).
+      Nothing is sent. When the name is wrong too, the name wins the focus and both messages are shown (not drawn).
+    on:
+      FIX: { target: dirty, effect: [fixedOn], say: "they shorten the description: the message goes", source: apps/nazar/features/settings/components/settings-form.tsx:63 }
+      CANCEL: { target: reverting, say: "Vazgeç puts the saved values back and clears the message", source: apps/nazar/features/settings/components/settings-form.tsx:96 }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/settings/components/settings-form.tsx:69
+
+  reverting:
+    title: Vazgeç puts the saved values back
+    description: >-
+      Not a screen: the draft becomes the last save (`setDraft(saved.form)`, `attempted` off). The last save is what the page was
+      loaded with, or what a save in this visit left; a pressed box goes back with it. Vazgeç is natively disabled once the form
+      equals the save, so the pressed button turns off under the focus (F-B-11).
+    always:
+      - { guard: "base == 'loaded' and box == 'changed'", target: clean, effect: [boxLoaded, revertedLoaded], say: "back to the loaded values, the pressed box unpressed" }
+      - { guard: "base == 'loaded'", target: clean, effect: [revertedLoaded], say: "back to the loaded values" }
+      - { guard: "box == 'changed'", target: saved, effect: [boxLoaded, noSaid, clearToast], say: "back to what the last save in this visit left, the pressed box unpressed" }
+      - { target: saved, effect: [noSaid, clearToast], say: "back to what the last save in this visit left" }
+    source: apps/nazar/features/settings/components/settings-form.tsx:96
+
+  saving:
+    title: The save is on its way
+    description: >-
+      saveSettings calls PATCH /madrasahs/:id/settings with only what differs (settingsPatch): the trimmed name, the description
+      (null when emptied), and only the policies that changed. One transaction locks the medrese, writes the name and description,
+      upserts all three policy columns with updatedAt and updatedBy (the caller), and writes the audit row madrasah.settings.update
+      with the changes (apps/tedrisat/src/madrasah/madrasah.repository.ts:1395-1450). "alwaysApproval" is read at once by every new
+      enrolment of the medrese's courses; "closedCourseRequired" makes a course the medrese opens closed and refuses a save that
+      opens it again; "noPublicRecordings" is stored and nothing reads it (policy-no-public-recordings-inert). "Kaydet" is busy
+      (aria-disabled, aria-busy, a hidden output "Kaydediliyor") and "Vazgeç" is off; the fields stay editable. A server
+      refusal keeps the draft and says so in a toast: AUTHZ_FORBIDDEN "Bunu yapma izniniz yok.", VALIDATION_ERROR "Medrese adını
+      ve açıklamayı denetleyip yeniden deneyin." (unreachable from this page), anything else "Bir şeyler ters gitti." A call that
+      fails outright (the network) is not caught here either; not verified.
+    invoke: { action: updateMadrasahSettings }
+    on:
+      DONE:
+        - { guard: "answer == 'saved' and box == 'changed'", target: saved, effect: [savedBox], say: "the form and the saved snapshot take the API's answer, the box stays as pressed, a toast says so and the page is read again", source: apps/nazar/features/settings/components/settings-form.tsx:80 }
+        - { guard: "answer == 'saved'", target: saved, effect: [savedText], say: "the form and the saved snapshot take the API's answer, a toast says so and the page is read again", source: apps/nazar/features/settings/components/settings-form.tsx:80 }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: dirty, effect: [toastInvalid], source: apps/nazar/features/settings/settings.ts:108 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: dirty, effect: [toastForbidden], source: apps/nazar/features/settings/settings.ts:109 }
+      FAIL.other: { guard: "answer == 'failed'", target: dirty, effect: [toastFailed], source: apps/nazar/features/settings/settings.ts:111 }
+    source: apps/nazar/features/settings/components/settings-form.tsx:77
+
+  saved:
+    title: The settings are saved
+    by: human
+    goal: true
+    description: >-
+      The toast "Ayarlar kaydedildi." (a title only, it closes after 6 seconds), the line "Son değişiklik <today> · <who>" moved to
+      today, "Kaydet" and "Vazgeç" natively off (the pressed "Kaydet" had the focus: F-B-11), the sidebar's medrese name read
+      again by router.refresh() and the four levels' third line with it. A reload reads the form again with what the API holds
+      (e2e settings#4 a8-a11); a further change is typed again here. Findings read here: F-B-11, policy-no-public-recordings-inert.
+    on:
+      EDIT_AGAIN: { target: dirty, effect: [clearToast], say: "they change the description again", source: apps/nazar/features/settings/components/settings-form.tsx:167 }
+      RELOAD: { target: opened, effect: [clearToast], say: "they reload the page: the form is read again", source: apps/nazar/features/settings/components/settings-page.tsx:57 }
+      OPEN_PUBLIC_PAGE: { target: saved, say: "the link opens in a new tab", source: apps/nazar/features/settings/components/settings-page.tsx:83 }
+      OPEN_COURSES: { target: courses_opened, say: "'Medrese dersleri' in the courses card", source: apps/nazar/features/settings/components/settings-page.tsx:190 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link" }
+    source: apps/nazar/features/settings/components/settings-form.tsx:80
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the settings read is Next's not-found page, 'Sayfa bulunamadı' (lib/tedrisat-read.ts:46); the portal's layout answers the same for an address it does not know."
+    type: final
+    leavesPage: true
+
+  courses_opened:
+    title: Dersler is opened
+    description: "'Medrese dersleri' leads to /medrese/<id>/dersler in the same tab: nazar.courses.browse."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-a-form-the-page-accepts-is-sent
+    never: "state == 'saving' and not accepted"
+    say: A save is sent only after the name and the description passed the page's own checks.
+    source: apps/nazar/features/settings/components/settings-form.tsx:68
+  - id: a-message-under-a-field-is-never-sent
+    never: "state == 'saving' and said != 'none'"
+    say: A form that still shows a message under a field is not sent.
+    source: apps/nazar/features/settings/components/settings-form.tsx:68
+  - id: a-save-moves-the-last-change
+    never: "state == 'saved' and stamp == 'hidden'"
+    say: After a save the line "Son değişiklik" is on the page.
+    source: apps/nazar/features/settings/components/settings-form.tsx:101
+  - id: the-form-is-the-readers
+    never: "(state == 'clean' or state == 'dirty' or state == 'refused' or state == 'refusedDescription' or state == 'saving' or state == 'saved') and reader != 'head'"
+    say: The form is drawn only for a reader the API let read the settings.
+    source: apps/nazar/features/settings/components/settings-page.tsx:99
+  - id: a-pressed-box-is-never-lost-by-a-save
+    never: "state == 'saved' and box == 'changed'"
+    say: After a save a pressed box is saved, not still waiting.
+    source: apps/nazar/features/settings/components/settings-form.tsx:80

@@ -1,0 +1,83 @@
+# The screens of tedris.celse.browseCurriculum: the last block of the celse page, the nav "Celseler arasında" (the card of the previous
+# celse, the button "Müfredat", the card of the next celse), and the popup the button opens. Read from
+# apps/tedris/features/courses/components/session-pager.tsx and session-curriculum.tsx on 15 Nov 2026 and measured on the stack with
+# a probe of the page in a browser (the accessibility tree, the focus), run on a first course of the walk's kind and not on the final
+# one; no replay was run in the writing phase (every walk is walk phase). The rest of the celse page is other flows' (tedris.celse.attend and the
+# flows of the notes, homework and resources).
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as
+# `tedris.<key>`, the key being the path inside that file). The `composed.*` keys are texts the code writes itself, in no i18n file:
+#   composed.Pager.previousName   the link's accessible name: the hidden "Önceki celse: Hafta {number}, " (SessionPage.previousSr) and
+#                                 the celse's title in one link (session-pager.tsx:80-86), written here with its two values
+#   composed.Pager.nextName       the same for the next celse (SessionPage.nextSr)
+# The placeholders a replay fills are the binding's `samples`; what this file's `samples` hold are the values of the walk's first celse
+# page ("Hafta 4 / 6", the celse of week 3 before it and the one of week 6 after it, the cancelled week 5 skipped).
+# Not drawn on purpose: the line of day and time inside each card (a <time>, outside the link's name), the rows' week labels, titles and
+# days (they carry the course's own data and change with the clock), the thin bar of the button (it has no role, CLS-04's neighbour).
+schema: delurio-graph/0
+kind: ui
+id: tedris.celse.browseCurriculum
+flow: tedris.celse.browseCurriculum
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  week: "4"
+  weeks: "6"
+  title: Celse 4
+  count: "6"
+  number: "3"
+  previousNumber: "3"
+  previousTitle: Celse 3
+  nextNumber: "6"
+  nextTitle: Celse 6
+
+# After a step that opens the popup the focus is on this celse's row; after one that closes it, on the button; while a query is typed it
+# is in the field. The page itself sets none when it opens (rules: focus-not-set).
+focus:
+  page: trigger
+  popup: rowCurrent
+  filtered: searchFieldTyped
+  noMatch: searchFieldTyped
+
+nodes:
+  # ---- the page and its last block, in every state (the popup is not a window: the page behind it stays alive) ----
+  celsePage: { type: page, component: Page, role: main, in: [page, popup, filtered, noMatch], source: apps/tedris/features/courses/components/session-page.tsx:337 } # no name and no initial focus: the page sets none (focus-not-set)
+  pager: { type: page, component: Page, role: navigation, name: { key: SessionPage.neighbours }, in: [page, popup, filtered, noMatch], source: apps/tedris/features/courses/components/session-pager.tsx:200 } # always the last block of the page
+  previousEyebrow: { type: text, component: Text, text: { key: SessionPage.previousWeek }, in: [page, popup, filtered, noMatch], when: hasPrevious, source: apps/tedris/features/courses/components/session-pager.tsx:74 } # aria-hidden: the link's hidden prefix says the same to a screen reader
+  previousLink: { type: action, component: LinkButton, role: link, name: { key: composed.Pager.previousName }, in: [page, popup, filtered, noMatch], when: hasPrevious, emits: PREVIOUS, source: apps/tedris/features/courses/components/session-pager.tsx:80 } # the whole card is clickable (mds-card__link); a plain <a>, a full page load
+  nextEyebrow: { type: text, component: Text, text: { key: SessionPage.nextWeek }, in: [page, popup, filtered, noMatch], when: hasNext, source: apps/tedris/features/courses/components/session-pager.tsx:74 }
+  nextLink: { type: action, component: LinkButton, role: link, name: { key: composed.Pager.nextName }, in: [page, popup, filtered, noMatch], when: hasNext, emits: NEXT, source: apps/tedris/features/courses/components/session-pager.tsx:80 }
+  trigger: { type: action, component: Button, role: button, intent: secondary, name: { key: SessionPage.curriculumLabel }, in: [page, popup, filtered, noMatch], emits: OPEN_POPUP, source: apps/tedris/features/courses/components/session-curriculum.tsx:356 } # aria-haspopup="listbox", aria-expanded, aria-controls only while open (CLS-04). Pressed while the popup is open it closes it, with the focus on it (not drawn)
+  triggerWeek: { type: text, component: Text, text: { key: SessionPage.curriculumWeek }, in: [page, popup, filtered, noMatch], source: apps/tedris/features/courses/components/session-curriculum.tsx:388 } # beside the thin bar, which carries no role
+
+  # ---- the popup (a div.mds-popup with no role and no name, CLS-04: it has no node of its own) ----
+  popupTitle: { type: text, component: Text, text: { key: SessionPage.curriculum }, in: [popup, filtered, noMatch], source: apps/tedris/features/courses/components/session-curriculum.tsx:410 } # a paragraph, not a heading
+  popupCount: { type: text, component: Text, text: { key: SessionPage.sessionsCount }, in: [popup, filtered, noMatch], source: apps/tedris/features/courses/components/session-curriculum.tsx:416 } # "6 celse", after an aria-hidden "·": the tree runs the two together, "Müfredat8 celse" as measured with eight celses (BROWSE-1)
+  programmeLink: { type: action, component: LinkButton, role: link, text: { key: SessionPage.curriculumCourse }, in: [popup, filtered, noMatch], emits: OPEN_PROGRAMME, source: apps/tedris/features/courses/components/session-curriculum.tsx:419 } # href /courses/<c>?tab=mufredat; Esc on it closes the popup
+  searchField: { type: field, component: TextField, role: searchbox, text: { key: SessionPage.curriculumSearchLabel }, value: { literal: "" }, in: [popup], source: apps/tedris/features/courses/components/session-curriculum.tsx:430 } # its name is a visually hidden label; type=search, autocomplete off; the placeholder says "Hafta ya da başlık ara" (SessionPage.curriculumSearch)
+  searchFieldTyped: { type: field, component: TextField, role: searchbox, text: { key: SessionPage.curriculumSearchLabel }, in: [filtered, noMatch], source: apps/tedris/features/courses/components/session-curriculum.tsx:430 } # the same field once a query is typed: it holds the query, which the walk chooses
+  noMatchText: { type: text, component: Text, text: { key: SessionPage.curriculumNoMatch }, in: [noMatch], source: apps/tedris/features/courses/components/session-curriculum.tsx:444 } # a paragraph in no live region, with no count (CLS-05)
+
+  # ---- the list: a listbox named "Müfredat" with one option per celse. Empty and of no height while nothing matches, so it is not drawn in noMatch ----
+  rowList: { type: list, component: List, role: listbox, name: { key: SessionPage.curriculum }, in: [popup, filtered], source: apps/tedris/features/courses/components/session-curriculum.tsx:446 } # tabindex -1: the list itself is never the focus while a row exists (SE-01)
+  rowCurrent: { type: list, component: ListItem, role: option, text: { key: SessionPage.rowViewing }, checked: true, in: [popup], source: apps/tedris/features/courses/components/session-curriculum.tsx:464 } # aria-selected, tabindex 0: the row that has the focus on opening; "Hafta 4, <title>, <day> · Bu celse"
+  rowEnded: { type: list, component: ListItem, role: option, text: { key: SessionPage.rowDone }, checked: false, in: [popup], source: apps/tedris/features/courses/components/session-curriculum.tsx:488 } # a celse that is over: a check mark and the hidden ", sona erdi" after its title (the walk's course has three)
+  rowCancelled: { type: list, component: ListItem, role: option, text: { key: SessionPage.rowCancelled }, checked: false, in: [popup], source: apps/tedris/features/courses/components/session-curriculum.tsx:481 } # a ban mark and "İptal edildi": in the list, not among the neighbours
+  rowAhead: { type: list, component: ListItem, role: option, checked: false, in: [popup], source: apps/tedris/features/courses/components/session-curriculum.tsx:481 } # a celse still ahead, apart from this one: an empty circle and its day, no word (the walk's course has one)
+  firstRowOther: { type: list, component: ListItem, role: option, text: { key: SessionPage.rowDone }, checked: false, in: [filtered], when: hitIsOther, source: apps/tedris/features/courses/components/session-curriculum.tsx:464 } # "hafta 2" keeps the one row of week 2, a celse that is over; it is the active row (highlighted), not the focused one
+  firstRowThis: { type: list, component: ListItem, role: option, text: { key: SessionPage.rowViewing }, checked: true, in: [filtered], when: hitIsThis, source: apps/tedris/features/courses/components/session-curriculum.tsx:464 } # "hafta 4" keeps this celse alone (in a course with two celses in a week it keeps this one first, then the others of the week)
+
+edges:
+  - { triggers: [trigger, popup] }
+  - { triggers: [previousLink, previous_opened] }
+  - { triggers: [nextLink, next_opened] }
+  - { triggers: [programmeLink, programme_opened] }
+
+rules:
+  - { id: CLS-04, rule: "the button says aria-haspopup=\"listbox\" and aria-expanded (session-curriculum.tsx:360-362), but what opens is not a listbox: an unnamed div with no role (:398-408) that holds a title paragraph, a link, a search field and the listbox (:446-463). A screen reader user is told a list opens and finds a group of unlike things; the popup has no name and the title is a paragraph, not a heading. The owner asked for a combobox (the comment at :97-102) and the code is hand-rolled on purpose (:114-118). Fix: aria-haspopup=\"dialog\" with a named, non-modal role=dialog, or a combobox with the search field as the combobox" }
+  - { id: CLS-05, rule: "while a query is typed, \"Bu aramaya uyan celse yok.\" comes in as a plain paragraph (session-curriculum.tsx:443-445) with no live region and no count, and the kept rows change with no word either; a screen reader user who types hears nothing change. Fix: one always-present role=status that says \"{n} celse\" or the no-match sentence" }
+  - { id: CLS-09, rule: "a row's mark (\"Şu an canlı\", \"Bu celse\", the check of a done celse, \"Kayıt var\") is worked out once, on the server, when the page is drawn (session-pager.tsx:106-147, `now` from page.tsx:49) and is never worked out again, while the badge and the card of the same page tick every 30 s. Not walked: it needs a celse that goes from ahead to on air under an open page" }
+  - { id: SE-01, rule: "the e2e (session.e2e.ts:187, session#7 a2) expects `getByRole(\"listbox\", { name: \"Müfredat\" })` to be focused after the button is pressed. The code focuses the selected option (session-curriculum.tsx:238-249: `row.focus`; the list's own `list.focus` is the fallback when no row is active). Measured on the stack: the focused element is the option with aria-selected=true, and the listbox is not focused. The graph says what the code does; the e2e's check is the stale one (fix: assert that the selected option is focused)" }
+  - { id: BROWSE-1, rule: "new, provisional id, measured with a snapshot of the accessibility tree and not heard with a screen reader: the popup's title is `Müfredat` followed by a span that holds an aria-hidden \"·\" and \"6 celse\" with no space between the two words (session-curriculum.tsx:410-418), and the tree reads \"Müfredat8 celse\" (measured on a course of eight celses). Fix: a space or a block between the words, or the count in its own element" }
+  - { id: BROWSE-2, rule: "new, provisional id, measured on the stack with a browser of its own, and on the course page, which is tedris.course.readProgramme's and not this flow's: the course page of a course that has a week already over logs `Hydration failed because the server rendered HTML didn't match the client` at the `<time>` of a lesson row of a done week (LessonRow, state done), React draws the tree again on the client, and a click on \"Derse devam et\" made in the first seconds after the load does nothing (the page stays where it was for ten seconds), while the same click after a wait of four seconds goes through. The cause (the viewer's time zone not yet known to the server on a first load, or the clock) was not verified. The celse page was loaded in the probes without a click lost, but its console was not read there, so that it has no such error is not verified. The walk therefore opens the celse by its address and does not enter through the course page. Fix: render the row's time the same on the server and on the client (the course's zone, not the viewer's, until the viewer's is known)" }
+  - { id: focus-not-set, rule: "no code moves the focus when the celse page opens (measured: the focus is on the document); the page node has no initialFocus. After the popup closes the code does set it: the button, through `close(true)` (session-curriculum.tsx:168-171), except when it closes by a press that lands on another control, or by Tab" }

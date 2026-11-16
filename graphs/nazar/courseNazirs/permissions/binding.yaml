@@ -1,0 +1,59 @@
+# nazar.courseNazirs.permissions on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on :4002 in a wide window
+# (1440 x 900), the course's müderris (Hamdi Müderris, MUDERRIS) signed in through Keycloak's real form, and applicantH ("Rıza Başvuran", a spare
+# talebe) as the ders nazırı whose post she edits, in a course the walk makes and removes (see locators.binding.yaml for the data and every locator).
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/courseNazirs/permissions \
+#     --bind graphs/nazar/courseNazirs/permissions/binding.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay (the owner moved every replay to the end). It loads: `replay --emit-spec` reads it and walks nothing.
+#
+# The two scenarios (`given` differs, so each is chosen by what it starts from):
+#   edits    the main story (e2e course-nazirs#5): the post holds "Ders kaydı" and "Celse" and an end thirty days ahead; the hoca reaches the page by
+#            the course menu's "Ders nazırları" from Genel bakış (the nav graph's entry frame:ders->dersNazirs), presses "İzinleri düzenle: Rıza
+#            Başvuran", unticks "Celse" and saves (the row says "1 izin"), opens it again, clears the end and saves (the row says "Süresiz"). The
+#            branches are the same scenario's other paths: TYPE_PAST_END (blocked on the page), TYPE_FUTURE_END, a save with nothing changed, Vazgeç
+#            and the close icon; the cover walks each from the same start.
+#   forever  the post has no end: the row says "Süresiz" at once, and a typed later end is saved over it.
+# What the cover cannot drive from these two: `answer: gone`, `answer: refused` and `answer: failed` (each has its own small file, because each only
+# changes what happens before one button is pressed), and the exits `forbidden` and `not_found` (locators.binding.yaml says why).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseNazirs.permissions
+
+scenarios:
+  # The main story: the post holds two permissions and an end ahead; one is taken away, then the end; saved twice; opened again between.
+  edits:
+    given: { post: dated, answer: saved }
+    as: muderris
+    open: '{nazar}/ders/{cn.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, down]
+        expect: post-data down
+      - run: [node, helpers/course.mjs, make, cnperm, --weeks, '1', --lessons, '1']
+        expect: '"tag":"cnperm"'
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, up]
+        expect: post-data up
+    teardown:
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, down]
+        expect: post-data down
+      - run: [node, helpers/course.mjs, remove, cnperm]
+        expect: course remove cnperm
+
+  # The post has no end: the row says "Süresiz" from the start.
+  forever:
+    given: { post: forever, answer: saved }
+    as: muderris
+    open: '{nazar}/ders/{cn.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, down]
+        expect: post-data down
+      - run: [node, helpers/course.mjs, make, cnperm, --weeks, '1', --lessons, '1']
+        expect: '"tag":"cnperm"'
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, up, --forever]
+        expect: post-data up
+    teardown:
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, down]
+        expect: post-data down
+      - run: [node, helpers/course.mjs, remove, cnperm]
+        expect: course remove cnperm

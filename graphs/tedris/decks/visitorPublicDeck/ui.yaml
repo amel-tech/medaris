@@ -1,0 +1,117 @@
+# The screens of tedris.decks.visitorPublicDeck: a public deck's page (DeckPublicView) and its study page (StudySession with signedIn false)
+# as a person with no session meets them. The bar around the page (tedris.shell.frame), the toast host, the loading skeletons (DCK-25)
+# and the sign-in page itself (realm.auth.signIn) are not drawn; nor is any state of the redirects, which have no screen.
+#
+# Words: every key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`: `Decks.*`, `PhoneMenu.discover`)
+# or from tedris-learn.json (read as `tedrisLearn.<key>`: `Study.*`, `PublicDeck.*`), the key being the path inside that file, copied
+# letter for letter by <scratchpad>/vpd-probe/catalog.mjs. The `composed.PublicDeck.*` keys are NOT in any i18n file: they are what the app
+# builds in code from a value the API gives, written here with their placeholders so a replay can match them:
+#   composed.PublicDeck.title   the deck's name, a value the API gives (h1, the breadcrumb's current page and its link on the study page)
+#                                                                          deck-header.tsx:54, study-session.tsx:124
+#   composed.PublicDeck.front   a card's front, a value the API gives (a table cell, and the face of the card being studied)
+#                                                                          deck-public-view.tsx:106, study-session.tsx:208
+#   composed.PublicDeck.back    a card's back, a value the API gives                                  deck-public-view.tsx:114, study-session.tsx:214
+# Words the code does not take from the catalog and the graph keeps out: the breadcrumb's name "Sayfa yolu" is the catalog's `Decks.breadcrumbLabel`.
+# The flow invokes only a read, so it writes nothing for a visitor. `check --strict` still wants a `changes` note, because the domain lists an
+# audit row on getDeck for the başnazım's read of another person's private deck, which a visitor never makes. The note is the app's own
+# message: PublicDeck.note, "Giriş yapmadan çalışırsan ilerlemen kaydedilmez.", the very sentence both pages show. No entry of the catalog
+# is authored for this flow.
+# `samples` are keyed by the catalog's placeholder, as the checker reads them, so a placeholder that two messages share has one value: the
+# deck of the walk has twelve cards (`count`, `total`), and the round is cut to ten (`Kart 1 / 10`, `{n} kartı çalıştın`). The binding
+# gives the numbers its own way where they differ, and a regex where they change with each card. The deck is the one public-deck.mjs
+# makes: twelve Arabic words with their Turkish meaning.
+schema: delurio-graph/0
+kind: ui
+id: tedris.decks.visitorPublicDeck
+flow: tedris.decks.visitorPublicDeck
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: PublicDeck.note }
+samples:
+  deck: Açık deste denemesi
+  title: Açık deste denemesi
+  count: "12"
+  total: "12"
+  shownText: 6’sı
+  done: "0"
+  n: "1"
+  front: كتاب
+  back: kitap
+
+# Nothing on either page sets a focus: no autoFocus and no focus() in deck-public-view.tsx or study-session.tsx, and the buttons that
+# had it are unmounted by the next step (DCK-01, DCK-10). So no page has an `initialFocus` and the file has no `focus`.
+nodes:
+  # ---- the deck's page: /decks/<id> for a visitor ----
+  deckMain: { type: page, component: Page, role: main, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-public-view.tsx:50 } # the page's own <main>, with no name and no initial focus (rule focus-not-set); the segment's loading.tsx draws another <main aria-busy> before it (DCK-25)
+  crumbs: { type: page, component: Page, role: navigation, name: { key: Decks.breadcrumbLabel }, in: [deckPage, studying, studyOver], source: libs/ui/src/mds/breadcrumb.tsx:25 } # the kit's Breadcrumb, an ordered list; a visitor's root is "Keşfet"
+  crumbDiscover: { type: action, component: LinkButton, role: link, text: { key: PhoneMenu.discover }, in: [deckPage, studying, studyOver], emits: OPEN_DISCOVER, source: apps/tedris/features/flashcards/components/deck-header.tsx:48 } # /discover, a plain anchor; study-session.tsx:123 draws the same
+  crumbDeckHere: { type: text, component: Text, text: { key: composed.PublicDeck.title, params: { deck: deck.title } }, in: [deckPage], source: libs/ui/src/mds/breadcrumb.tsx:37 } # the current crumb, aria-current="page", never a link
+  deckTitle: { type: text, component: Heading, role: heading, text: { key: composed.PublicDeck.title, params: { deck: deck.title } }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-header.tsx:54 } # h1, dir=auto
+  publicBadge: { type: text, component: Text, text: { key: Decks.public }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-header.tsx:74 } # an outline badge; the owner's header has the status badge instead and a reader's has "Koleksiyonunda" besides
+  deckCount: { type: text, component: Text, text: { key: Decks.cardsMeta, params: { count: deck.cards } }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-header.tsx:87 } # "12 ezber kartı", the first piece of the caption
+  deckKind: { type: text, component: Text, text: { key: Decks.cardTypeVOCABULARY }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-header.tsx:91 } # the second piece, after a decorative "·": "Kelime", or "Hadis" for a deck of hadith cards (out of view: the walk's deck is a vocabulary deck)
+  studyLink: { type: action, component: LinkButton, role: link, text: { key: Decks.study }, in: [deckPage], emits: STUDY, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:59 } # a large link-button with a play icon to /decks/study/<id>, a full page load
+  # the note and its link are drawn on the study page too: the same Alert, with the study page as the page to come back to
+  signInNote: { type: status, component: Status, role: status, text: { key: PublicDeck.note }, in: [deckPage, studying, studyOver], source: apps/tedris/features/flashcards/components/deck-public-view.tsx:70 } # a neutral Alert, role=status, drawn with the page and never announced; the link is inside the same paragraph
+  signInLink: { type: action, component: LinkButton, role: link, text: { key: PublicDeck.signIn }, in: [deckPage, studying, studyOver], emits: SIGN_IN, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:73 } # /auth/signin?callbackUrl=%2Fdecks%2F<id> (the study page: %2Fdecks%2Fstudy%2F<id>); a next/link with prefetch off
+  cardsSection: { type: page, component: Page, role: region, name: { labelledBy: cardsHeading }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-public-view.tsx:78 } # a <section aria-labelledby="deck-cards">
+  cardsHeading: { type: text, component: Heading, role: heading, text: { key: Decks.tabCards }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-public-view.tsx:83 } # h2 "Kartlar"
+  cardsCaption: { type: text, component: Text, text: { key: Decks.cards, params: { count: deck.cards } }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-public-view.tsx:86 } # "12 kart", drawn for an empty deck too ("0 kart")
+  emptyNote: { type: text, component: Text, text: { key: Decks.emptyCards }, in: [deckPage], when: emptyDeck, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:92 } # the EmptyState of a deck with no card, with a cards icon
+  cardsTable: { type: list, component: List, role: table, name: { key: Decks.tableCaption, params: { title: deck.title } }, in: [deckPage], when: hasCards, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:96 } # the kit's Table with `responsive="stack"`, named by its visually hidden caption; its cells carry explicit roles
+  frontHeader: { type: text, component: Text, role: columnheader, text: { key: Decks.frontLabel }, in: [deckPage], when: hasCards, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:104 }
+  backHeader: { type: text, component: Text, role: columnheader, text: { key: Decks.backLabel }, in: [deckPage], when: hasCards, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:110 }
+  frontCell: { type: text, component: Text, role: cell, text: { key: composed.PublicDeck.front, params: { front: card.front } }, in: [deckPage], when: hasCards, repeat: cards, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:106 } # a plain cell, not the row's header (DCK-31); an Arabic face is lang=ar dir=rtl in its own run
+  backCell: { type: text, component: Text, role: cell, text: { key: composed.PublicDeck.back, params: { back: card.back } }, in: [deckPage], when: hasCards, repeat: cards, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:114 } # dir=auto, with the card's source under it when it has one (out of view)
+  showing: { type: text, component: Text, text: { key: Decks.showing, params: { total: deck.cards, shownText: rows.shown } }, in: [deckPage], when: hasCards, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:128 } # "12 karttan 6’sı gösteriliyor", and "12 karttan 12’si gösteriliyor" after the last press: the Turkish possessive is built by countOf (deck-model.ts:399); the caption changes with no announcement (DCK-10)
+  loadMore: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.loadMore }, in: [deckPage], when: moreRows, emits: MORE_ROWS, source: apps/tedris/features/flashcards/components/deck-public-view.tsx:135 } # shows six more rows; after the last press it is removed from the page and the focus falls to the document (DCK-10)
+  aboutTitle: { type: text, component: Heading, role: heading, text: { key: Decks.aboutTitle }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-public-view.tsx:150 } # h2 in the aside's card
+  aboutText: { type: text, component: Text, text: { key: Decks.aboutPublic }, in: [deckPage], source: apps/tedris/features/flashcards/components/deck-public-view.tsx:151 }
+  # what a signed-in reader of the same deck has and a visitor does not: drawn behind `signedIn`, which the visitor's session never satisfies
+  collectButton: { type: action, component: Button, role: button, text: { key: Decks.add }, in: [deckPage], when: signedIn, source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:99 } # "Koleksiyona ekle"; e2e learn#13 asserts it is absent
+  copyButton: { type: action, component: Button, role: button, text: { key: Decks.copy }, in: [deckPage], when: signedIn, source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:175 } # "Kendi desteme kopyala" (named "…: kart n"), one per visible row; e2e learn#13 asserts none
+  readerProgressTitle: { type: text, component: Heading, role: heading, text: { key: Decks.progressTitle }, in: [deckPage], when: signedIn, source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:204 } # h2 "Çalışma durumun" in the reader's aside
+
+  # ---- the study page: /decks/study/<id> for a visitor ----
+  studyMain: { type: page, component: Page, role: main, in: [studying, studyOver], source: apps/tedris/features/flashcards/components/study-session.tsx:118 } # the page's own <main>, with no name and no initial focus (rule focus-not-set); the study segment's loading.tsx draws another <main aria-busy> before it (DCK-25)
+  crumbDeck: { type: action, component: LinkButton, role: link, text: { key: composed.PublicDeck.title, params: { deck: deck.title } }, in: [studying, studyOver], emits: OPEN_DECK, source: apps/tedris/features/flashcards/components/study-session.tsx:124 } # the deck's name, a link to /decks/<id>
+  crumbStudyHere: { type: text, component: Text, text: { key: Study.title }, in: [studying, studyOver], source: libs/ui/src/mds/breadcrumb.tsx:37 } # the current crumb, "Çalışma"
+  studyTitle: { type: text, component: Heading, role: heading, text: { key: Study.title }, in: [studying, studyOver], source: apps/tedris/features/flashcards/components/study-session.tsx:130 } # h1
+  studySubtitle: { type: text, component: Text, text: { key: Study.subtitleAll, params: { deck: deck.title, count: round.total } }, in: [studying, studyOver], source: apps/tedris/features/flashcards/components/study-session.tsx:115 } # a visitor, or a round of none, gets "{deck} · {n} kart", n being the round's length (at most ten): never the due count, which a visitor has not got
+  finishLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Study.finish }, in: [studying, studyOver], emits: FINISH, source: apps/tedris/features/flashcards/components/study-session.tsx:135 } # a ghost link-button to /decks/<id>, a full page load; there on every screen of the page
+  roundBar: { type: status, component: Status, role: progressbar, name: { key: Study.round, params: { done: round.done, total: round.total } }, in: [studying], source: apps/tedris/features/flashcards/components/study-session.tsx:179 } # Base UI Progress named by its visible label; moves forward after each rating, the card's number with it
+  cardRegion: { type: page, component: Page, role: region, name: { key: Study.cardOf, params: { n: round.index, total: round.total } }, in: [studying], source: apps/tedris/features/flashcards/components/study-session.tsx:185 } # <section aria-label="Kart n / total">; the focus is never sent to it
+  cardCaption: { type: text, component: Text, text: { key: Study.cardOf, params: { n: round.index, total: round.total } }, in: [studying], source: apps/tedris/features/flashcards/components/study-session.tsx:191 } # the same words again, as a caption on the card
+  cardStatus: { type: text, component: Text, text: { key: Decks.statusNEW }, in: [studying], when: signedIn, source: apps/tedris/features/flashcards/components/study-session.tsx:194 } # the card's status badge is a member's: the visitor's cards have none
+  frontFace: { type: text, component: Text, text: { key: composed.PublicDeck.front, params: { front: card.front } }, in: [studying], source: apps/tedris/features/flashcards/components/study-session.tsx:208 } # CardFace in a <div> with onClick and no role or tab stop (DCK-05); an Arabic front is dir=rtl lang=ar and large
+  showBack: { type: action, component: Button, role: button, intent: secondary, text: { key: Study.showBack }, in: [studying], when: faceFront, emits: REVEAL, source: apps/tedris/features/flashcards/components/study-session.tsx:238 } # secondary, right aligned; unmounted when pressed, and the focus falls to the document (DCK-01)
+  backEyebrow: { type: text, component: Text, text: { key: Decks.backLabel }, in: [studying], when: faceBack, source: apps/tedris/features/flashcards/components/study-session.tsx:213 } # "Arka yüz", the eyebrow of the back, which nothing announces (DCK-03)
+  backFace: { type: text, component: Text, text: { key: composed.PublicDeck.back, params: { back: card.back } }, in: [studying], when: faceBack, source: apps/tedris/features/flashcards/components/study-session.tsx:214 } # dir=auto
+  difficulty: { type: text, component: Text, text: { key: Study.difficulty }, in: [studying], when: faceBack, source: apps/tedris/features/flashcards/components/study-session.tsx:223 } # "Ne kadar zordu?", a caption, not a group label
+  rateHard: { type: action, component: Button, role: button, intent: secondary, text: { key: Study.hard }, in: [studying], when: faceBack, emits: RATE, source: apps/tedris/features/flashcards/components/study-session.tsx:226 } # outline; for a visitor the three buttons are one: the card moves on and the rating is not kept
+  rateMedium: { type: action, component: Button, role: button, intent: secondary, text: { key: Study.medium }, in: [studying], when: faceBack, emits: RATE, source: apps/tedris/features/flashcards/components/study-session.tsx:226 }
+  rateEasy: { type: action, component: Button, role: button, intent: secondary, text: { key: Study.easy }, in: [studying], when: faceBack, emits: RATE, source: apps/tedris/features/flashcards/components/study-session.tsx:226 }
+  # the end of the round, and a round of none: one EmptyState each, a <p> with a <strong> and a text, then a link
+  doneTitle: { type: text, component: Text, text: { key: Study.doneTitle }, in: [studyOver], when: hasCards, source: apps/tedris/features/flashcards/components/study-session.tsx:174 } # <strong class="block">; no focus move, no announcement (DCK-04)
+  doneText: { type: text, component: Text, text: { key: Study.doneText, params: { count: round.total } }, in: [studyOver], when: hasCards, source: apps/tedris/features/flashcards/components/study-session.tsx:175 } # "{n} kartı çalıştın.", the round's length
+  nothingTitle: { type: text, component: Text, text: { key: Study.nothingTitle }, in: [studyOver], when: emptyDeck, source: apps/tedris/features/flashcards/components/study-session.tsx:163 } # "Bugün için bitti", also for a deck with no card at all (DCK-27)
+  nothingText: { type: text, component: Text, text: { key: Study.nothingText }, in: [studyOver], when: emptyDeck, source: apps/tedris/features/flashcards/components/study-session.tsx:164 } # "Bugün tekrar bekleyen kartın yok. Yarın yeniden bak.": a member's sentence
+  backToDeck: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Study.backToDeck }, in: [studyOver], emits: BACK_TO_DECK, source: apps/tedris/features/flashcards/components/study-session.tsx:169 } # outline link to /decks/<id>, the only action of either EmptyState (study-session.tsx:158 for the round of none)
+
+edges:
+  - { labelledBy: [cardsSection, cardsHeading] }
+
+rules:
+  - { id: focus-not-set, rule: "neither page gives the focus to anything when it opens: no autoFocus and no .focus() in deck-public-view.tsx, deck-header.tsx or study-session.tsx, so the pages have no `initialFocus` and the graph says nothing of the focus where the code says nothing. Recorded so the silence is not read as an omission; the inventory does not call it a finding (SYS-3 of tedris.shell.systemPages has the same cause)" }
+  - { id: VPD-1, rule: "new, provisional id: a deck the API does not give a visitor is a redirect the page makes after its segment's loading.tsx has streamed, so the document answers HTTP 200 and carries the redirect in the stream: a <meta http-equiv=\"refresh\" content=\"1;url=/auth/signin?callbackUrl=…\"> and the framework's NEXT_REDIRECT marker, under a skeleton <main aria-busy=\"true\"> with no words, and with the page's title \"Desteler | Tedris\" ([id]/page.tsx:42, study/[id]/page.tsx:41; [id]/loading.tsx). Measured with curl as a visitor on the stack's dev server on 15 Nov 2026: 200 for the seeded private deck, for an unknown uuid and for the study address of each; 307 for /decks, /decks/create, /decks/explore, /decks/<id>/cards, /decks/<id>/edit and for an id that is no uuid, which the proxy answers. So a client without script waits a second on an empty page, and a client that reads only the status is told the page exists (200); the body holds nothing of the deck (its name and its cards are not in it). Not verified in a production build. Fix: read the deck where the status can still be set, before the segment's loading boundary, as the celse layout means to (SYS-2 of tedris.shell.systemPages has the same cause), or let the proxy decide with the API" }
+  - { id: DCK-10, rule: "\"Daha fazla göster\" is removed from the DOM after the last page (the focus falls to the document), and the new rows and the caption \"{total} karttan {n’sı} gösteriliyor\" appear without announcement (deck-public-view.tsx:126-142). Fix: keep the button or hand the focus to the first new row, and make the caption role=status" }
+  - { id: DCK-25, rule: "both pages stream behind a loading.tsx that is a <main aria-busy=\"true\"> of aria-hidden skeleton bars: an empty, unnamed main with no status text ([id]/loading.tsx:11-14, study/[id]/loading.tsx:10-13; libs/ui/src/mds/skeleton.tsx). While a redirect for a closed deck is on its way (VPD-1) this is all the visitor sees. Fix: add a visually hidden status text" }
+  - { id: DCK-26, rule: "readDeck has no reauthIfRefused (reads.ts:69-87; the list, explore and study reads have it), so a person whose session cookie holds a token that tedrisat refuses (401) is counted as signed in by `isSignedIn()` and lands on the segment's error page on /decks/<id>, instead of being sent to sign in again. It is not this flow's visitor, whose branch reads with no token and cannot be refused for lack of one; recorded here because both branches call readDeck. Not verified end to end. Fix: call reauthIfRefused in the member branch" }
+  - { id: DCK-27, rule: "a visitor's round of 0 cards says \"Bugün için bitti\" and \"Bugün tekrar bekleyen kartın yok. Yarın yeniden bak.\" for a public deck that has no card, where \"come back tomorrow\" is wrong (study-session.tsx:155-165); the deck's page says \"Bu destede henüz kart yok.\" for the same deck. A public deck with no card is possible (publishing it does not ask for a card). Fix: add copy for \"this deck has no cards\"" }
+  - { id: DCK-31, rule: "in the public view's table the \"Ön yüz\" cells are not row headers, while the reader's and the owner's tables set rowHeader: true on that column (deck-public-view.tsx:101-107 against deck-reader-view.tsx:140, deck-cards-page.tsx:134). Fix: set rowHeader: true" }
+  - { id: DCK-01, rule: "pressing \"Arka yüzü göster\" removes that button (the footer swaps to \"Zor / Orta / Kolay\") and rating swaps the footer back, so the focused element disappears and the focus falls to the document twice per card; the window's Space handler is then the only keyboard way until the person tabs in again (study-session.tsx:221-245). Shared with tedris.decks.study. Fix: move the focus on reveal to the back or the first rating" }
+  - { id: DCK-03, rule: "the revealed back and the next card appear with no live region, no focus move and no announcement (study-session.tsx:201-218). Shared with tedris.decks.study. Fix: an aria-live region or focus the back" }
+  - { id: DCK-04, rule: "the end of the round (\"Tur bitti\") and the empty round replace the card with no announcement and no focus move (study-session.tsx:155-176). Shared with tedris.decks.study. Fix: focus the summary or give it role=status" }
+  - { id: DCK-05, rule: "turning the card by clicking its face is a div with onClick and no role or tab stop, and Space is a window listener with no visible hint and no aria-keyshortcuts (study-session.tsx:74-84, :202-209). The graph draws only the Space key (FLIP) and the button. Shared with tedris.decks.study. Fix: say the shortcut or make the face a toggle button" }
+  - { id: public-deck-hidden-still-given, rule: "see ACCREF-1 of tedris.decks.accessRefusals: hiding a deck that is public does not stop the API giving it to a caller with no token (findVisibility selects no archived_at, flashcard-deck.repository.ts:82-99), so a visitor with the address still reads it here. Not walked: the stack has no public deck to hide and hiding one is the başnazım's act in another app" }

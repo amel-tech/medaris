@@ -1,0 +1,161 @@
+# What the walks of nazar.curriculum.hideRestore share: the data (the walk's own course), the locators of both pages and their windows and
+# toasts, the events no node sends, the states' addresses, the "somebody else got there first" hooks and the checks of what a hide or a restore
+# leaves in the database. It has no scenario: binding.yaml (the walks that succeed, with the busy state held) and refusals.binding.yaml (the
+# walks that are refused or lose a race) extend it and add theirs. They are two files because `call` holds the busy state of a server action
+# and, on a FAIL walk, compares the call's HTTP status with the refusal's, and a Next server action answers 200 on the page's own address, so no
+# FAIL walk can carry it (SPEC.md section 7; the same split as nazar.appeals.open).
+#
+# NOT RUN: the graphs were written without a replay (the owner's word: replays come once, after every graph is written). Every locator below
+# comes from the code (apps/nazar/features/curriculum-hide, features/course-archive, features/archive, libs/ui/src/mds) and the catalog, and is
+# unverified until a walk.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/curriculum/hideRestore \
+#     --bind graphs/nazar/curriculum/hideRestore/binding.yaml --cover transitions --out <dir>
+#   ... --bind graphs/nazar/curriculum/hideRestore/refusals.binding.yaml --cover transitions --out <dir>
+#
+# The data. Every scenario makes its own course and takes it away (helpers/course.mjs, tag `hideRestore`: "Deneme dersi hideRestore", published,
+# in the seed's second köşk, MUDERRIS as its one hoca, weeks "Hafta 1", "Hafta 2" and celses "Celse 1" to "Celse 4" from tomorrow; its ids are read
+# from graphs/.local/made/hideRestore.json as {made.*}), so no seeded course, hoca or setting is touched. `teardown` deletes it with everything under
+# it, hidden or not. What the walk cannot undo: the audit rows of the hides and the restores, the CANCEL mails the invitation sweep sends to nobody
+# (no talebe is enrolled) and the notifications of nobody. The people the walk uses:
+#   muderris      the hoca: week.hide, session.manage and the rest; she hides, reads the Arşiv and restores
+#   dersNazir     a ders nazırı of the course, appointed by setup with session.manage only (`sessionOnly`) or with no grant (`neither`)
+#   koskNazim     the köşk's nazım, who hides one celse before the walk (`locked`), at the köşk's kademe, so the hoca cannot bring it back
+#   systemAdmin   the başnazım, who hides another (`locked`), at the platform's kademe: Archive.lockedAdmin
+# The hider's role line on the Arşiv is told from the API's `archivedBy.role` (archive.ts:144-149); that the köşk nazım's is KOSK_NAZIM and the
+# başnazım's none is the code's, not seen.
+#
+# Which first week and which first celse the walk presses: a repeated node is pressed on its first item, which is Hafta 1 and, in it, Celse 1. So
+# the main story hides Celse 1 and then Hafta 1, the week that holds it (`nest: inside`), and the Arşiv shows the week alone (Celse 1 is under it).
+# The first locators below match any week or celse of the course ("Hafta \d+", "Celse \d+").
+#
+# Not bound, so a replay reports them as not bound (the stack cannot make tedrisat answer them to the hoca): FAIL.courseGone of both hides (a
+# course deleted meanwhile; the walk's own page would then be the 404), FAIL.other of every call and of both reads, FAIL.missing of both reads,
+# FAIL.level and FAIL.parentHidden of a restore (a higher kademe re-hiding it or the köşk hiding between the read and the press: no step of
+# this binding can do that without also changing what the refreshed page is), the pager and `holds: neither` or `sessionManage` reading the
+# course's own editor (not this flow).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.curriculum.hideRestore
+
+data:
+  made: { json: ../.local/made/hideRestore.json }
+
+events:
+  # Esc closes the window (Base UI's alert dialog)
+  DISMISS:
+    - key: Escape
+  # the person row of the sidebar leads to Hesap, a page outside any scope: it opens whatever the course is
+  NAVIGATE:
+    - goto: '{nazar}/hesap'
+
+states:
+  listed: { url: '{nazar}/ders/*/mufredat/gizle' }
+  empty: { url: '{nazar}/ders/*/mufredat/gizle' }
+  # the windows open on the page: the address does not change. `before` is what another tab does while the question is open: it hides the
+  # week or the celse the window is about, so that "Gizle" is answered with WEEK_NOT_FOUND or LESSON_NOT_FOUND. The mode is the scenario's
+  # `meanwhile` (hide in `hideGone`, none everywhere else, where the helper does nothing).
+  confirmWeek:
+    before:
+      - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, race, week, '{meanwhile}']
+        expect: race
+  confirmSession:
+    before:
+      - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, race, session, '{meanwhile}']
+        expect: race
+  # tab links and the pager are plain links: the address carries ?tur=. `before` is what another tab does when the list has been read: it brings
+  # back every row the person may, so that "Geri al" on the row she sees is answered with ARCHIVE_ITEM_NOT_FOUND (restore in `restoreGone`)
+  archive:
+    url: '{nazar}/ders/*/arsiv**'
+    before:
+      - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, race, archive, '{meanwhile}']
+        expect: race
+  archiveEmpty: { url: '{nazar}/ders/*/arsiv**' }
+  archiveRefused: { url: '{nazar}/ders/*/arsiv**' }
+  left: { url: '{nazar}/hesap' }
+
+# What a hide or a restore leaves outside the screen, read through the database (hide.mjs state: no route says it). Nothing is deleted
+# whatever she hides (domain invariant session-hide-never-deletes); a week hides its celses with it, so none is live under a hidden week; and a
+# celse hidden on its own earlier stays hidden when its week comes back.
+effects:
+  weekHidden:
+    - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, state]
+      expect: 'kept=yes live-under-hidden=none'
+  weekHiddenOver:
+    - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, state]
+      expect: 'kept=yes live-under-hidden=none'
+  sessionHidden:
+    - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, state]
+      expect: 'kept=yes'
+  weekRestored:
+    - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, state]
+      expect: 'kept=yes live-under-hidden=none'
+  weekRestoredWith:
+    - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, state]
+      expect: 'kept=yes live-under-hidden=none held-back=yes'
+  sessionRestored:
+    - run: [node, ../nazar/curriculum/hideRestore/hide.mjs, state]
+      expect: 'kept=yes'
+
+# Role and name find most nodes. Where they cannot: the page's <main> (a bare main is also on the page a walk leaves for, so each is told by its
+# own sentence), the sidebar's "Arşiv" (the page and the tab links name it too), the cells of a repeated row, the dialog's buttons (the page
+# behind is inert, but the toasts have a "Kapat" of their own), the tab links (their names carry the count: "Tümü1", F-A-12) and the toasts.
+nodes:
+  # ---- the hide page
+  hideMain: { css: main, hasText: 'Haftaları ve celseleri buradan gizlersiniz' }
+  archiveLink: { role: link, name: '/^Arşiv$/', within: { role: navigation, name: Ana menü } }
+  weekList: { testId: curriculum }
+  weekHeading: { role: heading, name: '/^Hafta \d+: /', within: { testId: curriculum } }
+  weekCount: { text: '/^\d+ celse$/', within: { testId: curriculum } }
+  # the first item of a repeated button is the one pressed: Hafta 1, then (the page read again) the first week that is left
+  hideWeek: { role: button, name: '/^Haftayı gizle: Hafta \d+$/' }
+  sessionTitle: { css: '[data-testid=curriculum] ul bdi', hasText: '/^Celse \d+$/' }
+  sessionWhen: { css: '[data-testid=curriculum] ul .mds-caption' }
+  hideSession: { role: button, name: '/^Celseyi gizle: Celse \d+$/' }
+  # ---- the windows: told from the page behind and from the toasts by where they are
+  weekEyebrow: { css: p.mds-eyebrow, within: { role: alertdialog, name: Haftayı gizle } }
+  sessionEyebrow: { css: p.mds-eyebrow, within: { role: alertdialog, name: Celseyi gizle } }
+  dialogClose: { role: button, name: Kapat, within: { role: alertdialog, name: '/^(Haftayı|Celseyi) gizle$/' } }
+  dialogCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: '/^(Haftayı|Celseyi) gizle$/' } }
+  dialogConfirm: { role: button, name: '/^Gizle$/', within: { role: alertdialog, name: '/^(Haftayı|Celseyi) gizle$/' } }
+  # a busy button's hidden <output> says "Yükleniyor"; the other buttons' are empty
+  dialogBusy: { css: output, hasText: Yükleniyor, within: { role: alertdialog, name: '/^(Haftayı|Celseyi) gizle$/' } }
+  # ---- the Arşiv
+  archiveMain: { css: main, hasText: 'Bu derste gizlenen haftalar ve celseler' }
+  tabAll: { role: link, name: '/^Tümü/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabWeeks: { role: link, name: '/^Haftalar/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabSessions: { role: link, name: '/^Celseler/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  # the table's cells are role=cell, its first column role=rowheader (table.tsx:155-191); a caption inside a cell that is not the locked sentence is the hider's role
+  rowTitle: { css: '[data-testid=archive] [role=rowheader] bdi.font-semibold' }
+  rowContext: { css: '[data-testid=archive] [role=rowheader] .mds-caption' }
+  rowTypeWeek: { css: '[data-testid=archive] .mds-badge', hasText: '/^Hafta$/' }
+  rowTypeSession: { css: '[data-testid=archive] .mds-badge', hasText: '/^Celse$/' }
+  rowHiderName: { css: '[data-testid=archive] [role=cell] bdi' }
+  rowHiderRole: { css: '[data-testid=archive] [role=cell] .mds-caption:not([data-testid=restore-note])' }
+  rowWhen: { css: '[data-testid=archive] time' }
+  restoreWeek: { role: button, name: '/^Geri al: Hafta \d+$/' }
+  restoreSession: { role: button, name: '/^Geri al: Celse \d+$/' }
+  rowRestoreWeek: { role: button, name: '/^Geri al: Hafta \d+$/', nth: 0 }
+  rowRestoreSession: { role: button, name: '/^Geri al: Celse \d+$/', nth: 0 }
+  restoreBusy: { css: output, hasText: Yükleniyor, within: { testId: archive } }
+  lockedKosk: { testId: restore-note, hasText: 'Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir.' }
+  lockedAdmin: { testId: restore-note, hasText: 'Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir.' }
+  # the Alert of a refusal is a status with no name of its own
+  archiveRefusal: { css: 'main [role=status]', hasText: Bu sayfaya izniniz yok }
+  # ---- Base UI's toasts: a success or an info is role=dialog, an error is role=alertdialog and aria-hidden until it is focused, so each is found
+  # by its role attribute and the words that tell it from its twins. The title and the text are two <p> with nothing between them, so a
+  # pattern joins them with .* and a plain string is taken from one of them.
+  toastWeekHidden: { css: '[role=dialog]', hasText: Hafta gizlendi }
+  toastSessionHidden: { css: '[role=dialog]', hasText: Celse gizlendi }
+  toastWeekGone: { css: '[role=dialog]', hasText: '/Hafta gizlenemedi.*Bu hafta ya da celse artık yok\./' }
+  toastSessionGone: { css: '[role=dialog]', hasText: '/Celse gizlenemedi.*Bu hafta ya da celse artık yok\./' }
+  toastWeekRefused: { css: '[role=alertdialog]', hasText: '/Hafta gizlenemedi.*Bunu yapma izniniz yok\./' }
+  toastSessionRefused: { css: '[role=alertdialog]', hasText: '/Celse gizlenemedi.*Bunu yapma izniniz yok\./' }
+  toastWeekFailed: { css: '[role=alertdialog]', hasText: '/Hafta gizlenemedi.*Bir şeyler ters gitti\./' }
+  toastSessionFailed: { css: '[role=alertdialog]', hasText: '/Celse gizlenemedi.*Bir şeyler ters gitti\./' }
+  toastRestored: { css: '[role=dialog]', hasText: Geri alındı }
+  toastRestoreGone: { css: '[role=alertdialog]', hasText: '/Geri alınamadı.*artık arşivde değil/' }
+  toastRestoreLevel: { css: '[role=alertdialog]', hasText: '/Geri alınamadı.*daha üst bir kademe gizlemiş olabilir/' }
+  toastParentHidden: { css: '[role=alertdialog]', hasText: '/Geri alınamadı.*hâlâ gizli/' }
+  toastRestoreFailed: { css: '[role=alertdialog]', hasText: '/Geri alınamadı.*Bir şeyler ters gitti/' }

@@ -1,0 +1,101 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.pano.decideApplications
+status: proposed
+summary: >-
+  What must exist for the başmüderris of a medrese to read her Pano and decide the applications that wait there: the flow's
+  product list.
+
+needs:
+  - id: read-the-pano
+    need: >-
+      The başmüderris reads, on one page, what her medrese holds today: its scopes, the celses of the next seven days and the
+      applications that wait for a decision, and the köşks that host it, with the same numbers in the greeting, above the table
+      and on the sidebar.
+    evidence:
+      - state: listed
+      - state: empty
+      - node: greeting
+      - node: greetingSummary
+      - node: applicationsCounter
+      - node: coursesBadge
+      - node: sessionsTable
+      - node: hostsRegion
+      - source: apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:117
+      - source: apps/nazar/features/pano/components/pano-page.tsx:69
+      - test: apps/nazar/e2e/pano.e2e.ts
+        name: "nazir/01 — the medrese's Pano shows three scope cards, two sessions and three applications, and the greeting counts the same (criteria 1, 2)"
+      - test: apps/nazar/test/pano.spec.tsx
+      - scenario: decides
+
+  - id: decide-from-the-list
+    need: >-
+      She approves a waiting application in one press, and rejects one after being asked once; the talebe is told either way, the
+      row leaves, and the greeting, the counter and the sidebar's number follow at once.
+    evidence:
+      - node: approve
+      - node: reject
+      - node: rejectDialog
+      - state: approving
+      - state: rejecting
+      - state: settled
+      - node: toastApproved
+      - node: toastRejected
+      - source: apps/tedrisat/src/course/course.controller.ts:633
+      - source: apps/tedrisat/src/course/course.controller.ts:687
+      - source: apps/nazar/features/pano/components/pano-tables.tsx:176
+      - test: apps/nazar/e2e/pano.e2e.ts
+        name: "nazir/01 — 'Onayla' takes the row and the count away, the talebe has a seat, and a reload keeps it so (criterion 3)"
+      - test: apps/nazar/e2e/pano.e2e.ts
+        name: "nazir/01 — 'Reddet' asks once, takes no reason, and removes the application"
+      - scenario: decides
+    note: Also drawn as the assertion only-those-the-api-lets-decide.
+
+  - id: head-decides-what-she-lists
+    need: >-
+      The başmüderris can decide every application the Pano lists for her medrese, whether or not she teaches the course, as the
+      routes already allow; a nazır who was granted the permission can too. A row she may not decide says why instead of showing
+      nothing (decision D1).
+    evidence:
+      - scenario: headOnly
+    missing: "no issue: viewerMayDecide ignores her (apps/tedrisat/src/madrasah/portal/madrasah-portal.service.ts:93)"
+    note: >-
+      Drawn on the state listed and on the nodes approve and reject, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-decision-already-made-is-told
+    need: >-
+      An application someone else decided first, or the talebe took back, leaves the list with a notice that says so, not an
+      error, and the counters are recounted.
+    evidence:
+      - node: toastGone
+      - state: settled
+      - source: apps/nazar/features/pano/pano.ts:265
+      - test: apps/nazar/test/pano.spec.tsx
+
+  - id: focus-follows-a-decision
+    need: >-
+      After a decision the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the next row's
+      button), and a line on the page, not only a toast of six seconds, says what was decided (F-A-2).
+    missing: no Linear issue; findings F-A-2
+    note: >-
+      Drawn on the state listed and on the nodes toastApproved and toastRejected, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-call-is-told
+    need: >-
+      When a decision cannot reach the server at all, the button stops being busy and the person is told to try again (F-A-10).
+    missing: no Linear issue; findings F-A-10
+    note: >-
+      Drawn on the states approving and rejecting and on the node toastFailed, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: seats-per-gender-at-approval
+    need: >-
+      Where a seat is counted, the kontenjan is two counts, one per gender, and a seat is given at approval in the order of
+      application; the Pano's Onayla is one of the places that gives it, so it follows the same rule as the roster (MDRS-284, per
+      celse and weekly; no kontenjan rule exists in the code today).
+    missing: MDRS-284
+    note: >-
+      Drawn on the node approve, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

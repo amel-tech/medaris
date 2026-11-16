@@ -1,0 +1,191 @@
+# nazar.evaluation.examScores on the local stack: the hoca of a course the walk makes, in nazar-web at http://localhost:4002, entering the scores of an exam
+# the walk plans and releasing them.
+#   node apps/engine/src/cli.ts replay graphs/nazar/evaluation/examScores --bind graphs/nazar/evaluation/examScores/binding.yaml --out <dir>
+#   ... --cover transitions
+# NOT RUN in the writing phase (no replay is run in it): nothing below has been walked, and the locators and the data are read from the code. Where a
+# claim rests on the code alone it says so.
+#
+# Data. The seeded courses are other flows' and a release cannot be taken back (exam-results-are-released-once), so every walk makes its own course:
+#   - helpers/course.mjs make exam-scores --weeks 1 --lessons 1 --hoca MUDERRIS --talebe APPLICANT_E,APPLICANT_F: "Deneme dersi exam-scores", PUBLISHED, in the
+#     seed's second köşk (which no seeded flow reads), one week of one celse from tomorrow, the müderris account as its hoca and imam, and the spare talebe
+#     applicantE ("Betül Başvuran") and applicantF ("Tahsin Başvuran") enrolled (the course takes anyone). The ids go to graphs/.local/made/exam-scores.json.
+#   - ./exam-data.mjs (this folder) plans the exam in it through tedrisat's HTTP API as the hoca, as the planner's "Sınav" does (POST /courses/:id/sessions/batch
+#     with `exam`): one celse "Ara sınav", out of 100, yesterday at 10:00 in Istanbul, so it is over and sends no EXAM_SCHEDULED notification and no
+#     invitation. It lands in "Hafta 1", so the column is "1. hafta · Ara sınav (/100)", which is the sample text of the ui. The celse's id goes into the made
+#     file as `exam` and into its `lessons`, so course.mjs remove clears the notifications that point at it.
+#   - `reopened` plans it with --released: 90 is entered for applicantE and the results are released as the hoca, so the page meets an exam whose
+#     results are open already.
+# Teardown has course.mjs remove the course as the başnazım: it deletes the exam, its results and the course with them, has the talebe leave first and clears the
+# invitation mails; then mail.mjs clears the exam's own mails. The notifications the release sent to the talebe (they point at the exam's celse) go with it.
+# The audit rows (exam_result.save, exam.release) stay: no route removes them. `make` removes a course of the same tag first, so a walk that died leaves
+# nothing in the way. Nothing the seed holds is touched and no seeded course is edited. SQL is used for one read-only check (the effect `tooHigh`).
+# Every run of these helpers by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# The scenarios differ by `given`, which the replay never lets a transition change:
+#   scores      board ready,      before closed   the story: 120 refused, 85 saved, Girmedi, back to the table, the release (e2e exam#2 a1-a7)
+#   reopened    board ready,      before opened   the exam was released before this visit: the exam screen shows the badge at once
+#   noTalebe    board noTalebe,   before closed   an exam and nobody seated: one sentence, no table
+#   noColumns   board noColumns,  before closed   a course with no column at all: one sentence that speaks of recited homework only (EXAM-1)
+#   forbidden   board forbidden,  before closed   a ders nazırı with no code in the course types the address: "Bu sayfaya izniniz yok" (e2e evaluation#2 a1, a2)
+# Not bound, with the reason: `board: failed` (the retry state, FAIL.failed and RETRY) and FAIL.missing (the portal's 404 page) cannot be made on the stack
+# on request (no way to make the read answer a 5xx, and a course id that does not exist is answered by the portal's layout before this page is read);
+# FAIL.refused of a save or a release (a talebe who left the course between the page and the press, a permission taken away mid-walk) and FAIL.signedOut
+# (the session cannot be ended mid-walk) have no helper that does that between two steps; the states `loadFailed`, `not_found` and `sent_to_sign_in` are
+# therefore not walked and say "not bound". The Excel link is only looked at: pressing it is nazar.files.download's.
+#
+# What a walk does on the way and what it checks outside the screen:
+#   - the typed events are `events` (a box has no node that sends them): a number into the box of applicantE, Enter, which commits it. The focus move of
+#     Enter (to the next row's box) is not checked.
+#   - `releasing` holds the server action (a POST to the page's own address) so the busy button is seen; a save has no busy state, so none is held.
+#   - `effects` read tedrisat's answers as the people concerned: the hoca reads the board (the score is 85, the absence is kept), the talebe applicantE reads
+#     their own grades (closed before the release, open after), and a SELECT says no score above the full mark was ever written.
+#     e2e exam#2: a1 by the node `problemOver`, a2 by the effect `tooHigh`, a3 by `scoreSaved`, a4 by the node `count` ("1/2 girildi" of two talebe, where the
+#     e2e had one), a5 by `scoreSavedClosed`, a6 by the node `releasedBadge`, a7 by `resultsOpened` as released:true only (a path that releases before any
+#     score is typed has no 85 to read: the score is checked on the board by `scoreSaved`). exam#1 (planning the exam) is the planner's: nazar.sessions.plan.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.evaluation.examScores
+
+data:
+  made: { json: ../.local/made/exam-scores.json }
+
+scenarios:
+  scores:
+    given: { board: ready, before: closed }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
+    vars:
+      scoredName: Betül Başvuran
+      absentSub: '{secret.E2E_APPLICANT_F_SUB}'
+    setup:
+      - run: [node, helpers/course.mjs, make, exam-scores, --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, 'APPLICANT_E,APPLICANT_F']
+        expect: '"course":'
+      - run: [node, ../nazar/evaluation/examScores/exam-data.mjs, plan, exam-scores]
+        expect: 'exam-data plan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, exam-scores]
+        expect: removed
+      - run: [node, helpers/mail.mjs, clear, 'subject:"Deneme dersi exam-scores"']
+        expect: clear
+  reopened:
+    given: { board: ready, before: opened }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
+    vars:
+      scoredName: Betül Başvuran
+      absentSub: '{secret.E2E_APPLICANT_F_SUB}'
+    setup:
+      - run: [node, helpers/course.mjs, make, exam-scores, --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, 'APPLICANT_E,APPLICANT_F']
+        expect: '"course":'
+      - run: [node, ../nazar/evaluation/examScores/exam-data.mjs, plan, exam-scores, --released]
+        expect: 'released'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, exam-scores]
+        expect: removed
+      - run: [node, helpers/mail.mjs, clear, 'subject:"Deneme dersi exam-scores"']
+        expect: clear
+  noTalebe:
+    given: { board: noTalebe, before: closed }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
+    setup:
+      - run: [node, helpers/course.mjs, make, exam-scores, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course":'
+      - run: [node, ../nazar/evaluation/examScores/exam-data.mjs, plan, exam-scores]
+        expect: 'exam-data plan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, exam-scores]
+        expect: removed
+      - run: [node, helpers/mail.mjs, clear, 'subject:"Deneme dersi exam-scores"']
+        expect: clear
+  noColumns:
+    given: { board: noColumns, before: closed }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
+    setup:
+      - run: [node, helpers/course.mjs, make, exam-scores, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course":'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, exam-scores]
+        expect: removed
+  # the ders nazırı's post holds no code, so the menu has no Değerlendirme: the address is typed, as e2e evaluation#2 does
+  forbidden:
+    given: { board: forbidden, before: closed }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/degerlendirme'
+    setup:
+      - run: [node, helpers/course.mjs, make, exam-scores, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"course":'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: course-nazir-grants
+    teardown:
+      - run: [node, helpers/course.mjs, remove, exam-scores]
+        expect: removed
+
+events:
+  # a box has no node that sends an event: the binding types into it and presses Enter, which commits it
+  ENTER_SCORE:
+    - fill: { role: spinbutton, name: '{scoredName} puanı', value: '85' }
+    - key: Enter
+  ENTER_TOO_HIGH:
+    - fill: { role: spinbutton, name: '{scoredName} puanı', value: '120' }
+    - key: Enter
+  ENTER_NOT_WHOLE:
+    - fill: { role: spinbutton, name: '{scoredName} puanı', value: '1.5' }
+    - key: Enter
+  # the chips are one per talebe: the one of the second talebe's row (applicantF), found by the row's test id (the user's sub)
+  PRESS_ABSENT:
+    - click: { role: button, name: Girmedi, within: { css: '[data-testid="exam-row-{absentSub}"]' } }
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}'
+
+states:
+  # the release is a Next server action: a POST to the page's own address, held while the busy button is checked
+  releasing: { call: '{nazar}/ders/*/degerlendirme' }
+  # an exit with no node of its own is checked by its address: the course's overview
+  left: { url: '{nazar}/ders/*' }
+
+nodes:
+  # a bare `main` is also matched on the page a walk leaves for: this one begins with the page's h1
+  evaluationPage: { role: main, hasText: '/^\s*Değerlendirme/' }
+  # "{course} dersinin ezber ve sınavları": the course's name is data
+  subtitle: { text: '/dersinin ezber ve sınavları$/' }
+  # the talebe's names and their cells are data: the walk's two spare talebe
+  talebeCell: { role: cell, name: '/ Başvuran$/', count: 2 }
+  resultCell: { role: cell, name: '/^(Bekliyor|Girmedi|\d+\/\d+)$/', count: 2 }
+  # a box is named by its aria-label, "{name} puanı"
+  scoreBox: { role: spinbutton, name: '/ puanı$/', count: 2 }
+  absentChip: { role: button, name: Girmedi, count: 2 }
+  # "{entered}/{total} girildi": the first number follows what was typed
+  count: { testId: exam-count, hasText: '/^\d+\/2 girildi$/' }
+  # the exam's list has no name; the page's other lists are the menu's
+  talebeList: { css: '[data-testid="exam-column"] ul' }
+
+# What a step leaves outside the screen, read through the API as the people concerned.
+effects:
+  # e2e exam#2 a2: a score above the full mark was not written (a path-proof check: the count of scores above 100 is none)
+  tooHigh:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from exam_results r join lesson_exams e on e.id = r.exam_id where e.lesson_id = '{made.exam}' and r.score > 100"]
+      expect: '"n":0'
+  # e2e exam#2 a3: 85 is kept
+  scoreSaved:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/evaluations']
+      expect: '"score":85'
+  # e2e exam#2 a5: before the release the talebe reads nothing of it
+  scoreSavedClosed:
+    - run: [node, helpers/api.mjs, applicantE, GET, '/courses/{made.course}/my-grades']
+      expect: '"released":false,"score":null,"absent":null'
+  absentSaved:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}/evaluations']
+      expect: '"absent":true'
+  # e2e exam#2 a7 (released; the score by `scoreSaved`), and the notification the release sends to the seated talebe
+  resultsOpened:
+    - run: [node, helpers/api.mjs, applicantE, GET, '/courses/{made.course}/my-grades']
+      expect: '"released":true'
+    - run: [node, helpers/api.mjs, applicantE, GET, '/notifications']
+      expect: EXAM_RESULTS_RELEASED

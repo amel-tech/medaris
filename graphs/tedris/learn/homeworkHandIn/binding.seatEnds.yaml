@@ -1,0 +1,57 @@
+# tedris.learn.homeworkHandIn, the talebe's seat ends under an open page (HAND-2): the refusal the page words as "Ödev teslim etmek için
+# derse kayıtlı olman gerekir.". Walk each with --to:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkHandIn \
+#     --bind graphs/tedris/learn/homeworkHandIn/binding.seatEnds.yaml --to noteRefused --out <dir>      (and --to removeRefused)
+# `SEAT_ENDS` is the talebe leaving the course in another tab (helpers/leave.mjs, DELETE /courses/{id}/enrollment as the talebe): the page
+# is not told, and its next write is a 403 SUBMISSION_FORBIDDEN. It is bound here and nowhere else, so that a walk of binding.yaml never
+# drives it. This file holds no `call`: a Next server action answers 200 on the page's own address, so a held `call` would compare 200
+# with the 403 of the refusal and fail a walk that is right.
+# Two scenarios, because the two writes are on different starts: the note (the talebe holds nothing) and the removal (the talebe holds one
+# file, by SQL). The course is removed afterwards, which removes the seat's remains with it.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkHandIn
+
+events:
+  SEAT_ENDS:
+    - run: [node, helpers/leave.mjs, applicantH, '{course}']
+      expect: done
+
+scenarios:
+  endsBeforeNote:
+    given: { assignment: text, holds: nothing, file: failed, removal: removed, noteAnswer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      after: '0'
+      note: Ayrıldıktan sonra yazdığım not.
+    setup:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, make, text, nothing]
+        expect: handin-data make
+    teardown:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, remove]
+        expect: handin-data remove
+
+  endsBeforeRemoval:
+    given: { assignment: textAndFile, holds: oneFile, file: failed, removal: gone, noteAnswer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      after: '1'
+      note: Ayrıldıktan sonra yazdığım not.
+    setup:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, make, textAndFile, oneFile]
+        expect: handin-data make
+    teardown:
+      - run: [node, ../tedris/learn/homeworkHandIn/handin-data.mjs, remove]
+        expect: handin-data remove
+
+states:
+  left: { url: '{tedris}/home' }

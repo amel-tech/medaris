@@ -1,0 +1,174 @@
+# The screens of nizam.home.koskNazimLanding: nizam-web's köşk home (/kosks/<id>/ana-sayfa, app/kosks/[id]/ana-sayfa/page.tsx, drawn by
+# features/dashboard/components/kosk-home.tsx and home-parts.tsx), the screen it gives for a köşk that is not the person's
+# (components/errors/no-access.tsx), the box that says it could not be read (features/kosks/components/load-failed.tsx) and the
+# phone's menu sheet (libs/ui/src/mds/app-bar.tsx). The shell around the page (the sidebar's entries, the köşk picker, the person
+# row, the bell) is nizam.shell.menuPerPersona's; the card "Son başvurular" is nizam.home.decideApplications's. Read from the code on
+# 15 Nov 2026; nothing was opened in a browser.
+#
+# Words: every `Dashboard.*`, `NoAccess.*`, `Sessions.*` and `Shell.*` key is copied from libs/i18n/src/locales/tr/nizam.json (the app
+# reads them as `nizam.<key>`), the key being the path inside the file. The `composed.*` keys are NOT in any i18n file: they are texts
+# the app builds in code from messages and data, written here with their placeholders so a replay can match them:
+#   composed.Dashboard.number          a Stat's big number and the Talebe cell, formatted for the page's language (libs/ui/src/mds/stat.tsx:47)
+#   composed.Dashboard.when            a celse's time, "17 Kas Sal 21:00" (features/dashboard/present.ts:90, Intl, the viewer's zone)
+#   composed.Dashboard.courseLine      the line under a course's name: "Hafta N[, telafi celsesi] · <hocalar> · <medrese>", the parts that
+#                                      are empty left out (kosk-home.tsx:227-254)
+#   composed.Dashboard.ways            the ways in a Katılım cell names, joined by " · ": "Yüz yüze", the meeting platform (Zoom, Google
+#                                      Meet, Jitsi Meet, YouTube, or "Bilinmeyen platform" and the host), "YouTube yayını" or "Yalnız
+#                                      yayın" (features/courses/components/attendance-cell.tsx:41-80)
+#   composed.Dashboard.name            a hoca's name, as the API gives it (kosk-home.tsx:532)
+#   composed.Dashboard.muderrisCaption "<medrese> · N ders · N talebe", the medrese left out for a hoca who teaches the köşk's own courses
+#                                      (kosk-home.tsx:533-541; Dashboard.muderris.courses and .students are "{count} ders" and "{count} talebe")
+#   composed.Dashboard.greetingNone / Some / Missing   <p data-testid="home-greeting">: Dashboard.greetingKosk, a space, and one of
+#                                      Dashboard.week.none, .some, .missing (kosk-home.tsx:200-211, 408)
+#   composed.Dashboard.dash            the Katılım cell of a cancelled celse: a bare "—" (kosk-home.tsx:272)
+#   composed.NoAccess.account          "Giriş yaptığınız hesap:" and the account's e-mail address, in a <code> (no-access.tsx:33-37)
+# Dashboard.missingAlert.title is an ICU plural as the app has it, and the binding finds its node by a pattern. The sentence of
+# Dashboard.week.missing holds one too ("{missing, plural, =1 {birinin} other {# tanesinin}} katılım yolu eksik"): composed.Dashboard.
+# greetingMissing writes its result as {missing} ("birinin", "3 tanesinin"), because a plural in the middle of a message is not read.
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nizam.home.koskNazimLanding
+flow: nizam.home.koskNazimLanding
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Örnek Kişi
+  count: "4"
+  missing: 3 tanesinin
+  course: Örnek Ders
+  when: 17 Kas Sal 21:00
+  n: "3"
+  line: Hafta 3 · Örnek Kişi · Örnek Medrese
+  ways: Zoom
+  action: Toplantı bağlantısı ekle
+  madrasah: Örnek Medrese
+  courses: 3 ders
+  students: 2 talebe
+  email: ornek@example.test
+
+nodes:
+  # ---- the page: the shell's <main>, the h1, the greeting and the way to a new course ----
+  homePage: { type: page, component: Page, role: main, in: [home, readingTab, tabUnreadable], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main">: no name, no initialFocus (rule focus-not-set); the binding finds it by the page's own data-testid inside it
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.title }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:406 } # h1
+  greetingNone: { type: text, component: Text, text: { key: composed.Dashboard.greetingNone, params: { name: person.name } }, in: [home, readingTab, tabUnreadable], when: "data == 'empty'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:407 } # one <p data-testid="home-greeting">: the greeting, then how many celse the week holds
+  greetingSome: { type: text, component: Text, text: { key: composed.Dashboard.greetingSome, params: { name: person.name, count: upcoming.count } }, in: [home, readingTab, tabUnreadable], when: "data == 'covered'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:407 }
+  greetingMissing: { type: text, component: Text, text: { key: composed.Dashboard.greetingMissing, params: { name: person.name, count: upcoming.count, missing: upcoming.missing } }, in: [home, readingTab, tabUnreadable], when: "data == 'seeded'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:407 } # "...; birinin katılım yolu eksik." or "...; # tanesinin katılım yolu eksik." (an ICU plural)
+  openCourse: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Dashboard.openCourse }, in: [home, readingTab, tabUnreadable], emits: OPEN_COURSE, source: apps/nizam/features/dashboard/components/kosk-home.tsx:411 } # a plus icon beside the words; /kosks/<id>/courses/new
+
+  # ---- the menu on a wide window and on a phone ----
+  sidebar: { type: page, component: Page, role: complementary, in: [home, readingTab, tabUnreadable, refused, loadFailed], when: "not onPhone", source: libs/ui/src/mds/app-shell.tsx:81 } # the shell's <aside>: hidden below 768 px by CSS (max-md:hidden). It has no name of its own; its entries are nizam.shell.menuPerPersona's. Drawn here for e2e dashboard#7 a4, which asserts it hidden on a phone
+  menuButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Shell.menu }, in: [home, readingTab, tabUnreadable, refused, loadFailed], when: onPhone, emits: OPEN_SHEET, source: libs/ui/src/mds/app-bar.tsx:64 } # an icon button named by its aria-label; the sheet's trigger and the node the focus comes back to
+
+  # ---- the warning: some celse of the week has no way in ----
+  missingAlert: { type: alert, component: Alert, role: status, text: { key: Dashboard.missingAlert.title, params: { count: upcoming.missing } }, in: [home, readingTab, tabUnreadable], when: "data == 'seeded'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:420 } # a warning tone is role=status, which is not announced when the page loads, only when it changes. The title is an ICU plural: "Bir celsenin..." or "# celsenin katılım yolu eksik"
+  missingBody: { type: text, component: Text, text: { key: Dashboard.missingAlert.body, params: { course: upcoming.firstMissing.course, when: upcoming.firstMissing.when } }, in: [home, readingTab, tabUnreadable], when: "data == 'seeded'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:424 } # <p data-testid="home-missing-link">: it names the first such celse only, and holds no link (decision D2)
+
+  # ---- the four numbers: a section named by its aria-label, each number a Stat (two spans, the label and the number) ----
+  countsRegion: { type: page, component: Page, role: region, name: { key: Dashboard.counts.koskTitle }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:434 } # <section aria-label>
+  statCourse: { type: text, component: Text, text: { key: Dashboard.counts.course }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:439 }
+  valueCourse: { type: text, component: Text, text: { key: composed.Dashboard.number, params: { n: counts.courses } }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:439 } # the köşk's courses that are not hidden, drafts included
+  statStudents: { type: text, component: Text, text: { key: Dashboard.counts.students }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:440 }
+  valueStudents: { type: text, component: Text, text: { key: composed.Dashboard.number, params: { n: counts.students } }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:440 } # distinct talebe with a seat in a course of the köşk
+  statUpcoming: { type: text, component: Text, text: { key: Dashboard.counts.upcoming }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:441 }
+  valueUpcoming: { type: text, component: Text, text: { key: composed.Dashboard.number, params: { n: counts.upcoming } }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:441 } # the celse that start in the next seven days and are not cancelled
+  statPending: { type: text, component: Text, text: { key: Dashboard.counts.pendingApplications }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:445 }
+  valuePending: { type: text, component: Text, text: { key: composed.Dashboard.number, params: { n: counts.pending } }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:445 } # kept in the page's state: it falls by one after each answer to an application (nizam.home.decideApplications)
+
+  # ---- the celse list: a section, three tabs and one table ----
+  sessionsSection: { type: page, component: Page, role: region, name: { labelledBy: sessionsTitle }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/home-parts.tsx:24 }
+  sessionsTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.sessions.title }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2, id home-sessions. No "Tümünü gör" beside it: the köşk-wide Celseler page is not built (MDRS-211)
+  tabList: { type: list, component: List, role: tablist, name: { key: Dashboard.sessions.tabsLabel }, in: [home, readingTab, tabUnreadable], source: libs/ui/src/mds/tabs.tsx:103 } # Base UI Tabs with activateOnFocus: an arrow key moves and selects, and so asks the server (F-W1-2)
+  tabUpcoming: { type: action, component: Button, role: tab, intent: secondary, text: { key: Dashboard.sessions.tabs.UPCOMING }, in: [home, readingTab, tabUnreadable], emits: OPEN_UPCOMING, source: libs/ui/src/mds/tabs.tsx:110 } # the name is the label and the badge's number; no tab panel exists, so none says aria-controls (F-X-1, F-W1-2). Which tab is selected is aria-selected, which this format does not draw
+  tabPast: { type: action, component: Button, role: tab, intent: secondary, text: { key: Dashboard.sessions.tabs.PAST }, in: [home, readingTab, tabUnreadable], emits: OPEN_PAST, source: libs/ui/src/mds/tabs.tsx:110 } # the badge counts every celse there has been; the list holds the newest 20 (KOSKHOME-2)
+  tabCancelled: { type: action, component: Button, role: tab, intent: secondary, text: { key: Dashboard.sessions.tabs.CANCELLED }, in: [home, readingTab, tabUnreadable], emits: OPEN_CANCELLED, source: libs/ui/src/mds/tabs.tsx:110 }
+  upcomingNote: { type: text, component: Text, text: { key: Dashboard.sessions.upcomingNote }, in: [home], when: "tab == 'upcoming'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:465 } # <p class="mds-caption">; the table's own caption says the same words, hidden (a reader hears them twice)
+
+  # the table, named by its caption: one node for each tab's caption, since the words differ
+  tableUpcoming: { type: list, component: List, role: table, name: { key: Dashboard.sessions.caption.UPCOMING }, in: [home, readingTab], when: "tab == 'upcoming'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:481 } # `responsive="stack"`: explicit table roles, so a phone's card list keeps them
+  tablePast: { type: list, component: List, role: table, name: { key: Dashboard.sessions.caption.PAST }, in: [home, readingTab], when: "tab == 'past'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:481 }
+  tableCancelled: { type: list, component: List, role: table, name: { key: Dashboard.sessions.caption.CANCELLED }, in: [home, readingTab], when: "tab == 'cancelled'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:481 }
+  columnCourse: { type: text, component: Text, role: columnheader, text: { key: Dashboard.sessions.columns.course }, in: [home, readingTab], source: apps/nizam/features/dashboard/components/kosk-home.tsx:218 }
+  columnWhen: { type: text, component: Text, role: columnheader, text: { key: Dashboard.sessions.columns.when }, in: [home, readingTab], source: apps/nizam/features/dashboard/components/kosk-home.tsx:260 }
+  columnAttendance: { type: text, component: Text, role: columnheader, text: { key: Dashboard.sessions.columns.attendance }, in: [home, readingTab], source: apps/nizam/features/dashboard/components/kosk-home.tsx:266 }
+  columnStudents: { type: text, component: Text, role: columnheader, text: { key: Dashboard.sessions.columns.students }, in: [home, readingTab], source: apps/nizam/features/dashboard/components/kosk-home.tsx:278 }
+  columnState: { type: text, component: Text, role: columnheader, text: { key: Dashboard.sessions.columns.state }, in: [home, readingTab], source: apps/nizam/features/dashboard/components/kosk-home.tsx:285 }
+  columnActions: { type: text, component: Text, role: columnheader, text: { key: Dashboard.sessions.columns.actions }, in: [home, readingTab], source: apps/nizam/features/dashboard/components/kosk-home.tsx:291 } # its text is visually hidden
+  loadingRow: { type: text, component: Text, role: cell, text: { key: Dashboard.sessions.loading }, in: [readingTab], source: apps/nizam/features/dashboard/components/kosk-home.tsx:487 } # while another tab loads the body holds this one cell and the wrapper is aria-busy; nothing announces the switch (F-W1-2)
+  emptyUpcoming: { type: text, component: Text, role: cell, text: { key: Dashboard.sessions.empty.UPCOMING }, in: [home], when: "tab == 'upcoming' and not hasRows", source: apps/nizam/features/dashboard/components/kosk-home.tsx:487 }
+  emptyPast: { type: text, component: Text, role: cell, text: { key: Dashboard.sessions.empty.PAST }, in: [home], when: "tab == 'past' and not hasRows", source: apps/nizam/features/dashboard/components/kosk-home.tsx:487 }
+  emptyCancelled: { type: text, component: Text, role: cell, text: { key: Dashboard.sessions.empty.CANCELLED }, in: [home], when: "tab == 'cancelled' and not hasRows", source: apps/nizam/features/dashboard/components/kosk-home.tsx:487 } # the seeded köşk has no cancelled celse: this is the tab the walk sees
+
+  # a row: the same for every tab ...
+  rowCourse: { type: text, component: Text, role: rowheader, text: { key: composed.Dashboard.name, params: { name: session.course } }, in: [home], when: hasRows, repeat: sessions, source: apps/nizam/features/dashboard/components/kosk-home.tsx:226 } # the course's cover (decorative) and its title
+  rowLine: { type: text, component: Text, text: { key: composed.Dashboard.courseLine, params: { line: session.line } }, in: [home], when: hasRows, repeat: sessions, source: apps/nizam/features/dashboard/components/kosk-home.tsx:227 } # "Hafta 3 · Hamdi Müderris · Hadis ve Siyer Medresesi"
+  rowWhen: { type: text, component: Text, role: cell, text: { key: composed.Dashboard.when, params: { when: session.when } }, in: [home], when: hasRows, repeat: sessions, source: apps/nizam/features/dashboard/components/kosk-home.tsx:263 }
+  rowStudents: { type: text, component: Text, role: cell, text: { key: composed.Dashboard.number, params: { n: session.students } }, in: [home], when: hasRows, repeat: sessions, source: apps/nizam/features/dashboard/components/kosk-home.tsx:282 }
+  # ... and what the tab's rows say differently: Durum, Katılım and the button
+  stateUpcoming: { type: text, component: Text, text: { key: Dashboard.sessions.state.planned }, in: [home], when: "tab == 'upcoming' and hasRows", repeat: sessions, source: apps/nizam/features/dashboard/components/kosk-home.tsx:288 } # a celse with no way in is still "Planlandı": the lack is said once, in Katılım
+  statePast: { type: text, component: Text, text: { key: Dashboard.sessions.state.past }, in: [home], when: "tab == 'past' and hasRows", repeat: sessions, source: apps/nizam/features/dashboard/components/kosk-home.tsx:288 }
+  stateCancelled: { type: text, component: Text, text: { key: Dashboard.sessions.state.cancelled }, in: [home], when: "tab == 'cancelled' and hasRows", repeat: sessions, source: apps/nizam/features/dashboard/components/kosk-home.tsx:288 }
+  attendanceMissing: { type: text, component: Text, text: { key: Sessions.attendance.missing }, in: [home], when: "tab == 'upcoming' and data == 'seeded'", repeat: sessions, source: apps/nizam/features/courses/components/attendance-cell.tsx:25 } # a warning Badge with the words "Eksik" and, visually hidden, ": toplantı bağlantısı, canlı yayın ya da yüz yüze işareti yok" (data-testid="attendance-missing"); one per celse the alert counts
+  waysUpcoming: { type: text, component: Text, text: { key: composed.Dashboard.ways, params: { ways: session.ways } }, in: [home], when: "tab == 'upcoming' and hasRows", repeat: sessions, source: apps/nizam/features/courses/components/attendance-cell.tsx:41 } # a celse ahead that has a way in: how many is read from the API, and can be none
+  waysPast: { type: text, component: Text, text: { key: composed.Dashboard.ways, params: { ways: session.ways } }, in: [home], when: "tab == 'past' and data == 'seeded'", repeat: sessions, source: apps/nizam/features/courses/components/attendance-cell.tsx:41 } # the seeded köşk's past celse include two with a meeting link
+  nonePast: { type: text, component: Text, text: { key: Sessions.attendance.none }, in: [home], when: "tab == 'past' and hasRows", repeat: sessions, source: apps/nizam/features/courses/components/attendance-cell.tsx:37 } # a celse behind us with no way in: "Eklenmedi", never the warning
+  cancelledCell: { type: text, component: Text, text: { key: composed.Dashboard.dash }, in: [home], when: "tab == 'cancelled' and hasRows", repeat: sessions, source: apps/nizam/features/dashboard/components/kosk-home.tsx:272 } # a bare "—" with no text for a reader (F-W1-11)
+  actionUpcoming: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: Dashboard.sessions.actionLabel, params: { action: session.action, course: session.course, when: session.when } }, text: { oneOf: [Dashboard.sessions.action.addLink, Dashboard.sessions.action.edit] }, in: [home], when: "tab == 'upcoming' and hasRows", repeat: sessions, emits: OPEN_SESSIONS, source: apps/nizam/features/dashboard/components/kosk-home.tsx:302 } # "Toplantı bağlantısı ekle" on a celse with no way in, "Düzenle" on one that has; both lead to /kosks/<id>/courses/<course>/sessions (F-W1-10)
+  actionPast: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: Dashboard.sessions.actionLabel, params: { action: session.action, course: session.course, when: session.when } }, text: { key: Dashboard.sessions.action.view }, in: [home], when: "tab == 'past' and hasRows", repeat: sessions, emits: OPEN_SESSIONS, source: apps/nizam/features/dashboard/components/kosk-home.tsx:302 }
+  actionCancelled: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: Dashboard.sessions.actionLabel, params: { action: session.action, course: session.course, when: session.when } }, text: { key: Dashboard.sessions.action.view }, in: [home], when: "tab == 'cancelled' and hasRows", repeat: sessions, emits: OPEN_SESSIONS, source: apps/nizam/features/dashboard/components/kosk-home.tsx:302 }
+
+  # the tab that could not be read
+  tabFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Dashboard.sessions.loadFailedTitle }, in: [tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:469 } # an error Alert is role=alert, inserted after a click, so it is announced; the focus stays on the tab
+  tabFailedText: { type: text, component: Text, text: { key: Dashboard.sessions.loadFailed }, in: [tabUnreadable], source: apps/nizam/features/dashboard/components/kosk-home.tsx:470 }
+  tabRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: Dashboard.retry }, in: [tabUnreadable], emits: RETRY_TAB, source: apps/nizam/features/dashboard/components/kosk-home.tsx:471 }
+
+  # ---- the hocas of the köşk ----
+  muderrisSection: { type: page, component: Page, role: region, name: { labelledBy: muderrisTitle }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/home-parts.tsx:24 }
+  muderrisTitle: { type: text, component: Heading, role: heading, text: { key: Dashboard.muderris.title }, in: [home, readingTab, tabUnreadable], source: apps/nizam/features/dashboard/components/home-parts.tsx:30 } # h2, id home-muderris
+  muderrisList: { type: list, component: List, role: list, in: [home, readingTab, tabUnreadable], when: "data != 'empty'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:520 } # <ul data-testid="home-muderris-list">, a card
+  muderrisRow: { type: list, component: ListItem, role: listitem, text: { key: composed.Dashboard.name, params: { name: hoca.name } }, in: [home, readingTab, tabUnreadable], when: "data != 'empty'", repeat: muderris, source: apps/nizam/features/dashboard/components/kosk-home.tsx:525 } # <li data-testid="home-muderris-row">: an avatar (decorative), the name, a caption
+  muderrisCaption: { type: text, component: Text, text: { key: composed.Dashboard.muderrisCaption, params: { madrasah: hoca.madrasah, courses: hoca.courses, students: hoca.students } }, in: [home, readingTab, tabUnreadable], when: "data != 'empty'", repeat: muderris, source: apps/nizam/features/dashboard/components/kosk-home.tsx:533 }
+  muderrisEmpty: { type: text, component: Text, text: { key: Dashboard.muderris.empty }, in: [home, readingTab, tabUnreadable], when: "data == 'empty'", source: apps/nizam/features/dashboard/components/kosk-home.tsx:518 }
+
+  # ---- the phone's sheet: a dialog over the page, which is inert while it is open ----
+  sheetDialog: { type: page, component: Page, role: dialog, name: { key: Shell.nav }, in: [sheet], source: libs/ui/src/mds/app-bar.tsx:78 } # aria-label "Ana menü", the same words as the <nav> in it; no initialFocus: the app sets none (rule sheet-focus)
+  sheetClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [sheet], emits: CLOSE_SHEET, source: libs/ui/src/mds/app-bar.tsx:82 } # an icon button named by its aria-label
+  sheetNav: { type: page, component: Page, role: navigation, name: { key: Shell.nav }, in: [sheet], source: libs/ui/src/mds/app-bar.tsx:92 } # the same entries as the sidebar's (nizam.shell.menuPerPersona)
+  sheetHome: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Shell.items.home }, in: [sheet], emits: FOLLOW_HOME, source: apps/nizam/components/shell/shell-frame.tsx:126 } # for a köşk nazımı it points at /kosks/<id>/ana-sayfa (lib/shell-nav.ts:176); e2e dashboard#7 a7
+
+  # ---- the screen for a köşk that is not the person's ----
+  refusedMain: { type: page, component: Page, role: main, in: [refused], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main"> of the shell; no name, no initialFocus (rule focus-not-set)
+  refusedBox: { type: page, component: Page, role: region, name: { labelledBy: refusedTitle }, in: [refused], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState with `shell`: a <section aria-labelledby>. The menu around it names the newest köşk, not the one "/" opens (MENU-2)
+  refusedTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [refused], source: apps/nizam/components/errors/no-access.tsx:30 } # h1
+  refusedBody: { type: text, component: Text, text: { key: NoAccess.body, params: { name: person.name } }, in: [refused], source: apps/nizam/components/errors/no-access.tsx:44 } # names the Medaris başnazımı; where the directory knows no one it is NoAccess.bodyGeneric, which the stack does not show
+  refusedAccount: { type: text, component: Text, text: { key: composed.NoAccess.account, params: { email: person.email } }, in: [refused], source: apps/nizam/components/errors/no-access.tsx:33 } # left out when the session has no e-mail address
+  refusedBack: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NoAccess.back }, in: [refused], emits: BACK_HOME, source: apps/nizam/components/errors/no-access.tsx:38 } # a link to "/"
+
+  # ---- the box that says the home could not be read ----
+  loadFailedMain: { type: page, component: Page, role: main, in: [loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main"> of the shell; the box is all there is in it: no heading, no h1 (KOSKHOME-3)
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Dashboard.loadFailedTitle }, in: [loadFailed], source: apps/nizam/features/kosks/components/load-failed.tsx:23 }
+  loadFailedText: { type: text, component: Text, text: { key: Dashboard.loadFailed }, in: [loadFailed], source: apps/nizam/features/kosks/components/load-failed.tsx:24 }
+  loadFailedRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: Dashboard.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/kosks/components/load-failed.tsx:25 } # loading while the page is read again; the same words as the tab's own retry
+
+edges:
+  - { labelledBy: [sessionsSection, sessionsTitle] }
+  - { labelledBy: [muderrisSection, muderrisTitle] }
+  - { labelledBy: [refusedBox, refusedTitle] }
+  - { triggers: [menuButton, sheet] }
+  - { returnsFocus: [sheetDialog, menuButton] } # Base UI gives the focus back to the trigger when the sheet closes; following an entry leaves the page instead
+
+rules:
+  - { id: focus-not-set, rule: "No page of this flow moves the focus when it opens, and nothing moves it when a tab changes: the page nodes carry no `initialFocus` and there is no `focus`. Nothing in apps/nizam/features/dashboard or app/kosks/[id]/ana-sayfa calls focus() or sets autoFocus; the köşk home, the refusal and the box are drawn by whatever the browser or Next's router does after a load. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: sheet-focus, rule: "The app sets no initial focus in the sheet. Base UI focuses its first tabbable element, and the brand link (the Logo is an <a href=/>, shell-frame.tsx:182) comes before 'Kapat' in the sheet's head (app-bar.tsx:80-87), so the focus is probably on the brand link, not on 'Kapat' as nazar's sheet gives it. Not verified in a browser. The graph draws no `initialFocus` for it." }
+  - { id: F-X-1, rule: "The tabs of the celse list are a Base UI tablist with `Tabs` used with no `TabsPanel` (kosk-home.tsx:450-464): the tabs announce as tabs, `aria-controls` is empty and the table below is not a tab panel (libs/ui/src/mds/tabs.tsx:52-125 expects panels). The same family is in Bildirimler, deck requests, appeals, köşk applications and course requests. Fix: put the table in a TabsPanel, or make the tabs links or chips." }
+  - { id: F-W1-2, rule: "The same finding on this page, with two more things: `activateOnFocus` makes each arrow key select a tab and ask the server for its list (kosk-home.tsx:92-119), and a switch of tab is announced nowhere: only `aria-busy` on a wrapper while it loads, then the table changes under the reader. Fix: render the table inside <TabsPanel value={tab}> and add a visually hidden role=status line, 'Geçmiş celseler: N', updated after the load." }
+  - { id: F-X-10, rule: "Every loading.tsx is an `aria-busy=true` <div> whose children are `aria-hidden` skeletons (app/kosks/[id]/ana-sayfa/loading.tsx:8; libs/ui/src/mds/skeleton.tsx:12-23): while the home is read a screen reader hears nothing. Fix: add a visually hidden status text 'Yükleniyor' to the skeleton (it needs a catalog key)." }
+  - { id: F-W1-8, rule: "The same finding on the home's own loading file (app/kosks/[id]/ana-sayfa/loading.tsx:8) and four others: aria-busy on a plain div that holds nothing a reader can reach." }
+  - { id: F-W1-10, rule: "The row's button promises an action: 'Toplantı bağlantısı ekle', 'Düzenle', 'Celseyi gör'. It is a plain link to /kosks/<id>/courses/<course>/sessions, the same address for every celse of that course (kosk-home.tsx:299-314). A keyboard user lands on a list and must find the celse again. Fix: deep-link with the celse (?celse=, as 'İncele' does with ?secili=) or name the button 'Celselere git: ...'." }
+  - { id: F-W1-11, rule: "The Katılım cell of a cancelled celse is a bare '—' with no text alternative (kosk-home.tsx:270-273); the shared AttendanceCell hides a null view behind 'Katılım bilgisi gösterilmez'. Fix: reuse <AttendanceCell view={null}> or write 'İptal edildi'. The seeded köşk has no cancelled celse, so the walk does not see it." }
+  - { id: KOSKHOME-1, rule: "Proposed id; not in the inventory. Opening Geçmiş or İptal edilen asks for the whole home again (Server Action loadKoskSessions -> GET /kosks/:id/dashboard?sessions=PAST|CANCELLED, features/dashboard/actions.ts:13) and the page keeps only `sessions` of the answer (kosk-home.tsx:118). tedrisat writes the audit rows of a full read before it answers: course.roster_read for the applications it hands out and course.content_read for each course whose link it hands out (kosk-dashboard.service.ts:93, :196-240), so every tab switch records a roster read of applicants the page then throws away, and the audit log says the köşk nazımı read names they were not shown. Fix: a read for a tab's sessions alone that writes nothing about applicants." }
+  - { id: KOSKHOME-2, rule: "Proposed id; not in the inventory. The badges of Geçmiş and İptal edilen are `sessionCounts.past` and `.cancelled`, every celse there has ever been, but each tab lists the newest 20 (TAB_ROWS, kosk-dashboard.repository.ts:29), with no pager and no 'Tümünü gör': the köşk-wide Celseler page is not built (MDRS-211, kosk-home.tsx:448). A köşk with 25 past celse says 25 and shows 20, and nothing says so. The seeded köşk has 6, so the walk does not see it. Fix: say 'En yeni 20 celse' under a badge above 20 and link the rest when the page exists (decision D1)." }
+  - { id: KOSKHOME-3, rule: "Proposed id; not in the inventory. When the read fails, the köşk home is an error Alert alone in <main> (load-failed.tsx:19-35; page.tsx:32-43): no h1, no heading of any kind, and the tab still says 'Ana sayfa' (generateMetadata runs before the read). A screen-reader user who opens the page by its address finds no heading to land on, and the same box serves every köşk page that reads (F-W1-1 is the same lack on '/')." }
+  - { id: MENU-2, rule: "Cited, not new: it is nizam.shell.menuPerPersona's finding (its ui.yaml). A köşk nazımı of two köşks lands, by '/', on the köşk of their OLDEST role (page.tsx:56-59; GET /me/assignments is ordered by creation, assignment.repository.ts:115), and the menu on a page whose address names no köşk (Bildirimler, Hesap, and the screen refusedBox draws here) names the NEWEST köşk (shell-nav.ts:372-379). The stack's köşk nazımı holds two, so '/' opens Süleymaniye Köşkü and the menu around the refusal names Kubbealtı Köşkü." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): the row's button says 'Toplantı bağlantısı ekle' and is named 'Toplantı bağlantısı ekle: <course>, <when>'" }

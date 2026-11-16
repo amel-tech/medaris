@@ -1,0 +1,20 @@
+# tedris.celse.watchStream, the hoca's look: the müderris of the course, who may read it and holds no seat, on the celse on air. The column is the
+# chat alone ("Canlı sohbet", WATCH-4), there is no "Notlarım" and no "Soru sor". It shares its state (`streamLive`) with the main story, so it has a
+# binding of its own. NOT RUN in this phase: probed by hand with the replay's Chromium (the aria snapshot is as the graph says).
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/watchStream --bind graphs/tedris/celse/watchStream/binding.reader.yaml --absent --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.watchStream
+
+scenarios:
+  reader:
+    given: { watch: stream, viewer: reader, link: framed, release: none }
+    as: muderris
+    open: '{tedris}/courses/{ws.course}/lessons/{ws.live}/izle'
+    setup:
+      - run: [node, ../tedris/celse/watchStream/watchstream-data.mjs, up]
+        expect: 'watchstream-data up'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, watchstream]
+        expect: removed

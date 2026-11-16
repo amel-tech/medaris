@@ -1,0 +1,162 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.celse.watchRecording
+status: proposed
+summary: >-
+  What tedris.celse.watchRecording needs from the product, from its story (a talebe watches a celse's recording once it is open;
+  the course team plays it early; a person with no seat does not), and what the code and the walks hold of it today. Nothing here
+  is read by `check`; a YAML parser reads it.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing or unwalked, for the orchestrator's gaps merge (every other need has a walk phase scenario of this folder's binding.yaml, not yet replayed):
+# missing:  recording-public-honours-medrese-policy (no code: the policy is stored and never asked; the domain's own finding), failed-recording-seen-by-team (no code: MDRS-259), notes-position-on-bunny (MDRS-264)
+# unwalked: bunny-recording-plays (code, needs Bunny), recording-failed-read-is-not-found (code, the stack cannot refuse the read), recording-with-stream-link (code, tedris.celse.watchStream walks it)
+# Walks: no replay was run in this phase ("walk phase"): `walked` lists the scenarios of binding.yaml that will walk each need, with the e2e checks that exist, never a scenario that has passed.
+
+needs:
+  - id: talebe-watches-an-open-recording
+    need: >-
+      A talebe who holds a seat opens a celse that is over and watches its recording, with the recording's title, date and length,
+      and their own questions and notes beside it, whether it was added as a YouTube, a Drive, a Bunny or another link.
+    evidence:
+      - state: celseCard
+      - state: playerTalebe
+      - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:34"
+      - source: apps/tedris/features/courses/components/watch-view.tsx:205
+      - source: apps/tedrisat/src/course/lesson.controller.ts:230
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/17: a session that is over leads to its recording on the watch page (MDRS-285)"
+      - test: apps/tedris/e2e/lesson-notes.e2e.ts
+        name: "on a YouTube recording's watch page, reached by Kaydı izle: adds a note with a time and one without, edits, deletes, and finds them after a reload"
+      - scenario: talebeOpen
+    note: |-
+      celse-states#3: STALE: expects youtube-nocookie.com, the app frames www.youtube.com since MDRS-293
+      talebeOpen: walk phase
+
+  - id: link-that-cannot-be-framed
+    need: >-
+      A recording whose link cannot be put in a frame (a host with no embed) is still reachable from the watch page: a placeholder
+      and a link to the host.
+    evidence:
+      - state: playerTalebe
+      - state: playerTeam
+      - source: apps/tedris/features/courses/components/media-player.tsx:71
+      - scenario: talebeLink
+    note: "talebeLink: walk phase"
+
+  - id: recording-opens-when-released
+    need: >-
+      A recording opens to talebe only when it is ready, its celse has begun and the release time the course team set has passed;
+      before that the talebe is told when it opens (on the celse page) and is not played anything, and the address of the watch
+      page does not play it either.
+    evidence:
+      - state: celseHeld
+      - state: sorting
+      - source: apps/tedrisat/src/course/recording.controller.ts:147
+      - source: apps/tedrisat/src/course/recording.controller.ts:102
+      - source: apps/tedrisat/src/course/domain/recording.ts:100
+      - source: apps/tedris/features/courses/components/session-action-card.tsx:357
+      - scenario: talebeHeld
+    note: "talebeHeld: walk phase"
+
+  - id: recording-being-prepared-offers-nothing
+    need: >-
+      A recording still being prepared offers no link anywhere, says so on the celse page, and sends its watch page's address back
+      to the celse page.
+    evidence:
+      - state: celsePreparing
+      - source: apps/tedris/features/courses/components/session-action-card.tsx:361
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/17: a recording still being prepared has no player, no watch page, and links to the tab"
+      - scenario: talebePreparing
+    note: "talebePreparing: walk phase"
+
+  - id: team-plays-a-held-recording-early
+    need: >-
+      The course team plays a recording that is held back, and is told when it opens to talebe, so that they can check it before
+      it is released.
+    evidence:
+      - state: celseCard
+      - state: playerTeam
+      - source: apps/tedrisat/src/course/domain/recording.ts:150
+      - source: apps/tedris/features/courses/components/watch-view.tsx:219
+      - scenario: teamHeld
+    note: "teamHeld: walk phase"
+
+  - id: no-seat-no-watch-page
+    need: >-
+      A person with no seat, or a signed-out visitor, is never played a recording on the watch page, whatever the recording's
+      visibility; a visitor is asked to sign in first.
+    evidence:
+      - state: detail_locked
+      - state: sign_in_asked
+      - source: "apps/tedris/app/courses/[courseId]/lessons/[lessonId]/izle/page.tsx:31"
+      - test: apps/tedris/e2e/celse-states.e2e.ts
+        name: "tedris/19: the locked session names no link, no stream and no recording, and apply opens the window of tedris/07"
+      - scenario: outsider
+      - scenario: visitor
+    note: |-
+      outsider: walk phase
+      visitor: walk phase
+
+  - id: public-recording-of-a-sample-celse
+    need: >-
+      The PUBLIC recording of a sample celse is the one recording a person with no seat may be played, on the locked celse page;
+      no ENROLLED or other recording is.
+    evidence:
+      - state: lockedPlayer
+      - source: apps/tedrisat/src/course/course.service.ts:697
+      - source: apps/tedris/features/courses/components/lesson-locked.tsx:139
+      - scenario: outsiderSample
+    note: "outsiderSample: walk phase"
+
+  - id: recording-public-honours-medrese-policy
+    need: >-
+      A medrese that switches "Ders kayıtları herkese açılamaz" on keeps its courses' PUBLIC recordings from everyone who has no
+      seat, as the platform's and the köşk's switches do (the domain's recording-public-honours-medrese-policy and
+      policy-no-public-recordings-inert).
+    missing: "no Linear issue; no code: the policy is stored and never asked; the domain's own finding"
+    note: >-
+      Drawn on the state lockedPlayer, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: failed-recording-seen-by-team
+    need: A failed Bunny upload is shown to the course team with its reason and a retry, instead of vanishing (MDRS-259).
+    missing: "no code: MDRS-259"
+    note: >-
+      Drawn on the state celsePreparing, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: notes-position-on-bunny
+    need: The notes read the player's position and seek on a Bunny recording, instead of a typed time (MDRS-264).
+    missing: MDRS-264; findings MDRS-264
+    note: >-
+      Drawn on the state playerTalebe, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: bunny-recording-plays
+    need: A recording uploaded to Bunny plays on the watch page in Bunny's player, on a link signed for this viewer.
+    evidence:
+      - state: playerTalebe
+      - state: playerTeam
+      - source: apps/tedris/features/courses/components/media-player.tsx:12
+      - source: apps/tedrisat/src/course/course.service.ts:196
+    note: "walked: []: needs Bunny (STACK.md): the stack has no library keys"
+
+  - id: recording-failed-read-is-not-found
+    need: A celse that cannot be read because tedrisat is down is told apart from a celse that does not exist (CLS-01).
+    evidence:
+      - state: not_found
+      - source: apps/tedris/features/courses/public-reads.ts:49
+    note: "walked: []: the stack cannot make tedrisat refuse the read"
+
+  - id: recording-with-stream-link
+    need: >-
+      A celse that holds a recording that is not yet open and also has a live stream link plays the stream on the watch page, with
+      the recording's opening time beside it.
+    evidence:
+      - state: stream_opened
+      - source: apps/tedris/features/courses/watch-model.ts:47
+    note: "walked: []: tedris.celse.watchStream walks it"

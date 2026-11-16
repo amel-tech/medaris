@@ -1,0 +1,270 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.courses.manageSessions
+status: proposed
+summary: >-
+  What must exist for a köşk's nazımı to set how each celse of a course is attended, to move one and to cancel one, on Celseler:
+  the flow's product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# MISSING (no code): a-link-can-be-removed (none; MANAGE-5, D1), a-change-is-recorded (none; MANAGE-1), a-change-of-way-in-is-told (MDRS-189;
+# MANAGE-3), a-cancel-carries-a-note-and-a-make-up (none; NMSESS-2, D2), a-cancel-says-it-is-final (none; CANCEL-4, D3),
+# a-refusal-reads-the-page-again (none; NMSESS-1), the-title-opens-the-celse (none; NMSESS-3), a-time-cannot-be-moved-into-the-past (none;
+# NMSESS-4), focus-follows-a-form (none; F-W4-9, F-W4-6), a-refused-send-is-announced (none; F-UI-W4-1), a-button-is-named-by-its-words (none;
+# F-W4-11, MANAGE-6).
+# UNWALKED (code, and no e2e and no replay yet: the scenarios of binding.yaml and refusals.binding.yaml are written and none was run in this phase,
+# so none is named below; they are `adds`, `refused`, `stale` and `streamGone`): mark-in-person, set-or-remove-the-stream,
+# a-celse-is-flagged-and-the-flag-clears, a-stale-page-is-refused, the-talebe-are-told-of-a-new-time-and-a-cancel. The rest of the built needs
+# are carried by an e2e check (courses#16 to #19) and are not gaps.
+
+needs:
+  - id: celses-are-listed-ahead-and-over
+    need: >-
+      A köşk's nazımı reads every celse of a course in two groups, those still ahead (oldest first, with a count of how many, how
+      many of them are cancelled and which weeks they cover) and those already over (newest first, with whether a recording
+      exists), each with its time on the course's clock and how it is attended.
+    evidence:
+      - state: listed
+      - node: upcomingCounts
+      - node: upcomingTable
+      - node: pastTable
+      - node: pastRowTitle
+      - node: pastRecording
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/nizam/features/courses/present.ts:500
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:507
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1: sessions are grouped, counted and ordered"
+    note: "courses#16: a1, a2 and a4; a3, the order of four titles, is not carried (the walk's course has one celse ahead)"
+
+  - id: set-the-meeting-link
+    need: >-
+      The nazım adds or replaces the meeting link of a celse in one step, from the list of celses, without opening a larger form;
+      the link is an https address of any host, a link with no scheme gets one, an http:// address is refused in words under the
+      field, and the talebe of the course read it on the celse's page and see its platform in the list.
+    evidence:
+      - state: listed
+      - state: linkForm
+      - state: savingLink
+      - node: addLink
+      - node: updateLink
+      - node: linkField
+      - node: linkError
+      - node: attendanceChip
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:199
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 2: a link is added, shows its platform, and an http link is refused"
+
+  - id: change-the-time
+    need: >-
+      The nazım moves a celse that has not begun to another date and hour on the course's clock; the enrolled talebe are told by a
+      notice and a new calendar invitation, and a moved exam is reminded again.
+    evidence:
+      - state: timeForm
+      - state: savingTime
+      - node: changeTimeButton
+      - node: timeField
+      - node: dateField
+      - node: timeError
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/tedrisat/src/course/course.service.ts:1177
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 4: a date can be changed"
+
+  - id: mark-in-person
+    need: >-
+      The nazım marks a celse as held in person, as not held in person, or as following the course; "Yüz yüze" is one of the three
+      ways in and takes the "Eksik" flag away.
+    evidence:
+      - state: inPersonForm
+      - state: savingInPerson
+      - node: inPersonButton
+      - node: radioYes
+      - node: radioNo
+      - node: radioCourse
+      - node: attendanceInPerson
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:574
+    note: "walked: []: no e2e (the inventory says so); the replay has not run"
+
+  - id: set-or-remove-the-stream
+    need: >-
+      The nazım, who holds session.live_link by default, sets a celse's YouTube stream from any usual form of the link (the Studio
+      address included), is told in words what is wrong with one the parser refuses, and clears it again; only a live celse that
+      is not cancelled takes one.
+    evidence:
+      - state: streamForm
+      - state: savingStream
+      - state: removingStream
+      - node: addStream
+      - node: updateStream
+      - node: streamError
+      - node: streamRemove
+      - source: apps/tedrisat/src/course/live-stream.controller.ts:91
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:169
+    note: "walked: []: no e2e (the inventory says so); the replay has not run"
+
+  - id: cancel-a-celse-after-a-question
+    need: >-
+      The nazım cancels a celse that has not begun after being asked once; the celse stays in the programme as "İptal edildi",
+      with no link and no button, its talebe are told, and the sidebar's and the list's counts follow.
+    evidence:
+      - state: confirmCancel
+      - state: cancelling
+      - state: cancelledShown
+      - node: cancelDialog
+      - node: confirm
+      - node: rowCancelled
+      - node: noActions
+      - node: countsCancelled
+      - source: apps/tedrisat/src/course/lesson.controller.ts:389
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:260
+      - source: libs/ui/src/mds/alert-dialog.tsx:44
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 3: 'İptal et' marks the session cancelled, hides its link and leaves it no action"
+
+  - id: a-celse-is-flagged-and-the-flag-clears
+    need: >-
+      A celse still ahead with no way in (no meeting link, no stream, not in person) is flagged "Eksik" in its row, so that the
+      nazım sees what is left to do; the flag clears as soon as one of the three is set and comes back when it is taken away.
+    evidence:
+      - node: missingBadge
+      - state: listed
+      - node: attendanceChip
+      - node: attendanceInPerson
+      - node: attendanceStreamAlone
+      - source: apps/nizam/features/courses/attendance.ts:57
+      - source: apps/nizam/features/courses/components/attendance-cell.tsx:25
+    note: "walked: []: kosk-view#11 walks the flag on the overview's table, not here and not its clearing"
+
+  - id: a-stale-page-is-refused
+    need: >-
+      A change of a link, a time or an in-person mark, and a cancel, made from a page the course has moved under (somebody else
+      saved it since) is refused and nothing of the other person's work is overwritten; the person is told so in words.
+    evidence:
+      - state: savingLink
+      - state: savingTime
+      - state: savingInPerson
+      - state: cancelling
+      - node: toastMoved
+      - source: apps/tedrisat/src/course/lesson.controller.ts:355
+      - source: apps/tedrisat/src/course/lesson.controller.ts:389
+      - source: apps/nizam/features/courses/present.ts:1231
+
+  - id: the-talebe-are-told-of-a-new-time-and-a-cancel
+    need: >-
+      The talebe enrolled in the course are told when a celse ahead is moved (a notice and an updated calendar invitation) and
+      when it is cancelled (a notice and a calendar cancellation), and read the celse as cancelled on its own page.
+    evidence:
+      - state: savingTime
+      - state: cancelling
+      - state: cancelledShown
+      - source: apps/tedrisat/src/course/course-notifier.ts:102
+      - source: apps/tedrisat/src/course/course-notifier.ts:121
+
+  - id: a-link-can-be-removed
+    need: >-
+      A meeting link pasted by mistake can be removed from Celseler, as the stream's can, so that a celse goes back to "Eksik" and
+      the talebe see no wrong link (D1, MANAGE-5).
+    missing: "no issue; the API takes meetingUrl: null, the page refuses an empty field (sessions-view.tsx:219)"
+    note: >-
+      Drawn on the state linkForm and on the node linkError, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-change-is-recorded
+    need: >-
+      Every change of a celse's meeting link, time or in-person mark is written to the audit log with who made it and what it was,
+      as the stream and the cancel already are (MANAGE-1).
+    missing: no issue; PATCH /lessons/{id} writes no audit row (course.repository.ts:1555)
+    note: >-
+      Drawn on the states savingLink, savingTime and savingInPerson, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-change-of-way-in-is-told
+    need: >-
+      A change of how a celse is attended (a link added or replaced, a stream set, the in-person mark) reaches the enrolled talebe
+      as a change of time does, in the e-mail notices MDRS-189 plans, and the calendar invitation names how the celse is attended
+      now (MANAGE-3, P-29).
+    missing: MDRS-189; MANAGE-3
+    note: >-
+      Drawn on the states savingLink, savingInPerson, savingStream and removingStream, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-cancel-carries-a-note-and-a-make-up
+    need: >-
+      A cancel made from Nizam can say why, in a note the talebe read in the notice, the mail and on the celse's page, and can add
+      a make-up celse in the same step, as the course's staff can from Nazar; the two apps cancel a celse the same way (NMSESS-2,
+      D2).
+    missing: >-
+      no issue; cancelSession takes a `reason` (actions.ts:104) the page never passes, and the API takes `replacementLessonId`
+    note: >-
+      Drawn on the states confirmCancel and cancelling, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-cancel-says-it-is-final
+    need: >-
+      The confirmation of a cancel says that it cannot be taken back and that the talebe are told at once, and its confirm looks
+      like a final action, not like "Kaydet" (CANCEL-4, D3).
+    missing: no Linear issue; CANCEL-4, D3
+    note: >-
+      Drawn on the state confirmCancel and on the nodes dialogBody, dialogWay and confirm, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-reads-the-page-again
+    need: >-
+      A write refused because the course moved under the page, or because the celse is gone, reads the page again, so that a
+      second press is not refused the same way, and a confirmation open over it closes (NMSESS-1; nazar does).
+    missing: no Linear issue; NMSESS-1
+    note: >-
+      Drawn on the states savingLink, savingTime, savingInPerson, cancelling and confirmCancel and on the nodes toastMoved and
+      toastFailed, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only
+      missing needs name).
+
+  - id: the-title-opens-the-celse
+    need: >-
+      The title of a celse in the list opens that celse's page in tedris, the one the talebe read, and says that it opens in a new
+      tab (NMSESS-3, F-W4-12).
+    missing: no issue; the link is /courses/<id>/sessions/<celse>, which is the API's path (sessions-view.tsx:291)
+    note: >-
+      Drawn on the nodes rowTitle and pastRowTitle, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-time-cannot-be-moved-into-the-past
+    need: >-
+      A celse that has not begun cannot be moved to a time that has already passed from this form; the field says so, and nothing
+      is sent (NMSESS-4).
+    missing: no Linear issue; NMSESS-4
+    note: >-
+      Drawn on the state timeForm and on the node timeError, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-follows-a-form
+    need: >-
+      A keyboard or screen-reader user who opens a form from a row has the focus put in its first field, and when it closes, or
+      after a write, the focus goes to the row; the one word that a write was made is a status line that stays, not a toast of six
+      seconds (F-W4-9, F-W4-6, F-C-course-a-25).
+    missing: no Linear issue; F-W4-9, F-W4-6
+    note: >-
+      Drawn on the states linkForm, timeForm, inPersonForm and streamForm and on the node cancelDialog, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refused-send-is-announced
+    need: >-
+      When "Kaydet" is refused for a field the page can see is wrong, the sentence under the field is announced and the focus goes
+      to the field (F-UI-W4-1).
+    missing: no Linear issue; F-UI-W4-1
+    note: >-
+      Drawn on the nodes linkError, timeError and streamError, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-button-is-named-by-its-words
+    need: >-
+      Every row button's accessible name starts with the words it shows ("Tarihi değiştir: {when}"), so that a voice-control user
+      who says what they read presses it (WCAG 2.5.3; F-W4-11, MANAGE-6).
+    missing: no Linear issue; F-W4-11, MANAGE-6
+    note: >-
+      Drawn on the nodes updateLink, addStream, updateStream and changeTimeButton, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

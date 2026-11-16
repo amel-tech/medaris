@@ -1,0 +1,210 @@
+# nazar.settings.edit on the local stack: the başmüderris of a medrese of the walk's own at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/settings/edit --bind graphs/nazar/settings/edit/binding.yaml --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator, every var and every effect below
+# is from the code, unverified until a walk. The data, its removal and what it cannot undo are in binding.common.yaml; the two saves the
+# API refuses are in binding.refused.yaml (its own file: a walk of the busy screen needs `call`, a refused one must not have it).
+#
+# Not bound, with the reason:
+#   - `answer: invalid` (VALIDATION_ERROR): the page's own checks are the API's, so no text the page lets through is refused;
+#   - `courses: failed`: it needs a nazır who holds madrasah.settings_edit and no course code (SET-1), and the stack seeds none;
+#   - a read that fails outright (the retry state) and a session that ends: nazar.shell.errorStates, realm.auth.sessionEnded.
+#
+# `call` on `saving` only holds the busy screen (the button busy, "Kaydediliyor", Vazgeç off): the save is a Next server action, which
+# answers 200 on the page's own address, so a refusal cannot be told from its status; the walks of a refusal are in the other file.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.settings.edit
+
+states:
+  saving: { call: '{nazar}/medrese/*/ayarlar' }
+
+# What a save leaves outside the screen, read through the API as the başmüderris (e2e settings#4 a5-a7, #5 a3-a4, #2 a7, #3 a3-a4): the
+# name, the description, the three policies and whether the medrese was ever saved, and the number of audit rows `madrasah.settings.update`
+# of this medrese. The two saves differ in what the pressed box did, so each has its own expectation (the flow's effects savedBox and savedText).
+effects:
+  savedBox:
+    - run: [node, ../nazar/settings/edit/settings-data.mjs, state]
+      expect: '{expectBox}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'madrasah.settings.update' and entity_id = '{made.madrasah}'"]
+      expect: '{expectAudit}'
+  savedText:
+    - run: [node, ../nazar/settings/edit/settings-data.mjs, state]
+      expect: '{expectText}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'madrasah.settings.update' and entity_id = '{made.madrasah}'"]
+      expect: '{expectAudit}'
+  # Vazgeç back to the loaded values: nothing was written (e2e settings#2 a7)
+  revertedLoaded:
+    - run: [node, ../nazar/settings/edit/settings-data.mjs, state]
+      expect: '{expectLoaded}'
+  # a refused name: nothing was written and no audit row (e2e settings#3 a3, a4); the medrese was never saved in this scenario
+  saidRequired:
+    - run: [node, ../nazar/settings/edit/settings-data.mjs, state]
+      expect: '{expectLoaded}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'madrasah.settings.update' and entity_id = '{made.madrasah}'"]
+      expect: '"n":0'
+
+scenarios:
+  # The main story (e2e settings#4, #2): a medrese never saved. The walk enters through the menu's "Medrese ayarları", types a new name and description,
+  # presses "Kapalı ders zorunlu", saves (the toast, the moved line, the sidebar's new name), reloads and sees it kept; it also takes a change back with Vazgeç.
+  firstSave:
+    given: { reader: head, history: never, courses: empty, flips: closed, attempt: valid, answer: saved }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseSettings' }
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: 'Düzenlenmiş Medrese Adı'
+      typedDescription: 'Yeni açıklama.'
+      typedAgain: 'Yeni açıklama, bir kez daha.'
+      savedName: 'Düzenlenmiş Medrese Adı'
+      madrasahId: '{made.madrasah}'
+      expectBox: '"name":"{savedName}","description":"Yeni açıklama.","closedCourseRequired":true,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectText: '"name":"{savedName}","description":"Yeni açıklama.","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectLoaded: '"name":"{made.name}","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":false'
+      expectAudit: '"n":1'
+
+  # e2e settings#1 and #5: a medrese the başmüderris saved once (alwaysApproval on, a "Son değişiklik" line) with a published, a draft and a hidden course. The walk reads
+  # everything, empties the description and unchecks "Kayıt her zaman onaylı", saves: the description is null and the other policies stay as they were.
+  readsSaved:
+    given: { reader: head, history: saved, courses: listed, flips: approval, attempt: valid, answer: saved }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseSettings' }
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up, --saved, --courses], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: '{made.name}'
+      typedDescription: ''
+      typedAgain: 'Kısa bir açıklama.'
+      savedName: '{made.name}'
+      madrasahId: '{made.madrasah}'
+      expectBox: '"name":"{made.name}","description":null,"closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectText: '"name":"{made.name}","description":null,"closedCourseRequired":false,"alwaysApproval":true,"noPublicRecordings":false,"saved":true'
+      expectLoaded: '"name":"{made.name}","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":true,"noPublicRecordings":false,"saved":true'
+      expectAudit: '"n":2'
+
+  # e2e settings#3: the name is replaced by spaces and Kaydet is pressed: "Medrese adı boş olamaz." under the field, the field is aria-invalid, nothing is saved and no audit row is written.
+  blankName:
+    given: { reader: head, history: never, courses: empty, flips: closed, attempt: blankName, answer: saved }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}/ayarlar'
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: '   '
+      typedDescription: '{made.description}'
+      typedAgain: 'Düzeltildikten sonra.'
+      fixName: 'Düzeltilmiş Medrese Adı'
+      fixDescription: '{made.description}'
+      savedName: 'Düzeltilmiş Medrese Adı'
+      madrasahId: '{made.madrasah}'
+      expectBox: '"name":"Düzeltilmiş Medrese Adı","description":"{made.description}","closedCourseRequired":true,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectText: '"name":"Düzeltilmiş Medrese Adı","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectLoaded: '"name":"{made.name}","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":false'
+      expectAudit: '"n":1'
+
+  # One character: "Medrese adı en az 2 karakter olmalı." (not in an e2e).
+  shortName:
+    given: { reader: head, history: never, courses: empty, flips: closed, attempt: shortName, answer: saved }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}/ayarlar'
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: 'A'
+      typedDescription: '{made.description}'
+      typedAgain: 'Düzeltildikten sonra.'
+      fixName: 'Düzeltilmiş Medrese Adı'
+      fixDescription: '{made.description}'
+      savedName: 'Düzeltilmiş Medrese Adı'
+      madrasahId: '{made.madrasah}'
+      expectBox: '"name":"Düzeltilmiş Medrese Adı","description":"{made.description}","closedCourseRequired":true,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectText: '"name":"Düzeltilmiş Medrese Adı","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectLoaded: '"name":"{made.name}","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":false'
+      expectAudit: '"n":1'
+
+  # A name of 121 characters: "Medrese adı en çok 120 karakter olabilir." (not in an e2e).
+  longName:
+    given: { reader: head, history: never, courses: empty, flips: closed, attempt: longName, answer: saved }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}/ayarlar'
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      typedDescription: '{made.description}'
+      typedAgain: 'Düzeltildikten sonra.'
+      fixName: 'Düzeltilmiş Medrese Adı'
+      fixDescription: '{made.description}'
+      savedName: 'Düzeltilmiş Medrese Adı'
+      madrasahId: '{made.madrasah}'
+      expectBox: '"name":"Düzeltilmiş Medrese Adı","description":"{made.description}","closedCourseRequired":true,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectText: '"name":"Düzeltilmiş Medrese Adı","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectLoaded: '"name":"{made.name}","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":false'
+      expectAudit: '"n":1'
+
+  # A description of 1001 characters: "Açıklama en çok 1000 karakter olabilir." under the description, the focus on it (not in an e2e).
+  longDescription:
+    given: { reader: head, history: never, courses: empty, flips: closed, attempt: longDescription, answer: saved }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}/ayarlar'
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: '{made.name}'
+      typedDescription: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+      typedAgain: 'Düzeltildikten sonra.'
+      fixName: '{made.name}'
+      fixDescription: 'Kısaltılmış açıklama.'
+      savedName: '{made.name}'
+      madrasahId: '{made.madrasah}'
+      expectBox: '"name":"{made.name}","description":"Kısaltılmış açıklama.","closedCourseRequired":true,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectText: '"name":"{made.name}","description":"Kısaltılmış açıklama.","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectLoaded: '"name":"{made.name}","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":false'
+      expectAudit: '"n":1'
+
+  # The third box (stored, shown and audited, and read by nothing: policy-no-public-recordings-inert): pressed and saved like the others; the API keeps it.
+  recordingsBox:
+    given: { reader: head, history: never, courses: empty, flips: recordings, attempt: valid, answer: saved }
+    as: applicantC
+    open: '{nazar}/medrese/{made.madrasah}/ayarlar'
+    setup: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, up], expect: 'up ' }]
+    teardown: [{ run: [node, ../nazar/settings/edit/settings-data.mjs, down], expect: down }]
+    samples: { madrasah: '{made.name}', newMadrasah: '{savedName}', description: '{made.description}', name: '{made.person}', date: '{made.today}' }
+    vars:
+      typedName: 'Düzenlenmiş Medrese Adı'
+      typedDescription: 'Yeni açıklama.'
+      typedAgain: 'Yeni açıklama, bir kez daha.'
+      savedName: 'Düzenlenmiş Medrese Adı'
+      madrasahId: '{made.madrasah}'
+      expectBox: '"name":"{savedName}","description":"Yeni açıklama.","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":true,"saved":true'
+      expectText: '"name":"{savedName}","description":"Yeni açıklama.","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":true'
+      expectLoaded: '"name":"{made.name}","description":"{made.description}","closedCourseRequired":false,"alwaysApproval":false,"noPublicRecordings":false,"saved":false'
+      expectAudit: '"n":1'
+
+  # The seeded nazır opens the page of the seeded medrese: the API refuses the settings and an alert stands where the form would be (e2e settings#6, whose whole
+  # story is nazar.access.medreseNazirRefused). Read only: nothing is made, nothing is changed.
+  nazirRefused:
+    given: { reader: nazir, history: never, courses: empty, flips: closed, attempt: valid, answer: saved }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/ayarlar'
+    vars:
+      madrasahId: '{seed.madrasah}'
+      savedName: unused
+
+  # An address that names no medrese: the portal answers its 404 page. Read only.
+  unknownMedrese:
+    given: { reader: gone, history: never, courses: empty, flips: closed, attempt: valid, answer: saved }
+    as: basmuderris
+    open: '{nazar}/medrese/00000000-0000-4000-8000-000000000000/ayarlar'
+    vars:
+      madrasahId: 00000000-0000-4000-8000-000000000000
+      savedName: unused

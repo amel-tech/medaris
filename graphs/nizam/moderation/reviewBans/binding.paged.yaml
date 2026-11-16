@@ -1,0 +1,40 @@
+# nizam.moderation.reviewBans with more open bans than a page: "Daha fazla göster" (e2e bans-medaris#4).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewBans \
+#     --bind graphs/nizam/moderation/reviewBans/binding.paged.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay (see locators.binding.yaml).
+#
+# The data. The list is 20 rows a page, so this walk needs 21 or more open bans. `setup` makes the course "Deneme dersi reviewbans" (helpers/course.mjs, with no talebe)
+# and then 23 invented people, "Sayfalı Yasaklı 01" to "Sayfalı Yasaklı 23", each with an open course ban on it that the köşk's nazım placed 1 to 23 minutes ago
+# (./bans-data.mjs paged up). It is SQL, and the one statement of its kind: no route makes a user row for a person who never signed in, and 23 spare talebe do not
+# exist (there are eight). The people have no Keycloak account, so no walk of anyone else is touched; their ids share a fixed prefix, so `paged down` finds them again
+# after a crash. The e2e check does the same with 23 rows (apps/nizam/e2e/ban-seed.ts, `addBans`). The walk types "Sayfalı", which narrows the list to these 23 whatever
+# else the platform holds: the first page shows 20 and "Daha fazla göster" adds the other 3, after which the button is gone (e2e: 20 then 23, the line says "23 etkin yasak").
+# The walk never asserts that count (the graph carries no total); the API check of the tabs' numbers still runs after every read.
+# No notice and no audit row is written for these bans (they are SQL), so the köşk nazımı's and the Medaris nazımları's notices are not touched.
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nizam.moderation.reviewBans
+
+scenarios:
+  paged:
+    given: { viewer: chief, read: ok, refetch: ok, courseBans: some, koskBans: none, match: some, pages: several }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->bans' }
+    vars: { typed: Sayfalı, personWord: Sayfalı, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, paged, down]
+        expect: paged down
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, make, reviewbans, --kosk, '{seed.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"reviewbans"'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, paged, up, reviewbans, --count, '23']
+        expect: 'ready: 23 paged'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, paged, down]
+        expect: paged down
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, remove, reviewbans]

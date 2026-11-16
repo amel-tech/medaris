@@ -1,0 +1,63 @@
+# nazar.course.overview on the local stack: Genel bakış (/ders/<id>) of courses that each walk makes, as the müderris of the course
+# and as a ders nazırı, at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/course/overview --bind graphs/nazar/course/overview/binding.yaml --cover transitions --out <dir>
+#   (the ders nazırı with no permission is binding.bare.yaml, which adds no transition and so is walked on its own)
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# The seeded courses are other flows' data and none of them has a waiting application, a hand-in or a celse with no way in, so each
+# scenario makes its own course with helpers/course.mjs (a course in the second köşk, the müderris as its hoca, or, for the ders nazırı,
+# a course of the medrese with the başmüderris as its hoca, as nazar.shell.scopeAndMenu does) and removes it in `teardown`; `make`
+# removes a tag a crashed walk left, so `setup` is safe to run twice.
+#   triage       the main story. "Deneme dersi ovwMain": applicantG applies and is approved, then hands in a note on the first celse
+#                (PUT /lessons/:id/submission), applicantF applies and waits. Four celses ahead with no meeting link: Bekleyen başvuru 1,
+#                Değerlendirme bekleyen ödev 1, Katılım yolu eksik celse 4, Sıradaki celse. The walk reaches the page by the course menu's
+#                "Genel bakış" (the nav graph's entry), from Celseler, and then follows each box, the applications first.
+#   quiet        "Deneme dersi ovwQuiet": one celse, twenty days ago, no applicant: no box, and "Bekleyen işiniz yok."
+#   dersNazirRoster  the seeded ders nazırı's account (Rukiye), appointed in the walk's own course with enrollment.decide only (the
+#                seeded post, which also holds session.manage, is not touched). That code brings course.staff_read, so she reads the counts
+#                and sees Bekleyen başvuru (applicantC waits), Katılım yolu eksik celse and Sıradaki celse, and Celseler refuses her
+#                (OVERVIEW-1). No submission.read, so no homework box.
+# A walk that follows a box leaves the page; the next walk starts again from the scenario's `open`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.course.overview
+
+scenarios:
+  triage:
+    given: { applications: waiting, homework: waiting, sessions: lacking, celseler: opens }
+    as: muderris
+    open: '{nazar}/ders/{ovwMain.course}/celseler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersOverview Nav.ders.overview' }
+    setup:
+      - run: [node, helpers/course.mjs, make, ovwMain, --approval, --talebe, applicantG, applicantF]
+        expect: '"APPLICANT_G":"PENDING"'
+      - run: [node, helpers/api.mjs, muderris, POST, '/courses/{ovwMain.course}/enrollments/{secret.E2E_APPLICANT_G_SUB}/approve']
+        expect: ENROLLED
+      - run: [node, helpers/api.mjs, applicantG, PUT, '/lessons/{ovwMain.lessons.0}/submission', '{"note":"Deneme el yazisi"}']
+        expect: Deneme el yazisi
+    teardown:
+      - run: [node, helpers/course.mjs, remove, ovwMain]
+        expect: 'course remove ovwMain'
+  quiet:
+    given: { applications: none, homework: none, sessions: none, celseler: opens }
+    as: muderris
+    open: '{nazar}/ders/{ovwQuiet.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, ovwQuiet, --weeks, '1', --lessons, '1', --start, '-20']
+        expect: '"title":"Deneme dersi ovwQuiet"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, ovwQuiet]
+        expect: 'course remove ovwQuiet'
+  dersNazirRoster:
+    given: { applications: waiting, homework: none, sessions: lacking, celseler: refuses }
+    as: dersNazir
+    open: '{nazar}/ders/{ovwRoster.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, ovwRoster, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '1', --approval, --talebe, applicantC]
+        expect: '"APPLICANT_C":"PENDING"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{ovwRoster.course}', --nazir, dersNazir, --codes, enrollment.decide, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, ovwRoster]
+        expect: 'course remove ovwRoster'

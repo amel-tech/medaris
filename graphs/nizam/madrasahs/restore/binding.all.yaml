@@ -1,0 +1,37 @@
+# nizam.madrasahs.restore for the başnazım on Tümü (/medreseler), entered through the menu: the hidden medrese is one row among the others;
+# after the press the row stays and reads "Etkin", with its course counted again and the buttons of an active row (madrasahs.e2e.ts#3, L152-L159).
+# It adds no transition to binding.yaml's, so it is walked with --to:
+#   node apps/engine/src/cli.ts replay graphs/nizam/madrasahs/restore --bind graphs/nizam/madrasahs/restore/binding.all.yaml --to restored --out <dir>
+# NOT RUN: written without a replay. The same data as binding.yaml (see locators.binding.yaml); "Nazar’da aç" is drawn only while NAZAR_URL
+# is set, which the local stack does (from the code of nizam's env, not seen).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.madrasahs.restore
+
+scenarios:
+  restoresAll:
+    given: { viewer: chief, tab: all }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup:
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, thaw]
+        expect: 'medrese thaw'
+      - run: [node, helpers/course.mjs, remove, restoreMedrese]
+        expect: 'course remove restoreMedrese'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, up]
+        expect: 'medrese up'
+      - run: [node, helpers/course.mjs, make, restoreMedrese, --madrasah, '{mine.madrasah}', --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, applicantG]
+        expect: '"madrasah"'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, hide]
+        expect: 'medrese hide head'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, state]
+        expect: 'medrese HIDDEN level=madrasah canRestore=yes head=yes courses=0'
+    teardown:
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, thaw]
+        expect: 'medrese thaw'
+      - run: [node, helpers/course.mjs, remove, restoreMedrese]
+        expect: 'course remove restoreMedrese'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, down]
+        expect: 'medrese down'

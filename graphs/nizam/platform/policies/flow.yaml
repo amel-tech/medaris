@@ -1,0 +1,288 @@
+# Platform ayarları (nizam-web, /ayarlar/platform), read from the code of PR #394's branch on 16 Nov 2026: apps/nizam/app/ayarlar/platform/page.tsx,
+# features/platform-admin/components/policies-view.tsx, actions.ts, reads.ts, present.ts, libs/ui/src/mds (switch, table, alert, empty-state),
+# libs/ui/src/components/sonner.tsx, and tedrisat's platform-policy module (controller, service, repository). The running stack was looked at
+# read-only (GET /nizam/platform-policies and /nizam/scoped-policies as the başnazım: both switches off, no row of either, no köşk with a rule of
+# its own). Nothing was opened in a browser, so what the switch looks like, where the focus goes and what a screen reader says is from the code.
+#
+# What the page does today:
+#   - Two switches, "Kayıt her zaman onaylı" (ALWAYS_REQUIRE_APPROVAL) and "Ders kayıtları herkese açılamaz" (RECORDINGS_NEVER_PUBLIC). A press moves
+#     the switch at once and calls PUT /nizam/platform-policies/:key; the answer is the whole list, which replaces the page's. The switch is `disabled`
+#     (aria-disabled, tabindex -1) while its own save runs. A success is a sonner toast "Politika açıldı" or "Politika kapatıldı" with the policy's title;
+#     a refusal puts the switch back and draws the toast "Politika kaydedilemedi", which stays until it is closed.
+#   - Every save is one transaction: the row of platform_policies (a key nobody ever switched has no row and reads as off) and one audit row
+#     `platform_policy.change` with {key, enabled, was}. The page's "Denetim kaydı" shows it as the kind "Politika değişikliği" (POLICY_CHANGE).
+#   - Under the list, "Politikalar nasıl birleşir" (five steps and a warning), and "Köşk ve medrese politikaları", a table of the köşks that apply a
+#     rule on their own with who switched it on and when, as far as the audit trail knows. The table is empty on the stack's seed.
+#   - Who reads: the başnazım, or a Medaris nazımı who holds platform.policy_edit (by the address only: the menu entry is the başnazım's). Everybody
+#     else gets tedrisat's 403 and the shell's "Bu bölüm için izniniz yok".
+# Findings, each in ui.yaml `rules`: F-W3-6 (the switch is disabled while it saves: the inventory says the focus is lost; the code of the switch says it is
+# probably kept, to be looked at), F-X-20 (the old e2e deleted and re-inserted every policy row: this flow's binding does not), F-X-5 (sonner's region is
+# labelled in English); new: POL-1 (a platform-wide switch is one press with no confirmation, and the line that says so is under the list), POL-2 (the
+# köşks that apply a rule on their own are named in a caption that is not tied to the switch), POL-3 (the heading and the empty line of the table promise
+# medreses, which the API never lists), POL-4 (a latent mismatch between the error keys of the page and its catalog), POL-5 (one `busy` for two
+# switches), POL-6 (the API writes an audit row for a change that changes nothing), POL-7 (a Medaris nazımı who holds the permission has no menu entry). F-W3-2, F-X-21 (the unfilled retention line) and F-W3-11 are on the
+# audit page and the applications page: nizam.platform.auditLog and nizam.applications.decide.
+#
+# THIS FLOW CHANGES GLOBAL STATE. The two switches are read on every enrolment, every recording shown to an outsider and every köşk, medrese or course
+# save of the whole platform. The binding (binding.yaml) records them, switches one and switches it back inside the scenario, and puts every recorded
+# value back, exactly, in its teardown; it must still be walked alone, not beside a flow that reads the policies (nizam.kosks.editAndHide's locked
+# branch, nazar.courseSettings.*, tedris.course.apply, the recordings flows).
+schema: delurio-graph/0
+kind: flow
+id: nizam.platform.policies
+status: captured
+domain: medaris.api
+ui: nizam.platform.policies
+title: Switch the platform policies
+summary: >-
+  The başnazım opens Platform ayarları and reads the two platform-wide policies, each a switch that applies at once to every köşk, medrese and course:
+  "Kayıt her zaman onaylı" (every enrolment waits for approval) and "Ders kayıtları herkese açılamaz" (no recording is shown outside the course).
+  Pressing a switch moves it and saves it; a toast says it was switched on or off, and the change is written to the audit log. A save the server refuses
+  puts the switch back with a toast that stays. The page also explains how the policies combine and lists the köşks that apply a rule on their own. A person
+  who may not edit the policies is shown the section refusal; a read that fails is shown with "Tekrar dene". After a switch, the person takes "Denetim kaydı"
+  and finds the row the change wrote (nizam.platform.auditLog).
+
+scope:
+  shows: the Platform ayarları page, its two switches with the answer of the server, the table of köşks that apply a rule on their own, and the refusal a person without the permission meets
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the shell around the page: the sidebar with the entry 'Platform ayarları' (the başnazım's alone), the phone bar and its sheet, the footer (nizam.shell.menuPerPersona); the entry that leads to the audit log is the shell's, the binding presses it"
+    - "the row the change wrote in Denetim kaydı, how it is filtered and read (nizam.platform.auditLog, which this flow starts)"
+    - "the explanation of the refusal: the e-mail of the account, the başnazım's name and the paragraph (nizam.shell.noAccessAndNotFound); here only its title and the way home are drawn"
+    - "a Medaris nazımı who holds platform.policy_edit: the page admits them by its address (tedrisat's PlatformAccessService) and draws what the başnazım sees; the seeded Medaris nazımı holds five other permissions, so the stack cannot walk it (nizam.nazims.editPermissions gives a permission)"
+    - "an ended session: the read sends the person to sign in again through the proxy, and a save answers 'unauthenticated' and the page goes to sign in and back with no toast (realm.auth.sessionEnded); drawn here only as the exit sent_to_sign_in of a save"
+    - "the effect of a policy on the rest of the platform: an enrolment that waits, a recording that is not shown, a köşk save that answers PLATFORM_POLICY_LOCKED (tedris.course.apply, nizam.kosks.editAndHide, nazar.courseSettings.access)"
+    - "the loading skeleton while the two reads run (app/ayarlar/platform/loading.tsx): a silent aria-busy <div>, no state of the flow"
+    - "a name the table cannot give: a row whose opener's name is unknown ('Adı bilinmeyen üye'); the stack's accounts all have names"
+    - "a hidden köşk that applies a rule on its own: the table leaves hidden köşks out (platform-policy.repository.ts:142)"
+    - "the toasts that outlive their state: an earlier success toast stays six seconds and an error toast until it is closed, over the next save; the graph keeps the last one"
+    - "the phone layout, where each row of the table is a card; en and ar, which no screen of nizam can show"
+
+context:
+  read:
+    values: [ok, failed, recovers, forbidden]
+    initial: any
+    say:
+      ok: "the two reads answer"
+      failed: "a read does not answer, and a second try does not either (a 5xx, a network error: the stack cannot be made to)"
+      recovers: "a read fails and the second one, after 'Tekrar dene', answers (the stack cannot be made to)"
+      forbidden: "tedrisat answers 403: the person is neither the başnazım nor a Medaris nazımı who holds platform.policy_edit"
+  began:
+    values: [neither, approval, recordings, both]
+    initial: any
+    say:
+      neither: "both switches are off when the page opens (the seed's state: neither key has a row)"
+      approval: "'Kayıt her zaman onaylı' is on, the other off"
+      recordings: "'Ders kayıtları herkese açılamaz' is on, the other off"
+      both: "both are on"
+  scoped:
+    values: [none, some]
+    initial: any
+    say:
+      none: "no köşk applies a rule on its own: the table says so (the seed's state)"
+      some: "a köşk applies 'Kayıt her zaman onaylı' on its own: it is named under that switch and has a row in the table, with who switched it on and when"
+  answer:
+    values: [saved, forbidden, failed, signedOut]
+    initial: any
+    say:
+      saved: "the server saves the switch and answers the whole list"
+      forbidden: "the server answers 403: the person lost the permission since the page opened"
+      failed: "any other answer: a 5xx, a refused body, a server that does not answer"
+      signedOut: "the session ended since the page opened"
+  approval: { values: [off, on], initial: off }
+  recordings: { values: [off, on], initial: off }
+  toast:
+    values: [none, approvalOn, approvalOff, recordingsOn, recordingsOff, forbidden, failed]
+    initial: none
+    say:
+      none: "no toast about a switch"
+      approvalOn: "'Politika açıldı' naming 'Kayıt her zaman onaylı'"
+      approvalOff: "'Politika kapatıldı' naming 'Kayıt her zaman onaylı'"
+      recordingsOn: "'Politika açıldı' naming 'Ders kayıtları herkese açılamaz'"
+      recordingsOff: "'Politika kapatıldı' naming 'Ders kayıtları herkese açılamaz'"
+      forbidden: "'Politika kaydedilemedi' with 'Bu işlem için izniniz yok.'"
+      failed: "'Politika kaydedilemedi' with 'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.'"
+  switched: { values: [true, false], initial: false } # a save has been accepted since the page opened: the audit log holds a row of it
+
+guards:
+  # a sonner toast about a switch is on the screen: the 'Kapat' button of the toast (every toast of the Toaster has one) can be pressed
+  anyToast: "toast != 'none'"
+
+effects:
+  beganNeither: { set: { approval: off, recordings: off } }
+  beganApproval: { set: { approval: on, recordings: off } }
+  beganRecordings: { set: { approval: off, recordings: on } }
+  beganBoth: { set: { approval: on, recordings: on } }
+  # the switch moves the moment it is pressed (setItems(withPolicy(...))), and moves back when the save is refused (setItems(before))
+  approvalOn: { set: { approval: on } }
+  approvalOff: { set: { approval: off } }
+  recordingsOn: { set: { recordings: on } }
+  recordingsOff: { set: { recordings: off } }
+  clearToast: { set: { toast: none } }
+  savedApprovalOn: { set: { toast: approvalOn, switched: true } }
+  savedApprovalOff: { set: { toast: approvalOff, switched: true } }
+  savedRecordingsOn: { set: { toast: recordingsOn, switched: true } }
+  savedRecordingsOff: { set: { toast: recordingsOff, switched: true } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  reading: { from: listPlatformPolicies, refused: [AUTHZ_FORBIDDEN], unreadable: [] }
+  savingApproval: { from: setPlatformPolicy, forbidden: [AUTHZ_FORBIDDEN], failed: [VALIDATION_ERROR, HTTP_400], signedOut: [HTTP_401] }
+  savingRecordings: { from: setPlatformPolicy, forbidden: [AUTHZ_FORBIDDEN], failed: [VALIDATION_ERROR, HTTP_400], signedOut: [HTTP_401] }
+# `refused` is the one answer getPlatformSettings turns into forbidden() (reads.ts:25); `unreadable` is every other answer of either read (a 404 included:
+# the page draws the same box for `not-found`, page.tsx:28), and the domain lists no code for them. `failed` is every answer a save gets that is not a
+# 403 or a refused token: the server action turns it into {success: false, errorBody} and the page draws one toast whatever the code was. The page
+# cannot send a key or a body tedrisat refuses (the switch sends true or false for one of two keys), so VALIDATION_ERROR and HTTP_400 are listed as the
+# classes' codes and never reached. PLATFORM_POLICY_LOCKED is never answered by this route (it is a refusal of the köşk, medrese and course writes).
+
+# The main story, as e2e platform-admin#7 walks it (nizam/19) and then puts the switch back: the başnazım opens Platform ayarları, presses
+# 'Kayıt her zaman onaylı' (saved at once, a toast, a row in the log), presses it again (off), and goes on to Denetim kaydı to find the row.
+main:
+  given: { read: ok, began: neither, scoped: none, answer: saved }
+  events: [DONE, TOGGLE_APPROVAL, DONE, TOGGLE_APPROVAL, DONE, OPEN_AUDIT_LOG]
+
+initial: reading
+states:
+  reading:
+    title: Read the policies
+    description: >-
+      The server component page.tsx runs getPlatformSettings: GET /nizam/platform-policies and GET /nizam/scoped-policies together. Both ask
+      platform.policy_edit (the başnazım, or a Medaris nazımı who holds it). A 403 makes the page call forbidden(), which draws the section refusal
+      inside the shell; any other failure of either read makes the page draw its title and one error box with "Tekrar dene". The loading skeleton
+      stands in while they run and is not a state.
+    source: apps/nizam/app/ayarlar/platform/page.tsx:22
+    invoke: { action: listPlatformPolicies }
+    on:
+      DONE:
+        - { guard: "read == 'ok' and scoped == 'some'", target: opened, say: "the page is drawn, and the table has a row for the köşk that applies a rule on its own", source: apps/nizam/features/platform-admin/components/policies-view.tsx:226 }
+        - { guard: "read == 'ok'", target: opened, say: "the page is drawn, and the table says no köşk applies a rule on its own", source: apps/nizam/features/platform-admin/components/policies-view.tsx:232 }
+      FAIL.refused: { guard: "read == 'forbidden'", target: refused, source: apps/nizam/app/ayarlar/platform/page.tsx:24, say: "tedrisat answers 403 and the page shows 'Bu bölüm için izniniz yok' (e2e platform-admin#6)" }
+      FAIL.unreadable: { guard: "read == 'failed' or read == 'recovers'", target: loadFailed, source: apps/nizam/features/platform-admin/components/policies-view.tsx:134, say: "the page keeps its title and says the settings could not be read" }
+
+  opened:
+    title: Where each switch starts
+    description: >-
+      Not a screen: the page draws each switch as the read says it is (`checked={p.enabled}`). A key nobody ever switched has no row and reads as off.
+    source: apps/nizam/features/platform-admin/components/policies-view.tsx:165
+    always:
+      - { guard: "began == 'neither'", target: policies, effect: [beganNeither], say: "both are off" }
+      - { guard: "began == 'approval'", target: policies, effect: [beganApproval], say: "'Kayıt her zaman onaylı' is on" }
+      - { guard: "began == 'recordings'", target: policies, effect: [beganRecordings], say: "'Ders kayıtları herkese açılamaz' is on" }
+      - { target: policies, effect: [beganBoth], say: "both are on" }
+
+  policies:
+    title: Platform ayarları, the two switches
+    by: human
+    goal: true
+    description: >-
+      The page: the title and its introduction, "Politikalar" with the two switches (each with its description, and under "Kayıt her zaman onaylı"
+      the köşks that apply it on their own, when there are any) and the line that says every change applies at once and is logged, "Politikalar nasıl
+      birleşir" with its five steps and a warning, and "Köşk ve medrese politikaları" with the table. The page sets no focus (rule focus-not-set).
+      Pressing a switch moves it at once and calls the server: nothing asks first (POL-1). An earlier toast may still be on screen over the next
+      press (six seconds; an error toast until it is closed); the graph keeps the last one.
+    source: apps/nizam/features/platform-admin/components/policies-view.tsx:124
+    on:
+      TOGGLE_APPROVAL:
+        - { guard: "approval == 'off'", target: savingApproval, effect: [approvalOn, clearToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:66, say: "they switch 'Kayıt her zaman onaylı' on: it moves at once and the server is called with enabled true" }
+        - { target: savingApproval, effect: [approvalOff, clearToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:66, say: "they switch it off: it moves at once and the server is called with enabled false" }
+      TOGGLE_RECORDINGS:
+        - { guard: "recordings == 'off'", target: savingRecordings, effect: [recordingsOn, clearToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:66, say: "they switch 'Ders kayıtları herkese açılamaz' on" }
+        - { target: savingRecordings, effect: [recordingsOff, clearToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:66, say: "they switch it off" }
+      CLOSE_TOAST: { guard: anyToast, target: policies, effect: [clearToast], source: libs/ui/src/components/sonner.tsx:62, say: "they press 'Kapat' on the toast (sonner's own button; every toast has one)" }
+      OPEN_AUDIT_LOG: { guard: switched, target: handed_over.audit_log, starts: { flow: nizam.platform.auditLog, given: { policyChange: "true" } }, source: apps/nizam/lib/shell-nav.ts:135, say: "after a switch they take 'Denetim kaydı' in the sidebar: the log holds the row the change wrote (the başnazım's menu; a Medaris nazımı would type the address)" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  savingApproval:
+    title: Save 'Kayıt her zaman onaylı'
+    description: >-
+      The server action setPlatformPolicy("ALWAYS_REQUIRE_APPROVAL", enabled), PUT /nizam/platform-policies/ALWAYS_REQUIRE_APPROVAL with {enabled}. The
+      server upserts the row (`changed_by` the caller, `changed_at` now) and writes the audit row in one transaction, and answers the whole list, which
+      replaces the page's. The switch has already moved and is `disabled` while the call is out (F-W3-6). A success is a sonner toast "Politika
+      açıldı" or "Politika kapatıldı" with the policy's title. A refusal puts the switch back and draws the error toast, which stays until it is closed.
+      A session that ended goes to sign in and back with no toast.
+    source: apps/nizam/features/platform-admin/actions.ts:82
+    invoke: { action: setPlatformPolicy }
+    on:
+      DONE:
+        - { guard: "answer == 'saved' and approval == 'on'", target: policies, effect: [savedApprovalOn], source: apps/nizam/features/platform-admin/components/policies-view.tsx:82, say: "the policy is on for every köşk, medrese and course; a platform_policy.change row says so (enabled true, was false)" }
+        - { guard: "answer == 'saved'", target: policies, effect: [savedApprovalOff], source: apps/nizam/features/platform-admin/components/policies-view.tsx:82, say: "the policy is off again; a second row says so (enabled false, was true)" }
+      FAIL.forbidden:
+        - { guard: "answer == 'forbidden' and approval == 'on'", target: policies, effect: [approvalOff, forbiddenToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:74, say: "the switch goes back to off and a toast says the person may not" }
+        - { guard: "answer == 'forbidden'", target: policies, effect: [approvalOn, forbiddenToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:74, say: "the switch goes back to on and a toast says the person may not" }
+      FAIL.failed:
+        - { guard: "answer == 'failed' and approval == 'on'", target: policies, effect: [approvalOff, failedToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:74, say: "the switch goes back to off and a toast says it could not be saved" }
+        - { guard: "answer == 'failed'", target: policies, effect: [approvalOn, failedToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:74, say: "the switch goes back to on and a toast says it could not be saved" }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: apps/nizam/features/platform-admin/components/policies-view.tsx:72, say: "the session is over: handleUnauthenticated goes to sign in and back to the page, no toast" }
+
+  savingRecordings:
+    title: Save 'Ders kayıtları herkese açılamaz'
+    description: >-
+      The same call for RECORDINGS_NEVER_PUBLIC, from the second switch. The first switch stays on and is not disabled; `busy` holds one key for both
+      (POL-5).
+    source: apps/nizam/features/platform-admin/actions.ts:82
+    invoke: { action: setPlatformPolicy }
+    on:
+      DONE:
+        - { guard: "answer == 'saved' and recordings == 'on'", target: policies, effect: [savedRecordingsOn], source: apps/nizam/features/platform-admin/components/policies-view.tsx:82, say: "no recording is shown outside its course from now on; a platform_policy.change row says so" }
+        - { guard: "answer == 'saved'", target: policies, effect: [savedRecordingsOff], source: apps/nizam/features/platform-admin/components/policies-view.tsx:82, say: "the policy is off again; a second row says so" }
+      FAIL.forbidden:
+        - { guard: "answer == 'forbidden' and recordings == 'on'", target: policies, effect: [recordingsOff, forbiddenToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:74, say: "the switch goes back to off and a toast says the person may not" }
+        - { guard: "answer == 'forbidden'", target: policies, effect: [recordingsOn, forbiddenToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:74, say: "the switch goes back to on and a toast says the person may not" }
+      FAIL.failed:
+        - { guard: "answer == 'failed' and recordings == 'on'", target: policies, effect: [recordingsOff, failedToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:74, say: "the switch goes back to off and a toast says it could not be saved" }
+        - { guard: "answer == 'failed'", target: policies, effect: [recordingsOn, failedToast], source: apps/nizam/features/platform-admin/components/policies-view.tsx:74, say: "the switch goes back to on and a toast says it could not be saved" }
+      FAIL.signedOut: { guard: "answer == 'signedOut'", target: sent_to_sign_in, source: apps/nizam/features/platform-admin/components/policies-view.tsx:72, say: "the session is over: sign in and back, no toast" }
+
+  loadFailed:
+    title: The settings could not be read
+    by: human
+    description: >-
+      The page keeps its title and introduction and replaces everything below with one error box, "Ayarlar okunamadı" with "Platform ayarları şu
+      anda alınamıyor. Biraz sonra yeniden deneyin." and the button "Tekrar dene", which refreshes the route and so reads again. No switch is drawn.
+    source: apps/nizam/features/platform-admin/components/policies-view.tsx:134
+    on:
+      RETRY:
+        - { guard: "read == 'recovers'", target: opened, source: apps/nizam/features/platform-admin/components/policies-view.tsx:140, say: "router.refresh() reads again and the page is drawn" }
+        - { target: loadFailed, source: apps/nizam/features/platform-admin/components/policies-view.tsx:140, say: "the read fails again: the same box" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  refused:
+    title: Bu bölüm için izniniz yok
+    by: human
+    description: >-
+      forbidden() draws the shell's refusal in place of the page: the title "Bu bölüm için izniniz yok", the explanation with the account's e-mail and the
+      way home. A köşk nazımı, a başmüderris, a talebe and a Medaris nazımı without platform.policy_edit all get it (the same screen as every
+      refused section: nizam.shell.noAccessAndNotFound).
+    source: apps/nizam/app/ayarlar/platform/page.tsx:24
+    on:
+      GO_HOME: { target: home_opened, source: apps/nizam/components/errors/no-access.tsx:38, say: "'Ana sayfaya dön' goes to '/', which sends the person where their roles say" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  handed_over.audit_log:
+    type: final
+    title: Denetim kaydı is open
+    leavesPage: true
+    description: "The sidebar's 'Denetim kaydı' opens /denetim-kaydi in the same tab; nizam.platform.auditLog draws what follows, with the row the switch wrote."
+  home_opened:
+    type: final
+    title: The home page is open
+    leavesPage: true
+    description: "'Ana sayfa' of the refusal goes to '/'; where the person lands is nizam.shell.landingByRole's."
+  sent_to_sign_in:
+    type: final
+    title: The session is over
+    leavesPage: true
+    description: "The server action answered 'unauthenticated': sign-in, and back to /ayarlar/platform, with no toast (realm.auth.sessionEnded)."
+  left:
+    type: final
+    title: The person went to another page
+    leavesPage: true
+
+assertions:
+  - { id: switches-need-a-read, never: "state == 'policies' and (read == 'failed' or read == 'forbidden')", say: "The two switches are drawn only after both reads answered; a person tedrisat refused never sees them", source: apps/nizam/app/ayarlar/platform/page.tsx:24 }
+  - { id: the-log-is-named-only-after-a-switch, never: "state == 'handed_over.audit_log' and not switched", say: "The audit log is handed the news of a policy change only after a save was accepted", source: apps/nizam/features/platform-admin/components/policies-view.tsx:82 }
+  - id: a-toast-says-what-the-switch-holds
+    never: "(toast == 'approvalOn' and approval == 'off') or (toast == 'approvalOff' and approval == 'on') or (toast == 'recordingsOn' and recordings == 'off') or (toast == 'recordingsOff' and recordings == 'on')"
+    say: "A toast that says a policy was switched on or off is never drawn beside a switch that holds the other value"
+    source: apps/nizam/features/platform-admin/components/policies-view.tsx:81

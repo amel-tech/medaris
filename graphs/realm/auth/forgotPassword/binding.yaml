@@ -1,0 +1,215 @@
+# realm.auth.forgotPassword on the local stack: Keycloak's reset form reached from tedris's sign-in, the mail read back from
+# Mailpit, the new-password page, and the way back into the app. The walks sign nobody in first (`signIn: false`): they begin
+# as a visitor on the app's sign-in address, take Şifremi unuttum through realm.auth.signIn (enter.flow below) and type the
+# account's address and password into Keycloak's real forms. `as` says whose {address} and {password} those are.
+#   node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/realm/auth/forgotPassword --bind graphs/realm/auth/forgotPassword/binding.yaml --out <dir>
+#
+# THE ACCOUNT. Every scenario but one is applicantB (a spare talebe: nobody else's walk uses it to sign in as someone, and it has
+# no enrolment or notification to disturb); the exception, tedrisPasswordUpdateDue, is the seeded PENDING_PASSWORD account and
+# is re-armed around its walk (below). The walk that reaches the end saves a new password; the password it saves is the
+# account's own, {password}, so after the walk the account has the password it had. The one walk that posts a different
+# value, FILL_ADDRESS_AS_PASSWORD, posts the account's e-mail address, which the realm policy notEmail refuses: nothing is
+# saved. The page's own refusals (empty, short, mismatched, the user name) post nothing at all. "Diğer cihazlarda çıkış yap"
+# is ticked from the start and the main story leaves it so, which ends any other session the account has at that moment
+# (the helpers' cached tokens sign in again by themselves, graphs/bindings/helpers/lib.mjs).
+#
+# THE MAIL. tedrisat and Keycloak both send to Mailpit. Each scenario clears the mails to its address before it starts and
+# after it ends. The link of the reset mail is read by ./reset-link.mjs (a helper of this folder, which asks
+# helpers/mail.mjs and writes the link to graphs/.local/reset-link.env, git-ignored, mode 600) and handed to the walk as
+# the data source `mailed`; the link is a one-time key and is masked in the report.
+#
+# What the stack can walk:
+#   account: known, link: fresh      walked by the main story (tedrisKnownAddress): the whole reset, ending signed in
+#   account: unknown                 tedrisUnknownAddress: the same notice, and no mail (an effect reads Mailpit)
+#   entry: requiredAction            tedrisPasswordUpdateDue (the seeded PENDING_PASSWORD account, armed again by rearm.mjs)
+#   typed: usesAddress               reachable from tedrisKnownAddress (`--to newPasswordRefused`): the realm's refusal
+#   typed: nothing / short / mismatch / usesName   the page's own refusals, reachable from tedrisKnownAddress
+#   the reset form's empty submit    reachable (`--to resetFormError`)
+#   app: nizam, app: nazar           written here (nizamKnownAddress, nazarKnownAddress), NOT walked in this phase
+#   link: spent                      NOT bound: it needs a link that a saved password already used (or one 30 minutes old);
+#                                    a walk would have to save a password with the first mail and open that mail's link
+#                                    again, in a second browser. Measured by hand instead (flow.yaml, ui.yaml FORGOT-3)
+#   finishingRoundTrip failures      not walked (signIn's)
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: realm.auth.forgotPassword
+
+data:
+  mailed: { dotenv: ../.local/reset-link.env }
+
+# {0} is the length 10 of the rule messages (passwordRuleLength, passwordTooShort)
+samples: { "0": "10" }
+
+# `vars`: appUrl is the app the person came from, landedAt where the reset ends, typedAddress what the reset form is given,
+# userName the account's user name (the part of its address before the @, which Keycloak prints on the new-password page).
+# These are what realm.auth.signIn's states read when `enter` walks that flow to its Şifremi unuttum link.
+scenarios:
+  # first in the file: `--to sentNotice` takes the first scenario that reaches the state, and this is the one that shows what
+  # the answer to an address with no account is (the main story is picked by its given, not by its place)
+  tedrisUnknownAddress: # an address that is no account's: Keycloak answers the notice and sends nothing
+    given: { entry: forgotLink, app: tedris, account: unknown, link: fresh }
+    as: applicantB
+    signIn: false
+    open: '{tedris}/auth/signin'
+    enter: { flow: ../signIn, bind: ../signIn/binding.yaml, given: { app: tedris, entry: signInPage, session: none, credentials: right, account: ready }, event: FORGOT_PASSWORD }
+    vars:
+      appUrl: '{tedris}'
+      landedAt: '{tedris}/home'
+      typedAddress: nobody-here@medaris.test
+      userName: e2e-basvuran-b
+      mailExpect: no mail matches
+    setup:
+      - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, --clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{typedAddress}']
+    teardown:
+      - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, --clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{typedAddress}']
+
+  tedrisKnownAddress: # the main story: the person has an account, gets the mail, sets the password (their own again), is signed in
+    given: { entry: forgotLink, app: tedris, account: known, link: fresh }
+    as: applicantB
+    signIn: false
+    open: '{tedris}/auth/signin'
+    enter: { flow: ../signIn, bind: ../signIn/binding.yaml, given: { app: tedris, entry: signInPage, session: none, credentials: right, account: ready }, event: FORGOT_PASSWORD }
+    vars:
+      appUrl: '{tedris}'
+      landedAt: '{tedris}/home'
+      typedAddress: '{address}'
+      userName: e2e-basvuran-b
+      mailExpect: Şifrenizi sıfırlayın
+    setup:
+      - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, --clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+    teardown:
+      - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, --clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+  # The other way to the page: the stack's PENDING_PASSWORD account, which an administrator asked for a new password. The walk types
+  # its address and password into the sign-in form (the `before` of holdingSignIn below) and Keycloak holds the sign-in on the
+  # new-password page. The walk saves the account's own password again, which uses the required action up, so `setup` and
+  # `teardown` run helpers/rearm.mjs (admin REST: the same password put back, UPDATE_PASSWORD asked
+  # for again) and delete the tedrisat `users` row that the landing on /home gives the account (the seed makes none for a pending
+  # account; the way realm.auth.profileUpdate's binding does it, with helpers/sql.mjs because no API deletes a person).
+  # No `enter`: realm.auth.signIn's hand-over to the new-password page does not start this flow (an ask in the report).
+  tedrisPasswordUpdateDue:
+    given: { entry: requiredAction, app: tedris, account: known, link: fresh }
+    as: pendingPassword
+    signIn: false
+    open: '{tedris}/auth/signin'
+    vars:
+      appUrl: '{tedris}'
+      landedAt: '{tedris}/home'
+      userName: e2e-eylem-sifre
+    setup:
+      - { run: [node, helpers/rearm.mjs, password], expect: armed }
+      - { run: [node, helpers/sql.mjs, "delete from users where id = '{secret.E2E_PENDING_PASSWORD_SUB}'"], expect: '"rows"' }
+    teardown:
+      - { run: [node, helpers/rearm.mjs, password], expect: armed }
+      - { run: [node, helpers/sql.mjs, "delete from users where id = '{secret.E2E_PENDING_PASSWORD_SUB}'"], expect: '"rows"' }
+
+  # Not walked in this phase. nizam and nazar send a talebe's sign-in to /yetki-yok and /erisim-yok (the stack's smoke); the
+  # reset form and the new-password page differ only by the name under the logo.
+  nizamKnownAddress:
+    given: { entry: forgotLink, app: nizam, account: known, link: fresh }
+    as: applicantB
+    signIn: false
+    open: '{nizam}/auth/signin'
+    enter: { flow: ../signIn, bind: ../signIn/binding.yaml, given: { app: nizam, entry: signInPage, session: none, credentials: right, account: ready }, event: FORGOT_PASSWORD }
+    vars:
+      appUrl: '{nizam}'
+      landedAt: '{nizam}/yetki-yok'
+      typedAddress: '{address}'
+      userName: e2e-basvuran-b
+      mailExpect: Şifrenizi sıfırlayın
+    setup:
+      - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, --clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+    teardown:
+      - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, --clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+  nazarKnownAddress:
+    given: { entry: forgotLink, app: nazar, account: known, link: fresh }
+    as: applicantB
+    signIn: false
+    open: '{nazar}/auth/signin'
+    enter: { flow: ../signIn, bind: ../signIn/binding.yaml, given: { app: nazar, entry: signInPage, session: none, credentials: right, account: ready }, event: FORGOT_PASSWORD }
+    vars:
+      appUrl: '{nazar}'
+      landedAt: '{nazar}/erisim-yok'
+      typedAddress: '{address}'
+      userName: e2e-basvuran-b
+      mailExpect: Şifrenizi sıfırlayın
+    setup:
+      - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, --clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+    teardown:
+      - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, --clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+# What the walk does that no node sends. The fields are filled with a keyboard and a mouse; the mailed link is opened as a
+# person opens it, in the same browser. Pressing a button is the node's own event (SEND, SAVE).
+events:
+  FILL_RESET_FORM:
+    - fill: { css: '#username', value: '{typedAddress}' }
+  OPEN_LINK:
+    - run: [node, ../realm/auth/forgotPassword/reset-link.mjs, '{address}']
+      expect: link ready
+    - goto: '{mailed.LINK}'
+  FILL_PASSWORD: # the account's own password, so that a saved reset leaves the account as it was
+    - fill: { css: '#password-new', value: '{password}' }
+    - fill: { css: '#password-confirm', value: '{password}' }
+  FILL_SHORT_PASSWORD:
+    - fill: { css: '#password-new', value: kısa }
+    - fill: { css: '#password-confirm', value: kısa }
+  FILL_MISMATCHED_PASSWORDS: # never posted: the page stops it
+    - fill: { css: '#password-new', value: uzun-bir-sifre-123 }
+    - fill: { css: '#password-confirm', value: uzun-bir-sifre-124 }
+  FILL_USER_NAME_AS_PASSWORD: # never posted: the page stops it
+    - fill: { css: '#password-new', value: '{userName}' }
+    - fill: { css: '#password-confirm', value: '{userName}' }
+  FILL_ADDRESS_AS_PASSWORD: # posted, and refused by the realm policy notEmail: the account's password is not touched
+    - fill: { css: '#password-new', value: '{address}' }
+    - fill: { css: '#password-confirm', value: '{address}' }
+  NAVIGATE:
+    - goto: 'about:blank'
+
+states:
+  # the sign-in form of a held sign-in: the walk types the account's address and password, as realm.auth.signIn's `signIn` does
+  holdingSignIn:
+    before:
+      - fill: { css: '#username', value: '{address}' }
+      - fill: { css: '#password', value: '{password}' }
+      - click: { css: 'button[type=submit]' }
+  resetForm: { url: '{keycloak}/realms/medaris/login-actions/reset-credentials**' }
+  resetFormError: { url: '{keycloak}/realms/medaris/login-actions/reset-credentials**' }
+  # `sending`, `openingLink` and `savingPassword` have no `call`: the first and the last are native form posts and the second
+  # is the walk's own goto. A held navigation stalls every read of the page and the walk hangs (the note in
+  # realm.auth.signIn's binding). The replay passes through them and checks the states after them as the page arrives.
+  sentNotice: { url: '{keycloak}/realms/medaris/login-actions/authenticate**' }
+  newPasswordForm: { url: '{keycloak}/realms/medaris/login-actions/required-action**' }
+  newPasswordInvalid: { url: '{keycloak}/realms/medaris/login-actions/required-action**' }
+  newPasswordMismatch: { url: '{keycloak}/realms/medaris/login-actions/required-action**' }
+  newPasswordRetyped: { url: '{keycloak}/realms/medaris/login-actions/required-action**' }
+  newPasswordRefused: { url: '{keycloak}/realms/medaris/login-actions/required-action**' }
+  finishingRoundTrip: { call: '{appUrl}/api/auth/callback/keycloak**' }
+  signed_in: { url: '{landedAt}' }
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/login-actions/authenticate**' }
+  handed_over.register: { url: '{keycloak}/realms/medaris/login-actions/registration**' }
+  handed_over.error_page: { url: '{keycloak}/realms/medaris/login-actions/action-token**' }
+  left: { url: 'about:blank' }
+
+# What the send leaves outside the page: a mail in Mailpit to the address that has an account, none to one that has not. Keycloak
+# sends it inside the request, so it is there when the notice is. They run again until they pass or the time is up.
+effects:
+  sendsResetMail:
+    - run: [node, helpers/mail.mjs, search, 'to:{typedAddress} subject:"Şifrenizi sıfırlayın"']
+      expect: '{mailExpect}'
+
+# Two nodes say the same words in two places, so they are told apart by the field they sit under; the sentence with the user
+# name in it is matched by pattern (the name is Keycloak's, in a <bdi>).
+nodes:
+  accountSentence: { text: '/^.+ hesabın için yeni bir şifre seç\.$/' }
+  passwordReasonEmpty: { css: '.mds-field:has(#password-new) .mds-error' }
+  confirmReasonEmpty: { css: '.mds-field:has(#password-confirm) .mds-error' }

@@ -1,0 +1,126 @@
+schema: delurio-graph/0
+kind: needs
+id: realm.auth.signIn
+status: proposed
+summary: >-
+  Each need is what the product must do, from the flow's story and from planned.md, never from what the page does today; a finding
+  the flow touches is a need with `missing: none` where the code does not meet it (its id is in the need).
+
+needs:
+  - id: sign-in-with-a-name-or-an-address
+    need: >-
+      A person signs in to tedris, nizam or nazar on one realm page, with the user name or the e-mail address they have and their
+      password, and the app takes them on signed in.
+    evidence:
+      - state: loginPage
+      - node: loginPage
+      - state: submitting
+      - state: finishingRoundTrip
+      - source: libs/auth/src/server/routes.ts:146
+      - source: libs/auth/src/server/routes.ts:277
+      - source: apps/keycloak-theme/src/login/pages/Login.tsx:14
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "shows the canvas texts and the two links"
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "a filled form posts username and password to loginAction"
+      - scenario: tedrisProtectedPage
+      - scenario: nizamProtectedPage
+      - scenario: nazarProtectedPage
+
+  - id: back-to-the-page-they-asked-for
+    need: >-
+      A person who was sent to sign in by a page that needs a session, or by a Giriş yap link on a page, lands on that page after
+      the round trip; one who named none lands on the app's own landing for them.
+    evidence:
+      - state: appGate
+      - state: landed_on_asked_page
+      - state: landed_on_role_landing
+      - source: libs/auth/src/server/proxy.ts:198
+      - source: libs/auth/src/server/return-to.ts:32
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "brings the visitor back to Keşfet after 'giriş yap'"
+      - test: apps/tedris/e2e/anonymous.e2e.ts
+        name: "keeps the other pages behind sign-in"
+      - test: apps/nazar/e2e/auth-pages.e2e.ts
+        name: "a signed-out request for a page is sent to our sign-in page"
+      - scenario: tedrisProtectedPage
+      - scenario: tedrisSignInLink
+      - scenario: tedrisSignInPage
+
+  - id: one-wrong-password-one-alert
+    need: >-
+      A wrong password shows one alert that does not say which of the two was wrong, keeps the user name, empties the password,
+      and lets them try again; after ten failures Keycloak pauses the account and says so.
+    evidence:
+      - state: loginPageError
+      - source: apps/keycloak-theme/src/login/pages/Login.tsx:41
+      - test: apps/keycloak-theme/e2e/giris.e2e.ts
+        name: "a wrong password shows one alert and keeps the user name"
+      - scenario: tedrisWrongPassword
+
+  - id: remember-me
+    need: >-
+      A person on their own device can ask to stay signed in: the single sign-on session then lasts 14 days idle and 30 in all,
+      not 5 and 10 hours.
+    evidence:
+      - source: libs/ui/src/giris/login-form.tsx:113
+      - source: config/keycloak/realms/_base.json:10
+    missing: no Linear issue; code exists in part
+    note: >-
+      Drawn on the state loginPage and on the node loginPage, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: one-sign-in-for-the-three-apps
+    need: >-
+      A person signed in to one Medaris app is not asked for their password again in another while the single sign-on session
+      lasts, and a sign-out in one ends the others.
+    evidence:
+      - source: libs/auth/src/server/proxy.ts:173
+    missing: no Linear issue; code exists in part
+
+  - id: the-form-opens-where-they-type
+    need: >-
+      The form opens with the focus where a keyboard user types (the user name), and a failed attempt moves the focus to the alert
+      or the first invalid field (finding K3).
+    missing: no Linear issue; findings K3
+    note: >-
+      Drawn on the states loginPage and loginPageError and on the node loginPage, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: one-title-for-each-page
+    need: >-
+      Each page of the round trip has a title of its own in the tab and for a screen reader: the app's sign-in page, the form, the
+      error pages (findings K2, SHL-01, F-E-23).
+    missing: no Linear issue; findings K2, SHL-01, F-E-23
+    note: >-
+      Drawn on the states loginPage and appSignInPage and on the node loginPage, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-form-works-without-script
+    need: >-
+      The form can be read and used without JavaScript, as a native form post allows (finding K19, not in the inventory: the page
+      is drawn in the browser from window.kcContext and the server's HTML holds no form).
+    missing: no Linear issue
+    note: >-
+      Drawn on the state loginPage and on the node loginPage, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-language-of-their-own
+    need: >-
+      The form reads in English and Arabic when the app asks for them (the theme has both catalogs; no app passes them yet), and a
+      person who lands on it directly can change the language (finding K12).
+    evidence:
+      - source: apps/keycloak-theme/src/login/i18n.ts:41
+    missing: MDRS-202; findings K12; code exists in part
+
+  - id: a-banned-device-is-refused
+    need: >-
+      A person who was banned cannot come back under a second account from the same browser: the sign-in refuses the device and
+      says so without telling who is banned.
+    missing: MDRS-125
+
+  - id: second-step-with-a-one-time-code
+    need: >-
+      An account that has set up a one-time code asks for it after the password, and the page for it is in the Medaris theme
+      (login-otp.ftl falls to Keycloak's own pages today).
+    missing: MDRS-190

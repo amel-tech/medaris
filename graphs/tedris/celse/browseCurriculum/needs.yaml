@@ -1,0 +1,110 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.celse.browseCurriculum
+status: proposed
+summary: >-
+  What must exist for a talebe who moves through a course's celses from a celse page: the flow's product list, from its story
+  (FLOWS.md, "Browse the curriculum from a celse") and from the owner's words quoted in the code (MDRS-289: "müfredat listesi bi
+  combobox olsun, tıklayınca dropdown açılsın ... scrollview ile tüm müfredatı gezebilsin talebe"), never from what the page does
+  today. Missing (code half built, a defect, `missing: none`): the-popup-is-named-and-announced, rows-follow-the-clock. Unwalked
+  (code exists, no e2e and no replay yet): the-neighbours-at-the-ends, a-celse-on-air-is-marked. No replay was run in the writing
+  phase: every `replay:` walk is "walk phase", so no scenario is named under `walked` below, only the e2e checks. planned.md
+  carries no item for this flow, so nothing here is a Linear key; the defects are findings (CLS-04, CLS-05, CLS-09, BROWSE-1), not
+  planned features.
+
+needs:
+  - id: move-between-celses
+    need: >-
+      From a celse a talebe goes to the celse before it and the one after it in programme order, with one press and in a way that
+      names them: their week, their title, their day. A cancelled celse is never offered as a neighbour.
+    evidence:
+      - state: page
+      - state: previous_opened
+      - state: next_opened
+      - source: apps/tedrisat/src/course/lesson.controller.ts:230
+      - source: apps/tedris/features/courses/components/session-pager.tsx:157
+      - source: apps/tedris/features/courses/components/session-pager.tsx:80
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "lists the previous and the next session, the cancelled one skipped, and follows a card"
+
+  - id: the-neighbours-at-the-ends
+    need: >-
+      The first celse of a course has no card before it and the last has none after it, and the row still offers the whole
+      programme; nobody is sent to a celse that does not exist.
+    evidence:
+      - state: page
+      - source: apps/tedrisat/src/course/lesson.controller.ts:230
+      - source: apps/tedris/features/courses/components/session-pager.tsx:182
+      - source: apps/tedris/features/courses/components/session-pager.tsx:205
+    note: >-
+      Code exists, no e2e looks at the first or the last celse (session#5 stands on a celse with both). The binding has the
+      scenarios `first` and `last`; their walk is walk phase.
+
+  - id: browse-the-programme-from-a-celse
+    need: >-
+      From any celse a talebe opens the whole programme in one press, with the mouse or the keyboard, sees every celse of the
+      course in order with where each stands (done, this one, cancelled, ahead), finds one by its week or its title, and goes to
+      it; closing the list returns the focus to the control that opened it.
+    evidence:
+      - state: page
+      - state: popup
+      - state: filtered
+      - state: noMatch
+      - state: celse_opened
+      - source: apps/tedris/features/courses/components/session-curriculum.tsx:119
+      - source: apps/tedris/features/courses/session-model.ts:128
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "opens the Müfredat over the page: this celse selected, the cancelled one marked, a row leads to its celse"
+    note: >-
+      session#7 is carried with one change: its a2 expects the listbox to have the focus on opening, the code focuses the selected
+      option (SE-01), and the graph says what the code does.
+
+  - id: go-to-the-programme-tab
+    need: From the list a talebe goes to the course page's programme with one press.
+    evidence:
+      - state: popup
+      - state: programme_opened
+      - source: apps/tedris/features/courses/components/session-curriculum.tsx:419
+      - source: apps/tedris/features/courses/components/session-pager.tsx:215
+      - test: apps/tedris/e2e/session.e2e.ts
+        name: "opens the Müfredat over the page: this celse selected, the cancelled one marked, a row leads to its celse"
+    note: Only the link's address is asserted (`/courses/<id>?tab=mufredat`); following it is not.
+
+  - id: the-popup-is-named-and-announced
+    need: >-
+      What the button opens is something a person who cannot see it can find and name: it says what it is, its title is a heading
+      or its name, and the search says how many celses answer, or that none does, where a screen reader hears it.
+    evidence:
+      - source: apps/tedris/features/courses/components/session-curriculum.tsx:356
+      - source: apps/tedris/features/courses/components/session-curriculum.tsx:443
+    missing: no Linear issue; findings CLS-04, CLS-05, BROWSE-1; code exists in part
+    note: |-
+      Drawn on the states popup, filtered and noMatch, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      Half built. The button announces a listbox and the popup is an unnamed div (CLS-04), the no-match sentence is in no live
+      region (CLS-05), and the title reads "Müfredat8 celse" in the accessibility tree (BROWSE-1). Defects (accessibility), so no
+      Linear key; I did not search Linear.
+
+  - id: rows-follow-the-clock
+    need: >-
+      A celse's mark in the list ("Şu an canlı", done) is the one it has now: a page left open while a celse begins or ends does
+      not keep reading it as ahead.
+    evidence:
+      - source: apps/tedris/features/courses/components/session-pager.tsx:106
+    missing: no Linear issue; findings CLS-09; code exists in part
+    note: |-
+      Drawn on the state popup, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      Half built (CLS-09): the marks are worked out once on the server when the page is drawn, while the badge and the card of the
+      same page tick every 30 s. A defect, so no Linear key. Read from the code, not walked.
+
+  - id: a-celse-on-air-is-marked
+    need: >-
+      In the list the celse that is on air reads "Bu celse" and "Şu an canlı" together, and the course page's next-celse card
+      reads "Sıradaki · Şu an canlı" (MDRS-289).
+    evidence:
+      - state: popup
+      - source: apps/tedris/features/courses/components/session-pager.tsx:140
+    note: >-
+      Code exists. celse-states#2 asserts it and is not carried: it needs a celse that is on air now, which tedris.celse.attend
+      moves one to (the walk's course has none). The row's "Şu an canlı" is therefore not drawn in this flow's ui.

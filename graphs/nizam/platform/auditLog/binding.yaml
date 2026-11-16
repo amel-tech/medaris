@@ -1,0 +1,70 @@
+# nizam.platform.auditLog on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001 and Denetim kaydı read as the başnazım
+# (SYSTEM_ADMIN, who signs in through Keycloak's real form and reaches the page by the menu entry) and as the köşk nazımı, whom tedrisat refuses.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/platform/auditLog \
+#     --bind graphs/nizam/platform/auditLog/binding.yaml --cover transitions --out <dir>
+# (without --absent: see locators.binding.yaml; the Medaris nazımı is binding.medaris.yaml)
+#
+# NOT RUN: no replay was run when this was written (the owner's word: replays happen once, at the end). The file was checked only by loading it
+# (replay --emit-spec). What rests on the code alone says so.
+#
+# The data, and what the walk leaves. The seed has no policy switch in the log, so `setup` runs audit-rows.mjs (a helper of this folder; tedrisat's HTTP API
+# as the başnazım, and one SELECT before it): it records the row RECORDINGS_NEVER_PUBLIC has in platform_policies (or that it has none, as the seed leaves
+# it), switches the policy to the opposite and straight back (two `platform_policy.change` rows, kind "Politika değişikliği", scope Platform) and reads
+# their record numbers from the log's own API into
+# graphs/.local/made/audit-log.json, read below as {made.number} and {made.older}, with yesterday and tomorrow as {made.from} and {made.to}. The walk
+# asserts those rows by number and never counts the log: the log is shared and grows with every walk (at the time of writing, 633 rows, five people).
+# `teardown` removes what the walk wrote. NO ROUTE OF THE API DELETES A ROW (audit.controller.ts has none, by design), so audit-rows.mjs `down` uses SQL, as
+# the app's own e2e does (apps/nizam/e2e/kosk-seed.ts): the two policy rows, by number and actor (the policy's own row is put back exactly as recorded: deleted if there was none, else its three columns rewritten,
+# as nizam.platform.policies' helper does), and the `audit.export` rows the başnazım and the Medaris nazımı
+# wrote since `setup` began (the walk's export clicks and the CSV check's own call). Nothing else is deleted; no state file, nothing deleted. `setup` calls the same
+# `down` first, so a walk that died leaves nothing behind. If the SQL fails, the rows stay and cannot be removed any other way: say so.
+# Every run of the helper by hand takes the replay lock (CONVENTIONS, round R2). The seed's own köşk and policies are never changed.
+#
+# Scenarios, by `given` (each is a different one):
+#   chief      (the main story) the başnazım opens "Denetim kaydı" from the menu, reads the first fifty rows (older rows wait), narrows by kind, person, scope and
+#              range (a preset, then two days), presses "Daha eskileri göster", finds the setup's own row by its number, types a name nobody has, and downloads the
+#              file (its row is checked, see the header of locators.binding.yaml); an over-long name gives the error box, and "Dışa aktar" from it. Carries e2e
+#              platform-admin#5 (partly: no total is asserted, see needs.yaml), #7 (its last half: the log shows "Politika değişikliği").
+#   stranger   the seeded köşk nazımı opens /denetim-kaydi by address (the menu has no entry for them): tedrisat answers 403 and the shell draws "Bu bölüm için
+#              izniniz yok". Carries e2e platform-admin#6 (its first half).
+#
+# Not bound, with the reason:
+#   older: none         the log holds 50 rows or fewer in every view: the stack's log holds hundreds, and the walk adds some; it cannot be made small (no row is
+#                       ever removed but the walk's own)
+#   olderRead: failed   the read of the next page fails: nothing on the stack makes tedrisat answer that one request with an error
+#   policyChange: false no policy was switched and the log holds no POLICY_CHANGE row: the stack's log may hold some from nizam.platform.policies, and a row
+#                       other writers made is not this flow's to delete
+#   viewer: medaris     is binding.medaris.yaml
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nizam.platform.auditLog
+
+data:
+  made: { json: ../.local/made/audit-log.json }
+
+scenarios:
+  chief:
+    given: { viewer: chief, older: some, olderRead: ok, policyChange: true }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->auditLog' }
+    setup: [{ run: [node, ../nizam/platform/auditLog/audit-rows.mjs, up], expect: 'audit-rows up' }]
+    teardown: [{ run: [node, ../nizam/platform/auditLog/audit-rows.mjs, down], expect: 'audit-rows down' }]
+    samples: { person: Vedat Başnazım }
+    vars:
+      exporter: SYSTEM_ADMIN
+      person: Vedat
+      nobody: yokboyle
+      longText: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  stranger:
+    given: { viewer: stranger, older: some, olderRead: ok, policyChange: true }
+    as: koskNazim
+    open: '{nizam}/denetim-kaydi'
+    samples: { person: Vedat Başnazım }
+    vars:
+      exporter: SYSTEM_ADMIN
+      person: Vedat
+      nobody: yokboyle
+      longText: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

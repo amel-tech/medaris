@@ -1,0 +1,150 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.curriculum.edit
+status: proposed
+summary: >-
+  What must exist for the hoca of a course to edit its name, weeks and celses in Müfredat and save them: the flow's product list.
+  No replay has been run, so no `walked` entry names one: the unit specs under apps/nazar/test are listed as `test:` and are not
+  e2e or replay.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code, Linear key `none`): refused-save-says-so, unsaved-edits-survive-a-link, a-save-keeps-the-focus-and-says-it,
+# a-failed-call-is-told, read-only-says-what-stays-live, conflict-is-announced, leaving-a-week-out-says-it-hides-it,
+# preview-the-draft-from-the-editor
+# unwalked (code, no e2e and no replay yet): edit-and-save-the-whole-course, a-save-over-someone-elses-is-refused,
+# only-what-the-caller-may-change
+
+needs:
+  - id: read-the-course-as-stored
+    need: >-
+      The hoca opens Müfredat and finds the course as it is stored: its name, cover colour, description, weeks and celses, with
+      nothing to save and nothing to undo until she changes something.
+    evidence:
+      - state: clean
+      - node: curriculumTitle
+      - node: nameField
+      - node: weeksSummary
+      - node: weekTitleField
+      - node: save
+      - node: cancel
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/nazar/features/curriculum/components/curriculum-page.tsx:32
+      - test: apps/nazar/e2e/course-scope.e2e.ts
+        name: "Müfredat opens the course's form, with nothing to save until something changes"
+      - test: apps/nazar/test/curriculum-page.spec.tsx
+
+  - id: edit-and-save-the-whole-course
+    need: >-
+      She renames the course, adds a week and a celse, gives them titles and saves with one press of Kaydet; everything she
+      changed is stored together or none of it is, and the page says that it was saved.
+    evidence:
+      - state: edited
+      - state: invalid
+      - state: saving
+      - node: toastSaved
+      - node: weekTitleError
+      - node: lessonTitleError
+      - source: apps/tedrisat/src/course/course.controller.ts:334
+      - source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:278
+      - test: apps/nazar/test/curriculum-page.spec.tsx
+      - test: apps/nazar/test/course-actions.spec.ts
+
+  - id: a-save-over-someone-elses-is-refused
+    need: >-
+      When another person saved the course after she opened it, her Kaydet writes nothing, tells her so, and offers the current
+      course instead of overwriting it.
+    evidence:
+      - state: conflict
+      - node: conflictAlert
+      - node: reloadCourse
+      - state: conflictReset
+      - source: apps/tedrisat/src/course/course.controller.ts:334
+      - source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:293
+      - test: apps/nazar/test/curriculum-page.spec.tsx
+
+  - id: only-what-the-caller-may-change
+    need: >-
+      The form offers only what the caller's permissions allow: without course.edit it is read-only with no save, without
+      session.manage the celses cannot be added or moved, and with none of the page's codes the page refuses and says so.
+    evidence:
+      - state: readOnly
+      - node: sessionsNote
+      - node: readOnlyNote
+      - state: forbidden
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/course/course.controller.ts:283
+      - source: apps/nazar/features/curriculum/components/curriculum-page.tsx:66
+      - test: apps/nazar/test/curriculum-page.spec.tsx
+
+  - id: refused-save-says-so
+    need: >-
+      A Kaydet that is refused for a blank title says so to a person who cannot see the page: the focus goes to the first invalid
+      field or an alert lists the problems (F-C-course-a-01, decision D1).
+    missing: no Linear issue; findings F-C-course-a-01
+    note: >-
+      Drawn on the state invalid and on the nodes weekTitleError and lessonTitleError, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: unsaved-edits-survive-a-link
+    need: >-
+      Following "Haftalık celse üret" or "Hafta ve celse gizle" with unsaved edits asks first, or the edits are kept
+      (F-C-course-a-13).
+    missing: no Linear issue; findings F-C-course-a-13
+    note: >-
+      Drawn on the state edited and on the nodes generate, hidePage and generateNote, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-save-keeps-the-focus-and-says-it
+    need: >-
+      After a save, and after "Güncel dersi yükle", the focus is on a place a keyboard or screen-reader user can use and a line on
+      the page, not only a toast of six seconds, says what happened (EDIT-1, decision D2).
+    missing: no Linear issue; findings EDIT-1
+    note: >-
+      Drawn on the states clean and conflict and on the node toastSaved, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-call-is-told
+    need: >-
+      When the save cannot reach the server at all, the form is unlocked and the person is told to try again (F-C-course-a-19).
+    missing: no Linear issue; findings F-C-course-a-19
+    note: >-
+      Drawn on the state saving and on the node toastFailed, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: read-only-says-what-stays-live
+    need: >-
+      A page that says it is read-only does not leave live controls that write at once: either the note says that each celse's
+      homework is kept apart, or the block is read-only too (EDIT-3, decision D3).
+    missing: no Linear issue; findings read-only, EDIT-3
+    note: >-
+      Drawn on the state readOnly and on the node readOnlyNote, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: conflict-is-announced
+    need: >-
+      The conflict warning is announced to a screen-reader user when it appears, and the focus is on it or on its reload button
+      (EDIT-2).
+    missing: no Linear issue; findings EDIT-2
+    note: >-
+      Drawn on the state conflict and on the node conflictAlert, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: leaving-a-week-out-says-it-hides-it
+    need: >-
+      Taking a week or celse out of the form says, on the button or in the dirty line, that saving hides it and that it can be
+      restored from the course's Arşiv (F-C-course-a-16).
+    missing: no Linear issue; findings F-C-course-a-16
+    note: >-
+      Drawn on the state edited and on the node dirtyNote, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: preview-the-draft-from-the-editor
+    need: >-
+      From Müfredat the hoca can open the course as a talebe sees it (the draft preview of tedris.course.draftPreview) without
+      going through the course overview. FLOWS.md names that link out of this flow; the page has none.
+    missing: no Linear issue
+    note: >-
+      Drawn on the state clean, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

@@ -1,0 +1,101 @@
+# What every walk of nazar.files.download shares (graphs/README.md, "The stack and the bindings"): the made course's ids as data, the addresses of the
+# states, the places the walk finds nodes by where role and name cannot, and the checks of what the routes answer (read with curl, with NO session: see the
+# effects). The scenarios are in binding.yaml (the müderris: the refusal storage gives, and the sheet) and binding.forbidden.yaml (a ders nazırı whose
+# permission is taken away before a link is followed): one file for each, because the second needs a `before` on two nodes that would break the first.
+#
+# Data. Every scenario makes its own course (helpers/course.mjs make nazarfiles ...: the second köşk, one week of one celse, applicantF holding a seat) and
+# gives it what the page of its mode reads (files-data.mjs up <mode>: the homework, a talebe's hand-in file, the stored files of the editor; the file rows
+# are SQL because the stack has no storage, see files-data.mjs). Its ids are read from graphs/.local/made/nazarfiles.json as {made.course} and
+# {made.lessons.N}, and from graphs/.local/nazar-files-download.json as {files.*}.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.files.download
+
+data:
+  made: { json: ../.local/made/nazarfiles.json }
+  files: { json: ../.local/nazar-files-download.json }
+
+events:
+  # the person goes on to the course's overview
+  NAVIGATE: [{ goto: '{nazar}/ders/{made.course}' }]
+
+states:
+  # the three pages: the address is checked with a `*` where the parameter may or may not be (the notice takes ?fileError= off the address by itself)
+  homeworkListed: { url: '{nazar}/ders/*/odevler*' }
+  homeworkForbidden: { url: '{nazar}/ders/*/odevler*' }
+  curriculumListed: { url: '{nazar}/ders/*/mufredat*' }
+  lessonOpened: { url: '{nazar}/ders/*/mufredat*' }
+  evaluationListed: { url: '{nazar}/ders/*/degerlendirme' }
+  # the two refusals that say nothing keep the parameter in the address: this is where the findings are pinned
+  curriculumForbidden: { url: '{nazar}/ders/*/mufredat?fileError=forbidden' } # NFILES-1
+  evaluationRefused: { url: '{nazar}/ders/*/degerlendirme?fileError=notFound' } # F-D1-13, evaluation-export-invalid-path
+  # not walked (below): the redirect to sign-in and the portal's 404 page
+  sent_to_sign_in: { url: '{nazar}/auth/signin*' }
+  page_not_found: { text: Sayfa bulunamadı }
+  left: { url: '{nazar}/ders/*' }
+
+# Where role and name cannot find a node. A bare role=main is also on the page a walk leaves for, so each page's main is told by the first word it holds
+# (its h1). The file rows are found by role and name ("<file> dosyasını indir"); their chip and size are not in the link, so they are found by their
+# own place: every FileLink is a <span data-testid=file-link> with an outline Badge and a caption.
+nodes:
+  homeworkPage: { role: main, hasText: '/^Ödevler/' }
+  curriculumPage: { role: main, hasText: '/^Müfredat/' }
+  evaluationPage: { role: main, hasText: '/^Değerlendirme/' }
+  submissionFileType: { css: '[data-testid=homework] [data-testid=file-link] .mds-badge' }
+  submissionFileSize: { css: '[data-testid=homework] [data-testid=file-link] .mds-caption' }
+  courseFileType: { css: '[data-testid=resources] [data-testid=file-link] .mds-badge' }
+  courseFileSize: { css: '[data-testid=resources] [data-testid=file-link] .mds-caption' }
+  # the celse's own resources are `resources-lesson-<week>-<celse>`, its homework's files `assignment-files-lesson-<week>-<celse>`
+  lessonFileType: { css: '[data-testid^=resources-lesson-] [data-testid=file-link] .mds-badge' }
+  lessonFileSize: { css: '[data-testid^=resources-lesson-] [data-testid=file-link] .mds-caption' }
+  assignmentFileType: { css: '[data-testid^=assignment-files-] [data-testid=file-link] .mds-badge' }
+  assignmentFileSize: { css: '[data-testid^=assignment-files-] [data-testid=file-link] .mds-caption' }
+  # the page has other buttons named "Kapat" (a dialog's, a toast's): the toast's own is the one inside the alertdialog
+  toastClose: { role: button, name: Kapat, within: { role: alertdialog, name: Dosya indirilemedi } }
+
+# What the routes answer, read as a VISITOR (no cookie): the id checks and the token check come before anything that needs a person, so a visitor meets
+# every behaviour the routes have apart from the ones tedrisat decides. That keeps the walk free of a web session. The page requests carry what a browser
+# sends when it follows a link: Sec-Fetch-Dest document, Sec-Fetch-Mode navigate, Sec-Fetch-Site same-origin and the page as the Referer. The uuid
+# 00000000-0000-0000-0000-000000000000 stands for a file no one has: no route looks at it before the token.
+effects:
+  # after a 502, 503 or 504 (here always a 503 STORAGE_NOT_CONFIGURED): the routes' other answers, for a person with no session
+  noticeUnavailable:
+    # the talebe's file, from Ödevler: a page request goes to sign-in and comes back to the page, not to the file
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {nazar}/ders/{made.course}/odevler', '{nazar}/api/files/courses/{made.course}/submissions/00000000-0000-0000-0000-000000000000']
+      expect: 'HTTP/1.1 303 See Other'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {nazar}/ders/{made.course}/odevler', '{nazar}/api/files/courses/{made.course}/submissions/00000000-0000-0000-0000-000000000000']
+      expect: 'location: /auth/signin?callbackUrl=%2Fders%2F{made.course}%2Fodevler'
+    # the same from Müfredat, for the celse's resource file
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {nazar}/ders/{made.course}/mufredat', '{nazar}/api/files/lessons/{made.lessons.0}/resources/00000000-0000-0000-0000-000000000000']
+      expect: 'location: /auth/signin?callbackUrl=%2Fders%2F{made.course}%2Fmufredat'
+    # no page of this app behind the request: sign-in with the app's root as the way back
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', '{nazar}/api/files/courses/{made.course}/submissions/00000000-0000-0000-0000-000000000000']
+      expect: 'location: /auth/signin?callbackUrl=%2F'
+    # a fetch() (no Sec-Fetch headers) keeps the refusal as JSON, with the status
+    - run: [curl, -sS, -D, '-', '{nazar}/api/files/courses/{made.course}/submissions/00000000-0000-0000-0000-000000000000']
+      expect: 'HTTP/1.1 401'
+    - run: [curl, -sS, -D, '-', '{nazar}/api/files/courses/{made.course}/submissions/00000000-0000-0000-0000-000000000000']
+      expect: '"kind":"unauthenticated"'
+    # ids that are not UUIDs: 404 {"code":"NOT_FOUND"}, before a token is asked for and with no redirect, whatever the request is
+    - run: [curl, -sS, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Referer: {nazar}/ders/{made.course}/odevler', '{nazar}/api/files/courses/{made.course}/submissions/not-a-uuid']
+      expect: 'HTTP/1.1 404'
+    - run: [curl, -sS, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Referer: {nazar}/ders/{made.course}/odevler', '{nazar}/api/files/courses/{made.course}/submissions/not-a-uuid']
+      expect: '"code":"NOT_FOUND"'
+  # after "Excel indir": the route answers 400 INVALID_PATH to everyone, a person with a session included, because the path check comes before the token
+  # (evaluation-export-invalid-path). SEEN with these very commands on the running stack while the graph was written.
+  exportRefused:
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {nazar}/ders/{made.course}/degerlendirme', '{nazar}/api/files/courses/{made.course}/evaluations']
+      expect: 'HTTP/1.1 303 See Other'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {nazar}/ders/{made.course}/degerlendirme', '{nazar}/api/files/courses/{made.course}/evaluations']
+      expect: 'location: /ders/{made.course}/degerlendirme?fileError=notFound'
+    # a fetch() gets the proxy's own refusal, whose code is the finding
+    - run: [curl, -sS, -D, '-', '{nazar}/api/files/courses/{made.course}/evaluations']
+      expect: 'HTTP/1.1 400'
+    - run: [curl, -sS, -D, '-', '{nazar}/api/files/courses/{made.course}/evaluations']
+      expect: '"code":"INVALID_PATH"'
+    # a page request with no page of this app behind it: plain text in three languages, the refusal's status, no redirect
+    - run: [curl, -sS, -D, '-', -H, 'Sec-Fetch-Dest: document', '{nazar}/api/files/courses/{made.course}/evaluations']
+      expect: 'content-type: text/plain; charset=utf-8'
+    - run: [curl, -sS, -D, '-', -H, 'Sec-Fetch-Dest: document', '{nazar}/api/files/courses/{made.course}/evaluations']
+      expect: 'Dosya indirilemedi. Dosyanın bulunduğu sayfaya dönüp yeniden deneyin.'

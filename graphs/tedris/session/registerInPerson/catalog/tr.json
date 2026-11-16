@@ -1,0 +1,21 @@
+{
+  "SessionPage.inPersonKind": "Yüz yüze",
+  "SessionPage.inPersonText": "Bu celse yüz yüze yapılır. Kaydı eklenirse burada yayımlanır.",
+  "CoursePage.pendingApproval": "Onay bekliyor",
+  "CoursePage.pendingSubmitted": "Başvurun {when} ders kadrosuna iletildi. Onaylandığında bildirim alırsın.",
+  "CoursePage.withdrawRequest": "Başvuruyu geri çek",
+  "CoursePage.withdrawn": "Başvurunuz geri çekildi.",
+  "CoursePage.actionFailed": "İşlem tamamlanamadı. Biraz sonra yeniden dene.",
+  "Changes.note": "Başvuru, bu celse için yüz yüze bir yer istemektir ve yer vermez: yer, hoca başvuruyu onayladığında ayrılır. Yerler kadınlar ve erkekler için ayrı sayılır. Başvuruyu ya da ayrılan yeri istediğin zaman bırakabilirsin; bıraktığın yer sıradaki kişiye onayla verilir.",
+  "planned.InPerson.title": "Yüz yüze katılım",
+  "planned.InPerson.apply": "Yüz yüze başvur",
+  "planned.InPerson.applyNote": "Kadınlar ve erkekler için yerler ayrıdır. Yer, hoca başvurunu onayladığında ayrılır.",
+  "planned.InPerson.seatGiven": "Yerin ayrıldı",
+  "planned.InPerson.seatLine": "Bu celseye yüz yüze katılabilirsin.",
+  "planned.InPerson.release": "Yerimi bırak",
+  "planned.InPerson.released": "Yerini bıraktın.",
+  "planned.InPerson.full": "{gender} kontenjanı doldu.",
+  "planned.InPerson.quotaFull": "Son yer az önce verildi; {gender} kontenjanı doldu.",
+  "planned.InPerson.noGender": "Yüz yüze başvurmak için hesabında cinsiyetin kayıtlı olmalı.",
+  "planned.InPerson.addGender": "Cinsiyetini ekle"
+}

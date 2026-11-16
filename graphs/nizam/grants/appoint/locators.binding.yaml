@@ -1,0 +1,261 @@
+# What the bindings of nizam.grants.appoint share: the data sources, the events no node sends, the places each exit opens, where role and name cannot find a node,
+# and what a step leaves outside the screen. It carries no scenario, so it is not walked by itself:
+#   binding.yaml          the köşk nazımı (Cemal Köşk Nazımı) at the page of a köşk the walk makes a course in: appoints (the main story), member, refused, nobody,
+#                         notAddress, handedOn, and the two refusals of the page (medaris, missing)
+#   binding.gone.yaml     a post ended elsewhere while the dialog is open (edit: gone, revoke: gone); one file because it puts a `before` on "Kaydet" and on "Görevden al"
+#   binding.own.yaml      the nazım's own row, which has no "İzinleri düzenle"
+#   binding.chief.yaml    the başnazım opens the page by its address, where the one row is his own, and edits it
+#   binding.note.yaml     the seed's first köşk: the note about the medrese's courses (read only; nothing is made)
+# The page is `/kosks/<id>/izinler` of nizam-web at http://localhost:4001, read in a wide window (1440 x 900, as the e2e), so that the sidebar's menu entry "İzinler" is drawn
+# and not the phone's sheet, and the table is not stacked.
+#
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). Every locator, every account fact and every command below comes from the
+# code, the catalog and read-only looks at the API, and is unverified until a walk. Where the walk may need a fix, a comment says so. The binding loads:
+# `replay <dir> --bind <file> --emit-spec --out <dir>` wrote a spec and walked nothing.
+#
+# Data. Each scenario's `setup` makes the walk's own, and `teardown` takes it away; no seeded course, post or setting is touched:
+#   - the course "Deneme dersi nzgrants" (helpers/course.mjs make nzgrants --kosk {seed.kosk2}: the seed's second köşk, "Kubbealtı Köşkü", which the same nazım manages and
+#     which has no course of its own; published, one week of one celse, MUDERRIS as its one hoca), whose ids are read from graphs/.local/made/nzgrants.json as {made.course},
+#     {made.kosk} and {made.title}. A köşk's own course: the select lists only courses that belong to no medrese, and the seed's second köşk hosts none;
+#   - the spare accounts, the days the end field is typed with and the posts the page starts from, by ./grants-data.mjs up into graphs/.local/nzgrants.json
+#     ({grants.spare.sub|name|email}: applicantC "Esma Başvuran", the person the nazım appoints; {grants.holder.*}: applicantD and {grants.appointee.*}: applicantE, who
+#     hold and hand on a post in `handedOn`; {grants.nazim.*} and {grants.chief.*}: the two who sign in; {grants.viewer.*}: the one who is signed in; {grants.today},
+#     {grants.future} (the end field's value, 30 days ahead at 18:00, the page's zone), {grants.futureMs}, {grants.futureLabel} (the day as the table writes it),
+#     {grants.past}). The seeded ders nazırı, Rukiye Ders Nazırı, and the seeded course "Nahiv Metinleri" are never touched.
+#   `teardown` ends every post of the course (the ones made from the course first), removes the course (helpers/course.mjs remove) and asks the database for what is left. `setup`
+#   starts with the same ending, so that a walk that died leaves nothing the next one trips on. What it cannot undo: the audit rows (user.lookup of each search,
+#   course_nazir.assign, course_nazir.update, course_nazir.revoke, permission.self_grant_refused), the revoked role and grant rows kept as history, and the invitation mails of the course
+#   (course.mjs clears the ones it can).
+#
+# Not bound, each for what the stack cannot be made to do on request:
+#   start: failed      the list cannot be read for another reason (nothing makes GET /kosks/:id/grants fail for a köşk that is there)
+#   person: down       the directory does not answer (Keycloak would have to be stopped)
+#   the other codes of `refused`: GRANT_EXCEEDS_GIVER (the nazım holds the whole catalog and the boxes offer only what he holds), PERMISSION_UNKNOWN, GRANT_COURSE_INVALID (the walk would
+#                      have to hide its own course under an open dialog), GRANT_EXPIRY_INVALID (the dialog's clock), KOSK_NAZIM_UNKNOWN_ACCOUNT, AUTHZ_FORBIDDEN after the guard. The scenario
+#                      `refused` walks one of them, SELF_GRANT_REFUSED, which the nazım makes by typing his own address.
+#   edit: refused      the same, in the edit dialog: the only code a nazım can make is the one on his own post, which the page does not offer him
+# Which other scenarios need a start of their own is explained where a file opens one.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.grants.appoint
+
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/nzgrants.json }
+  grants: { json: ../.local/nzgrants.json }
+
+# The person the walk reads about is a scenario's own: its `vars` name them. `foundName` and `foundEmail` are the person the search finds (the chosen block, the toasts); `rowName` and
+# `rowEmail` the person of the row the page starts from or the walk makes (the same person in most files); `giverName` and `giverText` the giver the row names, with " (siz)" when
+# the viewer gave. The days and the course are the helper's.
+samples:
+  course: '{made.title}'
+  title: '{made.title}'
+  name: '{foundName}'
+  email: '{foundEmail}'
+  giver: '{giverText}'
+  by: '{giverName}'
+  date: '{grants.today}'
+  endDate: '{grants.futureLabel}'
+  count: '2'
+  list: Celseler, başvurular
+  courses: '{seed.titles.courses.open} ve {seed.titles.courses.approval}'
+
+events:
+  # the address is searched on Enter (it is also searched when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: '/^Ders nazırı/', within: { role: dialog }, value: '{typed}' }
+    - key: Enter
+  # the select is a Base UI popup: open it, pick the walk's own course
+  CHOOSE_COURSE:
+    - click: { role: combobox, name: '/^Ders/', within: { role: dialog } }
+    - click: { role: option, name: '{made.title}' }
+  # the two boxes of the e2e's #4 (SESSION_MANAGE and ENROLLMENT): the footer then counts "2 izin seçili"
+  TICK_PERMISSION:
+    - click: { role: checkbox, name: 'Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir', within: { role: dialog } }
+    - click: { role: checkbox, name: Başvuruyu onayla ya da reddet, within: { role: dialog } }
+  # the third box, which the edit adds
+  ADD_PERMISSION:
+    - click: { role: checkbox, name: 'Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir', within: { role: dialog } }
+  # the same two boxes, unticked: the edit dialog starts with both ticked
+  UNTICK_ALL:
+    - click: { role: checkbox, name: 'Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir', within: { role: dialog } }
+    - click: { role: checkbox, name: Başvuruyu onayla ya da reddet, within: { role: dialog } }
+  # a datetime-local field takes `YYYY-MM-DDTHH:mm`; it has no role, so it is found by its label (the e2e's getByLabel)
+  TYPE_FUTURE_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '{grants.future}' } }]
+  TYPE_PAST_END: [{ fill: { label: 'Bitiş tarihi ve saati (isteğe bağlı)', value: '{grants.past}' } }]
+  # Vazgeç, the close icon and Esc all send CANCEL; the walk presses "Vazgeç"
+  CANCEL:
+    - click: { role: button, name: Vazgeç, within: { role: dialog } }
+  NAVIGATE:
+    - goto: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+
+states:
+  # the search, the three writes and the read are Next server actions: a POST to the page's own address, held while the busy state is checked. The status the replay would compare on a
+  # FAIL is the server action's own 200 (an engine limit), so only the screen after the failure is checked. `reading` is no `call`: it is the page's own navigation.
+  searching: { call: '{nizam}/kosks/*/izinler' }
+  appointing: { call: '{nizam}/kosks/*/izinler' }
+  saving: { call: '{nizam}/kosks/*/izinler' }
+  dismissing: { call: '{nizam}/kosks/*/izinler' }
+  # the two refusals are the app's own screen, whose title is found by its words (the 403 and the 404 look the same, app/not-found.tsx); the address stays the one asked for
+  refused: { url: '{nizam}/kosks/*/izinler', text: Bu bölüm için izniniz yok }
+  not_found: { url: '{nizam}/kosks/*/izinler', text: Bu bölüm için izniniz yok }
+  left: { url: '{nizam}/kosks/*/ana-sayfa' }
+
+# Role and name find most nodes. Below are the ones they cannot find alone: a bare main, names several elements share, data in the text, and the toasts.
+nodes:
+  # the shell's one <main id="main"> is on every page; the intro line is this page's own
+  page: { role: main, hasText: '/medrese dışı derslerinde ders nazırı atar/' }
+  title: { role: heading, name: '/^İzinler$/' }
+  # "Ders nazırı ata" is the button, the dialog's name and its title; "Ders nazırı atandı" and "Ders nazırı atanamadı" are the toasts': the whole name
+  assignButton: { role: button, name: '/^Ders nazırı ata$/' }
+  madrasahNote: { testId: madrasah-note }
+  listRegion: { role: region, name: Atanmış ders nazırları }
+  listHeading: { role: heading, name: Atanmış ders nazırları }
+  count: { testId: grant-count }
+  rosterTable: { role: table, name: Atanmış ders nazırları }
+  # the rows: the person's name and address are in their row, and in the chosen block, the toast and the dialog, so the cells are found inside the row of the walk's person
+  rowPerson: { role: rowheader, hasText: '{rowName}' }
+  rowAddress: { text: '{rowEmail}', within: { role: row } }
+  rowCourse: { text: '{made.title}', within: { role: row, hasText: '{rowEmail}' } }
+  rowCount: { testId: permission-count, within: { role: row, hasText: '{rowEmail}' } }
+  rowNames: { testId: permission-names, within: { role: row, hasText: '{rowEmail}' } }
+  rowNever: { text: '/^Süresiz$/', within: { role: row, hasText: '{rowEmail}' } }
+  rowEnd: { text: '{grants.futureLabel}', within: { role: row, hasText: '{rowEmail}' } }
+  rowSameDay: { text: Görev ve izinler aynı gün biter., within: { role: row, hasText: '{rowEmail}' } }
+  rowGiver: { text: '{giverText}', within: { role: row, hasText: '{rowEmail}' } }
+  rowGiverDay: { text: '{grants.today}', within: { role: row, hasText: '{rowEmail}' } }
+  editButton: { role: button, name: 'İzinleri düzenle: {rowName}' }
+  revokeButton: { role: button, name: 'Görevden al: {rowName}' }
+  # the toasts are sonner's: no role, one element each, found by their own attribute and their words; the title and the body are one element
+  toastAssignedTitle: { css: '[data-sonner-toast]', hasText: Ders nazırı atandı }
+  toastAssignedBody: { css: '[data-sonner-toast]', hasText: '{foundName} ders nazırı oldu.' }
+  toastEditedTitle: { css: '[data-sonner-toast]', hasText: İzinler kaydedildi }
+  toastEditedBody: { css: '[data-sonner-toast]', hasText: '{rowName} için izinler güncellendi.' }
+  toastRevokedTitle: { css: '[data-sonner-toast]', hasText: Görevden alındı }
+  toastRevokedBody: { css: '[data-sonner-toast]', hasText: '{rowName} artık {made.title} dersinin ders nazırı değil.' }
+  toastAssignFailed: { css: '[data-sonner-toast]', hasText: Ders nazırı atanamadı }
+  toastEditFailed: { css: '[data-sonner-toast]', hasText: İzinler kaydedilemedi }
+  toastRevokeFailed: { css: '[data-sonner-toast]', hasText: Görevden alınamadı }
+  toastExists: { css: '[data-sonner-toast]', hasText: Bu kişi bu dersin ders nazırı zaten. }
+  toastGone: { css: '[data-sonner-toast]', hasText: Bu ders nazırı artık yok. }
+  toastHandedOn: { css: '[data-sonner-toast]', hasText: atadığı kişiler hâlâ görevde }
+  toastRefused: { css: '[data-sonner-toast]', hasText: '/Kendinizde olmayan bir izni veremezsiniz|Bu izin derslerde verilemez|Bu ders, bu köşkün medrese dışı derslerinden biri değil|Bitiş tarihi geçmişte|Bu hesap bulunamadı|Bunu yapma izniniz yok|Bir şeyler ters gitti/' }
+
+  # the dialogs: a Base UI dialog named by its title. "Görevden al" is also the row's button name's start and the dialog's submit, so the submit is found inside the dialog
+  assignDialog: { role: dialog, name: '/^Ders nazırı ata$/' }
+  editDialog: { role: dialog, name: '/^İzinleri düzenle$/' }
+  revokeDialog: { role: dialog, name: '/^Görevden al$/' }
+  dialogEyebrow: { css: '.mds-eyebrow', hasText: Köşk, within: { role: dialog } }
+  assignTitle: { role: heading, name: '/^Ders nazırı ata$/', within: { role: dialog } }
+  editTitle: { role: heading, name: '/^İzinleri düzenle$/', within: { role: dialog } }
+  # a toast has a "Kapat" of its own, so the dialog's is found inside the dialog
+  closeIcon: { role: button, name: Kapat, within: { role: dialog } }
+  revokeClose: { role: button, name: Kapat, within: { role: dialog, name: '/^Görevden al$/' } }
+  emailField: { role: textbox, name: '/^Ders nazırı/', within: { role: dialog } }
+  emailHelp: { text: '/Kayıtlı hesabın e-posta adresini eksiksiz yazın/' }
+  emailNobody: { text: Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. }
+  emailDown: { text: Arama şu an yapılamıyor. Biraz sonra yeniden deneyin. }
+  searchingStatus: { role: status, hasText: Aranıyor }
+  # the chosen block says the person's name and address, the hidden output "{name} seçildi" says the name too, and so does the toast
+  chosenRegion: { testId: chosen-head }
+  chosenTitle: { role: heading, name: Seçilen ders nazırı }
+  chosenName: { text: '{foundName}', within: { testId: chosen-head } }
+  chosenAddress: { text: '{foundEmail}', within: { testId: chosen-head } }
+  chosenAnnounce: { role: status, hasText: '{foundName} seçildi' }
+  removePerson: { role: button, name: 'Seçimi kaldır: {foundName}' }
+  courseField: { role: combobox, name: '/^Ders/', within: { role: dialog } }
+  cardName: { text: '{rowName}', within: { testId: grant-card } }
+  cardAddress: { text: '{rowEmail}', within: { testId: grant-card } }
+  cardLine: { text: '/^Ders nazırı · /', within: { testId: grant-card } }
+  permissionsHeading: { role: heading, name: '/^İzinler$/', within: { role: dialog } }
+  permissionsRegion: { role: region, name: Ders izinleri }
+  permissionsSection: { role: heading, name: Ders izinleri }
+  endField: { label: 'Bitiş tarihi ve saati (isteğe bağlı)' }
+  endHelp: { text: Görev ve izinler aynı anda biter. Boş bırakırsanız süresiz olur. }
+  endError: { text: Bitiş zamanı şu andan sonra olmalı. }
+  auditNote: { text: '/^Verdiğiniz izin, kendi izinlerinizi aşamaz\./' }
+  # the footer's count: "0 izin seçili", "2 izin seçili", "3 izin seçili"
+  summary: { text: '/^\d+ izin seçili$/' }
+  cancel: { role: button, name: '/^Vazgeç$/', within: { role: dialog } }
+  # "Kaydet" alone, in the open dialog
+  save: { role: button, name: '/^Kaydet$/', within: { role: dialog } }
+  busy: { role: status, hasText: Yükleniyor }
+  # "Görevden al": the dialog's own title, intro, effect line and submit
+  revokeEyebrow: { css: '.mds-eyebrow', hasText: '{made.title}', within: { role: dialog, name: '/^Görevden al$/' } }
+  revokeTitle: { role: heading, name: '/^Görevden al$/', within: { role: dialog } }
+  revokeIntro: { text: '{rowName}, {made.title} dersindeki ders nazırlığından alınacak.' }
+  revokeEffect: { text: Görev ve bütün izinleri aynı anda biter. }
+  revokeMeta: { text: Görevden alma denetim kaydına yazılır. }
+  revokeCancel: { role: button, name: '/^Vazgeç$/', within: { role: dialog, name: '/^Görevden al$/' } }
+  confirmRevoke: { role: button, name: '/^Görevden al$/', within: { role: dialog, name: '/^Görevden al$/' } }
+  # the refusal is the app's own screen inside the shell: its title is found by its words
+  refusalPage: { role: main, hasText: Bu bölüm için izniniz yok }
+  refusalTitle: { role: heading, name: Bu bölüm için izniniz yok }
+
+# What a step leaves outside the screen, read through the API and the database. After a search the audit log has it (every search is written, found or not). After an appointment the post is
+# the nazım's, still held, with the permissions and the end that were typed, and the audit row exists. A step that must write nothing (a refusal) leaves the person without a post, or with
+# the post that stood.
+effects:
+  lookupUser:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'user.lookup' and actor_id = '{grants.viewer.sub}' and details->>'email' = lower('{typed}') and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  createKoskGrant:
+    - run: [node, ../nizam/grants/appoint/grants-data.mjs, held, one]
+      expect: 'nzgrants held one APPLICANT_C'
+    - run: [node, helpers/sql.mjs, "select granted_by = '{grants.viewer.sub}' as by_viewer, revoked_at is null as live from role_assignments where user_id = '{grants.spare.sub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' order by created_at desc limit 1"]
+      expect: '"by_viewer":true,"live":true'
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'course_nazir.assign' and entity_id = '{made.course}' and details->>'userId' = '{grants.spare.sub}' and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  # the two rows an appointment can make: the codes ticked and the end typed are in the post and in each grant, at the same instant
+  appointedEnd:
+    - run: [node, helpers/sql.mjs, "select (extract(epoch from expires_at) * 1000)::bigint as ends from role_assignments where user_id = '{grants.spare.sub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"ends":{grants.futureMs}'
+    - run: [node, helpers/sql.mjs, "select string_agg(permission || '@' || coalesce((extract(epoch from expires_at) * 1000)::bigint::text, 'none'), ',' order by permission) as grants from permission_grants where user_id = '{grants.spare.sub}' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"grants":"enrollment.decide@{grants.futureMs},session.manage@{grants.futureMs}"'
+  appointedOpen:
+    - run: [node, helpers/sql.mjs, "select expires_at is null as open from role_assignments where user_id = '{grants.spare.sub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"open":true'
+    - run: [node, helpers/sql.mjs, "select string_agg(permission || '@' || coalesce((extract(epoch from expires_at) * 1000)::bigint::text, 'none'), ',' order by permission) as grants from permission_grants where user_id = '{grants.spare.sub}' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"grants":"enrollment.decide@none,session.manage@none"'
+  # a refused save writes nothing: the person found holds no post (`refused`: the nazım's own address, and the audit row of the refusal), or the one that stood (`exists`)
+  existsToast:
+    - run: [node, ../nizam/grants/appoint/grants-data.mjs, held, one]
+      expect: 'nzgrants held one APPLICANT_C'
+  refusedToast:
+    - run: [node, ../nizam/grants/appoint/grants-data.mjs, held, none, KOSK_NAZIM]
+      expect: 'nzgrants held none KOSK_NAZIM'
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'permission.self_grant_refused' and actor_id = '{grants.viewer.sub}' and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  # the edit: the whole set and the end are replaced, the audit row exists. The sums look at the three codes the page draws: the holder of `handedOn` holds a fourth, course_nazir.assign, which the graph does not draw
+  updateKoskGrant:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'course_nazir.update' and entity_id = '{made.course}' and details->>'userId' = '{rowSub}' and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  editedThreeEnd:
+    - run: [node, helpers/sql.mjs, "select string_agg(permission || '@' || coalesce((extract(epoch from expires_at) * 1000)::bigint::text, 'none'), ',' order by permission) as grants from permission_grants where user_id = '{rowSub}' and scope_id = '{made.course}' and revoked_at is null and permission in ('enrollment.decide', 'recording.manage', 'session.manage')"]
+      expect: '"grants":"enrollment.decide@{endMs},recording.manage@{endMs},session.manage@{endMs}"'
+  editedThree:
+    - run: [node, helpers/sql.mjs, "select string_agg(permission || '@' || coalesce((extract(epoch from expires_at) * 1000)::bigint::text, 'none'), ',' order by permission) as grants from permission_grants where user_id = '{rowSub}' and scope_id = '{made.course}' and revoked_at is null and permission in ('enrollment.decide', 'recording.manage', 'session.manage')"]
+      expect: '"grants":"enrollment.decide@none,recording.manage@none,session.manage@none"'
+  editedTwoEnd:
+    - run: [node, helpers/sql.mjs, "select string_agg(permission || '@' || coalesce((extract(epoch from expires_at) * 1000)::bigint::text, 'none'), ',' order by permission) as grants from permission_grants where user_id = '{rowSub}' and scope_id = '{made.course}' and revoked_at is null and permission in ('enrollment.decide', 'recording.manage', 'session.manage')"]
+      expect: '"grants":"enrollment.decide@{endMs},session.manage@{endMs}"'
+  editedTwo:
+    - run: [node, helpers/sql.mjs, "select string_agg(permission || '@' || coalesce((extract(epoch from expires_at) * 1000)::bigint::text, 'none'), ',' order by permission) as grants from permission_grants where user_id = '{rowSub}' and scope_id = '{made.course}' and revoked_at is null and permission in ('enrollment.decide', 'recording.manage', 'session.manage')"]
+      expect: '"grants":"enrollment.decide@none,session.manage@none"'
+  # the dismissal: the post and every grant of the person in the course are revoked at once, the rows kept as history, and the audit row exists
+  revokeKoskGrant:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments where user_id = '{rowSub}' and role = 'DERS_NAZIR' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from permission_grants where user_id = '{rowSub}' and scope_id = '{made.course}' and revoked_at is null"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'course_nazir.revoke' and entity_id = '{made.course}' and details->>'userId' = '{rowSub}' and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  # a refused dismissal writes nothing: the post is gone already (`gone`), or the holder's post stands while the one they appointed does (`handedOn`)
+  goneToast:
+    - run: [node, ../nizam/grants/appoint/grants-data.mjs, held, none]
+      expect: 'nzgrants held none APPLICANT_C'
+  handedOnToast:
+    - run: [node, ../nizam/grants/appoint/grants-data.mjs, held, one, APPLICANT_D]
+      expect: 'nzgrants held one APPLICANT_D'

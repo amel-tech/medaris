@@ -1,0 +1,364 @@
+# A signed-in talebe who did not write a deck opens its page (/decks/<id>): a public deck, or the deck of a course, köşk or medrese they are
+# enrolled in. They read its cards six at a time, put the deck in their collection and take it out again, and copy one card into one of their own
+# decks of the same kind. Written from the code of the branch (captured) on 15 Nov 2026; nothing here is a plan and nothing was seen in a browser
+# in this phase (no replay was run, by the owner's word): what the description of a state says of focus, of Base UI and of the toasts is read from
+# the code and marked so. What the flow leaves to other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   DCK-09      the collection change is told by the badge and the button's label only: no toast, no status line, no announcement
+#   DCK-10      "Daha fazla göster" leaves the page after the last six rows (the focus with it) and the caption "n karttan m'si gösteriliyor"
+#               changes silently
+#   DCK-19      the copy dialog passes no `initialFocus`, so Base UI's first tabbable element, the header's "Kapat", has the focus, not the
+#               radios (read from the code, not seen)
+#   DCK-23      "Kapat" and "Yükleniyor" are defaults of the kit, in no catalog
+#   DCK-24      the whole body of the copy dialog is the dialog's description
+#   DCK-06      (the radio's half) "Bir hedef deste seç." is a role=alert line outside the group; the radios are not marked invalid or described by
+#               it, and no focus moves after the failed try
+#   DCK-31      the reader's table gives the front cell the row-header role; the public view's does not (tedris.decks.visitorPublicDeck)
+#   MDRS-224    "destesi" is said twice when a title ends in it ("“X destesi” destesine eklendi.", "X destesi destesinin kartları")
+#   READCOPY-1  (new, provisional id) closing the copy dialog while the call is out does not stop it: the card is copied and the success toast
+#               still comes after "Vazgeç"
+#   READCOPY-2  (new, provisional id) a person who may read the deck without being enrolled in it (a ders nazırı or another one of the course's
+#               staff who did not write the deck, the başnazım) is given this reader's page, whose words and "Koleksiyona ekle" assume the enrolled
+#               talebe; the API answers that button with 403 DECK_FORBIDDEN and the toast says "try again"
+# Cross-references: ACCREF-1 (a hidden public deck is still read; tedris.decks.accessRefusals) reaches this page too.
+# E2E carried: decks#22 (the reader's page, no edit control, the progress, "Herkese açık" and its sentence; "no edit control" is carried by `--absent`
+# only), #23 (six at a time, the source line, "Daha fazla göster"), #24 (the copy: "Bir hedef deste seç.", only the own deck of the same kind offered,
+# "Kart destene kopyalandı"; the database rows by `effects`), #25 (take the deck out and put it back), #26 (the deck of an enrolled course, its
+# sentence). Not carried: decks#26's `response.status() == 200` (the engine does not compare the status of a page) and decks#22's "%25" (an Intl text,
+# aria-hidden, in no catalog: the graph draws the progress bar by its label "Tamamlanan: 2 / 8 kart"). The fixture of decks#22 and #23 (8 cards, 2 mastered)
+# is the walk's own data: deck-data.mjs makes a deck of that size and rates two cards.
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.readAndCopy
+status: captured
+domain: medaris.api
+ui: tedris.decks.readAndCopy
+title: Read a public or course deck, collect it and copy a card
+summary: >-
+  A signed-in talebe opens a deck somebody else wrote. The page shows the deck as a reader's view: its name, the badge "Herkese açık" when it is
+  public, "Koleksiyonunda" when it is in their collection, the number of cards and the kind (Kelime or Hadis), the description, and two buttons,
+  "Koleksiyona ekle" (or "Koleksiyondan çıkar") and "Çalış". Under it the cards come six at a time, front and back with the source line, each with
+  "Kendi desteme kopyala", and "Daha fazla göster" brings six more. No control changes the deck. Pressing the collection button flips the button
+  and the badge at once, asks tedrisat, and puts them back with an error toast if tedrisat refuses; success says nothing. "Kendi desteme kopyala"
+  opens a small dialog that lists the person's own decks of the same kind as radios, with nothing chosen: "Kopyala" with no choice says "Bir hedef
+  deste seç.", with a choice it adds the card, as it is, to that deck, closes the dialog and raises the toast "Kart destene kopyalandı"; the deck
+  being read is not touched. A person with no own deck of that kind is told so and is pointed at "Deste oluştur".
+
+scope:
+  shows: the reader's view of one deck, the collection button, the six-at-a-time list, the copy dialog and the toasts that follow
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the read that opens the page (GET /flashcard/decks/{id}, the cards with the person's progress, the person's own decks) and what it answers for a deck the person may not read: tedris.decks.accessRefusals (\"Sayfa bulunamadı\", the deck's cards and edit addresses); this flow starts after a deck was read"
+    - "the author's own view of the same address (the tabs, the progress and the samples, Düzenle, Desteyi sil, Yayın iste): tedris.decks.manageCards, tedris.decks.editOrDelete, tedris.decks.publish"
+    - "the visitor's view of a public deck, with \"Kaydetmek için giriş yap\" and no collection button, copy or progress: tedris.decks.visitorPublicDeck"
+    - "the round that \"Çalış\" opens: tedris.decks.study"
+    - "the lists that link to this page and have collection buttons of their own: Desteler and Keşfet of decks (tedris.decks.browse, tedris.decks.explore, where the control is swapped for another element, DCK-08), the course page's deck tab (tedris.course.deckTab), the köşk page's deck list (tedris.discover.readKosk)"
+    - "the page Deste oluştur, which the dialog's link opens: tedris.decks.create"
+    - "the bar above the page, the footer and the toast host: tedris.shell.frame"
+    - "a deck of more than twelve cards: each press of \"Daha fazla göster\" shows six more (showMore, deck-model.ts:117), so the graph's one step, which shows the rest, is the whole list for a deck of at most twelve"
+    - "the reader's progress: the aside shows \"Tamamlanan: n / m kart\" with a percent (an Intl text, aria-hidden, in no catalog) and the graph draws it as it is when the page opens; no step here changes it"
+    - "how a deck gets into this page for a person who is not enrolled (READCOPY-2): drawn as the same page, because the code draws it so"
+    - "the hidden deck that is still public (ACCREF-1): the page serves it and the graph draws it as any public deck"
+    - "kontenjan and gender: a deck has no seats; gender separation is given and does not touch this flow"
+
+decisions:
+  D1:
+    question: >-
+      Should a person who may read a deck without being enrolled in it (the course's staff who did not write it, the başnazım) be given the
+      reader's page with "Koleksiyona ekle" and the sentence "kayıtlı olduğun bir dersin ... destesi"?
+    recommend: >-
+      No: give such a person the page without the collection button and with words that do not claim an enrolment (READCOPY-2). The alternative
+      is to let the API collect for them, which the code refuses on purpose (flashcard-deck.controller.ts:318, assertReadable has no staff
+      exception).
+    affects: [reader, collecting]
+  D2:
+    question: >-
+      Should "Vazgeç", the close button and Esc stop the copy while its call is out?
+    recommend: >-
+      Yes, or ignore them while the call runs, as DCK-30 says of the delete dialog: today the card is copied and the success toast comes after the
+      person pressed "Vazgeç" (READCOPY-1).
+    affects: [copying]
+
+context:
+  deck:
+    values: [public, shared]
+    initial: any
+    say:
+      public: "the deck is public: Medaris management published it, the badge \"Herkese açık\" and the sentence \"Bu deste herkese açık ...\" show"
+      shared: "the deck is not public and belongs to a course, a köşk or a medrese the person is enrolled in (ENROLLED or COMPLETED): no badge, the sentence \"Bu deste, kayıtlı olduğun bir dersin ... destesi\""
+  cards:
+    values: [none, some, many]
+    initial: any
+    say:
+      none: "the deck has no card: the page says \"Bu destede henüz kart yok.\", with no table and no copy button"
+      some: "the deck has at most six cards: all of them show and \"Daha fazla göster\" is not there"
+      many: "the deck has more than six and at most twelve cards: six show and \"Daha fazla göster\" shows the rest"
+  held:
+    values: [not, already]
+    initial: any
+    say:
+      not: "the deck is not in the person's collection when the page is read"
+      already: "the deck is in the person's collection when the page is read: the badge \"Koleksiyonunda\" and the button \"Koleksiyondan çıkar\""
+  targets:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the person has at least one own deck of the same kind as this deck (Kelime or Hadis), and the dialog lists them"
+      none: "the person has no own deck of the same kind (an own deck of the other kind does not count): the dialog says so and links to Deste oluştur"
+  refusal:
+    values: [none, collect, copy]
+    initial: any
+    say:
+      none: "tedrisat accepts every write the flow makes"
+      collect: "tedrisat refuses the collection write (the deck stopped being readable after the page was drawn, or the person is staff and not enrolled, READCOPY-2)"
+      copy: "tedrisat refuses the copy (the target deck was deleted after the dialog drew it)"
+  collected:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "the page shows \"Koleksiyona ekle\" and no badge \"Koleksiyonunda\""
+      yes: "the page shows \"Koleksiyondan çıkar\" and the badge \"Koleksiyonunda\", or the person has just pressed the button and the answer is awaited"
+  listed:
+    values: [first, all]
+    initial: first
+    say:
+      first: "the first six rows show; with more cards than six the rest wait behind \"Daha fazla göster\""
+      all: "every row shows"
+  notice:
+    values: [none, addFailed, removeFailed, copied, copyFailed]
+    initial: none
+    say:
+      none: "no toast"
+      addFailed: "an error toast says the deck could not be added (it stays until it is closed)"
+      removeFailed: "an error toast says the deck could not be taken out (it stays until it is closed)"
+      copied: "a toast says the card was copied (it closes itself after six seconds, which the graph does not draw)"
+      copyFailed: "an error toast says the card could not be copied (it stays until it is closed); the dialog is still open"
+  picked:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "no radio of the copy dialog is chosen"
+      yes: "a radio of the copy dialog is chosen"
+  attempted:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "\"Kopyala\" has not been pressed in this dialog yet"
+      yes: "\"Kopyala\" was pressed with no radio chosen: the line \"Bir hedef deste seç.\" shows until one is"
+
+guards:
+  isPublic: "deck == 'public'"
+  hasCards: "cards != 'none'"
+  moreHidden: "cards == 'many' and listed == 'first'"
+  isCollected: "collected == 'yes'"
+  notCollected: "collected == 'no'"
+  collectAccepted: "refusal != 'collect'"
+  collectRefused: "refusal == 'collect'"
+  copyAccepted: "refusal != 'copy'"
+  copyRefused: "refusal == 'copy'"
+  hasTargets: "targets == 'some'"
+  noTargets: "targets == 'none'"
+  chosen: "targets == 'some' and picked == 'yes'"
+  hasNotice: "notice != 'none'"
+
+effects:
+  markCollected: { set: { collected: yes } }
+  markNotCollected: { set: { collected: no } }
+  showAll: { set: { listed: all } }
+  showFirst: { set: { listed: first } }
+  clearNotice: { set: { notice: none } }
+  toastAddFailed: { set: { notice: addFailed } }
+  toastRemoveFailed: { set: { notice: removeFailed } }
+  toastCopied: { set: { notice: copied } }
+  toastCopyFailed: { set: { notice: copyFailed } }
+  openCopy: { set: { picked: no, attempted: no } }
+  pick: { set: { picked: yes } }
+  tryWithoutPick: { set: { attempted: yes } }
+
+failures:
+  collecting:
+    from: collectDeck
+    signedOut: [HTTP_401]
+    refused: [DECK_NOT_FOUND, DECK_FORBIDDEN, HTTP_400]
+  uncollecting:
+    from: uncollectDeck
+    signedOut: [HTTP_401]
+    refused: [HTTP_400]
+  copying:
+    from: createCards
+    signedOut: [HTTP_401]
+    refused: [DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400, INTERNAL_ERROR]
+
+# The main story, as e2e decks#22 to #25 walk it together: six rows and then the rest, the deck in and out of the collection (with a reload between),
+# the copy dialog tried with no choice, then with a choice.
+main:
+  given: { deck: public, cards: many, held: not, targets: some, refusal: none }
+  events: [LOAD_MORE, COLLECT, DONE, RELOAD, UNCOLLECT, DONE, OPEN_COPY, CONFIRM, CHOOSE, CONFIRM, DONE]
+
+initial: arriving
+states:
+  arriving:
+    title: The deck's page opens
+    source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:52"
+    description: >-
+      A step with no screen. The person is signed in and is not the deck's author (the author is given the owner's view, tedris.decks.manageCards),
+      and the API let them read the deck, so the page is the reader's: loadDeckPage read the deck, its cards with the person's own progress and,
+      for a reader, the person's decks (GET /flashcard/decks/summary), from which the page takes whether the deck is already in their collection
+      (`held`) and the own decks of the same kind (`targets`). Where the read was refused the page is tedris.decks.accessRefusals'. Reached by the
+      address, from a card of Desteler or Keşfet, from the course page's deck tab or from a köşk page.
+    always:
+      - { guard: "held == 'already'", target: reader, effect: [markCollected], say: "the page was drawn from a collection that holds the deck", source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:59" }
+      - { target: reader, source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:55" }
+
+  reader:
+    title: The reader's page of the deck
+    by: human
+    goal: true
+    source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:83
+    description: >-
+      DeckReaderView in its own <main>. The header (DeckHeader): the breadcrumb "Desteler" > the deck's name, the name as the h1, the badge "Herkese
+      açık" when the deck is public and "Koleksiyonunda" when it is collected, the line "{n} ezber kartı·Hadis" (or "Kelime"), the description and
+      the two buttons "Koleksiyona ekle" / "Koleksiyondan çıkar" and "Çalış" (to /decks/study/<id>, tedris.decks.study). No tab: a reader has no
+      "Genel" and "Kartlar". Under it, the section "Kartlar" with the caption "{n} kart", the note "Bu destenin kartlarını değiştiremezsin; beğendiğin
+      kartı kendi destene kopyalayabilirsin.", the table (caption "{deck} destesinin kartları", columns "Ön yüz" as the row header, "Arka yüz" with the
+      card's source under the back when its meta has one, and a hidden "İşlemler") of the first six cards with a button "Kendi desteme kopyala" on each,
+      named for its row ("Kendi desteme kopyala: kart n"), the caption "{n} karttan 6’sı gösteriliyor" and "Daha fazla göster". An empty deck says
+      "Bu destede henüz kart yok." instead. Beside it the reader's own progress ("Tamamlanan: m / n kart" and a percent) and "Deste hakkında" with
+      the sentence for a public deck or for a shared one. There is no control that changes the deck: no Düzenle, Desteyi sil, Kart ekle, İçe aktar,
+      Dışa aktar or Yayın iste (the API would answer 403 to each); the graph draws none, so `--absent` carries decks#22's "no edit control". The
+      page sets no initial focus (rule focus-not-set; read from the code, not seen). "Daha fazla göster" is removed from the page after the last rows
+      and the focus goes with it, the caption and the new rows are not announced (DCK-10). READCOPY-2: this view is also what course staff who did not
+      write a course deck, and the başnazım, get; its sentence for a shared deck says "kayıtlı olduğun" and its "Koleksiyona ekle" is answered 403.
+    on:
+      COLLECT: { guard: notCollected, target: collecting, effect: [markCollected], say: "\"Koleksiyona ekle\": the button and the badge flip at once", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:63 }
+      UNCOLLECT: { guard: isCollected, target: uncollecting, effect: [markNotCollected], say: "\"Koleksiyondan çıkar\": the button and the badge flip at once", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:63 }
+      LOAD_MORE: { guard: moreHidden, target: reader, effect: [showAll], say: "six more rows show, and the caption and the button follow (DCK-10)", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:189 }
+      OPEN_COPY: { guard: hasCards, target: copyDialog, effect: [openCopy], say: "\"Kendi desteme kopyala: kart n\" opens the dialog for that row, with nothing chosen", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:173 }
+      RELOAD: { target: reader, effect: [clearNotice, showFirst], say: "the page is read again: the deck is as tedrisat holds it (e2e decks#25 reloads), the first six rows show and no toast is left", source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:52" }
+      CLOSE_TOAST: { guard: hasNotice, target: reader, effect: [clearNotice], say: "the toast's \"Kapat\"", source: libs/ui/src/mds/toast.tsx:95 }
+      STUDY: { target: study_opened, say: "\"Çalış\" is a link to /decks/study/<id>", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:101 }
+      OPEN_DECKS: { target: decks_opened, say: "the breadcrumb's \"Desteler\" is a link to /decks", source: apps/tedris/features/flashcards/components/deck-header.tsx:48 }
+      NAVIGATE: left
+
+  collecting:
+    title: Put the deck in the collection, or wait for the answer
+    source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:66
+    description: >-
+      The button already says "Koleksiyondan çıkar" and the badge "Koleksiyonunda" shows (setCollected(next) runs before the call), and the button is
+      busy: `loading` gives it aria-disabled and aria-busy, never `disabled`, so it keeps the focus, and a visually hidden <output> says "Yükleniyor"
+      (the kit's own word, DCK-23). The server action addDeckToCollection, through `attempt`, is POST /flashcard/decks/{id}/collections with no body:
+      it needs deck.view on the deck and the handler asks once more whether the deck is readable with no exception for the başnazım or for course
+      staff; the row is written once, a second call returns the same row. A rejected call (the network) is a refusal here too. Success is silent:
+      router.refresh() reads the page again and nothing says it worked (DCK-09). A refusal flips the button and the badge back and raises the error
+      toast "Deste eklenemedi" with "Bir sorun oluştu. Yeniden dene.", which stays until it is closed; a deck that stopped being readable (404), or
+      staff who are not enrolled (403, READCOPY-2), are told "try again" too. The kit's busy button keeps the focus (read from the code, not seen).
+      A second press while busy is ignored (the button is aria-disabled and `toggleCollection` returns at once).
+    invoke: { action: collectDeck }
+    on:
+      DONE: { guard: collectAccepted, target: reader, say: "the badge and the button stay flipped and the page is read again, with no word", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:70 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: collectRefused, target: reader, effect: [markNotCollected, toastAddFailed], say: "the button and the badge go back and the error toast says so", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:74 }
+
+  uncollecting:
+    title: Take the deck out of the collection, or wait for the answer
+    source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:66
+    description: >-
+      The button already says "Koleksiyona ekle" again and the badge is gone, and the button is busy as in `collecting`. The server action
+      removeDeckFromCollection is DELETE /flashcard/decks/{id}/collections: the caller's own row only, 200 whether or not there was one, and exempt
+      from the read check so that leaving does not depend on still being allowed to read the deck. So the tedrisat of the stack gives no refusal for it
+      (HTTP_400 for a malformed id, which the page never sends); the failure the page draws is the network's, which `attempt` turns into one. The
+      refusal flips the button and the badge back and raises "Deste çıkarılamadı" with "Bir sorun oluştu. Yeniden dene.". Success is silent (DCK-09).
+    invoke: { action: uncollectDeck }
+    on:
+      DONE: { guard: collectAccepted, target: reader, say: "the button stays flipped and the page is read again, with no word", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:70 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: collectRefused, target: reader, effect: [markCollected, toastRemoveFailed], say: "the button and the badge go back and the error toast says so (the stack cannot make this refusal)", source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:74 }
+
+  copyDialog:
+    title: The copy dialog is open
+    by: human
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:81
+    description: >-
+      The kit's Dialog (a form, size small, Base UI) over the page, which is inert while it is open. Its eyebrow names the row ("Kart n"), its title is
+      "Kendi desteme kopyala", its close icon is "Kapat" (the kit's default word, DCK-23) and the scrim closes nothing; Esc, "Vazgeç" and the icon do,
+      and the focus goes back to the row's button (Base UI's return of focus; with the dialog unmounted by its parent rather than closed, read from
+      the code, not seen). The first tabbable element has the focus when it opens, the icon "Kapat", because no `initialFocus` is passed (DCK-19;
+      read from the code, not seen). Two bodies. With an own deck of the same kind (`targets some`): the sentence "Kart, seçtiğin destene olduğu gibi
+      eklenir; bu deste değişmez.", the radio group "Hedef deste" with one radio per own deck of that kind (an own deck of the other kind is not
+      offered, e2e decks#24) and no radio chosen, and the footer "Vazgeç" and "Kopyala". Pressing "Kopyala" with no radio chosen sends nothing and
+      shows the line "Bir hedef deste seç." (a role=alert paragraph below the group; the radios are not marked invalid, DCK-06) until a radio is
+      chosen. Without one (`targets none`): the sentence "Bu türde kendi destein yok. Kartı kopyalamak için önce bir deste oluştur." and the footer
+      "Vazgeç" and the link "Deste oluştur" to /decks/create. The whole body is the dialog's description (DCK-24). An error toast "Kart kopyalanamadı"
+      over the dialog is what is left after a refused copy.
+    on:
+      CHOOSE: { guard: hasTargets, target: copyDialog, effect: [pick], say: "a radio is chosen and the line \"Bir hedef deste seç.\" goes", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:120 }
+      CONFIRM:
+        - { guard: chosen, target: copying, say: "\"Kopyala\" with a radio chosen sends the card", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:50 }
+        - { guard: hasTargets, target: copyDialog, effect: [tryWithoutPick], say: "\"Kopyala\" with no radio chosen sends nothing and shows \"Bir hedef deste seç.\"", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:51 }
+      CREATE_DECK: { guard: noTargets, target: create_opened, say: "\"Deste oluştur\" is a link to /decks/create", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:94 }
+      CANCEL: { target: reader, say: "\"Vazgeç\" closes the dialog and nothing is sent", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:92 }
+      CLOSE: { target: reader, say: "the icon \"Kapat\" does the same", source: libs/ui/src/mds/dialog.tsx:97 }
+      ESCAPE: { target: reader, say: "Esc does the same; the scrim does nothing", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:83 }
+
+  copying:
+    title: Copy the card, or wait for the answer
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:53
+    description: >-
+      "Kopyala" is busy (aria-disabled and a hidden <output> "Yükleniyor"); the dialog stays open and "Vazgeç", "Kapat" and Esc still work, but closing
+      does not stop the call: the card is copied and the success toast still comes (READCOPY-1, not drawn). The server action copyCard, through
+      `attempt`, is POST /flashcard/decks/{target}/cards with a one-item array holding the card's own type, front, back and meta (its source), so the
+      copy keeps the source line; the card is added as it is to the chosen own deck, the API makes a new row each time (nothing stops the same card
+      being copied twice into one deck), and the deck being read is untouched (e2e decks#24 counts its cards before and after). Success: the toast
+      "Kart destene kopyalandı" with "“{deck}” destesine eklendi." (six seconds), the page is read again and the dialog closes. A refusal (the target
+      deck deleted meanwhile, 404; a network failure) leaves the dialog open with the radio still chosen and raises the error toast "Kart
+      kopyalanamadı" with "Bir sorun oluştu. Yeniden dene.".
+    invoke: { action: createCards }
+    on:
+      DONE: { guard: copyAccepted, target: reader, effect: [toastCopied], say: "the toast says it was copied, the page is read again and the dialog closes", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:70 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: copyRefused, target: copyDialog, effect: [toastCopyFailed], say: "the error toast says it was not copied and the dialog stays", source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:62 }
+
+  study_opened:
+    type: final
+    title: The study round opens
+    description: "\"Çalış\" opened /decks/study/<id> (tedris.decks.study)"
+  decks_opened:
+    type: final
+    title: Desteler opens
+    description: the breadcrumb's "Desteler" opened /decks (tedris.decks.browse)
+  create_opened:
+    type: final
+    title: Deste oluştur opens
+    description: the dialog's link opened /decks/create (tedris.decks.create)
+  left: { type: final, title: The person goes to another page, leavesPage: true }
+  sent_to_sign_in:
+    type: final
+    title: The session is over
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to this address, and the
+      promise never settles, so the page stays busy until the browser leaves (attempt.ts:28). realm.auth.signIn takes over. Not walkable on the
+      stack: it cannot end the session in the middle of a call.
+
+assertions:
+  - id: copy-needs-a-chosen-deck
+    never: "state == 'copying' and picked == 'no'"
+    say: "A card is never sent before a deck is chosen: \"Kopyala\" with no radio chosen shows the line and sends nothing"
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:50
+  - id: no-copy-without-a-target
+    never: "state == 'copying' and targets == 'none'"
+    say: "With no own deck of the same kind there is no \"Kopyala\" to press: the dialog links to Deste oluştur instead"
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:93
+  - id: no-card-no-copy
+    never: "state in ['copyDialog', 'copying'] and cards == 'none'"
+    say: "A deck with no card has no \"Kendi desteme kopyala\" to press, so the dialog never opens for it"
+    source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:125
+  - id: the-flip-comes-before-the-answer
+    never: "(state == 'collecting' and collected == 'no') or (state == 'uncollecting' and collected == 'yes')"
+    say: "While the collection call is out the button and the badge already say the new state; a refusal is what puts them back"
+    source: apps/tedris/features/flashcards/components/deck-reader-view.tsx:65
+  - id: copied-toast-needs-acceptance
+    never: "notice == 'copied' and refusal == 'copy'"
+    say: "\"Kart destene kopyalandı\" shows only after tedrisat accepted the copy"
+    source: apps/tedris/features/flashcards/components/copy-card-dialog.tsx:70

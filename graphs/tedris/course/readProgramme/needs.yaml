@@ -1,0 +1,206 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.course.readProgramme
+status: proposed
+summary: >-
+  What must exist for a person who holds a relation to a course and opens its page: the flow's product list, from its story and
+  from the findings it records, never from what the page does today. Missing (no code): the-tab-is-in-the-address (PROG-1),
+  a-closed-seat-is-told-why (PROG-2, MDRS-265), a-week-shows-its-number-once (PROG-3), loading-is-announced (CRS-08). Unwalked
+  (code, no e2e and no replay that passed): a-completed-seat-keeps-the-celses, a-waiting-talebe-reads-the-next-celse-locked.
+
+needs:
+  - id: the-programme-is-open-to-whoever-opens-the-course
+    need: >-
+      Anyone who opens a course reads its programme: the weeks, each celse's title, type, day and length, and the one sample celse
+      the hoca opened to everyone with its agenda and source. What the hoca set on a celse (the exam, the homework, the source,
+      the cancellation note, the links) is for those who hold a seat, and a person who does not is told so, not shown a broken
+      page.
+    evidence:
+      - state: curriculum
+      - node: sampleSection
+      - node: sampleRow
+      - node: lessonLocked
+      - node: lessonLock
+      - node: resourceName
+      - node: resourcesLocked
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedrisat/src/course/domain/course-content.ts:78
+      - source: apps/tedris/features/courses/components/course-programme.tsx:47
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "reads that access was withdrawn, keeps the programme, and goes back to the courses"
+      - scenario: revoked
+        binding: graphs/tedris/course/readProgramme/binding.revoked.yaml
+    note: >-
+      The visitor's half is tedris.discover.visitorPath (e2e course#1 and #2). The replay walked the taken-away talebe's locked
+      programme; the waiting talebe's is the same programme and was not walked.
+
+  - id: a-seat-holder-follows-the-course
+    need: >-
+      A talebe who holds a seat sees the next celse and where it is, goes to it from the card, adds it to a calendar, sees their
+      progress and updates it, and reads the programme with the weeks that have begun open and the ones that have not saying when
+      they open.
+    evidence:
+      - state: curriculum
+      - node: seatNextTitle
+      - node: continueLink
+      - node: calendarButton
+      - node: progressBar
+      - node: updateProgress
+      - node: weekOpensOn
+      - node: lessonLink
+      - state: celse_opened
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedris/features/courses/components/course-aside.tsx:271
+      - source: apps/tedris/features/courses/components/course-programme.tsx:81
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "sees the next session, the progress, and the weeks that open later"
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "follows 'Derse devam et' to the session page"
+      - scenario: enrolled
+
+  - id: marks-on-the-programme
+    need: >-
+      A celse the hoca cancelled stays in the list marked "İptal edildi", with their note for those who read the content and not
+      in the counts; an exam says so with the days left; homework to hand in is marked, and so is the count of those not handed
+      in.
+    evidence:
+      - node: cancelledBadge
+      - node: cancelNote
+      - node: examBadge
+      - node: homeworkPendingMark
+      - node: homeworkMark
+      - node: assignmentsPending
+      - source: apps/tedris/features/courses/components/course-programme.tsx:128
+      - source: apps/tedris/features/courses/assignment-marks.ts:46
+      - source: apps/tedris/features/courses/course-view.ts:67
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "sees the next session, the progress, and the weeks that open later"
+      - test: apps/tedris/e2e/exam.e2e.ts
+        name: "Müfredat marks the exam ahead with Sınav and the days left"
+      - scenario: enrolled
+
+  - id: the-card-follows-the-seat
+    need: >-
+      The card beside the programme says what the person's relation to the course is and what they can do from it: a seat holder
+      continues, a completed seat still reads the celses while the course runs, a waiting application is told it waits and can be
+      taken back, and a seat the course team took away says so, keeps the programme's titles, and leads back to Derslerim.
+    evidence:
+      - node: card
+      - node: statusBadge
+      - node: completedBadge
+      - node: pendingBadge
+      - node: revokedTitle
+      - node: backToCourses
+      - source: apps/tedris/features/courses/components/course-aside.tsx:200
+      - source: apps/tedris/features/courses/components/course-aside.tsx:226
+      - source: apps/tedris/features/courses/components/course-aside.tsx:323
+      - test: apps/tedris/e2e/course.e2e.ts
+        name: "reads that access was withdrawn, keeps the programme, and goes back to the courses"
+      - scenario: revoked
+        binding: graphs/tedris/course/readProgramme/binding.revoked.yaml
+      - scenario: enrolled
+    note: >-
+      The completed and the waiting card are bound and were not walked (see the two needs below). "Kayıt başvurusu yap" is absent
+      from the taken-away card (course#9 a3); the graph draws no apply button, so a replay cannot ask that it is absent. The
+      waiting card's own buttons are tedris.course.apply's (course#5).
+
+  - id: the-tabs-are-this-flows-and-others
+    need: >-
+      The tab list shows the tabs a person has: six for a seat holder, three for anyone else; Hocalar lists the hocas of the
+      course.
+    evidence:
+      - node: tabList
+      - node: tabTeachers
+      - node: teacherCard
+      - state: teachers
+      - source: apps/tedris/features/courses/components/course-page.tsx:169
+      - source: apps/tedris/features/courses/components/course-page.tsx:474
+      - scenario: enrolled
+      - scenario: revoked
+        binding: graphs/tedris/course/readProgramme/binding.revoked.yaml
+
+  - id: a-completed-seat-keeps-the-celses
+    need: >-
+      A talebe whose seat the course team completed is told so with the date, keeps reading the celses and the recordings while
+      the course runs, and is offered the next celse; there is no menu to leave and no progress to update.
+    evidence:
+      - node: completedBadge
+      - node: completedTitle
+      - node: completedNote
+      - node: openSessionLink
+      - source: apps/tedris/features/courses/components/course-aside.tsx:226
+    note: >-
+      unwalked; the walk's talebe is bound as `completed` (binding.completed.yaml) and its locators were counted against the live
+      page by hand.
+
+  - id: a-waiting-talebe-reads-the-next-celse-locked
+    need: >-
+      A talebe whose application waits sees the next celse's title, day and length, and is told that its content, its meeting link
+      and the recordings open when they are enrolled.
+    evidence:
+      - node: lockedNextTitle
+      - node: lockedNextCelse
+      - node: lockedNextMeta
+      - node: lockedNotice
+      - source: apps/tedris/features/courses/components/course-aside.tsx:173
+    note: >-
+      unwalked; bound as `pending` (binding.pending.yaml) and its locators were counted against the live page by hand. The card's
+      own buttons are tedris.course.apply's.
+
+  - id: the-tab-is-in-the-address
+    need: >-
+      The tab a person is reading is in the address, so a reload, a shared link and the way back land on it, and a click on a tab
+      does not leave the address naming another one.
+    missing: no Linear issue; PROG-1
+    note: |-
+      Drawn on the states teachers, curriculum and arriving, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+      No code: `?tab=` is read once and a click never writes it (PROG-1; decision D1). Not a Linear item yet. Found by the tedris
+      navigation graph and measured by this flow's walk (reload on Hocalar meets Müfredat).
+
+  - id: a-closed-seat-is-told-why
+    need: >-
+      An enrolled talebe whose course is in a passive scope is told on the page that its content is closed and why, and is not
+      offered "Derse devam et" for a celse page that offers them an application; the resources do not say they are for the
+      enrolled.
+    missing: PROG-2, MDRS-265
+    note: |-
+      Drawn on the state celse_locked_opened and on the nodes statusBadge, continueLink and resourcesLocked, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      MDRS-265 is the celse page's half (an application button that changes nothing); this flow's half is PROG-2 (decision D2).
+      Seen on the stack by passivating a course's scope (binding.passive.yaml): the card, the tabs, the missing marks, and the
+      celse page that "Derse devam et" opens, which offers the enrolled talebe "Kayıt başvurusu yap".
+
+  - id: a-week-shows-its-number-once
+    need: >-
+      A week whose title is only its number is drawn with the number once, on screen and in the button's name, as the recordings
+      tab already does (MDRS-280).
+    missing: no Linear issue; PROG-3
+    note: |-
+      Drawn on the node weekToggle, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      PROG-3. A defect in code that exists; no Linear item.
+
+  - id: loading-is-announced
+    need: While the page's reads run, a screen reader is told that the page is loading.
+    missing: no Linear issue; CRS-08
+    note: |-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      CRS-08. The loading state is an aria-busy block with no text; it has no screen in this graph.
+
+  - id: resources-with-links-for-the-enrolled
+    need: >-
+      A course's resources are listed to everyone by name; the links, and the files of a file resource, open for those who hold a
+      seat. A file is downloaded through the app, and a refusal comes back to the page as a message.
+    evidence:
+      - node: resourcesTitle
+      - node: resourceLink
+      - node: resourceName
+      - node: resourcesLocked
+      - source: apps/tedris/features/courses/components/course-resources.tsx:183
+      - scenario: enrolled
+      - scenario: revoked
+        binding: graphs/tedris/course/readProgramme/binding.revoked.yaml
+    note: >-
+      A file resource and the refused download need storage the stack lacks (503 STORAGE_NOT_CONFIGURED): tedris.files.download.

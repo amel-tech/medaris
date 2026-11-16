@@ -1,0 +1,31 @@
+# nazar.curriculum.sessionHomework as a ders nazırı who holds session.manage and not course.edit, which is what the stack's seed gave its ders nazırı: the
+# page announces that it is "yalnız okunur" and the block "Ödev" is theirs to change, at once (HWSET-2).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/curriculum/sessionHomework \
+#     --bind graphs/nazar/curriculum/sessionHomework/binding.sessionOnly.yaml --cover transitions --out <dir>
+# NOT RUN in the writing phase. Its own file because the transitions are the hoca's: only the context (`holds`) differs, so binding.yaml's `sets` would be the
+# one `--cover transitions` takes, and this scenario would add no transition of its own. The walk makes the same course as the others (homework-data.mjs,
+# tag sess-homework) and gives DERS_NAZIR a post in it with `session.manage` alone, as the hoca does on Ders nazırları (helpers/course-nazir-grants.mjs);
+# `teardown` removes the course and the post with it. Not verified: that a ders nazırı with `session.manage` alone reads the course's content (the block is
+# drawn editable only when the course read is not content-locked, and the walk takes that for granted), that she reaches Müfredat through the menu
+# (PAGE_CODES.curriculum holds session.manage), and that her turning the homework on is accepted without course.edit (the route asks session.manage).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.curriculum.sessionHomework
+
+scenarios:
+  sessionOnly:
+    given: { start: none, holds: sessionOnly }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    vars:
+      description: Ders nazırının yazdığı satır.
+      undoText: ''
+      marks: '0'
+    setup:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, make, none, --nazir, session.manage]
+        expect: homework-data make none
+    teardown:
+      - run: [node, ../nazar/curriculum/sessionHomework/homework-data.mjs, remove]
+        expect: homework-data remove

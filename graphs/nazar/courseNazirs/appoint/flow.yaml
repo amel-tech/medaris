@@ -1,0 +1,401 @@
+# Appointing a ders nazırı, from "Ders nazırları" in nazar-web (/ders/<id>/nazirlar), read from the code of PR #394 on 15 Nov 2026
+# (apps/nazar/features/course-nazirs/components/{course-nazirs-page,course-nazirs-table,course-nazir-dialog}.tsx, course-nazirs.ts,
+# actions.ts; features/nazirs/actions.ts for the search; the API's GET /users/lookup, GET /courses/:id/nazirs and POST /courses/:id/nazirs
+# in apps/tedrisat/src/course/nazir/). Nothing here was walked in a browser: every behaviour is "from the code" until the walk phase;
+# the unit specs apps/nazar/test/course-nazir-dialog.spec.tsx:179-400 and course-nazirs-page.spec.tsx, and the e2e named in needs.yaml,
+# are the only runs. Read-only looks at the API on the stack: GET /courses/<seeded>/nazirs as the müderris, the başmüderris and the
+# başnazım (each: mayAppoint true, 21 codes grantable; the seeded roster is one post, Rukiye Ders Nazırı, appointed by the başmüderris),
+# GET /courses/<standalone>/nazirs as the müderris (a köşk's own course: mayAppoint true, no post) and GET /me for four accounts (their
+# names; no time zone is saved, so the page's default, Europe/Istanbul, applies). Nothing was written.
+#
+# Sibling of nizam.grants.appoint (the köşk's İzinler page writes the same API for a köşk's own courses) and twin of the medrese nazırı's
+# nazar.nazirs.appoint (the same search, the same shape); what differs here, from the code:
+#   - the dialog is also the permission form: 21 boxes (the course catalog) and an end date and time are on screen from the start, and
+#     "Kaydet" gives the post, the codes and the end in one write; the twin appoints holding nothing with "Ata";
+#   - the page tells the viewer and a person who holds a post already BEFORE sending (pickProblem, course-nazirs.ts:192): a warning in the
+#     chosen block and "Kaydet" off. The twin learns about herself only from the server's refusal (APPOINT-6);
+#   - text that cannot be an address is told on Enter ("Geçerli bir e-posta adresi yazın."); the twin stays silent (APPOINT-4);
+#   - a person who holds a seat over the course (the köşk's nazım, a Medaris nazımı, a medrese's staff) is refused by the server with
+#     COURSE_NAZIR_HOLDS_SEAT, and a person appointed meanwhile by someone else closes the dialog (COURSE_NAZIR_EXISTS, the e2e's #7).
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - The address is searched on Enter and also when the field is left, and tedrisat audits every search, found or not (F-D2c-6). The field
+#     is disabled while it searches, so it loses the focus; a found person replaces the field and nothing says so or moves the focus; the
+#     answers "no account" and "not available" and the end-date problem are field errors with no live region (F-D2c-4, F-D2c-5).
+#   - The "*" of the e-mail field is aria-hidden and the input carries no `required` (F-D2c-12). The dialog's whole body is its description
+#     (F-D2c-16).
+#   - "Kaydet" is natively disabled until a person is found and nothing says why (CAPPOINT-2). While the save is on its way "Vazgeç", the
+#     close icon and Esc do nothing and are not marked (CAPPOINT-1). The count "{n} izin seçili" is not announced (CAPPOINT-3).
+#   - Leaving the field with half an address is not told, while Enter says so (CAPPOINT-4).
+#   - FLOWS.md lists F-D2c-9 and F-D2c-15 for this flow. F-D2c-9 is the partner-code card's (partner-codes-card.tsx:197) and does not
+#     touch it; F-D2c-15 is the edit mode's and the course ban dialog's (here `initialFocus={emailRef}`, course-nazir-dialog.tsx:242).
+schema: delurio-graph/0
+kind: flow
+id: nazar.courseNazirs.appoint
+status: captured
+domain: medaris.api
+ui: nazar.courseNazirs.appoint
+title: Appoint a ders nazırı
+summary: >-
+  The hoca of a course opens "Ders nazırları" and presses "Ders nazırı ata". A dialog asks for the exact e-mail address of the person;
+  Enter (or leaving the field) searches the realm's directory, and the person found is shown under "Seçilen ders nazırı" with their
+  name and address. The hoca ticks the permissions the post carries (the boxes are the course's 21 codes, of which she may give the
+  ones she holds) and may type an end date and time; "Kaydet" writes the post and its permissions, which end together: a toast says
+  "Ders nazırı atandı", the dialog closes, and the list has a row that says "{n} izin" (or "İzin yok"), the sentences of the codes, the end
+  or "Süresiz", and who appointed ("(siz)" when it was the viewer). A text that is no address, an address no account has, and a directory
+  that does not answer are said in the dialog. The viewer and a person who holds a post already are chosen but warned, and "Kaydet"
+  stays off. A person who holds a seat over the course, or is barred from it, is chosen like anyone and refused after "Kaydet" in a
+  toast, with the dialog still open. A person appointed meanwhile by someone else closes the dialog with an error toast and the list is
+  read again. The new row's "İzinleri düzenle" starts nazar.courseNazirs.permissions and its "Görevden al" nazar.courseNazirs.dismiss.
+
+scope:
+  shows: >-
+    the list page with its empty line or its row, the "Ders nazırı ata" dialog, the e-mail search and its answers, the chosen person
+    and the two warnings, the permission boxes and the end field, the save and the refusals the page words, and the toasts that follow
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "a caller who holds course_nazir.assign by a grant only appoints through the same dialog with no boxes and the line 'Atadığınız kişi izinsiz başlar; izinleri dersin hocası verir.' (appointsOnly, course-nazirs.ts:157): nazar.access.dersNazirPages draws that person's page (e2e course-nazirs#13, first half)"
+    - "a ders nazırı with no course_nazir.assign, a person with no seat, and the köşk nazımı in a medrese course meet the notice 'Bu sayfaya izniniz yok' or the 404 page: nazar.access.dersNazirPages, nazar.shell.errorStates (the refusal and the not-found of the list read are exits here, `refused` and `not_found`)"
+    - "the başmüderris of the course's medrese and the başnazım open the same page by its address and appoint through the same dialog, as a giver at the medrese's and the platform's level (courseStandingOf); both read 21 codes grantable on the seeded course. The başmüderris opens only the courses of her own medrese (opened-scope.ts:19-32), the başnazım any course. binding.head.yaml walks her (the e2e's account, e2e course-nazirs#3 to #11 and #14); the başnazım, who gives all 21 codes and is never asked about himself (e2e course-nazirs#15), is not bound"
+    - "the box list after the ceiling is cut (a passive medrese, a policy): a code the caller no longer holds is a disabled box and the server answers GRANT_EXCEEDS_GIVER to one sent anyway (e2e course-nazirs#14). Drawn as `overreach` in the failures; the stack cannot be made to cut a ceiling without changing seeded state, so it is not bound"
+    - "an end left half typed ('Bitiş tarihini ve saatini tamamlayın.', isUnfinishedEnd): a datetime-local field cannot be left half typed by the replay's fill; the unit spec pins it (course-nazir-dialog.spec.tsx:344)"
+    - "a hidden course (GRANT_COURSE_INVALID), a code the server does not know, the directory failing at the save (KEYCLOAK_ADMIN_UNAVAILABLE) and any other failure: one error toast with its own sentence (courseNazirErrorKey), drawn together as `refused`; none can be made on request"
+    - "the roster's other rows and columns: a ders nazırı who holds permissions and ends, with their buttons; the second row; a post whose holder appointed others (the 'Önce bu kişinin atadığı N ders nazırını görevden alın.' line), which nazar.courseNazirs.dismiss draws"
+    - "a session that has ended: the lookup and the save send the person to sign in (realm.auth.signIn) instead of drawing a message"
+    - "a list read that fails for another reason ('Ders nazırları yüklenemedi' with 'Yeniden dene'): the retry state of nazar.shell.errorStates"
+    - "the sidebar, the scope picker and the phone bar around the page, and the aside link's aria-current (nazar.shell.scopeAndMenu; e2e course-nazirs#2 a5)"
+    - "the appointed person opening exactly the pages the permissions allow (e2e course-nazirs#4): nazar.access.dersNazirPages"
+
+decisions:
+  D1:
+    question: >-
+      Should the address be searched only on Enter or on an explicit "Ara" button, not also when the field is left? Every search is
+      written to the audit log (the help line says so), and tabbing through the field, or pressing "Vazgeç" with an address typed, makes
+      audited searches nobody meant (F-D2c-6).
+    recommend: >-
+      Search on Enter or on a button only, as the component's own comment says it does ("searched on Enter ... never per key"), or say
+      in the help line that leaving the field searches.
+    affects: [asking, searching]
+  D2:
+    question: >-
+      Should "Kaydet" say what is missing while it is off with nobody chosen, and should the e-mail field be marked required for a reader of
+      the screen? Today it is natively disabled with no word why, and the "*" is aria-hidden on an input with no `required`
+      (CAPPOINT-2, F-D2c-12).
+    recommend: >-
+      Keep "Kaydet" enabled and say "Önce bir kişi bulun" when it is pressed, or tie that line to it with aria-describedby; pass `required`
+      to the input.
+    affects: [asking, picked]
+
+context:
+  person:
+    values: [fresh, member, herself, nobody, notAddress, down, holdsSeat, barred, vanished, raced, overreach, refused]
+    initial: any
+    say:
+      fresh: "they type the address of an account that holds no post here, holds no seat over the course and is not barred"
+      member: "they type the address of a person who holds a ders nazırı post in this course already (the list shows them)"
+      herself: "they type their own address"
+      nobody: "they type an address no account has"
+      notAddress: "they type text that cannot be an address (no @, or no dot and two letters after it) and press Enter: nothing is searched"
+      down: "they type an address and the directory does not answer"
+      holdsSeat: "they type the address of a person who holds a seat over the course (the köşk's nazım, a Medaris nazımı): found, and refused at the save"
+      barred: "they type the address of a person barred from the course: found, and refused at the save"
+      vanished: "they type the address of an account that is gone by the time they press Kaydet (the directory found it, the appointment cannot)"
+      raced: "they type the address of a person someone else appoints while the dialog is open: the save is refused because the post exists now"
+      overreach: "they type the address of a person and ticked a code they no longer hold by the time they press Kaydet (the ceiling was cut)"
+      refused: "they type the address of a person who is found, and the save is refused for another reason (not allowed, a hidden course, an unknown code, the directory, any failure)"
+  row:
+    values: [none, bare, bareEnd, given, givenEnd]
+    initial: none
+    say:
+      none: "the list has no ders nazırı: it says 'Bu derste henüz ders nazırı yok.'"
+      bare: "the list has the post of one person, who holds no permission and has no end: 'İzin yok', 'Süresiz'"
+      bareEnd: "the post holds no permission and ends on the day typed"
+      given: "the post holds the permissions ticked, 'İzin' count and sentences, and no end: 'Süresiz'"
+      givenEnd: "the post holds the permissions ticked and ends on the day typed"
+  ticks:
+    values: [none, some]
+    initial: none
+    say:
+      none: "no box is ticked: the footer says 'İzin seçilmedi'"
+      some: "the two boxes of the walk are ticked: the footer says '2 izin seçili'"
+  until:
+    values: [none, future, past, pastTold]
+    initial: none
+    say:
+      none: "the end field is empty: no end"
+      future: "an end ahead is typed"
+      past: "an end in the past is typed and 'Kaydet' was not pressed yet"
+      pastTold: "'Kaydet' was pressed with an end in the past: the field says 'Bitiş zamanı şu andan sonra olmalı.' and nothing was sent"
+  note:
+    values: [none, notEmail, nobody, down]
+    initial: none
+    say:
+      none: "nothing is said under the e-mail field but its help"
+      notEmail: "the field says the text is no address"
+      nobody: "the field says no account has this address"
+      down: "the field says the search cannot be made now"
+  toast:
+    values: [none, appointed, holdsSeat, barred, unknownAccount, exists, exceeds, refused]
+    initial: none
+    say:
+      none: "no toast of this flow is up"
+      appointed: "'Ders nazırı atandı' is up (6 seconds)"
+      holdsSeat: "an error toast says the person already holds a seat over the course"
+      barred: "an error toast says the person is barred from the course"
+      unknownAccount: "an error toast says the account was not found"
+      exists: "an error toast says the person is a ders nazırı already"
+      exceeds: "an error toast says the caller does not hold a code they gave"
+      refused: "an error toast with the sentence of another refusal (not allowed, hidden course, unknown code, the directory, anything else)"
+
+guards:
+  # `endIsPast` of course-nazir-dialog.tsx:166: resolveEnd finds the typed moment is not after now
+  endIsPast: "until in ['past', 'pastTold']"
+
+effects:
+  rowBare: { set: { row: bare } } # the list was read with a post already (a person who holds one)
+  reset: { set: { note: none, toast: none, ticks: none, until: none } } # the dialog's opening effect (course-nazir-dialog.tsx:95): the field, the person, the boxes and the end are forgotten; a refusal toast is cleared here, not by the page
+  clearNote: { set: { note: none } }
+  clearToast: { set: { toast: none } }
+  forgot: { set: { note: none } } # `forget()` (:87): the field and the person go, the boxes and the end stay
+  notEmailNote: { set: { note: notEmail } }
+  nobodyNote: { set: { note: nobody } }
+  downNote: { set: { note: down } }
+  ticked: { set: { ticks: some } }
+  endFuture: { set: { until: future } }
+  endPast: { set: { until: past } }
+  endTold: { set: { until: pastTold } }
+  appointedBare: { set: { toast: appointed, row: bare } }
+  appointedBareEnd: { set: { toast: appointed, row: bareEnd } }
+  appointedGiven: { set: { toast: appointed, row: given } }
+  appointedGivenEnd: { set: { toast: appointed, row: givenEnd } }
+  holdsSeatToast: { set: { toast: holdsSeat } }
+  barredToast: { set: { toast: barred } }
+  unknownToast: { set: { toast: unknownAccount } }
+  existsToast: { set: { toast: exists, row: bare, ticks: none, until: none } } # the dialog closes and the list is read again: the post that was made elsewhere has no permission and no end
+  exceedsToast: { set: { toast: exceeds } }
+  refusedToast: { set: { toast: refused } }
+
+failures:
+  opened:
+    from: listCourseNazirs
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+  searching:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN, VALIDATION_ERROR]
+  appointing:
+    from: createCourseNazir
+    holdsSeat: [COURSE_NAZIR_HOLDS_SEAT]
+    barred: [COURSE_NAZIR_BARRED]
+    unknownAccount: [COURSE_NAZIR_UNKNOWN_ACCOUNT]
+    exists: [COURSE_NAZIR_EXISTS]
+    exceeds: [GRANT_EXCEEDS_GIVER]
+    refused: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, PERMISSION_UNKNOWN, GRANT_EXPIRY_INVALID, GRANT_COURSE_INVALID, SELF_GRANT_REFUSED, KEYCLOAK_ADMIN_UNAVAILABLE, COURSE_NOT_FOUND, VALIDATION_ERROR]
+
+# The story the page tells first: the hoca of an empty course finds a person by address, ticks two permissions, types an end ahead and
+# saves; the list has a row that says "2 izin", the end and "(siz)".
+main:
+  given: { person: fresh }
+  events: [DONE, OPEN_APPOINT, SEARCH, DONE, TICK_PERMISSION, TYPE_FUTURE_END, SAVE, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The list is read
+    description: >-
+      The page reads GET /courses/:id/my-permissions and, for a caller who holds `course_nazir.assign` here, GET /courses/:id/nazirs on
+      the server, behind a loading skeleton (loading.tsx). The list answers the course, the posts oldest first, the catalog of 21 codes,
+      the codes the caller may give (`grantable`) and whether she may appoint (`mayAppoint`: not outside and the course not hidden).
+      A caller who holds no `course_nazir.assign` or whose read is refused with a 403 meets the title and an alert "Bu sayfaya izniniz
+      yok" in place of the table, and the button is left out (exit `refused`, nazar.access.dersNazirPages); a 404 is Next's not-found
+      page (exit `not_found`); any other failure is the retry state (not drawn here).
+    invoke: { action: listCourseNazirs }
+    on:
+      DONE:
+        - { guard: "person == 'member'", target: listed, effect: [rowBare], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:86, say: "the list has the post of the person they will type: one row, holding nothing" }
+        - { target: listed, source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:86, say: "the course has no ders nazırı yet: the table says so" }
+      FAIL.forbidden: refused
+      FAIL.missing: not_found
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:35
+
+  listed:
+    title: The list is on the page
+    description: >-
+      The page: the title "Ders nazırları" (h1), its line ("{course} dersinin ders nazırları. ..."), the button "Ders nazırı ata" (drawn
+      when the list says the caller may appoint) and the table named by its caption: the empty line "Bu derste henüz ders nazırı yok.",
+      or a row per post with the person's name and address, "{n} izin" or "İzin yok" with the codes' sentences, the end ("Süresiz" when
+      there is none), "Atayan" with the giver and the day, and "İzinleri düzenle: name" and "Görevden al: name". The page sets no focus of
+      its own. After an appointment a toast of 6 seconds says "Ders nazırı atandı" and the row is there; the button "Ders nazırı ata"
+      stays, so the focus has somewhere to return. F-D2c-8 (focus lost when a row action removes its own opener) does not touch this
+      flow: the opener here is the header button.
+    by: human
+    goal: true
+    on:
+      OPEN_APPOINT: { target: asking, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:433, say: "they press 'Ders nazırı ata'" }
+      EDIT_PERMISSIONS: { guard: "row != 'none'", target: handed_over.permissions, starts: { flow: nazar.courseNazirs.permissions }, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:113, say: "they press 'İzinleri düzenle: name' on the row of a post" }
+      END_POST: { guard: "row != 'none'", target: handed_over.dismiss, starts: { flow: nazar.courseNazirs.dismiss }, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123, say: "they press 'Görevden al: name' on the row of a post" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:57
+
+  asking:
+    title: The dialog asks for an e-mail address
+    description: >-
+      A modal "Ders nazırı ata" over the page, with the course's title above its title and one field, "E-posta adresi", with its help
+      ("Adresi tam yazıp Enter'a basın. Her arama denetim kaydına yazılır."). Below the field are the 21 boxes of the course's codes
+      under "İzinler" (the ones the caller may not give are off), the end field "Bitiş tarihi ve saati (isteğe bağlı)", a note, and the
+      footer: "İzin seçilmedi", "Vazgeç" and "Kaydet". The scrim does not close it. The focus starts in the e-mail field (initialFocus; not
+      verified in a browser). "Kaydet" is natively disabled and nothing says why (CAPPOINT-2). The field's "*" is aria-hidden and the input
+      has no `required` (F-D2c-12). Enter searches (and keeps the form from being sent); leaving the field searches too (F-D2c-6). On
+      Enter, text that cannot be an address is said ("Geçerli bir e-posta adresi yazın.") and not searched; left with Tab it is not said
+      (CAPPOINT-4). After "no account" the same address is not searched twice; editing the text clears the line. The boxes and the end
+      are on screen already, so they can be set before a person is found; the graph draws them set after, as the e2e does.
+    by: human
+    on:
+      SEARCH:
+        - { guard: "person == 'notAddress'", target: asking, effect: [notEmailNote], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:110, say: "they type text that cannot be an address and press Enter: nothing is searched, the field says 'Geçerli bir e-posta adresi yazın.'" }
+        - { target: searching, effect: [clearNote], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:115, say: "they type an address and press Enter, or leave the field" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:229, say: "Vazgeç, the close icon or Escape: the dialog closes, nothing is written, the focus goes back to 'Ders nazırı ata'" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:227
+
+  searching:
+    title: The directory is searched
+    description: >-
+      lookupPerson calls GET /users/lookup?email=: Keycloak is searched for the exact address (the first enabled account), so a person who
+      never opened the app is found too, and tedrisat writes the search to the audit log whatever it finds. The input is disabled and
+      aria-busy while it runs, so the focus it had is dropped (F-D2c-5), and a hidden <output> says "Aranıyor…". Closing the dialog
+      meanwhile is allowed; the answer is then set into the closed dialog and forgotten at its next opening. Every failure but an ended
+      session is "Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.".
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "person == 'nobody'", target: asking, effect: [nobodyNote], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:124, say: "no account has the address: 'Bu adresle bir hesap bulunamadı.' under the field" }
+        - { guard: "person == 'member'", target: pickedMember, source: apps/nazar/features/course-nazirs/course-nazirs.ts:198, say: "the person is found and holds a post here: the warning is drawn beside them" }
+        - { guard: "person == 'herself'", target: pickedSelf, source: apps/nazar/features/course-nazirs/course-nazirs.ts:197, say: "the person found is the viewer: the warning is drawn beside them" }
+        - { guard: "person not in ['nobody', 'member', 'herself', 'down', 'notAddress']", target: picked, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:119, say: "the person is found: the field is replaced by 'Seçilen ders nazırı' and the field is cleared" }
+      FAIL.unavailable: { guard: "person == 'down'", target: asking, effect: [downNote], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:126, say: "the directory did not answer: 'Arama şu an yapılamıyor.' under the field; the same address may be searched again" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:229, say: "they close the dialog while the search runs; its answer is forgotten" }
+    source: apps/nazar/features/nazirs/actions.ts:43
+
+  picked:
+    title: A person is chosen
+    description: >-
+      The field is replaced by a section "Seçilen ders nazırı": the person's avatar, name and address, a button "Başka birini seç" and the
+      note "Kaydedince bu derste ders nazırı olur ve seçtiğiniz izinleri alır." Nothing moves the focus when the input unmounts (F-D2c-5)
+      and nothing announces the person. "Kaydet" is on. The boxes and the end field stay as they were. A box the caller may not give is
+      off; a code the caller does not hold at the save is refused by the server (`overreach`). With an end in the past, "Kaydet" writes
+      nothing and the end field says why. An error toast of a refusal stays up beside the dialog until it is closed.
+    by: human
+    on:
+      REMOVE: { target: asking, effect: [forgot], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302, say: "they press 'Başka birini seç': the e-mail field is back, empty, and the focus is not moved; the boxes and the end stay" }
+      TICK_PERMISSION: { guard: "ticks == 'none'", target: picked, effect: [ticked], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:371, say: "they tick two boxes: the footer says '2 izin seçili'" }
+      TYPE_FUTURE_END: { guard: "until != 'future'", target: picked, effect: [endFuture], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:403, say: "they type an end ahead in the end field" }
+      TYPE_PAST_END: { guard: "until == 'none'", target: picked, effect: [endPast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:403, say: "they type an end in the past: nothing is said until they press Kaydet" }
+      SAVE:
+        - { guard: endIsPast, target: picked, effect: [endTold], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:166, say: "'Kaydet' with an end that is not after now: nothing is sent, the field says 'Bitiş zamanı şu andan sonra olmalı.' (F-D2c-4)" }
+        - { target: appointing, effect: [clearToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:172, say: "they press 'Kaydet'" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:229, say: "Vazgeç, the close icon or Escape: nothing is written" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:281
+
+  pickedMember:
+    title: The person chosen holds a post here already
+    description: >-
+      As `picked`, with a warning under the person (an Alert, role status): "{name} bu dersin ders nazırı zaten." "Kaydet" is off. The
+      check compares the person's id with the posts of the list the page was drawn with (`holders`), so it knows nothing newer than the
+      last read; a person appointed meanwhile is met by the server's 409 (`raced`). e2e course-nazirs#6.
+    by: human
+    on:
+      REMOVE: { target: asking, effect: [forgot], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302, say: "they press 'Başka birini seç'" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:229, say: "Vazgeç, the close icon or Escape" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:306
+
+  pickedSelf:
+    title: The person chosen is the viewer
+    description: >-
+      As `picked`, with a warning under the person: "Kendinizi ders nazırı yapamazsınız." "Kaydet" is off. The check needs the viewer's id,
+      read with GET /me for the page; where that read failed the viewer is not known and nothing stops the save, which the server then
+      refuses with SELF_GRANT_REFUSED (always, whoever the caller is but the başnazım; `refused`). e2e course-nazirs#9.
+    by: human
+    on:
+      REMOVE: { target: asking, effect: [forgot], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302, say: "they press 'Başka birini seç'" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:229, say: "Vazgeç, the close icon or Escape" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:306
+
+  appointing:
+    title: The appointment is on its way
+    description: >-
+      appointCourseNazir calls POST /courses/:id/nazirs with the person, the codes ticked (`[]` for none) and the end when one is typed;
+      201 with the list as it is now. The API checks the course is not hidden, that the caller stands as a giver and holds every code she
+      gives, that the end is ahead, that the account exists (the app's users or the realm) and that the person is not barred from the
+      course, its köşk or its medrese; then, in one transaction with the course row locked, that no post and no other seat over the course
+      (a role at the course, its köşk, its medrese or the platform) speaks for the person; it revokes a lapsed post and the earlier
+      grants of the person in this course, writes the DERS_NAZIR role and one grant per code with the same end, and the audit row
+      course_nazir.assign. "Kaydet" is busy (loadingLabel "Kaydediliyor…") and the end field is disabled. "Vazgeç", the close icon and Esc
+      do nothing meanwhile and are not marked (CAPPOINT-1).
+    invoke: { action: createCourseNazir }
+    on:
+      DONE:
+        - { guard: "person == 'fresh' and ticks == 'some' and until == 'future'", target: listed, effect: [appointedGivenEnd], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:184, say: "a toast says 'Ders nazırı atandı', the dialog closes and the row says '2 izin', the sentences, the end and who appointed" }
+        - { guard: "person == 'fresh' and ticks == 'some'", target: listed, effect: [appointedGiven], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:184, say: "a toast says 'Ders nazırı atandı' and the row says '2 izin' and 'Süresiz'" }
+        - { guard: "person == 'fresh' and until == 'future'", target: listed, effect: [appointedBareEnd], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:184, say: "a toast says 'Ders nazırı atandı' and the row says 'İzin yok' and the end" }
+        - { guard: "person == 'fresh'", target: listed, effect: [appointedBare], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:184, say: "a toast says 'Ders nazırı atandı' and the row says 'İzin yok' and 'Süresiz'" }
+      FAIL.holdsSeat: { guard: "person == 'holdsSeat'", target: picked, effect: [holdsSeatToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "COURSE_NAZIR_HOLDS_SEAT: an error toast 'Ders nazırı atanamadı' says the person already has a seat here; the dialog stays open with the person chosen and the box still ticked (e2e course-nazirs#8)" }
+      FAIL.barred: { guard: "person == 'barred'", target: picked, effect: [barredToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "COURSE_NAZIR_BARRED: an error toast says the person is barred from the course; the dialog stays open" }
+      FAIL.unknownAccount: { guard: "person == 'vanished'", target: picked, effect: [unknownToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "COURSE_NAZIR_UNKNOWN_ACCOUNT: an error toast says the account was not found" }
+      FAIL.exists: { guard: "person == 'raced'", target: listed, effect: [existsToast], source: apps/nazar/features/course-nazirs/course-nazirs.ts:256, say: "COURSE_NAZIR_EXISTS: an error toast says the person is a ders nazırı already, the dialog closes and the list is read again, which now has the row (e2e course-nazirs#7)" }
+      FAIL.exceeds: { guard: "person == 'overreach'", target: picked, effect: [exceedsToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "GRANT_EXCEEDS_GIVER: an error toast says she cannot give a code she does not hold; the dialog stays open (e2e course-nazirs#14)" }
+      FAIL.refused: { guard: "person == 'refused'", target: picked, effect: [refusedToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "any other refusal: an error toast with the sentence of its code, or 'Bir şeyler ters gitti.'; the dialog stays open" }
+    source: apps/nazar/features/course-nazirs/actions.ts:33
+
+  refused:
+    title: The list is refused
+    description: >-
+      The read answered 403 or the caller holds no `course_nazir.assign`: the page keeps its title and draws "Bu sayfaya izniniz yok" in
+      place of the table and the button (nazar.access.dersNazirPages draws it; e2e course-nazirs#12).
+    type: final
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the list read is Next's not-found page (nazar.shell.errorStates; e2e course-nazirs#15 a11)."
+    type: final
+    leavesPage: true
+
+  handed_over.permissions:
+    title: They go on to change permissions
+    description: >-
+      "İzinleri düzenle: name" opens the dialog "İzinleri düzenle" over the same page, for the post of that row; nazar.courseNazirs.permissions
+      draws it.
+    type: final
+
+  handed_over.dismiss:
+    title: They go on to dismiss
+    description: >-
+      "Görevden al: name" opens the question "Görevden al" over the same page, for the post of that row; nazar.courseNazirs.dismiss draws it.
+    type: final
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: kaydet-sends-only-a-found-free-person
+    never: "state == 'appointing' and person in ['member', 'herself', 'nobody', 'down', 'notAddress']"
+    say: "Kaydet sends only a person the search found who is neither the viewer nor a ders nazırı of the course already."
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:143
+  - id: a-past-end-is-not-sent
+    never: "state == 'appointing' and until in ['past', 'pastTold']"
+    say: "An end that is not after now is told in the dialog and never sent."
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:166
+  - id: an-appointment-shows-its-row
+    never: "state == 'listed' and toast == 'appointed' and row == 'none'"
+    say: "After 'Ders nazırı atandı' the list has the new row, not the empty line."
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:197
+  - id: a-refusal-keeps-the-dialog
+    never: "state == 'listed' and toast in ['holdsSeat', 'barred', 'unknownAccount', 'exceeds', 'refused']"
+    say: "A refused appointment leaves the dialog open with the person chosen; only 'the person is a ders nazırı already' closes it."
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:210

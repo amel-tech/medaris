@@ -1,0 +1,50 @@
+# nazar.bans.decide, the refusals that mean the list has moved (the five codes of listMoved, bans.ts:373-380), on the local stack.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/decide \
+#     --bind graphs/nazar/bans/decide/binding.moved.yaml --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# How the world is made to refuse. Four course bans stand (applicantC, D, F, H: one more than the three decisions, so the list is never empty, as `after: more` says). A decision is pressed on the first row (the newest),
+# and when the dialog's reason is filled in, the binding first has the başmüderris lift that ban through the API
+# (helpers/madrasah-bans.mjs lift --newest): a second hand that decided first. The submit then reaches a ban that is already lifted, and tedrisat
+# answers 409 BAN_ALREADY_LIFTED, on each of the three routes (lift, widen, request); the page closes the dialog, shows the error
+# toast and reads the list again. The next decision finds the next row, which the next FILL_IN lifts in its turn, so one walk takes
+# the three FAIL.moved transitions. BAN_ALREADY_LIFTED is the one "moved" code a walk can make from a row the page draws; the other
+# four are told in binding.yaml. A second FILL_IN in the same dialog would lift the next row too (the helper cannot tell the dialogs
+# apart): `--cover transitions` takes FILL_IN once in each.
+#
+# `call` is left off the three server-action states: a refusal of a server action answers 200 on the page's own address, so its
+# status cannot be compared with the 409 (binding.yaml holds `call` for the walks that end in DONE).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.decide
+
+scenarios:
+  alreadyLifted:
+    given: { read: ok, row: own, answer: moved, after: more }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseBans menu' }
+    setup:
+      - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"bansDecide"'
+      - run: [node, helpers/madrasah-bans.mjs, up, bansDecide, --course, 'APPLICANT_C,APPLICANT_D,APPLICANT_F,APPLICANT_H']
+        expect: 'ready: 4 open'
+    teardown:
+      - run: [node, helpers/madrasah-bans.mjs, down, bansDecide, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_F,APPLICANT_H']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, bansDecide]
+        expect: 'course remove bansDecide'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: 'APPLICANT_C,APPLICANT_D,APPLICANT_F,APPLICANT_H'
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request
+
+# the people first, then the reason: this file's FILL_IN replaces the shared one
+events:
+  FILL_IN:
+    - run: [node, helpers/madrasah-bans.mjs, lift, bansDecide, --who, 'APPLICANT_C,APPLICANT_D,APPLICANT_F,APPLICANT_H', --newest]
+      expect: 'APPLICANT_'
+    - fill: { role: textbox, within: { role: dialog }, value: '{reasonText}' }

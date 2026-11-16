@@ -1,0 +1,49 @@
+# What tedris.course.grades's bindings share: the address of each exit, the events no node sends, the reads that check the API, and where
+# role and name cannot find a node of the course page or would find several. It carries no scenario, so it is not walked by itself:
+#   binding.yaml          the talebe whose course lists a released exam, a closed exam and two memorisations (the main story, e2e exam#2)
+#   binding.empty.yaml    the talebe of a course with nothing to grade: `--to gradesEmpty`
+#   binding.refused.yaml  the talebe of a passive scope, whose read is refused: `--to noGradesTab`
+# A scenario is in its own file, because `--to <state>` takes the shortest way from the first scenario that reaches the state, and the
+# course each scenario needs is made by its own `setup`.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.course.grades
+
+browser: { width: 1280, height: 900 }
+
+# The course of the walk is graphs/.local/course-grades.json, written by grades-data.mjs (this folder). Its ids are read after the
+# scenario's `setup` has run.
+data:
+  grades: { json: ../.local/course-grades.json }
+
+events:
+  # the page is read again: the address stays what it was, so the tab is chosen from it once more (PROG-1)
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  # An exit has no nodes, so its address is all the replay can check.
+  left: { url: '{tedris}/discover' }
+
+# Where role and name cannot find a node, or would find several. Both lists are unnamed <ul>s, found by the section the tab draws them in;
+# a row is the <li> with its test id (data-testid grade-exam, grade-memorization, which the app's e2e reads too). The node whose words
+# are one of several (`oneOf`) is found by a pattern of them: the engine finds a `oneOf` node by its first word only. The week caption is
+# "n. hafta" with the walk's own number, so it too is a pattern.
+nodes:
+  # the course page has the tab list; the page the walk leaves for has a <main> of its own
+  coursePage: { css: 'main:has([role=tablist])' }
+  courseTitle: { role: heading, name: Notlar denemesi }
+  # The tab bar is drawn by the server and the tabs work once the page has hydrated. The replay presses a node as soon as it is visible, which
+  # on the first load of a dev page is before that, and the click is lost (the first walk saw Notlarım highlighted by the pointer and the
+  # panel of Müfredat still in place). A wait before the press stands for what a person does: look at the page, then press.
+  tabGrades:
+    before: [{ run: [sleep, '6'] }]
+  examsList: { css: 'section[aria-labelledby=grades-exams] ul' }
+  marksList: { css: 'section[aria-labelledby=grades-memorizations] ul' }
+  examWeek: { css: '[data-testid=grade-exam] .mds-caption', hasText: '/^\d+\. hafta$/' }
+  examTitle: { css: '[data-testid=grade-exam] bdi' }
+  examResult: { css: '[data-testid=grade-exam] span.shrink-0', hasText: '/^(\d+\/\d+|Girmedi|Girilmedi)$/' }
+  markWeek: { css: '[data-testid=grade-memorization] .mds-caption', hasText: '/^\d+\. hafta$/' }
+  markTitle: { css: '[data-testid=grade-memorization] bdi' }
+  markGiven: { css: '[data-testid=grade-memorization] span.shrink-0', hasText: '/^(Tam|Eksik|Vermedi)$/' }

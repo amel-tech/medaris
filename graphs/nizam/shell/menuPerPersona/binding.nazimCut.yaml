@@ -1,0 +1,21 @@
+# nizam.shell.menuPerPersona for the stack's Medaris nazımı, on the local stack, in a wide window (1440 x 900): "Selma", MEDARIS_NAZIM, who
+# holds platform.kosk_create, madrasah_create, kosk_edit, audit_read and course_hide (STACK.md). The menu is cut to what those open: Genel
+# (Ana sayfa, Bildirimler) and Platform (Medreseler, Köşkler); Talepler and Denetim are gone as groups. Under --absent the replay looks for
+# the rest: no Medaris nazımları, İzin grupları, Pasif kapsamlar, Köşk başvuruları, Deste yayın istekleri, İtirazlar, Kalıcı yasak
+# talepleri, Yasaklamalar, Arşiv, YouTube bağlantısı, Platform ayarları, Ortak uygulamalar, and no "Denetim kaydı" although audit_read is held
+# (F-X-12: the page opens by address, nizam.nav). Nothing of hers is changed: the seeded persona is read only.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.nazimCut.yaml \
+#     --to wide --absent --out <dir>
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 1440, height: 900 }
+
+scenarios:
+  nazimCut:
+    given: { opensAt: wide, who: nazimCut, unread: none, waiting: none }
+    as: medarisNazim
+    open: '{nizam}/'

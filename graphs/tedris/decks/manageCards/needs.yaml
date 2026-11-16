@@ -1,0 +1,248 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.decks.manageCards
+status: proposed
+summary: >-
+  What must exist for the author who adds, edits and deletes the cards of their own deck: the flow's product list, from its story
+  and from the findings that touch it, never from what the page does today. Nothing here is about gender or a seat: a deck has
+  neither.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code), for the orchestrator's gaps merge: the-refusal-is-said-and-the-focus-goes-to-it (DCK-06), faces-are-required-for-assistive-technology
+# (DCK-07), an-edit-that-changes-nothing-writes-nothing (MCARDS-2), deleting-says-what-happens-to-the-progress (MCARDS-1), the-list-has-an-order-the-buttons-can-name
+# (MCARDS-3), the-focus-goes-somewhere-after-a-card-is-added-or-deleted (DCK-17), a-write-that-is-closed-is-stopped-or-says-so (MCARDS-4), the-api-takes-only-the-
+# fields-of-a-card (card-create-takes-only-its-fields), a-card-id-that-is-no-uuid-is-a-400 (card-routes-malformed-id-400), an-accepted-write-is-never-a-500
+# (accepted-write-never-500), a-decks-type-is-fixed-and-every-card-has-it (deck-card-type-fixed, card-type-matches-deck), course-staff-write-the-cards-of-their-
+# course-decks (course-deck-staff-edit-any-card), the-kits-own-words-are-in-the-catalog (DCK-23).
+# Unwalked (code, no e2e and no replay that passed): a-too-short-face-is-refused, a-refused-write-is-said-and-keeps-what-was-typed. The replays of binding.yaml,
+# binding.refused.yaml and binding.hadith.yaml have not been run (the owner's decision: one run of every graph at the end), so no `replay:` is named below.
+
+needs:
+  - id: author-adds-a-card
+    need: >-
+      The author of a deck can add a card to it from the deck's card list: two faces, the card's type being the deck's, and the
+      page says that it was added and shows it in the table and in the count of the tab.
+    evidence:
+      - state: emptyList
+      - state: addForm
+      - state: adding
+      - node: toastAdded
+      - node: tabCards
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:199
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:70
+      - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:98
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists every card with its own status, and adds, edits and deletes one"
+
+  - id: a-blank-face-is-refused-before-anything-is-sent
+    need: >-
+      A face left empty is refused where the author is, under that face, in words, before a request is made, and the form keeps
+      what was typed.
+    evidence:
+      - state: addForm
+      - node: frontRequired
+      - node: backRequired
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:53
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists every card with its own status, and adds, edits and deletes one"
+    note: Also drawn as the assertion a-card-is-sent-only-with-long-enough-faces.
+
+  - id: a-too-short-face-is-refused
+    need: >-
+      A face under the three characters the API takes is refused under its field in words that say the number, in the add form and
+      in the edit form.
+    evidence:
+      - node: frontShort
+      - node: backShort
+      - node: editBackShort
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:58
+    note: |-
+      no e2e types a face of one or two characters; the unit spec of the page (apps/tedris/test/deck-cards-page.spec.ts) is not a
+      walk
+      Also drawn as the assertion an-edit-is-never-sent-with-a-short-face.
+
+  - id: the-refusal-is-said-and-the-focus-goes-to-it
+    need: >-
+      When a submit is refused in the page, the first face with a problem takes the focus or a line that is announced says what is
+      wrong, so that someone who cannot see the screen is told without hunting for it.
+    missing: "no Linear issue; DCK-06: Field.Error has no role or aria-live and the submit moves no focus"
+    note: >-
+      Drawn on the nodes frontRequired, backRequired and frontShort, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: faces-are-required-for-assistive-technology
+    need: The two faces are marked as required to a screen reader, not only by a decorative star and the caption "* zorunlu alan".
+    missing: "no Linear issue; DCK-07: the controls carry no required or aria-required"
+    note: >-
+      Drawn on the nodes frontField, backField and addRequired, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: author-edits-a-card
+    need: >-
+      The author can open a card of their deck in a form filled with its faces, change them, and see the change in the table, with
+      a word that it was saved.
+    evidence:
+      - state: list
+      - state: editForm
+      - state: updating
+      - node: toastUpdated
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:291
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:69
+      - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:170
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists every card with its own status, and adds, edits and deletes one"
+
+  - id: an-edit-that-changes-nothing-writes-nothing
+    need: >-
+      A form sent with the faces it was opened with changes nothing, makes no request and does not say that the card was updated,
+      as the deck's own edit dialog does not.
+    missing: "no Linear issue; MCARDS-2: the form always sends both faces and the toast says \"Kart güncellendi\""
+    note: >-
+      Drawn on the states editForm and updating and on the node toastUpdated, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-card-is-deleted-only-after-the-answer
+    need: >-
+      A card is deleted only after the author has answered a confirmation, the focus starts on the answer that changes nothing,
+      "Vazgeç" leaves the card where it is, and the toast says that it is gone.
+    evidence:
+      - state: confirmDelete
+      - state: deleting
+      - node: confirmCancel
+      - node: toastDeleted
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:318
+      - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:212
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "lists every card with its own status, and adds, edits and deletes one"
+    note: Also drawn as the assertion a-card-is-deleted-only-after-the-answer.
+
+  - id: deleting-says-what-happens-to-the-progress
+    need: >-
+      The confirmation says what deleting a card does to the author's progress on it, and what it says is what is done: either the
+      progress goes with the card, or the words do not say it does.
+    missing: "no Linear issue; MCARDS-1: the sentence says it is deleted, the API keeps the rows (progress-orphans)"
+    note: >-
+      Drawn on the node confirmText, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: each-row-shows-the-authors-own-status-and-the-arabic-face
+    need: >-
+      Every card of the deck is a row with its two faces and the author's own status in words (new, learning, mastered), an Arabic
+      front set right to left and declared as Arabic, and a sentence that says the status is the author's own progress and that
+      only the author edits.
+    evidence:
+      - state: list
+      - node: cardsTable
+      - node: rowStatus
+      - node: arabicFace
+      - node: cardsNote
+      - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:125
+      - source: apps/tedris/features/flashcards/components/card-face.tsx:9
+      - test: apps/tedris/e2e/decks.e2e.ts
+        name: "the table shows the caller's own status for each card, in the Arabic face"
+
+  - id: the-list-has-an-order-the-buttons-can-name
+    need: >-
+      The cards come in an order that holds (their creation order), and the buttons of a row are named so that a person can tell
+      which card they are about even if the rows move.
+    missing: >-
+      no Linear issue; MCARDS-3: no ORDER BY at the API and the buttons say "kart n"; decks#19's row positions are the e2e's
+      fixture, not a rule
+    note: >-
+      Drawn on the state list and on the nodes editButton and deleteButton, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-focus-goes-somewhere-after-a-card-is-added-or-deleted
+    need: >-
+      After a card is deleted, or added from the empty state's button, the focus goes to a place that exists (the table's caption,
+      the heading), because the button that had it is gone.
+    missing: no Linear issue; DCK-17
+    note: >-
+      Drawn on the state list and on the nodes deletingDialog and emptyAdd, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-write-that-is-closed-is-stopped-or-says-so
+    need: >-
+      A dialog closed while its write is still out either stops the write or the page says what happened to it; a toast never
+      reports the result of something the author believes they cancelled.
+    missing: no Linear issue; MCARDS-4 (DCK-30 for a deck)
+    note: >-
+      Drawn on the states adding, updating and deleting, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refused-write-is-said-and-keeps-what-was-typed
+    need: >-
+      When the API refuses a write (the deck or the card is gone, the author may not any more) or does not answer, the page says
+      so with one error toast, the add and edit forms keep what was typed, and the delete confirmation closes with the card still
+      in the table.
+    evidence:
+      - state: adding
+      - state: updating
+      - state: deleting
+      - node: toastSaveFailed
+      - node: toastDeleteFailed
+      - source: apps/tedris/features/flashcards/components/card-form-dialog.tsx:72
+      - source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:60
+      - source: apps/tedris/features/flashcards/attempt.ts:16
+    note: |-
+      no e2e makes the API refuse a card write; binding.refused.yaml drops the deck under the open page to make it (not run)
+      Also drawn as the assertion a-refused-write-keeps-what-was-typed.
+
+  - id: the-api-takes-only-the-fields-of-a-card
+    need: >-
+      A card is created from its type, front, back and contentMeta alone; its id, author, deck and timestamps are the server's, on
+      every route that creates cards.
+    missing: >-
+      no Linear issue; domain invariant card-create-takes-only-its-fields (holds: false, finding card-create-extra-columns): the
+      create route spreads the body into the insert
+    note: >-
+      Drawn on the state adding, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-card-id-that-is-no-uuid-is-a-400
+    need: A card id that is not a uuid is answered 400 on every card route, as a deck id is on the deck routes.
+    missing: >-
+      no Linear issue; domain invariant card-routes-malformed-id-400 (holds: false, finding card-id-not-uuid-500): the guard's
+      resolver answers 500 AUTHZ_RESOLVER_ERROR
+    note: >-
+      Drawn on the states updating and deleting, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-accepted-write-is-never-a-500
+    need: >-
+      A request that the validation accepts never ends in a 500: an empty body or a null face is a 400, a refusal the caller can
+      read.
+    missing: "no Linear issue; domain invariant accepted-write-never-500 (holds: false, finding accepted-write-500)"
+    note: >-
+      Drawn on the states adding and updating, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-decks-type-is-fixed-and-every-card-has-it
+    need: >-
+      A deck's card type is chosen when it is made and never changes, and every card of the deck has that type, so the type the
+      add form sends can never disagree with the cards already there.
+    missing: >-
+      no Linear issue; domain invariants deck-card-type-fixed (holds: false, finding put-deck-changes-card-type) and
+      card-type-matches-deck (holds: false, finding no-card-type-match)
+    note: >-
+      Drawn on the states addForm and adding, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: course-staff-write-the-cards-of-their-course-decks
+    need: >-
+      Whoever holds deck.manage_course in a course can edit and delete every card of that course's decks on the single-card
+      routes, as they can add and list them.
+    missing: >-
+      no Linear issue; domain invariant course-deck-staff-edit-any-card (holds: false, finding course-deck-staff-card-routes-404);
+      the course staff's pages are nazar.decks.openAndFill, out of view here
+
+  - id: the-kits-own-words-are-in-the-catalog
+    need: >-
+      The words the dialogs, the busy buttons and the toasts say on their own ("Kapat", "Vazgeç", "Yükleniyor") are messages of
+      the catalog, so that a locale added later changes them.
+    missing: DCK-23 (MDRS-233 for the toast)
+    note: >-
+      Drawn on the nodes addCloseIcon, confirmCancel and addBusy, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).

@@ -1,0 +1,82 @@
+# What the bindings of nazar.archive.hideAndRestoreCourse share: the events no node sends, the places the exits open and each state's
+# address, and where role and name cannot find a node of the two pages. It carries no scenario, no data and no effect, so it is not walked
+# by itself:
+#   binding.yaml          the başmüderris who hides "Deneme dersi hrcMain" (one talebe enrolled) and restores it; two scenarios: Dersler
+#                         first (`hides`: the main story) and Arşiv first (`opensArchive`)
+#   binding.quiet.yaml    the same window over a course nobody is enrolled in: it leaves "N talebe celselere ... erişemez." out (courses#10 a1)
+#   binding.stale.yaml    the course is hidden by someone else after the window opened: MADRASAH_COURSE_ALREADY_HIDDEN, an info toast
+# Two scenarios must not share a `given`, and a scenario that adds no transition is never chosen by `--cover transitions` beside the
+# first, so the two that only change which nodes are drawn, or which answer the API gives, each have a small file.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nazar/features/courses, apps/nazar/features/archive, libs/ui/src/mds) and is unverified until a walk. Where the walk may need a
+# fix, a comment says so.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.archive.hideAndRestoreCourse
+
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+  DISMISS: [{ key: Escape }] # Esc closes the window; the dialog is focused, so the key goes to it
+  CLOSE_MENU: [{ key: Escape }] # Esc closes the row's menu (the popup has the focus)
+
+states:
+  # the screens: `*` is one path segment, and a tab or a page of Arşiv adds a query
+  listed: { url: '{nazar}/medrese/*/dersler' }
+  listedWithout: { url: '{nazar}/medrese/*/dersler' }
+  archive: { url: '{nazar}/medrese/*/arsiv*' }
+  archiveEmpty: { url: '{nazar}/medrese/*/arsiv*' }
+  # the two calls are Next server actions: a POST to the page's own address, held while the busy button is checked
+  hiding: { call: '{nazar}/medrese/*/dersler' }
+  restoring: { call: '{nazar}/medrese/*/arsiv*' }
+  # an exit has no nodes, so its address is all the replay can check
+  courses_opened: { url: '{nazar}/medrese/*/dersler' }
+  hocas_dialog_opened: { url: '{nazar}/medrese/*/dersler' } # the dialog opens over the same page
+  left: { url: 'about:blank' }
+  # refused, read_failed and not_found are not bound: nothing the stack holds makes either page refuse the başmüderris or fail to read,
+  # and the refusals are nazar.access.medreseNazirRefused's
+
+nodes:
+  # ---- Dersler ----
+  # a bare role=main is also matched on the page a walk leaves for, so each page's is told by its table's caption
+  coursesMain: { role: main, hasText: Medrese dersleri }
+  coursesCounter: { testId: counter, hasText: '/^\d+ ders · \d+ köşkte$/' } # the numbers are the stack's, and other walks add courses
+  # every row's title, a link in the row header; one link per row, the seeded two and the walk's own
+  rowTitle: { css: '[data-testid=courses] tbody th a' }
+  # the link under the table, inside <main>: the sidebar has an "Arşiv" link of its own
+  hiddenNoteLink: { role: link, name: Arşiv, within: { role: main } }
+  # ---- the window ----
+  hideEyebrow: { css: '[role=alertdialog] .mds-eyebrow', hasText: Hadis ve Siyer Medresesi }
+  hideClose: { role: button, name: Kapat, within: { role: alertdialog } } # the toast's close button is also "Kapat"
+  hideCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  hideConfirm: { role: button, name: Gizle, within: { role: alertdialog } }
+  hideBusy: { role: status, hasText: Yükleniyor, within: { role: alertdialog } } # the <output> of the busy button
+  # "{title} talebelerden, ziyaretçilerden ve {köşk}’ün sayfasından gizlenecek; ..." is one <p>; its ending says whether someone is enrolled
+  hideBodyAffected: { css: '[role=alertdialog] p', hasText: '/gizlenecek; celseleri talebelerin takviminden düşecek\. \d+ talebe celselere ve ders kayıtlarına erişemez\.$/' }
+  # ---- Arşiv ----
+  archiveMain: { role: main, hasText: Gizlenen öğeler }
+  # the sidebar's "Dersler" carries a number after it, and the tab "Dersler4" is a link too: this one is inside the main menu
+  coursesLink: { role: link, name: '/^Dersler/', within: { role: navigation, name: Ana menü } }
+  # a tab's name is its label and its count run together (F-A-12); the counts are the walk's data: 4 courses and 8 weeks hidden, one
+  # course fewer after a restore, and a week fewer if a week is the one restored
+  tabAll: { role: link, name: '/^Tümü(11|12)$/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabCourse: { role: link, name: '/^Dersler[34]$/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabWeeks: { role: link, name: '/^Haftalar ve celseler[78]$/', within: { role: navigation, name: Arşivdeki öğe türleri } }
+  tabRecordings: { role: link, name: Ders kayıtları0, within: { role: navigation, name: Arşivdeki öğe türleri } }
+  # the cells of a row: the first is a row header holding the title and, under it, the context; the others are plain cells
+  rowItemTitle: { css: '[data-testid=archive] tbody th bdi.font-semibold' }
+  rowContext: { css: '[data-testid=archive] tbody th .mds-caption' }
+  rowType: { css: '[data-testid=archive] tbody td .mds-badge', hasText: '/^(Ders|Hafta|Celse)$/' } # oneOf is found by its first text only, so a pattern
+  rowHiderName: { css: '[data-testid=archive] tbody td bdi' } # the hider's name; the item cell's own <bdi> is in the row header
+  rowHiderRole: { css: '[data-testid=archive] tbody td .mds-caption', hasText: '/^(Köşk nazımı|Medaris yönetimi|Medrese başmüderrisi \(siz\))$/' } # the restore note is a .mds-caption too, and its words are longer
+  rowWhen: { css: '[data-testid=archive] tbody td time', hasText: '/^Bugün \d{2}:\d{2}$/' } # the walk hides today (archive#2 a8 and a12 read yesterday's and older dates; see the report)
+  # "Geri al: <title>" on every row the person may restore, and the one pressed is the first of them: the page lists newest hidden first,
+  # and the walk's own course is the newest while it is hidden
+  restoreButton: { role: button, name: '/^Geri al: /' }
+  rowRestore: { role: button, name: '/^Geri al: /', nth: 0 }
+  restoreBusy: { css: '[data-testid=archive] output', hasText: Yükleniyor }
+  # the sentences that stand where a higher kademe hid a row
+  lockedKosk: { testId: restore-note, hasText: 'Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir.' }
+  lockedAdmin: { testId: restore-note, hasText: 'Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir.' }
+  pagerRange: { css: 'nav[aria-label="Arşiv sayfaları"] .mds-caption', hasText: '/^\d+–\d+ \/ \d+$/' }

@@ -1,0 +1,237 @@
+# Opening a medrese: the "Medrese aç" form on the Medreseler page (/medreseler), read from the code of PR #394's branch on 15 Nov 2026
+# (apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx, head-picker.tsx, madrasahs-view.tsx, present.ts, actions.ts) and
+# from tedrisat's POST /madrasahs (apps/tedrisat/src/madrasah/madrasah.controller.ts:399, madrasah.service.ts:168). Sibling of
+# nizam.kosks.open, with three differences: one başmüderris, not a list of nazımlar; the short name is optional (the server makes one from
+# the name); and the page offers the button to a Medaris nazımı who holds platform.madrasah_create, as the API does (the köşk's page does not).
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - "Medrese aç" is natively disabled until the name has two letters, the short name (when given) fits and a başmüderris is chosen, and
+#     says nothing of what is missing (F-X-3); the head's own error is written for a submit try that a disabled button cannot make.
+#   - the başmüderris's address is looked up when the field is left, not only on Enter, and tedrisat audits every lookup; the field is
+#     disabled while it searches, so it loses the focus (F-W2-3, F-X-14, F-X-8).
+#   - the search's answer ("no such account", "cannot search now") is drawn only while nobody is chosen, so with a head chosen a second
+#     search that finds nobody says nothing (F-W2-open-1); and a search for an address that was not found is not made again, whatever
+#     the person does to the field, until the address changes (F-W2-open-7).
+#   - the short name is optional and nothing says what an empty one does (F-W2-open-3); the list names the new head from the app's own
+#     users table, so a head who never signed in is listed as "Adı bilinmiyor" (F-W2-open-4, from the code, not seen).
+#   - a refusal is told in a toast and the form stays open; the words for "you named yourself" are the ones written for a head
+#     change (F-W2-open-2); the field error is not a live region and after a taken short name the focus is lost (F-W2-open-6).
+#   - Vazgeç and the close icon stay on and do nothing while the medrese is made (F-W2-open-5).
+schema: delurio-graph/0
+kind: flow
+id: nizam.madrasahs.open
+status: captured
+domain: medaris.api
+ui: nizam.madrasahs.open
+title: Open a medrese
+summary: >-
+  The başnazım, or a Medaris nazımı who holds platform.madrasah_create, opens a medrese. The form asks for a name, a short name that
+  may be left empty (the server then makes one from the name), a description, and the başmüderris, who is found by their exact e-mail
+  address in the realm's directory. The medrese and the başmüderris's role are written together, and the new medrese is listed as Etkin
+  with its head. A short name another medrese uses is refused under its own field; a Medaris nazımı who names themselves head, or a call
+  that is not allowed, is refused in a toast and the form stays open.
+
+scope:
+  shows: the Medrese aç form, the lookup of the başmüderris by e-mail address, the answer of the server and the new row of the list
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the Medreseler list's own tabs, search, passive warning and row buttons: nizam.madrasahs.browse, headMuderris, passivate and restore"
+    - "an ended session: both server calls send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "a Medaris nazımı who does not hold platform.madrasah_create gets no button; when the page could not read their roles it draws the button anyway and the API answers 403 (F-W2-2), which is the answer `forbidden` here"
+    - "an account the realm does not know cannot be chosen from the page; the API does not check the head account at all (the domain's head-account-not-checked), so a head who vanishes between the lookup and the click still gets the medrese"
+    - "what the new medrese needs next, a hosting right in a köşk before it can open a course (nizam.hosting.grantAndRevoke), and the başmüderris managing it from Nazar"
+    - "giving a passive or an active medrese a head, or replacing one: nizam.madrasahs.headMuderris"
+
+context:
+  fields:
+    values: [valid, noHandle, noName, shortName, badHandle]
+    initial: any
+    say:
+      valid: "the name is right and the short name is typed and fits"
+      noHandle: "the name is right and the short name is left empty"
+      noName: "the name is left empty"
+      shortName: "the name has one letter"
+      badHandle: "the short name has capitals, spaces or a hyphen at its ends"
+  lookup:
+    values: [found, notFound, down]
+    initial: any
+    say: { found: "the realm has an account with that e-mail address", notFound: "the realm has none", down: "the directory does not answer" }
+  answer:
+    values: [created, handleTaken, selfNamed, forbidden, failed]
+    initial: any
+    say:
+      created: "the server makes the medrese and gives its head the role"
+      handleTaken: "another medrese has the short name the person typed"
+      selfNamed: "the caller is a Medaris nazımı and chose themselves as the head"
+      forbidden: "the caller may not open a medrese"
+      failed: "anything else: the body is refused or the server does not answer"
+  typed: { values: [true, false], initial: false }
+  chosen: { values: [none, some], initial: none }
+  note: { values: [none, notFound, down], initial: none }
+  said: { values: [none, noName, shortName, badHandle], initial: none }
+  taken: { values: [true, false], initial: false }
+  toast: { values: [none, selfNamed, forbidden, failed], initial: none }
+
+guards:
+  # canOpen(form) of present.ts:280 and `disabled={!canOpen(form) || taken}` of open-madrasah-dialog.tsx:124. An empty short name is allowed.
+  ready: "typed and fields in ['valid', 'noHandle'] and chosen == 'some' and not taken"
+  # HeadPicker draws its search answer only while nobody is chosen (head-picker.tsx:101)
+  pickerError: "chosen == 'none' and note != 'none'"
+  # a short name the server makes is numbered until it is free (madrasah.service.ts:177), so it is never refused as taken
+  made: "answer == 'created' or (answer == 'handleTaken' and fields == 'noHandle')"
+
+effects:
+  typedValid: { set: { typed: true, said: none, taken: false } }
+  typedNoName: { set: { typed: true, said: noName, taken: false } }
+  typedShortName: { set: { typed: true, said: shortName, taken: false } }
+  typedBadHandle: { set: { typed: true, said: badHandle, taken: false } }
+  leftNameEmpty: { set: { said: noName } }
+  chose: { set: { chosen: some, note: none } }
+  nobodyFound: { set: { note: notFound } }
+  directoryDown: { set: { note: down } }
+  removedHead: { set: { chosen: none, note: none } }
+  clearToast: { set: { toast: none } }
+  handleRefused: { set: { taken: true, toast: none } }
+  selfNamedToast: { set: { toast: selfNamed } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  looking:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN]
+  opening:
+    from: createMadrasah
+    taken: [MADRASAH_HANDLE_TAKEN]
+    selfNamed: [SELF_GRANT_REFUSED]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+
+# The main story: the başnazım presses "Medrese aç" on /medreseler, fills the form, finds the başmüderris by e-mail address and opens the medrese.
+main:
+  given: { fields: valid, lookup: found, answer: created }
+  events: [OPEN_FORM, FILL_IN, SEARCH, DONE, SUBMIT, DONE]
+
+initial: madrasahsPage
+states:
+  madrasahsPage:
+    title: Medreseler, the form closed
+    by: human
+    description: >-
+      The directory of every medrese, with its title, its intro and the table. "Medrese aç" is drawn to the başnazım, and to a Medaris
+      nazımı who holds platform.madrasah_create (`madrasahAbilities`, present.ts:105); nobody else gets it. There is no address that opens
+      the form (the köşk page has `?ac=1`, this one has not). The page moves no focus when it opens (no initialFocus).
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:336
+    on:
+      OPEN_FORM: { target: form, say: "they press 'Medrese aç'" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the form the button is on or off. "Medrese aç" is natively disabled
+      (`disabled={!canOpen(form) || taken}`) until the name has two letters, the short name (when given) is 2 to 60 small letters, digits
+      and inner hyphens, a başmüderris is chosen, and the server has not just refused the short name.
+    source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:124
+    always:
+      - { guard: ready, target: formReady, say: "everything is right and a başmüderris is chosen: the button is on" }
+      - { target: form, say: "something is missing or wrong: the button is off, and nothing says which (F-X-3)" }
+
+  form:
+    title: The Medrese aç form, the button off
+    by: human
+    description: >-
+      A dialog over the page; the scrim does not close it, so what was typed is not lost to a stray click. The focus starts in "Ad".
+      "Medrese aç" is natively disabled and nothing says what is missing (F-X-3): the head's own error ("shown when the form was sent
+      without one", head-picker.tsx:20) is never passed, so a person who has filled the rest finds a dead button and no word about the
+      başmüderris. A name that is empty or one letter, and a short name that is not allowed, are said under their field once the field was
+      left; the message replaces the help line and is not a live region (F-X-2). The short name may stay empty: nothing says what then
+      (F-W2-open-3). The başmüderris's address is searched on Enter and also when the field is left, if it looks like an address and
+      is not the one last searched (F-W2-3, F-X-14).
+    source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:107
+    on:
+      FILL_IN:
+        - { guard: "fields == 'valid'", target: settle, effect: [typedValid], say: "they fill in the name, the short name and the description" }
+        - { guard: "fields == 'noHandle'", target: settle, effect: [typedValid], source: apps/nizam/features/madrasahs/present.ts:276, say: "they fill in the name and the description and leave 'Kısa ad' empty: the form takes it and no message appears" }
+        - { guard: "fields == 'noName'", target: settle, effect: [typedNoName], source: apps/nizam/features/madrasahs/present.ts:268, say: "they leave the name empty and move on: 'Bir ad yazın.' appears under it" }
+        - { guard: "fields == 'shortName'", target: settle, effect: [typedShortName], source: apps/nizam/features/madrasahs/present.ts:269, say: "the name is one letter and they move on: 'Ad en az 2 harf olmalı.'" }
+        - { guard: "fields == 'badHandle'", target: settle, effect: [typedBadHandle], source: apps/nizam/features/madrasahs/present.ts:276, say: "the short name is not allowed and they move on: it says so under the field" }
+      SEARCH:
+        - { guard: "not typed", target: looking, effect: [leftNameEmpty], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:150, say: "they go to the başmüderris's address before the name: 'Ad' had the focus and is now left empty, so 'Bir ad yazın.' appears at once; then they type the address and press Enter, or leave the field" }
+        - { target: looking, source: apps/nizam/features/madrasahs/components/head-picker.tsx:53, say: "they type the başmüderris's e-mail address and press Enter, or leave the field" }
+      REMOVE_HEAD: { guard: "chosen == 'some'", target: settle, effect: [removedHead], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen başmüderris: nothing asks first and the focus is not moved" }
+      CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:109, say: "Vazgeç or the close icon: the form closes and nothing is made; the focus goes back to 'Medrese aç'" }
+      ESCAPE: { target: closed, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:109, say: "Escape closes it as Vazgeç does (madrasahs.e2e.ts#6)" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  formReady:
+    title: The Medrese aç form, the button on
+    by: human
+    description: The same form with "Medrese aç" on; pressing it sends the medrese.
+    source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:121
+    on:
+      FILL_IN: { guard: "fields in ['valid', 'noHandle']", target: settle, effect: [typedValid], source: apps/nizam/features/madrasahs/present.ts:280, say: "they change what they typed and it is still right (a change that makes it wrong is taken from `form`: `fields` is the one case a walk takes)" }
+      SEARCH: { target: looking, source: apps/nizam/features/madrasahs/components/head-picker.tsx:53, say: "they look up another account: the answer replaces the chosen başmüderris without a word" }
+      REMOVE_HEAD: { guard: "chosen == 'some'", target: settle, effect: [removedHead], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen başmüderris: the button goes off" }
+      SUBMIT: { target: opening, effect: [clearToast], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:74, say: "they press 'Medrese aç'" }
+      CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:109, say: "Vazgeç or the close icon: the form closes and nothing is made; the focus goes back to 'Medrese aç'" }
+      ESCAPE: { target: closed, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:109, say: "Escape closes it as Vazgeç does" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  looking:
+    title: Look the başmüderris up
+    description: >-
+      The server action lookupUserByEmail, GET /users/lookup: the realm's directory is searched for the exact address (0 or 1 account)
+      and tedrisat writes the search to the audit log, found or not. The e-mail field is disabled while it runs, so it loses the focus
+      (F-W2-3, F-X-8); a hidden output says "Aranıyor". The rest of the form stays live: Vazgeç still closes it, and "Medrese aç" keeps the
+      state it had (not drawn here). A found account becomes the head, replacing one already chosen. An address that was not found is
+      remembered: asking for the same address again, with nothing else typed in between, makes no search (F-W2-open-7).
+    source: apps/nizam/features/madrasahs/actions.ts:123
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "lookup == 'found'", target: settle, effect: [chose], source: apps/nizam/features/madrasahs/components/head-picker.tsx:61, say: "the account becomes the başmüderris, shown as a card with its name, and the field is cleared; one already chosen is replaced without a word" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/madrasahs/components/head-picker.tsx:66, say: "no account with that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field, if nobody is chosen yet; with a head chosen nothing is said (F-W2-open-1)" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/madrasahs/components/head-picker.tsx:68, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.', if nobody is chosen yet" }
+      CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:109, say: "they close the form while the search runs; its answer is dropped" }
+
+  opening:
+    title: Make the medrese
+    description: >-
+      The server action openMadrasah, POST /madrasahs: the medrese, one MEDRESE_BASMUDERRIS role assignment for the chosen account and the
+      audit row madrasah.create, in one transaction. Without a short name the server makes one from the name (Turkish letters
+      transliterated, small letters, hyphens), numbered -2, -3 and so on until it is free. A Medaris nazımı who names themselves is
+      refused; the başnazım may. The fields are disabled while it runs and "Medrese aç" is busy (aria-disabled, aria-busy, hidden
+      "Yükleniyor"); Vazgeç and the close icon stay on and do nothing (F-W2-open-5).
+    source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:74
+    invoke: { action: createMadrasah }
+    on:
+      DONE: { guard: made, target: opened, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:96, say: "the medrese exists: a toast says so, the form closes, the list is read again and the focus goes back to 'Medrese aç'; a short name the server made is never refused as taken" }
+      FAIL.taken: { guard: "answer == 'handleTaken' and fields == 'valid'", target: settle, effect: [handleRefused], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:86, say: "'@{short name} başka bir medresede kullanılıyor.' under the field, and the button stays off until the field is edited; no toast (F-W2-open-6)" }
+      FAIL.selfNamed: { guard: "answer == 'selfNamed'", target: settle, effect: [selfNamedToast], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:90, say: "a toast 'Medrese açılamadı' with the words written for a head change, 'Size verilmiş bir rolü ya da izni devralamazsınız…' (F-W2-open-2); nothing is made; the form stays open" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:90, say: "a toast says they may not do this; the form stays open" }
+      FAIL.failed: { guard: "answer == 'failed'", target: settle, effect: [failedToast], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:90, say: "a toast says something went wrong, try again; the form stays open" }
+
+  opened:
+    type: final
+    title: The medrese is open
+    description: >-
+      The toast "Medrese açıldı" ("{name} açıldı; başmüderrisi {head}.") says so, the form closes, the list is read again (router.refresh)
+      and the new medrese is a row of the table: its name and "@short name", its başmüderris, "Etkin". The focus goes back to 'Medrese aç',
+      which the page still draws. The head is named in the row by the app's own users table: an account that never signed in would read
+      "Adı bilinmiyor" there (F-W2-open-4).
+
+  closed:
+    type: final
+    title: The form is closed and nothing was made
+    description: The form closed by Vazgeç, the close icon or Escape; the focus is on 'Medrese aç'.
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: a-form-that-is-on-is-the-one-sent, never: "state == 'opening' and not ready", say: "Only a form the button allowed is sent: a name, a short name that fits or none, and a başmüderris", source: apps/nizam/features/madrasahs/present.ts:280 }
+  - { id: never-without-a-head, never: "state == 'opening' and chosen == 'none'", say: "A medrese is never opened without a başmüderris", source: apps/nizam/features/madrasahs/present.ts:284 }
+  - { id: a-refused-short-name-is-not-sent-again, never: "state == 'opening' and taken", say: "A short name the server has refused is not sent again before it is edited", source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:124 }

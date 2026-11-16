@@ -1,0 +1,102 @@
+# tedris.decks.editOrDelete on the local stack (graphs/bindings/local.tedris.binding.yaml): tedris-web on :4000, the spare talebe `applicantA` (a woman,
+# every profile attribute set, no enrolment) signed in through Keycloak's real form, on the author's own deck.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/editOrDelete \
+#     --bind graphs/tedris/decks/editOrDelete/binding.yaml [--to saved] [--cover transitions] --out <dir>
+#
+# NOT RUN in the writing phase: no replay has been run on this flow; the walk phase takes every scenario below.
+#
+# Replay data. Nothing seeded is touched. `setup` makes a deck of the walk's own as `applicantA` (deck.mjs make: private, "Deneme destesi: düzenleme", a
+# description and three cards; --pending also asks for its publication) and `teardown` removes it (deck.mjs remove), which finds the decks by author and by
+# the title's beginning, so the renamed deck goes too and a walk that died leaves nothing the next one trips on. Everything a walk writes goes through
+# the page; the only SQL is the `effects` reads of the deck's own row (walk.common.binding.yaml). The notifications and mail of a publication request: the
+# API sends none for a request (flashcard-deck.service.ts:269-285), so there is nothing to clear.
+#
+# Scenarios, one for each case that adds a transition (the `given` of two scenarios of a file must differ):
+#   edits      the main story, on a deck whose request waits: the dialog with its note, a new name and description, "Kaydet", "Deste güncellendi", the status
+#              still "Yayın isteği bekliyor" (e2e decks#14); and, as the cover walks it, the delete of the same deck: the confirmation, "Vazgeç" (decks#16
+#              steps 1-4), the other close, then "Desteyi sil" (steps 5-7)
+#   unchanged  "Kaydet" with nothing typed: the dialog closes, nothing is sent
+#   noName     the name cleared: "Bir deste adı yaz." (decks#14 step 7)
+#   shortName  a name of three letters: "Deste adı en az 5 karakter olmalı."
+# The same story on a private deck is binding.private.yaml; a save or a delete the server refuses is binding.refused.yaml.
+# Not bound (the planner finds no steps; reported): `sent_to_sign_in`, from `saving`, `savingClosed`, `deleting` and `deletingClosed` (a session that ends
+# between the click and the answer cannot be made on request), and the INTERNAL_ERROR code of `saving`'s class `failed` (the page never sends the body that
+# makes it). Bound by the planner and doubtful at the walk: `savingClosed` and `deletingClosed` (the dialog closed with "Vazgeç" or the close icon while the
+# call is out, which a held `call` has to be let go of for the press to land).
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.editOrDelete
+
+scenarios:
+  edits:
+    given: { publication: pending, fields: changed, answer: ok }
+    as: applicantA
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    vars:
+      deck: '{eod.deck}'
+      typedTitle: 'Deneme destesi: düzenlendi'
+      typedDescription: Düzenlemeden sonraki açıklama.
+      newTitle: 'Deneme destesi: düzenlendi'
+      wantStatus: PENDING
+    setup:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, make, --pending]
+        expect: deck made
+    teardown:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, remove]
+        expect: deck remove
+
+  unchanged:
+    given: { publication: private, fields: unchanged, answer: ok }
+    as: applicantA
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    vars:
+      deck: '{eod.deck}'
+      typedTitle: 'Deneme destesi: düzenleme'
+      typedDescription: Düzenlemeden önceki açıklama.
+      newTitle: 'Deneme destesi: düzenleme'
+      wantStatus: PRIVATE
+    setup:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, make]
+        expect: deck made
+    teardown:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, remove]
+        expect: deck remove
+
+  noName:
+    given: { publication: private, fields: noName, answer: ok }
+    as: applicantA
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    vars:
+      deck: '{eod.deck}'
+      typedTitle: ''
+      typedDescription: Düzenlemeden önceki açıklama.
+      newTitle: 'Deneme destesi: düzenleme'
+      wantStatus: PRIVATE
+    setup:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, make]
+        expect: deck made
+    teardown:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, remove]
+        expect: deck remove
+
+  shortName:
+    given: { publication: private, fields: shortName, answer: ok }
+    as: applicantA
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    vars:
+      deck: '{eod.deck}'
+      typedTitle: Abc
+      typedDescription: Düzenlemeden önceki açıklama.
+      newTitle: 'Deneme destesi: düzenleme'
+      wantStatus: PRIVATE
+    setup:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, make]
+        expect: deck made
+    teardown:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, remove]
+        expect: deck remove

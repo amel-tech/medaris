@@ -1,0 +1,10 @@
+# The way into nazar.decks.publishAndDelete: the list of the course's decks (/ders/<id>/deste), then the deck's own card. The nav binding gives no locator for an
+# entry that needs an item (`data: true`) and skips this one ("the stack seeds no deck"), so this file names the card by its address: the card is an
+# <a href="/ders/<course>/deste/<deck>"> (apps/nazar/features/decks/components/decks-page.tsx:104), and {course} and {deck} are the scenario's own `vars`.
+schema: delurio-graph/0
+kind: binding
+nav: nazar.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'dersDeck->dersDeckOne': { css: 'a[href="/ders/{course}/deste/{deck}"]', nth: 0 }

@@ -1,0 +1,12 @@
+# The way into nizam.decks.legacyCards from the köşk decks page: the nav graph's entry `koskDecks->legacyDeckCards`, the "Kartları düzenle" button of a köşk
+# deck. The entry is `data: true` (one button for each deck of the köşk) and the nav binding skips it because the seed makes no köşk deck; here the walk's own
+# deck is in the page (helpers of this folder: deck-data.mjs make mine), and the button is found by its address: the button is a link (`Button href`,
+# apps/nizam/features/deck-review/components/kosk-decks-view.tsx:221-226), its accessible name is the aria-label "<deck> kartlarını düzenle" (not "Kartları
+# düzenle": the label is not in the name, which nizam.decks.koskDecks owns), and {deck} is the scenario's own `vars`.
+schema: delurio-graph/0
+kind: binding
+nav: nizam.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'koskDecks->legacyDeckCards': { css: 'a[href="/decks/{deck}/cards"]', nth: 0 }

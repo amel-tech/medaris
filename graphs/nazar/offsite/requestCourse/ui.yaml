@@ -1,0 +1,113 @@
+# The screens of nazar.offsite.requestCourse: the page "Medrese dışı ders talebi" (/medrese/<id>/dersler/talep) with its header,
+# the form, the list of köşks, the card of what follows, the busy send, the toasts, and the page's three other answers (the
+# refusal, no köşk listed, a read that failed). Read from apps/nazar/features/offsite (offsite-page.tsx, offsite-form.tsx,
+# offsite.ts) and the kit's Field, Select, Alert and Breadcrumb on 15 Nov 2026; nothing here was looked at in a browser, so every
+# focus, role and name is "from the code" unless a node says otherwise. The words are copied, key for key, from
+# libs/i18n/src/locales/tr/nazar.json (root key removed). `composed.Offsite.koskName` is the one text the app builds and keeps in
+# no file: the label of each köşk in the list is the köşk's own name (offsite-form.tsx:135-138).
+# `changes` is the app's own message that tells the person what the send does (Offsite.sentBody: what was sent, and to whose
+# nazım); the app has no message for the rest ("no course is made", "nothing shows the request afterwards"), and a graph never
+# invents one.
+schema: delurio-graph/0
+kind: ui
+id: nazar.offsite.requestCourse
+flow: nazar.offsite.requestCourse
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Offsite.sentBody }
+samples:
+  title: Erbaîn-i Nevevî okumaları
+  koskGenitive: Arz Deneme Köşkü’nün
+  otherGenitive: Süleymaniye Köşkü’nün
+  name: Arz Deneme Köşkü
+
+# The page keeps no focus of its own on load (nothing in features/offsite sets it), so there is no `initialFocus` on the page
+# (rule focus-not-set). A refused send does move the focus, to the first wrong text field (offsite-form.tsx:62-70), and that is
+# the one `focus` below: it is entered from `form` by a refused press.
+focus:
+  refusedTitle: nameField
+  refusedReason: reasonField
+
+nodes:
+  # ---- the page and its header, drawn whatever the reads answered -------------------------------------------------------------
+  offsitePage: { type: page, component: Page, role: main, in: [form, refusedTitle, refusedReason, choosingKosk, sending, refused, noKosk, unreadable], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  trail: { type: page, component: Page, role: navigation, name: { key: Offsite.breadcrumb }, in: [form, refusedTitle, refusedReason, choosingKosk, sending, refused, noKosk, unreadable], source: libs/ui/src/mds/breadcrumb.tsx:25 } # the kit's Breadcrumb: a list of "Dersler" (a link) and the page's own name (aria-current="page")
+  trailCourses: { type: action, component: LinkButton, role: link, text: { key: Courses.title }, in: [form, refusedTitle, refusedReason, choosingKosk, sending, refused, noKosk, unreadable], emits: OPEN_COURSES, source: apps/nazar/features/offsite/components/offsite-page.tsx:54 } # a plain <a> to /medrese/<id>/dersler
+  trailCurrent: { type: text, component: Text, text: { key: Offsite.title }, in: [form, refusedTitle, refusedReason, choosingKosk, sending, refused, noKosk, unreadable], source: libs/ui/src/mds/breadcrumb.tsx:37 } # the same words as the h1; the binding finds it by aria-current
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.title }, in: [form, refusedTitle, refusedReason, choosingKosk, sending, refused, noKosk, unreadable], source: apps/nazar/features/offsite/components/offsite-page.tsx:58 } # h1
+  intro: { type: text, component: Text, text: { key: Offsite.intro }, in: [form, refusedTitle, refusedReason, choosingKosk, sending, refused, noKosk, unreadable], source: apps/nazar/features/offsite/components/offsite-page.tsx:59 }
+
+  # ---- the form ---------------------------------------------------------------------------------------------------------------
+  requiredNote: { type: text, component: Text, text: { key: Offsite.required }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], source: apps/nazar/features/offsite/components/offsite-form.tsx:123 } # the paragraph reads "* zorunlu alan"; the message is the part after the star
+
+  koskSelect: { type: field, component: TextField, role: combobox, text: { key: Offsite.kosk.label }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], emits: OPEN_KOSK, source: apps/nazar/features/offsite/components/offsite-form.tsx:132 } # the kit's Select, a button that shows the chosen köşk's name; named by its label; no `required` is passed to it (OFFSITE-3)
+  koskHelp: { type: text, component: Text, text: { key: Offsite.kosk.help }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], source: apps/nazar/features/offsite/components/offsite-form.tsx:127 } # its error, "Bir köşk seçin.", can never be drawn (OFFSITE-3), so the help always stands
+
+  nameField: { type: field, component: TextField, role: textbox, text: { key: Offsite.name }, value: { literal: "" }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], source: apps/nazar/features/offsite/components/offsite-form.tsx:156 } # name=title, required, autocomplete off; the label's asterisk is decorative
+  nameHelp: { type: text, component: Text, text: { key: Offsite.nameHelp }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "not titleSaid", source: apps/nazar/features/offsite/components/offsite-form.tsx:146 } # the error replaces the help line
+  nameError: { type: text, component: Text, text: { key: OpenCourse.nameProblems.required }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: titleSaid, source: apps/nazar/features/offsite/components/offsite-form.tsx:147 } # a plain <div class=mds-error> that Base UI ties to the box with aria-describedby; no role, no live region (F-L-12); a name of one character says OpenCourse.nameProblems.short instead (not drawn)
+
+  reasonField: { type: field, component: TextField, role: textbox, text: { key: Offsite.reason }, value: { literal: "" }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], source: apps/nazar/features/offsite/components/offsite-form.tsx:178 } # a textarea of five rows, name=reason, required
+  reasonHelp: { type: text, component: Text, text: { key: Offsite.reasonHelp }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "not reasonSaid", source: apps/nazar/features/offsite/components/offsite-form.tsx:169 }
+  reasonError: { type: text, component: Text, text: { key: Offsite.reasonProblems.required }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: reasonSaid, source: apps/nazar/features/offsite/components/offsite-form.tsx:172 } # over 2000 characters it says Offsite.reasonProblems.long (not drawn)
+
+  cancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: Offsite.cancel }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], emits: CANCEL, source: apps/nazar/features/offsite/components/offsite-form.tsx:189 } # a ghost button that is an <a href="/medrese/<id>/dersler">: a link, not a button
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: Offsite.submit }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], disabledIn: [sending], emits: SUBMIT, source: apps/nazar/features/offsite/components/offsite-form.tsx:192 } # never disabled while the form is wrong; busy (aria-disabled, aria-busy) while it is sent
+  sendingStatus: { type: status, component: Status, role: status, text: { key: Offsite.sending }, in: [sending], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the button; empty the rest of the time
+
+  # ---- the list of köşks, open (the kit's Select popup) -----------------------------------------------------------------------
+  koskList: { type: list, component: List, role: listbox, in: [choosingKosk], source: libs/ui/src/mds/select.tsx:80 } # no name of its own: the kit sets no aria-label on the list
+  optKosk: { type: field, component: ListItem, role: option, text: { key: composed.Offsite.koskName, params: { name: kosk.name } }, repeat: kosks, in: [choosingKosk], source: libs/ui/src/mds/select.tsx:82 } # one option per köşk the API listed, by name; the walk chooses one by its name
+
+  # ---- the card of what follows -----------------------------------------------------------------------------------------------
+  afterRegion: { type: page, component: Page, role: region, name: { labelledBy: afterTitle }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], source: apps/nazar/features/offsite/components/offsite-form.tsx:202 } # a <section aria-labelledby>
+  afterTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.afterTitle }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], source: apps/nazar/features/offsite/components/offsite-form.tsx:206 } # h2
+  afterNamedFirst: { type: text, component: Text, text: { key: Offsite.after.oneNamed, params: { koskGenitive: koskGenitive } }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "kosk == 'first'", source: apps/nazar/features/offsite/components/offsite-form.tsx:105 } # the first köşk by name, chosen from the start
+  afterNamedOther: { type: text, component: Text, text: { key: Offsite.after.oneNamed, params: { koskGenitive: otherGenitive } }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "kosk == 'other'", source: apps/nazar/features/offsite/components/offsite-form.tsx:105 } # follows the choice at once (e2e offsite#3 a1)
+  afterUnnamed: { type: text, component: Text, text: { key: Offsite.after.one }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "kosk == 'gone'", source: apps/nazar/features/offsite/components/offsite-form.tsx:109 } # the köşk is no longer among the listed ones (OFFSITE-2)
+  afterTwo: { type: text, component: Text, text: { key: Offsite.after.two }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], source: apps/nazar/features/offsite/components/offsite-form.tsx:111 } # e2e offsite#1 a7
+  afterThree: { type: text, component: Text, text: { key: Offsite.after.three }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], source: apps/nazar/features/offsite/components/offsite-form.tsx:112 }
+
+  # ---- the page's other answers -----------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [refused], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a neutral Alert is a status, not an alert; its title is a paragraph (F-A-16)
+
+  noKoskAlert: { type: alert, component: Alert, role: status, name: { key: Offsite.noKoskTitle }, text: { key: Offsite.noKosk }, in: [noKosk], source: apps/nazar/features/offsite/components/offsite-page.tsx:70 } # tone warning: still a status
+  noKoskBack: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Offsite.back }, in: [noKosk], emits: BACK, source: apps/nazar/features/offsite/components/offsite-page.tsx:72 }
+
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:33 } # a <section aria-labelledby> inside the shell's <main>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Offsite.loadFailedTitle }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:43 } # h1, under the page's own h1 (F-A-1, F-L-16)
+  failedText: { type: text, component: Text, text: { key: Offsite.loadFailed }, in: [unreadable], source: libs/ui/src/mds/system-state.tsx:46 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [unreadable], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+
+  # ---- the toasts: a region "Bildirimler", each toast a dialog; an error toast is an alertdialog and stays until it is closed -----
+  toastSent: { type: status, component: Status, role: dialog, name: { key: Offsite.sent }, text: { key: Offsite.sentBody, params: { title: title, koskGenitive: koskGenitive } }, in: [sent], source: apps/nazar/features/offsite/components/offsite-form.tsx:81 } # tone success: it closes by itself after six seconds; drawn on Dersler
+  toastKoskGone: { type: alert, component: Alert, role: alertdialog, name: { key: Offsite.failedTitle }, text: { key: Offsite.errors.kosk }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "toast == 'koskGone'", source: apps/nazar/features/offsite/components/offsite-form.tsx:92 }
+  toastInvalid: { type: alert, component: Alert, role: alertdialog, name: { key: Offsite.failedTitle }, text: { key: Offsite.errors.invalid }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "toast == 'invalid'", source: apps/nazar/features/offsite/components/offsite-form.tsx:92 }
+  toastForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: Offsite.failedTitle }, text: { key: Problems.actionForbidden }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "toast == 'forbidden'", source: apps/nazar/features/offsite/components/offsite-form.tsx:92 }
+  toastOther: { type: alert, component: Alert, role: alertdialog, name: { key: Offsite.failedTitle }, text: { key: Problems.actionGeneric }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "toast == 'other'", source: apps/nazar/features/offsite/components/offsite-form.tsx:92 }
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { literal: Kapat }, in: [form, refusedTitle, refusedReason, choosingKosk, sending], when: "toast != 'none'", source: libs/ui/src/mds/toast.tsx:95 } # the toast's own close button; its name is written in the kit (aria-label="Kapat"), not in a catalog
+
+edges:
+  - { labelledBy: [afterRegion, afterTitle] }
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { triggers: [koskSelect, choosingKosk] }
+  - { triggers: [submit, sending] }
+
+rules:
+  - { id: focus-not-set, rule: "No page here sets an initial focus: after the load the focus is on the document (from the code: nothing in features/offsite calls focus() except the refused send). After a refused 'Talebi gönder' the focus goes to the first wrong text field, the name or else the reason (offsite-form.tsx:62-70, e2e offsite#2 a3); a köşk-only problem would move it nowhere. After a send the form is gone with the page, and Dersler opens with the focus where Next leaves it. The graph says only the focus of the refused send." }
+  - { id: F-A-1, rule: "= F-L-16. When a read fails the page draws LoadFailed beside its own header, and its SystemState heading is an h1 (system-state.tsx:43, headingLevel defaults to 1) under the page's h1 (offsite-page.tsx:58): two level-1 headings. Fix: pass headingLevel={2} when the state is inside the shell." }
+  - { id: F-A-4, rule: "Does not touch this page. It is the hoca picker's search outcomes (features/courses/components/muderris-picker.tsx), a control of the open-course form; the offsite form has no picker. FLOWS.md lists F-A-4, F-A-5 and F-A-6 under this flow, apparently for the shared field-error shape; the field-error finding that does apply is F-L-12." }
+  - { id: F-A-5, rule: "Does not touch this page (the open-course form's hoca-list errors, open-course-form.tsx:102-111). Here the title and reason errors are drawn by the kit's Field, are tied to their boxes by aria-describedby, and the refused send puts the focus on the first of them, so that error is read; the second wrong field's error is read only when she reaches it (F-L-12, F-L-18)." }
+  - { id: F-A-6, rule: "Does not touch this page (the köşk RadioGroup of the open-course form, open-course-form.tsx:147-170). Here the köşk is a Select inside a Field; its own error line would be a Field error too, and a köşk-only problem moves the focus nowhere (offsite-form.tsx:62-70), but that problem cannot be reached (OFFSITE-3)." }
+  - { id: F-A-10, rule: "No try/catch around the awaited server action (offsite-form.tsx:74-98): when the call itself rejects (the network), the transition ends with the button still busy, no toast is drawn, and React hands the error to the nearest boundary. Not verified in a browser. Fix: catch, toast Problems.actionGeneric, clear the busy state." }
+  - { id: F-A-16, rule: "The refusal 'Bu sayfaya izniniz yok' is a neutral Alert, whose role is status, already in the page at load, so it is not announced; its title is a paragraph, not a heading. The h1 still names the page, so the refusal is read only when browsing (page-problem.tsx:25, libs/ui/src/mds/alert.tsx:23)." }
+  - { id: F-L-12, rule: "Field errors have no role=alert or live region (libs/ui/src/mds/field.tsx:50-53). On this form the refused send focuses the first wrong text field, and Base UI ties the error to the box (aria-describedby), so that one is read; the second wrong field's error, and an error that appears while she types after the first try, are not announced." }
+  - { id: F-L-6, rule: "The toasts sit in a region named 'Bildirimler' (libs/ui/src/mds/toast.tsx:127-131), the same word as the menu entry and the bell, and the toast's close button is named 'Kapat' in the kit, outside the catalog (toast.tsx:97)." }
+  - { id: OFFSITE-1, rule: "New. The page reads the medrese's own requests (GET /madrasahs/:id/offsite-course-requests: every request of the medrese, any status, with its köşk, sender and state) only to learn whether she may open the page, and draws none of them (offsite-page.tsx:38-46, the only use of getOffsiteCourseRequests in apps/nazar). After 'Talep gönderildi' no page of nazar shows what she sent or whether the köşk's nazım has answered; the API sends no notification when the request is made or answered (apps/tedrisat/src/course-request has no notification call); a rejection comes back only as a row on İtirazlar. The toast says 'iletildi' and nothing more is ever said about an accepted or a waiting request. Fix: list the requests under the form (title, köşk, state, the köşk's reason when rejected), or notify her when they are decided. See decision D1." }
+  - { id: OFFSITE-2, rule: "New, from the code, not verified in a browser. When the API answers KOSK_NOT_FOUND the form calls router.refresh() (offsite-form.tsx:97) so the page reads the köşks again, but OffsiteForm keeps its useState draft (the chosen köşk's id is set once, offsite-form.tsx:48-52). The Select is controlled by that id, so after the refresh its value is no longer among its items, and Base UI shows the raw value in that case (internals/resolveValueLabel.js, the fallback of resolveSelectedLabel: the id, not a name); the card's first line falls back to 'seçtiğiniz köşkün' (kosk not found, offsite-form.tsx:109); and pressing 'Talebi gönder' again sends the gone id and is refused again. The toast says 'yeniden seçin' but nothing marks the old choice as gone. Fix: reset the choice to the first listed köşk, or to none, when the list no longer holds it (a key on the form that follows the list)." }
+  - { id: OFFSITE-3, rule: "New. The köşk's error 'Bir köşk seçin.' (Offsite.kosk.required) and its placeholder 'Köşk seçin' can never be seen: the draft starts with the first köşk, and the form is drawn only when at least one is listed (offsite-form.tsx:48-52, offsite-page.tsx:69), so koskId is never null. The same field gets no `required` (Field.required only draws the decorative asterisk; the Select is not passed it, offsite-form.tsx:124-142), unlike the name and the reason, so a screen reader is not told it is required. Dead messages in the catalog; harmless today." }
+  - { id: OFFSITE-4, rule: "New. The page maps both of its reads into one answer (kosks = access.status === 'ok' ? listed : access, offsite-page.tsx:46), so when only the permission probe fails (a 500 on GET /madrasahs/:id/offsite-course-requests) the person reads 'Köşk listesi şu an okunamadı' although the köşk list was fine. Worded about the wrong read. Fix: its own message for the probe, or probe with the köşk read's failure kept apart." }
+  - { id: label-in-name, rule: "The visible text of every button and link is its accessible name or in it (WCAG 2.5.3): 'Talebi gönder', 'Vazgeç', 'Dersler', 'Derslere dön', 'Yeniden dene'. The köşk Select's name is its label 'Köşk' (e2e offsite#1 a2 finds it by that label). Holds." }
+  - { id: list-has-no-name, rule: "The open list of köşks is an unnamed listbox: the kit's Select sets no aria-label on BaseSelect.List (libs/ui/src/mds/select.tsx:80). The same Select is measured so in tedris.discover.applyForKosk. Fix: name the list with the field's label in the kit." }
+  - { id: no-course-is-made, rule: "Sending makes a CourseRequest, not a course: no course is created, nothing is added to the medrese's list, and the talebe of the course the köşk may open later are not the medrese's (the card's third line; e2e offsite#3 a5, a6)." }

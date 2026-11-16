@@ -1,0 +1,96 @@
+# What tedris.decks.explore's two bindings share (binding.yaml: the scenario `mixed`; binding.publicOnly.yaml: `publicOnly`): the data, the events the
+# page has no node for, the addresses of the exits, the two checks of what a write leaves, and the locators of the nodes that role and name cannot find.
+# It has no scenario, so it is never replayed by itself. Not replayed at all in the writing phase: see binding.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.explore
+
+data:
+  # the ids public-decks.mjs wrote ({"hadith","vocab","own"}); the file does not exist before `setup` has run
+  explore: { json: ../.local/explore-decks.json }
+
+events:
+  # an address typed or followed (e2e decks#7): a new document, and the value is neither of the two types, so it is no filter
+  OPEN_BAD_TYPE:
+    - goto: '{tedris}/decks/explore?type=QUIZ'
+  # the box has no node that sends an event: the binding fills it; the lists narrow in the browser, with no read
+  TYPE_WORD:
+    - fill: { role: searchbox, name: Ad ya da açıklamada ara, value: '{word}' }
+    - waitText: 'Aramana uyan deste yok.'
+  TYPE_NOTHING:
+    - fill: { role: searchbox, name: Ad ya da açıklamada ara, value: zzzzzz }
+    - waitText: 'Aramana uyan deste yok.'
+  CLEAR_SEARCH:
+    - fill: { role: searchbox, name: Ad ya da açıklamada ara, value: '' }
+  RELOAD:
+    - reload: true
+  NAVIGATE:
+    - goto: '{tedris}/notifications'
+
+states:
+  explored: { url: '{tedris}/decks/explore**' }
+  # a server action is a POST to the page's own address
+  adding: { call: '{tedris}/decks/explore**' }
+  removing: { call: '{tedris}/decks/explore**' }
+  deck_opened: { url: '{tedris}/decks/{openedDeck}' }
+  own_deck_opened: { url: '{tedris}/decks/{explore.own}' }
+  decks_opened: { url: '{tedris}/decks' }
+  sent_to_sign_in: { url: '{keycloak}/realms/medaris/**' }
+  left: { url: '{tedris}/notifications' }
+
+effects:
+  # e2e decks#8: the row is there after the add and gone after the take-out (the e2e reads it back on Desteler, tedris.decks.browse's page)
+  collectDeck:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from decks_users where user_id = '{viewerSub}' and deck_id = '{explore.hadith}'"
+      expect: '"n":1'
+  uncollectDeck:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from decks_users where user_id = '{viewerSub}' and deck_id = '{explore.hadith}'"
+      expect: '"n":0'
+
+# Where role and name cannot find a node. The page and its neighbours share words (Desteler's own header link "Desteler", its "Desteleri keşfet" link, a
+# chip "Hadis" inside the names of the buttons "Koleksiyona ekle: Zümrüt hadis seçkisi"), so each is found by its place and by an anchored name. The cards
+# are data (a deck, a course, a person), so the repeated nodes are found by the kit's own classes inside the list the section's heading names, and the
+# deck links and buttons that name one deck by that deck's name (a repeat node shows at least one item, so a locator narrower than the whole list is
+# accepted). A bare `main` is also the page a walk leaves for: Desteler's <main> holds the link "Desteleri keşfet", so the page is found by its
+# subtitle, and by the box's title when the read has failed.
+nodes:
+  explorePage: { role: main, hasText: '/Herkese açık desteler ve kayıtlı olduğun derslerin desteleri|Desteler yüklenemedi/' }
+  crumbDecks: { role: link, name: '/^Desteler$/', within: { role: navigation, name: Sayfa yolu } }
+  searchRegion: { css: 'main search' }
+  chipAll: { role: button, name: '/^Tümü$/', within: { role: group, name: Kart türü } }
+  chipVocabulary: { role: button, name: '/^Kelime$/', within: { role: group, name: Kart türü } }
+  chipHadeeth: { role: button, name: '/^Hadis$/', within: { role: group, name: Kart türü } }
+  # "Derslerinin desteleri"
+  courseCount: { css: 'span.mds-caption', hasText: '/^\d+ deste$/', within: { role: region, name: Derslerinin desteleri } }
+  courseEmptySearch: { text: Aramana uyan deste yok., within: { role: region, name: Derslerinin desteleri } }
+  courseItem: { role: listitem, within: { role: list, name: Derslerinin desteleri } }
+  courseLink: { role: link, name: '{courseDeckTitle}', within: { role: list, name: Derslerinin desteleri } }
+  courseKind: { css: '.mds-badge', hasText: '/^(Ders destesi|Köşk destesi|Medrese destesi)$/', within: { role: list, name: Derslerinin desteleri } }
+  courseContext: { css: 'p.mds-card__body', hasText: '/·/', within: { role: list, name: Derslerinin desteleri } }
+  courseMeta: { css: '.mds-card__footer span.whitespace-nowrap', hasText: '/^\d+ kart·(Kelime|Hadis)$/', within: { role: list, name: Derslerinin desteleri } }
+  courseAdd: { role: button, name: 'Koleksiyona ekle: {courseDeckTitle}' }
+  # "Herkese açık desteler"
+  publicCount: { css: 'span.mds-caption', hasText: '/^\d+ deste$/', within: { role: region, name: Herkese açık desteler } }
+  publicEmptySearch: { text: Aramana uyan deste yok., within: { role: region, name: Herkese açık desteler } }
+  publicItem: { role: listitem, within: { role: list, name: Herkese açık desteler } }
+  publicLink: { role: link, name: '{deckTitle}', within: { role: list, name: Herkese açık desteler } }
+  publicMeta: { css: '.mds-card__footer span.whitespace-nowrap', hasText: '/^\d+ kart·(Kelime|Hadis)$/', within: { role: list, name: Herkese açık desteler } }
+  ownLink: { role: link, name: '{ownDeckTitle}' }
+  yours: { text: Senin desten, within: { role: listitem, hasText: '{ownDeckTitle}' } }
+  # the deck the flow acts on: its card holds the badge, the button's name carries the deck's name (the sample `title`)
+  collectedBadge: { text: Koleksiyonunda, within: { role: listitem, hasText: '{deckTitle}' } }
+  # Base UI's toast: a high-priority one is an alertdialog and aria-hidden until it is focused, so it is found by its role attribute
+  addFailedToast: { css: '[role=alertdialog]', hasText: Deste eklenemedi }
+  addFailedTitle: { css: '[role=alertdialog] p', hasText: Deste eklenemedi }
+  addFailedText: { css: '[role=alertdialog] p', hasText: Bir sorun oluştu. Yeniden dene. }
+  removeFailedToast: { css: '[role=alertdialog]', hasText: Deste çıkarılamadı }
+  removeFailedTitle: { css: '[role=alertdialog] p', hasText: Deste çıkarılamadı }
+  removeFailedText: { css: '[role=alertdialog] p', hasText: Bir sorun oluştu. Yeniden dene. }
+  toastClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }

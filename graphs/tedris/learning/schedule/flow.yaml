@@ -1,0 +1,286 @@
+# Programım of tedris-web (/schedule), read from the code of the branch (the tree of PR #394) on 15 Nov 2026. Nothing here is approved.
+#   - What it draws: the one read the page makes (the caller's celses over seven days), the three things it then shows (the week's
+#     days, the sentence for a week with no celse, the box that says the read failed), the way on to the next seven days and back,
+#     and the ways out: a celse, the calendar menu, Hesap's time zone, the calendar subscription.
+#   - What it leaves to other flows is in scope.outOfView: the menu "Takvime ekle" opens (tedris.learning.addToCalendar), the celse's
+#     own page (tedris.celse.attend), Hesap (tedris.account.profile, tedris.account.calendarFeed).
+#   - The page reads GET /sessions, which is `listMySessions`. Ana sayfa reads GET /me/upcoming-lessons (`listMyUpcomingLessons`),
+#     the same set seen as "the next four": that is tedris.shell.home's, this page never calls it.
+#   - Findings it carries (the inventory's ids): DSC-09 (b), DSC-16, DSC-17, DSC-19, and SHL-08 (the retry link), the last read
+#     from the code. DSC-14 is listed against this flow in FLOWS.md but is about the follow button, the application row, the leave
+#     menu and the köşk-application form: nothing on this page is a Server Action that can reject, so it does not apply. Two more
+#     are this flow's own, measured on the stack: SCHED-1 (the next-window link has no upper end, and the page crashes at the
+#     last day it can name) and SCHED-2 (the empty week says the same sentence to a person in no course). See ui.yaml `rules`.
+#   - Honest limit of the stack: tedrisat answers every read here, so `answer: failed` (the box and its retry) is drawn from the
+#     code and not walked. The week with a celse on air now, one over, a cancelled one, an exam and an in-person one is made by the
+#     walk's own data (schedule-data.mjs, scenario `mixed`); the seed's courses only hold celses still to come.
+schema: delurio-graph/0
+kind: flow
+id: tedris.learning.schedule
+status: captured
+domain: medaris.api
+ui: tedris.learning.schedule
+title: Read my week of celses (Programım)
+summary: >-
+  A signed-in talebe opens Programım and reads the celses of the courses they hold a seat in, over the next seven days, soonest
+  first, grouped by day: the clock, the length, the course and its week, the celse's title, one line about where it meets (the
+  platform, or that no link is there yet, or that it is held in person or streamed), and its state. A celse that is over, one on
+  air now, one that was cancelled (with the müderris's note when one was written) and an exam each look different. A celse still to
+  come offers "Takvime ekle"; one on air with a meeting link offers "Celseye katıl". "Sonraki yedi günü göster" moves the window on
+  by seven days, "Bugüne dön" comes back, and an address with a bad or a past day shows today's window. A week with no celse says
+  so in one sentence. When the read fails a box says so and offers "Yeniden dene". The page always says its times are Istanbul time.
+source: apps/tedris/app/schedule/page.tsx
+
+scope:
+  shows: Programım's window of seven days, the one read behind it, and the ways out of the page
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the menu that the \"Takvime ekle\" button opens, its three items, the Google Takvim tab, the .ics download and the toast when the file cannot be fetched (tedris.learning.addToCalendar)"
+    - "the celse's own page, which every title leads to (tedris.celse.attend), and the meeting that \"Celseye katıl\" opens in a new tab"
+    - "Hesap's time zone card and the calendar subscription page, which the two links lead to (tedris.account.profile, tedris.account.calendarFeed)"
+    - "a visitor, who is sent to sign in with callbackUrl=/schedule (and ?from= if it was there) before the page runs, and a token tedrisat refuses, which sends the person to sign in again with `reauth` and not to the failed-read box (realm.auth.signIn, realm.auth.sessionEnded)"
+    - "who is left out by the API and not by the page: a pending application, a completed or barred seat, a draft or hidden course, a scope that has gone passive (the invariant course-schedule-rules)"
+    - "a window where nothing is still to come, which draws no calendar button on any row (the button is on a row only while it is upcoming); the `mixed` window always holds one that is"
+    - "a celse that is streamed, in person and streamed, or in person on air now: only the sentences differ (SchedulePage.stream, streamLive, inPersonStream, inPersonStreamLive)"
+    - "the phone layout, where a row stacks its status under its title, and the loading skeleton while the read runs (DSC-19)"
+    - "the page's bar, the footer and the theme switch (tedris.shell.frame)"
+
+decisions:
+  D1:
+    question: >-
+      Should Programım cut its days and write its clocks in the viewer's own time zone, as every other page of this part does?
+    recommend: >-
+      Yes (DSC-16). Today the window, the day groups and every clock are Istanbul time whatever the viewer's zone cookie says
+      (page.tsx:26, schedule-page.tsx:223), and the link "Saat dilimini değiştir" leads to a setting that never changes this page,
+      while Hesap's help says "Celse saatleri bu saat diliminde gösterilir". If Istanbul stays, drop the link and keep the sentence.
+    affects: [week, emptyWeek, loadFailed]
+
+context:
+  answer:
+    values: [failed, empty, listed]
+    initial: any
+    say:
+      failed: "the read of today's window fails (tedrisat cannot answer), so the page has no list to draw"
+      empty: "the read of today's window answers and no celse of the person's courses falls in it"
+      listed: "the read of today's window answers with at least one celse in it"
+  following:
+    values: [failed, empty, listed]
+    initial: any
+    say:
+      failed: "the read of a window after today's fails"
+      empty: "no celse of the person's courses falls in a window after today's"
+      listed: "a window after today's holds at least one celse"
+  rows:
+    values: [ahead, mixed]
+    initial: any
+    say:
+      ahead: "every celse of the windows is still to come, so each row is \"Planlandı\" with a calendar button"
+      mixed: "the windows also hold a cancelled celse, an exam and an in-person one, and, in today's window, one that is over and one on air with a meeting link"
+  at:
+    values: [first, later]
+    initial: first
+    say:
+      first: "the window that starts today, which is the one a plain /schedule shows"
+      later: "a window that starts seven days or more after today, reached by \"Sonraki yedi günü göster\""
+# `following` stands for every window after today's: the graph does not tell the second from the third, and a person's courses
+# either hold celses in them or do not. Both windows are read as the world is, so the answer after "Sonraki yedi günü göster" is a
+# function of the world (`following`) and not left to chance; only a retry (`again`) leaves the answer to chance.
+
+guards:
+  inLater: "at == 'later'"
+  mixed: "rows == 'mixed'"
+  onAir: "rows == 'mixed' and at == 'first'"
+  readFails: "(at == 'first' and answer == 'failed') or (at == 'later' and following == 'failed')"
+  readEmpty: "(at == 'first' and answer == 'empty') or (at == 'later' and following == 'empty')"
+
+effects:
+  nextWindow: { set: { at: later } }
+  todayWindow: { set: { at: first } }
+  again: { havoc: [answer, following] } # the same address, read again: it may answer differently
+
+failures:
+  readingWeek: { from: listMySessions, unreadable: [] }
+# `unreadable` stands for any answer but a refused token: the domain lists one refusal for the read, INVALID_SCHEDULE_WINDOW (400),
+# which the page cannot cause (its window is always seven days from a day it has checked), and the page treats a network error, a 5xx
+# and a 4xx alike (reads.ts:20-24). A token tedrisat refuses is `reauthIfRefused`, out of view.
+
+# The main story: a talebe reads the week, looks at the next seven days, is brought back to today by a bad address, goes on again,
+# comes back with "Bugüne dön" and opens a celse.
+main:
+  given: { answer: listed, following: listed, rows: ahead }
+  events: [DONE, NEXT_WEEK, DONE, OPEN_BAD_DAY, DONE, NEXT_WEEK, DONE, BACK_TO_TODAY, DONE, OPEN_CELSE]
+
+initial: readingWeek
+states:
+  readingWeek:
+    title: Read the week
+    description: >-
+      The page's server side takes `?from=` (a missing, malformed, today's or a past day is today), makes the window of seven days
+      from midnight to midnight in Europe/Istanbul and reads GET /sessions?from&to as the caller: the celses of the courses they
+      are ENROLLED in, soonest first, a cancelled one kept and marked. The page writes nothing. A token tedrisat refuses is a
+      sign-in again (out of view); any other failure is a null, which the page shows as a box and not as an empty week. The last day
+      the window can name is 9999-12-24: `?from=9999-12-31` throws before the read (SCHED-1, rules).
+    source: apps/tedris/features/schedule/reads.ts:19
+    invoke: { action: listMySessions }
+    on:
+      DONE: { guard: "not readFails", target: sorting }
+      FAIL.unreadable: { guard: readFails, target: loadFailed, say: "the read failed, so the page draws a box and not an empty week" }
+
+  sorting:
+    title: See whether the window holds a celse
+    description: classification only
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:257
+    always:
+      - { guard: readEmpty, target: emptyWeek, say: "no celse in the window" }
+      - { target: week, say: "at least one celse in the window" }
+
+  week:
+    title: The week's celses
+    by: human
+    goal: true
+    description: >-
+      The page: its title, a sentence, "Saatler İstanbul saatiyle." with the link "Saat dilimini değiştir" and a button "Takvim
+      aboneliği"; then one card per day that holds a celse, headed by the day ("16 Kasım Pazartesi") with a word for how far it
+      is ("Bugün", "Yarın", "Öbür gün", "{n} gün sonra"), and under it one row per celse; then a navigation named "Celseler"
+      that holds "Bugüne dön" (only in a later window) and "Sonraki yedi günü göster". A row has the clock and the length, the
+      course and "Hafta {n}", the title as a link to the celse, the badge "Sınav · {n} gün kaldı" when it is an exam and it was not
+      cancelled, and then exactly one of: the note of a cancelled celse (the müderris's, or "Bu celse iptal edildi."), the platform
+      chip when the celse has a meeting link, nothing when it is over, or the sentence for a celse with no link (no link yet, in
+      person, streamed). Its status is a badge: "Planlandı", "Sona erdi", "İptal edildi" or "Şu an canlı"; a live row with a link also has "Celseye
+      katıl" (new tab) and a row still to come has the calendar button. The bottom navigation is named "Celseler" and holds week
+      links, not celses (DSC-09). The cancelled celse's note is one truncated line whose full text is only in `title` (DSC-17).
+      The window is Istanbul time whatever the viewer's zone (DSC-16, D1). Nothing is focused when the page opens.
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:260
+    on:
+      OPEN_CELSE:
+        target: celse_opened
+        starts: { flow: tedris.celse.attend }
+        say: "a row's title is a link to the celse's page, a full page load"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:89
+      OPEN_CALENDAR_MENU:
+        target: calendar_menu_opened
+        starts: { flow: tedris.learning.addToCalendar }
+        say: "\"Takvime ekle: <title>\", on a row that is still to come, opens a menu on the page"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:176
+      JOIN:
+        guard: onAir
+        target: week
+        say: "\"Celseye katıl\" on a celse on air opens its meeting in a new tab (target=_blank); this tab stays on Programım"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:153
+      OPEN_ZONE:
+        target: account_opened
+        starts: { flow: tedris.account.profile }
+        say: "\"Saat dilimini değiştir\" goes to Hesap; it does not change this page's zone (DSC-16)"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:234
+      OPEN_SUBSCRIPTION:
+        target: subscription_opened
+        starts: { flow: tedris.account.calendarFeed }
+        say: "\"Takvim aboneliği\" goes to the calendar subscription page"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:239
+      NEXT_WEEK:
+        target: readingWeek
+        effect: [nextWindow]
+        say: "\"Sonraki yedi günü göster\" is a link to /schedule?from=<the window's first day + 7>, a full page load; it is always drawn, with no upper end (SCHED-1)"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:301
+      BACK_TO_TODAY:
+        guard: inLater
+        target: readingWeek
+        effect: [todayWindow]
+        say: "\"Bugüne dön\" is a link to /schedule; it is drawn only when the window does not start today"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:296
+      OPEN_BAD_DAY:
+        target: readingWeek
+        effect: [todayWindow]
+        say: "an address with a malformed, today's or a past ?from= shows today's window, and \"Bugüne dön\" is not drawn (e2e schedule#4)"
+        source: apps/tedris/features/schedule/schedule-model.ts:100
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  emptyWeek:
+    title: A week with no celse
+    by: human
+    description: >-
+      The same page, with one sentence in place of the days: "Bu yedi günde celsen yok." It is the sentence a person in no course
+      reads, and so does one whose courses rest this week; it has no way on to Keşfet or Derslerim (SCHED-2). The window links under
+      it stay, so the next seven days are one press away.
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:258
+    on:
+      OPEN_ZONE:
+        target: account_opened
+        starts: { flow: tedris.account.profile }
+        say: "\"Saat dilimini değiştir\" goes to Hesap"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:234
+      OPEN_SUBSCRIPTION:
+        target: subscription_opened
+        starts: { flow: tedris.account.calendarFeed }
+        say: "\"Takvim aboneliği\" goes to the calendar subscription page"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:239
+      NEXT_WEEK:
+        target: readingWeek
+        effect: [nextWindow]
+        say: "the next seven days"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:301
+      BACK_TO_TODAY:
+        guard: inLater
+        target: readingWeek
+        effect: [todayWindow]
+        say: "back to today's window"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:296
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  loadFailed:
+    title: The week could not be read
+    by: human
+    description: >-
+      An error box in place of the days: "Programın yüklenemedi" and "Celselerin şu an okunamadı." with a button-looking link
+      "Yeniden dene". The link is `<a href="">`, so it loads the page's own address again, whole (SHL-08); it keeps `?from=`. The
+      title, the sentence, the zone line, the subscription button and the window links stay. Not walked: the stack has no way to
+      make the read fail.
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:249
+    on:
+      RETRY:
+        target: readingWeek
+        effect: [again]
+        say: "\"Yeniden dene\" loads the same address again, and the read may answer differently"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:252
+      OPEN_ZONE:
+        target: account_opened
+        starts: { flow: tedris.account.profile }
+        say: "\"Saat dilimini değiştir\" goes to Hesap"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:234
+      OPEN_SUBSCRIPTION:
+        target: subscription_opened
+        starts: { flow: tedris.account.calendarFeed }
+        say: "\"Takvim aboneliği\" goes to the calendar subscription page"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:239
+      NEXT_WEEK:
+        target: readingWeek
+        effect: [nextWindow]
+        say: "the next seven days"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:301
+      BACK_TO_TODAY:
+        guard: inLater
+        target: readingWeek
+        effect: [todayWindow]
+        say: "back to today's window"
+        source: apps/tedris/features/schedule/components/schedule-page.tsx:296
+      NAVIGATE: { target: left, say: "they go on to another page through the frame or the address bar" }
+
+  celse_opened: { type: final, title: A celse's page is opened }
+  calendar_menu_opened: { type: final, title: The calendar menu of a row is opened }
+  account_opened: { type: final, title: Hesap is opened }
+  subscription_opened: { type: final, title: The calendar subscription page is opened }
+  left: { type: final, title: The person leaves Programım, leavesPage: true }
+
+assertions:
+  - id: box-only-after-a-failed-read
+    never: "state == 'loadFailed' and not readFails"
+    say: "The error box is drawn only when the read failed, never in place of an empty week"
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:248
+  - id: empty-sentence-only-for-an-empty-window
+    never: "state == 'emptyWeek' and not readEmpty"
+    say: "The sentence for a week with no celse is drawn only when the read answered with none"
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:257
+  - id: days-only-for-a-list
+    never: "state == 'week' and (readFails or readEmpty)"
+    say: "The day cards are drawn only when the read answered with at least one celse"
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:259

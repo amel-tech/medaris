@@ -1,0 +1,378 @@
+# Deleting a hidden item for good from the platform Arşiv of nizam-web (/arsiv), by the başnazım (the realm role SYSTEM_ADMIN).
+# Read from the code of the branch (the tree of PR #394) on 16 Nov 2026: apps/nizam/app/arsiv/page.tsx, apps/nizam/features/archive
+# (components/archive-view.tsx, actions.ts, present.ts, reads.ts), libs/ui/src/mds/{alert-dialog,button,select,table,alert}.tsx and
+# libs/ui/src/components/sonner.tsx, and, in tedrisat, apps/tedrisat/src/archive (the controller, the service, the repository's `impact`
+# and `purgeRows`). It says what the code does today. Nothing here was seen in a browser by its writer: every behaviour is "from the
+# code" unless a line says it was measured, and no line does.
+#
+# What is drawn:
+#   - Arşiv as the başnazım meets it: the search box, the two selects (Kapsam, Tür), the count, the table of what is hidden with its
+#     row and its "Kalıcı olarak sil" button, and the line "Toplam N öğe, M tanesi gösteriliyor".
+#   - Choosing a scope and a type: each is one more read of GET /archive from page one, after a 300 ms pause.
+#   - "Kalıcı olarak sil": the alertdialog opens at once with a line that says the count is being worked out, the count is read, and
+#     the dialog lists what goes (weeks, celses, talebe records) next to the sentence that the delete is written to the audit log.
+#   - The confirmation, and the three ways a delete ends: the row is gone and a toast says so; the row was gone already (the
+#     "already gone" branch), told by a toast that is an error; or the server refuses and the dialog stays open (MDRS-244).
+#
+# What the story depends on and the graph says plainly:
+#   - "Delete" is final. Nothing brings the item back and everything under it goes in one transaction, the course's weeks, celses,
+#     talebe records, notes, questions, homework with its files, recordings and the rest. The dialog counts only some of it (PURGE-1).
+#   - The archive is shared by everyone who hides things, so the row the walk deletes is found by the filters and by its own title,
+#     never by position. The walk makes its own course, hides it as the başnazım and deletes only that one.
+#   - Four facts of the world pick the branch and never change inside a walk: `item` (a hidden course, or a hidden week that holds a
+#     recording), `rest` (whether the filtered list holds anything else once the row is gone). What the screen remembers (`scope`, `type`,
+#     `toast`, `counts`) is told by the steps. `row` is the one fact another person changes: someone else deleted the item, or brought it
+#     back, after the page was read (GONE_ELSEWHERE), and the page does not know.
+#   - Findings it carries (ui.yaml `rules` has the same ids): F-W5-5, F-W5-3, MDRS-244, and five of its own: PURGE-1 (the dialog's count is
+#     short: recordings are never counted, and notes, homework, exams and files not at all), PURGE-2 (after a delete, "Daha fazla göster"
+#     skips a row), PURGE-3 (an item already gone is told as an error and stays on the screen until closed), PURGE-4 (Vazgeç, Esc and the
+#     close icon stay live and do nothing while the delete runs), PURGE-5 (a count that arrives late can fill a later dialog).
+schema: delurio-graph/0
+kind: flow
+id: nizam.moderation.deleteArchived
+status: captured
+domain: medaris.api
+ui: nizam.moderation.deleteArchived
+title: Delete an archived item for good
+summary: >-
+  The başnazım opens Arşiv from the menu and reads one list of everything hidden on the platform, newest first, ten at a time, each
+  row with its kind, where it sits, who hid it and when. He narrows it with the scope select (a köşk or a medrese) and the type select
+  (köşk, medrese, ders, hafta, celse, ders kaydı, deste); each choice reads the list again from page one. "Kalıcı olarak sil" on a row
+  opens an alertdialog at once, named for the kind ("Dersi kalıcı olarak sil"), with the köşk above its title, the sentence that the
+  item and everything bound to it goes for good and cannot be undone, a line that says the count is being worked out, and then the
+  count (a course: the weeks of its syllabus, the talebe records, the celses) and the sentence that the delete is written to the audit
+  log under his name. The focus starts on "Vazgeç"; the scrim does not close it; "Kalıcı olarak sil" is natively off until the count
+  has been read. Confirming deletes the item and all of it in one transaction, the dialog closes, the row leaves the table and the
+  count of hidden items drops, and a toast of six seconds says "Kalıcı olarak silindi". If someone else deleted the item or brought
+  it back meanwhile, the call answers 404 and the page says so as an error that stays until it is closed, "Silinemedi" with "Bu öğe
+  zaten silinmiş ya da artık gizli değil.", while it takes the row out all the same. If the count could not be read (it was gone
+  before he asked) the dialog says so in a warning and still lets him delete. Any other refusal leaves the dialog open with an error
+  toast; a week or a session that holds a recording is such a case (MDRS-244). The focus is lost where the pressed row leaves, and the
+  count of hidden items, which is a live region, is the only word besides the toast (F-W5-5).
+source: apps/nizam/features/archive/components/archive-view.tsx:200
+
+scope:
+  shows: >-
+    Arşiv for the başnazım with its two selects and its table; choosing a scope and a type; the dialog "kalıcı olarak sil" with its
+    count, its failed count, its busy button and its refusal; the toasts of a delete; the list as it is once the row has gone
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "'Geri al' on every row, and the sentence that stands where a higher kademe hid a row: nizam.moderation.restoreArchived. The same table, the same page; this flow draws only what the delete needs"
+    - "the köşk's own archive (/kosks/<id>/arsiv), which has no permanent delete: nizam.moderation.restoreArchived"
+    - "the search box: typing a name reads the list again after 300 ms, as a choice in a select does (archive-view.tsx:154-161). It is drawn and never typed in here"
+    - "a list of more than ten rows: the line 'Toplam N öğe, M tanesi gösteriliyor' is drawn, and 'Daha fazla göster', which reads the next page and appends it (PURGE-2), is not"
+    - "a filter or a search that matches nothing from the start: the same sentence as the one drawn here after the last matching row is deleted (listEmpty), and a first read that fails (read_failed)"
+    - "a köşk, a medrese, a celse, a ders kaydı or a deste as the row: the dialog's other titles and counts (a köşk: its courses, weeks, celses, talebe, followers; a deste: its cards). A hidden medrese is not a row of this list, and a ders kaydı is never one: GET /archive has no recording rows and 'recording' is a type the select offers"
+    - "a person who is not the başnazım, who meets 'Bu bölüm için izniniz yok' at /arsiv (refused): nizam.shell.noAccessAndNotFound, archive#6"
+    - "a session that has ended (a server action then sends the person to sign in: realm.auth.sessionEnded), and a call that fails outright, such as a dropped network, which the actions do not catch"
+
+decisions:
+  D1:
+    question: >-
+      Should the dialog count everything that goes with the item? The count lists weeks, celses and talebe records for a course and
+      never a recording (the API's `recordings` is a constant 0, archive.repository.ts:678), a note, a question, a homework hand-in
+      with its file, an exam or a resource, although the sentence above it says "ve ona bağlı her şey" goes (PURGE-1).
+    recommend: >-
+      Count each kind that the purge deletes, and say in the sentence which kinds are not counted until they are; the audit row
+      already records what was removed.
+    affects: [confirming, confirmingBlind]
+  D2:
+    question: >-
+      Is an item that is already gone an error? The person asked for it to be gone and it is; the page says "Silinemedi", in the
+      error tone, and the toast stays until he closes it, while it also takes the row out of the list (PURGE-3).
+    recommend: >-
+      Tell it as a neutral notice that closes by itself ("Bu öğe zaten silinmiş"), the way nazar.roster.decide tells an application
+      that someone else settled; keep the error tone for a refusal.
+    affects: [deleting, settled]
+  D3:
+    question: >-
+      Should a hidden week or session that holds a recording be deletable (MDRS-244)? The course's purge deletes its recordings first
+      and the week's and the session's does not, so the foreign key refuses and the dialog stays with an error toast whose text is the
+      server's English message.
+    recommend: >-
+      Delete the recording rows in the week's and the session's purge as the course's does, and count them in the dialog (D1).
+    affects: [deleting]
+
+context:
+  item:
+    values: [course, blockedWeek]
+    initial: any
+    say:
+      course: "the row is a hidden course: its purge deletes every row under it in one transaction"
+      blockedWeek: "the row is a hidden week of a live course and one of its celses holds a recording: the purge cannot delete the recording and fails (MDRS-244)"
+  rest:
+    values: [none, some]
+    initial: any
+    say:
+      none: "the filtered list holds no row but this one: once it is gone the list is empty"
+      some: "the filtered list holds other rows: once this one is gone the list is shorter"
+  row:
+    values: [there, gone]
+    initial: there
+    say:
+      there: "the item is still hidden on the server, as the page draws it"
+      gone: "someone else deleted the item or brought it back since the page was read: the page still draws its row"
+  counts:
+    values: [read, unknown]
+    initial: read
+    say:
+      read: "the dialog lists what goes"
+      unknown: "the count could not be read: the dialog says so, and still lets the person delete"
+  scope:
+    values: [all, chosen]
+    initial: all
+    say:
+      all: "the scope select reads 'Kapsam: tümü'"
+      chosen: "the scope select reads the name of the köşk the item sits in"
+  type:
+    values: [all, chosen]
+    initial: all
+    say:
+      all: "the type select reads 'Tür: tümü'"
+      chosen: "the type select reads the kind of the row: Ders for a course, Hafta for a week"
+  toast:
+    values: [none, deleted, alreadyGone, failed]
+    initial: none
+    say:
+      none: "no answer is on the screen, or its toast is gone"
+      deleted: "the item was just deleted"
+      alreadyGone: "the item was gone already: an error toast that stays"
+      failed: "the server refused the delete: an error toast that stays, over the open dialog"
+
+guards:
+  noOthers: "rest == 'none'"
+  filtered: "scope != 'all' or type != 'all'"
+  stillThere: "row == 'there'"
+  alreadyBrought: "row == 'gone'"
+
+effects:
+  clearToast: { set: { toast: none } }
+  choseScope: { set: { scope: chosen } }
+  choseType: { set: { type: chosen } }
+  goneElsewhere: { set: { row: gone } } # no node sends it: someone else deletes the item, or brings it back
+  countUnknown: { set: { counts: unknown } }
+  cancelled: { set: { counts: read } } # the dialog closed with nothing deleted; the next one starts again
+  deleted: { set: { toast: deleted, row: there, counts: read } }
+  alreadyGone: { set: { toast: alreadyGone, row: there, counts: read } }
+  deleteFailed: { set: { toast: failed } }
+
+failures:
+  opened:
+    from: listPlatformArchive
+    forbidden: [ARCHIVE_FORBIDDEN]
+    other: [HTTP_400]
+  filtering:
+    from: listPlatformArchive
+    other: [ARCHIVE_FORBIDDEN, HTTP_400]
+  readingImpact:
+    from: getArchiveImpact
+    gone: [ARCHIVE_ITEM_NOT_FOUND]
+  deleting:
+    from: deleteArchiveItem
+    gone: [ARCHIVE_ITEM_NOT_FOUND]
+    other: [] # a server error (MDRS-244); the domain lists no 500 for the action, see the report's asks
+
+# The story the page tells first, and e2e archive#7 and #8: the başnazım narrows the list to the köşk and the kind of the item, presses
+# "Kalıcı olarak sil" on its row, reads what goes, and confirms.
+main:
+  given: { item: course, rest: none }
+  events: [DONE, CHOOSE_SCOPE, DONE, CHOOSE_TYPE, DONE, ASK_DELETE, DONE, CONFIRM, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The archive is read
+    description: >-
+      A step with no screen of its own: the page is a server component (force-dynamic) that reads GET /archive?limit=10 as the
+      başnazım and, once that has worked, GET /archive/scopes for the options of the scope select. A 403 is Next's forbidden page
+      ("Bu bölüm için izniniz yok", refused, which is nizam.shell.noAccessAndNotFound's story: archive#6). Any other failure, and a
+      404, hands the view no list, and it draws the in-place error with a retry (read_failed). A scope read that fails alone leaves the
+      select with only "Kapsam: tümü" and says nothing.
+    invoke: { action: listPlatformArchive }
+    on:
+      DONE: listed
+      FAIL.forbidden: refused
+      FAIL.other: read_failed
+    source: apps/nizam/app/arsiv/page.tsx:25
+
+  listed:
+    title: The archive lists what is hidden
+    by: human
+    goal: true
+    description: >-
+      The page: the title "Arşiv" and its sentence that deleting for good cannot be undone and is written to the audit log; the hidden
+      heading "Gizlenenler" of the section; the search box and the two selects; the live count "N gizli öğe"; the table "Platformda
+      gizlenenler" with a row for each hidden item (its title, its kind and what it holds, its köşk, who hid it, when) and, in the
+      last cell, "Geri al" where the person may (not drawn: nizam.moderation.restoreArchived) and a link-style "Kalıcı olarak sil"
+      named for the row; and, under it, "Toplam N öğe, M tanesi gösteriliyor". Newest hidden first: the row the walk hid is first
+      until another is hidden. The page sets no focus of its own (focus-not-set). A toast of the last answer may still be up, the
+      failed one for as long as it is not closed. Someone else may delete the item, or restore it, without the page being told
+      (GONE_ELSEWHERE): its row stays until the list is read again, and "Kalıcı olarak sil" on it then meets "already gone".
+    on:
+      CHOOSE_SCOPE: { guard: "scope == 'all'", target: filtering, effect: [choseScope], say: "they open the scope select and choose the köşk the item sits in: the list is read again from page one", source: apps/nizam/features/archive/components/archive-view.tsx:433 }
+      CHOOSE_TYPE: { guard: "type == 'all'", target: filtering, effect: [choseType], say: "they open the type select and choose the kind of the row", source: apps/nizam/features/archive/components/archive-view.tsx:441 }
+      GONE_ELSEWHERE: { guard: stillThere, target: listed, effect: [goneElsewhere], say: "another başnazım session deletes the item (or someone restores it) while this page is open: nothing on this page changes", source: apps/tedrisat/src/archive/archive.service.ts:363 }
+      ASK_DELETE: { target: readingImpact, effect: [clearToast], say: "they press 'Kalıcı olarak sil' on the row: the dialog opens at once and the count is asked for", source: apps/nizam/features/archive/components/archive-view.tsx:377 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/archive/components/archive-view.tsx:401
+
+  filtering:
+    title: The list is read again for the filter
+    description: >-
+      The select closes and the view reads the list again from page one (the server action loadArchive, GET /archive?koskId=&type=&
+      limit=10), after a pause of 300 ms that a keystroke in the search box also restarts. While the answer is on its way the old rows
+      stay on the screen and nothing says it is busy: the skeleton shows only while there are no rows (archive-view.tsx:467). The
+      answer replaces the rows, the count and the line "Toplam N öğe". A failed read swaps the table for an error with a retry and
+      pops an error toast that stays (read_failed). The rows are not drawn here: they are the old ones until the answer lands.
+    invoke: { action: listPlatformArchive }
+    on:
+      DONE: listed
+      FAIL.other: read_failed
+    source: apps/nizam/features/archive/components/archive-view.tsx:121
+
+  readingImpact:
+    title: The dialog opens and the count is asked for
+    description: >-
+      The row is made the target and the alertdialog opens at once (`setTarget`, then `setImpact("loading")`), with the köşk's name
+      above its title, the title for the kind, "<title> ve ona bağlı her şey kalıcı olarak silinecek. Bu işlem geri alınamaz.", the
+      line "Silinecekler hesaplanıyor" and the audit sentence; "Kalıcı olarak sil" is natively disabled while the count is
+      awaited, "Vazgeç" and the close icon are live. The focus starts on "Vazgeç". The server action loadArchiveImpact calls GET
+      /archive/:type/:id/impact. The row's own button shows no busy state. Closing the dialog before the count arrives is possible and
+      is not drawn: the late answer then fills `impact` with no target, and PURGE-5 is the case where another dialog is already open.
+    invoke: { action: getArchiveImpact }
+    on:
+      DONE: { guard: stillThere, target: confirming, source: apps/nizam/features/archive/components/archive-view.tsx:208 }
+      FAIL.gone: { guard: alreadyBrought, target: confirmingBlind, effect: [countUnknown], source: apps/nizam/features/archive/components/archive-view.tsx:208 }
+    source: apps/nizam/features/archive/components/archive-view.tsx:200
+
+  confirming:
+    title: The dialog counts what goes
+    by: human
+    description: >-
+      The same alertdialog with the count: a list (data-testid impact-lines) of the kinds that are above zero, in this order: the
+      courses of a köşk, the weeks (a course: "Ders sayfası, tanıtımı ve N haftalık müfredatı"; a week: "N hafta"), the talebe records
+      ("N talebe kaydı ve talebelerin bu dersteki ilerlemesi", any status, REVOKED too), the celses ("N celse, celse akışları ve
+      toplantı bağlantıları"), the recordings (the API sends a constant 0, so this line never shows: PURGE-1), the köşk's followers and a
+      deck's cards; a kind that is zero is not a line. Then "Silme, denetim kaydına adınızla yazılır." "Kalıcı olarak sil" is now on,
+      destructive in colour, and the focus is still on "Vazgeç". Esc, the close icon and "Vazgeç" close it with nothing deleted; the
+      scrim does not. Cancelling hands the focus back to the row's button (Base UI: the element that had it when the dialog opened;
+      not verified). After a refusal this is where the person is again, with the error toast over the dialog (F-W5-3).
+    on:
+      CONFIRM: { target: deleting, effect: [clearToast], say: "they press 'Kalıcı olarak sil' in the dialog", source: apps/nizam/features/archive/components/archive-view.tsx:520 }
+      GONE_ELSEWHERE: { guard: stillThere, target: confirming, effect: [goneElsewhere], say: "someone else deletes the item (or restores it) while the dialog is open: the dialog does not change", source: apps/tedrisat/src/archive/archive.service.ts:363 }
+      CANCEL: { target: listed, effect: [cancelled], say: "they press Vazgeç: nothing is deleted and the dialog closes", source: apps/nizam/features/archive/components/archive-view.tsx:509 }
+      CLOSE: { target: listed, effect: [cancelled], say: "they press the close icon", source: apps/nizam/features/archive/components/archive-view.tsx:509 }
+      DISMISS: { target: listed, effect: [cancelled], say: "they press Esc", source: apps/nizam/features/archive/components/archive-view.tsx:509 }
+      NAVIGATE: { target: left, say: "they leave by the address bar or the browser's back button" }
+    source: apps/nizam/features/archive/components/archive-view.tsx:535
+
+  confirmingBlind:
+    title: The dialog says it could not count
+    by: human
+    description: >-
+      The count came back as a failure (here: 404 ARCHIVE_ITEM_NOT_FOUND, because the item was gone before the person asked), and every
+      failure of the count is told the same way: a warning in place of the list, "Silinecekler hesaplanamadı; yine de silebilirsiniz
+      ama neyin gideceğini göremiyorsunuz." It does not say that the item may be gone. "Kalıcı olarak sil" is on. The audit sentence
+      stays.
+    on:
+      CONFIRM: { target: deleting, effect: [clearToast], say: "they press 'Kalıcı olarak sil' without a count", source: apps/nizam/features/archive/components/archive-view.tsx:520 }
+      CANCEL: { target: listed, effect: [cancelled], say: "they press Vazgeç", source: apps/nizam/features/archive/components/archive-view.tsx:509 }
+      CLOSE: { target: listed, effect: [cancelled], say: "they press the close icon", source: apps/nizam/features/archive/components/archive-view.tsx:509 }
+      DISMISS: { target: listed, effect: [cancelled], say: "they press Esc", source: apps/nizam/features/archive/components/archive-view.tsx:509 }
+      NAVIGATE: { target: left, say: "they leave by the address bar or the browser's back button" }
+    source: apps/nizam/features/archive/components/archive-view.tsx:532
+
+  deleting:
+    title: The item is being deleted
+    description: >-
+      The server action deleteArchiveItem calls DELETE /archive/:type/:id (204, no body; SYSTEM_ADMIN only; only a hidden item is
+      deleted): the item and every row under it go in one transaction, with an audit entry <type>.delete that names the caller, and
+      the files and invitation mails the purge owes are sent after it commits. "Kalıcı olarak sil" is busy (aria-disabled, aria-busy,
+      a hidden status "Yükleniyor" from the kit's default, F-UI-W1-3); "Vazgeç", the close icon and Esc stay live and do nothing,
+      because the dialog's onOpenChange is ignored while the call runs (PURGE-4). Success: the row leaves the table, the count of hidden
+      items drops by one (no new read: the page edits its own list), the dialog closes and the toast "Kalıcı olarak silindi" says
+      "<title> ve bağlı kayıtları silindi." ARCHIVE_ITEM_NOT_FOUND (someone else got there first, or brought the item back) is treated
+      as gone: the same list edit and the dialog closes, but the toast is an error that stays, "Silinemedi" with "Bu öğe zaten silinmiş
+      ya da artık gizli değil." (PURGE-3). Any other failure leaves the dialog open and says so in an error toast that stays, the
+      server's own message under "Silinemedi" (F-W5-3); a hidden week or session with a recording ends here (MDRS-244). The call has no
+      try/catch (a dropped network leaves the button busy for good, not drawn).
+    invoke: { action: deleteArchiveItem }
+    on:
+      DONE: { guard: "row == 'there' and item == 'course'", target: settled, effect: [deleted], source: apps/nizam/features/archive/components/archive-view.tsx:231 }
+      FAIL.gone: { guard: alreadyBrought, target: settled, effect: [alreadyGone], source: apps/nizam/features/archive/components/archive-view.tsx:235 }
+      FAIL.other: { guard: "row == 'there' and item == 'blockedWeek'", target: confirming, effect: [deleteFailed], source: apps/nizam/features/archive/components/archive-view.tsx:244 }
+    source: apps/nizam/features/archive/components/archive-view.tsx:216
+
+  settled:
+    title: The list follows the answer
+    description: >-
+      Not a screen: the page took the row out of its own list and counted the total down by one (setItems, setTotal), and closed the
+      dialog; it reads nothing again. What is left of the filtered list decides which screen this is.
+    always:
+      - { guard: noOthers, target: listEmpty }
+      - { target: listedAfter }
+    source: apps/nizam/features/archive/components/archive-view.tsx:228
+
+  listEmpty:
+    title: The list is empty
+    by: human
+    goal: true
+    description: >-
+      The row is gone and nothing else matches the filters: the table keeps its caption and headers and its one cell says "Bu süzgece
+      uyan gizli öğe yok" (or "Gizlenen öğe yok" when no filter is on), the count reads "0 gizli öğe", and the line "Toplam N öğe,
+      M tanesi gösteriliyor" is left out. The toast of the answer is up. The button the person pressed left with its row and no code
+      moves the focus (F-W5-5); the live count is what a screen reader hears besides the toast.
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/archive/components/archive-view.tsx:392
+
+  listedAfter:
+    title: The list without the row
+    by: human
+    goal: true
+    description: >-
+      The row is gone and the filtered list holds other rows: the count has dropped by one, the table is shorter and the line "Toplam N
+      öğe, M tanesi gösteriliyor" follows. Which rows are left is the world's; they are not drawn here. The toast of the answer is up.
+      The button the person pressed left with its row and no code moves the focus (F-W5-5). The page does not read the list again, so
+      a row that someone else hid meanwhile is not in it (PURGE-2), and "Daha fazla göster", where it is drawn, asks for the next page
+      of a list that is one row shorter: the row that moved up into the gap is never loaded.
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/archive/components/archive-view.tsx:229
+
+  refused:
+    title: The page says "Bu bölüm için izniniz yok"
+    type: final
+    description: >-
+      The read answered 403 ARCHIVE_FORBIDDEN (anyone but the başnazım, a Medaris nazımı included): `forbidden()` draws the app's
+      no-access screen under the shell; the menu does not offer Arşiv to them. Its whole story is nizam.shell.noAccessAndNotFound's
+      (archive#6). Not bound here: it needs another person's session.
+
+  read_failed:
+    title: The archive could not be read
+    type: final
+    description: >-
+      A first read that failed for any other reason (and a 404), or a filter whose read failed: the table is replaced by an error alert
+      "Arşiv yüklenemedi" with "Arşiv şu an okunamıyor. Biraz sonra yeniden deneyin." and "Yeniden dene", which reads page one again;
+      the filters stay. A failed filter read also pops an error toast with the same words that stays until it is closed. The stack
+      cannot make a read fail: not bound.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-blocked-week-is-never-deleted
+    never: "toast == 'deleted' and item == 'blockedWeek'"
+    say: A hidden week that holds a recording is never reported deleted, because its purge fails (MDRS-244).
+    source: apps/tedrisat/src/archive/archive.repository.ts:747
+  - id: an-item-someone-else-took-is-never-reported-deleted
+    never: "toast == 'deleted' and row == 'gone'"
+    say: The success toast never stands for an item that was gone before the call.
+    source: apps/nizam/features/archive/components/archive-view.tsx:225
+  - id: the-empty-line-is-for-an-empty-list
+    never: "state == 'listEmpty' and rest == 'some'"
+    say: The empty sentence shows only when nothing is left in the filtered list.
+    source: apps/nizam/features/archive/components/archive-view.tsx:392

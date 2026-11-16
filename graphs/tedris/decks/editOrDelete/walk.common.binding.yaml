@@ -1,0 +1,90 @@
+# What every walk of tedris.decks.editOrDelete shares (graphs/README.md, "The stack and the bindings"): the throwaway deck's id as data, the event a
+# person types with, the places the walk finds nodes by, the server calls it holds, and the checks of what a step writes. The scenarios are in
+# binding.yaml (the main story, an unchanged form, an empty name, a short name), binding.private.yaml (the same story on a private deck),
+# and binding.refused.yaml (a save or a delete the server refuses): one file for each, because a scenario that adds no transition of its own is walked only from
+# a file of its own, and because the refusals need a `before` (a deletion through the API) that must not run in the other walks.
+#
+# Data. Every scenario makes its own deck as the spare talebe `applicantA` (deck.mjs make) and removes it (deck.mjs remove): a private deck "Deneme destesi:
+# düzenleme" with three cards and a description, and with --pending a request for its publication. graphs/.local/edit-or-delete.json holds its id, read here
+# as {eod.deck}. The seeded decks (TALEBE's "Kelime Defterim", the course's "Sarf Kavramları") and every other account are never touched.
+#
+# NOT RUN in the writing phase (the owner moved every replay to the end): nothing below has been replayed. What a walk of it has to settle is in
+# the report: the `call` addresses (a Next server action is a POST to the page's own address), the locators of the toasts, and the `before`s of the
+# refusal file.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.editOrDelete
+
+data:
+  eod: { json: ../.local/edit-or-delete.json }
+
+events:
+  # the two boxes of the edit dialog: what `fields` says is typed; a name cleared or too short is typed as it is
+  FILL_IN:
+    - fill: { role: textbox, name: Deste adı, within: { role: dialog, name: Desteyi düzenle }, value: '{typedTitle}' }
+    - fill: { role: textbox, name: Açıklama, within: { role: dialog, name: Desteyi düzenle }, value: '{typedDescription}' }
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  # the server actions are POSTs to the page's own address: the save from /decks/<id>/edit, the delete from /decks/<id>. The page's reads are GETs with a
+  # query, so these match only the POST. They hold the call to see the busy button; a refusal is not compared (a server action answers 200).
+  saving: { call: '{tedris}/decks/{eod.deck}/edit' }
+  deleting: { call: '{tedris}/decks/{eod.deck}' }
+  # an exit has no nodes, so its address is all the replay can check
+  decks_opened: { url: '{tedris}/decks' }
+  left: { url: '{tedris}/discover' }
+
+nodes:
+  # the owner's page has its own <main>; "Kimler görebilir" is the aside card only the owner's page has, which tells it from the page a walk leaves for
+  deckPage: { role: main, hasText: Kimler görebilir }
+  # the badges are bare spans: found by their whole text, since "Özel" is also part of the sentence under "Kimler görebilir"
+  statusPrivate: { text: '/^Özel$/' }
+  statusPending: { text: '/^Yayın isteği bekliyor$/' }
+  # "Deste" is a part of the name's words and of other headings: found by its whole name
+  deckAsideTitle: { role: heading, name: '/^Deste$/' }
+  editLink: { role: link, name: '/^Düzenle$/' }
+  deleteButton: { role: button, name: Desteyi sil }
+  # the dialogs: found by their names, so a toast of role dialog is never taken for one
+  editDialog: { role: dialog, name: Desteyi düzenle }
+  editClose: { role: button, name: Kapat, within: { role: dialog, name: Desteyi düzenle } }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: Desteyi düzenle } }
+  save: { role: button, name: Kaydet, within: { role: dialog, name: Desteyi düzenle } }
+  requiredNote: { text: '/zorunlu alan/' }
+  # a neutral Alert is a status with no name of its own: found by its words
+  pendingAlert: { role: status, hasText: Yayın isteğin bekliyor }
+  # the busy buttons' hidden <output>, which says "Yükleniyor" only while busy
+  busySaving: { role: status, hasText: Yükleniyor, within: { role: dialog, name: Desteyi düzenle } }
+  deleteDialog: { role: alertdialog, name: 'Desteyi sil?' }
+  deleteClose: { role: button, name: Kapat, within: { role: alertdialog, name: 'Desteyi sil?' } }
+  deleteCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: 'Desteyi sil?' } }
+  deleteConfirm: { role: button, name: Desteyi sil, within: { role: alertdialog, name: 'Desteyi sil?' } }
+  busyDeleting: { role: status, hasText: Yükleniyor, within: { role: alertdialog, name: 'Desteyi sil?' } }
+  # Base UI's toasts: a success one is a .mds-toast (a dialog); an error one is high priority, an alertdialog that is aria-hidden until it is focused
+  # (measured by tedris.learning.addToCalendar), so it is found by its role attribute and its words, not by role
+  toastSaved: { css: '.mds-toast', hasText: Deste güncellendi }
+  toastSaveFailed: { css: '[role=alertdialog]', hasText: Kaydedilemedi }
+  toastSaveFailedTitle: { css: '[role=alertdialog] p', hasText: Kaydedilemedi }
+  toastSaveFailedText: { css: '[role=alertdialog] p', hasText: yazdıkların korundu }
+  toastDeleteFailed: { css: '[role=alertdialog]', hasText: Silinemedi }
+  toastDeleteFailedTitle: { css: '[role=alertdialog] p', hasText: Silinemedi }
+  toastDeleteFailedText: { css: '[role=alertdialog] p', hasText: Bir sorun oluştu. Yeniden dene. }
+
+# What a step leaves outside the screen, read from the database as the deck's own row (the e2e's `query`, decks#14 step 13 and decks#16 steps 4, 6, 7).
+effects:
+  # a save: the row holds the typed name and description, and the publication status is what the deck had (a waiting request stays PENDING)
+  updateDeck:
+    - run: [node, helpers/sql.mjs, "select title, description, publish_status from decks where id = '{eod.deck}'"]
+      expect: '"title":"{newTitle}"'
+    - run: [node, helpers/sql.mjs, "select title, description, publish_status from decks where id = '{eod.deck}'"]
+      expect: '"publish_status":"{wantStatus}"'
+  # "Vazgeç" in the confirmation: the deck is still there (decks#16 step 4)
+  dropAsk:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from decks where id = '{eod.deck}'"]
+      expect: '"n":1'
+  # the delete: the deck and its cards are gone (decks#16 steps 6 and 7)
+  deleteDeck:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from decks where id = '{eod.deck}'"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*) as n from flashcards where deck_id = '{eod.deck}'"]
+      expect: '"n":0'

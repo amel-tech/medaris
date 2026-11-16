@@ -1,0 +1,110 @@
+# The screens of nizam.kosks.open: the Köşkler page (/kosks) behind, and the "Köşk aç" dialog over it. Read from
+# apps/nizam/features/kosks/components/{kosks-directory,open-kosk-dialog,nazim-picker}.tsx on 15 Nov 2026; the words are
+# copied from libs/i18n/src/locales/tr/nizam.json (namespaces KoskDirectory, OpenKoskDialog, KoskNazimPicker).
+#
+# The page behind the dialog is drawn only where the dialog is closed: the dialog is modal, so the page is inert while it
+# is open. When the form is opened from a köşk application the page behind is the applications page, which
+# nizam.applications.decide draws; here that start draws the dialog alone (the page nodes are `when: not fromApplication`).
+schema: delurio-graph/0
+kind: ui
+id: nizam.kosks.open
+flow: nizam.kosks.open
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples: { name: "Nazlı Talebe", handle: "ornek-calisma" } # {name} is the person the picker finds (the seed's talebe), {handle} the short name the form is given
+changes: { key: Changes.note }
+
+nodes:
+  # ---- the Köşkler page, the form closed ----
+  kosksPage: { type: page, component: Page, role: main, in: [kosksPage, opened, closed, openedFromLink, closedFromLink], when: "not fromApplication", source: apps/nizam/app/kosks/page.tsx:70 }
+  kosksTitle: { type: text, component: Heading, role: heading, text: { key: KoskDirectory.title }, in: [kosksPage, opened, closed, openedFromLink, closedFromLink], when: "not fromApplication", source: apps/nizam/features/kosks/components/kosks-directory.tsx:290 }
+  kosksIntro: { type: text, component: Text, text: { key: KoskDirectory.intro }, in: [kosksPage, opened, closed, openedFromLink, closedFromLink], when: "not fromApplication", source: apps/nizam/features/kosks/components/kosks-directory.tsx:291 }
+  openButton: { type: action, component: Button, role: button, text: { key: KoskDirectory.open }, in: [kosksPage, opened, closed], when: "not fromApplication", emits: OPEN_FORM, source: apps/nizam/features/kosks/components/kosks-directory.tsx:293 } # the başnazım's alone (`chief`); a Medaris nazımı with platform.kosk_create gets none (F-W3-open-1)
+
+  # ---- the dialog ----
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [form, formReady, looking, opening], initialFocus: nameField, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:123 }
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: OpenKoskDialog.title }, in: [form, formReady, looking, opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:131 }
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: OpenKoskDialog.close }, in: [form, formReady, looking], emits: CANCEL, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:132 } # it stays on and does nothing while the köşk is made (open-kosk-dialog.tsx:126)
+  intro: { type: text, component: Text, text: { key: OpenKoskDialog.intro }, in: [form, formReady, looking, opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:147 }
+  requiredNote: { type: text, component: Text, text: { key: OpenKoskDialog.requiredNote }, in: [form, formReady, looking, opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:148 } # drawn as "* zorunlu alan"
+
+  # Ad: the first field, with the focus; empty, or the application's name
+  nameField: { type: field, component: TextField, role: textbox, text: { key: OpenKoskDialog.nameLabel }, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:156 } # starts empty, or with the application's name
+  nameHelp: { type: text, component: Text, text: { key: OpenKoskDialog.nameHelp }, in: [form, formReady, looking, opening], when: "said != 'noName' and said != 'shortName'", source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:153 } # the error replaces the help line
+  nameRequired: { type: text, component: Text, text: { key: OpenKoskDialog.errors.nameRequired }, in: [form, formReady, looking, opening], when: "said == 'noName'", source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:86 } # after the field was left; not a live region (F-UI-W3-1)
+  nameShort: { type: text, component: Text, text: { key: OpenKoskDialog.errors.nameShort }, in: [form, formReady, looking, opening], when: "said == 'shortName'", source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:86 }
+
+  # Kısa ad
+  handleField: { type: field, component: TextField, role: textbox, text: { key: OpenKoskDialog.handleLabel }, value: { literal: "" }, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:176 } # "@" before it is decorative
+  handleHelp: { type: text, component: Text, text: { key: OpenKoskDialog.handleHelp }, in: [form, formReady, looking, opening], when: "said != 'badHandle' and not taken", source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:169 }
+  handleInvalid: { type: text, component: Text, text: { key: OpenKoskDialog.errors.handleInvalid }, in: [form, formReady, looking, opening], when: "said == 'badHandle' and not taken", source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:173 }
+  handleTaken: { type: text, component: Text, text: { key: OpenKoskDialog.errors.handleTaken, params: { handle: kosk.handle } }, in: [form, formReady, looking, opening], when: taken, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:172 } # under the field, no live region, and the focus is not moved to it (F-UI-W3-1, F-W3-13)
+
+  # Etiketler and Açıklama
+  tagsField: { type: field, component: TextField, role: textbox, text: { key: OpenKoskDialog.tagsLabel }, value: { literal: "" }, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:197 }
+  tagsHelp: { type: text, component: Text, text: { key: OpenKoskDialog.tagsHelp }, in: [form, formReady, looking, opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:194 } # a problem with the tags is never said: the error is written for a submit try (open-kosk-dialog.tsx:195, F-W3-1)
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: OpenKoskDialog.descriptionLabel }, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:205 } # starts empty, or with the application's summary
+  descriptionHelp: { type: text, component: Text, text: { key: OpenKoskDialog.descriptionHelp }, in: [form, formReady, looking, opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:204 }
+
+  # Kapak rengi
+  coverGroup: { type: list, component: List, role: radiogroup, name: { key: OpenKoskDialog.coverLegend }, in: [form, formReady, looking, opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:215 }
+  coverLaciverd: { type: field, component: ListItem, role: radio, text: { key: OpenKoskDialog.covers.laciverd }, checked: true, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:222 }
+  coverBordo: { type: field, component: ListItem, role: radio, text: { key: OpenKoskDialog.covers.bordo }, checked: false, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:222 }
+  coverZumrut: { type: field, component: ListItem, role: radio, text: { key: OpenKoskDialog.covers.zumrut }, checked: false, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:222 }
+  coverMurekkep: { type: field, component: ListItem, role: radio, text: { key: OpenKoskDialog.covers.murekkep }, checked: false, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:222 }
+  coverHelp: { type: text, component: Text, text: { key: OpenKoskDialog.coverHelp }, in: [form, formReady, looking, opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:228 }
+
+  # Listelerde gösterme
+  unlistedCheckbox: { type: field, component: TextField, role: checkbox, text: { key: OpenKoskDialog.unlistedLabel }, checked: false, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:230 }
+  unlistedHelp: { type: text, component: Text, text: { key: OpenKoskDialog.unlistedHelp }, in: [form, formReady, looking, opening], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:234 }
+
+  # Köşk nazımı: the picker
+  nazimField: { type: field, component: TextField, role: textbox, text: { key: KoskNazimPicker.label }, value: { literal: "" }, in: [form, formReady, looking, opening], disabledIn: [looking, opening], source: apps/nizam/features/kosks/components/nazim-picker.tsx:115 } # type=email; disabled while it searches, so it loses the focus (F-W2-3)
+  nazimHelp: { type: text, component: Text, text: { key: KoskNazimPicker.help }, in: [form, formReady, looking, opening], when: "not pickerError", source: apps/nizam/features/kosks/components/nazim-picker.tsx:114 }
+  pickerNotFound: { type: text, component: Text, text: { key: KoskNazimPicker.notFound }, in: [form, formReady, looking, opening], when: "pickerError and note == 'notFound'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:99 } # the field's own error while nobody is chosen: no live region
+  pickerDown: { type: text, component: Text, text: { key: KoskNazimPicker.failed }, in: [form, formReady, looking, opening], when: "pickerError and note == 'down'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:101 }
+  pickerAlertNotFound: { type: alert, component: Alert, role: alert, text: { key: KoskNazimPicker.notFound }, in: [form, formReady, looking, opening], when: "chosen == 'some' and note == 'notFound'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:142 } # once somebody is chosen the search messages stand beside the field, and then they are announced
+  pickerAlertDown: { type: alert, component: Alert, role: alert, text: { key: KoskNazimPicker.failed }, in: [form, formReady, looking, opening], when: "chosen == 'some' and note == 'down'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:142 }
+  pickerAlertAlready: { type: alert, component: Alert, role: alert, text: { key: KoskNazimPicker.already }, in: [form, formReady, looking, opening], when: "note == 'already'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:142 }
+  searching: { type: status, component: Status, role: status, text: { key: KoskNazimPicker.searching }, in: [looking], source: apps/nizam/features/kosks/components/nazim-picker.tsx:147 } # the hidden <output>
+  chosenAnnounce: { type: status, component: Status, role: status, text: { key: KoskNazimPicker.chosen, params: { name: person.name } }, in: [form, formReady, opening], when: "heard and not fromApplication", source: apps/nizam/features/kosks/components/nazim-picker.tsx:77 } # the same <output>; it keeps the last name after a removal (F-W3-open-3)
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: KoskNazimPicker.chosenTitle }, in: [form, formReady, looking, opening], when: "chosen == 'some'", source: apps/nizam/features/kosks/components/nazim-picker.tsx:156 }
+  removeNazim: { type: action, component: Button, role: button, intent: secondary, name: { key: KoskNazimPicker.remove, params: { name: person.name } }, in: [form, formReady, looking, opening], disabledIn: [opening], when: "chosen == 'some'", emits: REMOVE_NAZIM, source: apps/nizam/features/kosks/components/nazim-picker.tsx:173 } # no confirmation; the button leaves the page and the focus is not moved
+
+  # the footer
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: OpenKoskDialog.submit }, in: [form, formReady, opening], disabledIn: [form, opening], emits: SUBMIT, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:137 } # natively disabled in `form`, nothing says why (F-W3-1); busy (aria-disabled, aria-busy) in `opening`; not drawn in `looking`, where it keeps the state it had
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: OpenKoskDialog.cancel }, in: [form, formReady, looking], emits: CANCEL, source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:136 } # on while the köşk is made, and does nothing then (open-kosk-dialog.tsx:126)
+
+  # a refusal that is not about a field: a toast over the form, which stays open
+  failedTitle: { type: status, component: Status, text: { key: OpenKoskDialog.failed }, in: [form, formReady], when: "toast != 'none'", source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:109 }
+  failedUnknownAccount: { type: status, component: Status, text: { key: OpenKoskDialog.errors.unknownAccount }, in: [form, formReady], when: "toast == 'unknownAccount'", source: apps/nizam/features/kosks/admin-present.ts:419 }
+  failedForbidden: { type: status, component: Status, text: { key: OpenKoskDialog.errors.forbidden }, in: [form, formReady], when: "toast == 'forbidden'", source: apps/nizam/features/kosks/admin-present.ts:425 }
+  failedGeneric: { type: status, component: Status, text: { key: OpenKoskDialog.errors.generic }, in: [form, formReady], when: "toast == 'failed'", source: apps/nizam/features/kosks/admin-present.ts:436 }
+
+  # the köşk is open
+  savedTitle: { type: status, component: Status, text: { key: OpenKoskDialog.saved }, in: [opened, openedFromLink], source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:115 }
+  newRow: { type: action, component: LinkButton, role: link, text: { literal: "Örnek Çalışma Köşkü" }, in: [opened, openedFromLink], when: "not fromApplication", source: apps/nizam/features/kosks/components/kosks-directory.tsx:168 } # the new köşk's own row, a link to /kosks/{id}; its name is the sample koskName
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { triggers: [openButton, form] }
+  - { triggers: [submit, opening] }
+  - { returnsFocus: [dialog, openButton] } # Base UI returns the focus to the element that was focused when it opened: the page's "Köşk aç" button
+
+rules:
+  - { id: no-default-accept, rule: "no page has initialFocus on an action with intent confirm: the form starts in Ad" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: F-W3-1, rule: "a submit button is not natively disabled while the form is incomplete with nothing saying what is missing. 'Köşk aç' is off until the name, the short name, the tags and a nazım are right; the messages written for a submit try ('En az bir köşk nazımı seçin.', the tags errors) can never show because a disabled default button blocks implicit submission, so `sent` is never set. A keyboard or screen-reader user meets a dead button. Fix: keep it enabled, validate on submit and focus the first problem, or tie the reason to the button with aria-describedby (F-X-3 is the same finding in every dialog)" }
+  - { id: F-X-3, rule: "the family of F-W3-1: natively disabled submit buttons with no reason given, in this form and in every dialog of the app" }
+  - { id: F-W3-14, rule: "the nazım's address is looked up when the field is left (onBlur), not only on Enter, and tedrisat writes every lookup, found or not, to the audit log; the help text says searches are audited. Tabbing through the field makes audited lookups. Fix: search on Enter or an explicit 'Ara' button only" }
+  - { id: F-X-14, rule: "the family of F-W3-14: e-mail lookups that run on blur in the four pickers of nizam" }
+  - { id: F-W2-3, rule: "the e-mail lookup has no button; the field is `disabled` while it searches, so the focused field loses the focus, and nothing says the search finished except a hidden <output> for a success; 'not found' and 'failed' are a Field error that is not a live region while nobody is chosen. Fix: a visible 'Ara' button, keep the input enabled with aria-busy, announce the result with role=status" }
+  - { id: F-UI-W3-1, rule: "Field's error element has no role=alert and no live region (libs/ui/src/mds/field.tsx:50-53): the name, short-name and 'kısa adını başka bir köşk kullanıyor' errors are read only if the focus moves to the field, and after a refused submit it does not" }
+  - { id: F-W3-13, rule: "after a submit the server refuses (the short name is taken) the error appears under the field, the focus stays on the submit button, which is then disabled until the field is edited, and nothing announces the error. Fix: focus the first invalid control, or an error summary with role=alert" }
+  - { id: F-UI-W1-1, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx), so a screen reader reads the intro and every field as the dialog's description when it opens" }
+  - { id: F-W3-8, rule: "from a köşk application, opening the köşk is two writes (POST /kosks, then the approval); if the second fails the köşk exists and the page does not say so (nizam.applications.decide draws it)" }
+  - { id: F-W3-open-1, rule: "new: the API lets a Medaris nazımı holding platform.kosk_create open a köşk (POST /kosks, @Authz platform.kosk_create), and the seeded Medaris nazımı holds it; the page gives 'Köşk aç' to the başnazım alone (`chief`, kosks-directory.tsx:293; `can.openKosk = chief`, apps/tedrisat/src/nizam-dashboard/dashboard-sections.ts:28), and the dialog is not even mounted for anyone else. A decision to take: offer it to the holders of the permission, or take the permission off the Medaris nazımı's defaults" }
+  - { id: F-W3-open-2, rule: "new: the 'Vazgeç' and close buttons stay enabled while the köşk is being made and do nothing (`if (!saving) onOpenChange(next)`, open-kosk-dialog.tsx:126); a busy control is not disabled or marked" }
+  - { id: F-W3-open-4, rule: "new, found by the replay: when the form is opened by the address /kosks?ac=1 (the home page's 'Köşk aç' link) no button was pressed, so closing it (Vazgeç, Escape, or after the köşk is made) gives the focus to nothing: it falls to the page itself, and a keyboard or screen-reader user starts again from the top. Opened with the page's 'Köşk aç' button it goes back to that button. Fix: focus the page's 'Köşk aç' button, or the h1, when a form opened by the address closes" }
+  - { id: F-W3-open-3, rule: "new: the picker's live <output> keeps 'X seçildi' after X is removed from the list, and a removal moves no focus and says nothing (nazim-picker.tsx:77, 173)" }

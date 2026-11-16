@@ -1,0 +1,278 @@
+# İtirazlar of a medrese in nazar-web (/medrese/<id>/itirazlar), read by its başmüderris, who appeals a köşk's refusal of a course
+# request of the medrese with a reason. Read from the code of PR #394 (apps/nazar/features/appeals, the API's
+# GET /madrasahs/:id/appeals and POST /madrasahs/:id/appeals). It says what the code does today; nothing was looked at in a browser:
+#   - the page lists the course requests a köşk refused (and every request that was appealed) newest first, with the köşk, its reason
+#     and the appeal's state. "İtiraz aç" is drawn on a refused request that has no appeal; a dialog takes a reason and "Gönder"
+#     sends it. The row then says "Bekliyor", and the appeal waits for Medaris management in nizam (nizam.moderation.decideAppeal,
+#     which this flow starts). Nobody is notified, either way (F-B-appeals-5).
+#   - "Gönder" is natively disabled while the reason is blank, and the message that says a reason is needed shows only after the field
+#     was left empty (F-B-6). The sent reason is trimmed, up to 1000 characters.
+#   - a request appealed meanwhile, one that is no longer refused and one that is gone close the dialog with an error toast and read
+#     the list again; a refusal of the caller's permission, or any other failure, leaves the dialog open with an error toast.
+#   - the first value of `rejected` is the hand-over of nizam.courseRequests.decide: a köşk refused a request of the medrese. The
+#     failed read of the page ("İtirazlar okunamadı") is nazar.shell.errorStates; the medrese's other appeals (hide, ban, hosting) are
+#     planned (MDRS-139) and are in needs.yaml.
+schema: delurio-graph/0
+kind: flow
+id: nazar.appeals.open
+status: captured
+domain: medaris.api
+ui: nazar.appeals.open
+title: Appeal a köşk's refusal of a course request
+summary: >-
+  The başmüderris opens İtirazlar from the menu and reads the course requests a köşk refused: the course, the köşk, the köşk's reason
+  and the state of the appeal ("Yok" while nobody appealed). On a refused request with no appeal she presses "İtiraz aç": a dialog asks
+  for a "Gerekçe", and "Gönder" stays off until there is one. Sent, the dialog closes, a toast says "İtiraz gönderildi", and the row
+  reads "Bekliyor" with no button; one appeal is allowed per request and it cannot be taken back. An appeal that someone else opened
+  first, a request the köşk no longer holds as refused, or one that is gone, is told in an error toast, the dialog closes and the list
+  is read again. A refusal of the permission, or any other failure, keeps the dialog open. A reader who may not open appeals (a medrese
+  nazır without madrasah.appeal_open) meets "Bu sayfaya izniniz yok" under the heading. Where no köşk refused anything the page says so.
+
+scope:
+  shows: >-
+    İtirazlar of one medrese for its başmüderris: the heading, the table of refused requests, the İtiraz aç dialog, the toasts of the
+    answer, the empty line and the refusal of a reader without the permission
+  world: open
+  outOfView:
+    - "the köşk's refusal that makes the row, and the request before it: nizam.courseRequests.decide (the köşk's side) and nazar.offsite.requestCourse (the medrese's); the first starts this flow with `rejected: true`"
+    - "the decision on the appeal, and what the row says after it (Kabul edildi or Reddedildi, with the Karar notu): nizam.moderation.decideAppeal. An accepted appeal sends the request back to the köşk, which decides again"
+    - "the page's failed read ('İtirazlar okunamadı' with a retry), a 404 of the medrese, a refused or ended session: nazar.shell.errorStates, nazar.access.medreseNazirRefused, realm.auth.signIn"
+    - "a nazır who holds madrasah.appeal_open by a grant: the page is the same; the grant is nazar.nazirs.permissions"
+    - "appeals against a hide, a ban or a hosting decision: planned (MDRS-139), needs.yaml"
+
+decisions:
+  D1:
+    question: >-
+      Should the people concerned be told? An appeal and its decision write a row and an audit entry and send no notification and no
+      e-mail, so Medaris management finds an appeal only by opening nizam's İtirazlar, and the medrese finds the answer only by opening
+      İtirazlar again; the toast nevertheless says the appeal was "iletildi" (conveyed).
+    recommend: >-
+      Yes: notify the platform's deciders (holders of platform.appeal_decide) when an appeal opens, and the medrese's başmüderris and the
+      nazırs holding madrasah.appeal_open when it is decided, with the decision note. Until then say in the toast that it is recorded.
+    affects: [sending, listed]
+  D2:
+    question: >-
+      Should the dialog say that an appeal is final? A request is appealed once and an appeal cannot be withdrawn or sent again, but
+      nothing in the dialog says so before "Gönder".
+    recommend: >-
+      One line under the title: "Bir talebe bir kez itiraz edilir; gönderdikten sonra geri alınamaz." The API already refuses a second
+      appeal (APPEAL_EXISTS).
+    affects: [form, formReady]
+
+context:
+  rejected:
+    values: [true, false]
+    initial: any
+    say:
+      "true": "a köşk refused a course request of the medrese and no appeal was opened against it yet"
+      "false": "no köşk has refused a request of the medrese that is not appealed"
+  read:
+    values: [served, refused, missing]
+    initial: any
+    say:
+      served: "the API gives the list: the reader holds madrasah.appeal_open, as the başmüderris does by her role"
+      refused: "the API refuses the read: a medrese nazır who was not given madrasah.appeal_open"
+      missing: "the medrese is not there (a hidden or removed medrese)"
+  answer:
+    values: [sent, exists, notRejected, gone, forbidden, failed]
+    initial: any
+    say:
+      sent: "the API takes the appeal"
+      exists: "the request was appealed meanwhile (APPEAL_EXISTS)"
+      notRejected: "the request is no longer refused (APPEAL_REQUEST_NOT_REJECTED)"
+      gone: "the request is no longer the medrese's, or is gone (APPEAL_REQUEST_NOT_FOUND)"
+      forbidden: "the reader lost madrasah.appeal_open meanwhile (AUTHZ_FORBIDDEN)"
+      failed: "anything else: the medrese is gone, the body is refused, the server does not answer"
+  row:
+    values: [open, pending, gone]
+    initial: open
+    say:
+      open: "the request is refused and has no appeal: its status reads Yok and it has the button"
+      pending: "the request has an appeal that waits: its status reads Bekliyor and it has no button"
+      gone: "the list holds no such row"
+  last:
+    values: [nothing, sent, exists, notRejected, gone, forbidden, failed]
+    initial: nothing
+    say:
+      nothing: "no answer is on the screen"
+      sent: "the toast 'İtiraz gönderildi' is up (it closes by itself after 6 seconds)"
+      exists: "an error toast says the request was appealed already"
+      notRejected: "an error toast says the request is no longer refused"
+      gone: "an error toast says the request is gone"
+      forbidden: "an error toast says the reader may not do this; the dialog is still open"
+      failed: "an error toast says something went wrong; the dialog is still open"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  nothingRefused: { set: { row: gone } }
+  sent: { set: { last: sent, row: pending } }
+  alreadyAppealed: { set: { last: exists, row: pending } }
+  noLongerRefused: { set: { last: notRejected, row: gone } }
+  requestGone: { set: { last: gone, row: gone } }
+  forbiddenToast: { set: { last: forbidden } }
+  failedToast: { set: { last: failed } }
+
+failures:
+  opened:
+    from: listMadrasahAppeals
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+  sending:
+    from: createMadrasahAppeal
+    exists: [APPEAL_EXISTS]
+    notRejected: [APPEAL_REQUEST_NOT_REJECTED]
+    gone: [APPEAL_REQUEST_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [MADRASAH_NOT_FOUND, VALIDATION_ERROR]
+
+# The story the page tells first: the başmüderris reads the refused request, opens the dialog, writes a reason and sends it.
+main:
+  given: { rejected: true, read: served, answer: sent }
+  events: [DONE, OPEN, TYPE, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: İtirazlar is read
+    description: >-
+      The page reads GET /madrasahs/:id/appeals on the server (`readOnce`) behind the skeleton of its own loading.tsx; the heading is
+      drawn together with the body, after the read, not before it. The başmüderris, and a nazır given madrasah.appeal_open, are served;
+      any other nazır is refused (state forbidden); a 404 is Next's not-found page; any other failure draws "İtirazlar okunamadı" with
+      a retry (nazar.shell.errorStates). Nothing but the skeleton is on the screen of this step.
+    invoke: { action: listMadrasahAppeals }
+    on:
+      DONE:
+        - { guard: "read == 'served' and rejected", target: listed, source: apps/nazar/features/appeals/components/appeals-page.tsx:43, say: "a refused request waits for an appeal: the table" }
+        - { guard: "read == 'served'", target: empty, effect: [nothingRefused], source: apps/nazar/features/appeals/components/appeals-page.tsx:38, say: "no köşk refused a request: the empty line" }
+      FAIL.forbidden: { guard: "read == 'refused'", target: forbidden, source: apps/nazar/features/appeals/components/appeals-page.tsx:30, say: "the API refuses the caller" }
+      FAIL.missing: { guard: "read == 'missing'", target: not_found, source: apps/nazar/lib/tedrisat-read.ts:46, say: "the medrese is not there" }
+    source: apps/nazar/features/appeals/components/appeals-page.tsx:19
+
+  forbidden:
+    title: The reader may not open appeals
+    description: >-
+      The heading and the sidebar stay, and a neutral alert says "Bu sayfaya izniniz yok" with a sentence that sends her to the
+      medrese's başmüderris; no table and no button. The title of the tab and the <h1> still say İtirazlar, and the alert's title is a
+      paragraph, not a heading, with no link out (F-B-13). The nazır's whole story is nazar.access.medreseNazirRefused.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu to another page" }
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  listed:
+    title: The refused requests are listed
+    description: >-
+      The page: the heading, the caption "Köşkün reddettiği ders talepleri" and the table Ders · Köşk · Ret gerekçesi · İtiraz durumu ·
+      Karar notu, newest first. A refused request with no appeal reads "Yok" and has "İtiraz aç: {title}"; one with an appeal that waits
+      reads "Bekliyor" and has no button. The sidebar's "İtirazlar" is the current page (shell#4 a4). Findings read here: F-B-9 (after a
+      success the opener is gone and the focus falls to the document), F-B-appeals-2 (the row changes under an aria-busy wrapper and
+      nothing is said but a toast of 6 seconds), F-B-appeals-5 (the toast says "iletildi", and nobody is notified). The toast of the last
+      answer may still be up (`last`); an error toast stays until it is closed.
+    by: human
+    goal: true
+    on:
+      OPEN: { guard: "row == 'open'", target: form, effect: [clearNote], source: apps/nazar/features/appeals/components/appeals-table.tsx:78, say: "they press 'İtiraz aç' on the row" }
+      NAVIGATE: { target: left, say: "they follow the menu to another page" }
+    source: apps/nazar/features/appeals/components/appeals-table.tsx:92
+
+  empty:
+    title: No köşk refused a request
+    description: >-
+      The line "Köşkün reddettiği ders talebi yok." under the heading; no table. Also where the only row left the list after the
+      request was no longer refused or was gone (the toast of that answer may still be up).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu to another page" }
+    source: apps/nazar/features/appeals/components/appeals-page.tsx:38
+
+  form:
+    title: İtiraz aç, no reason yet
+    description: >-
+      A modal dialog over the page, opened on a row ("İtiraz aç", with the request's title above it). The focus starts in the textarea
+      "Gerekçe" (required, 4 rows, at most 1000 characters, with no counter: F-B-appeals-4). "Gönder" is natively disabled until the
+      reason has a character other than a space and nothing says why (F-B-6). The scrim does not close the dialog. The dialog's name is
+      "İtiraz aç" and does not say which request (F-B-appeals-3); the body is its description (F-B-12). Nothing says that an appeal is
+      final (decision D2).
+    by: human
+    on:
+      TYPE: { target: formReady, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:114, say: "they type a reason" }
+      LEAVE_FIELD: { target: formTouched, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:115, say: "they leave the empty field (Tab or a click elsewhere in the dialog)" }
+      CANCEL: { target: listed, effect: [clearNote], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:81, say: "Vazgeç, the close icon or Escape: the dialog closes, nothing is sent and the focus goes back to the row's button" }
+    source: apps/nazar/features/appeals/components/appeal-dialog.tsx:78
+
+  formTouched:
+    title: İtiraz aç, the empty field was left
+    description: >-
+      The same dialog with "Bir gerekçe yazın." under the field: it appears only after the field was left, by then the focus is
+      elsewhere and nothing announces it (F-B-6, F-L-12). "Gönder" is still off.
+    by: human
+    on:
+      TYPE: { target: formReady, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:114, say: "they type a reason: the message goes and the button comes on" }
+      CANCEL: { target: listed, effect: [clearNote], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:81, say: "Vazgeç, the close icon or Escape" }
+    source: apps/nazar/features/appeals/components/appeal-dialog.tsx:103
+
+  formReady:
+    title: İtiraz aç, a reason is written
+    description: >-
+      The same dialog with a reason in the field and "Gönder" on. Pressing it sends the trimmed reason. Where an earlier send was
+      refused and the dialog stayed open, the error toast of that answer is up over it (`last`).
+    by: human
+    on:
+      SUBMIT: { guard: "row == 'open'", target: sending, effect: [clearNote], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:46, say: "they press Gönder" }
+      CANCEL: { target: listed, effect: [clearNote], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:81, say: "Vazgeç, the close icon or Escape: nothing is sent" }
+    source: apps/nazar/features/appeals/components/appeal-dialog.tsx:92
+
+  sending:
+    title: The appeal is on its way
+    description: >-
+      The server action openAppeal calls POST /madrasahs/:id/appeals with the request's id and the trimmed reason (the response is 201
+      with the appeal's id; one appeal row and one audit row are written in one transaction, and nobody is told). The textarea is
+      disabled, so it loses the focus, and "Gönder" is busy ("Yükleniyor" for a reader of the screen, from the kit's own word: F-B-2);
+      "Vazgeç", the close icon and Escape do nothing meanwhile (F-B-appeals-1). A success closes the dialog, raises the toast and reads
+      the page again. APPEAL_EXISTS, APPEAL_REQUEST_NOT_REJECTED and APPEAL_REQUEST_NOT_FOUND ("the list has moved") do the same with an
+      error toast; any other refusal leaves the dialog open with an error toast.
+    invoke: { action: createMadrasahAppeal }
+    on:
+      DONE: { guard: "answer == 'sent'", target: listed, effect: [sent], starts: { flow: nizam.moderation.decideAppeal }, source: apps/nazar/features/appeals/components/appeal-dialog.tsx:56, say: "the appeal exists: a toast says so, the dialog closes and the row reads Bekliyor; it waits for Medaris management" }
+      FAIL.exists: { guard: "answer == 'exists'", target: settled, effect: [alreadyAppealed], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:70, say: "'Bu talebe zaten itiraz edildi.': the dialog closes and the list shows the other appeal" }
+      FAIL.notRejected: { guard: "answer == 'notRejected'", target: settled, effect: [noLongerRefused], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:70, say: "'Bu talep artık reddedilmiş değil.': the dialog closes and the row leaves the list" }
+      FAIL.gone: { guard: "answer == 'gone'", target: settled, effect: [requestGone], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:70, say: "'Bu talep artık yok.': the dialog closes and the row leaves the list" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: formReady, effect: [forbiddenToast], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65, say: "'Bu işlem için izniniz yok.' in an error toast; the dialog stays open" }
+      FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nazar/features/appeals/components/appeal-dialog.tsx:65, say: "'İşlem tamamlanamadı. Biraz sonra yeniden deneyin.' in an error toast; the dialog stays open" }
+    source: apps/nazar/features/appeals/components/appeal-dialog.tsx:53
+
+  settled:
+    title: The list follows the answer
+    description: >-
+      Not a screen: the dialog is closed and the server components are read again (router.refresh), so the list is the table, or the
+      empty line when the request was the only row and left it.
+    always:
+      - { guard: "row == 'gone'", target: empty, source: apps/nazar/features/appeals/components/appeals-page.tsx:38 }
+      - { target: listed, source: apps/nazar/features/appeals/components/appeals-page.tsx:43 }
+    source: apps/nazar/features/appeals/components/appeals-table.tsx:105
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the read is Next's not-found page (lib/tedrisat-read.ts:46); the 404 page is nazar.shell.errorStates."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-a-refused-request-is-appealed
+    never: "(state == 'form' or state == 'formTouched' or state == 'formReady' or state == 'sending') and row != 'open'"
+    say: The dialog is opened on a request that is refused and has no appeal, and an appeal is sent for no other.
+    source: apps/nazar/features/appeals/appeals.ts:41
+  - id: empty-means-no-row
+    never: "state == 'empty' and row != 'gone'"
+    say: The empty line shows only when the list holds no row.
+    source: apps/nazar/features/appeals/components/appeals-page.tsx:38
+  - id: the-table-has-a-row
+    never: "state == 'listed' and row == 'gone'"
+    say: The table is drawn only while the list holds a row.
+    source: apps/nazar/features/appeals/components/appeals-page.tsx:43

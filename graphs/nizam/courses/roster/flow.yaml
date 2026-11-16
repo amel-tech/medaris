@@ -1,0 +1,536 @@
+# Talebeler of a course in nizam-web (/kosks/<id>/courses/<id>/students), where a köşk's nazım runs the roster: the tabs with their counts,
+# the search, "Daha fazla göster", each talebe's progress, "Tamamladı say" and "Yeniden aç", "Dersten çıkar" with a reason, the record
+# "Erişimi kaldırılanlar", and the "Yasakla" and "Yasağı kaldır" buttons that open the ban dialogs of nizam.moderation.banStudent. Read from the
+# code of PR #394 (apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx and features/applications: students-tabs.tsx, roster-table.tsx,
+# remove-dialog.tsx, removed-table.tsx, present.ts; features/kosks/actions/courses.ts and course-team.ts; the API's PATCH
+# /courses/:id/enrollments/:userId, POST .../remove and GET .../enrollments and .../removed in apps/tedrisat/src/course) on 16 Nov 2026.
+# Nothing here was walked in a browser: every behaviour is "from the code" until the walk phase. It is the twin of nazar.roster.complete and
+# nazar.roster.remove (the same API, a second copy of the screen), and says what the code does today. Where that is wrong for the people who use
+# it, the finding is in ui.yaml `rules` and in the description of the state it touches:
+#   - NROS-1  (the nizam half of RMV-2) the removal dialog's note ("Talebe yeniden başvurabilir.") and the Erişimi kaldırılanlar note ("Çıkarılan
+#             talebe yeniden başvurabilir.") promise a new application, and the API answers it with 409: the seat is kept as REVOKED, the record
+#             of the removal (course.service.ts:1537-1541). The code's own comments say the same wrong thing (remove-dialog.tsx:33-35,
+#             actions/courses.ts:144-145, and the unused message CourseTeam.removeDescription, nizam.json:502); the API's comment is right
+#             (course.service.ts:1754).
+#   - NROS-2  the same note says "Yeniden başvurmasını da engellemek gerekiyorsa “Yasakla”yı kullanın", and that cannot be done from this page: the
+#             removed talebe has no row to press it on, and a barred row offers no "Dersten çıkar" (present.ts:145). Nizam's only BanDialog opener
+#             is this table, so removing and barring a talebe exclude each other here.
+#   - NROS-3  a seat that moved meanwhile, or any refusal, leaves the stale row where it was and asks the person to refresh the page themselves
+#             (an error toast that stays); nothing here re-reads the lists on a failure (roster-table.tsx:107-113).
+#   - NROS-4  (the twin of ROSCOM-2) "Yeniden aç" is offered on a barred, completed talebe and refused with BAN_ACTIVE; the toast under the Turkish title
+#             "İşlem tamamlanamadı" is the API's own English sentence "You are barred from this course", which also speaks to the nazım as if she
+#             were the barred one.
+#   - NROS-5  (the twin of RMV-3) while the removal is sent, "Vazgeç", the close icon and Escape stay on and do nothing, with no mark.
+#   - NROS-6  an unreadable roster draws one bare caption for two different things: the server did not answer, and the reader holds no roster
+#             right (a Medaris nazımı is refused with 403 and told the read "failed"); F-W4-10 (no alert, no retry) is the same caption.
+#   - NROS-7  (the twin of F-D1-20) no try/catch around the two server actions of the roster (roster-table.tsx:99-105, remove-dialog.tsx:62-68).
+#   Also touched, as the inventory and the siblings number them: F-W4-1, F-W4-6, F-W4-10, F-W4-14, F-W4-17, F-D1-04, ROSCOM-1, ROSCOM-3, ROSCOM-4,
+#   RMV-1, RMV-4, BULK-1, and BANST-6 (nizam.moderation.banStudent's finding for this page: a medrese-wide ban reads 'Yasaklı · Bu ders' and offers a lift the
+#   köşk nazımı may not use). ui.yaml `rules` has each.
+# E2E carried: students#1 (the tab counts), #3 (the search by name and by e-mail), #4 (the progress bar and its name), #5 (the reason, the focus on
+# the reason, the disabled button, the row moves, the audit row), #6 (Vazgeç: the scrim half is drawn, not bound), #7 (Tamamladı say). NOT carried:
+# #2 ("Daha fazla göster": it needs seven enrolled talebe and the stack has four spare accounts that may be used; the step is drawn and unbound).
+schema: delurio-graph/0
+kind: flow
+id: nizam.courses.roster
+status: captured
+domain: medaris.api
+ui: nizam.courses.roster
+title: Run a course's roster
+summary: >-
+  The köşk's nazım opens a course's Talebeler. The page opens on Başvurular (empty for a course that takes anyone) and its four tabs
+  carry their counts. "Kayıtlı" lists the enrolled talebe six at a time, by name, with a search box (name or e-mail, in the browser), each
+  one's own progress, "Daha fazla göster", and the buttons "Tamamladı say", "Dersten çıkar" and "Yasakla" on a row. "Tamamladı say" marks
+  the course complete: a toast says "Talebe Tamamlayanlar'a taşındı", the row leaves for Tamamlayanlar, where "Yeniden aç" gives it back.
+  "Dersten çıkar" opens a dialog that asks for a reason (the focus starts in it, and the button stays off until it holds something); sending
+  it closes the dialog, the row leaves Kayıtlı and Erişimi kaldırılanlar lists the talebe with the day, the reason and who removed them. The
+  dialog and that tab both say the talebe may apply again, and the API refuses it (NROS-1). "Yasakla" and "Yasağı kaldır" hand over to
+  nizam.moderation.banStudent. A seat that moved meanwhile, or a refusal, is an error toast and the stale row stays (NROS-3). A reader who
+  holds no roster right meets one bare caption instead of the tabs (NROS-6).
+
+scope:
+  shows: >-
+    the Talebeler page of one course for a köşk's nazım: the tabs Başvurular, Kayıtlı, Tamamlayanlar and Erişimi kaldırılanlar with their
+    counts, the search, the sort, "Daha fazla göster", the progress bars, "Tamamladı say" and "Yeniden aç" with their busy rows and toasts,
+    the "Dersten çıkar" dialog with its disabled button and its focus on the reason, the record of removals, the buttons that hand over to the
+    ban dialogs, and the page when the roster cannot be read
+  world: open
+  outOfView:
+    - "Onayla and Reddet on Başvurular and the approval note for a course that asks for approval: nizam.courses.decideApplications"
+    - "the ban dialog (scope, reason, the toast, the row's badge afterwards): nizam.moderation.banStudent; the lift dialog is the LiftDialog of nizam.moderation.decideBan (drawn there on Yasaklamalar, not on this row); this flow ends where 'Yasakla' and 'Yasağı kaldır' are pressed"
+    - "the same completion and removal from nazar: nazar.roster.complete, nazar.roster.remove (the same API; their ROSCOM-*, RMV-* findings are cited here as the twins they are)"
+    - "what the talebe sees afterwards (the notice with the reason, the locked course page, the refused apply and leave, Programım without the celses): tedris.account.notifications, tedris.course.readProgramme, tedris.course.apply, tedris.course.leave, tedris.learning.schedule"
+    - "a talebe barred from the whole köşk or in the course's medrese: the row says only 'Yasaklı · Köşk' (the badge for the course scope is the one drawn)"
+    - "an empty Kayıtlı or Tamamlayanlar tab (the table's one cell 'Kayıtlı talebe yok' / 'Dersi tamamlayan talebe yok') and the search and sort of Tamamlayanlar, which is the same component as Kayıtlı's"
+    - "a removal made while a search holds the talebe's name, or a second completion in one visit: the graph holds one completion and one removal at a time"
+    - "'Derse dön' (it goes to /edit, which redirects to the Müfredat page: F-W4-1) is drawn as an exit; the course overview and the curriculum are nizam.courses.overview and nizam.courses.curriculum"
+    - "the people who cannot open the page: a talebe or a person with no role gets 'Bu bölüm için izniniz yok' with a 403 from the layout (nizam.shell.noAccessAndNotFound); a müderris is sent to Nazar"
+    - "the phone: each row becomes a card below 768 px (Table responsive=\"stack\"); the same nodes"
+    - "an ended session: the two server actions answer 'unauthenticated' and the person is sent to sign in (realm.auth.signIn)"
+
+decisions:
+  D1:
+    question: >-
+      Should the team be able to bring a removed talebe back from a screen, and should the page say so? Today the dialog and the removed tab say
+      the talebe "yeniden başvurabilir", the API answers that application with 409 (the REVOKED row is the record), and no screen of nizam
+      reinstates the seat: Başvurular lists PENDING seats only, the removed table has no button, and the only way is the API's approve route
+      called by hand (the same question as nazar.roster.remove's D1; NROS-1).
+    recommend: >-
+      Say what is true first: "Talebe yeniden başvuramaz; yeri ancak ders kadrosu onaylarsa geri gelir." Then add a "Yeniden kabul et" on a row of
+      Erişimi kaldırılanlar that calls the approve route, so that a removal made by mistake can be undone.
+    affects: [form, formReady, removedList]
+  D2:
+    question: >-
+      Should barring a talebe and removing them be possible together from this page? A barred row has no "Dersten çıkar" and a removed talebe has
+      no row, while the dialog tells the nazım to use "Yasakla" if she wants to stop a new application (NROS-2).
+    recommend: >-
+      Drop the sentence from the dialog (a removed seat already blocks a new application); or offer "Yasakla" on the record of removals; and keep
+      "Dersten çıkar" on a barred row if the team wants the seat gone as well.
+    affects: [form, formReady, removedList]
+  D3:
+    question: >-
+      Should a completion be told to the talebe, and should the reason of a removal be said to reach them? A completion sends no notification and
+      takes the coming celses out of their schedule and calendar; a removal sends the reason word for word, and the dialog says only that the course
+      team sees it (ROSCOM-4, RMV-1).
+    recommend: >-
+      Yes to a notice for a completion ("{course} dersi tamamlandı olarak işaretlendi"); and say in the dialog's help line that the talebe reads the reason too.
+    affects: [completing, formReady]
+
+context:
+  read:
+    values: [ok, unreadable, missing]
+    initial: any
+    say:
+      ok: "the page reads the course and the roster (a köşk's nazım of this course's köşk)"
+      unreadable: "the course is read and the roster is not: tedrisat refuses it (a Medaris nazımı holds no roster right in a course: 403) or does not answer"
+      missing: "the course, or the köşk in the address, is not there, or the course is not that köşk's: the page answers notFound()"
+  held:
+    values: [none, barred]
+    initial: any
+    say:
+      none: "Tamamlayanlar starts empty and nobody on the roster is barred"
+      barred: "one talebe has completed the course and is barred from it (a course ban): Tamamlayanlar lists them with 'Yasaklı · Bu ders', 'Yeniden aç' and 'Yasağı kaldır'"
+  size:
+    values: [short, long]
+    initial: any
+    say:
+      short: "the Kayıtlı list holds six talebe or fewer: no 'Daha fazla göster' (the roster of the walk: four)"
+      long: "the Kayıtlı list holds more than six talebe: six are shown and 'Daha fazla göster' is there (not walkable on the stack: the spare accounts are four)"
+  search:
+    values: [none, name, email, nobody]
+    initial: none
+    say:
+      none: "the search box of the open tab is empty"
+      name: "the box holds a name that one talebe has"
+      email: "the box holds an e-mail address (or a part of it) that one talebe has"
+      nobody: "the box holds a word that no row has any more: the table says 'Aramaya uyan talebe yok'"
+  order:
+    values: [ascending, descending]
+    initial: ascending
+    say:
+      ascending: "the Talebe column is sorted by name, A to Z in Turkish order (the start)"
+      descending: "the Talebe column is sorted Z to A"
+  more:
+    values: [first, all]
+    initial: first
+    say:
+      first: "six rows are shown (with a roster of more than six, 'Daha fazla göster' is there)"
+      all: "every row is shown and the button is gone"
+  done:
+    values: [none, some]
+    initial: none
+    say:
+      none: "nobody has completed the course in this visit"
+      some: "one talebe was marked complete in this visit and is listed in Tamamlayanlar (the graph holds one completion at a time)"
+  removed:
+    values: [none, some]
+    initial: none
+    say:
+      none: "nobody was removed in this visit: Erişimi kaldırılanlar says 'Erişimi kaldırılan talebe yok'"
+      some: "one talebe was removed in this visit and is listed in Erişimi kaldırılanlar with the reason"
+  reason:
+    values: [empty, blank, text]
+    initial: empty
+    say:
+      empty: "the reason box of the removal dialog is empty"
+      blank: "the reason box holds only white space: the button stays off"
+      text: "the reason holds something other than white space: the button is on"
+  last:
+    values: [nothing, completed, reopened, removed, moved, refused, barred, failed, removeMoved, removeRefused, removeFailed]
+    initial: nothing
+    say:
+      nothing: "no decision has been made in this visit, or its toast is gone"
+      completed: "a talebe's course was just marked complete"
+      reopened: "a completion was just reopened"
+      removed: "a talebe was just taken out of the course"
+      moved: "the seat was not as the page showed it (the talebe left, or it is no longer enrolled): an error toast, and the list was not read again"
+      refused: "the API refused a completion or a reopening for lack of permission"
+      barred: "the API refused a reopening because the talebe is barred (BAN_ACTIVE), in the API's own English words"
+      failed: "any other refusal of a completion or a reopening, in the API's own words"
+      removeMoved: "the seat moved while the removal was sent: an error toast over the dialog, which stays"
+      removeRefused: "the API refused the removal for lack of permission: an error toast over the dialog, which stays"
+      removeFailed: "any other refusal of the removal: an error toast over the dialog, which stays"
+
+guards:
+  rowsShown: "search != 'nobody'"
+  searched: "search in ['name', 'email']"
+  moreRows: "size == 'long' and more == 'first' and search == 'none'"
+  mayComplete: "held == 'none' and done == 'none' and search != 'nobody'"
+  mayReopen: "(done == 'some' and held == 'none') or held == 'barred'"
+  mayBanCompleted: "done == 'some' and held == 'none'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  fresh: { set: { search: none, order: ascending, more: first } } # a tab's table is drawn anew each time its tab is opened
+  typedName: { set: { search: name, more: first } }
+  typedEmail: { set: { search: email, more: first } }
+  typedNobody: { set: { search: nobody, more: first } }
+  erased: { set: { search: none, more: first } }
+  sortedDown: { set: { order: descending } }
+  sortedUp: { set: { order: ascending } }
+  showedAll: { set: { more: all } }
+  completedPlain: { set: { last: completed, done: some } }
+  completedSearched: { set: { last: completed, done: some, search: nobody } } # the row the box found has left Kayıtlı; the box still holds its name
+  reopened: { set: { last: reopened, done: none } }
+  movedToast: { set: { last: moved } }
+  refusedToast: { set: { last: refused } }
+  barredToast: { set: { last: barred } }
+  failedToast: { set: { last: failed } }
+  openedDialog: { set: { reason: empty, last: nothing } } # a new dialog: RemoveDialog resets its reason when it opens
+  typedReason: { set: { reason: text } }
+  typedBlank: { set: { reason: blank } }
+  erasedReason: { set: { reason: empty } }
+  removedToast: { set: { last: removed, removed: some, reason: empty } }
+  removeMovedToast: { set: { last: removeMoved } }
+  removeRefusedToast: { set: { last: removeRefused } }
+  removeFailedToast: { set: { last: removeFailed } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+  reading:
+    from: listCourseEnrollments
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [COURSE_NOT_FOUND, INTERNAL_ERROR, HTTP_400]
+  completing:
+    from: setEnrollmentStatus
+    moved: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+  reopening:
+    from: setEnrollmentStatus
+    moved: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    barred: [BAN_ACTIVE]
+    other: [COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+  removing:
+    from: removeEnrollment
+    moved: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: the köşk's nazım of a course of four talebe opens Talebeler, goes from Başvurular to Kayıtlı, sorts the
+# names Z to A and back, finds a talebe by e-mail, empties the box, finds another by name, marks that talebe complete (the box now finds
+# nobody), opens Tamamlayanlar, reopens the completion, goes back to Kayıtlı, takes the first talebe out with a reason and finds them under
+# Erişimi kaldırılanlar.
+main:
+  given: { read: ok, held: none, size: short }
+  events: [DONE, DONE, TAB_ENROLLED, SORT, SORT, TYPE_EMAIL, ERASE, TYPE_NAME, COMPLETE, DONE, TAB_COMPLETED, REOPEN, DONE, TAB_ENROLLED, REMOVE, TYPE_REASON, SUBMIT, DONE, TAB_REMOVED]
+
+initial: opened
+
+states:
+  opened:
+    title: The page reads the köşk and the course
+    description: >-
+      The server component reads, together, the köşk (GET /kosks/:id), the course (GET /courses/:id), the roster (GET /courses/:id/enrollments),
+      the removed list (GET /courses/:id/enrollments/removed) and the caller (GET /me). A köşk or a course that is not there, or a course that
+      is not this köşk's (`course.koskId !== kosk.id`), is Next's notFound(): the "Bu bölüm için izniniz yok" screen with a 404 (a refused read of
+      the course lands there too). Nothing is on the screen of this step but the skeleton of `loading.tsx`, which is silent to a screen reader.
+    invoke: { action: getCourse }
+    on:
+      DONE: { guard: "read != 'missing'", target: reading, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:37" }
+      FAIL.missing: { guard: "read == 'missing'", target: not_found, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:44" }
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:36"
+
+  reading:
+    title: The roster is read
+    description: >-
+      GET /courses/:id/enrollments as the caller: PENDING first, then ENROLLED, COMPLETED and REVOKED, each with the open ban on the person, if
+      any ({id, scope}); the names and e-mails are the snapshots kept at enrollment. It needs course.staff_read, which the köşk's nazım holds in
+      every course of the köşk and a Medaris nazımı holds in none, so a Medaris nazımı who opens the address gets a 403, and the page maps every
+      failure to `null`. The read writes an audit row (course.roster_read) unless the reader is the course's müderris. Nothing is on the screen of
+      this step.
+    invoke: { action: listCourseEnrollments }
+    on:
+      DONE: { guard: "read == 'ok'", target: applications, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:65" }
+      FAIL.forbidden: { guard: "read == 'unreadable'", target: unreadable, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:62" }
+      FAIL.failed: { guard: "read == 'unreadable'", target: unreadable, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:62" }
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:40"
+
+  unreadable:
+    title: The page says the roster could not be read
+    by: human
+    description: >-
+      The header stays ("Derse dön", "Talebeler" and its line) and under it one `<p class=mds-caption>` says "Bu dersin kayıtları şu anda okunamadı.":
+      no tabs, no alert, no retry button, no heading (F-W4-10). The words are the same whether the server did not answer or the reader holds no
+      roster right and was refused (NROS-6), and "Derse dön" goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1).
+      The stack cannot make tedrisat fail, so this state is walked as the Medaris nazımı, whom the API refuses.
+    on:
+      BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
+      NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:62"
+
+  applications:
+    title: Başvurular, the tab the page opens on
+    by: human
+    description: >-
+      The header, the tablist "Talebe durumu" with four tabs and the number of rows in each (the counts come from the lists the page read, so a
+      decision moves them with the rows), and the panel of Başvurular: for a course that takes anyone, "Bu ders onay istemiyor; talebeler başvurur
+      başvurmaz kaydolur." and the table "…dersine onay bekleyen başvurular" with its one empty line. The page opens here whatever the lists hold
+      (useState("applications"), students-tabs.tsx:57) and the tab is local state, not in the address, so a reload starts here again. The page
+      sets no focus. A toast of the last decision may still be up (it closes by itself after 6 seconds, an error stays).
+    on:
+      TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_REMOVED: { target: removedList, say: "they open Erişimi kaldırılanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
+      NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
+    source: apps/nizam/features/applications/components/students-tabs.tsx:121
+
+  enrolled:
+    title: Kayıtlı, the enrolled talebe
+    by: human
+    goal: true
+    description: >-
+      The panel of Kayıtlı: the help line "İlerlemeyi talebe kendisi girer; dersi tamamladığını ders kadrosu onaylar.", a search box "Talebe ara"
+      (placeholder "Ada ya da e-postaya göre ara…"), the table "{course} dersine kayıtlı talebeler" with the columns Talebe (a sort button; aria-sort),
+      E-posta, Kayıt tarihi, İlerleme (the talebe's own number, a progressbar named "Talebenin girdiği ilerleme: {name}", "tamamlandı" at 100) and a
+      column of buttons that has no visible header, "{total} talebeden {shown} tanesi gösteriliyor" and, while more than six rows wait, "Daha fazla
+      göster". A row carries "Tamamladı say: {name}", "Dersten çıkar: {name}" and "Yasakla: {name}" (a barred row: "Tamamladı say" and "Yasağı kaldır",
+      no "Dersten çıkar"; the badge "Yasaklı · Bu ders" beside the name). Typing filters the rows in the browser (name or e-mail, case and
+      diacritics ignored, Turkish) and starts again from six rows; a word nobody has leaves the table's one cell "Aramaya uyan talebe yok" and no
+      "showing" line. Pressing the Talebe header flips the sort (ascending first). The list is the one the page read; nothing asks the API
+      again. Findings read here: F-W4-6 and F-D1-04 (the "showing" line and the empty cell are no live region, so a search, a sort and "more" say
+      nothing out loud; "Daha fazla göster" unmounts when the list is complete and the focus with it; a row that completes leaves with its button),
+      ROSCOM-1 (a busy row's buttons are natively disabled), ROSCOM-3 and ROSCOM-4 (see completed).
+    on:
+      TAB_APPLICATIONS: { target: applications, effect: [fresh], say: "they open Başvurular", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_REMOVED: { target: removedList, say: "they open Erişimi kaldırılanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      SORT:
+        - { guard: "order == 'ascending'", target: enrolled, effect: [sortedDown], say: "they press the Talebe header: the rows are sorted Z to A", source: apps/nizam/features/applications/components/roster-table.tsx:282 }
+        - { target: enrolled, effect: [sortedUp], say: "they press it again: A to Z", source: apps/nizam/features/applications/components/roster-table.tsx:282 }
+      MORE: { guard: moreRows, target: enrolled, effect: [showedAll], say: "they press Daha fazla göster: six more rows are shown", source: apps/nizam/features/applications/components/roster-table.tsx:295 }
+      TYPE_NAME: { guard: "search == 'none'", target: enrolled, effect: [typedName], say: "they type a name one talebe has", source: apps/nizam/features/applications/components/roster-table.tsx:262 }
+      TYPE_EMAIL: { guard: "search == 'none'", target: enrolled, effect: [typedEmail], say: "they type an e-mail address one talebe has", source: apps/nizam/features/applications/components/roster-table.tsx:262 }
+      TYPE_NOBODY: { guard: "search == 'none'", target: enrolled, effect: [typedNobody], say: "they type a word no talebe has", source: apps/nizam/features/applications/components/roster-table.tsx:262 }
+      ERASE: { guard: "search != 'none'", target: enrolled, effect: [erased], say: "they empty the box: every row is back, six of them", source: apps/nizam/features/applications/components/roster-table.tsx:262 }
+      COMPLETE: { guard: mayComplete, target: completing, effect: [clearNote], say: "they press Tamamladı say on a row", source: apps/nizam/features/applications/components/roster-table.tsx:231 }
+      REMOVE: { guard: "search == 'none'", target: form, effect: [openedDialog], say: "they press Dersten çıkar on a row: the dialog opens", source: apps/nizam/features/applications/components/roster-table.tsx:132 }
+      BAN: { guard: "search == 'none'", target: handed_over.ban, starts: { flow: nizam.moderation.banStudent }, say: "they press Yasakla on a row: the ban dialog opens for that talebe (nizam.moderation.banStudent)", source: apps/nizam/features/applications/components/roster-table.tsx:134 }
+      BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
+      NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
+    source: apps/nizam/features/applications/components/roster-table.tsx:249
+
+  completing:
+    title: The completion is on its way
+    description: >-
+      setEnrollmentStatus calls PATCH /courses/:id/enrollments/:userId with {status: COMPLETED} (200, the row). The pressed row's three buttons are
+      natively off (`disabled={busy}` on each) and "Tamamladı say" is busy too ("Yükleniyor" for a reader of the screen, a default of the
+      button): ROSCOM-1. The other rows stay live. The API sets completedAt (kept if already set), kicks the invitation sweep (the talebe's coming
+      celses leave their schedule and their calendar) and sends no notification (ROSCOM-4). A success toasts "Talebe Tamamlayanlar'a taşındı" with
+      "{name} dersi tamamladı." and reads the page again (router.refresh()); the search box keeps its text, so a box that held the talebe's name
+      now finds nobody. A seat that moved (ENROLLMENT_NOT_FOUND or ENROLLMENT_STATE_CONFLICT) and every other refusal is an error toast "İşlem
+      tamamlanamadı" that stays until closed; the list is not read again, so the stale row stays and the toast asks the person to refresh the page
+      (NROS-3). The code of an error the page has no sentence for (a missing course, a validation error) is shown as the API's own message, in
+      English. No try/catch wraps the call (NROS-7).
+    invoke: { action: setEnrollmentStatus }
+    on:
+      DONE:
+        - { guard: searched, target: enrolled, effect: [completedSearched], source: apps/nizam/features/applications/components/roster-table.tsx:115 }
+        - { target: enrolled, effect: [completedPlain], source: apps/nizam/features/applications/components/roster-table.tsx:115 }
+      FAIL.moved: { target: enrolled, effect: [movedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+      FAIL.forbidden: { target: enrolled, effect: [refusedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+      FAIL.other: { target: enrolled, effect: [failedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+    source: apps/nizam/features/applications/components/roster-table.tsx:93
+
+  completed:
+    title: Tamamlayanlar, the talebe who completed the course
+    by: human
+    description: >-
+      The panel of Tamamlayanlar: a search box, the table "{course} dersini tamamlayan talebeler" with the same columns as Kayıtlı (the column "Kayıt
+      tarihi" is the day the talebe joined, not the day the course was completed: ROSCOM-3) and, on each row, "Yeniden aç: {name}" and "Yasakla: {name}"
+      (a barred row: "Yeniden aç" and "Yasağı kaldır", with the badge "Yasaklı · Bu ders"); or, before anyone completes, the one cell "Dersi tamamlayan
+      talebe yok". "Yeniden aç" is drawn on a barred talebe's row though the API refuses it with BAN_ACTIVE (NROS-4, the twin of ROSCOM-2), and the
+      page does not say that the talebe is barred before the press. The tab counts and Kayıtlı's moved with the completion; the toast of the last
+      decision may still be up. This tab has no help line.
+    on:
+      TAB_APPLICATIONS: { target: applications, effect: [fresh], say: "they open Başvurular", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_REMOVED: { target: removedList, say: "they open Erişimi kaldırılanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      REOPEN: { guard: mayReopen, target: reopening, effect: [clearNote], say: "they press Yeniden aç on the row", source: apps/nizam/features/applications/components/roster-table.tsx:231 }
+      BAN: { guard: mayBanCompleted, target: handed_over.ban, starts: { flow: nizam.moderation.banStudent }, say: "they press Yasakla on the completed talebe's row: the ban dialog opens (nizam.moderation.banStudent)", source: apps/nizam/features/applications/components/roster-table.tsx:134 }
+      LIFT: { guard: "held == 'barred'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { read: "'ok'" } }, say: "they press Yasağı kaldır on the barred talebe's row: the lift dialog opens. It is the LiftDialog that nizam.moderation.decideBan draws on Yasaklamalar; decideBan begins at that list, so the hand-over is approximate and the roster-row lift itself is drawn by no flow", source: apps/nizam/features/applications/components/roster-table.tsx:141 }
+      BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
+      NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
+    source: apps/nizam/features/applications/components/roster-table.tsx:249
+
+  reopening:
+    title: The reopening is on its way
+    description: >-
+      The same setEnrollmentStatus with {status: ENROLLED}: the row's buttons are natively off and "Yeniden aç" is busy (ROSCOM-1). The API clears
+      completedAt, and refuses a barred talebe (BAN_ACTIVE, 403): its message "You are barred from this course" is no key of the page's own map
+      (course-team.ts:41-49), so the toast "İşlem tamamlanamadı" carries that English sentence (NROS-4) and the row stays. A success toasts "Kayıt
+      yeniden açıldı", "{name} yeniden Kayıtlı sekmesinde." and reads the page again; the row has left Tamamlayanlar.
+    invoke: { action: setEnrollmentStatus }
+    on:
+      DONE: { guard: "held == 'none'", target: completed, effect: [reopened], source: apps/nizam/features/applications/components/roster-table.tsx:115 }
+      FAIL.moved: { target: completed, effect: [movedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+      FAIL.forbidden: { target: completed, effect: [refusedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+      FAIL.barred: { guard: "held == 'barred'", target: completed, effect: [barredToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+      FAIL.other: { target: completed, effect: [failedToast], source: apps/nizam/features/applications/components/roster-table.tsx:109 }
+    source: apps/nizam/features/applications/components/roster-table.tsx:93
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the reason the button is on or off. "Dersten çıkar" in the dialog is natively disabled while the reason is
+      blank (`disabled={blank}`, white space does not count: students#5 types " " and the button stays off), and nothing says that is why: there is
+      no field error here at all (F-W4-14).
+    always:
+      - { guard: "reason == 'text'", target: formReady, say: "the reason holds something: the button is on" }
+      - { target: form, say: "the reason is empty or only white space: the button is off" }
+    source: apps/nizam/features/applications/components/remove-dialog.tsx:101
+
+  form:
+    title: The removal dialog is open, the reason empty, the button off
+    by: human
+    description: >-
+      A dialog named "Dersten çıkar" over the page (the page behind it is inert); above its title the course's name. Its body: "{name} adlı talebe
+      {course} dersinden çıkarılacak. Celselere, toplantı bağlantılarına, ders kayıtlarına ve ders destesine erişimi kalkar; dersin celseleri takviminden
+      de düşer. Kendi destesine kopyaladığı kartlar kendisinde kalır.", a neutral note "Talebe yeniden başvurabilir. Yeniden başvurmasını da engellemek
+      gerekiyorsa “Yasakla”yı kullanın." (NROS-1 and NROS-2: both halves are untrue or cannot be followed from this page), "* zorunlu alan", and the
+      field "Çıkarma gerekçesi" (a textarea of 4 rows, `required`, at most 500 characters with no counter: RMV-4) with the help line "Gerekçe, Erişimi
+      kaldırılanlar sekmesinde ders kadrosuna görünür." (the talebe reads it too: RMV-1). The focus starts in the reason (`initialFocus`, students#5).
+      The scrim does not close the dialog (students#6); Escape, "Vazgeç" and the close icon do. "Dersten çıkar" is natively disabled, and there is no
+      error under the field, so the disabled button is the only cue (F-W4-14).
+    on:
+      TYPE_REASON: { target: settle, effect: [typedReason], say: "they write the reason", source: apps/nizam/features/applications/components/remove-dialog.tsx:126 }
+      TYPE_BLANK: { guard: "reason != 'blank'", target: settle, effect: [typedBlank], say: "they type only a space: the button stays off (students#5)", source: apps/nizam/features/applications/components/remove-dialog.tsx:57 }
+      CANCEL: { target: enrolled, say: "Vazgeç, the close icon or Escape: nothing is sent; the focus goes back to the row's button (Base UI; not verified)", source: apps/nizam/features/applications/components/remove-dialog.tsx:88 }
+      SCRIM: { target: form, say: "they click the scrim: the dialog stays and keeps what was typed (students#6)", source: libs/ui/src/mds/dialog.tsx:130 }
+      NAVIGATE: { target: left, say: "they leave the page by its address" }
+    source: apps/nizam/features/applications/components/remove-dialog.tsx:86
+
+  formReady:
+    title: The removal dialog is open, the reason written, the button on
+    by: human
+    description: >-
+      The same dialog with "Dersten çıkar" on; pressing it sends the removal. An error toast of a refused removal stands over it, with the reason
+      still typed (the dialog does not close on a failure). Emptying the reason turns the button off again.
+    on:
+      SUBMIT: { target: removing, source: apps/nizam/features/applications/components/remove-dialog.tsx:58, say: "they press 'Dersten çıkar' in the dialog" }
+      ERASE_REASON: { target: settle, effect: [erasedReason], say: "they empty the reason: the button goes off", source: apps/nizam/features/applications/components/remove-dialog.tsx:126 }
+      CANCEL: { target: enrolled, say: "Vazgeç, the close icon or Escape", source: apps/nizam/features/applications/components/remove-dialog.tsx:88 }
+      SCRIM: { target: formReady, say: "they click the scrim: the dialog stays", source: libs/ui/src/mds/dialog.tsx:130 }
+      NAVIGATE: { target: left, say: "they leave the page by its address" }
+    source: apps/nizam/features/applications/components/remove-dialog.tsx:101
+
+  removing:
+    title: The removal is on its way
+    description: >-
+      removeEnrollment calls POST /courses/:id/enrollments/:userId/remove with the trimmed reason (at most 500 characters, not blank). The button is
+      busy (aria-disabled and aria-busy, "Yükleniyor" for a reader of the screen); "Vazgeç", the close icon and Escape stay on and do nothing
+      (`if (!saving) onOpenChange`, NROS-5, the twin of RMV-3), while the reason box stays editable. On success the API turns the seat REVOKED (the row
+      stays as the record; the progress is kept), writes one `enrollment.remove` row in the audit log in the same transaction, sends the talebe
+      REMOVED_FROM_COURSE with the reason (RMV-1) and has the calendar invitations cancelled; the dialog closes, a toast says "Talebe dersten
+      çıkarıldı" with "{name} Erişimi kaldırılanlar sekmesine taşındı." and the page reads its lists again. The talebe may NOT apply again: the API
+      answers that with 409 (NROS-1). A seat that moved and every other refusal leave the dialog open with an error toast "Talebe dersten
+      çıkarılamadı" that stays; the list is not read again (NROS-3). No try/catch wraps the call (NROS-7); a toast raised over the open modal sits
+      outside it (BULK-1, not verified).
+    invoke: { action: removeEnrollment }
+    on:
+      DONE: { target: enrolled, effect: [removedToast], source: apps/nizam/features/applications/components/remove-dialog.tsx:78, say: "the seat is revoked and the reason kept; the dialog closes and the list is read again" }
+      FAIL.moved: { target: formReady, effect: [removeMovedToast], source: apps/nizam/features/applications/components/remove-dialog.tsx:72, say: "the seat has moved: an error toast over the dialog, which stays" }
+      FAIL.forbidden: { target: formReady, effect: [removeRefusedToast], source: apps/nizam/features/applications/components/remove-dialog.tsx:72, say: "'Bu işlem için yetkiniz yok.': the dialog stays with the reason" }
+      FAIL.other: { target: formReady, effect: [removeFailedToast], source: apps/nizam/features/applications/components/remove-dialog.tsx:72, say: "the API's own message: the dialog stays" }
+    source: apps/nizam/features/applications/components/remove-dialog.tsx:58
+
+  removedList:
+    title: Erişimi kaldırılanlar, the record of removals
+    by: human
+    description: >-
+      The tab's note "Ders kadrosunun dersten çıkardığı talebeler, gerekçeleriyle. Çıkarılan talebe yeniden başvurabilir." (NROS-1: it cannot) and a
+      table "{course} dersinden erişimi kaldırılan talebeler" with the columns Talebe (name, e-mail under it), Çıkarılma ("Bugün 14:05", "Dün 18:20" or the
+      day), Gerekçe (the reason as kept, trimmed) and Çıkaran (the name of the person who pressed). One row a person, newest first; the talebe is
+      listed while the seat is still REVOKED. The table is read-only: no button on a row brings the seat back, and a removed talebe has no row on
+      Kayıtlı to be barred from (NROS-2, D1, D2). Before a removal it says "Erişimi kaldırılan talebe yok". This tab has no search and no
+      sort. The toast of the removal may still be up.
+    on:
+      TAB_APPLICATIONS: { target: applications, effect: [fresh], say: "they open Başvurular", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_ENROLLED: { target: enrolled, effect: [fresh], say: "they open Kayıtlı", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      TAB_COMPLETED: { target: completed, effect: [fresh], say: "they open Tamamlayanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
+      BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
+      NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
+    source: apps/nizam/features/applications/components/removed-table.tsx:85
+
+  handed_over.ban:
+    title: They press Yasakla, and the ban dialog takes over
+    type: final
+    description: >-
+      The BanDialog opens over this page for that talebe (scope course or köşk, a required reason); the rest is nizam.moderation.banStudent. After
+      the ban the page reads itself again and the row wears "Yasaklı · Bu ders".
+
+  handed_over.lift:
+    title: They press Yasağı kaldır, and the lift dialog takes over
+    type: final
+    description: >-
+      The LiftDialog opens over this page for the barred talebe (a required reason); the dialog is the one nizam.moderation.decideBan draws on Yasaklamalar (its own start is that list, so the roster-row lift is in no flow). After the lift the
+      page reads itself again and the row has "Yasakla" back.
+
+  handed_over.curriculum:
+    title: They press Derse dön, and land on the Müfredat page
+    type: final
+    description: >-
+      The link goes to /kosks/<id>/courses/<id>/edit, whose page redirects to /curriculum (edit/page.tsx:16): the curriculum editor opens, not the
+      course's overview (F-W4-1). What it shows is nizam.courses.curriculum.
+    leavesPage: true
+
+  not_found:
+    title: The course is not there, or not this köşk's
+    type: final
+    description: "notFound(): the \"Bu bölüm için izniniz yok\" screen with HTTP 404, whatever the reason (a missing köşk, a missing or refused course, a course of another köşk)."
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: reopen-needs-a-completion
+    never: "state == 'reopening' and done == 'none' and held == 'none'"
+    say: Yeniden aç is pressed only on a row of Tamamlayanlar, so only after someone completed or where the walk starts with a barred completion.
+    source: apps/nizam/features/applications/present.ts:146
+  - id: a-removal-needs-a-reason
+    never: "state == 'removing' and reason != 'text'"
+    say: A removal is never sent without a reason that holds something other than white space; the button stays off until then.
+    source: apps/nizam/features/applications/components/remove-dialog.tsx:60
+  - id: a-barred-talebe-is-not-removed-and-not-completed
+    never: "state == 'completing' and held == 'barred'"
+    say: In a roster that holds a barred completion the graph completes nobody else; the one barred row offers only Yeniden aç and Yasağı kaldır.
+    source: apps/nizam/features/applications/present.ts:146
+  - id: a-completion-toast-means-a-completion
+    never: "last == 'completed' and done == 'none'"
+    say: The toast that says a talebe moved to Tamamlayanlar is up only while someone is listed there.
+    source: apps/nizam/features/applications/components/roster-table.tsx:115
+  - id: a-removal-toast-means-a-removal
+    never: "last == 'removed' and removed == 'none'"
+    say: The toast that says a talebe moved to Erişimi kaldırılanlar is up only while someone is listed there.
+    source: apps/nizam/features/applications/components/remove-dialog.tsx:78
+  - id: the-barred-toast-needs-a-ban
+    never: "last == 'barred' and held != 'barred'"
+    say: The BAN_ACTIVE toast is raised only for a talebe who is barred.
+    source: apps/nizam/features/applications/components/roster-table.tsx:109

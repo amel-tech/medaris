@@ -1,0 +1,89 @@
+# nazar.courses.browse on the local stack (graphs/README.md, "The stack and the bindings"): nazar-web on :4002 and tedrisat on :3001,
+# in a window of 1440 x 900.
+#   node apps/engine/src/cli.ts replay graphs/nazar/courses/browse --bind graphs/nazar/courses/browse/binding.yaml \
+#     --cover transitions --absent --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code and from the
+# stack's own description; the helper below was only syntax-checked.
+#
+# Four scenarios, each with a different `given`; the locators and the events are in locators.binding.yaml.
+#
+#   mixed    the main story, e2e courses#1, #2 and #3. The başmüderris of "Hadis ve Siyer Medresesi" (Nuri Başmüderris) on the seed's
+#            medrese, made richer through the API by `setup` (./fixtures.mjs, as the başnazım): a second köşk, "Dersler Deneme Köşkü", that
+#            holds a hosting right of the medrese, and three courses of the walk's own: cbrowse-a (published, asks for approval, two
+#            applications wait, DERS_NAZIR a second hoca so the star shows), cbrowse-d (a draft) and cbrowse-b (in the new köşk, with an
+#            exam celse planned). With the seed's two courses the list holds five courses in two köşks, a draft, waiting applications and
+#            a published course nobody is in, which is what courses#1 builds with SQL. The walk comes in through the menu (`enter`: the
+#            navigation graph's entry frame:medrese->medreseCourses, pressed on the Pano), chooses the new köşk, adds "Durum: Taslak" (the
+#            new köşk has no draft, so nothing matches), clears the filters, chooses "Durum: Taslak" alone (the draft) and leaves by the
+#            link "Arşiv". `--cover transitions` also walks the two lists closed with Esc, the row menu and the two items it leads to, the
+#            title link, the two header buttons and the way out of the page. `teardown` removes the courses (the talebe leave first), the
+#            köşk (with its hosting right) and clears the notification the appointment sent to APPLICANT_B; `up` removes anything a walk
+#            that died left, so it can run twice. What it cannot undo: nothing, besides Mailpit's invitation mails of the three courses,
+#            which course.mjs clears with them.
+#   fresh    a medrese of its own with no course and no hosting right (the seed has none), made by `setup` (POST /madrasahs, head the
+#            spare talebe APPLICANT_F, who signs in at nazar as its başmüderris): the empty state ("Bu medresede henüz ders yok. …"), "Medrese
+#            dersi aç" off, the card that says no köşk has given a hosting right, the exam card's empty line. A state filter on it gives the
+#            filtered empty state. `teardown` deletes the medrese (its role assignments go with it) and clears the notification.
+#   hosted   the same medrese of its own with one hosting köşk ("Dersler Deneme Köşkü", made by `setup up hosted`, no course in it): the
+#            empty state with "Medrese dersi aç" on, the köşk in the card and in the filter, and a köşk filter that matches nothing.
+#            Same teardown.
+#   refused  a medrese nazır with no grant ("Seher Medrese Nazırı", MEDRESE_NAZIR): the list read is 403, the page draws "Bu sayfaya
+#            izniniz yok" and no buttons. It makes and removes nothing (the seed gives her no grant; a walk that gave her one, such as
+#            nazar.nazirs.permissions, must have taken it back). The state is also nazar.access.medreseNazirRefused's.
+# The stack's own world, with no setup, is binding.seeded.yaml.
+#
+# Not walked here, and why: list: failed, FAIL.missing (nothing on the stack makes a read fail or a medrese vanish), hosting: unreadable
+# (no helper gives a medrese nazır one code), exams: unread, RETRY. The replay's plan lists them as `unreached`.
+#
+# Spare accounts this folder uses: APPLICANT_C and APPLICANT_D (the two waiting applications, of cbrowse-a only), APPLICANT_F (head of
+# the fresh medrese), APPLICANT_B (nazım of the new köşk). Both appointments send a notification, which `teardown` clears; the four start
+# and end with no enrolment and no notification (helpers/README.md). Accounts the stack gives other flows, TALEBE_MALE's waiting application
+# among them, are never touched.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courses.browse
+
+scenarios:
+  mixed:
+    given: { list: ok, hosting: kosks, exams: rows, stock: mixed }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    vars: { koskOne: '{made.koskName}' }
+    setup:
+      - run: [node, ../nazar/courses/browse/fixtures.mjs, up, mixed]
+        expect: 'ready: mixed'
+    teardown:
+      - run: [node, ../nazar/courses/browse/fixtures.mjs, down]
+        expect: 'removed'
+
+  fresh:
+    given: { list: ok, hosting: none, exams: empty, stock: none }
+    as: applicantF
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    vars: { koskOne: 'yok' }
+    setup:
+      - run: [node, ../nazar/courses/browse/fixtures.mjs, up, fresh]
+        expect: 'ready: fresh'
+    teardown:
+      - run: [node, ../nazar/courses/browse/fixtures.mjs, down]
+        expect: 'removed'
+
+  hosted:
+    given: { list: ok, hosting: kosks, exams: empty, stock: none }
+    as: applicantF
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    vars: { koskOne: '{made.koskName}' }
+    setup:
+      - run: [node, ../nazar/courses/browse/fixtures.mjs, up, hosted]
+        expect: 'ready: hosted'
+    teardown:
+      - run: [node, ../nazar/courses/browse/fixtures.mjs, down]
+        expect: 'removed'
+
+  refused:
+    given: { list: forbidden, hosting: kosks, exams: empty, stock: published }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    vars: { koskOne: 'yok' }

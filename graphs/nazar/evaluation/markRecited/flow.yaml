@@ -1,0 +1,418 @@
+# Değerlendirme of a course in nazar-web (/ders/<id>/degerlendirme), read for what it does with the homework that is RECITED to the hoca
+# (kind MEMORIZE): the müderris, or a ders nazırı who holds session.manage, reads the board of talebe and recited homeworks, opens one
+# homework, marks each talebe "Tam", "Eksik" or "Vermedi" with a press or with the keys 1, 2 and 3, and writes a short note on a mark; the count
+# "{n}/{total} tam" follows, and the talebe reads their own mark on the celse page (tedris.learn.homeworkMemorize, started on every save). Read
+# from the code of PR #394's branch on 15 Nov 2026 (apps/nazar/features/evaluation, the server actions, the API's GET /courses/:id/evaluations
+# and PUT /lessons/:id/evaluations/:userId, the web route of "Excel indir"); captured, nothing here is a plan, nothing is approved. The exam
+# columns of the same board, the scores and "Sonuçları talebelere aç" are nazar.evaluation.examScores's.
+#
+# What the page does today, and where it is wrong for its people (each is a `rules` entry of ui.yaml):
+#   evaluation-export-invalid-path   (domain, web.yaml) "Excel indir" can never work: the route asks the file proxy for a path with a query
+#                                    (?lang=tr) and the proxy refuses any path with one, 400 INVALID_PATH, before it calls tedrisat. Seen on the
+#                                    running app by curl, with no session and with a page-navigation header set: 400, and a 303 back to the page
+#                                    with ?fileError=notFound
+#   F-D1-13  the refusal is silent too: the page does not mount FileErrorNotice, so the person sees the same page, with ?fileError=notFound left
+#            in the address
+#   F-D1-12  opening a homework and "Bütün ödevler" replace the whole screen: the pressed button unmounts and the focus falls to the document
+#   F-D1-22  the talebe's name is a plain <td>, not a row header
+#   F-D1-27  each row is a focusable <li> that takes the keys, in a <ul> with no role that says so; the hint is not linked to it
+#   MARK-1   (new, provisional id) a save refused for a reason that will not pass (the homework is no longer recited, the permission is gone)
+#            says only "Kaydedilemedi" and the name, and every press after it fails the same way
+#   MARK-2   (new, provisional id) Enter in the note box blurs it: the focus falls to the document, the box stays open, and the keys 1 2 3 and
+#            the arrows, which work only while the focus is inside the list, do nothing until the person puts the focus back in it
+#   MARK-3   (new, provisional id) the note stops at 280 characters with no counter and no word; the keys 1, 2 and 3 are text inside the box
+# Two kinds of context variable. Case variable, `initial: any`: `read`, what the page's reads find. Shown-state variables, with a fixed initial:
+# `verdict` and `note` (the mark of the one talebe the story follows, and whether it carries a note), `box` (the note box of that row), `last`
+# (a toast of a refused save), `homework` (whether the homework is still recited), `fileError` (the address after "Excel indir").
+# E2E carried: evaluation#1 (a1, a3 to a15; a2's aria-current is not expressible). #2 and #3 are nazar.access.dersNazirPages's: the refusal of
+# the page is drawn here as `forbidden` for the same reader. The DB reads of #1 (a8, a10, a13) are made through the API, which the talebe's own
+# read (a14, a15) already does: the binding's effects.
+schema: delurio-graph/0
+kind: flow
+id: nazar.evaluation.markRecited
+status: captured
+domain: medaris.api
+ui: nazar.evaluation.markRecited
+title: Mark the recited homework of a course
+summary: >-
+  The müderris opens Değerlendirme from the course's menu. The page lists the talebe of the course and, for each homework the hoca set as
+  "Ezber", a column; a cell says "Bekliyor" until the hoca has marked it, then "Tam", "Eksik" or "Vermedi". A column's heading opens it: one
+  screen with every talebe, each row three buttons and, once there is a mark, a note. A press saves at once and is drawn at once, "Tam" or
+  "Eksik" or "Vermedi" pressed, and the count above, "0/1 tam", follows; the keys 1, 2 and 3 do the same for the row in focus. A note of up to
+  280 characters is written in a box the row opens, and saved when the person leaves it. Nothing tells the person a save was made: the pressed
+  button and the count are the answer; a refused save puts the cell back and says "Kaydedilemedi" with the talebe's name. Each save is what the
+  talebe reads on their celse page. "Excel indir" under the title always fails, with no word (evaluation-export-invalid-path, F-D1-13).
+
+scope:
+  shows: >-
+    the board of one course for the müderris: the table of talebe and recited homeworks, the screen of one homework with its rows, chips, count and
+    notes, the saves and a refused save, the empty board, the refusal and the failed read, and "Excel indir"
+  world: open
+  outOfView:
+    - "the exam columns of the same board, a score and \"Sonuçları talebelere aç\": nazar.evaluation.examScores"
+    - "setting a celse's homework as \"Ezber\": nazar.curriculum.sessionHomework"
+    - "the talebe's own view of the mark: tedris.learn.homeworkMemorize, started on every save with `mark: given`"
+    - "who may open the page (session.manage; a ders nazırı with none is refused and sees no menu entry) and the talebe's refusals: nazar.access.dersNazirPages (evaluation#2, #3); `forbidden` here draws the refusal only as the page shows it"
+    - "the arrow keys between rows, which move the active row and clamp at the ends: one talebe's row is drawn, and a second row changes nothing else"
+    - "typing again into the open note box and pressing Enter, and clearing the note: the same save as `SAVE_NOTE`, with another text (a note equal to the stored one sends nothing)"
+    - "the line under the title that names the course (Evaluation.subtitle): its {name} is the course's, and the same placeholder is the talebe's in the rows, which a sample cannot be both"
+    - "a talebe tedrisat has not seen sign in (\"Adı bilinmiyor\"), and a talebe who is no longer seated (kept in the data, not shown)"
+    - "the layout below 768 px and the loading skeleton of the page"
+
+decisions:
+  D1:
+    question: >-
+      What should "Excel indir" do? The link is on every overview and always ends where it started, with nothing said (web.yaml's
+      evaluation-export-invalid-path and F-D1-13).
+    recommend: >-
+      Make it work: the route should send the language as a path-safe segment, or the proxy should take a query the route builds itself
+      (the invariant web-every-file-route-builds-a-proxiable-path); no spec or e2e downloads the sheet today, so one should. Until then say so:
+      mount FileErrorNotice on this page so that a refusal is worded, and do not draw a link that cannot work.
+    affects: [overview, exporting]
+  D2:
+    question: >-
+      Should a save the API will never take say why, and should the screen stop offering the press?
+    recommend: >-
+      Yes (MARK-1): MEMORIZATION_NOT_FOUND ("this homework is no longer recited"), AUTHZ_FORBIDDEN and the others are different sentences; the
+      toast says "Kaydedilemedi" for all. A column whose homework was switched back to a file homework should tell the person and read the
+      board again.
+    affects: [marking, column]
+  D3:
+    question: >-
+      Where should the focus go after a press on a homework, "Bütün ödevler" and Enter in the note box?
+    recommend: >-
+      To the new screen's heading (tabIndex -1), to the column's heading button on the way back, and to the row's own <li> after a note, so
+      that the keys 1, 2, 3 and the arrows keep working (F-D1-12, MARK-2).
+    affects: [column, overview, noting]
+  D4:
+    question: >-
+      Should the talebe be told when a mark is saved? A review of a hand-in and a released exam both notify; a mark has no notification type
+      (the same question as tedris.learn.homeworkMemorize's D1, asked from the hoca's side).
+    recommend: >-
+      Yes, one notification that leads to the celse; the talebe otherwise learns of a mark only by reloading the celse page.
+    affects: [marking]
+
+context:
+  read:
+    values: [ready, noColumns, noTalebe, refused, missing, unreadable]
+    initial: any
+    say:
+      ready: "the course holds a homework recited to the hoca and at least one seated talebe, and the caller holds session.manage"
+      noColumns: "no homework of the course is recited and no exam is planned: the board has no column"
+      noTalebe: "a homework is recited and nobody is seated in the course (ENROLLED or COMPLETED)"
+      refused: "the caller does not hold session.manage in the course (a ders nazırı with none): the page refuses"
+      missing: "the course is not there (an address that names none, or a course the caller may not see)"
+      unreadable: "a read of the page fails with any other answer: the retry state"
+  verdict:
+    values: [none, full, incomplete, absent]
+    initial: none
+    say:
+      none: "the talebe the story follows is \"Bekliyor\": no mark"
+      full: "the mark is Tam (FULL)"
+      incomplete: "the mark is Eksik (INCOMPLETE)"
+      absent: "the mark is Vermedi (ABSENT)"
+  note:
+    values: [none, written]
+    initial: none
+    say:
+      none: "the mark carries no note"
+      written: "the mark carries a note of at most 280 characters"
+  box:
+    values: [closed, open]
+    initial: closed
+    say:
+      closed: "the row's note box is shut"
+      open: "the row's note box is open (the box is drawn only beside a mark)"
+  last:
+    values: [nothing, failed]
+    initial: nothing
+    say:
+      nothing: "no save has been refused in this visit, or its toast is gone"
+      failed: "the last save was refused: an error toast \"Kaydedilemedi\" with the talebe's name stays until it is closed"
+  homework:
+    values: [recited, switched]
+    initial: recited
+    say:
+      recited: "the homework is still recited to the hoca: the API takes a mark"
+      switched: "someone has switched the homework to a file homework (or taken it off) while the page is open: the page still draws it, and the API refuses every mark with 404 MEMORIZATION_NOT_FOUND"
+  fileError:
+    values: [none, notFound]
+    initial: none
+    say:
+      none: "the address carries no ?fileError"
+      notFound: "the address carries ?fileError=notFound, left by the refused download; nothing on the page says it"
+
+guards:
+  isEmptyOfColumns: "read == 'noColumns'"
+  isEmptyOfTalebe: "read == 'noTalebe'"
+  isReady: "read == 'ready'"
+  isRefused: "read == 'refused'"
+  isMissing: "read == 'missing'"
+  isUnreadable: "read == 'unreadable'"
+  # every call: the route builds its path with ?lang=<lang> (evaluations/route.ts:24), which the proxy refuses; it holds in every context
+  pathHasQuery: "true"
+  recited: "homework == 'recited'"
+  switched: "homework == 'switched'"
+  marked: "verdict != 'none'"
+  boxIsShut: "box == 'closed'"
+  boxIsOpen: "box == 'open'"
+  isFull: "verdict == 'full'"
+  isIncomplete: "verdict == 'incomplete'"
+  isAbsent: "verdict == 'absent'"
+
+effects:
+  markFull: { set: { verdict: full } }
+  markIncomplete: { set: { verdict: incomplete } }
+  markAbsent: { set: { verdict: absent } }
+  noteWritten: { set: { note: written } }
+  boxOpened: { set: { box: open } }
+  boxClosed: { set: { box: closed } }
+  clearToast: { set: { last: nothing } }
+  homeworkSwitched: { set: { homework: switched } }
+  # the cell goes back to what tedrisat last kept, which the flow does not track: any mark, with or without a note
+  saveRefused: { set: { last: failed }, havoc: [verdict, note] }
+  # the page is loaded anew: the client's note box and toasts are gone; the saved marks stay
+  exportRefused: { set: { fileError: notFound, box: closed, last: nothing } }
+
+failures:
+  reading:
+    from: getEvaluationBoard
+    signedOut: [HTTP_401]
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+    unreadable: []
+  marking:
+    from: saveEvaluation
+    signedOut: [HTTP_401]
+    refused: [MEMORIZATION_NOT_FOUND, EVALUATION_TALEBE_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400, AUTHZ_FORBIDDEN]
+  exporting:
+    from: webExportEvaluationBoard
+    invalidPath: [INVALID_PATH]
+# `reading` stands for the page's three reads (the course, what the caller holds in it, and the board): a 403 of any, or a caller who holds no
+# session.manage, is `forbidden`; a 404 of any is Next's not-found page; any other failure is the retry state; a refused token is the sign-in
+# page with reauth (apps/nazar/lib/tedrisat-read.ts:36-50). A save answers `success: false` to the page whatever the cause, so `marking` has one
+# refusal class. `exporting` has the one refusal the route ever gives, which is why no DONE is drawn from it.
+
+# The story the page tells first, and the e2e's (evaluation#1): the müderris reads the board, opens the homework, marks the talebe "Tam" with a
+# press, changes it to "Eksik" with the key 2, writes a note, and goes back to the board, where the cell says "Eksik".
+main:
+  given: { read: ready }
+  events: [DONE, OPEN_COLUMN, MARK_FULL, DONE, PRESS_2, DONE, TOGGLE_NOTE, SAVE_NOTE, DONE, BACK]
+
+initial: reading
+
+states:
+  reading:
+    title: The page reads the course, the caller's permissions and the board
+    description: >-
+      The page is a server component. It reads GET /courses/:id (the title under the h1), GET /courses/:id/my-permissions (whether the caller
+      holds session.manage) and GET /courses/:id/evaluations together, and draws behind loading.tsx's skeleton (a visually hidden "Yükleniyor" in
+      an <output aria-busy>, and bars): nothing of the board is on the screen of this step. The board answers the course's seated talebe and one
+      column for each homework of kind MEMORIZE and each exam, in programme order, with the marks given; a cell with no row is "Bekliyor". A
+      caller who holds no session.manage is `forbidden`; a 404 of any read is Next's not-found page; any other failure is the retry state.
+    invoke: { action: getEvaluationBoard }
+    on:
+      DONE:
+        - { guard: isEmptyOfColumns, target: noColumns, say: "no homework is recited and no exam is planned", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197 }
+        - { guard: isEmptyOfTalebe, target: noTalebe, say: "a column exists and nobody is seated", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:202 }
+        - { guard: isReady, target: overview, say: "the board is drawn as a table", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:289 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: isRefused, target: forbidden, say: "a 403, or no session.manage among the caller's permissions: the page's own refusal under its title", source: apps/nazar/features/evaluation/components/evaluation-page.tsx:33 }
+      FAIL.missing: { guard: isMissing, target: not_found, say: "a course that is not there: Next's 404 page", source: apps/nazar/lib/tedrisat-read.ts:46 }
+      FAIL.unreadable: { guard: isUnreadable, target: loadFailed, say: "any other failure: the retry state, never worded as no access", source: apps/nazar/features/evaluation/components/evaluation-page.tsx:48 }
+    source: apps/nazar/features/evaluation/components/evaluation-page.tsx:22
+
+  forbidden:
+    title: The page refuses the board
+    description: >-
+      The h1 "Değerlendirme" and its subtitle stay and, under them, a neutral alert says "Bu sayfaya izniniz yok" (a status, its title in a
+      <p>, not a heading), with the sentence that names the başmüderris and no link out. The sidebar does not offer "Değerlendirme" to this
+      reader, so they came by its address. The reader's whole story is nazar.access.dersNazirPages (evaluation#2).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+
+  loadFailed:
+    title: The board could not be read
+    description: >-
+      The h1 stays and a section named by its own h1, "Değerlendirme okunamadı", says the board cannot be read now, with "Yeniden dene", which
+      asks the server again (router.refresh). The section's h1 is a second h1 on the page (the same finding as nazar.bans.review's BANS-4, from
+      the shared SystemState). Not walked: nothing on the local stack makes tedrisat fail a read.
+    by: human
+    on:
+      RETRY: { target: reading, say: "they press Yeniden dene" , source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/shell/components/page-problem.tsx:30
+
+  noColumns:
+    title: The course has no recited homework
+    description: >-
+      The h1 and, in place of the table, an empty state: "Bu derste henüz ezber ödevi yok. Müfredat’ta bir celsenin ödevinde Teslim şekli olarak
+      Ezber’i seçin." It names where to set it, with no link. "Excel indir" is not drawn here. A course whose only homework is a file homework is
+      this state: a file homework is no column.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197
+
+  noTalebe:
+    title: Nobody is seated in the course
+    description: >-
+      The h1 and an empty state, "Bu derste kayıtlı talebe yok." The table is not drawn, so the recited homeworks are not listed either; "Excel
+      indir" is not drawn. A talebe who is pending, removed or has left is not on the board; one who completed the course is.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:202
+
+  overview:
+    title: The board is a table
+    description: >-
+      The h1, the link "Excel indir" at the end of its row (a plain <a>, an icon and the words), and a table named by its hidden caption
+      "Talebeler, ezberler ve sınavlar": a row for each talebe, whose name is a plain <td> and not a row header (F-D1-22), and a column for each
+      recited homework (and exam), headed by a link-styled button "{week}. hafta · {title}" (an exam column also carries "Sınav" or "Telafi").
+      Each cell is read-only: "Bekliyor" in grey until the hoca has marked it, then the badge "Tam" (success), "Eksik" (warning) or "Vermedi"
+      (error). A course with a FILE homework and a recited one has the one column: the file homework is no column. The page sets no initial
+      focus (`focus-not-set`). Opening a column replaces the whole screen and the focus falls to the document (F-D1-12, decision D3).
+    by: human
+    on:
+      OPEN_COLUMN: { target: column, say: "they press a homework's heading", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:247 }
+      DOWNLOAD: { target: exporting, say: "they follow \"Excel indir\"", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:295 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:289
+
+  exporting:
+    title: "\"Excel indir\" is followed"
+    description: >-
+      The link is GET /api/files/courses/<id>/evaluations, a page navigation. The route (evaluations/route.ts:12) asks the file proxy for
+      /courses/<id>/evaluations/export?lang=tr, and the proxy sends only a path of letters, digits, - and _: a path with a query is refused
+      before tedrisat is called, 400 INVALID_PATH (the domain's evaluation-export-invalid-path; it answered so, by curl, with no session). A
+      link followed as a page is answered with a 303 back to the page it was on with ?fileError=notFound, so the browser loads this very page
+      again, with that parameter in its address. The page does not mount FileErrorNotice, so nothing words the refusal (F-D1-13). Every call
+      ends here; the file is never sent, and no DONE is drawn from this state because none can happen today.
+    invoke: { action: webExportEvaluationBoard }
+    on:
+      FAIL.invalidPath: { guard: pathHasQuery, target: reading, effect: [exportRefused], say: "400 INVALID_PATH, a 303 back to the page: it is read anew, with ?fileError=notFound in its address", source: libs/services/src/file-proxy/file-proxy.ts:145 }
+    source: apps/nazar/app/api/files/courses/[courseId]/evaluations/route.ts:22
+
+  column:
+    title: One homework, every talebe, marked with a press or a key
+    description: >-
+      The screen of the homework the person opened, a section named by its h2 "{week}. hafta · {title}": under it "Bütün ödevler", the count
+      "{full}/{total} tam" (an <output> that is read aloud politely), the hint "↑↓ ile talebe seçin; 1 Tam, 2 Eksik, 3 Vermedi", and a list of the
+      course's talebe. A row is a focusable <li> named by the talebe: their name, the three chips "Tam", "Eksik" and "Vermedi" (buttons with
+      aria-pressed, never disabled, in a group named "{name} için durum"), and, once there is a mark, a note toggle whose words are "Not" or the
+      note itself. A press on a chip is drawn at once; pressing the pressed chip again sends nothing. The keys 1, 2 and 3 mark the row in focus
+      and the arrows move between rows, when the focus is anywhere in the list but the note box (typing keeps its keys: MARK-3). A refused save
+      puts the cell back and leaves an error toast "Kaydedilemedi" with the name (`last`). The model follows one talebe's row; the count
+      reads "{n}/{total} tam" with n the number of talebe marked "Tam". Findings: F-D1-12 (the focus fell to the document on arrival), F-D1-27 (the
+      row is a focusable <li> in a <ul> with no role for it, the hint is not linked to it), MARK-1.
+    by: human
+    goal: true
+    on:
+      BACK: { target: overview, effect: [boxClosed], say: "they press Bütün ödevler: the screen goes, the row's note box with it", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:368 }
+      MARK_FULL:
+        - { guard: isFull, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markFull, clearToast], say: "they press Tam on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+      MARK_INCOMPLETE:
+        - { guard: isIncomplete, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markIncomplete, clearToast], say: "they press Eksik on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+      MARK_ABSENT:
+        - { guard: isAbsent, target: column, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markAbsent, clearToast], say: "they press Vermedi on the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+      PRESS_1:
+        - { guard: isFull, target: column, say: "the key 1 on a row marked Tam: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markFull, clearToast], say: "they press the key 1 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:349 }
+      PRESS_2:
+        - { guard: isIncomplete, target: column, say: "the key 2 on a row marked Eksik: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markIncomplete, clearToast], say: "they press the key 2 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:349 }
+      PRESS_3:
+        - { guard: isAbsent, target: column, say: "the key 3 on a row marked Vermedi: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markAbsent, clearToast], say: "they press the key 3 with the focus in the row", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:349 }
+      TOGGLE_NOTE:
+        - { guard: "marked and box == 'closed'", target: noting, effect: [boxOpened], say: "they press the note toggle beside a mark: the box opens and takes the focus", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:516 }
+        - { guard: marked, target: column, effect: [boxClosed], say: "they press the toggle of an open box: it shuts", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:516 }
+      HOMEWORK_SWITCHED: { target: column, effect: [homeworkSwitched], say: "the course team switches the homework to a file homework in nazar (nazar.curriculum.sessionHomework): nothing on this page changes", source: apps/tedrisat/src/evaluation/evaluation.repository.ts:249 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:356
+
+  noting:
+    title: The note box has just opened
+    description: >-
+      The same screen with the row's note box open under the chips, and the focus on its textbox (the toggle's press mounts it and an effect
+      focuses it: e2e evaluation#1 a12). The box takes at most 280 characters and stops there with no counter and no word (MARK-3). Enter blurs
+      it, which saves the note when it differs from the stored one, and the box stays open with the focus on the document (MARK-2); Escape moves
+      the focus to the toggle (through a ref since c0ca032d; it was looked up in the row before, the same move), shuts the box and saves the same
+      way (the text typed is not modelled: Escape here is the box left as it was); a press of the toggle shuts it. The box opens with the note the
+      mark keeps, never with a stale draft: since c0ca032d an effect puts the kept note back into the draft whenever the box is shut
+      (evaluation-board.tsx:477-482), so a note that was saved, put back after a refused save or changed elsewhere is what it shows next, and the
+      blur that closes it does not resend an older text. Typed inside the box the keys 1, 2 and 3 are text, so the marking keys are not drawn from here; the chips are.
+    by: human
+    on:
+      SAVE_NOTE: { guard: marked, target: marking, effect: [noteWritten, clearToast], say: "they type a note and press Enter: the box blurs and the note is sent with the mark's own status", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:546 }
+      CLOSE_NOTE: { target: column, effect: [boxClosed], say: "they press Escape with nothing typed: the box shuts and nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:547 }
+      TOGGLE_NOTE: { target: column, effect: [boxClosed], say: "they press the toggle: the box shuts", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:516 }
+      MARK_FULL:
+        - { guard: isFull, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markFull, clearToast], say: "they press Tam", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+      MARK_INCOMPLETE:
+        - { guard: isIncomplete, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markIncomplete, clearToast], say: "they press Eksik", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+      MARK_ABSENT:
+        - { guard: isAbsent, target: noting, say: "the same mark again: nothing is sent", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:180 }
+        - { target: marking, effect: [markAbsent, clearToast], say: "they press Vermedi", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:532 }
+      BACK: { target: overview, effect: [boxClosed], say: "they press Bütün ödevler", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:368 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:534
+
+  marking:
+    title: A mark is on its way
+    description: >-
+      saveEvaluation calls PUT /lessons/:id/evaluations/:userId with the status and the note (trimmed; blank is none), as the person, after the
+      one before it for the same cell. The cell was drawn at once: the chip is pressed, the count has moved, the toggle has appeared; nothing is
+      disabled and nothing says "saving". The API writes the mark (one row for the talebe and the homework, an audit row, no notification) and
+      the talebe's own read of it, on their celse page, now answers it. A save equal to the stored mark writes nothing. A refusal, whatever its
+      code, is the page's `success: false`: the cell goes back to what tedrisat last kept, unless a later press on it is already waiting, and an
+      error toast "Kaydedilemedi" with the name stays until closed (MARK-1). A save started while the homework is switched is such a refusal
+      (404 MEMORIZATION_NOT_FOUND). A save that is refused for its session ending sends the person to sign in. The drawn mark is not checked in
+      this step: the walk checks it once the answer is in.
+    invoke: { action: saveEvaluation }
+    on:
+      DONE: { guard: recited, target: column, starts: { flow: tedris.learn.homeworkMemorize, given: { mark: "'given'", verdict: verdict, note: note } }, say: "the mark is kept; the talebe's celse page now answers it (the talebe is not told)", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:78 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { guard: switched, target: column, effect: [saveRefused], say: "the API refused: the cell goes back and the toast says Kaydedilemedi", source: apps/nazar/features/evaluation/components/evaluation-board.tsx:79 }
+    source: apps/nazar/features/evaluation/actions.ts:21
+
+  not_found:
+    title: The course is not there
+    type: final
+    leavesPage: true
+    description: A 404 of any of the page's reads is Next's not-found page (lib/tedrisat-read.ts:46-50).
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      A 401 on a read is the sign-in page with reauth (lib/tedrisat-read.ts:36-40); a 401 on a save is sendToSignIn (lib/unauthenticated.ts), and
+      the cell stays as drawn (evaluation-board.tsx:154, :189). realm.auth.signIn takes over.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-column-needs-a-board
+    never: "(state == 'overview' or state == 'column' or state == 'noting' or state == 'marking') and read != 'ready'"
+    say: The table and the screen of a homework are drawn only for a course that has a recited homework and a seated talebe; otherwise the page says which is missing.
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:197
+  - id: a-note-needs-a-mark
+    never: "state == 'noting' and verdict == 'none'"
+    say: The note toggle and its box are drawn only beside a mark; there is nothing to keep a note on before one.
+    source: apps/nazar/features/evaluation/components/evaluation-board.tsx:502
+  - id: a-save-sends-a-mark
+    never: "state == 'marking' and verdict == 'none'"
+    say: A save is made only for one of the three marks, so the talebe is never handed over a mark that does not exist.
+    source: apps/nazar/features/evaluation/actions.ts:21

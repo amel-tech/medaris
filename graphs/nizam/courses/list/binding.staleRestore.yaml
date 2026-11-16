@@ -1,0 +1,81 @@
+# nizam.courses.list: the page lists a hidden course the nazım may bring back, and something changes before the press of "Geri al": the başnazım
+# brought it back and hid it again at his own kademe (FAIL.level: 403 ARCHIVE_RESTORE_LEVEL, "Bu dersi daha üst bir kademe gizledi; ...", and the
+# list read again, so the row loses its button and says "Bunu Medaris yönetimi gizledi; ..."), or he only brought it back (FAIL.notHidden: 409
+# COURSE_NOT_HIDDEN, which counts as done: the toast "Ders geri alındı").
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/list \
+#     --bind graphs/nizam/courses/list/binding.staleRestore.yaml --cover transitions --out <dir>
+# NOT RUN. Read only the walks that cover `FAIL.level` and `FAIL.notHidden`. Do NOT use --absent after FAIL.level: the page really draws the
+# sentence on the course the model still calls restorable (`held` is set to both). The events are the binding's own (that the replay runs them
+# before it releases the held call is not verified).
+# Data: the köşk with nclOwn (published), nclKeep and nclHid, both hidden by the nazım. nclHid is made last of the two, so its "Geri al" is the
+# first one on the page; nclKeep keeps `held` non-empty after the restore. No medrese.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.list
+
+data:
+  ncl: { json: ../.local/made/ncl.json }
+  nclOwn: { json: ../.local/made/nclOwn.json }
+  nclKeep: { json: ../.local/made/nclKeep.json }
+  nclHid: { json: ../.local/made/nclHid.json }
+
+events:
+  # the başnazım brings it back and hides it again: the course is now Medaris yönetimi's
+  FAIL.level:
+    - run: [node, ../nizam/courses/list/data.mjs, restore-course, --as, systemAdmin, --tag, nclHid]
+      expect: 'restore-course nclHid by SYSTEM_ADMIN'
+    - run: [node, ../nizam/courses/list/data.mjs, hide-course, --as, systemAdmin, --tag, nclHid]
+      expect: 'hide-course nclHid by SYSTEM_ADMIN'
+  # the başnazım brings it back, no more
+  FAIL.notHidden:
+    - run: [node, ../nizam/courses/list/data.mjs, restore-course, --as, systemAdmin, --tag, nclHid]
+      expect: 'restore-course nclHid by SYSTEM_ADMIN'
+
+scenarios:
+  staleRestore:
+    given: { courses: some, held: restorable }
+    as: koskNazim
+    open: '{nizam}/kosks/{ncl.kosk}'
+    setup:
+      - run: [node, helpers/make-kosk.mjs, make, ncl, KOSK_NAZIM]
+        expect: '"tag":"ncl"'
+      - run: [node, helpers/course.mjs, make, nclKeep, --kosk, '{ncl.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclKeep"'
+      - run: [node, helpers/course.mjs, make, nclHid, --kosk, '{ncl.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclHid"'
+      - run: [node, helpers/course.mjs, make, nclOwn, --kosk, '{ncl.kosk}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+      - run: [node, ../nizam/courses/list/data.mjs, hide-course, --as, koskNazim, --tag, nclKeep]
+        expect: 'hide-course nclKeep by KOSK_NAZIM'
+      - run: [node, ../nizam/courses/list/data.mjs, hide-course, --as, koskNazim, --tag, nclHid]
+        expect: 'hide-course nclHid by KOSK_NAZIM'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nclOwn]
+        expect: 'course remove nclOwn'
+      - run: [node, helpers/course.mjs, remove, nclHid]
+        expect: 'course remove nclHid'
+      - run: [node, helpers/course.mjs, remove, nclKeep]
+        expect: 'course remove nclKeep'
+      - run: [node, helpers/make-kosk.mjs, remove, ncl]
+        expect: 'kosk remove ncl'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ncl%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where name like 'Deneme köşkü ncl%'"]
+        expect: '"n":0'
+
+nodes:
+  # three courses: nclOwn published, two hidden; after FAIL.notHidden one more is published and one fewer hidden
+  tabAll: { role: tab, name: '/^Tümü3$/' }
+  tabPublished: { role: tab, name: '/^Yayında[12]$/' }
+  tabDraft: { role: tab, name: '/^Taslak0$/' }
+  tabHidden: { role: tab, name: '/^Gizli[12]$/' }
+  hostingNumber: { css: .mds-stat__value, hasText: '/^0$/', within: { css: .mds-stat, hasText: Barındırma hakkı olan medrese } }
+  medreseView: { skip: 'this köşk holds no medrese course' }
+  medreseHide: { skip: 'this köşk holds no medrese course' }
+
+# a restore that does succeed in this data is nclHid's, not nclOwn's
+effects:
+  restoreCourse:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from courses where id = '{nclHid.course}'"]
+      expect: '"shown":true'

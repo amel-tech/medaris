@@ -1,0 +1,674 @@
+# What a ders nazırı meets on the pages of a course (nazar-web /ders/<id>/...), by the permission codes the course's hoca gave them,
+# read from the code of PR #394 on 15 Nov 2026 (apps/nazar: features/account/course-permissions.ts, features/shell/nav.ts, the course
+# pages under features/*; apps/tedrisat: the reads each page makes). Nothing here was walked in a browser: every behaviour is "from the
+# code" until the walk phase; the unit specs named in needs.yaml are the only thing that ran it.
+#   - What it says. A ders nazırı holds NO permission by default (ROLE_DEFAULT_PERMISSIONS, libs/common/src/authz/permissions.ts:361):
+#     whatever the course's hoca ticks on Ders nazırları is all they have, and the post and the codes end together. A course page opens
+#     when the person holds ANY of the page's codes (PAGE_CODES, course-permissions.ts:36), read from GET /courses/:id/my-permissions;
+#     Sorular, Arşiv and Yasaklamalar have no such gate and ask the API, which answers 403. The page keeps its title, says
+#     “Bu sayfaya izniniz yok” in place of its body, and the menu is drawn in full except three entries.
+#   - The grants it draws are the ones the e2e checks use (`held` in `context`): none (course-nazirs#12, course-settings#11, questions#2,
+#     evaluation#2), session.manage + recording.manage (course-nazirs#4, course-settings#7), recording.manage alone (course-nazirs#5
+#     tail), course.edit + course.settings (course-settings#8), course.settings + course.publish (course-settings#9), question.answer
+#     (questions#3), course_nazir.assign (course-nazirs#13), and one more the story needs: a ders nazırı who reads Talebeler, Ödevler,
+#     Ders destesi and Arşiv (enrollment.decide, submission.read, deck.manage_course, week.hide and ban.course).
+#   - A course that turns passive (its last müderris leaves, MDRS-136) closes every content code and keeps course.settings, course.publish,
+#     deck.manage_course and course_nazir.assign (course-nazirs#14 tail, questions#3 a5-a10).
+#   - Findings it carries (the inventory's ids): F-D1-29, F-D2c-2, F-D2c-3, F-D2c-14, F-L-20. Three are this flow's own: DNP-1, DNP-2
+#     and DNP-3 (ui.yaml `rules`).
+#   - What it does not draw: what each page does once it opens (nazar.curriculum.*, nazar.sessions.*, nazar.roster.*, nazar.questions.answer,
+#     nazar.homework.review, nazar.evaluation.*, nazar.decks.*, nazar.courseNazirs.*, nazar.courseSettings.*), the hoca's side of Ders
+#     nazırları, and a person who holds a seat in the medrese (nazar.access.medreseNazirRefused).
+schema: delurio-graph/0
+kind: flow
+id: nazar.access.dersNazirPages
+status: captured
+domain: medaris.api
+ui: nazar.access.dersNazirPages
+title: Open the course pages with the permissions held
+summary: >-
+  A ders nazırı signs in and lands on Genel bakış of the course, which opens for every holder of the course scope. Every other page
+  opens only for the codes the hoca gave the post, and says “Bu sayfaya izniniz yok” under its own title otherwise. A nazır with no
+  code meets that on nine of the twelve entries the menu draws (Müfredat, Celseler, Talebeler, Sorular, Ders kayıtları, Yasaklamalar,
+  Arşiv, Ders nazırları and Ders ayarları: F-D2c-2, F-D1-29, F-L-20; only Pano, Bildirimler and Genel bakış open) and on Celse planla,
+  which has no entry; Ödevler, Değerlendirme and Ders destesi are not drawn to them at all, and the pages answer the same if the
+  address is typed. session.manage opens Celseler, Celse
+  planla, Müfredat, Değerlendirme and (as the sample session only) Ders ayarları; recording.manage Ders kayıtları; course.edit
+  Müfredat and, with course.settings, Ders ayarları; course.settings with course.publish and no course.edit opens Ders ayarları with
+  every box shut and a line that says why; enrollment.decide opens Talebeler, submission.read Ödevler, deck.manage_course Ders destesi,
+  week.hide Arşiv and Müfredat, question.answer Sorular, course_nazir.assign Ders nazırları. A nazır given only course_nazir.assign
+  appoints without giving permission, sees no box and no “İzinleri düzenle”, and may end only the people they appointed. Yasaklamalar
+  stays shut to every ders nazırı, even one given ban.course (F-D2c-3). When the course turns passive the content codes close at once
+  and the pages that asked for them refuse again.
+source: apps/nazar/features/account/course-permissions.ts:86
+
+scope:
+  shows: >-
+    the sidebar's menu and the fourteen pages of a course as a ders nazırı meets them for each grant set the e2e checks use, with the
+    verdict in place of the body, the controls the held codes give the pages that open (Ders ayarları in three variants, Müfredat's
+    read-only notes, Ders nazırları's appoint-only table), the answer a holder of question.answer gives, and the course turning passive
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "what a page does once it opens: the editor, the plan form, the roster's buttons, the answer form, the review, the marks, the decks, the appoint dialog and the settings' saves (nazar.curriculum.*, nazar.sessions.*, nazar.roster.*, nazar.questions.answer, nazar.homework.review, nazar.evaluation.*, nazar.decks.*, nazar.courseNazirs.*, nazar.courseSettings.*)"
+    - "the hoca's and the başmüderris's pages of the same course, which open every page: the persona the other flows walk"
+    - "a ders nazırı who also holds the seat of the course's medrese or köşk (the API refuses such a post: COURSE_NAZIR_HOLDS_SEAT) and the başnazım, who opens any course by its address"
+    - "session.live_link, recording.upload, course.view_unpublished, ban.lift_course and the codes of the course catalog that no page asks for, and a grant set of codes other than the eight drawn: the page of each code opens as PAGE_CODES says"
+    - "an end date on the post: the post and its codes end at that instant and the person is where a person with no post is (nazar.access.landingScope, nazar.access.noAccess)"
+    - "the course read that fails, a 404 for a course that is not the person's, and a token the API refuses: the retry state, the 404 page and the sign-in (nazar.shell.errorStates, realm.auth.sessionEnded)"
+    - "the loading skeleton while a page's reads run, the phone layout, where the same menu sits in a sheet, and the scope picker (nazar.shell.scopeAndMenu)"
+    - "Müfredat gizle (/mufredat/gizle), which has no gate in the page and refuses the write (F-C-course-a-17), and the [bolum] placeholder, which is always 404 (F-L-4)"
+
+decisions:
+  D1:
+    question: >-
+      Should the course menu draw only the entries whose page opens for the person's codes? Today three entries are filtered (Ödevler,
+      Değerlendirme and Ders destesi, MDRS-290) and ten are drawn to every holder of the course scope: a ders nazırı with no code
+      meets nine refusals behind the menu (F-D2c-2, F-D1-29, F-L-20).
+    recommend: >-
+      Yes: give Müfredat, Celseler, Talebeler, Sorular, Ders kayıtları, Arşiv, Ders nazırları and Ders ayarları a `requires` list (the
+      codes of PAGE_CODES; question.answer for Sorular; week.hide for Arşiv), as nav.ts already does for the other three, and leave
+      Yasaklamalar to those who can read its lists. The nav graph's `menu-refused` check then goes green for this persona.
+    affects: [shown]
+  D2:
+    question: >-
+      Whom should “Bu sayfaya izniniz yok” tell a ders nazırı to ask? Problems.forbidden says “İzne ihtiyacınız varsa medresenin
+      başmüderrisine başvurun” on every course page (DNP-1), though the person who gives a ders nazırı their permissions is the course's
+      hoca, and a course of a köşk has no medrese.
+    recommend: >-
+      A line for the course pages that names the hoca (and the başmüderris when the course has a medrese), and a link to Ders nazırları's
+      owner where it can be named; or keep the one sentence and drop the person it names.
+    affects: [shown]
+  D3:
+    question: >-
+      Should a ders nazırı given ban.course be able to open Yasaklamalar of their course (F-D2c-3)? The page asks the medrese's or the
+      köşk's list, which only medrese and köşk codes read, so the grant opens nothing: the page refuses whoever holds it.
+    recommend: >-
+      Either a course-scoped list the code reads, or no entry and no grant for it in the course catalog.
+    affects: [shown]
+
+context:
+  held:
+    values: [none, sessions, recorder, settingsEdit, settingsPublish, answerer, assigner, desk]
+    initial: any
+    say:
+      none: "the post holds no code at all: the state in which the hoca appoints"
+      sessions: "the post holds session.manage and recording.manage (course-nazirs#4)"
+      recorder: "the post holds recording.manage alone (what course-nazirs#5 leaves after the hoca takes session.manage away)"
+      settingsEdit: "the post holds course.edit and course.settings (course-settings#8)"
+      settingsPublish: "the post holds course.settings and course.publish and not course.edit (course-settings#9)"
+      answerer: "the post holds question.answer (questions#3)"
+      assigner: "the post holds course_nazir.assign and gives nothing: it was granted, not held through a role (course-nazirs#13)"
+      desk: "the post holds enrollment.decide, submission.read, deck.manage_course, week.hide and ban.course"
+  page:
+    values: [overview, curriculum, sessions, plan, students, questions, homework, evaluation, recordings, deck, bans, archive, nazirs, settings]
+    initial: overview
+    say:
+      overview: "Genel bakış, /ders/<id>"
+      curriculum: "Müfredat"
+      sessions: "Celseler"
+      plan: "Celse planla, /celseler/planla (no menu entry)"
+      students: "Talebeler"
+      questions: "Sorular"
+      homework: "Ödevler"
+      evaluation: "Değerlendirme"
+      recordings: "Ders kayıtları"
+      deck: "Ders destesi, whose page is titled Ders desteleri"
+      bans: "Yasaklamalar"
+      archive: "Arşiv"
+      nazirs: "Ders nazırları"
+      settings: "Ders ayarları"
+  body:
+    values: [refused, drawn]
+    initial: drawn
+    say:
+      refused: "the page keeps its title and says “Bu sayfaya izniniz yok” in place of its body"
+      drawn: "the page draws its body: the read was allowed"
+  course:
+    values: [active, passive]
+    initial: active
+    say:
+      active: "the course has a müderris"
+      passive: "the course had a müderris and has none now (MDRS-136)"
+  question:
+    values: [waiting, answered]
+    initial: waiting
+    say:
+      waiting: "the one question of the course has no answer"
+      answered: "the ders nazırı answered it"
+
+guards:
+  live: "course == 'active'"
+  curriculumHeld: "held in ['sessions', 'settingsEdit', 'desk']"
+  settingsHeld: "(held == 'sessions' and live) or held in ['settingsEdit', 'settingsPublish']"
+  homeworkEntry: "held == 'desk' and live"
+  evaluationEntry: "held == 'sessions' and live"
+  deckEntry: "held == 'desk'"
+  editOpen: "held == 'settingsEdit' and live"
+  mayOpen: >-
+    page == 'overview'
+    or (page == 'curriculum' and curriculumHeld and live)
+    or (page in ['sessions', 'plan', 'evaluation'] and held == 'sessions' and live)
+    or (page == 'recordings' and held in ['sessions', 'recorder'] and live)
+    or (page in ['students', 'homework', 'archive'] and held == 'desk' and live)
+    or (page == 'questions' and held == 'answerer' and live)
+    or (page == 'deck' and held == 'desk')
+    or (page == 'nazirs' and held == 'assigner')
+    or (page == 'settings' and settingsHeld)
+
+effects:
+  atOverview: { set: { page: overview } }
+  atCurriculum: { set: { page: curriculum } }
+  atSessions: { set: { page: sessions } }
+  atPlan: { set: { page: plan } }
+  atStudents: { set: { page: students } }
+  atQuestions: { set: { page: questions } }
+  atHomework: { set: { page: homework } }
+  atEvaluation: { set: { page: evaluation } }
+  atRecordings: { set: { page: recordings } }
+  atDeck: { set: { page: deck } }
+  atBans: { set: { page: bans } }
+  atArchive: { set: { page: archive } }
+  atNazirs: { set: { page: nazirs } }
+  atSettings: { set: { page: settings } }
+  bodyDrawn: { set: { body: drawn } }
+  bodyRefused: { set: { body: refused } }
+  passiveNow: { set: { course: passive } }
+  answeredNow: { set: { question: answered } }
+
+# The story the page tells first: the nazır the hoca gave nothing opens each page of the course in turn, from Müfredat to Ders ayarları, and
+# meets the same verdict on every one but Genel bakış, which is where they land.
+main:
+  given: { held: none }
+  events:
+    - OPEN_CURRICULUM
+    - OPEN_SESSIONS
+    - OPEN_PLAN
+    - OPEN_STUDENTS
+    - OPEN_QUESTIONS
+    - OPEN_HOMEWORK
+    - OPEN_EVALUATION
+    - OPEN_RECORDINGS
+    - OPEN_DECK
+    - OPEN_BANS
+    - OPEN_ARCHIVE
+    - OPEN_NAZIRS
+    - OPEN_SETTINGS
+    - OPEN_OVERVIEW
+
+initial: judged
+
+states:
+  judged:
+    title: The page decides what it draws
+    description: >-
+      Classification only. A page of a course asks what the person holds in it (GET /courses/:id/my-permissions, which a passive course
+      cuts to the codes that are not content) and opens when the person holds any one of the page's codes: Müfredat course.edit,
+      session.manage or week.hide; Celseler session.manage or session.live_link; Celse planla session.manage; Ders kayıtları
+      recording.manage or recording.upload; Talebeler course.staff_read or an enrollment.* code; Ödevler submission.read; Değerlendirme
+      session.manage; Ders destesi deck.manage_course; Ders nazırları course_nazir.assign; Ders ayarları course.edit, course.settings,
+      course.publish, session.manage or course.partner_codes (PAGE_CODES). Sorular, Arşiv and Yasaklamalar have no such gate: the page
+      asks the API for its list and a 403 is the verdict (question.answer; week.hide; and medrese or köşk codes no ders nazırı holds).
+      Genel bakış asks nothing of the person. The three branches of Ders ayarları go to their own states, because the form's boxes
+      are open, shut or half open by what is held (controlsOf).
+    always:
+      - guard: "mayOpen and page == 'settings' and editOpen"
+        target: settingsEditable
+        effect: [bodyDrawn]
+        say: "course.edit and course.settings: the boxes, the zone and the sample are not all open, but the form saves"
+        source: apps/nazar/features/course-settings/controls.ts:29
+      - guard: "mayOpen and page == 'settings' and held == 'sessions'"
+        target: settingsSample
+        effect: [bodyDrawn]
+        say: "session.manage alone: only the sample session is open"
+        source: apps/nazar/features/course-settings/controls.ts:45
+      - guard: "mayOpen and page == 'settings'"
+        target: settingsShut
+        effect: [bodyDrawn]
+        say: "course.settings (and course.publish) with no course.edit, or course.edit gone with a passive course: every box is shut and the page says why"
+        source: apps/nazar/features/course-settings/controls.ts:55
+      - guard: mayOpen
+        target: shown
+        effect: [bodyDrawn]
+        say: "the page opens"
+        source: apps/nazar/features/account/course-permissions.ts:93
+      - target: shown
+        effect: [bodyRefused]
+        say: "no code of the page is held, or the API answers 403"
+        source: apps/nazar/features/shell/components/page-problem.tsx:23
+    source: apps/nazar/features/account/course-permissions.ts:86
+
+  shown:
+    title: A page of the course is on the screen
+    by: human
+    goal: true
+    description: >-
+      The shell stays whatever the read said: the sidebar with the person row (“Ders nazırı”, course-nazirs#4 a1) and the course menu, which
+      draws Genel bakış, Müfredat, Celseler, Talebeler, Sorular, Ders kayıtları, Yasaklamalar, Arşiv, Ders nazırları and Ders ayarları to
+      every holder of the course scope (F-D2c-2, F-D1-29, F-L-20), and Ödevler, Değerlendirme and Ders destesi only to the holder of
+      submission.read, session.manage and deck.manage_course (navFor, nav.ts:193; e2e evaluation#2 a3 asserts the missing Değerlendirme).
+      With `body` refused the page keeps its <h1> (and, on Celseler, Talebeler, Sorular, Ödevler, Değerlendirme, Ders kayıtları and
+      Arşiv, the line under it that names the course), leaves out every button of its header, and draws in place of its body one
+      neutral Alert, a role=status that is in the page when it loads, with “Bu sayfaya izniniz yok” in a <p>, no heading and no link
+      (F-A-16, F-B-13), and “Bu sayfayı açma izniniz yok. İzne ihtiyacınız varsa medresenin başmüderrisine başvurun.”, which names the
+      başmüderris even where the course has no medrese and the person to ask is the hoca (DNP-1). The refusal of a passive course is
+      the same words, so a person who held the code last week is told nothing of why it is gone (DNP-2). Genel bakış draws the course's
+      name with its badge. With `body` drawn the page draws what the held codes give: Müfredat the form, read-only for a person without
+      course.edit (a line says so) and without its session buttons for one without session.manage; Celseler the two tables and “Celse
+      planla”; Celse planla the plan form and its preview; Talebeler the four tabs; Sorular the card of the waiting question, with
+      “Cevapla”, and, once answered, “Cevaplandı” and “Cevabı değiştir”; Ödevler, Ders destesi, Arşiv, Ders kayıtları and
+      Değerlendirme the empty state of a course that has none yet; Ders nazırları the table, and for a person holding only
+      course_nazir.assign (appointsOnly) the line “Ders nazırı atayabilirsiniz”, “Ders nazırı ata”, a row of their own with “(siz)” and
+      no button, and “Görevden al” only on the row of the person they appointed. Yasaklamalar never opens: the course reads the köşk's
+      or the medrese's ban list, which no course code reads (F-D2c-3). No page moves the focus on load (nothing in the pages sets it). A
+      menu link is a plain link: the page the person leaves is not kept.
+    source: apps/nazar/features/shell/components/page-problem.tsx:23
+    on:
+      OPEN_OVERVIEW:
+        target: judged
+        effect: [atOverview]
+        say: "they press Genel bakış in the menu"
+        source: "apps/nazar/features/shell/nav.ts:100"
+      OPEN_CURRICULUM:
+        target: judged
+        effect: [atCurriculum]
+        say: "they press Müfredat in the menu"
+        source: "apps/nazar/features/shell/nav.ts:101"
+      OPEN_SESSIONS:
+        target: judged
+        effect: [atSessions]
+        say: "they press Celseler in the menu"
+        source: "apps/nazar/features/shell/nav.ts:103"
+      OPEN_PLAN:
+        target: judged
+        effect: [atPlan]
+        say: "they press “Celse planla” on Celseler (drawn only with session.manage), or type /celseler/planla, which the menu has no entry for"
+        source: "apps/nazar/features/sessions/components/sessions-page.tsx:89"
+      OPEN_STUDENTS:
+        target: judged
+        effect: [atStudents]
+        say: "they press Talebeler in the menu"
+        source: "apps/nazar/features/shell/nav.ts:109"
+      OPEN_QUESTIONS:
+        target: judged
+        effect: [atQuestions]
+        say: "they press Sorular in the menu"
+        source: "apps/nazar/features/shell/nav.ts:114"
+      OPEN_HOMEWORK:
+        target: judged
+        effect: [atHomework]
+        say: "they press Ödevler in the menu, or type its address where the menu has no entry (Ödevler is drawn only to a holder of submission.read; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:116"
+      OPEN_EVALUATION:
+        target: judged
+        effect: [atEvaluation]
+        say: "they press Değerlendirme in the menu, or type its address where the menu has no entry (Değerlendirme is drawn only to a holder of session.manage; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:122"
+      OPEN_RECORDINGS:
+        target: judged
+        effect: [atRecordings]
+        say: "they press Ders kayıtları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:127"
+      OPEN_DECK:
+        target: judged
+        effect: [atDeck]
+        say: "they press Ders destesi in the menu, or type its address where the menu has no entry (Ders destesi is drawn only to a holder of deck.manage_course; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:129"
+      OPEN_BANS:
+        target: judged
+        effect: [atBans]
+        say: "they press Yasaklamalar in the menu"
+        source: "apps/nazar/features/shell/nav.ts:134"
+      OPEN_ARCHIVE:
+        target: judged
+        effect: [atArchive]
+        say: "they press Arşiv in the menu"
+        source: "apps/nazar/features/shell/nav.ts:135"
+      OPEN_NAZIRS:
+        target: judged
+        effect: [atNazirs]
+        say: "they press Ders nazırları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:141"
+      OPEN_SETTINGS:
+        target: judged
+        effect: [atSettings]
+        say: "they press Ders ayarları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:142"
+      NAZIR_ANSWERS:
+        guard: "held == 'answerer' and page == 'questions' and body == 'drawn' and question == 'waiting'"
+        target: judged
+        effect: [answeredNow]
+        say: >-
+          the nazır answers the waiting question and opens the page again; the form is nazar.questions.answer's, the
+          walk sends the same request (PUT /questions/:id/answer) as the nazır, which the API takes because the post
+          holds question.answer (e2e questions#3)
+        source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:217
+      HOCA_LEAVES:
+        target: judged
+        effect: [passiveNow]
+        say: >-
+          the course's last müderris leaves, so the course is passive (MDRS-136); someone else does it, and the person
+          opens the page again. Every content code is closed, the others stay
+        source: libs/common/src/authz/effective-permissions.ts:337
+      NAVIGATE:
+        target: left
+        say: "they follow Bildirimler, the person row, a link or leave the portal"
+
+  settingsEditable:
+    title: Ders ayarları with the boxes open
+    by: human
+    description: >-
+      The page for a holder of course.edit and course.settings (course-settings#8): “Kapalı ders”, “Kayıt onayı gereksin”, “Celseler yüz yüze
+      yapılır” and “Saat dilimi” are open, “Örnek ders” is shut (it takes session.manage), “Kaydet” waits for a change, and “Yayın” says
+      the status with no button (publishing takes course.publish). The card “Hocalar ve unvanları” is open with its own “Kaydet” and
+      “Vazgeç”, because it asks course.settings alone (F-D2c-14). A box a medrese policy holds says why instead of opening (not drawn
+      here: no policy is on).
+    source: apps/nazar/features/course-settings/controls.ts:29
+    on:
+      OPEN_OVERVIEW:
+        target: judged
+        effect: [atOverview]
+        say: "they press Genel bakış in the menu"
+        source: "apps/nazar/features/shell/nav.ts:100"
+      OPEN_CURRICULUM:
+        target: judged
+        effect: [atCurriculum]
+        say: "they press Müfredat in the menu"
+        source: "apps/nazar/features/shell/nav.ts:101"
+      OPEN_SESSIONS:
+        target: judged
+        effect: [atSessions]
+        say: "they press Celseler in the menu"
+        source: "apps/nazar/features/shell/nav.ts:103"
+      OPEN_PLAN:
+        target: judged
+        effect: [atPlan]
+        say: "they press “Celse planla” on Celseler (drawn only with session.manage), or type /celseler/planla, which the menu has no entry for"
+        source: "apps/nazar/features/sessions/components/sessions-page.tsx:89"
+      OPEN_STUDENTS:
+        target: judged
+        effect: [atStudents]
+        say: "they press Talebeler in the menu"
+        source: "apps/nazar/features/shell/nav.ts:109"
+      OPEN_QUESTIONS:
+        target: judged
+        effect: [atQuestions]
+        say: "they press Sorular in the menu"
+        source: "apps/nazar/features/shell/nav.ts:114"
+      OPEN_HOMEWORK:
+        target: judged
+        effect: [atHomework]
+        say: "they press Ödevler in the menu, or type its address where the menu has no entry (Ödevler is drawn only to a holder of submission.read; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:116"
+      OPEN_EVALUATION:
+        target: judged
+        effect: [atEvaluation]
+        say: "they press Değerlendirme in the menu, or type its address where the menu has no entry (Değerlendirme is drawn only to a holder of session.manage; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:122"
+      OPEN_RECORDINGS:
+        target: judged
+        effect: [atRecordings]
+        say: "they press Ders kayıtları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:127"
+      OPEN_DECK:
+        target: judged
+        effect: [atDeck]
+        say: "they press Ders destesi in the menu, or type its address where the menu has no entry (Ders destesi is drawn only to a holder of deck.manage_course; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:129"
+      OPEN_BANS:
+        target: judged
+        effect: [atBans]
+        say: "they press Yasaklamalar in the menu"
+        source: "apps/nazar/features/shell/nav.ts:134"
+      OPEN_ARCHIVE:
+        target: judged
+        effect: [atArchive]
+        say: "they press Arşiv in the menu"
+        source: "apps/nazar/features/shell/nav.ts:135"
+      OPEN_NAZIRS:
+        target: judged
+        effect: [atNazirs]
+        say: "they press Ders nazırları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:141"
+      OPEN_SETTINGS:
+        target: judged
+        effect: [atSettings]
+        say: "they press Ders ayarları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:142"
+      HOCA_LEAVES:
+        target: judged
+        effect: [passiveNow]
+        say: >-
+          the course's last müderris leaves, so the course is passive (MDRS-136); someone else does it, and the person
+          opens the page again. Every content code is closed, the others stay
+        source: libs/common/src/authz/effective-permissions.ts:337
+      NAVIGATE:
+        target: left
+        say: "they follow Bildirimler, the person row, a link or leave the portal"
+
+  settingsSample:
+    title: Ders ayarları with the sample session open
+    by: human
+    description: >-
+      The page for a holder of session.manage with no course.edit and no course.settings (course-settings#7): only “Örnek ders” is open, with
+      the form's “Kaydet” and “Vazgeç”; the two boxes, the time zone and “Celseler yüz yüze yapılır” are shut and no line says why. The
+      card “Hocalar ve unvanları” shows its selects shut and says “Unvanları değiştirme izniniz yok; yalnız görebilirsiniz.” “Yayın” says
+      the status with no button.
+    source: apps/nazar/features/course-settings/controls.ts:45
+    on:
+      OPEN_OVERVIEW:
+        target: judged
+        effect: [atOverview]
+        say: "they press Genel bakış in the menu"
+        source: "apps/nazar/features/shell/nav.ts:100"
+      OPEN_CURRICULUM:
+        target: judged
+        effect: [atCurriculum]
+        say: "they press Müfredat in the menu"
+        source: "apps/nazar/features/shell/nav.ts:101"
+      OPEN_SESSIONS:
+        target: judged
+        effect: [atSessions]
+        say: "they press Celseler in the menu"
+        source: "apps/nazar/features/shell/nav.ts:103"
+      OPEN_PLAN:
+        target: judged
+        effect: [atPlan]
+        say: "they press “Celse planla” on Celseler (drawn only with session.manage), or type /celseler/planla, which the menu has no entry for"
+        source: "apps/nazar/features/sessions/components/sessions-page.tsx:89"
+      OPEN_STUDENTS:
+        target: judged
+        effect: [atStudents]
+        say: "they press Talebeler in the menu"
+        source: "apps/nazar/features/shell/nav.ts:109"
+      OPEN_QUESTIONS:
+        target: judged
+        effect: [atQuestions]
+        say: "they press Sorular in the menu"
+        source: "apps/nazar/features/shell/nav.ts:114"
+      OPEN_HOMEWORK:
+        target: judged
+        effect: [atHomework]
+        say: "they press Ödevler in the menu, or type its address where the menu has no entry (Ödevler is drawn only to a holder of submission.read; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:116"
+      OPEN_EVALUATION:
+        target: judged
+        effect: [atEvaluation]
+        say: "they press Değerlendirme in the menu, or type its address where the menu has no entry (Değerlendirme is drawn only to a holder of session.manage; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:122"
+      OPEN_RECORDINGS:
+        target: judged
+        effect: [atRecordings]
+        say: "they press Ders kayıtları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:127"
+      OPEN_DECK:
+        target: judged
+        effect: [atDeck]
+        say: "they press Ders destesi in the menu, or type its address where the menu has no entry (Ders destesi is drawn only to a holder of deck.manage_course; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:129"
+      OPEN_BANS:
+        target: judged
+        effect: [atBans]
+        say: "they press Yasaklamalar in the menu"
+        source: "apps/nazar/features/shell/nav.ts:134"
+      OPEN_ARCHIVE:
+        target: judged
+        effect: [atArchive]
+        say: "they press Arşiv in the menu"
+        source: "apps/nazar/features/shell/nav.ts:135"
+      OPEN_NAZIRS:
+        target: judged
+        effect: [atNazirs]
+        say: "they press Ders nazırları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:141"
+      OPEN_SETTINGS:
+        target: judged
+        effect: [atSettings]
+        say: "they press Ders ayarları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:142"
+      HOCA_LEAVES:
+        target: judged
+        effect: [passiveNow]
+        say: >-
+          the course's last müderris leaves, so the course is passive (MDRS-136); someone else does it, and the person
+          opens the page again. Every content code is closed, the others stay
+        source: libs/common/src/authz/effective-permissions.ts:337
+      NAVIGATE:
+        target: left
+        say: "they follow Bildirimler, the person row, a link or leave the portal"
+
+  settingsShut:
+    title: Ders ayarları with every box shut
+    by: human
+    description: >-
+      The page for a holder of course.settings who does not hold course.edit, which is course.settings with course.publish
+      (course-settings#9) and course.edit and course.settings once the course is passive (course-nazirs#14 a14-a20): every box, the time
+      zone and the sample are shut, the form has no “Kaydet” and no “Vazgeç”, a line says “Bu ayarları değiştirmek için “Dersi
+      düzenle” izni de gerekir.” and another “Bu ayarları değiştirme izniniz yok; yalnız görebilirsiniz.” The card “Hocalar ve
+      unvanları” is open with its own “Kaydet” and “Vazgeç”: course.settings is all it asks, so the e2e's “no Kaydet on the page”
+      (course-settings#9 a-last, course-nazirs#14 a20) is stale and the page has one (F-D2c-14). “Yayın” says the status with no button,
+      course.publish or not, because the buttons ask course.edit as well.
+    source: apps/nazar/features/course-settings/controls.ts:55
+    on:
+      OPEN_OVERVIEW:
+        target: judged
+        effect: [atOverview]
+        say: "they press Genel bakış in the menu"
+        source: "apps/nazar/features/shell/nav.ts:100"
+      OPEN_CURRICULUM:
+        target: judged
+        effect: [atCurriculum]
+        say: "they press Müfredat in the menu"
+        source: "apps/nazar/features/shell/nav.ts:101"
+      OPEN_SESSIONS:
+        target: judged
+        effect: [atSessions]
+        say: "they press Celseler in the menu"
+        source: "apps/nazar/features/shell/nav.ts:103"
+      OPEN_PLAN:
+        target: judged
+        effect: [atPlan]
+        say: "they press “Celse planla” on Celseler (drawn only with session.manage), or type /celseler/planla, which the menu has no entry for"
+        source: "apps/nazar/features/sessions/components/sessions-page.tsx:89"
+      OPEN_STUDENTS:
+        target: judged
+        effect: [atStudents]
+        say: "they press Talebeler in the menu"
+        source: "apps/nazar/features/shell/nav.ts:109"
+      OPEN_QUESTIONS:
+        target: judged
+        effect: [atQuestions]
+        say: "they press Sorular in the menu"
+        source: "apps/nazar/features/shell/nav.ts:114"
+      OPEN_HOMEWORK:
+        target: judged
+        effect: [atHomework]
+        say: "they press Ödevler in the menu, or type its address where the menu has no entry (Ödevler is drawn only to a holder of submission.read; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:116"
+      OPEN_EVALUATION:
+        target: judged
+        effect: [atEvaluation]
+        say: "they press Değerlendirme in the menu, or type its address where the menu has no entry (Değerlendirme is drawn only to a holder of session.manage; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:122"
+      OPEN_RECORDINGS:
+        target: judged
+        effect: [atRecordings]
+        say: "they press Ders kayıtları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:127"
+      OPEN_DECK:
+        target: judged
+        effect: [atDeck]
+        say: "they press Ders destesi in the menu, or type its address where the menu has no entry (Ders destesi is drawn only to a holder of deck.manage_course; MDRS-290)"
+        source: "apps/nazar/features/shell/nav.ts:129"
+      OPEN_BANS:
+        target: judged
+        effect: [atBans]
+        say: "they press Yasaklamalar in the menu"
+        source: "apps/nazar/features/shell/nav.ts:134"
+      OPEN_ARCHIVE:
+        target: judged
+        effect: [atArchive]
+        say: "they press Arşiv in the menu"
+        source: "apps/nazar/features/shell/nav.ts:135"
+      OPEN_NAZIRS:
+        target: judged
+        effect: [atNazirs]
+        say: "they press Ders nazırları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:141"
+      OPEN_SETTINGS:
+        target: judged
+        effect: [atSettings]
+        say: "they press Ders ayarları in the menu"
+        source: "apps/nazar/features/shell/nav.ts:142"
+      HOCA_LEAVES:
+        target: judged
+        effect: [passiveNow]
+        say: >-
+          the course's last müderris leaves, so the course is passive (MDRS-136); someone else does it, and the person
+          opens the page again. Every content code is closed, the others stay
+        source: libs/common/src/authz/effective-permissions.ts:337
+      NAVIGATE:
+        target: left
+        say: "they follow Bildirimler, the person row, a link or leave the portal"
+
+  left:
+    title: They leave the pages of the course
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: genel-bakis-always-opens
+    never: "state != 'judged' and page == 'overview' and body == 'refused'"
+    say: Genel bakış opens for every holder of the course scope, whatever the post holds.
+    source: apps/nazar/features/course-overview/components/course-overview-page.tsx:32
+  - id: a-nazir-with-no-code-meets-no-body
+    never: "state != 'judged' and held == 'none' and page != 'overview' and body == 'drawn'"
+    say: A ders nazırı the hoca gave nothing is never shown the body of a course page; every one of them says “Bu sayfaya izniniz yok”.
+    source: apps/nazar/features/account/course-permissions.ts:86
+  - id: yasaklamalar-never-opens
+    never: "state != 'judged' and page == 'bans' and body == 'drawn'"
+    say: Yasaklamalar never opens for a ders nazırı, whatever codes the post holds, because the lists it reads ask medrese and köşk codes (F-D2c-3).
+    source: apps/nazar/features/bans/components/course-bans-page.tsx:67
+  - id: talebeler-needs-the-roster
+    never: "state != 'judged' and page == 'students' and body == 'drawn' and held != 'desk'"
+    say: Talebeler opens only for the post that holds an enrollment code.
+    source: apps/nazar/features/account/course-permissions.ts:40
+  - id: sorular-needs-question-answer
+    never: "state != 'judged' and page == 'questions' and body == 'drawn' and held != 'answerer'"
+    say: Sorular opens only for the post that holds question.answer, since the API lists the questions to nobody else.
+    source: apps/tedrisat/src/lesson-question/lesson-question.controller.ts:189
+  - id: nazirlar-needs-assign
+    never: "state != 'judged' and page == 'nazirs' and body == 'drawn' and held != 'assigner'"
+    say: Ders nazırları opens only for the post that holds course_nazir.assign.
+    source: apps/nazar/features/account/course-permissions.ts:39
+  - id: a-passive-course-closes-content
+    never: "state != 'judged' and course == 'passive' and body == 'drawn' and page in ['curriculum', 'sessions', 'plan', 'students', 'questions', 'homework', 'evaluation', 'recordings', 'archive']"
+    say: When the course has no müderris the pages that ask a content code (course.edit, session.manage, enrollment.*, question.answer, submission.read, recording.*, week.hide) refuse again.
+    source: libs/common/src/authz/effective-permissions.ts:337
+  - id: a-passive-course-keeps-the-other-codes
+    never: "state != 'judged' and course == 'passive' and held == 'desk' and page == 'deck' and body == 'refused'"
+    say: deck.manage_course is no content code, so Ders destesi stays open for its holder in a passive course.
+    source: libs/common/src/authz/permissions.ts:251
+  - id: ders-ayarlari-survives-a-passive-course
+    never: "state != 'judged' and course == 'passive' and held in ['settingsEdit', 'settingsPublish'] and page == 'settings' and body == 'refused'"
+    say: course.settings and course.publish are no content codes, so Ders ayarları stays open for their holder in a passive course, and the form shuts.
+    source: libs/common/src/authz/permissions.ts:237

@@ -1,0 +1,21 @@
+{
+  "SystemPages.notFoundTitle": "Sayfa bulunamadı",
+  "SystemPages.notFoundText": "Aradığın sayfa yok ya da artık burada değil. Adresi kontrol et ya da ana sayfadan devam et.",
+  "SystemPages.notFoundAction": "Ana sayfaya dön",
+  "SystemPages.errorTitle": "Bir şeyler ters gitti",
+  "SystemPages.errorText": "Sunucuya ulaşılamadı. İnternet bağlantını denetleyip yeniden dene.",
+  "SystemPages.errorAction": "Yeniden dene",
+  "Header.searchPlaceholder": "Ara…",
+  "UserNotifications.label": "Bildirimler",
+  "UserNotifications.labelUnread": "Bildirimler, {count} okunmamış",
+  "TabView.home": "Ev",
+  "TabView.learning": "Öğrenme",
+  "TabView.decks": "Desteler",
+  "Auth.signIn": "Giriş yap",
+  "Auth.register": "Kayıt ol",
+  "composed.Header.wordmark": "Medaris",
+  "composed.Header.userMenu": "{initials} {name}",
+  "composed.GlobalError.title": "Bir şeyler ters gitti",
+  "composed.GlobalError.text": "Sunucuya ulaşılamadı. İnternet bağlantını denetleyip yeniden dene.",
+  "composed.GlobalError.retry": "Yeniden dene"
+}

@@ -1,0 +1,87 @@
+# landing.site.enterApp on the local stack: the site on :4003, nobody signed in, tedris-web on :4000 and Keycloak on :8080 behind it.
+#   node apps/engine/src/cli.ts replay graphs/landing/site/enterApp --bind graphs/landing/site/enterApp/binding.yaml --out <dir>
+# Landing has no sign-in: the visitor account is an empty map and `signIn` is emptied so the base's real sign-in through Keycloak
+# never runs (the same as landing.site.contact and the navigation graph's binding).
+#
+# What the stack can walk (the stack's landing has LANDING__TEDRIS_APP_URL=http://localhost:4000):
+#   tedrisUrl: set    the three doors by their links: REGISTER (the main story), and by `--to` SIGN_IN and EXPLORE. Each press is a
+#                     plain link, so the walk follows landing's 307 and tedris-web's page to the end: Keycloak's form (a few seconds)
+#                     or tedris's /discover. The wire is checked by the `effects` below: landing's own answer, 307 and its Location,
+#                     for both entry routes and for the route into Keşfet, and 404 for an intent it does not have.
+#   OPEN_OTHER_INTENT bound (a `goto` to /api/tedris/admin); its state is not on the main story and not walked in this phase.
+#   tedrisUrl: unset  NOT walked: it needs landing started with no LANDING__TEDRIS_APP_URL, and the stack's landing has one (a second
+#                     landing-web on another port with the key unset would walk it; the binding has no scenario for it).
+# `call` is not used on any state: the doors are navigation, and a held navigation request stalls the page (see realm.auth.signIn).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.landing.binding.yaml
+flow: landing.site.enterApp
+
+accounts:
+  visitor: {}
+signIn: []
+
+scenarios:
+  # A visitor who opens the home page. Nothing is made or removed: the routes write nothing.
+  visitor:
+    given: { tedrisUrl: set }
+    as: visitor
+    open: '{landing}/'
+
+events:
+  OPEN_OTHER_INTENT:
+    - goto: '{landing}/api/tedris/admin'
+  NAVIGATE:
+    - goto: 'about:blank'
+
+states:
+  # Where the browser ends. Sign-in and registration both end on Keycloak's authorization endpoint (the registration form is the same
+  # address with prompt=create), and the replay cannot tell the two forms apart here: realm.auth.signIn and realm.auth.register draw them.
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**' }
+  handed_over.register: { url: '{keycloak}/realms/medaris/protocol/openid-connect/auth**prompt=create**' }
+  handed_over.discover: { url: '{tedris}/discover**' }
+  refused.not_configured: { text: 'TEDRIS_APP_URL is not configured' }
+  refused.unknown_address: { url: '{landing}/api/tedris/admin' }
+  left: { url: 'about:blank' }
+
+# What landing itself answers, on the wire: the two entry routes and the route into Keşfet answer 307 to tedris-web (tedris-entry.spec#2,
+# #3, home.spec#3), and an intent it does not have answers 404 (tedris-entry.spec#4). curl does not follow redirects. The header names
+# are as Next writes them, in lower case.
+effects:
+  enterTedris:
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{landing}/api/tedris/register']
+      expect: 'HTTP/1.1 307'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{landing}/api/tedris/register']
+      expect: 'location: {tedris}/auth/register'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{landing}/api/tedris/signin']
+      expect: 'HTTP/1.1 307'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{landing}/api/tedris/signin']
+      expect: 'location: {tedris}/auth/signin'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{landing}/api/tedris/admin']
+      expect: 'HTTP/1.1 404'
+  redirectToTedris:
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{landing}/tedris/discover']
+      expect: 'HTTP/1.1 307'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{landing}/tedris/discover']
+      expect: 'location: {tedris}/discover'
+
+nodes:
+  # a bare `main` is also the page a walk leaves for: tell this one by its eyebrow
+  page: { role: main, hasText: Çevrim içi medrese }
+  # the h1 holds two sentences (the second in a block span), so its name is longer than the catalog's first sentence; the region it
+  # labels is found by its class for the same reason
+  hero: { css: 'section.karsilama-hero' }
+  heroTitle: { css: '#giris-baslik', hasText: 'Kitap, hoca, halka.' }
+  # a name that is on the page twice, or three times: "Giriş yap" (header, closing), "Talebe olarak kaydolun" (hero, closing),
+  # "Dersleri keşfedin" (hero, talebe door)
+  headerSignIn: { role: link, name: Giriş yap, within: { role: banner } }
+  headerRegister: { role: link, name: Kayıt ol, within: { role: banner } }
+  # the header's link to the public roadmap is planned (MDRS-246, decided 4 October): no code stands behind it, so nothing here can find it; the transition
+  # OPEN_ROADMAP that leaves from it is therefore not walked, and `--cover transitions` reports it unbound, which is the truth until the page is built
+  headerRoadmap: { skip: "planned: no code (landing.site.roadmap)" }
+  heroRegister: { role: link, name: Talebe olarak kaydolun, within: { css: 'section.karsilama-hero' } }
+  heroExplore: { role: link, name: Dersleri keşfedin, within: { css: 'section.karsilama-hero' } }
+  doorRegister: { role: link, name: Kaydolun, within: { css: '#talebeler' } }
+  doorExplore: { role: link, name: Dersleri keşfedin, within: { css: '#talebeler' } }
+  closingRegister: { role: link, name: Talebe olarak kaydolun, within: { css: 'section[aria-labelledby=kapanis-baslik]' } }
+  closingSignIn: { role: link, name: Giriş yap, within: { css: 'section[aria-labelledby=kapanis-baslik]' } }

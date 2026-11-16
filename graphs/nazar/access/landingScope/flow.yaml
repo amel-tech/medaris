@@ -1,0 +1,362 @@
+# Where a person lands in nazar-web: the root address "/" after sign-in, the scope it reopens, and what the address of a medrese or of a
+# course gives each kind of person. Read from the code of the branch (the tree of PR #394) on 15 Nov 2026; every behaviour below is
+# from the code, and the unit specs (apps/nazar/test/access.spec.tsx, scope.spec.ts) pin most of it. What was seen: the stack's own smoke
+# run in a browser (STACK.md), each persona's landing after sign-in, and two GETs with curl (binding.yaml). Nothing here is approved.
+#   - What it draws: the one read "/" makes, the rule that picks the landing (the scope last used, else the first medrese, else the
+#     first course, else the no-access page), the cookie nazar-scope that remembers it, and the layout's decision for an address that
+#     names a scope: the person's own, a course of their own medrese, any scope for the başnazım, the 404, the no-access page.
+#   - What it does not draw: the pages themselves (nazar.pano.decideApplications, nazar.course.overview, nazar.access.noAccess), the
+#     menu and the picker's menu (nazar.shell.scopeAndMenu), the retry state and the 404 as pages in their own right
+#     (nazar.shell.errorStates), Hesap and Bildirimler, which draw the menu of the scope "/" would open.
+#   - Findings it carries (the inventory's ids): F-L-7, F-L-8, F-E-4, F-E-17 and F-L-15; F-L-8 is now seen in a browser, by the stack's
+#     smoke run (the başnazım with no seat lands on "Bu portala erişiminiz yok" in nazar). One more is this flow's own, proposed as
+#     LSCOPE-1 (ui.yaml `rules`).
+#   - The e2e checks it takes over: access#5 and #6 (a1 only), course-nazirs#15 (a2) and the part of course-settings#12 that says the
+#     page opens by its address; see needs.yaml.
+#   - Walked on the stack: not yet. The owner's word is that replays happen once, at the end; binding.yaml loads and each scenario is
+#     bound. `read: unreadable` has no scenario: tedrisat answers every read here and the stack cannot make it refuse one.
+schema: delurio-graph/0
+kind: flow
+id: nazar.access.landingScope
+status: captured
+domain: medaris.api
+ui: nazar.access.landingScope
+title: Open the right scope from the root address or by address
+summary: >-
+  After sign-in nazar-web sends a person to "/", which draws nothing: it reads the roles the person holds and redirects. A person
+  who holds a medrese or a course lands in the scope they used last while they still hold it (the cookie nazar-scope), else in their
+  first medrese (its Pano), else in their first course (its Genel bakış), each group by name in Turkish order; a person who holds
+  none lands on "Bu portala erişiminiz yok". The page of a scope the person holds leaves that cookie behind, from the browser once it
+  has loaded. A scope that is not theirs, and one that is not there, are the same "Sayfa bulunamadı", so no id is told apart; but a
+  person who holds no scope at all is sent to the no-access page and not to a 404. Two kinds of person open a scope they hold no seat
+  in, by its address: a medrese's başmüderris and its nazırs open every course of that medrese, under their medrese role, and the
+  başnazım opens any medrese or course, as "Medaris başnazımı"; neither is remembered, and "/" never returns to it. When the roles
+  cannot be read the person is told so and offered a retry, never told they have no access. The başnazım who holds no seat is sent to
+  the no-access page by "/" like anyone who holds none (F-L-8, F-E-17), although every address of a scope opens for him.
+source: apps/nazar/app/page.tsx
+
+scope:
+  shows: >-
+    "/" and the layout of a scope: the read of the roles, the landing it picks, the cookie it keeps, and the answer of an address
+    that names a medrese or a course, for the people who hold a seat, the people who hold none and the başnazım
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the pages the person lands on: the Pano (nazar.pano.decideApplications), Genel bakış of a course (nazar.course.overview), the no-access page's links and sign-out (nazar.access.noAccess); the frame here is drawn only as far as it names the scope and the role"
+    - "the menu and the scope picker's own menu: choosing a scope there goes to that scope's address, an own address (nazar.shell.scopeAndMenu)"
+    - "the retry state \"Görevleriniz okunamadı\", which `read: unreadable` ends in here, and the 404 page as a page of its own (nazar.shell.errorStates); the loading skeleton while the roles are read (app/loading.tsx)"
+    - "a visitor, whom the proxy sends to sign in before any page runs, and a token tedrisat refuses (401), which sends the person to sign in again with `reauth` (realm.auth.signIn, realm.auth.sessionEnded)"
+    - "Hesap and Bildirimler, outside any scope: they draw the menu of the scope \"/\" would open (defaultScope, features/shell/components/portal-layout.tsx:71), and the başnazım with no seat meets them in a frame with no scope (nazar.account.settings, nazar.notifications.inbox)"
+    - "a cookie that names a scope the person no longer holds, or one that is malformed: it is ignored and the first medrese, else the first course, opens; which of several medreses or courses is first (by name, Turkish collation); a course that is hidden or a draft, which buildScopes keeps as a scope (read from the code; what its page does is not drawn)"
+    - "what the pages of an opened scope allow: a nazır with no grant meets \"Bu sayfaya izniniz yok\" on each (nazar.access.medreseNazirRefused, nazar.access.dersNazirPages)"
+    - "the phone layout, where the same menu sits in a sheet"
+
+decisions:
+  D1:
+    question: >-
+      Should the başnazım who holds no seat be told something true when "/" sends him to the no-access page, and be offered a way into
+      a medrese or a course, as the layout already lets him in by its address (F-L-8, F-E-17, F-L-7)?
+    recommend: >-
+      Yes: the no-access page reads GET /me for the başnazım (it is read already for every address that is not the person's) and says
+      what he may do: a list of medreses and courses, an address field, or a link to Nizam. Today he has to know an address, and the
+      page's person row calls him "Talebe" (F-E-4).
+    affects: [noAccess]
+
+context:
+  read:
+    values: [ok, unreadable]
+    initial: any
+    say:
+      ok: "the reads the page starts with answer: the roles (GET /me/assignments) and, for an address that is not the person's, who the caller is (GET /me) and the medrese or the course itself"
+      unreadable: "one of those reads fails with anything but a refused token (a 5xx, a network error): the stack cannot make this happen"
+  holds:
+    values: [nothing, medrese, both, course]
+    initial: any
+    say:
+      nothing: "they hold no medrese and no course seat (a talebe, a köşk nazımı, a Medaris nazımı, or the başnazım with no seat)"
+      medrese: "they hold a medrese (başmüderris or nazır) and no course seat"
+      both: "they hold a medrese and at least one course seat"
+      course: "they hold at least one course seat (hoca or ders nazırı) and no medrese"
+  admin:
+    values: [no, yes]
+    initial: any
+    say:
+      no: "they are not the başnazım"
+      yes: "GET /me says roles.systemAdmin: the başnazım, who holds a seat or not"
+  address:
+    values: [ownMedrese, ownCourse, courseOfMedrese, elsewhere, missing]
+    initial: any
+    say:
+      ownMedrese: "the address names a medrese they hold a seat in"
+      ownCourse: "the address names a course they hold a seat in"
+      courseOfMedrese: "the address names a course of a medrese they hold a seat in, with no seat in the course itself"
+      elsewhere: "the address names a medrese or a course that exists and is neither of the above"
+      missing: "the address names no medrese or course: an id that is not a uuid, one the API does not know, or a section the scope has no page for"
+  cookie:
+    values: [none, medrese, course]
+    initial: none
+    say:
+      none: "no scope has been opened by its own address in this visit: the browser holds no nazar-scope cookie, or one that names a scope they no longer hold, or one that only repeats what \"/\" would pick anyway"
+      medrese: "the scope last opened by its own address is a medrese they hold"
+      course: "the scope last opened by its own address is a course they hold"
+
+guards:
+  holdsMedrese: "holds in ['medrese', 'both']"
+  holdsCourse: "holds in ['course', 'both']"
+  ownMedreseHeld: "address == 'ownMedrese' and holdsMedrese"
+  ownCourseHeld: "address == 'ownCourse' and holdsCourse"
+  adminByAddress: "admin == 'yes' and address != 'missing'"
+  courseOfOwnMedrese: "address == 'courseOfMedrese' and holdsMedrese"
+  noSeat: "holds == 'nothing' and admin == 'no'"
+
+effects:
+  rememberMedrese: { set: { cookie: medrese } }
+  rememberCourse: { set: { cookie: course } }
+
+failures:
+  reading: { from: getMyAssignments, unreadable: [] }
+  opening: { from: getMyAssignments, unreadable: [] }
+# `unreadable` stands for any answer but a refused token: the domain lists no refusal code for the read (a 401 is the guard's and is left
+# out of the domain), and the code treats a network error, a 5xx and a 4xx alike (features/shell/reads.ts:63). In `opening` it also
+# stands for the other reads the layout makes, GET /me and the medrese or the course (lib/tedrisat-read.ts:43).
+
+# The story the page tells first: a hoca with several courses lands in the first, opens the address of another, and "/" then reopens
+# that one.
+main:
+  given: { read: ok, holds: course, admin: no, address: ownCourse }
+  events: [DONE, OPEN_ADDRESS, DONE, OPEN_ROOT, DONE]
+
+initial: reading
+
+states:
+  reading:
+    title: Read the roles "/" needs
+    description: >-
+      "/" draws nothing. Its server side reads GET /me/assignments, once for the request (getPortal), and turns the rows into scopes:
+      a medrese for a başmüderris or a nazır, a course for a müderris or a ders nazırı, two roles in one scope making one scope with
+      the stronger role, medreses first and then courses, each by name in Turkish order. The platform's and the köşk's roles (Medaris
+      nazımı, Köşk nazımı) make no scope: they are Nizam's. A refused token (401) is not a failure here: it sends the person to sign
+      in again with `reauth` (out of view).
+    includes: ["the person's name and e-mail from the session, which the frame prints"]
+    source: apps/nazar/features/shell/reads.ts:49
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: { guard: "read == 'ok'", target: sorting }
+      FAIL.unreadable: { guard: "read == 'unreadable'", target: roles_unreadable, say: "the roles could not be read, so \"/\" shows the retry state \"Görevleriniz okunamadı\" with \"Yeniden dene\" and no redirect: it is never worded as no access", source: apps/nazar/app/page.tsx:15 }
+
+  sorting:
+    title: Pick the landing
+    description: >-
+      classification only: landingPath. The remembered scope while the person still holds it, else the first medrese, else the first
+      course, else the no-access page. The cookie holds one kind and one id ("medrese:<id>" or "ders:<id>"); a value that is not that,
+      or that names a scope the person does not hold, counts as none. Here `cookie` is the scope last opened by its own address, so it
+      is always held: the person who kept a medrese lands on its Pano, and only a kept course overrides the first medrese. The page
+      "/" lands on writes the cookie as well, with the very scope "/" picked, so that changes nothing a later "/" would pick and the
+      graph leaves it out.
+    source: apps/nazar/features/shell/scope.ts:201
+    always:
+      - { guard: "holds == 'nothing'", target: noAccess, say: "no scope: the redirect is /erisim-yok, whatever the cookie says", source: apps/nazar/features/shell/scope.ts:206 }
+      - { guard: "cookie == 'course'", target: courseKept, say: "the course they last used is still theirs", source: apps/nazar/features/shell/scope.ts:191 }
+      - { guard: holdsMedrese, target: medreseLanded, say: "else the first medrese (or the one they last used)", source: apps/nazar/features/shell/scope.ts:194 }
+      - { target: courseLanded, say: "else the first course", source: apps/nazar/features/shell/scope.ts:195 }
+
+  medreseLanded:
+    title: The Pano of the medrese
+    by: human
+    goal: true
+    description: >-
+      /medrese/<id>, the medrese's Pano, in the frame of the medrese: the sidebar with the medrese's name and the person's role in it
+      ("Medrese başmüderrisi" or "Medrese nazırı"), the medrese's menu and the person's row. The page leaves the cookie nazar-scope
+      behind, from the browser, once it has loaded (ScopeMemory, an effect): a person who leaves before it runs is not remembered
+      (not verified). Nothing sets the focus (rule focus-not-set).
+    source: apps/nazar/app/medrese/[medreseId]/page.tsx:16
+    on:
+      OPEN_ADDRESS: { target: opening, say: "they type or follow the address of a medrese or a course: a link, the picker, a bookmark" }
+      OPEN_ROOT: { target: reading, say: "they open \"/\" again (the address bar)" }
+      NAVIGATE: { target: left, say: "they follow a link out of the portal" }
+
+  courseLanded:
+    title: Genel bakış of the first course
+    by: human
+    goal: true
+    description: >-
+      /ders/<id>, Genel bakış of the person's first course by name, in the frame of the course: the course's name in the sidebar with
+      the role ("Hoca" or "Ders nazırı"), the course's menu, and the course's name and state as the page's title. A person who holds
+      a medrese never lands here from "/": they land on a Pano, or on the course they used last (courseKept). The cookie is left
+      behind as in the Pano.
+    source: apps/nazar/app/ders/[dersId]/page.tsx:11
+    on:
+      OPEN_ADDRESS: { target: opening, say: "they type or follow the address of a medrese or a course" }
+      OPEN_ROOT: { target: reading, say: "they open \"/\" again" }
+      NAVIGATE: { target: left, say: "they follow a link out of the portal" }
+
+  courseKept:
+    title: Genel bakış of the course they used last
+    by: human
+    goal: true
+    description: >-
+      The same page as the first course's, for the course whose address the person opened last. This is the one landing the cookie
+      changes in what is drawn: it beats the first medrese (e2e access#5) and the first course.
+    source: apps/nazar/features/shell/scope.ts:191
+    on:
+      OPEN_ADDRESS: { target: opening, say: "they type or follow the address of a medrese or a course" }
+      OPEN_ROOT: { target: reading, say: "they open \"/\" again" }
+      NAVIGATE: { target: left, say: "they follow a link out of the portal" }
+
+  noAccess:
+    title: "Bu portala erişiminiz yok"
+    by: human
+    description: >-
+      /erisim-yok, the verdict page, which only a person whose roles were read and came back with no scope sees (a person who holds
+      a scope is sent on to "/"). The frame has the brand and the person's row, which is not a link, and no menu: the page's own
+      links (back to Tedris, sign out) are nazar.access.noAccess. Who lands here: a talebe, a köşk nazımı, a Medaris nazımı, and the
+      başnazım who holds no seat (F-L-8, F-E-17), whom the page tells the opposite of what the layout allows: every address of a
+      medrese or a course opens for him, and nothing on the page says so. The row says "Talebe" for him, because a person with no role
+      row falls back to it (portal-frame.tsx:53, F-E-4), while an opened frame calls him "Medaris başnazımı". The stack's smoke run
+      saw the başnazım land here. A person typing a scope's address from here is placed by the layout (OPEN_ADDRESS).
+    source: apps/nazar/app/erisim-yok/page.tsx:24
+    on:
+      OPEN_ADDRESS: { target: opening, say: "they type the address of a medrese or a course (the only way on for the başnazım)" }
+      NAVIGATE: { target: left, say: "they go back to Tedris or sign out" }
+
+  opening:
+    title: The layout reads the roles for an address
+    description: >-
+      A scoped address (/medrese/<id>... or /ders/<id>...) asks the layout of its scope (PortalLayout) for the person's roles, again
+      (once per request: the page below shares the read). When the address is one of the person's own scopes (compared in lower
+      case) nothing more is read. When it is not, the layout asks GET /me whether the caller is the başnazım, then reads the medrese
+      or the course (the başnazım's) or the course to find its medrese (anyone else's, who holds a medrese). Any of these reads
+      failing, but a 404, which is the 404 page, and a 401, which is a new sign-in, is the retry state; it is never a 404 and never
+      a verdict.
+    source: apps/nazar/features/shell/components/portal-layout.tsx:66
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: { guard: "read == 'ok'", target: placing }
+      FAIL.unreadable: { guard: "read == 'unreadable'", target: roles_unreadable, say: "the roles, GET /me or the scope itself could not be read: the retry state", source: apps/nazar/features/shell/components/portal-layout.tsx:67 }
+
+  placing:
+    title: Place the address
+    description: >-
+      classification only: the layout's decision, in the order of the code. The person's own scope first; then the başnazım, who
+      opens any medrese or course that exists (an id that is not a uuid, or that the API does not know, is a 404 for him too); then a
+      course of a medrese the person holds; then, for a person who holds no scope at all, the no-access page; else the 404.
+    source: apps/nazar/features/shell/components/portal-layout.tsx:69
+    always:
+      - { guard: ownMedreseHeld, target: medreseOpened, effect: [rememberMedrese], say: "an own medrese: its frame, and the cookie", source: apps/nazar/features/shell/components/portal-layout.tsx:111 }
+      - { guard: ownCourseHeld, target: courseOpened, effect: [rememberCourse], say: "an own course: its frame, and the cookie", source: apps/nazar/features/shell/components/portal-layout.tsx:111 }
+      - { guard: adminByAddress, target: adminOpened, say: "the başnazım: any medrese or course that exists, under his own role, with no cookie", source: apps/nazar/features/shell/components/portal-layout.tsx:91 }
+      - { guard: courseOfOwnMedrese, target: courseOfMedrese, say: "a course of a medrese the person holds: opened as the medrese's, with no cookie", source: apps/nazar/features/shell/opened-scope.ts:19 }
+      - { guard: noSeat, target: noAccess, say: "a person who holds no scope at all is sent to /erisim-yok, even for an id that is not there", source: apps/nazar/features/shell/components/portal-layout.tsx:107 }
+      - { target: notFound, say: "everything else is \"Sayfa bulunamadı\": not theirs, not there, a section no page answers", source: apps/nazar/features/shell/components/portal-layout.tsx:108 }
+
+  medreseOpened:
+    title: A medrese of their own, by its address
+    by: human
+    description: >-
+      The page at that address, in the frame of the medrese the person holds, which names it and their role; the cookie is left
+      behind. At the medrese's own address that page is the Pano; a section of it has a title of its own. For the başmüderris and the nazır alike; what a nazır with no grant meets on each page is
+      nazar.access.medreseNazirRefused.
+    source: apps/nazar/features/shell/components/portal-layout.tsx:111
+    on:
+      OPEN_ADDRESS: { target: opening, say: "they open another address" }
+      OPEN_ROOT: { target: reading, say: "they open \"/\"" }
+      NAVIGATE: { target: left, say: "they follow a link out of the portal" }
+
+  courseOpened:
+    title: A course of their own, by its address
+    by: human
+    description: >-
+      The page at that address, in the frame of the course the person holds, which names it and their role; the cookie is left
+      behind, so "/" reopens this course next time (courseKept). At the course's own address that page is Genel bakış; a section of it
+      has a title of its own.
+    source: apps/nazar/features/shell/components/portal-layout.tsx:111
+    on:
+      OPEN_ADDRESS: { target: opening, say: "they open another address" }
+      OPEN_ROOT: { target: reading, say: "they open \"/\"" }
+      NAVIGATE: { target: left, say: "they follow a link out of the portal" }
+
+  courseOfMedrese:
+    title: A course of their medrese, opened as the medrese's
+    by: human
+    description: >-
+      The medrese's başmüderris and its nazırs open every course of the medrese by its address (the Dersler list links to them), though
+      they hold no seat in the course; a ders nazırı post is even refused them (COURSE_NAZIR_HOLDS_SEAT). The frame is the course's,
+      with the course's own menu, and the role the sidebar names is their medrese role. It is theirs for that page only: the cookie is
+      not written, and "/" would ignore it anyway, since they hold no seat in the course. What they may do on each page is the API's
+      answer (a nazır with no grant meets "Bu sayfaya izniniz yok"). At the course's own address the page is Genel bakış. The picker
+      lists this course beside the person's own under a note that says only held scopes are listed (LSCOPE-1).
+    source: apps/nazar/features/shell/opened-scope.ts:19
+    on:
+      OPEN_ADDRESS: { target: opening, say: "they open another address" }
+      OPEN_ROOT: { target: reading, say: "they open \"/\": the course is not remembered" }
+      NAVIGATE: { target: left, say: "they follow a link out of the portal" }
+
+  adminOpened:
+    title: Any medrese or course, as the başnazım
+    by: human
+    description: >-
+      The başnazım opens any medrese or course by its address, with no seat in it (MDRS-270 for a course); the page is whichever the
+      address names, and the graph draws only the frame it is in, so neither the Pano's title nor Genel bakış's is listed here: the
+      frame is that scope's,
+      with its menu, and the role the sidebar names is "Medaris başnazımı" (the scope card; the person's row says it too when he
+      holds no other role, and names only the others when he does, F-L-7). For a course the menu offers every entry, because the
+      course's my-permissions gives him every course code; what the medrese pages allow is the API's own bypass. The scope is built
+      for that page only: the cookie is not written and "/" never returns to it, so after it a seatless başnazım meets the no-access
+      page again. Opening a course reads it as the başnazım, which writes an audit row (course.content_read).
+    source: apps/nazar/features/shell/admin-scope.ts:58
+    on:
+      OPEN_ADDRESS: { target: opening, say: "he opens another address" }
+      OPEN_ROOT: { target: reading, say: "he opens \"/\": the scope he opened is not remembered" }
+      NAVIGATE: { target: left, say: "he follows a link out of the portal" }
+
+  notFound:
+    title: "Sayfa bulunamadı"
+    by: human
+    description: >-
+      The same page for an id that is not there, one that is not the person's, a section the scope has no page for, and an id that is
+      not a uuid, in the same words, so the portal never says which ids exist. It draws a <main> and an h1 of its own and, from the
+      code, no sidebar: the root's not-found boundary replaces the whole tree below the root layout (F-L-15, not verified in a
+      browser). The one way out is "Ana sayfaya dön", which is "/": it sends the person to their landing again. The address stays as
+      it was typed.
+    source: apps/nazar/app/not-found.tsx:10
+    on:
+      OPEN_ROOT: { target: reading, say: "\"Ana sayfaya dön\" opens \"/\"" }
+      NAVIGATE: { target: left, say: "they use the address bar" }
+
+  roles_unreadable:
+    title: "Görevleriniz okunamadı"
+    type: final
+    description: >-
+      The retry state: a <main> with "Görevleriniz okunamadı", one sentence and "Yeniden dene", which asks the server again (router
+      refresh) at the address the person is on. It is never worded as no access. Drawn by nazar.shell.errorStates; not walked here
+      because the stack cannot make the read fail.
+
+  left:
+    title: The person leaves the portal's pages
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: memory-is-not-ignored
+    never: "state == 'courseLanded' and cookie == 'course'"
+    say: A person whose last scope was a course never lands on the first course; "/" reopens the one they used.
+    source: apps/nazar/features/shell/scope.ts:191
+  - id: kept-needs-a-memory
+    never: "state == 'courseKept' and cookie != 'course'"
+    say: The remembered course is the landing only when the cookie names a course.
+    source: apps/nazar/features/shell/scope.ts:191
+  - id: no-seat-no-scope
+    never: "holds == 'nothing' and state in ['medreseLanded', 'courseLanded', 'courseKept', 'medreseOpened', 'courseOpened', 'courseOfMedrese']"
+    say: A person who holds no scope never lands in a scope of their own, or in a course of their medrese; only the başnazım opens one, by its address.
+    source: apps/nazar/features/shell/components/portal-layout.tsx:69
+  - id: only-the-basnazim-opens-what-is-not-his
+    never: "state == 'adminOpened' and admin == 'no'"
+    say: Nobody but the başnazım opens a scope that is neither his own nor a course of his medrese.
+    source: apps/nazar/features/shell/admin-scope.ts:62
+  - id: no-seat-is-no-404
+    never: "state == 'notFound' and noSeat"
+    say: A person with no scope who is not the başnazım is sent to the no-access page by any scoped address, never shown the 404.
+    source: apps/nazar/features/shell/components/portal-layout.tsx:107
+  - id: a-failed-read-is-never-a-verdict
+    never: "state == 'noAccess' and read == 'unreadable'"
+    say: The no-access page appears only after the roles were read; a read that failed is the retry state.
+    source: apps/nazar/features/shell/reads.ts:65

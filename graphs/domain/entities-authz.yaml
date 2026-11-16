@@ -1,0 +1,76 @@
+# G. Roles, grants, groups: 4 tables (inventory/domain.md section 7, G).
+# The six scoped roles live only in role_assignments; the başnazım is the Keycloak realm role SYSTEM_ADMIN and is never a
+# row. Scope ids are not foreign keys: scopeId points at a köşk, a medrese or a course by scopeType. A user column holds
+# a Keycloak sub and is no foreign key (a users row is written lazily). All timestamps here are with time zone.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+entities:
+  RoleAssignment: # who holds which scoped role where; rows are revoked, never deleted
+    source: apps/tedrisat/src/database/schema/role-assignment.schema.ts:68
+    required: [id, userId, role, scopeType, isImam, grantedBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      role: { enum: [MEDARIS_NAZIM, KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR], note: "each role lives in one kind of scope: MEDARIS_NAZIM in platform, KOSK_NAZIM in kosk, MEDRESE_BASMUDERRIS and MEDRESE_NAZIR in madrasah, MUDERRIS and DERS_NAZIR in course (check role_assignments_scope_matches_role; ROLE_SCOPE_TYPES, role-assignment.schema.ts:35, equal to libs/common/src/authz/assignments.ts:32)" }
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      scopeId: { type: [string, "null"], format: uuid, note: "no foreign key: a köşk, a medrese or a course by scopeType; null exactly when scopeType is platform (check role_assignments_scope_id_present)" }
+      isImam: { type: boolean, default: false, note: "the course's imam among its müderrisler; only on MUDERRIS rows (check role_assignments_imam_is_muderris); at most one held imam per course (unique index role_assignments_one_imam_per_course_idx)" }
+      grantedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time }
+      expiresAt: { type: [string, "null"], format: date-time, note: "a role past it stops counting with no job: every query reads the database clock (isHeld, database/role-assignments.ts:35)" }
+      revokedAt: { type: [string, "null"], format: date-time, note: "set together with revokedBy (check role_assignments_revocation_complete). A scope is passive when its manager role (KOSK_NAZIM, MEDRESE_BASMUDERRIS or MUDERRIS) was held once, revoked rows included, and none is held now (isPassiveScope, database/role-assignments.ts:68)" }
+      revokedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+    lifecycle:
+      - "none -> held: grantRole revokes a lapsed row of the same seat, then inserts (database/role-assignments.ts:109); a person holds a role in a scope once at a time (unique partial indexes role_assignments_held_scoped_idx and role_assignments_held_platform_idx)"
+      - "held -> lapsed: expiresAt passes; nothing writes the row"
+      - "held -> revoked: revokeRole sets revokedAt and revokedBy together (database/role-assignments.ts:139); the row stays as history"
+      - "revoked | lapsed -> none: only SYSTEM_ADMIN's real delete of a köşk, medrese or course removes its rows (database/role-assignments.ts:163)"
+      - "held -> held: syncMuderrisAssignments seats and revokes MUDERRIS rows from course_muderris.user_id and picks the first listed as imam when none stays (:212); setCourseImam moves the imam (:308)"
+
+  PermissionGroup: # a named set of catalogue codes that a role holder defines in their own scope (MDRS-169)
+    source: apps/tedrisat/src/database/schema/permission.schema.ts:24
+    required: [id, scopeType, name, createdBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      scopeId: { type: [string, "null"], format: uuid, note: "no foreign key; platform groups carry none, köşk and medrese groups must, a course group may name one course or, without an id, every course (check permission_groups_scope_id_present)" }
+      name: { type: string, note: "used once among the live groups no scope id narrows (platform and every-course), whatever its case: unique partial index permission_groups_name_idx on lower(name) where deletedAt is null and scopeId is null" }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time }
+      deletedAt: { type: [string, "null"], format: date-time, note: "a soft delete" }
+    lifecycle:
+      - "none -> live: a group is created (assignment/admin/permission-admin.repository.ts:823, audit permission_group.create)"
+      - "live -> live: renamed or its items changed (assignment/admin/permission-admin.repository.ts:911, audit permission_group.update)"
+      - "live -> deleted: deletedAt is set (assignment/admin/permission-admin.repository.ts:981, audit permission_group.delete)"
+
+  PermissionGroupItem: # one catalogue code in a group
+    source: apps/tedrisat/src/database/schema/permission.schema.ts:54
+    key: [groupId, permission]
+    required: [groupId, permission]
+    fields:
+      groupId: { type: string, format: uuid, references: PermissionGroup, note: "on delete cascade" }
+      permission: { type: string, note: "a catalogue code (libs/common/src/authz/permissions.ts:33); checked in the service, not in the database; unique with groupId (permission_group_items_unique_idx); the table has no primary key" }
+
+  PermissionGrant: # one permission code, or one group, given to one person in one scope
+    source: apps/tedrisat/src/database/schema/permission.schema.ts:75
+    required: [id, userId, scopeType, grantedBy, createdAt]
+    fields:
+      id: { type: string, format: uuid }
+      userId: { type: string, format: uuid, note: "Keycloak sub" }
+      scopeType: { enum: [platform, kosk, madrasah, course] }
+      scopeId: { type: [string, "null"], format: uuid, note: "no foreign key; same rule as on PermissionGroup, and a course grant without an id is held in every course (MDRS-171)" }
+      permission: { type: [string, "null"], note: "a catalogue code in the grantable set (GRANTABLE_CODES, permissions.ts:327); null when groupId is set; exactly one of permission and groupId is set (check permission_grants_permission_xor_group)" }
+      groupId: { type: [string, "null"], format: uuid, references: PermissionGroup, note: "on delete restrict; null when permission is set" }
+      grantedBy: { type: string, format: uuid, note: "Keycloak sub" }
+      authorityScopeType: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null], note: "the level of the authority the giver acted under: platform for the başnazım and a Medaris nazımı, kosk, madrasah, course; null on rows older than migration 0047, which count as made at their own scope. A grant made from above a policy's level survives that policy" }
+      createdAt: { type: string, format: date-time }
+      expiresAt: { type: [string, "null"], format: date-time }
+      revokedAt: { type: [string, "null"], format: date-time, note: "set together with revokedBy (check permission_grants_revocation_complete)" }
+      revokedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+    lifecycle:
+      - "none -> held: a grant is made (assignment/admin/permission-admin.repository.ts:466, kosk/kosk-grants.repository.ts:336, madrasah/nazir/madrasah-nazir.repository.ts:531, course/nazir/course-nazir.repository.ts:273; audit permission.grant)"
+      - "held -> held: retime changes expiresAt (kosk/kosk-grants.repository.ts:392, audit permission.retime)"
+      - "held -> lapsed: expiresAt passes (grantHeld, assignment/assignment.repository.ts:78)"
+      - "held -> revoked: revokedAt and revokedBy are set; the row stays as history (audit permission.revoke)"
+      - "held -> not counted: a grant counts only while the person still holds a role in its scope or above (libs/common/src/authz/effective-permissions.ts:230)"

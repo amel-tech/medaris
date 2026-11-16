@@ -1,0 +1,183 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.curriculum.hideRestore
+status: proposed
+summary: >-
+  What must exist for the hoca of a course to hide a week or a celse and bring it back from the course's Arşiv: the flow's product
+  list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code, or the code does not do it):
+# gate-the-hide-page, hoca-who-may-hide-reads-the-archive, archive-is-one-click-from-the-hide-page, focus-follows-hide-and-restore,
+# restore-says-what-came-back, a-course-gone-is-worded, a-failed-call-is-told, delete-a-hidden-week-with-a-recording
+# Unwalked (code exists; no e2e covers it and no replay has run: the walks of binding.yaml and refusals.binding.yaml are written and not run,
+# so no scenario is named under `walked`):
+# hide-a-week-or-a-celse, a-week-hides-with-its-celses, see-what-is-hidden, restore-by-kademe, restore-a-week-brings-its-celses,
+# an-answer-that-came-late-is-told
+
+needs:
+  - id: hide-a-week-or-a-celse
+    need: >-
+      The hoca of a course takes a week, or one celse of it, out of the course in one confirmed step: the talebe stop seeing it,
+      the celse leaves their calendars, nothing is deleted, and she is told what happened and where it went. A person who may hide
+      a celse and not a week (session.manage) is refused the week and not the celse.
+    evidence:
+      - state: listed
+      - state: confirmWeek
+      - state: confirmSession
+      - state: hidingWeek
+      - state: hidingSession
+      - state: weekSettled
+      - node: toastWeekHidden
+      - node: toastSessionHidden
+      - node: toastWeekRefused
+      - source: apps/tedrisat/src/course/lesson.controller.ts:436
+      - source: apps/tedrisat/src/course/lesson.controller.ts:416
+      - source: apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:43
+      - test: apps/nazar/test/curriculum-hide.spec.tsx
+    note: Also drawn as the assertion a-week-is-hidden-only-by-week-hide, the assertion a-celse-is-hidden-only-by-its-codes.
+
+  - id: a-week-hides-with-its-celses
+    need: >-
+      A week hides together with the celses it holds at one stroke, so no celse is left live under a hidden week, and none of them
+      is deleted (their recordings, resources and homework are kept).
+    evidence:
+      - state: hidingWeek
+      - state: weekSettled
+      - source: apps/tedrisat/src/course/lesson.controller.ts:436
+      - source: apps/tedrisat/src/course/course.repository.ts:1687
+      - test: apps/nazar/test/curriculum-hide.spec.tsx
+
+  - id: see-what-is-hidden
+    need: >-
+      The course's Arşiv lists what the course's team hid, in three tabs with their counts, newest first, each row with its kind,
+      who hid it and when; a celse hidden under a hidden week is not listed until the week is brought back.
+    evidence:
+      - state: archive
+      - state: archiveEmpty
+      - node: tabAll
+      - node: tabWeeks
+      - node: tabSessions
+      - node: archiveTable
+      - source: apps/tedrisat/src/archive/archive.controller.ts:150
+      - source: apps/nazar/features/course-archive/components/course-archive-page.tsx:71
+      - test: apps/nazar/test/course-archive.spec.tsx
+    note: Also drawn as the assertion a-covered-celse-needs-a-hidden-week.
+
+  - id: restore-by-kademe
+    need: >-
+      "Geri al" is offered where the person's kademe reaches the one that hid the row, and where it does not the page says which
+      kademe hid it, so no button leads to a refusal; a restore asks nothing first and says that it was done.
+    evidence:
+      - node: restoreWeek
+      - node: restoreSession
+      - node: lockedKosk
+      - node: lockedAdmin
+      - state: restoringWeek
+      - state: restoringSession
+      - node: toastRestored
+      - source: apps/tedrisat/src/archive/archive.controller.ts:246
+      - source: apps/nazar/features/archive/components/archive-list.tsx:152
+      - test: apps/nazar/test/course-archive.spec.tsx
+
+  - id: restore-a-week-brings-its-celses
+    need: >-
+      Bringing a week back brings back the celses that were hidden with it, and only those: a celse hidden on its own earlier
+      stays hidden and has its own row in the Arşiv.
+    evidence:
+      - state: restoringWeek
+      - node: restoreWeek
+      - node: restoreSession
+      - source: apps/tedrisat/src/archive/archive.controller.ts:246
+      - source: apps/tedrisat/src/archive/archive.repository.ts:514
+    note: Also drawn as the assertion a-covered-celse-needs-a-hidden-week.
+
+  - id: an-answer-that-came-late-is-told
+    need: >-
+      When what the person asked to hide is already hidden, or what she asked to bring back is already back (someone did it in
+      another tab), she is told so in plain words and the page is read again; it is not an error.
+    evidence:
+      - node: toastWeekGone
+      - node: toastSessionGone
+      - node: toastRestoreGone
+      - source: apps/nazar/features/curriculum-hide/curriculum.ts:51
+      - source: apps/nazar/features/archive/archive.ts:277
+      - test: apps/nazar/test/curriculum-hide.spec.tsx
+
+  - id: gate-the-hide-page
+    need: >-
+      The hide page offers each person only what she may do: the buttons are drawn for week.hide (a week and a celse) and
+      session.manage (a celse), and a ders nazırı with neither is told so before the question, not after it (F-C-course-a-17,
+      decision D1). It has a title of its own ("Müfredat: gizle") and a way back to the editor.
+    missing: "no issue: the page asks nothing, the API's 403 arrives as a toast (curriculum-page.tsx:19-58)"
+    note: >-
+      Drawn on the state listed and on the nodes toastWeekRefused and toastSessionRefused, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: hoca-who-may-hide-reads-the-archive
+    need: >-
+      A person who may hide a celse can see what she hid and bring it back: the Arşiv reads for session.manage as well, listing
+      the celses she may restore, or the hide of a celse is left to week.hide (HIDEREST-3, decision D2).
+    missing: "no issue: GET /courses/:id/archive asks week.hide only (archive.controller.ts:132)"
+    note: |-
+      Drawn on the state archiveRefused and on the node archiveRefusal, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Also drawn as the assertion the-archive-is-read-only-with-week-hide.
+
+  - id: archive-is-one-click-from-the-hide-page
+    need: >-
+      The hide page and its toasts lead to the Arşiv: a link in the sentence that names it and an action on the toast, as the
+      design's toasts allow (HIDEREST-2, decision D3).
+    missing: "no issue: the intro and the toasts say \"Arşiv\" and link nowhere; only the sidebar's entry leads there"
+    note: >-
+      Drawn on the nodes hideIntro, archiveLink, toastWeekHidden and toastSessionHidden, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-follows-hide-and-restore
+    need: >-
+      After a hide or a restore the focus lands on a place a keyboard or screen-reader user can use (the next week's heading, the
+      table's caption or the next row's button), and a line on the page, not only a toast of six seconds, says what was done
+      (F-C-course-a-15 and -23).
+    missing: no Linear issue; findings F-C-course-a-15
+    note: >-
+      Drawn on the states listed and archive and on the nodes toastWeekHidden and toastRestored, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: restore-says-what-came-back
+    need: >-
+      The toast that brings a week back says which celses came with it and that one hidden on its own earlier is still hidden
+      (HIDEREST-4), or the week is brought back whole.
+    missing: no Linear issue; findings HIDEREST-4
+    note: >-
+      Drawn on the state restoringWeek and on the node toastRestored, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-course-gone-is-worded
+    need: >-
+      A hide that meets a course that was deleted or hidden meanwhile says so, and does not tell the person to try again before
+      the page turns into a 404 (HIDEREST-1).
+    missing: no Linear issue; findings HIDEREST-1
+    note: >-
+      Drawn on the states hidingWeek and hidingSession, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-call-is-told
+    need: >-
+      When a hide or a restore cannot reach the server at all, the button stops being busy and the person is told to try again
+      (F-C-course-a-19).
+    missing: no Linear issue; findings F-C-course-a-19
+    note: >-
+      Drawn on the states hidingWeek, hidingSession, restoringWeek and restoringSession and on the nodes toastWeekFailed,
+      toastSessionFailed and toastRestoreFailed, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: delete-a-hidden-week-with-a-recording
+    need: >-
+      The başnazım can delete for real a hidden week or celse that has a recording attached; today the delete fails (MDRS-244). It
+      is the end of the road of what this flow hides, drawn in nizam.moderation.deleteArchived.
+    missing: MDRS-244; findings MDRS-244
+    note: >-
+      Drawn on the state archive, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

@@ -1,0 +1,303 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.moderation.banStudent
+status: proposed
+summary: >-
+  What must exist for the köşk's nazım to bar a talebe from a course or from the whole köşk, from the course's roster: the flow's
+  product list. Each need is what the product must do, from the flow's story (FLOWS.md), the inventory's findings (F-W5-2, F-W5-3,
+  F-W5-4, F-X-3), the planned work in planned.md (P-01 MDRS-113, P-29 MDRS-189, P-35 MDRS-197) and the flow's own findings
+  (BANST-1 to BANST-6, ban-staff-check-gaps), not from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Gaps of this file, for that merge:
+# missing:   the-hoca-bars-the-course (BANST-1, F-D2c-3: no issue), the-check-of-who-may-be-barred-is-complete (ban-staff-check-gaps: no
+# issue), a-ban-that-stands-is-told (BANST-2: no issue), a-refusal-is-told-inside-the-window (F-W5-3, F-X-4: no issue),
+# the-button-says-why-it-is-off (F-W5-4, F-X-3: no issue), the-window-waits-while-it-sends (F-W5-2, BANST-4, BANST-5: no issue),
+# the-focus-goes-somewhere-after-a-ban (BANST-3, F-W5-5: no issue), the-roster-names-the-scope-it-shows (BANST-6: no issue),
+# a-ban-is-placed-at-the-platform-level (MDRS-197, MDRS-113), the-talebe-is-told-by-mail (MDRS-189),
+# the-ban-is-recognised-on-another-device (MDRS-125, MDRS-199)
+# unwalked:  none. Every built need has an e2e check (bans#1 to #6, notifications#7) or a spec of the API's own (ban.e2e.spec.ts). What no
+# run drives yet, which is not a gap of the product: PRESS_SCRIM (bans#3 clicks the page at (5, 5), which the replay cannot do),
+# scope `limited` (nobody can be that person, BANST-1) and answer `notAllowed` (the nazım would have to lose a permission between the
+# page and the press); and the replays written for the refusals (binding.invalidTarget.yaml, binding.already.yaml,
+# binding.courseGone.yaml) and for a course with no celse to come (binding.noSession.yaml), none of them run.
+# Gender separation is given and does not touch this flow: no seat is decided here (a ban is not a seat).
+
+needs:
+  - id: bar-a-talebe-from-the-roster
+    need: >-
+      The köşk's nazım opens a course's Talebeler, takes "Kayıtlı" and presses "Yasakla" on a talebe's row; a window names the
+      talebe (name and e-mail) and the course, offers the course (chosen) and the whole köşk, asks for a reason, and sends the
+      ban. It takes effect at once: the row says the talebe is barred and offers the lift in place of "Dersten çıkar" and
+      "Yasakla", and a toast names the person and the scope.
+    evidence:
+      - state: applicationsTab
+      - state: rosterPage
+      - state: form
+      - state: formReady
+      - state: submitting
+      - state: savedRow
+      - node: rowBan
+      - node: rowBanned
+      - node: rowLift
+      - node: toastSaved
+      - node: dialog
+      - node: personName
+      - node: personEmail
+      - node: radioCourse
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/nizam/features/bans/components/ban-dialog.tsx:45
+      - source: apps/nizam/features/applications/components/roster-table.tsx:316
+      - test: apps/nizam/e2e/bans.e2e.ts
+        name: "nizam/41 — 'Yasakla' opens the window for that talebe, with the course scope chosen"
+      - test: apps/nizam/e2e/bans.e2e.ts
+        name: "nizam/41 — barring marks the row 'Yasaklı', swaps 'Dersten çıkar' for 'Yasağı kaldır' and keeps the reason"
+      - test: apps/nizam/test/bans.spec.tsx
+      - test: apps/tedrisat/test/e2e/ban.e2e.spec.ts
+    note: |-
+      bans#1: the window opens for that talebe: name, e-mail, course, "Yalnızca bu ders" chosen, the köşk option off, the focus in
+      the reason
+      bans#4: the row turns "Yasaklı · Bu ders", loses "Dersten çıkar" and gains "Yasağı kaldır: {name}"
+      apps/nizam/test/bans.spec.tsx: the pure helpers: mayBanWholeKosk, isBlank, banErrorKey, nextSessionAt
+      apps/tedrisat/test/e2e/ban.e2e.spec.ts: :154-177 the müderris bars a talebe and the ban records who and why; :255-296 the
+      refusals and the body's validation
+
+  - id: a-reason-is-required
+    need: >-
+      The ban is never sent without a reason; white space is not a reason. The window says so where the person is: the button
+      stays off, and the reason's own line says "Bir gerekçe yazın." once the empty field was left. The reason is kept for those
+      who see and lift bans and is never sent to the talebe.
+    evidence:
+      - state: form
+      - state: formReady
+      - node: reasonField
+      - node: reasonHelp
+      - node: reasonRequired
+      - node: submit
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/nizam/features/bans/components/ban-dialog.tsx:74
+      - test: apps/nizam/e2e/bans.e2e.ts
+        name: "nizam/41 — the reason is required: 'Yasakla' stays off for empty or blank text, and the field says so"
+    note: |-
+      Also drawn as the assertion never-without-a-reason, the assertion the-button-is-on-only-with-a-reason.
+      bans#2: the button is off for empty and for white space, the field says so after blur, and the button is on once there is
+      text
+
+  - id: a-stray-click-loses-nothing
+    need: >-
+      A click outside the window does not close it, so a typed reason is not lost to a stray click; Escape, Vazgeç and the close
+      icon close it and write nothing, and the focus goes back to the row's "Yasakla".
+    evidence:
+      - state: form
+      - state: formReady
+      - state: closedRow
+      - node: cancel
+      - node: closeIcon
+      - source: libs/ui/src/mds/dialog.tsx:71
+      - source: apps/nizam/features/bans/components/ban-dialog.tsx:126
+      - test: apps/nizam/e2e/bans.e2e.ts
+        name: "nizam/41 — the scrim does not close it; Escape and 'Vazgeç' do"
+    note: "bans#3: the scrim does not close it; Escape and Vazgeç do (the scrim click is the part the replay cannot drive)"
+
+  - id: bar-the-whole-kosk
+    need: >-
+      The köşk's nazım (and the başnazım) bars a talebe from every course of the köşk from the same window; the ban remembers the
+      course it was placed from, which Yasaklamalar says ("{course} dersinden genişletildi"); the köşk option is off, with a note,
+      for anyone else.
+    evidence:
+      - node: radioKosk
+      - node: koskDesc
+      - node: radioKoskOff
+      - node: koskOnlyNazim
+      - node: rowBannedKosk
+      - node: toastSavedKosk
+      - node: banScopeKosk
+      - node: banExtendedFrom
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/nizam/features/bans/present.ts:111
+      - test: apps/nizam/e2e/bans.e2e.ts
+        name: "nizam/41 — the köşk nazımı can bar the whole köşk, and the ban remembers the course"
+      - test: apps/tedrisat/test/e2e/ban.e2e.spec.ts
+    note: |-
+      bans#5: the whole-köşk ban: the row reads "Köşk", and Yasaklamalar says "{course} dersinden genişletildi"
+      apps/tedrisat/test/e2e/ban.e2e.spec.ts: :261-272 the whole-köşk ban is the köşk nazımı's; :313-338 it bars every course of
+      the köşk
+
+  - id: the-ban-is-on-yasaklamalar-with-its-reason
+    need: >-
+      The ban stands on the köşk's list of bans at once, with the person, the scope, the reason as typed, who barred ("Köşk nazımı
+      (siz)"), when, the badge "Yeni", and the lift (and, for a course ban, the widening) offered to the one who may.
+    evidence:
+      - state: listed
+      - node: listPage
+      - node: listTable
+      - node: banPerson
+      - node: banScopeCourse
+      - node: banScopeKosk
+      - node: banReason
+      - node: banRole
+      - node: banNew
+      - node: banLift
+      - node: banExtend
+      - node: tabActiveCount
+      - source: apps/tedrisat/src/ban/ban.controller.ts:102
+      - source: apps/nizam/features/bans/components/bans-view.tsx:306
+      - test: apps/nizam/e2e/bans.e2e.ts
+        name: "nizam/41 — the köşk nazımı can bar the whole köşk, and the ban remembers the course"
+      - test: apps/nizam/e2e/bans.e2e.ts
+        name: "nizam/42 — the list shows the bans with their columns and counts, and hides the lift where the kademe is too low"
+    note: |-
+      bans#5: the row on Yasaklamalar after the whole-köşk ban
+      bans#6: the list's columns, counts and the Yeni badge (nizam.moderation.reviewBans and decideBan carry the rest)
+
+  - id: the-talebe-is-told-without-the-reason
+    need: >-
+      The barred talebe is told that access to each course the ban takes was removed, never "yasak" and never why; a person
+      already barred in that scope is not told again.
+    evidence:
+      - state: savedRow
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/tedrisat/src/ban/ban.service.ts:392
+      - test: apps/tedrisat/test/e2e/ban.e2e.spec.ts
+    note: >-
+      apps/tedrisat/test/e2e/ban.e2e.spec.ts: :204-247 COURSE_ACCESS_REMOVED once, with the course's title and without the reason,
+      and not twice when a course ban is widened
+
+  - id: the-people-above-are-told
+    need: >-
+      Every ban is put in front of the people above it (P-01, MDRS-113): the köşk's other nazımları and the Medaris nazımları read
+      a notice with the talebe's name, the course and the reason; the nazım who barred is not told of their own act. Here the
+      notice is the Medaris nazımı's Bildirimler, which nizam.notifications.triage draws (`starts`).
+    evidence:
+      - state: submitting
+      - state: savedRow
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/tedrisat/src/ban/ban.service.ts:350
+      - test: apps/nizam/e2e/notifications.e2e.ts
+        name: "nizam/46 — a ban placed by the köşk nazımı reaches the Medaris nazımı's list with the real sentence, and the köşk nazımı gets none of their own (criterion 6)"
+      - test: apps/tedrisat/test/e2e/ban.e2e.spec.ts
+    note: |-
+      notifications#7: a ban placed by the köşk nazımı reaches the Medaris nazımı's list with the real sentence; the nazım gets
+      none of their own
+      apps/tedrisat/test/e2e/ban.e2e.spec.ts: :179-203 the köşk's nazım is told once, with the sentence's values, and no other
+      staff
+
+  - id: a-person-who-runs-the-course-is-refused
+    need: >-
+      Nobody can bar themselves, and nobody who runs the course can be barred from it: the nazım is told "Bu kişi yasaklanamaz."
+      and nothing is written. (The check misses two cases, which the need below is about.)
+    evidence:
+      - state: submitting
+      - state: formReady
+      - node: toastInvalidTarget
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/tedrisat/src/ban/ban.service.ts:152
+      - test: apps/tedrisat/test/e2e/ban.e2e.spec.ts
+    note: "apps/tedrisat/test/e2e/ban.e2e.spec.ts: :273-277 barring oneself or the köşk nazımı is refused"
+
+  - id: a-person-already-barred-is-answered-with-the-standing-ban
+    need: >-
+      A second request for the same bar answers the ban that stands and writes nothing, so two nazım at once do not double a ban.
+      (Saying so to the nazım is the need `a-ban-that-stands-is-told`.)
+    evidence:
+      - state: submitting
+      - state: savedRow
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/tedrisat/src/ban/ban.repository.ts:299
+      - test: apps/tedrisat/test/e2e/ban.e2e.spec.ts
+    note: "apps/tedrisat/test/e2e/ban.e2e.spec.ts: :248-254 a second request for the same bar is answered with the first"
+
+  - id: the-hoca-bars-the-course
+    need: >-
+      The hoca of a course, who holds ban.course by the role's own default, can bar a talebe from their course (and only the
+      course) from a page of the product. The API takes the hoca's COURSE ban and refuses a KOSK ban with BAN_FORBIDDEN; no screen
+      in nizam or nazar offers the hoca a ban dialog (the layout refuses them here; F-D2c-3 in nazar).
+    missing: "BANST-1, F-D2c-3: no issue"
+    note: >-
+      Drawn on the nodes radioKoskOff and koskOnlyNazim, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-check-of-who-may-be-barred-is-complete
+    need: >-
+      Nobody who runs the course or the medrese can be barred from it, on every route that places a ban: the başnazım, a realm
+      role with no row, is recognised as well as the roles of the köşk, and a hoca of another course of the same köşk is
+      recognised for a ban of the whole köşk (ban-staff-check-gaps; BANDEC-3 is the medrese route's).
+    missing: "ban-staff-check-gaps: no issue"
+    note: >-
+      Drawn on the state submitting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-ban-that-stands-is-told
+    need: >-
+      A nazım who bars a person already barred in that scope is told that the ban already stands and whose reason it keeps, not
+      that their reason was recorded (BANST-2).
+    missing: "BANST-2: no issue"
+    note: >-
+      Drawn on the states submitting and savedRow, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-is-told-inside-the-window
+    need: >-
+      A refusal (not allowed, the person runs the course, anything else) is told where the person is looking, in the open window,
+      and the focus goes to it; the toast alone, in another portal, is not enough (F-W5-3, F-X-4). The words of the refusals exist
+      for the codes the window knows (BAN_FORBIDDEN, BAN_TARGET_INVALID) and "İşlem tamamlanamadı." for the rest, COURSE_NOT_FOUND
+      included.
+    missing: "F-W5-3, F-X-4: no issue"
+    note: >-
+      Drawn on the state formReady and on the nodes toastNotAllowed, toastInvalidTarget and toastFailed, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-button-says-why-it-is-off
+    need: >-
+      The "Yasakla" button is reachable and says what is missing, instead of being natively off with nothing said (F-W5-4, F-X-3),
+      and the error is announced when it appears (F-X-2).
+    missing: "F-W5-4, F-X-3: no issue"
+    note: >-
+      Drawn on the state form and on the nodes submit and reasonRequired, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-window-waits-while-it-sends
+    need: >-
+      While the ban is sent the window keeps the focus where it was and its closing controls say they are off (F-W5-2, BANST-5),
+      and a send that cannot reach the server ends the wait (BANST-4).
+    missing: "F-W5-2, BANST-4, BANST-5: no issue"
+    note: >-
+      Drawn on the state submitting and on the nodes busy, closeIcon, cancel and reasonField, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-focus-goes-somewhere-after-a-ban
+    need: After a ban the focus goes to a control of the row (its "Yasağı kaldır") or to the toast, not to the page (BANST-3).
+    missing: "BANST-3, F-W5-5: no issue"
+    note: >-
+      Drawn on the state savedRow, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-roster-names-the-scope-it-shows
+    need: >-
+      The row's badge says what bars the talebe: this course, the köşk or the whole medrese (BANST-6), and offers the lift only to
+      someone who may use it.
+    missing: "BANST-6: no issue"
+    note: >-
+      Drawn on the nodes rowBanned and rowBannedKosk, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-ban-is-placed-at-the-platform-level
+    need: >-
+      A ban at the platform level (P-01, MDRS-113), the account's own: the başnazım closes a person's account for the whole
+      platform, which also disables them in Keycloak (P-35, MDRS-197). The code has bans at the course, the köşk (here) and the
+      medrese (nazar.bans.ban); the permission platform.ban_account reads and bans nothing yet.
+    missing: MDRS-197, MDRS-113
+
+  - id: the-talebe-is-told-by-mail
+    need: >-
+      The talebe, and the people above, are told of a ban by e-mail as well as in the app (P-29, MDRS-189: "ban notices"). Today
+      the notices are rows read in Bildirimler only.
+    missing: MDRS-189
+
+  - id: the-ban-is-recognised-on-another-device
+    need: >-
+      A banned person who comes back with a second account on the same browser is recognised and stopped (P-02, MDRS-125; P-36,
+      MDRS-199: "Restrict a device"). Nothing in the code reads a device.
+    missing: MDRS-125, MDRS-199

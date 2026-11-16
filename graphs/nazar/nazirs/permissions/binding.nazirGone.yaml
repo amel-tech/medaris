@@ -1,0 +1,33 @@
+# nazar.nazirs.permissions, the nazır is dismissed while the editor is open. Written without a replay; see locators.binding.yaml for the data and the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/nazirs/permissions \
+#     --bind graphs/nazar/nazirs/permissions/binding.nazirGone.yaml --cover transitions --absent --out <dir>
+# `before` on "Kaydet" dismisses the nazır through the API, so the save is refused with MADRASAH_NAZIR_NOT_FOUND: an error toast "Bu kişi artık bu
+# medresenin nazırı değil.", the dialog closes and the roster is read again without the row (the exit `nazir_gone`).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.nazirs.permissions
+
+scenarios:
+  nazirGone:
+    given: { row: awaiting, reads: ok, answer: nazirGone }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, clean]
+      - run: [node, helpers/course.mjs, make, nzperm, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzperm"'
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, up]
+        expect: permissions-data up
+    teardown:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, down]
+        expect: permissions-data down
+      - run: [node, helpers/course.mjs, remove, nzperm]
+        expect: course remove nzperm
+
+nodes:
+  save:
+    role: button
+    name: Kaydet
+    before: [{ run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, dismiss], expect: permissions-data dismiss }]

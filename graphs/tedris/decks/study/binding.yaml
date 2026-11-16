@@ -1,0 +1,44 @@
+# tedris.decks.study on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web on :4000, the spare talebe `applicantD` (a man, every
+# profile attribute set, no enrolment) signed in through Keycloak's real form, studying a deck of his own that the walk makes and removes.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/study \
+#     --bind graphs/tedris/decks/study/binding.yaml [--to notFound] [--absent] --out <dir>
+# Written in the writing phase and NOT RUN: the stack was only read (one GET of the study round of the seeded deck "Kelime Defterim" through the
+# API); nothing below has been replayed.
+#
+# Scenarios (what the other kinds of round are is in the other four files; the shared parts are in walk.common.binding.yaml):
+#   round    the main story (e2e learn#7 to #10): the deck page, then "Çalış" (the nav's entry deck->deckStudy), a round of three cards of which two wait for
+#            a repeat and one is new; the first card turned with the space bar and rated "Kolay", the second turned with the button and rated "Zor", the
+#            third rated "Orta" (each rating's row is read back by an `effects` check), "Tur bitti", the address opened again ("Bugün için bitti"), "Desteye dön".
+#            `setup` makes the deck (study-data.mjs make applicantD waiting), `teardown` removes it with the progress rows of its cards.
+#   missing  a uuid nobody has, opened as the same person: the API answers 404 and the page is "Sayfa bulunamadı" (e2e learn#12 opens another person's
+#            private deck, which the API answers the same way: one 404, so the same screen). Nothing is made.
+# Not bound, so the replay cannot reach them (reported): `refused` (a 403 for the deck cannot be made: the round's read answers 404 for every refusal a
+# person can meet), `signedOut` (the session cannot be ended from the walk), `unreachable` (nothing local makes the Server Action's call reject), `flaky`
+# (a first write that fails and a retry that works: the only refusal the stack can make, binding.failed.yaml's, is one no retry changes), and the second
+# toast, the phone layout and the 60-card deck (flow.yaml scope.outOfView). The stale e2e facts: none found.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.study
+
+scenarios:
+  round:
+    given: { deck: waiting, answer: saved }
+    as: applicantD
+    open: '{tedris}/decks/{study.deck}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'deck->deckStudy' }
+    setup:
+      - run: [node, ../tedris/decks/study/study-data.mjs, make, applicantD, waiting]
+        expect: 'study-data make APPLICANT_D waiting deck'
+    teardown:
+      - run: [node, ../tedris/decks/study/study-data.mjs, remove, applicantD]
+        expect: 'study-data remove APPLICANT_D'
+  missing:
+    given: { deck: missing, answer: saved }
+    as: applicantD
+    open: '{tedris}/decks/study/00000000-0000-4000-8000-000000000000'
+
+states:
+  # A Next server action is a POST to the page's own address (the page's reads are server-side, so there is no other fetch to this address): it holds the
+  # call to see the state in flight, with the three buttons disabled.
+  rating: { call: '{tedris}/decks/study/**' }

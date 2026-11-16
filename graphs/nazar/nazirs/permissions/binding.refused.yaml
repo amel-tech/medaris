@@ -1,0 +1,36 @@
+# nazar.nazirs.permissions, the walk's course is deleted while the editor is open. Written without a replay; see locators.binding.yaml for the data and the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/nazirs/permissions \
+#     --bind graphs/nazar/nazirs/permissions/binding.refused.yaml --cover transitions --absent --out <dir>
+# The course was read when the editor opened and the walk ticked it; `before` on "Kaydet" removes it (helpers/course.mjs remove nzperm: the
+# başnazım deletes the course), so the PUT names a course that is not the medrese's and is refused with NAZIR_COURSE_SCOPE_INVALID (400): an
+# error toast "Seçtiğiniz dersler bu izinlerle bağdaşmıyor. Dersleri denetleyip yeniden deneyin." and the form stays. This stands for the whole
+# class `refused` (AUTHZ_FORBIDDEN, GRANT_EXCEEDS_GIVER, SELF_GRANT_REFUSED, ...): the others cannot be made on request from the başmüderris.
+# From the code: that the API answers NAZIR_COURSE_SCOPE_INVALID for a deleted course is read in madrasah-permission.service.ts:505-513, not seen.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.nazirs.permissions
+
+scenarios:
+  refused:
+    given: { row: awaiting, reads: ok, answer: refused }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, clean]
+      - run: [node, helpers/course.mjs, make, nzperm, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzperm"'
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, up]
+        expect: permissions-data up
+    teardown:
+      - run: [node, ../nazar/nazirs/permissions/permissions-data.mjs, down]
+        expect: permissions-data down
+      - run: [node, helpers/course.mjs, remove, nzperm]
+        expect: course remove nzperm
+
+nodes:
+  save:
+    role: button
+    name: Kaydet
+    before: [{ run: [node, helpers/course.mjs, remove, nzperm], expect: course remove nzperm }]

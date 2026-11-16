@@ -1,0 +1,53 @@
+# nazar.roster.remove where the permission goes: a ders nazırı the müderris gave `enrollment.remove` presses "Dersten çıkar" on Esma Başvuran's
+# row, and the müderris takes the permission back while the removal is on its way, so the server answers AUTHZ_FORBIDDEN: an error toast
+# "Talebe dersten çıkarılamadı" / "Bunu yapma izniniz yok." that stays, and the dialog stays open with the reason.
+#   node apps/engine/src/cli.ts replay graphs/nazar/roster/remove --bind graphs/nazar/roster/remove/binding.refused.yaml --cover transitions --out <dir>
+# NOT RUN, and the least sure of the bindings: the permission goes in the `before` of the state `submitting` (helpers/course-nazir-grants.mjs
+# sets the post's whole set as the müderris does on the Nazırlar page), which the replay runs while the server action is held, so the POST
+# reaches the API after the grant is gone. It also assumes tedrisat reads the grants live and not from a cache that outlives the change; if
+# it answers from one, the removal succeeds and the walk ends in `reading` instead of `formReady`. A file of its own because that `before`
+# would run in every walk of a file that holds the other scenarios.
+#
+# Same course, data and teardown as binding.yaml (see its header). The ders nazırı (Rukiye Ders Nazırı) is appointed with `enrollment.remove`
+# alone: the page then opens (course.staff_read is derived from any enrollment.* code), the rows carry "Dersten çıkar" and nothing else.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.remove
+
+scenarios:
+  refused:
+    given: { viewer: remover, answer: refused, others: some }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosterremove, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD]
+        expect: '"APPLICANT_C":"ENROLLED"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, enrollment.remove]
+        expect: enrollment.remove
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosterremove]
+        expect: course remove rosterremove
+      - run: [node, helpers/sql.mjs, "select count(*) as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+    vars:
+      who: applicantC
+      whoSub: '{secret.E2E_APPLICANT_C_SUB}'
+      personName: Esma Başvuran
+      personAddress: '{secret.E2E_APPLICANT_C_EMAIL}'
+      otherName: Salih Başvuran
+      courseTitle: Deneme dersi rosterremove
+      reason: Yetkisiz karar
+      reasonSaved: Yetkisiz karar
+      removerName: Rukiye Ders Nazırı
+
+states:
+  # the permission goes while the call waits (idempotent: the post's set is written whole)
+  submitting:
+    call: '{nazar}/ders/*/talebeler**'
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: DERS_NAZIR

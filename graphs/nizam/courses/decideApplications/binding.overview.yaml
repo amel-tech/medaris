@@ -1,0 +1,48 @@
+# nizam.courses.decideApplications at a course's Genel bakış: the card "Bekleyen başvurular" and the two numbers above it, at
+# /kosks/<id>/courses/<id>, as the köşk nazımı of "Kubbealtı Köşkü". Two scenarios.
+#   node apps/engine/src/cli.ts replay graphs/nizam/courses/decideApplications --bind graphs/nizam/courses/decideApplications/binding.overview.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# Each scenario makes its own course in the seed's second köşk (helpers/course.mjs, see binding.yaml) and removes it. Spare applicants
+# C, D and E, who apply in that order, so E is the newest row (the card lists the course's applications newest first, and a repeated
+# node is pressed on its first item).
+#   overview       "Deneme dersi cdaOv": C, D and E wait. The walk approves E (the card loses the row, "Kayıtlı talebe" gains one and
+#                  "Bekleyen başvuru" loses one once the page is read again: kosk-view.e2e.ts#14), rejects D, and C still waits.
+#   emptyOverview  "Deneme dersi cdaEmptyOv": the course asks for approval and nobody has applied: "Bekleyen başvuru yok" in the card.
+# On the overview a Reddet in flight is shown on the Onayla button (CDA-3), which the `ovRowApprove` and `ovRowBusy` nodes expect in
+# `rejecting` as well as in `approving`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.decideApplications
+
+states:
+  listed: { url: '{nizam}/kosks/*/courses/*' }
+  empty: { url: '{nizam}/kosks/*/courses/*' }
+  approving: { call: '{nizam}/kosks/*/courses/*' }
+  rejecting: { call: '{nizam}/kosks/*/courses/*' }
+
+scenarios:
+  overview:
+    given: { approval: needed, place: overview, note: asks }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{cdaOv.course}'
+    vars: { course: '{cdaOv.course}' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cdaOv, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cdaOv]
+        expect: 'course remove cdaOv'
+      - run: [node, helpers/sql.mjs, "select count(*) as revoked from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}')"]
+        expect: '"revoked":0'
+  emptyOverview:
+    given: { approval: none, place: overview, note: asks }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{cdaEmptyOv.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, cdaEmptyOv, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi cdaEmptyOv"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cdaEmptyOv]
+        expect: 'course remove cdaEmptyOv'

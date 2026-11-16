@@ -1,0 +1,103 @@
+# What the walks of nizam.moderation.reviewDeckPublication share: the page's events, its addresses, and where its nodes are found where role and name
+# cannot find them. Nothing here changes data; each binding file (binding.yaml, binding.medaris.yaml, binding.answered.yaml) makes its own decks
+# with ./review-data.mjs and removes them (see that file's header).
+# NOT RUN: the graph was written without a replay (the first walks are a later phase). Every locator below comes from the code and the catalog, none
+# was seen in a browser; the files load (`replay <dir> --bind <file> --emit-spec --out <dir>` writes a spec and walks nothing).
+#
+# Not bound anywhere, and why:
+#   - `read: failed`, `unreadable`, `retrying` and the transitions out of them: nothing on the stack makes tedrisat's read of the list fail on request.
+#   - `sample: unreadable` and `answer: gone`: they need the owner to take the request back AFTER the list was read and BEFORE one particular press, and a
+#     walk keeps the value its scenario gives through every step, so the first read of the cards (made with no gap after the list) would have to fail too.
+#     No state's `before` can choose that moment for one request among several. `answer: failed` and the `forbidden` of 'Yayından kaldır': nothing makes
+#     tedrisat answer 400 or 403 there. `NAVIGATE` is walked by address, to a page that is not this one.
+#   - 'Daha fazla göster' (twelve rows a page), a request with a description and a HADEETH deck: no data of the stack, and no step of the graph.
+# `selecting`, `readingAll` and `loadingTab` carry no `call`: they draw no node that only a step in flight shows, and the first read of the cards is made by
+# an effect right after the page is drawn, so a held call would have to be armed before the page loads. `approving`, `rejecting` and `unpublishing` hold
+# the call so that the busy button (and, for the two dialogs, the busy submit) is seen as it is. Every server action of this page is a POST to the page's
+# own address, so a walk through FAIL.<class> would report "HTTP 200" for the status it compares (an engine limit): no `call` is compared.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.moderation.reviewDeckPublication
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in (the dialogs' textarea, whose label is "Ret gerekçesi" or "Gerekçe")
+  FILL_REASON:
+    - fill: { css: '.mds-dialog textarea[name=reason]', value: '{reason}' }
+  # the focus is in the empty field: Tab leaves it, and the field was touched
+  LEAVE_FIELD:
+    - key: Tab
+  NAVIGATE:
+    - goto: '{nizam}/bildirimler'
+
+states:
+  approving: { call: '{nizam}/talepler/deste-yayin-istekleri**' }
+  rejecting: { call: '{nizam}/talepler/deste-yayin-istekleri**' }
+  unpublishing: { call: '{nizam}/talepler/deste-yayin-istekleri**' }
+  no_access: { url: '{nizam}/talepler/deste-yayin-istekleri', text: Bu bölüm için izniniz yok }
+  left: { url: '{nizam}/bildirimler' }
+
+# Where role and name cannot find a node. The page's <main> is also matched on the page a walk leaves for, so it is found by the page's own test id.
+# The rows and the values of the detail change with the request that is selected, so they are found by their place and not by their text; the rows are
+# found by the titles this flow's decks have (./review-data.mjs: "İnceleme destesi A"), never another person's. A repeated node is pressed on its first
+# item, so `row` is the one the main story presses when it presses a row: the second request's (B).
+nodes:
+  page: { css: 'main:has([data-testid=deck-requests])' }
+  # the tab's name carries its count: "Bekleyen 3"
+  tabWaiting: { role: tab, name: '/^Bekleyen/' }
+  tabDecided: { role: tab, name: '/^Karara bağlanan/' }
+  waitingCount: { css: .mds-tab__count, within: { role: tab, name: '/^Bekleyen/' } }
+  decidedCount: { css: .mds-tab__count, within: { role: tab, name: '/^Karara bağlanan/' } }
+  # a row is a button in an <li>: the name is the row's text in order (title, owner · cards, the time, and on the answered tab the outcome)
+  requestList: { css: '[data-testid=deck-request-list]' }
+  row: { role: button, name: '/^İnceleme destesi B /', within: { css: '[data-testid=deck-request-list]' } }
+  rowPublished: { role: button, name: '/^İnceleme destesi .* · Yayımlandı$/', within: { css: '[data-testid=deck-request-list]' } }
+  rowRefused: { role: button, name: '/^İnceleme destesi .* · Reddedildi$/', within: { css: '[data-testid=deck-request-list]' } }
+  # the panel of the selected request, found by its test id; React streams a hidden copy in before it swaps the page, so only the visible one
+  detailRegion: { css: '[data-testid=deck-request-detail]:visible' }
+  detailEyebrow: { css: '[data-testid=deck-request-detail]:visible .mds-eyebrow' }
+  detailTitle: { css: '[data-testid=deck-request-detail]:visible #request-title' }
+  badgeWaiting: { css: '[data-testid=deck-request-detail]:visible .mds-badge', hasText: '/^Karar bekliyor$/' }
+  badgePublished: { css: '[data-testid=deck-request-detail]:visible .mds-badge', hasText: '/^Yayımlandı$/' }
+  badgeRefused: { css: '[data-testid=deck-request-detail]:visible .mds-badge', hasText: '/^Reddedildi$/' }
+  ownerLabel: { css: '[data-testid=deck-request-detail]:visible > header + dl > div:nth-child(1) > dt' }
+  ownerValue: { css: '[data-testid=deck-request-detail]:visible > header + dl > div:nth-child(1) > dd' }
+  cardsLabel: { css: '[data-testid=deck-request-detail]:visible > header + dl > div:nth-child(2) > dt' }
+  cardsValue: { css: '[data-testid=deck-request-detail]:visible > header + dl > div:nth-child(2) > dd' }
+  cardTypeLabel: { css: '[data-testid=deck-request-detail]:visible > header + dl > div:nth-child(3) > dt' }
+  cardTypeValue: { css: '[data-testid=deck-request-detail]:visible > header + dl > div:nth-child(3) > dd' }
+  requestedAtLabel: { css: '[data-testid=deck-request-detail]:visible > header + dl > div:nth-child(4) > dt' }
+  # "29 Eylül 2026 Salı 21:10": the time is the walk's own, so the value is matched by its shape
+  requestedAtValue: { css: '[data-testid=deck-request-detail]:visible > header + dl > div:nth-child(4) > dd', hasText: '/\d{4} .+ \d{2}:\d{2}$/' }
+  # the sample: the cards are <article>s in the grid with the test id card-sample; each holds a caption, the text, a rule, a caption and the text
+  frontCaption: { css: '[data-testid=card-sample] article > span:nth-of-type(1)' }
+  sampleFront: { css: '[data-testid=card-sample] article > bdi:nth-of-type(1)' }
+  backCaption: { css: '[data-testid=card-sample] article > span:nth-of-type(2)' }
+  sampleBack: { css: '[data-testid=card-sample] article > bdi:nth-of-type(2)' }
+  noCardsLine: { text: Bu destede henüz kart yok. }
+  cardsFailedAlert: { css: '.mds-alert--error', hasText: Kartlar okunamadı. }
+  cardsTotal: { css: '[data-testid=cards-total]:visible' }
+  allCardsButton: { css: '[data-testid=all-cards]:visible' }
+  # a busy button says "Yükleniyor" to a reader of the screen after its own words, so the names are matched by their beginning
+  approveButton: { role: button, name: '/^Yayımla/' }
+  rejectButton: { role: button, name: '/^Reddet/' }
+  unpublishButton: { css: '[data-testid=unpublish]:visible' }
+  refusedReasonAlert: { css: '[data-testid=deck-request-detail]:visible .mds-alert', hasText: Ret gerekçesi }
+  # the dialogs' eyebrow is the selected deck's title
+  rejectEyebrow: { css: '.mds-dialog .mds-eyebrow' }
+  unpublishEyebrow: { css: '.mds-dialog .mds-eyebrow' }
+  rejectReasonField: { css: '.mds-dialog textarea[name=reason]' }
+  unpublishReasonField: { css: '.mds-dialog textarea[name=reason]' }
+  # the dialog's own buttons: the page's are inert behind it, and the submit has the same words as the page's button
+  rejectSubmit: { css: '.mds-dialog button[type=submit]', hasText: '/^Reddet$/' }
+  unpublishSubmit: { css: '.mds-dialog button[type=submit]', hasText: '/^Yayından kaldır$/' }
+  # sonner's toasts: a title and a description in one list item
+  toastPublished: { css: '[data-sonner-toast]', hasText: Deste yayımlandı }
+  toastRejected: { css: '[data-sonner-toast]', hasText: İstek reddedildi }
+  toastUnpublished: { css: '[data-sonner-toast]', hasText: Deste yayından kaldırıldı }
+  toastAnswered: { css: '[data-sonner-toast]', hasText: Bu istek az önce karara bağlanmış ya da geri çekilmiş. }
+  toastGone: { css: '[data-sonner-toast]', hasText: Bu istek artık yok. }
+  toastNotPublished: { css: '[data-sonner-toast]', hasText: Bu deste artık yayında değil. }
+  toastForbidden: { css: '[data-sonner-toast]', hasText: Bu işlem için izniniz yok. }
+  toastFailed: { css: '[data-sonner-toast]', hasText: İşlem tamamlanamadı. }
+  toastLoadFailed: { css: '[data-sonner-toast]', hasText: İstekler okunamadı }

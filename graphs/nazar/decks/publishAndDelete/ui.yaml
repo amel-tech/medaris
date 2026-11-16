@@ -1,0 +1,101 @@
+# The screens of nazar.decks.publishAndDelete: one course deck's page (/ders/<id>/deste/<deckId>) as far as its settings go, the delete confirmation, the
+# toasts, the forbidden alert, and the list of decks a delete lands on. Read from apps/nazar/features/decks (deck-detail-page.tsx, deck-settings.tsx) and the kit
+# (libs/ui/src/mds); the words are copied from libs/i18n/src/locales/tr/nazar.json.
+# The deck's cards, the quick-add row and the card dialogs are on the same page and are drawn by nazar.decks.openAndFill and its siblings, not here.
+# Four messages are not in the app's i18n file and are `composed.*`:
+#   composed.Decks.backLink      "← Ders desteleri"  the link's text is a literal arrow and the message (deck-detail-page.tsx:77)
+#   composed.Decks.deckTitle     "{title}"           the h1 is the deck's own title (deck-detail-page.tsx:82)
+#   composed.AlertDialog.cancel  "Vazgeç"            the kit's default label of the dialog's cancel, which the dialog does not override (libs/ui/src/mds/alert-dialog.tsx:42, F-D1-24)
+#   composed.AlertDialog.close   "Kapat"             the kit's default label of its close icon (alert-dialog.tsx:47, F-D1-24)
+#   composed.Button.loading      "Yükleniyor"        the busy button's hidden status, a default of the kit (libs/ui/src/mds/button.tsx:62, F-D1-24)
+# The one authored message is Changes.note: the app has no message that tells the person what publishing, taking back or deleting changes, so it is written for
+# the graph (a short, factual Turkish note; the claims are the API's own, course-decks.controller.ts:96-120).
+schema: delurio-graph/0
+kind: ui
+id: nazar.decks.publishAndDelete
+flow: nazar.decks.publishAndDelete
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Deneme destesi pubDel
+  min: "5"
+  max: "100"
+
+# Neither the page nor its dialog sets a focus of its own on load (nothing in features/decks does: `focus-not-set`), so the page has no `initialFocus`; the
+# alertdialog's is the one the kit gives it, "Vazgeç". After a write the pressed button stays where it was, and after "Desteyi sil" the whole page is replaced, so
+# the graph gives no `focus` of its own.
+nodes:
+  # --- the page ---------------------------------------------------------------------------------------------------------
+  deckPage: { type: page, component: Page, role: main, in: [draft, published, saving, publishing, unpublishing, deleting], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  forbiddenPage: { type: page, component: Page, role: main, in: [forbidden], source: libs/ui/src/mds/app-shell.tsx:41 } # the same <main>, with the alert alone in it
+  backLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.Decks.backLink }, in: [draft, published, saving, publishing, unpublishing, deleting], emits: BACK, source: apps/nazar/features/decks/components/deck-detail-page.tsx:76 }
+  deckTitle: { type: text, component: Heading, role: heading, text: { key: composed.Decks.deckTitle, params: { title: deck.title } }, in: [draft, published, saving, publishing, unpublishing, deleting], source: apps/nazar/features/decks/components/deck-detail-page.tsx:82 } # h1 (level 1), the deck's own title with lang="auto", which is no language tag (F-D1-14)
+  stateDraft: { type: text, component: Text, text: { key: Decks.draftState }, in: [draft, saving, publishing, deleting], when: "deck == 'draft'", source: apps/nazar/features/decks/components/deck-detail-page.tsx:85 }
+  statePublished: { type: text, component: Text, text: { key: Decks.published }, in: [published, saving, unpublishing], when: "deck == 'published'", source: apps/nazar/features/decks/components/deck-detail-page.tsx:85 }
+
+  # --- the settings -----------------------------------------------------------------------------------------------------------
+  # The <section> that holds them has no name, so it is no region: the heading and the fields are drawn, the section is not (F-D1-03 is the title's asterisk)
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: Decks.settingsTitle }, in: [draft, published, saving, publishing, unpublishing, deleting], source: apps/nazar/features/decks/components/deck-settings.tsx:116 } # h2
+  titleField: { type: field, component: TextField, role: textbox, text: { key: Decks.titleField }, in: [draft, published, saving, publishing, unpublishing, deleting], source: apps/nazar/features/decks/components/deck-settings.tsx:118 } # holds the deck's title; the asterisk is aria-hidden and the input has no `required` (F-D1-03)
+  titleError: { type: text, component: Text, text: { key: Decks.lengthError, params: { min: limits.titleMin, max: limits.titleMax } }, in: [draft, published, saving, publishing, unpublishing, deleting], when: "sent == 'sent' and typed == 'short'", source: apps/nazar/features/decks/components/deck-settings.tsx:104 } # a Field.Error tied to the input by aria-describedby; no role=alert and the focus stays on "Kaydet" (F-D1-16)
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: Decks.descriptionField }, in: [draft, published, saving, publishing, unpublishing, deleting], source: apps/nazar/features/decks/components/deck-settings.tsx:127 }
+  weekField: { type: field, component: TextField, role: combobox, text: { key: Decks.weekField }, in: [draft, published, saving, publishing, unpublishing, deleting], source: apps/nazar/features/decks/components/deck-settings.tsx:143 } # a Base UI Select: a button with role combobox; it shows "Haftasız" or the week's "{n}. hafta · {title}"; how it is named by the field's label is not verified
+  saveButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.save }, in: [draft, published, saving, publishing, unpublishing, deleting], disabledIn: [saving, publishing, unpublishing, deleting], emits: SAVE, source: apps/nazar/features/decks/components/deck-settings.tsx:160 } # busy (aria-disabled, aria-busy) while any write of the page runs, not only a save; never `disabled`
+  busyStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [saving, publishing, unpublishing, deleting], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside "Kaydet": "Yükleniyor" from the kit's hard-coded default (F-D1-24); empty the rest of the time
+  publishButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.publish }, in: [draft, saving, publishing, deleting], when: "deck == 'draft'", disabledIn: [saving, publishing, deleting], emits: PUBLISH, source: apps/nazar/features/decks/components/deck-settings.tsx:163 } # `disabled`, not busy, while a write runs (DECKPD-3)
+  unpublishButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.unpublish }, in: [published, saving, unpublishing], when: "deck == 'published'", disabledIn: [saving, unpublishing], emits: UNPUBLISH, source: apps/nazar/features/decks/components/deck-settings.tsx:163 } # the same button as publishButton, with the other words
+  deleteHelp: { type: text, component: Text, text: { key: Decks.deleteDeckHelp }, in: [draft, saving, publishing, deleting], when: "deck == 'draft'", source: apps/nazar/features/decks/components/deck-settings.tsx:175 }
+  deleteButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.deleteDeck }, in: [draft, saving, publishing, deleting], when: "deck == 'draft'", disabledIn: [saving, publishing, deleting], emits: DELETE, source: apps/nazar/features/decks/components/deck-settings.tsx:179 } # a destructive Button; drawn only for a draft (DECKPD-3: `disabled` while a write runs)
+  blockedHelp: { type: text, component: Text, text: { key: Decks.deleteDeckBlocked }, in: [published, saving, unpublishing], when: "deck == 'published'", source: apps/nazar/features/decks/components/deck-settings.tsx:189 } # in place of the help and the button: a published deck cannot be deleted
+
+  # --- what a failed write says (under the form, until the next write) ------------------------------------------------------------
+  notDraftAlert: { type: alert, component: Alert, role: alert, text: { key: Decks.notDraft }, in: [draft, published], when: "alert == 'notDraft'", source: apps/nazar/features/decks/components/deck-settings.tsx:193 } # reached only when someone published the deck behind the page; the page is not read again (DECKPD-2)
+  failedAlert: { type: alert, component: Alert, role: alert, text: { key: Decks.failed }, in: [draft, published], when: "alert == 'failed'", source: apps/nazar/features/decks/components/deck-settings.tsx:193 }
+
+  # --- the toasts of a write: a region "Bildirimler", each toast a dialog; a success closes after 6 seconds ----------------------------
+  toastSaved: { type: status, component: Status, role: dialog, name: { key: Decks.saved }, in: [draft, published], when: "last == 'saved'", source: apps/nazar/features/decks/components/deck-settings.tsx:67 }
+  toastPublished: { type: status, component: Status, role: dialog, name: { key: Decks.published }, in: [draft, published], when: "last == 'published'", source: apps/nazar/features/decks/components/deck-settings.tsx:67 }
+  toastUnpublished: { type: status, component: Status, role: dialog, name: { key: Decks.draftState }, in: [draft, published], when: "last == 'unpublished'", source: apps/nazar/features/decks/components/deck-settings.tsx:67 }
+
+  # --- Desteyi sil asks once ---------------------------------------------------------------------------------------------------------
+  deleteDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: deleteTitle }, in: [confirmDelete], initialFocus: deleteCancel, source: apps/nazar/features/decks/components/deck-settings.tsx:194 }
+  deleteTitle: { type: text, component: Heading, role: heading, text: { key: Decks.deleteDeck }, in: [confirmDelete], source: apps/nazar/features/decks/components/deck-settings.tsx:197 } # h2, Base UI's default for a dialog title
+  deleteBody: { type: text, component: Text, text: { key: Decks.deleteDeckHelp }, in: [confirmDelete], source: apps/nazar/features/decks/components/deck-settings.tsx:202 } # the same words as the help under the button
+  deleteCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: composed.AlertDialog.cancel }, in: [confirmDelete], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:42 } # the focus starts here; the label is the kit's default (F-D1-24)
+  deleteConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.deleteDeck }, in: [confirmDelete], emits: CONFIRM_DELETE, source: apps/nazar/features/decks/components/deck-settings.tsx:198 } # destructive, named like the title and like the button that opened the dialog
+  deleteClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.AlertDialog.close }, in: [confirmDelete], emits: CLOSE, source: libs/ui/src/mds/alert-dialog.tsx:47 } # an icon button named only by aria-label, the kit's default (F-D1-24)
+
+  # --- the deck page is refused -----------------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, name: { key: Problems.forbiddenTitle }, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:23 } # a neutral Alert is a status, not an alert; no heading comes with it (F-D1-02)
+
+  # --- the list the delete lands on (drawn by nazar.decks.openAndFill; only what this flow asserts is here) ---------------------------
+  listPage: { type: page, component: Page, role: main, in: [decks_listed], source: libs/ui/src/mds/app-shell.tsx:41 }
+  listTitle: { type: text, component: Heading, role: heading, text: { key: Decks.title }, in: [decks_listed], source: apps/nazar/features/decks/components/decks-page.tsx:78 } # h1
+  toastDeleted: { type: status, component: Status, role: dialog, name: { key: Decks.deleted }, in: [decks_listed], when: "last == 'deleted'", source: apps/nazar/features/decks/components/deck-settings.tsx:99 } # fired before the router.push and kept by the stale-toast rule
+
+edges:
+  - { labelledBy: [deleteDialog, deleteTitle] }
+  - { triggers: [saveButton, saving] }
+  - { triggers: [publishButton, publishing] }
+  - { triggers: [unpublishButton, unpublishing] }
+  - { triggers: [deleteButton, confirmDelete] }
+  - { triggers: [deleteConfirm, deleting] }
+  - { returnsFocus: [deleteDialog, deleteButton] } # Vazgeç, Esc or the close icon: the page's button is still there; not verified in the browser
+
+rules:
+  - { id: F-D1-16, rule: "The settings form checks the title when 'Kaydet' is pressed (and then on every keystroke), and the error is a Field.Error with no alert role; the focus stays on 'Kaydet', so a screen-reader user hears nothing after pressing it with a title of fewer than five characters (deck-settings.tsx:72-78, :104-112). Fix: focus the first invalid control on a failed submit." }
+  - { id: F-D1-17, rule: "Neither /ders/<id>/deste nor /ders/<id>/deste/<deckId> has a loading.tsx, so the portal-wide app/loading.tsx draws a full AppShell skeleton while the page is read, a second shell under the real one (not verified visually). Fix: add loading.tsx to both folders." }
+  - { id: F-D1-24, rule: "The delete dialog passes no closeLabel or cancelLabel and the busy 'Kaydet' passes no loadingLabel, so 'Kapat', 'Vazgeç' and 'Yükleniyor' are the kit's hard-coded Turkish (libs/ui/src/mds/alert-dialog.tsx:42, :47; button.tsx:62), outside the catalog. Fix: pass them from the catalog." }
+  - { id: DECKPD-1, rule: "The form keeps the deck's draft flag in its state from the moment it mounts (deck-settings.tsx:51, useState(deckDraftOf(deck))) and never updates it when 'Yayımla' or 'Taslağa çek' flips the deck, because those send {draft: !deck.draft} and leave the state alone (:81-86). router.refresh() keeps the component's state, so deck.draft is new and the form's draft is old, and deckPatch (decks.ts:158) adds `draft: <old>` to the next save. After 'Yayımla' a 'Kaydet' (with a new title, or with nothing typed: the patch is then only the flag) PATCHes {draft: true} and takes the deck away from the talebe again; after 'Taslağa çek' a 'Kaydet' publishes it again. The toast says only 'Kaydedildi'. Fix: send only the fields the form owns, or key DeckSettings by deck.draft. Read from the code; not seen in a browser. The unit spec (test/decks.spec.ts:77-82) pins deckPatch with a form whose draft the person changed, which the form no longer lets anyone do." }
+  - { id: DECKPD-2, rule: "On COURSE_DECK_NOT_DRAFT the page sets the failure and returns without router.refresh() (deck-settings.tsx:95-98), so it still draws 'Taslak · talebe görünmez', 'Yayımla' and 'Desteyi sil' while the alert says 'Önce taslağa çekin' for a deck that is already published; the only way to a 'Taslağa çek' is to reload. Fix: read the page again on that code." }
+  - { id: DECKPD-3, rule: "'Yayımla' and 'Taslağa çek' (deck-settings.tsx:163-168) and 'Desteyi sil' (:179-185) are `disabled` while a write runs, where the kit says a busy button is aria-disabled and never disabled so that the focus survives (libs/ui/src/mds/button.tsx:29); only 'Kaydet' is `loading`. The button a keyboard user just pressed becomes disabled under them and says nothing about it. Not verified in a browser. Fix: use `loading` and a `loadingLabel` from the catalog." }
+  - { id: DECKPD-4, rule: "A write on a deck that someone else deleted answers DECK_NOT_FOUND, which deckErrorKey words like any other refusal, 'İşlem tamamlanamadı. Tekrar deneyin.' (decks.ts:255-258): an advice that cannot work, under a page that still draws the deck and its cards. Fix: word DECK_NOT_FOUND as 'Bu deste artık yok' and send the person to the list." }
+  - { id: F-D1-02, rule: "Cited, written in nazar.decks.openAndFill's scope: when the deck page is forbidden it draws only the alert, with no heading and no link back to the list; the list page draws its h1 before the same alert (deck-detail-page.tsx:53-58). Drawn here as the state `forbidden`." }
+  - { id: F-D1-03, rule: "Cited: the title's asterisk is aria-hidden and the input carries no required or aria-required (libs/ui/src/mds/field.tsx:42-46, deck-settings.tsx:118), so a screen reader is not told the title is required." }
+  - { id: F-D1-14, rule: "Cited: the h1 of the deck is drawn with lang=\"auto\", which is no language tag (deck-detail-page.tsx:82); the intent was dir=\"auto\"." }
+  - { id: F-D1-20, rule: "Cited: the server actions of this form are called with no try/catch (deck-settings.tsx:60-69, :92-101): a network failure leaves the transition pending and the buttons off. Not verified." }
+  - { id: focus-not-set, rule: "No code of the page moves the focus on load or after a write; the dialog's initial focus on 'Vazgeç' is the kit's. After 'Desteyi sil' the whole page is replaced by the list, and the focus falls to the document." }
+  - { id: the-header-says-what-the-form-forgets, rule: "The line under the title ('Taslak · talebe görünmez' / 'Yayında · talebe görünür') is read from the server's deck and follows every write; the form's own idea of the flag does not (DECKPD-1), so the header and the next save can disagree." }
+  - { id: delete-asks-publish-does-not, rule: "'Desteyi sil' asks once, in an alertdialog whose focus starts on 'Vazgeç', and cannot be reached for a published deck; 'Yayımla' and 'Taslağa çek' change what every enrolled talebe sees at once and ask nothing (decision D1)." }

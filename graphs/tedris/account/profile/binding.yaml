@@ -1,0 +1,163 @@
+# tedris.account.profile on the local stack (graphs/README.md, "The stack and the bindings"): Hesap (tedris-web, :4000) as the spare
+# talebe `applicantH`, a man, who arrives by the top bar's "Hesabım" link (the tedris navigation graph's entry frame:app->account).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/account/profile \
+#     --bind graphs/tedris/account/profile/binding.yaml [--cover transitions] --out <dir>
+# NOT WALKED YET: this file was written in the writing phase, when no replay is run (the owner's word); it was checked only for
+# loading (`replay ... --emit-spec`). Every locator below is from the code and the page's markup, and a walk may find one wrong.
+#
+# What the walk writes, and how it is taken away. The main story saves the names, a time zone and the invitation switch of
+# applicantH, three kinds of row: user_profiles.given_name and family_name, users.time_zone, users.lesson_invitation_emails. At the
+# start (the seed's state: no names of its own, no time zone, invitations on, gender MALE) tedrisat holds none of them. `setup` and
+# `teardown` both put them back: the time zone and the switch through tedrisat's own PATCH /me (reset-me.json, with api.mjs), the two
+# names with SQL, because the API can replace a name and never clear it (update-me.dto.ts). They are set to null and not deleted:
+# the row of user_profiles also holds the account's gender, which tedrisat copies from the token only when the token's claim changes
+# (user-sync.service.ts:75), so a deleted row would stay without a gender until tedrisat restarts. `setup` does it too, so a walk that
+# died before its teardown leaves nothing behind.
+#
+# The scenarios, by what the person starts from:
+#   maleGender      the main story and every transition that does not depend on the gender
+#   noGenderCopy    "Belirtilmemiş" with "Ekle": the copy of the gender is emptied with SQL, because no account of the stack lacks one
+#                   (Keycloak refuses to remove the gender, realm.auth.profileUpdate's binding). tedrisat holds each person's last token
+#                   fingerprint in memory and writes the copy again only when it changes, so after the PATCH of `setup` (which fills that
+#                   cache) the null stays until the walk ends; a restart of tedrisat in between (it runs under nest --watch) would
+#                   write the gender back and the walk would see 'Erkek'. `teardown` writes MALE back. Walks only "Ekle".
+# Not bound, with the reason:
+#   readingProfile FAIL (profileUnreadable)  the stack has no way to make tedrisat refuse GET /me for one account
+#   the refusals of the zone, of the switch and of a valid name   the page cannot send anything tedrisat refuses; the over-long name is the one refusal it can
+#   sent_to_sign_in     the stack cannot end the session in the middle of a save
+#   gender: female      it would need a spare woman of the stack and only changes the word the box holds ('Kadın'); no transition differs
+#   a person who arrives with the switch off or with a zone outside the eight   (scope.outOfView)
+# `call` holds each save to see Kaydet busy and the switch disabled. A server action is a POST to the page's own address and answers 200
+# whatever the API said, so the replay cannot compare the 400 of the over-long name there (an engine limit, not the app's).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.account.profile
+
+scenarios:
+  maleGender:
+    given: { read: ok, gender: male }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->account' }
+    samples: { givenName: Rıza, familyName: Başvuran, email: '{secret.E2E_APPLICANT_H_EMAIL}' }
+    vars:
+      newGiven: Zehra
+      newFamily: Örnek
+      longName: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      listedZone: Europe/Berlin
+    setup:
+      - run: [node, helpers/api.mjs, applicantH, PATCH, /me, '@../tedris/account/profile/reset-me.json']
+      - run: [node, helpers/sql.mjs, "update user_profiles set given_name = null, family_name = null where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/api.mjs, applicantH, PATCH, /me, '@../tedris/account/profile/reset-me.json']
+      - run: [node, helpers/sql.mjs, "update user_profiles set given_name = null, family_name = null where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+        expect: '"rows":1'
+  noGenderCopy:
+    given: { read: ok, gender: unknown }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->account' }
+    samples: { givenName: Rıza, familyName: Başvuran, email: '{secret.E2E_APPLICANT_H_EMAIL}' }
+    vars:
+      newGiven: Zehra
+      newFamily: Örnek
+      longName: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      listedZone: Europe/Berlin
+    setup:
+      - run: [node, helpers/api.mjs, applicantH, PATCH, /me, '@../tedris/account/profile/reset-me.json']
+      - run: [node, helpers/sql.mjs, "update user_profiles set given_name = null, family_name = null, gender = null where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/api.mjs, applicantH, PATCH, /me, '@../tedris/account/profile/reset-me.json']
+      - run: [node, helpers/sql.mjs, "update user_profiles set given_name = null, family_name = null, gender = 'MALE' where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+        expect: '"rows":1'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills each box in (css: the label "Ad" is also in "Soyad")
+  BLANK_GIVEN: [{ fill: { css: 'input[name=givenName]', value: '' } }]
+  BLANK_FAMILY: [{ fill: { css: 'input[name=familyName]', value: '' } }]
+  FILL_NAMES:
+    - fill: { css: 'input[name=givenName]', value: '{newGiven}' }
+    - fill: { css: 'input[name=familyName]', value: '{newFamily}' }
+  FILL_TOO_LONG: [{ fill: { css: 'input[name=givenName]', value: '{longName}' } }]
+  # the lists are opened by their combobox (a node that emits the event); an option is chosen here, as e2e profile#2 does
+  CHOOSE_PRESET: [{ click: { role: option, name: Berlin } }]
+  CHOOSE_OTHER: [{ click: { role: option, name: 'Diğer…' } }]
+  CHOOSE_LISTED: [{ click: { role: option, name: '{listedZone}' } }]
+  DISMISS: [{ key: Escape }]
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  account: { url: '{tedris}/account' }
+  # a server action is a POST to the page's own address; the replay holds it to see the busy state, and cannot compare a refusal's status
+  savingName: { call: '{tedris}/account' }
+  savingZone: { call: '{tedris}/account' }
+  savingInvitations: { call: '{tedris}/account' }
+  # the exits have no nodes of this flow: each needs an address
+  handed_over.profile_update: { url: '{keycloak}/realms/medaris/**' }
+  handed_over.calendar_feed: { url: '{tedris}/account/calendar' }
+  handed_over.sign_out: { url: '{tedris}/auth/signout' }
+  account_console_opened: { url: '{keycloak}/realms/medaris/account**' } # an address answered 200 by a GET; where the console's page settles for a signed-in person was not seen
+  left: { url: '{tedris}/notifications' }
+
+effects:
+  # e2e profile#1: a blank name sends nothing: the account's profile row holds no name (setup left it so)
+  saidGiven:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from user_profiles where user_id = '{secret.E2E_APPLICANT_H_SUB}' and given_name is not null"]
+      expect: '"n":0'
+  saidFamily:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from user_profiles where user_id = '{secret.E2E_APPLICANT_H_SUB}' and given_name is not null"]
+      expect: '"n":0'
+  # e2e profile#1: the new names are the account's own (the page's own copy, not the token's)
+  toastNameSaved:
+    - run: [node, helpers/sql.mjs, "select given_name, family_name from user_profiles where user_id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"given_name":"{newGiven}","family_name":"{newFamily}"'
+  # ACC-21: the API refuses the long name, so no name of more than a hundred characters is stored
+  alertNameFailed:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from user_profiles where user_id = '{secret.E2E_APPLICANT_H_SUB}' and length(given_name) > 100"]
+      expect: '"n":0'
+  # e2e profile#2: the zone is stored (users.time_zone)
+  toastZoneSaved:
+    - run: [node, helpers/sql.mjs, "select time_zone from users where id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"time_zone":"Europe/Berlin"'
+  # the switch is stored
+  toastInvitationsOff:
+    - run: [node, helpers/sql.mjs, "select lesson_invitation_emails from users where id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"lesson_invitation_emails":false'
+  toastInvitationsOn:
+    - run: [node, helpers/sql.mjs, "select lesson_invitation_emails from users where id = '{secret.E2E_APPLICANT_H_SUB}'"]
+      expect: '"lesson_invitation_emails":true'
+
+# Where role and name cannot find a node. The page's <main> is found by the subtitle both of its states carry (the page it leaves for has a
+# <main> of its own). A label can be a part of another ("Ad" is in "Soyad", "Saat dilimi" in "Diğer saat dilimi"), so the boxes and the two
+# lists are found by their own name or id. The gender box is found by the word it holds, which is what tells its three nodes apart.
+# The kit's toast is a Base UI dialog (a success) or alertdialog (an error, aria-hidden until it is focused), found by its role attribute.
+nodes:
+  accountPage: { role: main, hasText: '/saat dilimin ve takvim tercihlerin/' }
+  givenNameField: { css: 'input[name=givenName]' }
+  familyNameField: { css: 'input[name=familyName]' }
+  emailField: { css: 'input[name=email]' }
+  genderFemale: { css: 'input[name=gender][value="Kadın"]' }
+  genderMale: { css: 'input[name=gender][value="Erkek"]' }
+  genderNone: { css: 'input[name=gender][value="Belirtilmemiş"]' }
+  genderChangeLink: { role: link, name: Değiştir, within: { css: '[data-testid=account-gender]' } }
+  genderAddLink: { role: link, name: Ekle, within: { css: '[data-testid=account-gender]' } }
+  zoneField: { css: '#account-time-zone' }
+  zoneOtherField: { css: '#account-time-zone-other' }
+  signOutLink: { role: link, name: Çıkış yap, within: { css: 'main' } }
+  savingStatus: { css: 'output', hasText: Kaydediliyor }
+  toastNameSaved: { css: '[role=dialog]', hasText: 'Adın ve soyadın kaydedildi.' }
+  nameSavedTitle: { css: '[role=dialog] p', hasText: 'Adın ve soyadın kaydedildi.' }
+  toastZoneSaved: { css: '[role=dialog]', hasText: 'Saat dilimin kaydedildi.' }
+  zoneSavedTitle: { css: '[role=dialog] p', hasText: 'Saat dilimin kaydedildi.' }
+  toastInvitationsOn: { css: '[role=dialog]', hasText: 'Ders davetleri açıldı.' }
+  invitationsOnTitle: { css: '[role=dialog] p', hasText: 'Ders davetleri açıldı.' }
+  toastInvitationsOff: { css: '[role=dialog]', hasText: 'Ders davetleri kapatıldı' }
+  invitationsOffTitle: { css: '[role=dialog] p', hasText: 'Ders davetleri kapatıldı' }
+  toastNameFailed: { css: '[role=alertdialog]', hasText: 'Adın ve soyadın kaydedilemedi.' }
+  nameFailedTitle: { css: '[role=alertdialog] p', hasText: 'Adın ve soyadın kaydedilemedi.' }
+  nameFailedHint: { css: '[role=alertdialog] p', hasText: 'Sunucu isteği tamamlayamadı.' }
+  alertClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }

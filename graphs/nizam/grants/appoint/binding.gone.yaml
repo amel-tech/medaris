@@ -1,0 +1,60 @@
+# nizam.grants.appoint, the post that is ended elsewhere while a dialog is open (edit: gone, revoke: gone): the walk of binding.yaml's nazım, with a `before` on "Kaydet" and on "Görevden al"
+# that has the başnazım end the held post through the API just before the button is pressed, so that tedrisat answers 404 COURSE_NAZIR_NOT_FOUND. One file because the `before` is a
+# node's, and the other scenarios press the same two buttons and must not end the post. The dialog stays open on a post that is gone and the list is not read again (GRANTS-2): the
+# walk then closes the dialog and sees the stale row still there. Walked on its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/grants/appoint --bind graphs/nizam/grants/appoint/binding.gone.yaml --cover transitions --absent --out <dir>
+# NOT RUN: loads (`--emit-spec`), nothing walked. The walk types an address no account has, so that nobody is appointed in this start.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.grants.appoint
+
+# `before` runs when the walk reaches the node, before it is pressed; the helper is safe to run twice (the second dismissal is a 404 it takes)
+nodes:
+  save:
+    role: button
+    name: '/^Kaydet$/'
+    within: { role: dialog }
+    before:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, gone]
+        expect: 'nzgrants gone'
+  confirmRevoke:
+    role: button
+    name: '/^Görevden al$/'
+    within: { role: dialog, name: '/^Görevden al$/' }
+    before:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, gone]
+        expect: 'nzgrants gone'
+
+scenarios:
+  gone:
+    given: { start: held, person: nobody, edit: gone, revoke: gone }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    setup:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, make, nzgrants, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzgrants"'
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, up, --held]
+        expect: 'nzgrants up held'
+    teardown:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, remove, nzgrants]
+        expect: 'course remove nzgrants'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nzgrants'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'DERS_NAZIR' and ra.revoked_at is null and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_KOSK_NAZIM_SUB}', '{secret.E2E_SYSTEM_ADMIN_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      typed: 'kimse.yok@example.test'
+      foundName: '{grants.spare.name}'
+      foundEmail: '{grants.spare.email}'
+      rowName: '{grants.spare.name}'
+      rowEmail: '{grants.spare.email}'
+      rowSub: '{grants.spare.sub}'
+      giverName: '{grants.viewer.name}'
+      giverText: '{grants.viewer.name} (siz)'
+      endMs: '{grants.futureMs}'

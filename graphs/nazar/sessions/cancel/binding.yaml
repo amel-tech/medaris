@@ -1,0 +1,198 @@
+# nazar.sessions.cancel on the local stack: Celseler of a course the walk makes, at http://localhost:4002, read by the course's müderris and,
+# for the one reader who cannot cancel, by a ders nazırı. The walk arrives through the course menu's "Celseler" (the nav graph's entry
+# frame:ders->dersSessions). The answers of a race are in refusals.binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/sessions/cancel --bind graphs/nazar/sessions/cancel/binding.yaml --cover transitions --absent --out <dir>
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation below is
+# from the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and walked
+# nothing).
+#
+# Data. Each scenario makes its own course "Deneme dersi cancelCelse" with helpers/course.mjs (three celses of 60 minutes, tomorrow at 21:00
+# in Istanbul and every second day after, none with a meeting link; `make` first removes a course of the tag, so a crashed walk leaves
+# nothing in the way) and removes it in `teardown`; the ids are read from graphs/.local/made/cancelCelse.json as {made.*}. No seeded
+# course, hoca or setting is touched. The people:
+#   muderris     the course's hoca (in the second köşk, "Kubbealtı Köşkü"); cancels and adds the make-up
+#   applicantC   a spare talebe, seated by `make`, so the cancel is told to her: the SESSION_CANCELLED notification and the calendar CANCEL
+#                mail. `setup` waits for her first invitation mail, so that a CANCEL has an invitation to follow; `setup` and `teardown`
+#                empty her notifications and her mailbox, the only way to give the next walk the account back as it starts
+#   dersNazir    the ders nazırı, appointed in a medrese course (the başmüderris is its hoca, as nazar.course.overview does) with the stream
+#                permission alone (scenario streamOnly) or with session.manage (refusals.binding.yaml)
+# cancel.mjs (this folder) gives the first celse a meeting link, so that the walk sees the make-up does not get it (CANCEL-1), and makes the
+# races of refusals.binding.yaml. What it cannot undo: the audit rows (lesson.cancel; audit_log is append-only) and the notifications and
+# mails of the invitation sweep that nobody can delete through a route (course.mjs remove deletes the notifications that point at the
+# course's celses, and clears the course's mails).
+#
+# Scenarios here (each opens the same page; none shares a `given`):
+#   cancels      the main story, which `--cover transitions` also walks the other ways: the cancel with no make-up, with the note emptied,
+#                with a make-up and an emptied date (the message that stays, CANCEL-3), Vazgeç, and the way out through the menu. The main
+#                story writes a note of its own, adds the make-up, sends, and follows "Telafisi" (the focus on the make-up's row).
+#   streamOnly   a ders nazırı with session.live_link alone: the page opens, no "İptal et", no "Celse planla"; `--absent` proves it.
+# Not bound, each with its reason:
+#   - answer: taken and invalid. The dialog names a celse it has just made, so these two refusals need a race inside one request that the
+#     stack cannot be made to have; the code words them (Sessions.errors.replacementTaken, .replacementInvalid) and the graph draws them.
+#   - answer: failed. The server must fail without a code (an unknown pattern, a gone celse, a 5xx); the local stack cannot be made to on
+#     request.
+#   - the exit not_found (a 404 of the course read): the layout answers an unknown or hidden course with the 404 page before this page reads
+#     anything; nazar.shell.errorStates walks that page.
+#   - Esc and the close icon (the same event as Vazgeç; the walk clicks Vazgeç).
+#
+# e2e carried: none exists for this flow (no web e2e cancels a session: e2e/course-scope.e2e.ts says in its header that it does not). The
+# page spec apps/nazar/test/sessions-page.spec.tsx:649-860 and the action spec test/course-actions.spec.ts:138-197 pin the same dialog with
+# the API stubbed; they are named in needs.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.sessions.cancel
+
+data:
+  made: { json: ../.local/made/cancelCelse.json }
+
+# the course's title, in the subtitle; the celse's own title, in the dialog's eyebrow and the toasts. The words that carry a date are found
+# by their locators in `nodes` below, because the date moves with the day
+samples:
+  name: '{made.title}'
+  title: Celse 1
+
+scenarios:
+  cancels:
+    given: { holds: manage, answer: done }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSessions' }
+    setup:
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/course.mjs, make, cancelCelse, --weeks, '1', --lessons, '3', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+      - run: [node, ../nazar/sessions/cancel/cancel.mjs, link]
+        expect: 'cancel link'
+      # the sweep sends the invitations a moment after the seat: a CANCEL follows an invitation, so wait for it
+      - run: [node, helpers/mail.mjs, search, 'to:{secret.E2E_APPLICANT_C_EMAIL} subject:Davet', --wait, '90']
+        expect: 'Davet'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cancelCelse]
+        expect: 'course remove cancelCelse'
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi cancelCelse'"]
+        expect: '"n":0'
+    vars:
+      note: Hoca yolda kaldı; bu haftanın okuması telafi edilecek.
+      makeUpDate: '2027-03-02'
+      # nothing happens elsewhere; refusals.binding.yaml's walks say otherwise (its `form` runs `cancel.mjs meanwhile` with these two)
+      meanwhile: none
+      hoca: muderris
+
+  streamOnly:
+    given: { holds: streamOnly, answer: done }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSessions' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cancelCelse, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '3']
+        expect: '"title":"Deneme dersi cancelCelse"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, session.live_link, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cancelCelse]
+        expect: 'course remove cancelCelse'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi cancelCelse'"]
+        expect: '"n":0'
+
+# The events no node of the screen sends. Pressing "İptal et", the submit button and "Telafisi" is the walk's own.
+events:
+  WRITE_NOTE:
+    - fill: { role: textbox, name: Talebelere not, value: '{note}' }
+  CLEAR_NOTE:
+    - fill: { role: textbox, name: Talebelere not, value: '' }
+  # the check box is one control: turned on, then off
+  ADD_MAKEUP:
+    - click: { role: checkbox, name: Telafi celsesi ekle }
+  DROP_MAKEUP:
+    - click: { role: checkbox, name: Telafi celsesi ekle }
+  CLEAR_DATE:
+    - fill: { label: '/^Tarih/', value: '' }
+  TYPE_DATE:
+    - fill: { label: '/^Tarih/', value: '{makeUpDate}' }
+  # Vazgeç, the close icon and Esc all send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç, within: { role: dialog, name: Celseyi iptal et } }
+  # the course menu's "Talebeler" (its name carries a number and a hidden label, so it is found by its beginning)
+  NAVIGATE:
+    - click: { role: link, name: '/^Talebeler/', within: { role: navigation, name: Ana menü } }
+
+states:
+  listed: { url: '{nazar}/ders/*/celseler' }
+  listedWithoutCancel: { url: '{nazar}/ders/*/celseler' }
+  cancelledShown: { url: '{nazar}/ders/*/celseler' }
+  madeUpFocused: { url: '{nazar}/ders/*/celseler' }
+  # the make-up and the cancel are Next server actions: POSTs to the page's own address, held while the busy dialog is checked
+  makingUp: { call: '{nazar}/ders/*/celseler' }
+  cancellingAlone: { call: '{nazar}/ders/*/celseler' }
+  cancellingAfterMakeUp: { call: '{nazar}/ders/*/celseler' }
+  left: { url: '{nazar}/ders/*/talebeler' }
+
+# Where role and name cannot find a node, or would find the wrong one.
+nodes:
+  # the shell's one <main>; any page of the app has one, so it is told apart by its table
+  sessionsPage: { role: main, hasText: Yaklaşan celseler }
+  # "{name} dersinin bütün celseleri, tarihe göre. Saatler {zone} saatiyle."
+  sessionsSubtitle: { css: 'header p', hasText: '/dersinin bütün celseleri, tarihe göre\. Saatler .+ saatiyle\./' }
+  # the counts line, before and after a cancel (a testid; the two words are told apart by their texts)
+  upcomingCounts: { testId: upcoming-counts, hasText: '/^\d+ celse · Hafta [\d–]+$/' }
+  countsCancelled: { testId: upcoming-counts, hasText: '/^\d+ celse · \d+ iptal edildi · Hafta [\d–]+$/' }
+  # one button a planned row, named by its short date: "3 Kas Sal 21:00 celsesini iptal et"
+  cancelButton: { role: button, name: '/ celsesini iptal et$/' }
+  otherCancelButton: { role: button, name: '/ celsesini iptal et$/' }
+  # the link under the cancelled row's badge: "Telafisi: 10 Kas Sal 21:00"
+  madeUpLink: { role: link, name: '/^Telafisi: /' }
+  # the make-up row's name cell (a span with an id, no role), the one that says "Telafi celsesi"
+  makeUpName: { css: 'span[id^="celse-"]', hasText: Telafi celsesi }
+  # the two success toasts share their title; told apart by the end of their words
+  toastCancelled: { role: dialog, name: Celse iptal edildi, hasText: '/iptal edildi\.$/' }
+  toastMadeUp: { role: dialog, name: Celse iptal edildi, hasText: 'telafi celsesi eklendi ve ona bağlandı.' }
+  # an error toast has one title and several sentences (the graph's `oneOf`), so it is found by its title and any of its sentences
+  toastCancelFailed: { role: alertdialog, name: İşlem yapılamadı, hasText: '/başkası tarafından kaydedildi|izniniz yok|ters gitti/' }
+  toastAfterMakeUpFailed: { role: alertdialog, name: 'Telafi celsesi eklendi, ama celse iptal edilemedi', hasText: '/zaten iptal edilmiş|zaten bağlı|iptal edilmemiş/' }
+  toastMakeUpFailed: { role: alertdialog, name: 'Telafi celsesi eklenemedi; celse iptal edilmedi', hasText: '/izniniz yok|geçerli bir celse üretmiyor|ters gitti/' }
+  # the dialog, its eyebrow (the celse's title, a <p> above the title), body and close icon ("Kapat" is also the name of a toast's close button)
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: Celse 1, within: { role: dialog, name: Celseyi iptal et } }
+  dialogBody: { text: '/celsesi iptal edilir; programda/', within: { role: dialog, name: Celseyi iptal et } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: Celseyi iptal et } }
+  # a date and a time input have no ARIA role, so they are found by their label; the star is part of the label's text
+  dateField: { label: '/^Tarih/' }
+  timeField: { label: '/^Saat/' }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: Celseyi iptal et } }
+  # the dialog's title and its confirm say the same words: the confirm is the button
+  submit: { role: button, name: Celseyi iptal et, within: { role: dialog, name: Celseyi iptal et } }
+  # the busy button's hidden <output>
+  busy: { role: status, hasText: Yükleniyor, within: { role: dialog, name: Celseyi iptal et } }
+
+# What a cancel leaves outside the screen, read from tedrisat's database and Mailpit as the walk's own rows. The four ids are the flow's own
+# effects: the cancel with a note and with none, each with and without a make-up. `{made.lessons.0}` is the celse the walk presses first.
+effects:
+  cancelledNoted:
+    - run: [node, helpers/sql.mjs, "select (cancelled_at is not null) as cancelled, (replacement_lesson_id is null) as bare, (cancel_reason is not null) as noted from lessons where id = '{made.lessons.0}'"]
+      expect: '"cancelled":true,"bare":true,"noted":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from notifications where user_id = '{secret.E2E_APPLICANT_C_SUB}' and type = 'SESSION_CANCELLED' and target_id = '{made.lessons.0}' and params ? 'reason'"]
+      expect: '{"n":1}'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'lesson.cancel' and entity_id = '{made.lessons.0}'"]
+      expect: '{"n":1}'
+    - run: [node, helpers/mail.mjs, search, 'to:{secret.E2E_APPLICANT_C_EMAIL} subject:İptal', --wait, '90']
+      expect: 'İptal'
+  cancelledBare:
+    - run: [node, helpers/sql.mjs, "select (cancelled_at is not null) as cancelled, (replacement_lesson_id is null) as bare, (cancel_reason is null) as no_note from lessons where id = '{made.lessons.0}'"]
+      expect: '"cancelled":true,"bare":true,"no_note":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from notifications where user_id = '{secret.E2E_APPLICANT_C_SUB}' and type = 'SESSION_CANCELLED' and target_id = '{made.lessons.0}' and not (params ? 'reason')"]
+      expect: '{"n":1}'
+  madeUpNoted:
+    - run: [node, helpers/sql.mjs, "select (l.cancelled_at is not null) as cancelled, (l.cancel_reason is not null) as noted, (n.title = l.title) as same_title, (n.meeting_url is null) as no_link, (l.meeting_url is not null) as had_link from lessons l join lessons n on n.id = l.replacement_lesson_id where l.id = '{made.lessons.0}'"]
+      expect: '"cancelled":true,"noted":true,"same_title":true,"no_link":true,"had_link":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from notifications where user_id = '{secret.E2E_APPLICANT_C_SUB}' and type = 'SESSION_CANCELLED' and target_id = '{made.lessons.0}' and params ? 'reason'"]
+      expect: '{"n":1}'
+    - run: [node, helpers/sql.mjs, "select (details->>'replacementLessonId' is not null) as made_up from audit_log where action = 'lesson.cancel' and entity_id = '{made.lessons.0}'"]
+      expect: '"made_up":true'
+  madeUpBare:
+    - run: [node, helpers/sql.mjs, "select (l.cancelled_at is not null) as cancelled, (l.cancel_reason is null) as no_note, (n.title = l.title) as same_title from lessons l join lessons n on n.id = l.replacement_lesson_id where l.id = '{made.lessons.0}'"]
+      expect: '"cancelled":true,"no_note":true,"same_title":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from notifications where user_id = '{secret.E2E_APPLICANT_C_SUB}' and type = 'SESSION_CANCELLED' and target_id = '{made.lessons.0}' and not (params ? 'reason')"]
+      expect: '{"n":1}'

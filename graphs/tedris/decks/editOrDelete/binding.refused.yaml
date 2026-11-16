@@ -1,0 +1,56 @@
+# tedris.decks.editOrDelete, a save or a delete the server refuses (the scenario `refused`, answer: refused): the deck is deleted through the API while the
+# page still shows it, so the call that follows answers 404 DECK_NOT_FOUND (the guard finds no deck to resolve for a caller who is not the başnazım; the
+# domain's refusals of updateDeck and deleteDeck). The page then raises its error toast: "Kaydedilemedi / Bir sorun oluştu; yazdıkların korundu. Yeniden dene."
+# with the dialog kept and the typed words in it, or "Silinemedi / Bir sorun oluştu. Yeniden dene." with the confirmation closed.
+#   - the save: the deletion is the `before` of `filled`, which runs each time the walk reaches that state, after the person typed and before "Kaydet" is pressed
+#     (the second time, after the refusal, the deck is gone and the call says so: `--any` accepts any answer);
+#   - the delete: the deletion is the `before` of `confirmDelete`, while the confirmation is open and before "Desteyi sil" is pressed.
+# No `call` is set on `saving` or `deleting`: a Next server action answers 200 on the page's own address, so a refusal's status could not be compared
+# (CONVENTIONS), and the busy state is not what this file checks. Because the second `before` removes the deck, the check of "Vazgeç" in the confirmation (the
+# deck is still there, walk.common.binding.yaml) is replaced by one that cannot fail here; every other transition the cover takes from this file is checked
+# as in binding.yaml.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/editOrDelete \
+#     --bind graphs/tedris/decks/editOrDelete/binding.refused.yaml --cover transitions --out <dir>
+#   (planned, not run: 28 walks, of which the two that take FAIL.failed of `saving` and of `deleting` are the ones this file is for)
+# NOT RUN in the writing phase: whether `before` on a state a walk reaches twice, the toasts' locators and the held-call-free busy state work is what the
+# walk phase settles.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.editOrDelete
+
+scenarios:
+  refused:
+    given: { publication: private, fields: changed, answer: refused }
+    as: applicantA
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'decks->deck' }
+    vars:
+      deck: '{eod.deck}'
+      typedTitle: 'Deneme destesi: düzenlendi'
+      typedDescription: Düzenlemeden sonraki açıklama.
+      newTitle: 'Deneme destesi: düzenlendi'
+      wantStatus: PRIVATE
+    setup:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, make]
+        expect: deck made
+    teardown:
+      - run: [node, ../tedris/decks/editOrDelete/deck.mjs, remove]
+        expect: deck remove
+
+states:
+  saving: {}
+  deleting: {}
+  filled:
+    before:
+      - run: [node, helpers/api.mjs, applicantA, DELETE, '/flashcard/decks/{eod.deck}', --any]
+        expect: HTTP
+  confirmDelete:
+    before:
+      - run: [node, helpers/api.mjs, applicantA, DELETE, '/flashcard/decks/{eod.deck}', --any]
+        expect: HTTP
+
+effects:
+  dropAsk:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from decks where id = '{eod.deck}'"]
+      expect: '"n"'

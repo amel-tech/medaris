@@ -1,0 +1,49 @@
+# nazar.courseSettings.hocaTitles, the refusal AUTHZ_FORBIDDEN: a ders nazırı who holds course.settings (and session.manage) opens the page, the
+# card's selects are open for her, she chooses a title, and before she presses Kaydet the hoca takes course.settings away (the same helper the
+# hoca's Ders nazırları page stands for, PATCH /courses/:id/nazirs/:postId with the whole set, run as MUDERRIS). Kaydet is refused with 403: a
+# toast "Unvan kaydedilemedi" / "Bunu yapma izniniz yok." stays, the page is read again and, because the caller no longer holds the code, the
+# card is shut while it keeps showing the title she chose (HOCA-1: the card is not mounted anew, its hocas being the same).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/courseSettings/hocaTitles \
+#     --bind graphs/nazar/courseSettings/hocaTitles/binding.forbidden.yaml --cover transitions --out <dir>
+#
+# NOT RUN (no replay in the writing phase); the binding loads. The grant is taken away in a `before` of the state `dirty` ("done when the walk
+# reaches the state, before it is checked"): the page has been read with the code and nothing re-reads it before Kaydet. `before` is a property
+# of this file, which is why the walk has a file of its own; the same helper runs again each time the walk reaches `dirty` and sets the same set.
+# `call` is left off (a Next server action answers 200 on the page's own address, so the replay would compare 403 with 200).
+# What it leaves: a post in the walk's course for the DERS_NAZIR account, which goes with the course (`teardown`).
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.courseSettings.hocaTitles
+
+scenarios:
+  forbidden:
+    given: { reader: editor, team: pair, answer: forbidden }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSettings' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hocaTitles, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"hocaTitles"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantH]
+        expect: seat-hoca
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, 'course.settings,session.manage']
+        expect: course-nazir-grants
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hocaTitles]
+        expect: removed
+    vars:
+      title: Doç. Dr.
+
+states:
+  dirty:
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, session.manage]
+        expect: course-nazir-grants
+  left: { url: '{nazar}/hesap' }
+
+# Nothing was stored: the first write is the one refused
+effects:
+  toastForbidden:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_muderris where course_id = '{made.course}' and unvan is not null"]
+      expect: '{"n":0}'

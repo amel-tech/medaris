@@ -1,0 +1,330 @@
+# Genel bakış of a course in nizam-web (/kosks/<kosk>/courses/<course>), read from the code of the branch (the tree of PR #394) on 16 Nov 2026.
+# Nothing here is approved. What it draws:
+#   - the six reads the page makes at once on the server (the köşk, the course, the course's numbers, its enrollments, the köşk's roster of
+#     courses for the imam, the reader's own record) and the three faces the page takes: the overview (also with a box that says the numbers or
+#     the applications could not be read in their place), the screen "Bu bölüm için izniniz yok" (a refused read, a course that is not there, a course of
+#     another köşk) and the box "Bölüm yüklenemedi" when nothing could be read;
+#   - the overview itself: the course's name with its state, the three numbers, the celses ahead with the way in to each and the warning for the
+#     one nobody can join, the waiting applications with Onayla and Reddet, the hocas, the settings summary, and the ways out (eight links and
+#     two buttons a row), one of them, "Nazar’da aç", only for the başnazım.
+# What it leaves to other flows: what Onayla and Reddet do (nizam.courses.decideApplications), the pages the links open
+# (nizam.courses.curriculum, .manageSessions, .roster, .list, nazar.courseNazirs.appoint), the shell around the page and the refusal screen's
+# own flow (nizam.shell.noAccessAndNotFound).
+# Findings it carries (the inventory's ids): F-W4-1 and F-X-19 (the same finding: four links open /edit, which redirects to Müfredat, and three are named after other pages),
+# F-X-15 (holds on this page, noted), F-W4-17 (the tab and the h1), F-X-10 (the loading file), F-W1-11 (the bare dash of a cancelled celse, the
+# same finding as on the köşk home).
+# Five more are this flow's own, proposed as KOVERVIEW-1 to KOVERVIEW-5 (ui.yaml `rules`). MDRS-291 (the two number cards link to Talebeler,
+# opening on the matching tab) is planned and is drawn in needs.yaml as `missing: MDRS-291`; the cards are plain numbers today.
+# One departure from FLOWS.md, said once: the entry lists "link out to nazar.course.overview". The code of "Nazar’da aç" opens the course's
+# Ders nazırları in nazar (/ders/<id>/nazirlar, overview-present.ts:337, MDRS-270; e2e kosk-view#13 asserts that address), not its Genel
+# bakış, so the transition starts nazar.courseNazirs.appoint, whose start that page is. Genel bakış is one entry of that page's course menu.
+# Seen, as opposed to read: on the local stack on 16 Nov 2026, as GETs and nothing else, the API's answer to GET /courses/<seeded>/stats as the
+# seeded Medaris nazımı (403 AUTHZ_FORBIDDEN: the refusal the page turns into its screen) and GET /me as the başnazım (`roles.systemAdmin` true,
+# which is what `nazarCourseHref` reads). Every screen is from the code: nothing was opened in a browser. Not walked yet: the owner's word is that
+# replays happen once, at the end; binding.yaml loads and each scenario is bound.
+schema: delurio-graph/0
+kind: flow
+id: nizam.courses.overview
+status: captured
+domain: medaris.api
+ui: nizam.courses.overview
+title: Read a course's overview
+summary: >-
+  A köşk nazımı (or the başnazım) opens a course of the köşk, usually from Dersler, and reads its Genel bakış: the course's name with its state
+  (Yayında or Taslak), three numbers (enrolled talebe, waiting applications, weeks begun of the weeks there are), the next four celses with
+  the way in to each, and a warning above the numbers when some celse ahead has no meeting link, no live stream and is not held in person. Under
+  them the waiting applications, each with Onayla and Reddet, the course's hocas and a summary of its settings. Four links ("Müfredatı düzenle",
+  "Celse planla", "Ders ayarları" and a row's "Toplantı bağlantısı ekle" or "Düzenle") all open the curriculum, and three of them are named after
+  other pages (F-W4-1). The başnazım also has "Nazar’da aç", which opens the course's Ders nazırları in nazar in a new tab. A course the reader may not read,
+  one that is not there and one that belongs to another köşk are one screen, "Bu bölüm için izniniz yok"; when nothing can be read a box says so.
+
+scope:
+  shows: >-
+    the course overview as its köşk's nazım or the başnazım reads it, from the address to every link and button on it, the refusal screen for a
+    course the reader may not read, and the two boxes that say a read failed
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "what Onayla and Reddet do once pressed: the busy row, the toast, the row dropped, the refresh that moves the numbers, the refusals and the missing confirmation (nizam.courses.decideApplications; F-W4-6, F-W4-7); e2e kosk-view#14's second half (the numbers after the decision) belongs to that flow, and this one draws only the hand-over"
+    - "the pages the links open: Müfredat (nizam.courses.curriculum), Celseler (nizam.courses.manageSessions), Talebeler (nizam.courses.roster), Dersler (nizam.courses.list) and nazar's Ders nazırları (nazar.courseNazirs.appoint)"
+    - "the shell around the page (sidebar, köşk picker, person row, bell, theme toggle: nizam.shell.menuPerPersona), the phone's menu sheet, and the layout of the two tables on a phone, where each row is a card"
+    - "a person who is no nazım at all: app/kosks/layout.tsx answers 'Bu bölüm için izniniz yok' with a 403 before the page runs (nizam.shell.noAccessAndNotFound); the Medaris nazımı passes that layout and is refused by the page, which is the `refused` state here"
+    - "a course a medrese opened in the köşk (a hosted course): the same page for the köşk's nazım and the başnazım (e2e kosk-view#13 opens one as the başnazım); whether the nazım may decide its applications is tedrisat's, and nizam.courses.decideApplications' `mayDecide`"
+    - "a course with no hoca ('Bu derste hoca yok'): no scenario can make one, a course is saved with at least one"
+    - "a session that has ended: the reads send the person to sign in and back, with no error (realm.auth.sessionEnded)"
+    - "the imam's star as a popover (hover, focus and press open a bubble; it moves no focus) and the Katılım cell's other words ('YouTube yayını', 'Yalnız yayın', 'Bilinmeyen platform', 'Katılım bilgisi gösterilmez' for a read that carried no attendance)"
+    - "a week of celses the table does not list (it lists the nearest four), and a celse with no way in beyond the fourth, which the warning still names"
+    - "the loading skeleton while the reads run (loading.tsx, F-X-10) and the footer (common.shell.privacyNotice)"
+    - "the audit rows tedrisat writes for every load of this page: course.content_read for the course and course.roster_read for the numbers and for the enrollments, for a reader who is neither the course's hoca nor an enrolled talebe (course.service.ts:410, :486); the reads' answers are what the page is made from"
+
+decisions:
+  D1:
+    question: >-
+      Should "Müfredatı düzenle", "Celse planla", "Ders ayarları" and a row's "Toplantı bağlantısı ekle" / "Düzenle" each open the page their name
+      promises? Today all four are the same address, /kosks/<id>/courses/<id>/edit, which redirects to Müfredat (F-W4-1, F-X-19).
+    recommend: >-
+      Yes: link them to /curriculum, /sessions/new, /ayarlar and /sessions (the row's button, as Celseler is where a link is added). The e2e
+      kosk-view#12 then asserts the real address and stops being stale.
+    affects: [overview, handed_over.curriculum]
+  D2:
+    question: >-
+      Should the cards "Kayıtlı talebe" and "Bekleyen başvuru" be links to Talebeler, opening on the matching tab (MDRS-291)? Today they are plain
+      numbers, the pending section's "Talebeler" link opens the page on its first tab (Başvurular), and the tab is component state, not part of
+      the address (students-tabs.tsx:57), so a card cannot link to "Kayıtlı" until the tab is in the URL.
+    recommend: >-
+      Yes, as MDRS-291 plans: put the tab in the address (?tab=) and make both cards links named with their number; ask the reporter whether
+      the Müfredat page gets the same cards (the issue's own question).
+    affects: [overview, handed_over.roster]
+
+context:
+  answer:
+    values: [ok, statsFailed, down, refused, elsewhere]
+    initial: any
+    say:
+      ok: "the course, its köşk and its numbers are read"
+      statsFailed: "the course and its köşk are read and the numbers' read fails with anything but a refusal: the page is drawn with a box in the numbers' place"
+      down: "the numbers' read fails and the köşk or the course cannot be read either (the API is down): the box 'Bölüm yüklenemedi' alone"
+      refused: "the numbers' read is refused (403, the reader holds no course.staff_read in the course: the Medaris nazımı) or the course is not there (404)"
+      elsewhere: "the numbers are read, but the course belongs to another köşk than the one in the address, or the köşk or course read fails while the numbers answer (KOVERVIEW-3): the same screen as a refusal"
+  applications:
+    values: [some, none, unreadable]
+    initial: any
+    say:
+      some: "the enrollments are read and at least one is waiting: the table has a row for each, with Onayla and Reddet"
+      none: "the enrollments are read and none is waiting: the table says 'Bekleyen başvuru yok'"
+      unreadable: "the enrollments' read fails: a box with a retry takes the table's place"
+  reader:
+    values: [nazim, chief]
+    initial: any
+    say:
+      nazim: "the reader is a köşk's nazım, or a Medaris nazımı who is refused by the numbers' read"
+      chief: "the reader is the Medaris başnazım (the realm role SYSTEM_ADMIN): 'Nazar’da aç' is drawn while nizam's address of nazar (NAZAR_URL) is set, as the local stack sets it"
+  status:
+    values: [published, draft]
+    initial: any
+    say:
+      published: "the course is published: the badge and the settings say Yayında"
+      draft: "the course is a draft: the badge and the settings say Taslak"
+  enrollment:
+    values: [approval, open]
+    initial: any
+    say:
+      approval: "the course asks for approval: the settings say 'Onaylı: talebe başvurur, siz onaylayınca derse girer'"
+      open: "the course takes anyone who applies: the settings say 'Açık: talebe başvurunca derse girer'"
+  programme:
+    values: [empty, covered, lacking]
+    initial: any
+    say:
+      empty: "no live celse is ahead: the table says 'Yaklaşan celse yok' and no warning is drawn"
+      covered: "celses are ahead and each has a way in (a meeting link or the in-person mark), and one is cancelled and keeps its slot: no warning"
+      lacking: "celses are ahead and at least one has no meeting link, no live stream and is not held in person: the warning names the first, its row says 'Eksik' and its button 'Toplantı bağlantısı ekle'; another is cancelled"
+  hocas:
+    values: [one, several]
+    initial: any
+    say:
+      one: "the course has one hoca, who is the imam by default and gets no mark"
+      several: "the course has more than one hoca: the imam's name is followed by a star that reads 'Dersin imamı'"
+
+guards:
+  isChief: "reader == 'chief'"
+  hasRows: "programme != 'empty'"
+  hasApplications: "applications == 'some'"
+
+effects:
+  again: { havoc: [answer, applications] } # the retry button reads the page again, and every read may answer differently
+
+failures:
+  reading: { from: getCourseStats, refused: [AUTHZ_FORBIDDEN, COURSE_NOT_FOUND], unreadable: [] }
+# `refused` is the one screen for the 403 and the 404 (page.tsx:49-50). `unreadable` stands for any answer but a refusal or a refused
+# token: the page treats a network error and a 5xx alike (overview-reads.ts:31-36); a 401 is the guard's and sends the person to sign in again
+# (realm.auth.sessionEnded).
+
+# The main story: a köşk nazımı opens a course with applications waiting and a celse nobody can join, reads the warning and takes the row's
+# button to add the link, which lands on the curriculum (F-W4-1).
+main:
+  given: { answer: ok, applications: some, reader: nazim, status: published, enrollment: approval, programme: lacking, hocas: several }
+  events: [DONE, EDIT_SESSION]
+
+initial: reading
+states:
+  reading:
+    title: Read the course
+    description: >-
+      The page's server side reads, at once and with the person's token, the köşk (GET /kosks/:id), the course (GET /courses/:id), the course's
+      numbers (GET /courses/:id/stats, which asks course.staff_read), its enrollments (GET /courses/:id/enrollments), the köşk's roster of courses
+      (GET /kosks/:id/course-roster, only for the imam's star) and the reader (GET /me). Each read is `null` when it fails, and the numbers' read and
+      the roster's are also told a 403 and a 404 apart. The numbers' read decides: a 403 is Next's forbidden() and a 404 its notFound(), and
+      both are drawn as the same screen "Bu bölüm için izniniz yok" on purpose, so that the page never says which ids exist. With no numbers and
+      no köşk or no course the page is a retry box; with numbers, a course that is not the köşk's, or a köşk or a course that could not be read,
+      is notFound() as well (KOVERVIEW-3). The graph draws the numbers' read and leaves the other five to the variables. tedrisat writes the
+      audit rows of the content and roster reads before it answers (see `scope.outOfView`). While it reads, Next shows loading.tsx, an
+      aria-busy div of skeletons a screen reader hears nothing of (F-X-10).
+    includes: ["the köşk", "the course", "its enrollments", "the köşk's roster of courses", "the reader's own record"]
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:40"
+    invoke: { action: getCourseStats }
+    on:
+      DONE:
+        - { guard: "answer == 'ok'", target: overview, say: "the course is drawn from the answers", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:67" }
+        - { guard: "answer == 'elsewhere'", target: refused, say: "the course is not this köşk's, or the köşk or the course could not be read: notFound()", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:65" }
+      FAIL.refused: { guard: "answer == 'refused'", target: refused, say: "403 or 404: forbidden() or notFound(), one screen", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:49" }
+      FAIL.unreadable:
+        - { guard: "answer == 'statsFailed'", target: overview, say: "the numbers are null but the course and the köşk are there: the page is drawn with a box in the numbers' place", source: "apps/nizam/features/kosks/components/course-overview.tsx:332" }
+        - { guard: "answer == 'down'", target: loadFailed, say: "no numbers and no köşk or course: the retry box alone", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:53" }
+
+  overview:
+    title: Read the course's overview
+    by: human
+    goal: true
+    description: >-
+      The page in <main>. Above the content a breadcrumb "Sayfa yolu" ("Dersler" and the course's name). The h1 holds "Genel bakış" and the
+      state's badge, so its accessible name is "Genel bakış Yayında" or "Genel bakış Taslak", and the tab's title is "Genel bakış" for every
+      course (F-W4-17). Under it a line with the course's name, the köşk, the weeks, the celses and the days and times the course meets. On
+      the right "Nazar’da aç" (the başnazım alone, KOVERVIEW-only: e2e kosk-view#13), "Müfredatı düzenle" and "Celse planla"; the last two
+      are the same address, /edit, which redirects to Müfredat (F-W4-1, F-X-19). A warning-tone Alert (a status, which is not announced when
+      the page loads) says "{weekday} celsesinin katılım yolu eksik" and names the first celse ahead that has no way in, whichever of the
+      course's celses it is, not only the four listed (course-overview.tsx:305, overview-present.ts:251). The region "Dersin sayıları" holds three
+      plain numbers: Kayıtlı talebe, Bekleyen başvuru and Devam eden hafta with "Toplam N hafta" under it; they are not links (MDRS-291, decision
+      D2), and "Devam eden hafta" counts the weeks that have begun, not the weeks under way (KOVERVIEW-1). "Sıradaki celseler" is a table of the
+      nearest four celses (a cancelled one keeps its slot) with Celse and its week, Zaman, Süre, Katılım, Durum and a button per row that is not
+      cancelled: "Toplantı bağlantısı ekle: {celse}" where the way in is missing, "Düzenle: {celse}" where there is one, both opening /edit
+      (F-W4-1). Katılım says "Eksik" in a warning badge for a celse with no way in, the ways in joined by " · " for one that has some, and a bare
+      "—" with no text alternative for a cancelled one (F-W1-11). "Bütün celseler" opens Celseler. "Bekleyen başvurular" is a
+      table of Talebe, Başvuru (today, yesterday or the date) and the two buttons "Onayla: {name}" and "Reddet: {name}" (no confirmation:
+      F-W4-7, nizam.courses.decideApplications); its "Talebeler" link opens the page whose first tab is Başvurular. "Ders kadrosu" lists the hocas
+      with the imam's star where there are several. "Ders ayarları" is a link to /edit again (F-W4-1) and a list of three facts: Durum,
+      Kayıt, and Saat dilimi as the raw zone id, e.g. Europe/Istanbul (KOVERVIEW-4). Two boxes can stand in for a part: the numbers' ("Sayısal
+      bilgiler yüklenemedi") and the table's of waiting applications, each with a retry. No code gives the page a focus (rule focus-not-set).
+    source: apps/nizam/features/kosks/components/course-overview.tsx:253
+    on:
+      OPEN_NAZAR:
+        guard: isChief
+        target: overview
+        starts: { flow: nazar.courseNazirs.appoint }
+        say: "\"Nazar’da aç\" opens the course's Ders nazırları in nazar in a new tab (/ders/<id>/nazirlar); this tab stays on Genel bakış"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:277
+      EDIT_SYLLABUS:
+        target: handed_over.curriculum
+        starts: { flow: nizam.courses.curriculum }
+        say: "\"Müfredatı düzenle\" opens /edit, which redirects to Müfredat"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:292
+      PLAN_SESSION:
+        target: handed_over.curriculum
+        starts: { flow: nizam.courses.curriculum }
+        say: "\"Celse planla\" opens /edit too, so it lands on Müfredat and not on Celse planla (F-W4-1)"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:299
+      EDIT_SESSION:
+        guard: hasRows
+        target: handed_over.curriculum
+        starts: { flow: nizam.courses.curriculum }
+        say: "a row's \"Toplantı bağlantısı ekle\" or \"Düzenle\" opens /edit as well, so it lands on Müfredat and not where a link is added (F-W4-1)"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:165
+      OPEN_SETTINGS:
+        target: handed_over.curriculum
+        starts: { flow: nizam.courses.curriculum }
+        say: "\"Ders ayarları\" in the settings section opens /edit too, so it lands on Müfredat and not on the settings (F-W4-1)"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:465
+      OPEN_SESSIONS:
+        target: handed_over.manage_sessions
+        starts: { flow: nizam.courses.manageSessions }
+        say: "\"Bütün celseler\" opens /kosks/<id>/courses/<id>/sessions"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:371
+      OPEN_STUDENTS:
+        target: handed_over.roster
+        starts: { flow: nizam.courses.roster }
+        say: "\"Talebeler\" opens /kosks/<id>/courses/<id>/students, whose first tab is Başvurular (students-tabs.tsx:57)"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:397
+      OPEN_COURSES:
+        target: handed_over.course_list
+        starts: { flow: nizam.courses.list }
+        say: "\"Dersler\" in the breadcrumb opens the köşk's course list"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:258
+      APPROVE:
+        guard: hasApplications
+        target: handed_over.decide_applications
+        starts: { flow: nizam.courses.decideApplications, given: { approval: "'needed'" } }
+        say: "\"Onayla\" on a waiting application answers it on this page: the row is dropped, a toast says so and the numbers follow the refresh"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:220
+      REJECT:
+        guard: hasApplications
+        target: handed_over.decide_applications
+        starts: { flow: nizam.courses.decideApplications, given: { approval: "'needed'" } }
+        say: "\"Reddet\" refuses it at once, with no confirmation and no reason (F-W4-7)"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:229
+      RETRY:
+        guard: "answer == 'statsFailed' or applications == 'unreadable'"
+        target: reading
+        effect: [again]
+        say: "\"Yeniden dene\" in either box reads the whole page again (router.refresh)"
+        source: apps/nizam/features/kosks/components/course-overview.tsx:335
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+
+  refused:
+    title: Bu bölüm için izniniz yok
+    by: human
+    description: >-
+      The screen for a section the account may not open and for a record that is not there, the same words for both: a section inside <main>
+      with the h1 "Bu bölüm için izniniz yok", one sentence naming the Medaris başnazımı when the directory knows who that is, the account
+      the person signed in as, and the button "Ana sayfaya dön". It is drawn for a refused numbers' read (the Medaris nazımı: 403), for a
+      course that is not there (404), for a course that belongs to another köşk, and for a köşk or course read that failed while the numbers
+      answered (KOVERVIEW-3: a failed read told as a refusal). The shell is around it. A Medaris nazımı who holds platform.kosk_edit is offered the course's title as a link in Dersler and arrives here (KOVERVIEW-5). Its own flow is nizam.shell.noAccessAndNotFound.
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:49"
+    on:
+      BACK_HOME: { target: landing_opened, say: "\"Ana sayfaya dön\" goes to /, which sends a köşk nazımı to the home of their first köşk", source: apps/nizam/components/errors/no-access.tsx:38 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+
+  loadFailed:
+    title: The course could not be read
+    by: human
+    description: >-
+      An error Alert alone in <main>: "Bölüm yüklenemedi", one sentence and "Yeniden dene", which reads the page again (router.refresh). The words
+      are the köşk page's (`KoskManage.*`), not the overview's own `CourseOverview.loadFailedTitle`. The page has no heading at all, so no
+      h1 (KOVERVIEW-2). The stack cannot make this read fail, so the face is read from the code and not walked.
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:55"
+    on:
+      RETRY: { target: reading, effect: [again], say: "\"Yeniden dene\" reads the page again", source: apps/nizam/features/kosks/components/load-failed.tsx:29 }
+      NAVIGATE: { target: left, say: "they follow the menu or a link of the shell" }
+
+  handed_over.curriculum:
+    type: final
+    title: "The person opens the course's Müfredat (through /edit)"
+    leavesPage: true
+  handed_over.manage_sessions:
+    type: final
+    title: "The person opens the course's celse list"
+    leavesPage: true
+  handed_over.roster:
+    type: final
+    title: "The person opens the course's Talebeler"
+    leavesPage: true
+  handed_over.course_list:
+    type: final
+    title: "The person opens the köşk's course list"
+    leavesPage: true
+  handed_over.decide_applications:
+    type: final
+    title: "The person answers an application on this page"
+  landing_opened:
+    type: final
+    title: "The person goes back to /, which sends them to their köşk's home"
+    leavesPage: true
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - id: refusal-only-for-a-refusal
+    never: "state == 'refused' and (answer == 'ok' or answer == 'statsFailed' or answer == 'down')"
+    say: The screen "Bu bölüm için izniniz yok" is drawn only for a refused or missing read, a course of another köşk or a failed read of the course.
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:49"
+  - id: overview-never-for-a-refusal
+    never: "state == 'overview' and (answer == 'refused' or answer == 'elsewhere' or answer == 'down')"
+    say: A course the reader may not read, a course of another köşk and a course nothing could be read of are never drawn as an overview.
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:65"
+  - id: retry-box-only-when-down
+    never: "state == 'loadFailed' and answer != 'down'"
+    say: The box "Bölüm yüklenemedi" is drawn only when the numbers, the köşk or the course could not be read at all.
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:53"
+  - id: a-decision-needs-a-waiting-application
+    never: "state == 'handed_over.decide_applications' and applications != 'some'"
+    say: Onayla and Reddet exist only on a row of the waiting applications.
+    source: apps/nizam/features/kosks/components/course-overview.tsx:211

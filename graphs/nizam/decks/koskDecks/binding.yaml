@@ -1,0 +1,117 @@
+# nizam.decks.koskDecks on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the köşk nazımı (`koskNazim`, the nazım of both seeded köşks)
+# signed in through Keycloak's real form, on the page of the seed's SECOND köşk ("Kubbealtı Köşkü", `{seed.kosk2}`), which the seed leaves with no deck and no proposal.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/decks/koskDecks \
+#     --bind graphs/nizam/decks/koskDecks/binding.yaml --cover transitions --out <dir>
+# The other two readings are in the files beside this one, each its own binding because it adds a state's `before` and a scenario that adds no transition to the main file's cannot
+# be walked from it: binding.answered.yaml (someone answered the proposal, or hid the deck, first) and binding.gone.yaml (the proposal is deleted). The shared locators, events,
+# addresses and database checks are in locators.binding.yaml.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end. Every locator, every account fact and every expectation here is from the code and unverified. The file loads
+# (`replay <dir> --bind <this file> --emit-spec --out <dir>` writes a spec and walks nothing).
+#
+# Data. The seed makes no deck and no proposal, so each scenario makes its own with ./deck-data.mjs, as the people themselves through tedrisat's API, and takes them away in
+# `teardown` (idempotent: `make` and `remove` both begin by removing what a walk that died left). A scenario that needs a proposal first opens the walk's own course
+# `Deneme dersi kdecks` in `{seed.kosk2}` with the seeded müderris as its hoca (helpers/course.mjs: the proposal route asks for a müderris seat on a course of the köşk) and
+# removes it in `teardown`. The ids are in graphs/.local/kosk-decks.json, read here as {kd.*}. The seed's decks and proposals are never touched: nothing is accepted, refused or
+# hidden but what ./deck-data.mjs made, and the first köşk is never opened. What a walk cannot undo: audit rows (kosk.create is not involved; a refusal and the nazım's reads
+# write theirs) and the notification a refusal sends the hoca, which `remove` deletes by SQL (no route removes one).
+# `expect` on `make` names the totals the page will draw ("decks=1 proposals=2"): a stack that holds another deck or proposal of that köşk fails the setup with a plain message
+# instead of a page the walk cannot read.
+#
+# Scenarios, one for each `given` that `--cover transitions` starts from (no two share one):
+#   both            the main story: two proposals and a deck. "Kabul et" on the first, the name emptied and refused, a name typed, "Hadis", "Desteyi aç"; "Reddet" on the other with a
+#                   reason; "Gizle" on a deck; the köşk menu's "Arşiv". `--cover transitions` also takes the cancel of both dialogs, the form's own exits and "Kartları düzenle"
+#                   (which starts nizam.decks.legacyCards on the nazım's own deck with cards). e2e deck-review#6 (the counts, the table's row), #7 (Kabul et, the form filled in,
+#                   Desteyi aç, the proposal accepted), #8 (the empty name, then a deck from nothing) and #9 (Reddet needs a reason, Gizle, the archive).
+#   decksOnly       a deck and no proposal: the block "Hoca önerileri" is not drawn; a deck from nothing makes two.
+#   proposalsOnly   one proposal and no deck: "Bu köşkün henüz destesi yok."; accepting or refusing it empties the block; opening makes the first deck.
+#   nothing         neither: the empty table and no block; a deck from nothing makes the first.
+#   refused         a talebe with no role opens the page: the /kosks layout refuses before the page reads ("Bu bölüm için izniniz yok", e2e deck-review#10, which
+#                   nizam.shell.noAccessAndNotFound carries). Nothing is made.
+# `--cover transitions` walks the shortest scenario per transition, so a transition that two of these reach is walked once.
+#
+# Not bound, so the replay cannot reach them (reported): `world: unreadable` and `world: formFails` and every state after them (listUnreadable, formUnreadable: no condition of the stack
+# makes the API fail a valid read, and the nazım's own reads cannot be made to fail from the walk); `answer: forbidden` and `answer: failed` of the three writes (FAIL.forbidden and
+# FAIL.failed of submitting, rejecting and hiding: the stack cannot take the nazım's seat away mid-walk, nor make the server fail a valid write); the answered-meanwhile reading of the
+# form's write (binding.answered.yaml binds it, with a doubt said there); `sent_to_sign_in`, which this flow does not draw (the session ending is realm.auth.sessionEnded).
+# `states.<exit>.url` is checked by address; `left` goes to about:blank.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.decks.koskDecks
+
+scenarios:
+  both:
+    given: { world: both, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/desteler'
+    vars: { newName: 'Deneme destesi koskDecks sıfırdan', reason: 'Bu konu zaten bir destede var.' }
+    setup:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, make, kdecks, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi kdecks"'
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, make, both]
+        expect: 'decks=1 proposals=2'
+    teardown:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, kdecks]
+        expect: 'course remove kdecks'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from decks where kosk_id = '{seed.kosk2}') + (select count(*) from deck_proposals where kosk_id = '{seed.kosk2}') + (select count(*) from courses where title like 'Deneme dersi kdecks%') as n"]
+        expect: '"n":0'
+
+  decksOnly:
+    given: { world: decksOnly, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/desteler'
+    vars: { newName: 'Deneme destesi koskDecks sıfırdan', reason: 'Bu konu zaten bir destede var.' }
+    setup:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, make, decksOnly]
+        expect: 'decks=1 proposals=0'
+    teardown:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from decks where kosk_id = '{seed.kosk2}') + (select count(*) from deck_proposals where kosk_id = '{seed.kosk2}') as n"]
+        expect: '"n":0'
+
+  proposalsOnly:
+    given: { world: proposalsOnly, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/desteler'
+    vars: { newName: 'Deneme destesi koskDecks sıfırdan', reason: 'Bu konu zaten bir destede var.' }
+    setup:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, make, kdecks, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi kdecks"'
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, make, proposalsOnly]
+        expect: 'decks=0 proposals=1'
+    teardown:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/course.mjs, remove, kdecks]
+        expect: 'course remove kdecks'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from decks where kosk_id = '{seed.kosk2}') + (select count(*) from deck_proposals where kosk_id = '{seed.kosk2}') + (select count(*) from courses where title like 'Deneme dersi kdecks%') as n"]
+        expect: '"n":0'
+
+  nothing:
+    given: { world: nothing, answer: done }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/desteler'
+    vars: { newName: 'Deneme destesi koskDecks sıfırdan', reason: 'Bu konu zaten bir destede var.' }
+    setup:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, make, nothing]
+        expect: 'decks=0 proposals=0'
+    teardown:
+      - run: [node, ../nizam/decks/koskDecks/deck-data.mjs, remove]
+        expect: 'deck-data remove'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from decks where kosk_id = '{seed.kosk2}') + (select count(*) from deck_proposals where kosk_id = '{seed.kosk2}') as n"]
+        expect: '"n":0'
+
+  # the talebe account has no role: the /kosks layout sends forbidden() before the page reads anything. Nothing is made, so there is nothing to remove.
+  refused:
+    given: { world: refused, answer: done }
+    as: talebe
+    open: '{nizam}/kosks/{seed.kosk2}/desteler'
+    vars: { newName: 'Deneme destesi koskDecks sıfırdan', reason: 'Bu konu zaten bir destede var.' }

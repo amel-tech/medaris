@@ -1,0 +1,51 @@
+# nizam.moderation.reviewDeckPublication, answered meanwhile: another reviewer settles the requests after the page was read, so the decision the başnazım
+# takes is answered 409 DECK_REQUEST_NOT_PENDING, the row leaves and the toast "Karar kaydedilemedi: Bu istek az önce karara bağlanmış ya da geri çekilmiş."
+# says why (FAIL.answered of "Yayımla" and of "Reddet"); and the owner takes a published deck back before the başnazım does, so "Yayından kaldır" is answered
+# 409 DECK_NOT_PUBLISHED, the row leaves the answered list and the toast says "Bu deste artık yayında değil." (FAIL.answered of the take-back).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewDeckPublication \
+#     --bind graphs/nizam/moderation/reviewDeckPublication/binding.answered.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# How the answer is made: no node sends it and the model has no event for it (the page is stale before the person presses), so a state's `before` does what
+# the other person would do when the walk reaches the state the person decides from: `waitingDetail` (the request is on the page, its cards read) and
+# `rejectFormReady` (the dialog is open with a reason written) have the başnazım APPROVE every deck of the tag that still waits, through the nizam route,
+# as another reviewer would; `unpublishFormReady` has each owner take their published decks back to private (DELETE /flashcard/decks/{id}/publish-request).
+# Approving, not taking back, is the way to answer here: an approved deck can still be read by the page's next selection (its cards answer 200), while a
+# withdrawn one answers 404 and the walk would meet `sample: unreadable`. The helper ignores what was answered already, so a second visit of a state
+# answers 409 and does not fail the step. The status the replay compares on FAIL.answered is the server action's own 200 (an engine limit: locators.binding.yaml).
+# Data: ./review-data.mjs makes P (published, so the answered tab has a row before the walk), then A, B and C (waiting) as tag nra; `down` removes them
+# with the notices the answers sent applicantD.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.reviewDeckPublication
+
+data:
+  made: { json: ../.local/made/nra.json }
+
+states:
+  waitingDetail:
+    before:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, elsewhere, nra, answered]
+        expect: 'review-data elsewhere answered'
+  rejectFormReady:
+    before:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, elsewhere, nra, answered]
+        expect: 'review-data elsewhere answered'
+  unpublishFormReady:
+    before:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, elsewhere, nra, withdrawn]
+        expect: 'review-data elsewhere withdrawn'
+
+scenarios:
+  answered:
+    given: { read: ok, link: waiting, requested: true, reviewer: chief, decided: published, sample: cards, answer: answered }
+    as: systemAdmin
+    open: '{nizam}/talepler/deste-yayin-istekleri?secili={made.a.id}'
+    vars: { reason: 'Kartlarda kaynak gösterilmemiş.' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, up, nra, 'p:published:applicantD', 'a:pending:applicantD', 'b:pending:applicantD', 'c:pending:applicantD']
+        expect: '"tag":"nra"'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewDeckPublication/review-data.mjs, down, nra]
+        expect: 'review-data down'

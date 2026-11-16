@@ -1,0 +1,212 @@
+# realm.auth.register on the local stack: tedris-web :4000, Keycloak :8080 (realm medaris, the Medaris theme), Mailpit :8025.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay \
+#     graphs/realm/auth/register --bind graphs/realm/auth/register/binding.yaml --out <dir> [--to <state>] [--absent]
+#
+# The walk makes a real Keycloak user (and, once the home page has read it, tedrisat's `users` and `user_profiles` rows) and
+# reads the mail Keycloak sends. Nobody signs in first (`signIn: []`): the visitor registers. Everything the walk makes is made
+# and removed by ./walk-user.mjs, run by `setup` and `teardown`:
+#   prepare  deletes every earlier copy of the person (Keycloak user by user name and by address, tedrisat's rows, Mailpit's mail
+#            to the address), so a walk that crashed leaves nothing for the next to meet, and writes the walk's password,
+#            made at random, in graphs/.local/register-walk.env (git-ignored, mode 600). No password is in this file or in argv;
+#            the binding reads it as the data source `walk`, a dotenv, so the replay masks it and the mailed link in its reports.
+#   remove   the same removal, after the walk.
+# The helper signs in to Keycloak's admin API with E2E_KEYCLOAK_ADMIN_USER and E2E_KEYCLOAK_ADMIN_PASSWORD, which it reads from
+# graphs/.local/accounts.env itself (or the environment): never from argv. It reads the mail through helpers/mail.mjs.
+#
+# What this binding walks, and what it does not:
+#   registered      the main story: the empty press with its six reasons, the filled form, the account, the verification page, the
+#                   mail (Mailpit), the link opened in the same browser, tedris's home page. Walked.
+#   userNameTaken   the form with the seed talebe's user name: Keycloak answers under Kullanıcı adı. Creates nothing. Walked with --to.
+#   otherDevice     the mail's link opened in another browser (a second browser context with no session): the two info pages, then
+#                   tedris's front door as a visitor. Walked with --to.
+#   pendingEmail    the seed's PENDING_EMAIL account signs in on Keycloak's form and is held on the verification page (the way in from
+#                   realm.auth.signIn's handed_over.verify_email). The account is armed again by helpers/rearm.mjs email
+#                   (the profileUpdate writer's helper) before and after, and Mailpit's mail to it is cleared. Walked with --to verifyEmailPage.
+#   Not walked, and not given a scenario: entry signInForm (the link on Keycloak's sign-in form: it needs the sign-in flow's own walk
+#   as its way in), session usable, answer emailTaken and expired, cooldown over (a resend after 30 s needs a 30 s wait), the
+#   mismatched passwords. Their events are bound below where the code is plain (CHANGE_*, FILL_MISMATCH, SIGN_IN), and not walked.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: realm.auth.register
+
+# Nobody signs in first. `visitor` is the second browser of otherDevice: a person with no session (the same as landing's visitor).
+signIn: []
+accounts:
+  visitor: {}
+
+data:
+  walk: { dotenv: ../.local/register-walk.env }
+
+scenarios:
+  # The main story. The names are invented; the user name and the address are the walk's own and no seed account has them.
+  registered:
+    given: { entry: registerPage, session: none, answer: created, cooldown: running, device: sameBrowser }
+    open: '{tedris}/auth/register'
+    vars: { firstName: Defne, lastName: Kayıtlı, username: defne.kayitli, address: defne.kayitli@medaris.test }
+    setup:
+      - run: [node, ../realm/auth/register/walk-user.mjs, prepare, '{username}', '{address}']
+        expect: prepared
+    teardown:
+      - run: [node, ../realm/auth/register/walk-user.mjs, remove, '{username}', '{address}']
+        expect: removed
+
+  # The user name of the seed's talebe (Keycloak's user name of E2E_TALEBE_EMAIL is the part before the @). Nothing is made.
+  userNameTaken:
+    given: { entry: registerPage, session: none, answer: userNameTaken, cooldown: running, device: sameBrowser }
+    open: '{tedris}/auth/register'
+    vars: { firstName: Defne, lastName: Kayıtlı, username: e2e-talebe, address: defne.kayitli@medaris.test, ownUsername: defne.kayitli }
+    setup:
+      - run: [node, ../realm/auth/register/walk-user.mjs, prepare, defne.kayitli, '{address}']
+        expect: prepared
+    teardown:
+      - run: [node, ../realm/auth/register/walk-user.mjs, remove, defne.kayitli, '{address}']
+        expect: removed
+
+  # The same registration, then the link in a second browser.
+  otherDevice:
+    given: { entry: registerPage, session: none, answer: created, cooldown: running, device: otherBrowser }
+    open: '{tedris}/auth/register'
+    vars: { firstName: Defne, lastName: Kayıtlı, username: defne.kayitli, address: defne.kayitli@medaris.test }
+    setup:
+      - run: [node, ../realm/auth/register/walk-user.mjs, prepare, '{username}', '{address}']
+        expect: prepared
+    teardown:
+      - run: [node, ../realm/auth/register/walk-user.mjs, remove, '{username}', '{address}']
+        expect: removed
+
+  # The seed's own pending account (E2E_PENDING_EMAIL_*): its sign-in is the walk's start, typed by `states.signingIn.before`, because
+  # the walk begins at tedris's /auth/signin (open) and the base's signIn would wait for a page this account never reaches. The walk
+  # stops on the verification page and never opens the mail's link, so the account stays unverified; `rearm.mjs email` is run before
+  # and after all the same, and says `already armed` when nothing changed.
+  pendingEmail:
+    given: { entry: signInUnverified, session: none, answer: created, cooldown: running, device: sameBrowser }
+    as: pendingEmail
+    signIn: false
+    open: '{tedris}/auth/signin'
+    # the mailbox of the seeded account is the one cleared; `username` is read only by the effects of a registration (`verificationMailed`,
+    # `emailVerified`), which this scenario never reaches, and the replay wants every placeholder an effect holds to be bound
+    vars: { address: '{secret.E2E_PENDING_EMAIL_EMAIL}', username: '{secret.E2E_PENDING_EMAIL_EMAIL}' }
+    setup:
+      - run: [node, helpers/rearm.mjs, email, PENDING_EMAIL]
+        expect: 'rearm PENDING_EMAIL email:'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+        expect: clear
+    teardown:
+      - run: [node, helpers/rearm.mjs, email, PENDING_EMAIL]
+        expect: 'rearm PENDING_EMAIL email:'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+        expect: clear
+
+# The person types with a keyboard and a mouse; each press of a node is the graph's own (SUBMIT, RESEND, CONFIRM, CONTINUE).
+# FILL types every field, picks Kadın and ticks the privacy box: from a form with nothing chosen, as it is when the walk fills it
+# (from a refused form the choice and the box are kept, which is why CHANGE_* touch neither).
+events:
+  FILL:
+    - fill: { css: '#firstName', value: '{firstName}' }
+    - fill: { css: '#lastName', value: '{lastName}' }
+    - click: { role: radio, name: Kadın }
+    - fill: { css: '#username', value: '{username}' }
+    - fill: { css: '#email', value: '{address}' }
+    - fill: { css: '#password', value: '{walk.WALK_PASSWORD}' }
+    - fill: { css: '#password-confirm', value: '{walk.WALK_PASSWORD}' }
+    - click: { role: checkbox, name: 'Aydınlatma Metni’ni okudum.' }
+  # not walked
+  FILL_MISMATCH:
+    - fill: { css: '#firstName', value: '{firstName}' }
+    - fill: { css: '#lastName', value: '{lastName}' }
+    - click: { role: radio, name: Kadın }
+    - fill: { css: '#username', value: '{username}' }
+    - fill: { css: '#email', value: '{address}' }
+    - fill: { css: '#password', value: '{walk.WALK_PASSWORD}' }
+    - fill: { css: '#password-confirm', value: '{walk.WALK_PASSWORD}x' }
+    - click: { role: checkbox, name: 'Aydınlatma Metni’ni okudum.' }
+  # not walked: the seed's talebe has the first name; the walk's own is the second
+  CHANGE_USER_NAME:
+    - fill: { css: '#username', value: '{ownUsername}' }
+    - fill: { css: '#password', value: '{walk.WALK_PASSWORD}' }
+    - fill: { css: '#password-confirm', value: '{walk.WALK_PASSWORD}' }
+  # The mail is read, and its button's address is written into the walk file; the page after this step opens it (the state
+  # finishingRoundTrip, below) in the browser that registered, or confirmPage in the second browser.
+  OPEN_MAIL_LINK:
+    - run: [node, ../realm/auth/register/walk-user.mjs, link, '{address}']
+      expect: link ready
+  # closing the page, as the navigation replay does it (not walked)
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  # the app's calls, checked by their answers (a 303 is not an error). `submitting` has none: its post is a native form post, and
+  # a held navigation stalls every read of the page (see realm.auth.signIn's binding).
+  appRegisterPage: { call: '{tedris}/api/auth/session' }
+  startingRoundTrip: { call: '{tedris}/api/auth/signin**' }
+  finishingRoundTrip:
+    call: '{tedris}/api/auth/callback/keycloak**'
+    # the mail's link, in the browser that registered: Keycloak verifies the address and sends the browser to the callback
+    before: [{ goto: '{walk.WALK_LINK}' }]
+  # the seed's pending account types its name and password on Keycloak's own sign-in form (realm.auth.signIn draws it)
+  signingIn:
+    before:
+      - waitUrl: '{keycloak}/realms/medaris/**'
+      - fill: { css: '#username', value: '{address}' }
+      - fill: { css: '#password', value: '{password}' }
+      - click: { css: 'button[type=submit]' }
+  # Keycloak's pages
+  registerForm: { url: '{keycloak}/realms/medaris/**' }
+  formWithReasons: { url: '{keycloak}/realms/medaris/**' }
+  formFilled: { url: '{keycloak}/realms/medaris/**' }
+  formMismatched: { url: '{keycloak}/realms/medaris/**' }
+  formWithMismatch: { url: '{keycloak}/realms/medaris/**' }
+  userNameRefused: { url: '{keycloak}/realms/medaris/login-actions/registration**' }
+  emailRefused: { url: '{keycloak}/realms/medaris/login-actions/registration**' }
+  verifyEmailPage: { url: '{keycloak}/realms/medaris/login-actions/required-action**' }
+  resendWait: { url: '{keycloak}/realms/medaris/login-actions/required-action**' }
+  # the second browser: the link, then the two info pages
+  confirmPage:
+    as: visitor
+    before: [{ goto: '{walk.WALK_LINK}' }]
+    url: '{keycloak}/realms/medaris/login-actions/action-token**'
+  verifiedPage:
+    as: visitor
+    url: '{keycloak}/realms/medaris/login-actions/action-token**'
+  # where the walks end
+  home_opened.registered: { url: '{tedris}/home' }
+  home_opened.already_signed_in: { url: '{tedris}/home' }
+  home_opened.signed_out:
+    as: visitor
+    url: '{tedris}/home'
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/login-actions/authenticate**' }
+  left: { url: 'about:blank' }
+
+# What the steps leave outside the page. They run again until they pass or the time is up.
+effects:
+  # Keycloak made the account, with the chosen gender and the ticked privacy notice (giris.e2e#10 asserts the post's body; here the
+  # account is read back), its address not verified yet, and sent the verification mail (email.e2e#1, in Turkish)
+  verificationMailed:
+    - run: [node, ../realm/auth/register/walk-user.mjs, state, '{username}']
+      expect: 'user exists emailVerified=false gender=FEMALE privacyNoticeRead=yes'
+    - run: [node, helpers/mail.mjs, search, 'to:{address}', --wait, '20']
+      expect: 'E-posta adresinizi doğrulayın'
+  emailVerified:
+    - run: [node, ../realm/auth/register/walk-user.mjs, state, '{username}']
+      expect: 'emailVerified=true'
+  # the account is still not verified, and its sign-in sent the verification mail
+  mailedBySignIn:
+    - run: [node, helpers/rearm.mjs, status, PENDING_EMAIL]
+      expect: 'emailVerified=false'
+    - run: [node, helpers/mail.mjs, search, 'to:{address}', --wait, '20']
+      expect: 'E-posta adresinizi doğrulayın'
+
+nodes:
+  # six reasons say the same: Ad, Soyad, Kullanıcı adı, E-posta, Şifre, Şifre (tekrar)
+  requiredReasons: { count: 6 }
+  # Base UI's radio is a span with role radio and aria-checked; its words are a label beside it
+  genderFemale: { role: radio, name: Kadın }
+  genderMale: { role: radio, name: Erkek }
+  # the list item holds the rule's words, and ", karşılandı" after them once it is met
+  ruleLength: { role: listitem, hasText: '/En az \d+ karakter/' }
+  ruleNotEmail: { role: listitem, hasText: E-posta adresinden farklı }
+  ruleNotUsername: { role: listitem, hasText: Kullanıcı adından farklı }
+  # the home page this flow ends on has a footer link of the same name (tedris.shell.home draws it): found only in the form
+  privacyLink: { role: link, name: Aydınlatma Metni, within: { css: form } }
+  # a status that holds the message; there is no other status on the page
+  verifyNotice: { role: status, hasText: Hesabınızı etkinleştirmek için e-posta adresinizi doğrulamanız gerekiyor }

@@ -1,0 +1,370 @@
+# Köşk nazımları: the list at /kosks/<id>/ayarlar/nazimlar and the başnazım's "Köşk nazımı ekle" dialog, read from the code of PR #394 on
+# 16 Nov 2026 (apps/nizam/app/kosks/[id]/ayarlar/nazimlar/page.tsx, features/kosks/components/{nazims-view,add-nazim-dialog,nazim-picker}.tsx,
+# features/kosks/{admin-actions,admin-present,admin-reads}.ts, libs/utils/src/end-instant.ts; the API's GET /kosks/:id/nazims, POST
+# /kosks/:id/nazims and GET /users/lookup in apps/tedrisat/src/kosk/kosk-admin.{controller,service,repository}.ts). Nothing was walked in a
+# browser: every behaviour is "from the code" until the walk phase. The only looks at the running stack were read-only GETs through
+# helpers/api.mjs: GET /kosks/<seeded>/nazims as the başnazım (one row, granted by the başnazım, grantedByRole SYSTEM_ADMIN, endsAt null),
+# the same GET as the seeded Medaris nazımı (200: platform.kosk_edit reads it) and as a spare talebe with no part in the köşk (403
+# AUTHZ_FORBIDDEN, context.permission [kosk.manage, platform.kosk_edit]), GET /me/permissions of the seeded Medaris nazımı (five codes,
+# platform.kosk_nazim_manage not among them) and GET /me of five accounts (their names). Nothing was written to the stack.
+#
+# What the page does today:
+#   - three people open it: the başnazım (reads, and gets "Köşk nazımı ekle"), a nazım of the köşk (reads, "Siz" beside their own row, and a
+#     neutral note saying the list is the Medaris yönetimi's to change) and a Medaris nazımı who holds platform.kosk_edit (reads the same
+#     page, the same note). Anybody else, including a nazım of another köşk, is refused by tedrisat (403) and the page calls forbidden():
+#     "Bu bölüm için izniniz yok" (nizam.shell.noAccessAndNotFound draws that face, as an exit here).
+#   - "Köşk nazımı ekle" is drawn to the başnazım alone (`chief = me.roles.systemAdmin`, nazims-view.tsx:145, page.tsx:48) although the API
+#     admits a Medaris nazımı who holds platform.kosk_nazim_manage (kosk-admin.service.ts:117). That is KNZ-2.
+#   - the dialog finds each person by their exact e-mail address (the realm's directory, every search audited), keeps a list of the people
+#     found (the API takes one to ten), and takes an optional end of the post. "Ekle" is natively disabled until somebody is chosen and
+#     the end is not in the past; nothing says what is missing (F-W3-1: the picker's "En az bir köşk nazımı seçin." can never show).
+#   - the server writes all the posts in one transaction (all or nothing: one person who is a nazım already refuses the whole call with 409
+#     KOSK_NAZIM_EXISTS), one audit row `kosk.nazim.add` per person, and makes a passive köşk active again (passive_since and
+#     passive_reason cleared, kosk-admin.repository.ts:407). The page says nothing of that: it never shows whether a köşk is passive, and
+#     the toast names the people only (KNZ-1, the family of the ledger's inactive-scope-accepts-new-scope).
+#
+# Findings (each is in ui.yaml `rules` and named again in the description of the state it touches): F-W3-1, F-W3-14 / F-X-14, F-W2-3,
+# F-UI-W3-1, F-UI-W1-1, F-W3-9 and F-W3-open-3 (inventory ids), and six new ones, KNZ-1 to KNZ-6 (passive köşk reactivated silently; the page
+# and the API disagree on who may add; error toasts pile up; no cap of ten in the picker; a person who is a nazım already is told only after
+# "Ekle"; the tab's count has no space).
+#
+# e2e checks it takes over (apps/nizam/e2e/kosks.e2e.ts): #10, #11 (first half), #12, #13, #14; see needs.yaml. The seed of that file
+# (fixture köşks inserted by SQL, "25 Ağustos 2026") is replaced by a köşk of the walk's own, made through the API in `setup`.
+schema: delurio-graph/0
+kind: flow
+id: nizam.kosks.nazims
+status: captured
+domain: medaris.api
+ui: nizam.kosks.nazims
+title: Read and add a köşk's nazımları
+summary: >-
+  The page "Köşk nazımları" of one köşk lists who runs it: each nazım, who gave the post, on which day and until when ("Süresiz" or a
+  day). The başnazım also has "Köşk nazımı ekle": a dialog finds each person by their exact e-mail address, one or more, and takes an
+  optional end date and time; "Ekle" adds them all at once, a toast says so and the list has their rows. An end in the past is refused
+  under its field and "Ekle" stays off; a person who is a nazım already refuses the whole addition in a toast with the dialog still open.
+  A köşk that was taken out of service (passive, no nazım, an empty list) is active again as soon as somebody is added, without the page
+  saying so. A nazım of the köşk, and a Medaris nazımı who holds platform.kosk_edit, read the same list with no button and a note that the
+  Medaris yönetimi appoints; a nazım of another köşk meets "Bu bölüm için izniniz yok".
+
+scope:
+  shows: >-
+    the list page (rows, the empty line, the read-only note, the aside, the tabs and breadcrumb), the "Köşk nazımı ekle" dialog with its
+    search, chosen people and end field, the save and its refusals, the toasts, and the refusal the stranger meets
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the köşk's other settings pages, which the tabs and the breadcrumb open: Genel is nizam.kosks.editAndHide, Barındırma hakları nizam.hosting.grantAndRevoke, Köşkler nizam.kosks.browse and the köşk's own page nizam.kosks.manage; each is an exit here, a plain link, so no flow is started"
+    - "the same dialog opened from the management view /kosks/<id> (nizam.kosks.manage; there the button is drawn to a Medaris nazımı who holds only platform.kosk_edit, whose click ends in an error toast, F-W3-4)"
+    - "the refusal screen itself, and the same screen for a köşk that is not there or for an id that is no uuid (arrival strangerKosk and missingKosk): nizam.shell.noAccessAndNotFound; the second address of kosks.e2e.ts#11 (/kosks/<id>/ayarlar) is that page's, nizam.kosks.editAndHide"
+    - "a Medaris nazımı who holds platform.kosk_nazim_manage: the API lets them add (and a Medaris nazımı cannot seat themselves, SELF_GRANT_REFUSED), the page gives them no button (KNZ-2); the seeded Medaris nazımı does not hold the code, so the walk reads only"
+    - "the başnazım adding themselves (SELF_GRANT_REFUSED is not asked of SYSTEM_ADMIN, self-grant.guard.ts) and a köşk whose posts end by themselves: nothing sweeps passive_since when the last post lapses (the dialog's help says the köşk 'pasifleşir'), see KNZ-1"
+    - "an end typed half way ('Bitiş tarihini ve saatini tamamlayın.'): a datetime-local field cannot be left half typed by the replay's fill (end-instant.ts:98, add-nazim-dialog.tsx:75)"
+    - "an e-mail that is not an address, typed and searched: isEmailLike is false, nothing is searched and nothing is said"
+    - "a session that has ended: the page's reads, the lookup and the save send the person to sign in (realm.auth.signIn) instead of drawing a message"
+    - "the köşk's name when the köşk read fails but the list reads ('Bu köşkü'), the tab counts, the sidebar, the köşk picker and the phone layout (nizam.shell.menuPerPersona)"
+    - "the other kinds of grantor under 'Atayan' (a köşk nazımı, a Medaris nazımı): only the başnazım gives a post through this page or through POST /kosks"
+
+decisions:
+  D1:
+    question: >-
+      Should the page say that a köşk is passive, and that adding a nazım makes it active again? Today the list of a passive köşk is the
+      empty line "Bu köşkün köşk nazımı yok.", the dialog's help speaks only of the end of a post, and the toast names the people added.
+      The başnazım passivated the köşk with a confirmation that spelt out its courses and talebe; reopening it all needs one e-mail
+      address and no confirmation (KNZ-1).
+    recommend: >-
+      Have GET /kosks/:id/nazims (or the köşk read) say the köşk's status, show "Bu köşk pasif" above the empty line and in the dialog,
+      and let the toast say "{köşk} yeniden etkin" when it was.
+    affects: [asking, listed]
+  D2:
+    question: >-
+      Who gets "Köşk nazımı ekle" on this page: the başnazım alone, or whoever holds platform.kosk_nazim_manage? The API asks the code
+      (kosk-admin.service.ts:117) and admits both; this page and the köşk's management view (F-W3-4) decide differently from each other.
+    recommend: >-
+      Give the button by the permission the API asks (the page already reads GET /me/permissions elsewhere) and reword the read-only note
+      for a Medaris nazımı, who is the Medaris yönetimi (KNZ-2).
+    affects: [listed]
+
+context:
+  viewer:
+    values: [chief, chiefPassive, nazim, medaris, stranger]
+    initial: any
+    say:
+      chief: "the başnazım opens the page of a köşk that has its nazım"
+      chiefPassive: "the başnazım opens the page of a köşk that was taken out of service: it has no nazım now and the list is empty"
+      nazim: "a nazım of this köşk opens it"
+      medaris: "a Medaris nazımı who holds platform.kosk_edit opens it"
+      stranger: "a nazım of another köşk opens it: tedrisat refuses the read"
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "the nazım list reads"
+      failed: "the nazım list does not read for another reason than a refusal (the API does not answer): the page says so in an alert"
+  lookup:
+    values: [found, again, notFound, down]
+    initial: any
+    say:
+      found: "the realm has an account with the address typed"
+      again: "the address typed is the one of a person already chosen: found, and not added a second time"
+      notFound: "the realm has no account with that address"
+      down: "the directory does not answer"
+  answer:
+    values: [added, exists, unknownAccount, endPassed, gone, forbidden, failed]
+    initial: any
+    say:
+      added: "the server adds every person chosen"
+      exists: "one of the people chosen is a nazım of the köşk already (409 KOSK_NAZIM_EXISTS): nothing is written"
+      unknownAccount: "a chosen account is in neither the users table nor the directory by the time of the save (404 KOSK_NAZIM_UNKNOWN_ACCOUNT)"
+      endPassed: "the end typed has passed by the time the server reads it (400 GRANT_EXPIRY_INVALID)"
+      gone: "the köşk is deleted meanwhile (404 KOSK_NOT_FOUND)"
+      forbidden: "the caller may not add nazımlar (403 AUTHZ_FORBIDDEN)"
+      failed: "anything else: more than ten people (400 VALIDATION_ERROR), the directory down at the save, the server not answering"
+  list: { values: [start, added, addedEnd], initial: start }
+  chosen: { values: [none, one, many], initial: none }
+  note: { values: [none, notFound, down, already], initial: none }
+  end: { values: [none, future, past], initial: none }
+  heard: { values: [true, false], initial: false } # the picker's hidden <output> has said "X seçildi": it keeps saying it after X is removed
+  toast: { values: [none, saved, exists, unknownAccount, endPassed, gone, forbidden, failed], initial: none }
+  reopened: { values: [true, false], initial: false } # the server made a passive köşk active again; no screen says so
+
+guards:
+  # `chief = me.roles.systemAdmin` (page.tsx:48): the one who gets the button and the dialog (nazims-view.tsx:145,215)
+  chief: "viewer in ['chief', 'chiefPassive']"
+  # `ready = people.length > 0 && problem === null` (add-nazim-dialog.tsx:70); "Ekle" is `disabled={!ready}` (:124)
+  ready: "chosen != 'none' and end != 'past'"
+  pickerError: "chosen == 'none' and note != 'none'"
+
+effects:
+  reset: { set: { chosen: none, note: none, end: none, heard: false, toast: none } } # the dialog's opening effect: a new addition starts from a clean form (add-nazim-dialog.tsx:53-60)
+  chose: { set: { chosen: one, note: none, heard: true } }
+  choseAnother: { set: { chosen: many, note: none, heard: true } }
+  foundAgain: { set: { note: already } }
+  nobodyFound: { set: { note: notFound } }
+  directoryDown: { set: { note: down } }
+  removedLast: { set: { chosen: none, note: none } }
+  endFuture: { set: { end: future } }
+  endPast: { set: { end: past } }
+  addedNoEnd: { set: { list: added, toast: saved } }
+  addedWithEnd: { set: { list: addedEnd, toast: saved } }
+  reopen: { set: { reopened: true } }
+  existsToast: { set: { toast: exists } }
+  unknownAccountToast: { set: { toast: unknownAccount } }
+  endPassedToast: { set: { toast: endPassed, end: past } } # the dialog draws again after the save, with the clock moved on: the field is wrong now
+  goneToast: { set: { toast: gone } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  reading:
+    from: listKoskNazims
+    forbidden: [AUTHZ_FORBIDDEN]
+    unavailable: []
+  looking:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN]
+  adding:
+    from: addKoskNazims
+    exists: [KOSK_NAZIM_EXISTS]
+    unknownAccount: [KOSK_NAZIM_UNKNOWN_ACCOUNT]
+    endPassed: [GRANT_EXPIRY_INVALID]
+    gone: [KOSK_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, KEYCLOAK_ADMIN_UNAVAILABLE, SELF_GRANT_REFUSED, HTTP_400]
+
+# The main story (kosks.e2e.ts#12): the başnazım opens the list, presses "Köşk nazımı ekle", finds a person by e-mail address, adds them.
+main:
+  given: { viewer: chief, read: ok, lookup: found, answer: added }
+  events: [DONE, OPEN_ADD, SEARCH, DONE, SUBMIT, DONE]
+
+initial: opening
+states:
+  opening:
+    title: Ask for the address
+    description: >-
+      The request goes through proxy.ts (a signed-out one is sent to sign in, see outOfView) and then the page, which asks tedrisat for
+      the köşk, the nazım list, the hosting rights (only for their count) and the signed-in person, all four at once
+      (nazimlar/page.tsx:28-33). Nothing is shown in this state.
+    source: apps/nizam/app/kosks/[id]/ayarlar/nazimlar/page.tsx:27
+    always:
+      - { target: reading, say: "the page reads" }
+
+  reading:
+    title: Read the nazım list
+    description: >-
+      GET /kosks/:id/nazims asks kosk.manage or platform.kosk_edit on the köşk: the başnazım, a nazım of this köşk (a live post only: a
+      passive köşk has none) and a Medaris nazımı holding platform.kosk_edit pass. A 403 becomes forbidden() and a 404 notFound(); any
+      other failure is a null list, and the page still draws, with an alert in place of the table. The three other reads only feed the
+      chrome: the köşk's name (the heading's accusative, the caption, the dialog's eyebrow), the hosting rights' count and whether the
+      person is the başnazım (`chief`).
+    source: apps/nizam/features/kosks/admin-reads.ts:34
+    invoke: { action: listKoskNazims }
+    on:
+      DONE: { guard: "viewer != 'stranger' and read == 'ok'", target: listed, source: "apps/nizam/app/kosks/[id]/ayarlar/nazimlar/page.tsx:41", say: "the list reads and the page draws" }
+      FAIL.forbidden: { guard: "viewer == 'stranger'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'strangerKosk'" } }, source: "apps/nizam/app/kosks/[id]/ayarlar/nazimlar/page.tsx:36", say: "tedrisat answers 403 and the page calls forbidden(): the shell draws \"Bu bölüm için izniniz yok\" (nizam.shell.noAccessAndNotFound); a köşk that is not there reads the same" }
+      FAIL.unavailable: { guard: "viewer != 'stranger' and read == 'failed'", target: listFailed, source: apps/nizam/features/kosks/admin-reads.ts:46, say: "any other failure is a null list: the page draws, with an alert in place of the table" }
+
+  listed:
+    title: The köşk's nazımları
+    by: human
+    goal: true
+    description: >-
+      Under the shell, a breadcrumb ("Köşkler" / the köşk's name / "Köşk nazımları" for the başnazım, "Köşk ayarları" / "Köşk nazımları"
+      for anybody else), the heading "Köşk nazımları" with "{köşk, accusative} yöneten köşk nazımları.", the tabs Genel, Köşk nazımları
+      (current) and Barındırma hakları, the table (caption "{köşk} köşk nazımları"; columns Köşk nazımı, Atayan, Atanma, Süre; each row
+      the person, with "Siz" under their own name, the giver with their role, the day of the post, and "Süresiz" or the day it ends) and,
+      beside it, the card "Köşk nazımı bu köşkte" with six lines and a note. The başnazım has "Köşk nazımı ekle" beside the heading; a
+      nazım and a Medaris nazımı have a neutral note above the table instead, "Köşk nazımlarını Medaris yönetimi atar; bu listeyi buradan
+      değiştiremezsiniz.", which is wrong for a Medaris nazımı, who is the Medaris yönetimi (KNZ-2); and nobody has a remove or edit
+      button. The list of a passive köşk is the empty line "Bu köşkün köşk nazımı yok.", and nothing says the köşk is passive (KNZ-1).
+      After "Ekle" the new rows are here, with the toast "Köşk nazımı eklendi". The page sets no focus of its own (focus-not-set), the
+      tab's title is the same for every köşk (F-W3-9), and the tab "Köşk nazımları" reads "Köşk nazımları1" for a screen reader, the
+      count having no space before it (KNZ-6).
+    source: apps/nizam/features/kosks/components/nazims-view.tsx:123
+    on:
+      OPEN_ADD: { guard: chief, target: asking, effect: [reset], source: apps/nizam/features/kosks/components/nazims-view.tsx:148, say: "they press 'Köşk nazımı ekle': the dialog opens with the focus in the e-mail field, the button off" }
+      OPEN_SETTINGS: { target: settings_opened, starts: { flow: nizam.kosks.editAndHide }, source: apps/nizam/features/kosks/components/nazims-view.tsx:161, say: "the tab 'Genel' (the breadcrumb's 'Köşk ayarları' for a nazım) is a plain link to /kosks/<id>/ayarlar" }
+      OPEN_HOSTING: { target: hosting_opened, starts: { flow: nizam.hosting.grantAndRevoke }, source: apps/nizam/features/kosks/components/nazims-view.tsx:168, say: "the tab 'Barındırma hakları' is a plain link to /kosks/<id>/ayarlar/barindirma" }
+      OPEN_KOSKS: { guard: chief, target: kosks_opened, starts: { flow: nizam.kosks.browse, given: { viewer: "'chief'" } }, source: apps/nizam/features/kosks/components/nazims-view.tsx:133, say: "the başnazım's breadcrumb 'Köşkler' leads to /kosks" }
+      OPEN_KOSK: { guard: chief, target: kosk_opened, starts: { flow: nizam.kosks.manage, given: { reader: "'chief'" } }, source: apps/nizam/features/kosks/components/nazims-view.tsx:134, say: "the başnazım's breadcrumb gives the köşk's own name, a link to /kosks/<id>" }
+      NAVIGATE: { target: left, say: "they leave the page by the menu or the address" }
+
+  listFailed:
+    title: The list could not be read
+    by: human
+    description: >-
+      The page draws with its heading, breadcrumb, tabs (the nazımlar tab without a count) and card, and the table is replaced by an
+      error alert, "Köşk nazımları yüklenemedi" / "Köşk nazımları şu an okunamıyor. Biraz sonra yeniden deneyin." and "Yeniden dene",
+      which reads the page again. The başnazım's button stays and opens the dialog, as in `listed`; neither is drawn from this state. The
+      stack cannot make the API fail on request, so no binding drives this state.
+    source: apps/nizam/features/kosks/components/nazims-view.tsx:181
+    on:
+      RETRY: { target: reading, source: apps/nizam/features/kosks/components/nazims-view.tsx:183, say: "'Yeniden dene' refreshes the page: the same reads again" }
+      NAVIGATE: { target: left, say: "they leave the page by the menu, the tabs or the address" }
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the dialog the button is on or off. "Ekle" is natively disabled (`disabled={!ready}`) until
+      somebody is chosen and the end is not in the past; an end left empty is fine.
+    source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:70
+    always:
+      - { guard: ready, target: askingReady, say: "somebody is chosen and the end is right: the button is on" }
+      - { target: asking, say: "nobody is chosen, or the end is in the past: the button is off, and nothing says which (F-W3-1)" }
+
+  asking:
+    title: The Köşk nazımı ekle dialog, the button off
+    by: human
+    description: >-
+      A form dialog over the page; the scrim does not close it. The eyebrow names the köşk, the title is "Köşk nazımı ekle", and the
+      focus starts in the e-mail field. The intro says the person becomes the nazım at once; "* zorunlu alan"; the field "Köşk nazımı"
+      with its help ("her arama denetim kaydına yazılır"); the end field "Görev bitiş tarihi ve saati (isteğe bağlı)" with its help ("Süre
+      dolunca başka köşk nazımı yoksa köşk pasifleşir.": the dialog says nothing of a köşk that is passive already, KNZ-1) and the
+      footnote. "Ekle" is natively disabled and nothing says why (F-W3-1, F-X-3). The address is searched on Enter and also when the
+      field is left, which writes an audit row each time (F-W3-14). An end in the past is said under its field the moment it is typed, as
+      text with no live region (F-UI-W3-1), and "Ekle" stays off.
+    source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:109
+    on:
+      SEARCH: { guard: "chosen == 'none'", target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:59, say: "they type a person's e-mail address and press Enter, or leave the field" }
+      SEARCH_ANOTHER: { guard: "chosen != 'none'", target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:59, say: "they type another address: one or more people can be added in one go" }
+      REMOVE_NAZIM: { guard: "chosen == 'one'", target: settle, effect: [removedLast], source: apps/nizam/features/kosks/components/nazim-picker.tsx:173, say: "they remove the chosen person: nothing asks first and the focus is not moved" }
+      TYPE_FUTURE_END: { guard: "end != 'future'", target: settle, effect: [endFuture], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:160, say: "they type an end ahead" }
+      TYPE_PAST_END: { guard: "end != 'past'", target: settle, effect: [endPast], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:146, say: "they type an end in the past: 'Bitiş zamanı şu andan sonra olmalı.' appears under the field at once" }
+      CANCEL: { target: listed, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "Vazgeç, the close icon or Escape: the dialog closes and nothing is added; the focus goes back to 'Köşk nazımı ekle'" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  askingReady:
+    title: The Köşk nazımı ekle dialog, the button on
+    by: human
+    description: >-
+      The same dialog with "Ekle" on. Somebody is chosen and the end is empty or ahead; pressing it sends everybody chosen.
+    source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:124
+    on:
+      SEARCH_ANOTHER: { target: looking, source: apps/nizam/features/kosks/components/nazim-picker.tsx:59, say: "they look up another person" }
+      REMOVE_NAZIM: { guard: "chosen == 'one'", target: settle, effect: [removedLast], source: apps/nizam/features/kosks/components/nazim-picker.tsx:173, say: "they remove the chosen person: the button goes off" }
+      TYPE_FUTURE_END: { guard: "end != 'future'", target: settle, effect: [endFuture], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:160, say: "they type an end ahead" }
+      TYPE_PAST_END: { guard: "end != 'past'", target: settle, effect: [endPast], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:146, say: "they type an end in the past: the button goes off" }
+      SUBMIT: { target: adding, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:83, say: "they press 'Ekle'" }
+      CANCEL: { target: listed, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "Vazgeç, the close icon or Escape: nothing is added; the focus goes back to 'Köşk nazımı ekle'" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  looking:
+    title: Look the person up
+    description: >-
+      The server action lookupUserByEmail, GET /users/lookup: the realm's directory is searched for the exact address (0 or 1 account) and
+      tedrisat writes every search to the audit log, found or not. The e-mail field is disabled while it runs, so it loses the focus
+      (F-W2-3); the rest of the dialog stays live. A person already in the chosen list is not added again ("Bu kişi zaten seçildi." and
+      the field is cleared); an address that no account has, or a directory that does not answer, is said under the field while nobody is
+      chosen, and beside it, in an alert, once somebody is.
+    source: apps/nizam/features/madrasahs/actions.ts:123
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "lookup in ['found', 'again'] and chosen == 'none'", target: settle, effect: [chose], source: apps/nizam/features/kosks/components/nazim-picker.tsx:76, say: "the person is added to the chosen list, the field is cleared and the live region says who" }
+        - { guard: "lookup == 'found' and chosen != 'none'", target: settle, effect: [choseAnother], source: apps/nizam/features/kosks/components/nazim-picker.tsx:76, say: "a second person is added to the list (the API takes up to ten; the page does not count, KNZ-4)" }
+        - { guard: "lookup == 'again' and chosen != 'none'", target: settle, effect: [foundAgain], source: apps/nizam/features/kosks/components/nazim-picker.tsx:68, say: "the same person again: 'Bu kişi zaten seçildi.' and nobody is added" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/kosks/components/nazim-picker.tsx:82, say: "no account with that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.'" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/kosks/components/nazim-picker.tsx:84, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: listed, source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:123, say: "they close the dialog while the search runs; its answer is dropped" }
+
+  adding:
+    title: Add the people
+    description: >-
+      The server action addKoskNazims, POST /kosks/:id/nazims { userIds, endsAt? }: the caller must be the başnazım (or a Medaris nazımı
+      holding platform.kosk_nazim_manage), the end must be ahead, each account must be in the users table or the realm, and then, under the
+      köşk's row lock, everybody is given the post or nobody is: a person who holds it already refuses the call. One audit row
+      `kosk.nazim.add` per person; a passive köşk is made active again in the same transaction. The fields and the remove buttons are
+      disabled and "Ekle" is busy (aria-disabled, aria-busy, a hidden "Yükleniyor"); "Vazgeç" and the close icon stay on and do nothing
+      while it runs (`if (!saving)`, add-nazim-dialog.tsx:112).
+    source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:83
+    invoke: { action: addKoskNazims }
+    on:
+      DONE:
+        - { guard: "answer == 'added' and viewer == 'chief' and end == 'none'", target: listed, effect: [addedNoEnd], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98, say: "a toast says 'Köşk nazımı eklendi', the dialog closes, the page is read again and the list has a row per person with 'Süresiz' (kosks.e2e.ts#12)" }
+        - { guard: "answer == 'added' and viewer == 'chief' and end == 'future'", target: listed, effect: [addedWithEnd], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98, say: "the same, and each new row shows the day the post ends instead of 'Süresiz' (kosks.e2e.ts#13)" }
+        - { guard: "answer == 'added' and viewer == 'chiefPassive' and end == 'none'", target: listed, effect: [addedNoEnd, reopen], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98, say: "the empty list has its first rows, and the köşk is active again: nothing on the page says so (KNZ-1)" }
+        - { guard: "answer == 'added' and viewer == 'chiefPassive' and end == 'future'", target: listed, effect: [addedWithEnd, reopen], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:98, say: "the same with an end; the köşk is active again and the page does not say so (KNZ-1)" }
+      FAIL.exists: { guard: "answer == 'exists'", target: askingReady, effect: [existsToast], source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:92, say: "an error toast 'Köşk nazımı eklenemedi' says 'Seçilen kişi zaten bu köşkün nazımı.'; it stays until closed, the dialog stays open and nobody was added (kosks.e2e.ts#12). The page does not say which of the people it is (KNZ-5)" }
+      FAIL.unknownAccount: { guard: "answer == 'unknownAccount'", target: askingReady, effect: [unknownAccountToast], source: apps/nizam/features/kosks/admin-present.ts:419, say: "an error toast: 'Bu hesap Medaris’te bulunamadı.'" }
+      FAIL.endPassed: { guard: "answer == 'endPassed'", target: settle, effect: [endPassedToast], source: apps/nizam/features/kosks/admin-present.ts:424, say: "an error toast 'Bitiş zamanı şu andan sonra olmalı.'; the dialog draws again with the clock moved on and the field says it too, and the button goes off" }
+      FAIL.gone: { guard: "answer == 'gone'", target: askingReady, effect: [goneToast], source: apps/nizam/features/kosks/admin-present.ts:423, say: "an error toast: 'Bu köşk artık yok.'; the dialog stays open on a page about a köşk that is not there" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: askingReady, effect: [forbiddenToast], source: apps/nizam/features/kosks/admin-present.ts:425, say: "an error toast: 'Bunu yapma izniniz yok.'" }
+      FAIL.failed: { guard: "answer == 'failed'", target: askingReady, effect: [failedToast], source: apps/nizam/features/kosks/admin-present.ts:436, say: "an error toast: 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.' (also for more than ten people, KNZ-4)" }
+
+  handed_over.no_access:
+    type: final
+    title: A nazım of another köşk meets "Bu bölüm için izniniz yok"
+    description: >-
+      nizam.shell.noAccessAndNotFound draws the face (arrival strangerKosk): the same screen for a köşk that is not theirs and one that is
+      not there, inside the shell, with "Ana sayfaya dön". kosks.e2e.ts#11 pins the sentence.
+    leavesPage: true
+
+  settings_opened:
+    type: final
+    title: The köşk's settings open
+    description: "/kosks/<id>/ayarlar, the tab 'Genel' (nizam.kosks.editAndHide)."
+    leavesPage: true
+  hosting_opened:
+    type: final
+    title: The hosting rights open
+    description: "/kosks/<id>/ayarlar/barindirma (nizam.hosting.grantAndRevoke)."
+    leavesPage: true
+  kosks_opened:
+    type: final
+    title: The köşk directory opens
+    description: "/kosks (nizam.kosks.browse), the başnazım's breadcrumb."
+    leavesPage: true
+  kosk_opened:
+    type: final
+    title: The köşk's own page opens
+    description: "/kosks/<id> (nizam.kosks.manage), the başnazım's breadcrumb."
+    leavesPage: true
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: only-the-chief-adds, never: "state in ['asking', 'askingReady', 'looking', 'adding'] and not chief", say: "Only the başnazım gets the button and the dialog: a nazım and a Medaris nazımı read the list and nothing else", source: apps/nizam/features/kosks/components/nazims-view.tsx:145 }
+  - { id: a-dialog-that-is-on-is-the-one-sent, never: "state == 'adding' and not ready", say: "Only a dialog the button allowed is sent: somebody chosen, and an end that is empty or ahead", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:124 }
+  - { id: never-without-a-person, never: "state == 'adding' and chosen == 'none'", say: "A köşk nazımı is never added without somebody chosen", source: apps/nizam/features/kosks/components/add-nazim-dialog.tsx:70 }
+  - { id: a-stranger-never-sees-the-list, never: "viewer == 'stranger' and state in ['listed', 'listFailed', 'asking', 'askingReady', 'looking', 'adding']", say: "A nazım of another köşk never reads the list: the read is refused and the page is the refusal", source: "apps/nizam/app/kosks/[id]/ayarlar/nazimlar/page.tsx:36" }
+  - { id: a-passive-kosk-is-active-after-an-add, never: "state == 'listed' and viewer == 'chiefPassive' and list != 'start' and not reopened", say: "After somebody is added to a köşk that was taken out of service, it is active again (passive_since cleared in the same transaction), though no screen says so", source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:407 }

@@ -1,0 +1,269 @@
+# nizam.courseRequests.decide on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the seed's köşk nazımı signed in
+# through Keycloak's real form, at "Ders talepleri" of the seeded köşk, "Süleymaniye Köşkü".
+#   node apps/engine/src/cli.ts replay graphs/nizam/courseRequests/decide --bind graphs/nizam/courseRequests/decide/binding.yaml --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). What is written here comes from the code and the
+# catalog; every locator, every command and every account fact below is unverified until a walk.
+#
+# What a walk writes, and how it is taken away. `setup` and `teardown` run ./requests.mjs (a helper of this folder, through tedrisat's HTTP API
+# and the shared helpers/lib.mjs): the başmüderris of "Hadis ve Siyer Medresesi" sends the köşk course requests titled "Deneme talebi
+# courseRequests-decide A" (and B), through the route nazar.offsite.requestCourse uses (POST /madrasahs/:id/offsite-course-requests); one that
+# the köşk's nazım already refused ("C", reason "Önceki dönemde reddedildi.") gives the Karara bağlanan tab something to hold. The walk presses
+# Kabul et or Reddet only on rows it made: `up --alone` fails, naming the count, if the köşk holds any other request, because the page selects
+# the oldest waiting one and a walk must never decide a request it did not make. `teardown` removes the walk's requests (the one SQL: no route
+# deletes a request; its appeal goes by cascade), any course whose title is a request's (a course the Ders aç form made from one) and the made
+# file graphs/.local/made/courserequests-decide.json, which this file reads as the data source `made` ({made.first.title}, {made.kosk},
+# {made.sender}, ...). What it cannot undo: the audit rows (course_request.create and .reject).
+#
+# The seed's köşk nazımı manages both seeded köşks, so the first scenario opens the köşk's home by address before it presses the menu's entry
+# (the menu follows the köşk in scope). "A köşk nazımı of another köşk gets 'Bu bölüm için izniniz yok'" (e2e platform-admin#11) needs a nazım
+# of a different köşk: `other-kosk make` opens "Talep Başka Köşkü" (short name crd-baska) with applicantH as its nazım, and `other-kosk remove`
+# deletes it. applicantH is used for nothing else here; no other walk of the batch should be given it.
+#
+# Scenarios (each `given` is different: the first in file order wins): rejects (the main story), opens (two waiting requests: choose one, accept
+# it), empty (nothing waits), refused, missing, unreadable. The files beside this one:
+#   accepted.binding.yaml   the Karara bağlanan tab holds an accepted request (a course made for it)
+#   races.binding.yaml      the answers of a race: a request answered or gone while the dialog is open (drops `call` of `rejecting`)
+#
+# Not bound, each with its reason:
+#   - `decidedTab: failed`, `retry: served`, `answer: forbidden`, `answer: other`: they need a read or a refusal that the local stack cannot make
+#     on request (the API down; the nazım's role taken away between the page and the send, which would change the seed's KOSK_NAZIM; a reason the
+#     textarea's maxLength and the dialog's own check never let through). The model has them, from the code.
+#   - `read: refused` for a Medaris nazımı (the same screen): this file walks the other köşk's nazım, as the e2e does.
+#   - the signed-out exits (sent_to_sign_in) and NAVIGATE.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courseRequests.decide
+
+data:
+  made: { json: ../.local/made/courserequests-decide.json }
+
+# every scenario's setup writes the made file (the words of the walk's requests, with no request behind a letter where none was made), so
+# these read in all of them
+samples:
+  title: '{made.first.title}'
+  kosk: '{made.kosk}'
+  madrasah: '{made.madrasah}'
+  sender: '{made.sender}'
+  reason: '{made.reason}'
+
+scenarios:
+  # The main story from the menu: the köşk's home, "Ders talepleri", the one waiting request, the answered tab (empty), back, Reddet, a reason,
+  # "Reddet" in the dialog, the empty line, the answered tab with the refusal. The path of `--cover transitions` from this start also walks
+  # the empty field that is left (the error), emptying the field again, Vazgeç, and the way out through the menu.
+  rejects:
+    given: { read: one, decidedTab: none, answer: rejected, retry: failed }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->courseRequests' }
+    vars: { meanwhile: none } # nothing happens elsewhere; races.binding.yaml's walks say otherwise
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up, --waiting, '1', --alone]
+        expect: 'ready: 1 waiting'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'
+
+  # Two waiting requests and one refused before the walk: the card follows the row that is chosen, Kabul et leaves for the Ders aç form (the
+  # request is still waiting), and a refusal leaves the other request on the list (the list does not empty).
+  opens:
+    given: { read: many, decidedTab: rejected, answer: rejected, retry: failed }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/ders-talepleri'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up, --waiting, '2', --rejected, '1', --alone]
+        expect: 'ready: 2 waiting, 1 rejected'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'
+
+  # No request at all: "Karar bekleyen ders talebi yok." and, on the other tab, "Karara bağlanmış talep yok." `--alone` fails the walk early,
+  # naming the count, if another writer left a request in the köşk.
+  empty:
+    given: { read: nothing, decidedTab: none, answer: rejected, retry: failed }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/ders-talepleri'
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up, --alone]
+        expect: 'ready: 0 waiting'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'
+
+  # A nazım of another köşk opens this köşk's address: the API answers 403 and the page draws "Bu bölüm için izniniz yok" (e2e platform-admin#11);
+  # "Ana sayfaya dön" leads to their own köşk's home. The request made here only gives the made file its words.
+  refused:
+    given: { read: refused, decidedTab: none, answer: rejected, retry: failed }
+    as: applicantH
+    open: '{nizam}/kosks/{seed.kosk}/ders-talepleri'
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, other-kosk, make]
+        expect: 'other-kosk ready'
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up]
+        expect: 'ready: 0 waiting'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, other-kosk, remove]
+        expect: 'other-kosk removed'
+
+  # An address that is a uuid and no köşk's: the API answers 404 KOSK_NOT_FOUND and notFound() draws the same screen as a refusal.
+  missing:
+    given: { read: missing, decidedTab: none, answer: rejected, retry: failed }
+    as: koskNazim
+    open: '{nizam}/kosks/00000000-0000-4000-8000-000000000000/ders-talepleri'
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up]
+        expect: 'ready: 0 waiting'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'
+
+  # An address that is no uuid: the API answers 400 (ParseUUIDPipe), the read is null and the page says "Talepler okunamadı". "Tekrar dene"
+  # asks again (the same 400) and puts up the sticky toast.
+  unreadable:
+    given: { read: unreadable, decidedTab: none, answer: rejected, retry: failed }
+    as: koskNazim
+    open: '{nizam}/kosks/kosk-yok/ders-talepleri'
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up]
+        expect: 'ready: 0 waiting'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'
+
+events:
+  # a row other than the first (the first is already selected on load); `opens` is the scenario that has two
+  PICK:
+    - click: { testId: course-request-item, nth: 1 }
+  # the reason has no node that sends an event: the binding types it into the dialog's textarea; the page trims what is sent
+  TYPE_REASON:
+    - fill: { role: textbox, name: Ret gerekçesi, value: '{made.rejectReason}' }
+  CLEAR_REASON:
+    - fill: { role: textbox, name: Ret gerekçesi, value: '' }
+  # leaving the empty field: Tab from the textarea (it has the focus, the dialog starts there) goes to Vazgeç
+  LEAVE_REASON:
+    - key: Tab
+  # Vazgeç, the close icon and Escape all send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç, within: { role: dialog, name: Talebi reddet } }
+  # leaving the page: the köşk menu's "Dersler" (the shell is another flow's; every köşk nazım's menu has it)
+  NAVIGATE:
+    - click: { role: link, name: '/^Dersler$/', within: { role: navigation, name: Ana menü } }
+
+states:
+  # the page keeps one address through every state; the Ders aç form and the home page are other addresses
+  listed: { url: '{nizam}/kosks/*/ders-talepleri' }
+  empty: { url: '{nizam}/kosks/*/ders-talepleri' }
+  loadingDecided: { url: '{nizam}/kosks/*/ders-talepleri' }
+  decidedList: { url: '{nizam}/kosks/*/ders-talepleri' }
+  decidedEmpty: { url: '{nizam}/kosks/*/ders-talepleri' }
+  decidedFailed: { url: '{nizam}/kosks/*/ders-talepleri' }
+  unreadable: { url: '{nizam}/kosks/*/ders-talepleri' }
+  retrying: { url: '{nizam}/kosks/*/ders-talepleri' }
+  noAccess: { url: '{nizam}/kosks/*/ders-talepleri' }
+  confirmReject: { url: '{nizam}/kosks/*/ders-talepleri' }
+  confirmRejectTouched: { url: '{nizam}/kosks/*/ders-talepleri' }
+  confirmRejectReady: { url: '{nizam}/kosks/*/ders-talepleri' }
+  # the refusal is a Next server action: a POST to the page's own address, held while the busy dialog is checked; it answers 200 whatever the
+  # API said, so a FAIL class cannot be compared with its status here (races.binding.yaml drops this `call`)
+  rejecting: { call: '{nizam}/kosks/*/ders-talepleri' }
+  handed_over.open_course: { url: '{nizam}/kosks/*/courses/new?talep=*' }
+  # the nazım of another köşk is sent to that köşk's home
+  home_opened: { url: '{nizam}/kosks/*/ana-sayfa' }
+  # the menu's "Dersler"
+  left: { url: '{nizam}/kosks/*/dersler' }
+
+# Where role and name cannot find a node, or would find the wrong one.
+nodes:
+  # the shell's one <main>; any other page of the app has one too, so it is told apart by the words under it
+  page: { role: main, hasText: '/Ders talepleri|Bu bölüm için izniniz yok/' }
+  # the list, its rows and the card are found by the test ids the view gives them
+  waitingList: { testId: course-request-list }
+  waitingItem: { testId: course-request-item }
+  decidedListNode: { testId: course-request-list }
+  decidedItem: { testId: course-request-item }
+  decidedOutcomeRejected: { css: '[data-testid=course-request-item] .mds-caption', hasText: Reddedildi }
+  decidedOutcomeAccepted: { css: '[data-testid=course-request-item] .mds-caption', hasText: Kabul edildi }
+  # the tab's count is a span inside the tab, which is named by its word and the number ("Bekleyen 1"): digits only
+  pendingCount: { css: '.mds-tab__count', hasText: '/^\d+$/', within: { role: tab, name: '/^Bekleyen/' } }
+  decidedCount: { css: '.mds-tab__count', hasText: '/^\d+$/', within: { role: tab, name: '/^Karara bağlanan/' } }
+  # the card: the section is named by its h2, whose id is the page's own; React also streams a hidden copy in, which role queries skip
+  waitingCard: { testId: course-request-detail }
+  waitingEyebrow: { css: '.mds-eyebrow', hasText: MEDRESE DIŞI DERS TALEBİ, within: { testId: course-request-detail } }
+  waitingCardTitle: { css: '#course-request-title', hasText: Deneme talebi courseRequests-decide }
+  waitingBadge: { css: '.mds-badge', hasText: Karar bekliyor, within: { testId: course-request-detail } }
+  waitingKoskTerm: { css: dt, hasText: '/^Açılması istenen köşk$/', within: { testId: course-request-detail } }
+  waitingKosk: { css: dd, hasText: '{made.kosk}', within: { testId: course-request-detail } }
+  waitingMadrasahTerm: { css: dt, hasText: '/^Medrese$/', within: { testId: course-request-detail } }
+  waitingMadrasah: { css: dd, hasText: '{made.madrasah}', within: { testId: course-request-detail } }
+  waitingSentTerm: { css: dt, hasText: '/^Gönderildi$/', within: { testId: course-request-detail } }
+  waitingSent: { css: dd, hasText: '/\d\d\d\d/', within: { testId: course-request-detail } }
+  waitingSenderTerm: { css: dt, hasText: '/^Talebi gönderen$/', within: { testId: course-request-detail } }
+  waitingSender: { css: dd, hasText: '{made.sender}', within: { testId: course-request-detail } }
+  waitingReasonTerm: { css: .mds-caption, hasText: '/^Gerekçe$/', within: { testId: course-request-detail } }
+  waitingReason: { css: p.mds-reading, hasText: '{made.reason}', within: { testId: course-request-detail } }
+  answerNote: { css: p.mds-caption, hasText: Kabul ettiğinizde, within: { testId: course-request-detail } }
+  # "Reddet" is also the dialog's button; the card's own is found inside the card (the page behind an open dialog is inert, and the replay
+  # looks for this one only where the dialog is closed)
+  reject: { role: button, name: Reddet, within: { testId: course-request-detail } }
+  # the answered tab's card
+  decidedCard: { testId: course-request-detail }
+  decidedEyebrow: { css: '.mds-eyebrow', hasText: MEDRESE DIŞI DERS TALEBİ, within: { testId: course-request-detail } }
+  decidedCardTitle: { css: '#course-request-title', hasText: Deneme talebi courseRequests-decide }
+  decidedBadgeRejected: { css: '.mds-badge', hasText: Reddedildi, within: { testId: course-request-detail } }
+  decidedBadgeAccepted: { css: '.mds-badge', hasText: Kabul edildi, within: { testId: course-request-detail } }
+  decidedKoskTerm: { css: dt, hasText: '/^Açılması istenen köşk$/', within: { testId: course-request-detail } }
+  decidedKosk: { css: dd, hasText: '{made.kosk}', within: { testId: course-request-detail } }
+  decidedMadrasahTerm: { css: dt, hasText: '/^Medrese$/', within: { testId: course-request-detail } }
+  decidedMadrasah: { css: dd, hasText: '{made.madrasah}', within: { testId: course-request-detail } }
+  decidedSenderTerm: { css: dt, hasText: '/^Talebi gönderen$/', within: { testId: course-request-detail } }
+  decidedSender: { css: dd, hasText: '{made.sender}', within: { testId: course-request-detail } }
+  decidedReasonTerm: { css: .mds-caption, hasText: '/^Gerekçe$/', within: { testId: course-request-detail } }
+  decidedReason: { css: p.mds-reading, hasText: '{made.reason}', within: { testId: course-request-detail } }
+  # a neutral Alert is a status with no name of its own: found by its title and the reason the walk wrote
+  rejectReasonAlert: { css: '.mds-alert--neutral', hasText: Ret gerekçesi, within: { testId: course-request-detail } }
+  # the error Alert of a failed read: role alert, but no accessible name of its own
+  loadAlert: { css: '[role=alert]', hasText: Talepler okunamadı, within: { role: main } }
+  # the screen that says no: the sentence names the başnazım or says it generally, the account follows in <code>
+  noAccessBody: { css: p.mds-system-state__text, hasText: '/^Bu bölümün izni hesabınıza verilmemiş/' }
+  noAccessAccount: { css: p.mds-caption, hasText: 'Giriş yaptığınız hesap:' }
+  # the dialog: "Kapat" is also the name of a toast's close button, "Reddet" of the card's button
+  rejectEyebrow: { css: 'p.mds-eyebrow', hasText: Deneme talebi courseRequests-decide, within: { role: dialog, name: Talebi reddet } }
+  rejectClose: { role: button, name: Kapat, within: { role: dialog, name: Talebi reddet } }
+  rejectCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Talebi reddet } }
+  rejectSubmit: { role: button, name: Reddet, within: { role: dialog, name: Talebi reddet } }
+  rejectSubmitBusy: { role: button, name: Reddet, within: { role: dialog, name: Talebi reddet } }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # the busy button's hidden <output>
+  submitBusyStatus: { role: status, hasText: Yükleniyor, within: { role: dialog, name: Talebi reddet } }
+  # the toasts are sonner's: list items with a title and a description, found by their own words; an error toast has data-type=error
+  toastRejected: { css: '[data-sonner-toast] [data-title]', hasText: '/^Talep reddedildi$/' }
+  toastRejectedBody: { css: '[data-sonner-toast] [data-description]', hasText: 'talebi reddedildi; gerekçe başmüderrise iletildi.' }
+  toastErrorTitle: { css: '[data-sonner-toast][data-type=error] [data-title]', hasText: Karar kaydedilemedi }
+  toastAnswered: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: Bu talep az önce karara bağlanmış. }
+  toastGone: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: Bu talep artık yok. }
+  toastForbidden: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: Bu işlem için izniniz yok. }
+  toastFailed: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: İşlem tamamlanamadı. Biraz sonra yeniden deneyin. }
+  toastLoadFailedTitle: { css: '[data-sonner-toast][data-type=error] [data-title]', hasText: Talepler okunamadı }
+  toastLoadFailed: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: Ders talepleri şu anda alınamıyor. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+
+# What a step leaves outside the screen, read through the database and the API as the walk's own rows.
+effects:
+  # the tab counts the page was given are the database's own (e2e platform-admin#1's kind of check, for this page): after every read
+  listCourseRequests:
+    - run: [node, ../nizam/courseRequests/decide/requests.mjs, counts]
+      expect: 'counts ok'
+  # e2e platform-admin#10 a5: the request is REJECTED with the reason as typed and trimmed; a refusal that has no appeal is what İtirazlar lists
+  refusedIt:
+    - run: [node, helpers/sql.mjs, "select status, reject_reason from course_requests where kosk_id = '{seed.kosk}' and reject_reason = '{made.rejectReason}'"]
+      expect: '"status":"REJECTED","reject_reason":"Kadro dolu."'
+    - run: [node, helpers/sql.mjs, "select count(*) as n from appeals a join course_requests r on r.id = a.course_request_id where r.kosk_id = '{seed.kosk}' and r.title like 'Deneme talebi courseRequests-decide %'"]
+      expect: '"n":0'
+  # "Kabul et" writes nothing: every request the walk left waiting still waits (the form is what accepts it)
+  openedCourseForm:
+    - run: [node, ../nizam/courseRequests/decide/requests.mjs, still-waiting]
+      expect: 'still-waiting'

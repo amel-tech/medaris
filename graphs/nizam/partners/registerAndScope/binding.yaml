@@ -1,0 +1,263 @@
+# nizam.partners.registerAndScope on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım
+# (SYSTEM_ADMIN) signed in through Keycloak's real form, on Ortak uygulamalar (/ayarlar/ortak-uygulamalar).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/partners/registerAndScope \
+#     --bind graphs/nizam/partners/registerAndScope/binding.yaml --cover transitions --absent --out <dir>
+#   ... --bind graphs/nizam/partners/registerAndScope/refusals.binding.yaml --cover transitions --out <dir>   (the refusals the server gives)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation below is
+# from the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` writes a spec and walks
+# nothing). The dialogs and the toasts were never seen in a browser.
+#
+# Data. Every scenario makes what it needs and takes it away, so no seeded köşk, course, partner or setting is touched:
+#   - a partner application of the walk's own, `deneme-kayit-uygulamasi` ("Deneme kayıt uygulaması"), registered by the page itself in
+#     `registers` and through the başnazım's routes of nizam's "Ortak uygulamalar" by helpers/partner.mjs elsewhere. It is not the partner of
+#     nazar.courseSettings.partnerCodes (`deneme-ortak-uygulama`), so the two walks never meet; the stack's example client
+#     `ornek-uygulama` is never read or changed. There is no route that deletes a partner, so every `teardown` (and every `setup`, for a
+#     crashed walk) ends with `helpers/partner.mjs down`: the one SQL delete of the partner's rows (see helpers/partner.mjs). `show` then says `none`.
+#   - `scoped` (in refusals.binding.yaml) also makes a course, "Deneme dersi regscope", from helpers/course.mjs in the seed's second köşk
+#     (Kubbealtı Köşkü), binds the partner to that köşk and maps one code of the partner to the course, so that choosing the köşk away
+#     can be seen to delete the code. Its ids are read from graphs/.local/made/regscope.json; `teardown` deletes the course.
+# What the walk cannot undo: the audit rows of the registry (integration_partner.*, course.partner_code_*), which no route removes.
+# Every run of partner.mjs by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# Scenarios here (a Next server action answers 200 on the page's own address whatever it decided, so the states that invoke one carry a
+# `call` that holds the request while the busy state is checked; a scenario that walks a refusal cannot keep it and is in
+# refusals.binding.yaml):
+#   registers   (the main story) the table is empty: Ekle registers the partner (toast, the row, the switch on, 'Köşk seçilmedi'), the switch
+#               goes off and on, "Köşkleri seç" ticks Kubbealtı Köşkü and saves, unticks it and saves, "Adını değiştir" gives a new name.
+#               Ekle with nothing typed is pressed on the way: both fields say what is missing.
+#   badShape    a client id with a space and a symbol: the shape sentence under it; then the client id is corrected and the partner is added.
+#   noName      a blank name: 'Bir ad yazın.'; then the name is typed and the partner is added.
+#   stranger    the seeded köşk nazımı opens the address: tedrisat answers 403 and the shell draws "Bu bölüm için izniniz yok".
+# Not bound, with the reason:
+#   read: failed                       the registry's read fails for a reason other than a 403 (loadFailed, RETRY): the stack cannot be made to.
+#   answer: forbidden, failed; write: forbidden, failed   the başnazım cannot lose a permission and tedrisat cannot be made to err on request.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.partners.registerAndScope
+
+data:
+  made: { json: ../.local/made/regscope.json }
+
+# the partner the walk registers: the names the page draws and the toasts carry
+samples:
+  name: Deneme kayıt uygulaması
+  clientId: deneme-kayit-uygulamasi
+  kosk: '{seed.titles.kosk2}'
+  count: '1'
+  renamed: Deneme kayıt uygulaması 2
+
+scenarios:
+  # The main story, through the menu's "Ortak uygulamalar".
+  registers:
+    given: { read: ok, held: none, entry: valid, answer: added, write: saved, renameTo: valid }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->partners' }
+    setup:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+    teardown:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+        expect: 'deneme-kayit-uygulamasi none'
+    vars:
+      clientId: deneme-kayit-uygulamasi
+      partnerName: Deneme kayıt uygulaması
+      typedId: deneme-kayit-uygulamasi
+      typedName: Deneme kayıt uygulaması
+      validId: deneme-kayit-uygulamasi
+      validName: Deneme kayıt uygulaması
+      renameValue: Deneme kayıt uygulaması 2
+      newName: Deneme kayıt uygulaması 2
+      race: none
+
+  # A client id with a space and a symbol: "İstemci kimliği yalnız harf, rakam, nokta, alt çizgi ve tire içerebilir; ..." under it and
+  # nothing sent; then the client id is corrected (FIX_ADD) and the partner is added.
+  badShape:
+    given: { read: ok, held: none, entry: badShape, answer: added, write: saved, renameTo: valid }
+    as: systemAdmin
+    open: '{nizam}/ayarlar/ortak-uygulamalar'
+    setup:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+    teardown:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+        expect: 'deneme-kayit-uygulamasi none'
+    vars:
+      clientId: deneme-kayit-uygulamasi
+      partnerName: Deneme kayıt uygulaması
+      typedId: 'Deneme Kayıt!'
+      typedName: Deneme kayıt uygulaması
+      validId: deneme-kayit-uygulamasi
+      validName: Deneme kayıt uygulaması
+      renameValue: Deneme kayıt uygulaması 2
+      newName: Deneme kayıt uygulaması 2
+      race: none
+
+  # A blank name (three spaces, which the page trims): "Bir ad yazın." under it and nothing sent; then the name is typed (FIX_ADD).
+  noName:
+    given: { read: ok, held: none, entry: noName, answer: added, write: saved, renameTo: valid }
+    as: systemAdmin
+    open: '{nizam}/ayarlar/ortak-uygulamalar'
+    setup:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+    teardown:
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
+        expect: 'partner removed'
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+        expect: 'deneme-kayit-uygulamasi none'
+    vars:
+      clientId: deneme-kayit-uygulamasi
+      partnerName: Deneme kayıt uygulaması
+      typedId: deneme-kayit-uygulamasi
+      typedName: '   '
+      validId: deneme-kayit-uygulamasi
+      validName: Deneme kayıt uygulaması
+      renameValue: Deneme kayıt uygulaması 2
+      newName: Deneme kayıt uygulaması 2
+      race: none
+
+  # The seeded köşk nazımı holds no platform.partner_manage: tedrisat answers 403 and the page calls forbidden().
+  stranger:
+    given: { read: forbidden, held: none, entry: valid, answer: added, write: saved, renameTo: valid }
+    as: koskNazim
+    open: '{nizam}/ayarlar/ortak-uygulamalar'
+    vars:
+      clientId: deneme-kayit-uygulamasi
+      partnerName: Deneme kayıt uygulaması
+      typedId: deneme-kayit-uygulamasi
+      typedName: Deneme kayıt uygulaması
+      validId: deneme-kayit-uygulamasi
+      validName: Deneme kayıt uygulaması
+      renameValue: Deneme kayıt uygulaması 2
+      newName: Deneme kayıt uygulaması 2
+      race: none
+
+events:
+  # the add form's two fields have no node that sends an event: the binding types in them (Ekle is pressed through its node)
+  FILL_ADD:
+    - fill: { role: textbox, name: İstemci kimliği, value: '{typedId}', within: { testId: partners-add } }
+    - fill: { role: textbox, name: Ad, value: '{typedName}', within: { testId: partners-add } }
+  # the same two fields typed again after a sentence
+  FIX_ADD:
+    - fill: { role: textbox, name: İstemci kimliği, value: '{validId}', within: { testId: partners-add } }
+    - fill: { role: textbox, name: Ad, value: '{validName}', within: { testId: partners-add } }
+  # the rename dialog's field: the new name, or nothing (renameTo: empty); and a new name after the sentence
+  FILL_NAME:
+    - fill: { role: textbox, name: Ad, value: '{renameValue}', within: { role: dialog, name: Adını değiştir } }
+  RETYPE_NAME:
+    - fill: { role: textbox, name: Ad, value: '{newName}', within: { role: dialog, name: Adını değiştir } }
+  # the menu, the person row or the address bar: the Medaris home, where the başnazım lands
+  NAVIGATE:
+    - goto: '{nizam}/'
+  # RETRY (the box that says the list could not be read) is not bound: the stack cannot make tedrisat fail the read
+
+# What a step leaves outside the screen, read through the API as the başnazım (partner.mjs show). Each is the effect of the flow that the
+# transition applies.
+effects:
+  added:
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+      expect: 'name={partnerName} enabled=on kosks=0'
+  toastTurnedOff:
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+      expect: 'enabled=off'
+  toastTurnedOn:
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+      expect: 'enabled=on'
+  kosksNowSome:
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+      expect: 'kosks=1'
+  # the codes of the partner in that köşk are gone with the köşk (scoped; the other scenarios hold none)
+  kosksNowNone:
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+      expect: 'kosks=0 codes=0'
+  toastRenamed:
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
+      expect: 'name={newName} enabled='
+
+states:
+  # a Next server action is a POST to the page's own address, held while the busy state is checked (refusals.binding.yaml drops these)
+  adding: { call: '{nizam}/ayarlar/ortak-uygulamalar' }
+  turningOff: { call: '{nizam}/ayarlar/ortak-uygulamalar' }
+  turningOn: { call: '{nizam}/ayarlar/ortak-uygulamalar' }
+  renaming: { call: '{nizam}/ayarlar/ortak-uygulamalar' }
+  savingKosks: { call: '{nizam}/ayarlar/ortak-uygulamalar' }
+  # the exits that have no screen of their own are checked by their address
+  handed_over.no_access: { url: '{nizam}/ayarlar/ortak-uygulamalar' }
+  left: { url: '{nizam}/' }
+
+# Where role and name cannot find a node, or would find another one. The shell's <main> is on every page the walk leaves for, so the page node
+# is found by the sentence only this page says. Two dialogs and the page behind them share words (Ad, Kaydet, Vazgeç, Kapat, the name's help
+# line, the sentences of a refused write): the dialog's nodes are found inside the dialog by its name, the page's add form inside its
+# data-testid, and the toasts by Sonner's own element, so that a node the graph leaves out of a state is not found in another surface.
+# The table is Table responsive="stack": its rows carry explicit roles and every cell but the first a data-label (the column's words); the
+# row of the walk's partner is found by its client id, since the table may hold other rows.
+nodes:
+  page: { role: main, hasText: '/ders kaydına dönüşen ortak uygulamalar/' }
+
+  # ---- the add form
+  clientIdField: { role: textbox, name: İstemci kimliği, within: { testId: partners-add } }
+  nameField: { role: textbox, name: Ad, within: { testId: partners-add } }
+  nameHelp: { text: 'Ders ayarlarında ve denetim kaydında bu ad görünür. En çok 100 karakter.', within: { testId: partners-add } }
+  nameEmpty: { text: Bir ad yazın., within: { testId: partners-add } }
+  addBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor, within: { testId: partners-add } }
+
+  # ---- the row of the walk's partner
+  rowName: { css: 'tr:has(td[data-label="İstemci kimliği"] bdi:text-is("{clientId}")) th bdi' }
+  rowNameRenamed: { css: 'tr:has(td[data-label="İstemci kimliği"] bdi:text-is("{clientId}")) th bdi', hasText: '{newName}' }
+  rowClientId: { css: 'td[data-label="İstemci kimliği"] bdi', hasText: '{clientId}' }
+  rowNoKosks: { css: 'tr:has(td[data-label="İstemci kimliği"] bdi:text-is("{clientId}")) td[data-label="Köşkler"]', hasText: Köşk seçilmedi }
+  rowKosksList: { css: 'tr:has(td[data-label="İstemci kimliği"] bdi:text-is("{clientId}")) td[data-label="Köşkler"] ul' }
+  rowKoskItem: { css: 'tr:has(td[data-label="İstemci kimliği"] bdi:text-is("{clientId}")) td[data-label="Köşkler"] li', hasText: '{seed.titles.kosk2}' }
+
+  # ---- the toasts: Sonner's element holds the title and the sentence; its text is unanchored
+  toastAdded: { css: '[data-sonner-toast]', hasText: Ortak uygulama eklendi }
+  toastAddedBody: { css: '[data-sonner-toast]', hasText: '{partnerName} açık. Şimdi çalışacağı köşkleri seçin.' }
+  toastOn: { css: '[data-sonner-toast]', hasText: Ortak uygulama açıldı }
+  toastOnBody: { css: '[data-sonner-toast]', hasText: '{partnerName} seçili köşklerinde yeniden talebe kaydedebilir.' }
+  toastOff: { css: '[data-sonner-toast]', hasText: Ortak uygulama kapatıldı }
+  toastOffBody: { css: '[data-sonner-toast]', hasText: '{partnerName} artık talebe kaydedemez; kodları hiçbir derste görünmez.' }
+  toastKosks: { css: '[data-sonner-toast]', hasText: Köşkler kaydedildi }
+  toastKosksBody: { css: '[data-sonner-toast]', hasText: '{partnerName} artık 1 köşkle çalışıyor.' }
+  toastKosksNoneBody: { css: '[data-sonner-toast]', hasText: '{partnerName} artık 0 köşkle çalışıyor.' }
+  toastRenamed: { css: '[data-sonner-toast]', hasText: Ad değiştirildi }
+  toastRenamedBody: { css: '[data-sonner-toast]', hasText: 'Bundan sonra {newName} adı görünür.' }
+  toastFailed: { css: '[data-sonner-toast]', hasText: Kaydedilemedi }
+  toastGoneBody: { css: '[data-sonner-toast]', hasText: Bu ortak uygulama bulunamadı. Sayfayı yenileyin. }
+  toastForbiddenBody: { css: '[data-sonner-toast]', hasText: Bunun için izniniz yok. }
+  toastFailedBody: { css: '[data-sonner-toast]', hasText: Bir sorun oldu. Yeniden deneyin. }
+
+  # ---- the "Adını değiştir" dialog
+  renameEyebrow: { css: 'p.mds-eyebrow', hasText: '{partnerName}', within: { role: dialog, name: Adını değiştir } }
+  renameClose: { role: button, name: Kapat, within: { role: dialog, name: Adını değiştir } }
+  renameField: { role: textbox, name: Ad, within: { role: dialog, name: Adını değiştir } }
+  renameHelp: { text: 'Ders ayarlarında ve denetim kaydında bu ad görünür. En çok 100 karakter.', within: { role: dialog, name: Adını değiştir } }
+  renameEmpty: { text: Bir ad yazın., within: { role: dialog, name: Adını değiştir } }
+  renameGone: { text: Bu ortak uygulama bulunamadı. Sayfayı yenileyin., within: { role: dialog, name: Adını değiştir } }
+  renameForbidden: { text: Bunun için izniniz yok., within: { role: dialog, name: Adını değiştir } }
+  renameFailed: { text: Bir sorun oldu. Yeniden deneyin., within: { role: dialog, name: Adını değiştir } }
+  renameCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Adını değiştir } }
+  renameSave: { role: button, name: Kaydet, within: { role: dialog, name: Adını değiştir } }
+  renameBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor, within: { role: dialog, name: Adını değiştir } }
+
+  # ---- the "Çalıştığı köşkler" dialog
+  kosksEyebrow: { css: 'p.mds-eyebrow', hasText: '{partnerName}', within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksClose: { role: button, name: Kapat, within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksIntro: { css: '.mds-dialog__body p.mds-body-sm', hasText: Seçimi kaldırılan köşkte, within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksAlert: { role: alert, hasText: Kaydedilemedi, within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksGone: { text: Bu ortak uygulama bulunamadı. Sayfayı yenileyin., within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksForbidden: { text: Bunun için izniniz yok., within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksFailed: { text: Bir sorun oldu. Yeniden deneyin., within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksGroup: { role: group, name: Çalıştığı köşkler, within: { role: dialog, name: Çalıştığı köşkler } }
+  koskBox: { role: checkbox, name: '{seed.titles.kosk2}', within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksCountNone: { css: 'p.mds-dialog__meta', hasText: 0 köşk seçili, within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksCountOne: { css: 'p.mds-dialog__meta', hasText: 1 köşk seçili, within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksCancel: { role: button, name: Vazgeç, within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksSave: { role: button, name: Kaydet, within: { role: dialog, name: Çalıştığı köşkler } }
+  kosksBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor, within: { role: dialog, name: Çalıştığı köşkler } }

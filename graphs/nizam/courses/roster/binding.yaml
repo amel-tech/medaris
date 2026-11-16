@@ -1,0 +1,115 @@
+# nizam.courses.roster on the local stack: Talebeler (/kosks/<id>/courses/<id>/students) of a course that the walk makes in the seed's second köşk, as the
+# köşk's nazım, Cemal Köşk Nazımı, at http://localhost:4001 (the real Keycloak sign-in of local.nizam.binding.yaml).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/courses/roster \
+#     --bind graphs/nizam/courses/roster/binding.yaml [--cover transitions] [--absent] --out <dir>
+# NOT RUN: written without a replay (the owner's word: the first walks are a later phase). It was only loaded (`replay ... --emit-spec --out <scratchpad>`).
+# Every behaviour below is from the code; none was seen in a browser. The effects and the locators are in locators.binding.yaml.
+#
+# What a walk makes, and how it is taken away. A walk only touches a course of its own and four SPARE talebe, never a seeded person. `setup` makes, through
+# tedrisat's API (helpers/course.mjs, which keeps it under graphs/.local/made/rosternizam.json), "Deneme dersi rosternizam": a published course of the
+# seed's second köşk with one week and one celse, the müderris as its hoca, taking anyone, and applicantC (Esma Başvuran), applicantD (Salih Başvuran),
+# applicantE (Betül Başvuran) and applicantG (Dilek Başvuran) enrolled in it. The talebe C then records her own progress, 40 (PUT /courses/:id/progress), so
+# the bar of students#4 has a number to show. A removal leaves a REVOKED row, which blocks the person from applying and leaving (409) for as long as it
+# exists, and no route deletes one: so `teardown` deletes the course (helpers/course.mjs remove: DELETE /courses/:id as the başnazım, which purges the
+# course's whole tree, the REVOKED and COMPLETED rows included, and clears the notices that point at it, the REMOVED_FROM_COURSE of the talebe, and the
+# invitation mails the course sent), then asks the database that none of the four accounts holds a REVOKED row anywhere (`"n":0`) and clears their Mailpit
+# boxes (the cancellations a completion and a removal send). `setup`'s `make` takes away the course of a walk that died first (it removes an earlier course of
+# the same tag), so a crashed walk leaves nothing that blocks the next. What it cannot undo: the audit rows (enrollment.remove, course.delete,
+# course.roster_read), which no route removes.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   runs         the story of the flow: Başvurular, Kayıtlı, the sort twice, a search by e-mail and by name, the completion of the one the name finds
+#                (Dilek Başvuran), Tamamlayanlar, the reopening, Kayıtlı again, the removal of the first row (Betül Başvuran) with a reason that has white
+#                space round it, and Erişimi kaldırılanlar with the new row. `--cover transitions` also takes the tab and sort steps, the blank reason, the
+#                emptied reason, Vazgeç, Yasakla (the hand-over `handed_over.ban`: the dialog opens, nizam.moderation.banStudent walks it) and "Derse dön"
+#                (`handed_over.curriculum`)
+#   unreadable   the Medaris nazımı opens the course: the köşk layout lets her in (she holds a nizam role), tedrisat refuses the roster (she holds no
+#                enrollment code in a course: 403) and the page draws the bare caption (F-W4-10, NROS-6). No talebe is needed; a course is made all the same
+#   elsewhere    the köşk nazımı opens the same course under the OTHER köşk's address: the course answers, it is not that köşk's
+#                (`course.koskId !== kosk.id`), and the page draws "Bu bölüm için izniniz yok" through notFound()
+# In files of their own, because a scenario that adds no transition to the ones above is not walked by `--cover transitions` (it takes the shortest scenario for
+# each transition, the first in file order), or because it needs a `before` on a state that would run in every walk of a file that holds the others:
+#   binding.barred.yaml        barred: the completed talebe is barred: Yeniden aç is refused (BAN_ACTIVE, NROS-4) and Yasağı kaldır is pressed (`handed_over.lift`)
+#   binding.moved.yaml         moved: the talebe leaves while the completion is on its way (ENROLLMENT_NOT_FOUND): the stale row and the toast (NROS-3)
+#   binding.removeMoved.yaml   removeMoved: the talebe leaves while the removal is on its way: the dialog stays, with the toast over it
+# Not bound, with the reason (each is drawn in the flow):
+#   size: long, MORE   "Daha fazla göster" needs seven enrolled talebe; the spare accounts that may be used are four (C, D, E, G; F and H are other walks',
+#                      A and B other batches'), and the seeded people are never enrolled. students#2 is therefore NOT carried (needs.yaml says so)
+#   SCRIM              see locators.binding.yaml
+#   TYPE_NOBODY        bound (a word nobody has); it is only walked where a search is typed first
+#   FAIL.forbidden and FAIL.other of the three actions   the köşk's nazım holds every roster code in her köşk and the stack cannot take one away
+#                      (AUTHZ_FORBIDDEN), and the buttons the page draws cannot send an id that is not a uuid or a course that is not there
+#   FAIL.moved of a reopening   a completed seat cannot be made to move meanwhile except by a removal, which only an ENROLLED seat allows
+#   the unreadable roster by a FAIL.failed   the stack cannot make tedrisat fail for one account (the refused read is walked instead)
+#   the müderris, the ders nazırı and the talebe   the köşk layout refuses a person with no nizam role: nizam.shell.noAccessAndNotFound walks that
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.roster
+
+scenarios:
+  runs:
+    given: { read: ok, held: none, size: short }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'courseOverview->courseStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosternizam, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD,applicantE,applicantG']
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/api.mjs, applicantC, PUT, '/courses/{made.course}/progress', '{"progress":40}']
+        expect: '"progress":40'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosternizam]
+        expect: course remove rosternizam
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_APPLICANT_G_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    vars:
+      reason: '  Dört celsedir haber vermeden katılmıyor.  '
+      reasonSaved: Dört celsedir haber vermeden katılmıyor.
+      removedAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      removerName: Cemal Köşk Nazımı
+
+  # The Medaris nazımı: the layout lets her in, tedrisat refuses the roster. The course has no talebe; nothing is written.
+  unreadable:
+    given: { read: unreadable, held: none, size: short }
+    as: medarisNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/students'
+    setup:
+      - run: [node, helpers/course.mjs, make, rosternizam, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"rosternizam"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosternizam]
+        expect: course remove rosternizam
+    vars:
+      reason: Bu yazı gönderilmez
+      reasonSaved: Bu yazı gönderilmez
+      removedAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      removerName: Cemal Köşk Nazımı
+
+  # The same course under the other köşk's address (the seed's first köşk, which the nazım also manages): notFound().
+  elsewhere:
+    given: { read: missing, held: none, size: short }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/courses/{made.course}/students'
+    setup:
+      - run: [node, helpers/course.mjs, make, rosternizam, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"rosternizam"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosternizam]
+        expect: course remove rosternizam
+    vars:
+      reason: Bu yazı gönderilmez
+      reasonSaved: Bu yazı gönderilmez
+      removedAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      removerName: Cemal Köşk Nazımı
+
+# The server action of a completion, a reopening and a removal is a POST to the page's own address; it is held while the busy row is checked (its buttons off, the
+# busy button's hidden "Yükleniyor"), and answers 200, which is not compared with a refusal's status.
+states:
+  completing: { call: '{nizam}/kosks/*/courses/*/students' }
+  reopening: { call: '{nizam}/kosks/*/courses/*/students' }
+  removing: { call: '{nizam}/kosks/*/courses/*/students' }

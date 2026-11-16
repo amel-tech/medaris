@@ -1,0 +1,237 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.courses.planSessions
+status: proposed
+summary: >-
+  What must exist for a köşk nazımı to plan the celses of a course of her köşk, one by one or as a weekly repeat: the flow's
+  product list.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Missing (no code): button-says-what-is-missing, preview-is-announced, a-field-in-error-is-announced, a-course-that-is-not-there-is-said-so,
+# no-celse-in-the-past-unasked, the-page-names-its-course, quota-per-gender-when-planning.
+# Unwalked (code, no e2e and no replay that has run): plan-one-celse, a-title-or-link-that-is-wrong-is-said, a-refused-write-leaves-the-form,
+# the-planner-is-for-those-who-manage-the-kosk, the-planner-after-a-refused-open.
+# Walked: open-the-planner (the heading only), plan-a-weekly-repeat, read-the-preview-before-making, a-first-link-on-the-first-celse-only (e2e courses#14, #15)
+# and the closed button (courses#14).
+# The scenarios that will walk them are in comments below; none is named as walked because no replay has run (the walks are a later phase).
+
+needs:
+  - id: open-the-planner
+    need: >-
+      From a course's Celseler, a köşk nazımı reaches the planner with one press, and from the planner she can go back to Celseler
+      without making anything; the planner says which course it is for.
+    evidence:
+      - state: form
+      - state: sessions_opened
+      - node: breadcrumbRoot
+      - node: cancel
+      - node: planTitle
+      - source: apps/nizam/features/courses/components/sessions-view.tsx:494
+      - source: "apps/nizam/app/kosks/[id]/courses/[courseId]/sessions/new/page.tsx:20"
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1, 3, 5: three Fridays are previewed, created in their weeks, and nothing is sent while a field is missing"
+    note: |-
+      courses#14: a1 only: the h1 "Celse planla" is there (the test opens the address, it does not press the link)
+      replay: weekly (enters through the nav entry courseSessions->courseSessionsNew), then CANCEL and BREADCRUMB in the cover run
+
+  - id: plan-a-weekly-repeat
+    need: >-
+      She chooses the days of the week, the start time and length, the first date and an end (a date, or a number of celses) and
+      the course gets one celse for each, titled as she wrote, each in the week its date falls in, in one step.
+    evidence:
+      - state: form
+      - state: previewing
+      - state: formReady
+      - state: creating
+      - state: landed
+      - node: repeatRegion
+      - node: startDateField
+      - node: endDateField
+      - node: endByCount
+      - node: countField
+      - node: dayChip
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/tedrisat/src/course/lesson.controller.ts:300
+      - source: apps/nizam/features/courses/components/session-plan-form.tsx:127
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1, 3, 5: three Fridays are previewed, created in their weeks, and nothing is sent while a field is missing"
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 2, 4: 'after N sessions' stops at N and the link goes to the first session only"
+    note: |-
+      courses#14: three celses that end on a date, "3 celse", created titled "Haftanın tekrarı"
+      courses#15: "Belirli sayıda celseden sonra" and 2: stops at two
+      replay: weeklyPlain (courses#14), weeklyCount (courses#15), weekly (the main story); the effect reads the lessons in the
+      database
+
+  - id: plan-one-celse
+    need: >-
+      She can add a single celse by its date and time, without a repeat, to the same place in the programme the repeat would have
+      put it.
+    evidence:
+      - node: singleRegion
+      - node: modeSingle
+      - node: dateField
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/nizam/features/courses/components/session-plan-form.tsx:177
+    note: "replay: single"
+
+  - id: read-the-preview-before-making
+    need: >-
+      Before anything is made she reads, as a list, the date, week and length of each celse the pattern gives and whether the
+      first has a link, and she sees at once when the pattern gives none.
+    evidence:
+      - state: formReady
+      - state: previewFailed
+      - node: previewRow
+      - node: previewRowCaption
+      - node: previewCount
+      - node: previewFailedAlert
+      - source: apps/tedrisat/src/course/lesson.controller.ts:300
+      - source: apps/nizam/features/courses/components/session-plan-form.tsx:406
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1, 3, 5: three Fridays are previewed, created in their weeks, and nothing is sent while a field is missing"
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 2, 4: 'after N sessions' stops at N and the link goes to the first session only"
+    note: |-
+      courses#14: the preview says "3 celse"
+      courses#15: the preview says "2 celse"
+      replay: weeklyPlain (formReady), previewRefused (previewFailed: a pattern of Monday and Saturday over a Tuesday and a
+      Wednesday)
+
+  - id: a-first-link-on-the-first-celse-only
+    need: >-
+      She can give the first celse its meeting link when she plans, and the others stay empty, because a link is a week's and
+      changes every week; she is told so on the form.
+    evidence:
+      - node: linksGroup
+      - node: linkField
+      - node: linksNote
+      - node: previewRowCaption
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/nizam/features/courses/components/session-plan-form.tsx:346
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 2, 4: 'after N sessions' stops at N and the link goes to the first session only"
+    note: |-
+      courses#15: the first created celse holds the link, the second none
+      replay: weekly and weeklyCount (LINKS_FIRST); the effect checks that no later celse has a link
+
+  - id: button-says-what-is-missing
+    need: >-
+      When the form cannot be made yet, the button can still be reached and the page says what is missing, so a keyboard or
+      screen-reader user is not left with a disabled button that reads "0 celse oluştur" and no reason (F-X-3, decision D1).
+    evidence:
+      - test: apps/nizam/e2e/courses.e2e.ts
+        name: "criteria 1, 3, 5: three Fridays are previewed, created in their weeks, and nothing is sent while a field is missing"
+    missing: no Linear issue; findings F-X-3
+    note: |-
+      Drawn on the states form and previewFailed and on the nodes submitOff and daysError, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      courses#14: a2 pins today's behaviour: the button /celse oluştur/ is disabled; it will change with the fix
+
+  - id: preview-is-announced
+    need: A change to the number of celses the pattern gives is announced to a screen-reader user, not only drawn (F-W4-13).
+    missing: no Linear issue; findings F-W4-13
+    note: >-
+      Drawn on the state formReady and on the node previewCount, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-field-in-error-is-announced
+    need: >-
+      A title or link that is wrong is announced when the button is pressed and the focus goes to the first field in error
+      (F-W4-15, F-X-2).
+    missing: no Linear issue; findings F-W4-15, F-X-2
+    note: >-
+      Drawn on the nodes titleError, linkError and daysError, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-title-or-link-that-is-wrong-is-said
+    need: >-
+      A title that is empty or a first-celse link that does not start with https:// is refused with a word under the field, and
+      nothing is made, until each is corrected.
+    evidence:
+      - state: formReady
+      - node: titleError
+      - node: linkError
+      - source: apps/nizam/features/courses/components/session-plan-form.tsx:116
+    note: |-
+      Also drawn as the assertion a-refused-form-is-not-sent.
+      replay: noTitle, badLink (and CLEAR_DAYS, which reads "En az bir gün seçin." after the refused press)
+
+  - id: a-refused-write-leaves-the-form
+    need: >-
+      When the API refuses the write (the pattern gives no celse, the permission was taken away, anything else) she is told in a
+      toast and the form is as she left it, so she can correct it and try again.
+    evidence:
+      - state: creating
+      - state: formReady
+      - node: toastFailedTitle
+      - node: toastPatternBody
+      - node: toastForbiddenBody
+      - node: toastGenericBody
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/nizam/features/courses/components/session-plan-form.tsx:144
+    note: >-
+      replay: none can be made on the local stack (answer: patternRefused, forbidden, failed need the API to refuse a pattern it
+      just previewed, a nazım who loses session.manage after the page was read, or a write that fails)
+
+  - id: the-planner-is-for-those-who-manage-the-kosk
+    need: >-
+      Only a person who manages the köşk (or the başnazım) sees the planner; another nazım is told she has no access, and a course
+      that is not this köşk's gets the same screen.
+    evidence:
+      - state: no_access
+      - state: opened
+      - source: apps/nizam/features/courses/reads.ts:36
+    note: "replay: denied (a Medaris nazımı), unknownCourse (a course id no course has)"
+
+  - id: a-course-that-is-not-there-is-said-so
+    need: >-
+      An address whose köşk and course do not exist is said to be missing, not drawn as the server being down with a retry that
+      cannot help, and the page has a heading (NPLAN-2).
+    missing: no Linear issue; findings NPLAN-2
+    note: |-
+      Drawn on the state loadFailed and on the nodes failedAlert and retryButton, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      replay: unreadable walks today's card
+
+  - id: the-planner-after-a-refused-open
+    need: >-
+      When a course was opened and its celses were refused, the nazım is taken to the new course's planner, told why they were
+      refused and given back what she typed (F-W4-open-2); today she gets a sticky toast with no reason and a blank form.
+    evidence:
+      - node: arrivalTitle
+      - node: arrivalBody
+      - state: form
+      - source: apps/nizam/features/courses/components/course-create-form.tsx:181
+    note: >-
+      replay: none here; nizam.courses.open reaches it (this flow's `fromOpen: true`), and the stack cannot make the celses fail
+
+  - id: no-celse-in-the-past-unasked
+    need: >-
+      A repeat or a celse whose first date is already past is not made without her being asked, because the celses would be over
+      before they began and the enrolled talebe would be mailed invitations for them (NPLAN-1, decision D2).
+    missing: no Linear issue; findings NPLAN-1
+    note: >-
+      Drawn on the states formReady and creating, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-page-names-its-course
+    need: >-
+      The planner says which course and köşk it plans for, in the sentence under the title, the breadcrumb and the tab (F-W4-17,
+      decision D3).
+    missing: no Linear issue; findings F-W4-17
+    note: >-
+      Drawn on the nodes planTitle, planIntro and breadcrumb, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: quota-per-gender-when-planning
+    need: >-
+      Where a celse is held in person, planning it also gives its kontenjan: one number for women and one for men, never one
+      pooled count, and a weekly repeat carries the same pair for every celse it makes (MDRS-284; the planner sends no in-person
+      mark and no seat count today).
+    missing: MDRS-284
+    note: >-
+      Drawn on the states formReady and creating, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).

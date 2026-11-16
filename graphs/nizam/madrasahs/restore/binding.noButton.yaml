@@ -1,0 +1,37 @@
+# nizam.madrasahs.restore for the seeded Medaris nazımı, who holds platform.madrasah_create (so the page opens) and not
+# platform.madrasah_edit (so a hidden row has no "Geri al" and no sentence in its last cell): RESTORE-2. It only reads, and adds no transition
+# to binding.yaml's, so it is walked with --to:
+#   node apps/engine/src/cli.ts replay graphs/nizam/madrasahs/restore --bind graphs/nizam/madrasahs/restore/binding.noButton.yaml --to list --absent --out <dir>
+# `--absent` checks that "Geri al" and the kademe sentence are not drawn. NOT RUN: written without a replay. The same data as
+# binding.yaml (see locators.binding.yaml); the seeded Medaris nazımı's grants are never changed.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.madrasahs.restore
+
+scenarios:
+  noButton:
+    given: { viewer: nazimNoEdit, tab: hidden }
+    as: medarisNazim
+    open: '{nizam}/medreseler?durum=gizli'
+    setup:
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, thaw]
+        expect: 'medrese thaw'
+      - run: [node, helpers/course.mjs, remove, restoreMedrese]
+        expect: 'course remove restoreMedrese'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, up]
+        expect: 'medrese up'
+      - run: [node, helpers/course.mjs, make, restoreMedrese, --madrasah, '{mine.madrasah}', --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, applicantG]
+        expect: '"madrasah"'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, hide]
+        expect: 'medrese hide head'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, state]
+        expect: 'medrese HIDDEN level=madrasah canRestore=yes head=yes courses=0'
+    teardown:
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, thaw]
+        expect: 'medrese thaw'
+      - run: [node, helpers/course.mjs, remove, restoreMedrese]
+        expect: 'course remove restoreMedrese'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, down]
+        expect: 'medrese down'
+

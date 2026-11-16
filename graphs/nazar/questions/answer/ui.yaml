@@ -1,0 +1,95 @@
+# The screens of nazar.questions.answer: Sorular of a course (/ders/<id>/sorular) in nazar-web, with the cards of the questions, the
+# answer form of a waiting card and of a card being changed, the alerts of a refused answer, "Daha fazla göster", the empty line, the
+# refusal of a reader without the permission and the retry state. Read from apps/nazar/features/questions (the page, the list and
+# its rules) on 15 Nov 2026; the words are copied from libs/i18n/src/locales/tr/nazar.json (namespaces Questions, Problems, Shell, Nav)
+# by script, letter for letter. The one message that is not the app's is `Changes.note`: no app message says what Cevapla changes (who
+# reads the answer, that nobody is notified, that a second answer replaces the first), so one short, factual Turkish note is authored
+# for it.
+# The question's and the answer's own words, the asker's and the answerer's names and the times are the walk's data, not the app's, so
+# no node carries them; the cards are found by the asker's name in their label, and the binding gives the rest. Where a node says
+# "repeat", the page draws it once per card; the replay presses the first. The first card is the one the flow follows (`phase`); the
+# other cards repeat the nodes that fit them.
+schema: delurio-graph/0
+kind: ui
+id: nazar.questions.answer
+flow: nazar.questions.answer
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Betül Başvuran
+  nameGenitive: Deneme dersi answer’in
+  week: "1"
+  title: Celse 1
+  max: "4000"
+
+# Nothing in features/questions sets the focus on load or after a step (no ref, no .focus()): the page node has no `initialFocus` and
+# the graph has no `focus`. It says nothing of what the code does not say (focus-not-set).
+nodes:
+  # --- the page: heading, line and menu entry, on every screen ------------------------------------------------------------------
+  questionsPage: { type: page, component: Page, role: main, in: [listed, sending, loadingMore, empty, forbidden, loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">; it has no name
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: Questions.title }, in: [listed, sending, loadingMore, empty, forbidden, loadFailed], source: apps/nazar/features/questions/components/questions-page.tsx:37 } # the h1; the refusal and the failed read draw it too
+  questionsSubtitle: { type: text, component: Text, text: { key: Questions.subtitle, params: { nameGenitive: course.nameGenitive } }, in: [listed, sending, loadingMore, empty, forbidden, loadFailed], source: apps/nazar/features/questions/components/questions-page.tsx:39 } # "{course's name, in the genitive} talebelerinin ..."; Questions.subtitleUnnamed when the scope gives no name
+  menuQuestions: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Nav.ders.questions }, in: [listed, sending, loadingMore, empty, forbidden, loadFailed], source: apps/nazar/features/shell/nav.ts:114 } # the sidebar's entry for this page, shown to everyone in the course (F-D1-29); it carries aria-current=page, which a graph cannot say, so the binding finds it by that attribute (questions#1 a2)
+
+  # --- the list ------------------------------------------------------------------------------------------------------------------
+  emptyLine: { type: text, component: Text, text: { key: Questions.empty }, in: [empty], source: apps/nazar/features/questions/components/questions-list.tsx:72 } # the kit's EmptyState: a plain block with one sentence and no action
+  questionList: { type: list, component: List, role: list, in: [listed, sending, loadingMore], source: apps/nazar/features/questions/components/questions-list.tsx:76 } # a <ul> with no name, one <li> a question
+  card: { type: page, component: Page, role: article, name: { key: Questions.questionLabel, params: { name: question.author } }, repeat: question, in: [listed, sending, loadingMore], source: apps/nazar/features/questions/components/questions-list.tsx:148 } # named by the asker alone, so every question one talebe asked has one name (ANSWER-1)
+  cardSession: { type: text, component: Text, text: { key: Questions.sessionLine, params: { week: question.weekNumber, title: question.lessonTitle } }, repeat: question, in: [listed, sending, loadingMore], source: apps/nazar/features/questions/components/questions-list.tsx:153 } # the eyebrow "Hafta 1 · Celse 1"
+  waitingBadge: { type: text, component: Text, text: { key: Questions.waiting }, repeat: question, in: [listed, sending, loadingMore], when: "phase == 'waiting'", source: apps/nazar/features/questions/components/questions-list.tsx:164 } # a warning Badge: the state is text, not colour alone
+  answeredBadge: { type: text, component: Text, text: { key: Questions.answered }, repeat: question, in: [listed, sending, loadingMore], when: anyAnswered, source: apps/nazar/features/questions/components/questions-list.tsx:159 } # a success Badge with a check icon; it stays while the answer is being changed
+
+  # --- an answered card ------------------------------------------------------------------------------------------------------------
+  answerBy: { type: text, component: Text, text: { key: Questions.answerBy, params: { name: answer.answeredBy } }, repeat: question, in: [listed, sending, loadingMore], when: viewShown, source: apps/nazar/features/questions/components/questions-list.tsx:182 } # "Cevap: <hoca, with the unvan she carries in the course>"; the hoca's name is the walk's own, so the binding matches it by its start. The answer and its time are data and are not drawn
+  changeButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Questions.change }, repeat: question, in: [listed, sending, loadingMore], when: viewShown, emits: CHANGE, source: apps/nazar/features/questions/components/questions-list.tsx:194 } # a ghost mini button with a pencil icon; unmounts when pressed and the focus is lost (F-D1-08); the same name on every answered card (ANSWER-1)
+
+  # --- the form of a waiting card and of a card being changed ---------------------------------------------------------------------
+  answerBox: { type: field, component: TextField, role: textbox, text: { key: Questions.answerLabel }, value: { literal: "" }, in: [listed, sending, loadingMore], when: "phase == 'waiting'", source: apps/nazar/features/questions/components/questions-list.tsx:217 } # a text area of 3 rows, up to 4000 characters, with a visible label; no `required` and the form is noValidate (F-D1-08). The same label on every waiting card (ANSWER-1)
+  changeBox: { type: field, component: TextField, role: textbox, text: { key: Questions.answerLabel }, in: [listed, sending, loadingMore], when: "phase == 'changing'", source: apps/nazar/features/questions/components/questions-list.tsx:217 } # the same text area, holding the stored answer (the hoca's own words, not drawn); the field is not focused when the form opens (F-D1-08)
+  boxHelp: { type: text, component: Text, text: { key: Questions.bodyHelp, params: { max: max } }, in: [listed, sending, loadingMore], when: holdsForm, source: apps/nazar/features/questions/components/questions-list.tsx:219 } # the field's description (aria-describedby by Base UI's Field)
+  answerButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Questions.answerAction }, in: [listed, sending, loadingMore], when: "phase == 'waiting'", disabledIn: [sending], emits: SUBMIT, source: apps/nazar/features/questions/components/questions-list.tsx:235 } # busy: aria-disabled and aria-busy, never `disabled`, so it keeps the focus while it sends; it unmounts with the form when the answer is saved and the focus is lost (F-D1-08)
+  saveButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Questions.save }, in: [listed, sending, loadingMore], when: "phase == 'changing'", disabledIn: [sending], emits: SUBMIT, source: apps/nazar/features/questions/components/questions-list.tsx:235 } # the same submit button, worded "Kaydet" once the card holds an answer
+  cancelButton: { type: action, component: Button, role: button, intent: dismiss, text: { key: Questions.cancel }, in: [listed, sending, loadingMore], when: "phase == 'changing'", emits: CANCEL, source: apps/nazar/features/questions/components/questions-list.tsx:246 } # a ghost button, drawn only for a card that holds an answer; it stays live while the answer is sent
+  sendingStatus: { type: status, component: Status, role: status, text: { key: Questions.answering }, in: [sending], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> of the busy submit button; it is in the page, empty, before the button is pressed
+  blankAlert: { type: alert, component: Alert, role: alert, text: { key: Questions.bodyRequired }, in: [listed], when: "note == 'blank'", source: apps/nazar/features/questions/components/questions-list.tsx:229 } # a <p role=alert> after the field and before the buttons: announced when it appears, not tied to the field (F-D1-08)
+  goneAlert: { type: alert, component: Alert, role: alert, text: { key: Questions.errors.gone }, in: [listed], when: "note == 'gone'", source: apps/nazar/features/questions/components/questions-list.tsx:229 } # LESSON_QUESTION_NOT_FOUND: the question was deleted, or the caller may not answer it; the text stays in the field
+  invalidAlert: { type: alert, component: Alert, role: alert, text: { key: Questions.errors.invalid }, in: [listed], when: "note == 'invalid'", source: apps/nazar/features/questions/components/questions-list.tsx:229 } # VALIDATION_ERROR; the box's maxLength and the blank check stop both causes first, so no walk reaches it
+  failedAlert: { type: alert, component: Alert, role: alert, text: { key: Questions.errors.failed }, in: [listed], when: "note == 'failed'", source: apps/nazar/features/questions/components/questions-list.tsx:229 } # any other code and a thrown call (ANSWER-4)
+
+  # --- more pages ------------------------------------------------------------------------------------------------------------------
+  loadMore: { type: action, component: Button, role: button, intent: secondary, text: { key: Questions.loadMore }, in: [listed, sending, loadingMore], when: moreLeft, disabledIn: [loadingMore], emits: LOAD_MORE, source: apps/nazar/features/questions/components/questions-list.tsx:94 } # an outline small button; busy while the page is read; it unmounts after the last page and the focus is lost (ANSWER-3)
+  loadingMoreStatus: { type: status, component: Status, role: status, text: { key: Questions.loadingMore }, in: [loadingMore], source: libs/ui/src/mds/button.tsx:114 }
+  moreFailedAlert: { type: alert, component: Alert, role: alert, text: { key: Questions.loadMoreFailed }, in: [listed], when: "moreNote == 'failed'", source: apps/nazar/features/questions/components/questions-list.tsx:89 }
+
+  # --- the reader may not open the list ---------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a neutral Alert is a status, and its title is a <p>: it has no accessible name, so the binding finds it by its words
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:26 }
+
+  # --- the read failed ---------------------------------------------------------------------------------------------------------------
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:30 } # SystemState inside the shell is a <section aria-labelledby>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Questions.loadFailedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:43 } # an h1 beside the page's own (F-D1-01)
+  failedText: { type: text, component: Text, text: { key: Questions.loadFailed }, in: [loadFailed], source: apps/nazar/features/questions/components/questions-page.tsx:52 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 } # busy while router.refresh() runs
+
+edges:
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { triggers: [answerButton, sending] }
+  - { triggers: [saveButton, sending] }
+  - { triggers: [loadMore, loadingMore] }
+  - { triggers: [retryButton, opened] }
+
+rules:
+  - { id: focus-not-set, rule: "Nothing in features/questions sets the focus: not on load, not after Cevapla, Cevabı değiştir, Kaydet, Vazgeç or Daha fazla göster (no ref and no .focus() in questions-list.tsx). The page node has no `initialFocus` and the graph no `focus`; the focus falls where the browser leaves it (not verified in a browser)." }
+  - { id: F-D1-08, rule: "Answering is silent: no toast, no live region, no focus move (questions-list.tsx:134-136). The pressed button unmounts with the form, so the focus falls to the document, and the only sign is the badge and the form changing to the answer. 'Cevabı değiştir' unmounts too and the new text area is not focused (:194-205). The error <p role=alert> (:229-233) is not tied to the text area (no aria-invalid, no aria-describedby), the text area has no `required`, and the form is noValidate. Fix: focus the text area when a change begins and the answer or its button after a save, and say 'Cevaplandı' in a status region." }
+  - { id: F-D1-01, rule: "A failed read draws the retry state, whose SystemState has an <h1> of its own ('Sorular okunamadı'), under the page's <h1> 'Sorular': two h1 while the read has failed (load-failed.tsx:28, system-state.tsx:30,43, questions-page.tsx:37). Fix: pass headingLevel 2 from LoadFailed when `shell` is true." }
+  - { id: F-D1-29, rule: "The course menu offers 'Sorular' to everyone in the course (nav.ts:114 has no `requires`), so a ders nazırı who holds no question.answer opens the page and is told 'Bu sayfaya izniniz yok'; Ödevler, Değerlendirme and Ders destesi are left out of her menu. Fix: an any-of `requires` with question.answer. The refusal is nazar.access.dersNazirPages' (e2e questions#2); this flow draws it once, as `forbidden`." }
+  - { id: F-D1-30, rule: "A Markdown link in a question or an answer is drawn as <a target=_blank rel='noopener noreferrer nofollow'> with no word that it opens a new tab (libs/ui/src/mds/markdown.tsx:47). Not drawn here: the words of a question are the talebe's." }
+  - { id: ANSWER-1, rule: "New. Every card is named by its asker alone ('{name} tarafından sorulan soru', questions-list.tsx:150), every waiting card's field is 'Cevabınız' and its button 'Cevapla', every answered card's button 'Cevabı değiştir'. Twenty questions by one talebe give a screen reader twenty articles, fields and buttons of one name; the lesson line is in the card but in none of the names. Fix: name the article by the asker and the lesson line, and give the buttons an aria-label with the same, as the Pano's rows do." }
+  - { id: ANSWER-2, rule: "New. The page is a snapshot. A card a colleague answered meanwhile still says 'Bekliyor' and offers 'Cevapla', whose PUT replaces the colleague's answer with no version check and no history (lesson-question.service.ts:173-192, lesson-question.repository.ts:286-303 (the update has no condition on answered_at), domain answerLessonQuestion); a card the talebe deleted meanwhile is told only when 'Cevapla' is pressed, as 'Bu soru artık yok ya da cevaplama izniniz yok. Sayfayı yenileyin.' (questions.ts:56). Fix: send the version or the answer time with the PUT, refuse a stale one with 409, and show the answer that is there." }
+  - { id: ANSWER-3, rule: "New. 'Daha fazla göster' adds cards under the list with no announcement (the list is not live), and on the last page the button unmounts, so the focus falls to the document (questions-list.tsx:87-104). Fix: move the focus to the first new card and say how many were added." }
+  - { id: ANSWER-4, rule: "New. answerErrorKey (questions.ts:53-65) words COURSE_NOT_FOUND, which the route answers when the course is in a köşk that was hidden, as 'Biraz sonra yeniden deneyin', though no retry helps; and it words AUTHZ_FORBIDDEN as 'Bunu yapma izniniz yok.', which this route never answers (its guard asks course.view and gives only 404s; the service folds a missing permission into the same 404). Fix: word COURSE_NOT_FOUND like LESSON_QUESTION_NOT_FOUND and drop the dead branch." }
+  - { id: badge-is-text, rule: "The state of a card is said in words ('Bekliyor', 'Cevaplandı'), and the answered badge also carries a check icon: colour is not the only signal. Holds." }
+  - { id: label-in-name, rule: "Every button's visible text is its accessible name: 'Cevapla', 'Kaydet', 'Vazgeç', 'Cevabı değiştir', 'Daha fazla göster' (WCAG 2.5.3). Holds. The field is named by a visible label, 'Cevabınız'." }
+  - { id: busy-keeps-focus, rule: "A busy submit button is aria-disabled and aria-busy, never `disabled`, and a hidden status says 'Gönderiliyor' or 'Yükleniyor' (libs/ui/src/mds/button.tsx), so a press that is sending keeps the focus and is announced. Holds." }

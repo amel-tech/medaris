@@ -1,0 +1,326 @@
+# The "Yasakla" window of a course's Talebeler page in nizam-web (/kosks/<id>/courses/<id>/students, the tab "Kayıtlı"), read from the code of
+# PR #394 on 16 Nov 2026: apps/nizam/features/bans/components/ban-dialog.tsx, features/bans/{actions,present}.ts, features/applications/
+# components/{students-tabs,roster-table}.tsx and present.ts, app/kosks/layout.tsx, features/assignments/landing.ts, the page of the
+# Talebeler tab and the page of Yasaklamalar, and, for what the API does, apps/tedrisat/src/ban/{ban.controller,ban.service,ban.repository,
+# ban-codes,ban-tier}.ts. The köşk's nazım opens a talebe's row, picks the course or the whole köşk, writes a reason and sends it; the row
+# turns "Yasaklı" and the ban stands on the köşk's Yasaklamalar with its reason. It says what the code does today, and nothing in it was
+# walked (the owner moved every replay to the end): every behaviour below is "from the code" unless a line says it was seen. It is the
+# twin of nazar.bans.ban (the same API route family, another window: no e-mail search here, no medrese scope, the talebe is always a row's)
+# and shares its context names where the meaning is the same (`answer`, `scope`, `typed`, `toast`).
+#   - What it draws: the Talebeler page on Başvurular (where it opens) and on Kayıtlı (where "Yasakla" is), the window with its person, its
+#     two scopes, its reason and, when a celse is still to come, the warning to renew its meeting link; the success toast and the three
+#     refusal toasts; the row after the ban; and, as the exit, the köşk's Yasaklamalar with the new row. The ban list's own tabs, lift and
+#     widen are nizam.moderation.decideBan and .reviewBans: here the list is only where the new ban is read.
+#   - The one write is POST /courses/:courseId/bans (createBan). It takes effect at once: the talebe loses the course's celses and content,
+#     cannot apply again or leave. For a ban that is new the API tells the köşk's other nazımları and EVERY Medaris nazımı (COURSE_BAN_PLACED,
+#     or KOSK_BAN_PLACED for the whole köşk), never the one who placed it and never the başnazım, and tells the talebe of each seat the ban
+#     newly takes that access was removed (COURSE_ACCESS_REMOVED), never why. That first notice is the Medaris nazımı's Bildirimler:
+#     the DONE transition STARTS nizam.notifications.triage with `scope: platform`, `holds: one`.
+#   - A person already barred in that scope is answered with the standing ban and the same 201 (`created` false): no row, no audit row, no
+#     notice, and the window says "Yasak kaydedildi" all the same (BANST-2). The roster hides "Yasakla" on a barred row, so only a stale page
+#     meets it.
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   F-W5-2   the focused reason is `disabled` while the ban is sent, so the focus drops out of the window; after a refusal it is not put back
+#   F-W5-3   a refusal is told only by a sticky toast in another portal; nothing inside the open window says so and no field is marked
+#   F-W5-4   "Bir gerekçe yazın." appears only after the reason was left, silently, and the button is natively off meanwhile (F-X-2, F-X-3)
+#   F-X-3    natively disabled submit with no reason given (ban-dialog.tsx:142); F-X-4 and F-X-8 are its toast and focus families
+#   BANST-1  (new) the hoca cannot use this page: the layout refuses a person whose roles are a course's (layout.tsx:20), so "the müderris bars
+#            the course only" is true of the API and of no screen in nizam; the window's disabled köşk option is drawn and nobody can meet it
+#   BANST-2  (new) a ban that already stands is told as a new one, the typed reason is dropped, nothing is written and nobody is told
+#   BANST-3  (new) after a success the row's "Yasakla" is replaced by "Yasağı kaldır", so the button that opened the window is gone and
+#            the focus falls to the page
+#   BANST-4  (new) the send is not caught: if the server action itself rejects, `saving` never ends and neither Vazgeç, the close icon nor
+#            Escape can close the window
+#   BANST-5  (new) while the ban is sent, Vazgeç, the close icon and Escape stay on and do nothing; a busy control is not marked off
+#   BANST-6  (new, for nizam.courses.roster) a ban over the whole medrese reads "Yasaklı · Bu ders" on this roster, and the lift offered on it
+#            is one the API would refuse a köşk nazımı
+#   ban-staff-check-gaps (security, ledger/security.md) and BANDEC-3: what the createBan route checks of the person it bars; see the
+#            description of `submitting` and ui.yaml `rules`. No request that would use the gap is proposed here.
+#   TRIAGE-1 and TRIAGE-2 (nizam.notifications.triage) are the two ends of the notice: the başnazım is never told, every Medaris nazımı is.
+# E2E carried: bans#1 (the window opens for that talebe with the course chosen and the focus in the reason), bans#2 (the reason is required),
+# bans#3 (the scrim does not close it; Escape and Vazgeç do), bans#4 (the row turns "Yasaklı" and swaps its buttons) and bans#5 (the
+# köşk-wide ban remembers the course on Yasaklamalar). notifications#7 (the Medaris nazımı reads the notice; the one who barred is told
+# nothing) is the `starts` edge. Nothing is stale: bans#1 to #5 match the code. The scrim click of bans#3 is a mouse click at (5, 5) that
+# the replay cannot make, so PRESS_SCRIM is drawn and not driven.
+schema: delurio-graph/0
+kind: flow
+id: nizam.moderation.banStudent
+status: captured
+domain: medaris.api
+ui: nizam.moderation.banStudent
+title: Bar a talebe from a course or from the whole köşk
+summary: >-
+  The köşk's nazım opens a course's Talebeler, takes the tab "Kayıtlı" and presses "Yasakla: {name}" on a talebe's row. A window named
+  "Talebeyi yasakla" opens over the page, with the talebe (name and e-mail), "Yalnızca bu ders" chosen, "Köşkten de yasakla" beside it
+  and a reason that has the focus; when a celse is still to come it also warns that the talebe may know its meeting link. The
+  button stays off until the reason holds something other than white space, and "Bir gerekçe yazın." shows, silently, once the empty
+  field was left. Escape, Vazgeç and the close icon close it and write nothing; a click on the scrim does not. The nazım sends it: a toast
+  says "Yasak kaydedildi" and names the talebe and the scope, the window closes, the row wears "Yasaklı · Bu ders" (or "· Köşk") and
+  offers "Yasağı kaldır" in place of "Dersten çıkar" and "Yasakla", and the ban is on the köşk's Yasaklamalar with its reason. A refusal
+  stays in the window as an error toast that does not close by itself (not allowed, the person runs the course, anything else). The
+  Medaris nazımı is told of the ban; the nazım who placed it is not.
+
+scope:
+  shows: >-
+    the Talebeler page of a course on its two tabs that matter here (Başvurular, where it opens, and Kayıtlı), the window with its person,
+    scopes, reason and warning, the success toast and the three refusal toasts, the row after the ban, and the köşk's Yasaklamalar with the
+    new row
+  world: open
+  outOfView:
+    - "the rest of the roster: the search, the paging, 'Tamamladı say', 'Dersten çıkar' and the other tabs (Tamamlayanlar has the same 'Yasakla' and the same window): nizam.courses.roster"
+    - "deciding the waiting applications on the first tab: nizam.courses.decideApplications"
+    - "lifting a ban or widening a course ban to the köşk, on Yasaklamalar: nizam.moderation.decideBan; the tabs, counts and search of Yasaklamalar: nizam.moderation.reviewBans. The lift from a roster row (Yasağı kaldır, roster-table.tsx:141) opens the same LiftDialog; nizam.courses.roster hands over to decideBan for it, but decideBan begins at Yasaklamalar, so that lift on the roster is drawn by no flow"
+    - "barring from a medrese's Talebeler or Yasaklamalar, by e-mail address, with the medrese as a scope: nazar.bans.ban; from a course's own Yasaklamalar in nazar: nazar.bans.courseBans"
+    - "the Medaris nazımı's Bildirimler, where the notice is read and marked: nizam.notifications.triage (started by DONE)"
+    - "the talebe's side of a ban (the notice 'erişimin kaldırıldı', being refused a seat or a celse): tedris.account.notifications, tedris.course.apply"
+    - "a person who cannot open the page: a visitor is sent to sign in (realm.auth.signIn), a person with no role or only a medrese's or a course's roles meets the refusal of nizam.shell.noAccessAndNotFound; a köşk of another nazım is the same screen"
+    - "a roster that could not be read ('Bu dersin kayıtları şu anda okunamadı.'): nizam.courses.roster"
+    - "an ended session: both the page and the server action send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "the person the window offers to bar is only ever a row of the roster: a person with no seat has no row and no 'Yasakla' here; the API takes any person's id (createBan), the page never sends one"
+
+decisions:
+  D1:
+    question: >-
+      Should the hoca of a course, who holds ban.course by the role's own default, be able to bar a talebe from somewhere? Today the API takes
+      the hoca's COURSE ban, but nizam refuses the hoca every köşk page (the layout gives a person whose roles are a course's the "Bu bölüm için izniniz yok" screen, and the
+      landing sends them to Nazar), and nazar's course Yasaklamalar refuses the hoca too (F-D2c-3). So "the müderris bars the course only" has no screen in either app, and the
+      window's disabled köşk option, written for it, can be met by nobody (BANST-1).
+    recommend: >-
+      Give the hoca a ban dialog on the course's roster in Nazar (a Talebeler page there already has the roster), or open the course's
+      Yasaklamalar to ban.course; until then take the dead branch out of the window or say in the product that only the köşk's nazım bars from
+      here.
+    affects: [form, formReady]
+  D2:
+    question: >-
+      Should the window say that the talebe is already barred in that scope? Today the API answers the standing ban with the same 201 it gives a
+      new one, the window shows "Yasak kaydedildi", and the reason just typed is dropped without a word (BANST-2).
+    recommend: >-
+      Yes: have the API say whether it made the ban, and let the window say that the ban already stands and whose reason it keeps. Until then the
+      person who bans believes the reason was recorded.
+    affects: [savedRow]
+
+context:
+  scope:
+    values: [course, kosk, limited]
+    initial: any
+    say:
+      course: "the köşk's nazım keeps 'Yalnızca bu ders' and bars the course"
+      kosk: "the köşk's nazım picks 'Köşkten de yasakla' and bars every course of the köşk"
+      limited: "the person opens the page without being the köşk's nazım or the başnazım, so the köşk option is off with a note and only the course can be barred (nobody can be this person today: BANST-1)"
+  answer:
+    values: [saved, already, notAllowed, invalidTarget, failed]
+    initial: any
+    say:
+      saved: "the server places a new ban"
+      already: "the person is already barred in that scope and the server answers the standing ban (a stale roster)"
+      notAllowed: "the caller holds none of the codes at that place any more (BAN_FORBIDDEN)"
+      invalidTarget: "the person is the caller, or runs the course (BAN_TARGET_INVALID)"
+      failed: "anything else: the course is gone (COURSE_NOT_FOUND), the body is refused, the server does not answer"
+  session:
+    values: [ahead, none]
+    initial: any
+    say:
+      ahead: "the course has a celse still to come, so the window warns that the talebe may know its meeting link"
+      none: "no celse is still to come (all past or cancelled): no warning"
+  typed: { values: [true, false], initial: false } # the reason holds something other than white space
+  left: { values: [true, false], initial: false } # the reason field has been left once (`touched`), so its error shows whenever it is blank
+  chosen: { values: [course, kosk], initial: course } # the radio that is on
+  toast: { values: [none, notAllowed, invalidTarget, failed], initial: none } # the error toast over the window
+
+guards:
+  wantsKosk: "scope == 'kosk'"
+  mayKosk: "scope != 'limited'"
+  # the case says which radio the walk ends on; the button sends whichever is on
+  sendsWhatWasWanted: "(scope == 'kosk' and chosen == 'kosk') or (scope != 'kosk' and chosen == 'course')"
+  # `showError = touched && blank` (ban-dialog.tsx:75)
+  errorShown: "left and not typed"
+
+effects:
+  openedDialog: { set: { typed: false, left: false, chosen: course, toast: none } } # `useEffect` on `open` starts a clean form (ban-dialog.tsx:66-72)
+  typedReason: { set: { typed: true } }
+  clearedReason: { set: { typed: false } }
+  leftReason: { set: { left: true } } # onBlur (ban-dialog.tsx:204); a press on a radio blurs the focused field too
+  choseCourse: { set: { chosen: course, left: true } }
+  choseKosk: { set: { chosen: kosk, left: true } }
+  clearToast: { set: { toast: none } }
+  notAllowedToast: { set: { toast: notAllowed } }
+  invalidTargetToast: { set: { toast: invalidTarget } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  submitting:
+    from: createBan
+    notAllowed: [BAN_FORBIDDEN]
+    invalidTarget: [BAN_TARGET_INVALID]
+    failed: [COURSE_NOT_FOUND, VALIDATION_ERROR]
+
+# The story bans#4 tells: the nazım opens the roster, presses "Yasakla" on the talebe, writes the reason, sends it, and reads the ban on Yasaklamalar.
+main:
+  given: { scope: course, answer: saved, session: ahead }
+  events: [SHOW_ENROLLED, OPEN_DIALOG, TYPE_REASON, SUBMIT, DONE, OPEN_BANS]
+
+initial: applicationsTab
+
+states:
+  applicationsTab:
+    title: Talebeler, on its first tab
+    by: human
+    description: >-
+      A course's Talebeler opens on "Başvurular" (`useState("applications")`), where the waiting applications are decided (nizam.courses.decideApplications);
+      "Yasakla" is on the rows of "Kayıtlı" and "Tamamlayanlar", so the nazım takes "Kayıtlı" first (the e2e does the same). The page reads the
+      course, its köşk, its roster and the talebe the team took out, and the person's roles, in one go; a course that is not in the köşk of the address
+      is "not found", and a roster the person may not read is only the line "Bu dersin kayıtları şu anda okunamadı." (nizam.courses.roster). Nothing
+      sets the focus on arrival.
+    source: apps/nizam/features/applications/components/students-tabs.tsx:57
+    on:
+      SHOW_ENROLLED: { target: rosterPage, source: apps/nizam/features/applications/components/students-tabs.tsx:104, say: "they take the tab 'Kayıtlı'" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  rosterPage:
+    title: Talebeler, on Kayıtlı, the window closed
+    by: human
+    description: >-
+      The enrolled talebe in a table, each row with "Tamamladı say: {name}", "Dersten çıkar: {name}" and "Yasakla: {name}" (an outline button, then two
+      quiet ones; `studentActions`: a barred row has "Yasağı kaldır" in place of the last two). The buttons are named by the row. "Yasakla" is
+      drawn on every row for everyone who reaches the page: the API decides at the send.
+    source: apps/nizam/features/applications/components/roster-table.tsx:223
+    on:
+      OPEN_DIALOG: { target: settle, effect: [openedDialog], source: apps/nizam/features/applications/components/roster-table.tsx:133, say: "they press 'Yasakla: {name}' on the talebe's row" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change to the form the button is on or off. "Yasakla" is natively disabled until the reason holds something other
+      than white space (`disabled={blank}`), and nothing says why it is off (F-X-3).
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:142
+    always:
+      - { guard: typed, target: formReady, say: "the reason is written: the button is on" }
+      - { target: form, say: "the reason is empty or only white space: the button is off" }
+
+  form:
+    title: The "Talebeyi yasakla" window, the button off
+    by: human
+    description: >-
+      A window named "Talebeyi yasakla" over the page, its eyebrow the course's title: the talebe (an avatar, the name, the e-mail), the intro
+      ("Yasak hemen geçerli olur. …"), the line that says who reads the reason, "* zorunlu alan", the scope radios ("Yalnızca bu ders" on, "Köşkten
+      de yasakla" off, each with a line under it; for a person who is not the köşk's nazım the köşk option is disabled and says only the nazım may,
+      which nobody can meet: BANST-1), the reason (a textarea of 4 rows, 500 characters at most, `required`) and, while a celse is still to come, a
+      warning "Sıradaki celsenin toplantı bağlantısını yenileyin". The focus starts in the reason. The scrim does not close it (a form dialog
+      never does), Escape, Vazgeç and the close icon do. "Yasakla" is natively disabled. "Bir gerekçe yazın." replaces the help under the reason
+      once the field was left empty, and is not announced (F-W5-4, F-X-2); the red `*` is hidden from assistive technology; the whole body is
+      the window's description (F-UI-W1-1).
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:123
+    on:
+      TYPE_REASON: { target: settle, effect: [typedReason], source: apps/nizam/features/bans/components/ban-dialog.tsx:203, say: "they write the reason" }
+      LEAVE_EMPTY: { guard: "not typed", target: settle, effect: [leftReason], source: apps/nizam/features/bans/components/ban-dialog.tsx:204, say: "they leave the empty reason (white space counts as empty): 'Bir gerekçe yazın.' replaces the help, silently, and the button stays off" }
+      PICK_KOSK: { guard: "wantsKosk and chosen == 'course'", target: settle, effect: [choseKosk], source: apps/nizam/features/bans/components/ban-dialog.tsx:170, say: "they pick 'Köşkten de yasakla'" }
+      PICK_COURSE: { guard: "chosen == 'kosk'", target: settle, effect: [choseCourse], source: apps/nizam/features/bans/components/ban-dialog.tsx:170, say: "they pick 'Yalnızca bu ders' again" }
+      CANCEL: { target: closedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Vazgeç or the close icon: nothing is written; the focus goes back to the row's 'Yasakla' (not verified)" }
+      PRESS_ESCAPE: { target: closedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Escape: the same" }
+      PRESS_SCRIM: { target: form, source: libs/ui/src/mds/dialog.tsx:126, say: "they click outside the window: nothing happens, and nothing typed is lost" }
+      NAVIGATE: { target: left, say: "they leave the page by its address" }
+
+  formReady:
+    title: The "Talebeyi yasakla" window, the button on
+    by: human
+    description: >-
+      The same window with "Yasakla" on; pressing it sends the ban. After a refusal the window is here again with what was typed, the radio that was
+      on, and an error toast over it (the toast has no timeout; a second refusal adds a second one, which the graph draws as the last).
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:138
+    on:
+      CLEAR_REASON: { target: settle, effect: [clearedReason], source: apps/nizam/features/bans/components/ban-dialog.tsx:203, say: "they empty the reason: the button goes off, and the error shows at once if the field was left before" }
+      PICK_KOSK: { guard: "wantsKosk and chosen == 'course'", target: settle, effect: [choseKosk], source: apps/nizam/features/bans/components/ban-dialog.tsx:170, say: "they pick 'Köşkten de yasakla'" }
+      PICK_COURSE: { guard: "chosen == 'kosk'", target: settle, effect: [choseCourse], source: apps/nizam/features/bans/components/ban-dialog.tsx:170, say: "they pick 'Yalnızca bu ders' again" }
+      SUBMIT: { guard: sendsWhatWasWanted, target: submitting, effect: [clearToast], source: apps/nizam/features/bans/components/ban-dialog.tsx:77, say: "they press 'Yasakla' in the window" }
+      CANCEL: { target: closedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Vazgeç or the close icon: nothing is written" }
+      PRESS_ESCAPE: { target: closedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:126, say: "Escape: the same" }
+      PRESS_SCRIM: { target: formReady, source: libs/ui/src/mds/dialog.tsx:126, say: "they click outside the window: nothing happens" }
+      NAVIGATE: { target: left, say: "they leave the page by its address" }
+
+  submitting:
+    title: The ban is on its way
+    description: >-
+      The server action createBan calls POST /courses/{courseId}/bans with the talebe, the scope (COURSE, or KOSK from this course) and the trimmed
+      reason. The reason, the radios and the field go off and "Yasakla" is busy (aria-disabled, "Yükleniyor"); the focused reason is `disabled`,
+      so the focus drops out of the window (F-W5-2). Vazgeç, the close icon and Escape stay on and do nothing (`if (!saving)`, BANST-5). The
+      send is not inside a try: a server action that cannot be reached at all leaves `saving` true for good (BANST-4, not seen). tedrisat asks, in
+      this order: the course exists; the caller holds, at the course, one of ban.course, ban.manage_kosk or madrasah.ban for a COURSE ban, or,
+      at the köşk, ban.manage_kosk or platform.ban_scoped for a KOSK ban (the köşk's nazım holds both; a Medaris nazımı with only
+      platform.ban_scoped holds none for a course ban); the person is not the caller; and the person holds no role that runs the course
+      (MUDERRIS, DERS_NAZIR, KOSK_NAZIM, MEDARIS_NAZIM and SYSTEM_ADMIN, with MEDRESE_NAZIR and MEDRESE_BASMUDERRIS added for a medrese's course)
+      at this course, its köşk, its medrese or the platform. That last check reads `role_assignments` rows only, and the başnazım is a realm role
+      with no row: SYSTEM_ADMIN is in the list and can never be found, and a person who teaches another course of the same köşk holds no row at
+      these four scopes (ban-staff-check-gaps; the createBan route is the one that checks at all, and BANDEC-3, the medrese route's gap, is not
+      reachable from this page). A new ban is one row and one audit row (ban.create); then the Medaris nazımları and the köşk's other nazımları
+      are told (COURSE_BAN_PLACED, KOSK_BAN_PLACED for the whole köşk) and the talebe of each seat the ban takes is told that access was
+      removed (COURSE_ACCESS_REMOVED), never why; a notice that cannot be written never undoes the ban. A person already barred in that scope
+      gets the standing ban back, with none of that (BANST-2).
+    invoke: { action: createBan }
+    on:
+      DONE:
+        - { guard: "answer == 'already'", target: savedRow, source: apps/nizam/features/bans/components/ban-dialog.tsx:100, say: "the standing ban is answered and the window says the same words (BANST-2)" }
+        - { guard: "answer == 'saved'", target: savedRow, starts: { flow: nizam.notifications.triage, given: { scope: "'platform'", holds: "'one'" } }, source: apps/nizam/features/bans/components/ban-dialog.tsx:100, say: "the ban stands; the Medaris nazımı's Bildirimler holds one new notice for it" }
+      FAIL.notAllowed: { guard: "answer == 'notAllowed'", target: formReady, effect: [notAllowedToast], source: apps/nizam/features/bans/components/ban-dialog.tsx:94, say: "'Bu yasağı koymak için yetkiniz yok.'" }
+      FAIL.invalidTarget: { guard: "answer == 'invalidTarget'", target: formReady, effect: [invalidTargetToast], source: apps/nizam/features/bans/components/ban-dialog.tsx:94, say: "'Bu kişi yasaklanamaz.', for the caller or a person who runs the course" }
+      FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failedToast], source: apps/nizam/features/bans/present.ts:117, say: "'İşlem tamamlanamadı.': COURSE_NOT_FOUND and the refused body have no words of their own here, so they read as the generic line" }
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:84
+
+  savedRow:
+    title: The ban is placed, on the roster
+    by: human
+    description: >-
+      A toast "Yasak kaydedildi" says "{name} artık bu derse erişemez." or "{name} artık {kosk} içindeki hiçbir derse erişemez." and closes by
+      itself after 6 seconds; the window is gone and the page is read again (`router.refresh()`). The talebe's row wears the badge "Yasaklı · Bu ders"
+      (or "Yasaklı · Köşk") and its buttons are "Tamamladı say" and "Yasağı kaldır": "Dersten çıkar" is gone (a barred seat is not taken out: leaving
+      would drop the record the ban sits on) and so is "Yasakla", the button that had opened the window, so the focus falls to the page (BANST-3).
+      If the person was already barred in that scope the toast is the same and nothing was written (BANST-2). The sidebar's "Yasaklamalar" opens
+      the köşk's list.
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:100
+    on:
+      OPEN_BANS: { target: listed, source: apps/nizam/lib/shell-nav.ts:245, say: "they take 'Yasaklamalar' in the sidebar" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  listed:
+    type: final
+    title: The ban is on the köşk's Yasaklamalar, with its reason
+    description: >-
+      The köşk's list "Yasaklamalar", read as the nazım: the tab "Etkin" counts one more, "1 yeni yasak" says one was placed in the last day, and the table
+      has the new row: the talebe (name, e-mail, the badge "Yeni"), the scope ("Ders" and the course's title, or "Köşk" and the köşk's name and
+      "{course} dersinden genişletildi"), the reason as the nazım typed it (trimmed), "Köşk nazımı (siz)" and when, and "Yasağı kaldır" (a COURSE row
+      also "Köşkten de yasakla"). The row is read from the köşk's list, GET /kosks/{koskId}/bans; its tabs, lift and widen are nizam.moderation.decideBan.
+    source: apps/nizam/features/bans/components/bans-view.tsx:306
+
+  closedRow:
+    type: final
+    title: The window is closed and nothing was written
+    description: >-
+      The focus goes back to the row's "Yasakla: {name}", which is still there (Base UI returns it to the element that was focused when the
+      window opened; not verified).
+
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - id: never-without-a-reason
+    never: "state == 'submitting' and not typed"
+    say: A ban is never sent without a reason, which has to hold something other than white space.
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:80
+  - id: the-button-is-on-only-with-a-reason
+    never: "state == 'formReady' and not typed"
+    say: The window shows "Yasakla" on only while the reason is written.
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:142
+  - id: only-the-nazim-bars-the-kosk
+    never: "chosen == 'kosk' and scope == 'limited'"
+    say: A person who is not the köşk's nazım or the başnazım cannot pick the whole köşk; the option is off for them.
+    source: apps/nizam/features/bans/present.ts:111
+  - id: success-only-for-a-ban
+    never: "state == 'savedRow' and answer not in ['saved', 'already']"
+    say: The success toast is shown only for an answer that placed or confirmed a ban.
+    source: apps/nizam/features/bans/components/ban-dialog.tsx:100
+  - id: the-list-is-read-only-after-a-ban
+    never: "state == 'listed' and answer not in ['saved', 'already']"
+    say: The köşk's list is reached from this flow only after a ban was answered.
+    source: apps/nizam/features/bans/components/bans-view.tsx:306

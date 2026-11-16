@@ -1,0 +1,18 @@
+# nizam.moderation.reviewBans as the seeded Medaris nazımı ("Selma", who holds platform.kosk_create, kosk_edit, course_hide, madrasah_create and audit_read, and neither
+# ban code): the page does NOT show her the bans. tedrisat answers GET /bans 403 BAN_FORBIDDEN (seen at the API on 16 Nov, not in a browser), the page calls forbidden() and
+# the shell says "Bu bölüm için izniniz yok". This is TRIAGE-2 read from this page: the notice of every new ban already told her the person's name and the reason.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewBans \
+#     --bind graphs/nizam/moderation/reviewBans/binding.noCode.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. A file of its own because its `given` is binding.yaml's `refused` (the köşk nazımı): two scenarios must not share a `given` in one file.
+# No data: the refusal does not depend on what the list holds, and nothing of the seeded Medaris nazımı is changed (her grants are the seed's).
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nizam.moderation.reviewBans
+
+scenarios:
+  noCode:
+    given: { viewer: stranger, read: ok, refetch: ok, courseBans: none, koskBans: none, match: none, pages: one }
+    as: medarisNazim
+    open: '{nizam}/yasaklamalar'
+    vars: { typed: Başvuran, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }

@@ -1,0 +1,148 @@
+# The screens of nazar.courseNazirs.appoint: "Ders nazırları" (/ders/<id>/nazirlar) with its table, and the "Ders nazırı ata" dialog over
+# it. Read from apps/nazar/features/course-nazirs/components/{course-nazirs-page,course-nazirs-table,course-nazir-dialog}.tsx,
+# course-nazirs.ts, the permission section of features/nazirs and libs/ui/src/mds (dialog, field, input, checkbox, alert, table, toast) on
+# 15 Nov 2026; the words are copied from libs/i18n/src/locales/tr/nazar.json, key for key. Nothing was walked in a browser (from the
+# code); the unit specs named in needs.yaml exercise the same components.
+#
+# The page behind the dialog is drawn only where the dialog is closed (the dialog is modal, so the page is inert while it is open). The
+# table's rows are data: the nodes marked `repeat` stand for one item per post, and the replay finds them through the binding. The other
+# rows and columns of the roster are other flows' (flow.yaml, outOfView).
+#
+# What the graph draws of a form of 21 boxes. The dialog draws the course's whole catalog (21 codes, in the API's order); the graph draws
+# two of them, the ones the walk ticks: "Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir" and "Ders kaydı ekle,
+# adlandır, gizle; görünürlüğünü değiştir" (e2e course-nazirs#3). The other nineteen are boxes like them; `world: open` leaves them out. A
+# box the caller may not give is `disabled`; a graph checks a field's `checked` and not its disabled state, so that is said in the
+# comments.
+#
+# Composed text (built in code, in no i18n file), each a value the page puts in a place that has no message of its own:
+#   composed.CourseNazirs.course     the course's title above the dialog's title (course-nazir-dialog.tsx:235, `eyebrow`)
+#   composed.CourseNazirs.person     a person's name: in the table's name cell (course-nazirs-table.tsx:48) and in the chosen block (:294)
+#   composed.CourseNazirs.address    a person's address, a <bdi dir=ltr> (course-nazirs-table.tsx:52; course-nazir-dialog.tsx:297)
+#   composed.CourseNazirs.permissionsLine   the sentences of the codes held, joined with " · " (course-nazirs.ts:127)
+#   composed.CourseNazirs.endDate    the <time> of the end, a day as dayFormat(locale, zone) writes it (course-nazirs-table.tsx:81)
+#   composed.CourseNazirs.giverYou   the giver's name and, when the viewer appointed, " (siz)" (course-nazirs-table.tsx:92-95)
+#   composed.CourseNazirs.giverDay   the day of the appointment, a <time> (course-nazirs-table.tsx:96)
+# The one message not authored here is none: `changes` is the app's own CourseNazirs.dialog.chosenNote.
+#
+# Samples: only where the page needs one. The replay reads the binding's samples (the made course, the spare account, the days the helper
+# computed) and matches any text where it has none.
+schema: delurio-graph/0
+kind: ui
+id: nazar.courseNazirs.appoint
+flow: nazar.courseNazirs.appoint
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: CourseNazirs.dialog.chosenNote } # the app's own sentence says what "Kaydet" does: "Kaydedince bu derste ders nazırı olur ve seçtiğiniz izinleri alır."
+samples:
+  course: Deneme dersi nzappoint
+  name: Dilek Başvuran
+  email: e2e-basvuran-g@medaris.test
+  giver: Hamdi Müderris
+  date: 15 Kasım 2026
+  endDate: 15 Aralık 2026
+  count: "2"
+  list: Celse ekle, tarihini değiştir, iptal et; toplantı bağlantısını gir · Ders kaydı ekle, adlandır, gizle; görünürlüğünü değiştir
+
+# The page sets no focus of its own on load (nothing in features/course-nazirs does), so there is no `initialFocus` on the page and no
+# `focus`. The dialog gives it to the e-mail field (`initialFocus={emailRef}`, course-nazir-dialog.tsx:242).
+nodes:
+  # ---- the page, the dialog closed ----------------------------------------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:57 } # the shell's one <main id="main">; it has no name
+  title: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.title }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:61 } # h1
+  intro: { type: text, component: Text, text: { key: CourseNazirs.intro, params: { course: course.title } }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:64 }
+  appointButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseNazirs.appoint }, in: [listed], emits: OPEN_APPOINT, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:433 } # primary, with a plus icon; drawn only when the list says the caller may appoint; it stays after an appointment, so the focus has somewhere to return
+
+  # the table: named by its caption, which is visually hidden; the empty line or a row per post
+  rosterTable: { type: list, component: List, role: table, name: { key: CourseNazirs.caption, params: { course: course.title } }, in: [listed], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:149 }
+  emptyLine: { type: text, component: Text, text: { key: CourseNazirs.empty }, in: [listed], when: "row == 'none'", source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:154 } # a table cell spanning the columns
+  rowName: { type: text, component: Text, text: { key: composed.CourseNazirs.person, params: { name: nazir.name } }, in: [listed], when: "row != 'none'", repeat: roster.items, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:48 } # the <bdi> of the first cell, a row header
+  rowAddress: { type: text, component: Text, text: { key: composed.CourseNazirs.address, params: { email: nazir.email } }, in: [listed], when: "row != 'none'", repeat: roster.items, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:52 }
+  rowNoPerms: { type: text, component: Text, text: { key: CourseNazirs.noPermissions }, in: [listed], when: "row in ['bare', 'bareEnd']", repeat: roster.items, source: apps/nazar/features/course-nazirs/course-nazirs.ts:124 } # "İzin yok", a bold line in the second cell
+  rowCount: { type: text, component: Text, text: { key: CourseNazirs.permissionCount, params: { count: nazir.count } }, in: [listed], when: "row in ['given', 'givenEnd']", repeat: roster.items, source: apps/nazar/features/course-nazirs/course-nazirs.ts:123 } # "2 izin"
+  rowPermissionsLine: { type: text, component: Text, text: { key: composed.CourseNazirs.permissionsLine, params: { list: nazir.list } }, in: [listed], when: "row in ['given', 'givenEnd']", repeat: roster.items, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:68 } # data-testid=permissions-line; a code with no sentence shows the code itself (course-nazirs.ts:31)
+  rowEnd: { type: text, component: Text, text: { key: composed.CourseNazirs.endDate, params: { endDate: nazir.endDate } }, in: [listed], when: "row in ['bareEnd', 'givenEnd']", repeat: roster.items, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:81 } # a <time>
+  rowNever: { type: text, component: Text, text: { key: CourseNazirs.never }, in: [listed], when: "row in ['bare', 'given']", repeat: roster.items, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:83 } # "Süresiz"
+  rowGiver: { type: text, component: Text, text: { key: composed.CourseNazirs.giverYou, params: { giver: giver.name } }, in: [listed], when: "row != 'none'", repeat: roster.items, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:92 } # the giver's name and "(siz)": the hoca appointed, and the hoca is the viewer (e2e course-nazirs#3 a6)
+  rowGiverDay: { type: text, component: Text, text: { key: composed.CourseNazirs.giverDay, params: { date: appointment.date } }, in: [listed], when: "row != 'none'", repeat: roster.items, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:96 }
+  editButton: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseNazirs.editLabel, params: { name: nazir.name } }, text: { key: CourseNazirs.edit }, in: [listed], when: "row != 'none'", repeat: roster.items, emits: EDIT_PERMISSIONS, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:113 } # drawn when the row says `mayEdit`: to a giver, not on her own post (nazar.courseNazirs.permissions)
+  endButton: { type: action, component: Button, role: button, intent: dismiss, name: { key: CourseNazirs.endLabel, params: { name: nazir.name } }, text: { key: CourseNazirs.end }, in: [listed], when: "row != 'none'", repeat: roster.items, emits: END_POST, source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:123 } # drawn when the row says `mayEnd`; disabled while the person has appointees of their own (nazar.courseNazirs.dismiss)
+
+  # the toast of an appointment, and the refusal that closes the dialog: toasts are dialogs in the "Bildirimler" live region
+  toastAppointed: { type: status, component: Status, role: dialog, name: { key: CourseNazirs.dialog.appointed }, text: { key: CourseNazirs.dialog.appointedBody, params: { name: nazir.name } }, in: [listed], when: "toast == 'appointed'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:185 } # closes by itself after 6 seconds
+  toastExists: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.appointFailed }, text: { key: CourseNazirs.errors.exists }, in: [listed], when: "toast == 'exists'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201 } # an error toast stays until it is closed (e2e course-nazirs#7 a4)
+
+  # ---- the dialog "Ders nazırı ata" ----------------------------------------------------------------------------------------------
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], initialFocus: emailField, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:227 } # a form dialog; the scrim does not close it
+  dialogEyebrow: { type: text, component: Text, text: { key: composed.CourseNazirs.course, params: { course: course.title } }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:235 } # the course's title above the dialog's title (data, not a message)
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.dialog.titleAppoint }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:236 } # h2
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], emits: CANCEL, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:241 } # an icon button named by aria-label; closing is ignored while the save is on its way (CAPPOINT-1)
+
+  # the e-mail field, drawn until a person is chosen
+  emailField: { type: field, component: TextField, role: textbox, text: { key: CourseNazirs.dialog.searchLabel }, value: { literal: "" }, in: [asking, searching], disabledIn: [searching], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:331 } # type=email; the "*" is aria-hidden and the input has no `required` (F-D2c-12); disabled and aria-busy while it searches, so it loses the focus (F-D2c-5)
+  emailHelp: { type: text, component: Text, text: { key: CourseNazirs.dialog.searchHelp }, in: [asking, searching], when: "note == 'none'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:328 } # the error replaces the help line
+  emailNotEmail: { type: text, component: Text, text: { key: CourseNazirs.dialog.notEmail }, in: [asking], when: "note == 'notEmail'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:219 } # Field.Error: no role and no live region (F-D2c-4)
+  emailNobody: { type: text, component: Text, text: { key: CourseNazirs.dialog.notFound }, in: [asking], when: "note == 'nobody'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:221 }
+  emailDown: { type: text, component: Text, text: { key: CourseNazirs.dialog.unavailable }, in: [asking], when: "note == 'down'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:223 }
+  searchingStatus: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.searching }, in: [searching], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:354 } # the hidden <output>; it is empty when nothing is searched
+
+  # the person chosen
+  chosenRegion: { type: page, component: Page, role: region, name: { labelledBy: chosenTitle }, in: [picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:282 } # <section aria-labelledby="chosen-course-nazir" data-testid="chosen-course-nazir">
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: CourseNazirs.dialog.chosenTitle }, in: [picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:287 } # h3
+  chosenName: { type: text, component: Text, text: { key: composed.CourseNazirs.person, params: { name: nazir.name } }, in: [picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:294 }
+  chosenAddress: { type: text, component: Text, text: { key: composed.CourseNazirs.address, params: { email: nazir.email } }, in: [picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:297 } # left out when the person has no address or it is their name
+  removePerson: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseNazirs.dialog.remove }, in: [picked, pickedMember, pickedSelf, appointing], emits: REMOVE, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:302 } # a ghost button with its words; it removes itself and the focus is not moved (F-D2c-5)
+  chosenNote: { type: text, component: Text, text: { key: CourseNazirs.dialog.chosenNote }, in: [picked, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:315 } # the sentence of the flow's `changes`
+  selfAlert: { type: alert, component: Alert, role: status, text: { key: CourseNazirs.dialog.self }, in: [pickedSelf], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:310 } # warning tone: an Alert is a status unless it is an error
+  alreadyAlert: { type: alert, component: Alert, role: status, text: { key: CourseNazirs.dialog.already, params: { name: nazir.name } }, in: [pickedMember], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:311 }
+
+  # the permissions: a fieldset of 21 boxes, two are drawn; the caller may give only the codes the list names as `grantable`
+  permissionsSection: { type: text, component: Text, role: group, name: { key: CourseNazirs.dialog.permissions }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/nazirs/components/permission-section.tsx:37 } # a <fieldset> with a <legend> "İzinler"
+  permissionsHelp: { type: text, component: Text, text: { key: CourseNazirs.dialog.permissionsHelp }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:380 }
+  permSession: { type: field, component: TextField, role: checkbox, text: { key: Account.permissions.session_manage }, checked: "ticks == 'some'", in: [asking, searching, picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/nazirs/components/permission-section.tsx:44 } # on: the hoca holds it; the sentence is the account page's (e2e course-nazirs#3)
+  permRecording: { type: field, component: TextField, role: checkbox, text: { key: Account.permissions.recording_manage }, checked: "ticks == 'some'", in: [asking, searching, picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/nazirs/components/permission-section.tsx:44 }
+
+  # the end
+  endField: { type: field, component: TextField, text: { key: CourseNazirs.dialog.endLabel }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:400 } # <input type=datetime-local name=endsAt>: it has no role in the accessibility tree, so it is found by its label; disabled while the save is on its way; its value is not a graph check, since an empty and a filled field are one control
+  endHelp: { type: text, component: Text, text: { key: CourseNazirs.dialog.endHelp }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], when: "until != 'pastTold'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:391 } # the error replaces the help line
+  endError: { type: text, component: Text, text: { key: CourseNazirs.dialog.endProblems.past }, in: [picked], when: "until == 'pastTold'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:396 } # a Field.Error: no role, not live, the focus stays on "Kaydet" (F-D2c-4)
+  dialogNote: { type: text, component: Text, text: { key: CourseNazirs.dialog.note }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:412 }
+
+  # the footer: what is ticked, and the buttons
+  summaryNone: { type: text, component: Text, text: { key: CourseNazirs.dialog.summaryNone }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], when: "ticks == 'none'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:247 } # a <p> in the footer, not a live region (CAPPOINT-3)
+  summaryCount: { type: text, component: Text, text: { key: CourseNazirs.dialog.summary, params: { count: ticked.count } }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], when: "ticks == 'some'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:246 }
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseNazirs.dialog.cancel }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], emits: CANCEL, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:252 } # on while the save is on its way, and does nothing then (CAPPOINT-1)
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseNazirs.dialog.save }, in: [asking, searching, picked, pickedMember, pickedSelf, appointing], disabledIn: [asking, searching, pickedMember, pickedSelf, appointing], emits: SAVE, source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:253 } # natively disabled until a person is chosen who may be appointed, and nothing says why (CAPPOINT-2); busy (aria-disabled, aria-busy) in `appointing`
+  busy: { type: status, component: Status, role: status, text: { key: CourseNazirs.dialog.saving }, in: [appointing], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:256 } # the hidden word of the busy button: the app gives its own loadingLabel, so F-D2c-13 does not apply here
+
+  # a refusal: an error toast over the dialog, which stays open with the person chosen; it stays until it is closed
+  toastHoldsSeat: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.appointFailed }, text: { key: CourseNazirs.errors.holdsSeat }, in: [picked], when: "toast == 'holdsSeat'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201 }
+  toastBarred: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.appointFailed }, text: { key: CourseNazirs.errors.barred }, in: [picked], when: "toast == 'barred'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201 }
+  toastUnknown: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.appointFailed }, text: { key: CourseNazirs.errors.unknownAccount }, in: [picked], when: "toast == 'unknownAccount'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201 }
+  toastExceeds: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.appointFailed }, text: { key: CourseNazirs.errors.exceeds }, in: [picked], when: "toast == 'exceeds'", source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201 }
+  toastRefused: { type: alert, component: Alert, role: alertdialog, name: { key: CourseNazirs.dialog.appointFailed }, text: { oneOf: [Problems.actionForbidden, Problems.permissionUnknown, CourseNazirs.errors.expiryInvalid, CourseNazirs.errors.hidden, CourseNazirs.errors.directory, Problems.selfGrant, Problems.actionGeneric] }, in: [picked], when: "toast == 'refused'", source: apps/nazar/features/course-nazirs/course-nazirs.ts:219 } # which sentence depends on the code (courseNazirErrorKey); the binding gives them as one pattern
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { labelledBy: [chosenRegion, chosenTitle] }
+  - { triggers: [appointButton, asking] }
+  - { triggers: [save, appointing] }
+  - { returnsFocus: [dialog, appointButton] } # Base UI returns the focus to the element that opened the dialog, the header button, which outlives the refresh; not verified in a browser
+
+rules:
+  - { id: focus-not-set, rule: "No code of features/course-nazirs sets the focus when the page opens or when a toast shows; the dialog's `initialFocus={emailRef}` (course-nazir-dialog.tsx:242) and Base UI's return of the focus are the only focus moves. Not verified in a browser." }
+  - { id: F-D2c-4, rule: "The search's answers ('Geçerli bir e-posta adresi yazın.', 'Bu adresle bir hesap bulunamadı.', 'Arama şu an yapılamıyor…') and the end's ('Bitiş zamanı şu andan sonra olmalı.') are a Field error with no role and no live region (libs/ui/src/mds/field.tsx:51-53; course-nazir-dialog.tsx:325-330, :389-399), so a reader of the screen is told none of them unless they go back to the field; after 'Kaydet' with a bad end the focus stays on the button. Fix: render Field errors with role=alert in the kit, or move the focus to the offending control." }
+  - { id: F-D2c-5, rule: "The e-mail input is `disabled` while it searches (course-nazir-dialog.tsx:341), so the focus it had drops to the page; when a person is found it is unmounted (:281-323) and nothing moves the focus to 'Kaydet' or to the heading 'Seçilen ders nazırı'; 'Başka birini seç' removes itself and gives the focus to nothing (:302-304); the only live text is 'Aranıyor…' (:354-356), so the result is not announced. Not verified in a browser. Fix: `readOnly` plus aria-busy instead of `disabled`; focus the chosen heading (tabIndex=-1) after a pick and the e-mail field after 'Başka birini seç'; say the result in the existing <output>." }
+  - { id: F-D2c-6, rule: "The help line says 'Adresi tam yazıp Enter'a basın.', but leaving the field also runs the search when the text is an address (`onBlur={() => void find(false)}`, course-nazir-dialog.tsx:350), and tedrisat audits every search. A keyboard user who tabs past the field, or presses 'Vazgeç' with an address typed in it (the blur comes before the click), writes an audit row nobody asked for. Fix: say it in the help line, or search on Enter or a button only (decision D1)." }
+  - { id: F-D2c-9, rule: "Does not apply to this flow. FLOWS.md lists it here, but F-D2c-9 is the partner-code card's input that is `disabled={busy}` (partner-codes-card.tsx:197), which is nazar.courseSettings.partnerCodes'. The same pattern in this dialog is F-D2c-5." }
+  - { id: F-D2c-12, rule: "The visible '*' of 'E-posta adresi' is aria-hidden and the input carries no `required` (course-nazir-dialog.tsx:325-352; libs/ui/src/mds/field.tsx draws the star and passes nothing on, though its comment says the control carries `required`), so a reader of the screen is never told the field is required. Fix: required and aria-required on the input." }
+  - { id: F-D2c-15, rule: "Does not apply to the appoint mode: the dialog sets `initialFocus={row ? undefined : emailRef}` (course-nazir-dialog.tsx:242), so the e-mail field has the focus. It is the edit mode's (no initial focus, so Base UI's first tabbable, the close icon) and the course ban dialog's: nazar.courseNazirs.permissions. Not verified in a browser." }
+  - { id: F-D2c-16, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:103-112), so aria-describedby is the whole form: the field, 21 checkboxes and the end field; a reader of the screen may read all of it when the dialog opens. Not verified how NVDA and VoiceOver treat it. Fix: describe the dialog by the line above the field only." }
+  - { id: F-D2c-13, rule: "Does not apply to the appoint dialog: 'Kaydet' passes `loadingLabel={t(\"CourseNazirs.dialog.saving\")}` (course-nazir-dialog.tsx:256), so its busy word is 'Kaydediliyor…' from the catalog. The kit default 'Yükleniyor' is the dismissal's (end-course-nazir.tsx:97)." }
+  - { id: MDRS-233, rule: "The close button of every toast, the one of 'Ders nazırı atandı' and of the refusals, is named 'Kapat' by a literal in libs/ui/src/mds/toast.tsx:97 (`aria-label=\"Kapat\"`), outside the catalog; it is the same in every language. Register: F-L-6, DCK-23, ACC-23." }
+  - { id: CAPPOINT-1, rule: "New. While the save is on its way 'Vazgeç', the close icon and Esc do nothing (`onOpenChange` ignores a close while `pending`, course-nazir-dialog.tsx:229-231) and are neither disabled nor marked, so a control that looks live does not answer; the end field is the only control disabled. The same as the medrese roster's APPOINT-1. Fix: disable them with aria-disabled while it is pending, or let the person close the dialog and tell them the outcome in the toast." }
+  - { id: CAPPOINT-2, rule: "New. 'Kaydet' is natively disabled (`disabled={!ready}`, course-nazir-dialog.tsx:257) until a person is found, and nothing says why when no one is chosen: no line names the step ('Önce bir kişi bulun'), a keyboard user's Tab skips it, and the form cannot be sent by Enter. For the viewer and a holder the warning beside the person says why, but it is not tied to the button. The same family as nizam's F-X-3. Fix: keep it enabled and say what is missing, or tie the reason to it with aria-describedby (decision D2)." }
+  - { id: CAPPOINT-3, rule: "New. The footer's 'İzin seçilmedi' / '{n} izin seçili' is a plain <p class=mds-dialog__meta> (libs/ui/src/mds/dialog.tsx:115), not a live region: ticking a box changes it and a reader of the screen is told nothing. The same as the medrese editor's PERM-2. Fix: role=status on it." }
+  - { id: CAPPOINT-4, rule: "New. Text that cannot be an address is told only on Enter ('Geçerli bir e-posta adresi yazın.', `find(true)`, course-nazir-dialog.tsx:110); left with Tab (`find(false)`) it is neither searched nor told, and Enter on an empty field says nothing; 'Kaydet' stays off and the person is left with no word why. Fix: say it on blur too." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'İzinleri düzenle' in 'İzinleri düzenle: {name}' and 'Görevden al' in 'Görevden al: {name}' (WCAG 2.5.3). The close icon, named 'Kapat', has no visible text. Holds." }
+  - { id: no-default-accept, rule: "The dialog's initial focus is the e-mail field, not 'Kaydet': a keyboard user cannot appoint by pressing Enter on arrival, and Enter in the field searches and does not send the form (course-nazir-dialog.tsx:132-137). Holds." }

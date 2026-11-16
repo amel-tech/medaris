@@ -1,0 +1,64 @@
+# nizam.home.koskNazimLanding on the local stack (graphs/README.md, "The stack and the bindings"): nizam-web on :4001 in a wide
+# window (1280 x 900), the seeded köşk nazımı (KOSK_NAZIM, who manages both seeded köşks) signed in through Keycloak's real form.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/home/koskNazimLanding \
+#     --bind graphs/nizam/home/koskNazimLanding/binding.yaml --cover transitions --absent --out <dir>
+# The phone's window is binding.phone.yaml and the empty köşk is binding.empty.yaml (it adds no transition, so `--cover transitions` would
+# leave it out here). All three extend locators.binding.yaml.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code.
+#
+# Read only, on purpose. The owner's word for this flow is: use the seeded köşk nazımı read-only, read a count from the seed or by a GET,
+# never create data to make a count. So `setup` runs home-numbers.mjs (this folder), which makes the same GET /kosks/:id/dashboard calls
+# as the page, writes what it read to graphs/.local/koskhome.json (read as {home.*}) and checks that the stack is in the state the
+# scenario's `given` says. Nothing is created and nothing is removed, so no scenario has a teardown. (tedrisat writes an audit row for
+# each read of that route, as it does for every load of the page; nothing else is written.)
+#
+#   seeded   the main story, entered the way the e2e enters it (dashboard#4): the köşk nazımı opens "/" and lands on Süleymaniye Köşkü's
+#            home, the first of the two they manage: the köşk of their OLDEST KOSK_NAZIM row, which GET /me/assignments lists first (MENU-2:
+#            the menu on a page with no köşk in its address names the newest one instead; nizam.shell.menuPerPersona walks that). It reads the four
+#            numbers, the greeting and the alert for the celse of the week that have no way in, the table of Yaklaşan (one celse has a meeting
+#            link, the others none), Geçmiş (six celse, two with a link) and İptal edilen (none: the empty sentence), comes back to Yaklaşan,
+#            and takes a row's button to the course's celse list. `--cover transitions` also takes "Ders aç" and the person leaving
+#            (`left`, by Hesap).
+#   foreign  the address of a köşk the person does not manage (dashboard#7 a1-a2): the all-zero uuid, which nobody has. tedrisat answers 404
+#            and the page draws the same screen as for a 403 (page.tsx:30), so the 403 branch is reached by the same line but is NOT
+#            walked: both seeded köşks are managed by this account, and a köşk of someone else is data the seed does not make. The screen's
+#            button "Ana sayfaya dön" goes to "/" and so to the home of the oldest köşk (the exit `landing_opened`); the menu around the
+#            refusal names the newest (MENU-2), which a walk of this flow does not check.
+#
+# Not bound in this file, with the reason:
+#   empty               binding.empty.yaml
+#   data: covered       a week whose every celse has a way in, with a cancelled celse (the seed has neither): the greeting "…N celse var.", no
+#                       alert, a row in İptal edilen with its bare "—" (F-W1-11) and "Celseyi gör". e2e dashboard#4 a17 asserts that row.
+#                       Needs a course of the walk's own with a link added to each of its celse and one cancelled: ask: data.
+#   read: failed        and tabRead: failed   the stack cannot make tedrisat refuse a read (test/kosk-overview.spec.tsx draws the LoadFailed box; nothing
+#                       draws the tab's own)
+#   arrival: foreign with a real köşk (403)   see above
+#   DECIDE_APPLICATIONS see locators.binding.yaml
+# What e2e dashboard#4 and #7 assert that no scenario carries: the menu's sections (a3-a4: nizam.shell.menuPerPersona), the SQL counts (a5-a8
+# compare the page with the API's own answer instead), the exact href of the flagged row's link (a15: the exit checks the address by a
+# pattern), a row in İptal edilen (a17, see `covered`), and the computed `display` of a row on a phone (#7 a5: a replay reads no style).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.koskNazimLanding
+
+browser: { width: 1280, height: 900 }
+
+scenarios:
+  seeded:
+    given: { arrival: root, read: ok, data: seeded, view: wide, tabRead: ok }
+    as: koskNazim
+    open: '{nizam}/'
+    setup:
+      - run: [node, ../nizam/home/koskNazimLanding/home-numbers.mjs, read, '{seed.kosk}', seeded]
+        expect: 'kosk-home seeded'
+
+  foreign:
+    given: { arrival: foreign, read: ok, data: seeded, view: wide, tabRead: ok }
+    as: koskNazim
+    open: '{nizam}/kosks/00000000-0000-4000-8000-000000000000/ana-sayfa'
+    # the screen draws none of the home, but `--absent` looks for the home's nodes and some of them are spelled with the numbers
+    setup:
+      - run: [node, ../nizam/home/koskNazimLanding/home-numbers.mjs, read, '{seed.kosk}']
+        expect: 'kosk-home read'

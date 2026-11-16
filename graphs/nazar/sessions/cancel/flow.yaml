@@ -1,0 +1,381 @@
+# Celseler of a course in nazar-web (/ders/<id>/celseler), read by a müderris who cancels one celse that has not begun, writes the
+# note the talebe will read, and adds a make-up celse in the same step. Read from the code of PR #394's branch (apps/nazar/features/
+# sessions, the API's POST /lessons/:id/cancel and POST /courses/:id/sessions/batch) on 15 Nov 2026; nothing here was run in a browser.
+#   - the page draws the rows of the course's celses; a row that is still "Planlandı" has "İptal et" for a reader who holds session.manage.
+#     A reader who holds only session.live_link reads the same table with no "İptal et" and no "Celse planla".
+#   - "İptal et" opens a form dialog (not an alertdialog): the note to the talebe (prefilled "Bu hafta ders yapılmayacak.", up to 500
+#     characters, emptied = no note), a check box "Telafi celsesi ekle" that reveals a date and a time (a week later, the same hour) and the
+#     two buttons. With a make-up the page makes the new celse FIRST (POST /courses/:id/sessions/batch) and cancels the old one second,
+#     naming the new one; so the cancel carries the course version the batch left, not the one the page was read at (CANCEL-2).
+#   - the cancelled celse stays in the programme as "İptal edildi"; the talebe of the course are told by a notification, by the calendar
+#     (a CANCEL mail) and by the celse's own page, which is tedris.celse.cancelled, started below.
+#   - findings it carries: F-C-course-a-20, -25, -26, -28 and F-L-17, F-L-12, F-A-11 of the inventory; the domain's cancel-no-type-check
+#     and lesson-cancelled-text-streams-only (neither can be met through this dialog, see their rules); and six it adds, CANCEL-1 to
+#     CANCEL-6 (the make-up has no way in, a stale page cancels when a make-up is added, the date error sticks, nothing says the cancel
+#     is final, the make-up's date is not checked, the note's limit is silent).
+schema: delurio-graph/0
+kind: flow
+id: nazar.sessions.cancel
+status: captured
+domain: medaris.api
+ui: nazar.sessions.cancel
+title: Cancel a celse, with a note and a make-up
+summary: >-
+  The müderris opens Celseler and presses "İptal et" on a celse that is still planned. A dialog "Celseyi iptal et" says the celse stays in
+  the programme as "İptal edildi", asks for a note to the talebe (the usual sentence is already in it) and offers "Telafi celsesi ekle",
+  which opens a date and a time a week later. "Celseyi iptal et" sends it: a make-up is made first and the cancel names it, a toast says
+  what was done, the row reads "İptal edildi" and, when a make-up was added, "Telafisi: <when>" leads to the new row and puts the focus
+  there. The talebe are told in the notification, the calendar and the celse's page (tedris.celse.cancelled). A page that went stale is
+  refused when no make-up is added and goes through when one is (CANCEL-2); a make-up that stands while the cancel fails is told in its own
+  toast. A reader who holds only the stream permission sees the same table with no "İptal et".
+
+scope:
+  shows: >-
+    Celseler of one course for the müderris and for a reader who holds only session.live_link: the page, the table of upcoming celses
+    with "İptal et", the dialog (note, make-up, date and time), the busy dialog, the toasts of the answer, the cancelled row with its
+    "Telafisi" link and the focus that link gives
+  world: open
+  outOfView:
+    - "the other actions of a row (meeting link, in-person mark, stream, recording access, change of time) and planning: nazar.sessions.manage, nazar.sessions.plan"
+    - "what the talebe meet: the celse's page with the note and the make-up (tedris.celse.cancelled), the notification (tedris.account.notifications), the calendar mail (tedris.learning.addToCalendar); this flow starts the first"
+    - "a reader who holds neither session.manage nor session.live_link, who is refused under the heading (nazar.access.dersNazirPages), and the page's failed read and the 404 page (nazar.shell.errorStates)"
+    - "a celse that is under way or over, which has no \"İptal et\" (only a \"scheduled\" row has it), and the folded list \"Geçmiş celseler\" a cancelled celse moves to when its time is over"
+    - "the sidebar's number on Celseler, which falls by one for a cancelled celse that had no way in and rises by one for the make-up (CANCEL-1): nazar.shell.scopeAndMenu"
+    - "the Pano's list of the next seven days, where the cancelled celse's note is cut to one line (F-A-11): nazar.pano.decideApplications"
+    - "a video, document or quiz lesson, which the API would cancel too (cancel-no-type-check) but which is no row of this page"
+
+decisions:
+  D1:
+    question: >-
+      Should a make-up arrive with a way in? The make-up is a new celse with the cancelled one's title and length and nothing else: no meeting
+      link, no stream, no in-person mark of its own (makeUpRequest sends none), so it lands in Celseler as "Eksik", the sidebar's number rises
+      and the talebe are invited to a celse with no link, even when the cancelled celse had one.
+    recommend: >-
+      Copy the cancelled celse's meeting link to the make-up when there is one, or add a line to the dialog ("Telafi celsesinin bağlantısını
+      sonra ekleyin") and a field for the link under the date and time. The page already has the link field of a row.
+    affects: [form, cancelledShown]
+  D2:
+    question: >-
+      Should the dialog say that a cancellation cannot be taken back and that the talebe are told at once? The API has no route that
+      un-cancels a celse; the notification and the calendar mail go out when the cancel is made; the dialog says only that the celse stays in
+      the programme as "İptal edildi", and its confirm is a plain primary button (F-C-course-a-20).
+    recommend: >-
+      One more sentence in the body ("Talebelere hemen bildirim gider; iptal geri alınamaz.") and the confirm in the destructive style, as
+      the app's other final actions have it.
+    affects: [form]
+
+context:
+  holds:
+    values: [manage, streamOnly]
+    initial: any
+    say:
+      manage: "the reader holds session.manage in the course: the müderris, or a ders nazırı who was given it"
+      streamOnly: "the reader holds session.live_link and not session.manage (a ders nazırı given the stream permission alone): the page opens and has no cancel"
+  answer:
+    values: [done, moved, already, taken, invalid, forbidden, failed]
+    initial: any
+    say:
+      done: "the API takes what is sent: the make-up is made and the celse is cancelled"
+      moved: "the course was saved by someone else since the page was read (COURSE_VERSION_CONFLICT); a cancel with no make-up is refused, a cancel with a make-up carries the version the batch left and goes through (CANCEL-2)"
+      already: "the celse was cancelled by someone else since the page was read (LESSON_ALREADY_CANCELLED); with no make-up the stale version is refused first, so the answer is the same as moved"
+      taken: "the make-up the cancel names already makes up for another celse (LESSON_REPLACEMENT_TAKEN); the dialog names a celse it has just made, so this is a race inside one request"
+      invalid: "the make-up the cancel names is not a live, standing celse of the course (LESSON_REPLACEMENT_INVALID); the same kind of race"
+      forbidden: "the reader lost session.manage since the page was read (AUTHZ_FORBIDDEN)"
+      failed: "any other failure: a pattern the API refuses, a celse that is gone, the server does not answer"
+  makeUp:
+    values: [none, planned]
+    initial: none
+    say:
+      none: "the check box \"Telafi celsesi ekle\" is off: no make-up is made or named"
+      planned: "the check box is on: a make-up is made before the cancel and named by it; also, once cancelled, the cancelled row has its \"Telafisi\" link"
+  note:
+    values: [written, none]
+    initial: written
+    say:
+      written: "the note field holds something (it starts with the usual sentence)"
+      none: "the note field is empty: the cancel carries no note"
+  date:
+    values: [valid, blank]
+    initial: valid
+    say:
+      valid: "the make-up's date field holds a date (a week after the celse)"
+      blank: "the make-up's date field was emptied"
+  problem:
+    values: [none, shown]
+    initial: none
+    say:
+      none: "no message is under the date field"
+      shown: "\"Tarihi ve saati girin.\" stands under the date field; it goes only when the check box is turned, not when a date is typed (CANCEL-3)"
+  last:
+    values: [nothing, cancelled, madeUp, cancelFailed, afterMakeUpFailed, makeUpFailed]
+    initial: nothing
+    say:
+      nothing: "no answer is on the screen"
+      cancelled: "the toast \"Celse iptal edildi\" is up (it closes by itself after 6 seconds)"
+      madeUp: "the toast \"Celse iptal edildi\" with the sentence that a make-up was added and linked is up"
+      cancelFailed: "an error toast \"İşlem yapılamadı\" is up; it stays until it is closed"
+      afterMakeUpFailed: "an error toast \"Telafi celsesi eklendi, ama celse iptal edilemedi\" is up; the make-up stands"
+      makeUpFailed: "an error toast \"Telafi celsesi eklenemedi; celse iptal edilmedi\" is up; nothing was written"
+
+guards:
+  mayCancel: "holds == 'manage'"
+  makeUpWanted: "makeUp == 'planned'"
+  dateMissing: "makeUp == 'planned' and date == 'blank'"
+  noted: "note == 'written'"
+  aloneAccepted: "answer in ['done', 'taken', 'invalid']"
+  aloneStale: "answer in ['moved', 'already']"
+  afterAccepted: "answer in ['done', 'moved']"
+
+effects:
+  dialogOpened: { set: { last: nothing, makeUp: none, note: written, date: valid, problem: none } }
+  noteWritten: { set: { note: written } }
+  noteCleared: { set: { note: none } }
+  makeUpAdded: { set: { makeUp: planned, problem: none } }
+  makeUpDropped: { set: { makeUp: none, problem: none } }
+  dateCleared: { set: { date: blank } }
+  dateTyped: { set: { date: valid } }
+  problemShown: { set: { problem: shown } }
+  cancelledNoted: { set: { last: cancelled } }
+  cancelledBare: { set: { last: cancelled } }
+  madeUpNoted: { set: { last: madeUp } }
+  madeUpBare: { set: { last: madeUp } }
+  cancelFailed: { set: { last: cancelFailed } }
+  afterMakeUpFailed: { set: { last: afterMakeUpFailed } }
+  makeUpFailed: { set: { last: makeUpFailed } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+  makingUp:
+    from: createSessionBatch
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [INVALID_SESSION_PATTERN, VALIDATION_ERROR, COURSE_NOT_FOUND]
+  cancellingAlone:
+    from: cancelLesson
+    moved: [COURSE_VERSION_CONFLICT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  cancellingAfterMakeUp:
+    from: cancelLesson
+    already: [LESSON_ALREADY_CANCELLED]
+    taken: [LESSON_REPLACEMENT_TAKEN]
+    invalid: [LESSON_REPLACEMENT_INVALID]
+# `failed` of makingUp and cancellingAlone stands for any answer but the classes named beside it: the page words INVALID_SESSION_PATTERN
+# and everything unknown differently (the pattern's own sentence, or "Bir şeyler ters gitti.") and the class keeps them together.
+
+# The story the page tells first: the müderris cancels the first celse with a note of her own, adds a make-up, and follows "Telafisi".
+main:
+  given: { holds: manage, answer: done }
+  events: [DONE, OPEN, WRITE_NOTE, ADD_MAKEUP, SUBMIT, DONE, DONE, FOLLOW_MAKEUP]
+
+initial: opened
+
+states:
+  opened:
+    title: Celseler is read
+    description: >-
+      The page reads, on the server and behind the skeleton of its loading.tsx, the course (GET /courses/:id, whose `version` every write
+      carries and whose weeks hold the celses), the reader's permissions (GET /courses/:id/my-permissions), the viewer (GET /me) and, for a
+      holder of session.live_link, the stream links and, always, the course's recordings. The graph draws the course read and leaves the
+      others to `holds`: a failed read of the course is the retry face, a reader who holds neither session code is refused under the
+      heading, and a 404 is Next's not-found page. Nothing but the skeleton is on the screen of this step.
+    includes: ["the reader's permissions", "the viewer's time zone", "the stream links and the recordings of the course"]
+    invoke: { action: getCourse }
+    on:
+      DONE:
+        - { guard: mayCancel, target: listed, say: "the reader holds session.manage: a planned celse has \"İptal et\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:519 }
+        - { target: listedWithoutCancel, say: "the reader holds only the stream permission: the table has no \"İptal et\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:456 }
+      FAIL.missing: not_found
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:43
+
+  listedWithoutCancel:
+    title: Celseler is read without the cancel
+    by: human
+    description: >-
+      The heading, the subtitle with the course's name and the zone, the table "Yaklaşan celseler" with the celses by date, each "Planlandı".
+      A reader who holds session.live_link and not session.manage has the stream buttons and "Kayıt erişimi" when she holds recording.manage,
+      and has no "Bağlantı ekle", no "Tarihi değiştir", no "İptal et" and no "Celse planla": the page draws each control for the code it
+      needs and the API still decides every write.
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu to another page" }
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:88
+
+  listed:
+    title: A planned celse has "İptal et"
+    by: human
+    description: >-
+      The page: the heading "Celseler", the subtitle, "Celse planla", the counts line ("3 celse · Hafta 1") and the table "Yaklaşan celseler";
+      each planned row has "İptal et" beside its other buttons, named by the celse's short date ("{when} celsesini iptal et"). Only a row that
+      is "scheduled" has it: not a live or an ended one, not a cancelled one. After a failed cancel the same list is here again with the error
+      toast of the answer. Findings read here: F-C-course-a-25 (the dialog has no trigger element, so where the focus returns is Base UI's
+      fallback, not verified), F-L-17 (the focus is lost after a row action).
+    on:
+      OPEN: { target: form, effect: [dialogOpened], say: "they press \"İptal et\" on a planned row", source: apps/nazar/features/sessions/components/sessions-table.tsx:531 }
+      NAVIGATE: { target: left, say: "they follow the menu to another page" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:519
+
+  form:
+    title: İptal et asks once
+    by: human
+    description: >-
+      A modal form dialog over the page (the page behind is inert; the scrim does not close it). The eyebrow is the celse's title, the title
+      "Celseyi iptal et", the body "{when} celsesi iptal edilir; programda “İptal edildi” olarak kalır." and nothing more: not that the
+      cancel is final, not that the talebe are told at once (CANCEL-4, decision D2). Under it "Talebelere not", a textarea of two rows, at
+      most 500 characters, with the usual sentence in it and no counter (CANCEL-6); an emptied note is not sent. Then the check box
+      "Telafi celsesi ekle" ("Aynı başlık ve sürede yeni bir celse açılır."); turned on it opens "Tarih" and "Saat", a week later at the same
+      hour on the viewer's clock, with no `min` and no check that the date is after the celse or even ahead (CANCEL-5); the new celse will
+      have no meeting link whatever the cancelled one had (CANCEL-1, decision D1). The footer has "Vazgeç" and "Celseyi iptal et", a plain
+      primary button, not styled as destructive (F-C-course-a-20). The focus starts where Base UI puts it, which the code does not set
+      (`initialFocus` is not passed): the first tabbable, the close icon by document order (not verified). An error toast of an answer that
+      kept the dialog open (a refused make-up, a forbidden or failed cancel) is over it, and whether it is reachable under a modal is not
+      verified. An emptied date and "Celseyi iptal et" send nothing: the message "Tarihi ve saati girin." stands under the date field, and
+      it stays after a date is typed until the check box is turned (CANCEL-3); the message is no live region (F-L-12).
+    on:
+      WRITE_NOTE: { target: form, effect: [noteWritten], say: "they write a note of their own in the field", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:164 }
+      CLEAR_NOTE: { target: form, effect: [noteCleared], say: "they empty the note: the cancel will carry none", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:164 }
+      ADD_MAKEUP: { guard: "makeUp == 'none'", target: form, effect: [makeUpAdded], say: "they turn on \"Telafi celsesi ekle\": the date and the time appear, a week later", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:175 }
+      DROP_MAKEUP: { guard: makeUpWanted, target: form, effect: [makeUpDropped], say: "they turn it off again: the fields and any message under them go", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:175 }
+      CLEAR_DATE: { guard: "makeUpWanted and date == 'valid'", target: form, effect: [dateCleared], say: "they empty the make-up's date", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:192 }
+      TYPE_DATE: { guard: "makeUpWanted and date == 'blank'", target: form, effect: [dateTyped], say: "they type a date again; a message under the field stays", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:192 }
+      SUBMIT:
+        - { guard: dateMissing, target: form, effect: [problemShown], say: "\"Celseyi iptal et\" with no date: nothing is sent, the message stands under the date", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:76 }
+        - { guard: makeUpWanted, target: makingUp, say: "with a make-up the page makes it first", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:83 }
+        - { target: cancellingAlone, say: "with none the page cancels the celse at the version it read", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:101 }
+      CANCEL: { target: listed, say: "Vazgeç, the close icon or Esc: the dialog closes, nothing is sent", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:142 }
+    source: apps/nazar/features/sessions/components/cancel-dialog.tsx:139
+
+  makingUp:
+    title: The make-up is on its way
+    description: >-
+      createSessions calls POST /courses/:id/sessions/batch with a weekly pattern of one celse (the weekday of the typed date, its time, the
+      viewer's zone, count 1) and the cancelled celse's title and length. It bumps the course's version with no expected version, writes no
+      audit row and no notification, and makes the calendar invitation go to the talebe. The dialog stays open and busy: the note, the check
+      box and the two fields are disabled, "Celseyi iptal et" is busy ("Yükleniyor" for a reader of the screen, from the kit's hard-coded
+      default: F-C-course-a-28), and "Vazgeç", the close icon and Esc do nothing and say nothing (F-C-course-a-26). A refusal writes
+      nothing: the dialog stays and an error toast says "Telafi celsesi eklenemedi; celse iptal edilmedi" with the reason.
+    invoke: { action: createSessionBatch }
+    on:
+      DONE: { guard: "answer not in ['forbidden', 'failed']", target: cancellingAfterMakeUp, say: "the new celse exists; the cancel follows at the version the batch left", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:97 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [makeUpFailed], say: "\"Bunu yapma izniniz yok.\" under the title of the toast", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:88 }
+      FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [makeUpFailed], say: "the pattern's sentence or \"Bir şeyler ters gitti.\"", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:88 }
+    source: apps/nazar/features/sessions/components/cancel-dialog.tsx:84
+
+  cancellingAlone:
+    title: The cancel is on its way
+    description: >-
+      cancelSession calls POST /lessons/:id/cancel with the course version the page was read at, the note trimmed (a blank one is not sent)
+      and no make-up. The same busy dialog as above. tedrisat checks the version first: a page that went stale (someone saved the course, or
+      cancelled this very celse, in between) is refused with COURSE_VERSION_CONFLICT; LESSON_ALREADY_CANCELLED is therefore given only if the
+      version still matched, which a cancel's own bump makes impossible, so a stale page is always `moved` here. A success writes the
+      cancellation and its audit row, tells the talebe who hold a seat (a SESSION_CANCELLED notification with the note, to every enrolled seat
+      but the actor, only for a celse with a time that is not over) and kicks the invitation sweep, which mails the calendar CANCEL.
+      `moved` closes the dialog and reads the page again; a refusal of the permission or any other failure keeps the dialog open with an
+      error toast "İşlem yapılamadı". The route has no lesson-type check (cancel-no-type-check), so through the API a video or a quiz can be
+      cancelled; this page cannot, its rows being the LIVE lessons that have a time.
+    invoke: { action: cancelLesson }
+    on:
+      DONE:
+        - { guard: "aloneAccepted and noted", target: settled, effect: [cancelledNoted], starts: { flow: tedris.celse.cancelled, given: { lesson: "'session'", makeUp: makeUp, note: note } }, say: "the celse is cancelled with the note and no make-up: the talebe read it on the celse's page", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:124 }
+        - { guard: aloneAccepted, target: settled, effect: [cancelledBare], starts: { flow: tedris.celse.cancelled, given: { lesson: "'session'", makeUp: makeUp, note: note } }, say: "the celse is cancelled with no note and no make-up", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:124 }
+      FAIL.moved: { guard: aloneStale, target: settled, effect: [cancelFailed], say: "\"Ders, bu sayfayı açtığınızdan beri başkası tarafından kaydedildi. Sayfa yenilendi; yeniden deneyin.\": the dialog closes and the page is read again", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:118 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [cancelFailed], say: "\"Bunu yapma izniniz yok.\": the dialog stays open", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:109 }
+      FAIL.failed: { guard: "answer == 'failed'", target: form, effect: [cancelFailed], say: "\"Bir şeyler ters gitti. Biraz sonra yeniden deneyin.\": the dialog stays open", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:109 }
+    source: apps/nazar/features/sessions/components/cancel-dialog.tsx:101
+
+  cancellingAfterMakeUp:
+    title: The cancel follows the make-up
+    description: >-
+      The same call with the new celse's id as `replacementLessonId` and the version the batch left, not the one the page was read at: so a
+      page that went stale is not refused here (CANCEL-2), and the answer `moved` is a success. tedrisat checks that the celse is not
+      cancelled already (LESSON_ALREADY_CANCELLED, answered first when a make-up is named) and that the make-up is a live, standing celse of
+      the course that makes up for no other. Any refusal here leaves the make-up standing: the dialog closes, the page is read again and an
+      error toast says "Telafi celsesi eklendi, ama celse iptal edilemedi" with the reason; the new celse stays in the programme and the
+      talebe have been invited to it. LESSON_REPLACEMENT_TAKEN and LESSON_REPLACEMENT_INVALID cannot be met through this dialog (it names a
+      celse it has just made) and are drawn because the code words them. A refused permission or a failure of the server cannot come here
+      with a case variable of its own: the first call of the make-up path meets it first. The 409 LESSON_CANCELLED, whose one sentence names
+      the stream whatever route refused (lesson-cancelled-text-streams-only), is not this route's: its refusal is LESSON_ALREADY_CANCELLED.
+    invoke: { action: cancelLesson }
+    on:
+      DONE:
+        - { guard: "afterAccepted and noted", target: settled, effect: [madeUpNoted], starts: { flow: tedris.celse.cancelled, given: { lesson: "'session'", makeUp: makeUp, note: note } }, say: "the celse is cancelled with the note and the make-up it names: the talebe read both on the celse's page", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:124 }
+        - { guard: afterAccepted, target: settled, effect: [madeUpBare], starts: { flow: tedris.celse.cancelled, given: { lesson: "'session'", makeUp: makeUp, note: note } }, say: "the celse is cancelled with the make-up and no note", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:124 }
+      FAIL.already: { guard: "answer == 'already'", target: settled, effect: [afterMakeUpFailed], say: "\"Bu celse zaten iptal edilmiş.\": the dialog closes, the make-up stands", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:118 }
+      FAIL.taken: { guard: "answer == 'taken'", target: settled, effect: [afterMakeUpFailed], say: "\"Bu celse başka bir celsenin telafisi olarak zaten bağlı.\"", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:118 }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: settled, effect: [afterMakeUpFailed], say: "\"Telafi olarak seçilen celse bu dersin yaşayan, iptal edilmemiş bir canlı celsesi değil.\"", source: apps/nazar/features/sessions/components/cancel-dialog.tsx:118 }
+    source: apps/nazar/features/sessions/components/cancel-dialog.tsx:101
+
+  settled:
+    title: The list is read again
+    description: >-
+      Not a screen: the dialog is closed (`onClose`) and the server components are read again (`router.refresh`, onDone). After a cancel the
+      list is the one with the cancelled row; after a refusal that closed the dialog it is the list as the course now stands, with the error
+      toast over it.
+    always:
+      - { guard: "last == 'cancelled' or last == 'madeUp'", target: cancelledShown, source: apps/nazar/features/sessions/components/sessions-table.tsx:362 }
+      - { target: listed, source: apps/nazar/features/sessions/components/sessions-table.tsx:519 }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:154
+
+  cancelledShown:
+    title: The celse reads "İptal edildi"
+    by: human
+    goal: true
+    description: >-
+      The row of the celse now has the outline badge "İptal edildi" in its Durum cell, no buttons (a hidden "İşlem yok" in their place) and,
+      where a make-up was added, the link "Telafisi: <when>" under the badge; the counts line gains "· 1 iptal edildi"; with a make-up the
+      table also holds a new "Planlandı" row with the same title and the caption "Hafta n · Telafi celsesi", which has no way in (CANCEL-1). A
+      toast says "Celse iptal edildi" with "{name} iptal edildi." or "{name} iptal edildi; telafi celsesi eklendi ve ona bağlandı." (it closes
+      by itself after 6 seconds). The pressed button went with its row, and the dialog had no trigger element to give the focus back to, so
+      no code moves the focus and it falls to the document (F-C-course-a-25, F-L-17); the toast is the only word that says what was done.
+      The talebe now read the celse's page (tedris.celse.cancelled, started on the way here). Where the cancelled celse's time is over, it
+      moves to "Geçmiş celseler". The note written in the dialog is what the Pano's list of the next seven days shows for this celse, cut to
+      one line (F-A-11, drawn by nazar.pano.decideApplications).
+    on:
+      FOLLOW_MAKEUP: { guard: makeUpWanted, target: madeUpFocused, say: "they follow \"Telafisi: <when>\"", source: apps/nazar/features/sessions/components/sessions-table.tsx:370 }
+      NAVIGATE: { target: left, say: "they follow the menu to another page" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:362
+
+  madeUpFocused:
+    title: The make-up row has the focus
+    by: human
+    description: >-
+      The link is a plain anchor to `#celse-<id>`; its handler cancels the jump, opens the folded past list if the make-up sits there, scrolls
+      the make-up's row to the middle and puts the focus on its name cell (a span with `tabIndex=-1`, no role, named by nothing: a screen
+      reader says the title and "Hafta n · Telafi celsesi"). It is the one place in the app that moves the focus on purpose. The page is
+      otherwise as in the state before.
+    on:
+      NAVIGATE: { target: left, say: "they follow the menu to another page" }
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:296
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the course read is Next's not-found page (lib/tedrisat-read.ts:46); the 404 page is nazar.shell.errorStates."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: cancel-only-where-held
+    never: "(state == 'form' or state == 'makingUp' or state == 'cancellingAlone' or state == 'cancellingAfterMakeUp') and holds != 'manage'"
+    say: The dialog and every write behind it are offered only to a reader who holds session.manage; the stream permission alone gives no cancel.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:519
+  - id: make-up-comes-first
+    never: "state == 'cancellingAfterMakeUp' and makeUp != 'planned'"
+    say: A cancel that names a make-up is sent only after the make-up was asked for and made.
+    source: apps/nazar/features/sessions/components/cancel-dialog.tsx:97
+  - id: no-batch-without-a-date
+    never: "state == 'makingUp' and date == 'blank'"
+    say: The make-up is asked of the API only with a date and a time; an empty date stops at the page.
+    source: apps/nazar/features/sessions/components/cancel-dialog.tsx:76
+  - id: cancelled-row-follows-a-cancel
+    never: "state == 'cancelledShown' and last != 'cancelled' and last != 'madeUp'"
+    say: The cancelled row is drawn only after a cancel went through.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:362
+  - id: make-up-link-follows-a-make-up
+    never: "state == 'cancelledShown' and ((last == 'cancelled' and makeUp == 'planned') or (last == 'madeUp' and makeUp == 'none'))"
+    say: The link "Telafisi" is on the cancelled row exactly when a make-up was added with the cancel.
+    source: apps/nazar/features/sessions/components/sessions-table.tsx:369

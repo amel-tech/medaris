@@ -1,0 +1,77 @@
+# nazar.pano.decideApplications on the local stack: the başmüderris of "Hadis ve Siyer Medresesi" at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/pano/decideApplications --bind graphs/nazar/pano/decideApplications/binding.yaml --out <dir>
+#
+# The walk makes its own waiting applications and leaves the seed's one alone. `setup` and `teardown` run
+# ./applications.mjs (a helper of this folder, through tedrisat's HTTP API): two accounts that no other walk uses as a
+# talebe, MEDARIS_NAZIM ("Selma Medaris Nazımı") and KOSK_NAZIM ("Cemal Köşk Nazımı"), apply to the course that asks for
+# approval, "İsâgûcî ile Mantığa Giriş". TALEBE_MALE's own waiting application (the seed's) stays on the list, untouched, as
+# the oldest row; the walk decides the two newest rows, which are the two it made (the page lists newest first, and a
+# repeated node is pressed on its first item). `teardown` makes each of the two leave the course (DELETE
+# /courses/:id/enrollment, which removes a waiting row and an approved one alike, so they may apply again) and puts the
+# course's müderrisler back as the seed has them. What it cannot undo: the notifications the decisions send to those two
+# accounts, and the calendar-invitation mails to Mailpit when one is approved.
+#
+# The seeded başmüderris teaches nothing, so on her Pano the API's viewerMayDecide is false and the rows carry no buttons
+# (viewer-may-decide-skips-head). The scenario `decides` therefore makes her a second müderris of the course first
+# (--head-teaches, done as the başnazım through PUT /madrasahs/:id/courses/:courseId/muderrises), as the e2e's seed does;
+# `headOnly` leaves her as the stack has her.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.pano.decideApplications
+
+scenarios:
+  decides:
+    given: { approval: needed, mayDecide: may }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medresePano menu' }
+    setup:
+      - run: [node, ../nazar/pano/decideApplications/applications.mjs, up, --course, '{seed.courses.approval}', --madrasah, '{seed.madrasah}', --applicants, 'MEDARIS_NAZIM,KOSK_NAZIM', --head-teaches]
+        expect: 'ready: 2 waiting'
+    teardown:
+      - run: [node, ../nazar/pano/decideApplications/applications.mjs, down, --course, '{seed.courses.approval}', --madrasah, '{seed.madrasah}', --applicants, 'MEDARIS_NAZIM,KOSK_NAZIM', --head-teaches]
+        expect: 'restored'
+  headOnly:
+    given: { approval: needed, mayDecide: mayNot }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medresePano menu' }
+    setup:
+      - run: [node, ../nazar/pano/decideApplications/applications.mjs, up, --course, '{seed.courses.approval}', --madrasah, '{seed.madrasah}', --applicants, 'MEDARIS_NAZIM,KOSK_NAZIM']
+        expect: 'ready: 2 waiting'
+    teardown:
+      - run: [node, ../nazar/pano/decideApplications/applications.mjs, down, --course, '{seed.courses.approval}', --madrasah, '{seed.madrasah}', --applicants, 'MEDARIS_NAZIM,KOSK_NAZIM']
+        expect: 'restored'
+
+states:
+  listed: { url: '{nazar}/medrese/*' }
+  empty: { url: '{nazar}/medrese/*' }
+  # the decisions are Next server actions: a POST to the page's own address, held while the busy row is checked
+  approving: { call: '{nazar}/medrese/*' }
+  rejecting: { call: '{nazar}/medrese/*' }
+
+# Nothing is typed: the buttons are the ones the page draws. Only the rows of the two walk accounts and the seed's
+# applicant can be pressed or looked for, so a row another walk adds at the same time is never decided here.
+nodes:
+  approve: { role: button, name: '/^Onayla: (Cemal Köşk Nazımı|Selma Medaris Nazımı|Kemal Talebe)$/' }
+  reject: { role: button, name: '/^Reddet: (Cemal Köşk Nazımı|Selma Medaris Nazımı|Kemal Talebe)$/' }
+  # the row being decided is the first one: the walk pressed the first item, and the page lists newest first
+  rowApprove: { role: button, name: '/^Onayla: (Cemal Köşk Nazımı|Selma Medaris Nazımı|Kemal Talebe)$/', nth: 0 }
+  rowReject: { role: button, name: '/^Reddet: (Cemal Köşk Nazımı|Selma Medaris Nazımı|Kemal Talebe)$/', nth: 0 }
+  # the greeting and its numbers are two messages in one paragraph, so neither is the whole text of an element
+  greeting: { testId: greeting, hasText: '/^Selâmün aleyküm, .+? Hoca\./' }
+  greetingSummary: { testId: greeting, hasText: '/Önümüzdeki 7 günde .+? celse var; .+? başvuru onayınızı bekliyor\.$/' }
+  # the sidebar's scope picker and person row say the same words
+  madrasahRole: { text: Medrese başmüderrisi, within: { testId: scopes } }
+  # the link's name carries the sidebar's number and its hidden label, so it is found by its beginning
+  coursesLink: { role: link, name: '/^Dersler/', within: { role: navigation, name: Ana menü } }
+
+# What a decision leaves outside the screen, read through the API as the account that applied.
+effects:
+  approveEnrollment:
+    - run: [node, ../nazar/pano/decideApplications/applications.mjs, seat, --course, '{seed.courses.approval}', --who, KOSK_NAZIM]
+      expect: 'seat KOSK_NAZIM ENROLLED'
+  rejectEnrollment:
+    - run: [node, ../nazar/pano/decideApplications/applications.mjs, seat, --course, '{seed.courses.approval}', --who, MEDARIS_NAZIM]
+      expect: 'seat MEDARIS_NAZIM none'

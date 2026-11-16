@@ -1,0 +1,222 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.moderation.deleteArchived
+status: proposed
+summary: >-
+  What must exist for the başnazım to delete an archived item for good in nizam.moderation.deleteArchived: the flow's product
+  list, written from the flow's story, the e2e checks it carries and the open decisions, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# No replay has been run on this flow (the first walks are a later phase), so `walked` names e2e checks only. The four binding files
+# (binding.yaml, binding.rest.yaml, binding.gone.yaml, binding.blocked.yaml) load and are unwalked. Carried e2e: archive#7 (the heading, the
+# row of a hidden item of another köşk, its "Kalıcı olarak sil"; its title also says "10 at a time, and filters by scope", which its body
+# never asserts) and archive#8 (the dialog, "2 hafta", the audit sentence, the focus on "Vazgeç", the click, the row gone, the course gone).
+# archive#6 (a köşk nazımı is refused /arsiv) is nizam.shell.noAccessAndNotFound's.
+#
+# Gaps of this file, for that merge:
+# missing:   the-count-names-everything-that-goes (PURGE-1), already-gone-is-a-notice-not-an-error (PURGE-3),
+# a-refused-delete-is-told-in-the-dialog (F-W5-3), a-week-or-session-with-a-recording-can-be-deleted (MDRS-244),
+# the-focus-goes-somewhere-after-a-delete (F-W5-5), a-delete-does-not-skip-a-row-of-the-next-page (PURGE-2),
+# a-busy-dialog-is-not-closed-by-mistake (PURGE-4), a-late-count-does-not-fill-another-dialog (PURGE-5)
+# unwalked:  the-list-pages-ten-at-a-time (code, no e2e assertion, no scenario: a list of more than ten rows is not made),
+# already-gone-is-handled (code, no e2e; binding.gone.yaml written and not run),
+# a-count-that-fails-does-not-block-the-delete (code, no e2e; binding.gone.yaml written and not run)
+
+needs:
+  - id: find-the-item-in-one-list
+    need: >-
+      The başnazım reads one list of everything hidden on the platform, newest first, and narrows it by the köşk or medrese it
+      sits in, by its kind and by its name, to find the one item he means. Each row says what it is, what it holds, where it sits,
+      who hid it and when.
+    evidence:
+      - state: listed
+      - state: filtering
+      - source: apps/tedrisat/src/archive/archive.controller.ts:191
+      - source: apps/tedrisat/src/archive/archive.controller.ts:228
+      - source: apps/nizam/features/archive/components/archive-view.tsx:112
+      - test: apps/nizam/e2e/archive.e2e.ts
+        name: "lists every köşk's hidden items, 10 at a time, and filters by scope"
+
+  - id: the-list-pages-ten-at-a-time
+    need: >-
+      A list of more than ten rows shows ten, says how many there are in all, and a button reads the next ten and adds them below.
+    evidence:
+      - state: listed
+      - source: apps/nizam/features/archive/components/archive-view.tsx:485
+    note: >-
+      archive#7's title says it ("10 at a time") and its body asserts neither the ten nor the button; no scenario here makes a
+      list of more than ten
+
+  - id: only-the-basnazim-deletes-for-good
+    need: >-
+      Only the başnazım sees "Kalıcı olarak sil" and the API refuses everyone else; a köşk nazımı or a Medaris nazımı who opens
+      the page meets "Bu bölüm için izniniz yok" and no menu entry leads there.
+    evidence:
+      - state: opened
+      - state: refused
+      - source: apps/tedrisat/src/archive/archive.controller.ts:191
+      - source: apps/tedrisat/src/archive/archive.controller.ts:284
+      - source: apps/nizam/app/arsiv/page.tsx:26
+      - test: apps/nizam/e2e/archive.e2e.ts
+        name: "nizam/28 and 29 — a köşk nazım is refused the platform archive and another köşk's archive"
+    note: "archive#6: carried by nizam.shell.noAccessAndNotFound"
+
+  - id: the-dialog-says-what-goes
+    need: >-
+      Before anything is deleted the başnazım reads what goes with the item, in numbers: for a course its weeks, its celses and
+      its talebe records (any status), for a week its celses; a kind that is zero is not listed.
+    evidence:
+      - state: readingImpact
+      - state: confirming
+      - source: apps/tedrisat/src/archive/archive.controller.ts:265
+      - source: apps/nizam/features/archive/present.ts:169
+      - test: apps/nizam/e2e/archive.e2e.ts
+        name: "'Kalıcı olarak sil' counts what goes, then deletes the course for good"
+
+  - id: the-count-names-everything-that-goes
+    need: >-
+      The count lists every kind the purge deletes, so that "ve ona bağlı her şey" is true of it: the recordings, the notes and
+      questions, the talebe's homework with its files, the exams and the course's resources and appointments, not only the weeks,
+      celses and talebe records. Where a kind is not counted, the dialog says which.
+    evidence:
+      - source: apps/tedrisat/src/archive/archive.repository.ts:629
+    missing: no Linear issue; PURGE-1, ui.yaml `rules`; the API's `recordings` is a constant 0; code exists in part
+    note: >-
+      Drawn on the state confirming, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: deleting-asks-once-and-cannot-be-pressed-by-mistake
+    need: >-
+      The delete asks first, in a window that names the kind, says it cannot be undone and that it is written to the audit log
+      under the person's name, starts on the safe answer, and has its confirm off until the count is read; the scrim does not
+      close it.
+    evidence:
+      - state: readingImpact
+      - state: confirming
+      - state: confirmingBlind
+      - source: apps/nizam/features/archive/components/archive-view.tsx:507
+      - source: libs/ui/src/mds/alert-dialog.tsx:62
+      - test: apps/nizam/e2e/archive.e2e.ts
+        name: "'Kalıcı olarak sil' counts what goes, then deletes the course for good"
+
+  - id: a-delete-is-final-and-signed
+    need: >-
+      The item and everything bound to it go in one transaction, nothing of it can be brought back, and an audit entry names who
+      did it and what went; the files and invitation mails it owed are sent after it commits.
+    evidence:
+      - state: deleting
+      - state: settled
+      - source: apps/tedrisat/src/archive/archive.controller.ts:284
+      - source: apps/tedrisat/src/archive/archive.repository.ts:691
+      - test: apps/nizam/e2e/archive.e2e.ts
+        name: "'Kalıcı olarak sil' counts what goes, then deletes the course for good"
+
+  - id: the-list-follows-a-delete
+    need: >-
+      When the delete is done the dialog closes, the row leaves the list, the count of hidden items drops, and a notice says what
+      was deleted and that its bound records went too.
+    evidence:
+      - state: settled
+      - state: listEmpty
+      - state: listedAfter
+      - source: apps/nizam/features/archive/components/archive-view.tsx:228
+      - test: apps/nizam/e2e/archive.e2e.ts
+        name: "'Kalıcı olarak sil' counts what goes, then deletes the course for good"
+
+  - id: already-gone-is-handled
+    need: >-
+      An item that someone else deleted or brought back after the page was read is not an error of the page: the delete answers
+      that it is not there, the row leaves the list and the dialog closes.
+    evidence:
+      - state: deleting
+      - state: settled
+      - state: confirmingBlind
+      - source: apps/tedrisat/src/archive/archive.controller.ts:284
+      - source: apps/nizam/features/archive/components/archive-view.tsx:225
+    note: no e2e; binding.gone.yaml (GONE_ELSEWHERE in the list and in the open dialog) is written and not run
+
+  - id: a-count-that-fails-does-not-block-the-delete
+    need: If the count cannot be read the dialog says so and still lets the başnazım delete, knowing he cannot see what goes.
+    evidence:
+      - state: readingImpact
+      - state: confirmingBlind
+      - source: apps/nizam/features/archive/components/archive-view.tsx:532
+    note: no e2e; binding.gone.yaml (the item gone before the count is asked for) is written and not run
+
+  - id: already-gone-is-a-notice-not-an-error
+    need: >-
+      An item that is already gone is told as a notice that closes by itself, with words that say whether it was deleted or
+      brought back, not as the error "Silinemedi" that stays until it is closed.
+    evidence:
+      - source: apps/nizam/features/archive/components/archive-view.tsx:235
+    missing: no Linear issue; PURGE-3; code exists in part
+    note: >-
+      Drawn on the states deleting and settled, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refused-delete-is-told-in-the-dialog
+    need: >-
+      When the server refuses the delete, the window that is still open says so in words from the catalog, naming the cause where
+      it is known, and the person is not left to find a toast in another part of the page.
+    evidence:
+      - source: apps/nizam/features/archive/components/archive-view.tsx:244
+    missing: no Linear issue; F-W5-3; code exists in part
+    note: >-
+      Drawn on the states deleting and confirming, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-week-or-session-with-a-recording-can-be-deleted
+    need: >-
+      A hidden week or session that holds a recording is deleted like one that does not, the recording with it, as a course's is.
+    evidence:
+      - source: apps/tedrisat/src/archive/archive.repository.ts:747
+    missing: MDRS-244; code exists in part
+    note: >-
+      Drawn on the state deleting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-focus-goes-somewhere-after-a-delete
+    need: >-
+      After a delete the keyboard focus lands on something the person can use (the table, the next row's button or the count), and
+      what happened is said in a way a screen reader hears.
+    evidence:
+      - source: apps/nizam/features/archive/components/archive-view.tsx:228
+    missing: no Linear issue; F-W5-5; code exists in part
+    note: >-
+      Drawn on the states settled, listEmpty and listedAfter, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-delete-does-not-skip-a-row-of-the-next-page
+    need: >-
+      After a row is deleted from a list that has more than one page, the next page begins where the last one shown ended: no row
+      is missing and none is shown twice, and a row hidden meanwhile is found.
+    evidence:
+      - source: apps/nizam/features/archive/components/archive-view.tsx:490
+    missing: no Linear issue; PURGE-2; code exists in part
+    note: >-
+      Drawn on the state listedAfter, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-busy-dialog-is-not-closed-by-mistake
+    need: >-
+      While the delete runs, "Vazgeç", the close icon and Esc say they are not available (disabled or busy) instead of being on
+      and doing nothing.
+    evidence:
+      - source: apps/nizam/features/archive/components/archive-view.tsx:509
+    missing: no Linear issue; PURGE-4; code exists in part
+    note: >-
+      Drawn on the state deleting, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-late-count-does-not-fill-another-dialog
+    need: >-
+      A count that arrives after its dialog was closed is dropped, so that the dialog of another row never shows the first one's
+      numbers.
+    evidence:
+      - source: apps/nizam/features/archive/components/archive-view.tsx:200
+    missing: no Linear issue; PURGE-5; code exists in part
+    note: >-
+      Drawn on the state readingImpact, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).

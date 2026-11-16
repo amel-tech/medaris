@@ -1,0 +1,348 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.courses.roster
+status: proposed
+summary: >-
+  What the Talebeler page of a course in nizam-web must do for the köşk's nazım, from the flow's story, and what is built, walked
+  or missing. Read from the code of PR #394 on 16 Nov 2026; nothing was walked in a browser, and no replay scenario of this flow
+  has been run, so no `replay:` is named under `walked`: the evidence named is the e2e specs of apps/nizam/e2e/students.e2e.ts
+  (checks `students#1` to `students#7`, which the inventory says hold) and, for the buttons that hand over, the ban specs the
+  hand-over flow carries.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Not applicable, noted so that the gap list is not read as an omission. Gender separation (kontenjan per gender, gender always required; MDRS-284): a completion, a
+# removal and a bar give nobody a seat, and a reopening gives back the seat the talebe already held (there is no capacity at all in tedrisat). The seat decision is
+# nizam.courses.decideApplications's. Where this page would decide a seat, it is the planned reinstatement of a removed talebe: that is the need
+# `a-reinstated-seat-follows-the-kontenjan` below.
+#
+# For the orchestrator's gaps merge.
+# missing  (no code): a-removal-can-be-taken-back, the-dialog-tells-the-truth-about-applying-again, removing-and-barring-go-together, the-reason-says-who-reads-it,
+# a-completion-is-told-to-the-talebe, say-when-a-course-was-completed (MDRS-149), a-barred-talebe-is-told-at-the-row, a-stale-row-is-read-again,
+# an-unreadable-roster-says-why, the-form-says-what-is-missing, focus-and-words-follow-a-decision, a-busy-dialog-says-so, the-length-limit-is-said,
+# a-failed-call-is-told, the-page-names-its-course, back-goes-to-the-course, a-reinstated-seat-follows-the-kontenjan (MDRS-284)
+# unwalked (code exists; no e2e and no replay that passed): reopen-a-completion, a-refused-change-says-why, the-page-for-a-reader-with-no-roster-right,
+# a-course-under-another-kosks-address
+# walked by an e2e check but not by this flow's replay: page-through-a-long-roster (students#2: it needs seven enrolled talebe and the stack has four spare accounts)
+
+needs:
+  - id: see-who-is-on-the-course
+    need: >-
+      The köşk's nazım sees a course's applications, its enrolled talebe, the ones who completed it and the ones taken out, each
+      with its count, and the counts follow every change on the page.
+    evidence:
+      - node: tabList
+      - node: tabApplications
+      - node: tabEnrolled
+      - node: tabCompleted
+      - node: tabRemoved
+      - node: countApplications
+      - node: countEnrolled
+      - node: countCompleted
+      - node: countRemoved
+      - state: enrolled
+      - state: completed
+      - state: removedList
+      - source: apps/tedrisat/src/course/course.controller.ts:562
+      - source: apps/tedrisat/src/course/course.controller.ts:581
+      - source: apps/nizam/features/applications/components/students-tabs.tsx:94
+      - test: apps/nizam/e2e/students.e2e.ts
+        name: "nizam/58 — the tabs carry the counts: Kayıtlı 8, Tamamlayanlar 1, Erişimi kaldırılanlar 0"
+
+  - id: find-a-talebe-by-name-or-email
+    need: >-
+      The nazım finds one talebe in a long list by typing part of the name or of the e-mail address, in the way a person types it
+      (case and Turkish letters ignored), and is told when nobody matches.
+    evidence:
+      - node: searchEnrolled
+      - node: rowByName
+      - node: rowByEmail
+      - node: emptySearch
+      - source: apps/nizam/features/applications/present.ts:102
+      - test: apps/nizam/e2e/students.e2e.ts
+        name: "nizam/58 — the search narrows by name and by e-mail (criterion 2)"
+
+  - id: page-through-a-long-roster
+    need: A roster of more than six talebe shows six at a time with the total, and "Daha fazla göster" shows the rest.
+    evidence:
+      - node: showing
+      - node: moreButton
+      - source: apps/nizam/features/applications/components/roster-table.tsx:287
+      - test: apps/nizam/e2e/students.e2e.ts
+        name: "nizam/58 — Kayıtlı shows six rows with the total, and 'Daha fazla göster' brings the rest (criterion 1)"
+
+  - id: read-a-talebes-own-progress
+    need: >-
+      Beside each enrolled talebe the nazım reads the progress the talebe entered themselves, as a named bar with its number, and
+      the help line says it is the talebe's own and that the team confirms the completion.
+    evidence:
+      - node: progressBars
+      - node: progressEntered
+      - node: rosterHelp
+      - node: colProgress
+      - source: apps/tedrisat/src/course/course.controller.ts:821
+      - source: apps/nizam/features/applications/components/roster-table.tsx:196
+      - test: apps/nizam/e2e/students.e2e.ts
+        name: "nizam/58 — the progress bar shows the value the talebe entered (criterion 3)"
+
+  - id: mark-a-course-complete
+    need: >-
+      The nazım marks a talebe's course complete from the row, and the talebe moves from Kayıtlı to Tamamlayanlar with a word that
+      says so.
+    evidence:
+      - node: complete
+      - state: completing
+      - node: toastCompleted
+      - state: completed
+      - source: apps/tedrisat/src/course/course.controller.ts:716
+      - source: apps/nizam/features/applications/components/roster-table.tsx:93
+      - test: apps/nizam/e2e/students.e2e.ts
+        name: "nizam/58 — 'Tamamladı say' moves the talebe to Tamamlayanlar (criterion 6)"
+    note: Also drawn as the assertion a-completion-toast-means-a-completion.
+
+  - id: reopen-a-completion
+    need: The nazım gives a completed talebe's course back to Kayıtlı.
+    evidence:
+      - node: reopen
+      - state: reopening
+      - node: toastReopened
+      - source: apps/tedrisat/src/course/course.controller.ts:716
+      - source: apps/nizam/features/applications/components/roster-table.tsx:129
+    note: Also drawn as the assertion reopen-needs-a-completion.
+
+  - id: take-a-talebe-out-with-a-reason
+    need: >-
+      The nazım takes a talebe out of a course with a written reason that cannot be blank; the dialog starts in the reason box,
+      the button stays off until the reason holds something, a click outside the dialog or "Vazgeç" removes nobody, and sending it
+      moves the talebe to the record of removals and keeps the reason and who wrote it.
+    evidence:
+      - node: remove
+      - state: form
+      - state: formReady
+      - state: removing
+      - node: dialog
+      - node: reasonField
+      - node: submit
+      - node: cancel
+      - node: closeIcon
+      - node: toastRemoved
+      - source: apps/tedrisat/src/course/course.controller.ts:739
+      - source: apps/nizam/features/applications/components/remove-dialog.tsx:58
+      - test: apps/nizam/e2e/students.e2e.ts
+        name: "nizam/58 — 'Dersten çıkar' needs a reason; the talebe leaves Kayıtlı and appears under Erişimi kaldırılanlar with it (criterion 4)"
+      - test: apps/nizam/e2e/students.e2e.ts
+        name: "nizam/58 — the scrim does not close 'Dersten çıkar'; 'Vazgeç' does, and nothing is removed"
+    note: Also drawn as the assertion a-removal-needs-a-reason, the assertion a-removal-toast-means-a-removal.
+
+  - id: the-record-of-removals
+    need: >-
+      Erişimi kaldırılanlar lists each talebe taken out, with the day, the reason and who took them out, and nothing else changes
+      it.
+    evidence:
+      - state: removedList
+      - node: removedTable
+      - node: removedPerson
+      - node: removedDay
+      - node: removedReason
+      - node: removedBy
+      - node: removedEmpty
+      - source: apps/tedrisat/src/course/course.controller.ts:581
+      - source: apps/nizam/features/applications/components/removed-table.tsx:85
+      - test: apps/nizam/e2e/students.e2e.ts
+        name: "nizam/58 — 'Dersten çıkar' needs a reason; the talebe leaves Kayıtlı and appears under Erişimi kaldırılanlar with it (criterion 4)"
+
+  - id: bar-and-lift-from-the-roster
+    need: >-
+      From a talebe's row the nazım opens the ban dialog (and, on a barred talebe's row, the lift dialog); the ban dialog is
+      nizam.moderation.banStudent's and the lift dialog is nizam.moderation.decideBan's.
+    evidence:
+      - node: ban
+      - node: banCompleted
+      - node: lift
+      - node: bannedBadge
+      - state: handed_over.ban
+      - state: handed_over.lift
+      - source: apps/tedrisat/src/ban/ban.controller.ts:83
+      - source: apps/tedrisat/src/ban/ban.controller.ts:195
+      - source: apps/nizam/features/applications/components/roster-table.tsx:316
+      - test: apps/nizam/e2e/bans.e2e.ts
+        name: "nizam/41 — 'Yasakla' opens the window for that talebe, with the course scope chosen"
+
+  - id: a-refused-change-says-why
+    need: >-
+      When a completion, a reopening or a removal is refused or the seat has moved, the nazım is told in her own words what
+      happened and that nothing changed.
+    evidence:
+      - node: toastMoved
+      - node: toastRefused
+      - node: toastFailed
+      - node: toastRemoveMoved
+      - node: toastRemoveRefused
+      - node: toastRemoveFailed
+      - source: apps/nizam/features/kosks/course-team.ts:41
+
+  - id: the-page-for-a-reader-with-no-roster-right
+    need: >-
+      A person the köşk layout lets in but who holds no roster right in the course (a Medaris nazımı) is not shown a page of tabs;
+      today she gets the bare caption.
+    evidence:
+      - state: unreadable
+      - node: unreadableCaption
+      - source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:62"
+
+  - id: a-course-under-another-kosks-address
+    need: >-
+      A course opened under the address of a köşk it does not belong to is the "Bu bölüm için izniniz yok" screen, not another
+      köşk's roster.
+    evidence:
+      - state: opened
+      - state: not_found
+      - source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:44"
+
+  - id: a-removal-can-be-taken-back
+    need: >-
+      A removal made by mistake can be undone from the product by the course team: the removed talebe's row has a way to bring the
+      seat back, and the talebe is told. (Decision D1; the API's approve route reinstates a REVOKED seat,
+      course.service.ts:1627-1668, and no screen calls it.)
+    missing: no Linear issue
+    note: |-
+      Drawn on the state removedList and on the nodes removedTable and removedNote, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      ---- what the code does not do, from the findings (each is a rule in ui.yaml) ----
+
+  - id: the-dialog-tells-the-truth-about-applying-again
+    need: >-
+      The removal dialog and the record of removals say what the API does: the talebe cannot apply again (409) and the seat comes
+      back only if the team approves it. Today both say the talebe may apply again (NROS-1, the nizam half of RMV-2).
+    missing: no Linear issue; findings NROS-1, RMV-2
+    note: >-
+      Drawn on the nodes info and removedNote, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: removing-and-barring-go-together
+    need: >-
+      A nazım who wants a talebe both out of the course and barred can do both from the page, or the dialog does not tell her to
+      use "Yasakla" afterwards (NROS-2, decision D2).
+    missing: no Linear issue; findings NROS-2
+    note: >-
+      Drawn on the nodes info, remove, ban and lift, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-reason-says-who-reads-it
+    need: The dialog says that the talebe reads the reason too, or the notice is sent without it (RMV-1, decision D3).
+    missing: no Linear issue; findings RMV-1
+    note: >-
+      Drawn on the node reasonHelp, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-completion-is-told-to-the-talebe
+    need: >-
+      A completion tells the talebe ("{course} dersi tamamlandı olarak işaretlendi", and a reopening likewise) and the toast says
+      that the coming celses leave their schedule (ROSCOM-4, decision D3).
+    missing: no Linear issue; findings ROSCOM-4
+    note: >-
+      Drawn on the state completing and on the node toastCompleted, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: say-when-a-course-was-completed
+    need: >-
+      Tamamlayanlar shows the day the course was completed, not the day the talebe joined; the planned icazet record needs it
+      (ROSCOM-3).
+    missing: MDRS-149; findings ROSCOM-3
+    note: >-
+      Drawn on the nodes colJoined and rowsCompleted, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-barred-talebe-is-told-at-the-row
+    need: >-
+      A barred, completed talebe's row does not offer "Yeniden aç", or says why it would be refused, and the refusal is worded in
+      Turkish and says that the talebe is barred (NROS-4, the twin of ROSCOM-2).
+    missing: no Linear issue; findings NROS-4, ROSCOM-2
+    note: >-
+      Drawn on the nodes reopen, toastBarred and bannedBadge, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-stale-row-is-read-again
+    need: >-
+      When a seat has moved or a change is refused, the list is read again by the page itself, so the stale row goes and the nazım
+      is not asked to refresh the page (NROS-3).
+    missing: no Linear issue; findings NROS-3
+    note: >-
+      Drawn on the nodes toastMoved and toastRemoveMoved, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: an-unreadable-roster-says-why
+    need: >-
+      An unreadable roster is an alert that says whether the server did not answer or the reader may not see it, and offers
+      "Yeniden dene" (F-W4-10, NROS-6).
+    missing: no Linear issue; findings F-W4-10, NROS-6
+    note: >-
+      Drawn on the state unreadable and on the node unreadableCaption, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-form-says-what-is-missing
+    need: >-
+      The removal dialog says why "Dersten çıkar" is off, and a blank reason is met with a word and the focus on the field
+      (F-W4-14).
+    missing: no Linear issue; findings F-W4-14
+    note: >-
+      Drawn on the state settle and on the nodes submit and reasonField, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: focus-and-words-follow-a-decision
+    need: >-
+      After a completion, a reopening or a removal the focus goes to a place that still exists, and a search, a sort and "Daha
+      fazla göster" say what they changed in a polite live region (F-W4-6, F-D1-04).
+    missing: no Linear issue; findings F-W4-6, F-D1-04
+    note: >-
+      Drawn on the nodes showing, emptySearch, moreButton, complete and remove, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-busy-dialog-says-so
+    need: >-
+      While a removal is sent, "Vazgeç", the close icon and Escape are marked off and the pressed row's buttons keep the focus
+      (NROS-5, ROSCOM-1).
+    missing: no Linear issue; findings NROS-5, ROSCOM-1
+    note: >-
+      Drawn on the nodes cancel, closeIcon, rowComplete and rowRemoveBusy, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-length-limit-is-said
+    need: The reason box says it takes 500 characters (RMV-4).
+    missing: no Linear issue; findings RMV-4
+    note: >-
+      Drawn on the nodes reasonField and reasonHelp, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-call-is-told
+    need: >-
+      A server action that cannot reach the server ends in a toast and not in a row that stays busy for good (NROS-7, the twin of
+      F-D1-20).
+    missing: no Linear issue; findings NROS-7, F-D1-20
+    note: >-
+      Drawn on the states completing, reopening and removing, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-page-names-its-course
+    need: The tab title and the h1 name the course, so that two courses' Talebeler are told apart in a tab list (F-W4-17).
+    missing: no Linear issue; findings F-W4-17
+    note: >-
+      Drawn on the nodes studentsTitle and subtitle, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: back-goes-to-the-course
+    need: "\"Derse dön\" goes to the course's overview, not to the Müfredat page that /edit redirects to (F-W4-1)."
+    missing: no Linear issue; findings F-W4-1
+    note: >-
+      Drawn on the state handed_over.curriculum and on the node backLink, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-reinstated-seat-follows-the-kontenjan
+    need: >-
+      When a removed talebe's seat is brought back, it is a seat decided: kontenjan is per gender and gender is always required,
+      and the nazım is told when the quota for the talebe's gender is full.
+    missing: MDRS-284
+    note: >-
+      Drawn on the state removedList and on the node removedTable, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).

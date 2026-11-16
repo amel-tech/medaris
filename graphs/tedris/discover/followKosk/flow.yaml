@@ -1,0 +1,229 @@
+# A talebe follows a köşk from its card on Keşfet or from its own page, and stops following it. Written from the code of the
+# branch (captured); nothing here is a plan. What it leaves to other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   DSC-01  the button is `disabled` while the request is out, where the kit's rule is `loading` so that focus survives (follow-button.tsx:59).
+#           Seen in a browser on the local stack (a one-off Chromium probe, 15 Nov 2026, not part of the replay): after Enter on the focused
+#           button the focus is on <body> within 80 ms and stays there, on the card and on the köşk page
+#   DSC-02  the name flips between "Takip et: X" and "Takip ediliyor: X" and aria-pressed flips too: the state is told twice (follow-button.tsx:60-61)
+#   DSC-14  no try/catch around the two actions: a request that never reaches the server is not drawn (follow-button.tsx:41-53)
+#   DSC-20  the toast region of every refusal keeps Sonner's English name (libs/ui/src/components/sonner.tsx:59-76)
+#   F-5     the API lets a signed-in caller follow a köşk that is hidden: the guard's closure covers courses only and the service reads
+#           that the köşk exists, not that it is shown (kosk.service.ts:276). Drawn as the stale page below (world hidden); the domain
+#           records it as invariant kosk-hidden-cannot-be-followed, holds: false. Seen on the local stack (an API call and a Chromium probe,
+#           15 Nov 2026, not the replay): the hidden köşk answers 404 to the talebe, the follow answers 201 true, the stale card is gone after
+#           the press with no toast, and the follow row stays
+# E2E carried: discover#9 (follow on the card, still so after a reload, unfollow) and discover#18 (the same on the köşk page). The seed's
+# "nur is already followed" of #9 is the card after RELOAD with follows yes; the e2e's own seeding is not carried.
+schema: delurio-graph/0
+kind: flow
+id: tedris.discover.followKosk
+status: captured
+domain: medaris.api
+ui: tedris.discover.followKosk
+title: Follow a köşk, and stop following it
+summary: >-
+  A signed-in talebe sees a köşk's card on Keşfet with a button "Takip et: X". Pressing it flips the button at once to "Takip
+  ediliyor: X" and disables it while the server action followKosk (POST /kosks/:id/follow) is out; the answer keeps the flip, says
+  nothing, and the page is read again. A reload shows the same button, because the API holds the follow. The card's title opens the
+  köşk's page, which has the same button in its head, and pressing "Takip ediliyor: X" there stops the follow (DELETE
+  /kosks/:id/follow). A refusal puts the button back and leaves an error toast that stays until it is closed. The follow shows on Ana
+  sayfa as the köşk's courses (tedris.shell.home reads it back). The API also takes a follow of a köşk that was hidden after the page
+  was drawn (F-5): the page is read again and the card is gone, the follow is not.
+
+scope:
+  shows: the köşk's card on Keşfet, the köşk page's head, the follow button on both while it waits for the server, and the toast of a refusal
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the visitor, who is not given the button (kosk-card.tsx:39, kosk-page.tsx:183): tedris.discover.visitorPath"
+    - "the rest of Keşfet (search, the medrese filter, the pager, the empty and the failed read) and of the köşk page (courses, decks, the failed read): tedris.discover.browse, tedris.discover.readKosk"
+    - "a card that a first load already draws as \"Takip ediliyor\": it is the card after RELOAD with follows yes"
+    - "the stale page of F-5 on the köşk page, which would end on the not-found page after the refresh (read from the code, not drawn); and a köşk that is deleted, not hidden, meanwhile: its refusal is the drawn FAIL.refused"
+    - "a request that never reaches tedris (DSC-14): what the person sees is not verified and not drawn"
+    - "the courses of followed köşks on Ana sayfa: tedris.shell.home"
+
+context:
+  follows:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "the button says \"Takip et\": the person does not follow the köşk"
+      yes: "the button says \"Takip ediliyor\": the person follows it, or has just pressed the button and the answer is awaited"
+  world:
+    values: [listed, hidden]
+    initial: listed
+    say:
+      listed: "the köşk is in the list, as the page was drawn"
+      hidden: "a nazım or Medaris management hid the köşk after the page was drawn, and the page does not know"
+  notice:
+    values: [none, failed]
+    initial: none
+    say:
+      none: "no toast"
+      failed: "a toast says the follow state could not be changed; it stays until it is closed or the page changes"
+
+guards:
+  off: "follows == 'no'"
+  on: "follows == 'yes'"
+  listed: "world == 'listed'"
+  hiddenNow: "world == 'hidden'"
+
+effects:
+  flipOn: { set: { follows: yes } }
+  flipOff: { set: { follows: no } }
+  toastFailed: { set: { notice: failed } }
+  clearNotice: { set: { notice: none } }
+  koskHidden: { set: { world: hidden } }
+
+failures:
+  cardFollowing:
+    from: followKosk
+    signedOut: [HTTP_401]
+    refused: [KOSK_NOT_FOUND, HTTP_400]
+  koskFollowing:
+    from: followKosk
+    signedOut: [HTTP_401]
+    refused: [KOSK_NOT_FOUND, HTTP_400]
+  cardUnfollowing:
+    from: unfollowKosk
+    signedOut: [HTTP_401]
+    refused: [HTTP_400]
+  koskUnfollowing:
+    from: unfollowKosk
+    signedOut: [HTTP_401]
+    refused: [HTTP_400]
+
+# The main story, as e2e discover#9 and #18 walk it together: follow from the card, see it hold after a reload, open the köşk's page and
+# stop following there.
+main:
+  events: [FOLLOW, DONE, RELOAD, OPEN_KOSK, UNFOLLOW, DONE]
+
+initial: card
+states:
+  card:
+    title: The köşk's card on Keşfet
+    by: human
+    goal: true
+    source: apps/tedris/features/discover/components/kosk-card.tsx:39
+    description: >-
+      Keşfet (/discover) as a signed-in talebe, with the köşk's card: its name as the link that makes the whole card clickable, and
+      in the card's footer the follow button, "Takip et: X" while the person does not follow and "Takip ediliyor: X" (with a check
+      icon) while they do. The button is a toggle: its name flips and so does aria-pressed (DSC-02). The two cards of the page are
+      independent, and a visitor is given no button. The page's own words and the other cards are another flow's. A refusal leaves a
+      toast on this state (notice failed) that stays until it is closed or the route changes. The page sets no initial focus (not
+      verified in a browser). The second person's step is KOSK_HIDDEN: a nazım hides the köşk in nizam, and this page, not live,
+      keeps drawing the card and a button that still works.
+    on:
+      FOLLOW: { guard: off, target: cardFollowing, effect: [flipOn], source: apps/tedris/features/discover/components/follow-button.tsx:42 }
+      UNFOLLOW: { guard: on, target: cardUnfollowing, effect: [flipOff], source: apps/tedris/features/discover/components/follow-button.tsx:42 }
+      RELOAD: { guard: listed, target: card, effect: [clearNotice], say: "the page is read again and the button says what the API holds (e2e discover#9); a reload of a page gone stale is the list read again, which is the exit list_without_kosk", source: apps/tedris/features/discover/reads.ts:36 }
+      OPEN_KOSK: { guard: listed, target: kosk, effect: [clearNotice], say: "the card's title is a link to /kosks/<id>; the route change dismisses the toast", source: apps/tedris/features/discover/components/kosk-card.tsx:27 }
+      KOSK_HIDDEN: { guard: listed, target: card, effect: [koskHidden], say: "a nazım hides the köşk (nizam.kosks.editAndHide); this page does not know", source: apps/tedrisat/src/kosk/kosk-admin.controller.ts:354 }
+      NAVIGATE: left
+
+  cardFollowing:
+    title: Follow, from the card
+    source: apps/tedris/features/discover/components/follow-button.tsx:44
+    description: >-
+      The button has flipped to "Takip ediliyor: X" at once (useOptimistic) and is disabled while the server action followKosk,
+      POST /kosks/:id/follow, is out: a double press is one request, and the focused button loses the keyboard focus (DSC-01: seen in Chromium, the focus is
+      on <body> from then on, and nothing gives it back). The API inserts the row with ON CONFLICT DO NOTHING, so a follow already held is a success
+      too, and answers true. It checks that the köşk exists, not that it is shown: a köşk hidden meanwhile is followed all the same
+      (F-5, world hidden). Success is silent: the page is read again (router.refresh) and, for a hidden köşk, the card is no longer
+      in the list. A refusal (a köşk that is deleted meanwhile, a malformed id) puts the button back to "Takip et: X" and leaves the
+      error toast. A session that is over sends the person to sign in and back to this page and draws no toast.
+    invoke: { action: followKosk }
+    on:
+      DONE:
+        - { guard: listed, target: card, say: "the button stays flipped and the page is read again", source: apps/tedris/features/discover/components/follow-button.tsx:52 }
+        - { guard: hiddenNow, target: list_without_kosk, say: "F-5: the API took the follow of a hidden köşk; the page is read again and the card is gone, the follow row stays", source: apps/tedrisat/src/kosk/kosk.service.ts:276 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { target: card, effect: [flipOff, toastFailed], source: apps/tedris/features/discover/components/follow-button.tsx:49 }
+
+  cardUnfollowing:
+    title: Stop following, from the card
+    source: apps/tedris/features/discover/components/follow-button.tsx:46
+    description: >-
+      The button has flipped back to "Takip et: X" and is disabled while unfollowKosk, DELETE /kosks/:id/follow, is out. The route is
+      exempt from the permission check on purpose, so that leaving does not depend on still being allowed in: it deletes the
+      caller's own row and answers true, or false when there was none, and a köşk that does not exist is simply false. A refusal puts
+      the button back to "Takip ediliyor: X" and leaves the error toast.
+    invoke: { action: unfollowKosk }
+    on:
+      DONE:
+        - { guard: listed, target: card, say: "the button stays flipped and the page is read again", source: apps/tedris/features/discover/components/follow-button.tsx:52 }
+        - { guard: hiddenNow, target: list_without_kosk, say: "the page is read again and the hidden köşk's card is gone", source: apps/tedrisat/src/kosk/kosk.repository.ts:164 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { target: card, effect: [flipOn, toastFailed], source: apps/tedris/features/discover/components/follow-button.tsx:49 }
+
+  kosk:
+    title: The köşk's page
+    by: human
+    source: apps/tedris/features/courses/components/kosk-page.tsx:183
+    description: >-
+      /kosks/<id>, the köşk's own page, which anyone may open (a visitor too), with the same button in its head beside the name, in
+      regular size. The name, "{n} ders" and the courses below it are tedris.discover.readKosk's. The breadcrumb link "Keşfet"
+      leads back to the list. Pressing the button here is the e2e discover#18. The page sets no initial focus (not verified in a
+      browser).
+    on:
+      FOLLOW: { guard: off, target: koskFollowing, effect: [flipOn], source: apps/tedris/features/discover/components/follow-button.tsx:42 }
+      UNFOLLOW: { guard: on, target: koskUnfollowing, effect: [flipOff], source: apps/tedris/features/discover/components/follow-button.tsx:42 }
+      RELOAD: { target: kosk, effect: [clearNotice], say: "the page is read again and the button says what the API holds (e2e discover#18)", source: "apps/tedris/app/kosks/[koskId]/page.tsx:42" }
+      BACK: { target: card, effect: [clearNotice], say: "the breadcrumb \"Keşfet\": the list is read again, the card says what the API holds", source: apps/tedris/features/courses/components/kosk-page.tsx:154 }
+      NAVIGATE: left
+
+  koskFollowing:
+    title: Follow, from the köşk's page
+    source: apps/tedris/features/discover/components/follow-button.tsx:44
+    description: >-
+      The same server action as cardFollowing, from the same component: the button reads "Takip ediliyor: X", disabled, while the
+      request is out (DSC-01). Success is silent and the page is read again; a refusal puts the button back to "Takip et: X" and
+      leaves the error toast, in KoskPage's words (the same Turkish as Keşfet's). The köşk page's own stale case (the köşk hidden
+      meanwhile) is not drawn: the refresh there would end on the not-found page.
+    invoke: { action: followKosk }
+    on:
+      DONE: { target: kosk, say: "the button stays flipped and the page is read again", source: apps/tedris/features/discover/components/follow-button.tsx:52 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { target: kosk, effect: [flipOff, toastFailed], source: apps/tedris/features/discover/components/follow-button.tsx:49 }
+
+  koskUnfollowing:
+    title: Stop following, from the köşk's page
+    source: apps/tedris/features/discover/components/follow-button.tsx:46
+    description: >-
+      unfollowKosk, from the köşk's page: the button reads "Takip et: X", disabled, while the request is out; success is silent and the
+      page is read again; a refusal puts the button back to "Takip ediliyor: X" with the error toast.
+    invoke: { action: unfollowKosk }
+    on:
+      DONE: { target: kosk, say: "the button stays flipped and the page is read again", source: apps/tedris/features/discover/components/follow-button.tsx:52 }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.refused: { target: kosk, effect: [flipOn, toastFailed], source: apps/tedris/features/discover/components/follow-button.tsx:49 }
+
+  list_without_kosk:
+    title: Keşfet is read again and the köşk is not in it
+    type: final
+    source: apps/tedris/features/discover/reads.ts:45
+    description: >-
+      The köşk was hidden after the page was drawn (world hidden). Keşfet reads GET /kosks again, which leaves a hidden köşk out
+      for everyone, so the card disappears under the person's hands and nothing says why. After a follow (F-5) the API holds a follow
+      of a köşk the person can no longer see: the row stays, the köşk's courses are left out of Ana sayfa while it is hidden
+      (GET /kosks/followed/courses skips hidden köşks), and they come back with the köşk when it is restored. The list is
+      tedris.discover.browse's from here.
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to exactly
+      this address, and draws no toast. realm.auth.signIn takes over.
+
+assertions:
+  - id: the-flip-comes-before-the-answer
+    never: "(state in ['cardFollowing', 'koskFollowing'] and follows == 'no') or (state in ['cardUnfollowing', 'koskUnfollowing'] and follows == 'yes')"
+    say: "while a request is out the button already says the new state, and a refusal is what puts it back"
+    source: apps/tedris/features/discover/components/follow-button.tsx:42

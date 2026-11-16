@@ -1,0 +1,472 @@
+# PLANNED, NOT WALKABLE: no code exists for this page. Written before its code, from the story, planned.md (P-03, P-35, P-02), the issues
+# MDRS-140, MDRS-197, MDRS-113, MDRS-125 and MDRS-205 (read in Linear on 16 Nov 2026), and the three Talepler pages that already exist
+# beside it in nizam-web (Köşk başvuruları, Deste yayın istekleri, İtirazlar: apps/nizam/features/platform-admin, deck-review, appeals).
+# `status: proposed`, no binding, no replay. Where something here exists in the code it carries its real `source`: the menu entry
+# (apps/nizam/lib/shell-nav.ts:122) and nothing else. Everything else has none, on purpose.
+#
+# The story. A medrese's başmüderris (or a nazır given madrasah.permanent_ban_request) pressed "Kalıcı yasak talebi aç" on a ban in nazar
+# (nazar.bans.decide, finished: it draws a `starts` of this flow on that press with `requested: true`; nazar.bans.courseBans has the same
+# dialog and draws no start, see the report). Today that writes a row nobody reads (BANDEC-4, ban-permanent-request-is-decided holds:
+# false). Here the başnazım, or a Medaris nazımı holding platform.ban_account, opens the menu entry "Kalıcı yasak talepleri" (it exists and
+# today answers "Sayfa bulunamadı", F-P0-4, F-X-11), reads the waiting requests with the person, the lower ban, who placed it and why, and who
+# asked and why, and then accepts (the person's Keycloak account is disabled and a platform-wide ban is placed) or rejects with a note
+# (the lower ban stays as it is). The requester is told. Every step is in the audit log.
+#
+# The page follows its three neighbours: two tabs "Bekleyen" and "Karara bağlanan" over a list and the detail of the selected request, with
+# "Kabul et" and "Reddet", the shared reject dialog, sonner toasts, and the same refusals (answered meanwhile, gone, not allowed).
+#
+# THE PERMISSION CHECK, and how it does not repeat the gaps of the ban routes of today (ledger/security.md: ban-staff-check-gaps, BANDEC-3,
+# TRIAGE-1, TRIAGE-2; domain invariant ban-staff-cannot-be-barred, holds: false). Drawn in `approving`, `waitingDetail`, the assertions and
+# the domain sketch (planned-permanent-ban.yaml: checkAccountMayBeClosed and its invariants):
+#   1. The caller. platform.ban_account is asked first, in one place, for the list and for both decisions; the başnazım bypasses it; a lapsed
+#      role or grant counts for nothing (PlatformAccessService). A reader without it meets `no_access` and no request is read.
+#   2. The person whose account closes is checked WHEN THE DECISION IS MADE, over every scope, and the check fails closed. extendBan and
+#      escalateBan skip the target check altogether; here the one check runs at the approval, whatever the ban's age. rolesHeld never finds
+#      the başnazım, because SYSTEM_ADMIN is a Keycloak realm role and no role_assignments row; here the realm role is read from Keycloak by
+#      the person's id. createMadrasahBan reads no course or köşk role at all (BANDEC-3), and createBan reads only the four scopes of the
+#      ban's own course, so a hoca of ANOTHER course of the same köşk is not found for a köşk-wide ban (NDB-1, nizam.moderation.decideBan); here
+#      the person's roles are read at every scope: the platform, every köşk, every medrese and every course. A directory that does not answer
+#      is a refusal, never a pass.
+#   3. The page offers "Kabul et" only for a person the same check passes (`mayApprove`, as the ban lists offer a lift by `viewerMayLift`),
+#      so the screen never offers what the API refuses (the nazar page offers "Medreseden de yasakla" for a person who now teaches).
+#   4. The notices: a new request is announced only to the holders of platform.ban_account and to the başnazım, and without the reason;
+#      TRIAGE-2 tells every Medaris nazımı every reason and TRIAGE-1 never tells the başnazım.
+#
+# OPEN DECISIONS (also in `decisions` below where they touch a state; the report lists all with the codes and names proposed):
+#   O1  the permission: platform.ban_account (the code's own comment in ban-codes.ts calls it "the platform's own scope: the account
+#       closes, MDRS-197") or a new code. Every Medaris nazımı who holds it for reading bans would also close accounts when this ships.
+#   O2  who may ask: today only a başmüderris or a nazır given madrasah.permanent_ban_request, on a ban in or over a medrese. MDRS-140 says
+#       "anyone who bans at course, köşk or medrese level". A köşk nazım and a müderris cannot ask today. Not drawn here (the asking is in nazar).
+#   O3  a confirmation before the account is closed ("Hesap kapatılsın mı?"): drawn, because the effect reaches every Medaris app.
+#   O4  the approval also ends the person's Keycloak sessions (a token lives 300 s): drawn as a second Admin call.
+#   O5  a person who holds any role is refused, not closed: drawn (the existing invariant); the other reading asks the başnazım to dismiss first.
+#   O6  the lower ban stays open beside the platform ban: drawn.
+#   O7  a lift of the lower ban withdraws a waiting request: drawn (the request disappears from the page; an old row meets "decided meanwhile").
+#   O8  the decided tab: drawn because the three neighbours have one.
+#   O9  the page hides "Kabul et" for a person the check refuses: drawn.
+#   O10 requester and decider may be one person (a başmüderris who is also a Medaris nazımı): not refused here.
+#   O11 the Keycloak service account gets `manage-users`: it cannot be narrowed to the enabled flag.
+#   O12 the order, Keycloak first and the records after, so a failed directory leaves the request waiting and repeatable: drawn.
+#   O13 lifting a platform ban enables the account again: not drawn here (nizam.moderation.decideBan).
+# Gender separation is given and does not touch this flow: no seat is decided here.
+schema: delurio-graph/0
+kind: flow
+id: nizam.moderation.decidePermanentBan
+status: proposed
+domain: medaris.api
+ui: nizam.moderation.decidePermanentBan
+title: Decide a permanent ban request
+summary: >-
+  A başmüderris or medrese nazır asked Medaris administration to make a ban permanent. The başnazım, or a Medaris nazımı holding the ban
+  permission, opens "Kalıcı yasak talepleri" from the menu. Two tabs, "Bekleyen" and "Karara bağlanan", sit over a list of the requests and
+  the detail of the selected one: the person, the ban (its scope and place, who placed it in which role, when, and why) and the request (who
+  asked, when, and why). A waiting request has two buttons. "Kabul et" asks "Hesap kapatılsın mı?" and, once confirmed, disables the
+  person's Keycloak account, places a platform-wide ban with the request's reason and tells the requester; the lower ban stays. "Reddet" asks
+  for a note the requester will read, and the lower ban stays as it is. The person's account is checked when the decision is made: the
+  caller, the başnazım and anyone who holds a role anywhere cannot be closed, and the page does not offer "Kabul et" for them. A request
+  answered meanwhile leaves the list with a notice; a directory that does not answer leaves it waiting.
+
+scope:
+  shows: >-
+    the menu entry, the page with both tabs and their counts, the list and the detail of a request, the confirmation, the reject dialog,
+    the toasts of a decision, the empty and failed pages, and the refusal
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "asking for the permanent ban: nazar.bans.decide (finished) opens the dialog 'Kalıcı yasak talebi aç' and starts this flow with requested: true; the same dialog on a course's own list is nazar.bans.courseBans"
+    - "lifting the platform ban later, and enabling the Keycloak account again: nizam.moderation.decideBan (the lift of a ban); the platform ban also appears in the Medaris ban list, nizam.moderation.reviewBans"
+    - "the Medaris home's card 'Kalıcı yasak talepleri', which says 'Bekleyen kalıcı yasak talebi yok.' whatever is waiting today (F-W1-15): nizam.home.medarisNazimCut"
+    - "the requester's and the deciders' notices as the notification pages show them: nazar.notifications.inbox, nizam.notifications.triage"
+    - "the sentence and the button of the refusal screen: nizam.shell.noAccessAndNotFound"
+    - "what the closed person meets at sign-in (Keycloak's own message for a disabled account, not verified): realm.auth.signInFailures"
+    - "recognising the banned person's browser when they come back under another account (MDRS-125): needs.yaml only"
+    - "an ended session: every call sends the person to sign in (realm.auth.signIn) instead of drawing an error"
+
+decisions:
+  D1:
+    question: >-
+      Does "Kabul et" act at once, as "Yayımla" does on the deck requests, or ask first? Closing an account stops the person in tedris, nazar
+      and nizam, and only Medaris administration can undo it.
+    recommend: >-
+      Ask first, in an alert dialog whose focus starts on "Vazgeç" (the app's pattern for the archive's permanent delete): drawn as
+      `approveConfirm`. The other reading removes that one state.
+    affects: [approveConfirm]
+  D2:
+    question: >-
+      May the page hide "Kabul et" for a person the check would refuse (the caller, the başnazım, someone who holds a role), or offer it and
+      let the API answer?
+    recommend: >-
+      Hide it and say why: the list carries `mayApprove` and `blockedBy`, the answer of the same check the approval makes, and the approval
+      repeats the check anyway (a post given after the list was read). The nazar page does the opposite today and offers the widening for a
+      person who now teaches (ban-staff-check-gaps).
+    affects: [waitingDetail, approving]
+  D3:
+    question: >-
+      Should the approval also end the person's Keycloak sessions? The API checks an access token offline and it lives 300 s, so a closed
+      account keeps working for up to five minutes unless the sessions are ended too.
+    recommend: >-
+      Yes: one more Admin call (POST /users/{sub}/logout) in the same step, idempotent. Not verified against the dev realm.
+    affects: [approving]
+  D4:
+    question: >-
+      Which permission decides? platform.ban_account exists and the menu entry already asks for it, but it only reads bans today.
+    recommend: >-
+      Keep platform.ban_account (the owner's own comment in ban-codes.ts names it as the account-closing scope) and tell the başnazım before
+      release that every Medaris nazımı holding it can now close accounts.
+    affects: [reading, approving, rejecting]
+
+context:
+  read:
+    values: [ok, refused, failed]
+    initial: any
+    say:
+      ok: "the first read answers: the waiting requests"
+      refused: "the API refuses the reader (403): they are neither the başnazım nor a Medaris nazımı holding platform.ban_account"
+      failed: "the first read fails for any other reason: the page keeps its frame and says it could not be read"
+  requested:
+    values: [true, false]
+    initial: any
+    say:
+      "true": "a request waits (nazar.bans.decide starts this flow with it when a başmüderris or nazır opens one): the oldest waiting request is selected"
+      "false": "no request waits: the menu entry was opened with nothing to decide"
+  answered:
+    values: [none, approved, rejected]
+    initial: any
+    say:
+      none: "no request is decided yet"
+      approved: "the newest decided request was accepted"
+      rejected: "the newest decided request was rejected, with a note"
+  target:
+    values: [ordinary, holdsPost, chief, self]
+    initial: any
+    say:
+      ordinary: "the selected request names a person whose account may be closed: no role anywhere, not the başnazım, not the caller"
+      holdsPost: "the person now holds a role somewhere (müderris, ders nazırı, medrese nazırı, başmüderris, köşk nazımı, Medaris nazımı), perhaps given after the ban was placed"
+      chief: "the person holds SYSTEM_ADMIN in Keycloak, which no role_assignments row shows"
+      self: "the person is the caller"
+  answer:
+    values: [done, decided, gone, forbidden, protected, directory, failed]
+    initial: any
+    say:
+      done: "the API takes the decision"
+      decided: "someone answered the request first, or its ban was lifted meanwhile and the request withdrawn (409 PERMANENT_BAN_REQUEST_DECIDED)"
+      gone: "the request is not there any more (404 PERMANENT_BAN_REQUEST_NOT_FOUND)"
+      forbidden: "the caller may not decide any more (403)"
+      protected: "the check refuses the person at the approval although the list offered it: a post was given since (400 BAN_TARGET_INVALID)"
+      directory: "Keycloak does not answer, at the check or at the disable (503): nothing was written, the request waits"
+      failed: "any other refusal"
+  after:
+    values: [more, none]
+    initial: any
+    say:
+      more: "other waiting requests are still on the list once the decision is made"
+      none: "the decided request was the last one waiting"
+  tab:
+    values: [waiting, decided]
+    initial: waiting
+    say: { waiting: "the tab Bekleyen", decided: "the tab Karara bağlanan" }
+  drained:
+    values: [true, false]
+    initial: false
+    say: { "true": "the decision just made left no waiting request", "false": "a waiting request may still be listed" }
+  reason:
+    values: [empty, touched, typed]
+    initial: empty
+    say:
+      empty: "the reject form's note is empty and untouched"
+      touched: "the field was left empty: 'Bir gerekçe yazın.' stands under it"
+      typed: "a note is written"
+  last:
+    values: [nothing, approved, rejected, answered, gone, forbidden, protected, directory, failed, loadFailed]
+    initial: nothing
+    say:
+      nothing: "no toast of this page is on"
+      approved: "a toast says the account was closed (6 seconds)"
+      rejected: "a toast says the request was rejected (6 seconds)"
+      answered: "a toast says someone answered it first; the row left"
+      gone: "a toast says the request is not there; the row left"
+      forbidden: "a toast says they may not do this"
+      protected: "a toast says this person's account cannot be closed"
+      directory: "a toast says the account could not be closed now and the request waits"
+      failed: "a toast says the decision could not be saved"
+      loadFailed: "a toast says the requests could not be read"
+
+guards:
+  waitingEmpty: "tab == 'waiting' and (requested == false or drained)"
+  decidedEmpty: "tab == 'decided' and answered == 'none'"
+  mayApprove: "target == 'ordinary'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  toDecided: { set: { tab: decided, last: nothing } }
+  toWaiting: { set: { tab: waiting, last: nothing } }
+  emptied: { set: { drained: true } } # the request just decided was the last one waiting
+  approved: { set: { last: approved } }
+  rejected: { set: { last: rejected } }
+  answered: { set: { last: answered } }
+  gone: { set: { last: gone } }
+  forbidden: { set: { last: forbidden } }
+  protected: { set: { last: protected } }
+  directory: { set: { last: directory } }
+  failed: { set: { last: failed } }
+  loadFailed: { set: { last: loadFailed } }
+  openedReject: { set: { reason: empty, last: nothing } }
+  leftEmpty: { set: { reason: touched } }
+  typedReason: { set: { reason: typed } }
+
+failures:
+  reading:
+    from: listPermanentBanRequests
+    forbidden: [AUTHZ_FORBIDDEN]
+    unavailable: [HTTP_400]
+  loadingTab:
+    from: listPermanentBanRequests
+    unavailable: [AUTHZ_FORBIDDEN, HTTP_400]
+  approving:
+    from: approvePermanentBanRequest
+    decided: [PERMANENT_BAN_REQUEST_DECIDED]
+    gone: [PERMANENT_BAN_REQUEST_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    protected: [BAN_TARGET_INVALID]
+    directory: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED]
+    other: [HTTP_400]
+  rejecting:
+    from: rejectPermanentBanRequest
+    decided: [PERMANENT_BAN_REQUEST_DECIDED]
+    gone: [PERMANENT_BAN_REQUEST_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: the başnazım opens the menu entry, closes the account of the first request and rejects the second with a note.
+main:
+  given: { read: ok, requested: true, answered: none, target: ordinary, answer: done, after: more }
+  events: [OPEN, DONE, APPROVE, CONFIRM, DONE, REJECT, FILL_REASON, SUBMIT, DONE]
+
+initial: menu
+
+states:
+  menu:
+    title: The menu entry "Kalıcı yasak talepleri"
+    by: human
+    description: >-
+      EXISTS TODAY, as an entry with no page. Under "Talepler" in the sidebar and in the phone's sheet: the başnazım always sees it, a Medaris
+      nazımı sees it when they hold platform.ban_account, and a köşk nazım or anyone else does not (lib/shell-nav.ts:122, ITEM_PERMISSIONS).
+      Today it leads to "Sayfa bulunamadı" inside the shell (F-P0-4, F-W3-10, F-X-11; the nav graph draws it as the page `permanentBans` of kind
+      missing). This flow is what the entry opens once the page is built. The people who open it are those who decide, not the ones who asked:
+      this flow is started by nazar.bans.decide when a request is filed, and the decider arrives here later, by the menu.
+    source: apps/nizam/lib/shell-nav.ts:122
+    on:
+      OPEN: { target: reading, say: "they press the entry: the page /talepler/kalici-yasak, which is planned" }
+      NAVIGATE: { target: left, say: "they follow another link" }
+
+  reading:
+    title: The waiting requests are read
+    description: >-
+      The page is a server component, like its three neighbours: it reads GET /nizam/permanent-ban-requests?status=PENDING before it draws
+      (a loading skeleton meanwhile). platform.ban_account is asked first and for the whole page: a caller who is neither the başnazım nor a
+      Medaris nazımı holding it gets 403, the page calls forbidden() and no request is read (the exit `no_access`). A read that fails for any
+      other reason gives the page nothing: it draws its frame and an error with "Tekrar dene". The oldest waiting request is selected. The
+      person's name and e-mail, the ban and its reason are shown to a decider already, in the Medaris ban list, and are read here with no
+      audit row of their own.
+    invoke: { action: listPermanentBanRequests }
+    on:
+      DONE: { guard: "read == 'ok'", target: shown, say: "the waiting requests are there" }
+      FAIL.forbidden: { guard: "read == 'refused'", target: no_access, say: "403: forbidden(), the screen 'Bu bölüm için izniniz yok'" }
+      FAIL.unavailable: { guard: "read == 'failed'", target: unreadable, say: "the read gave nothing: the frame, and an alert with 'Tekrar dene'" }
+
+  shown:
+    title: Which page, the list or nothing?
+    description: >-
+      Not a screen: after a read, a tab switch or a decision the page shows the list with a request selected, or says that nothing is there.
+      The list carries every field of a request, so choosing a row reads nothing more.
+    always:
+      - { guard: waitingEmpty, target: empty, say: "no request waits: 'Bekleyen kalıcı yasak talebi yok.'" }
+      - { guard: decidedEmpty, target: empty, say: "nothing was decided yet: 'Karara bağlanmış kalıcı yasak talebi yok.'" }
+      - { guard: "tab == 'decided'", target: decidedDetail, say: "a decided request is selected" }
+      - { target: waitingDetail, say: "a waiting request is selected" }
+
+  unreadable:
+    title: The requests could not be read
+    by: human
+    description: >-
+      The h1 and the intro stay; the tabs, the list and the detail are replaced by an error alert "Talepler okunamadı" with a sentence and a
+      "Tekrar dene" button, which reads the waiting list again. When a read after the page opened fails (the decided tab) a toast of the same
+      title stays until it is closed. As in the three neighbours, the tabs are not drawn while the error stands (APPDEC-4: the ui `rules` say
+      what to do instead).
+    on:
+      RETRY: { target: reading, effect: [toWaiting], say: "they press Tekrar dene: the waiting list is read again" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  empty:
+    title: Nothing is listed
+    by: human
+    description: >-
+      The h1, the intro and the tabs, then one sentence: "Bekleyen kalıcı yasak talebi yok." on the waiting tab (the words of the Medaris home's
+      card, which exists), "Karara bağlanmış kalıcı yasak talebi yok." on the decided one. A toast of the last decision may still be on.
+    on:
+      TAB_DECIDED: { guard: "tab == 'waiting'", target: loadingTab, effect: [toDecided], say: "they open Karara bağlanan" }
+      TAB_WAITING: { guard: "tab == 'decided'", target: shown, effect: [toWaiting], say: "they go back to Bekleyen: the list read first is held, no read" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  loadingTab:
+    title: The decided tab is read
+    description: >-
+      The first time Karara bağlanan is opened, and again after any decision (which throws the held decided list away), the page reads
+      GET /nizam/permanent-ban-requests?status=DECIDED and shows skeleton rows meanwhile. The read also replaces both tab counts.
+    invoke: { action: listPermanentBanRequests }
+    on:
+      DONE: { target: shown, say: "the decided requests are there; the newest is selected" }
+      FAIL.unavailable: { target: unreadable, effect: [loadFailed], say: "the read failed: the error replaces the tabs and a toast stays on" }
+
+  waitingDetail:
+    title: A waiting request is read
+    by: human
+    goal: true
+    description: >-
+      The list on the left, the selected row marked (aria-current), and on the right the request: an eyebrow, the person's name and a badge
+      "Karar bekliyor"; "Kişi" (name and e-mail), "Kapsam" (a course or the whole medrese, and its name), "Yasaklayan" (name, role, when) and
+      "Gerekçe" of the lower ban; then "Talep": "Talebi açan" (name, role, when) and "Talep gerekçesi". Under it a sentence says what the two buttons do. For a
+      person the check passes (target ordinary) both buttons are drawn. For a person it refuses (target holdsPost, chief, self) "Kabul et" is
+      left out and the sentence says the account cannot be closed and why (D2); "Reddet" stays, which is how a request over a hoca or the
+      başnazım is closed. A toast of the last decision may be on. No code moves the focus after a decision in the neighbours (APPDEC-5); this page
+      has no decided focus yet, so none is drawn (rule `focus-open` of the ui).
+    on:
+      SELECT_OTHER: { target: waitingDetail, effect: [clearNote], say: "they press another row: no read, no audit row" }
+      TAB_DECIDED: { target: loadingTab, effect: [toDecided], say: "they open Karara bağlanan" }
+      APPROVE: { guard: mayApprove, target: approveConfirm, effect: [clearNote], say: "they press Kabul et" }
+      REJECT: { target: rejectForm, effect: [openedReject], say: "they press Reddet: the reject form opens" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  decidedDetail:
+    title: A decided request is read
+    by: human
+    description: >-
+      The same panel for a decided request: its badge reads "Kabul edildi" or "Reddedildi", the row's last line adds the outcome and its time,
+      "Kararı veren" says who decided and when, a rejected one adds the note the requester reads, and there are no buttons. A request that
+      was withdrawn because its ban was lifted (O7) would be a third outcome and is not drawn: no word for it exists yet.
+    on:
+      SELECT_OTHER: { target: decidedDetail, effect: [clearNote], say: "they press another row" }
+      TAB_WAITING: { target: shown, effect: [toWaiting], say: "they go back to Bekleyen" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  approveConfirm:
+    title: The account is about to be closed
+    by: human
+    description: >-
+      An alert dialog over the page (the page behind is inert), with the person's name above its title "Hesap kapatılsın mı?". The body says the
+      person can no longer enter any Medaris app, that only Medaris administration can lift the ban, and that the decision is written to the audit
+      log under the caller's name. The focus starts on "Vazgeç" and the scrim does not close it. "Hesabı kapat" is the confirm.
+    on:
+      CONFIRM: { target: approving, say: "they press Hesabı kapat" }
+      CANCEL: { target: waitingDetail, say: "Vazgeç or Escape: nothing is sent; the focus goes back to Kabul et" }
+
+  approving:
+    title: The account is being closed
+    description: >-
+      approvePermanentBanRequest, POST /nizam/permanent-ban-requests/{id}/approve, no body. In this order: the caller's permission; the request
+      exists; it is still waiting; checkAccountMayBeClosed(person, caller), which reads the person's roles at EVERY scope and the realm role
+      SYSTEM_ADMIN in Keycloak by id, fails closed, and is the same check that gave the list its `mayApprove`; then disableKeycloakAccount
+      (disable, then end the sessions, both idempotent); then, in one transaction and only if the request is still waiting, the platform ban with
+      the request's reason, the decision, the audit row (permanent_ban.approve), and the lower ban left as it was; then, best effort, the
+      requester's notice. A directory failure at the check or at the disable writes nothing and leaves the request waiting, so the same press can
+      be repeated; a failure of the write after the disable leaves a disabled account and a waiting request, and the repeat finishes it. The
+      dialog stays open while it runs, "Hesabı kapat" busy and the field of nothing editable. MDRS-125 would add the device restriction at this
+      step (not drawn).
+    invoke: { action: approvePermanentBanRequest }
+    on:
+      DONE:
+        - { guard: "answer == 'done' and after == 'none'", target: shown, effect: [approved, emptied], say: "the account is closed and no other request waits: a toast, the dialog closes, the list is empty" }
+        - { guard: "answer == 'done'", target: shown, effect: [approved], say: "the account is closed: a toast, the dialog closes, the row leaves the waiting list and the next request is selected" }
+      FAIL.decided:
+        - { guard: "answer == 'decided' and after == 'none'", target: shown, effect: [answered, emptied], say: "someone answered it first, or its ban was lifted meanwhile, and none other waits: the dialog closes, the toast says so, the list is empty" }
+        - { guard: "answer == 'decided'", target: shown, effect: [answered], say: "someone answered it first, or its ban was lifted meanwhile: the dialog closes, the row leaves and the toast says so" }
+      FAIL.gone:
+        - { guard: "answer == 'gone' and after == 'none'", target: shown, effect: [gone, emptied], say: "the request is not there and none other waits: the dialog closes, the list is empty" }
+        - { guard: "answer == 'gone'", target: shown, effect: [gone], say: "the request is not there: the dialog closes, the row leaves and the toast says so" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: waitingDetail, effect: [forbidden], say: "the caller lost the permission: the dialog closes, a toast 'Bu işlem için izniniz yok.', the request stays" }
+      FAIL.protected: { guard: "answer == 'protected'", target: waitingDetail, effect: [protected], say: "the check refuses the person (a post was given after the list was read): nothing was disabled, a toast says the account cannot be closed, the request stays and only Reddet is left" }
+      FAIL.directory: { guard: "answer == 'directory'", target: waitingDetail, effect: [directory], say: "Keycloak does not answer: nothing was written and nothing disabled, a toast says the account could not be closed now, the request stays and Kabul et may be pressed again" }
+      FAIL.other: { guard: "answer == 'failed'", target: waitingDetail, effect: [failed], say: "a toast 'İşlem tamamlanamadı.'; the request stays" }
+
+  rejectForm:
+    title: The reject form, the button off
+    by: human
+    description: >-
+      The shared reject dialog (deck review's RejectDialog) in a new kind for this request, over the page: the person's name above its title
+      "Kalıcı yasak talebini reddet", a sentence that the request closes and the ban stands, "* zorunlu alan", and a required field "Karar notu"
+      (at most 1000 characters) with the help "Talebi açan bu notu okuyacak." The focus starts in the field and the scrim does not close it.
+      "Reddet" is natively disabled until something other than blanks is written; leaving the field empty shows "Bir gerekçe yazın." under it,
+      as plain text with no live region and no move of the focus, as in its neighbours (F-X-3).
+    on:
+      FILL_REASON: { target: rejectFormReady, effect: [typedReason], say: "they write a note: the button goes on" }
+      LEAVE_FIELD: { target: rejectForm, effect: [leftEmpty], say: "they leave the field empty: 'Bir gerekçe yazın.' appears under it" }
+      CANCEL: { target: waitingDetail, say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to Reddet" }
+
+  rejectFormReady:
+    title: The reject form, the button on
+    by: human
+    description: >-
+      The same dialog with a note written and "Reddet" on. A refusal that keeps the dialog open (forbidden, any other) comes back here with an
+      error toast that stays until it is closed.
+    on:
+      FILL_REASON: { target: rejectFormReady, effect: [typedReason], say: "they change the note" }
+      SUBMIT: { target: rejecting, say: "they press Reddet" }
+      CANCEL: { target: waitingDetail, say: "Vazgeç, the close icon or Escape: the note is thrown away" }
+
+  rejecting:
+    title: The rejection is on its way
+    description: >-
+      rejectPermanentBanRequest, POST /nizam/permanent-ban-requests/{id}/reject with the trimmed note. The caller's permission, the request, that
+      it still waits; then one transaction writes the decision REJECTED with the note and the audit row (permanent_ban.reject), and the requester is
+      told with the note, best effort. No ban is touched, Keycloak is not called and the person is not checked: a request is rejected whoever
+      the person is. "Reddet" is busy and "Vazgeç" does nothing meanwhile.
+    invoke: { action: rejectPermanentBanRequest }
+    on:
+      DONE:
+        - { guard: "answer == 'done' and after == 'none'", target: shown, effect: [rejected, emptied], say: "rejected and none other waits: a toast, the dialog closes, the list is empty" }
+        - { guard: "answer == 'done'", target: shown, effect: [rejected], say: "rejected: a toast, the dialog closes, the row leaves and the next request is selected" }
+      FAIL.decided:
+        - { guard: "answer == 'decided' and after == 'none'", target: shown, effect: [answered, emptied], say: "someone answered it first and none other waits: the dialog closes, the list is empty" }
+        - { guard: "answer == 'decided'", target: shown, effect: [answered], say: "someone answered it first, or its ban was lifted: the dialog closes, the row leaves and the toast says so" }
+      FAIL.gone:
+        - { guard: "answer == 'gone' and after == 'none'", target: shown, effect: [gone, emptied], say: "the request is not there and none other waits: the dialog closes, the list is empty" }
+        - { guard: "answer == 'gone'", target: shown, effect: [gone], say: "the request is not there: the dialog closes, the row leaves and the toast says so" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: rejectFormReady, effect: [forbidden], say: "a toast 'Bu işlem için izniniz yok.'; the dialog stays open with the note as it was" }
+      FAIL.other: { guard: "answer == 'failed'", target: rejectFormReady, effect: [failed], say: "a toast 'İşlem tamamlanamadı.'; the dialog stays open with the note as it was" }
+
+  no_access:
+    title: The reader may not decide permanent bans
+    type: final
+    description: >-
+      forbidden(): the screen "Bu bölüm için izniniz yok" of nizam.shell.noAccessAndNotFound, for a köşk nazımı, a talebe, and a Medaris nazımı who does
+      not hold platform.ban_account. No request was read and none is named on the screen.
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: an-account-is-closed-only-for-a-person-the-check-passes
+    never: "(state == 'approveConfirm' or last == 'approved') and target != 'ordinary'"
+    say: "The confirmation opens, and an account is closed, only for a person the check passes: not the caller, not the başnazım, nobody who holds a role anywhere."
+  - id: a-refused-person-has-no-approve-button
+    never: "state == 'approving' and target != 'ordinary'"
+    say: The approval is sent only from a request the list marked closable; a person the check refuses at the list is never sent to the API from this page.
+  - id: a-directory-failure-leaves-the-request-waiting
+    never: "last == 'directory' and state == 'empty'"
+    say: When Keycloak does not answer, nothing is written and the request stays waiting; the failure never empties the list.
+  - id: a-rejection-needs-a-note
+    never: "state == 'rejecting' and reason != 'typed'"
+    say: A rejection is sent only with a note written; the button stays off while the note is blank.
+  - id: buttons-only-for-a-waiting-request
+    never: "(state == 'approveConfirm' or state == 'approving' or state == 'rejectForm' or state == 'rejectFormReady' or state == 'rejecting') and tab == 'decided'"
+    say: Only a waiting request can be accepted or rejected; a decided one has no buttons.
+  - id: a-reader-without-the-permission-sees-no-request
+    never: "read == 'refused' and (state == 'waitingDetail' or state == 'decidedDetail' or state == 'empty')"
+    say: A reader who lacks platform.ban_account gets the refusal screen and no request, person or reason is drawn for them.
+  - id: empty-means-nothing-waits
+    never: "state == 'empty' and tab == 'waiting' and requested == true and not drained"
+    say: The empty line of the waiting tab shows only when nothing waits.
+  - id: a-detail-follows-a-list
+    never: "state == 'decidedDetail' and tab == 'waiting'"
+    say: A decided request is shown only on the decided tab.

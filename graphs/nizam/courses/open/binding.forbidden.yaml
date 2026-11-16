@@ -1,0 +1,32 @@
+# nizam.courses.open, the walk of "the course is refused": the köşk nazım is taken off the köşk between the moment the form was drawn and
+# the press, so tedrisat answers 403 AUTHZ_FORBIDDEN to the first call and the toast "Ders açılamadı: Bu işlem için yetkiniz yok." goes up
+# over the form, which stays (the page was read while she still managed the köşk).
+#   ... replay graphs/nizam/courses/open --bind graphs/nizam/courses/open/binding.forbidden.yaml --cover transitions --out <dir>
+#
+# NOT RUN (see binding.yaml). It is a file of its own because of the node `before` on the button: `walk-data.mjs revoke` takes KOSK_NAZIM off
+# the walk's köşk (the başnazım takes her place: the last nazım needs a successor) just before each press of "Dersi aç". The first press of a
+# walk is the blank one, so the right is already gone when the real one comes; a second `revoke` finds her gone and says so. The köşk is the
+# walk's own, so nobody else's access changes, and `teardown` removes the köşk.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.open
+
+nodes:
+  submit:
+    before:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, revoke, nizam-courses-open]
+
+scenarios:
+  forbidden:
+    given: { fromRequest: false, access: open, request: accepted, lookup: found, policy: free, answer: forbidden }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskCourses->courseNew' }
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }

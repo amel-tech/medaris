@@ -1,0 +1,470 @@
+# A signed-in talebe studies one deck in a round (tedris-web /decks/study/[id]), read from the code of the branch (the tree of PR #394) on 15 Nov 2026.
+# Nothing here is approved, and nothing was replayed: every behaviour below is "from the code", except the one read of the study round of the seeded
+# deck "Kelime Defterim" through the API (three new cards, dueCount 0, newCount 3, cards in the order of their ids because the seed made them in
+# one request).
+#   - What it draws: the page's read of the round (GET /flashcard/decks/{id}/due, with GET /flashcard/decks/{id} beside it), the card with its back
+#     hidden, the back and the three ratings, the write of one rating (PUT /flashcard/cards/progress, one card a time), the end of the round "Tur bitti",
+#     the round that holds no card "Bugün için bitti", and the two screens of a deck the person may not study ("Sayfa bulunamadı", "Bu desteye
+#     ulaşılamıyor"). The deck page they came from and the deck lists are other flows; a visitor studying a public deck is
+#     tedris.decks.visitorPublicDeck.
+#   - The schedule (the domain's `card-review-schedule`, `card-review-due`, `card-study-round-size`): the API, not the page, decides what a rating does.
+#     HARD: LEARNING back in 1 day. MEDIUM: LEARNING, max(3, last gap) days. EASY: MASTERED, max(7, 2 x last gap) days. A round is the due cards (at
+#     most 50, never-rated LEARNING first, then oldest due) and then at most 10 unstarted ones. The flow carries the three ratings as three events
+#     and the three results as three flow effects (`wroteHard`, `wroteMedium`, `wroteEasy`), so that a walk can read the row each one left.
+#   - The round is read once and kept in the browser: it does not shift under the talebe, and a card rated "Zor" is not asked again in the same round
+#     (decision D1). The page is not read again after a rating (rateFlashcard revalidates the lists and /home, never the study page).
+#   - Findings it carries (the inventory's ids): DCK-01, DCK-02, DCK-03, DCK-04, DCK-05, DCK-27, plus DCK-14..16 on the two refusal screens (their
+#     home is tedris.decks.accessRefusals). New, proposed here (ui.yaml `rules`): STUDY-1 (a refused write can be neither saved nor skipped), STUDY-2
+#     (the subtitle counts only the repeats of a round that also holds new cards).
+#   - E2E carried: learn#7, #8, #9, #10, #11 and #12. learn#13 to #16 are the visitor's, in tedris.decks.visitorPublicDeck. Not carried from the
+#     file: the three database reads (learn#10's progressOf, learn#11's before/after row), which are this flow's binding `effects` here and not part of
+#     the graph.
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.study
+status: captured
+domain: medaris.api
+ui: tedris.decks.study
+title: Study a deck in a round
+summary: >-
+  A talebe opens the study page of a deck: their own, a public one, a collected one or one shared with them through a course, a köşk or a medrese.
+  The page reads the round for them: the cards waiting for a repeat first, the oldest first, then a few they have never studied, and shows the
+  first one with its back hidden. "Arka yüzü göster" (or the space bar, or a click on the card) turns it over and shows "Zor", "Orta" and "Kolay".
+  Each of those writes that one card's progress at once, the API works out the new status and when the card is due again, and the next card
+  comes face down. After the last card the page says "Tur bitti" and the number of cards, and a later visit to the same address finds nothing
+  due and says "Bugün için bitti". "Çalışmayı bitir" leaves for the deck's page at any moment and leaves the unrated cards as they were. A write
+  the API refuses keeps the card where it is and raises one error toast. A deck that is not there for the person, which the API also says for
+  another person's private deck and for a hidden shared one, is "Sayfa bulunamadı".
+source: apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:28
+
+scope:
+  shows: the page's read of the round, the card, its back and the three ratings, the write of a rating and what a refusal of it leaves, the end of the round, the empty round, and the screens of a deck that may not be studied
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "a visitor: the page lets a person with no session study a public deck with nothing written, and sends them to sign in for any other deck without saying whether it exists (tedris.decks.visitorPublicDeck, realm.auth.signIn)"
+    - "a session that ends before the page opens, or that tedrisat refuses on the read: the page sends the person to sign in again with `reauth` and brings them back (realm.auth.sessionEnded); only the write's own version of that is drawn, `sent_to_sign_in`"
+    - "a 5xx or a network failure of the read: the read throws and the root's error page answers \"Bir şeyler ters gitti\" (tedris.shell.systemPages)"
+    - "the deck page and the lists the person came from, and the links to the study page from them (tedris.decks.browse, tedris.course.deckTab, tedris.shell.home, tedris.decks.readAndCopy); the nav graph has them as entries"
+    - "the system bar above the page, the footer and the toast host (tedris.shell.frame); the skeleton study/[id]/loading.tsx that draws while the round is read, a <main aria-busy> with three grey bars and no words"
+    - "the breadcrumb's two links (\"Desteler\" and the deck's name, tedris.nav entries deckStudy->decks and deckStudy->deck); they are drawn and not wired"
+    - "the space bar and the click on a card while a rating is being written or after the write that never came back: the card flips and nothing else changes"
+    - "a second error toast while the first is still on screen (the host shows three at most), and the host's own dismissal of toasts on a change of page"
+    - "a deck of more than 60 cards, or of more than 50 waiting: a round holds 50 repeats and 10 new cards, the rest come in later visits (card-study-round-size)"
+    - "a MASTERED card that is due again: its badge says \"Tamamlandı\" (Decks.statusMASTERED) where the drawn rounds show \"Öğreniliyor\" and \"Yeni\""
+    - "the phone layout"
+
+decisions:
+  D1:
+    question: >-
+      Should a card rated "Zor" come back later in the same round?
+    recommend: >-
+      The code says no, on purpose: the queue is fixed when the page opens (study-session.tsx:58-62) and "Zor" only makes the card due in a day. A
+      learner who wants to see a hard card again today cannot, short of leaving and re-opening the page, and then it is not due. Decide whether the
+      product wants the usual "again" behaviour; the schedule is one function (review-schedule.ts), the queue is the page's.
+    affects: [back, counted]
+  D2:
+    question: >-
+      Should a refused write be skippable, or tell the person what to do?
+    recommend: >-
+      Yes: when the API answers 404 (the author deleted the card) or 403 (the deck stopped being readable), a retry can never work, but the toast says
+      "Yeniden dene" and the round has no way past the card (STUDY-1). Either skip the card on those two answers, or say so in the toast.
+    affects: [rating, back]
+
+context:
+  deck:
+    values: [waiting, unstarted, single, nothing, missing, refused]
+    initial: any
+    say:
+      waiting: "the deck gives a round of three cards: two wait for a repeat (the oldest first) and one has never been studied"
+      unstarted: "the deck gives a round of three cards, none ever studied"
+      single: "the deck gives a round of one card, never studied"
+      nothing: "the deck gives a round of no card: it has no card at all, or nothing is due and nothing is new"
+      missing: "the API says there is no such deck (404, or 400 for an id that is no uuid), which it also says for another person's private deck and for a hidden shared deck"
+      refused: "the API says 403 for the deck (a deck that turned private between the guard's read and the handler's)"
+  answer:
+    values: [saved, flaky, failed, signedOut, unreachable]
+    initial: any
+    say:
+      saved: "tedrisat writes every rating it is sent"
+      flaky: "tedrisat refuses the first rating with a 5xx and writes every one after it, so the person's retry works"
+      failed: "tedrisat refuses every rating with a 404 (the author deleted the card meanwhile) or a 403 (the deck stopped being readable), and a retry gets the same answer"
+      signedOut: "the session is over: the first rating is answered 401"
+      unreachable: "the server action cannot be reached (the network is down): its call rejects"
+  left:
+    values: [none, three, two, one]
+    initial: none
+    say:
+      none: "no card is on screen"
+      three: "three cards are left, the one on screen counted"
+      two: "two cards are left, the one on screen counted"
+      one: "one card is left: the one on screen"
+  mark:
+    values: [none, hard, medium, easy]
+    initial: none
+    say:
+      none: "no rating is being written"
+      hard: "\"Zor\" is being written"
+      medium: "\"Orta\" is being written"
+      easy: "\"Kolay\" is being written"
+  studied:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "the person has not finished a round of this deck in this visit"
+      yes: "the person rated every card of the round: nothing of this deck is due or new any more (every rated card is due in a day at the soonest)"
+  tried:
+    values: [no, yes]
+    initial: no
+    say:
+      no: "no rating has been refused yet"
+      yes: "a rating has been refused once (only a `flaky` answer cares)"
+  notice:
+    values: [none, failed]
+    initial: none
+    say:
+      none: "no toast"
+      failed: "the error toast \"İlerlemen kaydedilemedi\" is on screen; it stays until it is closed"
+
+guards:
+  readable: "deck in ['waiting', 'unstarted', 'single', 'nothing']"
+  emptyRound: "deck == 'nothing' or studied == 'yes'"
+  oneCard: "deck == 'single'"
+  waitingCard: "deck == 'waiting' and left != 'one'"
+  writes: "answer == 'saved' or (answer == 'flaky' and tried == 'yes')"
+  refuses: "answer == 'failed' or (answer == 'flaky' and tried == 'no')"
+  toasted: "notice == 'failed'"
+
+effects:
+  cardsThree: { set: { left: three } }
+  cardsTwo: { set: { left: two } }
+  cardsOne: { set: { left: one } }
+  roundDone: { set: { left: none, studied: yes } }
+  markHard: { set: { mark: hard } }
+  markMedium: { set: { mark: medium } }
+  markEasy: { set: { mark: easy } }
+  wroteHard: { set: { mark: none } }
+  wroteMedium: { set: { mark: none } }
+  wroteEasy: { set: { mark: none } }
+  toastFailed: { set: { notice: failed, mark: none, tried: yes } }
+  clearNotice: { set: { notice: none } }
+
+failures:
+  reading:
+    from: getStudyRound
+    notFound: [DECK_NOT_FOUND, HTTP_400]
+    forbidden: []
+  rating:
+    from: saveCardProgress
+    failed: [CARD_NOT_FOUND, AUTHZ_FORBIDDEN, INTERNAL_ERROR]
+    signedOut: [HTTP_401]
+    unreachable: []
+
+# The main story: a round of three cards, two waiting and one new, as the e2e fixture of learn#7 to #10 has it. The first is turned with the space
+# bar and rated "Kolay", the second turned with the button and rated "Zor", the third rated "Orta"; then the person opens the address again and
+# finds nothing due, and goes back to the deck.
+main:
+  given: { deck: waiting, answer: saved }
+  events: [DONE, FLIP, RATE_EASY, DONE, REVEAL, RATE_HARD, DONE, REVEAL, RATE_MEDIUM, DONE, STUDY_AGAIN, DONE, BACK_TO_DECK]
+
+initial: reading
+states:
+  reading:
+    title: Read the deck and its round
+    description: >-
+      The page checks that there is a session (a visitor is out of view), then reads two things at once with the person's own token: the deck
+      (GET /flashcard/decks/{id}) and the round (GET /flashcard/decks/{id}/due). The round is the cards of the deck waiting for a repeat, then the cards
+      the person has not started, each with the person's own progress row or none; the page puts them in that order and keeps them. The API answers 404 for a
+      deck that is not there, for another person's private deck and for a hidden shared one, and 400 for an id that is no uuid; the page maps both to
+      "not found". A 403, which only the deck read's second lock gives, is kept apart and shown as "Bu desteye ulaşılamıyor". Anything else is thrown to
+      the error page (out of view). The domain action named here is the round's; the deck read is drawn with it as one step. study/[id]/loading.tsx
+      shows its skeleton, a <main aria-busy>, until both answer.
+    includes: ["the deck's title, for the heading's caption and the breadcrumb", "the round's cards with the person's own progress", "the counts dueCount and newCount"]
+    source: apps/tedris/features/flashcards/reads.ts:107
+    invoke: { action: getStudyRound }
+    on:
+      DONE:
+        guard: readable
+        target: opening
+        say: "the API gives the deck and its round"
+        source: apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:60
+      FAIL.notFound:
+        guard: "deck == 'missing'"
+        target: notFound
+        say: "404 or 400: the page calls notFound()"
+        source: apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:58
+      FAIL.forbidden:
+        guard: "deck == 'refused'"
+        target: unavailable
+        say: "403: the page draws DeckUnavailable, which is not the not-found page (DCK-15)"
+        source: apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:59
+
+  opening:
+    title: See how many cards the round has
+    description: >-
+      Classification only. StudySession takes the round as it came and keeps it in state; its first card is the first of the list, and an empty list is the
+      "nothing" screen. A person who has just rated every card of the round gets an empty list on the next visit, because each rated card is due a day
+      later or more.
+    source: apps/tedris/features/flashcards/components/study-session.tsx:58
+    always:
+      - guard: emptyRound
+        target: nothing
+        say: "no card: the deck has none, or none is due or new"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:155
+      - guard: oneCard
+        target: front
+        effect: [cardsOne]
+        say: "one card"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:66
+      - target: front
+        effect: [cardsThree]
+        say: "three cards"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:66
+
+  front:
+    title: A card, face up
+    by: human
+    goal: true
+    description: >-
+      The page: a breadcrumb "Sayfa yolu" (Desteler / the deck's name / Çalışma), the h1 "Çalışma", a caption naming the round as it began ("{deck} · Bugün
+      tekrar bekleyen {n} kart" while any card waited, else "{deck} · {n} yeni kart"; STUDY-2: the number counts the repeats, and the round also holds new
+      cards), the ghost link "Çalışmayı bitir", the bar "Bu tur: {done} / {total} kart", and a region "Kart {n} / {total}" holding the card: its number again, a status
+      badge ("Öğreniliyor" for a started card, "Yeni" for one never studied), the front, and the button "Arka yüzü göster". The front is a <div> with a click handler and
+      no role (DCK-05): clicking it, or pressing the space bar anywhere on the page that is not a button, link or field, turns the card over. Nothing sets a
+      focus on opening (no `initialFocus`, rule `focus-not-set`). A toast of an earlier refused write may still be on screen: an error toast does not
+      close by itself and the study page is not left. The face of an Arabic card is set right to left with lang="ar".
+    source: apps/tedris/features/flashcards/components/study-session.tsx:117
+    on:
+      REVEAL:
+        target: back
+        say: "\"Arka yüzü göster\": the back appears and the button is replaced by the three ratings; the focus is lost (DCK-01)"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:238
+      FLIP:
+        target: back
+        say: "the space bar, or a click on the front: the same"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:74
+      FINISH: { target: deck_page_opened, source: apps/tedris/features/flashcards/components/study-session.tsx:135, say: "\"Çalışmayı bitir\" opens /decks/<id> (a full page load); the cards not rated stay as they were" }
+      CLOSE_TOAST: { guard: toasted, target: front, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:97, say: "the toast's own close button" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  back:
+    title: The card's back and the three ratings
+    by: human
+    description: >-
+      The back text appears under the front with the eyebrow "Arka yüz", then the footer says "Ne kadar zordu?" with three outline buttons "Zor",
+      "Orta" and "Kolay". "Arka yüzü göster" is gone, and the focus that was on it falls to the document (DCK-01). Nothing says the back appeared: no live
+      region and no focus move (DCK-03). Pressing the space bar turns the card face down again, which hides the back and brings the button back. A
+      rating is written at once: there is no "next" or undo. After a refused write the page is here again with the toast, the buttons live and
+      the card unchanged.
+    source: apps/tedris/features/flashcards/components/study-session.tsx:211
+    on:
+      RATE_HARD: { target: rating, effect: [markHard], source: apps/tedris/features/flashcards/components/study-session.tsx:226, say: "\"Zor\": rateFlashcard(card, HARD)" }
+      RATE_MEDIUM: { target: rating, effect: [markMedium], source: apps/tedris/features/flashcards/components/study-session.tsx:226, say: "\"Orta\": rateFlashcard(card, MEDIUM)" }
+      RATE_EASY: { target: rating, effect: [markEasy], source: apps/tedris/features/flashcards/components/study-session.tsx:226, say: "\"Kolay\": rateFlashcard(card, EASY)" }
+      FLIP:
+        target: front
+        say: "the space bar again: the card is turned face down, and nothing is written"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:74
+      FINISH: { target: deck_page_opened, source: apps/tedris/features/flashcards/components/study-session.tsx:135, say: "\"Çalışmayı bitir\": the rated cards keep their rating, the others stay as they were" }
+      CLOSE_TOAST: { guard: toasted, target: back, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:97, say: "the toast's own close button" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  rating:
+    title: The rating is being written
+    description: >-
+      rateFlashcard is a Server Action (authenticatedAction): PUT /flashcard/cards/progress with a body of one element, { flashcardId, rating }. The three
+      rating buttons are natively disabled (`disabled={busy}`, not the kit's `loading`, which DCK-02 notes), so a second press is dropped and the focus,
+      if the button had it, goes. The API ignores a status the client sends along with a rating and works out status, due time and interval itself; the
+      page never sends more than one card, so the two 500s the domain records for an empty body and for a card twice in one body (accepted-write-500)
+      are out of its reach; `INTERNAL_ERROR` stands in the failure class for any other 5xx, which gives the same toast. A Server Action is a POST to the page's own address and answers 200 whatever the API said: the page reads the answer from the
+      action's result. Success: the face goes down, the index moves on and the bar moves. Any failure but a lost session: one error toast and the page
+      is as it was. A lost session: the page sends the person to sign in and back to the same address (sendToSignIn). A call that rejects (the
+      network is down): the code has no catch, so the buttons stay disabled for good and no toast comes (DCK-02).
+    source: apps/tedris/features/flashcards/components/study-session.tsx:86
+    invoke: { action: saveCardProgress }
+    on:
+      DONE:
+        guard: writes
+        target: saved
+        say: "the API writes the row; every list that counts what waits, and /home, is revalidated"
+        source: apps/tedris/features/flashcards/actions/index.ts:190
+      FAIL.failed:
+        guard: refuses
+        target: back
+        effect: [toastFailed]
+        say: "any refusal: the toast \"İlerlemen kaydedilemedi\" and \"Kart yerinde duruyor. Yeniden dene.\"; the card stays, face up, the buttons live"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:97
+      FAIL.signedOut:
+        guard: "answer == 'signedOut'"
+        target: sent_to_sign_in
+        say: "401: sendToSignIn goes to sign-in and comes back to this address; the buttons stay disabled until the browser leaves"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:95
+      FAIL.unreachable:
+        guard: "answer == 'unreachable'"
+        target: stuck
+        say: "the call rejects: nothing catches it, so the buttons stay disabled and no toast comes (DCK-02)"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:94
+
+  saved:
+    title: The rating was written
+    description: >-
+      Classification only, so that the walk can check what each of the three ratings left in the person's progress row of the card, which is the API's decision and
+      not the page's (card-review-schedule).
+    source: apps/tedris/features/flashcards/actions/index.ts:186
+    always:
+      - guard: "mark == 'hard'"
+        target: counted
+        effect: [wroteHard]
+        say: "HARD: LEARNING, due in one day"
+        source: apps/tedrisat/src/flashcard/domain/review-schedule.ts:37
+      - guard: "mark == 'medium'"
+        target: counted
+        effect: [wroteMedium]
+        say: "MEDIUM: LEARNING, due in max(3, last gap) days"
+        source: apps/tedrisat/src/flashcard/domain/review-schedule.ts:41
+      - target: counted
+        effect: [wroteEasy]
+        say: "EASY: MASTERED, due in max(7, 2 x last gap) days, at most 180"
+        source: apps/tedrisat/src/flashcard/domain/review-schedule.ts:45
+
+  counted:
+    title: Move to the next card
+    description: >-
+      Classification only. `setRevealed(false); setIndex(i + 1)`: the next card comes face down, or, after the last, the end of the round. The card is not asked again in this
+      round whatever the rating was (D1).
+    source: apps/tedris/features/flashcards/components/study-session.tsx:105
+    always:
+      - guard: "left == 'one'"
+        target: finished
+        effect: [roundDone]
+        say: "that was the last card"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:166
+      - guard: "left == 'two'"
+        target: front
+        effect: [cardsOne]
+        say: "one card is left"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:106
+      - target: front
+        effect: [cardsTwo]
+        say: "two cards are left"
+        source: apps/tedris/features/flashcards/components/study-session.tsx:106
+
+  stuck:
+    title: The write never came back
+    by: human
+    description: >-
+      The rating buttons are disabled and stay so, the toast never comes, and the card keeps its back showing. Nothing on the page says anything is wrong
+      (DCK-02). "Çalışmayı bitir" and the breadcrumb still work, and so does a reload, which reads the round again (the write may or may not have reached the
+      API). Not reachable on the stack: nothing local makes the call reject.
+    source: apps/tedris/features/flashcards/components/study-session.tsx:94
+    on:
+      FINISH: { target: deck_page_opened, source: apps/tedris/features/flashcards/components/study-session.tsx:135, say: "\"Çalışmayı bitir\"" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  finished:
+    title: The round is done
+    by: human
+    description: >-
+      The card, the bar and the footer are replaced by an empty state: the strong line "Tur bitti", "{n} kartı çalıştın." and the outline link "Desteye dön". The
+      focus that was on a rating button is gone and nothing moves it or announces the end (DCK-04). The caption under the h1 still says what the round
+      began with. The bar and the region are not drawn any more. An error toast of an earlier refused write is still here. Opening the address again reads a
+      new round, in which every card just rated is due in a day at the soonest.
+    source: apps/tedris/features/flashcards/components/study-session.tsx:166
+    on:
+      BACK_TO_DECK: { target: deck_page_opened, source: apps/tedris/features/flashcards/components/study-session.tsx:169, say: "\"Desteye dön\" opens /decks/<id>" }
+      FINISH: { target: deck_page_opened, source: apps/tedris/features/flashcards/components/study-session.tsx:135, say: "\"Çalışmayı bitir\" does the same" }
+      STUDY_AGAIN: { target: reading, source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:57", say: "they open the study address again: the page reads a new round" }
+      CLOSE_TOAST: { guard: toasted, target: finished, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:97, say: "the toast's own close button" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  nothing:
+    title: Nothing to study today
+    by: human
+    description: >-
+      The round has no card, so the page draws the empty state "Bugün için bitti" with "Bugün tekrar bekleyen kartın yok. Yarın yeniden bak." and "Desteye dön", and
+      no bar or card. The caption says "{deck} · 0 kart". The same screen is drawn for a deck that has no card at all, where "come back tomorrow" is wrong
+      (DCK-27), and for a deck whose cards were all rated today. Nothing sets a focus.
+    source: apps/tedris/features/flashcards/components/study-session.tsx:155
+    on:
+      BACK_TO_DECK: { target: deck_page_opened, source: apps/tedris/features/flashcards/components/study-session.tsx:158, say: "\"Desteye dön\" opens /decks/<id>" }
+      FINISH: { target: deck_page_opened, source: apps/tedris/features/flashcards/components/study-session.tsx:135, say: "\"Çalışmayı bitir\" does the same" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  notFound:
+    title: The page is not found
+    by: human
+    description: >-
+      notFound() draws app/not-found.tsx: NotFoundState, a <section> named by its h1 "Sayfa bulunamadı", a sentence and one link, "Ana sayfaya dön". It is the
+      same screen for no such deck, a malformed id, another person's private deck and a hidden shared deck: the same words and link, so the person cannot
+      tell which it was (MDRS-43 AC-4, and it holds here: the round's read answers one 404 for all of them; the domain's `label-target-oracle` is the label
+      routes', which this page does not call). The segment's loading.tsx has already sent the shell, so the document answers 200, not 404 (SYS-2 of
+      tedris.shell.systemPages, same cause). The study page's own metadata ("Çalışma | Tedris") is what a tab title would say, and whether the not-found screen
+      keeps it was not looked at. No <main> surrounds the section on /decks (DCK-16). Nothing takes the focus.
+    source: apps/tedris/features/errors/system-page.tsx:43
+    on:
+      GO_HOME:
+        target: home_opened
+        say: "\"Ana sayfaya dön\" goes to /home for a signed-in person"
+        source: apps/tedris/features/errors/system-page.tsx:54
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  unavailable:
+    title: The deck cannot be reached
+    by: human
+    description: >-
+      DeckUnavailable, drawn when the API answers 403: a card with a lock, the h1 "Bu desteye ulaşılamıyor", "Deste silinmiş olabilir ya da sahibi onu
+      yalnızca kendine açık tutuyor." and the button "Destelere dön". A plain <div> from the old shadcn kit: no landmark and no <main> (DCK-16). It is a
+      different screen from the not-found page, while the code's comments say the two render the same copy on purpose (DCK-15). Not reachable on the
+      stack: the deck read and the round answer 404 for every refusal a person can meet, and no e2e file has this screen either.
+    source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:13
+    on:
+      BACK_TO_DECKS:
+        target: decks_page_opened
+        say: "\"Destelere dön\" opens the person's Desteler"
+        source: apps/tedris/features/flashcards/components/deck-unavailable.tsx:26
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  deck_page_opened:
+    type: final
+    title: The deck's page opens
+    description: "a full page load of /decks/<id>: the author's page or the reader's view (tedris.decks.manageCards, tedris.decks.editOrDelete, tedris.decks.readAndCopy)"
+  decks_page_opened:
+    type: final
+    title: Desteler opens
+  home_opened:
+    type: final
+    title: Ana sayfa opens
+  sent_to_sign_in:
+    type: final
+    title: The person is sent to sign in
+    description: "the session ended during a write: Keycloak's sign-in, and back to this address (realm.auth.sessionEnded)"
+  left: { type: final, title: The person leaves the page, leavesPage: true }
+
+assertions:
+  - id: a-card-has-a-round
+    never: "state in ['front', 'back', 'rating', 'stuck'] and left == 'none'"
+    say: "A card is on screen only while the round has cards left"
+    source: apps/tedris/features/flashcards/components/study-session.tsx:68
+  - id: finished-leaves-none
+    never: "state == 'finished' and left != 'none'"
+    say: "After the last card no card is left"
+    source: apps/tedris/features/flashcards/components/study-session.tsx:68
+  - id: refused-deck-shows-no-card
+    never: "state in ['front', 'back', 'rating', 'stuck', 'finished', 'nothing'] and deck in ['missing', 'refused']"
+    say: "A deck the API refuses never shows a card, a summary or an empty round"
+    source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:58"
+  - id: empty-round-is-never-rated
+    never: "state in ['rating', 'stuck'] and deck == 'nothing'"
+    say: "A round of no card has nothing to rate"
+    source: apps/tedris/features/flashcards/components/study-session.tsx:155
+  - id: a-round-ends-only-through-saved-ratings
+    never: "state == 'finished' and answer in ['failed', 'signedOut', 'unreachable']"
+    say: "A write that is refused every time, or lost, never lets the round end: no card is counted as studied through one"
+    source: apps/tedris/features/flashcards/components/study-session.tsx:97
+  - id: no-toast-without-a-refusal
+    never: "notice == 'failed' and answer in ['saved', 'signedOut', 'unreachable']"
+    say: "The error toast comes only from a refused write"
+    source: apps/tedris/features/flashcards/components/study-session.tsx:98
+  - id: a-round-with-cards-is-empty-only-after-a-round
+    never: "state == 'nothing' and deck in ['waiting', 'unstarted', 'single'] and studied == 'no'"
+    say: "A deck that gives cards says \"Bugün için bitti\" only after the person rated them all"
+    source: apps/tedris/features/flashcards/components/study-session.tsx:155

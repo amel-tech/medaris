@@ -1,0 +1,51 @@
+# nazar.roster.complete, FAIL.forbidden: a ders nazırı whose müderris granted her enrollment.complete reads the page with its buttons
+# (reader: team), the grant is taken away, and "Tamamladı say" is answered with 403 AUTHZ_FORBIDDEN: the error toast "Bunu yapma izniniz yok."
+# stays until it is closed, no row moves and nothing is read again.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/roster/complete \
+#     --bind graphs/nazar/roster/complete/binding.refused.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. READ ONLY THE WALK THAT TAKES `FAIL.forbidden`: `before` on the button takes the grant away on every
+# press, so a walk of this file that goes on to DONE fails there by design; binding.yaml walks DONE.
+#
+# How the answer is made, as in binding.gone.yaml: `before` on the node the walk presses. The page was read with the grant (the buttons are
+# drawn); just before the click the müderris sets the ders nazırı's whole set to enrollment.decide and enrollment.remove
+# (helpers/course-nazir-grants.mjs), so the PATCH meets a post without enrollment.complete. The event itself only waits for what the app says.
+# The walk's course and its twelve talebe are binding.yaml's, and the ders nazırı's post goes with the course. The same refusal in
+# `reopening` is not walked: it needs a completion first, and this file's `before` takes the grant away before the first press.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.complete
+
+scenarios:
+  refusedMeanwhile:
+    given: { reader: team }
+    as: dersNazir
+    open: '{nazar}/ders/{rc.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosCom, --weeks, '1', --lessons, '1', --talebe, 'applicantA,applicantB,applicantC,applicantD,applicantE,applicantF,applicantG,applicantH,talebe,talebeMale,other,medarisNazim']
+        expect: '"APPLICANT_H":"ENROLLED"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{rc.course}', --nazir, dersNazir, --codes, 'enrollment.decide,enrollment.complete,enrollment.remove']
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosCom]
+        expect: 'course remove rosCom'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi rosCom%'"]
+        expect: '"n":0'
+
+events:
+  FAIL.forbidden:
+    - waitText: Bunu yapma izniniz yok.
+
+nodes:
+  complete:
+    role: button
+    name: '/^Tamamladı say: /'
+    before:
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{rc.course}', --nazir, dersNazir, --codes, 'enrollment.decide,enrollment.remove']
+        expect: 'course-nazir-grants DERS_NAZIR'
+
+effects:
+  refused:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'COMPLETED'"]
+      expect: '"n":0'

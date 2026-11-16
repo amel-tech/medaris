@@ -1,0 +1,270 @@
+# The recordings tab of a course's page (tedris-web, /courses/<id>, "Ders kayıtları"): which recordings a talebe sees and what a person with no
+# seat sees, read from the code of the branch (the tree of PR #394) on 15 Nov 2026. Nothing here is approved.
+#   - What it draws: the one read the page makes for the tab (GET /courses/:id/recordings), the four things the tab then shows (a seat's list,
+#     the list of a person with no seat, the empty message, the box that says the read failed) and the retry.
+#   - Who sees what is decided by tedrisat, not by the page: a caller who may read the course's content (an enrolled or completed talebe, the
+#     course team) is listed every recording that is not FAILED; everyone else, a visitor included, only the PUBLIC ones, and none when the
+#     course is closed or a recordings policy of the platform or of the köşk is on (course.service.ts:857-867). The tab only chooses what each
+#     row offers (recordings-model.ts:150-157). The watch page the rows lead to is tedris.celse.watchRecording.
+#   - Which parts need Bunny (the stack has none, STACK.md): a recording that is being uploaded or encoded (PROCESSING), one that failed, the
+#     chip "Bunny Stream", the signed player link a Bunny row carries (an outsider's row opens THAT link, a seat's row opens the watch page,
+#     which plays it) and its expiry. The walk adds recordings as pasted links (POST /lessons/:id/recordings, a YouTube and a Drive link),
+#     which are READY at once, and puts one of them back to PROCESSING with SQL: that row is what an upload in progress looks like, but it is
+#     not an upload. The rows, the release line and the list's rules are the same for every provider; the player is another flow's.
+#   - Findings it carries (ui.yaml `rules` has the same ids): RECS-1, the medrese policy "Ders kayıtları herkese açılamaz" is stored, shown,
+#     saved and loaded into the engine but never read by the list (the domain's own findings policy-no-public-recordings-inert and
+#     medrese-recordings-policy-unread); RECS-2, a retry that works unmounts the button that had the focus and says nothing; MDRS-259, a
+#     FAILED upload is left out for everyone, the course team included; MDRS-265, an enrolled talebe of a passive course is a person with no seat
+#     here. The inventory's CRS-13, which FLOWS.md lists for this flow, is the toast region: this tab shows no toast, so it is not touched.
+schema: delurio-graph/0
+kind: flow
+id: tedris.course.recordings
+status: captured
+domain: medaris.api
+ui: tedris.course.recordings
+title: Watch from the recordings tab
+summary: >-
+  A person opens a course and its tab "Ders kayıtları", by the address (?tab=kayitlar, as the celse page's "Ders kayıtlarına git" does) or by
+  pressing the tab on the page that opens on Müfredat. The page reads the course's recordings when it is drawn, once, with the person's
+  token if they have one. A talebe who holds a seat reads a list by week, newest week first: a ready recording is one link to its celse's
+  watch page, in the same tab; one still being prepared and one held back until the time the course team set offer nothing and say so, the
+  held one says when it opens. A person with no seat (a visitor, a signed-in stranger, a pending or removed talebe, and the enrolled talebe
+  of a passive course) reads only the recordings marked "Herkese açık"; each ready one is a link to where it is hosted, in a new tab, and the
+  same two kinds of row offer nothing. When nothing is listed to the person the tab says there is no published recording, whether the
+  course has none or the person may not see them. When the read fails the tab says so and offers "Yeniden dene".
+
+scope:
+  shows: the page's read of the recordings, the tab's four contents (a seat's list, the list of a person with no seat, the empty message, the failed box), the retry, and the three ways out (the watch page, a host in a new tab, another tab)
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the course page: the header, the card on the right (apply, leave, progress), the programme and the other tabs (tedris.course.readProgramme, tedris.course.apply, tedris.course.deckTab, tedris.course.grades)"
+    - "the watch page a seat's row leads to, with its player, notes and questions (tedris.celse.watchRecording), and the celse page's own recording block (tedris.celse.attend)"
+    - "the course team's own view of this tab: a hoca or a nazır who holds recording.manage is handed the link of a recording that is held back and reads \"Talebelere … açılacak\" on its row (recordings-tab.tsx:251, RecordingRelease.early); adding, renaming and replacing recordings is nazar.recordings.add and nazar.recordings.upload"
+    - "the line under a held row that names the course's zone and the viewer's clock when they differ (RecordingRelease.zone): the stack's browser and course are both Europe/Istanbul, so it is never drawn in a walk"
+    - "a seat's row for a recording of a lesson that is not a celse (a video or document lesson, or a celse that changed kind after it was recorded): it has no watch page, so it is the same new-tab link as an outsider's (recordings-model.ts:150-157, course-page.tsx:432-448)"
+    - "the loading skeleton while the page's reads run (app/courses/[courseId]/loading.tsx), and a course that does not open (the not-found page, tedris.shell.systemPages)"
+    - "a recording that FAILED (a Bunny upload that could not be encoded or never finished): the read leaves it out for every caller, so the tab has no row for it (MDRS-259)"
+    - "the cookie of the viewer's own YouTube session and the players' frames: nothing on this tab frames a player"
+
+decisions:
+  D1:
+    question: >-
+      Should the list hide the PUBLIC recordings of a medrese's courses from visitors when the medrese's policy "Ders kayıtları herkese açılamaz"
+      is on, as it does for the platform's switch and the köşk's?
+    recommend: >-
+      Yes. The settings page promises it ("Açıkken hiçbir kayıt herkese açık yapılamaz ve YouTube’a yüklenemez; ders kayıtlarını yalnız kayıtlı
+      talebeler ve ders kadrosu izler"). Ask the third level in the one place that already asks the other two (publicRecordingsAllowed), and
+      refuse a PUBLIC write while setting.recordings_public is closed, which no route asks today (MDRS-207 left that for the recordings work).
+    affects: [listForOutsider]
+
+context:
+  reader:
+    values: [seat, outsider]
+    initial: any
+    say:
+      seat: "they hold a seat in the course (enrolled or completed) and the course is not passive: they may read its content, so the API lists them every recording that is not FAILED"
+      outsider: "they may not read the course's content: a visitor, a signed-in person with no seat, a pending or removed talebe, or an enrolled talebe of a passive course (MDRS-265); the API lists them only the PUBLIC recordings"
+  recordings:
+    values: [none, enrolledOnly, publicToo]
+    initial: any
+    say:
+      none: "the course has no recording that is not FAILED"
+      enrolledOnly: "the course has recordings and none of them is PUBLIC"
+      publicToo: "the course has recordings and at least one is PUBLIC (a ready one, and one being prepared or held back)"
+  policy:
+    values: [none, honoured, madrasahOnly]
+    initial: any
+    say:
+      none: "no rule keeps PUBLIC recordings from a person with no seat"
+      honoured: "the course is closed, or the platform's RECORDINGS_NEVER_PUBLIC is on, or the köşk's recordingsNeverPublic is on: the three rules the list looks at"
+      madrasahOnly: "only the medrese's \"Ders kayıtları herkese açılamaz\" is on: the rule the list never looks at (RECS-1)"
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "GET /courses/:id/recordings answers"
+      failed: "the read fails, with any status or none (the page maps every failure to null)"
+  entry:
+    values: [address, tab]
+    initial: any
+    say:
+      address: "the page is opened on this tab (?tab=kayitlar): from the celse page's \"Ders kayıtlarına git\", a shared link, or the address bar"
+      tab: "the page opens on Müfredat, the default, and the person presses \"Ders kayıtları\""
+
+guards:
+  rowsListed: "read == 'ok' and recordings != 'none' and (reader == 'seat' or (recordings == 'publicToo' and policy != 'honoured'))"
+
+effects:
+  again: { havoc: [read] } # "Yeniden dene" asks the server to render the page again, and the second read may answer differently
+
+failures:
+  reading: { from: listCourseRecordings, unreadable: [COURSE_NOT_FOUND] }
+  retrying: { from: listCourseRecordings, unreadable: [COURSE_NOT_FOUND] }
+# `unreadable` stands for any failure: public-reads.ts:48-55 turns a thrown error of any kind (a 404 the page's own read of the course would
+# have caught first, a 5xx, a refused token, a network error) into null, and null is the failed box. The domain lists the one refusal code.
+
+# The main story: a talebe with a seat opens the tab by its address, reads the list, and follows a ready recording to its watch page.
+main:
+  given: { reader: seat, recordings: publicToo, policy: none, read: ok, entry: address }
+  events: [DONE, OPEN_WATCH]
+
+initial: reading
+states:
+  reading:
+    title: Read the recordings
+    description: >-
+      The page's server side reads GET /courses/:id/recordings together with the köşk, the decks and the grades, with the person's own token
+      (none for a visitor, the route is public) and never from Next's data cache, because a Bunny row carries a player link signed for this
+      viewer. tedrisat lists the course's recordings from the course as this caller may see it: every one that is not FAILED when they may read
+      the content, only the PUBLIC ones otherwise and none of those when the course is closed or the platform's or the köşk's recordings policy
+      is on; a PROCESSING one, and a READY one before its release time, with no link (the course team keeps its link). Any failure of the read,
+      a 404 included, is turned into null and the tab draws the failed box.
+    source: apps/tedris/app/courses/[courseId]/page.tsx:70
+    invoke: { action: listCourseRecordings }
+    on:
+      DONE: { guard: "read == 'ok'", target: opened, source: apps/tedris/features/courses/public-reads.ts:105 }
+      FAIL.unreadable: { guard: "read == 'failed'", target: opened, source: apps/tedris/features/courses/public-reads.ts:48, say: "the page is drawn all the same, with recordings = null" }
+
+  opened:
+    title: See which tab the page opens on
+    description: classification only; the tab is the page's own state, set once from ?tab= (and never again, a later change of the address does not switch it)
+    source: apps/tedris/features/courses/components/course-page.tsx:194
+    always:
+      - { guard: "entry == 'tab'", target: programmeTab, say: "no ?tab=: the page opens on Müfredat", source: apps/tedris/features/courses/components/course-page.tsx:197 }
+      - { target: panel, say: "?tab=kayitlar: the page opens on this tab at once", source: apps/tedris/features/courses/components/course-page.tsx:195 }
+
+  programmeTab:
+    title: The page, open on Müfredat
+    by: human
+    description: >-
+      The course page as it opens by default, with the tab row; its programme is another flow's. "Ders kayıtları" carries the number of
+      recordings listed to this person when there are any (a seat's count and an outsider's differ, and a held or prepared recording counts).
+      Pressing it shows the tab; the choice is local to the page and is not written to the address.
+    source: apps/tedris/features/courses/components/course-page.tsx:394
+    on:
+      OPEN_RECORDINGS: { target: panel, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  panel:
+    title: See what the tab has to show
+    description: classification only
+    source: apps/tedris/features/courses/components/recordings-tab.tsx:70
+    always:
+      - { guard: "read == 'failed'", target: recordingsFailed, say: "the page passed null", source: apps/tedris/features/courses/components/recordings-tab.tsx:70 }
+      - { guard: "rowsListed and reader == 'seat'", target: listForSeat, say: "the list holds every recording of the course that is not FAILED", source: apps/tedris/features/courses/components/recordings-tab.tsx:102 }
+      - { guard: rowsListed, target: listForOutsider, say: "the list holds the PUBLIC recordings, the medrese's policy not looked at (RECS-1)", source: apps/tedris/features/courses/components/recordings-tab.tsx:102 }
+      - { target: recordingsEmpty, say: "the list is empty", source: apps/tedris/features/courses/components/recordings-tab.tsx:102 }
+
+  listForSeat:
+    title: Read the recordings of a course I follow
+    by: human
+    goal: true
+    description: >-
+      "Bütün ders kayıtları" with its hint "Haftalara göre, yeniden eskiye", and one block per week, the newest week first and inside a week the
+      newest recording first; a week whose title only says its number is printed once ("Hafta 3"), any other with its title ("Hafta 3 Tekrar").
+      Each row has the recording's title, its date and length ("2 Kasım 2026 · 60 dk"), a chip "Herkese açık" on a PUBLIC one and the host's
+      name ("YouTube", "Google Drive", "Bunny Stream"; none for another host). A ready recording of a celse is one link, named "Kaydı izle: <title>"
+      and described by its facts, to /courses/<id>/lessons/<celse>/izle in this tab (a plain anchor, a full page load): a seat sees the ENROLLED
+      ones and the PUBLIC ones alike. A recording still being prepared reads "<date> · Hazır olunca buradan açılır" with the badge "Hazırlanıyor"
+      and is plain text, not a link. A READY recording held back until its release time (the later of the celse's start and the time the course
+      team set) is plain text too, with no badge and the line "Ders kaydı <day> <time>’de açılır." under its facts; it is not "Hazırlanıyor",
+      because it is ready, and it has no link, because tedrisat sends none before the time. A recording whose link tedrisat could not sign (a
+      Bunny one after the library's keys were taken away) would read "Hazırlanıyor" too: nothing but its missing link tells the two apart.
+    includes: ["the count on the tab, which is the number of rows listed here, held and prepared ones included"]
+    source: apps/tedris/features/courses/components/recordings-tab.tsx:277
+    on:
+      OPEN_WATCH:
+        target: watch_opened
+        starts: { flow: tedris.celse.watchRecording }
+        say: "a ready row is a link to its celse's watch page; the page is left"
+        source: apps/tedris/features/courses/components/recordings-tab.tsx:277
+      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  listForOutsider:
+    title: Read the public recordings of a course
+    by: human
+    goal: true
+    description: >-
+      The same heading, hint and weeks, with only the recordings marked "Herkese açık", every row carrying that chip. A ready recording is one link
+      to where it is hosted, with the cue "Ders kaydını aç" and an external-link icon, named "Ders kaydını aç: <title> (yeni sekmede açılır)",
+      target _blank, rel noopener noreferrer; for a pasted YouTube or Drive link that is the link itself, for a Bunny recording it would be the
+      signed player link that tedrisat answered with (not walked: the stack has no Bunny). There is no "Kaydı izle" and no way into the watch page,
+      which would send them back to the celse page. A recording being prepared and one held back read as they do for a seat, a public one included
+      (so a visitor learns that a recording exists and when it opens). The ENROLLED recordings are not in the list, and nothing on the tab says
+      that more exist. This is also what an enrolled talebe of a passive course meets (MDRS-265), and what a visitor meets on a medrese course
+      whose medrese has switched "Ders kayıtları herkese açılamaz" on (RECS-1).
+    includes: ["the count on the tab, which is the number of public recordings listed here"]
+    source: apps/tedris/features/courses/components/recordings-tab.tsx:290
+    on:
+      OPEN_HOST: { target: listForOutsider, say: "the host opens in a new tab; this page stays where it is", source: apps/tedris/features/courses/components/recordings-tab.tsx:290 }
+      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  recordingsEmpty:
+    title: The tab has no recording to show
+    by: human
+    description: >-
+      One sentence in the tab: "Bu derste henüz yayımlanmış ders kaydı yok." It is the same sentence whether the course has no recording, or has
+      only ENROLLED ones and the person has no seat, or the köşk, the platform or a closed course hides the PUBLIC ones from them, or only
+      FAILED ones are left (MDRS-259). It is not the failed box: an empty list is a fact. The tab carries no number.
+    source: apps/tedris/features/courses/components/recordings-tab.tsx:102
+    on:
+      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  recordingsFailed:
+    title: The recordings could not be read
+    by: human
+    description: >-
+      A box in the tab, a section named by its h2 "Ders kayıtları yüklenemedi", the sentence "Ders kayıtlarına şu an ulaşamadık. Biraz sonra
+      yeniden dene." and the button "Yeniden dene". The tab carries no number. Not the empty message: a failed read never claims there are none.
+    source: apps/tedris/features/courses/components/recordings-failed.tsx:14
+    on:
+      RETRY: { target: retrying, effect: [again], say: "\"Yeniden dene\" asks the server to render the page again", source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
+      OPEN_PROGRAMME: { target: programmeTab, source: apps/tedris/features/courses/components/course-page.tsx:394 }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  retrying:
+    title: Read the recordings again
+    by: human
+    description: >-
+      router.refresh() runs inside a transition: the button is busy (aria-disabled, aria-busy) and a visually hidden status beside it says
+      "Yükleniyor" while the server renders the page again, which reads GET /courses/:id/recordings once more. The tab is the page's own state and
+      stays where it is. When the second read answers, the tab shows what it has; when it fails again the box stays and the busy state ends,
+      with nothing said (RECS-2). After a good answer the button that had the focus is gone, and nothing moves the focus or says the list came
+      (RECS-2).
+    source: apps/tedris/features/courses/components/recordings-failed.tsx:27
+    invoke: { action: listCourseRecordings }
+    on:
+      DONE: { guard: "read == 'ok'", target: panel, source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
+      FAIL.unreadable: { guard: "read == 'failed'", target: panel, say: "the box is drawn again, and nothing says it tried", source: apps/tedris/features/courses/components/recordings-failed.tsx:27 }
+
+  watch_opened: { type: final, title: The watch page of the celse opens, leavesPage: true }
+  left: { type: final, title: The person leaves the course page, leavesPage: true }
+
+assertions:
+  - id: seat-list-is-for-a-seat
+    never: "state == 'listForSeat' and reader == 'outsider'"
+    say: "The list of every recording is drawn only for a person who may read the course's content"
+    source: apps/tedrisat/src/course/course.service.ts:809
+  - id: no-watch-page-for-an-outsider
+    never: "state == 'watch_opened' and reader == 'outsider'"
+    say: "A person with no seat is never sent to a watch page by this tab: their rows open the host in a new tab"
+    source: apps/tedris/features/courses/components/recordings-tab.tsx:163
+  - id: koskplatform-policy-hides-public-recordings
+    never: "state == 'listForOutsider' and policy == 'honoured'"
+    say: "A closed course, the platform's switch and the köşk's switch keep the PUBLIC recordings from a person with no seat (the medrese's switch does not, RECS-1)"
+    source: apps/tedrisat/src/course/course.service.ts:857
+  - id: failed-read-draws-no-rows
+    never: "(state == 'listForSeat' or state == 'listForOutsider' or state == 'recordingsEmpty') and read == 'failed'"
+    say: "A failed read never draws a list or says there are none"
+    source: apps/tedris/features/courses/components/recordings-tab.tsx:70
+  - id: empty-only-when-nothing-is-listed
+    never: "state == 'recordingsEmpty' and rowsListed"
+    say: "The empty message is drawn only when the read listed nothing to this person"
+    source: apps/tedris/features/courses/components/recordings-tab.tsx:102
+  - id: failed-box-only-after-a-failed-read
+    never: "state == 'recordingsFailed' and read == 'ok'"
+    say: "The box that says the recordings could not be read is drawn only after a failed read"
+    source: apps/tedris/features/courses/components/recordings-tab.tsx:70

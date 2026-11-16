@@ -1,0 +1,304 @@
+# Medrese nazırları in nazar-web (/medrese/<id>/nazirlar), read by its başmüderris, who presses "Görevden al" on a nazır row, answers
+# Devral or Düşür for every person that nazır gave something to, and confirms. Read from the code of PR #394 (apps/nazar/features/nazirs,
+# the API's GET/DELETE /madrasahs/:id/nazirs/:userId and its /grants). It says what the code does today:
+#   - the dialog asks the API what the nazır handed on every time it opens (GET .../grants), one row per PERSON, and the button stays off until
+#     every row has an answer; with nobody listed it is ready at once and says so (introNone). The scrim does not close it.
+#   - what a nazır can hand on, through the API, is a MEDRESE_NAZIR seat (a nazır holding madrasah.nazir_appoint appoints) and a DERS_NAZIR post in
+#     a course (a nazır holding course_nazir.assign appoints, with no permission). A nazır gives no permission (MDRS-108; "Aldığı izni başkasına
+#     veremez"), so the rows a walk can make hold roles only; the e2e seeds a permission row by SQL (nazirs-seed.ts), which no API can make.
+#   - the nazır being dismissed is one variable, `nazir`, that folds two facts the dialog shows apart: what they hold (the dropSummary line) and
+#     what they gave (the choice step). Impossible pairs (gave something and holds nothing) are not in it.
+schema: delurio-graph/0
+kind: flow
+id: nazar.nazirs.dismiss
+status: captured
+domain: medaris.api
+ui: nazar.nazirs.dismiss
+title: Dismiss a medrese nazır, answering for what they handed on
+summary: >-
+  The başmüderris opens Medrese nazırları and presses "Görevden al: {name}" on a row. A dialog opens with the focus on "Vazgeç" and asks the API
+  what that nazır gave to others. For every person listed it shows who they are, what they were given (a medrese seat, a post in a course) and two
+  chips, "Devral" (the role stays, the başmüderris becomes its giver) and "Düşür" (it is taken back at once); nothing is chosen at the start, and
+  "Görevden al" stays off until every row has an answer. A nazır who gave nobody anything has no choice step: the dialog says there is nothing to
+  choose and the button is ready. A callout always says what falls with the seat. The confirmation closes the dialog, the row leaves the roster, and a
+  toast of six seconds says so. "Vazgeç", Esc and the close icon write nothing. The scrim does not close the dialog. After a success the pressed
+  button is gone and the focus with it (F-B-9).
+
+scope:
+  shows: >-
+    the roster of one medrese's nazırs with its "Görevden al" row buttons, the dismissal dialog (loading, failed, nothing to choose, choosing,
+    every row answered, in flight), the refusals' toasts, and the roster after a dismissal
+  world: open
+  outOfView:
+    - "a medrese nazır with no grant meets the forbidden alert instead of the roster, and one holding madrasah.nazir_appoint sees the button only on the rows they seated: nazar.access.medreseNazirRefused"
+    - "appointing a nazır and giving them permissions (the other buttons of the same page): nazar.nazirs.appoint, nazar.nazirs.permissions; the permission groups under the table: nazar.nazirs.groups"
+    - "the same Devral or Düşür question for a Medaris nazımı, on nizam's own page and API (GET/DELETE /nizam/medaris-nazims/:userId): nizam.nazims.dismiss, the sibling of this flow"
+    - "a row of the dialog that is a permission the nazır gave (the line '1 izin: Başvuruyu onayla ya da reddet', nazirs.ts:91): no API route lets a nazır give one, so a walk cannot make it; the e2e seeds it by SQL (dismiss#2 a13)"
+    - "the roster failing to load for any other reason than a refusal ('Medrese nazırları okunamadı' with its retry)"
+
+decisions:
+  D1:
+    question: >-
+      Should each row of the dialog carry "Düzenle", a link to the permission editor (nazir 06), so the başmüderris can change a grant instead of
+      only taking it over or dropping it? The comment of dismiss-dialog.tsx says the design leaves open whether it opens a second window or replaces
+      this one, and that most people listed are not nazırs of the medrese, whom the editor cannot open.
+    recommend: >-
+      Decide it with MDRS-201 (adopt, edit or drop each grant); until then the dialog offers two answers and no third.
+    affects: [choosing]
+
+context:
+  nazir:
+    values: [bare, holder, giverOne, giverMany]
+    initial: any
+    say:
+      bare: "the nazır holds nothing yet (just appointed) and gave nobody anything"
+      holder: "the nazır holds permissions and gave nobody anything"
+      giverOne: "the nazır gave one person a role, so the dialog lists one row"
+      giverMany: "the nazır gave several people roles (a medrese seat and a post in a course), so the dialog lists several rows"
+  last:
+    values: [nothing, dismissed, changed, cascade, gone, refused, selfGrant, failed]
+    initial: nothing
+    say:
+      nothing: "no dismissal has been tried in this visit, or its toast is gone"
+      dismissed: "a dismissal just succeeded"
+      changed: "the API said what the nazır handed on changed while the dialog was open (DISMISS_DECISIONS_INCOMPLETE)"
+      cascade: "the API refused a Düşür that would leave what a dropped seat's holder handed on with no seat (DISMISS_SEAT_HANDED_ON)"
+      gone: "the person was no longer a nazır of the medrese (MADRASAH_NAZIR_NOT_FOUND)"
+      refused: "the API refused for lack of permission (AUTHZ_FORBIDDEN)"
+      selfGrant: "the API refused a Devral that would give the caller a row they gave themselves (SELF_GRANT_REFUSED)"
+      failed: "the API refused for another reason, or failed"
+
+guards:
+  gaveSome: "nazir in ['giverOne', 'giverMany']"
+  gaveNothing: "nazir in ['bare', 'holder']"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  dismissed: { set: { last: dismissed } }
+  changed: { set: { last: changed } }
+  cascade: { set: { last: cascade } }
+  gone: { set: { last: gone } }
+  refused: { set: { last: refused } }
+  selfGrant: { set: { last: selfGrant } }
+  failed: { set: { last: failed } }
+
+failures:
+  opened:
+    from: listMadrasahNazirs
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+  asking:
+    from: getMadrasahNazirGrants
+    unread: [MADRASAH_NAZIR_NOT_FOUND, AUTHZ_FORBIDDEN, MADRASAH_NOT_FOUND, HTTP_400]
+  dismissing:
+    from: removeMadrasahNazir
+    changed: [DISMISS_DECISIONS_INCOMPLETE]
+    cascade: [DISMISS_SEAT_HANDED_ON]
+    gone: [MADRASAH_NAZIR_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    selfGrant: [SELF_GRANT_REFUSED]
+    other: [NAZIR_NOT_APPOINTED_BY_YOU, VALIDATION_ERROR, HTTP_400, MADRASAH_NOT_FOUND]
+
+# The story the page tells first: a nazır who gave a medrese seat and a post in a course; the başmüderris takes over the first, drops the second
+# and confirms.
+main:
+  given: { nazir: giverMany }
+  events: [DONE, DISMISS, DONE, ANSWER, ANSWER_LAST, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The roster is read
+    description: >-
+      The page reads GET /madrasahs/:id/nazirs on the server, with the groups (GET .../permission-groups) and the person's own record, and draws behind
+      a loading fallback of bars (loading.tsx). Nothing is on the screen of this step. The başmüderris, the başnazım, a Medaris nazımı granted
+      platform.madrasah_nazir_grant and a nazır granted madrasah.nazir_appoint are let in; a plain medrese nazır is refused and the header keeps
+      its title with an alert in place of the table (state forbidden, nazar.access.medreseNazirRefused); a 404 is the 404 page; any other failure
+      draws 'Medrese nazırları okunamadı' (not drawn here: it is not a refusal of the API's).
+    invoke: { action: listMadrasahNazirs }
+    on:
+      DONE: roster
+      FAIL.forbidden: forbidden
+      FAIL.missing: not_found
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:37
+
+  forbidden:
+    title: The roster is refused
+    description: >-
+      The title and the intro stay, "Medrese nazırı ata" is left out, and an alert says "Bu sayfaya izniniz yok" in place of the table
+      (PageProblem, nazirs.status !== ok). The başmüderris is never refused: this state is the plain nazır's, drawn here only because it is where the
+      read can end; its story is nazar.access.medreseNazirRefused. No walk of this flow reaches it.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:68
+
+  roster:
+    title: The roster is read
+    description: >-
+      The page: the title, the intro, "Medrese nazırı ata", the warning band that names the nazırs holding nothing yet ("henüz izin almadı"), the table
+      of nazırs (oldest appointment first) and the permission groups under it. The başmüderris has "Görevden al: {name}" on every row, whatever the
+      date: MDRS-215 removed the version gate that dismiss#2's title still mentions, and nothing in nazirs-table.tsx:166 checks one (dismiss#1). A nazır who
+      holds madrasah.nazir_appoint and is not the başmüderris would have it only on the rows they seated (mayDismiss, :44). The page keeps no focus of
+      its own on load (nothing in features/nazirs sets it). Findings read here: F-B-9 (the pressed row's button is gone after a dismissal) and
+      F-B-3 (below, in the dialog).
+    by: human
+    goal: true
+    on:
+      DISMISS: { target: asking, effect: [clearNote], say: "they press Görevden al on a row" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/nazirs-table.tsx:166
+
+  asking:
+    title: The dialog asks what the nazır gave
+    description: >-
+      The dialog is open, titled "{name} görevden alınıyor", over the inert roster, and the focus is on "Vazgeç". It calls GET
+      /madrasahs/:id/nazirs/:userId/grants (nothing is cached: every opening, and every reload after a changed answer, asks again; a later ask
+      cancels the answer of an earlier one). While it waits the body is a status 'Yükleniyor' and bars, the answers are empty, and "Görevden al" is
+      off. A failure of any kind, even a 404 because the person stopped being a nazır meanwhile, draws the load-failed alert; the page does not tell a
+      refusal from a failed read here.
+    invoke: { action: getMadrasahNazirGrants }
+    on:
+      DONE:
+        - { guard: gaveNothing, target: nothingToAsk }
+        - { target: choosing }
+      FAIL.unread: loadFailed
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:89
+
+  loadFailed:
+    title: The list could not be read
+    description: >-
+      An alert "Liste okunamadı" with 'Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin.' and a "Yeniden dene" button; the confirm
+      button stays off. Nothing writes. Not reachable by a walk: no stack condition makes the grants read fail, and a nazır who is gone is the only
+      refusal the API gives here.
+    by: human
+    on:
+      RETRY: { target: asking, say: "they press Yeniden dene" }
+      CANCEL: { target: roster, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, say: "they press the close icon" }
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:173
+
+  nothingToAsk:
+    title: There is nothing to choose
+    description: >-
+      The nazır gave nobody anything, so the dialog has no list: 'seçilecek bir şey yok. Görevden alınınca yalnız kendi görevi ve izinleri kalkar.'
+      and the callout, which says what falls with the seat ('henüz izin almadığı için düşecek bir izin yok' for a nazır who holds nothing, '2 ek izin
+      hemen düşer' for one who holds permissions). "Görevden al" is on. dismiss#4 (Ümmügülsüm, who held a group and gave nothing) is the holder case.
+    by: human
+    on:
+      SUBMIT: { target: dismissing, effect: [clearNote], say: "they press Görevden al" }
+      CANCEL: { target: roster, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, say: "they press the close icon" }
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:182
+
+  choosing:
+    title: Nothing is chosen yet
+    description: >-
+      One row for each person the nazır gave something to, each with the person's name and e-mail, a line for every role given ('Medrese nazırı ·
+      <medrese> · süresiz · verildi 15 Kasım 2026'; a post in a course reads 'Ders nazırı · <course> · ...'), the person's groups and permissions if
+      any, and, for a medrese nazır who holds nothing, 'Hiç izni yok; medrese nazırı atadığı nazıra izin veremez.'. Each row has a group labelled
+      '{person} için seçim' with two toggle buttons, Devral and Düşür, none pressed; pressing one presses it and un-presses the other, pressing a
+      pressed one clears it. A note says what Devral and Düşür do, the footer says 'Her satır için seçim yapılmadan görevden alınamaz.', and
+      "Görevden al" is off. F-B-3: the 2 x N buttons are all named Devral or Düşür; only the group's hidden legend carries the person.
+    by: human
+    on:
+      ANSWER:
+        - { guard: "nazir == 'giverOne'", target: answered, say: "they press Devral or Düşür for the one person listed" }
+        - { target: partlyAnswered, say: "they press Devral or Düşür for the first of several people" }
+      CANCEL: { target: roster, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, say: "they press the close icon" }
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:187
+
+  partlyAnswered:
+    title: Some rows have an answer
+    description: >-
+      The same dialog with one row answered and at least one not: "Görevden al" stays off (dismissReady asks every row, nazirs.ts:273). Pressing the
+      pressed chip again clears the row (the group's value becomes null, dismiss-dialog.tsx:247).
+    by: human
+    on:
+      ANSWER_LAST: { target: answered, say: "they answer the last row that has no answer" }
+      CLEAR: { target: choosing, say: "they press a pressed chip again" }
+      CANCEL: { target: roster, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, say: "they press the close icon" }
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:107
+
+  answered:
+    title: Every row has an answer
+    description: >-
+      "Görevden al" is on. Changing a row's answer to the other chip keeps this state; the transition is not drawn because no flow event tells it from
+      answering a row (both chips send the same press).
+    by: human
+    on:
+      SUBMIT: { target: dismissing, effect: [clearNote], say: "they press Görevden al" }
+      CLEAR:
+        - { guard: "nazir == 'giverOne'", target: choosing, say: "they press the one pressed chip again" }
+        - { target: partlyAnswered, say: "they press a pressed chip again" }
+      CANCEL: { target: roster, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, say: "they press the close icon" }
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:107
+
+  dismissing:
+    title: The dismissal is on its way
+    description: >-
+      dismissNazir calls DELETE /madrasahs/:id/nazirs/:userId with `{decisions}`: exactly one { userId, action } per person listed, `[]` when none. The
+      API does it in one transaction: Devral gives the nazır's rows to the caller as giver (and keeps their seat), Düşür revokes them and, for a
+      seat, what its holder was given in that seat's scope; then the nazır's own seat and permissions in the medrese are revoked; the audit log gets
+      one row. "Görevden al" is busy (aria-disabled, 'Yükleniyor' for a reader of the screen). Closing is ignored while it waits: Vazgeç, Esc and the
+      close icon do nothing and the buttons do not look off (DISMISS-2).
+    invoke: { action: removeMadrasahNazir }
+    on:
+      DONE: { target: settled, effect: [dismissed] }
+      FAIL.changed: { target: asking, effect: [changed], say: "the answers are cleared and the list is read again" }
+      FAIL.cascade: { target: backToDialog, effect: [cascade] }
+      FAIL.gone: { target: settled, effect: [gone], say: "the dialog closes and the roster is read again" }
+      FAIL.forbidden: { target: backToDialog, effect: [refused] }
+      FAIL.selfGrant: { target: backToDialog, effect: [selfGrant] }
+      FAIL.other: { target: backToDialog, effect: [failed] }
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:112
+
+  backToDialog:
+    title: The dialog stays as it was
+    description: "A refusal that is not a changed list leaves the dialog open with every answer kept, and says so in a toast."
+    always:
+      - { guard: gaveNothing, target: nothingToAsk }
+      - { target: answered }
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129
+
+  settled:
+    title: The roster follows the dismissal
+    description: >-
+      The dialog has closed and the page is read again (router.refresh): the dismissed nazır's row is gone, and the people who were taken over are
+      still on the roster, now appointed by the başmüderris. A toast of six seconds says 'Görevden alındı' and 'X artık bu medresenin nazırı değil.'
+      (a success toast closes by itself). Where the nazır was already gone (FAIL.gone) the same page comes with an error toast 'Görevden alınamadı',
+      which stays until closed (DISMISS-1). The button that opened the dialog no longer exists, so Base UI's return focus has no target and the focus
+      falls to the document (F-B-9; not verified in a browser). Another dismissal starts as from the roster.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/nazirs-table.tsx:206
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the roster read is Next's not-found page (lib/tedrisat-read.ts)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: choice-only-when-something-was-given
+    never: "state in ['choosing', 'partlyAnswered', 'answered'] and nazir in ['bare', 'holder']"
+    say: The choice step is drawn only when the nazır gave someone something.
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:187
+  - id: no-choice-when-nothing-was-given
+    never: "state == 'nothingToAsk' and nazir in ['giverOne', 'giverMany']"
+    say: The dialog says there is nothing to choose only when the API listed nobody.
+    source: apps/nazar/features/nazirs/components/dismiss-dialog.tsx:182
+  - id: one-row-has-no-partial-answer
+    never: "state == 'partlyAnswered' and nazir == 'giverOne'"
+    say: With one person listed a row is answered or not; there is no state between.
+    source: apps/nazar/features/nazirs/nazirs.ts:273

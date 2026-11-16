@@ -1,0 +1,116 @@
+# tedris.decks.browse on the local stack (graphs/README.md, "The stack and the bindings"): Desteler (tedris-web, :4000), reached from the top bar's
+# "Desteler" (the tedris navigation graph's entry frame:app->decks), read as the spare talebe `applicantH` (a man, every profile attribute set, no
+# enrolment of his own, no deck).
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/browse --bind graphs/tedris/decks/browse/binding.yaml --absent --out <dir>
+#     [--cover transitions]
+# The two other worlds each have a binding file of their own, because their walks add no transition to this one's and the first scenario of a file
+# always wins a `given`:  binding.plain.yaml (`own: fresh, collected: none`) and binding.none.yaml (`own: none, collected: none`).
+#
+# NOT RUN in the writing phase (the owner's rule: no replay while the graphs are written); read from the code. What this file was checked for: it
+# loads, `replay --emit-spec` plans its walks. Every locator below is read from the code of the page and the kit, not from a browser.
+#
+# Data. The seed gives `talebe` one deck ("Kelime Defterim") that other flows' walks study and change, so this walk makes decks of its own with
+# decks-data.mjs (this folder), for applicantH, after a course of its own (helpers/course.mjs make browse: `Deneme dersi browse`, the seeded
+# müderris as hoca, applicantH seated) has given it a course to collect a deck from:
+#   own `active`      four decks of three cards: private, waiting for review (asked today), published, refused; in each one card is mastered and one
+#                     is learning with no review time ("Tamamlanan: 1 / 3 kart", "%33", "1 kart tekrar bekliyor")
+#   collected `grown` a course deck ("Ders destesi", with its context line) and a public deck ("Herkese açık") written by applicantG and published
+#                     by the başnazım, with a fourth card written after applicantH collected it ("1 yeni kart")
+# The decks' titles are chosen for the three words the events type: "browse" (every deck), "Deneme" (applicantH's own decks only), "Ortak" (the
+# collected ones only). `teardown` takes it all away in the other order: the decks and the progress rows of their cards (one SQL delete: no route
+# deletes a progress row), the course and its invitation mails, the notifications the publication answers wrote for applicantH and applicantG, and
+# applicantH's mailbox. A walk that died half way leaves ids in graphs/.local/decks-browse.json and graphs/.local/made/browse.json, which the next
+# `setup` removes first. Approving and refusing a request write no audit row (deck-review.service.ts:120-150), only the notification to the author.
+#
+# What the walk takes: the main story (varied) and, with --cover transitions, the chips, the words, "Çalış", the deck's own link, the two links in
+# the head of the page and NAVIGATE. The first deck of the page is the newest own deck (the refused one): its id is {br.first}, read back from the
+# API by `make`, and it is the deck the link and "Çalış" open (nth 0).
+#
+# Not walked, and why: `read: failed` (loadFailed, RETRY): the stack has no way to make tedrisat refuse the summary read, so nothing is bound for it
+# (the unit spec test/decks-page.spec.ts proves the markup); `collected: still` and `own: active` with no collection (the combination adds no
+# transition); the exits' pages, which belong to other flows. `call` is not used on any state: the read is server-side, so the browser makes no
+# fetch to hold.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.decks.browse
+
+data:
+  br: { json: ../.local/decks-browse.json }
+
+scenarios:
+  # The main story: a person who wrote decks of every status and collected two, as the page meets them.
+  varied:
+    given: { read: ok, own: active, collected: grown }
+    as: applicantH
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->decks' }
+    setup:
+      - run: [node, helpers/course.mjs, make, browse, --lessons, '3', --hoca, MUDERRIS, --talebe, APPLICANT_H]
+        expect: '"tag":"browse"'
+      - run: [node, ../tedris/decks/browse/decks-data.mjs, make, --own, active, --collected, grown]
+        expect: 'decks-data made 6 deck(s)'
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+    teardown:
+      - run: [node, ../tedris/decks/browse/decks-data.mjs, remove]
+      - run: [node, helpers/course.mjs, remove, browse]
+      - run: [node, helpers/notify.mjs, applicantH, clear]
+      - run: [node, helpers/notify.mjs, applicantG, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']
+
+# a field the person types in has no node that sends an event: the binding fills it in
+events:
+  TYPE_SHARED_WORD:
+    - fill: { role: searchbox, name: Destelerinde ara, value: browse }
+  TYPE_OWN_WORD:
+    - fill: { role: searchbox, name: Destelerinde ara, value: Deneme }
+  TYPE_COLLECTION_WORD:
+    - fill: { role: searchbox, name: Destelerinde ara, value: Ortak }
+  TYPE_UNKNOWN_WORD:
+    - fill: { role: searchbox, name: Destelerinde ara, value: zzzz }
+  CLEAR_SEARCH:
+    - fill: { role: searchbox, name: Destelerinde ara, value: '' }
+  NAVIGATE:
+    - goto: '{tedris}/notifications'
+
+states:
+  deck_opened: { url: '{tedris}/decks/{br.first}' }
+  study_opened: { url: '{tedris}/decks/study/{br.first}' }
+  explore_opened: { url: '{tedris}/decks/explore' }
+  create_opened: { url: '{tedris}/decks/create' }
+  left: { url: '{tedris}/notifications' }
+
+# Where role and name cannot find a node. The cards are data, so a node is found by the kit's own classes inside the list its card is in
+# (`ul[aria-label$=" listesi"]` is both lists, "Destelerim listesi" and "Koleksiyonum listesi"), and, where the graph says which words it may hold
+# (`oneOf`), by a pattern of them: the engine finds a `oneOf` node by its first word only. A bare `main` is also the page a walk leaves for.
+# The links in the head of the page and the empty states have the same words: the first is the head's (nth 0), the others are found inside their
+# section's region.
+nodes:
+  page: { role: main, hasText: '/Kendi destelerin ve çalışmak|Desteler yüklenemedi/' }
+  exploreLink: { role: link, name: Desteleri keşfet, nth: 0 }
+  createLink: { role: link, name: Deste oluştur, nth: 0 }
+  createFromEmpty: { within: { role: region, name: Destelerim }, role: link, name: Deste oluştur }
+  exploreFromEmpty: { within: { role: region, name: Koleksiyonum }, role: link, name: Desteleri keşfet }
+  # the counts sit in a span beside each h2, and the empty sentence "Aramana uyan deste yok." is in both sections at once
+  ownCount: { within: { role: region, name: Destelerim }, css: 'span.mds-caption', hasText: '/^\d+ deste$/' }
+  collectedCount: { within: { role: region, name: Koleksiyonum }, css: 'span.mds-caption', hasText: '/^\d+ deste$/' }
+  ownEmptyBySearch: { within: { role: region, name: Destelerim }, text: Aramana uyan deste yok. }
+  collectedEmptyBySearch: { within: { role: region, name: Koleksiyonum }, text: Aramana uyan deste yok. }
+  # a card: the li, the h3 and the link in it (the one link the card has, nth 0 to press the first deck's), the line of context and the description
+  deckItem: { css: 'ul[aria-label$=" listesi"] > li' }
+  deckTitle: { css: 'ul[aria-label$=" listesi"] h3.mds-card__title' }
+  deckLink: { css: 'ul[aria-label$=" listesi"] h3.mds-card__title > a', nth: 0 }
+  ownBadge: { css: 'ul[aria-label="Destelerim listesi"] .mds-card__header .mds-badge', hasText: '/^(Özel|Yayın isteği bekliyor|Yayında|Yayın isteği reddedildi)$/' }
+  collectedBadge: { css: 'ul[aria-label="Koleksiyonum listesi"] .mds-card__header .mds-badge', hasText: '/^(Ders destesi|Köşk destesi|Medrese destesi|Herkese açık)$/' }
+  deckContext: { css: 'ul[aria-label="Koleksiyonum listesi"] p.mds-card__body', hasText: '/·/' }
+  deckDescription: { css: 'ul[aria-label$=" listesi"] p.mds-card__body:not(:has(.mds-sep))' }
+  # the bar is named by its visible label; its percent is an aria-hidden span; the captions under it are paragraphs
+  deckProgress: { within: { css: 'ul[aria-label$=" listesi"]' }, role: progressbar, name: '/^Tamamlanan: \d+ \/ \d+ kart$/' }
+  deckPercent: { css: 'ul[aria-label$=" listesi"] .mds-progress__value', hasText: '/^%\d+/' }
+  ownDue: { css: 'ul[aria-label="Destelerim listesi"] p.mds-caption', hasText: '/^\d+ kart tekrar bekliyor$/' }
+  collectedAdded: { css: 'ul[aria-label="Koleksiyonum listesi"] p.mds-caption', hasText: '/^\d+ yeni kart$/' }
+  # the footer's left span holds "3 kart·Kelime" and, for a deck waiting for review, "·15 Kasım’da istendi", with aria-hidden dots between
+  deckCards: { css: 'ul[aria-label$=" listesi"] .mds-card__footer span.whitespace-nowrap', hasText: '/^\d+ kart/' }
+  deckKind: { css: 'ul[aria-label$=" listesi"] .mds-card__footer span.whitespace-nowrap', hasText: '/·(Kelime|Hadis)/' }
+  ownRequested: { css: 'ul[aria-label="Destelerim listesi"] .mds-card__footer span.whitespace-nowrap', hasText: '/ istendi$/' }
+  deckStudy: { role: link, name: '/^Çalış: /', nth: 0 }

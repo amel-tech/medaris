@@ -1,0 +1,273 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.evaluation.examScores
+status: proposed
+summary: >-
+  What must exist for the course team to enter the scores of an exam and release the results to the talebe:
+  nazar.evaluation.examScores. Each need is what the product must do, from the flow's story and from the domain's rules
+  (exam-result-rules, exam-results-are-released-once), never from what the page does today. The one planned item that touches this
+  flow is planned.md P-P2 (İmtihan: the question bank, timed exams, automatic marking), which is PRD only (MDRS-248 built the
+  "Sınav" celse and its scores, and nothing of the rest). The binding's scenarios (scores, reopened, noTalebe, noColumns,
+  forbidden) are written and load; they are walked in the walk phase. Nothing here carries a kontenjan or a gender rule: a score
+  decides no seat (MDRS-284 does not apply).
+
+needs:
+  - id: exam-is-planned-before-it-is-scored
+    need: >-
+      An exam is a celse planned as "Sınav", with a date, a place or none, a full mark and a title, before anyone enters a score;
+      the course team sees it as a column of Değerlendirme the moment it is planned, in its week.
+    evidence:
+      - state: overview
+      - node: examHeading
+      - node: examBadge
+      - source: apps/tedrisat/src/course/lesson.controller.ts:329
+      - source: apps/tedrisat/src/course/course.service.ts:1386
+      - test: apps/nazar/e2e/exam.e2e.ts
+        name: "the müderris plans an exam with Sınav in the same flow"
+    note: >-
+      exam.e2e.ts exam#1 (carried by nazar.sessions.plan: a1 the exam section, a2 no weekly repeat, a3 the address, a4 the
+      lesson_exams row)
+
+  - id: score-within-full-mark
+    need: >-
+      The course team gives each seated talebe a score as a whole number from 0 to the exam's full mark. A score above the full
+      mark, below 0, a fraction or none is refused where it is typed, in words, and nothing is saved.
+    evidence:
+      - state: scoring
+      - node: problemOver
+      - node: problemInvalid
+      - node: scoreBox
+      - source: apps/tedrisat/src/exam/exam.controller.ts:76
+      - source: apps/nazar/features/evaluation/evaluation.ts:190
+      - test: apps/nazar/e2e/exam.e2e.ts
+        name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
+      - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
+    note: |-
+      exam.e2e.ts exam#2 (a1: "En çok 100 puan", a2: nothing saved)
+      exams.e2e.spec.ts exams.e2e.spec.ts:331 (the API refuses 101, -1, a fraction and none; nothing is written)
+
+  - id: score-is-kept-as-typed
+    need: >-
+      A score typed and confirmed (Enter, or leaving the box) is kept at once, the cell and the count follow it, and the same
+      score is not sent twice; a save that fails puts the cell back and says so.
+    evidence:
+      - state: scoring
+      - state: savingScore
+      - node: scoreBox
+      - node: count
+      - node: resultCell
+      - source: apps/tedrisat/src/exam/exam.controller.ts:76
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:694
+      - test: apps/nazar/e2e/exam.e2e.ts
+        name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
+      - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
+    note: |-
+      exam.e2e.ts exam#2 (a3: 85 is kept, a4: "1/1 girildi")
+      exams.e2e.spec.ts exams.e2e.spec.ts:289 (a score up to tam puan is kept) and :314 (first saves made at once take turns: one
+      write)
+
+  - id: enter-moves-to-the-next-row
+    need: >-
+      Enter after a score that is kept (or on a blank box) moves the focus to the next talebe's box, so a whole class is scored
+      without the mouse; after a refused score the focus stays where it is.
+    evidence:
+      - state: scoring
+      - node: scoreBox
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:655
+    note: >-
+      unwalked: apps/nazar/test/evaluation.spec.tsx ("refuses a score above tam puan, saves one within it with Enter and moves
+      down") is a unit spec; no e2e and no passed replay
+
+  - id: girmedi-for-a-talebe-who-did-not-sit
+    need: >-
+      A talebe who did not sit the exam is marked "Girmedi": no score is kept, the cell says so, the count counts it as entered,
+      and the talebe reads "Girmedi" after the release.
+    evidence:
+      - state: scoring
+      - state: savingAbsent
+      - node: absentChip
+      - node: resultCell
+      - node: count
+      - source: apps/tedrisat/src/exam/exam.controller.ts:76
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:754
+      - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
+    note: >-
+      exams.e2e.spec.ts exams.e2e.spec.ts:289 (Girmedi keeps no score, even when one is sent with it); the chip itself has no
+      browser check
+
+  - id: the-table-shows-the-results
+    need: >-
+      The table shows the course's talebe against the exam: "Bekliyor" until a result is entered, then the score out of the full
+      mark or "Girmedi", and the cells follow what is typed.
+    evidence:
+      - state: overview
+      - node: evaluationTable
+      - node: talebeCell
+      - node: resultCell
+      - source: apps/tedrisat/src/evaluation/evaluation.controller.ts:68
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:265
+    note: >-
+      unwalked: apps/tedrisat/test/e2e/exams.e2e.spec.ts:444 reads the board's EXAM column at the API; the page's cells have a
+      unit spec only
+
+  - id: no-talebe-says-so
+    need: A course with an exam and no seated talebe says so in one sentence, and offers no table to score.
+    evidence:
+      - state: noTalebe
+      - node: emptyNoTalebe
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:202
+    note: "unwalked: a unit spec only"
+
+  - id: results-stay-closed-until-released
+    need: >-
+      Until the course team releases an exam's results, the talebe reads no score, not even their own, and is told only that the
+      result is not announced yet, whatever the team has entered.
+    evidence:
+      - state: scoring
+      - state: savingScore
+      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedrisat/src/exam/exam.repository.ts:386
+      - test: apps/nazar/e2e/exam.e2e.ts
+        name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
+      - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
+    note: |-
+      exam.e2e.ts exam#2 (a5: released false, score null)
+      exams.e2e.spec.ts exams.e2e.spec.ts:368 (a talebe's score is kept from them until released, then shown to them alone)
+
+  - id: release-opens-the-results
+    need: >-
+      The course team opens an exam's results to its talebe with one action; from then on every seated talebe reads their own
+      score, or "Girmedi", on Notlarım, and the exam screen says the results are open.
+    evidence:
+      - state: scoring
+      - state: releasing
+      - node: releaseButton
+      - node: releasedBadge
+      - node: toastReleased
+      - source: apps/tedrisat/src/exam/exam.controller.ts:97
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:161
+      - test: apps/nazar/e2e/exam.e2e.ts
+        name: "scores are entered on Değerlendirme and stay closed to the talebe until released"
+    note: "exam.e2e.ts exam#2 (a6: the badge \"Sonuçlar açık\", a7: released true, score 85)"
+
+  - id: the-score-is-read-by-the-talebe-after-release
+    need: >-
+      The talebe's own page, Notlarım, shows the released score out of the full mark: the score the course team entered, not
+      another's and not a closed one.
+    evidence:
+      - state: releasing
+      - source: apps/tedrisat/src/exam/exam.controller.ts:117
+      - source: apps/tedris/features/courses/components/exam-grades.tsx:96
+    note: >-
+      unwalked: e2e exam#2 a7 reads it at the API (released true, score 85); tedris.course.grades draws the page, started from
+      here with released true
+
+  - id: release-tells-the-talebe-once
+    need: >-
+      The first release tells every ENROLLED talebe of the course, except the one who released, that the results are open; a
+      second release changes nothing and tells nobody.
+    evidence:
+      - state: releasing
+      - source: apps/tedrisat/src/exam/exam.controller.ts:97
+      - source: apps/tedrisat/src/exam/exam.repository.ts:297
+      - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
+    note: exams.e2e.spec.ts exams.e2e.spec.ts:430 (tells the talebe once, and a second release changes nothing)
+
+  - id: only-the-course-team-scores
+    need: >-
+      Only the course team scores: a talebe, a stranger, the hoca of another course and a ders nazırı with no session.manage can
+      neither read the board nor enter a score nor release.
+    evidence:
+      - state: forbidden
+      - node: forbiddenAlert
+      - source: apps/tedrisat/src/exam/exam.controller.ts:76
+      - source: apps/nazar/features/evaluation/components/evaluation-page.tsx:33
+      - test: apps/tedrisat/test/e2e/exams.e2e.spec.ts
+      - test: apps/nazar/e2e/evaluation.e2e.ts
+        name: "a ders nazırı without session.manage has no Değerlendirme and is refused the page and the API"
+    note: |-
+      exams.e2e.spec.ts exams.e2e.spec.ts:340 (the course team's alone, on this course's exam, for its own talebe)
+      evaluation.e2e.ts evaluation#2 (a ders nazırı with no session.manage: "Bu sayfaya izniniz yok"; carried by
+      nazar.access.dersNazirPages)
+
+  - id: release-asks-first
+    need: >-
+      Before the results are opened the course team is asked once, and told how many scores are entered of how many, that the
+      talebe will read them and be told, and that it cannot be undone.
+    missing: "no Linear issue; F-D1-28, decision D1: the button releases at once, with 0/N entered too"
+    note: |-
+      Drawn on the states scoring and releasing and on the node releaseButton, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      ---- not built, or built and wrong ----
+
+  - id: a-score-change-after-release-is-told
+    need: >-
+      Once the results are open, a change of a score is a decision of the product: either the boxes are read-only, or a correction
+      is marked and the talebe told.
+    missing: "no Linear issue; EXAM-2, decision D2: the boxes stay live, the API takes the change, nobody is told"
+    note: >-
+      Drawn on the states scoring and savingScore and on the node releasedBadge, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: completed-talebe-is-told
+    need: >-
+      A talebe who has completed the course, and so reads the grades, is told when an exam's results are open, like the talebe who
+      is still enrolled.
+    missing: "no Linear issue; EXAM-4 (GRADES-3 of tedris.course.grades): the notification goes to the ENROLLED seats only"
+    note: >-
+      Drawn on the state releasing, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: page-speaks-of-exams
+    need: >-
+      The page's subtitle, caption and way back, and its empty sentence, name exams as well as recited homework, and the empty
+      sentence says an exam is planned on Celse planla.
+    evidence:
+      - source: apps/nazar/features/evaluation/components/evaluation-page.tsx:44
+      - source: apps/nazar/features/evaluation/components/evaluation-board.tsx:303
+    missing: >-
+      no Linear issue; EXAM-1, decision D3: in part. The subtitle and the caption name exams since fdc6e995; the way back ("Bütün
+      ödevler") and the empty sentence still speak of homework only
+    note: |-
+      Drawn on the state noColumns and on the nodes subtitle, evaluationTable, backButton and emptyNoColumns, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+      apps/nazar/features/evaluation/components/evaluation-page.tsx:44: the subtitle "{ders} dersinin ezber ve sınavları":
+      fdc6e995
+      apps/nazar/features/evaluation/components/evaluation-board.tsx:303: the caption "Talebeler, ezberler ve sınavlar": fdc6e995
+
+  - id: keyboard-and-focus-follow-the-person
+    need: >-
+      After opening the exam, going back and releasing, the focus lands on something the person can use; a refused score is tied
+      to its box and read with it; the exam's hint and list are tied to the boxes.
+    missing: no Linear issue; F-D1-12, F-D1-27, EXAM-3
+    note: >-
+      Drawn on the states scoring and overview and on the nodes problemOver, problemInvalid, keysHint and talebeList, which the
+      code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-board-can-be-downloaded
+    need: >-
+      "Excel indir" gives the board as a spreadsheet, a row for each talebe and a column for each recited homework and exam, in
+      the viewer's language.
+    missing: >-
+      no Linear issue; evaluation-export-invalid-path: tedrisat serves the sheet (exams.e2e.spec.ts:476) and the page offers the
+      link, but the web route between them is refused by the file proxy's path check on every call (nazar.files.download)
+    note: >-
+      Drawn on the node downloadLink, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: a-refused-download-is-worded
+    need: >-
+      A refused download of the sheet says why on Değerlendirme, as it does on Ödevler, and takes ?fileError= out of the address.
+    missing: no Linear issue; F-D1-13
+    note: >-
+      Drawn on the node downloadLink, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: question-bank-and-timed-exams
+    need: >-
+      The İmtihan of the PRD: a bank of questions, an exam the talebe sits on the screen against a timer, marked by hand and by
+      machine (planned.md P-P2). Today a "Sınav" is a celse with a full mark whose scores the course team types.
+    missing: "PRD only (planned.md P-P2): no Linear issue"
+    note: >-
+      Drawn on the state scoring, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).

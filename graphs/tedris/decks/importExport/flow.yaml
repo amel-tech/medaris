@@ -1,0 +1,313 @@
+# The deck author moves cards in and out of their deck as files, from tedris-web's /decks/<id>/cards: "Dışa aktar" saves the deck as an
+# .xlsx; "İçe aktar" opens a dialog that takes a CSV or Excel file and, under it, two links to the template. Read from the code of the
+# branch (the tree of PR #394) on 15 Nov 2026. NOTHING HERE WAS SEEN IN A BROWSER OR REPLAYED: every behaviour below is "from the code"
+# (the walk phase replays it); the binding was loaded read-only (`replay --emit-spec`) and nothing else.
+#   - What it draws: the author's card list as far as its two file controls (the rest of the page is tedris.decks.manageCards), the
+#     export, the import dialog with its three answers (cards added, rows refused, file refused) and the template links.
+#   - What it does not draw: nazar's own import dialog and template route (nazar.decks.import), and the JSON bulk route
+#     (POST /flashcard/decks/{id}/cards/bulk), which no screen calls: the 500 on a body over 100 KB that the domain records
+#     (`createCardsBulk`) belongs to it, not to the multipart import this flow sends.
+#   - The cases the world picks (`context`): `deck` (empty or with cards), `routes` (the export and template routes answer, or refuse) and
+#     `file` (what the person chooses: a clean file, a file with bad rows, a file over 1000 rows, a file the server turns down for a reason
+#     the dialog does not name).
+#   - Findings it carries (the inventory's ids): DCK-06, DCK-07, DCK-19, DCK-20, DCK-21, DCK-23, DCK-24. New and proposed here, with ids of
+#     their own (ui.yaml `rules`): IMPEXP-1 .. IMPEXP-6 (a CSV is read as a workbook when the browser calls it `application/vnd.ms-excel`;
+#     the file's needs are never said; a CSV from Turkish Excel is semicolon-separated and the import reads commas; a number, a date or a
+#     formatted cell is told as "boş"; Vazgeç does not cancel a sending import; the export's file name loses every non-ASCII letter).
+#   - E2E carried: decks#20 (the download, "Bir dosya seç.", the broken CSV and its "Satır n", the clean CSV that adds the rows). The tab
+#     count "Kartlar 2" of its last line is the card list's own tab row, drawn by tedris.decks.manageCards; the table is drawn here.
+#     `test/deck-file-routes.spec.ts` is the unit counterpart of the three routes.
+#   - Not driven by the replay engine today: choosing a file. `replay` has no action that sets a file input (`fill` refuses an
+#     <input type=file>), so every transition from CHOOSE_FILE on is bound in binding.yaml up to that one verb (an ask).
+schema: delurio-graph/0
+kind: flow
+id: tedris.decks.importExport
+status: captured
+domain: medaris.api
+ui: tedris.decks.importExport
+title: Import cards from a file, export the deck, take the template
+summary: >-
+  The author of a deck opens its Kartlar page. "Dışa aktar" is a link that saves the deck as an .xlsx file (the route can also answer a CSV, but
+  only the xlsx is offered). "İçe aktar" opens a dialog over the page: a file field ("Dosya", .csv or .xlsx, at most 5 MB, the first row a
+  header) and the sentence "Örnek şablonu indir:" with two links, "Excel (.xlsx)" and "CSV (.csv)", that save the template, the same for every
+  deck. Sending with no file says "Bir dosya seç." under the field. A file with bad rows adds nothing: an alert says how many rows have problems
+  and lists each as "Satır n: ..." (n is the row in the spreadsheet, the header being row 1), and the dialog stays so the file can be fixed
+  and sent again. Any other refusal, from an empty file to a session that has ended, is one alert, "Dosya içe aktarılamadı / Bir sorun oluştu.
+  Yeniden dene." A clean file adds all its cards at once: a toast says "{n} kart eklendi.", the dialog closes and the list is read again.
+  Vazgeç, the close icon and Esc close the dialog at any time, also while the file is being sent: the send is not stopped.
+source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:75
+
+scope:
+  shows: the export link, the import dialog with its three answers, the template links and what the list shows after a clean import
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the card list: the add, edit and delete dialogs, the status column, the Arabic faces, the tab row and the breadcrumb (tedris.decks.manageCards)"
+    - "a person who is not the deck's author: the cards page is the forbidden screen for a reader and the not-found screen for a stranger (tedris.decks.accessRefusals); a visitor is sent to sign in before the page runs (realm.auth.signIn)"
+    - "nazar's import dialog and its own template route, which answer differently (a 502 with an empty body, csv or xlsx only, no 400): nazar.decks.import"
+    - "the JSON bulk route POST /flashcard/decks/{id}/cards/bulk (createCardsBulk): no screen calls it, and its 500 on a body over 100 KB does not touch the multipart import"
+    - "the three read-only JSON handlers /api/decks, /api/decks/<id> and /api/decks/<id>/cards, which nothing calls (DCK-22)"
+    - "what a spreadsheet application does with the saved files (the template's Arabic rows in a CSV, the export's file name)"
+    - "a session that ends while the dialog is open: the import's fetch is not a Server Action, so it is not sent to sign in; it is one more refusal of the third kind (`file == 'rejected'`)"
+    - "the system bar above the page, the footer and the toast host (tedris.shell.frame)"
+
+decisions:
+  D1:
+    question: >-
+      Should "Dışa aktar" tell the person when the file cannot be made, and should it offer the CSV the route can also give?
+    recommend: >-
+      Yes: fetch the file as the import dialog fetches its answer, save it when it comes and show the generic error toast when it does not.
+      Today the link is <a download> to the route: a refusal (401, 403, 404, 429, 502) is a JSON body the browser either saves under the
+      deck's name or reports in its own download list, and the page says nothing (DCK-21).
+    affects: [exporting]
+  D2:
+    question: >-
+      Should the import dialog say what the file must hold, and say why a file was refused?
+    recommend: >-
+      Yes: name the three columns (Card Type, Content Front, Content Back), the two Card Type values, the 1000-row limit and the 5 MB limit
+      in the help line, and map the refusals that a person can fix to their own sentences: no data rows, too large, not a spreadsheet, more
+      than 1000 rows, too many requests (with the Retry-After the route already passes on) and a session that has ended (DCK-20, IMPEXP-2).
+    affects: [dialog]
+  D3:
+    question: >-
+      Should closing the dialog while the file is being sent stop the send, or be refused until it is answered?
+    recommend: >-
+      Refuse the close while busy, as the kit's busy button already refuses a second press (button.tsx:62-76): today Vazgeç, the close icon and
+      Esc close the dialog, the request is not aborted, the cards are added all the same and a toast the person did not wait for says so; a
+      failure is lost (IMPEXP-5, the same family as DCK-30).
+    affects: [importing, abandoned]
+  D4:
+    question: >-
+      Which CSV does the product speak: a UTF-8 file with a byte-order mark and a comma, or whatever Excel writes where the person lives?
+    recommend: >-
+      Write a byte-order mark in the template and the export, and read the delimiter from the header row (comma, semicolon, tab). Take a file
+      by its name and not by the type the browser reports, so that a CSV the system calls application/vnd.ms-excel is read as a CSV
+      (IMPEXP-1, IMPEXP-3). Or offer the .xlsx alone.
+    affects: [dialog, sampling, importing]
+
+context:
+  deck:
+    values: [empty, filled]
+    initial: any
+    say:
+      empty: "the deck has no cards yet: the page says \"Bu destede henüz kart yok.\""
+      filled: "the deck already has cards: the page lists them in a table"
+  routes:
+    values: [served, refused]
+    initial: any
+    say:
+      served: "tedris-web's file routes answer: the export and the template come"
+      refused: "a file route answers with a refusal (the deck is gone, the session has ended, the bulk budget of 10 requests is used, the service is down)"
+  file:
+    values: [clean, badRows, tooMany, rejected]
+    initial: any
+    say:
+      clean: "a CSV or Excel file whose rows are all right: every row is a card with a type, a front and a back of 3 to 5000 characters"
+      badRows: "a file with rows that break the bounds: a front or back shorter than 3 or longer than 5000 characters, an empty one, a Card Type that is neither VOCABULARY nor HADEETH"
+      tooMany: "a file with more than 1000 data rows: the API refuses it with one error on row 1002 and the dialog words it as a bad field (IMPEXP-2)"
+      rejected: "a file the API turns down before it looks at the rows, or an answer the dialog cannot read: no data rows (also a CSV with semicolons), over 5 MB, not a spreadsheet, a CSV the browser calls application/vnd.ms-excel (a 500, IMPEXP-1), a deck that is gone, a session that has ended, the bulk budget used, the service down"
+  chosen: { values: [true, false], initial: false } # a file is in the field (the dialog's own state; a new dialog starts with none)
+  said: { values: [none, noFile, rowErrors, failed], initial: none } # what stands under the form: the field's error, the row alert, the failure alert
+  listed: { values: [none, some], initial: none } # the list shows no cards ("Bu destede henüz kart yok.") or a table
+  added: { values: [true, false], initial: false } # this visit added cards
+
+guards:
+  served: "routes == 'served'"
+  refused: "routes == 'refused'"
+  filled: "deck == 'filled'"
+  cleanFile: "file == 'clean'"
+  rowsFile: "file in ['badRows', 'tooMany']"
+  fileTurnedDown: "file == 'rejected'"
+  noFileChosen: "not chosen"
+  fieldErrorShown: "said == 'noFile'"
+
+effects:
+  listedSome: { set: { listed: some } }
+  reopened: { set: { chosen: false, said: none } } # a dialog is made anew each time it opens: no file, nothing said
+  askedForFile: { set: { said: noFile } }
+  chose: { set: { chosen: true } }
+  choseAfterError: { set: { chosen: true, said: none } } # the field's error is `attempted && !file`: it goes the moment a file is there
+  sending: { set: { said: none } } # setRowErrors([]) and setFailed(false) before the request
+  rowsRefused: { set: { said: rowErrors } }
+  fileRefused: { set: { said: failed } }
+  cardsAdded: { set: { listed: some, added: true } }
+
+failures:
+  exporting:
+    from: webExportCards
+    refused: [HTTP_401, DECK_NOT_FOUND, AUTHZ_FORBIDDEN, DECK_FORBIDDEN, HTTP_429, HTTP_502]
+  sampling:
+    from: webDownloadCardSample
+    refused: [HTTP_401, HTTP_502]
+  importing:
+    from: webImportCards
+    rowErrors: [BULK_VALIDATION_ERROR, BULK_ROW_LIMIT_EXCEEDED]
+    rejected: [HTTP_400, HTTP_401, DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_429, INTERNAL_ERROR, HTTP_502]
+  abandoned:
+    from: webImportCards
+    refused: [BULK_VALIDATION_ERROR, BULK_ROW_LIMIT_EXCEEDED, HTTP_400, HTTP_401, DECK_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_429, INTERNAL_ERROR, HTTP_502]
+
+# The main story, as decks#20 tells it and a little more: the author saves the deck, opens the import dialog, takes the template, presses
+# "İçe aktar" with nothing chosen, chooses a clean file and sends it.
+main:
+  given: { deck: empty, routes: served, file: clean }
+  events: [EXPORT, DONE, OPEN_IMPORT, SAMPLE_CSV, DONE, SUBMIT, CHOOSE_FILE, SUBMIT, DONE]
+
+initial: start
+states:
+  start:
+    title: Where the page opens
+    description: >-
+      Classification only. The deck's own page loaded the deck and its cards for the author (loadDeckPage, deck-page-data.ts); the list shows the
+      empty state when the deck has no card and a table when it has (deck-cards-page.tsx:110-125).
+    source: "apps/tedris/app/decks/(medaris)/[id]/cards/page.tsx:39"
+    always:
+      - { guard: filled, target: cards, effect: [listedSome], say: "the deck has cards: the list is a table", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:124 }
+      - { target: cards, say: "the deck has no card: the list says so", source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:110 }
+
+  cards:
+    title: The card list, with the two file controls
+    by: human
+    description: >-
+      The author's page: the deck's name, three buttons ("Dışa aktar", "İçe aktar", "Kart ekle"), the note about the status column and the list.
+      "Dışa aktar" is a link (<a download>) to /api/decks/<id>/export?format=xlsx, "İçe aktar" a button that opens the dialog. No focus is set
+      by the page. The page is the author's: the API refuses everyone else, and the page draws the forbidden or not-found screen for them
+      (tedris.decks.accessRefusals).
+    source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:75
+    on:
+      EXPORT: { target: exporting, source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:83, say: "they press \"Dışa aktar\": the browser asks for the file" }
+      OPEN_IMPORT: { target: dialog, effect: [reopened], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:94, say: "they press \"İçe aktar\": the dialog opens over the page" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  exporting:
+    title: Save the deck as a file
+    description: >-
+      The link is a plain navigation to GET /api/decks/<id>/export?format=xlsx, so the browser asks for it itself with the page's cookie and the
+      page stays where it is. The route (export/route.ts:7) checks the id is a uuid and the format is xlsx or csv, takes the session's token
+      (a missing one is a 401 JSON body) and asks tedrisat for GET /flashcard/decks/<id>/cards/bulk/export, then gives the answer back with its
+      status, content-type, content-disposition and retry-after. Success: an attachment named for the deck (title with every character that is
+      not a letter a-z, a digit, "_" or "-" turned into "_", IMPEXP-6) and ".xlsx", holding the sheet "Cards" with the header Card Type, Content Front,
+      Content Back and one row per card, a cell that starts with = + - @ tab or CR written with a quote before it; the browser saves it and nothing
+      is said on the page (no toast, no status). A refusal is a JSON body behind the same link: the page says nothing, and how the browser shows
+      it was not seen (DCK-21, decision D1). Only the deck's author is answered: a course's staff, the deck's readers and a stranger are refused 403
+      or 404.
+    source: apps/tedris/app/api/decks/[id]/export/route.ts:7
+    invoke: { action: webExportCards }
+    on:
+      DONE: { guard: served, target: cards, source: apps/tedris/lib/tedrisat-file-proxy.ts:51, say: "the browser saves the file; the page shows nothing new" }
+      FAIL.refused: { guard: refused, target: cards, source: apps/tedris/lib/tedrisat-file-proxy.ts:51, say: "a refusal: the page shows nothing either way (DCK-21)" }
+
+  dialog:
+    title: The import dialog, waiting for a file
+    by: human
+    description: >-
+      A kit Dialog `form`, size md, over the page (the page behind it is inert): the title "Kartları içe aktar", a close icon named "Kapat" (the
+      kit's own word, DCK-23), the field "Dosya *" (<input type=file name=file accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">)
+      with the help "CSV ya da Excel (.xlsx) dosyası seç; en çok 5 MB. İlk satır başlık olmalı.", the sentence "Örnek şablonu indir:" with the links
+      "Excel (.xlsx)" and "CSV (.csv)" (the two link texts are written in the code, not in the catalog, DCK-23), and the footer "Vazgeç" and
+      "İçe aktar". A click on the scrim does not close it (a form dialog never does). Nothing sets the initial focus, so Base UI gives it to the
+      first tabbable element, the close icon (DCK-19; not seen). The `*` is decorative and the input is not `required` (DCK-07); the help and the
+      error are not announced when they appear (DCK-06); the whole body is the dialog's description (DCK-24). The three things that can stand
+      under the form are `said`: the field's own error "Bir dosya seç." (it replaces the help line), the row alert and the failure alert; the two
+      alerts have role=alert, so they are announced, and they stay until the next send clears them (also while another file is chosen). Choosing
+      a file changes nothing on screen but the field's own file name, so the graph draws no node for it. The dialog keeps the File object it was given
+      (`setFile`): a file edited on disk after it was chosen may not be readable when sent, and picking the same path again may not fire the
+      browser's change event, which the "fix the file and send it again" loop of the row alert leans on (not verified in a browser).
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:101
+    on:
+      CHOOSE_FILE:
+        - { guard: fieldErrorShown, target: dialog, effect: [choseAfterError], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:124, say: "they choose a file: \"Bir dosya seç.\" goes and the help line is back" }
+        - { target: dialog, effect: [chose], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:131, say: "they choose a file (or another one): any alert stays until the next send" }
+      SUBMIT:
+        - { guard: noFileChosen, target: dialog, effect: [askedForFile], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:66, say: "\"İçe aktar\" with no file: nothing is sent and \"Bir dosya seç.\" stands under the field; the focus is not moved (DCK-06)" }
+        - { target: importing, effect: [sending], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:67, say: "\"İçe aktar\" (or Enter in the form) with a file: the alerts are cleared and the file is sent" }
+      SAMPLE_XLSX: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:136, say: "they follow \"Excel (.xlsx)\": the template comes as sample.xlsx, the dialog stays" }
+      SAMPLE_CSV: { target: sampling, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:142, say: "they follow \"CSV (.csv)\": the template comes as sample.csv, the dialog stays" }
+      CANCEL: { target: cards, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:104, say: "Vazgeç, the close icon or Esc: the dialog closes, what was chosen is dropped and the focus goes back to \"İçe aktar\"" }
+
+  sampling:
+    title: Save the template
+    description: >-
+      The two links are plain <a download> to /api/decks/sample?format=xlsx and ?format=csv; the browser asks itself and the dialog stays as it
+      was. The route (sample/route.ts:5) answers 400 for another format, 401 with no token, and otherwise gives tedrisat's GET
+      /flashcard/cards/bulk/sample as it came: sample.<format> holding the sheet "Cards" with the header Card Type, Content Front, Content Back
+      and two example rows, one HADEETH (a hadith with its Arabic text) and one VOCABULARY. The CSV is UTF-8 with no byte-order mark, a comma between
+      columns and the type text/csv with no charset (IMPEXP-3). A refusal is a JSON body behind the link and the dialog says nothing. The
+      links work while a file is being sent too (they are plain links), which the graph does not draw.
+    source: apps/tedris/app/api/decks/sample/route.ts:5
+    invoke: { action: webDownloadCardSample }
+    on:
+      DONE: { guard: served, target: dialog, source: apps/tedris/lib/tedrisat-file-proxy.ts:51, say: "the browser saves the template; the dialog is as it was, and the focus stays on the link" }
+      FAIL.refused: { guard: refused, target: dialog, source: apps/tedris/lib/tedrisat-file-proxy.ts:51, say: "a refusal behind the link: the dialog says nothing (DCK-21 for the export is the same cause)" }
+
+  importing:
+    title: Send the file
+    description: >-
+      fetch POST /api/decks/<id>/import with the file in a multipart body (import/route.ts:7): it is not a Server Action, so there is no `attempt`
+      and no sign-in redirect. The route reads the form, takes `file` (a missing one or an id that is no uuid is a 400), packs it into a new
+      FormData (its name and its type are the browser's) and gives it to tedrisat with the session's token (POST
+      /flashcard/decks/<id>/cards/bulk/import). tedrisat checks the guard first (deck.create_card on the deck: its author), then the file: at most 5 MB and
+      one of the types xlsx, text/csv, text/plain, application/octet-stream, application/vnd.ms-excel (400 otherwise); the format is csv for the
+      first three types unless the name ends in .xlsx, and xlsx for everything else, which makes a CSV of type application/vnd.ms-excel a workbook that
+      cannot be opened, a 500 (IMPEXP-1); it reads the first sheet, matches the header names without regard to case (Card Type, Content Front,
+      Content Back), skips empty rows and takes a quote before a formula trigger away; no data row is a 400 (also a file whose header names do not match, and a CSV with semicolons, IMPEXP-2 and IMPEXP-3); more than 1000 data
+      rows is a 422 on row 1002, which the dialog words as a bad field (IMPEXP-2); and every row is validated, all bad rows reported together, before
+      one row is written: so a refused file adds nothing. A cell that is a number, a date or a formula reaches the validator as a non-string and is
+      told as "boş" (IMPEXP-4). The submit button is busy
+      (aria-disabled, aria-busy; the hidden output says "Yükleniyor") and the field stays as it is. Vazgeç, the close icon and Esc still close
+      the dialog (IMPEXP-5, decision D3).
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:62
+    invoke: { action: webImportCards }
+    on:
+      DONE: { guard: cleanFile, target: imported, effect: [cardsAdded], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:77, say: "201 { count }: a toast says how many cards were added, the list is read again and the dialog closes" }
+      FAIL.rowErrors: { guard: rowsFile, target: dialog, effect: [rowsRefused], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:92, say: "422 with rows: the dialog stays with an alert that lists them, and nothing was added" }
+      FAIL.rejected: { guard: fileTurnedDown, target: dialog, effect: [fileRefused], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:93, say: "any other status, a network error or a 422 the dialog cannot read: one alert, \"Dosya içe aktarılamadı\"; nothing says why (DCK-20)" }
+      CANCEL: { target: abandoned, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:104, say: "Vazgeç, the close icon or Esc while the file is out: the dialog closes at once and the request goes on (IMPEXP-5)" }
+
+  abandoned:
+    title: The dialog was closed while the file was being sent
+    description: >-
+      The page is back with no dialog and the focus goes back to "İçe aktar", but the request of the closed dialog is still out: the
+      component keeps running its `submit` (nothing aborts it). When it is answered 201 the toast "Kartlar içe aktarıldı" appears over
+      the page and the list is read again, with the cards added after the person said Vazgeç; any refusal is lost, because the component
+      that would have shown it is gone, so the person is told nothing (IMPEXP-5).
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:77
+    invoke: { action: webImportCards }
+    on:
+      DONE: { guard: cleanFile, target: imported, effect: [cardsAdded], source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:79, say: "201: the toast and the new rows come, though the person had closed the dialog" }
+      FAIL.refused: { guard: "not cleanFile", target: cards, source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:96, say: "a refusal: the closed dialog cannot show it, so nothing is said and nothing was added" }
+
+  imported:
+    title: The cards are in the deck
+    by: human
+    goal: true
+    description: >-
+      The success toast, kit `toaster.notify` (tone success, closes itself after 6 s), "Kartlar içe aktarıldı" with "{count} kart eklendi.", over the
+      card list, which router.refresh() has read again: the empty state is gone and the table holds the new cards (and the tab row's count, which
+      tedris.decks.manageCards draws). The dialog is gone and the focus is back on "İçe aktar" when it was closed by the success (Base UI returns
+      it to the opener; not seen). Nothing in the file can be taken back as a batch: each card is deleted one at a time from the list. The same
+      file sent again adds the same cards again: no check for a duplicate is made.
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:79
+    on:
+      OPEN_IMPORT: { target: dialog, effect: [reopened], source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:94, say: "they open the dialog again, with no file in it" }
+      EXPORT: { target: exporting, source: apps/tedris/features/flashcards/components/deck-cards-page.tsx:83, say: "they save the deck, which now holds the new cards" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  left: { type: final, title: The person leaves the page, leavesPage: true }
+
+assertions:
+  - id: bad-file-adds-nothing
+    never: "added and file != 'clean'"
+    say: A file with a bad row, with too many rows or turned down adds no card at all; the API validates every row before it writes one.
+    source: apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:63
+  - id: a-file-is-needed-to-send
+    never: "state == 'importing' and not chosen"
+    say: Nothing is sent while no file is chosen; the dialog says "Bir dosya seç." instead.
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:66
+  - id: success-only-for-a-clean-file
+    never: "state == 'imported' and file != 'clean'"
+    say: The toast "{n} kart eklendi." is never shown for a file with bad rows, too many rows or one the API turned down.
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:77
+  - id: nothing-stands-under-the-form-while-sending
+    never: "state == 'importing' and said != 'none'"
+    say: The alerts and the field's error are cleared before a file is sent, so a busy dialog shows none of the last answer.
+    source: apps/tedris/features/flashcards/components/import-cards-dialog.tsx:68

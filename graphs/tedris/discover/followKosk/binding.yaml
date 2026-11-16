@@ -1,0 +1,83 @@
+# tedris.discover.followKosk on the local stack (graphs/README.md, "The stack and the bindings"), as the spare talebe `applicantA`.
+#   node apps/engine/src/cli.ts replay graphs/tedris/discover/followKosk --bind graphs/tedris/discover/followKosk/binding.yaml --out <dir>
+# The stale-page case (F-5, a köşk hidden after the page was drawn) is the other file, binding.stale.yaml.
+#
+# Where it opens. Keşfet lists twelve köşks a page, newest first, and other walks (tedris.discover.browse) leave köşks of their own, so the
+# seeded Kubbealtı Köşkü, the oldest, can be on page 2: the walk opens Keşfet searched for it, as e2e discover#9 does (`/discover?q=`),
+# instead of coming in through the menu entry `frame:app->discover` (a first run did, and found twelve other cards).
+#
+# What the walk touches. The seeded second köşk, Kubbealtı Köşkü (`seed.kosk2`, short name kubbealti): the seed gives it no follower, and
+# nothing else of the stack follows it, so the walk's follow is the only one and the seed's follow counts are what they were when it ends.
+# (Other walks may have given it a course; the walk does not look at the courses.) The main story follows it from its card on Keşfet,
+# reloads, opens its page and stops following there, so it ends with the follow gone. `setup` and `teardown` both stop the follow through
+# tedrisat's own API as that account (DELETE /kosks/:id/follow, which says false when there was nothing to stop), so a walk that died half
+# way leaves nothing and the next one starts clean. The first seeded köşk, Süleymaniye, is not used: tedris.shell.home's walk makes
+# `applicantA` follow it, and this file never reads or changes that follow.
+# The two `effects` read the row with SQL through helpers/sql.mjs, because no API gives one person's follow as a row: the köşk's isFollowing
+# is what the page already draws, and the row is what the e2e (discover#9, #18) trusts.
+#
+# Not walked here: every refusal (FAIL.refused: the stack has no way to make tedrisat refuse a follow of a listed köşk), the session that
+# ends (FAIL.signedOut), the card unfollow and the page follow (drawn, taken by a later --cover transitions walk), and the köşk page's
+# NAVIGATE. `call` holds the server action to see the button disabled: a server action is a POST to the page's own address, whose status is
+# 200 whatever it answers, so it cannot compare a refusal's status (graphs/README.md).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.discover.followKosk
+
+scenarios:
+  followFromCard:
+    as: applicantA
+    open: '{tedris}/discover?q=Kubbealt'
+    vars: { koskId: '{seed.kosk2}', koskName: '{seed.titles.kosk2}', handle: kubbealti }
+    setup:
+      - run: [node, helpers/api.mjs, applicantA, DELETE, '/kosks/{koskId}/follow']
+    teardown:
+      - run: [node, helpers/api.mjs, applicantA, DELETE, '/kosks/{koskId}/follow']
+
+events:
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/notifications' }]
+
+states:
+  # a server action is a POST to the page's own address; the page's reads after it are GETs with a query
+  cardFollowing: { call: '{tedris}/discover**' }
+  cardUnfollowing: { call: '{tedris}/discover**' }
+  koskFollowing: { call: '{tedris}/kosks/{koskId}' }
+  koskUnfollowing: { call: '{tedris}/kosks/{koskId}' }
+  left: { url: '{tedris}/notifications' }
+  sent_to_sign_in: { url: '{keycloak}/realms/medaris/**' }
+
+effects:
+  # e2e discover#9 and #18: the row is there after the follow and gone after the unfollow
+  followKosk:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from kosk_followers f join kosks k on k.id = f.kosk_id where f.user_id = '{secret.E2E_APPLICANT_A_SUB}' and k.handle = '{handle}'"
+      expect: '"n":1'
+  unfollowKosk:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*) as n from kosk_followers f join kosks k on k.id = f.kosk_id where f.user_id = '{secret.E2E_APPLICANT_A_SUB}' and k.handle = '{handle}'"
+      expect: '"n":0'
+
+# Where role and name cannot find a node. Both pages draw a <main>, and the page a walk leaves for has one too, so each is found by what
+# only it holds (Keşfet's search box, the köşk page's back trail "Sayfa yolu"). Sonner's toast has no role: found by its own attribute.
+nodes:
+  discoverPage: { css: 'main:has(input[type=search])' }
+  # a name the API gives is a pattern in the replay's own reading of the catalog (/^Takip et: .+?$/, twelve links on Keşfet), so the
+  # köşk's name is given here
+  cardLink: { role: link, name: '{koskName}' }
+  cardFollowButton: { role: button, name: 'Takip et: {koskName}' }
+  cardUnfollowButton: { role: button, name: 'Takip ediliyor: {koskName}' }
+  pageFollowButton: { role: button, name: 'Takip et: {koskName}' }
+  pageUnfollowButton: { role: button, name: 'Takip ediliyor: {koskName}' }
+  koskTitle: { role: heading, name: '{koskName}' }
+  koskPage: { css: 'main:has(nav[aria-label="Sayfa yolu"])' }
+  breadcrumbLink: { role: link, name: Keşfet, within: { role: navigation, name: Sayfa yolu } }
+  koskEyebrow: { css: 'main p.mds-eyebrow', hasText: '/^Köşk$/' }
+  cardFailedToast: { css: '[data-sonner-toast]', hasText: 'Takip durumu değiştirilemedi.' }
+  pageFailedToast: { css: '[data-sonner-toast]', hasText: 'Takip durumu değiştirilemedi.' }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }

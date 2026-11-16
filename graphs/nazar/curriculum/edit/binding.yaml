@@ -1,0 +1,76 @@
+# nazar.curriculum.edit on the local stack: the course's hoca at http://localhost:4002, and the two ders nazırı who see the page differently.
+#   node apps/engine/src/cli.ts replay graphs/nazar/curriculum/edit --bind graphs/nazar/curriculum/edit/binding.yaml --out <dir>
+#   ... --cover transitions      (the other readers' walks are in binding.noSessions.yaml and binding.basmuderris.yaml)
+# NOT RUN in the writing phase (no replay is run in it): nothing below has been walked. Where it rests on the code alone it says so.
+# The shared parts (events, states, checks, locators) are in binding.common.yaml.
+#
+# What a walk makes and takes away. `setup` makes the walk's own course with helpers/course.mjs, `Deneme dersi cur-edit`: PUBLISHED, in the seed's second
+# köşk (which no seeded flow reads), one week of two LIVE celses from tomorrow at 21:00, the MUDERRIS account as its hoca. The ids go to
+# graphs/.local/made/cur-edit.json, which the binding reads as {made.*}. The two ders nazırı scenarios then give the DERS_NAZIR account a post in that
+# course with exactly the codes the scenario needs (helpers/course-nazir-grants.mjs, as the hoca does on Ders nazırları). `teardown` has course.mjs
+# remove the course and everything under it (as the başnazım), which takes the post with it; `make` removes a course of the same tag first, so a walk
+# that died leaves nothing to be refused as "taken". Nothing of the seed is changed, and no seeded course is edited. Every run of these helpers by
+# hand takes the replay lock (CONVENTIONS, round R2). No SQL is used; course.mjs's one SQL delete (the notifications that point at the course) is
+# its own.
+#
+# What the main story does: the hoca opens the course's overview and presses "Müfredat" in the sidebar (the nav entry), types a new name, adds a week
+# ("Hafta ekle") and a celse to the first week ("Celse ekle"), gives each a title, and presses Kaydet; the API now holds the typed name, the toast
+# says so and the form is mounted anew. The conflict path types a name, lets someone else save the course (a PATCH as the hoca), and presses Kaydet:
+# 409, nothing written, "Güncel dersi yükle" reads the course again. Not verified: that tedrisat accepts what the page sends for a new celse
+# (meetingUrl null, no id) and a new week with no celse; the page's own specs pin the body, no run has sent it.
+#
+# The three scenarios differ by `given.rights`, the permission codes the caller holds in the course:
+#   saves      full      the hoca, MUDERRIS (course.edit, session.manage, week.hide, all by default)
+#   readOnly   readOnly  DERS_NAZIR with the codes of the stack's seed (enrollment.decide, course.view_unpublished, session.manage): no course.edit
+#   refused    none      DERS_NAZIR with no code at all: the page refuses
+# Not bound, with the reason: FAIL.forbidden of the save (a permission taken from the person while the page is open: no helper does that mid-walk),
+# FAIL.other (no stack condition makes the API refuse a valid body) and FAIL.signedOut (the session cannot be ended mid-walk), and `not_found` (the
+# course is the walk's own). A week.hide holder with no course.edit would draw the hide link beside the planner link too; not walked.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.curriculum.edit
+
+data:
+  made: { json: ../.local/made/cur-edit.json }
+
+scenarios:
+  saves:
+    given: { rights: full }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cur-edit, --weeks, '1', --lessons, '2', --hoca, MUDERRIS]
+        expect: '"course":'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cur-edit]
+        expect: removed
+  # holds session.manage alone, as the seed's ders nazırı: the form is read-only, with the planner's link
+  readOnly:
+    given: { rights: readOnly }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cur-edit, --weeks, '1', --lessons, '2', --hoca, MUDERRIS]
+        expect: '"course":'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, seed]
+        expect: course-nazir-grants
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cur-edit]
+        expect: removed
+  # holds nothing: "Bu sayfaya izniniz yok" under the h1
+  refused:
+    given: { rights: none }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersCurriculum' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cur-edit, --weeks, '1', --lessons, '2', --hoca, MUDERRIS]
+        expect: '"course":'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
+        expect: course-nazir-grants
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cur-edit]
+        expect: removed

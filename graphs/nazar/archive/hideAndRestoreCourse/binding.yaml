@@ -1,0 +1,156 @@
+# nazar.archive.hideAndRestoreCourse on the local stack: the başmüderris of "Hadis ve Siyer Medresesi" at http://localhost:4002.
+#   node apps/engine/src/cli.ts replay graphs/nazar/archive/hideAndRestoreCourse \
+#     --bind graphs/nazar/archive/hideAndRestoreCourse/binding.yaml --main --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code; a locator
+# or an expected word may need a fix at the first walk. `--absent` is worth a try on the Dersler states (it proves that the hidden course's
+# menu button is gone), but on `restoring` it reports `restoreButton`: the other rows' "Geri al" stay on the page while one is busy, which
+# is the page's truth and the graph's `rowRestore` convention, not a defect.
+#
+# The walk makes its own data and leaves the seed alone. `setup` makes five courses of the seeded medrese (helpers/course.mjs, as the
+# başnazım, in the seeded köşk "Süleymaniye Köşkü", which hosts it) and hides all but one, as three different kademe:
+#   hrcMain   "Deneme dersi hrcMain": the course the walk hides through the window, with one talebe enrolled (applicantG, a spare
+#             account no other walk of this batch is told to use), so the window says "1 talebe celselere ve ders kayıtlarına erişemez."
+#   hrcWeeks  eight weeks of one celse each; the başmüderris hides all eight weeks (the course stays in Dersler): 8 week rows
+#   hrcOwn    hidden by the başmüderris herself: a second course she may restore, so a restore leaves a "Geri al" on every tab
+#   hrcKosk   hidden by the köşk's nazımı: the row says "Bunu köşk nazımı gizledi; ..." and has no button
+#   hrcAdmin  hidden by the başnazım (Medaris yönetimi): "Bunu Medaris yönetimi gizledi; ..." and no button
+# They are hidden in this order (weeks, own, kosk, admin) and hrcMain last, so the newest first reads hrcMain, hrcAdmin, hrcKosk, hrcOwn
+# and then the weeks: Tümü holds 4 courses and 8 weeks = 12 rows on two pages (10 and 2), the first page holds every course and so every
+# sentence, Dersler holds 4 courses, Haftalar ve celseler 8, Ders kayıtları none. `hides` hides hrcMain through the window; `opensArchive`
+# hides it with the API before the walk, so the Arşiv opens on the same twelve rows.
+#
+# Helpers: helpers/course.mjs (shared) makes and removes a course; ./hide.mjs (this folder, built on helpers/lib.mjs) hides a course or
+# its weeks as an account; helpers/sql.mjs and helpers/api.mjs read what the steps wrote; helpers/mail.mjs clears the mails the hide's
+# calendar CANCEL sends applicantG. `setup` is idempotent (`course.mjs make` removes a tag made before) and `teardown` ends with a
+# check that no "Deneme dersi hrc..." is left. What it cannot undo: the audit rows the hide, the restore and the delete write
+# (audit_log is append-only by design), and the notifications of the invitation sweep, which no route deletes.
+#
+# What the main story walks, in the e2e's words: courses#9 (the window asks first, with the medrese, the köşk, the number of talebe and
+# the note; Vazgeç is focused; cancelling leaves the course in the list), courses#10 (Gizle, the toast, the row and the counter, the
+# audit row, the Arşiv's "Ders" row, Geri al, the course listed again), archive#1 (the four tabs and their counts, Ders kayıtları is empty),
+# archive#2 (kind, köşk and "(siz)" of each row, newest first), archive#3 (a sentence and no button on a higher kademe's rows), archive#5
+# (the restored course leaves the Arşiv and the counts follow) and archive#6 (a list of twelve is paged ten at a time).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.archive.hideAndRestoreCourse
+
+data:
+  hrcMain: { json: ../.local/made/hrcMain.json }
+  hrcWeeks: { json: ../.local/made/hrcWeeks.json }
+  hrcOwn: { json: ../.local/made/hrcOwn.json }
+  hrcKosk: { json: ../.local/made/hrcKosk.json }
+  hrcAdmin: { json: ../.local/made/hrcAdmin.json }
+
+scenarios:
+  # Open: Dersler, through the sidebar. The main story: hide hrcMain after cancelling once, read the Arşiv, page, choose Dersler, restore.
+  hides:
+    given: { start: courses, enrolled: some, held: both, locks: both, pages: two }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hrcWeeks, --madrasah, '{seed.madrasah}', --weeks, '8', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcWeeks"'
+      - run: [node, helpers/course.mjs, make, hrcOwn, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcOwn"'
+      - run: [node, helpers/course.mjs, make, hrcKosk, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcKosk"'
+      - run: [node, helpers/course.mjs, make, hrcAdmin, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcAdmin"'
+      - run: [node, helpers/course.mjs, make, hrcMain, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-weeks, --as, basmuderris, --tag, hrcWeeks]
+        expect: 'hide-weeks hrcWeeks 8'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, basmuderris, --tag, hrcOwn]
+        expect: 'hide-course hrcOwn'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, koskNazim, --tag, hrcKosk]
+        expect: 'hide-course hrcKosk'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, systemAdmin, --tag, hrcAdmin]
+        expect: 'hide-course hrcAdmin'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hrcMain]
+        expect: 'course remove hrcMain'
+      - run: [node, helpers/course.mjs, remove, hrcAdmin]
+        expect: 'course remove hrcAdmin'
+      - run: [node, helpers/course.mjs, remove, hrcKosk]
+        expect: 'course remove hrcKosk'
+      - run: [node, helpers/course.mjs, remove, hrcOwn]
+        expect: 'course remove hrcOwn'
+      - run: [node, helpers/course.mjs, remove, hrcWeeks]
+        expect: 'course remove hrcWeeks'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi hrc%'"]
+        expect: '"n":0'
+
+  # Open: Arşiv, through the sidebar. hrcMain is already hidden (by the başmüderris, with the API), so the same twelve rows are there and
+  # the walk's own hide is not taken: this one covers the start on Arşiv and the paths from it.
+  opensArchive:
+    given: { start: archive, enrolled: some, held: both, locks: both, pages: two }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseArchive' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hrcWeeks, --madrasah, '{seed.madrasah}', --weeks, '8', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcWeeks"'
+      - run: [node, helpers/course.mjs, make, hrcOwn, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcOwn"'
+      - run: [node, helpers/course.mjs, make, hrcKosk, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcKosk"'
+      - run: [node, helpers/course.mjs, make, hrcAdmin, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcAdmin"'
+      - run: [node, helpers/course.mjs, make, hrcMain, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-weeks, --as, basmuderris, --tag, hrcWeeks]
+        expect: 'hide-weeks hrcWeeks 8'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, basmuderris, --tag, hrcOwn]
+        expect: 'hide-course hrcOwn'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, koskNazim, --tag, hrcKosk]
+        expect: 'hide-course hrcKosk'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, systemAdmin, --tag, hrcAdmin]
+        expect: 'hide-course hrcAdmin'
+      - run: [node, ../nazar/archive/hideAndRestoreCourse/hide.mjs, hide-course, --as, basmuderris, --tag, hrcMain]
+        expect: 'hide-course hrcMain'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hrcMain]
+        expect: 'course remove hrcMain'
+      - run: [node, helpers/course.mjs, remove, hrcAdmin]
+        expect: 'course remove hrcAdmin'
+      - run: [node, helpers/course.mjs, remove, hrcKosk]
+        expect: 'course remove hrcKosk'
+      - run: [node, helpers/course.mjs, remove, hrcOwn]
+        expect: 'course remove hrcOwn'
+      - run: [node, helpers/course.mjs, remove, hrcWeeks]
+        expect: 'course remove hrcWeeks'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi hrc%'"]
+        expect: '"n":0'
+
+nodes:
+  # the "···" of the course the walk hides, by its whole accessible name; the other rows (the seeded two and hrcWeeks) have their own
+  rowMenu: { role: button, name: 'Diğer işlemler: Deneme dersi hrcMain' }
+  menuList: { role: menu, name: 'Diğer işlemler: Deneme dersi hrcMain' }
+  toastHidden: { role: dialog, name: Ders gizlendi }
+
+# What a step leaves outside the screen, read through the API and the database as the account that did it (e2e courses#9, #10, archive#5).
+effects:
+  # courses#9 a8: Vazgeç leaves the course shown
+  cancelled:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from courses where id = '{hrcMain.course}'"]
+      expect: '"shown":true'
+  # courses#10 a6, a7 and the Arşiv's first row: the course is stamped hidden, the audit record names it once, and it is the newest hidden
+  hideMadrasahCourse:
+    - run: [node, helpers/sql.mjs, "select archived_at is not null as hidden from courses where id = '{hrcMain.course}'"]
+      expect: '"hidden":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'course.hide' and entity_id = '{hrcMain.course}'"]
+      expect: '"n":1'
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/archive?limit=1']
+      expect: '"type":"course","id":"{hrcMain.course}"'
+  # courses#10 a10 and a11, archive#5 a4: the first "Geri al" is hrcMain's, so it is shown again and listed again
+  restoreArchiveItem:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from courses where id = '{hrcMain.course}'"]
+      expect: '"shown":true'
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/courses']
+      expect: 'Deneme dersi hrcMain'

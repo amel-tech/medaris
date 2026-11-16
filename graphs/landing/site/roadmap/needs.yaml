@@ -1,0 +1,166 @@
+schema: delurio-graph/0
+kind: needs
+id: landing.site.roadmap
+status: proposed
+summary: >-
+  What must exist for a visitor who reads the public roadmap (landing.site.roadmap): the flow's whole product list. PLANNED,
+  written on 16 Nov 2026 from MDRS-246 (read in Linear: Feature, Backlog, decided 4 October, no comments), planned.md P-23 and the
+  finished landing flows. Each need is what the product must do, from the story and the decided list of the issue, never from what
+  a page does today (there is no page). Nothing is built and nothing is walked, so every need is `missing`; the only parts that
+  exist (the header and the footer that will carry the link) are named in the need that uses them, with no `built`, because the
+  link itself is the need. `missing: MDRS-246` where the issue decides it. `missing: none` where it is an open decision of the
+  owner (flow.yaml, `decisions`, D1 to D8): nothing is waiting to be built until it is decided. Landing has no browser e2e, and
+  MDRS-246 asks for a Vitest test of its own (no donation wording, every status one of the four).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing:  public-static-page, reachable-from-header-and-footer, four-phases-in-order, every-status-is-one-of-four,
+# items-follow-to-their-issues, no-donation-wording, recordings-without-the-host, content-is-hand-written-data,
+# accessible-and-responsive, the-test-that-pins-the-words, which-issues-count-as-yayinda (none, D1),
+# far-items-and-what-stays-out (none, D2), yayinda-is-true-while-production-waits (none, D3),
+# header-link-on-a-phone (none, D6)
+# unwalked: none (nothing exists to walk)
+
+needs:
+  - id: public-static-page
+    need: >-
+      Anyone, signed in or not, opens the roadmap at /yol-haritasi on the public site and reads it with no account. The page is
+      static: it reads nothing from the API or from the issue board when it opens, so it has no loading, empty or failed state.
+    evidence:
+      - state: roadmap
+      - node: page
+    missing: MDRS-246
+
+  - id: reachable-from-header-and-footer
+    need: >-
+      A visitor reaches the roadmap in one click from the header and the footer of every landing page (decided 4 October); the
+      page's own footer link marks it as the current page, as the five existing footer links do. Today the footer
+      (apps/landing/components/site-footer.tsx:3-9, :21) and the header (site-header.tsx:54) exist and carry no such link.
+    evidence:
+      - node: headerRoadmap
+      - node: footerNav
+      - node: footerRoadmapHere
+    missing: MDRS-246
+
+  - id: four-phases-in-order
+    need: >-
+      The page shows four phases in one fixed order, Bugün, Yakında, Sıradaki, Uzak, each a region named by its heading. There is
+      no date and no target line anywhere.
+    evidence:
+      - node: todayRegion
+      - node: soonRegion
+      - node: nextRegion
+      - node: farRegion
+    missing: MDRS-246
+
+  - id: every-status-is-one-of-four
+    need: >-
+      Each phase carries one status, one of Yayında, Yapılıyor, Planlandı and Vizyon, written as a word and not by colour alone,
+      in the order of the phases (Bugün with Yayında, Yakında with Yapılıyor, Sıradaki with Planlandı, Uzak with Vizyon). No other
+      status exists. Whether the status belongs to the phase or to each item is D7.
+    evidence:
+      - node: todayStatus
+      - node: soonStatus
+      - node: nextStatus
+      - node: farStatus
+    missing: MDRS-246
+
+  - id: items-follow-to-their-issues
+    need: >-
+      A visitor follows an item of Bugün, Yakında or Sıradaki to the issue or change that backs it, on a page they can open
+      without an account. Which items link, to which tracker, and in which tab is D4: MDRS-246 only asks that the pull request
+      lists each item with the code or issue that backs its status. The far items are plain text.
+    evidence:
+      - node: todayItem
+      - node: soonItem
+      - node: nextItem
+      - node: farItem
+      - state: issue_opened
+    missing: MDRS-246
+
+  - id: no-donation-wording
+    need: >-
+      No donation or fundraising word appears on the page while the permission is pending. When it is given, a donation card is
+      added in its own change, not before. The far item "tasadduk" stays out.
+    evidence:
+      - node: page
+      - node: farItem
+    missing: MDRS-246
+
+  - id: recordings-without-the-host
+    need: The page says "Ders kayıtları" for recordings and never names the service that stores or streams them.
+    evidence:
+      - node: soonItem
+    missing: MDRS-246
+
+  - id: content-is-hand-written-data
+    need: >-
+      The page's content is hand-written data in the repository (landing's content/ folder), not generated from the issue board,
+      because the board is wrong in both directions: things that are built have open issues, and the reverse. Each item is checked
+      against the code before it is published, and the pull request lists each item with the code or issue that backs its status.
+      The owner corrects the draft before anything is built.
+    evidence:
+      - node: page
+    missing: MDRS-246
+
+  - id: accessible-and-responsive
+    need: >-
+      The page works at phone width, in light and dark, and with reduced motion. Each phase is a region named by its heading, each
+      list is named by it too, and the page reads and its links work without JavaScript.
+    evidence:
+      - node: todayRegion
+      - node: todayList
+      - node: soonRegion
+      - node: nextRegion
+      - node: farRegion
+    missing: MDRS-246
+
+  - id: the-test-that-pins-the-words
+    need: >-
+      A test in apps/landing/test pins that no donation wording appears and that every status is one of the four, and the
+      repository's gate is green.
+    evidence:
+      - node: todayStatus
+      - node: soonStatus
+      - node: nextStatus
+      - node: farStatus
+    missing: MDRS-246
+
+  - id: which-issues-count-as-yayinda
+    need: >-
+      "Yayında" means what ships at the launch: what is on main, what is in review, and a few more issues the owner names. The
+      owner names them, and the draft is re-sorted against the code first: "Herkese açık profil" is switched off (ROADMAP-1),
+      three of the draft's four "Yapılıyor" items have shipped (ROADMAP-2), and "Ödev" and part of the e-mail items are built
+      (ROADMAP-3, ROADMAP-4).
+    evidence:
+      - node: todayItem
+      - node: soonItem
+      - node: nextItem
+    missing: "D1: the owner's call, MDRS-246 \"To decide\" 1"
+
+  - id: far-items-and-what-stays-out
+    need: >-
+      The owner decides which far items are named even carefully worded and which stay out (tasadduk, a chain-based icazet ledger,
+      VR/AR, own live-class servers, Matrix, AI traces, peer-reviewed publishing stay out in the draft).
+    evidence:
+      - node: farRegion
+      - node: farItem
+    missing: "D2: MDRS-246 \"To decide\" 2"
+
+  - id: yayinda-is-true-while-production-waits
+    need: >-
+      If production does not serve yet, the word "Yayında" and the line around it say so truthfully, in words the owner chooses.
+      MDRS-96 and MDRS-128 (the production environment) were read as In Progress on 16 Nov 2026; whether production serves was not
+      checked.
+    evidence:
+      - node: todayStatus
+    missing: "D3: MDRS-246 \"To decide\" 3"
+
+  - id: header-link-on-a-phone
+    need: >-
+      Where the roadmap link sits in the header on a phone, which has a bar with no room for it, and whether the header link marks
+      the current page, is decided. Drawn for the wide layout only.
+    evidence:
+      - node: headerRoadmap
+    missing: no Linear issue; D6; related to L6 (the phone header has no "Kayıt ol" either)

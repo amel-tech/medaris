@@ -1,0 +1,14 @@
+{
+  "consentTitle": "Bilgilerin {0} ile paylaşılsın mı?",
+  "consentLead": "{0}, Medaris hesabındaki şu bilgileri görecek:",
+  "consentLinksIntro": "{0} bunları nasıl kullandığını anlatıyor:",
+  "consentTerms": "Kullanım şartları",
+  "consentPolicy": "Gizlilik politikası",
+  "consentAccept": "İzin ver",
+  "consentCancel": "Vazgeç",
+  "genderScopeConsentText": "Cinsiyetin",
+  "emailScopeConsentText": "E-posta adresin",
+  "fullNameScopeConsentText": "Adın ve soyadın",
+  "privacyNoticeNewTab": "Yeni sekmede açılır.",
+  "Changes.note": "İzin verirsen {0} listelenen bilgilerini görür; Medaris bu izni hatırlar ve aynı bilgiler için bir daha sormaz. Vazgeçersen hiçbir bilgin paylaşılmaz."
+}

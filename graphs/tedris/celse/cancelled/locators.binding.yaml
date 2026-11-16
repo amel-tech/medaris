@@ -1,0 +1,70 @@
+# What tedris.celse.cancelled's bindings share: where the walk's data is, the effect that reads the page's own read from the API, the address
+# of each state and exit, and where role and name cannot find a node (or would find the node of the page the walk leaves for). It carries no
+# scenario, so it is not walked by itself:
+#   binding.yaml          the main story: a celse cancelled with a note and a make-up, read from Programım, then the link to the make-up
+#   binding.bare.yaml     a celse cancelled with neither a note nor a make-up (`--to cancelledShown` of the second kind)
+#   binding.missing.yaml  a cancelled lesson that is no live celse: the not-found page (`--to notFound`)
+# Every scenario is in a file of its own, because `--to <state>` takes the shortest way from the first scenario that reaches the state and
+# the state `cancelledShown` is the same for each kind of cancellation.
+#
+# The data of the walk: cancelled-data.mjs (this folder) makes a published course of its own in the second köşk, with four cancelled lessons
+# and the spare talebe `applicantF` holding a seat; its ids are in graphs/.local/cancelled-celse.json, read after `setup` has run.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.celse.cancelled
+
+browser: { width: 1280, height: 900 }
+
+data:
+  cancelled: { json: ../.local/cancelled-celse.json }
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+
+# What tedrisat tells this talebe about the celse, read at the moment the page has been read: e2e session#10 asserted that the page never
+# holds the meeting link of a cancelled celse; the API is where the link is withheld (null for a cancelled celse even to a content
+# reader), and the same answer carries the status. The last effect is the cancellation reaching the talebe as a person: cancelLesson
+# wrote a SESSION_CANCELLED notification for each of the two cancelled celses that have a time still ahead (the video lesson has none and
+# the recorded one is over); `setup` emptied the account's notifications before the course was made, so the count is the walk's own.
+effects:
+  getSession:
+    - run: [node, helpers/api.mjs, applicantF, GET, '/courses/{cancelled.course}/sessions/{celse}']
+      expect: '"status":"CANCELLED"'
+    - run: [node, helpers/api.mjs, applicantF, GET, '/courses/{cancelled.course}/sessions/{celse}']
+      expect: '"meetingUrl":null'
+    - run: [node, helpers/sql.mjs, "select count(*) as n from notifications where type = 'SESSION_CANCELLED' and user_id = '{secret.E2E_APPLICANT_F_SUB}'"]
+      expect: '"n":2'
+
+states:
+  cancelledShown: { url: '{tedris}/courses/{cancelled.course}/lessons/{celse}' }
+  makeUpPage: { url: '{tedris}/courses/{cancelled.course}/lessons/{cancelled.makeUp}' }
+  notFound: { url: '{tedris}/courses/{cancelled.course}/lessons/{celse}' }
+  # An exit has no nodes, so its address is all the replay can check.
+  kosk_opened: { url: '{tedris}/kosks/{cancelled.kosk}' }
+  course_opened: { url: '{tedris}/courses/{cancelled.course}' }
+  home_opened: { url: '{tedris}/home' }
+  left: { url: '{tedris}/home' }
+
+# Both celse pages have a pager and the pages the walk leaves for have none, so the page is the <main> that holds it. The header's
+# nodes are looked for inside the breadcrumb, the meta line or the card by the hooks the page draws (data-testid, the kit's classes).
+nodes:
+  celsePage: { css: 'main:has(nav[aria-label="Celseler arasında"])' }
+  crumbs: { role: navigation, name: Sayfa yolu, within: { css: 'main:has(nav[aria-label="Celseler arasında"])' } }
+  crumbKosk: { role: link, name: '{seed.titles.kosk2}', within: { role: navigation, name: Sayfa yolu } }
+  crumbCourse: { role: link, name: '{cancelled.title}', within: { role: navigation, name: Sayfa yolu } }
+  crumbWeek: { text: '/^Hafta \d+$/', within: { role: navigation, name: Sayfa yolu } }
+  eyebrowWeek: { text: '/^Hafta \d+ · \d+\. celse$/', within: { css: 'main:has(nav[aria-label="Celseler arasında"])' } }
+  metaWhen: { css: '[data-testid=session-meta] time' }
+  metaLength: { css: '[data-testid=session-meta] span', hasText: '/^\d+ dk$/' }
+  metaHoca: { css: '[data-testid=session-meta] span.text-neutral-default', hasText: Hoca }
+  title: { role: heading, name: '{celseTitle}' }
+  badgeCancelled: { css: '[data-testid=session-state]', hasText: İptal edildi }
+  cardEyebrow: { css: '[data-testid=session-action] p.mds-eyebrow' }
+  dateBlock: { css: '[data-date-block]' }
+  blockCaption: { css: '[data-date-block] span.mds-caption', hasText: İptal edildi }
+  noteLine: { testId: cancel-note, hasText: '{cancelled.note}' }
+  makeUpLine: { css: '[data-testid=session-action] p.mds-body-sm', hasText: '/Telafi celsesi: /' }
+  noMakeUpLine: { css: '[data-testid=session-action] p.mds-body-sm', hasText: '/Hoca yeni bir zaman belirlerse/' }
+  cancelledJoinText: { css: '[data-testid=session-action] p.mds-caption', hasText: Bu celse için toplantı bağlantısı yok. }
+  makeUpTitle: { role: heading, name: '{cancelled.makeUpTitle}' }

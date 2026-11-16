@@ -1,0 +1,1876 @@
+# Roles, grants, groups, nazırs and "what do I hold" (inventory domain.md lines 3389-3798): 36 handlers, 36 actions.
+# The handlers, by controller: PermissionAdminController (11: /nizam/permissions, /nizam/medaris-nazims*, /nizam/permission-groups*),
+# MeAssignmentsController (5: /me/*), NizamController (1: /nizam/chief-nazim), CourseNazirController (4: /courses/{id}/nazirs*),
+# KoskGrantsController (4: /kosks/{id}/grants*), MadrasahNazirController (4: /madrasahs/{id}/nazirs*) and MadrasahPermissionController
+# (7: /madrasahs/{id}/permissions, /permission-groups* and /nazirs/{userId}/permissions). Every `source` is the line of the route decorator.
+#
+# Path parameters are written {id}, as OpenAPI does; the code names them :id. Each action lists its own refusals in full. Left out of every
+# action: the 401 of AuthGuard for no token or a token that does not verify (invariant access-token-only), the 429 of the throttler that runs
+# before the guards (invariant rate-limit-before-auth) and a 500 for a bug.
+# The machine draft attached a 503 KEYCLOAK_ADMIN_UNAVAILABLE to nearly every handler here. It is real only on the three appointment routes that
+# call findUnknownAccounts or findById (createCourseNazir, createKoskGrant, addMadrasahNazir); every other route here swallows a directory
+# failure and leaves a name null. KEYCLOAK_ADMIN_NOT_CONFIGURED is never answered here: an unconfigured directory skips the realm check.
+# Order of refusals on the /nizam routes that carry only AuthGuard: a path parameter that is no uuid (HTTP_400) and a bad body
+# (VALIDATION_ERROR) come before the service's own 403, because the SYSTEM_ADMIN check is made inside the service; on the guarded routes
+# the guard's 403 and the resolver's 404 come first, and the pipes after.
+#
+# Names: the controller method, with its resource when the method is generic.
+#   PermissionAdminController: catalog -> getPermissionCatalog, list -> listMedarisNazims, appoint -> appointMedarisNazim, setGrants -> setMedarisNazimGrants,
+#   given -> getMedarisNazimGiven, dismiss -> dismissMedarisNazim, groups -> listPermissionGroups, createGroup -> createPermissionGroup,
+#   updateGroup -> updatePermissionGroup, deleteGroup -> deletePermissionGroup, groupUsers -> listPermissionGroupUsers.
+#   MeAssignmentsController: assignmentsOf, roles, grants, permissions, effectivePermissions -> getMyAssignments, getMyRoles, getMyGrants, getMyPermissions,
+#   getMyEffectivePermissions. NizamController: chiefNazim -> getChiefNazim.
+#   CourseNazirController: list, create, update, revoke -> listCourseNazirs, createCourseNazir, updateCourseNazir, revokeCourseNazir.
+#   KoskGrantsController: list, create, update, revoke -> listKoskGrants, createKoskGrant, updateKoskGrant, revokeKoskGrant.
+#   MadrasahNazirController: list, addNazir, grants, removeNazir -> listMadrasahNazirs, addMadrasahNazir, getMadrasahNazirGrants, removeMadrasahNazir.
+#   MadrasahPermissionController: catalog, groups, createGroup, updateGroup, deleteGroup, nazirPermissions, setNazirPermissions -> getMadrasahPermissionCatalog,
+#   listMadrasahPermissionGroups, createMadrasahPermissionGroup, updateMadrasahPermissionGroup, deleteMadrasahPermissionGroup, getMadrasahNazirPermissions,
+#   setMadrasahNazirPermissions.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+actions:
+  # ---- the platform: Medaris nazımları and the platform and course permission groups (SYSTEM_ADMIN alone) ----
+  getPermissionCatalog:
+    route: GET /nizam/permissions
+    summary: The permission codes of the platform and of a course, in the sections the nizam screens print
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    result:
+      status: 200
+      type: object
+      required: [platform, course]
+      properties:
+        platform:
+          type: array
+          items:
+            type: object
+            required: [id, permissions]
+            properties: { id: { enum: [kosks, madrasahs, requests, bans, audit] }, permissions: { type: array, items: { type: string } } }
+          note: the 19 platform codes in five sections
+        course: { type: array, items: { type: string }, note: the 21 course codes a course-scoped group may carry }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+    note: "Codes only: the sentence for a code is the web app's (account.permissions.<code>). No database read."
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:66
+
+  listMedarisNazims:
+    route: GET /nizam/medaris-nazims
+    summary: The Medaris nazımları in office, with their groups and single platform permissions
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [user, appointedBy, appointedAt, assignmentExpiresAt, expiresAt, groups, permissions]
+        properties:
+          user:
+            type: object
+            required: [id, name, email]
+            properties:
+              id: { type: string, format: uuid, references: User }
+              name: { type: [string, "null"], sensitivity: personal }
+              email: { type: [string, "null"], format: email, sensitivity: personal }
+          appointedBy:
+            type: object
+            required: [id, name, email]
+            properties:
+              id: { type: string, format: uuid, references: User }
+              name: { type: [string, "null"], sensitivity: personal }
+              email: { type: [string, "null"], format: email, sensitivity: personal }
+          appointedAt: { type: string, format: date-time }
+          assignmentExpiresAt: { type: [string, "null"], format: date-time, note: the appointment's own end; null while it has none}
+          expiresAt:
+            type: [string, "null"]
+            format: date-time
+            note: the earliest end among the appointment and the platform permissions; null when nothing ends
+          groups:
+            type: array
+            items:
+              type: object
+              required: [id, name, scope, courseTitle, permissions]
+              properties:
+                id: { type: string, format: uuid, references: PermissionGroup }
+                name: { type: string }
+                scope: { enum: [PLATFORM, ALL_COURSES, COURSE] }
+                courseTitle: { type: [string, "null"] }
+                permissions: { type: array, items: { type: string } }
+            note: every group held, the platform's and the course-wide ones
+          permissions:
+            type: array
+            items:
+              type: object
+              required: [code, grantedAt]
+              properties: { code: { type: string }, grantedAt: { type: string, format: date-time } }
+            note: platform permissions given one by one, not through a group
+      note: held appointments only, oldest first; a row whose end has passed is not listed. appointedBy is declared nullable in the DTO but the service always fills it (an unknown person has a null name)
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+    note: "Names come from the users table and, for a person who never signed in, from the realm directory (findById); a directory failure leaves the name null and is not an error."
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:81
+
+  appointMedarisNazim:
+    route: POST /nizam/medaris-nazims
+    summary: Appoint a Medaris nazım and give them their platform permissions in the same call
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    body:
+      type: object
+      required: [userId, permissions]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid, references: User }
+        groupId: { type: [string, "null"], format: uuid, references: PermissionGroup }
+        permissions: { type: array, maxItems: 64, items: { type: string } }
+        expiresAt: { type: [string, "null"], format: date-time, note: when the appointment and its permissions end; empty means never }
+    result:
+      status: 201
+      type: object
+      required: [user, appointedBy, appointedAt, assignmentExpiresAt, expiresAt, groups, permissions]
+      properties:
+        user:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        appointedBy:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        appointedAt: { type: string, format: date-time }
+        assignmentExpiresAt: { type: [string, "null"], format: date-time, note: the appointment's own end; null while it has none}
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+          note: the earliest end among the appointment and the platform permissions; null when nothing ends
+        groups:
+          type: array
+          items:
+            type: object
+            required: [id, name, scope, courseTitle, permissions]
+            properties:
+              id: { type: string, format: uuid, references: PermissionGroup }
+              name: { type: string }
+              scope: { enum: [PLATFORM, ALL_COURSES, COURSE] }
+              courseTitle: { type: [string, "null"] }
+              permissions: { type: array, items: { type: string } }
+          note: every group held, the platform's and the course-wide ones
+        permissions:
+          type: array
+          items: { type: object, required: [code, grantedAt], properties: { code: { type: string }, grantedAt: { type: string, format: date-time } } }
+          note: platform permissions given one by one, not through a group
+      note: the new row, as listMedarisNazims gives it
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "a userId or groupId that is no uuid, more than 64 codes, a non-string code, an expiresAt that is no date string, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "expiresAt is not after now (The end date is in the past)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:125 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the platform catalogue (Not in this scope's catalog: ...)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:451 }
+      PERMISSION_GROUP_SCOPE_INVALID: { status: 400, note: "the group is not a platform group (Only a group defined for the platform can be given here)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:171 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, note: "no live group with that id", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:169 }
+      MEDARIS_NAZIM_ALREADY_APPOINTED: { status: 409, note: "the user already holds a live MEDARIS_NAZIM seat (unique held index role_assignments_held_platform_idx)", source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:366 }
+    sideEffects:
+      - "one transaction: revokes a lapsed but unrevoked MEDARIS_NAZIM seat of the same person, inserts the seat (scope platform, no scope id, granted_by the actor, expires_at = expiresAt)"
+      - "revokes what the person still holds from an earlier seat that no seat below the platform covers (revokeOrphanedGrants, anywhere), so it does not come back with the platform seat"
+      - "inserts the platform grants: one row per extra code, or one row for the group, authority PLATFORM, ending with the seat; codes the group already carries are not repeated (extrasBeyondGroup)"
+      - "audit:medaris_nazim.appoint"
+      - "audit:permission.grant when anything is given"
+    note: "The account is not checked for existence: there is no directory lookup on this route, so any uuid is appointed (see the invariant medaris-nazim-is-a-known-account). No mail, no notification, no Keycloak read or write."
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:96
+
+  setMedarisNazimGrants:
+    route: PUT /nizam/medaris-nazims/{userId}/grants
+    summary: Replace a Medaris nazım's platform group and single permissions
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    body:
+      type: object
+      required: [permissions]
+      additionalProperties: false
+      properties:
+        groupId: { type: [string, "null"], format: uuid, references: PermissionGroup }
+        permissions: { type: array, maxItems: 64, items: { type: string }, note: the single permissions on top of the group }
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+          note: when the permissions end; empty means when the appointment ends; never after it
+    result:
+      status: 200
+      type: object
+      required: [user, appointedBy, appointedAt, assignmentExpiresAt, expiresAt, groups, permissions]
+      properties:
+        user:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        appointedBy:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        appointedAt: { type: string, format: date-time }
+        assignmentExpiresAt: { type: [string, "null"], format: date-time, note: the appointment's own end; null while it has none}
+        expiresAt:
+          type: [string, "null"]
+          format: date-time
+          note: the earliest end among the appointment and the platform permissions; null when nothing ends
+        groups:
+          type: array
+          items:
+            type: object
+            required: [id, name, scope, courseTitle, permissions]
+            properties:
+              id: { type: string, format: uuid, references: PermissionGroup }
+              name: { type: string }
+              scope: { enum: [PLATFORM, ALL_COURSES, COURSE] }
+              courseTitle: { type: [string, "null"] }
+              permissions: { type: array, items: { type: string } }
+          note: every group held, the platform's and the course-wide ones
+        permissions:
+          type: array
+          items: { type: object, required: [code, grantedAt], properties: { code: { type: string }, grantedAt: { type: string, format: date-time } } }
+          note: platform permissions given one by one, not through a group
+      note: the updated row
+    refusals:
+      HTTP_400: { status: 400, note: "userId in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "a groupId that is no uuid, more than 64 codes, a non-string code, an expiresAt that is no date string, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the platform catalogue", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:451 }
+      PERMISSION_GROUP_SCOPE_INVALID: { status: 400, note: "the group is not a platform group", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:171 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "expiresAt is not after now (:417), or is after the appointment's end (:420, after-assignment)", source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:417 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+      MEDARIS_NAZIM_NOT_FOUND: { status: 404, note: "the user holds no live MEDARIS_NAZIM seat (lockNazimRole)", source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:556 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, note: "no live group with that id", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:169 }
+    sideEffects:
+      - "one transaction: locks the person's held seat (for update); planGrants diffs the held platform grants against the wanted group and codes: kept rows are untouched (same id, giver and date), others are revoked in the actor's name, kept rows with a different end are re-timed, missing ones are inserted (authority PLATFORM, ending with the appointment unless expiresAt is earlier)"
+      - "audit:permission.grant, audit:permission.revoke, audit:permission.retime (each only when something of that kind happened; retime lists the previous ends)"
+    note: "No group and no codes empties the person without dismissing them."
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:114
+
+  getMedarisNazimGiven:
+    route: GET /nizam/medaris-nazims/{userId}/given
+    summary: What a Medaris nazım has handed on, the question a dismissal asks
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [kind, id, role, permission, groupName, to, groupPermissions, groupAction, scopeType, scopeName]
+        properties:
+          kind: { enum: [ROLE, GRANT, GROUP] }
+          id: { type: string, format: uuid, note: 'the role row, the grant row or, for a GROUP, the permission group' }
+          role: { type: [string, "null"] }
+          permission: { type: [string, "null"] }
+          groupName: { type: [string, "null"] }
+          to:
+            type: [object, "null"]
+            required: [id, name, email]
+            properties:
+              id: { type: string, format: uuid, references: User }
+              name: { type: [string, "null"], sensitivity: personal }
+              email: { type: [string, "null"], format: email, sensitivity: personal }
+          groupPermissions: { type: [array, "null"], items: { type: string }, note: the codes a GROUP carries now; null for a role or a grant }
+          groupAction: { enum: [create, update, null], note: 'for a GROUP, whether the person defined it or last changed it' }
+          scopeType: { type: string }
+          scopeName: { type: [string, "null"] }
+      note: ROLE and GRANT items are what the person gave that is still held, in any scope, their own self-made rows included (to is the person); GROUP items are the groups they defined or last changed, listed for information, and need no answer
+    refusals:
+      HTTP_400: { status: 400, note: "userId in the path is not a uuid (ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+      MEDARIS_NAZIM_NOT_FOUND: { status: 404, note: "the user holds no live MEDARIS_NAZIM seat", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:188 }
+    note: "Reads role_assignments and permission_grants where granted_by is the person and the row is still held, and the groups they touched from the audit rows permission_group.create and permission_group.update (groupsTouchedBy)."
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:132
+
+  dismissMedarisNazim:
+    route: DELETE /nizam/medaris-nazims/{userId}
+    summary: Dismiss a Medaris nazım, answering for everything they handed on
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    body:
+      type: object
+      required: [decisions]
+      additionalProperties: false
+      properties:
+        decisions:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [kind, id, action]
+            additionalProperties: false
+            properties:
+              kind: { enum: [ROLE, GRANT] }
+              id: { type: string, format: uuid, note: 'a RoleAssignment id for ROLE, a PermissionGrant id for GRANT' }
+              action: { enum: [TAKE_OVER, DROP] }
+          note: one per ROLE and GRANT that getMedarisNazimGiven lists as given to someone else, none for anything else and none twice; none for a row the person made for themselves
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "userId in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "a decision of the wrong shape, more than 500 decisions, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      DISMISS_DECISIONS_INCOMPLETE: { status: 400, note: "the decisions are not exactly the set to answer, or a TAKE_OVER names a row the person made for themselves; nothing is written", source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:590 }
+      DISMISS_TAKE_OVER_WITHOUT_SEAT: { status: 400, note: "a grant answered TAKE_OVER would vanish with the seat dropped beside it", source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:649 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+      MEDARIS_NAZIM_NOT_FOUND: { status: 404, note: "the user holds no live MEDARIS_NAZIM seat", source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:556 }
+      DISMISS_SEAT_HANDED_ON: { status: 409, note: "a dropped seat whose holder handed on something still held under it, which no seat of theirs backs any more (Dismiss <ids> first)", source: apps/tedrisat/src/assignment/admin/orphaned-grants.ts:321 }
+    sideEffects:
+      - "one transaction: locks the seat; for each given row TAKE_OVER sets granted_by to the actor (the right stays, under the başnazım's name) and DROP revokes it; rows the person made for themselves are revoked whatever is sent"
+      - "a role dropped also revokes, with revokeOrphanedGrants, whatever its holder was given in that seat's scope tree by anyone, unless another role of theirs below the platform still covers it"
+      - "revokes every platform grant of the person and the MEDARIS_NAZIM seat itself"
+      - "audit:medaris_nazim.dismiss"
+    note: "A DELETE with a body. No notification or mail."
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:150
+
+  listPermissionGroups:
+    route: GET /nizam/permission-groups
+    summary: The live platform groups and course groups, with their codes and how many people hold each
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [id, name, scope, courseId, courseTitle, permissions, userCount]
+        properties:
+          id: { type: string, format: uuid, references: PermissionGroup }
+          name: { type: string }
+          scope: { enum: [PLATFORM, ALL_COURSES, COURSE] }
+          courseId: { type: [string, "null"], format: uuid, references: Course }
+          courseTitle: { type: [string, "null"] }
+          permissions: { type: array, items: { type: string } }
+          userCount: { type: integer, minimum: 0, note: people who hold the group right now }
+      note: oldest first; a medrese's own groups are not listed here
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:170
+
+  createPermissionGroup:
+    route: POST /nizam/permission-groups
+    summary: Define a platform group or a course group
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    body:
+      type: object
+      required: [name, scope, permissions]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 80, pattern: \S, note: trimmed; must contain a non-space character }
+        scope: { enum: [PLATFORM, ALL_COURSES, COURSE] }
+        courseId: { type: string, format: uuid, references: Course, note: 'required with scope COURSE, refused with any other' }
+        permissions: { type: array, maxItems: 64, items: { type: string } }
+    result:
+      status: 201
+      type: object
+      required: [id, name, scope, courseId, courseTitle, permissions, userCount]
+      properties:
+        id: { type: string, format: uuid, references: PermissionGroup }
+        name: { type: string }
+        scope: { enum: [PLATFORM, ALL_COURSES, COURSE] }
+        courseId: { type: [string, "null"], format: uuid, references: Course }
+        courseTitle: { type: [string, "null"] }
+        permissions: { type: array, items: { type: string } }
+        userCount: { type: integer, minimum: 0, note: people who hold the group right now }
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "a blank or over-long name, a scope that is none of the three, a courseId that is no uuid, more than 64 codes, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      PERMISSION_GROUP_EMPTY: { status: 400, note: "no code is left after de-duplication (A group holds at least one permission)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:441 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the scope's catalogue: the platform's 19 for PLATFORM, the course's 21 otherwise", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:451 }
+      PERMISSION_GROUP_SCOPE_INVALID: { status: 400, note: "COURSE without a courseId (:333), a courseId that names no course (:336), or a courseId sent with another scope (:340); an unknown scope never gets here, the DTO refuses it first", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:333 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+      PERMISSION_GROUP_NAME_TAKEN: { status: 409, note: "another live group has the same name, whatever its case, among the groups with the same scope id (null for the platform and every-course groups); the partial unique index permission_groups_name_idx is the backstop for those, a group of one course has the service check alone", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:345 }
+    sideEffects:
+      - "inserts the group (name trimmed; scope_type platform for PLATFORM and course for the other two; scope_id the courseId for COURSE, null for ALL_COURSES; created_by the actor) and its de-duplicated items"
+      - "audit:permission_group.create (name, scope, authority PLATFORM, codes)"
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:185
+
+  updatePermissionGroup:
+    route: PUT /nizam/permission-groups/{id}
+    summary: Rename a platform or course group or replace its codes
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    body:
+      type: object
+      required: [name, permissions]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 80, pattern: \S }
+        permissions: { type: array, maxItems: 64, items: { type: string } }
+        usersPolicy: { enum: [keep, revoke], note: required when the codes change and anyone holds the group }
+    result:
+      status: 200
+      type: object
+      required: [id, name, scope, courseId, courseTitle, permissions, userCount]
+      properties:
+        id: { type: string, format: uuid, references: PermissionGroup }
+        name: { type: string }
+        scope: { enum: [PLATFORM, ALL_COURSES, COURSE] }
+        courseId: { type: [string, "null"], format: uuid, references: Course }
+        courseTitle: { type: [string, "null"] }
+        permissions: { type: array, items: { type: string } }
+        userCount: { type: integer, minimum: 0, note: people who hold the group right now }
+      note: re-read after the write
+    refusals:
+      HTTP_400: { status: 400, note: "id in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "a blank or over-long name, more than 64 codes, a usersPolicy that is neither keep nor revoke, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      PERMISSION_GROUP_EMPTY: { status: 400, note: "no code is left after de-duplication", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:441 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the catalogue of the group's own scope", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:451 }
+      USERS_POLICY_REQUIRED: { status: 400, note: "the codes change, people hold the group and no usersPolicy was sent (<n> people use this group); the repository recounts under the group's lock, so a holder who appeared meanwhile counts too", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:371 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, note: "no live group, or the group belongs to a medrese", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:430 }
+      PERMISSION_GROUP_NAME_TAKEN: { status: 409, note: "another live group has the name in the same scope id (also the unique violation of the index, read as the same refusal)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:374 }
+    sideEffects:
+      - "one transaction, group row locked: when the codes change and anyone holds the group every holder is detached from the group row (keep first gives each holder the group's old codes as single permissions in the same scope, with the same end and giver, skipping codes they hold singly already; revoke gives nothing); the holder's group grant is revoked either way, so the new set reaches only whoever is given the group from now on"
+      - "replaces the items (delete and insert) only if the set changed; updates the name if it differs"
+      - "audit:permission_group.update (name, previousName, scope, authority, permissions, previousPermissions, usersPolicy, affectedUsers, holderIds)"
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:204
+
+  deletePermissionGroup:
+    route: DELETE /nizam/permission-groups/{id}
+    summary: Delete a platform or course group (a soft delete; its name becomes free again)
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        usersPolicy:
+          enum: [keep, revoke]
+          note: 'required while anyone holds the group: keep turns its codes into single permissions for each holder, revoke takes them away'
+      note: a DELETE with a body, which may be left out when nobody holds the group
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "id in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "a usersPolicy that is neither keep nor revoke, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      USERS_POLICY_REQUIRED: { status: 400, note: "people hold the group and no usersPolicy was sent", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:393 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, note: "no live platform or course group with that id", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:430 }
+    sideEffects:
+      - "detaches every holder as updatePermissionGroup does, then sets permission_groups.deleted_at"
+      - "audit:permission_group.delete (name, scope, authority, permissions, usersPolicy, affectedUsers, holderIds)"
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:223
+
+  listPermissionGroupUsers:
+    route: GET /nizam/permission-groups/{id}/users
+    summary: The people who hold a platform or course group right now
+    needs: "SYSTEM_ADMIN alone: AuthGuard, then PermissionAdminService.actor() (the realm role in the token, and a sub that is a uuid); no @Authz"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [userId, name, email, isMedarisNazim, expiresAt]
+        properties:
+          userId: { type: string, format: uuid, references: User }
+          name: { type: [string, "null"], sensitivity: personal }
+          email: { type: [string, "null"], format: email, sensitivity: personal }
+          isMedarisNazim: { type: boolean, note: holds the MEDARIS_NAZIM seat right now }
+          expiresAt: { type: [string, "null"], format: date-time }
+    refusals:
+      HTTP_400: { status: 400, note: "id in the path is not a uuid (ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the caller is not SYSTEM_ADMIN, or the token's sub is not a uuid (Only the Medaris başnazımı manages Medaris nazımları and permission groups)", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:91 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, note: "no live platform or course group with that id", source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:430 }
+    note: "Names are best effort, from users and then the realm directory; no 503."
+    source: apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:240
+
+  # ---- what the caller holds (every signed-in caller; every route answers about the caller only) ----
+  getMyAssignments:
+    route: GET /me/assignments
+    summary: The roles the caller holds, each with its scope
+    needs: "a signed-in caller: AuthGuard only, no @Authz; every route answers about the caller's own rows"
+    result:
+      status: 200
+      type: object
+      required: [assignments]
+      properties:
+        assignments:
+          type: array
+          items:
+            type: object
+            required: [id, role, scopeType, scopeId, scopeName, isImam, grantedAt, expiresAt, grantedBy, grantedBySelf]
+            properties:
+              id: { type: string, format: uuid, references: RoleAssignment }
+              role: { enum: [MEDARIS_NAZIM, KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR] }
+              scopeType: { enum: [platform, kosk, madrasah, course] }
+              scopeId: { type: [string, "null"], format: uuid, note: 'null for the platform; a köşk, a medrese or a course by scopeType' }
+              scopeName: { type: [string, "null"] }
+              isImam: { type: boolean, note: the course's imam; MUDERRIS only}
+              grantedAt: { type: string, format: date-time }
+              expiresAt: { type: [string, "null"], format: date-time }
+              grantedBy:
+                type: object
+                required: [id, displayName]
+                properties: { id: { type: string, format: uuid, references: User }, displayName: { type: [string, "null"], sensitivity: personal } }
+              grantedBySelf: { type: boolean, note: the caller gave this role to themselves }
+              course:
+                type: object
+                note: present only when the scope is a course
+                required: [status, hidden, koskId, koskName, madrasahId, madrasahName, studentCount, muderrisCount]
+                properties:
+                  status: { enum: [DRAFT, PUBLISHED] }
+                  hidden: { type: boolean, note: hidden (archived) by its köşk's manager}
+                  koskId: { type: string, format: uuid, references: Kosk }
+                  koskName: { type: string }
+                  madrasahId: { type: [string, "null"], format: uuid, references: Madrasah }
+                  madrasahName: { type: [string, "null"] }
+                  studentCount: { type: integer, minimum: 0, note: talebe currently enrolled }
+                  muderrisCount: { type: integer, minimum: 0 }
+      note: 'held rows only: not revoked and not past their end, against the database clock; a role whose scope row no longer exists is left out (scopeExists)'
+    note: "A token whose sub is not a uuid holds nothing: the answer is an empty list (userIdOf)."
+    source: apps/tedrisat/src/assignment/me-assignments.controller.ts:40
+
+  getMyRoles:
+    route: GET /me/roles
+    summary: Which roles the caller holds and in how many scopes
+    needs: "a signed-in caller: AuthGuard only, no @Authz; every route answers about the caller's own rows"
+    result:
+      status: 200
+      type: object
+      required: [systemAdmin, roles]
+      properties:
+        systemAdmin: { type: boolean, note: the SYSTEM_ADMIN realm role in the token }
+        roles:
+          type: array
+          items:
+            type: object
+            required: [role, scopeCount]
+            properties:
+              role: { enum: [MEDARIS_NAZIM, KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR] }
+              scopeCount: { type: integer, minimum: 1, note: in how many scopes the role is held }
+      note: counted from the held assignments
+    source: apps/tedrisat/src/assignment/me-assignments.controller.ts:52
+
+  getMyGrants:
+    route: GET /me/grants
+    summary: The permissions and permission groups given to the caller
+    needs: "a signed-in caller: AuthGuard only, no @Authz; every route answers about the caller's own rows"
+    result:
+      status: 200
+      type: object
+      required: [grants]
+      properties:
+        grants:
+          type: array
+          items:
+            type: object
+            required: [id, scopeType, scopeId, scopeName, permission, group, grantedAt, expiresAt, grantedBy, grantedBySelf]
+            properties:
+              id: { type: string, format: uuid, references: PermissionGrant }
+              scopeType: { enum: [platform, kosk, madrasah, course] }
+              scopeId: { type: [string, "null"], format: uuid, note: 'null means the platform, or every course' }
+              scopeName: { type: [string, "null"] }
+              permission: { type: [string, "null"], note: a catalogue code; null when the grant is a group }
+              group:
+                type: [object, "null"]
+                required: [id, name, permissions]
+                properties:
+                  id: { type: string, format: uuid, references: PermissionGroup }
+                  name: { type: string }
+                  permissions: { type: array, items: { type: string } }
+              grantedAt: { type: string, format: date-time }
+              expiresAt: { type: [string, "null"], format: date-time }
+              grantedBy:
+                type: object
+                required: [id, displayName]
+                properties: { id: { type: string, format: uuid, references: User }, displayName: { type: [string, "null"], sensitivity: personal } }
+              grantedBySelf: { type: boolean }
+      note: held rows only; exactly one of permission and group is set on each; a grant whose scope row no longer exists is left out
+    source: apps/tedrisat/src/assignment/me-assignments.controller.ts:62
+
+  getMyPermissions:
+    route: GET /me/permissions
+    summary: Every permission code the caller holds in any scope
+    needs: "a signed-in caller: AuthGuard only, no @Authz; every route answers about the caller's own rows"
+    result:
+      status: 200
+      type: object
+      required: [permissions]
+      properties: { permissions: { type: array, items: { type: string } } }
+      note: the union of every code of getMyEffectivePermissions, flattened
+    source: apps/tedrisat/src/assignment/me-assignments.controller.ts:72
+
+  getMyEffectivePermissions:
+    route: GET /me/effective-permissions
+    summary: The caller's permissions by role and scope, as the engine decides them
+    needs: "a signed-in caller: AuthGuard only, no @Authz; every route answers about the caller's own rows"
+    result:
+      status: 200
+      type: object
+      required: [groups]
+      properties:
+        groups:
+          type: array
+          items:
+            type: object
+            required: [role, scopeType, scopes, permissions]
+            properties:
+              role:
+                enum: [MEDARIS_NAZIM, KOSK_NAZIM, MEDRESE_BASMUDERRIS, MEDRESE_NAZIR, MUDERRIS, DERS_NAZIR, null]
+                note: null for scopes where the caller holds a grant but no role
+              scopeType: { enum: [platform, kosk, madrasah, course] }
+              scopes:
+                type: array
+                items:
+                  type: object
+                  required: [type, id, name]
+                  properties:
+                    type: { enum: [platform, kosk, madrasah, course] }
+                    id: { type: [string, "null"], format: uuid }
+                    name: { type: [string, "null"] }
+                note: scopes held under the same role with the same lines are one group
+              permissions: { type: array, items: { type: string }, note: 'listed catalogue codes only, in catalogue order' }
+      note: scopes held under the same role with the same lines are one group (a müderris of four courses reads as one set); a course that went passive is a group of its own; the köşk nazım's course work is not repeated line by line under its köşk
+    note: "For each scope a held role or grant names, one AuthzService.effective(user, scope, {acrossCourses: true}) call, the engine's own computation (role defaults with nesting, grants a role still covers, policies, passive scopes), so this screen and a request cannot disagree. A scope gone between the two reads holds nothing (NotFoundError swallowed)."
+    source: apps/tedrisat/src/assignment/me-assignments.controller.ts:86
+
+  getChiefNazim:
+    route: GET /nizam/chief-nazim
+    summary: The name of the Medaris başnazım, for the no-access screen
+    needs: "a signed-in caller: AuthGuard only (NizamController), no @Authz; the no-access screen names whom to ask"
+    result:
+      status: 200
+      type: object
+      required: [displayName]
+      properties:
+        displayName:
+          type: [string, "null"]
+          sensitivity: personal
+          note: the first holder of the SYSTEM_ADMIN realm role, as given and family name, else the e-mail; null when nobody holds it, the directory is not configured or it does not answer
+    sideEffects:
+      - "reads the realm directory (findByRealmRole SYSTEM_ADMIN, first holder), cached in the process for 5 minutes (CHIEF_CACHE_MS)"
+    note: "A directory failure is not an error here: the name is null."
+    source: apps/tedrisat/src/assignment/nizam.controller.ts:26
+
+  # ---- the ders nazırları of one course (nazar's "Ders nazırları") ----
+  listCourseNazirs:
+    route: GET /courses/{id}/nazirs
+    summary: A course's ders nazırları and what the caller may do with them
+    needs: "course_nazir.assign on the course (AuthGuard, AuthzGuard, byExistingCourse): the müderris, the başmüderris and the köşk nazım of its place, SYSTEM_ADMIN, and anyone granted the code; the service then decides the caller's standing (giver, appointer or outside)"
+    result:
+      status: 200
+      type: object
+      required: [course, items, catalog, grantable, mayAppoint]
+      properties:
+        course:
+          type: object
+          required: [id, title, madrasahName]
+          properties:
+            id: { type: string, format: uuid, references: Course }
+            title: { type: string }
+            madrasahName: { type: [string, "null"], note: the medrese the course is the work of; null for a köşk's own}
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, user, permissions, endsAt, grantedBy, grantedAt, mayEdit, mayEnd]
+            properties:
+              id: { type: string, format: uuid, references: RoleAssignment, note: the ders nazırı post; PATCH and DELETE address it }
+              user:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              permissions: { type: array, items: { type: string }, note: 'the course codes the person holds in the course now, in catalogue order' }
+              endsAt:
+                type: [string, "null"]
+                format: date-time
+                note: when the post and its permissions end, at the same instant; null until they are taken away
+              grantedBy:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              grantedAt: { type: string, format: date-time }
+              mayEdit: { type: boolean, note: 'the caller is a giver, and not on their own post unless SYSTEM_ADMIN' }
+              mayEnd: { type: boolean, note: a giver ends any post; an appointer only the ones they appointed }
+          note: oldest post first
+        catalog: { type: array, items: { type: string }, note: 'the 21 course codes, in the order the dialog draws them' }
+        grantable:
+          type: array
+          items: { type: string }
+          note: the codes the caller may hand out here; empty for an appointer or for a caller who stands outside
+        mayAppoint: { type: boolean, note: 'not outside, and the course is not hidden' }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller does not hold course_nazir.assign on the course", source: libs/common/src/authz/authz.guard.ts:92 }
+      COURSE_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver), a course of a hidden köşk, or a hidden course or a draft that this caller may not see (getDetail)", source: apps/tedrisat/src/course/course.controller.ts:111 }
+    note: "Passing the route is not enough: the standing decides what the caller may do. A giver holds permission.grant through a role (MUDERRIS at course level, MEDRESE_BASMUDERRIS at medrese level, KOSK_NAZIM at köşk level, the last not in a medrese course) or is SYSTEM_ADMIN (platform level). An appointer holds course_nazir.assign by a grant only. Outside means the course is not theirs to staff (the köşk nazım in a medrese course). See the invariant course-nazir-standing."
+    source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:71
+
+  createCourseNazir:
+    route: POST /courses/{id}/nazirs
+    summary: Make someone the course's ders nazırı, with permissions the caller holds themselves
+    needs: "course_nazir.assign on the course (AuthGuard, AuthzGuard, byExistingCourse): the müderris, the başmüderris and the köşk nazım of its place, SYSTEM_ADMIN, and anyone granted the code; the service then decides the caller's standing (giver, appointer or outside); a giver appoints and gives, an appointer appoints with no permissions; never for oneself (SYSTEM_ADMIN excepted)"
+    body:
+      type: object
+      required: [userId, permissions]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid, references: User }
+        permissions: { type: array, maxItems: 40, items: { type: string }, note: course codes; empty appoints with no permission }
+        endsAt: { type: string, format: date-time, note: the post and its permissions end together; omitted means until taken away }
+    result:
+      status: 201
+      type: object
+      required: [course, items, catalog, grantable, mayAppoint]
+      properties:
+        course:
+          type: object
+          required: [id, title, madrasahName]
+          properties:
+            id: { type: string, format: uuid, references: Course }
+            title: { type: string }
+            madrasahName: { type: [string, "null"], note: the medrese the course is the work of; null for a köşk's own}
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, user, permissions, endsAt, grantedBy, grantedAt, mayEdit, mayEnd]
+            properties:
+              id: { type: string, format: uuid, references: RoleAssignment, note: the ders nazırı post; PATCH and DELETE address it }
+              user:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              permissions: { type: array, items: { type: string }, note: 'the course codes the person holds in the course now, in catalogue order' }
+              endsAt:
+                type: [string, "null"]
+                format: date-time
+                note: when the post and its permissions end, at the same instant; null until they are taken away
+              grantedBy:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              grantedAt: { type: string, format: date-time }
+              mayEdit: { type: boolean, note: 'the caller is a giver, and not on their own post unless SYSTEM_ADMIN' }
+              mayEnd: { type: boolean, note: a giver ends any post; an appointer only the ones they appointed }
+          note: oldest post first
+        catalog: { type: array, items: { type: string }, note: 'the 21 course codes, in the order the dialog draws them' }
+        grantable:
+          type: array
+          items: { type: string }
+          note: the codes the caller may hand out here; empty for an appointer or for a caller who stands outside
+        mayAppoint: { type: boolean, note: 'not outside, and the course is not hidden' }
+      note: the list as it is now
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "more than 40 codes, a userId that is no uuid, an endsAt that is not an ISO 8601 date-time, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      GRANT_COURSE_INVALID: { status: 400, note: "the course is hidden (Course <id> is hidden), also when it was hidden while the request was on its way (:181)", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:198 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "endsAt is not an instant (ISO basic format, \"20261231\", passes the DTO and is no Date) at :183, or is in the past at :186", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:183 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the 21 course codes", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:212 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller does not hold course_nazir.assign on the course", source: libs/common/src/authz/authz.guard.ts:92 }
+      GRANT_EXCEEDS_GIVER: { status: 403, note: "a catalogue code the giver does not hold in this course now (You do not hold: <codes>)", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:216 }
+      PERMISSION_NOT_GIVABLE: { status: 403, note: "the caller stands outside (In a medrese course its own staff appoint ders nazırları, :206), or is an appointer who sent a code (Holding course_nazir.assign by a grant appoints; it gives nothing, :214)", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:206 }
+      SELF_GRANT_REFUSED: { status: 403, note: "userId is the caller (always, whatever they hold); SYSTEM_ADMIN is never asked", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      COURSE_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver), a course of a hidden köşk, or a hidden course or a draft that this caller may not see (getDetail)", source: apps/tedrisat/src/course/course.controller.ts:111 }
+      COURSE_NAZIR_UNKNOWN_ACCOUNT: { status: 404, note: "no users row and not in the realm", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:220 }
+      COURSE_NAZIR_BARRED: { status: 409, note: "an open ban bars the account from the course, its köşk or its medrese; a post would undo the ban", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:224 }
+      COURSE_NAZIR_EXISTS: { status: 409, note: "the person already holds a ders nazırı post in this course", source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:200 }
+      COURSE_NAZIR_HOLDS_SEAT: { status: 409, note: "another held seat already speaks for the person over the course: a role at the course, its köşk, its medrese or the platform", source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:232 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the user directory did not answer (a transport error, a non-2xx answer or an unreadable body, each with a 5 s timeout); the check on the account does not swallow it, so a real person is never told they do not exist", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+    sideEffects:
+      - "one transaction: locks the course row (not hidden); revokes a lapsed but unrevoked post and every earlier grant the person still held in this course, so an old post's leftovers do not count again"
+      - "inserts the DERS_NAZIR role (scope course, granted_by the actor, expires_at = endsAt) and one permission_grants row per code (scope course, authority = the giver's level, same end)"
+      - "audit:course_nazir.assign (via course, postId, userId, permissions, endsAt, standing, authority, revokedLeftovers, revokedLapsedPosts)"
+      - "audit:permission.self_grant_refused when the caller names themselves (written even though nothing changes)"
+      - "reads the realm directory (findUnknownAccounts) and the bans (isBarred)"
+    note: "The ceiling is the catalogue codes the giver holds in this course now (authz.effective), so a policy, a passive course or a medrese course cuts what they give as it cuts what they do; SYSTEM_ADMIN gives all 21; an appointer gives none. No mail, no notification."
+    source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:97
+
+  updateCourseNazir:
+    route: PATCH /courses/{id}/nazirs/{postId}
+    summary: Replace a ders nazırı's whole set of permissions and their end
+    needs: "course_nazir.assign on the course (AuthGuard, AuthzGuard, byExistingCourse): the müderris, the başmüderris and the köşk nazım of its place, SYSTEM_ADMIN, and anyone granted the code; the service then decides the caller's standing (giver, appointer or outside); a giver only, and a giver may not edit their own post (SYSTEM_ADMIN may)"
+    body:
+      type: object
+      required: [permissions, endsAt]
+      additionalProperties: false
+      properties:
+        permissions: { type: array, maxItems: 40, items: { type: string }, note: the whole set the person holds from now on }
+        endsAt:
+          type: [string, "null"]
+          format: date-time
+          note: 'required: null means until taken away; an edit that leaves it out cannot lift an end by accident'
+    result:
+      status: 200
+      type: object
+      required: [course, items, catalog, grantable, mayAppoint]
+      properties:
+        course:
+          type: object
+          required: [id, title, madrasahName]
+          properties:
+            id: { type: string, format: uuid, references: Course }
+            title: { type: string }
+            madrasahName: { type: [string, "null"], note: the medrese the course is the work of; null for a köşk's own}
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, user, permissions, endsAt, grantedBy, grantedAt, mayEdit, mayEnd]
+            properties:
+              id: { type: string, format: uuid, references: RoleAssignment, note: the ders nazırı post; PATCH and DELETE address it }
+              user:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              permissions: { type: array, items: { type: string }, note: 'the course codes the person holds in the course now, in catalogue order' }
+              endsAt:
+                type: [string, "null"]
+                format: date-time
+                note: when the post and its permissions end, at the same instant; null until they are taken away
+              grantedBy:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              grantedAt: { type: string, format: date-time }
+              mayEdit: { type: boolean, note: 'the caller is a giver, and not on their own post unless SYSTEM_ADMIN' }
+              mayEnd: { type: boolean, note: a giver ends any post; an appointer only the ones they appointed }
+          note: oldest post first
+        catalog: { type: array, items: { type: string }, note: 'the 21 course codes, in the order the dialog draws them' }
+        grantable:
+          type: array
+          items: { type: string }
+          note: the codes the caller may hand out here; empty for an appointer or for a caller who stands outside
+        mayAppoint: { type: boolean, note: 'not outside, and the course is not hidden' }
+    refusals:
+      HTTP_400: { status: 400, note: "postId in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "endsAt missing, more than 40 codes, an endsAt that is not an ISO 8601 date-time, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "endsAt is not an instant (:183) or is in the past (:186)", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:183 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the 21 course codes", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:251 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller does not hold course_nazir.assign on the course", source: libs/common/src/authz/authz.guard.ts:92 }
+      GRANT_EXCEEDS_GIVER: { status: 403, note: "a code given or moved later that the caller does not hold; dropping a code or an earlier end gives nothing and is not held to the ceiling", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:262 }
+      PERMISSION_NOT_GIVABLE: { status: 403, note: "the caller is not a giver: an appointer (APPOINTS_ONLY) or one who stands outside (MEDRESE_STAFF_APPOINT)", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:245 }
+      SELF_GRANT_REFUSED: { status: 403, note: "the post is the caller's own: a giver does not rewrite their own post; SYSTEM_ADMIN is never asked", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      COURSE_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver), a course of a hidden köşk, or a hidden course or a draft that this caller may not see (getDetail)", source: apps/tedrisat/src/course/course.controller.ts:111 }
+      COURSE_NAZIR_NOT_FOUND: { status: 404, note: "no held post with that id in this course", source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:146 }
+    sideEffects:
+      - "one transaction: locks the post; planPostGrants replaces its set: what stays keeps its giver and date, the rest is revoked, shortened, lengthened or added; the post's expires_at moves with the permissions"
+      - "a row given from above the caller is never lengthened: the extra time is a row of the caller's own beside it, its authority capped to what the caller holds (tavan kazanır)"
+      - "audit:course_nazir.update (via course, postId, userId, permissions, endsAt, previousEndsAt, authority, revoked, shortened, extended, inserted)"
+      - "audit:permission.self_grant_refused when the post is the caller's own"
+    note: "planPostGrants was read from its comment and the e2e titles (course-nazirs.e2e#9), not traced line by line."
+    source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:126
+
+  revokeCourseNazir:
+    route: DELETE /courses/{id}/nazirs/{postId}
+    summary: Take a ders nazırı's post and every permission they hold in the course away
+    needs: "course_nazir.assign on the course (AuthGuard, AuthzGuard, byExistingCourse): the müderris, the başmüderris and the köşk nazım of its place, SYSTEM_ADMIN, and anyone granted the code; the service then decides the caller's standing (giver, appointer or outside); a giver ends any post, an appointer only the posts they appointed, never for one who stands outside"
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "postId in the path is not a uuid (ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller does not hold course_nazir.assign on the course", source: libs/common/src/authz/authz.guard.ts:92 }
+      PERMISSION_NOT_GIVABLE: { status: 403, note: "the caller stands outside (In a medrese course its own staff appoint ders nazırları)", source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:281 }
+      NAZIR_NOT_APPOINTED_BY_YOU: { status: 403, note: "an appointer ending a post someone else made (You may dismiss only the nazırs you appointed)", source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:462 }
+      COURSE_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver), a course of a hidden köşk, or a hidden course or a draft that this caller may not see (getDetail)", source: apps/tedrisat/src/course/course.controller.ts:111 }
+      COURSE_NAZIR_NOT_FOUND: { status: 404, note: "no held post with that id in this course", source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:146 }
+      DISMISS_SEAT_HANDED_ON: { status: 409, note: "someone the person appointed still holds their post (Dismiss <ids> first)", source: apps/tedrisat/src/assignment/admin/orphaned-grants.ts:321 }
+    sideEffects:
+      - "one transaction: revokes the post (role_assignments) and every permission the person holds in the course (permission_grants), the rows kept as history; assertNothingLeftUnder"
+      - "audit:course_nazir.revoke (via course, postId, userId, grantIds)"
+    source: apps/tedrisat/src/course/nazir/course-nazir.controller.ts:159
+
+  # ---- the köşk's İzinler page: ders nazırları of its medrese-free courses (nizam) ----
+  listKoskGrants:
+    route: GET /kosks/{id}/grants
+    summary: The köşk's ders nazırları in its medrese-free courses, its courses and the codes the caller may hand out
+    needs: "course_nazir.assign_kosk on the köşk (AuthGuard, AuthzGuard, byExistingKosk), then in the service SYSTEM_ADMIN or a held KOSK_NAZIM seat in this köşk"
+    result:
+      status: 200
+      type: object
+      required: [items, courses, grantable]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, user, course, permissions, endsAt, grantedBy, grantedAt]
+            properties:
+              id: { type: string, format: uuid, references: RoleAssignment, note: the ders nazırı post; PATCH and DELETE address it }
+              user:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              course:
+                type: object
+                required: [id, title, madrasahName]
+                properties:
+                  id: { type: string, format: uuid, references: Course }
+                  title: { type: string }
+                  madrasahName: { type: [string, "null"], note: null for a medrese-free course; only those take a post on this page }
+              permissions: { type: array, items: { type: string } }
+              endsAt: { type: [string, "null"], format: date-time }
+              grantedBy:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              grantedAt: { type: string, format: date-time }
+          note: the posts of the köşk's medrese-free courses, oldest first
+        courses:
+          type: array
+          items:
+            type: object
+            required: [id, title, madrasahName]
+            properties:
+              id: { type: string, format: uuid, references: Course }
+              title: { type: string }
+              madrasahName: { type: [string, "null"], note: null for a medrese-free course; only those take a post on this page }
+          note: every course of the köşk that is not hidden
+        grantable: { type: array, items: { type: string }, note: the course codes the caller may hand out }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "the guard (authz.guard.ts:92): the caller does not hold course_nazir.assign_kosk on the köşk; the service: the caller holds the route code but no KOSK_NAZIM seat in this köşk (Only a nazım of the köşk and the başnazım hand out course permissions)", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:77 }
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+    note: "Only courses of this köşk with no medrese and not hidden count as medrese-free; a medrese's course is staffed from its own route. The service narrows the guard: SYSTEM_ADMIN gives as the platform (the whole 21-code catalogue); otherwise the caller must hold a KOSK_NAZIM role in this köşk, so a Medaris nazım or anyone merely granted the code passes the guard and is refused here."
+    source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:69
+
+  createKoskGrant:
+    route: POST /kosks/{id}/grants
+    summary: Make someone the ders nazırı of one of the köşk's medrese-free courses and give them permissions
+    needs: "course_nazir.assign_kosk on the köşk (AuthGuard, AuthzGuard, byExistingKosk), then in the service SYSTEM_ADMIN or a held KOSK_NAZIM seat in this köşk; never for oneself (SYSTEM_ADMIN excepted)"
+    body:
+      type: object
+      required: [userId, courseId, permissions]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid, references: User }
+        courseId: { type: string, format: uuid, references: Course }
+        permissions: { type: array, minItems: 1, maxItems: 40, items: { type: string } }
+        endsAt: { type: string, format: date-time, note: the post and its permissions end together; omitted means until taken away }
+    result:
+      status: 201
+      type: object
+      required: [items, courses, grantable]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, user, course, permissions, endsAt, grantedBy, grantedAt]
+            properties:
+              id: { type: string, format: uuid, references: RoleAssignment, note: the ders nazırı post; PATCH and DELETE address it }
+              user:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              course:
+                type: object
+                required: [id, title, madrasahName]
+                properties:
+                  id: { type: string, format: uuid, references: Course }
+                  title: { type: string }
+                  madrasahName: { type: [string, "null"], note: null for a medrese-free course; only those take a post on this page }
+              permissions: { type: array, items: { type: string } }
+              endsAt: { type: [string, "null"], format: date-time }
+              grantedBy:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              grantedAt: { type: string, format: date-time }
+          note: the posts of the köşk's medrese-free courses, oldest first
+        courses:
+          type: array
+          items:
+            type: object
+            required: [id, title, madrasahName]
+            properties:
+              id: { type: string, format: uuid, references: Course }
+              title: { type: string }
+              madrasahName: { type: [string, "null"], note: null for a medrese-free course; only those take a post on this page }
+          note: every course of the köşk that is not hidden
+        grantable: { type: array, items: { type: string }, note: the course codes the caller may hand out }
+      note: the page as it is now
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "no code, more than 40 codes, a userId or courseId that is no uuid, an endsAt that is not ISO 8601, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the course catalogue", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:173 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "endsAt is in the past; an ISO basic date such as \"20261231\" is no instant and is not caught (see the invariant grant-end-is-an-instant)", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:181 }
+      GRANT_COURSE_INVALID: { status: 400, note: "the course is not a medrese-free, non-hidden course of this köşk (Course <id> is not a medrese-free course of this köşk)", source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:297 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the guard (authz.guard.ts:92): the caller does not hold course_nazir.assign_kosk on the köşk; the service: the caller holds the route code but no KOSK_NAZIM seat in this köşk (Only a nazım of the köşk and the başnazım hand out course permissions)", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:77 }
+      GRANT_EXCEEDS_GIVER: { status: 403, note: "a code the caller may not hand out: the köşk nazım's ceiling is the whole course catalogue when they hold course.manage_all in the köşk, which the role default always includes, else nothing", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:174 }
+      SELF_GRANT_REFUSED: { status: 403, note: "userId is the caller (always); SYSTEM_ADMIN is never asked", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      KOSK_NAZIM_UNKNOWN_ACCOUNT: { status: 404, note: "no users row and not in the realm (the code is the köşk nazım's, reused here)", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:241 }
+      COURSE_NAZIR_EXISTS: { status: 409, note: "the person already holds a ders nazırı post in that course", source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:311 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the user directory did not answer (a transport error, a non-2xx answer or an unreadable body, each with a 5 s timeout); the check on the account does not swallow it, so a real person is never told they do not exist", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+    sideEffects:
+      - "one transaction: locks the course; revokes a lapsed but unrevoked post; inserts the DERS_NAZIR role (scope course, expires_at = endsAt) and the grants (course scope, authority KOSK, or PLATFORM for SYSTEM_ADMIN, same end)"
+      - "audit:course_nazir.assign (postId, userId, permissions, endsAt)"
+      - "audit:permission.self_grant_refused on a refused self-appointment"
+      - "reads the realm directory (findById) when the account has no users row"
+    note: "Unlike createCourseNazir this route has no ban check, no check for another seat over the course and no revocation of an earlier post's leftover grants (see the invariant nazir-post-needs-a-clear-seat). Its ceiling is computed from the role default plus köşk-scope grants, not from the engine's effective codes as the course route does; whether any case differs was not run."
+    source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:89
+
+  updateKoskGrant:
+    route: PATCH /kosks/{id}/grants/{grantId}
+    summary: Replace a post's whole set of permissions and its end
+    needs: "course_nazir.assign_kosk on the köşk (AuthGuard, AuthzGuard, byExistingKosk), then in the service SYSTEM_ADMIN or a held KOSK_NAZIM seat in this köşk; never on one's own post (SYSTEM_ADMIN excepted)"
+    body:
+      type: object
+      required: [permissions]
+      additionalProperties: false
+      properties:
+        permissions: { type: array, minItems: 1, maxItems: 40, items: { type: string } }
+        endsAt:
+          type: [string, "null"]
+          format: date-time
+          note: 'null or omitted means no end: an omitted value silently removes the end (see the invariant an-edit-cannot-lift-an-end-by-accident)'
+    result:
+      status: 200
+      type: object
+      required: [items, courses, grantable]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, user, course, permissions, endsAt, grantedBy, grantedAt]
+            properties:
+              id: { type: string, format: uuid, references: RoleAssignment, note: the ders nazırı post; PATCH and DELETE address it }
+              user:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              course:
+                type: object
+                required: [id, title, madrasahName]
+                properties:
+                  id: { type: string, format: uuid, references: Course }
+                  title: { type: string }
+                  madrasahName: { type: [string, "null"], note: null for a medrese-free course; only those take a post on this page }
+              permissions: { type: array, items: { type: string } }
+              endsAt: { type: [string, "null"], format: date-time }
+              grantedBy:
+                type: object
+                required: [id, name, email]
+                properties:
+                  id: { type: string, format: uuid, references: User }
+                  name: { type: [string, "null"], sensitivity: personal }
+                  email: { type: [string, "null"], format: email, sensitivity: personal }
+              grantedAt: { type: string, format: date-time }
+          note: the posts of the köşk's medrese-free courses, oldest first
+        courses:
+          type: array
+          items:
+            type: object
+            required: [id, title, madrasahName]
+            properties:
+              id: { type: string, format: uuid, references: Course }
+              title: { type: string }
+              madrasahName: { type: [string, "null"], note: null for a medrese-free course; only those take a post on this page }
+          note: every course of the köşk that is not hidden
+        grantable: { type: array, items: { type: string }, note: the course codes the caller may hand out }
+    refusals:
+      HTTP_400: { status: 400, note: "grantId in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "no code, more than 40 codes, an endsAt that is not ISO 8601, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the course catalogue", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:173 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "endsAt is in the past", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:181 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the guard (authz.guard.ts:92): the caller does not hold course_nazir.assign_kosk on the köşk; the service: the caller holds the route code but no KOSK_NAZIM seat in this köşk (Only a nazım of the köşk and the başnazım hand out course permissions)", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:77 }
+      GRANT_EXCEEDS_GIVER: { status: 403, note: "a code the caller may not hand out", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:174 }
+      SELF_GRANT_REFUSED: { status: 403, note: "the post is the caller's own: a nazım cannot widen or lengthen their own post, a co-nazım can; SYSTEM_ADMIN is never asked", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      COURSE_NAZIR_NOT_FOUND: { status: 404, note: "the post is gone, is another köşk's, or is in a medrese course (this page never reaches those)", source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:241 }
+    sideEffects:
+      - "one transaction: locks the post; planGrants replaces its set: what stays keeps its giver and date, the rest is revoked, re-timed or added; the post's expires_at is set to the new end (authority KOSK, or PLATFORM for SYSTEM_ADMIN)"
+      - "audit:course_nazir.update (postId, userId, permissions, endsAt)"
+      - "audit:permission.self_grant_refused when the post is the caller's own"
+    source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:118
+
+  revokeKoskGrant:
+    route: DELETE /kosks/{id}/grants/{grantId}
+    summary: Take a ders nazırı's post and permissions away at once
+    needs: "course_nazir.assign_kosk on the köşk (AuthGuard, AuthzGuard, byExistingKosk), then in the service SYSTEM_ADMIN or a held KOSK_NAZIM seat in this köşk"
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "grantId in the path is not a uuid (ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "the guard (authz.guard.ts:92): the caller does not hold course_nazir.assign_kosk on the köşk; the service: the caller holds the route code but no KOSK_NAZIM seat in this köşk (Only a nazım of the köşk and the başnazım hand out course permissions)", source: apps/tedrisat/src/kosk/kosk-grants.service.ts:77 }
+      KOSK_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/kosk/kosk.controller.ts:88 }
+      COURSE_NAZIR_NOT_FOUND: { status: 404, note: "the post is gone, is another köşk's, or is in a medrese course", source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:241 }
+      DISMISS_SEAT_HANDED_ON: { status: 409, note: "someone the person appointed from the course still holds their post (Dismiss <ids> first)", source: apps/tedrisat/src/assignment/admin/orphaned-grants.ts:321 }
+    sideEffects:
+      - "one transaction: ends the post and every permission the person holds in that course, the rows kept as history; assertNothingLeftUnder"
+      - "audit:course_nazir.revoke (postId, userId)"
+    source: apps/tedrisat/src/kosk/kosk-grants.controller.ts:152
+
+  # ---- the nazırs of a medrese (nazar) ----
+  listMadrasahNazirs:
+    route: GET /madrasahs/{id}/nazirs
+    summary: The medrese's nazırs, with what each holds in the medrese and its courses
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [user, appointedBy, appointedAt, assignmentExpiresAt, expiresAt, groups, permissions, courseGrants, grantedBy, grantedAt]
+        properties:
+          user:
+            type: object
+            required: [id, name, email]
+            properties:
+              id: { type: string, format: uuid, references: User }
+              name: { type: [string, "null"], sensitivity: personal }
+              email: { type: [string, "null"], format: email, sensitivity: personal }
+          appointedBy:
+            type: object
+            required: [id, name, email]
+            properties:
+              id: { type: string, format: uuid, references: User }
+              name: { type: [string, "null"], sensitivity: personal }
+              email: { type: [string, "null"], format: email, sensitivity: personal }
+          appointedAt: { type: string, format: date-time }
+          assignmentExpiresAt: { type: [string, "null"], format: date-time, note: the appointment's own end; null for a nazır appointed here}
+          expiresAt: { type: [string, "null"], format: date-time, note: the earliest end among the appointment and the permissions }
+          groups:
+            type: array
+            items:
+              type: object
+              required: [id, name, permissions]
+              properties:
+                id: { type: string, format: uuid, references: PermissionGroup }
+                name: { type: string }
+                permissions: { type: array, items: { type: string } }
+            note: the permission groups they hold in this medrese
+          permissions:
+            type: array
+            items:
+              type: object
+              required: [code, grantedAt]
+              properties: { code: { type: string }, grantedAt: { type: string, format: date-time } }
+            note: permissions given one by one and held in the medrese; a course permission here covers every course
+          courseGrants:
+            type: array
+            items:
+              type: object
+              required: [courseId, courseTitle, permission, group, grantedAt]
+              properties:
+                courseId: { type: string, format: uuid, references: Course }
+                courseTitle: { type: [string, "null"] }
+                permission: { type: [string, "null"] }
+                group:
+                  type: [object, "null"]
+                  required: [id, name, permissions]
+                  properties:
+                    id: { type: string, format: uuid, references: PermissionGroup }
+                    name: { type: string }
+                    permissions: { type: array, items: { type: string } }
+                grantedAt: { type: string, format: date-time }
+            note: permissions and groups held in single courses of the medrese, one entry per course and permission or group
+          grantedBy:
+            type: [object, "null"]
+            required: [id, name, email]
+            properties:
+              id: { type: string, format: uuid, references: User }
+              name: { type: [string, "null"], sensitivity: personal }
+              email: { type: [string, "null"], format: email, sensitivity: personal }
+          grantedAt: { type: [string, "null"], format: date-time }
+      note: oldest appointment first; a nazır who holds nothing yet has empty arrays (henüz izin almadı)
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+    note: "Reads the held MEDRESE_NAZIR roles and the grants in the medrese's tree (the medrese scope and its courses), groups and names; a directory failure leaves a name null."
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:73
+
+  addMadrasahNazir:
+    route: POST /madrasahs/{id}/nazirs/{userId}
+    summary: Make a person a nazır of the medrese, with no permissions
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint; never for oneself (SYSTEM_ADMIN excepted)"
+    result:
+      status: 201
+      type: object
+      required: [user, appointedBy, appointedAt, assignmentExpiresAt, expiresAt, groups, permissions, courseGrants, grantedBy, grantedAt]
+      properties:
+        user:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        appointedBy:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        appointedAt: { type: string, format: date-time }
+        assignmentExpiresAt: { type: [string, "null"], format: date-time, note: the appointment's own end; null for a nazır appointed here}
+        expiresAt: { type: [string, "null"], format: date-time, note: the earliest end among the appointment and the permissions }
+        groups:
+          type: array
+          items:
+            type: object
+            required: [id, name, permissions]
+            properties:
+              id: { type: string, format: uuid, references: PermissionGroup }
+              name: { type: string }
+              permissions: { type: array, items: { type: string } }
+          note: the permission groups they hold in this medrese
+        permissions:
+          type: array
+          items: { type: object, required: [code, grantedAt], properties: { code: { type: string }, grantedAt: { type: string, format: date-time } } }
+          note: permissions given one by one and held in the medrese; a course permission here covers every course
+        courseGrants:
+          type: array
+          items:
+            type: object
+            required: [courseId, courseTitle, permission, group, grantedAt]
+            properties:
+              courseId: { type: string, format: uuid, references: Course }
+              courseTitle: { type: [string, "null"] }
+              permission: { type: [string, "null"] }
+              group:
+                type: [object, "null"]
+                required: [id, name, permissions]
+                properties:
+                  id: { type: string, format: uuid, references: PermissionGroup }
+                  name: { type: string }
+                  permissions: { type: array, items: { type: string } }
+              grantedAt: { type: string, format: date-time }
+          note: permissions and groups held in single courses of the medrese, one entry per course and permission or group
+        grantedBy:
+          type: [object, "null"]
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        grantedAt: { type: [string, "null"], format: date-time }
+      note: the nazır's roster row, also on a repeat (idempotent)
+    refusals:
+      HTTP_400: { status: 400, note: "userId in the path is not a uuid (ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      SELF_GRANT_REFUSED: { status: 403, note: "userId is the caller (always); SYSTEM_ADMIN is never asked", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      MADRASAH_NAZIR_UNKNOWN_ACCOUNT: { status: 404, note: "no users row and not in the realm (No account <id> in the app or the realm)", source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:114 }
+      MADRASAH_NAZIR_BARRED: { status: 409, note: "the person is barred from the medrese or one of its courses; a nazır cannot be barred there, so they are not seated", source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:116 }
+      KEYCLOAK_ADMIN_UNAVAILABLE: { status: 503, note: "the user directory did not answer (a transport error, a non-2xx answer or an unreadable body, each with a 5 s timeout); the check on the account does not swallow it, so a real person is never told they do not exist", source: apps/tedrisat/src/keycloak-admin/keycloak-admin.service.ts:160 }
+    sideEffects:
+      - "one transaction, medrese row locked: when the person holds no nazır seat, revokes whatever they were given in the medrese's tree under an earlier seat that no role of theirs still covers, then inserts the MEDRESE_NAZIR role (scope madrasah, granted_by the actor); when they already hold one nothing is written"
+      - "audit:madrasah_nazir.appoint (userId, role, roleAssignmentId, scope, authority platform or madrasah, revokedLeftovers), once and not on a repeat"
+      - "audit:permission.self_grant_refused on a refused self-appointment"
+    note: "There is no body: the person is found with GET /users/lookup, which audits the search. The medrese is checked again in the service (:111) and in the repository (:119) for a delete that races the appointment."
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
+
+  getMadrasahNazirGrants:
+    route: GET /madrasahs/{id}/nazirs/{userId}/grants
+    summary: What a nazır has handed on in the medrese, one row per recipient (the dismissal question)
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [user, roles, groups, permissions]
+        properties:
+          user:
+            type: object
+            required: [id, name, email]
+            properties:
+              id: { type: string, format: uuid, references: User }
+              name: { type: [string, "null"], sensitivity: personal }
+              email: { type: [string, "null"], format: email, sensitivity: personal }
+          roles:
+            type: array
+            items:
+              type: object
+              required: [role, scopeType, scopeName, grantedAt, expiresAt]
+              properties:
+                role: { type: string }
+                scopeType: { type: string }
+                scopeName: { type: [string, "null"] }
+                grantedAt: { type: string, format: date-time }
+                expiresAt: { type: [string, "null"], format: date-time }
+          groups:
+            type: array
+            items:
+              type: object
+              required: [id, name, permissions]
+              properties:
+                id: { type: string, format: uuid, references: PermissionGroup }
+                name: { type: string }
+                permissions: { type: array, items: { type: string } }
+          permissions: { type: array, items: { type: string }, note: permission codes given one by one }
+      note: empty when the nazır gave nothing; the roles and permissions they gave in the medrese or one of its courses that are still held, grouped by recipient
+    refusals:
+      HTTP_400: { status: 400, note: "userId in the path is not a uuid (ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      MADRASAH_NAZIR_NOT_FOUND: { status: 404, note: "the user is not a nazır of this medrese", source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:134 }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:142
+
+  removeMadrasahNazir:
+    route: DELETE /madrasahs/{id}/nazirs/{userId}
+    summary: Dismiss a medrese nazır, answering for what they handed on, one decision per recipient
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint; the başmüderris and the platform dismiss any nazır, a nazır who holds only madrasah.nazir_appoint only one they appointed"
+    body:
+      type: object
+      required: [decisions]
+      additionalProperties: false
+      properties:
+        decisions:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [userId, action]
+            additionalProperties: false
+            properties: { userId: { type: string, format: uuid, references: User }, action: { enum: [TAKE_OVER, DROP] } }
+          note: one per person getMadrasahNazirGrants lists, exactly, per person and not per row
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "userId in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "a decision of the wrong shape, more than 500 decisions, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      DISMISS_DECISIONS_INCOMPLETE: { status: 400, note: "the decisions are not exactly one per recipient; nothing is written", source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:826 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      NAZIR_NOT_APPOINTED_BY_YOU: { status: 403, note: "a nazır holding madrasah.nazir_appoint dismissing one they did not appoint", source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:821 }
+      SELF_GRANT_REFUSED: { status: 403, note: "a decision answers TAKE_OVER for the caller: taking over what the nazır gave oneself is a self-grant; SYSTEM_ADMIN is never asked", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      MADRASAH_NAZIR_NOT_FOUND: { status: 404, note: "the user is not a nazır of this medrese", source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:816 }
+      DISMISS_SEAT_HANDED_ON: { status: 409, note: "a dropped seat whose holder handed on something still held under it (Dismiss <ids> first)", source: apps/tedrisat/src/assignment/admin/orphaned-grants.ts:321 }
+    sideEffects:
+      - "one transaction, medrese and seat locked: TAKE_OVER sets granted_by to the caller on all that person's rows from this nazır, DROP revokes them; a seat dropped takes with it what its holder was given in that scope by anyone (revokeOrphanedGrants)"
+      - "revokes every grant of the nazır in the medrese tree and the seat itself; assertNothingLeftUnder"
+      - "audit:madrasah_nazir.dismiss (userId, tookOver, dropped, droppedWithSeats)"
+      - "audit:permission.self_grant_refused when the caller would take over what the nazır gave them"
+    note: "A DELETE with a body. The self-grant check covers the recipients answered TAKE_OVER: taking over what a nazır gave oneself is a self-grant."
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:169
+
+  # ---- the medrese's permission dictionary, its groups and one nazır's permissions (nazar) ----
+  getMadrasahPermissionCatalog:
+    route: GET /madrasahs/{id}/permissions
+    summary: The codes of a medrese and of its courses, and which of them the caller may give
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint"
+    result:
+      status: 200
+      type: object
+      required: [madrasah, course, givable]
+      properties:
+        madrasah: { type: array, items: { type: string }, note: 'the 11 medrese codes, in the order the dialogs print them' }
+        course:
+          type: array
+          items: { type: string }
+          note: 'the 23 codes of the section Medrese dersleri: the 21 course codes, permission_group.define and user.lookup'
+        givable:
+          type: array
+          items: { type: string }
+          note: 'what the caller may give: all 34 for a giver with no limit (the başmüderris through the role, SYSTEM_ADMIN), their own effective codes among them for a Medaris nazım giver, none for a caller with no giving level'
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+    note: "Reads are open to every caller who passes the guard; a caller with no giving level gets an empty givable."
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:68
+
+  listMadrasahPermissionGroups:
+    route: GET /madrasahs/{id}/permission-groups
+    summary: The medrese's own permission groups
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint"
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [id, name, scope, permissions, userCount]
+        properties:
+          id: { type: string, format: uuid, references: PermissionGroup }
+          name: { type: string }
+          scope: { enum: [MADRASAH, COURSE], note: 'worked out from the codes, not stored: MADRASAH when any code is a medrese code, else COURSE' }
+          permissions: { type: array, items: { type: string } }
+          userCount: { type: integer, minimum: 0 }
+      note: oldest first; only this medrese's own groups
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:92
+
+  createMadrasahPermissionGroup:
+    route: POST /madrasahs/{id}/permission-groups
+    summary: Define a permission group of the medrese
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint; every write also needs a giving level (the başmüderris through the role, SYSTEM_ADMIN, a Medaris nazım holding platform.madrasah_nazir_grant), else 403 PERMISSION_NOT_GIVABLE"
+    body:
+      type: object
+      required: [name, scope, permissions]
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 80, pattern: \S }
+        scope:
+          enum: [MADRASAH, COURSE]
+          note: 'MADRASAH: any code of the medrese and course sections (34); COURSE: the course codes only (23); used only to pick the allowed codes, it is not stored'
+        permissions: { type: array, maxItems: 64, items: { type: string } }
+    result:
+      status: 201
+      type: object
+      required: [id, name, scope, permissions, userCount]
+      properties:
+        id: { type: string, format: uuid, references: PermissionGroup }
+        name: { type: string }
+        scope: { enum: [MADRASAH, COURSE], note: 'worked out from the codes, not stored: MADRASAH when any code is a medrese code, else COURSE' }
+        permissions: { type: array, items: { type: string } }
+        userCount: { type: integer, minimum: 0 }
+    refusals:
+      VALIDATION_ERROR: { status: 400, note: "a blank or over-long name, a scope that is neither MADRASAH nor COURSE, more than 64 codes, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      PERMISSION_GROUP_EMPTY: { status: 400, note: "no code is left after de-duplication", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:451 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the scope's section of the dictionary", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:458 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      PERMISSION_NOT_GIVABLE: { status: 403, note: "the caller has no giving level (Only the medrese's başmüderris gives permissions or defines permission groups)", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:177 }
+      GRANT_EXCEEDS_GIVER: { status: 403, note: "a code the caller does not hold on the medrese and every course below it; a Medaris nazım with nothing of their own gives nothing", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:289 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      PERMISSION_GROUP_NAME_TAKEN: { status: 409, note: "another live group of this medrese has the name, whatever its case; the index backs only groups with no scope id, so here the service check alone", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:361 }
+    sideEffects:
+      - "inserts the group (scope_type madrasah, scope_id this medrese, created_by the actor) and its items, with the ceiling check on the codes"
+      - "audit:permission_group.create (authority = the caller's giving level)"
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:117
+
+  updateMadrasahPermissionGroup:
+    route: PATCH /madrasahs/{id}/permission-groups/{groupId}
+    summary: Rename a medrese group or change its codes; only what is sent changes
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint; every write also needs a giving level (the başmüderris through the role, SYSTEM_ADMIN, a Medaris nazım holding platform.madrasah_nazir_grant), else 403 PERMISSION_NOT_GIVABLE"
+    body:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 80, pattern: \S }
+        permissions: { type: array, maxItems: 64, items: { type: string }, note: 'the group''s whole new set, any of the 34 codes; at least one' }
+        usersPolicy: { enum: [keep, revoke], note: required when the codes change and anyone holds the group }
+    result:
+      status: 200
+      type: object
+      required: [id, name, scope, permissions, userCount]
+      properties:
+        id: { type: string, format: uuid, references: PermissionGroup }
+        name: { type: string }
+        scope: { enum: [MADRASAH, COURSE], note: 'worked out from the codes, not stored: MADRASAH when any code is a medrese code, else COURSE' }
+        permissions: { type: array, items: { type: string } }
+        userCount: { type: integer, minimum: 0 }
+    refusals:
+      HTTP_400: { status: 400, note: "groupId in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "a blank or over-long name, more than 64 codes, a usersPolicy that is neither keep nor revoke, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      PERMISSION_GROUP_EMPTY: { status: 400, note: "permissions was sent and no code is left after de-duplication", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:451 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the 34", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:458 }
+      USERS_POLICY_REQUIRED: { status: 400, note: "the codes change, people hold the group and no usersPolicy was sent (the repository recounts under the lock at :897)", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:402 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      PERMISSION_NOT_GIVABLE: { status: 403, note: "the caller has no giving level", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:177 }
+      GRANT_EXCEEDS_GIVER: { status: 403, note: "a code this change ADDS that the caller does not hold; removing a code or renaming gives nothing", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:289 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, note: "no live group, or the group belongs to the platform, a course or another medrese", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:443 }
+      PERMISSION_GROUP_NAME_TAKEN: { status: 409, note: "another live group of this medrese has the name (also the unique violation, read as the same refusal)", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:405 }
+    sideEffects:
+      - "as updatePermissionGroup: holders are detached by usersPolicy when the codes change and anyone holds the group"
+      - "audit:permission_group.update (authority = the caller's giving level)"
+    note: "The scope is not stored, so an update may put medrese codes into a group that was made as COURSE; the scope in the answer is worked out again from the codes."
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:144
+
+  deleteMadrasahPermissionGroup:
+    route: DELETE /madrasahs/{id}/permission-groups/{groupId}
+    summary: Delete a medrese group (a soft delete)
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint; every write also needs a giving level (the başmüderris through the role, SYSTEM_ADMIN, a Medaris nazım holding platform.madrasah_nazir_grant), else 403 PERMISSION_NOT_GIVABLE"
+    body:
+      type: object
+      additionalProperties: false
+      properties: { usersPolicy: { enum: [keep, revoke], note: required while anyone holds the group } }
+      note: 'a DELETE that may carry no body at all: a group nobody holds needs no answer'
+    result: { status: 204 }
+    refusals:
+      HTTP_400: { status: 400, note: "groupId in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "a usersPolicy that is neither keep nor revoke, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      USERS_POLICY_REQUIRED: { status: 400, note: "people hold the group and no usersPolicy was sent", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:425 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      PERMISSION_NOT_GIVABLE: { status: 403, note: "the caller has no giving level", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:177 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, note: "no live group of this medrese with that id", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:443 }
+    sideEffects:
+      - "detaches every holder (keep: single permissions; revoke: nothing), then soft-deletes the group"
+      - "audit:permission_group.delete (authority = the caller's giving level)"
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:171
+
+  getMadrasahNazirPermissions:
+    route: GET /madrasahs/{id}/nazirs/{userId}/permissions
+    summary: What a nazır was given, in the shape the permissions dialog saves
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint"
+    result:
+      status: 200
+      type: object
+      required: [groupId, permissions, courseIds, expiresAt]
+      properties:
+        groupId: { type: [string, "null"], format: uuid, references: PermissionGroup }
+        permissions: { type: array, items: { type: string }, note: the single permissions held on top of the group }
+        courseIds:
+          type: [array, "null"]
+          items: { type: string, format: uuid, references: Course }
+          note: the courses the permissions are limited to; null means every course of the medrese
+        expiresAt: { type: [string, "null"], format: date-time, note: the earliest end among them; null when none ends }
+      note: exactly the state setMadrasahNazirPermissions writes, so the dialog reopens as saved
+    refusals:
+      HTTP_400: { status: 400, note: "userId in the path is not a uuid (ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      MADRASAH_NAZIR_NOT_FOUND: { status: 404, note: "the user is not a nazır of this medrese", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:561 }
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:204
+
+  setMadrasahNazirPermissions:
+    route: PUT /madrasahs/{id}/nazirs/{userId}/permissions
+    summary: Give a nazır their group, single permissions, courses and end, replacing what they held
+    needs: "madrasah.nazir_appoint or platform.madrasah_nazir_grant on the medrese (AuthGuard, AuthzGuard, byExistingMadrasah): its başmüderris, SYSTEM_ADMIN, a Medaris nazım granted the platform code, a nazır granted madrasah.nazir_appoint; every write also needs a giving level (the başmüderris through the role, SYSTEM_ADMIN, a Medaris nazım holding platform.madrasah_nazir_grant), else 403 PERMISSION_NOT_GIVABLE; never for oneself (SYSTEM_ADMIN excepted); not a nazır who holds only madrasah.nazir_appoint"
+    body:
+      type: object
+      required: [permissions]
+      additionalProperties: false
+      properties:
+        groupId: { type: [string, "null"], format: uuid, references: PermissionGroup, note: a live group of this medrese }
+        permissions: { type: array, maxItems: 64, items: { type: string }, note: 'extras on top of the group, any of the 34 codes' }
+        courseIds:
+          type: [array, "null"]
+          maxItems: 200
+          items: { type: string, format: uuid, references: Course }
+          note: 'Hangi derslerde: null or omitted means every course of the medrese, later ones too; otherwise at least one course of this medrese'
+        expiresAt: { type: [string, "null"], format: date-time, note: null or omitted means when the appointment ends; never later than it }
+    result:
+      status: 200
+      type: object
+      required: [user, appointedBy, appointedAt, assignmentExpiresAt, expiresAt, groups, permissions, courseGrants, grantedBy, grantedAt]
+      properties:
+        user:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        appointedBy:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        appointedAt: { type: string, format: date-time }
+        assignmentExpiresAt: { type: [string, "null"], format: date-time, note: the appointment's own end; null for a nazır appointed here}
+        expiresAt: { type: [string, "null"], format: date-time, note: the earliest end among the appointment and the permissions }
+        groups:
+          type: array
+          items:
+            type: object
+            required: [id, name, permissions]
+            properties:
+              id: { type: string, format: uuid, references: PermissionGroup }
+              name: { type: string }
+              permissions: { type: array, items: { type: string } }
+          note: the permission groups they hold in this medrese
+        permissions:
+          type: array
+          items: { type: object, required: [code, grantedAt], properties: { code: { type: string }, grantedAt: { type: string, format: date-time } } }
+          note: permissions given one by one and held in the medrese; a course permission here covers every course
+        courseGrants:
+          type: array
+          items:
+            type: object
+            required: [courseId, courseTitle, permission, group, grantedAt]
+            properties:
+              courseId: { type: string, format: uuid, references: Course }
+              courseTitle: { type: [string, "null"] }
+              permission: { type: [string, "null"] }
+              group:
+                type: [object, "null"]
+                required: [id, name, permissions]
+                properties:
+                  id: { type: string, format: uuid, references: PermissionGroup }
+                  name: { type: string }
+                  permissions: { type: array, items: { type: string } }
+              grantedAt: { type: string, format: date-time }
+          note: permissions and groups held in single courses of the medrese, one entry per course and permission or group
+        grantedBy:
+          type: [object, "null"]
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid, references: User }
+            name: { type: [string, "null"], sensitivity: personal }
+            email: { type: [string, "null"], format: email, sensitivity: personal }
+        grantedAt: { type: [string, "null"], format: date-time }
+      note: the nazır's roster row
+    refusals:
+      HTTP_400: { status: 400, note: "userId in the path is not a uuid (ParseUUIDPipe)" }
+      VALIDATION_ERROR: { status: 400, note: "a groupId or courseIds entry that is no uuid, more than 64 codes or 200 courses, an expiresAt that is no date string, or an unknown property", source: libs/common/src/pipes/validation.pipe.ts:52 }
+      PERMISSION_UNKNOWN: { status: 400, note: "a code outside the 34", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:458 }
+      NAZIR_COURSE_SCOPE_INVALID: { status: 400, note: "courseIds empty (Choose at least one course, or leave the courses out for all), a group carrying a medrese code combined with courseIds, no course permission to limit, or ids that are not courses of this medrese (:513, with courseIds in the context)", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:508 }
+      GRANT_EXPIRY_INVALID: { status: 400, note: "expiresAt is not after now (:373) or is after the appointment's end (:376)", source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:373 }
+      AUTHZ_FORBIDDEN: { status: 403, note: "AuthzGuard: the caller holds neither madrasah.nazir_appoint nor platform.madrasah_nazir_grant on the medrese", source: libs/common/src/authz/authz.guard.ts:92 }
+      PERMISSION_NOT_GIVABLE: { status: 403, note: "the caller has no giving level", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:177 }
+      GRANT_EXCEEDS_GIVER: { status: 403, note: "a code the caller does not hold on the medrese and every course below it (or, for a grant limited to some courses, in each such course); also checked inside the transaction on what is really inserted or lengthened", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:289 }
+      SELF_GRANT_REFUSED: { status: 403, note: "nobody gives themselves permissions; SYSTEM_ADMIN is never asked", source: libs/common/src/authz/self-grant.guard.ts:91 }
+      MADRASAH_NOT_FOUND: { status: 404, note: "a malformed or unknown id (the resolver)", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110 }
+      MADRASAH_NAZIR_NOT_FOUND: { status: 404, note: "the user is not a nazır of this medrese", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:561 }
+      PERMISSION_GROUP_NOT_FOUND: { status: 404, note: "the group is not a live group of this medrese (read under the group's lock in the repository, :695)", source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:443 }
+    sideEffects:
+      - "one transaction, medrese row and nazır seat locked: placement (wantedScopes): medrese codes are held in the medrese scope; course codes in the medrese scope when courseIds is null, else course by course; a group sits where its codes do; codes the group already carries are not repeated as single grants"
+      - "per scope, planGrants over the longest-running row of each code or group: kept rows stay (same id, giver, date), others are revoked or inserted, a kept row whose end moves earlier is re-timed in place (not a gift), one whose end moves later is a new hand-on, ceiling-checked and attributed to the caller (a row given from above stays as given and the extra time is a row of the caller's own beside it); new rows get authority_scope_type = authorityFor(...), never above the giver's own holding"
+      - "audit:permission.grant, audit:permission.revoke, audit:permission.retime (entity user, with the authority and the scopes)"
+      - "audit:permission.self_grant_refused on a refused self-grant"
+    note: "The swagger of this route ends \"Permissions are records: nothing the API decides reads them yet\" (madrasah-permission.controller.ts:222). That sentence is stale: the engine reads them, a grant counts while its holder holds a role in or above its scope."
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.controller.ts:232
+
+policies:
+  - actor: platform-permission-admin
+    needs: the realm role SYSTEM_ADMIN, decided inside PermissionAdminService.actor() on every /nizam route of this file but chief-nazim (AuthGuard only, no @Authz)
+    where: >-
+      Nobody else passes: a Medaris nazım, even one holding every platform code, is refused 403 AUTHZ_FORBIDDEN. Nothing here lets a Medaris nazım
+      hand on what they were given.
+    read: [RoleAssignment, PermissionGrant, PermissionGroup, PermissionGroupItem, User, AuditLog]
+    write: [RoleAssignment, PermissionGrant, PermissionGroup, PermissionGroupItem, AuditLog]
+    do: [getPermissionCatalog, listMedarisNazims, appointMedarisNazim, setMedarisNazimGrants, getMedarisNazimGiven, dismissMedarisNazim, listPermissionGroups, createPermissionGroup, updatePermissionGroup, deletePermissionGroup, listPermissionGroupUsers]
+    source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:88
+
+  - actor: signed-in-reader-of-own-holdings
+    needs: a valid access token, on routes with AuthGuard only
+    where: >-
+      Each route answers about the caller's own rows and nothing else, so there is no resource to authorize; a token whose sub is not a uuid holds nothing and
+      every route answers empty. The chief nazım's name is told to every signed-in caller.
+    read: [RoleAssignment, PermissionGrant, PermissionGroup, PermissionGroupItem, Course, Kosk, Madrasah, User]
+    do: [getMyAssignments, getMyRoles, getMyGrants, getMyPermissions, getMyEffectivePermissions, getChiefNazim]
+    source: apps/tedrisat/src/assignment/me-assignments.controller.ts:34
+
+  - actor: course-nazir-giver
+    needs: permission.grant through a role in the course (MUDERRIS at course level, MEDRESE_BASMUDERRIS at medrese level, KOSK_NAZIM at köşk level but not in a medrese course) or the realm role SYSTEM_ADMIN (platform level), and course_nazir.assign on the course
+    where: >-
+      Appoints, gives up to the ceiling (the catalogue codes the giver holds in this course now; SYSTEM_ADMIN all 21), changes and ends any post, never their own
+      post (SYSTEM_ADMIN excepted). Several giving seats give at the highest of course, medrese, köşk. permission.grant is never grantable, so no grant makes anyone a giver.
+    read: [Course, RoleAssignment, PermissionGrant, User]
+    write: [RoleAssignment, PermissionGrant, AuditLog]
+    do: [listCourseNazirs, createCourseNazir, updateCourseNazir, revokeCourseNazir]
+    source: apps/tedrisat/src/course/nazir/course-standing.ts:52
+
+  - actor: course-nazir-appointer
+    needs: course_nazir.assign on the course by a grant only
+    where: >-
+      Appoints with no permissions and ends only the posts they appointed; changes nothing else, gives nothing (403 PERMISSION_NOT_GIVABLE for any code).
+    read: [Course, RoleAssignment, PermissionGrant, User]
+    write: [RoleAssignment, AuditLog]
+    do: [listCourseNazirs, createCourseNazir, revokeCourseNazir]
+    source: apps/tedrisat/src/course/nazir/course-standing.ts:52
+
+  - actor: course-nazir-outside
+    needs: course_nazir.assign on the course, but a köşk nazım with no other giving seat in a course of a medrese
+    where: >-
+      Passes the route and reads the list, writes nothing: 403 PERMISSION_NOT_GIVABLE (In a medrese course its own staff appoint ders nazırları).
+    read: [Course, RoleAssignment, PermissionGrant, User]
+    do: [listCourseNazirs]
+    source: apps/tedrisat/src/course/nazir/course-standing.ts:52
+
+  - actor: kosk-grants-giver
+    needs: a held KOSK_NAZIM seat in the köşk, or the realm role SYSTEM_ADMIN, behind course_nazir.assign_kosk on the köşk
+    where: >-
+      Appoints ders nazırları in the köşk's medrese-free, non-hidden courses and gives them course codes: the whole catalogue for SYSTEM_ADMIN (authority platform) and for a nazım
+      who holds course.manage_all (always, by the role default; authority köşk), else nothing. A Medaris nazım or anyone merely granted the code is let in by the guard and
+      refused 403 AUTHZ_FORBIDDEN by the service. Never for oneself.
+    read: [Kosk, Course, RoleAssignment, PermissionGrant, User]
+    write: [RoleAssignment, PermissionGrant, AuditLog]
+    do: [listKoskGrants, createKoskGrant, updateKoskGrant, revokeKoskGrant]
+    source: apps/tedrisat/src/kosk/kosk-grants.service.ts:64
+
+  - actor: medrese-giver
+    needs: "a giving level on the medrese: the realm role SYSTEM_ADMIN (platform), permission.grant through the başmüderris role (medrese), or platform.madrasah_nazir_grant (platform)"
+    where: >-
+      Appoints and dismisses any nazır of the medrese, gives permissions and defines groups, each code limited to what the giver holds on the medrese and every course below it
+      (SYSTEM_ADMIN is not asked); a başmüderris who is also such a Medaris nazım acts as the medrese. The authority stored on a gift is never above the giver's own holding.
+    read: [Madrasah, Course, RoleAssignment, PermissionGrant, PermissionGroup, PermissionGroupItem, User]
+    write: [RoleAssignment, PermissionGrant, PermissionGroup, PermissionGroupItem, AuditLog]
+    do: [listMadrasahNazirs, addMadrasahNazir, getMadrasahNazirGrants, removeMadrasahNazir, getMadrasahPermissionCatalog, listMadrasahPermissionGroups, createMadrasahPermissionGroup, updateMadrasahPermissionGroup, deleteMadrasahPermissionGroup, getMadrasahNazirPermissions, setMadrasahNazirPermissions]
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-authority.ts:25
+
+  - actor: medrese-nazir-appointer
+    needs: madrasah.nazir_appoint given to a nazır by a grant, and no giving level
+    where: >-
+      Reads the roster, appoints nazırs with no permissions and dismisses only the nazırs they appointed; any give is 403 PERMISSION_NOT_GIVABLE and a dismissal of another's appointee
+      is 403 NAZIR_NOT_APPOINTED_BY_YOU. What a nazır was given cannot be handed on.
+    read: [Madrasah, RoleAssignment, PermissionGrant, PermissionGroup, User]
+    write: [RoleAssignment, AuditLog]
+    do: [listMadrasahNazirs, addMadrasahNazir, getMadrasahNazirGrants, removeMadrasahNazir, getMadrasahPermissionCatalog, listMadrasahPermissionGroups, getMadrasahNazirPermissions]
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-authority.ts:25
+
+invariants:
+  # The platform's permission admin and the seat of a Medaris nazım
+  - id: permission-admin-is-the-basnazims
+    rule: >-
+      GET /nizam/permissions, /nizam/medaris-nazims*, and /nizam/permission-groups* answer 403 AUTHZ_FORBIDDEN to everyone but a token carrying the
+      SYSTEM_ADMIN realm role, a Medaris nazım holding every platform code included. The decision is made in the service, not by AuthzGuard.
+    source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:88
+
+  - id: one-live-medaris-nazim-seat
+    rule: >-
+      A person holds at most one live MEDARIS_NAZIM seat: appointing again is 409 MEDARIS_NAZIM_ALREADY_APPOINTED, and a seat that lapsed but was never revoked is revoked
+      in the same transaction so it cannot block a new one.
+    source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:366
+
+  - id: medaris-nazim-is-a-known-account
+    rule: >-
+      Appointing a Medaris nazım names an account the app or the realm knows, as every other appointment route here does (ders nazırı, medrese nazır, köşk grant).
+    holds: false
+    finding: medaris-nazim-account-unchecked
+    note: >-
+      POST /nizam/medaris-nazims makes no findUnknownAccounts call, so any uuid becomes a Medaris nazım. The test cast says appointing a person who never signed in is
+      intended (permission-admin.e2e#6), and that case is an account the realm knows; a mistyped uuid is accepted too. Read from the code, not run.
+    source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:118
+
+  - id: seat-and-grants-end-together
+    rule: >-
+      A post or appointment and the permissions given with it end at the same instant. A Medaris nazım's grants may be re-timed but never to a date after the
+      appointment's end (400 GRANT_EXPIRY_INVALID, after-assignment) or in the past; null means when the seat ends.
+    source: apps/tedrisat/src/assignment/admin/grant-plan.ts:227
+
+  - id: grant-end-is-an-instant
+    rule: >-
+      An end date that a route accepts is an instant: one that is no instant is refused 400 GRANT_EXPIRY_INVALID, or at least 400 VALIDATION_ERROR, on every route that takes one.
+    holds: false
+    finding: grant-end-not-an-instant
+    note: >-
+      ISO 8601's basic format ("20261231") passes IsISO8601 and IsDateString (checked with class-validator) and new Date("20261231") is an Invalid Date. Only
+      POST /courses/{id}/nazirs and PATCH /courses/{id}/nazirs/{postId} guard it (course-nazir.service.ts:183). On the köşk routes, the Medaris-nazım routes
+      and the medrese nazır permissions route, checkGrantExpiry compares NaN, so it sees neither "past" nor "after the appointment" and the value reaches an insert and an
+      audit row that calls toISOString(); a 500 INTERNAL_ERROR with nothing written (one transaction) is expected. The refusal is read from the code and was not run.
+    source: apps/tedrisat/src/kosk/kosk-grants.service.ts:178
+
+  - id: an-edit-cannot-lift-an-end-by-accident
+    rule: >-
+      A route that replaces a post's permissions requires the new end explicitly (null means until taken away), so an edit that leaves it out cannot lift an end.
+    holds: false
+    finding: kosk-grant-patch-omitted-end
+    note: >-
+      PATCH /courses/{id}/nazirs/{postId} makes endsAt required and answers 400 VALIDATION_ERROR without it. PATCH /kosks/{id}/grants/{grantId} marks endsAt IsOptional
+      and reads a missing value as null, so a köşk save that leaves it out silently removes the end (kosk-grants.dto.ts:147).
+    source: apps/tedrisat/src/kosk/dto/kosk-grants.dto.ts:147
+
+  # What a dismissal and a re-appointment do to what hangs on a seat
+  - id: dropped-seat-takes-its-grants
+    rule: >-
+      Dropping a seat revokes what its holder was given in that seat's scope tree by anyone, unless another role of theirs below the platform still covers it, and
+      appointing someone again (Medaris nazım, medrese nazır, ders nazırı at the course route) first revokes what an earlier seat left, so a permission does not come
+      back with a new seat. The platform's own grants and the every-course ones are never touched by it.
+    source: apps/tedrisat/src/assignment/admin/orphaned-grants.ts:123
+
+  - id: dismissal-asks-everything-or-writes-nothing
+    rule: >-
+      Dismissing a Medaris nazım needs one decision per ROLE and GRANT they gave to someone else and none for rows they made for themselves (those are revoked; a TAKE_OVER
+      for one is refused). Dismissing a medrese nazır needs one decision per recipient person. Any other decision set is 400 DISMISS_DECISIONS_INCOMPLETE and writes
+      nothing. TAKE_OVER makes the caller the giver and changes nothing else; DROP revokes. A TAKE_OVER of a grant that would vanish with a seat dropped beside it is 400
+      DISMISS_TAKE_OVER_WITHOUT_SEAT; a seat dropped whose holder handed on something still held under it is 409 DISMISS_SEAT_HANDED_ON (the holder must be dismissed first).
+    source: apps/tedrisat/src/assignment/admin/permission-admin.repository.ts:590
+
+  # Who gives what
+  - id: nobody-hands-on-what-they-lack
+    rule: >-
+      Nobody hands on a permission they do not hold themselves where they give (tavan kazanır): on the ders nazırı route the catalogue codes in the caller's effective
+      codes for that course (SYSTEM_ADMIN all 21, an appointer none); on the köşk route the whole course catalogue for a nazım who holds course.manage_all, else none;
+      on the medrese route the caller's effective codes on the medrese and every course below it. A violation is 403 GRANT_EXCEEDS_GIVER naming the codes. Only what a
+      save hands on (a new code, a later end) is held to it: dropping a code or an earlier end gives nothing.
+    source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:121
+
+  - id: grant-authority-is-the-givers-level
+    rule: >-
+      A grant is stored with the level of authority the giver acted at (SYSTEM_ADMIN and a Medaris nazım under platform.madrasah_nazir_grant the platform, a başmüderris the
+      medrese, a köşk nazım the köşk, a müderris the course), and never above the giver's own holding of its codes for as long as the row runs, so it passes no policy that
+      the giver does not pass. A grant made by an authority above a policy's level survives that policy.
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-authority.ts:25
+
+  - id: only-a-giver-gives
+    rule: >-
+      Medrese permissions and groups are given or defined only by someone with a giving level: the başmüderris through the role's own permission.grant (never a grant: what
+      you were given you cannot give on), SYSTEM_ADMIN, or a Medaris nazım holding platform.madrasah_nazir_grant, limited by the ceiling. A nazır who holds only
+      madrasah.nazir_appoint appoints and dismisses their own appointees; any give is 403 PERMISSION_NOT_GIVABLE.
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:172
+
+  - id: course-nazir-standing
+    rule: >-
+      On a course's ders nazırları the caller is a giver, an appointer or outside. In a medrese course the köşk nazım is outside: they read the list and write nothing (403
+      PERMISSION_NOT_GIVABLE). An appointer appoints with no codes, ends only the posts they appointed (403 NAZIR_NOT_APPOINTED_BY_YOU) and changes nothing. A giver never edits
+      their own post (SYSTEM_ADMIN may). permission.grant is never grantable, so no grant makes anyone a giver.
+    source: apps/tedrisat/src/course/nazir/course-standing.ts:52
+
+  # What a post needs and what a medrese nazır starts with
+  - id: one-nazir-post-per-person-per-course
+    rule: >-
+      A person holds at most one live DERS_NAZIR post in a course (the unique held index on role_assignments); a second is 409 COURSE_NAZIR_EXISTS on both routes that seat one.
+    source: apps/tedrisat/src/course/nazir/course-nazir.repository.ts:200
+
+  - id: nazir-post-needs-a-clear-seat
+    rule: >-
+      Whichever route seats a ders nazırı, a person an open ban bars from the course, or who already holds another seat that speaks for them over it (a role at the course,
+      its köşk, its medrese or the platform), is refused, and what an earlier post left open is revoked first, so a post cannot undo a ban.
+    holds: false
+    finding: kosk-grants-skip-course-checks
+    note: >-
+      POST /courses/{id}/nazirs refuses with 409 COURSE_NAZIR_BARRED (course-nazir.service.ts:223) and 409 COURSE_NAZIR_HOLDS_SEAT (course-nazir.repository.ts:232) and revokes
+      the leftovers of an earlier post (course-nazir.repository.ts:247). POST /kosks/{id}/grants writes the same DERS_NAZIR row in the same table and does none of the three
+      (kosk-grants.repository.ts:271-350: it checks only the course and an existing post). A barred talebe can therefore be seated through the köşk page, which the course
+      route's own comment says would undo the ban. Read from the code, not run.
+    source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:271
+
+  - id: barred-person-is-not-seated-as-medrese-nazir
+    rule: >-
+      A person barred from the medrese or one of its courses is not made one of its nazırs (409 MADRASAH_NAZIR_BARRED): a nazır cannot be barred there, so seating one would
+      undo the ban.
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:115
+
+  - id: hidden-course-takes-no-new-nazir
+    rule: >-
+      A hidden (archived) course takes no new ders nazırı, whoever asks and even for people who may see it: 400 GRANT_COURSE_INVALID on both routes, and mayAppoint is false in the list.
+    source: apps/tedrisat/src/course/nazir/course-nazir.service.ts:197
+
+  - id: kosk-grants-reach-medrese-free-courses-only
+    rule: >-
+      The köşk's İzinler routes touch only posts of the köşk's courses that have no medrese and are not hidden; a post in a medrese course is 404 COURSE_NAZIR_NOT_FOUND there and
+      must be changed on the course route.
+    source: apps/tedrisat/src/kosk/kosk-grants.repository.ts:241
+
+  - id: medrese-nazir-starts-empty
+    rule: >-
+      A medrese nazır is appointed with no permissions and holds only what is later given; appointing is idempotent (a repeat writes nothing and answers the same row); the
+      account must exist (a users row or the realm).
+    source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.service.ts:101
+
+  - id: nazir-grants-limited-to-courses
+    rule: >-
+      A medrese nazır's permissions may be limited to chosen courses of the medrese (courseIds): never an empty list, never together with a group that carries a medrese code,
+      only when a course code is present, and only to courses of this medrese (400 NAZIR_COURSE_SCOPE_INVALID). Without courseIds they cover every course, later ones too.
+    source: apps/tedrisat/src/madrasah/nazir/nazir-grant-scopes.ts:58
+
+  - id: permission-group-rules
+    rule: >-
+      A group needs a non-blank name of at most 80 characters, unique among live groups of the same scope id whatever its case, at least one code, and every code in its scope's
+      catalogue (platform 19, course 21, medrese 11 and 23). Changing the codes of a group someone holds, or deleting it, needs usersPolicy and detaches every holder from the group row
+      (keep: the holders keep the old codes as single permissions with the same scope, end and giver; revoke: they lose them). A delete is soft. Platform and course groups and a
+      medrese's groups are separate namespaces: an id of the other kind is 404 on each route.
+    source: apps/tedrisat/src/assignment/admin/permission-admin.service.ts:436
+
+  # What a person reads about themselves
+  - id: me-reads-are-the-engine
+    rule: >-
+      /me/* lists only held roles and grants whose scope still exists; /me/effective-permissions and /me/permissions are computed by AuthzService.effective, so a passive scope's closed
+      content, a grant to every course and a policy cut show exactly as the routes decide.
+    source: apps/tedrisat/src/assignment/assignment.service.ts:177

@@ -1,0 +1,432 @@
+# PLANNED, NO CODE: the API of live lessons through YouTube (MDRS-195 and its children MDRS-237 to MDRS-241), sketched with the flow
+# nizam.youtube.liveBroadcasts (graphs/nizam/youtube/liveBroadcasts/). Every action, entity and invariant here carries a note that says so and
+# no `source`: nothing below exists in apps/tedrisat. The domain's status is given once, in domain.yaml. (The entity schema has no `note` key, so an
+# entity carries the planned note on its first field.)
+#
+# Where it comes from. The Linear issues, read on 16 Nov 2026: MDRS-195 (the feasibility and the owner's direction of 3 Oct 2026), MDRS-237 (phase 0,
+# the owner's setup in Google Cloud and on YouTube: no code), MDRS-238 (phase 1: connect the Medaris channel, one stream per hoca, a broadcast per
+# celse, the stream key panel), MDRS-239 (phase 2: follow the broadcast's life, live and ended), MDRS-240 (phase 3: attach the recording to the
+# celse), MDRS-241 (phase 4, optional: Medaris's own live chat, NOT sketched here: no flow draws it) and MDRS-228 (done: the manual stream link,
+# which stays as the fallback and is the existing setLessonLiveStream).
+#
+# What is drawn, and what is a guess (every guess is an open decision of the flow, `decisions` in flow.yaml):
+#   - the routes, their bodies, their refusal codes and the permission names are PROPOSALS. The code of the one permission that exists is kept:
+#     platform.youtube_manage (the catalogue has it and no handler asks for it today, MDRS-208) for the connection; session.live_link for a celse's
+#     broadcast and its key; course.settings for the course's choice.
+#   - the callback of Google's consent is a tedrisat route, as MDRS-237 says ("tedrisat's dev and prod callback URLs"); it carries no token, the
+#     one-time state decides who it is for.
+#   - the stream key is NOT a field of any entity here: it is read from YouTube (liveStreams.list) each time someone asks, and never stored, logged
+#     or audited (D3 of the flow). The refresh token is the one credential kept, encrypted.
+#   - what the existing actions would change (this file never edits them): getCourse (returns the course's choice), createLesson and
+#     createSessionBatch (create the broadcast of each live celse when the course uses YouTube), updateLesson (a changed time updates the
+#     broadcast), cancelLesson (deletes it), getSession (a `liveState` for the talebe's player, MDRS-239), listCourseLiveStreams and
+#     setLessonLiveStream (the manual link: with a broadcast the stored link is the broadcast's), createLessonRecording (RECORDING_EXISTS is what
+#     the worker meets when a hoca pasted a link first). The recording the worker attaches is a lesson_recordings row of provider YOUTUBE:
+#     READY only when YouTube has processed the video, so the talebe are told "Kayıt eklendi" (RECORDING_ADDED, the existing notification) then and
+#     not before (RECADD-2 of nazar.recordings.add).
+#   - quota: the default budget is 10,000 units a day; insert, update, delete, bind and transition cost 50, a list 1 (MDRS-195, MDRS-238). The
+#     guard answers 503 YOUTUBE_QUOTA_EXHAUSTED before a call that would pass the day's budget.
+#   - every call made on the channel's behalf is written to audit_log (the YouTube Developer Policies ask that such actions be clearly identified,
+#     MDRS-238): youtube.connect, youtube.broadcast_create, youtube.broadcast_update, youtube.broadcast_delete, youtube.stream_create,
+#     youtube.key_read, youtube.recording_attach.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+entities:
+  YoutubeConnection: # the one Medaris channel: a singleton row
+    required: [id, status, connectedBy, connectedAt]
+    fields:
+      id: { type: string, format: uuid, note: "planned (MDRS-238): no code yet." }
+      status: { enum: [CONNECTED, REVOKED], note: "REVOKED when YouTube answers invalid_grant to a refresh: the owner removed Medaris's access or the token expired. A disconnect that the başnazım presses is not in the issues (D9 of the flow)" }
+      channelId: { type: string, sensitivity: internal }
+      channelTitle: { type: string, note: "shown on /ayarlar/youtube" }
+      liveEnabled: { type: boolean, note: "whether YouTube has opened live streaming on the channel; the first time it takes up to 24 hours (MDRS-237), until then no broadcast can be created" }
+      refreshToken: { type: string, sensitivity: credential, note: "stored encrypted; never sent to a client, never written to a log or an audit row" }
+      scope: { type: string, note: "https://www.googleapis.com/auth/youtube.force-ssl, a sensitive scope, not a restricted one" }
+      connectedBy: { type: string, format: uuid, note: "Keycloak sub of the başnazım (or the Medaris nazım holding platform.youtube_manage) who gave the consent" }
+      connectedAt: { type: string, format: date-time }
+      revokedAt: { type: [string, "null"], format: date-time }
+    lifecycle:
+      - "none -> connected: the consent screen returns a code for the channel's owner or a Brand Account manager (channel-permission delegates cannot manage through the API) and the code is exchanged (finishYoutubeConnection)"
+      - "connected -> revoked: a refresh answers invalid_grant (the worker, or any call); the page shows the reconnect alert (MDRS-238)"
+      - "revoked -> connected: the same consent again"
+
+  YoutubeStream: # one reusable liveStreams resource per hoca (MDRS-238): two lessons at the same time need two streams
+    required: [id, userId, streamId, resolution, frameRate]
+    fields:
+      id: { type: string, format: uuid, note: "planned (MDRS-238): no code yet." }
+      userId: { type: string, format: uuid, unique: true, note: "Keycloak sub of the hoca whose stream it is (D4: whose stream a ders nazırı's broadcast uses)" }
+      streamId: { type: string, sensitivity: internal, note: "YouTube's liveStreams id. The stream key (cdn.ingestionInfo.streamName) is NOT stored: it is read from YouTube when asked (D3)" }
+      resolution: { enum: ["720p", "1080p"], note: "fixed at creation; the OBS settings panel prints it" }
+      frameRate: { enum: ["30fps", "60fps"] }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> active: created on the hoca's first YouTube lesson (cdn.ingestionType rtmp, fixed resolution and frame rate), 50 units"
+      - "active -> none: rotating the key is deleting and recreating the stream; whether the product offers it is open (D3)"
+
+  LiveBroadcast: # one YouTube broadcast per celse; its id is also the id of the video that becomes the recording
+    required: [id, lessonId, broadcastId, streamId, privacy, state, scheduledStartAt, createdBy, createdAt]
+    fields:
+      id: { type: string, format: uuid, note: "planned (MDRS-238, MDRS-239): no code yet." }
+      lessonId: { type: string, format: uuid, unique: true, references: Lesson, note: "one broadcast per celse" }
+      broadcastId: { type: string, sensitivity: internal, note: "the YouTube broadcast id = the video id; Lesson.liveStreamUrl is set to https://www.youtube.com/live/<id> from it, so the existing talebe page and the manual-link fallback read the same field" }
+      streamId: { type: string, format: uuid, references: YoutubeStream }
+      privacy: { enum: [UNLISTED, PUBLIC], default: UNLISTED, note: "the course's choice, shown explicitly (YouTube policy: visibility is the user's explicit choice)" }
+      state: { enum: [CREATED, READY, TESTING, LIVE_STARTING, LIVE, COMPLETE, REVOKED], note: "YouTube's status.lifeCycleStatus, as the worker last read it" }
+      health: { enum: [GOOD, OK, BAD, NO_DATA, null], note: "liveStreams healthStatus.status; BAD and NO_DATA are the 'Bağlantı zayıf' badge" }
+      issues: { type: array, items: { type: string }, note: "configurationIssues of the stream, worded for people on the screen" }
+      scheduledStartAt: { type: string, format: date-time }
+      startedAt: { type: [string, "null"], format: date-time }
+      endedAt: { type: [string, "null"], format: date-time }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub; the person who planned the celse, or pressed 'YouTube yayını oluştur'" }
+      createdAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> created: createLiveBroadcast inserts and binds (enableAutoStart and enableAutoStop true, DVR and record-from-start on, enableEmbed true, selfDeclaredMadeForKids false: made-for-kids switches the chat off), 100 units"
+      - "created -> live: the hoca starts the encoder; YouTube starts the broadcast itself, no transition call is made (MDRS-239)"
+      - "live -> complete: about a minute after the encoder stops, YouTube ends it"
+      - "created -> none: the celse is cancelled (delete, 50 units), or the broadcast is deleted in YouTube Studio (state REVOKED)"
+      - "complete -> recording: the worker attaches the video as the celse's recording (attachBroadcastRecording), READY when YouTube has processed it (settleBroadcastRecording)"
+
+  CourseBroadcastSetting: # the course's choice "Canlı yayın: YouTube" (MDRS-238); a table of its own so that no existing entity is edited, D2 of the flow says it could be two columns of courses
+    key: [courseId]
+    required: [courseId, enabled, privacy]
+    fields:
+      courseId: { type: string, format: uuid, references: Course, note: "planned (MDRS-238): no code yet." }
+      enabled: { type: boolean, default: false, note: "when on, every LIVE celse planned or generated in a batch gets a broadcast" }
+      privacy: { enum: [UNLISTED, PUBLIC], default: UNLISTED }
+      changedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub" }
+      changedAt: { type: [string, "null"], format: date-time }
+
+actions:
+  # ------------------------------------------------------------------------------------------------------------------------
+  # The connection: the başnazım's page /ayarlar/youtube (nizam), MDRS-238
+  # ------------------------------------------------------------------------------------------------------------------------
+  getYoutubeConnection:
+    route: GET /nizam/youtube/connection
+    summary: The Medaris channel's connection, for Ayarlar > YouTube bağlantısı
+    description: >-
+      Which channel is bound and in what state: not connected, connected (with the channel's title, whether YouTube has opened live streaming on it,
+      who connected it and when), or revoked (the page then shows the reconnect alert). The refresh token never leaves the server.
+    needs: >-
+      platform.youtube_manage: SYSTEM_ADMIN, or a Medaris nazım holding the code (PlatformAccessService.assert, as the other nizam settings
+      routes). The code is in the catalogue today and no handler asks for it (MDRS-208).
+    result:
+      status: 200
+      type: object
+      required: [status]
+      properties:
+        status: { enum: [NOT_CONNECTED, CONNECTED, REVOKED] }
+        channelTitle: { type: [string, "null"] }
+        liveEnabled: { type: [boolean, "null"], description: "null when not connected" }
+        connectedBy: { type: [object, "null"], description: "{id, name}" }
+        connectedAt: { type: [string, "null"], format: date-time }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "platform.youtube_manage is not held" }
+    sideEffects: ["none: reads only"]
+    note: "planned (MDRS-238): no code yet."
+
+  startYoutubeConnection:
+    route: POST /nizam/youtube/connection/start
+    summary: Start the Google consent for the Medaris channel ("YouTube'u bağla")
+    description: >-
+      Mints a one-time state (random, ten minutes, bound to the caller's sub) and answers Google's authorization address for the scope
+      youtube.force-ssl with access_type=offline and prompt=consent, so that a refresh token comes back. The nizam page sends the browser there.
+      The consent must come from the channel's owner or a Brand Account manager (MDRS-195).
+    needs: platform.youtube_manage, as getYoutubeConnection.
+    result:
+      status: 200
+      type: object
+      required: [authorizationUrl]
+      properties:
+        authorizationUrl: { type: string, format: uri, description: "https://accounts.google.com/o/oauth2/v2/auth?...; carries the state and the redirect URI of finishYoutubeConnection" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "platform.youtube_manage is not held" }
+      YOUTUBE_NOT_CONFIGURED: { status: 503, note: "the Google OAuth client id or secret is not set in this environment: phase 0 (MDRS-237) is not done; checked first, as CALENDAR_NOT_CONFIGURED is" }
+    sideEffects:
+      - "audit:youtube.connect_start (entity youtube_connection; details: none of the state)"
+    note: "planned (MDRS-238, MDRS-237): no code yet."
+
+  finishYoutubeConnection:
+    route: GET /nizam/youtube/callback
+    summary: Take Google's answer, store the refresh token and send the browser back to the page
+    description: >-
+      The redirect URI that phase 0 registers with Google (tedrisat's dev and prod callback URLs, MDRS-237). The browser arrives from Google with a
+      code and the state, and no token: the one-time state decides which caller this is for and is spent here. On a code, the grant is made and the
+      channel is read (channels.list mine, 1 unit): the channel's title, id, and whether live streaming is enabled. The refresh token is stored
+      encrypted. The answer is always a redirect to the nizam page: ?bagli=1 on success, ?hata=<kod> on a refusal.
+    needs: >-
+      nothing in the request (the browser carries no Authorization header): the state minted by startYoutubeConnection is what proves the round trip is
+      the caller's own
+    query:
+      type: object
+      properties:
+        code: { type: string, description: "Google's authorization code" }
+        state: { type: string, description: "the one-time state of startYoutubeConnection" }
+        error: { type: string, description: "Google's own error, such as access_denied" }
+    result:
+      status: 302
+      redirect: "<NIZAM_WEB_URL>/ayarlar/youtube?bagli=1"
+    refusals:
+      YOUTUBE_CONSENT_DENIED:
+        status: 302
+        redirect: "<NIZAM_WEB_URL>/ayarlar/youtube?hata=reddedildi"
+        note: "the person pressed 'İptal' at Google (error=access_denied)"
+      YOUTUBE_STATE_INVALID:
+        status: 302
+        redirect: "<NIZAM_WEB_URL>/ayarlar/youtube?hata=basarisiz"
+        note: "no such state, a spent one, or one older than ten minutes"
+      YOUTUBE_NO_CHANNEL:
+        status: 302
+        redirect: "<NIZAM_WEB_URL>/ayarlar/youtube?hata=kanal-yok"
+        note: "the Google account owns no channel, or manages it only by channel permission (a delegate cannot manage through the API); nothing is stored"
+      YOUTUBE_TOKEN_EXCHANGE_FAILED:
+        status: 302
+        redirect: "<NIZAM_WEB_URL>/ayarlar/youtube?hata=basarisiz"
+        note: "Google refused the code, or answered no refresh token"
+    sideEffects:
+      - "audit:youtube.connect (entity youtube_connection; details channelId, channelTitle, liveEnabled; never a token)"
+      - "writes the YoutubeConnection row (the one channel); a second connect replaces the first"
+    note: "planned (MDRS-238, MDRS-237): no code yet. A browser address, so it keeps its route (SPEC section 5)."
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # The course's choice, MDRS-238
+  # ------------------------------------------------------------------------------------------------------------------------
+  setCourseLiveBroadcastSettings:
+    route: PUT /courses/{id}/live-broadcast-settings
+    summary: Choose whether the course's live celses are broadcast on YouTube, and how visible
+    description: >-
+      Turns "Canlı yayın: YouTube" on or off for the course and says the visibility, explicitly (liste dışı or herkese açık). It changes nothing for
+      celses already planned: only a celse planned or generated after it gets a broadcast, and one without can be given one by createLiveBroadcast.
+      PUBLIC is refused while the platform policy RECORDINGS_NEVER_PUBLIC is on (that policy's own words: no recording "YouTube'a yüklenemez"), as the
+      course writes refuse any rule that policy closes; this is a proposal (D5).
+    needs: course.settings on the course (a müderris of it, the köşk's nazım, a medrese's başmüderris, a grantee)
+    body:
+      type: object
+      additionalProperties: false
+      required: [enabled, privacy]
+      properties:
+        enabled: { type: boolean }
+        privacy: { enum: [UNLISTED, PUBLIC] }
+    result:
+      returns: CourseBroadcastSetting
+      status: 200
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "course.settings is not held on the course" }
+      VALIDATION_ERROR: { status: 400, note: "a key is missing, an unknown property, or privacy is neither UNLISTED nor PUBLIC" }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or the course of a hidden köşk to a caller who may not open it" }
+      YOUTUBE_NOT_CONNECTED: { status: 409, note: "enabled true while no channel is connected (the başnazım has not done /ayarlar/youtube yet)" }
+      PLATFORM_POLICY_LOCKED: { status: 409, note: "privacy PUBLIC while RECORDINGS_NEVER_PUBLIC is on; never given to SYSTEM_ADMIN, as everywhere (D5)" }
+    sideEffects:
+      - "audit:course.live_broadcast_settings (entity course; details enabled, privacy, previous)"
+    note: "planned (MDRS-238): no code yet. getCourse would return the two values."
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # A broadcast per celse, MDRS-238
+  # ------------------------------------------------------------------------------------------------------------------------
+  createLiveBroadcast:
+    route: POST /lessons/{id}/live-broadcast
+    summary: Create the celse's YouTube broadcast and its stream link
+    description: >-
+      Called by the service itself when a LIVE celse of a course that uses YouTube is planned or generated in a batch (inside createLesson and
+      createSessionBatch, whoever plans: the course's choice authorizes it), and by the hoca's button "YouTube yayını oluştur" on a celse that has none
+      (a celse planned before the choice, or one whose first try failed). Order: the quota guard, then the hoca's stream (created on first use,
+      50 units, and kept), then liveBroadcasts.insert (title, scheduledStartTime, privacyStatus from the course's choice, enableEmbed,
+      selfDeclaredMadeForKids false, enableAutoStart and enableAutoStop true, DVR and record-from-start on), then bind, 100 units a celse in all. Writes
+      Lesson.liveStreamUrl as https://www.youtube.com/live/<broadcast id> (the field setLessonLiveStream writes, so the talebe's page and "Katılım"
+      read it as they do a pasted link). A celse without a start time takes none (LESSON_NOT_SCHEDULED, insert needs a scheduledStartTime). The batch
+      checks the quota for the whole course first (MDRS-238).
+    needs: >-
+      session.live_link on the lesson's course (byLessonCourse): the müderris and the köşk nazımı by default, a ders nazırı when given it. The
+      automatic call is not the caller's: it runs for the course's choice (D2).
+    result:
+      returns: LiveBroadcast
+      status: 201
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "session.live_link is not held on the lesson's course" }
+      LESSON_NOT_FOUND: { status: 404, note: "no such lesson, or an archived one" }
+      COURSE_NOT_FOUND: { status: 404, note: "the lesson's course is in a hidden köşk and the caller may not open it" }
+      LESSON_NOT_LIVE: { status: 409, note: "the lesson's type is not LIVE" }
+      LESSON_CANCELLED: { status: 409, note: "the celse is cancelled" }
+      LESSON_NOT_SCHEDULED: { status: 409, note: "the celse has no start time" }
+      YOUTUBE_BROADCAST_EXISTS: { status: 409, note: "the celse already has a broadcast; context broadcastId's lesson" }
+      YOUTUBE_NOT_CONNECTED: { status: 409, note: "no channel is connected" }
+      YOUTUBE_RECONNECT_NEEDED: { status: 409, note: "the connection is REVOKED: the başnazım must reconnect on /ayarlar/youtube" }
+      YOUTUBE_LIVE_NOT_ENABLED: { status: 409, note: "YouTube has not yet opened live streaming on the channel (up to 24 hours the first time; liveStreamingNotEnabled)" }
+      YOUTUBE_QUOTA_EXHAUSTED: { status: 503, note: "the day's budget cannot pay the calls; nothing was called. A batch refuses as a whole" }
+      YOUTUBE_API_ERROR: { status: 502, note: "YouTube refused or did not answer, including the limits the issue says are undocumented (concurrent live broadcasts, userBroadcastsExceedLimit)" }
+    sideEffects:
+      - "youtube:liveStreams.insert (the hoca's first YouTube lesson only), liveBroadcasts.insert, liveBroadcasts.bind"
+      - "writes LiveBroadcast and Lesson.liveStreamUrl"
+      - "audit:youtube.stream_create (first use), youtube.broadcast_create (entity lesson; details broadcastId, privacy, scheduledStartAt)"
+    note: "planned (MDRS-238): no code yet."
+
+  listCourseLiveBroadcasts:
+    route: GET /courses/{id}/live-broadcasts
+    summary: The course's broadcasts with their state, for the Celseler page
+    description: >-
+      One item per celse that has a broadcast: its state in words (waiting, live, weak connection, ended), its health issues worded for people, and the
+      ingest address with the OBS resolution and frame rate (not secret). The stream key is never in this answer. The talebe do not call this: their
+      player's state comes from getSession.
+    needs: session.live_link on the course, as listCourseLiveStreams.
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [lessonId, state]
+        properties:
+          lessonId: { type: string, format: uuid, references: Lesson }
+          state: { enum: [WAITING, LIVE, WEAK, MISSED_START, ENDED] }
+          issues: { type: array, items: { type: string } }
+          ingest: { type: object, description: "{address, resolution, frameRate}; the address is rtmps://, the key is not here" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "session.live_link is not held on the course" }
+      COURSE_NOT_FOUND: { status: 404, note: "no such course, or a hidden köşk's to a caller who may not open it" }
+    sideEffects: ["none: reads what the worker stored"]
+    note: "planned (MDRS-239): no code yet. Polled by the page about every 30 seconds; SSE is the other reading of the issue (D11)."
+
+  getLiveStreamKey:
+    route: GET /lessons/{id}/live-stream-key
+    summary: Read the celse's stream key, to show it or copy it
+    description: >-
+      Reads the key of the stream the celse's broadcast is bound to (liveStreams.list, 1 unit) and answers it with `Cache-Control: no-store`. The key
+      is a credential: it is in no other answer, no log line and no audit detail (the audit row says only who read it and when). Whoever holds it can
+      broadcast in the hoca's name, so the screen masks it and asks to show it (D3).
+    needs: >-
+      session.live_link on the lesson's course (byLessonCourse). MDRS-238 says "only the stream's müderris and course staff see it"; whose stream a ders
+      nazırı's celse uses is open (D4).
+    result:
+      status: 200
+      type: object
+      required: [streamKey]
+      properties:
+        streamKey: { type: string, sensitivity: credential, description: "cdn.ingestionInfo.streamName; never stored by Medaris" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "session.live_link is not held on the lesson's course" }
+      LESSON_NOT_FOUND: { status: 404, note: "no such lesson" }
+      YOUTUBE_BROADCAST_NOT_FOUND: { status: 404, note: "the celse has no broadcast" }
+      YOUTUBE_RECONNECT_NEEDED: { status: 409, note: "the connection is REVOKED, so the stream cannot be read" }
+      YOUTUBE_API_ERROR: { status: 502, note: "YouTube refused or did not answer" }
+    sideEffects:
+      - "youtube:liveStreams.list (1 unit)"
+      - "audit:youtube.key_read (entity lesson; details broadcastId; never the key)"
+    note: "planned (MDRS-238): no code yet."
+
+  rescheduleLiveBroadcast:
+    summary: Move the celse's broadcast when its time changes (a step inside updateLesson)
+    description: >-
+      After updateLesson saves a new start, the broadcast is updated with liveBroadcasts.update, which overwrites the whole part, so the full part is
+      always sent (MDRS-238), 50 units. The celse's own save stands even when this call fails: the answer to the hoca is then a warning that the
+      YouTube broadcast still has the old time (D14).
+    needs: the caller's updateLesson (session.manage on the course); no permission of its own
+    result:
+      returns: LiveBroadcast
+    refusals:
+      YOUTUBE_RECONNECT_NEEDED: { status: 409, note: "the connection is REVOKED" }
+      YOUTUBE_QUOTA_EXHAUSTED: { status: 503, note: "the budget cannot pay the call" }
+      YOUTUBE_API_ERROR: { status: 502, note: "YouTube refused or did not answer" }
+    sideEffects:
+      - "youtube:liveBroadcasts.update"
+      - "audit:youtube.broadcast_update (entity lesson; details broadcastId, scheduledStartAt, previous)"
+    note: "planned (MDRS-238): no code yet. updateLesson is the existing action that would change."
+
+  removeLiveBroadcast:
+    summary: Delete the celse's broadcast when the celse is cancelled (a step inside cancelLesson)
+    description: >-
+      After cancelLesson saves, the broadcast is deleted (liveBroadcasts.delete, 50 units) and Lesson.liveStreamUrl is cleared, because a cancelled
+      session takes no live stream link. The cancel stands even when the delete fails; the broadcast then stays on the channel and the answer says so (D14).
+    needs: the caller's cancelLesson (session.manage on the course); no permission of its own
+    refusals:
+      YOUTUBE_RECONNECT_NEEDED: { status: 409, note: "the connection is REVOKED" }
+      YOUTUBE_API_ERROR: { status: 502, note: "YouTube refused or did not answer" }
+    sideEffects:
+      - "youtube:liveBroadcasts.delete"
+      - "audit:youtube.broadcast_delete (entity lesson; details broadcastId)"
+    note: "planned (MDRS-238): no code yet. cancelLesson is the existing action that would change."
+
+  # ------------------------------------------------------------------------------------------------------------------------
+  # Following the broadcast and the recording: background jobs, MDRS-239 and MDRS-240. In-process timers like the recording polls: no route
+  # ------------------------------------------------------------------------------------------------------------------------
+  followLiveBroadcasts:
+    summary: Read the state of the broadcasts that are due and say it to the clients
+    description: >-
+      One pass. For the celses due from about 15 minutes before their start until about 15 minutes after their end, one liveBroadcasts.list and one
+      liveStreams.list for all their ids (many ids in a call, 1 unit each), about every 30 seconds and shared by every concurrent lesson, about 180
+      units of polling a lesson. It stores status.lifeCycleStatus, the stream's health and its configuration issues. No transition call is made:
+      with enableAutoStart and enableAutoStop YouTube starts the broadcast when the encoder starts and ends it about a minute after it stops. A
+      broadcast not live five minutes after its scheduled start is marked MISSED_START (the warning in the staff's row). The talebe's player reads
+      the state through getSession.
+    needs: the system itself (an in-process timer); no caller, no token, no permission
+    result:
+      type: object
+      description: the counts of one pass, which no route sends
+      properties:
+        read: { type: integer }
+        changed: { type: integer }
+        missed: { type: integer }
+    refusals:
+      YOUTUBE_RECONNECT_NEEDED: { status: 409, note: "the refresh answers invalid_grant: the connection becomes REVOKED, the pass stops and the page shows the reconnect alert" }
+      YOUTUBE_QUOTA_EXHAUSTED: { status: 503, note: "the budget cannot pay the pass; the states go stale until tomorrow" }
+    sideEffects:
+      - "youtube:liveBroadcasts.list, liveStreams.list"
+      - "writes LiveBroadcast.state, health, issues, startedAt, endedAt"
+    note: "planned (MDRS-239): no code yet. Trigger: a timer every 30 seconds, started at bootstrap only when the Google client is configured, as the encoding poll is for Bunny."
+
+  attachBroadcastRecording:
+    summary: Attach the ended broadcast to its celse as a recording that is still being processed
+    description: >-
+      When the worker reads lifeCycleStatus complete, the celse's lesson_recordings row is written: provider YOUTUBE, url the watch link of the
+      broadcast id (it is the video id), title the broadcast's, status PROCESSING, visibility ENROLLED (PUBLIC only when the course chose a public
+      broadcast and no policy forbids it; "visibility follows the course setting", MDRS-240). A celse holds one recording: when the hoca already
+      pasted or uploaded one, nothing is written and the worker leaves it (D8). The talebe are not told: RECORDING_ADDED is sent only for a READY
+      recording (the existing announce rule).
+    needs: the system itself; no caller, no permission
+    result:
+      returns: LessonRecording
+    refusals:
+      RECORDING_EXISTS: { status: 409, note: "the celse already has a recording, except a FAILED Bunny upload; the worker leaves it alone" }
+    sideEffects:
+      - "writes the LessonRecording row, status PROCESSING"
+      - "audit:youtube.recording_attach (entity lesson_recording; details lessonId, broadcastId)"
+    note: "planned (MDRS-240): no code yet. This is the answer to RECADD-2: the recording is not READY when the stream is merely added."
+
+  settleBroadcastRecording:
+    summary: Make the recording READY once YouTube has processed the video, and tell the talebe
+    description: >-
+      After complete, videos.list (part status, processingDetails, contentDetails, the owner's token, 1 unit) is polled until
+      processingDetails.processingStatus is succeeded. The row becomes READY with duration_minutes from contentDetails.duration, and RECORDING_ADDED
+      ("Kayıt eklendi") is announced once to the ENROLLED seats through the existing notified_at claim, when the release time allows. failed and
+      terminated are handled: the row is taken off (a FAILED recording is listed to no one) and the staff's row says YouTube could not process the video,
+      so the hoca pastes a link or uploads (nazar.recordings.add, nazar.recordings.upload). With DVR and record-from-start on, playback is available
+      right away; without them it can take about a day (MDRS-240).
+    needs: the system itself; no caller, no permission
+    result:
+      returns: LessonRecording
+    refusals:
+      YOUTUBE_VIDEO_FAILED: { status: 502, note: "processingStatus is failed or terminated" }
+      YOUTUBE_RECONNECT_NEEDED: { status: 409, note: "the connection is REVOKED: the poll waits for the reconnect" }
+    sideEffects:
+      - "youtube:videos.list (1 unit a poll)"
+      - "notification:RECORDING_ADDED (announce, once, only when READY; the issue asks for a new type instead, D7)"
+      - "writes LessonRecording.status READY, duration_minutes"
+    note: "planned (MDRS-240): no code yet."
+
+invariants:
+  - id: youtube-stream-key-is-a-credential
+    rule: >-
+      The stream key of a hoca's YouTube stream is a credential. It is answered only by getLiveStreamKey to a holder of session.live_link, with no-store,
+      never stored by Medaris, and appears in no list, no log line, no audit detail, no notification, no catalog and no sample.
+    note: "planned (MDRS-238): no code yet. How the screen shows it (once, masked, copy) is open, D3 of nizam.youtube.liveBroadcasts."
+
+  - id: youtube-refresh-token-is-encrypted
+    rule: >-
+      The refresh token of the Medaris channel is kept encrypted, is sent to no client and is written to no log line or audit row. Anything the
+      Developer Policies call an action on a user's behalf is written to the audit log with its caller.
+    note: "planned (MDRS-238): no code yet."
+
+  - id: youtube-recording-opens-only-when-processed
+    rule: >-
+      The recording of a broadcast is READY, and the talebe are told of it, only once YouTube reports the video processed; until then its row is
+      PROCESSING and plays for no one but the course team. A recording the hoca already added is never replaced by the worker.
+    note: "planned (MDRS-240): no code yet. The existing path 'Yayını kayıt olarak ekle' stores the stream's link READY at once (RECADD-2)."

@@ -1,0 +1,62 @@
+# What the three walks of nazar.courseSettings.publish share: where the page's nodes are found, where its exits lead, and what a status
+# change leaves outside the screen. Nothing here changes data; the scenarios (binding.yaml, binding.refused.yaml, binding.failed.yaml)
+# make their own courses.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code and the
+# catalog; none was seen in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courseSettings.publish
+
+# a wide window, so that the course's sidebar (and its menu, which the main walk enters by) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+# The courses of the walks, made by helpers/course.mjs in each scenario's `setup` and read from the file it writes: pubMain by the
+# müderris's walks, pubDeny by the ders nazırı's, pubGone by the ones whose course is hidden. A tag is not the start of another, so
+# removing one never clears another's mails. Each scenario of a file makes its own, published or a draft, under the file's one tag.
+data:
+  pubMain: { json: ../.local/made/pubMain.json }
+  pubDeny: { json: ../.local/made/pubDeny.json }
+  pubGone: { json: ../.local/made/pubGone.json }
+
+events:
+  NAVIGATE: [{ goto: '{nazar}/bildirimler' }]
+
+# `not_found` is not bound: tedrisat answers every read of the walks' courses, and a nil id is the portal's 404, which
+# nazar.shell.errorStates draws. The question and the busy states are on the page's own address: a Next server action answers 200 there.
+states:
+  published: { url: '{nazar}/ders/*/ayarlar' }
+  publishedEdited: { url: '{nazar}/ders/*/ayarlar' }
+  draft: { url: '{nazar}/ders/*/ayarlar' }
+  draftEdited: { url: '{nazar}/ders/*/ayarlar' }
+  asking: { url: '{nazar}/ders/*/ayarlar' }
+  left: { url: '{nazar}/bildirimler' }
+
+# Where role and name cannot find a node. The page's <main> is found by the title of one of the walks' courses (the page a walk leaves
+# for has a <main> of its own). The access form's Kaydet and Vazgeç and the Yayın card's buttons are found inside their own form and
+# card: since the card Hocalar ve unvanları the page has a second Kaydet and a second Vazgeç (F-D2c-14), and the question's
+# "Taslağa çek" and "Vazgeç" have the same names as the page's, so each is found inside the dialog, which is named by its title (an
+# error toast is an alertdialog too and stays on the page).
+nodes:
+  settingsPage: { role: main, hasText: '/Deneme dersi (pubMain|pubDeny|pubGone) dersinin/' }
+  # a new-tab link to Tedris's course address: today's form, with the language segment (PUB-1; course-settings#6 a2). Its name ends with the hidden
+  # "(yeni sekmede açılır)", so its text is matched by its beginning. The main file pins the whole address.
+  viewPublic: { css: 'a[target=_blank][rel="noopener noreferrer"][href^="{tedris}/tr/courses/"]', hasText: '/^Tanıtım sayfasını gör/' }
+  accessForm: { testId: course-settings-form }
+  accessSave: { role: button, name: Kaydet, within: { testId: course-settings-form } }
+  accessCancel: { role: button, name: Vazgeç, within: { testId: course-settings-form } }
+  publishCard: { testId: course-publish }
+  publishTitle: { role: heading, name: Yayın, within: { testId: course-publish } }
+  statusPublished: { text: Yayında, within: { testId: course-publish } }
+  statusDraft: { text: Taslak, within: { testId: course-publish } }
+  unpublishButton: { role: button, name: Taslağa çek, within: { testId: course-publish } }
+  publishButton: { role: button, name: Yayımla, within: { testId: course-publish } }
+  publishBusy: { text: Yükleniyor, within: { testId: course-publish } } # the visually hidden <output> of the busy button
+  unpublishEyebrow: { text: '/^Deneme dersi (pubMain|pubDeny|pubGone)$/', within: { role: alertdialog, name: Dersi taslağa çek } } # the sidebar's scope card says the same title, so it is found inside the dialog
+  unpublishTitle: { role: heading, name: Dersi taslağa çek, within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishBody: { text: '/^Deneme dersi (pubMain|pubDeny|pubGone) taslağa çekilecek; talebeler dersi göremez\.$/', within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishWay: { text: İstediğiniz zaman yeniden yayımlayabilirsiniz., within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishCancel: { role: button, name: Vazgeç, within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishConfirm: { role: button, name: Taslağa çek, within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishClose: { role: button, name: Kapat, within: { role: alertdialog, name: Dersi taslağa çek } } # an icon button named by aria-label
+  unpublishBusy: { text: Yükleniyor, within: { role: alertdialog, name: Dersi taslağa çek } }

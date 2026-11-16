@@ -1,0 +1,91 @@
+# The screens of tedris.learn.writingGating: the three pages a person opens a celse on (the celse page, its watch page and the course page), as the
+# panels' gate draws them, and the lock card, the cancelled card and the not-found page that stand where a panel would. Only what proves a panel is
+# there or is not is drawn: the panels' regions, the notes form's textbox and button, the questions region, the tab row; what a panel does once it
+# is there is tedris.learn.notes, tedris.learn.questions and tedris.learn.homeworkHandIn, and the lock card's other parts are tedris.celse.locked.
+# The bar around the page (tedris.shell.frame) and the toast host are not drawn. Nothing here was seen in a browser: it is from the code.
+#
+# Words: every key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.<key>`: `SessionPage.*`, `LessonLocked.*`,
+# `CoursePage.*`, `SystemPages.*`) and tedris-learn.json (`tedrisLearn.<key>`: `LessonNotes.*`, `Homework.*`, `WatchPage.*`, `CourseQuestions.*`), the
+# key being the path inside that file with the root removed. Two keys are NOT in any i18n file:
+#   composed.WritingGating.title   the celse's title, a value the API gives, the one word of the page's h1       session-header.tsx:58
+#   Changes.note                   written for this flow, because the app has no message that says what a note or a question does to a person's
+#                                  data: one short, factual Turkish sentence (what is kept, who reads it, what a lost seat does to it)
+# Samples are invented and neutral: the throwaway course's celses are "Celse 1" to "Celse 4" of "Hafta 1" (helpers/course.mjs).
+schema: delurio-graph/0
+kind: ui
+id: tedris.learn.writingGating
+flow: tedris.learn.writingGating
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Celse 1
+  week: "1"
+
+nodes:
+  # ---- the page: one <main> on all three pages (a cancelled card, a lock card and the panels are inside it) ----
+  page: { type: page, component: Page, role: main, in: [celsePanels, drafting, addRefused, staffCelse, lockedShown, cancelledShown, watchPanels, staffWatch, courseAsk, courseNoAsk], source: apps/tedris/features/courses/components/session-page.tsx:337, script: actions } # SessionPage, LessonLocked, WatchView and CoursePage each have one <main>, with no name and no initial focus (rule focus-not-set); the binding finds it by the course's title, which every one of them holds
+
+  # ---- the celse page's header: the same h1 for the panels, the hoca's page, the lock card and the cancelled card ----
+  celseTitle: { type: text, component: Heading, role: heading, text: { key: composed.WritingGating.title, params: { title: title } }, in: [celsePanels, drafting, addRefused, staffCelse, lockedShown, cancelledShown], source: apps/tedris/features/courses/components/session-header.tsx:58 } # h1; the celse's title, as the API gave it
+
+  # ---- "Notlarım": the notes panel, on the celse page and on the watch page (features/courses/components/lesson-notes.tsx) ----
+  notesRegion: { type: page, component: Page, role: region, name: { labelledBy: notesTitle }, in: [celsePanels, drafting, addRefused, watchPanels], source: apps/tedris/features/courses/components/lesson-notes.tsx:154 } # a <section aria-labelledby>, named by its h2
+  notesTitle: { type: text, component: Heading, role: heading, text: { key: LessonNotes.title }, in: [celsePanels, drafting, addRefused, watchPanels], source: apps/tedris/features/courses/components/lesson-notes.tsx:160 } # h2
+  notesPrivate: { type: text, component: Text, text: { key: LessonNotes.private }, in: [celsePanels, drafting, addRefused, watchPanels], source: apps/tedris/features/courses/components/lesson-notes.tsx:164 }
+  noteBody: { type: field, component: TextField, role: textbox, text: { key: LessonNotes.bodyLabel }, value: { literal: "" }, in: [celsePanels, drafting, addRefused, watchPanels], source: apps/tedris/features/courses/components/lesson-notes.tsx:240 } # a <textarea aria-label="Not">, no visible label (WRT-14); the create form is drawn at once and never disabled, so it is there for a talebe whose seat is gone
+  addButton: { type: action, component: Button, role: button, intent: confirm, text: { key: LessonNotes.add }, in: [celsePanels, drafting, addRefused, watchPanels], emits: SUBMIT, source: apps/tedris/features/courses/components/lesson-notes.tsx:404 } # sends only from `drafting`; with an empty body the panel answers "Not boş olamaz." and sends nothing
+  notesEmpty: { type: text, component: Text, text: { key: LessonNotes.empty }, in: [celsePanels, drafting, addRefused, watchPanels], when: "notes == 'none'", source: apps/tedris/features/courses/components/lesson-notes.tsx:187 }
+  forbiddenAlert: { type: alert, component: Alert, role: alert, text: { key: LessonNotes.forbidden }, in: [addRefused], source: apps/tedris/features/courses/components/lesson-notes.tsx:424 } # a <p role="alert"> under the form; chosen by the status 403 alone (WG-2); takes no focus
+
+  # ---- "Ödev": the homework panel, on the celse page only, when the hoca set a homework or the talebe handed one in before (session-homework.tsx) ----
+  homeworkRegion: { type: page, component: Page, role: region, name: { labelledBy: homeworkTitle }, in: [celsePanels, drafting, addRefused], source: apps/tedris/features/courses/components/session-homework.tsx:466 } # a <section aria-labelledby>; drawn after "Notlarım"; a celse with no homework and no earlier hand-in draws nothing, so a binding that wants it makes one
+  homeworkTitle: { type: text, component: Heading, role: heading, text: { key: Homework.sectionTitle }, in: [celsePanels, drafting, addRefused], source: apps/tedris/features/courses/components/session-homework.tsx:476 } # h2
+
+  # ---- the watch page (watch-view.tsx): the header, and beside the video an aside that only a talebe who may write is given ----
+  watchTitle: { type: text, component: Heading, role: heading, text: { key: WatchPage.heading, params: { week: week, title: title } }, in: [watchPanels, staffWatch], source: apps/tedris/features/courses/components/watch-view.tsx:215 } # h1 "Hafta 1 · Celse 2"
+  detailsLink: { type: action, component: LinkButton, role: link, text: { key: WatchPage.details }, in: [watchPanels, staffWatch], source: apps/tedris/features/courses/components/watch-view.tsx:233 } # "Celse ayrıntıları": back to the celse page; the one thing the hoca's watch page has beside the video
+  side: { type: page, component: Page, role: complementary, name: { key: WatchPage.sideQuestions }, in: [watchPanels], source: apps/tedris/features/courses/components/watch-view.tsx:245 } # <aside aria-label>: for a recording the label is "Sorular ve notlar" (a stream on air would say "Sohbet ve notlar": tedris.celse.watchStream); the hoca's page has no aside at all
+  questionsRegion: { type: page, component: Page, role: region, name: { labelledBy: questionsTitle }, in: [watchPanels], source: apps/tedris/features/courses/components/lesson-questions.tsx:69 } # a <section aria-labelledby>
+  questionsTitle: { type: text, component: Heading, role: heading, text: { key: WatchPage.questionsTitle }, in: [watchPanels], source: apps/tedris/features/courses/components/lesson-questions.tsx:79 } # h2 "Soru sor"
+  questionsPrivate: { type: text, component: Text, text: { key: CourseQuestions.private }, in: [watchPanels], source: apps/tedris/features/courses/components/lesson-questions.tsx:81 } # who reads a question: the person, the hoca and the ders nazırı
+  questionsEmpty: { type: text, component: Text, text: { key: WatchPage.questionsEmpty }, in: [watchPanels], source: apps/tedris/features/courses/components/lesson-questions.tsx:101 }
+
+  # ---- the lock card where the panels would be (lesson-locked.tsx, session-action-card.tsx; tedris.celse.locked draws the rest of it) ----
+  lockApply: { type: text, component: Text, text: { key: LessonLocked.description.apply }, in: [lockedShown], when: "not removedNow", source: apps/tedris/features/courses/components/session-action-card.tsx:350 } # the stranger's sentence, and also a waiting application's (LOCKED-2), a barred talebe's and a passive course's talebe's (CLS-02)
+  lockRevoked: { type: text, component: Text, text: { key: LessonLocked.description.revoked }, in: [lockedShown], when: removedNow, source: apps/tedris/features/courses/components/session-action-card.tsx:350 } # "Bu derse erişimin kaldırıldı."
+  applyButton: { type: action, component: Button, role: button, intent: confirm, text: { key: LessonLocked.apply }, in: [lockedShown], when: "not removedNow and not pendingNow", source: apps/tedris/features/courses/components/lesson-locked.tsx:108 } # "Kayıt başvurusu yap": also shown to the enrolled talebe of a passive course and to a barred one (CLS-02, MDRS-265); what it does is tedris.celse.locked's
+  pendingNote: { type: text, component: Text, text: { key: LessonLocked.pendingNote }, in: [lockedShown], when: pendingNow, source: apps/tedris/features/courses/components/lesson-locked.tsx:117 }
+
+  # ---- the cancelled celse's card: for the active talebe and the locked reader alike ----
+  cancelledCard: { type: page, component: Page, role: region, name: { labelledBy: cancelledTitle }, in: [cancelledShown], source: apps/tedris/features/courses/components/session-action-card.tsx:396 } # a <section aria-labelledby>, named by its h2
+  cancelledTitle: { type: text, component: Heading, role: heading, text: { key: SessionPage.cancelledTitle }, in: [cancelledShown], source: apps/tedris/features/courses/components/session-action-card.tsx:344 } # h2 "Bu celse iptal edildi"
+
+  # ---- the not-found page a hidden celse gets (tedris.shell.systemPages draws it whole) ----
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.notFoundTitle }, in: [celseNotFound], source: apps/tedris/features/errors/system-page.tsx:52 } # h1
+  notFoundText: { type: text, component: Text, text: { key: SystemPages.notFoundText }, in: [celseNotFound], source: apps/tedris/features/errors/system-page.tsx:59 }
+
+  # ---- the course page's tab row (course-page.tsx) ----
+  tabCurriculum: { type: action, component: Button, role: tab, text: { key: CoursePage.tabCurriculum }, in: [courseAsk, courseNoAsk], source: apps/tedris/features/courses/components/course-page.tsx:170 } # "Müfredat": selected for anyone who has no Sorularım tab; the kit's tab row, no event is drawn
+  tabMyQuestions: { type: action, component: Button, role: tab, text: { key: CoursePage.tabMyQuestions }, in: [courseAsk], source: apps/tedris/features/courses/components/course-page.tsx:187 } # only when `asksQuestions`: an active talebe
+  tabTeachers: { type: action, component: Button, role: tab, text: { key: CoursePage.tabTeachers }, in: [courseAsk, courseNoAsk], source: apps/tedris/features/courses/components/course-page.tsx:191 }
+  askForm: { type: page, component: Page, role: form, name: { key: CourseQuestions.askTitle }, in: [courseAsk], source: apps/tedris/features/courses/components/course-questions.tsx:435 } # <form aria-label="Soru sor">; the form's fields and the list are tedris.learn.questions'
+  askPrivate: { type: text, component: Text, text: { key: CourseQuestions.private }, in: [courseAsk], source: apps/tedris/features/courses/components/course-questions.tsx:113 }
+  revokedNotice: { type: text, component: Text, text: { key: CoursePage.revokedTitle }, in: [courseNoAsk], when: removedNow, source: apps/tedris/features/courses/components/course-aside.tsx:207 } # the aside's card for a REVOKED seat, an h2 inside a card
+
+edges:
+  - { labelledBy: [notesRegion, notesTitle] }
+  - { labelledBy: [homeworkRegion, homeworkTitle] }
+  - { labelledBy: [questionsRegion, questionsTitle] }
+  - { labelledBy: [cancelledCard, cancelledTitle] }
+  - { triggers: [addButton, adding] }
+
+rules:
+  - { id: focus-not-set, rule: "none of the three pages moves the focus on load or into a panel: no autoFocus and no focus() in session-page.tsx, watch-view.tsx, course-page.tsx, lesson-notes.tsx or lesson-questions.tsx (the notes inventory greps them), so the page nodes have no `initialFocus` and the graph says nothing of the focus when they open or when the refusal line appears" }
+  - { id: MDRS-265, rule: "an ENROLLED talebe whose course is in a passive scope, and one an open ban bars, get the lock card that tells them to register (\"Derse kaydolduğunda görebilirsin.\") and offers \"Kayıt başvurusu yap\" (features/courses/lesson-lock.ts:19-27, which reads `contentLocked` and the enrolment's status only), also on the watch address and, for the passive course, with no Sorularım tab. The panels are rightly missing (the scope closes the content to the enrolled too: talebe-writing-needs-an-active-seat), the explanation and the button are wrong. Inventory ids CLS-02 and WRT-15; e2e lesson-notes#15 pins the right behaviour as `test.fail`, so the graph draws the card as it is. Fix: a reason for ENROLLED and COMPLETED with the content closed, with its own words and no button; for a ban, say the access was removed (the talebe is notified \"erişimin kaldırıldı\")" }
+  - { id: MDRS-268, rule: "a talebe whose seat was removed, or whom a ban bars, still reads and deletes their own notes and questions through the API (GET /lessons/{id}/notes, DELETE /lessons/{id}/notes/{noteId}, GET /courses/{id}/questions/mine, DELETE /questions/{questionId}: mayReachOwnWriting needs only a visible, non-passive course, course.service.ts:586) and no page offers it: the celse page is the lock card, the Sorularım tab is not in the row (course-page.tsx:166-189). The comment of course-questions.tsx:35-37 says the opposite of what the page does. Decision D1 (a read-only list with delete, as the issue's default proposes). The domain's invariant own-writing-outlives-the-seat holds as written; an invariant with `holds: false` for the page's side is asked for (report, asks)" }
+  - { id: WG-1, rule: "new, provisional id: a note and a question are written on a hidden (archived) celse of a visible course, because findVisibleLessonCourse counts archived celses on purpose (course.service.ts:507, MDRS-150) and the note and question repositories never look at the celse; the page of that celse is the not-found page for everyone (layout.tsx:27), so what is stored there can only come from a page that was open before, and nobody can read or delete it through the web until the celse is restored. A hand-in on the same celse is 404 (hand-in-needs-a-live-session). The domain calls it \"a difference between the routes, not a defect\"; this flow records what it means for the pages. Decision D2: refuse it like a hand-in. From the code (lesson-note.service.ts:84-92, lesson-question.service.ts); the exit hidden_celse_written compares both" }
+  - { id: WG-2, rule: "new, provisional id: the panels read the status of a refused write and nothing else (lesson-notes.tsx:212, lesson-questions.tsx:152, course-questions.tsx:422) and every 403 gets the one sentence \"Not yazmak için derse kayıtlı olman gerekir.\" / \"Soru sormak için derse kayıtlı olman gerekir.\", the codes LESSON_NOTE_FORBIDDEN and LESSON_QUESTION_FORBIDDEN being the same for a removed seat, a ban and a passive course. For a barred talebe and for a talebe of a passive course, who are enrolled, the sentence is false. The page behind is stale until it is read again, so this line is the only place the person learns anything. Decision D3: one sentence for each reason, in the words the lock card already uses for each" }
+  - { id: E2E-LN-01, rule: "e2e lesson-notes#16's title says the API answers 404 for the second talebe, the müderris and the başnazım; the test expects 404 LESSON_NOTE_NOT_FOUND only for the second talebe's edit and for every delete, and 403 LESSON_NOTE_FORBIDDEN for the müderris's and the başnazım's edit (lesson-notes.e2e.ts:741-756). The exit own_writing_only carries the code's behaviour: the hoca's edit is 403, the hoca's delete is 404" }
+  - { id: e2e-title-promises, rule: "lesson-notes#14's title says there is \"no watch page\" for a passive course: the watch address redirects to the celse page, which draws the lock card (izle/page.tsx:31), and the test asserts the redirect, which is what the graph draws (watchRedirected)" }

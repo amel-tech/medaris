@@ -1,0 +1,40 @@
+# nazar.access.dersNazirPages, the ders nazırı given course.edit and course.settings: Müfredat opens (course.edit, with the line that says the session
+# buttons need session.manage) and Ders ayarları opens with “Kapalı ders”, “Kayıt onayı gereksin”, “Celseler yüz yüze yapılır” and “Saat dilimi” open, the
+# sample shut and no publish button (e2e course-settings#8). The hoca leaves (HOCA_LEAVES): course.edit is a content code and closes, course.settings
+# is not, so Müfredat refuses and Ders ayarları stays, with every box shut and the line “Bu ayarları değiştirmek için “Dersi düzenle” izni de
+# gerekir.” (e2e course-nazirs#14 a14-a20; its a20, “no Kaydet”, is stale: the Hocalar ve unvanları card has one, F-D2c-14).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/access/dersNazirPages --bind graphs/nazar/access/dersNazirPages/binding.settingsEdit.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay. HOCA_LEAVES revokes the course's MUDERRIS row in the database (no route takes the last müderris out) and `teardown`
+# gives it back.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.dersNazirPages
+
+events:
+  # Someone else's act (the hoca leaves, MDRS-136), and the person opens the page again. No route takes the last müderris out (unseat-hoca.mjs
+  # refuses), so the post is revoked in the database, as e2e course-nazirs#14 and questions#3 do (makePassive); `teardown` puts it back.
+  HOCA_LEAVES:
+    - run: [node, helpers/sql.mjs, "update role_assignments set revoked_at = now(), revoked_by = granted_by where role = 'MUDERRIS' and scope_id = '{dnp.course}' and revoked_at is null"]
+      expect: '"rows":1'
+    - reload: true
+
+scenarios:
+  settingsEdit:
+    given: { held: settingsEdit }
+    as: applicantD
+    open: '{nazar}/ders/{dnp.course}'
+    setup:
+      - run: [node, helpers/course.mjs, make, dnp, --weeks, '2', --lessons, '2', --start, '-3', --hoca, MUDERRIS, --talebe, applicantE]
+        expect: '"tag":"dnp"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'course.edit,course.settings']
+        expect: 'course-nazir-grants APPLICANT_D'
+    teardown:
+      - run: [node, helpers/sql.mjs, "update role_assignments set revoked_at = null, revoked_by = null where role = 'MUDERRIS' and scope_id = '{dnp.course}' and revoked_at is not null"]
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --dismiss]
+      - run: [node, helpers/course.mjs, remove, dnp]
+        expect: course remove dnp
+      - run: [node, helpers/notify.mjs, applicantE, clear]
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

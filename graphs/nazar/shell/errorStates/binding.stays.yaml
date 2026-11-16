@@ -1,0 +1,38 @@
+# The retries of nazar.shell.errorStates that fail again (recovery: stays), as their own binding file: binding.yaml's retry buttons
+# wait for the window to lift before they are pressed, which is right for the retry that works and wrong for this one, and a
+# node's `before` is the same in every scenario of a binding. So this file takes binding.yaml, gives the same two scenarios the
+# other `given` and the two retry buttons no `before`: the press comes at once, while the route is still refused, and the face is
+# drawn again. The scenarios keep their names, so they replace binding.yaml's; the others (the four 404s) come along unchanged.
+#   node apps/engine/src/cli.ts replay graphs/nazar/shell/errorStates --bind graphs/nazar/shell/errorStates/binding.stays.yaml --cover transitions --out <dir>
+# NOT RUN: see binding.yaml. The press has to come within the window (60 s) of the failure: if the machine is slow enough that it
+# does not, the retry works and the walk says mismatch, which is the walk phase's to fix (a longer window, or a second hold).
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nazar.shell.errorStates
+
+scenarios:
+  rolesUnreadable:
+    given: { arrival: rolesUnreadable, recovery: stays }
+    as: basmuderris
+    open: '{nazar}/'
+    teardown:
+      - run: [node, helpers/throttle.mjs, clear, basmuderris, /me/assignments]
+        expect: 'clear /me/assignments'
+  readFailed:
+    given: { arrival: readFailed, recovery: stays }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
+    teardown:
+      - run: [node, helpers/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
+        expect: clear
+
+nodes:
+  rolesRetry:
+    role: button
+    name: Yeniden dene
+    within: { css: 'main.mds-system-state--page', hasText: Görevleriniz okunamadı }
+  readRetry:
+    role: button
+    name: Yeniden dene
+    within: { css: 'main#main section.mds-system-state' }

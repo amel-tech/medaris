@@ -1,0 +1,29 @@
+# nizam.courses.decideApplications at the köşk's list, read by the başnazım: the exit no_access (CDA-5). The seeded SYSTEM_ADMIN holds
+# every permission, passes the route's guard (course.manage_all) and is refused by the service (KOSK_FORBIDDEN: she is no row of the
+# köşk's nazım), so the page says "Bu bölüm için izniniz yok" at the address she opened. tedrisat's own e2e pins this as intended
+# (roster-contact.e2e.spec.ts#6).
+#   node apps/engine/src/cli.ts replay graphs/nizam/courses/decideApplications --bind graphs/nizam/courses/decideApplications/binding.noAccess.yaml --to no_access --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser. The read is made by the server
+# while the page is built, so no node sends the edge FAIL.forbidden and no call can be held: the binding gives it as an event whose
+# action only waits for the screen (as nazar.roster.complete's binding.refused.yaml does). With `--to no_access` the engine loads this
+# file and finds a way (emit-spec checked). Do not run it with `--cover transitions`: the effects of the other transitions need a course.
+#
+# Nothing is made: the page is read as the başnazım and refused before any row is drawn. Another köşk's list for the köşk nazım (shell.e2e.ts#6) is
+# nizam.shell.noAccessAndNotFound's walk (its binding.yaml opens a köşk made for it), so it is not repeated here.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.decideApplications
+
+events:
+  FAIL.forbidden:
+    - waitText: Bu bölüm için izniniz yok
+
+states:
+  no_access: { url: '{nizam}/kosks/*/basvurular', text: Bu bölüm için izniniz yok }
+
+scenarios:
+  noAccess:
+    given: { approval: needed, place: kosk, note: asks }
+    as: systemAdmin
+    open: '{nizam}/kosks/{seed.kosk2}/basvurular'

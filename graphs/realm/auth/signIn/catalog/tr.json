@@ -1,0 +1,15 @@
+{
+  "loginAccountTitle": "Giriş yap",
+  "loginAccountSubtitle": "Derslerine kaldığın yerden devam et.",
+  "requiredFields": "* zorunlu alan",
+  "usernameOrEmail": "Kullanıcı adı ya da e-posta",
+  "password": "Şifre",
+  "showPassword": "Şifreyi göster",
+  "doForgotPassword": "Şifremi unuttum",
+  "rememberMe": "Beni hatırla",
+  "doLogIn": "Giriş yap",
+  "loginSubmitting": "Giriş yapılıyor",
+  "noAccount": "Hesabın yok mu?",
+  "doRegister": "Kayıt ol",
+  "invalidUserMessage": "Geçersiz kullanıcı adı veya şifre."
+}

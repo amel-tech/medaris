@@ -1,0 +1,63 @@
+# What the bindings of nizam.shell.noAccessAndNotFound share: the sign-in that waits for the person's landing, the event no node sends, the
+# places each exit opens, and where role and name cannot find a node. It carries no scenario, so it is not walked by itself:
+#   binding.yaml            the köşk nazımı (a section above them, a köşk that is not theirs, one that is not there, a path with no page),
+#                           the talebe (a /kosks/ page without being a nazım) and the başnazım (a menu entry with no page: Kalıcı yasak talepleri)
+#   binding.medaris.yaml    the seeded Medaris nazımı opening Medaris nazımları (permissions#2, grants#2: the başnazım's alone)
+#   binding.muderris.yaml   a müderris opening a köşk's Yasaklamalar (bans#9): a person with only a course role is refused by the layout
+#   binding.talebe.yaml     the talebe at an address no page owns: the same face around a shell with no menu
+#   binding.youtube.yaml    the başnazım's second menu entry with no page: YouTube bağlantısı
+# Two scenarios must not share a `given`, and `--cover transitions` walks the shortest scenario per transition, so a person who adds no
+# transition of their own has a small file. The window is 1440 x 900 (the sidebar shows from 768 px).
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/components/errors, libs/ui/src/mds) and from the HTML and stream nizam-web served to a GET on 15 Nov 2026 as the köşk
+# nazımı, the talebe and the Medaris nazımı; none was looked for in a browser. Where the walk may need a fix, a comment says so.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.shell.noAccessAndNotFound
+
+browser: { width: 1440, height: 900 }
+
+data:
+  # the köşk binding.yaml's strangerKosk makes (make-kosk.mjs); read after its setup, so a missing file is fine until the scenario uses it
+  made: { json: ../.local/made/noaccess.json }
+
+# The başnazım's name as the realm gives it: the stack's seeded SYSTEM_ADMIN, whom GET /nizam/chief-nazim names (the first holder of the
+# role). The sentence is "... şu kişiden isteyin: <ad>.", so the words cannot be matched without it; the three sentences are then found by
+# their whole text, as the graph gives it.
+samples:
+  name: Vedat Başnazım
+
+# Every persona signs in at nizam-web (local.nizam.binding.yaml). The landing the person is sent to from '/' is waited for, because a
+# page opened while '/' is still sending the person on can be replaced by that redirect (deck-review#10 says so in its own comment):
+# {home} is the scenario's own, the address its exit `home_opened` is checked against too.
+signIn:
+  - goto: '{nizam}/auth/signin'
+  - waitUrl: '{keycloak}/realms/medaris/**'
+  - fill: { css: '#username', value: '{address}' }
+  - fill: { css: '#password', value: '{password}' }
+  - click: { css: 'button[type=submit]' }
+  - waitUrl: '{nizam}{home}'
+
+events:
+  # both faces have a way home and nothing else of their own; the shell's person row is the way on that every person has
+  NAVIGATE: [{ goto: '{nizam}/hesap' }]
+
+states:
+  # An exit has no nodes, so its address is all the replay can check. `*` is one path segment. '/' sends the person on by their roles
+  # (nizam.shell.landingByRole): the köşk nazımı to /kosks/<first köşk>/ana-sayfa, the talebe to /yetki-yok, the müderris to
+  # /nazar-yonlendirme, the başnazım and the Medaris nazımı stay at '/'.
+  home_opened: { url: '{nizam}{home}' }
+  left: { url: '{nizam}/hesap' }
+
+# Where role and name are not enough. The two faces are one component (SystemState with `shell`), so each is found by its own words;
+# and the page a walk leaves for (the köşk home, /yetki-yok, Hesap) has the same sidebar and <main id="main">, which `--absent` would
+# find there if the locator did not name the face: so the shell's landmarks are looked for around a face's own heading.
+nodes:
+  shellSidebar: { css: 'div:has(> div > main#main section.mds-system-state h1:text-matches("^(Bu bölüm için izniniz yok|Sayfa bulunamadı)$")) > aside' }
+  shellMain: { css: 'main#main:has(section.mds-system-state h1:text-matches("^(Bu bölüm için izniniz yok|Sayfa bulunamadı)$"))' }
+  # "Giriş yaptığınız hesap:" and the address are one <p class="mds-caption">, the address in a <code>: the label alone is never the
+  # whole text of an element, so it is found by the line; the address is the scenario's own account (e2e assignments#4 asserts it)
+  accountLabel: { css: 'section.mds-system-state p.mds-caption', hasText: 'Giriş yaptığınız hesap:' }
+  accountEmail: { css: 'section.mds-system-state p.mds-caption code', hasText: '{address}' }

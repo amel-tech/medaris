@@ -1,0 +1,32 @@
+# nazar.roster.complete as the ders nazırı who holds enrollment.decide only: she reads the three lists and "Toplu talebe ekle" is drawn for her,
+# and no row has a button ("Tamamladı say", "Dersten çıkar" and "Yeniden aç" need codes she was not given), so the actions column is not drawn
+# at all (reader: decider).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/roster/complete \
+#     --bind graphs/nazar/roster/complete/binding.decider.yaml --cover states --absent --out <dir>
+# NOT RUN: written without a replay. It adds no transition to binding.yaml's (it only draws the lists with no button), so it is walked
+# by states, with --absent: the walk then also checks that the three buttons and the actions column are not there.
+#
+# The data is binding.yaml's: "Deneme dersi rosCom" with twelve talebe (the page draws "Daha fazla göster" for twelve) and the seeded ders
+# nazırı, Rukiye Ders Nazırı, appointed in it by the müderris with enrollment.decide alone (helpers/course-nazir-grants.mjs: the seeded post
+# of the other course, which also holds session.manage, is not touched). `teardown` takes the course, and the post with it, away.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.roster.complete
+
+scenarios:
+  decider:
+    given: { reader: decider }
+    as: dersNazir
+    open: '{nazar}/ders/{rc.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosCom, --weeks, '1', --lessons, '1', --talebe, 'applicantA,applicantB,applicantC,applicantD,applicantE,applicantF,applicantG,applicantH,talebe,talebeMale,other,medarisNazim']
+        expect: '"APPLICANT_H":"ENROLLED"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{rc.course}', --nazir, dersNazir, --codes, enrollment.decide]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosCom]
+        expect: 'course remove rosCom'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi rosCom%'"]
+        expect: '"n":0'

@@ -1,0 +1,65 @@
+# nizam.moderation.restoreArchived on the local stack, on the platform's Arşiv: the başnazım (SYSTEM_ADMIN) at http://localhost:4001/arsiv.
+#   node apps/engine/src/cli.ts replay graphs/nizam/moderation/restoreArchived \
+#     --bind graphs/nizam/moderation/restoreArchived/binding.platform.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Read what binding.yaml says first; this file differs in the account, the page and what the page draws.
+#
+# The başnazım acts at the platform's kademe, above every other, so no row is locked for him: the walk needs no `arsLocked`. `setup` opens the same köşk of its own as binding.yaml
+# ("Deneme köşkü arsKosk"), makes "arsParts" (two weeks of one celse each) and "arsMain", and has the NAZIM hide a session of arsParts, its second week and then arsMain (so the newest row, and the
+# first "Geri al", is arsMain's). The platform's list is every köşk's and medrese's hidden things, ten rows a page, newest first: these three rows are the newest it holds, and anything an earlier
+# crashed walk left is older and below them. The press of "Kalıcı olarak sil" opens the window of nizam.moderation.deleteArchived over the page (it only reads the impact); nothing is deleted
+# by the walk, and the confirmation is not pressed. archive#7 (ten at a time, the scope filter) and #8 (the delete) are that flow's.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.restoreArchived
+
+data:
+  mine: { json: ../.local/made/arsKosk.json }
+  main: { json: ../.local/made/arsMain.json }
+
+states:
+  listed: { url: '{nizam}/arsiv' }
+  listEmpty: { url: '{nizam}/arsiv' }
+  loadFailed: { url: '{nizam}/arsiv' }
+  restoring: { call: '{nizam}/arsiv' }
+
+scenarios:
+  # Open: the başnazım's home, then the menu's "Arşiv".
+  platform:
+    given: { view: platform, held: both }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->archive' }
+    setup:
+      - run: [node, helpers/make-kosk.mjs, make, arsKosk, KOSK_NAZIM]
+        expect: '"tag":"arsKosk"'
+      - run: [node, helpers/course.mjs, make, arsParts, --kosk, '{mine.kosk}', --weeks, '2', --lessons, '1']
+        expect: '"title":"Deneme dersi arsParts"'
+      - run: [node, helpers/course.mjs, make, arsMain, --kosk, '{mine.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi arsMain"'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-session, --as, koskNazim, --tag, arsParts, --nth, '0']
+        expect: 'hide-session arsParts'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-week, --as, koskNazim, --tag, arsParts, --nth, '1']
+        expect: 'hide-week arsParts'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, koskNazim, --tag, arsMain]
+        expect: 'hide-course arsMain'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, arsMain]
+        expect: 'course remove arsMain'
+      - run: [node, helpers/course.mjs, remove, arsParts]
+        expect: 'course remove arsParts'
+      - run: [node, helpers/make-kosk.mjs, remove, arsKosk]
+        expect: 'kosk remove arsKosk'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ars%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]
+        expect: '"n":0'
+
+# What a step leaves outside the screen (the same course as binding.yaml's, and the başnazım's own reading of the platform's list).
+effects:
+  # the first "Geri al" is arsMain's: shown again, and no longer in the platform's list
+  restoreArchiveItem:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from courses where id = '{main.course}'"]
+      expect: '"shown":true'
+    - run: [node, helpers/api.mjs, systemAdmin, GET, '/archive?q=arsMain']
+      expect: '"total":0'

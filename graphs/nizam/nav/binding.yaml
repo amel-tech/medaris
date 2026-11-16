@@ -1,0 +1,271 @@
+# The navigation graph nizam.nav (graphs/nizam/nav) bound to the local stack: nizam-web on :4001, which the shared
+# base lists first, the accounts the stack's seed makes, and the seed's ids for the routes' parameters.
+#
+#   node src/cli.ts replay graphs/nizam/nav --bind graphs/nizam/nav/binding.yaml --out <dir>
+#
+# Not run yet: this file was written from the code and checked only by loading it (loadNavBinding). What the replay
+# finds on a page the first time (a dev page compiles for up to half a minute) will correct the locators below.
+#
+# Data the personas need. A navigation replay has no teardown, so what a persona's `setup` makes is taken away by the
+# `setup` of the persona that runs after it (graph order: koskNazimMany, medarisNazim, medarisWide, chief), and the top-level
+# `setup` clears what a run that died left. A full run leaves nothing; a run kept to some personas with `--persona` may leave
+# a ban notice or a Medaris nazımı seat (`triage.mjs down <ACCOUNT>`, `helpers/nazim.mjs down applicantG` take them away).
+schema: delurio-graph/0
+kind: binding
+nav: nizam.nav
+extends: ../../bindings/local.nizam.binding.yaml
+
+# The routes' `:params`. `:kosk` is the seeded köşk of the köşk nazımı ("Süleymaniye Köşkü"); `:course` is the köşk's own
+# course "Nahiv Metinleri" (no medrese), which belongs to that köşk; `:rest` is any address no page answers. `:deck` has
+# no sample: the seed makes no flashcard deck, so the legacy deck cards page is not opened.
+samples:
+  kosk: '{seed.kosk}'
+  course: '{seed.courses.standalone}'
+  rest: sayfa-yok
+
+# One account stands for each persona it can; each signs in once through Keycloak's real form (the base's signIn).
+#   not bound: `visitor` (a replay always signs in) and `koskNazim` (a nazım of exactly one köşk: the seeded KOSK_NAZIM
+#   manages two, seed.json `kosk` and `kosk2`, so it is `koskNazimMany`; the one-köşk persona needs a spare account made nazım
+#   of a köşk of its own, which no shared helper does yet).
+#
+# A ban notice is what makes the notification row's link to Yasaklamalar (`notifications->koskBans`) appear, and no notice is
+# in the seed. The nav graph offers that link to a köşk nazımı and to every Medaris nazımı (the başnazım is never told), so
+# each of those personas has one notice of its own, written the way tedrisat's ban producer writes it
+# (nizam/notifications/triage/triage.mjs, `--set last`: three rows, one unread) and taken away by the next persona's setup.
+#
+# `medarisWide` is a spare account (applicantG, a woman with a full profile and no enrolment) made a Medaris nazımı holding
+# the sixteen permissions of the persona by the başnazım, through helpers/nazim.mjs, and dismissed again when the başnazım's
+# turn comes. The seeded Medaris nazımı is never changed.
+personas:
+  noRole: { as: talebe }
+  nazarRoles: { as: muderris }
+  koskNazimMany:
+    as: koskNazim
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, koskNazim, --set, last]
+        expect: 'ready: last'
+  medarisNazim:
+    as: medarisNazim
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, medarisNazim, --set, last]
+        expect: 'ready: last'
+  medarisWide:
+    as: applicantG
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, medarisNazim]
+      - run:
+          - node
+          - helpers/nazim.mjs
+          - up
+          - applicantG
+          - --codes
+          - platform.kosk_create,platform.kosk_nazim_manage,platform.kosk_edit,platform.hosting_grant,platform.madrasah_create,platform.head_muderris_manage,platform.madrasah_edit,platform.kosk_application_decide,platform.deck_publish,platform.appeal_decide,platform.ban_scoped,platform.ban_account,platform.audit_read,platform.inactive_scopes_manage,platform.policy_edit,platform.partner_manage
+        expect: up APPLICANT_G
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, applicantG, --set, last]
+        expect: 'ready: last'
+  chief:
+    as: systemAdmin
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
+
+# Once, before the first persona signs in (no data source is read yet: the commands name nothing but the apps): what a run
+# that died left.
+setup:
+  - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+  - run: [node, ../nizam/notifications/triage/triage.mjs, down, medarisNazim]
+  - run: [node, ../nizam/notifications/triage/triage.mjs, down, applicantG]
+  - run: [node, helpers/nazim.mjs, down, applicantG]
+
+# The shell: its chrome is the sidebar (an `<aside>`; the phone's menu sheet is a dialog, shown only once opened). The
+# menu entries are looked up inside it, the page's own links inside `<main>`. The person row is a plain link, so its
+# "menu" opens with nothing to press; the köşk picker is a Base UI menu whose trigger reads "Köşk değiştir: <name>".
+frames:
+  shell:
+    find: { css: aside }
+    page: { role: main }
+    user:
+      open: []
+      find: { css: aside }
+    picker:
+      open: [{ click: { role: button, name: '/^Köşk değiştir/' } }]
+      find: { role: menu }
+
+pages:
+  # Pages the replay cannot hold to "the page stays at its address", because the app moves some personas on from it.
+  start: { skip: "'/' sends a person with no role to /yetki-yok, one with medrese or course roles to /nazar-yonlendirme and a köşk nazımı to their köşk's home, so it never stays at its address for them (nizam.shell.landingByRole walks it)" }
+  signIn: { skip: "every persona is signed in already, and a signed-in person is sent straight on to the callback address" }
+  noRole: { skip: "the persona it refuses is sent to '/' (a redirect, not a refusal screen); nizam.shell.landingByRole walks both ends" }
+  nazarRedirect: { skip: "the persona it refuses is sent to '/' (a redirect, not a refusal screen); nizam.shell.landingByRole walks both ends" }
+  koskManage: { skip: "a köşk nazımı is redirected from it to Dersler, so it does not stay at its address for them; the başnazım's and the Medaris nazımı's management view is walked by nizam.kosks.manage" }
+  courseEdit: { skip: "a redirect page: it always ends on /curriculum (kosk-view#12 asserted the old address and is stale)" }
+  legacyDeckCards: { skip: "needs a deck, and the seed makes none" }
+
+  # The screen that says no is the same everywhere: the NoAccess heading.
+
+  koskHome:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Ana sayfa }
+  koskCourses:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Dersler }
+  courseApplications:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Başvurular }
+  courseRequests:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Ders talepleri }
+  koskDecks:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Köşk desteleri }
+  koskDeckNew:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Köşk destesi aç }
+  koskBans:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Yasaklamalar }
+  koskArchive:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Arşiv }
+  koskGrants:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: İzinler }
+  koskSettings:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Köşk ayarları }
+  koskNazims:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Köşk nazımları }
+  koskHosting:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Barındırma hakları }
+  courseNew:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Ders aç }
+  courseOverview:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: '/^Genel bakış/' }
+  courseSettings:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Ders ayarları }
+  courseCurriculum:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Müfredat }
+  courseSessions:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Celseler }
+  courseSessionsNew:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Celse planla }
+  courseStudents:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Talebeler }
+  madrasahs:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Medreseler }
+  nazims:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Medaris nazımları }
+  permissionGroups:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: İzin grupları }
+  inactive:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Pasif kapsamlar }
+  kosks:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Köşkler }
+  partners:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Ortak uygulamalar }
+  platformSettings:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Platform ayarları }
+  koskApplications:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Köşk başvuruları }
+  deckRequests:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Deste yayın istekleri }
+  appeals:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: İtirazlar }
+  bans:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Yasaklamalar }
+  auditLog:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Denetim kaydı }
+  archive:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Arşiv }
+  notifications:
+    refusal: { role: heading, name: Bu bölüm için izniniz yok }
+    shows: { role: heading, name: Bildirimler }
+  # The not-found screen: the catch-all's, and the two menu entries with no page.
+  notFound: { shows: { role: heading, name: Sayfa bulunamadı } }
+  permanentBans: { shows: { role: heading, name: Sayfa bulunamadı } }
+  youtube: { shows: { role: heading, name: Sayfa bulunamadı } }
+  account: { shows: { role: heading, name: Hesap ve ayarlar } }
+  signOut: { shows: { role: heading, name: Çıkış yapılsın mı? } }
+  legacyDecks: { shows: { role: heading, name: Bilgi Kartı Desteleri } }
+
+# An entry is found by its label as the name of the role its `how` draws, inside the chrome or the page. These say
+# where that is not enough: a badge or a hidden word after the name, a name that carries the row's own name, a link that
+# opens in a new tab, or a control that needs a row of data (looked for on the seeded rows only).
+entries:
+  # the menu's badges: the unread count and the pending count are part of the link's name
+  frame:shell->notifications: { role: link, name: '/^Bildirimler/' }
+  frame:shell->courseApplications: { role: link, name: '/^Başvurular/' }
+  # the person row's name is the person's name, the role line and ", Hesap"
+  frame:shell->account: { css: 'a.mds-nav-user' }
+  frame:shell->koskHome picker: { role: menuitem, hasText: Süleymaniye }
+
+  # leaving: "Çıkış yap" ends the session, so a --follow walk must not take it
+  account->signOut: { follow: false }
+  signOut->start: { follow: false }
+  signOut->account: { follow: false }
+
+  # the seeded rows
+  kosks->koskManage: { role: link, name: Süleymaniye Köşkü }
+  koskCourses->courseOverview: { role: link, name: Nahiv Metinleri }
+  koskCourses->courseCurriculum: { role: link, name: 'Düzenle: Nahiv Metinleri' }
+  koskCourses->tedris KoskCourses.view: { role: link, name: 'Dersi gör: Nahiv Metinleri' }
+  koskCourses->tedris KoskCourses.publicPage: { role: link, name: '/^Köşk sayfasını gör/' }
+
+  # links that open in a new tab carry a hidden "(yeni sekmede açılır)" after their name
+  courseOverview->nazar: { role: link, name: '/^Nazar’da aç/' }
+  madrasahs->nazar: { role: link, name: '/^Nazar’da aç, yeni sekmede: /' }
+
+  # the course overview's links to /edit are named after what the button says (F-W4-1: all three land on the curriculum)
+  courseOverview->courseEdit CourseOverview.editSession: { role: link, name: '/^Düzenle: /' }
+  courseSessionsNew->courseSessions SessionPlan.submit: { role: button, name: '/celse oluştur$/' }
+  courseSessions->tedris: { skip: "the session's own name is a link to its Tedris page; the title is the seeded session's, which this replay does not know" }
+
+  # a dialog's own button, shown once the dialog is open, and rows the seed does not make
+  koskSettings->kosks: { skip: "the confirm button of the 'Köşkü gizle' dialog, shown only after the dialog opens" }
+  inactive->koskManage: { skip: "a row of Pasif kapsamlar; the seed makes no passive scope" }
+  inactive->courseEdit: { skip: "a row of Pasif kapsamlar; the seed makes no passive scope" }
+  courseRequests->courseNew: { skip: "a waiting course request; the seed makes none" }
+  koskDecks->koskDeckNew KoskDecksPage.accept: { skip: "a teacher's deck proposal; the seed makes none" }
+  koskDecks->legacyDeckCards: { skip: "a köşk deck; the seed makes none" }
+  legacyDecks->legacyDeckCards: { skip: "a deck; the seed makes none, and the eye icon has no accessible name (F-P0-10)" }
+  # the Medaris home's rows: each "İncele" is a link named "İncele: <name>" (aria-label, Dashboard.reviewLabel) in its section's
+  # list, so by its name alone it would match the rows of the other lists too; inside the list's test id it is found, one row
+  # being enough (`nth: 0`). A row is there only while the stack holds a waiting item, and a navigation replay has no
+  # teardown to take one away, so the entries are skipped here and a flow that makes its own row gives the locator in its own
+  # enter.nav.binding.yaml (extending this file), as the flows of the other apps do:
+  #   start->deckRequests Dashboard.review:     { role: link, name: '/^İncele/', within: { testId: home-decks-list }, nth: 0 }
+  #   start->koskApplications Dashboard.review: { role: link, name: '/^İncele/', within: { testId: home-applications-list }, nth: 0 }
+  #   start->bans Dashboard.review:             { role: link, name: '/^İncele/', within: { testId: home-bans-list }, nth: 0 }
+  #   start->inactive Dashboard.passive.assign.KOSK: { role: link, name: '/^Köşk nazımı ata/', within: { testId: home-passive-list }, nth: 0 }
+  start->deckRequests Dashboard.review: { skip: "a row of the deck queue: the seed holds no deck publish request (nazim.mjs up <ACCOUNT> --codes none --deck <title> makes one, and nothing here takes it away)" }
+  start->koskApplications Dashboard.review: { skip: "a row of the köşk applications: the seed holds no waiting application, and no route deletes one" }
+  start->bans Dashboard.review: { skip: "a row of the latest bans: the seed holds no ban" }
+  start->inactive Dashboard.passive.assign.KOSK: { skip: "a passive köşk: the seed holds none (viewContent's passive-scopes.mjs makes one)" }
+
+  # the title of a ban notice, which each persona that is offered it gets from its `setup` (see `personas`)
+  notifications->koskBans: { css: '[data-testid="notification-row"] a[href$="/yasaklamalar"]', nth: 0 }
+  koskHome->courseSessions: { skip: "a row of the week's celse list; the row's action is named after the celse and its time" }
+  nazims->permissionGroups: { skip: "a link inside the permissions dialog of a Medaris nazımı" }

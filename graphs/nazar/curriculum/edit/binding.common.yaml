@@ -1,0 +1,89 @@
+# What the four walks of nazar.curriculum.edit share: the events a person causes by typing or by someone else's hand, the checks of what a save
+# leaves in the API, the locators role and name cannot give, and the addresses of the states. It has no scenario and no `data`: binding.yaml
+# (the hoca, a ders nazırı who may only plan, and one who may nothing), binding.noSessions.yaml (a ders nazırı who may edit the course and not
+# its celses) and binding.basmuderris.yaml (the başmüderris by address) extend it, name the course they make (`data.made`, one tag each) and add
+# their scenarios. Four files because a walk takes the first scenario of a file whose `given` fits, and `--cover transitions` walks the
+# shortest path to a transition: the walks of a reader who adds no transition of their own (the ders nazırı with course.edit only, the başmüderris)
+# would never be taken beside the hoca's.
+#
+# NOT RUN: the graphs were written without a replay (the walk phase comes later); every locator below comes from the code and the catalog and is
+# unverified until a walk. What the code alone leaves in doubt is marked "not verified".
+#
+#   node apps/engine/src/cli.ts replay graphs/nazar/curriculum/edit --bind graphs/nazar/curriculum/edit/binding.yaml --cover transitions --out <dir>
+#   (the main story of flow.yaml is the hoca's: `--bind binding.yaml` alone walks it. The other three files hold readers whose `rights` is not
+#   `full`: use --cover transitions with them. Not --absent: a toast of the step before may still be on screen, and a new week's field errors stay
+#   once Kaydet was refused.)
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.curriculum.edit
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in
+  # the course's name: its own stored title and a suffix, so that the form differs from what is stored
+  RENAME:
+    - fill: { role: textbox, name: Ders adı, value: '{made.title} (yeni ad)' }
+  # "Hafta ekle" opens the new week and appends it last, so the last "Hafta başlığı" on the screen is its; only open weeks have their fields on the
+  # screen (a first week still running opens by itself, the course is made with one)
+  NAME_WEEK:
+    - fill: { role: textbox, name: Hafta başlığı, nth: -1, value: Yeni hafta }
+  # a stored celse folds its details, a new one opens them, so the only "Celse başlığı" on the screen is the new celse's (the last, if two were added)
+  NAME_SESSION:
+    - fill: { role: textbox, name: Celse başlığı, nth: -1, value: Yeni celse }
+  # Someone else saves the course: PATCH /courses/:id with the hoca's own token bumps the version (the API's invariant course-optimistic-version) and
+  # changes one field no form field holds. A PUT is not used on purpose: a PUT that leaves out weeks or resources drops them all (PUT /courses/{id}).
+  COURSE_CHANGED:
+    - run: [node, helpers/api.mjs, muderris, PATCH, '/courses/{made.course}', '{"subtitle":"Baska bir sekmede kaydedildi"}']
+      expect: 'Baska bir sekmede kaydedildi'
+  # the sidebar's "Genel bakış", the page every course scope has
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}'
+
+states:
+  forbidden: { url: '{nazar}/ders/*/mufredat' }
+  readOnly: { url: '{nazar}/ders/*/mufredat' }
+  clean: { url: '{nazar}/ders/*/mufredat' }
+  # Kaydet is a Next server action: a POST to the page's own address, held while the busy state is checked. The page's own reads are GETs with a
+  # query, so this matches only the POST. The action answers 200 on that address whatever the API said, so the 409 of FAIL.conflict cannot be compared
+  # here: if the walk reports that as a mismatch, leave `call` off (the busy state is then not held).
+  saving: { call: '{nazar}/ders/{made.course}/mufredat' }
+  left: { url: '{nazar}/ders/*' }
+  plan_opened: { url: '{nazar}/ders/*/celseler/planla' }
+  hide_page_opened: { url: '{nazar}/ders/*/mufredat/gizle' }
+
+# What a save leaves outside the screen, read through the API as the course's hoca.
+effects:
+  # a save that carried a new name: the stored title is the typed one
+  savedWithName:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}']
+      expect: '(yeni ad)'
+  # a save that carried none: the stored title is the one the course was made with
+  savedKeepingName:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}']
+      expect: '"title":"{made.title}"'
+  # someone else's change is in the API
+  savedElsewhere:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}']
+      expect: 'Baska bir sekmede kaydedildi'
+  # the 409 wrote nothing: the title is still the one the course was made with, whatever the form held
+  conflicted:
+    - run: [node, helpers/api.mjs, muderris, GET, '/courses/{made.course}']
+      expect: '"title":"{made.title}"'
+
+# Role and name find most nodes. Below are the ones they cannot find alone.
+nodes:
+  # a bare role main is also matched on the page a walk leaves for (the overview, the planner, the hide page): "Müfredat" is in this one's h1
+  curriculumPage: { role: main, hasText: Müfredat }
+  # the sidebar's link is named like the h1 and like nothing else a link; found inside the menu all the same
+  menuCurriculum: { role: link, name: Müfredat, within: { role: navigation, name: Ana menü } }
+  # "* zorunlu alan": the star is part of the caption's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # a radio's words are its label's, beside it, with the colour swatch before them: found by role and name, not by the text it contains (not verified)
+  toneLaciverd: { role: radio, name: '/Lâciverd/' }
+  toneBordo: { role: radio, name: '/Bordo/' }
+  toneZumrut: { role: radio, name: '/Zümrüt/' }
+  toneMurekkep: { role: radio, name: '/Mürekkep/' }
+  # the <output data-testid="dirty"> of the save bar
+  dirtyNote: { testId: dirty }
+  # the hidden <output> of the busy Kaydet, the only status that holds this text
+  saveBusy: { css: output, hasText: Kaydediliyor… }

@@ -1,0 +1,139 @@
+# nazar.bans.courseBans on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on http://localhost:4002, a course's
+# Yasaklamalar opened through the course menu, as the başmüderris of "Hadis ve Siyer Medresesi" (the person this page serves) and, for the
+# köşk's own course, as the başnazım.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/courseBans \
+#     --bind graphs/nazar/bans/courseBans/binding.yaml --main --absent --out <dir>
+#   ... --cover transitions --absent --out <dir>        (every transition the scenarios below can drive)
+# The other bindings of this flow (each a file of its own, because a scenario that adds no transition of its own is not walked by
+# `--cover transitions`, and because their events differ): see locators.binding.yaml for the list. All extend locators.binding.yaml.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation here is
+# from the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` writes a spec and walks nothing).
+#
+# Data. Every scenario makes its own course and takes it away, so no seeded course, ban or setting is touched: helpers/course.mjs opens
+# "Deneme dersi cbans" through the API (published; made by the başnazım; read as {made.*} from graphs/.local/made/cbans.json), enrols the
+# spare accounts applicantE and applicantG in it, and helpers/madrasah-bans.mjs (nazar.bans.decide's helper, now shared) puts open bans on them through the
+# API where a scenario starts with a ban. The teardown removes the bans with SQL (no route deletes a ban, and a ban has no foreign key to
+# the course), deletes the course, and removes the COURSE_BAN_PLACED notices a ban placed through the course route sent to the köşk's nazım
+# and the Medaris nazımları (./cbans.mjs forget: the one other SQL delete; no route removes a notice and they point at the köşk, not at the
+# course). What the walk cannot undo: the audit rows (ban.create, ban.lift, ban.permanent_request, course.roster_read), and a lifted ban
+# that a `moved` walk made. The setup also clears the two people's bans first, so a crashed walk leaves nothing that would refuse the next.
+#
+#   places    (the main story) a course of a medrese with talebe and no ban. The başmüderris presses "Yasakla", chooses "Betül Başvuran", writes
+#             the reason, sends it: the row appears (Yeni, "Medrese başmüderrisi (siz)", the three buttons), a toast says she can no longer
+#             reach the course. Then she lifts it (the reason, the toast, the empty Etkin list), and opens Kaldırılan: the row with who lifted
+#             it and why. `--cover transitions` also walks, from this start, Vazgeç, the close icon, an empty reason left (the error) and
+#             emptied again, and the Kaldırılan and Etkin tabs.
+#   existing  two course bans stand (Betül and Dilek, placed by the başmüderris through the medrese's route), so nobody is left to bar:
+#             the header's "Yasakla" is off with "Bu derste yasaklanabilecek talebe yok.". Each row offers the three decisions: the walk
+#             widens the newest (toast "Medreseden de yasaklandı"), asks Medaris for a permanent ban on a row (the badge), and lifts one,
+#             another remaining. The rows are two so that the buttons of the other row stay (the graph draws no per-row change).
+#   kosk      the köşk's own course (no medrese), read by the başnazım, who opens it by address: the köşk's list, with Betül's ban that
+#             the başnazım placed ("Medaris yönetimi (siz)"); the row offers the lift and nothing else. Lifting it empties the list.
+#             The başnazım may also bar Dilek here (the same walk as `places`, taken by whichever scenario comes first in this file).
+#
+# Not bound, and why:
+#   - `read: missing` (the 404 page) and the failed read of a list: nazar.shell.errorStates.
+#   - `banAnswer: refused` (BAN_FORBIDDEN needs the caller to lose her standing between the page and the click), `gone` (the course deleted
+#     between them) and `failed` (VALIDATION_ERROR cannot leave a page that disables the submit for a blank reason): no step of a binding
+#     can do them; `invalid` is walked by binding.invalid.yaml. `answer: refused` and `failed` on the three decisions: the same.
+#   - the four other "moved" codes (BAN_NOT_FOUND, BAN_NOT_ESCALATABLE, BAN_PERMANENT_REQUEST_INVALID cannot be reached from a row the
+#     page draws; BAN_PERMANENT_REQUEST_EXISTS takes the same transition as BAN_ALREADY_LIFTED, which binding.moved.yaml walks).
+#   - the focus after a write (F-B-9, F-D2c-8) and after the Yasakla dialog opens (F-D2c-15) is not drawn, so it is not checked.
+#   - a person barred from the whole medrese or köşk (COURSEBANS-4) is not on the list and so is not drawn.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.courseBans
+
+scenarios:
+  places:
+    given: { read: ok, list: none, roster: some, banAnswer: done, answer: done, after: none }
+    as: basmuderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, helpers/madrasah-bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE, applicantG]
+        expect: '"APPLICANT_E":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/madrasah-bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+      - run: [node, ../nazar/bans/courseBans/cbans.mjs, forget, cbans]
+        expect: forgot
+    vars:
+      reasonText: Celselerde ders dışı reklam yaptı
+      talebe: Betül Başvuran
+      who: APPLICANT_E
+      placeHas: COURSE open
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request
+
+  existing:
+    given: { read: ok, list: own, roster: none, banAnswer: done, answer: done, after: more }
+    as: basmuderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, helpers/madrasah-bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE, applicantG]
+        expect: '"APPLICANT_E":"ENROLLED"'
+      - run: [node, helpers/madrasah-bans.mjs, up, cbans, --course, 'APPLICANT_E,APPLICANT_G']
+        expect: 'ready: 2 open'
+    teardown:
+      - run: [node, helpers/madrasah-bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+      - run: [node, ../nazar/bans/courseBans/cbans.mjs, forget, cbans]
+        expect: forgot
+    vars:
+      reasonText: Yeniden değerlendirildi
+      talebe: Betül Başvuran
+      who: 'APPLICANT_E,APPLICANT_G'
+      placeHas: COURSE open
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request
+
+  kosk:
+    given: { read: ok, list: koskOwn, roster: some, banAnswer: done, answer: done, after: none }
+    as: systemAdmin
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, helpers/madrasah-bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      # no --madrasah: a course of the seed's second köşk, which has no medrese
+      - run: [node, helpers/course.mjs, make, cbans, --weeks, '1', --lessons, '1', --talebe, applicantE, applicantG]
+        expect: '"APPLICANT_E":"ENROLLED"'
+      - run: [node, ../nazar/bans/courseBans/cbans.mjs, ban, cbans, --who, APPLICANT_E, --as, SYSTEM_ADMIN]
+        expect: 'banned APPLICANT_E'
+    teardown:
+      - run: [node, helpers/madrasah-bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+        expect: removed
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+      - run: [node, ../nazar/bans/courseBans/cbans.mjs, forget, cbans]
+        expect: forgot
+    vars:
+      reasonText: Yeniden değerlendirildi
+      talebe: Dilek Başvuran
+      who: 'APPLICANT_E,APPLICANT_G'
+      placeHas: COURSE open
+      liftHas: COURSE lifted
+      widenHas: MADRASAH open
+      askHas: open request
+
+# the writes are Next server actions: a POST to the page's own address, held while the busy dialog is checked. Only DONE is walked here (a
+# refusal of a server action is a 200 too, so its status could not be compared); the other files leave `call` off.
+states:
+  banning: { call: '{nazar}/ders/*/yasaklamalar**' }
+  lifting: { call: '{nazar}/ders/*/yasaklamalar**' }
+  escalating: { call: '{nazar}/ders/*/yasaklamalar**' }
+  requesting: { call: '{nazar}/ders/*/yasaklamalar**' }

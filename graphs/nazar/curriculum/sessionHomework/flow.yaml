@@ -1,0 +1,536 @@
+# The block "Ödev" of a celse on Müfredat (/ders/<id>/mufredat) in nazar-web, where a hoca gives a celse homework, chooses how it is
+# handed in ("Dosya" or "Ezber"), writes its description, attaches a file and takes it off again. Read from the code of PR #394
+# (apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx, features/curriculum/actions.ts, features/files/components/
+# file-upload.tsx, and tedrisat's course/lesson-assignment.{controller,service,repository}.ts). It says what the code does today and
+# nothing was seen in a browser; every "not verified" below is the code's word alone.
+#
+# What makes this block unlike the rest of the page:
+#   - It is stored AT ONCE, by its own writes, never by "Kaydet": the switch, the kind chips, the description's own button, a file's
+#     upload and its removal are five separate calls (PUT /lessons/:id/assignment, DELETE /lessons/:id/assignment, POST /api/files/
+#     lessons/:id/assignment, DELETE /lessons/:id/assignment/files/:fileId). The homework is no part of PUT /courses/:id, so the course's
+#     version is not bumped and the page's "Kaydedilmemiş değişiklikler var" strip never counts it (HWSET-8).
+#   - It sits inside a celse's details, which a stored celse keeps folded behind "Başlık, bağlantı, kaynaklar, ödev"; the block is there
+#     but hidden until that button is pressed.
+#   - It is written under `session.manage`, not `course.edit`: a ders nazırı who holds only `session.manage` (the stack's seeded one)
+#     changes it on a page that tells them it is read-only (HWSET-2); one who holds only `course.edit` reads it and changes nothing.
+#
+# Findings the graph draws (ui.yaml `rules` carries the same ids): F-C-course-a-03 and -04 (the block's controls carry the same names in
+# every celse, and the celse is not named), F-C-course-a-05 (the heading "Ödevin dosyaları" is an h4 under the celse's h3), -14 (the upload
+# panel's opener is unmounted and no focus is set), -15 (a removed file leaves the focus on a button that is gone), -25 (the dialogs have
+# no trigger, so where the focus returns is Base UI's fallback), -28 (the busy dialog button says "Yükleniyor" from a hard-coded default),
+# MDRS-233 (a toast's close button says "Kapat" in every language), and new here: HWSET-1 (taking a recital homework off asks nothing
+# and deletes the marks), HWSET-2 (the page calls itself read-only to a nazır who may change the homework), HWSET-3 (the description's
+# length error cannot appear), HWSET-4 (a write from a page that has gone stale replaces what someone else saved), HWSET-5 (every write
+# disables the control the person pressed, and turning the homework on says nothing), HWSET-6 (an unsaved description makes any other
+# write read "Kaydediliyor…" on the wrong button), HWSET-7 (the kind is a pair of toggle buttons), HWSET-8 (an unsaved description is
+# lost when the curriculum is saved) and HWSET-9 (a call that throws says nothing).
+#
+# The graph draws the one-celse case: the block of the first celse. A page with several celses repeats the block in each (the controls
+# carry the same names, F-C-course-a-04); the walk makes a course with one celse so that every locator finds one block.
+schema: delurio-graph/0
+kind: flow
+id: nazar.curriculum.sessionHomework
+status: captured
+domain: medaris.api
+ui: nazar.curriculum.sessionHomework
+title: Give a celse homework
+summary: >-
+  The hoca opens Müfredat of the course and the details of a celse ("Başlık, bağlantı, kaynaklar, ödev"), where the block "Ödev" stands
+  under the celse's resources. The switch "Bu celsenin ödevi var" gives the celse homework at once: no word says it worked, the block
+  just opens. "Teslim şekli" chooses "Dosya" (the talebe upload files, the default) or "Ezber" (the talebe recite it to the hoca, who
+  marks it on Değerlendirme); each choice is stored when it is pressed. The description is typed into "Ödevin açıklaması" and stored
+  by "Açıklamayı kaydet", which says "Açıklama kaydedildi." beside itself; a file is attached with "Dosya yükle" and stored the moment
+  "Yükle" is pressed (on the local stack the answer is "Dosya deposu henüz kurulmadı", because there is no storage). Taking a file off
+  asks once ("Dosyayı sil"). Turning the switch off asks once too ("Ödevi kaldır") when there is a description or a file, and the
+  homework, its files and the marks given on it are deleted for good, while what the talebe handed in stays; with neither a description
+  nor a file it is taken off with no question, which is how a recital homework with no text goes, marks and all (HWSET-1). A reader who holds
+  `course.edit` and not `session.manage` sees the block read-only. A ders nazırı who holds `session.manage` and not `course.edit` sees
+  the page announce that it is read-only and still changes the homework (HWSET-2).
+
+scope:
+  shows: >-
+    the block "Ödev" of one celse of Müfredat: the switch, "Teslim şekli", the description and its own button, the homework's files
+    and their upload panel, the two confirmations, the toasts of its writes, and the read-only block of someone who may not change it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of Müfredat (the course's details, weeks, resources, 'Celsenin kaynakları', Kaydet and its conflict): nazar.curriculum.edit, nazar.curriculum.resources, nazar.curriculum.hideRestore"
+    - "the page's refusal for a person who holds none of course.edit, session.manage and week.hide, and a course that is not there (the 404 page): nazar.access.dersNazirPages"
+    - "a celse added on this page has no id yet: the block then says 'Yeni celseye ödev vermek için önce müfredatı kaydedin.' and offers nothing (Curriculum.assignmentSaveFirst); a content-locked course read shows the block with 'Ders içeriğini görme izniniz olmadığı için celsenin ödevi gösterilmez…' and no control (assignmentLocked)"
+    - "what a talebe then sees and does on the celse page: tedris.learn.homeworkHandIn for a homework of 'Dosya', tedris.learn.homeworkMemorize for one of 'Ezber' (the hoca's marks are given on Değerlendirme: nazar.evaluation.markRecited); the hand-ins the course team reviews: nazar.homework.review"
+    - "downloading a homework file (the link in the list): nazar.files.download; locally every download answers 503 and brings the person back with 'Dosya indirilemedi'"
+    - "the moves of a person with unsaved edits in the block that this graph does not draw from a dirty description: a kind chip, the switch, a file's trash or the upload panel pressed while 'Açıklamada kaydedilmemiş değişiklik var.' stands behave as from a clean one, with the quirks HWSET-6 and the draft kept as typed; the same events are drawn from the clean block"
+    - "folding the details again ('Ayrıntıları gizle'): the block is only hidden, it keeps its draft and its panel"
+    - "a file chosen of no bytes or of more than 25 MB, which the page refuses under the field before anything is sent (Files.problems.empty, Files.problems.tooLarge)"
+    - "an ended session: any call sends the person to sign in and back (realm.auth.sessionEnded); a call that throws (a dropped network) says nothing (HWSET-9)"
+    - "a second file after the first, and a file removed from a list of several: the same step again, with the rest of the list staying"
+
+decisions:
+  D1:
+    question: >-
+      Should taking a homework off ask whenever something is lost, and say what? The page asks only when a description or a file exists,
+      and its words name those two; the API also deletes the course team's marks of a recital homework (assignment_evaluations), one for each
+      talebe marked, which the question never names, and which are not asked about at all when the homework has neither a description nor a file.
+    recommend: >-
+      Ask whenever the homework is a recital that has marks, and say in the sentence that the marks go too ("…açıklaması, dosyaları ve
+      verilen ezber notlarıyla birlikte kalıcı olarak silinir"). The page cannot know it today: the course read carries no mark count.
+    affects: [takingOff, confirmOff]
+  D2:
+    question: >-
+      Should the page say it is read-only to a ders nazırı who holds session.manage and not course.edit, when the homework block is
+      theirs to change?
+    recommend: >-
+      Word the page's note by what each part allows ("Dersin bilgilerini değiştirmek için ders düzenleme izni gerekir; ödev ve celse
+      kaynakları celse yönetimi iznine bağlıdır"), or leave the note off the block's own area.
+    affects: [folded, off, on]
+
+context:
+  # --- case variables: what the world is (initial: any) ---
+  start:
+    values: [none, file, recital]
+    initial: any
+    say:
+      none: "the celse has no homework when the page opens"
+      file: "the celse has a homework of 'Dosya' with a description and one file"
+      recital: "the celse has a homework of 'Ezber' with no description and no file, and a talebe's recital already marked 'Tam' by the course team"
+  holds:
+    values: [both, sessionOnly, editOnly]
+    initial: any
+    say:
+      both: "the person holds course.edit and session.manage, as the hoca does: the block can be changed, and the page is not read-only"
+      sessionOnly: "the person holds session.manage and not course.edit, as the stack's seeded ders nazırı does: the block can be changed, and the page says it is read-only (HWSET-2)"
+      editOnly: "the person holds course.edit and not session.manage: the block is shown and cannot be changed"
+  # --- shown-state variables: what the screen remembers ---
+  kind:
+    values: [file, memorize]
+    initial: file
+    say:
+      file: "the homework is handed in as files ('Dosya')"
+      memorize: "the homework is recited to the hoca ('Ezber')"
+  files:
+    values: [none, some]
+    initial: none
+    say:
+      none: "the homework holds no file: 'Bu ödeve henüz dosya eklenmedi.'"
+      some: "the homework holds a file (the graph draws one; with several, removing one leaves the rest)"
+  text:
+    values: [none, stored]
+    initial: none
+    say:
+      none: "no description is stored"
+      stored: "a description is stored"
+  draft:
+    values: [clean, typed, saved]
+    initial: clean
+    say:
+      clean: "the description field holds what is stored"
+      typed: "the description field differs from what is stored: 'Açıklamada kaydedilmemiş değişiklik var.'"
+      saved: "the description was just stored: 'Açıklama kaydedildi.' stands beside the button until the next keystroke"
+  problem:
+    values: [none, missing]
+    initial: none
+    say:
+      none: "the upload field shows its help"
+      missing: "Yükle was pressed with no file chosen: 'Bir dosya seçin.' stands under the field"
+  alert:
+    values: [none, shown]
+    initial: none
+    say:
+      none: "the upload panel shows no refusal"
+      shown: "the upload was refused and the panel keeps its alert 'Dosya yüklenemedi'"
+  last:
+    values: [nothing, removed, uploaded, refused, gone, failed]
+    initial: nothing
+    say:
+      nothing: "no write has said anything in this visit, or its toast is gone"
+      removed: "the homework was just taken off: the toast 'Ödev kaldırıldı'"
+      uploaded: "a file was just stored: the toast 'Dosya yüklendi'"
+      refused: "the API refused a write for lack of permission: the toast 'Ödev kaydedilemedi', 'Bunu yapma izniniz yok.'"
+      gone: "the celse or the course is no longer there: the toast 'Ödev kaydedilemedi' with 'Bu celse artık yok ya da gizlendi.'"
+      failed: "the API refused a write for another reason: the toast 'Ödev kaydedilemedi' with 'Bir şeyler ters gitti.'"
+
+guards:
+  hasContent: "text == 'stored' or files == 'some'"
+  homeworkOn: "state in ['on', 'drafting', 'savingDescription', 'choosingFile', 'choosingRecital', 'takingOff', 'picking', 'picked', 'uploading'] or (state == 'viewing' and start != 'none')"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  readFile: { set: { kind: file, files: some, text: stored } }
+  readRecital: { set: { kind: memorize, files: none, text: none } }
+  turnedOn: { set: { kind: file, files: none, text: none, draft: clean } }
+  typing: { set: { draft: typed } }
+  typedBack: { set: { draft: clean } }
+  descriptionSaved: { set: { text: stored, draft: saved } }
+  choseFile: { set: { kind: file } }
+  choseRecital: { set: { kind: memorize } }
+  offNow: { set: { kind: file, files: none, text: none, draft: clean, last: removed } }
+  fileRemoved: { set: { files: none } }
+  askedForFile: { set: { problem: missing } }
+  pickedFile: { set: { problem: none, alert: none } }
+  panelClosed: { set: { problem: none, alert: none } }
+  sentFile: { set: { alert: none } }
+  fileAdded: { set: { files: some, problem: none, alert: none, last: uploaded } }
+  uploadRefused: { set: { alert: shown } }
+  refused: { set: { last: refused } }
+  gone: { set: { last: gone } }
+  failed: { set: { last: failed } }
+
+failures:
+  opened:
+    from: getCourse
+    missing: [COURSE_NOT_FOUND]
+  turningOn:
+    from: saveLessonAssignment
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  savingDescription:
+    from: saveLessonAssignment
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  choosingFile:
+    from: saveLessonAssignment
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  choosingRecital:
+    from: saveLessonAssignment
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  takingOff:
+    from: deleteLessonAssignment
+    alreadyGone: [LESSON_ASSIGNMENT_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  takingOffAsked:
+    from: deleteLessonAssignment
+    alreadyGone: [LESSON_ASSIGNMENT_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  removingFile:
+    from: deleteLessonAssignmentFile
+    alreadyGone: [LESSON_ASSIGNMENT_FILE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    other: [HTTP_400]
+  uploading:
+    from: webAddLessonAssignmentFile
+    storage: [STORAGE_NOT_CONFIGURED, STORAGE_UNAVAILABLE, TEDRISAT_UNREACHABLE]
+    rejected: [FILE_TYPE_NOT_ALLOWED, FILE_TOO_LARGE, FILE_REQUIRED, MULTIPART_REQUIRED]
+    gone: [LESSON_ASSIGNMENT_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [HTTP_400]
+
+# The story the page tells first: the hoca gives the celse homework, chooses "Ezber", writes and stores the description, and takes the
+# homework off after the confirmation.
+main:
+  given: { start: none, holds: both }
+  events: [DONE, SHOW_DETAILS, TURN_ON, DONE, KIND_RECITAL, DONE, TYPE, SAVE, DONE, TURN_OFF, CONFIRM_OFF, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: Müfredat is read
+    description: >-
+      The page reads the course (GET /courses/:id) and what the person holds in it (GET /courses/:id/my-permissions) on the server and
+      draws the form; `holds` is read from the second. A person who holds none of course.edit, session.manage and week.hide meets
+      "Bu sayfaya izniniz yok" under the h1 (nazar.access.dersNazirPages), a course that is not there is the 404 page. Nothing is on the
+      screen of this step.
+    invoke: { action: getCourse }
+    on:
+      DONE: folded
+      FAIL.missing: not_found
+    source: apps/nazar/features/curriculum/components/curriculum-page.tsx:36
+
+  folded:
+    title: The celse's details are folded
+    description: >-
+      Müfredat is drawn: the h1 "Müfredat" and, for a person who is not the hoca, a note under it (sessionOnly: "Bu dersin bilgilerini
+      ve haftalarını değiştirmek için ders düzenleme izni gerekir; bu sayfa yalnız okunur.", HWSET-2; editOnly: "Celse eklemek,
+      taşımak… için celse yönetimi izni gerekir…"). A stored celse folds its details behind "Başlık, bağlantı, kaynaklar, ödev", and
+      the block "Ödev" is inside them: it is in the page and hidden. Pressing the button opens the details and shows the block as the
+      course read left it: no homework (the switch off), a homework (the switch on, with what it holds), or, for a reader who may not
+      change it, the read-only block. The page sets no initial focus.
+    by: human
+    on:
+      SHOW_DETAILS:
+        - { guard: "holds == 'editOnly' and start == 'file'", target: viewing, effect: [readFile], source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:917" }
+        - { guard: "holds == 'editOnly' and start == 'recital'", target: viewing, effect: [readRecital], source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:917" }
+        - { guard: "holds == 'editOnly'", target: viewing, source: "apps/nazar/features/curriculum/components/curriculum-editor.tsx:917" }
+        - { guard: "start == 'file'", target: on, effect: [readFile], source: "apps/nazar/features/curriculum/curriculum.ts:760" }
+        - { guard: "start == 'recital'", target: on, effect: [readRecital], source: "apps/nazar/features/curriculum/curriculum.ts:760" }
+        - { target: off, source: "apps/nazar/features/curriculum/curriculum.ts:760" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:775
+
+  off:
+    title: The celse has no homework
+    description: >-
+      The block "Ödev" under the celse's resources: the caption "Kaynaklardan ayrı durur: talebeler ödevi celsenin sayfasında kendi
+      bölümünde görür ve orada teslim eder…", and the switch "Bu celsenin ödevi var", off, with "Açınca ve kapatınca hemen kaydedilir;
+      müfredatı ayrıca kaydetmeniz gerekmez." under it. Nothing else of the block is drawn. A celse has at most one homework (the domain's
+      invariant homework-one-per-session), so the switch is the whole of it. The toast of the last write may still be up.
+    by: human
+    on:
+      TURN_ON: { target: turningOn, effect: [clearNote], say: "they turn the switch on" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:209
+
+  turningOn:
+    title: The homework is being given
+    description: >-
+      saveLessonAssignment sends PUT /lessons/:id/assignment with `{ description: null }` and no kind. The API makes the homework with
+      no description and the kind "Dosya" (and writes lesson_assignment.create), or, if one is there already that this page did not
+      know, answers it with its description cleared (a save without a description clears it, HWSET-4). The switch is off for the
+      length of the call (`off` includes `busy`, HWSET-5). On success the block opens with nothing said: no toast, no status
+      (HWSET-5); on a refusal an error toast says "Ödev kaydedilemedi" and the switch stays off.
+    invoke: { action: saveLessonAssignment }
+    on:
+      DONE: { target: on, effect: [turnedOn] }
+      FAIL.forbidden: { target: off, effect: [refused] }
+      FAIL.gone: { target: off, effect: [gone] }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:142
+
+  on:
+    title: The celse has homework
+    description: >-
+      The block holds the switch (on), "Teslim şekli" with its two chips, "Ödevin açıklaması" with "Açıklamayı kaydet" (off until the
+      text differs from what is stored), "Ödevin dosyaları" with the list or "Bu ödeve henüz dosya eklenmedi." and "Dosya yükle". For
+      "Ezber" a line says "Ezber dinletilir; Değerlendirme’de işaretlenir." and nothing else changes: the files and their upload stay.
+      "Açıklama kaydedildi." stands beside the button after a save, until the next keystroke. Findings read here: F-C-course-a-03 and
+      -04 (the block carries the same names in every celse and the celse is not named), F-C-course-a-05 (the files' heading is an
+      h4 under the celse's h3), HWSET-7 (the kind is two toggle buttons: pressing the chosen one does nothing and says nothing),
+      HWSET-3 (the description's length error is drawn nowhere a person can reach). The focus is wherever the last press left it.
+    by: human
+    goal: true
+    on:
+      TYPE: { target: drafting, effect: [typing], say: "they type in the description" }
+      KIND_RECITAL: { guard: "kind == 'file'", target: choosingRecital, effect: [clearNote], say: "they press Ezber", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164" }
+      KIND_FILE: { guard: "kind == 'memorize'", target: choosingFile, effect: [clearNote], say: "they press Dosya", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164" }
+      TURN_OFF:
+        - { guard: hasContent, target: confirmOff, effect: [clearNote], say: "they turn the switch off while there is a description or a file", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:216" }
+        - { target: takingOff, effect: [clearNote], say: "they turn the switch off with neither: no question is asked (HWSET-1)", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:222" }
+      REMOVE_FILE: { guard: "files == 'some'", target: confirmFile, effect: [clearNote], say: "they press a file's trash", source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:358" }
+      OPEN_UPLOAD: { target: picking, effect: [clearNote], say: "they press Dosya yükle" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:226
+
+  drafting:
+    title: The description differs from what is stored
+    description: >-
+      The same block, and "Açıklamada kaydedilmemiş değişiklik var." beside "Açıklamayı kaydet", which is now on. The description is
+      stored by that button alone: nothing else stores it, neither "Kaydet" of the page nor leaving. The page's own Kaydet is off
+      (the curriculum is not dirty) and, if it is pressed for some other edit, the editor starts anew on the saved course and the
+      typed text is lost (HWSET-8). A kind chip pressed now sends the description as STORED, never the draft, and leaves the draft
+      in the field (HWSET-6). Not drawn from here: the chips, the switch, a file's trash and the upload panel (see `outOfView`).
+    by: human
+    on:
+      SAVE: { target: savingDescription, effect: [clearNote], say: "they press Açıklamayı kaydet" }
+      UNDO: { target: on, effect: [typedBack], say: "they put the stored text back: the strings are equal, so the button is off again" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:286
+
+  savingDescription:
+    title: The description is being stored
+    description: >-
+      saveLessonAssignment sends PUT /lessons/:id/assignment with the description trimmed (null for a blank one, which clears it) and
+      no kind, so the homework keeps its own. The button is busy ("Kaydediliyor…" for a reader of the screen) and, with the whole
+      block, off. A success makes the field show what is stored and says "Açıklama kaydedildi." (the strings, not a toast); a
+      refusal is an error toast and the draft stays as typed.
+    invoke: { action: saveLessonAssignment }
+    on:
+      DONE: { target: settled, effect: [descriptionSaved] }
+      FAIL.forbidden: { target: settled, effect: [refused] }
+      FAIL.gone: { target: settled, effect: [gone] }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:154
+
+  choosingRecital:
+    title: The homework is being set to recital
+    description: >-
+      saveLessonAssignment sends PUT /lessons/:id/assignment with the description as STORED (never the draft) and kind MEMORIZE; it has to
+      send a description, because a PUT without one clears it. The API
+      keeps the talebe's hand-ins and the marks given, and writes lesson_assignment.update when something changed. The block is off for the
+      length of the call. On success "Ezber dinletilir; Değerlendirme’de işaretlenir." appears; nothing else is said.
+    invoke: { action: saveLessonAssignment }
+    on:
+      DONE: { target: settled, effect: [choseRecital] }
+      FAIL.forbidden: { target: settled, effect: [refused] }
+      FAIL.gone: { target: settled, effect: [gone] }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164
+
+  choosingFile:
+    title: The homework is being set to files
+    description: >-
+      The same call with kind FILE: the talebe upload files again, and a recital's marks, if there are any, stay in the API unread
+      (they are deleted only when the homework is taken off).
+    invoke: { action: saveLessonAssignment }
+    on:
+      DONE: { target: settled, effect: [choseFile] }
+      FAIL.forbidden: { target: settled, effect: [refused] }
+      FAIL.gone: { target: settled, effect: [gone] }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:164
+
+  confirmOff:
+    title: Ödevi kaldır asks once
+    description: >-
+      An alertdialog, "Ödevi kaldır": "Bu celsenin ödevi açıklaması ve dosyalarıyla birlikte kalıcı olarak silinir. Talebelerin teslim
+      ettiği ödevler silinmez." The words name a description and files; they do not name the marks given on a recital (HWSET-1). Focus
+      starts on "Vazgeç"; the scrim does not close it; Esc and the close icon do. The switch is still on behind it.
+    by: human
+    on:
+      CONFIRM_OFF: { target: takingOffAsked, effect: [clearNote], say: "they press Ödevi kaldır in the dialog" }
+      CANCEL: { target: settled, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: settled, say: "they press the close icon" }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:397
+
+  takingOffAsked:
+    title: The homework is being taken off, after the question
+    description: >-
+      deleteLessonAssignment calls DELETE /lessons/:id/assignment (204): the description, every file (from storage too, through the
+      deletion queue), the marks of the recital and the homework go in one transaction, written as lesson_assignment.delete with the
+      number of marks; the talebe's hand-ins stay (the domain's invariant taking-homework-off-keeps-hand-ins). The dialog stays open with "Ödevi kaldır" busy (a hard-coded "Yükleniyor",
+      F-C-course-a-28); Esc, the close icon and Vazgeç do nothing while it runs. When the call is over the dialog closes, whatever
+      the answer. A LESSON_ASSIGNMENT_NOT_FOUND counts as done: the person asked for it to be gone.
+    invoke: { action: deleteLessonAssignment }
+    on:
+      DONE: { target: off, effect: [offNow] }
+      FAIL.alreadyGone: { target: off, effect: [offNow] }
+      FAIL.forbidden: { target: settled, effect: [refused] }
+      FAIL.gone: { target: settled, effect: [gone] }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:416
+
+  takingOff:
+    title: The homework is being taken off, with no question
+    description: >-
+      The same call, made at once because the page found neither a description nor a file: the block is off for its length and the
+      switch is still on. A recital homework often has neither (the walk's own has none), so this is how it goes, together with every mark the course team gave on it
+      (HWSET-1; the audit row `lesson_assignment.delete` carries the number). On success a toast says "Ödev kaldırıldı".
+    invoke: { action: deleteLessonAssignment }
+    on:
+      DONE: { target: off, effect: [offNow] }
+      FAIL.alreadyGone: { target: off, effect: [offNow] }
+      FAIL.forbidden: { target: settled, effect: [refused] }
+      FAIL.gone: { target: settled, effect: [gone] }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:222
+
+  confirmFile:
+    title: Dosyayı sil asks once
+    description: >-
+      An alertdialog, "Dosyayı sil": the file's name and "ödevden kalıcı olarak silinir." Focus starts on "Vazgeç"; the scrim does not
+      close it. The file is still in the list behind it.
+    by: human
+    on:
+      CONFIRM_FILE: { target: removingFile, effect: [clearNote], say: "they press Sil in the dialog" }
+      CANCEL: { target: settled, say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: settled, say: "they press the close icon" }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:397
+
+  removingFile:
+    title: The file is being removed
+    description: >-
+      deleteLessonAssignmentFile calls DELETE /lessons/:id/assignment/files/:fileId (204): the file's row goes and its object is queued
+      for removal from storage. The dialog stays open with "Sil" busy until the call is over. A success takes the row off the list and
+      says nothing, so the focus is on a button that is gone (F-C-course-a-15); a LESSON_ASSIGNMENT_FILE_NOT_FOUND counts as done.
+    invoke: { action: deleteLessonAssignmentFile }
+    on:
+      DONE: { target: settled, effect: [fileRemoved] }
+      FAIL.alreadyGone: { target: settled, effect: [fileRemoved] }
+      FAIL.forbidden: { target: settled, effect: [refused] }
+      FAIL.gone: { target: settled, effect: [gone] }
+      FAIL.other: { target: settled, effect: [failed] }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:176
+
+  picking:
+    title: The upload panel is open and no file is chosen
+    description: >-
+      "Dosya yükle" opened an inline panel in the place of the button, which is unmounted (and no focus is set, F-C-course-a-14):
+      "Dosya yükle", "Dosya yüklenince hemen ödeve eklenir; bunun için müfredatı ayrıca kaydetmeniz gerekmez.", the field "Dosya" with its
+      help "PDF, PNG, JPEG, WebP, Word, Excel, PowerPoint ya da düz metin; en çok 25 MB.", "Yükle" and "Vazgeç". The panel takes the
+      file alone: a homework file has no name or short line of its own. Pressing "Yükle" with no file chosen sends nothing and puts
+      "Bir dosya seçin." under the field, which is no live region (F-C-course-a-01, F-C-course-a-07). Enter in the panel's fields
+      uploads instead of saving the form. The page's "Kaydet" is off while a file goes up (F-C-course-a-30).
+    by: human
+    on:
+      SEND: { target: picking, effect: [askedForFile], say: "they press Yükle with nothing chosen" }
+      PICK_FILE: { target: picked, effect: [pickedFile], say: "they choose a file" }
+      CANCEL_UPLOAD: { target: settled, effect: [panelClosed], say: "they press Vazgeç" }
+    source: apps/nazar/features/files/components/file-upload.tsx:170
+
+  picked:
+    title: A file is chosen
+    description: >-
+      "Seçilen dosya: {name} · {size}" stands under the field. A file of no bytes or of more than 25 MB is refused under the field at once
+      (not drawn). After a refusal from the API the panel stays open with the file and an alert "Dosya yüklenemedi" whose words follow
+      the code: "Dosya deposu henüz kurulmadı. Yöneticiye haber verin." (the local stack: no storage), "Dosya deposuna şu an
+      ulaşılamıyor…", "Bu dosya türü kabul edilmiyor…", "Bu celsenin ödevi artık yok. Sayfayı yenileyin." (taken off meanwhile; the switch
+      is not corrected), "Bunu yapma izniniz yok." or a generic line; the person may press "Yükle" again.
+    by: human
+    on:
+      SEND: { target: uploading, effect: [sentFile, clearNote], say: "they press Yükle" }
+      PICK_FILE: { target: picked, effect: [pickedFile], say: "they choose another file" }
+      CANCEL_UPLOAD: { target: settled, effect: [panelClosed], say: "they press Vazgeç" }
+    source: apps/nazar/features/files/components/file-upload.tsx:94
+
+  uploading:
+    title: The file is being sent
+    description: >-
+      The page's own route POST /api/files/lessons/:id/assignment streams the multipart body on to tedrisat (POST /lessons/:id/
+      assignment/files: at most 25 MB, eight types read from the bytes, the homework must exist, and the storage must be configured).
+      "Yükleniyor…" is shown, "Yükle" is busy and "Vazgeç" and the field are off; the rest of the block stays live (the editor's own
+      `busy` is not set by an upload), and the page's Kaydet is off with no reason given (F-C-course-a-30). On the local stack the answer is 503 STORAGE_NOT_CONFIGURED. A
+      success adds the file to the list, closes the panel and says "Dosya yüklendi" in a toast.
+    invoke: { action: webAddLessonAssignmentFile }
+    on:
+      DONE: { target: settled, effect: [fileAdded] }
+      FAIL.storage: { target: picked, effect: [uploadRefused] }
+      FAIL.rejected: { target: picked, effect: [uploadRefused] }
+      FAIL.gone: { target: picked, effect: [uploadRefused] }
+      FAIL.forbidden: { target: picked, effect: [uploadRefused] }
+      FAIL.other: { target: picked, effect: [uploadRefused] }
+    source: apps/nazar/features/files/components/file-upload.tsx:100
+
+  settled:
+    title: The block follows the write
+    description: >-
+      The editor holds what the API answered (or what it was before, after a refusal) and draws it again: the description box as typed
+      if the draft still differs, else as stored.
+    always:
+      - { guard: "draft == 'typed'", target: drafting, source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:99" }
+      - { target: on, source: "apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:138" }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:138
+
+  viewing:
+    title: The block is read-only
+    description: >-
+      For a person who holds course.edit and not session.manage: the page says "Celse eklemek, taşımak, saatini değiştirmek ya da
+      gizlemek için celse yönetimi izni gerekir…", and the block says "Celsenin ödevini değiştirmek için celse yönetimi izni gerekir." The
+      switch is shown, off and unchangeable, with the state the course read gave. With homework: "Teslim şekli: Dosya" (or "Ezber"),
+      the description as a paragraph, and "Ödevin dosyaları" with each file's download link and no trash, no upload. Without homework:
+      "Bu celsenin ödevi yok."
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:254
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the course read is the portal's 404 page (lib/tedrisat-read.ts:43-50)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: writes-need-session-manage
+    never: "holds == 'editOnly' and state in ['off', 'turningOn', 'on', 'drafting', 'savingDescription', 'choosingFile', 'choosingRecital', 'confirmOff', 'takingOff', 'takingOffAsked', 'confirmFile', 'removingFile', 'picking', 'picked', 'uploading']"
+    say: "Someone who may not manage the celse's sessions meets the block read-only; none of its controls is offered (the domain's invariant homework-is-set-by-session-manage: course.edit alone is refused)."
+    source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:917
+  - id: taking-off-asks-when-it-holds-something
+    never: "state == 'takingOff' and (text == 'stored' or files == 'some')"
+    say: A homework with a description or a file is taken off only after the question.
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:216
+  - id: a-removal-needs-a-file
+    never: "state in ['confirmFile', 'removingFile'] and files == 'none'"
+    say: A file is asked about, and removed, only where one is listed.
+    source: apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:350

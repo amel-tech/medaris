@@ -1,0 +1,43 @@
+# nazar.access.medreseNazirRefused, the nazır given madrasah.nazir_appoint, on the local stack.
+#   node apps/engine/src/cli.ts replay graphs/nazar/access/medreseNazirRefused --bind graphs/nazar/access/medreseNazirRefused/binding.appointer.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay.
+#
+# A file of its own because the scenario takes the same menu events as binding.yaml's, and a walk takes the shortest path to a transition.
+# Everything but Medrese nazırları still refuses this nazır; that page opens with the roster, "Medrese nazırı ata" and "Görevden al" on the one row
+# this nazır seated (and none on their own row, which the başmüderris seated: `dismissRow` is counted below), no "İzin ver" and no group button.
+#
+# What the walk makes and takes away (both through tedrisat's HTTP API, as the başmüderris and as the nazır, with helpers/api.mjs):
+#   setup     starts from the seed (the same two calls as binding.yaml), then the başmüderris gives the seeded nazır the one permission
+#             madrasah.nazir_appoint (PUT /madrasahs/{id}/nazirs/{userId}/permissions) and the nazır appoints APPLICANT_H a medrese nazır
+#             (POST /madrasahs/{id}/nazirs/{userId}, idempotent), which is the row this nazır seated. APPLICANT_H gets no permission, so the roster's
+#             warning "henüz izin almadı" names them.
+#   teardown  the başmüderris dismisses APPLICANT_H (DELETE with no decisions: H gave nobody anything) and takes the nazır's permission back
+#             (PUT with an empty list). Not verified: the empty list is accepted, and the nazır is "İzin yok" again afterwards as the seed has them.
+# What it leaves behind: the audit rows of the four writes, which no route removes.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.access.medreseNazirRefused
+
+scenarios:
+  appointer:
+    given: { reader: appointer }
+    as: medreseNazir
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medresePano menu' }
+    setup:
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_H_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":["madrasah.nazir_appoint"]}']
+        expect: 'madrasah.nazir_appoint'
+      - run: [node, helpers/api.mjs, medreseNazir, POST, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_H_SUB}']
+        expect: 'appointedBy'
+    teardown:
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_H_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":[]}', --any]
+        expect: 'HTTP '
+
+# "Görevden al" is on exactly one row: the one this nazır seated. The nazır's own row was seated by the başmüderris, so it has none.
+nodes:
+  dismissRow: { role: button, name: '/^Görevden al: /', count: 1 }

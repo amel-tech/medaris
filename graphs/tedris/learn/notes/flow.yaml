@@ -1,0 +1,350 @@
+# A talebe's private notes on a celse, from the panel "Notlarım" (apps/tedris/features/courses/components/lesson-notes.tsx), read
+# from the code of PR #394's branch on 15 Nov 2026 (captured; nothing here is a plan). The panel is drawn in two places that
+# share every control: on the celse page (/courses/<c>/lessons/<l>) when the celse has nothing to watch, under the join card
+# (MDRS-266), and on the watch page (.../izle) beside the stream or the recording (MDRS-285). The case variable `surface` says
+# which; the page around the panel is another flow's (scope.outOfView).
+#
+# What the panel does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   WRT-01  every inline step (Edit, Delete, Vazgeç, Kaydet, Sil) unmounts the button that had the focus and nothing moves it
+#   WRT-02  a saved note is announced by nothing: the field empties and a row appears, and no live region says so
+#   WRT-03  a refusal is a role="alert" paragraph that no field points at (no aria-invalid, no aria-describedby)
+#   WRT-04  the buttons of a row are named by the note's time only, so two notes at "12:34", or two "Zamansız", read alike
+#   WRT-05  deleting or saving a note that is already gone (404) says "Not silinemedi" / "Not kaydedilemedi" for good
+#   WRT-11  edit mode is not a form, so Enter in its time field saves nothing (the create form submits on Enter)
+#   WRT-13  no draft is kept: a reload or leaving the page loses what was typed, with no warning
+#   WRT-14  the note field has an aria-label ("Not") and a placeholder and no visible label
+#   NOTES-1 (new) after a refused save or delete, "Vazgeç" returns to the row and its error line stays under it until the next
+#           Edit or trash press (lesson-notes.tsx:508-512, 539, 607). Read from the code, not walked; the residue is not drawn
+# The model counts to two notes (held: none, one, two) and walks a timed note first and an untimed one second; a third note is
+# the same step again.
+# E2E carried: lesson-notes#1 (UI steps; the DB reads are the binding's `effects`), #3 and #7 (the recordings tab leads to the same
+# panel: tedris.course.recordings and tedris.celse.watchRecording own the way in; here the watch page is `surface: watchTyped`),
+# #9 and #10-#12 (the celse page, with and without a clock). Not carried: #2 and #8 (they need YouTube's and Bunny's real
+# players), #4-#6 (layout metrics), #13-#17 (tedris.learn.writingGating).
+schema: delurio-graph/0
+kind: flow
+id: tedris.learn.notes
+status: captured
+domain: medaris.api
+ui: tedris.learn.notes
+title: Take private notes on a celse
+summary: >-
+  An enrolled talebe writes notes on a celse in the panel "Notlarım", which only they read. A note has a text (Markdown, up
+  to 4000 characters) and, if they like, a time: the moment of the video, or of the celse when there is no video on screen.
+  On the watch page of a YouTube frame the time is the player's position and pressing a note's time moves the player; while a
+  celse with only a meeting link is live the time is the clock since its start; elsewhere it is typed, or left out. The form is
+  always drawn. A note can be changed and deleted after one inline question, and what is saved is read again after a reload.
+
+scope:
+  shows: 'the panel "Notlarım": its form, its list, a row being edited, a row being deleted, and what each refusal says'
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the celse page (header, join card, homework, agenda, resources) and of the watch page (the player, the chat, \"Soru sor\"): tedris.celse.attend, tedris.celse.watchStream, tedris.celse.watchRecording, tedris.learn.questions, tedris.learn.homeworkHandIn"
+    - "who gets no panel (not enrolled, pending, removed, a passive scope, a cancelled celse) and the refused API calls of others: tedris.learn.writingGating"
+    - "the player itself: pressing a time moves a YouTube player, and the position it reports, are the browser's and YouTube's (the flow draws the press, `SEEK`, and nothing of the video)"
+    - "the typed time on a Bunny recording that the player could report (MDRS-264): needs.yaml"
+    - "a third note and the character count that appears from 3600 characters (the help line then reads \"Markdown yazabilirsin. · 3600/4000 karakter\"): the same steps again"
+    - "the phone's two toggle buttons \"Soru sor\" / \"Notlarım\" on the watch page, and the layout (lesson-notes#4-#6)"
+    - "an ended session, which sends the person to sign in and back to this very address (realm.auth.signIn) instead of drawing an error"
+    - "the residue of NOTES-1 (an error line that stays after \"Vazgeç\")"
+
+context:
+  surface:
+    values: [celseLater, celseLive, watchTyped, watchPlayer]
+    initial: any
+    say:
+      celseLater: "the panel is on the celse page of a celse that has not begun, or is over with nothing to watch: no video on screen, the time is typed or left empty"
+      celseLive: "the panel is on the celse page of a celse on air that has only a meeting link, or is held in person: no video on screen, the time is the clock since the start"
+      watchTyped: "the panel is on the watch page of a recording whose host reports no position (Bunny, Drive and others): the time is typed or left empty"
+      watchPlayer: "the panel is on the watch page beside a YouTube frame, a recording or a live stream: the time is the player's position, and a note's time moves the player"
+  typing:
+    values: [ok, badTime, noBody]
+    initial: any
+    say:
+      ok: "what they type is accepted: a time in a form the field takes (or none) and a text that is not blank"
+      badTime: "the time is not 12:34 or 1:02:03 (or is over 99:59:59): the page refuses it before it sends anything"
+      noBody: "the text is blank: the page refuses it before it sends anything"
+  answer:
+    values: [saved, forbidden, failed]
+    initial: any
+    say:
+      saved: "tedrisat saves, changes or deletes the note"
+      forbidden: "tedrisat refuses with 403: the talebe has no active seat any more (a note cannot be written or changed, whatever the page still shows)"
+      failed: "anything else: a 404 (the note or the celse is gone), a 400, a server that does not answer"
+  held:
+    values: [none, one, two]
+    initial: any
+    say:
+      none: "the list is empty"
+      one: "one note is listed (the timed one, in this flow's story)"
+      two: "two notes are listed: the timed one first, the untimed one last"
+  problem:
+    values: [none, invalidTime, bodyRequired, forbidden, saveFailed]
+    initial: none
+    say:
+      none: "no error line"
+      invalidTime: "\"Zamanı 12:34 ya da 1:02:03 biçiminde yaz.\""
+      bodyRequired: "\"Not boş olamaz.\""
+      forbidden: "\"Not yazmak için derse kayıtlı olman gerekir.\""
+      saveFailed: "\"Not kaydedilemedi. Biraz sonra yeniden dene.\""
+
+guards:
+  onCelse: "surface in ['celseLater', 'celseLive']"
+  hasSource: "surface in ['celseLive', 'watchPlayer']"
+  hasPlayer: "surface == 'watchPlayer'"
+  saved: "answer == 'saved'"
+  badTime: "typing == 'badTime'"
+  noBody: "typing == 'noBody'"
+  listed: "held != 'none'"
+
+effects:
+  heldOne: { set: { held: one } }
+  heldTwo: { set: { held: two } }
+  heldNone: { set: { held: none } }
+  clearProblem: { set: { problem: none } }
+  problemInvalidTime: { set: { problem: invalidTime } }
+  problemBodyRequired: { set: { problem: bodyRequired } }
+  problemForbidden: { set: { problem: forbidden } }
+  problemSaveFailed: { set: { problem: saveFailed } }
+
+failures:
+  reading:
+    from: listLessonNotes
+    signedOut: [HTTP_401]
+    failed: [LESSON_NOTE_FORBIDDEN, LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  adding:
+    from: createLessonNote
+    signedOut: [HTTP_401]
+    forbidden: [LESSON_NOTE_FORBIDDEN]
+    failed: [LESSON_NOT_FOUND, COURSE_NOT_FOUND, VALIDATION_ERROR]
+  saving:
+    from: updateLessonNote
+    signedOut: [HTTP_401]
+    forbidden: [LESSON_NOTE_FORBIDDEN]
+    failed: [LESSON_NOTE_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+  deleting:
+    from: deleteLessonNote
+    signedOut: [HTTP_401]
+    failed: [LESSON_NOTE_FORBIDDEN, LESSON_NOTE_NOT_FOUND, LESSON_NOT_FOUND, COURSE_NOT_FOUND, HTTP_400]
+
+# The main story: the panel is read (empty), a timed note and an untimed one are written, the timed one is changed and one note
+# is deleted after the question, and the panel is read again after a reload.
+main:
+  given: { surface: celseLater, typing: ok, answer: saved, held: none }
+  events: [DONE, TYPE, SUBMIT, DONE, TYPE_MORE, SUBMIT, DONE, EDIT, CHANGE, SAVE, DONE, DELETE, CONFIRM, DONE, RELOAD, DONE]
+
+initial: reading
+states:
+  reading:
+    title: The panel reads the talebe's notes
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:128
+    description: >-
+      The server action listLessonNotes, GET /lessons/:id/notes, called when the panel mounts, and again after a reload or a
+      "Yeniden dene". While it runs the panel draws its form and, where the list will be, a hidden status "Notların
+      yükleniyor…" (lesson-notes.tsx:175). The list comes back already in the API's order (by time, notes without one last, then
+      oldest first) and is sorted the same way in the page. Only the caller's own notes ever come back. Not a stop of the walk:
+      the replay passes it. A session that is over sends the person to sign in and back to this address.
+    invoke: { action: listLessonNotes }
+    on:
+      DONE: panel
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { target: loadFailed, say: "any other answer, or a call that throws: the list is not read", source: "apps/tedris/features/courses/components/lesson-notes.tsx:136" }
+
+  loadFailed:
+    title: The notes could not be read
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:177
+    description: >-
+      A block with role alert, "Notların yüklenemedi.", and the outline button "Yeniden dene". The form above it stays drawn and
+      can be written in (not drawn here: a note written now is put in the list the next read gives). Nothing on the local stack
+      can make the read fail, so no walk reaches this state.
+    on:
+      RETRY: { target: reading, source: "apps/tedris/features/courses/components/lesson-notes.tsx:181" }
+      NAVIGATE: left
+
+  panel:
+    title: The panel, the form idle
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:154
+    description: >-
+      The section "Notlarım" (an h2 with a note icon) with the caption "Yalnızca sen görürsün." beside it, the form, and under the
+      form the list: "Bu celse için henüz notun yok." while it is empty, else one row per note, each with its time (a badge, or
+      "Zamansız" for a note with none; on a YouTube frame a button that moves the player), the note's text as Markdown, and the
+      icon buttons "Notu düzenle, <time>" and "Notu sil, <time>". The form: a text area named "Not" (no visible label, WRT-14),
+      a time field named "Celsedeki an" on the celse page and "Videodaki an" on the watch page with a line under it that says what
+      it takes (it differs for the four surfaces), "Notu ekle", and, where a clock or a player gives a position, "Şimdiki an".
+      On the first focus of "Not", an untouched empty time field is filled with the player's position or the live clock (the
+      field then holds it; not drawn). Nothing on the page moves the focus here: the panel sets none.
+    on:
+      TYPE: { guard: "held == 'none'", target: drafting, say: "they write a note in the text area and give it a time (a typed one, or the position the page took)" }
+      TYPE_MORE: { guard: "held == 'one'", target: drafting, say: "they write another note and leave its time empty" }
+      USE_CURRENT: { guard: hasSource, target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:379", say: "\"Şimdiki an\" puts the player's position or the live clock in the time field" }
+      SEEK: { guard: "hasPlayer and listed", target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:554", say: "a note's time is a button on a YouTube frame: it moves the player to that moment (no API)" }
+      EDIT: { guard: listed, target: editing, source: "apps/tedris/features/courses/components/lesson-notes.tsx:577", say: "the pencil of the first note: its row becomes a text area, a time field and \"Kaydet\" / \"Vazgeç\"; the focus is lost and the text field is not focused (WRT-01)" }
+      DELETE: { guard: listed, target: confirming, source: "apps/tedris/features/courses/components/lesson-notes.tsx:583", say: "the trash of the first note: the row asks \"Silinsin mi?\"; the focus is lost (WRT-01)" }
+      RELOAD: reading
+      NAVIGATE: left
+
+  drafting:
+    title: A note is typed
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:347
+    description: >-
+      The form holds a text (and a time, or none). From the first character the help line "Markdown yazabilirsin." shows under
+      the text area. Pressing "Notu ekle", or Enter in the time field (a form), checks the time first and the text second, and
+      sends nothing while either is wrong. Reloading or leaving loses the text, with no warning (WRT-13).
+    on:
+      USE_CURRENT: { guard: hasSource, target: drafting, source: "apps/tedris/features/courses/components/lesson-notes.tsx:379" }
+      SUBMIT:
+        - { guard: badTime, target: addRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:323", say: "the time is not one the field takes" }
+        - { guard: noBody, target: addRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:324", say: "the text is blank" }
+        - { target: adding, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:325" }
+      RELOAD: { target: reading, say: "what was typed is lost (WRT-13)" }
+      NAVIGATE: left
+
+  adding:
+    title: The note is sent
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:328
+    description: >-
+      The server action createLessonNote, POST /lessons/:id/notes with { body, offsetSeconds }. "Notu ekle" is busy (aria-disabled,
+      aria-busy) and a hidden status says "Kaydediliyor"; the fields stay live. Success: the note is put in its place in the list
+      with no second read, the text area and the time field are emptied, and the focus stays on the button; nothing is announced
+      (WRT-02, WRT-01). A 403 says "Not yazmak için derse kayıtlı olman gerekir."; any other refusal, or a call that throws,
+      says "Not kaydedilemedi. Biraz sonra yeniden dene."; what was typed stays. A session that is over sends the person to sign in.
+    invoke: { action: createLessonNote }
+    on:
+      DONE:
+        - { guard: "saved and held == 'none'", target: panel, effect: [heldOne], source: "apps/tedris/features/courses/components/lesson-notes.tsx:333" }
+        - { guard: saved, target: panel, effect: [heldTwo], source: "apps/tedris/features/courses/components/lesson-notes.tsx:333", say: "the second note (a third is the same step; the model keeps two)" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: addRefused, effect: [problemForbidden], source: "apps/tedris/features/courses/components/lesson-notes.tsx:212" }
+      FAIL.failed: { guard: "answer == 'failed'", target: addRefused, effect: [problemSaveFailed], source: "apps/tedris/features/courses/components/lesson-notes.tsx:341" }
+
+  addRefused:
+    title: The note was refused
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:424
+    description: >-
+      A paragraph with role alert under the form says why (an invalid time first, then a blank text, then the server's 403 or any
+      other failure). It is not tied to the time field (WRT-03), the typed text and time stay, and the error line is replaced, not
+      cleared, by the next press.
+    on:
+      SUBMIT:
+        - { guard: badTime, target: addRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:323" }
+        - { guard: noBody, target: addRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:324" }
+        - { target: adding, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:326" }
+      RELOAD: { target: reading, say: "what was typed is lost (WRT-13)" }
+      NAVIGATE: left
+
+  editing:
+    title: A note is being changed
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:514
+    description: >-
+      The row of the note is a text area named "Not" holding its text (with the help line "Markdown yazabilirsin."), a time field
+      holding its time, "Kaydet" and "Vazgeç". The create form above it is still there and still empty. It is not a form (WRT-11):
+      Enter in the time field saves nothing. The time field takes the same forms as the create form, and an emptied one sends
+      offsetSeconds null, which clears the note's time. The other note, if there is one, keeps its two icon buttons.
+    on:
+      CHANGE: { target: editing, say: "they change the text and the time" }
+      SAVE:
+        - { guard: badTime, target: editRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:471" }
+        - { guard: noBody, target: editRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:472" }
+        - { target: saving, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:473" }
+      CANCEL_EDIT: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:539", say: "\"Vazgeç\": the changes are dropped; the focus is lost (WRT-01)" }
+      NAVIGATE: left
+
+  saving:
+    title: The change is sent
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:476
+    description: >-
+      The server action updateLessonNote, PATCH /lessons/:id/notes/:noteId with { body, offsetSeconds }. "Kaydet" is busy and a
+      hidden status says "Kaydediliyor". Success: the row is a note again, re-sorted (a changed time can move it). A 403 and any
+      other refusal say what the create form says; a 404 (the note is gone) is not treated specially, so it says "Not
+      kaydedilemedi" for good (WRT-05).
+    invoke: { action: updateLessonNote }
+    on:
+      DONE: { guard: saved, target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:482" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: editRefused, effect: [problemForbidden], source: "apps/tedris/features/courses/components/lesson-notes.tsx:212" }
+      FAIL.failed: { guard: "answer == 'failed'", target: editRefused, effect: [problemSaveFailed], source: "apps/tedris/features/courses/components/lesson-notes.tsx:488" }
+
+  editRefused:
+    title: The change was refused
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:508
+    description: The row stays in edit mode with the same alert paragraph under it, and what was typed in it.
+    on:
+      SAVE:
+        - { guard: badTime, target: editRefused, effect: [problemInvalidTime], source: "apps/tedris/features/courses/components/lesson-notes.tsx:471" }
+        - { guard: noBody, target: editRefused, effect: [problemBodyRequired], source: "apps/tedris/features/courses/components/lesson-notes.tsx:472" }
+        - { target: saving, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:474" }
+      CANCEL_EDIT: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:539", say: "\"Vazgeç\": the row is a note again; its error line stays under it (NOTES-1, not drawn)" }
+      NAVIGATE: left
+
+  confirming:
+    title: Delete this note?
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:595
+    description: >-
+      Inline, in the row: "Silinsin mi?", the destructive button "Sil" and "Vazgeç". The row's two icon buttons are gone; there
+      is no dialog and no toast, and the focus is not moved to the question (WRT-01). The other note, if any, keeps its buttons.
+    on:
+      CONFIRM: { target: deleting, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:603" }
+      CANCEL_DELETE: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:607", say: "\"Vazgeç\": the row is a note again; the focus is lost (WRT-01)" }
+      NAVIGATE: left
+
+  deleting:
+    title: The note is deleted
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:498
+    description: >-
+      The server action deleteLessonNote, DELETE /lessons/:id/notes/:noteId: a real delete, with no history (the author may do it
+      even after being removed from the course, while the course is open). "Sil" is busy and a hidden status says "Siliniyor".
+      Success: the row goes and the focus falls to the document (WRT-01). Any refusal, a 403 and a 404 included, says "Not
+      silinemedi. Biraz sonra yeniden dene." and the row stays (WRT-05).
+    invoke: { action: deleteLessonNote }
+    on:
+      DONE:
+        - { guard: "saved and held == 'two'", target: panel, effect: [heldOne], source: "apps/tedris/features/courses/components/lesson-notes.tsx:500" }
+        - { guard: saved, target: panel, effect: [heldNone], source: "apps/tedris/features/courses/components/lesson-notes.tsx:500" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.failed: { guard: "not saved", target: deleteRefused, source: "apps/tedris/features/courses/components/lesson-notes.tsx:501" }
+
+  deleteRefused:
+    title: The note could not be deleted
+    by: human
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:508
+    description: >-
+      The row stays in its question ("Silinsin mi?", "Sil", "Vazgeç") with an alert paragraph "Not silinemedi. Biraz sonra yeniden
+      dene." under it. A note that is already gone (404) is told the same way and cannot be cleared from the list (WRT-05).
+    on:
+      CONFIRM: { target: deleting, effect: [clearProblem], source: "apps/tedris/features/courses/components/lesson-notes.tsx:603" }
+      CANCEL_DELETE: { target: panel, source: "apps/tedris/features/courses/components/lesson-notes.tsx:607", say: "\"Vazgeç\": the error line stays under the row (NOTES-1, not drawn)" }
+      NAVIGATE: left
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back to this
+      address, and the panel draws no error. realm.auth.signIn takes over.
+
+assertions:
+  - id: nothing-is-sent-while-it-is-wrong
+    never: "state in ['adding', 'saving'] and typing != 'ok'"
+    say: "A note is sent or changed only when its time is one the field takes and its text is not blank"
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:322
+  - id: no-edit-of-nothing
+    never: "state in ['editing', 'saving', 'confirming', 'deleting'] and held == 'none'"
+    say: "A note is changed or deleted only while it is listed"
+    source: apps/tedris/features/courses/components/lesson-notes.tsx:548

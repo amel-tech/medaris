@@ -1,0 +1,55 @@
+# The screens of nizam.shell.noAccessAndNotFound: "Bu bölüm için izniniz yok" (components/errors/no-access.tsx, drawn by app/not-found.tsx
+# and app/forbidden.tsx) and "Sayfa bulunamadı" (components/errors/page-not-found.tsx, drawn by app/[...rest]/not-found.tsx). Both are the
+# kit's SystemState with `shell` (libs/ui/src/mds/system-state.tsx): a <section> labelled by its own <h1>, one <p> and the action, inside
+# the shell's <main id="main">. The shell is drawn only as two landmarks (the sidebar and the shell's <main>), so that "inside the shell"
+# is something a replay can check (assignments#4 and #6 assert the <aside>); the sidebar's content, the menu and the person row are
+# nizam.shell.menuPerPersona's. The menu is not drawn: a person with no menu variant has a sidebar with no <nav>, so a node for it would
+# be present for some persons and absent for others.
+#
+# Words: every key is copied from libs/i18n/src/locales/tr/nizam.json (the app reads it as `nizam.<key>`), the key being the path inside
+# that file. `composed.NoAccess.email` is not in any i18n file: it is the session's e-mail address, shown as it is in a <code> by
+# components/errors/no-access.tsx:35. Nothing here changes data, so there is no `changes` note.
+schema: delurio-graph/0
+kind: ui
+id: nizam.shell.noAccessAndNotFound
+flow: nizam.shell.noAccessAndNotFound
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples: { name: Örnek Başnazım, email: ornek.nazim@example.test }
+
+# No face sets a focus: nothing in components/errors/ or app/not-found.tsx autofocuses or calls focus(), and the page has no FocusHeading
+# (only /yetki-yok has one), so there is no `initialFocus` on a page and no `focus` here (rules focus-not-set, NOACC-1).
+nodes:
+  # ---- the shell around both faces, as two landmarks ----
+  shellSidebar: { type: page, component: Page, role: complementary, in: [noAccess, notFound], source: libs/ui/src/mds/app-shell.tsx:81 } # the <aside> with no name; hidden below 768 px
+  shellMain: { type: page, component: Page, role: main, in: [noAccess, notFound], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main">: the shell's own, with no name; the face is a <section> inside it, so the page has one <main>
+
+  # ---- "Bu bölüm için izniniz yok" (noAccess) ----
+  noAccessSection: { type: page, component: Page, role: region, name: { labelledBy: noAccessTitle }, in: [noAccess], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState with `shell` is a <section aria-labelledby>
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [noAccess], source: libs/ui/src/mds/system-state.tsx:43 } # h1
+  noAccessBody: { type: text, component: Text, text: { key: NoAccess.body, params: { name: chief.name } }, in: [noAccess], when: "chief == 'named'", source: apps/nizam/components/errors/no-access.tsx:44 } # the başnazım's full name, to any signed-in person (decision D1)
+  noAccessBodyGeneric: { type: text, component: Text, text: { key: NoAccess.bodyGeneric }, in: [noAccess], when: "chief == 'unnamed'", source: apps/nizam/components/errors/no-access.tsx:44 }
+  accountLabel: { type: text, component: Text, text: { key: NoAccess.account }, in: [noAccess], source: apps/nizam/components/errors/no-access.tsx:35 } # a <p class="mds-caption"> that holds the label and the address
+  accountEmail: { type: text, component: Text, text: { key: composed.NoAccess.email, params: { email: session.email } }, in: [noAccess], source: apps/nizam/components/errors/no-access.tsx:35 } # a <code> in that line; left out when the session has no e-mail (out of view)
+  noAccessHome: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: NoAccess.back }, text: { key: NoAccess.back }, in: [noAccess], emits: GO_HOME, source: apps/nizam/components/errors/no-access.tsx:38 } # href "/"
+
+  # ---- "Sayfa bulunamadı" (notFound) ----
+  notFoundSection: { type: page, component: Page, role: region, name: { labelledBy: notFoundTitle }, in: [notFound], source: libs/ui/src/mds/system-state.tsx:33 }
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: PageNotFound.title }, in: [notFound], source: libs/ui/src/mds/system-state.tsx:43 } # h1
+  notFoundBody: { type: text, component: Text, text: { key: PageNotFound.body }, in: [notFound], source: apps/nizam/components/errors/page-not-found.tsx:27 }
+  notFoundHome: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: PageNotFound.back }, text: { key: PageNotFound.back }, in: [notFound], emits: GO_HOME, source: apps/nizam/components/errors/page-not-found.tsx:22 } # href "/"
+
+edges:
+  - { labelledBy: [noAccessSection, noAccessTitle] }
+  - { labelledBy: [notFoundSection, notFoundTitle] }
+
+rules:
+  - { id: F-P0-4, rule: "The başnazım's menu offers \"Kalıcı yasak talepleri\" (/talepler/kalici-yasak, lib/shell-nav.ts:125; also a Medaris nazımı holding platform.ban_account) and \"YouTube bağlantısı\" (/ayarlar/youtube, :149), and both open \"Sayfa bulunamadı\": no folder under app/talepler or app/ayarlar holds them, and next.config.js and proxy.ts neither redirect nor rewrite them (F-X-11, F-W3-10 and F-W5-11 are the same entries seen from the Medaris home, the köşk pages and the bans page). The face says \"Bu adreste bir sayfa yok. Adresi denetleyin\", words for a mistyped address, to a person who pressed a link the app drew; the köşk menu's own comment says it holds only pages that exist (lib/shell-nav.ts:205). /ayarlar and /talepler, which have no index page, are the same face. Seen as the başnazım's and the köşk nazımı's addresses in the served stream (HTTP 404). Fix: drop the two entries until the pages exist (MDRS-140, MDRS-195), or build them (decision D2)." }
+  - { id: F-X-11, rule: "The same two menu entries with no page, and the Medaris home's \"Kalıcı yasak talepleri\" card, which ends on the same face: see F-P0-4." }
+  - { id: F-X-20, rule: "Two checks this flow takes over cannot pass as written: assignments#4 and #6 end with `toHaveURL(HOME)`, where HOME is /\\/tr(\\/kosks\\/[0-9a-f-]{36}\\/ana-sayfa)?$/ (e2e/assignments.e2e.ts:24), and MDRS-248 removed the /tr segment, so a köşk nazımı who presses \"Ana sayfaya dön\" ends on /kosks/<id>/ana-sayfa and the regex wants /tr in front of it. The graph carries what the code does: GO_HOME ends at '/', which sends the person on by their roles (state home_opened), not an address ending in /tr. madrasahs#8 and inactive#5 build a Medaris nazımı with no permissions (fixture.makeMedarisNazim); the stack's seeded one holds platform.madrasah_create, so /medreseler opens for it and the check is not repeated with the seed (needs.yaml). Fix: change HOME to /\\/(kosks\\/[0-9a-f-]{36}\\/ana-sayfa)?$/ or to the exits of nizam.shell.landingByRole." }
+  - { id: NOACC-1, rule: "Neither face moves the focus or is announced. components/errors/no-access.tsx and page-not-found.tsx render a <section> with no role=\"alert\" and no autofocus; the page has no FocusHeading, which /yetki-yok (features/assignments/components/no-role-page.tsx:44) and only that page uses. A person who follows a link to a page that refuses, or presses a menu entry that has none, is met by a new heading in a changed page, and nothing in the app moves the focus to it or says it aloud (read from the code; not seen in a browser). Whether Next's own route announcer reads the new heading is not verified. Proposed id; not in the inventory (the inventory says 'no focus move' in section 3 without a finding). Fix: FocusHeading in SystemState's callers, as /yetki-yok does." }
+  - { id: NOACC-2, rule: "A refusal served under a loading skeleton answers HTTP 200, not 403. Every refusing page has a loading.tsx (app/izin-gruplari, arsiv, medaris-nazimlari, yasaklamalar, pasif-kapsamlar, medreseler and kosks/[id]/**), so the first bytes with the skeleton are sent before the page's read answers, and the forbidden() that follows can only change the stream: seen in `next dev` on 15 Nov 2026 as the köşk nazımı, the talebe and the Medaris nazımı, each such address answered 200 with <meta name=\"robots\" content=\"noindex\"> and the 403 digest (NEXT_HTTP_ERROR_FALLBACK;403) in the stream, while the /kosks layout's own refusal (no loading.tsx above it) answered 403 and an address no page owns answered 404. The inventory (section 3) says forbidden() is 403 and notFound() 404; that holds only where nothing has been sent yet. Not verified in a production build; the replay does not read a navigation's status. The same thing is nazar.shell.errorStates' ERR-3 and tedris.shell.systemPages' SYS-2. Proposed id; not in the inventory. Fix: read in the layout or the page's generateMetadata before the first byte, or accept 200 with noindex and say so." }
+  - { id: NOACC-3, rule: "The tab does not name the face. The page that refuses keeps the title its generateMetadata gave it: seen in the served HTML, a köşk nazımı refused İzin grupları, Arşiv or Yasaklamalar has the tab \"İzin grupları\", \"Arşiv\", \"Yasaklamalar\", the Medaris nazımı refused /kosks/<id>/izinler \"İzinler\", and /kosks/not-a-uuid \"Köşk\"; the layout's refusal and an address no page owns say only \"Nizam\" (app/layout.tsx:16 is the one title, F-P0-17). The words on the page and the title of the tab disagree (WCAG 2.4.2), and the same title is given whether or not the köşk exists, so nothing is leaked. Proposed id; not in the inventory (F-P0-3 is the same for the sign-in pages). Fix: a generateMetadata from NoAccess.title and PageNotFound.title in the not-found files." }
+  - { id: same-screen, rule: "NoAccess is one screen for a section the account may not open, a köşk that is not theirs and a köşk that is not there (app/not-found.tsx:6, app/forbidden.tsx:1): the words and the markup hold, and nothing on the page says which of the three it was. What differs is the status (NOACC-2) and, in the tab, the page that refused (NOACC-3). PageNotFound is the other face, only for an address no page owns (app/[...rest]/not-found.tsx:5): a person is never told 'not found' of a record, and never 'no permission' of an address that is not a page (assertions)." }
+  - { id: focus-not-set, rule: "Neither face has an initialFocus: no autoFocus or focus() in components/errors/, app/not-found.tsx, app/forbidden.tsx or app/[...rest]/not-found.tsx, so the graph says nothing of the focus when they open. Recorded so the silence is not read as an omission (NOACC-1)." }

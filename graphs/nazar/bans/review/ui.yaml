@@ -1,0 +1,139 @@
+# The screens of nazar.bans.review: Yasaklamalar of a medrese (/medrese/<id>/yasaklamalar) in nazar-web, in both tabs, with its empty and
+# narrowed-to-nothing lines and its refused and unreadable pages. Read from apps/nazar/features/bans (bans-page.tsx, bans-table.tsx,
+# bans.ts), libs/ui/src/mds (tabs, table, select, badge, alert, empty-state, system-state) and the shell's page-problem.tsx and
+# load-failed.tsx. The words are copied from libs/i18n/src/locales/tr/nazar.json by key (the path inside that file).
+#
+# The `composed.Bans.*` keys are NOT in any i18n file: they are the cells the page builds from what the API gives, written with their
+# placeholders so that a replay can match them (a placeholder with no sample matches any text):
+#   composed.Bans.activeCount / liftedCount  the tab's number, a <span class=mds-tab__count> (libs/ui/src/mds/tabs.tsx:67), `Intl.NumberFormat`
+#   composed.Bans.person                     the name, else the e-mail, else "Adı bilinmiyor" (bans.ts:201), in <bdi> (bans-table.tsx:124)
+#   composed.Bans.course                     the course's title under "Ders", a <bdi> (bans-table.tsx:143; bans.ts:223)
+#   composed.Bans.reason                     the reason, as typed by the banner (bans-table.tsx:154)
+#   composed.Bans.bannedBy                   the placer's name, else e-mail (bans.ts:202; bans-table.tsx:162)
+#   composed.Bans.when / liftedWhen          "Bugün 14:30", "Dün 09:10" or "28 Eyl 16:10", the viewer's clock (archive.ts:113, bans.ts:180)
+#   composed.Bans.liftedBy / liftReason      who lifted and why (bans-table.tsx:217-223)
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nazar.bans.review
+flow: nazar.bans.review
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  activeCount: "4"
+  liftedCount: "1"
+  person: Ömer Yasaklı
+  name: Ömer Yasaklı
+  courseTitle: Bina ve İzhar Şerhi
+  course: Bina ve İzhar Şerhi
+  reason: Celselerde ders dışı reklam yaptı.
+  placedBy: Nuri Medrese Başmüderrisi
+  role: Medrese başmüderrisi
+  nameGenitive: Hadis ve Siyer Medresesi’nin
+  liftedBy: Nuri Medrese Başmüderrisi
+  liftReason: Süre doldu; söz verdi.
+  when: Bugün 14:30
+  liftedWhen: Bugün 16:30
+
+# Nothing in features/bans sets the focus when the page opens, and a press on a tab (a full page load) or a choice in the filter (a soft
+# navigation) moves it nowhere: there is no `initialFocus` and no `focus` here (rule focus-not-set). The three decisions open dialogs
+# that nazar.bans.decide draws.
+nodes:
+  # --- the page: a title, its line, the one button, the notice ---------------------------------------------------------------------
+  bansPage: { type: page, component: Page, role: main, in: [listed, empty, noMatch, forbidden, loadFailed], source: apps/nazar/features/bans/components/bans-page.tsx:51 } # the shell's one <main id="main">; it has no name
+  bansTitle: { type: text, component: Heading, role: heading, text: { key: Bans.title }, in: [listed, empty, noMatch, forbidden, loadFailed], source: apps/nazar/features/bans/components/bans-page.tsx:55 } # h1; it stays over a refusal (F-B-13)
+  bansIntro: { type: text, component: Text, text: { key: Bans.intro }, in: [listed, empty, noMatch, forbidden, loadFailed], source: apps/nazar/features/bans/components/bans-page.tsx:56 }
+  banButton: { type: action, component: Button, role: button, intent: confirm, text: { key: Bans.ban }, in: [listed, empty, noMatch], emits: BAN, source: apps/nazar/features/bans/components/ban-dialog.tsx:315 } # left out with the list when the read is refused or fails
+  kademeNotice: { type: alert, component: Alert, role: status, text: { key: Bans.kademe.title }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-page.tsx:77 } # neutral: a status, which no name comes from; its title is a <p>. A fixed sentence, whoever reads (BANS-1)
+  kademeText: { type: text, component: Text, text: { key: Bans.kademe.text }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-page.tsx:78 }
+
+  # --- the tabs: links to the same page, each with the medrese's whole count -------------------------------------------------------
+  tabsNav: { type: page, component: Page, role: navigation, name: { key: Bans.tabsLabel }, in: [listed, empty, noMatch], source: libs/ui/src/mds/tabs.tsx:72 } # <nav aria-label>; plain <a> links, the current one aria-current="page"
+  tabActive: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Bans.tabs.ACTIVE }, in: [listed, empty, noMatch], emits: OPEN_ACTIVE, source: libs/ui/src/mds/tabs.tsx:78 } # its name carries the count: "Etkin 4"; a full page load, which clears the search box
+  tabActiveCount: { type: text, component: Text, text: { key: composed.Bans.activeCount, params: { activeCount: bans.activeCount } }, in: [listed, empty, noMatch], source: libs/ui/src/mds/tabs.tsx:67 } # the medrese's whole count, whatever the filters leave (F-B-4)
+  tabLifted: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Bans.tabs.LIFTED }, in: [listed, empty, noMatch], emits: OPEN_LIFTED, source: libs/ui/src/mds/tabs.tsx:78 } # "Kaldırılan 1"
+  tabLiftedCount: { type: text, component: Text, text: { key: composed.Bans.liftedCount, params: { liftedCount: bans.liftedCount } }, in: [listed, empty, noMatch], source: libs/ui/src/mds/tabs.tsx:67 }
+
+  # --- the filters: a name and a scope, a fieldset with a hidden legend ---------------------------------------------------------------
+  filtersGroup: { type: page, component: Page, role: group, name: { key: Bans.filters.label }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:247 } # <fieldset> named by its visually hidden <legend>
+  searchField: { type: field, component: TextField, role: searchbox, text: { key: Bans.filters.search }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:259 } # the label is visually hidden and says the same as the placeholder; it narrows the rows already read, by name or e-mail, with no request and no address change. It holds what is typed, which the walk chooses (no `value` here: it is empty after a tab, kept after a scope)
+  scopeFilter: { type: field, component: TextField, role: combobox, name: { key: Bans.filters.scope.label }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:270 } # Base UI's Select, named by aria-label; its popup lists "Bütün kapsamlar", "Medrese düzeyi" and each course of the medrese, and a choice asks the server again (a soft navigation that keeps the box)
+
+  # --- the table --------------------------------------------------------------------------------------------------------------------
+  tableActive: { type: list, component: List, role: table, name: { key: Bans.caption.ACTIVE }, in: [listed, empty, noMatch], when: "tab == 'ACTIVE'", source: apps/nazar/features/bans/components/bans-table.tsx:278 } # named by its hidden caption (aria-labelledby, role table: responsive="stack")
+  tableLifted: { type: list, component: List, role: table, name: { key: Bans.caption.LIFTED }, in: [listed, empty, noMatch], when: "tab == 'LIFTED'", source: apps/nazar/features/bans/components/bans-table.tsx:278 }
+  columnPerson: { type: text, component: Text, role: columnheader, text: { key: Bans.columns.person }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:117 }
+  columnScope: { type: text, component: Text, role: columnheader, text: { key: Bans.columns.scope }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:137 }
+  columnReason: { type: text, component: Text, role: columnheader, text: { key: Bans.columns.reason }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:152 }
+  columnBannedBy: { type: text, component: Text, role: columnheader, text: { key: Bans.columns.bannedBy }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:158 }
+  columnWhen: { type: text, component: Text, role: columnheader, text: { key: Bans.columns.when }, in: [listed, empty, noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:171 } # the day the ban was placed, in both tabs
+  columnActions: { type: text, component: Text, role: columnheader, text: { key: Bans.columns.actions }, in: [listed, empty, noMatch], when: "tab == 'ACTIVE'", source: apps/nazar/features/bans/components/bans-table.tsx:182 } # its text is visually hidden
+  columnLiftedBy: { type: text, component: Text, role: columnheader, text: { key: Bans.columns.liftedBy }, in: [listed, empty, noMatch], when: "tab == 'LIFTED'", source: apps/nazar/features/bans/components/bans-table.tsx:212 }
+
+  # --- a row of the Etkin tab and of the Kaldırılan tab: what is the same in both ----------------------------------------------------
+  rowPerson: { type: text, component: Text, role: rowheader, text: { key: composed.Bans.person, params: { person: ban.name } }, in: [listed], repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:120 } # a row header; the avatar before the name is decorative
+  rowScopeCourse: { type: text, component: Text, text: { key: Bans.scope.COURSE }, in: [listed], repeat: bans.courseItems, source: apps/nazar/features/bans/components/bans-table.tsx:141 } # "Ders"
+  rowCourse: { type: text, component: Text, text: { key: composed.Bans.course, params: { courseTitle: ban.courseTitle } }, in: [listed], repeat: bans.courseItems, source: apps/nazar/features/bans/components/bans-table.tsx:143 } # the course's title under it
+  rowReason: { type: text, component: Text, text: { key: composed.Bans.reason, params: { reason: ban.reason } }, in: [listed], repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:154 }
+  rowBannedBy: { type: text, component: Text, text: { key: composed.Bans.bannedBy, params: { placedBy: ban.bannedBy.name } }, in: [listed], repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:162 }
+  rowRoleYou: { type: text, component: Text, text: { key: Bans.you, params: { role: ban.bannedBy.role } }, in: [listed], repeat: bans.ownItems, source: apps/nazar/features/bans/components/bans-table.tsx:164 } # "Medrese başmüderrisi (siz)" on a ban the reader placed
+  rowWhen: { type: text, component: Text, text: { key: composed.Bans.when, params: { when: ban.when } }, in: [listed], repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:174 } # a <time>
+
+  # --- a row of the Etkin tab only (the three of a medrese-wide ban are in both tabs) ---------------------------------------------------------------------------------------------------
+  badgeNew: { type: text, component: Text, text: { key: Bans.new }, in: [listed], when: "tab == 'ACTIVE'", repeat: bans.recentItems, source: apps/nazar/features/bans/components/bans-table.tsx:125 } # an open ban placed in the last 24 hours
+  badgePermanent: { type: text, component: Text, text: { key: Bans.permanentPending }, in: [listed], when: "tab == 'ACTIVE' and mix == 'full'", repeat: bans.requestedItems, source: apps/nazar/features/bans/components/bans-table.tsx:126 } # with a clock icon; a request nothing answers (MDRS-140), so it stays until the ban is lifted
+  rowScopeMadrasah: { type: text, component: Text, text: { key: Bans.scope.MADRASAH }, in: [listed], when: "mix == 'full'", repeat: bans.madrasahItems, source: apps/nazar/features/bans/components/bans-table.tsx:141 } # "Medrese"
+  rowMadrasahScope: { type: text, component: Text, text: { key: Bans.madrasahScope, params: { nameGenitive: madrasah.nameGenitive } }, in: [listed], when: "mix == 'full'", repeat: bans.madrasahItems, source: apps/nazar/features/bans/bans.ts:214 } # "Hadis ve Siyer Medresesi’nin bütün dersleri"
+  rowExtendedFrom: { type: text, component: Text, text: { key: Bans.extendedFrom, params: { course: ban.extendedFromCourseTitle } }, in: [listed], when: "mix == 'full'", repeat: bans.widenedItems, source: apps/nazar/features/bans/bans.ts:219 } # a ban widened from a course ban
+  rowRoleMedaris: { type: text, component: Text, text: { key: Roles.MEDARIS_NAZIM }, in: [listed], when: "tab == 'ACTIVE' and mix == 'full'", repeat: bans.medarisItems, source: apps/nazar/features/bans/bans.ts:107 } # a Medaris nazımı's ban (a placer who is the başnazım reads "Medaris yönetimi", Bans.admin; not drawn here: the stack's walks have none)
+  rowRoleKosk: { type: text, component: Text, text: { key: Roles.KOSK_NAZIM }, in: [listed], when: "tab == 'ACTIVE'", repeat: bans.koskItems, source: apps/nazar/features/bans/bans.ts:107 }
+  lift: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.liftLabel, params: { name: ban.name } }, text: { key: Bans.lift }, in: [listed], when: "tab == 'ACTIVE'", repeat: bans.liftableItems, emits: LIFT, source: apps/nazar/features/bans/components/bans-table.tsx:102 } # only where the API's viewerMayLift is true: a ban of the reader's own kademe or below. The first action of a row is the outline button, the next ghost
+  escalate: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.escalateLabel, params: { name: ban.name } }, text: { key: Bans.escalate }, in: [listed], when: "tab == 'ACTIVE'", repeat: bans.escalatableItems, emits: ESCALATE, source: apps/nazar/features/bans/components/bans-table.tsx:102 } # only where viewerMayEscalate is true: an open COURSE ban, the reader may bar from the medrese, the person holds no medrese ban. It does not ask who the person is now (ban-staff-check-gaps)
+  permanent: { type: action, component: Button, role: button, intent: secondary, name: { key: Bans.permanentLabel, params: { name: ban.name } }, text: { key: Bans.permanent }, in: [listed], when: "tab == 'ACTIVE'", repeat: bans.requestableItems, emits: REQUEST_PERMANENT, source: apps/nazar/features/bans/components/bans-table.tsx:102 } # only where viewerMayRequestPermanent is true: open, below the Medaris kademe, no request yet, the reader holds madrasah.permanent_ban_request
+  platformNote: { type: text, component: Text, text: { key: Bans.platformOnly }, in: [listed], when: "tab == 'ACTIVE' and mix == 'full'", repeat: bans.platformItems, source: apps/nazar/features/bans/bans.ts:148 } # data-testid lift-note: in place of "Yasağı kaldır" on a ban a Medaris nazımı or the başnazım placed
+  higherNote: { type: text, component: Text, text: { key: Bans.higherOnly }, in: [listed], when: "tab == 'ACTIVE'", repeat: bans.higherItems, source: apps/nazar/features/bans/bans.ts:149 } # the same place, on a ban placed above the reader's kademe by anyone else (a köşk nazımı's)
+
+  # --- a row of the Kaldırılan tab only ------------------------------------------------------------------------------------------------
+  rowLiftedBy: { type: text, component: Text, text: { key: composed.Bans.liftedBy, params: { liftedBy: ban.liftedBy.name } }, in: [listed], when: "tab == 'LIFTED'", repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:217 }
+  rowLiftedWhen: { type: text, component: Text, text: { key: composed.Bans.liftedWhen, params: { liftedWhen: ban.liftedAt } }, in: [listed], when: "tab == 'LIFTED'", repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:218 } # a <time>
+  rowLiftReason: { type: text, component: Text, text: { key: composed.Bans.liftReason, params: { liftReason: ban.liftReason } }, in: [listed], when: "tab == 'LIFTED'", repeat: bans.items, source: apps/nazar/features/bans/components/bans-table.tsx:222 } # left out when the lift reason is empty
+
+  # --- no row: the tab's own line, or "nothing fits" ------------------------------------------------------------------------------------
+  emptyActive: { type: text, component: Text, text: { key: Bans.empty.ACTIVE }, in: [empty], when: "tab == 'ACTIVE'", source: apps/nazar/features/bans/components/bans-table.tsx:299 }
+  emptyLifted: { type: text, component: Text, text: { key: Bans.empty.LIFTED }, in: [empty], when: "tab == 'LIFTED'", source: apps/nazar/features/bans/components/bans-table.tsx:299 }
+  noMatchLine: { type: text, component: Text, text: { key: Bans.emptyFiltered }, in: [noMatch], source: apps/nazar/features/bans/components/bans-table.tsx:286 }
+  clearFilters: { type: action, component: Button, role: button, intent: secondary, text: { key: Bans.clearFilters }, in: [noMatch], emits: CLEAR_FILTERS, source: apps/nazar/features/bans/components/bans-table.tsx:287 } # a link-variant button: it empties the box, sets the scope to all and asks the server again, keeping the tab
+
+  # --- the page refuses the list ---------------------------------------------------------------------------------------------------------
+  forbiddenAlert: { type: alert, component: Alert, role: status, text: { key: Problems.forbiddenTitle }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:25 } # a neutral Alert is a status, not an alert; its title is a <p>, not a heading (F-B-13)
+  forbiddenText: { type: text, component: Text, text: { key: Problems.forbidden }, in: [forbidden], source: apps/nazar/features/shell/components/page-problem.tsx:26 } # says whom to ask and gives no way to
+
+  # --- the list cannot be read -----------------------------------------------------------------------------------------------------------
+  failedRegion: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:33 } # a <section aria-labelledby> inside the shell, which owns <main>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: Bans.loadFailedTitle }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:43 } # h1: a second one on the page (BANS-4)
+  failedText: { type: text, component: Text, text: { key: Bans.loadFailed }, in: [loadFailed], source: libs/ui/src/mds/system-state.tsx:46 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: Shell.retry }, in: [loadFailed], emits: RETRY, source: apps/nazar/features/shell/components/load-failed.tsx:33 }
+
+edges:
+  - { labelledBy: [failedRegion, failedTitle] }
+  - { triggers: [clearFilters, reading] }
+  - { triggers: [tabLifted, reading] }
+  - { triggers: [tabActive, reading] }
+  - { triggers: [banButton, handed_over.ban] }
+  - { triggers: [lift, handed_over.decide] }
+  - { triggers: [escalate, handed_over.decide] }
+  - { triggers: [permanent, handed_over.decide] }
+
+rules:
+  - { id: focus-not-set, rule: "No code of features/bans sets the focus when the page opens, after a tab (a plain <a>: a full page load, so the focus is at the top of the document), after a choice in the scope filter (it stays on the trigger) or after the search narrows the rows. Nothing is drawn as `initialFocus` or `focus`." }
+  - { id: F-B-4, rule: "The tab counts are the medrese's whole whatever the scope or the search leaves, and nothing says so; typing a name or choosing a scope changes the rows with no announcement (`aria-busy` on the wrapper, bans-table.tsx:233, is not spoken, and the table is no live region). 'Etkin 4' can sit over one row or over 'Bu süzgece uyan yasak yok.' Fix: a status line that says '{n} yasak' after each narrowing and what the count counts." }
+  - { id: F-B-13, rule: "A refused reader meets the page's own title and h1 'Yasaklamalar' and, under them, a polite status line 'Bu sayfaya izniniz yok' whose title is a <p>, not a heading, with no link out (page-problem.tsx:23-29). Fix: render the refusal as a heading with a link back to the medrese's first allowed page, and give it its own <title>." }
+  - { id: ban-staff-check-gaps, rule: "SECURITY, from the code, not run. The domain invariant ban-staff-cannot-be-barred (nobody who runs the course or the medrese can be barred from it, on any route that places a ban) does not hold. (1) The two create routes check it (ban.service.ts:152-163 and :483-490), but escalate (ban.service.ts:515-557) and extend (:270-317) read no role and no self id, so the widening of a ban onto someone who has since taken a post is accepted. (2) This page offers the button: viewerMayEscalate (ban.service.ts:702-706) is an open COURSE ban, the caller may bar from the medrese and the person holds no medrese ban; it never asks who the person is now. (3) The appointments that guard against it refuse a barred ders nazır (COURSE_NAZIR_BARRED) and a barred medrese nazır (MADRASAH_NAZIR_BARRED) but, as far as a search of apps/tedrisat found, nothing checks a ban when a müderris is seated, so a person can become a müderris of a course after being barred from it and then be widened to the whole medrese. (4) rolesHeld reads only role_assignments (ban.repository.ts:273-292) while SYSTEM_ADMIN is a realm role, so the başnazım can be barred from a course through the create routes, and his row would show in this list as any other. What a ban does to someone who runs the course (what they can still do as a hoca) was not traced. binding.staffRow.yaml makes Ömer a müderris and holds that his row still offers the widen button. Fix: one check (the target's roles in the course or the medrese and the caller's own id) before every ban is written, in a helper the four routes call, and `viewerMayEscalate` false for such a person." }
+  - { id: BANS-1, rule: "New. The notice 'Yasağı, koyan kademe ya da üstü kaldırır' says the reader cannot lift a köşk nazımı's or Medaris's ban (Bans.kademe.text) whoever the reader is. The başnazım, who may open the page by its address, can lift every ban here (viewerMayLift is true for his tier) and is told he cannot. Product wording; the notice could follow the reader's tier or say what the buttons already say per row." }
+  - { id: BANS-2, rule: "New. GET /madrasahs/:id/bans sends every ban of the medrese, open or lifted, with no limit and no page (ban.repository.ts:682-703; the controller takes no limit), and the page filters by name on the rows it has. A medrese with thousands of bans sends them all on every tab and every scope change. Fix: a page size and a server-side search." }
+  - { id: BANS-3, rule: "New. The scope filter shows `ALL` ('Bütün kapsamlar') whenever the address's course is not among the options (bans-table.tsx:91-95), but the list is still asked for that course (bans.ts:68-81), so an address with `?kapsam=<a course the medrese does not list, or the course read failed>` shows 'Bütün kapsamlar' over a list narrowed to nothing, and 'Süzgeçleri temizle' is the only way out. Fix: keep the unknown value as a choice, or ignore it in the request too." }
+  - { id: BANS-4, rule: "New. The unreadable page draws the shell's SystemState with its default heading level 1 (load-failed.tsx:28-30 passes none), so the page has two h1: 'Yasaklamalar' and 'Yasaklar okunamadı'. The same component is used by every page that reads through PageProblem. Fix: pass headingLevel 2 when `shell` is set." }
+  - { id: label-in-name, rule: "A row button's visible text is contained in its accessible name: 'Yasağı kaldır' in 'Yasağı kaldır: {name}', 'Medreseden de yasakla' in 'Medreseden de yasakla: {name}', 'Kalıcı yasak talebi aç' in 'Kalıcı yasak talebi aç: {name}' (WCAG 2.5.3). Holds. The tab link's name is its text then its count, 'Etkin 4'." }
+  - { id: actions-absent-not-disabled, rule: "An action the API says the caller may not take is not drawn (absent, not disabled), and a ban that cannot be lifted says why in a sentence; a lifted ban draws nothing. The 'Yeni' badge and the pending-request badge are text, not colour alone." }
+  - { id: sorted-by-date, rule: "The Etkin table is marked `aria-sort=descending` on 'Tarih' (the API sends newest first); the Kaldırılan table is not marked, and the API sorts it by the lift time, while the column shows the day the ban was placed (bans-table.tsx:302, ban.repository.ts:700)." }

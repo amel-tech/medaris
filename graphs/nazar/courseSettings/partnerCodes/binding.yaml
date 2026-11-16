@@ -1,0 +1,272 @@
+# nazar.courseSettings.partnerCodes on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on
+# http://localhost:4002, signed in through Keycloak's real form, on Ders ayarları of a course the walk makes.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/courseSettings/partnerCodes \
+#     --bind graphs/nazar/courseSettings/partnerCodes/binding.yaml --main --absent --out <dir>
+#   ... --cover transitions --absent --out <dir>       (every transition the scenarios below can drive)
+#   ... --bind graphs/nazar/courseSettings/partnerCodes/refusals.binding.yaml --cover transitions --out <dir>   (the two refusals of an add)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation
+# below is from the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` writes a
+# spec and walks nothing).
+#
+# Data. Every scenario makes what it needs and takes it away, so no seeded course, köşk, partner or setting is touched:
+#   - a partner application of the walk's own, `deneme-ortak-uygulama` ("Deneme ortak uygulaması"), registered and bound to the
+#     seed's second köşk (Kubbealtı, which no seeded flow reads) by helpers/partner.mjs, through the başnazım's routes of nizam's
+#     "Ortak uygulamalar". The stack's example client `ornek-uygulama` and a partner another walk registers are not read or changed.
+#     There is no route that deletes a partner, so `teardown` ends with one SQL delete of its own rows (see helpers/partner.mjs).
+#   - a course, "Deneme dersi partnerCodes", from helpers/course.mjs: published, one week of one celse, in the seed's second
+#     köşk (so the partner above is its köşk's), MUDERRIS as its one hoca and imam. Its ids are read from
+#     graphs/.local/made/partnerCodes.json as {made.*}; `teardown` deletes it with everything under it, which also takes its
+#     partner codes off. The `taken` scenario makes a second course, "Deneme dersi partnerCodesTaken", that holds the code.
+# What the walk cannot undo: the audit rows of the registry and of the codes (nothing removes them and nothing depends on them).
+#
+# Who walks it. `chief` is the başnazım (systemAdmin), who opens the course by its address (MDRS-270); `nazim` is the köşk nazımı
+# (koskNazim), made a second hoca of the course by setup (helpers/seat-hoca.mjs, as the başnazım) because nazar gives a köşk nazımı
+# with no seat no scope at all and sends them to /erisim-yok (PCODES-1); `hoca` is the müderris, who has every settings code and
+# not course.partner_codes. `nazim` takes the same steps as `chief`, so `--cover transitions` does not walk it (it adds no
+# transition): walk it with `--main` on a copy of this file that lists it first, or read the report.
+#
+#   chiefAdds      (the main story) a published course, no code yet: Kod ekle takes deneme-kod-1, Ekle adds it (the list appears,
+#                  "Kod eklendi"), Kaldır takes it off (the empty line is back, "Kod kaldırıldı").
+#   nazimAdds      the same, as the köşk nazımı who teaches the course.
+#   hocaSees       the müderris: the page is drawn and the card is not.
+#   noPartner      the başnazım, the partner registered and bound to no köşk: the card is not drawn.
+#   badCode        two codes held already (deneme-kod-1, deneme-kod-2): a text with a space and a symbol is refused under the field,
+#                  nothing is sent; Kaldır takes the first one off and the second stays.
+#   badCodeFirst   no code held yet, an underscore typed: the shape sentence under the field, from the empty card.
+#   blankCode      two codes held, only spaces typed: "Bir kod yazın.".
+#   taken, unknownPartner: in refusals.binding.yaml (a Next server action answers 200 whatever it decided, so a FAIL class cannot
+#                  keep this file's `call`).
+# Not bound, and why:
+#   - `attempt` forbidden, invalid, failed and `removal` forbidden, unknownPartner, failed: the local stack cannot make the başnazım
+#     lose a permission, make the API refuse a shape the page lets through, or refuse a call on request. (`unknownPartner` of an
+#     add is made in refusals.binding.yaml by switching the partner off after the page was read; of a removal it cannot be made:
+#     a partner is never deleted.)
+#   - `reading` ending in `unreadable` or `not_found`: tedrisat would have to fail the read of its own routes.
+#   - the köşk nazımı with no seat in the course (PCODES-1): not a state of this flow; it is the no-access page of
+#     nazar.access.noAccess.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.courseSettings.partnerCodes
+
+data:
+  made: { json: ../.local/made/partnerCodes.json }
+
+# the partner's name, which the heading, the list's name and the toasts carry; the code is the one the walk adds
+samples:
+  name: Deneme ortak uygulaması
+  code: deneme-kod-1
+
+scenarios:
+  chiefAdds:
+    given: { reader: chief, partners: some, codes: none, attempt: added, removal: removedLast }
+    as: systemAdmin
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+    vars:
+      code: deneme-kod-1
+      afterAdd: deneme-kod-1
+      afterRemoval: none
+      race: none
+
+  nazimAdds:
+    given: { reader: nazim, partners: some, codes: none, attempt: added, removal: removedLast }
+    as: koskNazim
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+      - run: [node, helpers/seat-hoca.mjs, '{made.course}', koskNazim]
+        expect: 'seat-hoca KOSK_NAZIM'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+    vars:
+      code: deneme-kod-1
+      afterAdd: deneme-kod-1
+      afterRemoval: none
+      race: none
+
+  hocaSees:
+    given: { reader: hoca, partners: some, codes: none, attempt: added, removal: removedLast }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+    vars:
+      code: deneme-kod-1
+      afterAdd: deneme-kod-1
+      afterRemoval: none
+      race: none
+
+  noPartner:
+    given: { reader: chief, partners: none, codes: none, attempt: added, removal: removedLast }
+    as: systemAdmin
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması']
+        expect: 'bound to 0'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+    vars:
+      code: deneme-kod-1
+      afterAdd: deneme-kod-1
+      afterRemoval: none
+      race: none
+
+  badCode:
+    given: { reader: chief, partners: some, codes: some, attempt: badShape, removal: removedOne }
+    as: systemAdmin
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+      # one call a code, so that "oldest first" is the order they are named in
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{made.course}', --codes, deneme-kod-1]
+        expect: 'codes'
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{made.course}', --codes, deneme-kod-2]
+        expect: 'codes'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+    vars:
+      code: 'Kod Deneme 4!'
+      afterAdd: deneme-kod-1
+      afterRemoval: deneme-kod-2
+      race: none
+
+  badCodeFirst:
+    given: { reader: chief, partners: some, codes: none, attempt: badShape, removal: removedLast }
+    as: systemAdmin
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+    vars:
+      code: 'kod_deneme'
+      afterAdd: deneme-kod-1
+      afterRemoval: none
+      race: none
+
+  blankCode:
+    given: { reader: chief, partners: some, codes: some, attempt: blank, removal: removedOne }
+    as: systemAdmin
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
+        expect: 'partner up'
+      - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
+        expect: '"tag":"partnerCodes"'
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{made.course}', --codes, deneme-kod-1]
+        expect: 'codes'
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{made.course}', --codes, deneme-kod-2]
+        expect: 'codes'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, partnerCodes]
+        expect: 'course remove partnerCodes'
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
+        expect: 'partner removed'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
+        expect: '"n":0'
+    vars:
+      code: '   '
+      afterAdd: deneme-kod-1
+      afterRemoval: deneme-kod-2
+      race: none
+
+events:
+  # the field has no node that sends an event: the binding types in it (the text of the scenario's `code`)
+  TYPE_CODE:
+    - fill: { role: textbox, name: Kod ekle, within: { testId: partner-code-deneme-ortak-uygulama }, value: '{code}' }
+  NAVIGATE:
+    - goto: '{nazar}/ders/{made.course}'
+
+states:
+  notDrawn: { url: '{nazar}/ders/*/ayarlar' }
+  empty: { url: '{nazar}/ders/*/ayarlar' }
+  listed: { url: '{nazar}/ders/*/ayarlar' }
+  # the add and the removal are Next server actions: POSTs to the page's own address, held while the busy button is checked
+  adding: { call: '{nazar}/ders/*/ayarlar' }
+  removing: { call: '{nazar}/ders/*/ayarlar' }
+  left: { url: '{nazar}/ders/*' }
+
+# Where role and name cannot find a node, or would find the wrong one. A köşk with several partner applications draws one block
+# per partner, each with a field "Kod ekle", a button "Ekle" and its own "Kaldır {code}" (PCODES-3), so everything of the partner's
+# block is looked for inside its own, `partner-code-<client id>` (the block's data-testid).
+nodes:
+  # the shell's one <main>; the exit the walk leaves for has a main too, so this one is told by the page's own intro line
+  page: { role: main, hasText: '/dersinin yayın, erişim, kayıt ve saat dilimi ayarları/' }
+  partnerName: { role: heading, name: Deneme ortak uygulaması, within: { testId: partner-codes } }
+  emptyLine: { text: Bu derse bağlı kod yok., within: { testId: partner-code-deneme-ortak-uygulama } }
+  codeList: { role: list, name: Deneme ortak uygulaması kodları }
+  codeItem: { role: listitem, within: { testId: partner-code-deneme-ortak-uygulama } }
+  # the code in its <bdi>: the codes of the walk are deneme-kod-1, -2 and the one it adds; the sample says the first
+  codeText: { css: bdi, hasText: '/^deneme-kod-\d+$/', within: { testId: partner-code-deneme-ortak-uygulama } }
+  # the button's name is the word and a visually hidden " {code}"
+  removeButton: { role: button, name: '/^Kaldır deneme-kod-\d+$/', within: { testId: partner-code-deneme-ortak-uygulama } }
+  codeField: { role: textbox, name: Kod ekle, within: { testId: partner-code-deneme-ortak-uygulama } }
+  codeHelp: { text: '/^Ortak uygulamadaki kod: küçük harf/', within: { testId: partner-code-deneme-ortak-uygulama } }
+  addButton: { role: button, name: Ekle, within: { testId: partner-code-deneme-ortak-uygulama } }
+  # every Button with a `loading` prop draws an <output>, empty until it is busy: only the one that says "Yükleniyor" counts
+  # the alert's title paragraph: the same words as the card's heading, so it is told by its class
+  unreadableTitle: { css: '.mds-alert__title', hasText: Ortak uygulama kodları }
+  busy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor, within: { testId: partner-code-deneme-ortak-uygulama } }
+
+# What a step leaves outside the screen, read through the API as the başnazım.
+effects:
+  addCoursePartnerCode:
+    - run: [node, helpers/partner.mjs, held, --client, deneme-ortak-uygulama, --course, '{made.course}']
+      expect: 'held {afterAdd}'
+  removeCoursePartnerCode:
+    - run: [node, helpers/partner.mjs, held, --client, deneme-ortak-uygulama, --course, '{made.course}']
+      expect: 'held {afterRemoval}'

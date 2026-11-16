@@ -1,0 +1,117 @@
+# The screens of nizam.madrasahs.open: the Medreseler page (/medreseler) behind, and the "Medrese aç" dialog over it. Read from
+# apps/nizam/features/madrasahs/components/{madrasahs-view,open-madrasah-dialog,head-picker}.tsx on 15 Nov 2026; the words are copied from
+# libs/i18n/src/locales/tr/nizam.json (namespaces MadrasahsPage, OpenMadrasahDialog, HeadPicker).
+#
+# Words that are not copied:
+#   - Changes.note is the one message written for the graph: the app has none that says what opening a medrese changes. Its facts are the
+#     dialog's own (intro, chosenNote, the head picker's help), tedrisat's POST /madrasahs (madrasah.repository.ts:265, one transaction:
+#     the medrese, the başmüderris's role, an audit row) and the passivate and hide flows of the same page.
+#   - composed.MadrasahsPage.rowName, rowHandle, rowHead: the table's first and second column write data, not messages
+#     (madrasahs-view.tsx:158, :160, :172); a key carries each, with the sample as its placeholder, so that the new row can be drawn.
+#   - composed.Button.loadingLabel: the shared Button's hidden status text while busy, a hard-coded default "Yükleniyor"
+#     (libs/ui/src/mds/button.tsx:62, :114), in no catalog (F-UI-W1-3, F-X-17).
+#   Why the toast's body ("{name} açıldı; başmüderrisi {head}.") is not a node: its {name} is the medrese, while {name} of the head picker's
+#   messages ("{name} seçildi", "Seçimi kaldır: {name}") is the person, and a graph has one sample per placeholder name. The toast's
+#   title and the new row, which carry the same facts, are drawn.
+#
+# The page behind the dialog is drawn only where the dialog is closed: the dialog is modal, so the page is inert while it is open.
+schema: delurio-graph/0
+kind: ui
+id: nizam.madrasahs.open
+flow: nizam.madrasahs.open
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples: { name: "Tahsin Başvuran", handle: "ornek-acilis", madrasah: "Örnek Açılış Medresesi" } # {name} is the person the picker finds and the list names as head (the seed's spare applicant), {handle} the short name the form is given, {madrasah} the name the form is given
+changes: { key: Changes.note }
+
+nodes:
+  # ---- the Medreseler page, the form closed ----
+  madrasahsPage: { type: page, component: Page, role: main, in: [madrasahsPage, opened, closed], source: apps/nizam/app/medreseler/page.tsx:50 }
+  madrasahsTitle: { type: text, component: Heading, role: heading, text: { key: MadrasahsPage.title }, in: [madrasahsPage, opened, closed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:332 } # h1
+  madrasahsIntro: { type: text, component: Text, text: { key: MadrasahsPage.intro }, in: [madrasahsPage, opened, closed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:333 }
+  openButton: { type: action, component: Button, role: button, text: { key: MadrasahsPage.open }, in: [madrasahsPage, opened, closed], emits: OPEN_FORM, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:336 } # the başnazım's, and a Medaris nazımı's who holds platform.madrasah_create (present.ts:105)
+  madrasahsTable: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.ALL }, in: [madrasahsPage, opened, closed], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 } # the "Tümü" tab, which this page opens on; the caption is visually hidden
+
+  # ---- the dialog ----
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [form, formReady, looking, opening], initialFocus: nameField, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:107 }
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: OpenMadrasahDialog.title }, in: [form, formReady, looking, opening], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:115 }
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: OpenMadrasahDialog.close }, in: [form, formReady, looking], emits: CANCEL, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:116 } # it stays on and does nothing while the medrese is made (open-madrasah-dialog.tsx:109-111)
+  intro: { type: text, component: Text, text: { key: OpenMadrasahDialog.intro }, in: [form, formReady, looking, opening], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:131 }
+  requiredNote: { type: text, component: Text, text: { key: OpenMadrasahDialog.requiredNote }, in: [form, formReady, looking, opening], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:132 } # drawn as "* zorunlu alan"
+
+  # Ad: the first field, with the focus; empty
+  nameField: { type: field, component: TextField, role: textbox, text: { key: OpenMadrasahDialog.nameLabel }, value: { literal: "" }, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:142 } # required (the asterisk is decorative), at most 120 characters
+  nameHelp: { type: text, component: Text, text: { key: OpenMadrasahDialog.nameHelp }, in: [form, formReady, looking, opening], when: "said != 'noName' and said != 'shortName'", source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:137 } # the error replaces the help line
+  nameRequired: { type: text, component: Text, text: { key: OpenMadrasahDialog.errors.nameRequired }, in: [form, formReady, looking, opening], when: "said == 'noName'", source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:138 } # after the field was left; not a live region (F-X-2)
+  nameShort: { type: text, component: Text, text: { key: OpenMadrasahDialog.errors.nameShort }, in: [form, formReady, looking, opening], when: "said == 'shortName'", source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:138 }
+
+  # Kısa ad: optional, nothing says what an empty one does (F-W2-open-3)
+  handleField: { type: field, component: TextField, role: textbox, text: { key: OpenMadrasahDialog.handleLabel }, value: { literal: "" }, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:164 } # "@" before it is decorative; no asterisk
+  handleHelp: { type: text, component: Text, text: { key: OpenMadrasahDialog.handleHelp }, in: [form, formReady, looking, opening], when: "said != 'badHandle' and not taken", source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:155 }
+  handleInvalid: { type: text, component: Text, text: { key: OpenMadrasahDialog.errors.handleInvalid }, in: [form, formReady, looking, opening], when: "said == 'badHandle' and not taken", source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:160 }
+  handleTaken: { type: text, component: Text, text: { key: OpenMadrasahDialog.errors.handleTaken, params: { handle: madrasah.handle } }, in: [form, formReady, looking, opening], when: taken, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:157 } # under the field, no live region, and the focus is lost to the button that goes off (F-X-2, F-W2-open-6)
+
+  # Açıklama
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: OpenMadrasahDialog.descriptionLabel }, value: { literal: "" }, in: [form, formReady, looking, opening], disabledIn: [opening], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:181 } # a textarea, at most 1000 characters
+  descriptionHelp: { type: text, component: Text, text: { key: OpenMadrasahDialog.descriptionHelp }, in: [form, formReady, looking, opening], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:180 }
+
+  # Başmüderris: the picker
+  headField: { type: field, component: TextField, role: textbox, text: { key: HeadPicker.label }, value: { literal: "" }, in: [form, formReady, looking, opening], disabledIn: [looking, opening], source: apps/nizam/features/madrasahs/components/head-picker.tsx:103 } # type=email; disabled while it searches, so it loses the focus (F-W2-3, F-X-8)
+  headHelp: { type: text, component: Text, text: { key: HeadPicker.help }, in: [form, formReady, looking, opening], when: "not pickerError", source: apps/nizam/features/madrasahs/components/head-picker.tsx:100 }
+  pickerNotFound: { type: text, component: Text, text: { key: HeadPicker.notFound }, in: [form, formReady, looking, opening], when: "pickerError and note == 'notFound'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:90 } # the field's own error while nobody is chosen: no live region (F-X-2); with a head chosen it is not drawn at all (F-W2-open-1)
+  pickerDown: { type: text, component: Text, text: { key: HeadPicker.failed }, in: [form, formReady, looking, opening], when: "pickerError and note == 'down'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:92 }
+  searching: { type: status, component: Status, role: status, text: { key: HeadPicker.searching }, in: [looking], source: apps/nizam/features/madrasahs/components/head-picker.tsx:124 } # the hidden <output>, said while the search runs
+  chosenCard: { type: page, component: Page, role: region, name: { labelledBy: chosenTitle }, in: [form, formReady, looking, opening], when: "chosen == 'some'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:129 } # data-testid=chosen-head (madrasahs.e2e.ts#6, #7)
+  chosenTitle: { type: text, component: Heading, role: heading, text: { key: HeadPicker.chosenTitle }, in: [form, formReady, looking, opening], when: "chosen == 'some'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:134 } # h3 in the dialog
+  chosenAnnounce: { type: status, component: Status, role: status, text: { key: HeadPicker.chosen, params: { name: person.name } }, in: [form, formReady, looking, opening], when: "chosen == 'some'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:148 } # the <output> is mounted with the card, so a screen reader may not speak it (F-W2-3)
+  chosenNote: { type: text, component: Text, text: { key: OpenMadrasahDialog.chosenNote }, in: [form, formReady, looking, opening], when: "chosen == 'some'", source: apps/nizam/features/madrasahs/components/head-picker.tsx:162 }
+  removeHead: { type: action, component: Button, role: button, intent: secondary, name: { key: HeadPicker.remove, params: { name: person.name } }, in: [form, formReady, looking, opening], disabledIn: [opening], when: "chosen == 'some'", emits: REMOVE_HEAD, source: apps/nizam/features/madrasahs/components/head-picker.tsx:152 } # an icon button named by its aria-label; no confirmation and the focus is not moved
+
+  # the footer
+  submit: { type: action, component: Button, role: button, intent: confirm, text: { key: OpenMadrasahDialog.submit }, in: [form, formReady, opening], disabledIn: [form, opening], emits: SUBMIT, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:121 } # natively disabled in `form`, nothing says why (F-X-3); busy (aria-disabled, aria-busy) in `opening`; not drawn in `looking`, where it keeps the state it had
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loadingLabel }, in: [opening], source: libs/ui/src/mds/button.tsx:114 } # the hidden <output> beside the busy button; a hard-coded Turkish default (F-UI-W1-3)
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: OpenMadrasahDialog.cancel }, in: [form, formReady, looking], emits: CANCEL, source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:120 } # on while the medrese is made, and does nothing then (F-W2-open-5)
+
+  # a refusal that is not about a field: a sonner toast over the form, which stays open and the toast too (duration infinite)
+  failedTitle: { type: status, component: Status, text: { key: OpenMadrasahDialog.failed }, in: [form, formReady], when: "toast != 'none'", source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:90 }
+  failedSelfNamed: { type: status, component: Status, text: { key: MadrasahsPage.errors.selfTakeOver }, in: [form, formReady], when: "toast == 'selfNamed'", source: apps/nizam/features/madrasahs/present.ts:307 } # the words written for a head change ("devralamazsınız … Onu düşürün") (F-W2-open-2)
+  failedForbidden: { type: status, component: Status, text: { key: MadrasahsPage.errors.forbidden }, in: [form, formReady], when: "toast == 'forbidden'", source: apps/nizam/features/madrasahs/present.ts:309 }
+  failedGeneric: { type: status, component: Status, text: { key: MadrasahsPage.errors.generic }, in: [form, formReady], when: "toast == 'failed'", source: apps/nizam/features/madrasahs/present.ts:320 }
+
+  # the medrese is open
+  savedTitle: { type: status, component: Status, text: { key: OpenMadrasahDialog.saved }, in: [opened], source: apps/nizam/features/madrasahs/components/open-madrasah-dialog.tsx:96 } # a sonner toast; its body "{name} açıldı; başmüderrisi {head}." is not drawn (see the header)
+  newRow: { type: text, component: Text, role: rowheader, text: { key: composed.MadrasahsPage.rowName, params: { madrasah: madrasah.name } }, in: [opened], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:158 } # the new medrese's own row, a <th scope=row>: its name, then "@short name"; the list is sorted by name and shows 50 a page, so a row of a walk may need ?q=
+  newRowHandle: { type: text, component: Text, role: rowheader, text: { key: composed.MadrasahsPage.rowHandle, params: { handle: madrasah.handle } }, in: [opened], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:160 } # the same <th>: the short name the person typed, or the one the server made
+  newRowHead: { type: text, component: Text, role: cell, text: { key: composed.MadrasahsPage.rowHead, params: { name: person.name } }, in: [opened], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:172 } # the başmüderris, by the name the users table holds (F-W2-open-4)
+  newRowStatus: { type: text, component: Text, role: cell, text: { key: MadrasahsPage.status.ACTIVE }, in: [opened], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:216 } # a badge: a medrese with a head is Etkin
+
+edges:
+  - { labelledBy: [dialog, dialogTitle] }
+  - { labelledBy: [chosenCard, chosenTitle] }
+  - { triggers: [openButton, form] }
+  - { triggers: [submit, opening] }
+  - { returnsFocus: [dialog, openButton] } # Base UI returns the focus to the element that was focused when it opened: the page's "Medrese aç" button
+
+rules:
+  - { id: no-default-accept, rule: "no page has initialFocus on an action with intent confirm: the form starts in Ad" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3)" }
+  - { id: focus-not-set, rule: "the Medreseler page moves no focus when it opens: the page has no initialFocus (the focus starts at the document, so a keyboard user starts from the top of the menu)" }
+  - { id: F-X-3, rule: "a submit button is natively disabled while the form is incomplete with nothing saying what is missing: 'Medrese aç' is off until the name, the short name and the başmüderris are right (open-madrasah-dialog.tsx:124). HeadPicker's `error` ('shown when the form was sent without one', head-picker.tsx:20) is never passed, so the one thing a person who filled the rest lacks, a başmüderris, is never named, and a disabled default button blocks implicit submission, so the `setTouched` of a submit try (open-madrasah-dialog.tsx:77) never runs. The head dialog does say it in its footer (assign-head-dialog.tsx:258, F-W2-4). Fix: keep it enabled and validate on submit, or tie the reason to the button" }
+  - { id: F-W2-3, rule: "the e-mail lookup has no button: it runs on Enter or when the field is left (head-picker.tsx:121); the input is `disabled` while it searches (:112), so the focused field loses the focus, and the only word that the search finished is a hidden <output> for a success, which is mounted with the card it announces (:148). 'Not found' and 'cannot search' are a Field error that is not a live region. Fix: a visible 'Ara' button, keep the input enabled with aria-busy, announce the result in a live region mounted beforehand" }
+  - { id: F-X-14, rule: "family of F-W3-14: tabbing out of the head field with an address in it runs a realm directory search that tedrisat writes to the audit log (user.lookup, found or not). Here the search is made once per address (head-picker.tsx:55 skips the one last searched), so Enter then leaving the field is one row (madrasahs.e2e.ts#7 counts it), and only a text that looks like an address is searched; still, no field should search because focus passed" }
+  - { id: F-X-8, rule: "family: the e-mail field is `disabled` while it searches, so the focused control is lost mid-interaction (head-picker.tsx:112); after the search the focus is not given back" }
+  - { id: F-X-2, rule: "Field's error element has no role=alert and no live region (libs/ui/src/mds/field.tsx:50-53): 'Bir ad yazın.', 'Ad en az 2 harf olmalı.', the short name's two messages and the head's 'bulunamadı' are read only if the focus moves to the field, and after a refused submit it does not" }
+  - { id: F-UI-W3-1, rule: "the same finding as F-X-2, as the kosk form's inventory words it: the Field error has no role=alert" }
+  - { id: F-X-4, rule: "a refusal other than the short name (a Medaris nazımı naming themselves, no permission, anything else) is told only by a sticky sonner toast, in another portal, while the dialog stays open; nothing inside the dialog says it failed. Fix: an Alert tone=error with role=alert inside the dialog with the same text" }
+  - { id: F-X-6, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:103-112), so a screen reader reads the intro and every field as the dialog's description when it opens (F-W2-13, F-UI-W1-1)" }
+  - { id: F-UI-W1-3, rule: "the busy button's hidden status text is a hard-coded default 'Yükleniyor' (libs/ui/src/mds/button.tsx:62, :114): open-madrasah-dialog.tsx:121 passes no loadingLabel, so it is in no catalog (F-X-17). Fix: pass loadingLabel from the catalog" }
+  - { id: F-W2-2, rule: "when the roles or the permission codes could not be read `madrasahAbilities` switches every button on, 'Medrese aç' too (present.ts:103), for a Medaris nazımı who may hold none: they get the form and tedrisat answers 403, shown by the toast 'Bunu yapma izniniz yok.' (answer `forbidden`)" }
+  - { id: F-W2-open-1, rule: "new: the head picker draws its search answer only while nobody is chosen (`error={value ? undefined : problem}`, head-picker.tsx:101). With a başmüderris chosen, a second search that finds nobody, or that cannot reach the directory, says nothing: the typed address stays in the field, the old head stays chosen, and the help line shows. Fix: draw the answer whatever is chosen, in a live region" }
+  - { id: F-W2-open-2, rule: "new: a Medaris nazımı who chooses themselves as the başmüderris is refused by tedrisat (SELF_GRANT_REFUSED, 403, the SelfGrantGuard of libs/common/src/authz/self-grant.guard.ts:60; the başnazım may) and the toast says 'Size verilmiş bir rolü ya da izni devralamazsınız; kendinize rol ya da izin vermek olur. Onu düşürün.' (MadrasahsPage.errors.selfTakeOver, mapped at present.ts:307): words written for a head change's Devral and Düşür, which this form has not. Nothing here has been given to them to take over or to drop. Fix: a message of its own ('Kendinizi başmüderris olarak atayamazsınız; başka bir hesap seçin.')" }
+  - { id: F-W2-open-3, rule: "new: 'Kısa ad' is optional (`handleError` accepts an empty one, present.ts:274; `openPayload` leaves it out, :294) but nothing says so and nothing says what an empty field does: tedrisat makes one from the name, Turkish letters transliterated and numbered -2, -3 until free (madrasah.service.ts:168-197, madrasah-handle.ts:28). The field has no asterisk, its help line (handleHelp) is silent, and the person learns the address only from the new row. Fix: say 'Boş bırakırsanız addan üretilir' in the help line and name the address in the toast" }
+  - { id: F-W2-open-4, rule: "new, from the code and not seen (the seeded applicants have users rows): the list names a medrese's başmüderris from the users table (`left join users`, apps/tedrisat/src/madrasah/madrasah.repository.ts:941), but the lookup finds anyone in the realm, also a person who has never opened the app (users.controller.ts:57; user-directory.service.ts says of exactly that case: 'a freshly appointed nazır is exactly that'). A head who never signed in is a row with the name 'Adı bilinmiyor' (madrasahs-view.tsx:172) while the toast has just named them from the realm. Fix: the directory falls back to the realm for the missing names, as the people lists do (user-directory.service.ts:resolvePeople)" }
+  - { id: F-W2-open-5, rule: "new: 'Vazgeç' and the close icon stay enabled while the medrese is being made and do nothing (`if (!saving) onOpenChange(next)`, open-madrasah-dialog.tsx:109-111); a busy control is neither disabled nor marked. The same as the köşk form's F-W3-open-2" }
+  - { id: F-W2-open-6, rule: "new, as the köşk form's F-W3-13: after the server refuses the short name the error is under the field, which is no live region, and the button that had the focus (busy, so only aria-disabled) goes natively disabled (`disabled={!canOpen(form) || taken}`, :124), so the focus falls to the dialog; nothing announces the error. Fix: focus the short-name field or an error summary with role=alert" }
+  - { id: F-W2-open-7, rule: "new: an address that was not found is not searched again. `search` returns at once for the address last searched (head-picker.tsx:55) and a `none` answer leaves it remembered (`searched.current = wanted` is set before the call and cleared only on a find or a failure, :56, :70). Pressing Enter again does nothing, and editing the field clears the message (:116) without clearing the memory, so the person who has just had the account made, and types the same address again, gets no search and no word. Fix: forget the address when the answer is `none`, or when the field changes" }
+  - { id: F-W2-open-8, rule: "new: the Başmüderris field is drawn as required (`Field required`, head-picker.tsx:99) but the Field only draws the decorative asterisk (libs/ui/src/mds/field.tsx:22, :43: 'the asterisk is decorative and the control carries `required`'), and HeadPicker's Input carries none (head-picker.tsx:103-122), so a screen reader never hears that a başmüderris is needed; 'Ad' is the one field whose Input has `required` (open-madrasah-dialog.tsx:147). Fix: `required` on the picker's Input (or aria-required)" }

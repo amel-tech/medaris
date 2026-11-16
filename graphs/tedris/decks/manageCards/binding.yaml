@@ -1,0 +1,83 @@
+# tedris.decks.manageCards on the local stack (graphs/README.md, "The stack and the bindings"), as the spare talebe `applicantF` (a man, every profile
+# attribute set), who writes in a deck of his own that the walk makes and removes (cards-deck.mjs: `Kart yönetimi denemesi`, private):
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/manageCards --bind graphs/tedris/decks/manageCards/binding.yaml --absent --out <dir>
+#   ... --to deleting         the confirmation and the delete
+#   ... --cover transitions   the three scenarios below, then binding.refused.yaml and binding.hadith.yaml one by one
+# Everything it shares (the events that type, the effects, the locators) is in walk.common.binding.yaml, read that first; the data, what is made and
+# removed, and what is not walked are there too.
+#
+# NOT RUN. The walk comes in the way a person does: the deck's own page (/decks/<id>), then its tab "Kartlar" (tedris.nav entry deck->deckCards, found
+# by enter.nav.binding.yaml). Nothing seeded is touched: the seeded deck "Kelime Defterim" is the seeded talebe's and other flows read it.
+#
+# The three scenarios, by what the deck holds and what the author types:
+#   emptyDeck     (the main story, e2e decks#18) no card. Blank attempt, a valid card with an Arabic front (added, "Kartlar 1"), an edit of its back face,
+#                 a "Vazgeç" in the confirmation, then the confirmation: "Kartlar 0" and the empty state again. The only scenario that adds from empty.
+#   oneCard       one card with no progress; faces of two characters. The add form and the edit form refuse them under their fields; an unchanged edit is
+#                 sent all the same (MCARDS-2); deleting the one card gives the empty state.
+#   severalCards  (e2e decks#19) three cards: فعل / fiil rated EASY ("Tamamlandı"), اسم / isim rated HARD ("Öğreniliyor"), harf / edat with none ("Yeni"),
+#                 each row with the author's own status and the first with its Arabic face. A card added makes four, a delete leaves a table.
+# The data of the form: `cardFront`, `cardBack` (what the add form is given), `revised` (the new back face of the edit form).
+#
+# `call` holds each write's request while the busy state is checked: the server action is a POST to the page's own address, and the page's reads are
+# GETs with a query, so it matches only the POST.
+schema: delurio-graph/0
+kind: binding
+extends: ./walk.common.binding.yaml
+flow: tedris.decks.manageCards
+
+scenarios:
+  # The main story. The deck is empty; the first card is Arabic with vowel signs, as the e2e's is.
+  emptyDeck:
+    given: { deck: empty, fields: valid, answer: saved }
+    as: applicantF
+    open: '{tedris}/decks/{mc.deck}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'deck->deckCards Decks.tabCards' }
+    vars: { cardFront: 'قَرَأَ يَقْرَأُ', cardBack: 'Okudu, okur.', revised: 'Okudu, okuyor.' }
+    setup:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, make, --cards, '0']
+        expect: 'manage-cards made'
+    teardown:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, remove]
+        expect: 'manage-cards removed'
+      - run: [node, helpers/sql.mjs, "select count(*) = 0 as gone from decks where author_id = '{secret.E2E_APPLICANT_F_SUB}' and title = 'Kart yönetimi denemesi'"]
+        expect: '"gone":true'
+
+  # One card with no progress. The faces the form is given are too short; the card of the edit form is the seeded فعل / fiil.
+  oneCard:
+    given: { deck: one, fields: short, answer: saved }
+    as: applicantF
+    open: '{tedris}/decks/{mc.deck}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'deck->deckCards Decks.tabCards' }
+    samples: { front: فعل, back: fiil }
+    vars: { cardFront: قل, cardBack: 'no', revised: 'no' }
+    setup:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, make, --cards, '1']
+        expect: 'manage-cards made'
+    teardown:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, remove]
+        expect: 'manage-cards removed'
+      - run: [node, helpers/sql.mjs, "select count(*) = 0 as gone from decks where author_id = '{secret.E2E_APPLICANT_F_SUB}' and title = 'Kart yönetimi denemesi'"]
+        expect: '"gone":true'
+
+  # Three cards, each with the author's own status. A valid card is added to the four, and the first row is edited and deleted.
+  severalCards:
+    given: { deck: several, fields: valid, answer: saved }
+    as: applicantF
+    open: '{tedris}/decks/{mc.deck}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'deck->deckCards Decks.tabCards' }
+    samples: { front: فعل, back: fiil }
+    vars: { cardFront: كتاب, cardBack: kitap, revised: 'fiil, geçmiş zaman' }
+    setup:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, make, --cards, '3']
+        expect: 'manage-cards made'
+    teardown:
+      - run: [node, ../tedris/decks/manageCards/cards-deck.mjs, remove]
+        expect: 'manage-cards removed'
+      - run: [node, helpers/sql.mjs, "select count(*) = 0 as gone from decks where author_id = '{secret.E2E_APPLICANT_F_SUB}' and title = 'Kart yönetimi denemesi'"]
+        expect: '"gone":true'
+
+states:
+  # a Next server action is a POST to the page's own address
+  adding: { call: '{tedris}/decks/{mc.deck}/cards' }
+  updating: { call: '{tedris}/decks/{mc.deck}/cards' }
+  deleting: { call: '{tedris}/decks/{mc.deck}/cards' }

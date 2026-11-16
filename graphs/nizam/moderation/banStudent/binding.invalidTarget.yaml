@@ -1,0 +1,45 @@
+# nizam.moderation.banStudent where the person runs the course: BAN_TARGET_INVALID, "Bu kişi yasaklanamaz.", an error toast that stays and the
+# window still open with what was typed. The person is a spare account (applicantG, Dilek Başvuran) made the course's hoca AND enrolled in it
+# as a talebe, so the roster has a row for her: nothing in tedrisat refuses a hoca a seat (CourseService.enroll, course.service.ts:1527-1567).
+# The ban is refused at ban.service.ts:155-163 (she holds MUDERRIS at the course), before anything is written.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/banStudent \
+#     --bind graphs/nizam/moderation/banStudent/binding.invalidTarget.yaml --cover transitions --absent --out <dir>
+# NOT RUN. Not sure that course.mjs can enrol the course's own hoca (its `make` enrols as the account, `POST /courses/:id/enroll`, after the
+# course exists); if it refuses, this scenario has no row to press and stays unwalked (needs.yaml: unwalked).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.banStudent
+
+scenarios:
+  invalidTarget:
+    given: { scope: course, answer: invalidTarget, session: ahead }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/students'
+    setup:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantG, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantG, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+      - run: [node, helpers/course.mjs, make, banst, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, applicantG, --talebe, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+    teardown:
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, lift, --user, applicantG, --kosk, '{seed.kosk2}']
+        expect: lifted
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, clear, --user, applicantG, --kosk, '{seed.kosk2}']
+        expect: cleared
+      - run: [node, helpers/course.mjs, remove, banst]
+        expect: course remove banst
+      - run: [node, ../nizam/moderation/banStudent/bans.mjs, forget, banst]
+        expect: forgot
+    vars:
+      who: applicantG
+      whoKey: APPLICANT_G
+      whoSub: '{secret.E2E_APPLICANT_G_SUB}'
+      personName: Dilek Başvuran
+      personAddress: '{secret.E2E_APPLICANT_G_EMAIL}'
+      courseTitle: Deneme dersi banst
+      reason: Derste yetkisiz kayıt aldı
+      reasonSaved: Derste yetkisiz kayıt aldı

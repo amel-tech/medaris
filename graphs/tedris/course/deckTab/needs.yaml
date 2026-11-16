@@ -1,0 +1,158 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.course.deckTab
+status: proposed
+summary: >-
+  What must exist for a talebe who studies a course's decks from its tab: the flow's product list, from its story and from
+  planned.md, never from what the page does today. planned.md names no item for this tab (P-P3, haşiye, annotations on lesson
+  material, is another feature). No replay has been run on this flow (walk phase), so no `replay:` is named in `walked`; the e2e
+  check is the only evidence a need is walked. The card grid and the self-test have unit specs only
+  (apps/tedris/test/course-deck-grid.spec.ts, self-test.spec.ts, course-decks-model.spec.ts); a unit spec is not an e2e check or a
+  replay, so those needs read `walked: []`. Gaps for the merge: missing:  decks-read-failure-is-told (DECKTAB-1),
+  a-round-survives-a-change-of-view (DECKTAB-2), card-side-is-told-without-colour (CRS-11), tab-is-in-the-address (PROG-1)
+  unwalked: study-the-featured-deck, browse-and-turn-the-cards, test-yourself-and-keep-the-marks, retry-the-missed-cards,
+  cards-read-failure-is-told, unsaved-marks-can-be-sent-again, several-decks-and-the-deck-of-the-week
+
+needs:
+  - id: deck-tab-lists-the-courses-decks
+    need: >-
+      A talebe who holds a seat sees, on the course page, the course's published decks in one tab: how many there are, which one
+      to study first, and the others; a course with no deck says so. A deck that is only a draft is never shown.
+    evidence:
+      - state: courseOpened
+      - state: tabOpened
+      - state: list
+      - state: noDecks
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:145
+      - source: apps/tedris/features/courses/components/course-page.tsx:451
+      - test: apps/tedris/e2e/course-decks.e2e.ts
+        name: "counts the decks, features one, and links every deck to its page"
+
+  - id: study-the-featured-deck
+    need: >-
+      From the tab the talebe goes straight to studying the deck that matters first (the deck of the week of the celse on air or
+      the next one, else the one with cards to repeat, else the first not finished), and sees its progress; every other deck opens
+      its own page.
+    evidence:
+      - state: list
+      - state: study_opened
+      - state: deck_opened
+      - source: apps/tedris/features/courses/course-decks-model.ts:48
+      - source: apps/tedris/features/courses/components/course-decks-tab.tsx:144
+    note: >-
+      Unwalked. The e2e (course-decks#1) accepts either rendering of a deck, so it does not pin which deck is featured; the model
+      has a unit spec.
+
+  - id: browse-and-turn-the-cards
+    need: >-
+      The talebe sees every card of a deck on one screen, turns a card to see its other side and turns it back, and is told when
+      the deck has no card or its cards could not be read.
+    evidence:
+      - state: readingCards
+      - state: cards
+      - state: cardsTurned
+      - state: noCards
+      - state: cardsFailed
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:148
+      - source: apps/tedris/features/courses/components/course-deck-grid.tsx:58
+    note: Unit spec only (course-deck-grid.spec.ts). The e2e has no card grid.
+
+  - id: test-yourself-and-keep-the-marks
+    need: >-
+      The talebe turns the cards face down, marks each one as known or missed, and every mark moves that card in the person's own
+      review schedule (a missed card comes back in a day, a known one after at least a week); the round ends with a summary of how
+      many were known.
+    evidence:
+      - state: test
+      - state: testTurned
+      - state: rating
+      - state: rated
+      - state: summary
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:234
+      - source: apps/tedris/features/courses/components/course-deck-grid.tsx:134
+      - source: apps/tedris/features/courses/self-test.ts:43
+    note: >-
+      Unit spec only (self-test.spec.ts, course-deck-grid.spec.ts). The marks of a walk are rows of flashcard_progress, which the
+      binding's effect reads back.
+
+  - id: retry-the-missed-cards
+    need: >-
+      After a round the talebe can go over the cards they missed, alone, as often as they like, and end the round when they are
+      done.
+    evidence:
+      - state: summary
+      - state: test
+      - state: cards
+      - source: apps/tedris/features/courses/components/course-deck-grid.tsx:281
+    note: Unit spec only.
+
+  - id: cards-read-failure-is-told
+    need: When the cards of a deck cannot be read the talebe is told and can try again; the other cards and the list stay usable.
+    evidence:
+      - state: cardsFailed
+      - state: readingCards
+      - source: apps/tedris/features/courses/components/course-deck-grid.tsx:300
+    note: Unwalked. A unit spec with a mocked action only; no deck on the stack refuses its cards to an enrolled talebe.
+
+  - id: unsaved-marks-can-be-sent-again
+    need: >-
+      A mark that did not reach the review schedule is kept on screen, the talebe is told that the schedule was not updated, and
+      can send every unsaved mark again.
+    evidence:
+      - state: test
+      - state: testTurned
+      - state: summary
+      - source: apps/tedris/features/courses/components/course-deck-grid.tsx:150
+      - source: apps/tedris/features/courses/components/course-deck-grid.tsx:268
+    note: Unit spec only, with a mock that refuses the rating.
+
+  - id: several-decks-and-the-deck-of-the-week
+    need: >-
+      A course with several decks tells the talebe which one belongs to this week, lists the others with their state (not started,
+      cards to repeat, done) and lets the grid switch between decks.
+    evidence:
+      - state: list
+      - state: readingCards
+      - source: apps/tedris/features/courses/course-decks-model.ts:48
+      - source: apps/tedris/features/courses/components/course-decks-tab.tsx:164
+    note: >-
+      Unwalked: the week caption and "Bu haftanın destesi" need a deck linked to a week, which nothing on the stack makes (the
+      binding's decks have none); the rows and the picker are in the binding's `severalDecks` scenario.
+
+  - id: decks-read-failure-is-told
+    need: >-
+      When the course's decks cannot be read the tab says so and offers to try again; it never says the course has no deck when it
+      does not know.
+    missing: no Linear issue; DECKTAB-1
+    note: |-
+      Drawn on the state noDecks, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      DECKTAB-1, a defect of the page and not a planned feature, so no Linear key. The recordings tab does this for its own read.
+
+  - id: a-round-survives-a-change-of-view
+    need: >-
+      Switching between "Desteler" and "Kartlar" neither reads the cards again nor drops a round in progress or marks that have
+      not been saved.
+    missing: no Linear issue; DECKTAB-2
+    note: |-
+      Drawn on the states cards, test and list, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      DECKTAB-2, a defect, no Linear key.
+
+  - id: card-side-is-told-without-colour
+    need: >-
+      The side of a card in view is told by more than colour, and turning a card is announced to people who cannot see the
+      animation.
+    missing: no Linear issue; CRS-11
+    note: |-
+      Drawn on the states cards and cardsTurned, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      CRS-11, a defect (the inventory's finding), no Linear key. The card as it is today is deck-flip-card.tsx:52.
+
+  - id: tab-is-in-the-address
+    need: The tab the talebe is on is in the address, so a reload, the way back or a shared link return to the same tab.
+    missing: no Linear issue; PROG-1
+    note: |-
+      Drawn on the states tabOpened and courseOpened, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      PROG-1, written in tedris.course.readProgramme; a defect, no Linear key.

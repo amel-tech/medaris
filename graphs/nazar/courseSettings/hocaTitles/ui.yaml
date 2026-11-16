@@ -1,0 +1,99 @@
+# The screens of nazar.courseSettings.hocaTitles: the card "Hocalar ve unvanları" of Ders ayarları (/ders/<id>/ayarlar), the open list of a
+# select, the card read-only, and the toasts of a save. Read from apps/nazar/features/course-settings/components/{course-settings-page,
+# hoca-unvan-card}.tsx, features/course-settings/hoca-unvan.ts and the kit's libs/ui/src/mds/{field,select,button,toast,app-shell}.tsx on
+# 15 Nov 2026; not seen in a browser. The words are copied from libs/i18n/src/locales/tr/nazar.json (the app reads them as nazar.CourseSettings
+# and nazar.Problems), by script (scratchpad mkcat-hocatitles.py).
+#
+# Words that are not copied from an i18n file, each with where they come from:
+#   composed.CourseSettings.unvanPrefix.<CODE>   the eight unvans as they go before a name, "Prof. Dr." to "Hafız": libs/utils/src/hoca-unvan.js:33-42
+#                                                (HOCA_UNVAN_PREFIX, "written the same in every locale"); they label the options of each select
+#   The names in the labels and under the selects are literals, not catalog messages: the app's messages hocas.unvanLabel "{name} için unvan",
+#   hocas.shownAs "Derste “{name}” olarak görünür." and hocas.noAccount (this card's lines under each select) fill {name} once for each hoca and
+#   the catalog has one sample for a placeholder, so each node carries the sentence the walk's own course draws, with the stack's invented names
+#   (Hamdi Müderris, Rıza Başvuran, Ahmed Hilmi) and one title ("Doç. Dr."); the key of each is named in a comment. Same as nazar.courses.open's
+#   unvan labels. The two `{name}` that remain in the catalog (CourseSettings.intro and hocas.savedBody) are both the course's title.
+# `changes` is the app's own card intro, `hocas.intro`: it says what a save puts on the course's hocas ("Ders, hocayı nerede gösterirse adı bu
+# unvanla yazılır"), that it is per course ("aynı kişinin başka derslerdeki unvanı değişmez") and so what the card changes; the app has no other
+# message that says it before Kaydet (hocas.savedBody says it after).
+#
+# The page keeps no focus of its own on load, after a choice, after Vazgeç or after Kaydet (focus-not-set), so there is no `initialFocus` and
+# no `focus`. Base UI gives the focus back to a select's button when its list closes; nothing here says it. The list of a select is a popup in
+# a portal, drawn with the card behind it as nazar.courses.browse draws its filters' lists: whether the page behind it is inert was not looked
+# at. The toast of a success closes by itself after 6 seconds, so it is drawn in `saved` only; an error toast stays until closed and is drawn
+# in the state it leads to.
+schema: delurio-graph/0
+kind: ui
+id: nazar.courseSettings.hocaTitles
+flow: nazar.courseSettings.hocaTitles
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: CourseSettings.hocas.intro }
+samples:
+  name: Deneme dersi hocaTitles # {name} of CourseSettings.intro and hocas.savedBody: the course's title
+
+nodes:
+  # ---- the page around the card ---------------------------------------------------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">: no name, no initialFocus (focus-not-set)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: CourseSettings.title }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:85 } # h1
+  pageSubtitle: { type: text, component: Text, text: { key: CourseSettings.intro, params: { name: course.title } }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:86 }
+
+  # ---- the card ---------------------------------------------------------------------------------------------------------------------
+  card: { type: page, component: Page, role: form, name: { labelledBy: cardTitle }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:108 } # <form noValidate aria-labelledby=course-hocas-heading data-testid=hoca-unvan-card>: a named form landmark of its own, beside the access form's
+  cardTitle: { type: text, component: Heading, role: heading, text: { key: CourseSettings.hocas.title }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:116 } # h2
+  cardIntro: { type: text, component: Text, text: { key: CourseSettings.hocas.intro }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:119 }
+
+  # the first hoca: the course's imam in the walk, Hamdi Müderris (hocas.unvanLabel and hocas.shownAs, with the name filled in)
+  selectFirst: { type: field, component: TextField, role: combobox, name: { literal: "Hamdi Müderris için unvan" }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], disabledIn: [saving, readOnly], emits: OPEN_FIRST, source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143 } # the kit's Select: a button with role combobox, named by the Field's label; its visible words are the title it holds, which the graph does not check (the value changes with every choice); shut with `busy`, no course.settings or no account
+  helpFirstPlain: { type: text, component: Text, text: { literal: "Derste “Hamdi Müderris Hoca” olarak görünür." }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], when: "first == 'plain'", source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:135 } # hocas.shownAs; the Field's help line, the select's description; after a refusal the shut card shows the refused choice here (HOCA-1)
+  helpFirstTitled: { type: text, component: Text, text: { literal: "Derste “Doç. Dr. Hamdi Müderris” olarak görünür." }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone, readOnly], when: "first == 'titled'", source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:135 } # formatHocaName: the title before the name (libs/utils/src/hoca-unvan.js:60)
+
+  # the second hoca with an account: Rıza Başvuran, seated by the walk
+  selectSecond: { type: field, component: TextField, role: combobox, name: { literal: "Rıza Başvuran için unvan" }, in: [card, choosing, choosingDirty, dirty, saving, saved, readOnly], when: "team == 'pair'", disabledIn: [saving, readOnly], emits: OPEN_SECOND, source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:143 }
+  helpSecondPlain: { type: text, component: Text, text: { literal: "Derste “Rıza Başvuran Hoca” olarak görünür." }, in: [card, choosing, choosingDirty, dirty, saving, saved, readOnly], when: "team == 'pair' and second == 'plain'", source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:135 }
+  helpSecondTitled: { type: text, component: Text, text: { literal: "Derste “Doç. Dr. Rıza Başvuran” olarak görünür." }, in: [card, choosing, choosingDirty, dirty, saving, saved, readOnly], when: "team == 'pair' and second == 'titled'", source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:135 }
+
+  # a hoca shown by name alone, with no account: the select is shut for good and the line says why (hocas.noAccount)
+  guestSelect: { type: field, component: TextField, role: combobox, name: { literal: "Ahmed Hilmi için unvan" }, in: [card, choosing, choosingDirty, dirty, saving, saved, readOnly], when: "team == 'guest'", disabledIn: [card, choosing, choosingDirty, dirty, saving, saved, readOnly], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:147 } # `disabled={busy || !editable || !row.userId}`
+  guestHelp: { type: text, component: Text, text: { literal: "Derste “Ahmed Hilmi Hoca” olarak görünür. Bu hocanın hesabı olmadığı için unvanı değiştirilemez." }, in: [card, choosing, choosingDirty, dirty, saving, saved, readOnly], when: "team == 'guest'", source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:138 }
+
+  # ---- the open list of a select -----------------------------------------------------------------------------------------------------
+  optionList: { type: list, component: List, role: listbox, in: [choosing, choosingDirty], source: libs/ui/src/mds/select.tsx:80 } # no name of its own (as nazar.courses.browse's filters)
+  optionUntitled: { type: list, component: ListItem, role: option, text: { key: CourseSettings.hocas.untitled }, checked: "(which == 'first' and first == 'plain') or (which == 'second' and second == 'plain')", in: [choosing, choosingDirty], emits: CHOOSE_UNTITLED, source: apps/nazar/features/course-settings/hoca-unvan.ts:63 } # the first option; selected when the open select holds no title
+  optionProfDr: { type: list, component: ListItem, role: option, text: { key: composed.CourseSettings.unvanPrefix.PROF_DR }, in: [choosing, choosingDirty], emits: CHOOSE_TITLE, source: apps/nazar/features/course-settings/hoca-unvan.ts:65 } # which of the eight is selected is not drawn: the graph does not say which title was chosen
+  optionDocDr: { type: list, component: ListItem, role: option, text: { key: composed.CourseSettings.unvanPrefix.DOC_DR }, in: [choosing, choosingDirty], emits: CHOOSE_TITLE, source: apps/nazar/features/course-settings/hoca-unvan.ts:65 }
+  optionDr: { type: list, component: ListItem, role: option, text: { key: composed.CourseSettings.unvanPrefix.DR }, in: [choosing, choosingDirty], emits: CHOOSE_TITLE, source: apps/nazar/features/course-settings/hoca-unvan.ts:65 }
+  optionMuderris: { type: list, component: ListItem, role: option, text: { key: composed.CourseSettings.unvanPrefix.MUDERRIS }, in: [choosing, choosingDirty], emits: CHOOSE_TITLE, source: apps/nazar/features/course-settings/hoca-unvan.ts:65 }
+  optionMolla: { type: list, component: ListItem, role: option, text: { key: composed.CourseSettings.unvanPrefix.MOLLA }, in: [choosing, choosingDirty], emits: CHOOSE_TITLE, source: apps/nazar/features/course-settings/hoca-unvan.ts:65 }
+  optionMuftu: { type: list, component: ListItem, role: option, text: { key: composed.CourseSettings.unvanPrefix.MUFTU }, in: [choosing, choosingDirty], emits: CHOOSE_TITLE, source: apps/nazar/features/course-settings/hoca-unvan.ts:65 }
+  optionSeyh: { type: list, component: ListItem, role: option, text: { key: composed.CourseSettings.unvanPrefix.SEYH }, in: [choosing, choosingDirty], emits: CHOOSE_TITLE, source: apps/nazar/features/course-settings/hoca-unvan.ts:65 }
+  optionHafiz: { type: list, component: ListItem, role: option, text: { key: composed.CourseSettings.unvanPrefix.HAFIZ }, in: [choosing, choosingDirty], emits: CHOOSE_TITLE, source: apps/nazar/features/course-settings/hoca-unvan.ts:65 }
+
+  # ---- the card's own buttons: drawn only for a caller who holds course.settings -----------------------------------------------------
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: CourseSettings.cancel }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone], disabledIn: [card, choosing, saving, saved, refusedGone], emits: CANCEL, source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:157 } # `disabled={!dirty || busy}`: natively off while nothing differs and nothing says why (HOCA-3); a second "Vazgeç" beside the access form's (F-D2c-14)
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseSettings.save }, in: [card, choosing, choosingDirty, dirty, saving, saved, refusedGone], disabledIn: [card, choosing, saving, saved, refusedGone], emits: SUBMIT, source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:164 } # `disabled={!dirty}`, `loading={busy}`: busy is aria-disabled and aria-busy and keeps the focus; a second "Kaydet" beside the access form's (F-D2c-14)
+  savingStatus: { type: status, component: Status, role: status, text: { key: CourseSettings.saving }, in: [saving], source: libs/ui/src/mds/button.tsx:113 } # the Kaydet button's hidden <output>, empty except while busy
+  readOnlyNote: { type: text, component: Text, text: { key: CourseSettings.hocas.readOnly }, in: [readOnly], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:174 } # in place of the two buttons; a caption with no live region
+
+  # ---- the answer of a save: toasts, in the "Bildirimler" region (each toast is a dialog, an error one an alertdialog that stays) --------
+  toastSaved: { type: status, component: Status, role: dialog, name: { key: CourseSettings.hocas.saved }, text: { key: CourseSettings.hocas.savedBody, params: { name: course.title } }, in: [saved], source: apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:100 } # closes by itself after 6 seconds
+  toastForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.hocas.failed }, text: { key: Problems.actionForbidden }, in: [readOnly], when: "toast == 'forbidden'", source: apps/nazar/features/course-settings/hoca-unvan.ts:88 }
+  toastGone: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.hocas.failed }, text: { key: CourseSettings.hocas.errors.notHoca }, in: [refusedGone], source: apps/nazar/features/course-settings/hoca-unvan.ts:90 }
+  toastInvalid: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.hocas.failed }, text: { key: CourseSettings.errors.invalid }, in: [dirty], when: "toast == 'invalid'", source: apps/nazar/features/course-settings/hoca-unvan.ts:92 }
+  toastFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.hocas.failed }, text: { key: CourseSettings.errors.generic }, in: [dirty], when: "toast == 'failed'", source: apps/nazar/features/course-settings/hoca-unvan.ts:94 }
+
+edges:
+  - { labelledBy: [card, cardTitle] }
+  - { triggers: [selectFirst, choosing] }
+  - { triggers: [selectSecond, choosing] }
+  - { triggers: [save, saving] }
+
+rules:
+  - { id: focus-not-set, rule: "the page sets no initial focus (nothing in features/course-settings does), and none after a choice, after Vazgeç or after Kaydet; a keyboard user who presses Kaydet loses their place (F-D2c-7). Base UI returns the focus to a select's button when its list closes; not verified in a browser" }
+  - { id: F-D2c-7, rule: "course-settings-page.tsx:114 keys the card by `JSON.stringify(hocas)` and hoca-unvan-card.tsx:104 calls router.refresh() after Kaydet: when a title changed the stored list changes, so the whole card is mounted anew, the focused Kaydet is destroyed and the focus falls to the page. The success toast (6 seconds) is the only sign. The form above is keyed the same way by its own stored values (course-settings-page.tsx:109). NOT VERIFIED in a browser. Fix: focus the card's heading after a save, or keep one instance and update `saved`" }
+  - { id: F-D2c-14, rule: "the card draws its own 'Kaydet' and 'Vazgeç' for every holder of course.settings (hoca-unvan-card.tsx:155-172, #344, 16 Oct 2026), beside the access form's, so the page has two of each; a locator `getByRole('button', { name: 'Kaydet' })` resolves to two (apps/nazar/e2e/course-settings.e2e.ts:57 and course-nazirs.e2e.ts:726 were last changed on 6 Oct 2026). The two buttons are told apart only by the named form landmark that holds each; their names are the same. From the code; not run. Fix: scope the specs to the forms' test ids; name the buttons by their card ('Unvanları kaydet')" }
+  - { id: HOCA-1, rule: "new: after a write is refused and the re-read leaves the hocas as they were, the card is not mounted anew (its key is the hocas), so it keeps the draft the API refused: the selects stay on the refused titles and the lines 'Derste “…” olarak görünür.' name a title the course does not have. With AUTHZ_FORBIDDEN (the caller's course.settings ended, for instance a ders nazırı's end date) the re-read also takes `editable` away: the selects are shut, Kaydet and Vazgeç are gone, and there is no way to put the stored titles back short of reloading (hoca-unvan-card.tsx:81-90, course-settings-page.tsx:114,118). The doc comment says the page is read again 'so it shows what is stored'. From the code; not verified in a browser. Fix: put `saved` back into the draft on a refusal, or key the card by `editable` as well" }
+  - { id: HOCA-2, rule: "new: the writes are one PUT for each changed hoca, in list order, with no transaction; the first refusal stops the loop (hoca-unvan-card.tsx:78-91). A refusal at the second hoca leaves the first one stored, and the toast says only 'Unvan kaydedilemedi' with the cause of the second: it does not say that one title was saved. The re-read does show it (a stored title changed, so the card is mounted anew with the stored titles) and drops the choice that was refused, with no word of either. Fix: say how many titles were saved, or send the changes in one call" }
+  - { id: HOCA-3, rule: "new: 'Kaydet' and 'Vazgeç' are natively disabled until a title differs (hoca-unvan-card.tsx:159,166), nothing says why, and a native disabled button leaves the tab order; after a Vazgeç, or the end of a save (`setSaved(draft)` makes `dirty` false), the pressed button turns off under the focus. The same family as F-B-11 of nazar.settings.edit. Fix: keep Kaydet focusable (aria-disabled) and say 'Değişiklik yok'" }
+  - { id: HOCA-4, rule: "new: leaving the page with a title chosen and not saved (a menu entry, a link, a reload) asks nothing: the choices are lost with no word, and Vazgeç also drops them without a question. The page's recording dialog does warn (recording-dialog.tsx:215, beforeunload); this card does not. The same as SET-2 of nazar.settings.edit. Fix: warn on leaving a card that differs from what is stored" }
+  - { id: F-D2c-2, rule: "the course menu offers 'Ders ayarları' to every course persona whatever they hold (features/shell/nav.ts:142), so a ders nazırı with no code of the page's list meets 'Bu sayfaya izniniz yok' (nazar.access.dersNazirPages); this card is reached from that entry" }

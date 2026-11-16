@@ -1,0 +1,196 @@
+# The screens of nizam.youtube.liveBroadcasts, PLANNED: nothing here was seen in a browser, and most of it does not exist. `status: proposed`; a node
+# carries a `source:` only where the screen or the control it draws is there today:
+#   - the nizam sidebar's entry "YouTube bağlantısı" (lib/shell-nav.ts:149), which leads to a page that is not there;
+#   - the shell's <main> and its section refusal (NoAccess), which the new page would show to a person who may not manage the connection;
+#   - nazar-web's Ders ayarları (the page; its new card "Canlı yayın" is planned), Celseler (the page, its table, its Katılım cell "YouTube yayını")
+#     and Ders kayıtları (the page, a row's title, chip, state badge and buttons).
+# Everything else is the simplest reading of the issues MDRS-238, 239 and 240, and its words are `planned.*`.
+#
+# Words. Every key that is not `planned.*`, `composed.*` or `Changes.note` is copied from libs/i18n/src/locales/tr (nizam.json for Shell.items.youtube
+# and NoAccess.*, nazar.json for the rest, common.json for common.toast.close), the key being the path under each file's root key; where nizam.json and
+# nazar.json hold the same key they hold the same words, and NoAccess is taken from nizam.json. Two `composed.*` keys are the existing ones of
+# nazar.recordings.add: composed.PlatformChip.youtube, composed.Recordings.recordingTitle. `Changes.note` is authored here, as in every flow that writes
+# (the app has no sentence that tells a hoca what connecting a channel changes). The new words are in `planned.Youtube.*` (the nizam page) and
+# `planned.Broadcast.*` (the hoca's side); the report lists each as FOR REVIEW. The stream key is never a word: its field is dots, and the one sample
+# of it says it is not a key. The RTMPS address is not secret; its sample is an address that does not exist.
+schema: delurio-graph/0
+kind: ui
+id: nizam.youtube.liveBroadcasts
+flow: nizam.youtube.liveBroadcasts
+status: proposed
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  channel: "Deneme Kanalı"
+  person: "Deneme Başnazım"
+  at: "16 Kas 14:30"
+  name: "Deneme dersi"
+  when: "17 Kas Sal 21:00"
+  week: "1"
+  title: "Celse 1 yayını"
+  session: "Celse 1"
+  address: "rtmps://ornek.test/live2"
+  streamKey: "(örnek, gerçek anahtar değil)"
+  resolution: "1080p"
+  frameRate: "30 fps"
+
+# Focus. Planned screens set none: no `initialFocus` on a page (the shell's <main> takes none), and the dialog gets the kit's default (the first
+# tabbable element, the close icon), which is what every dialog of nazar-web does today; whether the first focus should be "Göster" is a question for the
+# review (rule focus-undecided). The dialog hands the focus back to the button that opened it.
+nodes:
+  # ===================== nizam: the menu entry that exists =====================
+  menuLink: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: Shell.items.youtube }, text: { key: Shell.items.youtube }, in: [menu], emits: OPEN_YOUTUBE, source: apps/nizam/lib/shell-nav.ts:149 } # the sidebar's entry under Ayarlar (the başnazım's menu); it opens /ayarlar/youtube, which today falls to the catch-all (apps/nizam/app/[...rest]/page.tsx:9) and "Sayfa bulunamadı" (F-P0-4)
+
+  # ===================== nizam: the page /ayarlar/youtube (planned) =====================
+  pageMain: { type: page, component: Page, role: main, in: [notConnected, reconnect, connected, loadFailed] } # the shell's one <main>; no name, no initialFocus (rule focus-undecided)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Shell.items.youtube }, in: [notConnected, reconnect, connected, loadFailed] } # h1; the menu's words, as the page of the policies repeats its entry's
+  pageIntro: { type: text, component: Text, text: { key: planned.Youtube.intro }, in: [notConnected, reconnect, connected, loadFailed] }
+
+  channelRegion: { type: page, component: Page, role: region, name: { labelledBy: channelHeading }, in: [notConnected, reconnect, connected] }
+  channelHeading: { type: text, component: Heading, role: heading, text: { key: planned.Youtube.channelHeading }, in: [notConnected, reconnect, connected] } # h2
+  statusNone: { type: text, component: Text, text: { key: planned.Youtube.status.none }, in: [notConnected] }
+  statusConnected: { type: text, component: Text, text: { key: planned.Youtube.status.connected }, in: [connected] }
+  statusRevoked: { type: text, component: Text, text: { key: planned.Youtube.status.revoked }, in: [reconnect] }
+  noneBody: { type: text, component: Text, text: { key: planned.Youtube.noneBody }, in: [notConnected] }
+  channelName: { type: text, component: Text, text: { key: planned.Youtube.channelName, params: { channel: channel.title } }, in: [connected, reconnect] } # the channel's title as the API gives it, printed bare
+  connectedBy: { type: text, component: Text, text: { key: planned.Youtube.connectedBy, params: { person: connection.by, at: connection.at } }, in: [connected, reconnect] }
+  liveReady: { type: text, component: Text, text: { key: planned.Youtube.liveReady }, in: [connected], when: "link == 'ready'" }
+  liveWaiting: { type: alert, component: Alert, role: status, text: { key: planned.Youtube.liveWaiting }, in: [connected], when: "link == 'waiting'" } # a neutral Alert is a status, as the kit draws it today
+  connectHelp: { type: text, component: Text, text: { key: planned.Youtube.connectHelp }, in: [notConnected, reconnect] } # the consent must come from the channel's owner or a Brand Account manager (MDRS-195)
+  connectButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Youtube.connect }, in: [notConnected], emits: CONNECT } # leaves for Google; it is a server action that answers an address, not a link
+  reconnectButton: { type: action, component: Button, role: button, intent: confirm, text: { key: planned.Youtube.reconnect }, in: [reconnect], emits: CONNECT }
+  revokedAlert: { type: alert, component: Alert, role: alert, text: { key: planned.Youtube.revokedTitle }, in: [reconnect] } # MDRS-238: show nizam a reconnect alert
+  revokedText: { type: text, component: Text, text: { key: planned.Youtube.revokedBody }, in: [reconnect] }
+  problemNotConfigured: { type: alert, component: Alert, role: alert, text: { key: planned.Youtube.errors.notConfigured }, in: [notConnected, reconnect], when: "problem == 'notConfigured'" } # phase 0 (MDRS-237) is not done in this environment
+  problemDenied: { type: alert, component: Alert, role: alert, text: { key: planned.Youtube.errors.denied }, in: [notConnected, reconnect], when: "problem == 'denied'" }
+  problemNoChannel: { type: alert, component: Alert, role: alert, text: { key: planned.Youtube.errors.noChannel }, in: [notConnected, reconnect], when: "problem == 'noChannel'" }
+  problemFailed: { type: alert, component: Alert, role: alert, text: { key: planned.Youtube.errors.failed }, in: [notConnected, reconnect], when: "problem == 'failed'" }
+
+  toastConnected: { type: status, component: Status, text: { key: planned.Youtube.connected }, in: [connected], when: "toast == 'connected'" } # a sonner toast has no role of its own
+  toastConnectedBody: { type: text, component: Text, text: { key: planned.Youtube.connectedBody, params: { channel: channel.title } }, in: [connected], when: "toast == 'connected'" }
+  toastConnectedClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: common.toast.close }, in: [connected], when: "toast == 'connected'", emits: CLOSE_TOAST }
+
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: planned.Youtube.loadFailedTitle }, in: [loadFailed] }
+  loadFailedText: { type: text, component: Text, text: { key: planned.Youtube.loadFailed }, in: [loadFailed] }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Youtube.retry }, in: [loadFailed], emits: RETRY }
+
+  # the refusal a person without platform.youtube_manage gets: the shell's own screen, which exists (nizam.shell.noAccessAndNotFound)
+  refusedMain: { type: page, component: Page, role: main, in: [refused], source: libs/ui/src/mds/app-shell.tsx:41 }
+  refusedSection: { type: page, component: Page, role: region, name: { labelledBy: refusedTitle }, in: [refused], source: libs/ui/src/mds/system-state.tsx:33 }
+  refusedTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [refused], source: libs/ui/src/mds/system-state.tsx:43 } # h1
+  refusedHome: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: NoAccess.back }, text: { key: NoAccess.back }, in: [refused], emits: GO_HOME, source: apps/nizam/components/errors/no-access.tsx:38 }
+
+  # ===================== nazar: Ders ayarları, the card "Canlı yayın" (the page exists, the card is planned) =====================
+  settingsMain: { type: page, component: Page, role: main, in: [courseSetting, savingSetting], source: libs/ui/src/mds/app-shell.tsx:41 } # the page of nazar.courseSettings.access: /ders/<id>/ayarlar
+  settingsTitle: { type: text, component: Heading, role: heading, text: { key: CourseSettings.title }, in: [courseSetting, savingSetting], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:85 } # h1
+  settingsIntro: { type: text, component: Text, text: { key: CourseSettings.intro, params: { name: course.title } }, in: [courseSetting, savingSetting], source: apps/nazar/features/course-settings/components/course-settings-page.tsx:86 }
+  broadcastCard: { type: page, component: Page, role: region, name: { labelledBy: broadcastHeading }, in: [courseSetting, savingSetting] }
+  broadcastHeading: { type: text, component: Heading, role: heading, text: { key: planned.Broadcast.settings.title }, in: [courseSetting, savingSetting] } # h2
+  useSwitch: { type: field, component: TextField, role: switch, text: { key: planned.Broadcast.settings.useLabel }, checked: "use == 'on'", in: [courseSetting, savingSetting], disabledIn: [savingSetting], emits: TOGGLE_USE }
+  useHelp: { type: text, component: Text, text: { key: planned.Broadcast.settings.useHelp }, in: [courseSetting, savingSetting] }
+  privacyLegend: { type: text, component: Text, text: { key: planned.Broadcast.settings.privacyLegend }, in: [courseSetting, savingSetting] }
+  privacyGroup: { type: list, component: List, role: radiogroup, name: { labelledBy: privacyLegend }, in: [courseSetting, savingSetting] } # the visibility is stated explicitly, never left to a default (YouTube's policy)
+  radioUnlisted: { type: text, component: ListItem, role: radio, text: { key: planned.Broadcast.settings.unlisted }, checked: "privacy == 'unlisted'", in: [courseSetting, savingSetting], emits: PICK_UNLISTED }
+  radioPublic: { type: text, component: ListItem, role: radio, text: { key: planned.Broadcast.settings.public }, checked: "privacy == 'public'", in: [courseSetting, savingSetting], emits: PICK_PUBLIC }
+  unlistedHelp: { type: text, component: Text, text: { key: planned.Broadcast.settings.unlistedHelp }, in: [courseSetting, savingSetting] }
+  publicHelp: { type: text, component: Text, text: { key: planned.Broadcast.settings.publicHelp }, in: [courseSetting, savingSetting] }
+  saveButton: { type: action, component: Button, role: button, intent: confirm, text: { key: CourseSettings.save }, in: [courseSetting, savingSetting], disabledIn: [savingSetting], emits: SAVE }
+  toastSettingSaved: { type: status, component: Status, role: dialog, name: { key: CourseSettings.saved }, text: { key: CourseSettings.savedBody, params: { name: course.title } }, in: [courseSetting], when: "toast == 'settingSaved'", source: apps/nazar/features/course-settings/components/course-settings-form.tsx:138 } # the page's own toast for a save
+  toastSettingNotConnected: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: planned.Broadcast.settings.notConnected }, in: [courseSetting], when: "toast == 'settingNotConnected'" }
+  toastSettingPolicy: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: CourseSettings.errors.policy }, in: [courseSetting], when: "toast == 'settingPolicy'", source: apps/nazar/features/course-settings/course-settings.ts:135 }
+  toastSettingForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: Problems.actionForbidden }, in: [courseSetting], when: "toast == 'settingForbidden'", source: apps/nazar/features/course-settings/course-settings.ts:133 }
+  toastSettingFailed: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: CourseSettings.errors.generic }, in: [courseSetting], when: "toast == 'settingFailed'", source: apps/nazar/features/course-settings/course-settings.ts:141 }
+  toastSettingClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: common.toast.close }, in: [courseSetting], when: anyToast, emits: CLOSE_TOAST }
+
+  # ===================== nazar: Celseler, the row of one celse (the page exists; the badge, the button and the dialog are planned) =====================
+  sessionsMain: { type: page, component: Page, role: main, in: [noBroadcast, waiting, missedStart, live, weak, ended, neverWent], source: apps/nazar/features/sessions/components/sessions-page.tsx:70 } # the page of nazar.sessions.manage
+  sessionsTitle: { type: text, component: Heading, role: heading, text: { key: Sessions.title }, in: [noBroadcast, waiting, missedStart, live, weak, ended, neverWent], source: apps/nazar/features/sessions/components/sessions-page.tsx:75 } # h1
+  sessionsTable: { type: list, component: List, role: table, name: { key: Sessions.upcomingTitle }, in: [noBroadcast, waiting, missedStart, live, weak, ended, neverWent], source: apps/nazar/features/sessions/components/sessions-table.tsx:586 } # the walk's celse is one row; a celse that has begun is in the page's second table, which this graph does not tell apart
+  attendanceStream: { type: text, component: Text, text: { key: Sessions.attendance.stream }, in: [waiting, missedStart, live, weak, ended], source: apps/nazar/features/sessions/components/attendance-cell.tsx:52 } # "YouTube yayını" in Katılım: the broadcast's link is the celse's stream link, the field the manual link writes
+
+  noBroadcastBadge: { type: text, component: Text, text: { key: planned.Broadcast.state.none }, in: [noBroadcast] }
+  whyNotReady: { type: alert, component: Alert, role: status, text: { key: planned.Broadcast.createFailed.notReady }, in: [noBroadcast], when: "why == 'notReady'" }
+  whyQuota: { type: alert, component: Alert, role: status, text: { key: planned.Broadcast.createFailed.quota }, in: [noBroadcast], when: "why == 'quota'" }
+  whyFailed: { type: alert, component: Alert, role: status, text: { key: planned.Broadcast.createFailed.failed }, in: [noBroadcast], when: "why == 'failed'" }
+  createButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Broadcast.createLabel, params: { when: session.when } }, text: { key: planned.Broadcast.create }, in: [noBroadcast], emits: CREATE } # for a holder of session.live_link (the guard is the flow's: CREATE is taken from this state only)
+  toastCreateForbidden: { type: alert, component: Alert, role: alertdialog, name: { key: CourseSettings.failed }, text: { key: Problems.actionForbidden }, in: [noBroadcast], when: "toast == 'createForbidden'" }
+  toastCreateClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: common.toast.close }, in: [noBroadcast], when: anyToast, emits: CLOSE_TOAST }
+
+  badgeWaiting: { type: text, component: Text, text: { key: planned.Broadcast.state.waiting }, in: [waiting] }
+  badgeLive: { type: text, component: Text, text: { key: planned.Broadcast.state.live }, in: [live] }
+  badgeWeak: { type: text, component: Text, text: { key: planned.Broadcast.state.weak }, in: [weak] }
+  weakHelp: { type: text, component: Text, text: { key: planned.Broadcast.weakHelp }, in: [weak] } # YouTube's configuration issues, worded for people; one sentence stands for them here
+  badgeMissed: { type: text, component: Text, text: { key: planned.Broadcast.state.missed }, in: [missedStart] }
+  missedHelp: { type: alert, component: Alert, role: status, text: { key: planned.Broadcast.missedHelp }, in: [missedStart] } # MDRS-239: warn if the broadcast is not live 5 minutes after its time
+  badgeEnded: { type: text, component: Text, text: { key: planned.Broadcast.state.ended }, in: [ended] }
+  badgeNever: { type: text, component: Text, text: { key: planned.Broadcast.state.never }, in: [neverWent] }
+  neverHelp: { type: text, component: Text, text: { key: planned.Broadcast.neverHelp }, in: [neverWent] }
+  detailsButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Broadcast.detailsLabel, params: { when: session.when } }, text: { key: planned.Broadcast.details }, in: [waiting, missedStart, live, weak], when: mayOpenPanel, emits: OPEN_PANEL } # only a holder of session.live_link
+  toastStale: { type: alert, component: Alert, role: alertdialog, name: { key: planned.Broadcast.stale }, text: { key: planned.Broadcast.staleBody }, in: [waiting], when: "toast == 'stale'" }
+  toastStaleClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: common.toast.close }, in: [waiting], when: anyToast, emits: CLOSE_TOAST }
+
+  # ----- the dialog "Yayın bilgileri": the address, the key and the OBS settings -----
+  panelDialog: { type: page, component: Page, role: dialog, name: { labelledBy: panelTitle }, in: [panel, revealingKey, panelShown], initialFocus: panelClose } # the kit's dialog; its default focus is the close icon (rule focus-undecided)
+  panelTitle: { type: text, component: Heading, role: heading, text: { key: planned.Broadcast.dialog.title, params: { when: session.when } }, in: [panel, revealingKey, panelShown] }
+  panelClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [panel, revealingKey, panelShown], emits: CLOSE } # an icon button named by aria-label, as the other dialogs of nazar-web
+  panelStateWaiting: { type: text, component: Text, text: { key: planned.Broadcast.state.waiting }, in: [panel, revealingKey, panelShown], when: "phase == 'waiting'" }
+  panelStateLive: { type: text, component: Text, text: { key: planned.Broadcast.state.live }, in: [panel, revealingKey, panelShown], when: "phase == 'live'" }
+  panelStateWeak: { type: text, component: Text, text: { key: planned.Broadcast.state.weak }, in: [panel, revealingKey, panelShown], when: "phase == 'weak'" }
+  panelStateMissed: { type: text, component: Text, text: { key: planned.Broadcast.state.missed }, in: [panel, revealingKey, panelShown], when: "phase == 'missed'" }
+  addressLabel: { type: text, component: Text, text: { key: planned.Broadcast.dialog.address }, in: [panel, revealingKey, panelShown] }
+  addressValue: { type: text, component: Text, text: { key: planned.Broadcast.dialog.addressValue, params: { address: stream.address } }, in: [panel, revealingKey, panelShown] } # not secret
+  copyAddress: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Broadcast.dialog.copyAddressLabel }, text: { key: planned.Broadcast.dialog.copy }, in: [panel, revealingKey, panelShown], emits: COPY_ADDRESS }
+  keyLabel: { type: text, component: Text, text: { key: planned.Broadcast.dialog.key }, in: [panel, revealingKey, panelShown] }
+  keyMasked: { type: text, component: Text, text: { literal: "••••••••••••" }, in: [panel, revealingKey] } # dots, never the key and never a length that says it (D3); a read-only text and not a password input, which has no role
+  keyValue: { type: text, component: Text, text: { key: planned.Broadcast.dialog.keyValue, params: { streamKey: stream.key } }, in: [panelShown] } # THE SECRET: its sample says it is not a key, and the catalog holds no key
+  revealButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Broadcast.dialog.revealLabel }, text: { key: planned.Broadcast.dialog.reveal }, in: [panel, revealingKey], disabledIn: [revealingKey], emits: REVEAL_KEY }
+  hideButton: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Broadcast.dialog.hideLabel }, text: { key: planned.Broadcast.dialog.hide }, in: [panelShown], emits: HIDE_KEY }
+  copyKey: { type: action, component: Button, role: button, intent: secondary, name: { key: planned.Broadcast.dialog.copyKeyLabel }, text: { key: planned.Broadcast.dialog.copy }, in: [panelShown], emits: COPY_KEY } # copy is offered only once the key is shown (D3 asks whether to copy without showing)
+  keyWarning: { type: alert, component: Alert, role: status, text: { key: planned.Broadcast.dialog.keyWarning }, in: [panel, revealingKey, panelShown] }
+  obsHeading: { type: text, component: Heading, role: heading, text: { key: planned.Broadcast.dialog.obsHeading }, in: [panel, revealingKey, panelShown] } # h3
+  obsValues: { type: text, component: Text, text: { key: planned.Broadcast.dialog.obsValues, params: { resolution: stream.resolution, frameRate: stream.frameRate } }, in: [panel, revealingKey, panelShown] } # the stream's own resolution and frame rate (MDRS-238)
+  autoNote: { type: text, component: Text, text: { key: planned.Broadcast.dialog.autoNote }, in: [panel, revealingKey, panelShown] }
+  toastCopiedAddress: { type: status, component: Status, text: { key: planned.Broadcast.dialog.copiedAddress }, in: [panel, panelShown], when: "toast == 'copiedAddress'" }
+  toastCopiedKey: { type: status, component: Status, text: { key: planned.Broadcast.dialog.copiedKey }, in: [panelShown], when: "toast == 'copiedKey'" } # it says the key was copied and never what it is
+  toastKeyFailed: { type: alert, component: Alert, role: alertdialog, name: { key: planned.Broadcast.dialog.keyFailed }, text: { key: planned.Broadcast.dialog.keyFailedBody }, in: [panel], when: "toast == 'keyFailed'" }
+
+  # ===================== nazar: Ders kayıtları, the row the recording appears on (the page exists) =====================
+  recordingsMain: { type: page, component: Page, role: main, in: [archiving, recorded, archiveFailed, recordingKept], source: apps/nazar/features/recordings/components/recordings-page.tsx:79 } # the page of nazar.recordings.add: /ders/<id>/kayitlar
+  recordingsTitle: { type: text, component: Heading, role: heading, text: { key: Recordings.title }, in: [archiving, recorded, archiveFailed, recordingKept], source: apps/nazar/features/recordings/components/recordings-page.tsx:82 } # h1
+  weekTable: { type: list, component: List, role: table, name: { key: Recordings.weekCaption, params: { week: week.number } }, in: [archiving, recorded, archiveFailed, recordingKept], source: apps/nazar/features/recordings/components/recordings-table.tsx:418 }
+  recordingTitle: { type: text, component: Text, text: { key: composed.Recordings.recordingTitle, params: { title: recording.title } }, in: [archiving, recorded, recordingKept], source: apps/nazar/features/recordings/components/recordings-table.tsx:230 } # the attached row takes the broadcast's title
+  providerChip: { type: text, component: Text, text: { key: composed.PlatformChip.youtube }, in: [archiving, recorded], source: apps/nazar/features/recordings/components/recordings-table.tsx:234 } # a YOUTUBE row: the chip of the existing page
+  processingBadge: { type: text, component: Text, text: { key: Recordings.state.processing }, in: [archiving], source: apps/nazar/features/recordings/components/recordings-table.tsx:267 } # the existing badge for a row not yet READY (today a Bunny upload); here it stands until YouTube has processed the video (RECADD-2)
+  processingNote: { type: text, component: Text, text: { key: Recordings.fromStreamNote }, in: [archiving], source: apps/nazar/features/recordings/components/recordings-table.tsx:220 } # the existing sentence "YouTube yayını arşivleyince kayıt olarak oynar.", kept on the row while it is PROCESSING and not dropped with a press (RECADD-2)
+  readyBadge: { type: text, component: Text, text: { key: Recordings.state.ready }, in: [recorded, recordingKept], source: apps/nazar/features/recordings/components/recordings-table.tsx:267 }
+  editRecording: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.editLabel, params: { session: slot.title } }, text: { key: Recordings.edit }, in: [recorded, recordingKept], emits: OPEN_RECORDINGS, source: apps/nazar/features/recordings/components/recordings-table.tsx:337 } # nazar.recordings.add goes on from here
+  noRecording: { type: text, component: Text, text: { key: Recordings.none }, in: [archiveFailed], source: apps/nazar/features/recordings/components/recordings-table.tsx:214 } # a FAILED recording is listed to no one, so the row says there is none
+  archiveFailedAlert: { type: alert, component: Alert, role: status, text: { key: planned.Broadcast.archiveFailed }, in: [archiveFailed] }
+  addRecording: { type: action, component: Button, role: button, intent: secondary, name: { key: Recordings.addLabel, params: { session: slot.title } }, text: { key: Recordings.add }, in: [archiveFailed], emits: OPEN_RECORDINGS, source: apps/nazar/features/recordings/components/recordings-table.tsx:358 }
+
+edges:
+  - { labelledBy: [channelRegion, channelHeading] }
+  - { labelledBy: [broadcastCard, broadcastHeading] }
+  - { labelledBy: [privacyGroup, privacyLegend] }
+  - { labelledBy: [panelDialog, panelTitle] }
+  - { labelledBy: [refusedSection, refusedTitle] }
+  - { triggers: [menuLink, reading] }
+  - { triggers: [connectButton, starting] }
+  - { triggers: [reconnectButton, starting] }
+  - { triggers: [saveButton, savingSetting] }
+  - { triggers: [createButton, creating] }
+  - { triggers: [revealButton, revealingKey] }
+  - { returnsFocus: [panelDialog, detailsButton] } # as the dialog pattern asks; planned, and the kit's own fallback is not known to give it
+
+rules:
+  - { id: F-P0-4, rule: "The menu entry 'YouTube bağlantısı' (apps/nizam/lib/shell-nav.ts:149) is drawn, for the başnazım, in the first state, and leads today to 'Sayfa bulunamadı': no folder under apps/nizam/app/ayarlar for it, and apps/nizam/app/[...rest]/page.tsx:9 answers notFound() inside the shell (F-P0-4, F-W3-10, F-X-11; nizam nav page `youtube`, kind missing). Fix: build the page this graph draws, or drop the entry until then." }
+  - { id: no-source-on-planned-nodes, rule: "Nothing under 'nizam: the page /ayarlar/youtube', 'the card Canlı yayın', 'the dialog Yayın bilgileri', the badges of the row and 'archiveFailedAlert' exists in the code, so none carries a `source:`; every node that does is a screen or control that is there today (the menu entry, the shell's refusal, nazar's three pages and the buttons and badges named in their comments)." }
+  - { id: focus-undecided, rule: "Planned: no page sets an initial focus, and the dialog is given the kit's default (the close icon, as nazar-web's other dialogs). Whether a dialog that holds a secret should open on 'Göster', and whether the focus should go to the key after it is shown, is for the review. returnsFocus to the button that opened the dialog is the dialog pattern's, not verified against the kit." }
+  - { id: the-key-is-not-a-word, rule: "The stream key is a credential: it is not in the catalog, its sample says it is not a key, its field is dots until 'Göster', the toast that says it was copied never says what it was, and it is in no list answer (invariant youtube-stream-key-is-a-credential). The RTMPS address is not secret. Open: shown once, masked with copy, or copy without showing (D3)." }
+  - { id: the-secret-field-is-text, rule: "The masked key is drawn as read-only text of dots and the revealed one as text: a password input has no ARIA role and a copy button beside it would have nothing to name. A reader that wants the key announced must press 'Göster'; a screen reader hears 'Yayın anahtarı' and dots, never the key until then. Proposal, for the review." }
+  - { id: RECADD-2, rule: "nazar.recordings.add's RECADD-2 (the one-click 'Yayını kayıt olarak ekle' stores a link READY at once, so the row says 'Hazır' and the talebe are told 'Kayıt eklendi' before YouTube has archived the video) is answered here for a broadcast Medaris follows: the row is written PROCESSING when YouTube says the broadcast is complete ('Hazırlanıyor', and the existing note 'YouTube yayını arşivleyince kayıt olarak oynar.' stays on the row), becomes READY, and the talebe are told once, only when YouTube reports the video processed (assertions the-talebe-are-told-only-when-ready, ready-only-after-processing). The one-click button remains for a link the hoca gives (D8)." }
+  - { id: YT-1, rule: "New. MDRS-195, MDRS-238 and MDRS-239 put the hoca's controls in nizam (the course's settings, the stream key panel, the state of the broadcast) and were written on 3 Oct 2026, before nazar-web existed; the people the story names, a müderris and a ders nazırı, work in nazar-web, where 'Canlı yayın ekle' (MDRS-228's manual link, built for nizam) and 'Yayını kayıt olarak ekle' already are. This graph draws nazar-web (D1); the API is the same for both apps. From the issues and the code, not a defect." }
+  - { id: YT-2, rule: "New. Today the server never learns that a stream has ended: getSession sends the stream link from the scheduled start until a recording is open to talebe, and at most LIVE_STREAM_HOURS_AFTER_END = 24 hours after the scheduled end when none replaces it, a bound the code itself labels 'A PROPOSAL, NOT AN OWNER DECISION', because 'the owner decided that a lesson ends when its stream ends, which only each viewer's player learns' (apps/tedrisat/src/course/domain/recording.ts:200-207, MDRS-285). Phase 2 (MDRS-239) makes the server learn it from YouTube's lifecycle, which a broadcast Medaris follows can use in place of the clock window; for a manual link nothing changes. A decision for whoever builds phase 2; drawn only as the state on the row and in the player (need the-talebes-player-shows-the-state)." }
+  - { id: YT-3, rule: "New, the same family as POL-7 of nizam.platform.policies. The menu entry 'YouTube bağlantısı' is the başnazım's alone (lib/shell-nav.ts:149; medarisGroups keeps none of the Ayarlar group) while nav-permissions lists youtube: ['platform.youtube_manage'] (lib/shell-nav.ts:303) and the code can be granted (invariant grantable-codes-are-asked-for, MDRS-208): a Medaris nazımı who is given it would reach the page only by its address, and today no handler asks for it. Fix with the page: show the entry to a holder, or keep the code undelegable (D13)." }
+  - { id: sonner-region-english, rule: "The toasts here are the kit's own (nazar's Status and Alert dialogs, nizam's sonner); the English label of sonner's region and the missing role of its toast are the findings F-X-5 of nizam.platform.policies and are not repeated." }

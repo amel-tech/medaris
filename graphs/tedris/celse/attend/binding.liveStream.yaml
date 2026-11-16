@@ -1,0 +1,24 @@
+# tedris.celse.attend, the standing `liveStream` (a running celse with a meeting link and a stream: the stream card, the link beside it). Same data, exits and locators as binding.yaml (see locators.binding.yaml).
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/attend --bind graphs/tedris/celse/attend/binding.liveStream.yaml --to live --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.attend
+
+samples:
+  title: Yayınlı celse
+  previous: Başlamış celse
+  next: Yüz yüze yayınlı celse
+
+scenarios:
+  liveStream:
+    given: { access: open, standing: live, means: both, place: online, agenda: none, resources: none, exam: none, neighbours: both }
+    as: applicantE
+    open: '{tedris}/courses/{att.course}/lessons/{att.liveStream}'
+    vars: { steps: 3 }
+    setup:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, up]
+        expect: 'attend-data up'
+    teardown:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, down]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

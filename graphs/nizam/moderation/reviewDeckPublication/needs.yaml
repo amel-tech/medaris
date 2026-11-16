@@ -1,0 +1,210 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.moderation.reviewDeckPublication
+status: proposed
+summary: >-
+  What must exist for the başnazım, and a Medaris nazımı who holds platform.deck_publish, to review the requests members make to
+  have a deck of theirs published: the flow's product list, from its story and from the review it ends in, never from what the
+  page does today. Nothing here is planned in planned.md (MDRS-148, deck publication, is built: its code comments name it, and
+  planned.md:159 says it was not fetched in full), so a need that the code does not meet is `missing: none`, with the finding that
+  names it. Gender separation is given, but no seat is decided in this flow, so it does not show up here. No replay has run in
+  this phase, so no replay scenario is named as walking a need; the bound scenarios (decides, quiet, none, noCards, staleLink,
+  refused of binding.yaml, medaris and ownDeck of binding.medaris.yaml, answered of binding.answered.yaml) are in each need's
+  note. The e2e names are the inventory's.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the gaps merge:
+# missing (no code): look-only-when-asked, answers-are-on-the-record, answered-request-says-when-it-was-asked, decision-follows-the-cards,
+# a-change-is-announced
+# unwalked (code, no e2e and no replay yet): take-a-published-deck-back, reviewer-never-answers-own-deck, a-settled-request-says-so,
+# only-reviewers-open-the-page (the Medaris nazımı half), the-list-is-paged
+
+needs:
+  - id: find-the-waiting-requests
+    need: >-
+      The başnazım, and a Medaris nazımı who may review decks, find the requests members made for their decks, the oldest first,
+      with how many wait and how many were answered, and for each the deck's title, its owner, how many cards it holds, its type
+      and when it was asked for.
+    evidence:
+      - state: waitingDetail
+      - node: tabWaiting
+      - node: tabDecided
+      - node: waitingCount
+      - node: decidedCount
+      - node: row
+      - node: ownerValue
+      - node: cardsValue
+      - node: requestedAtValue
+      - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:74
+      - source: apps/nizam/app/talepler/deste-yayin-istekleri/page.tsx:31
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/16 — the tab counts are the table's, and a request shows its owner and sample cards (criterion 1)"
+    note: bound by `decides` (the three requests the walk makes), `quiet` (the answered tab) and `none` (both empty lines)
+
+  - id: read-the-cards-on-the-record
+    need: >-
+      Before deciding, the reviewer reads a few cards of the deck and, when they ask, every card; each look is written to the
+      audit log with the deck, the owner and how many cards were read, and the reviewer is told so.
+    evidence:
+      - state: selecting
+      - state: waitingDetail
+      - state: readingAll
+      - node: sampleFront
+      - node: sampleBack
+      - node: allCardsButton
+      - node: cardsTotal
+      - node: auditNote
+      - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:109
+      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:166
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/16 — looking at the sample and at every card writes an audit row each time (criterion 4)"
+    note: >-
+      the two audit rows are the binding's `effects` (readDeckPublishRequestCards, allShown), read with SQL as the e2e reads them
+
+  - id: publish-a-requested-deck
+    need: >-
+      The reviewer makes a requested deck public in one press, and its owner is told; the request leaves the waiting list and the
+      deck is the Keşfet list's.
+    evidence:
+      - node: approveButton
+      - state: approving
+      - state: handsBackPublished
+      - node: toastPublished
+      - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:128
+      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:230
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/16 — Yayımla makes the deck public: the open list carries it and the request leaves (criterion 2)"
+    note: >-
+      bound by `decides` and `medaris`; the e2e's public list before and after (`GET /flashcard/decks`) is tedris.decks.explore's
+
+  - id: refuse-with-a-reason-the-owner-reads
+    need: >-
+      The reviewer refuses a request only with a reason; the deck stays private, the owner reads the reason, may ask again, and
+      the answered tab keeps the reason.
+    evidence:
+      - node: rejectButton
+      - state: rejectForm
+      - state: rejectFormReady
+      - state: rejecting
+      - state: handsBackRefused
+      - node: refusedReasonAlert
+      - node: toastRejected
+      - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:147
+      - source: apps/nizam/features/deck-review/components/reject-dialog.tsx:77
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/16 — Reddet cannot be sent without a reason, then keeps the deck private with it (criterion 3)"
+    note: bound by `decides` and `medaris`; the owner's side of the refusal is tedris.decks.publish (DCK-13)
+
+  - id: only-reviewers-open-the-page
+    need: >-
+      Only the başnazım and a Medaris nazımı holding platform.deck_publish open the page and every route behind it; a köşk nazımı,
+      a talebe and a Medaris nazımı without the permission are told they have no access.
+    evidence:
+      - state: opened
+      - state: no_access
+      - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:74
+      - source: apps/nizam/app/talepler/deste-yayin-istekleri/page.tsx:32
+      - test: apps/nizam/e2e/deck-review.e2e.ts
+        name: "nizam/16 — a köşk nazımı is shown the 'Bu bölüm için izniniz yok' screen"
+    note: >-
+      deck-review#5 walks the köşk nazımı (`refused` of binding.yaml); the Medaris nazımı who holds the permission is `medaris` of
+      binding.medaris.yaml and the one who does not is not bound (the seeded one holds five other codes), so that half is unwalked
+
+  - id: take-a-published-deck-back
+    need: >-
+      The başnazım alone takes a published deck back to private with a reason the owner reads; the take-back is on the record with
+      who and why, and the owner may ask again.
+    evidence:
+      - state: decidedPublished
+      - node: unpublishButton
+      - state: unpublishForm
+      - state: unpublishFormReady
+      - state: unpublishing
+      - state: handsBackPrivate
+      - node: toastUnpublished
+      - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:167
+      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:261
+    note: no e2e of deck-review.e2e.ts takes a deck back (MDRS-148 added the button after them); bound by `decides` and `quiet`
+
+  - id: reviewer-never-answers-own-deck
+    need: >-
+      A Medaris nazımı holding the permission may not publish or refuse the request for a deck of her own; the başnazım, who holds
+      no grant to delegate, may.
+    evidence:
+      - state: approving
+      - state: rejecting
+      - node: toastForbidden
+      - source: apps/tedrisat/src/deck-review/nizam-deck-requests.controller.ts:128
+      - source: apps/tedrisat/src/deck-review/deck-review.service.ts:343
+    note: no e2e; bound by `ownDeck` of binding.medaris.yaml
+
+  - id: a-settled-request-says-so
+    need: >-
+      A request that someone else answered, or its owner took back, after the page was read leaves the list with a notice that
+      says so, not an error, and the counters follow; a deck taken back to private first says it is not published any more.
+    evidence:
+      - state: approving
+      - state: rejecting
+      - state: unpublishing
+      - node: toastAnswered
+      - node: toastNotPublished
+      - source: apps/nizam/features/deck-review/present.ts:138
+    note: >-
+      no e2e; bound by `answered` of binding.answered.yaml; the 404 form of it (answer gone, sample unreadable) is not bound
+      anywhere (locators.binding.yaml)
+
+  - id: the-list-is-paged
+    need: >-
+      More than twelve requests in a tab are reached with "Daha fazla göster", which adds the next page without repeating a row.
+    evidence:
+      - source: apps/nizam/features/deck-review/components/deck-requests-view.tsx:529
+    note: the stack never holds twelve requests, so nothing walks it; not drawn (the flow's outOfView)
+
+  - id: look-only-when-asked
+    need: >-
+      A deck's private cards are read, and the look written to the audit log, only when the reviewer chooses to open that request,
+      and the page says the look is recorded before it is made; a link that names a request that is not on the list opens nothing
+      instead of another person's deck (DECKREV-1, DECKREV-2, decision D2).
+    missing: no Linear issue; findings DECKREV-1, DECKREV-2
+    note: >-
+      Drawn on the states opened, selecting and shown and on the node auditNote, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: answers-are-on-the-record
+    need: >-
+      Every answer to a request, publication or refusal, is written to the audit log with who answered, the deck and the reason,
+      in the transaction of the change, as the take-back already is, and stays there after the owner withdraws or asks again
+      (DECKREV-4, decision D3).
+    missing: no Linear issue; findings DECKREV-4
+    note: >-
+      Drawn on the states approving and rejecting, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: answered-request-says-when-it-was-asked
+    need: >-
+      The detail of an answered request says when it was asked for and when it was answered, each under its own name (DECKREV-5).
+    missing: no Linear issue; findings DECKREV-5
+    note: >-
+      Drawn on the states decidedPublished and decidedRejected and on the nodes requestedAtLabel and requestedAtValue, which the
+      code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: decision-follows-the-cards
+    need: >-
+      The reviewer is not offered "Yayımla" for a deck whose cards the page has not shown, and a deck with no card is not
+      published without the reviewer being told it holds none (DECKREV-6, decision D1).
+    missing: no Linear issue; findings DECKREV-6
+    note: >-
+      Drawn on the states selecting and cardsFailed and on the nodes approveButton and noCardsLine, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-change-is-announced
+    need: >-
+      A tab switch, the arrival of the cards and a decision are announced to a reader of the screen, the focus lands where the
+      person can go on, and the list and the answered tab do not claim a tab panel or a selected state they do not have (F-W5-5,
+      F-W5-6, F-W5-7, DECKREV-3).
+    missing: no Linear issue; findings F-W5-5, F-W5-6, F-W5-7
+    note: >-
+      Drawn on the state unreadable and on the nodes tabList, tabWaiting, tabDecided and row, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

@@ -1,0 +1,115 @@
+# realm.auth.signOut on the local stack: tedris-web :4000, nizam-web :4001, nazar-web :4002, Keycloak :8080 (realm medaris).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/realm/auth/signOut \
+#     --bind graphs/realm/auth/signOut/binding.yaml --out <dir>              # the main story: tedris from Hesap
+#     ... --to signed_out.welcome                                              # nizam
+#     ... --to handed_over.sign_in                                             # nazar (the direct button is the shorter way)
+#
+# The flow ends the session it walks in, so every scenario signs its own person in (the base's `signIn`, written out below
+# again so each person signs in at their own app, which tedris's file would not do) and the walk uses that browser up: a
+# Keycloak SSO session is one per browser, so nobody else's walk is touched. Nothing else is created and nothing is removed.
+#
+# The scenarios, by what the person starts from:
+#   tedrisFromHesap     the main story: Hesap's "Çıkış yap" link to the confirmation page (the navigation graph's entry
+#                       account->signOut), "Çıkış yap", Keycloak, the visitor's Keşfet
+#   nizamFromHesap      the same in nizam (entry account->signOut); it ends on nizam's "Hoş geldiniz"
+#   nazarDirectButton   nazar's button on Hesap (entry hesap->realmSignIn): no confirmation, ends on Keycloak's login form
+#   nazarByAddress      nazar's confirmation page, opened by its address after a session of nazar's own: nothing links to it
+#   tedrisNoSession     a visitor opens /auth/signout and presses "Çıkış yap": signed out here only, never at Keycloak
+# Walked on 2026-11-15 (replay <scratchpad>/replay/realm.auth.signOut.2): tedrisFromHesap (main), nizamFromHesap and
+# nazarDirectButton, all three pass, with the Keycloak log check of `keycloakGaveUp` passing for tedris-local, nizam-local and
+# nazar-local. nazarByAddress and tedrisNoSession were not walked by the replay (its three runs are spent); a script of
+# Playwright calls looked at both pages and at the sign-out of tedrisNoSession (POST 303 to /, then Keşfet) and of nazar's page.
+# Not walked, with the reason:
+#   keycloakAsks        needs a session store that cannot be read (Valkey set up, then down): `session: storeDown`
+#   inStore, reaches    the production back-channel (200, and the other apps' sessions end at once): no Valkey here, and
+#                       Keycloak's call to host.docker.internal:400x is refused on this stack (see the flow's head)
+#   history: none      a Vazgeç with nothing to go back to: the walk's tab has a history (signIn and `open` come first)
+#   CANCEL, FORM_NOT_SENT  not on the main story; the next walk phase covers them (FORM_NOT_SENT needs a form that cannot be sent)
+# The walk's own check of "Keycloak told the apps": Keycloak writes KC-SERVICES0057 for the client it could not reach into its
+# container's log (`docker logs`); it is shared with every other walk on the stack, so the lookup names the client and a
+# short window, and a walk of another person at the same minute could satisfy it.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: realm.auth.signOut
+
+# Each person signs in at the app they work in (`entry` of the account), as local.base.binding.yaml does.
+signIn:
+  - goto: '{entry}/auth/signin'
+  - waitUrl: '{keycloak}/realms/medaris/**'
+  - fill: { css: '#username', value: '{address}' }
+  - fill: { css: '#password', value: '{password}' }
+  - click: { css: 'button[type=submit]' }
+  - waitUrl: '{entry}/**'
+
+# `vars`: client is Keycloak's client id of the app (the log names it), previousAt and homeAt are where Vazgeç goes, landingAt
+# is where nazar's Vazgeç ends for this person (a hoca: their course).
+scenarios:
+  tedrisFromHesap:
+    given: { app: tedris, entry: confirmationPage, session: inCookie, history: some, backchannel: refused }
+    as: talebe
+    open: '{tedris}/account'
+    enter: { nav: ../../../tedris/nav, bind: ../../../tedris/nav/binding.yaml, entry: 'account->signOut' }
+    vars: { client: tedris-local, previousAt: '{tedris}/account', homeAt: '{tedris}/home' }
+  nizamFromHesap:
+    given: { app: nizam, entry: confirmationPage, session: inCookie, history: some, backchannel: refused }
+    as: koskNazim
+    open: '{nizam}/hesap'
+    enter: { nav: ../../../nizam/nav, bind: ../../../nizam/nav/binding.yaml, entry: 'account->signOut' }
+    vars: { client: nizam-local, previousAt: '{nizam}/hesap', homeAt: '{nizam}/' }
+  nazarDirectButton:
+    given: { app: nazar, entry: directButton, session: inCookie, history: some, backchannel: refused }
+    as: muderris
+    open: '{nazar}/hesap'
+    enter: { nav: ../../../nazar/nav, bind: ../../../nazar/nav/binding.yaml, entry: 'hesap->realmSignIn' }
+    vars: { client: nazar-local, landingAt: '{nazar}/ders/*' }
+  nazarByAddress:
+    given: { app: nazar, entry: confirmationPage, session: inCookie, history: some, backchannel: refused }
+    as: muderris
+    open: '{nazar}/auth/signout'
+    vars: { client: nazar-local, landingAt: '{nazar}/ders/*' }
+  tedrisNoSession: # no `as`: nobody signs in; the page is public
+    given: { app: tedris, entry: confirmationPage, session: gone, history: none, backchannel: refused }
+    open: '{tedris}/auth/signout'
+    vars: { client: tedris-local, previousAt: '{tedris}/account', homeAt: '{tedris}/home' }
+
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+# Where the walk lands. The exits have no nodes, so each needs an address.
+states:
+  signed_out.discover: { url: '{tedris}/discover' }
+  signed_out.welcome: { url: '{nizam}/' }
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/**' }
+  kept_session.previous_page: { url: '{previousAt}' }
+  kept_session.home: { url: '{homeAt}' }
+  kept_session.landing: { url: '{landingAt}' }
+  left: { url: 'about:blank' }
+  # `signingOut` has no `call`: the form's post is a navigation, and a held navigation stalls every read of the page
+  # (realm.auth.signIn's binding measured it). The replay passes through it and checks the states after it as the page arrives.
+
+# What the sign-out leaves outside the screen. Keycloak could not reach the client's back-channel URL: its log says which
+# client, and it still sent the browser back (the next state is the app's own address).
+effects:
+  keycloakGaveUp:
+    - run: [docker, logs, --since, 2m, medaris-graphs-keycloak]
+      expect: "Logout for client '{client}' failed"
+
+# Where role and name cannot find a node. The three pages say much the same thing, and the replay checks that a node whose
+# `when` does not hold is hidden, so a locator that finds another app's page would fail it. Each node is therefore found
+# inside what only its own app's page has: tedris draws its card as a region named by the title (and the top bar and the card
+# both have a logo named Medaris), nizam names its <main> by the title, nazar names its <main> by its own, longer title.
+nodes:
+  tedrisMain: { css: 'main[data-legacy-main]' }
+  tedrisLogo: { role: img, name: Medaris, within: { role: region, name: 'Çıkış yapılsın mı?' } }
+  tedrisTitle: { role: heading, name: 'Çıkış yapılsın mı?', within: { role: region, name: 'Çıkış yapılsın mı?' } }
+  tedrisBody: { text: 'Bu tarayıcıda Medaris’ten çıkarsın.', within: { role: region, name: 'Çıkış yapılsın mı?' } }
+  tedrisConfirm: { role: button, name: '/^Çıkış yap$/', within: { role: region, name: 'Çıkış yapılsın mı?' } }
+  tedrisCancel: { role: button, name: Vazgeç, within: { role: region, name: 'Çıkış yapılsın mı?' } }
+  nizamLogo: { role: img, name: Medaris, within: { role: main, name: 'Çıkış yapılsın mı?' } }
+  nizamTitle: { role: heading, name: 'Çıkış yapılsın mı?', within: { role: main, name: 'Çıkış yapılsın mı?' } }
+  nizamBody: { text: 'Bu tarayıcıda Medaris’ten çıkarsın.', within: { role: main, name: 'Çıkış yapılsın mı?' } }
+  nizamConfirm: { role: button, name: '/^Çıkış yap$/', within: { role: main, name: 'Çıkış yapılsın mı?' } }
+  nizamCancel: { role: button, name: Vazgeç, within: { role: main, name: 'Çıkış yapılsın mı?' } }
+  nazarConfirm: { role: button, name: '/^Çıkış yap$/', within: { role: main, name: 'Çıkış yapmak istiyor musunuz?' } }
+  nazarCancel: { role: link, name: Vazgeç, within: { role: main, name: 'Çıkış yapmak istiyor musunuz?' } }

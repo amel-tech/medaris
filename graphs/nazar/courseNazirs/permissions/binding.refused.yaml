@@ -1,0 +1,43 @@
+# nazar.courseNazirs.permissions, the hoca loses her seat while the dialog is open. Written without a replay; see locators.binding.yaml for the data
+# and the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/courseNazirs/permissions \
+#     --bind graphs/nazar/courseNazirs/permissions/binding.refused.yaml --cover transitions --absent --out <dir>
+# The course has a second hoca (`setup` seats MEDRESE_BASMUDERRIS beside MUDERRIS, helpers/seat-hoca.mjs), so MUDERRIS can be taken out; `before` on
+# "Kaydet" does it (helpers/unseat-hoca.mjs, as the başnazım). The PATCH then meets a caller who holds nothing in the course and is refused by the guard,
+# AUTHZ_FORBIDDEN (403): an error toast "İzinler kaydedilemedi" / "Bunu yapma izniniz yok." over the dialog, which stays open with the form as it was.
+# This stands for the whole class `refused` (GRANT_EXCEEDS_GIVER, SELF_GRANT_REFUSED, PERMISSION_UNKNOWN, GRANT_EXPIRY_INVALID...): the others cannot
+# be made on request from the page. From the code, not seen: that the guard answers 403 at once and does not read a cached set of roles is read in
+# libs/common/src/authz/authz.guard.ts:92, not run. If it does not, the walk says `saved` where the graph says `refused`, and the walk phase decides.
+# The walk's teardown removes the course as the başnazım, whatever the hoca holds.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseNazirs.permissions
+
+scenarios:
+  refused:
+    given: { post: dated, answer: refused }
+    as: muderris
+    open: '{nazar}/ders/{cn.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    setup:
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, down]
+        expect: post-data down
+      - run: [node, helpers/course.mjs, make, cnperm, --weeks, '1', --lessons, '1']
+        expect: '"tag":"cnperm"'
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, up]
+        expect: post-data up
+      - run: [node, helpers/seat-hoca.mjs, '{cn.course}', basmuderris]
+        expect: seat-hoca MEDRESE_BASMUDERRIS
+    teardown:
+      - run: [node, ../nazar/courseNazirs/permissions/post-data.mjs, down]
+        expect: post-data down
+      - run: [node, helpers/course.mjs, remove, cnperm]
+        expect: course remove cnperm
+
+nodes:
+  save:
+    role: button
+    name: '/^Kaydet$/'
+    within: { role: dialog, name: İzinleri düzenle }
+    before: [{ run: [node, helpers/unseat-hoca.mjs, '{cn.course}', muderris], expect: unseat-hoca MUDERRIS }]

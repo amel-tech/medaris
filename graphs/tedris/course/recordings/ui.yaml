@@ -1,0 +1,89 @@
+# The screens of tedris.course.recordings: the tab "Ders kayıtları" of tedris-web's course page (/courses/<id>, features/courses/components/
+# recordings-tab.tsx, recordings-failed.tsx, recording-release.tsx), for a talebe with a seat and for a person with no seat, with the empty
+# message and the box that says the read failed. The page around the tab (the header, the card on the right, the programme, the other tabs)
+# belongs to the course page's other flows and is drawn only as far as the tab row, which this flow needs to enter and leave the tab.
+#
+# Words: every key that does not start with `composed.` is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as
+# `tedris.<key>`: `CoursePage.*`) or tedris-learn.json (`tedrisLearn.<key>`: `RecordingsTab.*`, `RecordingRelease.*`), the key being the path
+# inside that file. The `composed.*` keys are NOT in any i18n file: they are what the code writes from messages and data, with their
+# placeholders so a replay can match them (a placeholder with no sample matches any text):
+#   composed.RecordingsTab.title          "{title}", a recording's title as the API gives it                        recordings-tab.tsx:245
+#   composed.RecordingsTab.openName       RecordingsTab.open and RecordingsTab.openLabel joined: the new-tab row's aria-label   recordings-tab.tsx:297
+#   composed.RecordingsTab.facts          the date in the course's zone, " · " and RecordingsTab.minutes ("{count} dk")  recordings-tab.tsx:112-121
+#   composed.RecordingsTab.factsPending   the date, " · " and RecordingsTab.preparingHint                           recordings-tab.tsx:114-115
+#   composed.RecordingsTab.provider       a host's name, RECORDING_PROVIDER_NAMES ("YouTube", "Google Drive", "Bunny Stream")   recordings-model.ts:133
+#   composed.Button.loading               "Yükleniyor", the kit Button's default `loadingLabel`                     libs/ui/src/mds/button.tsx:62
+# The words of the tab row's number ("Ders kayıtları" and the count that follows it in the same button) are the one message CoursePage.tabRecordings
+# and a number the kit writes (libs/ui/src/mds/tabs.tsx:56-60); the replay finds the tab by the message, which its name starts with.
+# `changes` is not written: the flow only reads (no writing action of the domain is invoked).
+# Samples are invented and neutral; the binding gives the walk's own titles where it needs the real ones.
+schema: delurio-graph/0
+kind: ui
+id: tedris.course.recordings
+flow: tedris.course.recordings
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  title: Tanışma celsesi kaydı
+  date: 1 Kasım 2026
+  count: "60"
+  number: "1"
+  day: 18 Kasım Çarşamba
+  time: 21:00’de
+  provider: YouTube
+
+nodes:
+  # ---- the page around the tab, as far as the tab row ----
+  coursePage: { type: page, component: Page, role: main, in: [programmeTab, listForSeat, listForOutsider, recordingsEmpty, recordingsFailed, retrying], source: apps/tedris/features/courses/components/course-page.tsx:229, script: actions } # server-drawn: the list reads without JavaScript, the tabs and the retry need it. No name, no initial focus: nothing on the page moves the focus when it opens, by address or by a press (rule focus-not-set)
+  tabList: { type: list, component: List, role: tablist, name: { key: CoursePage.tabsLabel }, in: [programmeTab, listForSeat, listForOutsider, recordingsEmpty, recordingsFailed, retrying], source: apps/tedris/features/courses/components/course-page.tsx:394 }
+  tabCurriculum: { type: action, component: Button, role: tab, text: { key: CoursePage.tabCurriculum }, in: [programmeTab, listForSeat, listForOutsider, recordingsEmpty, recordingsFailed, retrying], emits: OPEN_PROGRAMME, source: apps/tedris/features/courses/components/course-page.tsx:170 } # on Müfredat itself a press changes nothing; the tab is selected by arrow keys too (activateOnFocus), which the graph does not draw
+  tabRecordings: { type: action, component: Button, role: tab, text: { key: CoursePage.tabRecordings }, in: [programmeTab, listForSeat, listForOutsider, recordingsEmpty, recordingsFailed, retrying], emits: OPEN_RECORDINGS, source: apps/tedris/features/courses/components/course-page.tsx:172 } # its name is this text and, when the list has rows, the number of rows right after it (course-page.tsx:174-176); a press on the tab already shown changes nothing
+
+  # ---- the list: one region, one block per week ----
+  listRegion: { type: page, component: Page, role: region, name: { labelledBy: allTitle }, in: [listForSeat, listForOutsider], source: apps/tedris/features/courses/components/recordings-tab.tsx:125 }
+  allTitle: { type: text, component: Heading, role: heading, text: { key: RecordingsTab.allTitle }, in: [listForSeat, listForOutsider], source: apps/tedris/features/courses/components/recordings-tab.tsx:127 } # h2
+  allHint: { type: text, component: Text, text: { key: RecordingsTab.allHint }, in: [listForSeat, listForOutsider], source: apps/tedris/features/courses/components/recordings-tab.tsx:130 } # a span beside the heading, not tied to it
+  weekGroup: { type: page, component: Page, role: region, name: { labelledBy: weekHeading }, in: [listForSeat, listForOutsider], repeat: weeks, source: apps/tedris/features/courses/components/recordings-tab.tsx:139 }
+  weekHeading: { type: text, component: Heading, role: heading, text: { key: RecordingsTab.weekLabel, params: { number: number } }, in: [listForSeat, listForOutsider], repeat: weeks, source: apps/tedris/features/courses/components/recordings-tab.tsx:144 } # h3: "Hafta 3", then the week's title when it says more than its number ("Hafta 3 Tekrar", isPlainWeekTitle, MDRS-280)
+
+  # ---- a row: its title, its facts, its chips; and what it offers ----
+  rowTitle: { type: text, component: Text, text: { key: composed.RecordingsTab.title, params: { title: title } }, in: [listForSeat, listForOutsider], repeat: recordings, source: apps/tedris/features/courses/components/recordings-tab.tsx:245 } # inside the link, or in plain text on a row that offers nothing
+  rowFacts: { type: text, component: Text, text: { key: composed.RecordingsTab.facts, params: { date: date, count: count } }, in: [listForSeat, listForOutsider], repeat: recordings.ready, source: apps/tedris/features/courses/components/recordings-tab.tsx:116 } # the date of the celse in the course's zone and its length; it is the link's description
+  rowFactsPending: { type: text, component: Text, text: { key: composed.RecordingsTab.factsPending, params: { date: date } }, in: [listForSeat, listForOutsider], repeat: recordings.preparing, source: apps/tedris/features/courses/components/recordings-tab.tsx:114 }
+  publicChip: { type: text, component: Text, text: { key: RecordingsTab.public }, in: [listForSeat, listForOutsider], repeat: recordings.public, source: apps/tedris/features/courses/components/recordings-tab.tsx:257 } # an outline badge; a seat's list has it on the PUBLIC rows only, a person with no seat's on every row
+  providerChip: { type: text, component: Text, text: { key: composed.RecordingsTab.provider, params: { provider: provider } }, in: [listForSeat, listForOutsider], repeat: recordings.hosted, source: apps/tedris/features/courses/components/recordings-tab.tsx:265 } # not on a row that is being prepared (the badge takes its place), and none for a host with no name (OTHER)
+  preparingBadge: { type: text, component: Text, text: { key: RecordingsTab.preparing }, in: [listForSeat, listForOutsider], repeat: recordings.preparing, source: apps/tedris/features/courses/components/recordings-tab.tsx:259 } # a secondary badge with a clock icon: a recording that is not READY
+  releaseNote: { type: text, component: Text, text: { key: RecordingRelease.opens, params: { day: day, time: time } }, in: [listForSeat, listForOutsider], repeat: recordings.held, source: apps/tedris/features/courses/components/recording-release.tsx:26 } # a clock icon and the sentence; the line is drawn on a recording whose release time is still ahead, and for the course team it would read "Talebelere … açılacak" instead (outOfView)
+
+  # ---- what a row offers ----
+  watchRow: { type: action, component: LinkButton, role: link, name: { key: RecordingsTab.watchLabel, params: { title: title } }, in: [listForSeat], repeat: recordings.ready, emits: OPEN_WATCH, source: apps/tedris/features/courses/components/recordings-tab.tsx:279 } # <a href="/courses/<id>/lessons/<celse>/izle"> (a full page load), described by its facts and its release line; the aria-label replaces the row's own text, so the chips and the date are in the description or nowhere (RECS-3)
+  openRow: { type: action, component: LinkButton, role: link, name: { key: composed.RecordingsTab.openName, params: { title: title } }, in: [listForOutsider], repeat: recordings.ready, emits: OPEN_HOST, source: apps/tedris/features/courses/components/recordings-tab.tsx:292 } # <a href=<the recording's link> target=_blank rel="noopener noreferrer">; for a Bunny row the href is the signed player link itself (not walked)
+  openCue: { type: text, component: Text, text: { key: RecordingsTab.open }, in: [listForOutsider], repeat: recordings.ready, source: apps/tedris/features/courses/components/recordings-tab.tsx:268 } # the words and an external-link icon at the end of the row
+
+  # ---- no rows ----
+  emptyNote: { type: text, component: Text, text: { key: RecordingsTab.empty }, in: [recordingsEmpty], source: apps/tedris/features/courses/components/recordings-tab.tsx:102 } # an EmptyState: one sentence in a box, no icon, no action
+
+  # ---- the read failed ----
+  failedBox: { type: page, component: Page, role: region, name: { labelledBy: failedTitle }, in: [recordingsFailed, retrying], source: apps/tedris/features/courses/components/recordings-failed.tsx:19 } # SystemState `shell`: a <section aria-labelledby>
+  failedTitle: { type: text, component: Heading, role: heading, text: { key: RecordingsTab.errorTitle }, in: [recordingsFailed, retrying], source: apps/tedris/features/courses/components/recordings-failed.tsx:22 } # h2
+  failedText: { type: text, component: Text, text: { key: RecordingsTab.errorText }, in: [recordingsFailed, retrying], source: apps/tedris/features/courses/components/recordings-failed.tsx:33 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: RecordingsTab.retry }, in: [recordingsFailed, retrying], disabledIn: [retrying], emits: RETRY, source: apps/tedris/features/courses/components/recordings-failed.tsx:24 } # variant outline; busy while the transition runs: aria-disabled, aria-busy
+  retryStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [retrying], source: libs/ui/src/mds/button.tsx:114 } # the visually hidden <output> beside the busy button; empty the rest of the time
+
+edges:
+  - { labelledBy: [listRegion, allTitle] }
+  - { labelledBy: [weekGroup, weekHeading] }
+  - { labelledBy: [failedBox, failedTitle] }
+  - { triggers: [retryButton, retrying] }
+
+rules:
+  - { id: RECS-1, rule: "The medrese's policy \"Ders kayıtları herkese açılamaz\" (madrasah_settings.policy_no_public_recordings) is stored, shown, saved with an audit row and loaded into the engine (tedrisat-authz-context.service.ts:155,224, where it would close setting.recordings_public), but nothing asks that code and the list's own rule reads only is_closed, the platform's RECORDINGS_NEVER_PUBLIC and the köşk's recordingsNeverPublic (course.service.ts:857-867), so a PUBLIC recording of a medrese course is listed to a visitor with the policy on, and the write routes do not ask it either (recording.controller.ts:96-111). The settings page promises the opposite (nazar.json Settings.policies.noPublicRecordings.help). The domain's own findings: policy-no-public-recordings-inert and medrese-recordings-policy-unread; MDRS-207 left the guard for the recordings work and it was not wired. Read from the code (every consumer of the column and of the permission was searched); the köşk's switch beside it was measured on the stack: with it on, a call with no token answered an empty list and the tab said there is none (replay scenario koskHides), and with it off the same call answered three rows (scenario visitor). The medrese's switch was not switched on, because that needs a medrese course of its own on a shared medrese. Fix: ask the medrese's switch in publicRecordingsAllowed, and refuse a PUBLIC write while the engine closes setting.recordings_public. Provisional id, not in the inventory." }
+  - { id: RECS-2, rule: "\"Yeniden dene\" runs router.refresh() in a transition (recordings-failed.tsx:27). When the second read works the box is replaced by the list or the empty message, so the button that had the focus is unmounted and no code moves the focus, and nothing says the list came (the busy <output> only says \"Yükleniyor\" while it waits and is empty after); when the second read fails again the box stays and the only change is that the busy state ends, so nothing says it tried. Read from the code, not walked: the stack cannot make tedrisat refuse the read. The same shape as CRS-05 on the apply card. Fix: focus the list's heading (or the box's, on a second failure) after the refresh and say \"Ders kayıtları yüklendi\" or the failure in a role=status line. Provisional id, not in the inventory." }
+  - { id: RECS-3, rule: "A row link's accessible name is its aria-label (\"Kaydı izle: <title>\", \"Ders kaydını aç: <title> (yeni sekmede açılır)\") and its description the facts line (date, length, release line): the chips \"Herkese açık\" and the host's name, and for a held row nothing but its release line, are in neither, so a screen-reader user is not told a recording is public or where it is hosted, and a voice-control user cannot say them (WCAG 2.5.3 asks the name to contain the visible text). Not verified with a screen reader. Fix: leave the label to the row's own text, or add the chips to the description. Provisional id, not in the inventory." }
+  - { id: MDRS-259, rule: "visibleRecordings leaves a FAILED recording out for every caller (apps/tedrisat/src/course/domain/recording.ts:176-190), so this tab, which is the talebe's, never shows one, and neither does the course team's own list through this read; a stalled Bunny upload stays \"Hazırlanıyor\" for everyone until the encoding poll marks it FAILED, and then vanishes. The issue asks the course staff to see it with the reason and a retry (nazar side). Needs Bunny to walk (an upload that fails); not walked." }
+  - { id: MDRS-265, rule: "an enrolled talebe of a passive course has contentLocked, so the API lists them only the PUBLIC recordings and the tab says \"Bu derste henüz yayımlanmış ders kaydı yok.\" when it has recordings, with the course's own page telling them to apply (CLS-02). The graph draws them as the `outsider` reader. Known and pinned as an expected failure in lesson-notes.e2e.ts#14; not walked here." }
+  - { id: focus-not-set, rule: "Neither opening the page on this tab (?tab=kayitlar) nor pressing the tab moves the focus into the list: the page sets no initial focus and Base UI keeps it on the tab (a press) or the document (a load). The page node has no `initialFocus`; the silence is not read as an omission. The tabpanel is focusable (tabindex 0), so one Tab from the tab row reaches it." }
+  - { id: preparing-hides-the-ready-without-a-link, rule: "a row reads \"Hazırlanıyor\" when its status is not READY, or when it offers nothing and has no release line (recordings-tab.tsx:240); a READY recording whose link tedrisat could not give (a Bunny one when the library's keys are no longer set) is therefore told as being prepared. Cannot be made on the stack (no Bunny); read from the code. Recorded so the two are not taken for one." }
+  - { id: public-chip-by-visibility, rule: "the chip \"Herkese açık\" is drawn from the recording's own visibility; a PUBLIC recording that the köşk or the platform keeps from visitors is still marked public to a seat that reads it" }
+  - { id: celse-only, rule: "only a LIVE lesson has a watch page; the row of a recording of any other lesson opens its host in a new tab, for a seat too (recordings-tab.tsx:163, course-page.tsx:432-448)" }

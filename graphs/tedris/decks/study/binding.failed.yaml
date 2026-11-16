@@ -1,0 +1,36 @@
+# tedris.decks.study, a rating the API refuses: the card, its back and the buttons stay and one error toast says "İlerlemen kaydedilemedi" (study-session.tsx:97-104).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/study \
+#     --bind graphs/tedris/decks/study/binding.failed.yaml --cover transitions --out <dir>
+# (`--to back` stops at the first arrival, before the toast; the transition this start alone takes is FAIL.failed of `rating`, which `--cover transitions` walks)
+# Written and NOT RUN, and the least sure of the five: it depends on how the replay orders a state's `before` and a held call (see below).
+#
+# How a refusal is made on the stack, which seeds none: the deck has one card, and when the walk reaches `back` (the card turned, the three ratings drawn)
+# the card's author deletes it through the API (study-data.mjs drop-card), as a person would in another tab while the round is open. The page still
+# holds the card, so the rating that follows is PUT /flashcard/cards/progress for a card that is gone: 404 CARD_NOT_FOUND, `success: false`, the toast.
+# `before` runs when the walk reaches the state, before the state is checked; it runs again each time the walk comes back to `back` (after the toast), and
+# the second DELETE finds nothing to delete, which drop-card accepts. The walk then ends: no way past the card exists (STUDY-1), so the main story's
+# `finished` is not reachable from this start (the assertion a-round-ends-only-through-saved-ratings).
+# No `call` on `rating` here: a Server Action answers 200 on the page's own address whatever the API said, so a held call would be compared with the 404 and 403
+# of the failure class and fail; the replay meets `rating` like any state it cannot hold. The deck is the walk's own (study-data.mjs make applicantD single).
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.study
+
+scenarios:
+  failed:
+    given: { deck: single, answer: failed }
+    as: applicantD
+    open: '{tedris}/decks/study/{study.deck}'
+    setup:
+      - run: [node, ../tedris/decks/study/study-data.mjs, make, applicantD, single]
+        expect: 'study-data make APPLICANT_D single deck'
+    teardown:
+      - run: [node, ../tedris/decks/study/study-data.mjs, remove, applicantD]
+        expect: 'study-data remove APPLICANT_D'
+
+states:
+  back:
+    before:
+      - run: [node, ../tedris/decks/study/study-data.mjs, drop-card, applicantD, '0']
+        expect: 'study-data drop-card APPLICANT_D 0'

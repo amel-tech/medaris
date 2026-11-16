@@ -1,0 +1,307 @@
+# Changing a ders nazırı's permissions and end, from "Ders nazırları" in nazar-web (/ders/<id>/nazirlar), read from the code of PR #394 on
+# 15 Nov 2026 (apps/nazar/features/course-nazirs/{course-nazirs.ts,actions.ts,components/*}, features/nazirs/components/permission-section.tsx,
+# libs/utils/src/end-instant.ts and the API's GET /courses/:id/nazirs and PATCH /courses/:id/nazirs/:postId in apps/tedrisat/src/course/nazir).
+# Nothing here was walked in a browser: every behaviour is "from the code" until the walk phase.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - The row of a post has "İzinleri düzenle: <name>" where the API's `mayEdit` says the viewer may (a giver: the hoca, the başmüderris of
+#     the medrese, the köşk's nazım outside a medrese's courses, the başnazım; never one's own post, except the başnazım). The same dialog, "İzinleri
+#     düzenle", opens for every row of the course: the person's card, one box for each of the 21 codes of the course catalog (the ones the post
+#     holds are ticked, a code the hoca may not give is off unless the post holds it already), the end field on her clock, a note, the count and
+#     "Vazgeç" / "Kaydet". Every opening starts again from what the post holds now.
+#   - "Kaydet" sends the WHOLE set and the end (PATCH, `endsAt` required, null is "Süresiz"): what is ticked is what the person holds from now on.
+#     An end that is not after now is stopped on the page, and nothing is sent. The same codes and the same end close the dialog with no write
+#     and no word (F-D2c-18). Otherwise the dialog stays open and busy, then a toast says "İzinler kaydedildi", the dialog closes and the list is
+#     read again: "{n} izin", the sentences and the end change on the row.
+#   - A post that was ended elsewhere meanwhile (COURSE_NAZIR_NOT_FOUND) is worded, the dialog closes and the list is read again without the
+#     row (CNP-1). Any other refusal is worded from its code and the dialog stays open with the form as it was.
+#   - The table's "Bitiş" cell prints the day only; the hour at which the access ends is visible only in the dialog (CNP-2).
+# The e2e (course-nazirs#5, #7) asserts on the same screens; its tail, the person opening the pages they were given and meeting the refusal on
+# the others (#5 a8-a12), is nazar.access.dersNazirPages. Appointing is nazar.courseNazirs.appoint, which opens the same dialog in its other mode;
+# dismissing is nazar.courseNazirs.dismiss.
+#
+# Which post the walk edits: not the seeded one. The walk's setup opens a course of its own (helpers/course.mjs, the müderris as hoca) and makes a
+# spare talebe account (applicantH, "Rıza Başvuran") its ders nazırı holding "Ders kaydı" and "Celse" with an end thirty days ahead, as the hoca
+# does on the page. The seeded ders nazırı (Rukiye) is never touched.
+schema: delurio-graph/0
+kind: flow
+id: nazar.courseNazirs.permissions
+status: captured
+domain: medaris.api
+ui: nazar.courseNazirs.permissions
+title: Change a ders nazırı's permissions and end
+summary: >-
+  The hoca opens "Ders nazırları" of her course and presses "İzinleri düzenle" on a ders nazırı's row. A dialog opens with what the post holds:
+  the permissions ticked and the end on her clock, or empty for "Süresiz". She unticks one, ticks another, changes the end or clears it, and
+  presses "Kaydet". A toast says "İzinler kaydedildi", the dialog closes and the row says "{n} izin", the sentences and the end, or "Süresiz".
+  She can open it again and see it as she left it. An end that is not ahead is refused on the page and nothing is written; "Kaydet" with nothing
+  changed closes the dialog and writes nothing (F-D2c-18); Vazgeç, the close icon and Esc write nothing. The server can still say no: a post that was
+  ended elsewhere meanwhile is worded, the dialog closes and the list is read again without the row; another refusal (the hoca lost her seat, a code
+  she may not give) is worded and the dialog stays open.
+
+scope:
+  shows: >-
+    the table of one course's ders nazırları with the post's row, the dialog "İzinleri düzenle" (the person's card, three of the 21 boxes, the end
+    field, the footer count), the page's own rule for the end, the toasts that follow, the empty table after a stale save, and the dialog opened again
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "appointing a ders nazırı (the same dialog in its other mode, with the e-mail search and 'Seçilen ders nazırı'): nazar.courseNazirs.appoint; dismissing one, with its question: nazar.courseNazirs.dismiss"
+    - "what the person then opens and meets 'Bu sayfaya izniniz yok' on, the page it opened shutting when a permission is taken away (course-nazirs#5 a8-a12), and a ders nazırı who holds only course_nazir.assign (no edit button, appoints with no permission): nazar.access.dersNazirPages"
+    - "a reader the page turns away (no course_nazir.assign: the forbidden alert in place of the table, the list not read) and a list that cannot be read (the retry state): nazar.access.dersNazirPages and nazar.shell.errorStates; here the forbidden state is the refusal of the list read itself and the walk does not reach it"
+    - "the başnazım opening any course by its address, who may give all 21 codes and edit his own post, and a passive course where the hoca may only hand on what she still holds (the boxes are off): course-nazirs#14 and #15, which are appoint's checks"
+    - "the other 18 boxes, and a box the caller may not give (off, with no word why: the same family as F-B-10 of the medrese editor)"
+    - "a half-typed end ('Bitiş tarihini ve saatini tamamlayın.'): a datetime-local field the walk fills whole; resolveEnd reads it (libs/utils/src/end-instant.ts:141)"
+    - "an end after which the ders nazırı post was already lapsed, and the answers GRANT_EXPIRY_INVALID, PERMISSION_UNKNOWN and SELF_GRANT_REFUSED, which this page's own rules make unreachable except by a stale page: they are inside the class `refused`"
+    - "a session that has ended: the server action sends the person to sign in (realm.auth.signIn) instead of drawing a message"
+
+decisions:
+  D1:
+    question: >-
+      Should a save that changes nothing say so? "Kaydet" with the same codes and the same end closes the dialog and writes nothing, with no toast
+      (F-D2c-18), so the hoca cannot tell that nothing was saved.
+    recommend: >-
+      A short note, 'Değişiklik yok', as a toast or in the dialog's footer; or keep it, since nothing is lost and the audit log stays clean.
+    affects: [editing]
+  D2:
+    question: >-
+      Should closing the dialog ask when something was ticked or typed? Vazgeç, the close icon and Esc drop a form of up to 21 boxes and an end at
+      once, and nothing says so.
+    recommend: >-
+      Leave it: the post's permissions are one save away and the scrim does not close the dialog; ask only if the form differs from what the post holds
+      and the product wants it, as nazar.pano.decideApplications asks before Reddet.
+    affects: [editing]
+
+context:
+  post:
+    values: [dated, forever]
+    initial: any
+    say:
+      dated: "the ders nazırı holds 'Ders kaydı' and 'Celse' and an end thirty days ahead: the row says '2 izin' and a date"
+      forever: "the same two permissions and no end: the row says '2 izin' and 'Süresiz'"
+  answer:
+    values: [saved, gone, refused, failed]
+    initial: any
+    say:
+      saved: "the server writes what the form says"
+      gone: "the post was ended elsewhere after the page was drawn (COURSE_NAZIR_NOT_FOUND)"
+      refused: "the server refuses with a sentence of its own: she lost her seat, or the code is not hers to give, or it is her own post"
+      failed: "the server refuses for another reason, or the course is gone: the generic sentence"
+  heldSession:
+    values: [ticked, unticked]
+    initial: ticked
+    say: { ticked: "the post holds 'Celse ekle, ...' (and 'Ders kaydı ekle, ...' beside it)", unticked: "the post holds 'Ders kaydı ekle, ...' only" }
+  heldEnd:
+    values: [ahead, none]
+    initial: ahead
+    say: { ahead: "the post ends at a moment ahead; the row says its day", none: "the post has no end; the row says 'Süresiz'" }
+  session:
+    values: [ticked, unticked]
+    initial: ticked
+    say: { ticked: "the dialog's 'Celse ekle, ...' box is ticked", unticked: "it is not" }
+  end:
+    values: [kept, cleared, later, past]
+    initial: kept
+    say:
+      kept: "the end field holds what the post holds (the held end on her clock, or empty): the stored instant goes back as it is"
+      cleared: "the field was emptied: the post will have no end"
+      later: "a moment ahead, other than the held one, was typed"
+      past: "a moment that is not after now was typed"
+  tried:
+    values: [true, false]
+    initial: false
+    say: { "true": "'Kaydet' was pressed since the dialog opened: the end's message follows the field", "false": "it was not" }
+  toast:
+    values: [none, saved, gone, refused, failed]
+    initial: none
+    say:
+      none: "no toast of this flow is up"
+      saved: "'İzinler kaydedildi' (it closes by itself after 6 seconds)"
+      gone: "'İzinler kaydedilemedi: Bu ders nazırı artık yok; liste yenilendi.' (an error toast stays)"
+      refused: "'İzinler kaydedilemedi' and the sentence of the refusal"
+      failed: "'İzinler kaydedilemedi: Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'"
+
+guards:
+  # resolveEnd() of libs/utils/src/end-instant.ts:141: a value that is not after now is "past", and the page stops the save before it sends anything
+  endIsPast: "end == 'past'"
+  # unchangedPost() of course-nazirs.ts:208: the same codes and the same end (null with null, or the same instant); a `kept` field is the held end untouched
+  unchanged: "((session == 'ticked' and heldSession == 'ticked') or (session == 'unticked' and heldSession == 'unticked')) and (end == 'kept' or (end == 'cleared' and heldEnd == 'none'))"
+  # the end the post will have after this form: the typed later moment, or the held one when the field was left alone
+  endAhead: "end == 'later' or (end == 'kept' and heldEnd == 'ahead')"
+
+effects:
+  holdsForever: { set: { heldEnd: none } }
+  # the dialog starts again from what the post holds, every time it opens (course-nazir-dialog.tsx:95-105)
+  openedWithSession: { set: { session: ticked, end: kept, tried: false, toast: none } }
+  openedWithoutSession: { set: { session: unticked, end: kept, tried: false, toast: none } }
+  sessionTicked: { set: { session: ticked } }
+  sessionUnticked: { set: { session: unticked } }
+  endCleared: { set: { end: cleared } }
+  endTypedLater: { set: { end: later } }
+  endTypedPast: { set: { end: past } }
+  attempted: { set: { tried: true } }
+  blocked: { set: { tried: true } }
+  closedUnchanged: { set: { tried: true } }
+  discarded: { set: { tried: false } }
+  # what the post holds after a save that worked: the form's session box and end
+  savedWithSessionAhead: { set: { heldSession: ticked, heldEnd: ahead, toast: saved } }
+  savedWithSessionForever: { set: { heldSession: ticked, heldEnd: none, toast: saved } }
+  savedWithoutSessionAhead: { set: { heldSession: unticked, heldEnd: ahead, toast: saved } }
+  savedWithoutSessionForever: { set: { heldSession: unticked, heldEnd: none, toast: saved } }
+  goneToast: { set: { toast: gone } }
+  refusedToast: { set: { toast: refused } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  reading:
+    from: listCourseNazirs
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+  saving:
+    from: updateCourseNazir
+    gone: [COURSE_NAZIR_NOT_FOUND]
+    refused: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, GRANT_EXCEEDS_GIVER, SELF_GRANT_REFUSED, PERMISSION_UNKNOWN, GRANT_EXPIRY_INVALID]
+    failed: [HTTP_400, VALIDATION_ERROR, COURSE_NOT_FOUND]
+
+# The story the page tells first (course-nazirs#5): the hoca takes 'Celse' away and saves, then opens the post again, clears the end and saves.
+main:
+  given: { post: dated, answer: saved }
+  events: [DONE, OPEN_EDIT, TOGGLE_SESSION, SAVE, DONE, OPEN_EDIT, CLEAR_END, SAVE, DONE]
+
+initial: reading
+states:
+  reading:
+    title: The list of ders nazırları is read
+    description: >-
+      The page reads who she is and what she holds in the course (GET /me, GET /courses/:id/my-permissions), then GET /courses/:id/nazirs on the
+      server, behind a loading page of skeletons. Nothing is on the screen of this step. The hoca holds course_nazir.assign, so the page opens; a reader
+      who does not is turned away before the list is read (nazar.access.dersNazirPages), a list the API refuses is the forbidden alert in place of the
+      table (state forbidden), and an unknown course is the 404 page. Any other failure draws "Ders nazırları yüklenemedi" with a retry
+      (nazar.shell.errorStates, F-D2c-1; not drawn here).
+    invoke: { action: listCourseNazirs }
+    on:
+      DONE:
+        - { guard: "post == 'forever'", target: listed, effect: [holdsForever], source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:86, say: "the ders nazırı of the walk has no end: the row says 'Süresiz'" }
+        - { target: listed, source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:86, say: "the ders nazırı of the walk ends thirty days ahead: the row says the day" }
+      FAIL.forbidden: forbidden
+      FAIL.missing: not_found
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:43
+
+  forbidden:
+    title: The list refuses the reader
+    description: >-
+      The h1 stays and an alert says "Bu sayfaya izniniz yok" in place of the table; "Ders nazırı ata" and the intro are left out, since the list gave
+      nothing. The story of a reader who holds no course_nazir.assign is nazar.access.dersNazirPages; drawn here so that the refusal of the read is an
+      answer of this flow, and not reached by the walk.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-page.tsx:77
+
+  listed:
+    title: The table, with the post's row
+    description: >-
+      The page: "Ders nazırları", its intro, "Ders nazırı ata" and a table with one row for the post: the person's name and address, "{n} izin" and the
+      sentences of the codes held, the end (the day, or "Süresiz"), who appointed and when ("(siz)" when she did), and the buttons "İzinleri düzenle: {name}"
+      and "Görevden al: {name}". The row's words follow the last save; "2 izin" before the walk's first save, "1 izin" after "Celse" is taken away. A toast
+      "İzinler kaydedildi" of 6 seconds stands over the page after a save. Closing the dialog gives the focus back to "İzinleri düzenle", which stays in the
+      row (not verified in a browser). Findings read here: F-D2c-18 (a save with nothing changed lands here with no word), CNP-2 (the end is a day, not the
+      hour the access ends).
+    by: human
+    goal: true
+    on:
+      OPEN_EDIT:
+        - { guard: "heldSession == 'ticked'", target: editing, effect: [openedWithSession], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:119, say: "they press 'İzinleri düzenle: {name}': the dialog opens with 'Celse' ticked and the end the post holds" }
+        - { target: editing, effect: [openedWithoutSession], source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:119, say: "they press 'İzinleri düzenle: {name}': the dialog opens with 'Celse' unticked" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:149
+
+  editing:
+    title: The dialog, the form is open
+    description: >-
+      The dialog "İzinleri düzenle" over the page, the eyebrow naming the course: the person's card (name, address, "Ders nazırı · Atayan: {name} · {date}"),
+      the boxes of the course catalog in a fieldset "İzinler" (21; three are drawn: "Ders kaydı", "Celse", "Ders ayarları"), the end field "Bitiş tarihi ve saati
+      (isteğe bağlı)" with the end on her clock or empty, a note, and the footer with the count ("{n} izin seçili") and "Vazgeç" / "Kaydet". The focus starts on
+      the close icon, since edit mode gives none (F-D2c-15, not verified); the dialog is described by its whole body (F-D2c-16). "Kaydet" is on whatever the form
+      says. After "Kaydet" was pressed once (`tried`) an end that is not ahead shows "Bitiş zamanı şu andan sonra olmalı." in place of the help line, and follows the
+      field; the message is not announced and the focus stays on "Kaydet" (F-D2c-4). "Kaydet" against it writes nothing. "Kaydet" with the same codes and the same end
+      closes the dialog with no write and no word (F-D2c-18). Esc, Vazgeç and the close icon close it and drop the form, with no question (decision D2); the
+      scrim does not. After a refusal the dialog is here again with the form as it was and an error toast over it (CNP-3).
+    by: human
+    on:
+      TOGGLE_SESSION:
+        - { guard: "session == 'ticked'", target: editing, effect: [sessionUnticked], source: apps/nazar/features/nazirs/components/permission-section.tsx:50, say: "they untick 'Celse ekle, ...': the count falls to 1" }
+        - { target: editing, effect: [sessionTicked], source: apps/nazar/features/nazirs/components/permission-section.tsx:50, say: "they tick 'Celse ekle, ...' again" }
+      CLEAR_END: { guard: "end != 'cleared'", target: editing, effect: [endCleared], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:405, say: "they empty the end field: the post will have no end" }
+      TYPE_FUTURE_END: { guard: "end != 'later'", target: editing, effect: [endTypedLater], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:405, say: "they type another moment ahead in the end field" }
+      TYPE_PAST_END: { guard: "end != 'past'", target: editing, effect: [endTypedPast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:405, say: "they type a moment that is not after now" }
+      SAVE:
+        - { guard: endIsPast, target: editing, effect: [blocked], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:167, say: "they press 'Kaydet' against a rule of the page: nothing is sent and the end's message shows" }
+        - { guard: unchanged, target: listed, effect: [closedUnchanged], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:168, say: "they press 'Kaydet' with the same codes and the same end: the dialog closes and nothing is written, with no toast" }
+        - { target: saving, effect: [attempted], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:172, say: "they press 'Kaydet'" }
+      CANCEL: { target: listed, effect: [discarded], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:252, say: "Vazgeç or Esc: the dialog closes and nothing is written" }
+      CLOSE: { target: listed, effect: [discarded], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:241, say: "the close icon: the dialog closes and nothing is written" }
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:227
+
+  saving:
+    title: The permissions are on their way
+    description: >-
+      changeCourseNazir calls PATCH /courses/:id/nazirs/:postId with the whole set of codes the boxes say (the catalog's order) and the end as an instant, or null
+      for none. "Kaydet" is busy (aria-disabled, its hidden status says "Kaydediliyor…"), the end field is off, and Vazgeç, the close icon and Esc do nothing
+      while it runs (course-nazir-dialog.tsx:230). One transaction replaces what the person holds: what stays keeps its giver and date, the rest is revoked,
+      shortened, lengthened or added, and the post's end moves with them. A success toasts "İzinler kaydedildi", closes the dialog and reads the list again. The
+      post that is not there any more closes the dialog too, with an error toast and the list read again without the row (CNP-1); any other refusal keeps the
+      dialog open, with an error toast named by the code's sentence.
+    invoke: { action: updateCourseNazir }
+    on:
+      DONE:
+        - { guard: "answer == 'saved' and session == 'ticked' and endAhead", target: listed, effect: [savedWithSessionAhead], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:185, say: "the post holds both permissions and an end ahead: a toast, the dialog closes, the list is read again" }
+        - { guard: "answer == 'saved' and session == 'ticked'", target: listed, effect: [savedWithSessionForever], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:185, say: "the post holds both permissions and no end: the row says 'Süresiz'" }
+        - { guard: "answer == 'saved' and endAhead", target: listed, effect: [savedWithoutSessionAhead], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:185, say: "the post holds 'Ders kaydı' only and an end ahead: the row says '1 izin'" }
+        - { guard: "answer == 'saved'", target: listed, effect: [savedWithoutSessionForever], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:185, say: "the post holds 'Ders kaydı' only and no end" }
+      FAIL.gone:
+        - { guard: "answer == 'gone'", target: postGone, effect: [goneToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:210, say: "COURSE_NAZIR_NOT_FOUND: an error toast, the dialog closes and the list is read again without the row" }
+      FAIL.refused:
+        - { guard: "answer == 'refused'", target: editing, effect: [refusedToast], source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201, say: "an error toast 'İzinler kaydedilemedi' with the sentence of the code; the dialog stays open and the form is as it was" }
+      FAIL.failed:
+        - { guard: "answer == 'failed'", target: editing, effect: [failedToast], source: apps/nazar/features/course-nazirs/course-nazirs.ts:250, say: "an error toast with the generic sentence; the dialog stays open" }
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:172
+
+  postGone:
+    title: The post is not in the list any more
+    description: >-
+      The dialog is closed and the list has been read again without the row: the table says "Bu derste henüz ders nazırı yok." (the walk's course had this one
+      post), "Ders nazırı ata" is still there, and the error toast "İzinler kaydedilemedi" with "Bu ders nazırı artık yok; liste yenilendi." stays until closed.
+      The row's "İzinleri düzenle" is gone and no code moves the focus (CNP-1).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:154
+
+  not_found:
+    title: The course is not there
+    description: "A 404 of the list read is Next's not-found page (lib/tedrisat-read.ts:43-50)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-blocked-form-is-never-sent
+    never: "state == 'saving' and endIsPast"
+    say: A form whose end is not after now is stopped on the page; nothing is sent.
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:167
+  - id: an-unchanged-form-is-never-sent
+    never: "state == 'saving' and unchanged"
+    say: The same codes and the same end close the dialog without a write, so the audit log is not given a line for nothing.
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:168
+  - id: the-empty-table-follows-a-gone-post
+    never: "state == 'postGone' and answer != 'gone'"
+    say: The empty table after a save is drawn only when the post was gone; a refusal keeps the dialog and the row.
+    source: apps/nazar/features/course-nazirs/course-nazirs.ts:256
+  - id: a-saved-toast-follows-a-saved-answer
+    never: "state == 'listed' and toast == 'saved' and answer != 'saved'"
+    say: The toast "İzinler kaydedildi" is raised only when the server wrote the set.
+    source: apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:185

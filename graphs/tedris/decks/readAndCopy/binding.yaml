@@ -1,0 +1,54 @@
+# tedris.decks.readAndCopy on the local stack (graphs/README.md, "The stack and the bindings"), as the spare talebe `applicantC`, on a deck a walk makes
+# for itself and takes away again (deck-data.mjs). Written in the owner's no-replay phase: the file loads (`replay --emit-spec`), nothing was walked.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/readAndCopy --bind graphs/tedris/decks/readAndCopy/binding.yaml [--absent] --out <dir>
+#   ... --cover transitions     every transition the two scenarios below can take
+# The other starts are the other files, each of which extends binding.base.yaml: a scenario whose given an earlier one shares is never taken from the
+# same file, and these add transitions or need other data. binding.refused.yaml (the write refused: FAIL.refused of the collection and of the copy,
+# `--cover transitions`), binding.shared.yaml (the deck of an enrolled course, already in the collection) and binding.empty.yaml (a deck with no card).
+#
+# What the walk makes. `setup` runs deck-data.mjs: a Hadis deck of `MUDERRIS` with eight cards (each with the source "Buhârî, Müslim"), published the way
+# the app publishes (the author asks, `SYSTEM_ADMIN` approves: no other route makes a deck public); and two decks of the reader's own, a Hadis deck and a
+# Kelime deck, so the dialog offers the first and not the second (e2e decks#24); the reader has rated two cards EASY, so the page says "Tamamlanan: 2 / 8
+# kart" (decks#22). `teardown` takes it all away: the progress rows (SQL, no route), the reader's decks with the copies in them, the deck, and the
+# notification the approval wrote to its author (SQL, no route). Both are run again by the next `setup`, so a walk that died leaves nothing in the way.
+# The main story really writes three things (the collection row, its removal, the copy), each checked by an effect with SQL through helpers/sql.mjs.
+#
+# Not bound, with the reason: `sent_to_sign_in` (the stack cannot end the session in the middle of a call); the refusal of an uncollect (the route is
+# exempt from the read check and answers 200 whether or not there was a row); a deck of more than twelve cards (the graph's one LOAD_MORE shows the rest);
+# course staff or the başnazım on this page (READCOPY-2: drawn from the code, the walk makes no such reader). `NAVIGATE` is bound by its address.
+# `call` holds the server action while the busy screen is checked: a server action is a POST to the page's own address and answers 200 whatever the API
+# said, so a refusal's status cannot be compared there (that is why the refusals are binding.refused.yaml, which has no `call`).
+schema: delurio-graph/0
+kind: binding
+extends: binding.base.yaml
+flow: tedris.decks.readAndCopy
+
+scenarios:
+  # The main story: the deck of a stranger, public, eight cards, not in the collection. Six rows, then all of them; in, a reload, out; the copy dialog
+  # tried with no choice, then with one.
+  publicMany:
+    given: { deck: public, cards: many, held: not, targets: some, refusal: none }
+    as: applicantC
+    open: '{tedris}/decks/{rc.deck}'
+    setup:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, make, public, --cards, '8', --own, both, --mastered, '2', --reader, APPLICANT_C]
+        expect: 'made public deck'
+    teardown:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, remove]
+
+  # e2e decks#24's second half: no own deck of the deck's kind (a Kelime deck is not one), so the dialog says so and links to Deste oluştur.
+  noTarget:
+    given: { deck: public, cards: some, held: not, targets: none, refusal: none }
+    as: applicantC
+    open: '{tedris}/decks/{rc.deck}'
+    setup:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, make, public, --cards, '3', --own, other, --reader, APPLICANT_C]
+        expect: 'made public deck'
+    teardown:
+      - run: [node, ../tedris/decks/readAndCopy/deck-data.mjs, remove]
+
+states:
+  # a server action is a POST to the page's own address; the page's reads after it carry a query and are not held
+  collecting: { call: '{tedris}/decks/{rc.deck}' }
+  uncollecting: { call: '{tedris}/decks/{rc.deck}' }
+  copying: { call: '{tedris}/decks/{rc.deck}' }

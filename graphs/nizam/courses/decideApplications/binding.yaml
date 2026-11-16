@@ -1,0 +1,83 @@
+# nizam.courses.decideApplications on the local stack, at the köşk's list: the köşk nazımı of "Kubbealtı Köşkü" at http://localhost:4001
+# opens /kosks/<id>/basvurular. Two scenarios. The other places and readings are in the files beside this one, each its own binding
+# because each has addresses of its own (`states` is one per binding) or adds no transition the main file lacks or needs an event of its
+# own: binding.overview.yaml and binding.students.yaml (the course's two pages), binding.noteOpen.yaml (ROSTER-1), binding.gone.yaml
+# (FAIL.gone of both decisions), binding.barred.yaml (FAIL.barred, HOME-1) and binding.noAccess.yaml (the exit no_access, CDA-5).
+#   node apps/engine/src/cli.ts replay graphs/nizam/courses/decideApplications --bind graphs/nizam/courses/decideApplications/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Every behaviour below is from the code, none seen in a browser.
+#
+# Where the walk goes. The seeded köşk, "Süleymaniye Köşkü", holds the seed's own waiting application (TALEBE_MALE, never touched here),
+# so the walks use the seed's second köşk, "Kubbealtı Köşkü" (`seed.kosk2`), which the same account manages and which has no course of the
+# seed. Each scenario makes its own courses there with helpers/course.mjs (published, asking for approval, the müderris as hoca) and
+# removes them in `teardown`; `make` removes a tag a crashed walk left, so `setup` is safe to run twice. The page is opened by its address:
+# the nav graph's entry (frame:shell->courseApplications) is bound to the seeded köşk's own menu, whose list would show the seed's
+# application. The sidebar's "Başvurular" is pressed by the nav graph's own walk (nizam.nav), not here.
+# Spare applicants used by the whole flow: C, D, E and G (never F or H, which the köşk home's flow uses; C, D and E are also nazar.roster.decide's,
+# and the walks of two flows do not run at once under the replay lock). They apply in `setup`, in the order given, so the last one is the
+# newest row and the page lists newest first.
+#   list       the main story. "Deneme dersi cdaMain": applicantC, applicantD and applicantE wait; then "Deneme dersi cdaOther": applicantG and
+#              applicantE (the same talebe on two courses, which is why a row is keyed by course and talebe). Five rows: E and G of cdaOther
+#              are the newest. The walk narrows the list to cdaOther, widens it, types 'betul' (finds both E rows), types 'zzz' (finds none:
+#              "Bu süzgece uyan başvuru yok"), empties the box, approves the newest (E of cdaOther), rejects the next (G of cdaOther); three
+#              still wait, so the page ends listed.
+#   emptyKosk  the köşk's list with no application waiting: "Bekleyen başvuru yok", the count 0, no badge. Nothing is made.
+# Not bound anywhere, and why: FAIL.forbidden and FAIL.other of both decisions (nothing on the stack makes tedrisat refuse a decision the
+# page drew, short of taking the nazım's role away mid-walk, or answer with a 400 or a dropped call), the `settled -> empty` step (a walk
+# keeps what its scenario gives through a havoc, so a scenario that starts with `approval: needed` never reaches `none`: emptyKosk starts
+# there), and the exit load_failed. What a walk leaves that its teardown cannot undo: the notifications the decisions send to the
+# applicants (course.mjs removes those that point at the course) and the audit rows (enrollment.reject, course.roster_read), for which no
+# route exists. The last step of each teardown checks that the spares hold no REVOKED row (nothing here removes a talebe, so none should).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.decideApplications
+
+events:
+  # The course filter is a Base UI Select: its button opens a list in a portal and an option is pressed. `option` is the scenario's var.
+  FILTER_COURSE:
+    - click: { role: combobox, name: Ders süzgeci }
+    - click: { role: option, name: '{option}' }
+  FILTER_ALL:
+    - click: { role: combobox, name: Ders süzgeci }
+    - click: { role: option, name: 'Ders: tümü' }
+  # A field the person types in has no node that sends an event: the binding fills it in. 'betul' has no Turkish letter and finds
+  # "Betül" (the list folds case and diacritics, shell.e2e.ts#4 asked for "omer" and "Ömer"); 'zzz' finds nobody.
+  SEARCH_FOUND:
+    - fill: { role: searchbox, name: Başvurularda ara, value: betul }
+  SEARCH_NOTHING:
+    - fill: { role: searchbox, name: Başvurularda ara, value: zzz }
+  CLEAR_SEARCH:
+    - fill: { role: searchbox, name: Başvurularda ara, value: '' }
+
+states:
+  listed: { url: '{nizam}/kosks/*/basvurular' }
+  noMatch: { url: '{nizam}/kosks/*/basvurular' }
+  empty: { url: '{nizam}/kosks/*/basvurular' }
+  # the two decisions are Next server actions: a POST to the page's own address, held while the busy state is checked. (The page's own
+  # reads are GETs with a query, so the glob, which is anchored, matches only the POST.) A server action answers 200 on that address,
+  # whatever the API said, so a walk through FAIL.<class> reports "HTTP 200" for the status it compares: an engine limit, not the app.
+  approving: { call: '{nizam}/kosks/*/basvurular' }
+  rejecting: { call: '{nizam}/kosks/*/basvurular' }
+
+scenarios:
+  list:
+    given: { approval: needed, place: kosk, note: asks }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/basvurular'
+    vars: { course: '{cdaOther.course}', option: 'Ders: Deneme dersi cdaOther' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cdaMain, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+      - run: [node, helpers/course.mjs, make, cdaOther, --kosk, '{seed.kosk2}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantG, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cdaMain]
+        expect: 'course remove cdaMain'
+      - run: [node, helpers/course.mjs, remove, cdaOther]
+        expect: 'course remove cdaOther'
+      - run: [node, helpers/sql.mjs, "select count(*) as revoked from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_APPLICANT_G_SUB}')"]
+        expect: '"revoked":0'
+  emptyKosk:
+    given: { approval: none, place: kosk, note: asks }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/basvurular'

@@ -1,0 +1,45 @@
+# nazar.courseNazirs.dismiss as a ders nazırı who holds only course_nazir.assign (post: ownAppointee, course-nazirs#13 a24-a26): applicantF, appointed
+# by the hoca with that one code, appointed applicantE; applicantF opens "Ders nazırları" (the intro "Ders nazırı atayabilirsiniz…", no "İzinleri
+# düzenle", a button only on applicantE's row, none on their own), dismisses applicantE, and applicantE then opens Nazar's root in their own browser
+# and is sent to /erisim-yok. It takes no transition that binding.yaml does not, so `--cover transitions` leaves it out and it is walked on its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/courseNazirs/dismiss \
+#     --bind graphs/nazar/courseNazirs/dismiss/binding.appointer.yaml --to handed_over.no_access --out <dir>
+# NOT RUN: written without a replay. The person is applicantE here, so the event that opens Nazar and the state it is checked in are the other account's, and
+# `person`, `personSub` say whose row it is. The walk enters by the same menu entry as the hoca's; applicantF's menu draws "Ders nazırları" for every course
+# persona (F-D2c-2), and the page opens for them because they hold course_nazir.assign.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseNazirs.dismiss
+
+events:
+  PERSON_OPENS_PORTAL:
+    - goto: '{nazar}/'
+      as: applicantE
+
+states:
+  handed_over.no_access: { url: '{nazar}/erisim-yok', as: applicantE }
+
+scenarios:
+  ownAppointee:
+    given: { post: ownAppointee }
+    as: applicantF
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersNazirs' }
+    vars:
+      person: Betül Başvuran
+      personSub: '{secret.E2E_APPLICANT_E_SUB}'
+      appointee: Tahsin Başvuran
+      appointeeSub: '{secret.E2E_APPLICANT_F_SUB}'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzdismiss, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nzdismiss"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, applicantF, --codes, course_nazir.assign]
+        expect: 'course-nazir-grants APPLICANT_F course_nazir.assign'
+      - run: [node, helpers/api.mjs, applicantF, POST, '/courses/{made.course}/nazirs', '{"userId":"{secret.E2E_APPLICANT_E_SUB}","permissions":[]}']
+        expect: '"items"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzdismiss]
+        expect: 'course remove nzdismiss'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from role_assignments where role = 'DERS_NAZIR' and revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as posts, (select count(*) from permission_grants where revoked_at is null and user_id in ('{secret.E2E_APPLICANT_F_SUB}', '{secret.E2E_APPLICANT_E_SUB}')) as held"]
+        expect: '"posts":0,"held":0'

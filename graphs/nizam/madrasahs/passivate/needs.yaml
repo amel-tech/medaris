@@ -1,0 +1,160 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.madrasahs.passivate
+status: proposed
+summary: >-
+  What must exist for the Medaris başnazım (or a Medaris nazımı holding platform.madrasah_edit) to take a medrese out of service
+  in nizam.madrasahs.passivate: the flow's product list, written from the flow's story ("read what it takes along, confirm 'Yine
+  de pasife al'; the stale-count branch asks again") and the open decisions, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# `walked` names only checks that ran. No replay has run yet (the first walks are a later phase), so no `replay:` is named below; the
+# scenarios that will walk each need are bound in binding.yaml, binding.noCourses.yaml and binding.mayNot.yaml.
+#
+# Gaps of this file, for that merge:
+# missing:   passivation-says-who-and-why, refusals-of-the-preview-are-told-apart, the-list-says-why-a-medrese-is-passive,
+# passive-is-one-rule, the-result-and-the-stale-notice-are-announced, the-closing-is-told-to-those-it-closes
+# unwalked:  a-stale-confirmation-asks-again (code, no e2e; its replay is bound but not run), a-medaris-nazim-may-passivate (code, no
+# seeded account holds platform.madrasah_edit), the-passive-medrese-waits-for-a-head (hand-over, walked by nizam.inactive.reassign
+# once both are walked), refusals-while-confirming (the code answers; the stack can make 409 alreadyPassive and 404 only through
+# the replay's own helper)
+
+needs:
+  - id: read-what-passivating-takes-along
+    need: >-
+      Before a medrese is made passive, the person reads what it takes along: the başmüderris who leaves the post, how many
+      courses close (published and draft) and how many of them have a hoca in the post, how many talebe can no longer read the
+      content, which live celses of the coming days drop out of the calendars, and the way back (a new başmüderris opens it again,
+      nothing is deleted).
+    evidence:
+      - state: ready
+      - node: warning
+      - node: staffLine
+      - node: coursesLine
+      - node: coursesLiveLine
+      - node: studentsLine
+      - node: sessionsLine
+      - node: courseItem
+      - node: sessionItem
+      - node: wayLine
+      - state: loading
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:527
+      - source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:119
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/07 — 'Pasife al' shows what it takes along, asks to confirm and the medrese turns Pasif (MDRS-227)"
+      - test: apps/nizam/test/passivation.spec.ts
+
+  - id: confirm-exactly-what-was-read
+    need: >-
+      The confirmation covers exactly the numbers the person read and no others: "Yine de pasife al" is off until they are on the
+      screen, it is not the first thing the focus meets, and the server refuses to write when what passivating takes along is no
+      longer what was shown.
+    evidence:
+      - node: confirm
+      - node: cancel
+      - state: deactivating
+      - state: passivated
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:549
+      - source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:82
+      - test: apps/nizam/e2e/madrasahs.e2e.ts
+        name: "nizam/07 — 'Pasife al' shows what it takes along, asks to confirm and the medrese turns Pasif (MDRS-227)"
+      - test: apps/tedrisat/test/e2e/scope-passivation.e2e.spec.ts
+    note: Also drawn as the assertion only-the-numbers-that-were-read-passivate, the rule confirm-before-passivating.
+
+  - id: a-stale-confirmation-asks-again
+    need: >-
+      When something changed between the reading and the confirmation (a talebe applied, a course was published), nothing is
+      written, the person is shown the fresh numbers with a notice that says they changed, and confirms again; nothing retries by
+      itself.
+    evidence:
+      - state: ready
+      - node: changedNotice
+      - state: deactivating
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:549
+      - source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:100
+      - test: apps/nizam/test/passivation.spec.ts
+      - test: apps/tedrisat/test/e2e/scope-passivation.e2e.spec.ts
+
+  - id: refusals-while-confirming
+    need: >-
+      A confirmation that cannot be taken (the medrese is passive already, was deleted, the person's permission was taken away,
+      the server failed) is answered in a sentence that says which, with the dialog still open and nothing half done.
+    evidence:
+      - state: ready
+      - node: failedTitle
+      - node: failedAlreadyPassive
+      - node: failedGone
+      - node: failedForbidden
+      - node: failedGeneric
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:549
+      - source: apps/nizam/features/passivation/present.ts:107
+
+  - id: refusals-of-the-preview-are-told-apart
+    need: >-
+      When the preview cannot be read, the dialog says why in the words the confirmation uses (no permission, the medrese is gone,
+      try again later) and offers "Yeniden dene" only where waiting can help (F-W2-passivate-1).
+    missing: no Linear issue; findings F-W2-passivate-1
+    note: >-
+      Drawn on the state loadFailed and on the nodes loadFailedAlert and retry, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-medaris-nazim-may-passivate
+    need: >-
+      A Medaris nazımı who holds platform.madrasah_edit opens the same dialog and passivates a medrese; one who does not has no
+      button and is never told to try again later (MDRS-108, F-W2-2).
+    evidence:
+      - node: passivate
+      - source: apps/tedrisat/src/madrasah/madrasah.controller.ts:549
+      - source: apps/nizam/features/madrasahs/present.ts:99
+    note: Also drawn as the assertion only-those-offered-open-the-dialog.
+
+  - id: the-list-says-why-a-medrese-is-passive
+    need: >-
+      After the başnazım passivates a medrese, the list and its warning say that the medrese was passivated by Medaris yönetimi
+      (and when), not that the başmüderris's term ended (F-W2-passivate-4, decision D2).
+    missing: no Linear issue; findings F-W2-passivate-4
+    note: >-
+      Drawn on the state passivated and on the nodes passiveWarning, passiveWarningBody and rowTermEnded, which the code has: they
+      are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: passive-is-one-rule
+    need: >-
+      A medrese is passive by one rule on every page: the list's Etkin and Pasif, the engine that closes the content, Pasif
+      kapsamlar and the routes behind its buttons agree, and a scope that never had a manager is not offered as one with no
+      manager (F-W2-passivate-5, inactive-scope-accepts-new-scope).
+    missing: no Linear issue; findings F-W2-passivate-5, inactive-scope-accepts-new-scope
+    note: >-
+      Drawn on the states listed and passivated and on the node staffLine, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-result-and-the-stale-notice-are-announced
+    need: >-
+      The result of the confirmation, the line that says the numbers are loading and the notice that they changed under the
+      person's eyes are said to a reader of the screen, and the focus lands somewhere useful once the row's button is gone
+      (F-W2-10, F-W2-passivate-3).
+    missing: no Linear issue; findings F-W2-10, F-W2-passivate-3
+    note: >-
+      Drawn on the state passivated and on the nodes loadingText, changedNotice and toastDone, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-closing-is-told-to-those-it-closes
+    need: >-
+      The talebe enrolled in the courses that close and the hocas who teach them are told that their courses are closed and why,
+      instead of finding it out (the dialog says how many there are and the code sends nobody anything; MDRS-265 is the talebe's
+      dead button). An open question for the owner, not a planned item.
+    missing: no Linear issue; findings MDRS-265
+    note: >-
+      Drawn on the nodes studentsLine and coursesLiveLine, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-passive-medrese-waits-for-a-head
+    need: >-
+      A medrese made passive is at once in Pasif kapsamlar, where the başnazım (or a Medaris nazımı with
+      platform.inactive_scopes_manage) gives it a başmüderris again and it opens.
+    evidence:
+      - state: passivated
+      - state: handed_over.inactive_reassign
+      - source: apps/nizam/lib/shell-nav.ts:94
+      - source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:84

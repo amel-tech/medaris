@@ -1,0 +1,28 @@
+# nazar.nazirs.dismiss, the nazır who holds permissions and gave nobody anything: dismiss#4 (Ümmügülsüm held a group and gave nothing, so there is no
+# choice step and the callout still lists what falls). A file of its own: it adds no transition to binding.yaml's `bare`, and a walk takes the first
+# scenario for a transition. The shared parts are in binding.common.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/nazirs/dismiss --bind graphs/nazar/nazirs/dismiss/binding.holder.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay. Not `--main`: the flow's story is the `giverMany` case, which this file's one scenario does not match.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.nazirs.dismiss
+
+scenarios:
+  holder:
+    given: { nazir: holder }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs menu' }
+    vars:
+      rows: '0'
+      course: none
+      expectB: 'nazir APPLICANT_B none'
+      expectPost: 'ders APPLICANT_G none'
+      expectAudit: '"outcome":"0/0"'
+    setup:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, up, --madrasah, '{seed.madrasah}', --nazir, applicantA, --case, holder]
+        expect: 'ready: APPLICANT_A'
+    teardown:
+      - run: [node, ../nazar/nazirs/dismiss/nazirs.mjs, down, --madrasah, '{seed.madrasah}', --nazir, applicantA]
+        expect: 'restored: APPLICANT_A'

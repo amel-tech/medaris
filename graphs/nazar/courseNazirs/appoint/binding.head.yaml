@@ -1,0 +1,59 @@
+# nazar.courseNazirs.appoint read by the başmüderris of the course's medrese, Nuri Başmüderris, who is not the course's hoca: she opens the
+# course by its address (a başmüderris opens every course of her medrese as that scope for the page only, features/shell/opened-scope.ts:19)
+# and appoints at the medrese's level (courseStandingOf: a giver at the level of her seat). The e2e's course-nazirs#3 to #11 and #14 run as
+# this account, which its seed makes the hoca as well; the stack's does not, so this file is the way to walk her. The data, the locators and the
+# effects are locators.binding.yaml's; `up --viewer BASMUDERRIS` makes the day, the name and the id the page and the effects expect hers.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nazar/courseNazirs/appoint \
+#     --bind graphs/nazar/courseNazirs/appoint/binding.head.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay; it loads (`--emit-spec`). Two things the walk may need fixed: that opening the course by its address
+# draws the same page and the course menu for her (features/shell/opened-scope.ts, from the code), and that `grantable` is the 21 codes
+# for her on a medrese course (read on the seeded course: GET /courses/<seeded>/nazirs as the başmüderris answered mayAppoint true, 21 codes).
+# Scenarios here: the main story (a fresh person, two boxes, an end ahead) and her own address (found, "Kendinizi ders nazırı yapamazsınız.").
+# The başnazım opens any course the same way and gives the whole catalog (e2e course-nazirs#15); he is not bound.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courseNazirs.appoint
+
+scenarios:
+  headAppoints:
+    given: { person: fresh }
+    as: basmuderris
+    open: '{nazar}/ders/{made.course}/nazirlar'
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up, --viewer, BASMUDERRIS]
+        expect: 'course-nazirs up'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+      foundName: '{appt.name}'
+      foundEmail: '{appt.email}'
+
+  headHerself:
+    given: { person: herself }
+    as: basmuderris
+    open: '{nazar}/ders/{made.course}/nazirlar'
+    setup:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, make, nzappoint, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzappoint"'
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, up, --viewer, BASMUDERRIS]
+        expect: 'course-nazirs up'
+    teardown:
+      - run: [node, ../nazar/courseNazirs/appoint/appoint-data.mjs, down]
+        expect: 'course-nazirs down'
+      - run: [node, helpers/course.mjs, remove, nzappoint]
+        expect: 'course remove nzappoint'
+    vars:
+      typed: '{appt.viewerEmail}'
+      foundName: '{appt.viewerName}'
+      foundEmail: '{appt.viewerEmail}'

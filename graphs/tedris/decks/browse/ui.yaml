@@ -1,0 +1,116 @@
+# The screens of tedris.decks.browse: tedris-web's Desteler (/decks, app/decks/(medaris)/(liste)/page.tsx), drawn by
+# features/flashcards/components/decks-page.tsx and deck-summary-card.tsx at the wide layout: the page with its two sections, each list or the
+# sentence in its place, and the box that takes the page's place when the read fails. The frame (bar, footer) is tedris.shell.frame's.
+#
+# Words: every `Decks.*` key is copied letter for letter from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.Decks`), the
+# key being the path inside that file; catalog/tr.json is made from it by a script that fails on a missing key. The `composed.Decks.*` keys are
+# NOT in any i18n file: they are the texts the app builds in code from data, written here with their placeholders so that a replay can match
+# them (a placeholder the binding gives no value for matches any text):
+#   composed.Decks.deckTitle        "{title}"        a deck's name as the API gives it (deck-summary-card.tsx:75-76: the h3 and the link in it)
+#   composed.Decks.deckDescription  "{description}"  the deck's description, shown as it is (deck-summary-card.tsx:126-130)
+#   composed.Decks.contextLine      "{context}·{hoca}" the course and its first müderris with the unvan they carry in it, for a deck of a course
+#                                                     (deck-summary-card.tsx:60-67,113-124); the dot is a span with aria-hidden but is in the text
+#   composed.Decks.percent          "{percent}"      the progress as Intl writes it in Turkish ("%33", libs/ui/src/mds/progress.tsx:40-43), aria-hidden
+# `samples` are invented and neutral: every name and number on the page is data the API gives, and a replay uses only the binding's samples.
+# No `changes` note: the flow invokes one action, a GET, and writes nothing.
+schema: delurio-graph/0
+kind: ui
+id: tedris.decks.browse
+flow: tedris.decks.browse
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  title: Örnek deste
+  description: Örnek bir destenin açıklaması.
+  context: Örnek ders
+  hoca: Örnek Hoca
+  count: "3"
+  done: "1"
+  total: "3"
+  percent: "%33"
+  when: 15 Kasım’da
+
+nodes:
+  # ---- the page and what the list state draws above the sections ----
+  page: { type: page, component: Page, role: main, in: [list, loadFailed], source: apps/tedris/features/flashcards/components/decks-page.tsx:119 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set); the failed read has its own <main> (:87)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: Decks.title }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:122 } # h1
+  pageSubtitle: { type: text, component: Text, text: { key: Decks.listSubtitle }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:123 }
+  exploreLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Decks.explore }, in: [list], emits: OPEN_EXPLORE, source: apps/tedris/features/flashcards/components/decks-page.tsx:126 } # outline, with a search icon; a plain <a>, a full page load
+  createLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Decks.create }, in: [list], emits: OPEN_CREATE, source: apps/tedris/features/flashcards/components/decks-page.tsx:133 } # filled, with a plus icon
+  searchLandmark: { type: page, component: Page, role: search, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:139 } # <search>, with no name: it is the page's only one
+  searchBox: { type: field, component: TextField, role: searchbox, text: { key: Decks.searchDecks }, value: { literal: "" }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:140 } # type=search, maxLength 100; the aria-label and the placeholder are the same words; it filters on every key and writes no address
+
+  # ---- the read failed: a box in the page's place ----
+  loadFailedBox: { type: page, component: Page, role: region, name: { labelledBy: loadFailedTitle }, in: [loadFailed], source: apps/tedris/features/flashcards/components/decks-page.tsx:88 } # SystemState shell: a <section aria-labelledby> inside the <main>
+  loadFailedTitle: { type: text, component: Heading, role: heading, text: { key: Decks.errorTitle }, in: [loadFailed], source: apps/tedris/features/flashcards/components/decks-page.tsx:90 } # h2, the page has no h1 (DCK-12)
+  loadFailedText: { type: text, component: Text, text: { key: Decks.errorText }, in: [loadFailed], source: apps/tedris/features/flashcards/components/decks-page.tsx:98 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.retry }, in: [loadFailed], emits: RETRY, source: apps/tedris/features/flashcards/components/decks-page.tsx:93 } # router.refresh(); no busy state and no word while it reads
+
+  # ---- "Destelerim": the decks the person wrote ----
+  ownSection: { type: page, component: Page, role: region, name: { labelledBy: ownHeading }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:152 }
+  ownHeading: { type: text, component: Heading, role: heading, text: { key: Decks.mineTitle }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:154 } # h2
+  ownCount: { type: text, component: Text, text: { key: Decks.deckCount, params: { count: ownShown } }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:157 } # "{n} deste" beside the h2, not in it; changes with the chip and the word, with no live region (DCK-11)
+  ownHint: { type: text, component: Text, text: { key: Decks.mineHint }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:161 }
+  filterGroup: { type: page, component: Page, role: group, name: { key: Decks.filterLabel }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:162 } # the chips' group, named by a visually hidden legend (aria-labelledby)
+  chipAll: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.all }, in: [list], emits: PRESS_ALL, source: apps/tedris/features/flashcards/components/decks-page.tsx:166 } # a toggle with aria-pressed, which a node cannot say (rule pressed-state-not-drawn)
+  chipPrivate: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.statusPRIVATE }, in: [list], emits: PRESS_PRIVATE, source: apps/tedris/features/flashcards/components/decks-page.tsx:171 } # "Özel" keeps the refused decks too
+  chipPending: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.statusPENDING }, in: [list], emits: PRESS_PENDING, source: apps/tedris/features/flashcards/components/decks-page.tsx:173 }
+  chipPublished: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.statusPUBLISHED }, in: [list], emits: PRESS_PUBLISHED, source: apps/tedris/features/flashcards/components/decks-page.tsx:175 }
+  ownEmptyNoDeck: { type: text, component: Text, text: { key: Decks.emptyMine }, in: [list], when: ownEmptyNone, source: apps/tedris/features/flashcards/components/decks-page.tsx:189 } # an EmptyState: an icon, one sentence, one action
+  createFromEmpty: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Decks.create }, in: [list], when: ownEmptyNone, emits: OPEN_CREATE, source: apps/tedris/features/flashcards/components/decks-page.tsx:183 } # the same words as the link in the head of the page; only when the person wrote no deck at all
+  ownEmptyBySearch: { type: text, component: Text, text: { key: Decks.emptySearch }, in: [list], when: ownEmptySearch, source: apps/tedris/features/flashcards/components/decks-page.tsx:114 } # said whenever a word is typed and nothing is left, whoever hides the deck (DECKLIST-1)
+  ownEmptyByChip: { type: text, component: Text, text: { key: Decks.emptyFilter }, in: [list], when: ownEmptyFilter, source: apps/tedris/features/flashcards/components/decks-page.tsx:116 }
+  ownList: { type: list, component: List, role: list, name: { key: Decks.decksLabel }, in: [list], when: ownKept, source: apps/tedris/features/flashcards/components/decks-page.tsx:192 } # <ul aria-label>, a card in each <li>; newest first
+
+  # ---- "Koleksiyonum": the decks of other people they collected ----
+  collectedSection: { type: page, component: Page, role: region, name: { labelledBy: collectedHeading }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:213 }
+  collectedHeading: { type: text, component: Heading, role: heading, text: { key: Decks.collectionTitle }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:215 } # h2
+  collectedCount: { type: text, component: Text, text: { key: Decks.deckCount, params: { count: collectedShown } }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:218 } # DCK-11
+  collectedHint: { type: text, component: Text, text: { key: Decks.collectionHint }, in: [list], source: apps/tedris/features/flashcards/components/decks-page.tsx:222 }
+  collectedEmptyNoDeck: { type: text, component: Text, text: { key: Decks.emptyCollection }, in: [list], when: collectedEmptyNone, source: apps/tedris/features/flashcards/components/decks-page.tsx:238 }
+  exploreFromEmpty: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Decks.explore }, in: [list], when: collectedEmptyNone, emits: OPEN_EXPLORE, source: apps/tedris/features/flashcards/components/decks-page.tsx:228 } # the same words as the link in the head of the page; only when nothing is collected
+  collectedEmptyBySearch: { type: text, component: Text, text: { key: Decks.emptySearch }, in: [list], when: collectedEmptySearch, source: apps/tedris/features/flashcards/components/decks-page.tsx:238 } # the chips never empty this section: only a word does
+  collectedList: { type: list, component: List, role: list, name: { key: Decks.collectionLabel }, in: [list], when: collectedKept, source: apps/tedris/features/flashcards/components/decks-page.tsx:241 } # newest collected first
+
+  # ---- a deck's card: the same in both lists, but for the badge, the context line and the caption under the bar ----
+  deckItem: { type: list, component: ListItem, role: listitem, text: { key: composed.Decks.deckTitle, params: { title: deck.title } }, in: [list], when: anyDeck, repeat: decks, source: apps/tedris/features/flashcards/components/decks-page.tsx:194 }
+  deckTitle: { type: text, component: Heading, role: heading, text: { key: composed.Decks.deckTitle, params: { title: deck.title } }, in: [list], when: anyDeck, repeat: decks, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:73 } # h3 of the kit's Card; the avatar tile beside the name is decorative
+  deckLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.Decks.deckTitle, params: { title: deck.title } }, in: [list], when: anyDeck, repeat: decks, emits: OPEN_DECK, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:72 } # inside the h3; the card's ::after covers the whole card, so the card is one link to /decks/<id>
+  ownBadge: { type: text, component: Text, text: { oneOf: [Decks.statusPRIVATE, Decks.statusPENDING, Decks.statusPUBLISHED, Decks.statusREJECTED] }, in: [list], when: ownKept, repeat: decks.own, source: apps/tedris/features/flashcards/components/deck-badges.tsx:19 } # a badge with an icon for waiting (a clock), private and refused (a padlock); a refused one is red and its chip is "Özel"
+  collectedBadge: { type: text, component: Text, text: { oneOf: [Decks.kindCOURSE, Decks.kindKOSK, Decks.kindMADRASAH, Decks.kindPUBLIC] }, in: [list], when: collectedKept, repeat: decks.collected, source: apps/tedris/features/flashcards/components/deck-badges.tsx:55 } # where the deck comes from: the most specific link first, the course, then the köşk, the medrese, else everyone
+  deckContext: { type: text, component: Text, text: { key: composed.Decks.contextLine, params: { context: deck.contextTitle, hoca: deck.muderris } }, in: [list], when: collectedKept, repeat: decks.collected, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:113 } # only when the API sends a context title (a deck of a course, a köşk or a medrese); the hoca only for a course
+  deckDescription: { type: text, component: Text, text: { key: composed.Decks.deckDescription, params: { description: deck.description } }, in: [list], when: anyDeck, repeat: decks, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:126 } # only when the deck has one
+  deckProgress: { type: text, component: Text, role: progressbar, name: { key: Decks.completed, params: { done: deck.masteredCount, total: deck.cardCount } }, in: [list], when: anyDeck, repeat: decks, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:134 } # Base UI Progress named by its visible label; only for a deck with a card
+  deckPercent: { type: text, component: Text, text: { key: composed.Decks.percent, params: { percent: deck.percent } }, in: [list], when: anyDeck, repeat: decks, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:134 } # the visible value beside the label, aria-hidden (the bar's aria-valuetext says it)
+  ownDue: { type: text, component: Text, text: { key: Decks.dueCount, params: { count: deck.dueCount } }, in: [list], when: waitingShown, repeat: decks.own, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:140 } # only for a deck of their own with a card waiting for a repeat
+  collectedAdded: { type: text, component: Text, text: { key: Decks.added, params: { count: deck.addedCount } }, in: [list], when: grownShown, repeat: decks.collected, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:143 } # only for a collected deck with a card written after it was collected
+  deckCards: { type: text, component: Text, text: { key: Decks.cards, params: { count: deck.cardCount } }, in: [list], when: anyDeck, repeat: decks, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:83 } # the first words of the footer, "{n} kart"
+  deckKind: { type: text, component: Text, text: { oneOf: [Decks.cardTypeVOCABULARY, Decks.cardTypeHADEETH] }, in: [list], when: anyDeck, repeat: decks, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:87 } # after a dot that is aria-hidden: "3 kart·Kelime"
+  ownRequested: { type: text, component: Text, text: { key: Decks.requested, params: { when: deck.requestedAt } }, in: [list], when: pendingShown, repeat: decks.own, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:96 } # only for a deck waiting for review that has a request time: "15 Kasım’da istendi", the day in the viewer's zone, the ending by the month's last sound
+  deckStudy: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: Decks.studyLabel, params: { title: deck.title } }, text: { key: Decks.study }, in: [list], when: anyDeck, repeat: decks, emits: OPEN_STUDY, source: apps/tedris/features/flashcards/components/deck-summary-card.tsx:166 } # outline, small; on every card (DECKLIST-2); its accessible name starts with its visible text
+
+edges:
+  - { labelledBy: [ownSection, ownHeading] }
+  - { labelledBy: [collectedSection, collectedHeading] }
+  - { labelledBy: [loadFailedBox, loadFailedTitle] }
+  - { triggers: [deckLink, deck_opened] }
+  - { triggers: [deckStudy, study_opened] }
+  - { triggers: [exploreLink, explore_opened] }
+  - { triggers: [exploreFromEmpty, explore_opened] }
+  - { triggers: [createLink, create_opened] }
+  - { triggers: [createFromEmpty, create_opened] }
+  - { triggers: [retryButton, reading] }
+
+rules:
+  - { id: focus-not-set, rule: "Desteler sets no focus anywhere (no autoFocus and no focus() in features/flashcards/components/decks-page.tsx or deck-summary-card.tsx), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens, when a chip is pressed or when a word is typed: the chips and the box keep it because the page re-renders in place (from the code, not measured in a browser). The links are plain <a> (a full page load), so the focus starts at the document's start on the next page. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: DCK-11, rule: "The two \"{n} deste\" counts (decks-page.tsx:157-159, :218-220) change as a chip is pressed or a word typed, and so does the list, with no live region and no role=status: filtering is silent to a screen reader. Fix: role=status on the count caption." }
+  - { id: DCK-12, rule: "The failed read draws SystemState with headingLevel 2 inside <main> (decks-page.tsx:88-99): the page has no h1 then, and the tab title still says \"Desteler | Tedris\". \"Yeniden dene\" is router.refresh() with no busy state and no word, so a second failure looks like nothing happened. Fix: headingLevel 1 for the failure state, and a status while it reads." }
+  - { id: DCK-23, rule: "Words that are not in the catalog and that this page draws: the Progress bar's completeLabel default \"tamamlandı\" (libs/ui/src/mds/progress.tsx:32, written after \"%100\" in the bar's value span (aria-hidden) and in its aria-valuetext, for a deck the person has mastered whole; deck-summary-card.tsx:134 passes none) and the toaster region's name \"Bildirimler\" (libs/ui/src/mds/toast.tsx:127, Toaster label, drawn by ToastHost although this page raises no toast). Harmless while the app is Turkish only. Fix: pass them from the catalog." }
+  - { id: DCK-25, rule: "The loading file of the segment, app/decks/(medaris)/(liste)/loading.tsx:5-8, is a <main aria-busy=\"true\"> of aria-hidden skeleton bars with no word, so nothing tells a screen reader the page is loading (aria-busy is not announced). It is not a state of this flow's graph. Fix: a visually hidden \"Yükleniyor\" status." }
+  - { id: DECKLIST-1, rule: "New (not in the inventory). The empty-list sentence is chosen as mine.length === 0 ? emptyMine : searching ? emptySearch : emptyFilter (decks-page.tsx:111-116), and the chip and the word work together (filterMyDecks, deck-model.ts:48-61). When a word matches a deck and the pressed chip hides it, the person is told \"Aramana uyan deste yok.\" although the word matches; it is the chip that hides the deck. Read from the code, not seen in a browser (no e2e takes a chip and a word together). Fix: say \"Bu durumda deste yok.\" when the decks that match the word exist but the chip hides them, or show how many are hidden." }
+  - { id: DECKLIST-2, rule: "New. \"Çalış\" is passed to every card (decks-page.tsx:77-83, :205, :255) and the progress bar is drawn only for a deck with a card (deck-summary-card.tsx:132): on a deck with no card the person is offered a study round that the study page answers with \"Bugün için bitti. ... Yarın yeniden bak.\", which is also wrong for a deck that has nothing to study (DCK-27). Read from the code. Fix: offer \"Çalış\" only for a deck with a card (decision D1)." }
+  - { id: DECKLIST-3, rule: "New. GET /flashcard/decks/summary has no limit and no paging (FlashcardDeckSummaryRepository.findOwn and findCollected, flashcard-deck-summary.repository.ts, take every row; findStats counts every card of every deck), and the page draws every card of both lists in one grid with no paging and no virtualisation. A person with hundreds of decks reads them all in one answer. The inventory's TODO (flashcard-deck.repository.ts:102, :111) is about two other queries (findAll, findAllVisibleToUser), not this one. Read from the code, not measured. Fix: page the read or cap and offer \"Daha fazla\"." }
+  - { id: pressed-state-not-drawn, rule: "The four chips are toggle buttons with aria-pressed (Base UI Toggle in a ToggleGroup, libs/ui/src/mds/choice-chips.tsx); the format has no pressed state for a node, so the graph says which chip is pressed in the flow's `filter` variable and the description, and the replay cannot check aria-pressed (e2e decks#2 does)." }
+  - { id: label-in-name, rule: "\"Çalış\" is contained in its accessible name \"Çalış: {name}\" (WCAG 2.5.3); the card's one link is the deck's name. Holds." }
+  - { id: chips-narrow-only-own, rule: "The status chips narrow only \"Destelerim\"; \"Koleksiyonum\" is narrowed by the word alone (decks-page.tsx:106-108). A refused deck is counted under \"Özel\" (deck-model.ts:58-59) and has no chip of its own." }

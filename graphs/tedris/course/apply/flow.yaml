@@ -1,0 +1,260 @@
+# A talebe applies to a course, or takes a seat in it, from the course page (/courses/<id>), and takes the application back.
+# Written from the code of the branch (captured); nothing here is a plan. What it leaves to other flows is in scope.outOfView.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   CRS-03   a 409 on "Kayıt ol" says the page was refreshed and nothing refreshes it (course-aside.tsx:84-87)
+#   CRS-04   no try/catch around the two actions: a request that never reaches the server is not drawn (what follows is not verified)
+#   CRS-05   focus is lost after an open enrolment and after a withdrawal
+#   CRS-13   the toast has no role of its own and its region has the library's English name
+#   MDRS-224 the success toast says "Kursa kaydoldunuz." where the page says "ders" everywhere else
+#   CRS-APPLY-1 (new, provisional id) the card reads two of the API's five approval rules, so it can say "Kayıt ol" and
+#            "Kayıt onay gerektirmez" and the click still opens "Başvurun alındı"
+# E2E carried: course#5 (apply, window, wait, withdraw; its DB assertions are the binding's `effects`), system-pages#2, #3.
+# Carried in part: system-pages#4 (a refused application opens no window: the graph draws the three refusals the API gives;
+# the aborted request of the e2e is CRS-04 and is not drawn). Not carried: course#5 a8 (the page HTML holds no meeting URL).
+schema: delurio-graph/0
+kind: flow
+id: tedris.course.apply
+status: captured
+domain: medaris.api
+ui: tedris.course.apply
+title: Apply to a course, or enrol in it, and take the application back
+summary: >-
+  A signed-in talebe with no enrolment opens a course. The card "Derse kayıt" offers one button. Where the card says the
+  course needs approval it reads "Kayıt başvurusu yap", and the API puts the application in PENDING: the window "Başvurun
+  alındı" opens, closing it hands the focus to "Başvuruyu geri çek", the card shows when the application went in, and the
+  course team decides in nazar or in nizam, on its two lists or on the köşk's home (those are the flows this one starts). Where the card says enrolment is open it
+  reads "Kayıt ol", the API gives the seat at once and a toast says "Kursa kaydoldunuz.". The talebe may take a waiting
+  application back without being asked and may apply again. The same API call is offered by the locked celse page, which
+  is tedris.celse.locked and invokes this flow.
+
+scope:
+  shows: the apply card, the window after an application that waits, the pending card with its withdraw button, and the toasts of the three actions
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the visitor's card (\"Başvurmak için giriş yap\", \"Kayıt ol\" link to the realm): tedris.discover.visitorPath"
+    - "leaving an enrolled seat, with its confirmation (\"Dersten ayrıl\"), and taking the application back from Derslerim: tedris.course.leave"
+    - "the enrolled, completed and revoked cards and the rest of the course page (header, programme, tabs): tedris.course.readProgramme"
+    - "what the course team does with the application: nazar.roster.decide, nizam.courses.decideApplications and nizam.home.decideApplications (the list it shares with nazar.pano.decideApplications)"
+    - "the same \"Kayıt başvurusu yap\" on a locked celse page, which opens its own copy of the window and does not move the focus (CLS-12, CLS-19): tedris.celse.locked"
+    - "an application whose request never reaches the server (CRS-04): the page's own words for it are not verified"
+    - "kontenjan: the code gives a seat with no count and no gender rule (invariants seat-quota-per-gender and gender-always-known); needs.yaml carries it as missing (MDRS-284)"
+
+context:
+  approval:
+    values: [open, needed, unseenRule]
+    initial: any
+    say:
+      open: "no rule asks for approval: the card says so and the API gives the seat at once"
+      needed: "the course or its köşk asks for approval, which the card reads: the card says so and the API puts the application in PENDING"
+      unseenRule: "a rule the card does not read asks for approval (the köşk's always-approve policy, the platform's or the medrese's): the card says enrolment is open and the API puts the application in PENDING"
+  settled:
+    values: [waiting, approved, rejected]
+    initial: waiting
+    say:
+      waiting: "the application still waits"
+      approved: "the course team approved it, and this page has not been read again"
+      rejected: "the course team rejected it, and this page has not been read again"
+  notice:
+    values: [none, enrolled, withdrawn, gone, conflict, failed]
+    initial: none
+    say:
+      none: "no toast"
+      enrolled: "a toast says \"Kursa kaydoldunuz.\""
+      withdrawn: "a toast says the application was taken back"
+      gone: "a toast says the course is no longer found"
+      conflict: "a toast says the enrolment changed"
+      failed: "a toast says the action could not be completed"
+
+guards:
+  waits: "approval in ['needed', 'unseenRule']"
+  cardAsks: "approval == 'needed'"
+  staleApproved: "settled == 'approved'"
+  staleRejected: "settled == 'rejected'"
+  stillWaiting: "settled == 'waiting'"
+
+effects:
+  clearNotice: { set: { notice: none } }
+  toastEnrolled: { set: { notice: enrolled } }
+  toastWithdrawn: { set: { notice: withdrawn } }
+  toastGone: { set: { notice: gone } }
+  toastConflict: { set: { notice: conflict } }
+  toastFailed: { set: { notice: failed } }
+  teamApproves: { set: { settled: approved } }
+  teamRejects: { set: { settled: rejected } }
+  readAgain: { set: { settled: waiting } }
+
+failures:
+  enrolling:
+    from: enrollInCourse
+    signedOut: [HTTP_401]
+    gone: [COURSE_NOT_FOUND]
+    conflict: [ENROLLMENT_STATE_CONFLICT]
+    other: [BAN_ACTIVE, HTTP_400]
+  withdrawing:
+    from: withdrawEnrollmentRequest
+    signedOut: [HTTP_401]
+    gone: [ENROLLMENT_NOT_FOUND]
+    other: [BAN_ACTIVE]
+
+# The main story: an application that waits, from the card to the window to the pending card, and taken back.
+main:
+  given: { approval: needed }
+  events: [APPLY, DONE, CLOSE, WITHDRAW, DONE]
+
+initial: applyCard
+states:
+  applyCard:
+    title: The apply card
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/course-aside.tsx:323
+    description: >-
+      The card "Derse kayıt" of a signed-in talebe who holds no enrolment (the page's state `apply`,
+      features/courses/course-view.ts:21-38). One large button. It reads "Kayıt başvurusu yap" and the card carries the
+      notice "Kayıt onaya bağlı" and the line "Onaylandığında bildirim alırsın." when the page's `approvalRequired` is
+      true, else "Kayıt ol" and "Kayıt onay gerektirmez". `approvalRequired` is `course.requiresApproval || kosk.isPrivate`
+      (app/courses/[courseId]/page.tsx:89); the API also asks for approval when the köşk's own always-approve policy, the
+      platform policy ALWAYS_REQUIRE_APPROVAL or the medrese's policyAlwaysApproval is on, and the page reads none of the
+      three (CRS-APPLY-1), so a card can say "Kayıt ol" over an application that waits (approval unseenRule).
+      The facts above the button (the span of weeks, the weekly rhythm) are course data and are not drawn. Every toast
+      of the flow lands on this state or on the one it replaces; an error toast stays until it is closed.
+    on:
+      APPLY: { target: enrolling, effect: [clearNotice] }
+      NAVIGATE: left
+
+  enrolling:
+    title: Send the application
+    source: apps/tedris/features/courses/components/course-aside.tsx:80
+    description: >-
+      The server action enrollInCourse, POST /courses/:id/enroll with no body. The button is busy ("Kaydolunuyor..."
+      through a hidden status) and aria-disabled. What the API answers decides everything after it, not the card:
+      PENDING opens the window and ENROLLED shows a toast. A 404 says "Bu ders artık bulunamıyor.". A 409 (a REVOKED row)
+      says "Kaydının durumu değişmiş. Sayfa yenilendi, güncel hâline bak." and nothing refreshes the page (CRS-03). Any
+      other refusal (a ban, a bad id) says "İşlem tamamlanamadı. Biraz sonra yeniden dene.". A session that is over sends
+      the person to sign in and back to this course (sendToSignIn). The e2e that aborts the request (system-pages#4)
+      reaches none of these: the call is not wrapped (CRS-04).
+    invoke: { action: enrollInCourse }
+    on:
+      DONE:
+        - { guard: waits, target: reachesNazar, say: "the API says PENDING" }
+        - { guard: "not waits", target: enrolled, effect: [toastEnrolled], say: "the API says ENROLLED: the toast, then the page is read again", source: "apps/tedris/features/courses/components/course-aside.tsx:91" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.gone: { target: applyCard, effect: [toastGone] }
+      FAIL.conflict: { target: applyCard, effect: [toastConflict], say: "the toast promises a refresh that does not happen (CRS-03)" }
+      FAIL.other: { target: applyCard, effect: [toastFailed] }
+
+  reachesNazar:
+    title: The application is on the course's roster in nazar
+    source: apps/nazar/features/enrolments/enrolments.ts:101
+    description: >-
+      A PENDING row appears in the list "applications" of the course's roster in nazar, where whoever holds
+      enrollment.decide approves or rejects it. Nothing is sent when it is made (the domain action writes no notification
+      and no audit row); the talebe is told when the team decides. A step with no screen of its own.
+    always:
+      - { target: reachesNizam, starts: { flow: nazar.roster.decide, given: { approval: "'needed'" } } }
+
+  reachesNizam:
+    title: The application is on the course's applications in nizam
+    source: apps/nizam/features/kosks/course-team.ts:74
+    description: >-
+      The same row, for the köşk's side: nizam offers "approve" and "reject" on a PENDING enrolment of a köşk's course. It
+      is one application with two places to decide it, and whoever decides first settles it for both. A step with no
+      screen of its own.
+    always:
+      - { target: reachesKoskHome, starts: { flow: nizam.courses.decideApplications, given: { approval: "'needed'" } } }
+
+  reachesKoskHome:
+    title: The application is on the köşk's home in nizam
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:84
+    description: >-
+      The same row a third time: the köşk's home in nizam lists the newest waiting applications of the köşk's courses, with
+      "Onayla" and "Reddet" on each row, and counts all of them in "Bekleyen başvuru". It is still one application with
+      three places to decide it, and whoever decides first settles it for all of them. A step with no screen of its own.
+    always:
+      - { target: received, starts: { flow: nizam.home.decideApplications, given: { approval: "'needed'" } } }
+
+  received:
+    title: The window "Başvurun alındı"
+    by: human
+    source: apps/tedris/features/courses/components/enrollment-received-dialog.tsx:30
+    description: >-
+      Opened by setReceived(true) when the API answers PENDING (course-aside.tsx:90) and never otherwise (assertion
+      window-only-for-an-application-that-waits). A modal dialog, focus trapped, opened on "Tamam". Esc, the scrim, the
+      header close button "Kapat" and "Tamam" all run the same close. It has no trigger, so the kit has no opener to
+      return the focus to; the page does it itself: an effect puts the focus on "Başvuruyu geri çek" once the pending
+      card is on the page (course-aside.tsx:97-101; e2e system-pages#3 asserts it, #2 asserts the trap and that Esc
+      closes). The eyebrow above the title is the course's title in capitals of the page's language, a value and not a
+      catalog message, so it is not drawn.
+    on:
+      CLOSE: pending
+      DISMISS: pending
+
+  pending:
+    title: The application waits
+    by: human
+    source: apps/tedris/features/courses/components/course-aside.tsx:329
+    description: >-
+      The card "Derse kayıt" with the badge "Onay bekliyor", the line "Başvurun {when} ders kadrosuna iletildi.
+      Onaylandığında bildirim alırsın." (when is "bugün 10:02’de" or "12 Ekim 10:02’de" in the course's time zone) and
+      "Başvuruyu geri çek". The page is not live: when the course team decides, this card stays as it is until the page
+      is read again, and a withdrawal on it then answers 404 (settled approved or rejected). Withdrawing asks nothing
+      first, because there is nothing to lose; leaving an enrolled seat does ask (tedris.course.leave).
+    on:
+      WITHDRAW: { target: withdrawing, effect: [clearNotice] }
+      TEAM_APPROVES: { guard: stillWaiting, target: pending, effect: [teamApproves], say: "the course team approves it, in nazar or in nizam; this page does not know" }
+      TEAM_REJECTS: { guard: stillWaiting, target: pending, effect: [teamRejects], say: "the course team rejects it, which deletes the row; this page does not know" }
+      RELOAD:
+        - { guard: staleApproved, target: enrolled, effect: [readAgain], say: "the page is read again and draws the enrolled card" }
+        - { guard: staleRejected, target: applyCard, effect: [readAgain], say: "the page is read again and draws the apply card" }
+      NAVIGATE: left
+
+  withdrawing:
+    title: Take the application back
+    source: apps/tedris/features/courses/components/leave-course.tsx:26
+    description: >-
+      The server action withdrawEnrollment, DELETE /courses/:id/enroll, which deletes the caller's own row only while it
+      is PENDING. The button is busy ("Geri çekiliyor..."). Success: the toast "Başvurunuz geri çekildi." and the page
+      is read again, which draws the apply card. A 404 means the application was settled elsewhere (approved or rejected
+      meanwhile): the toast "Kaydının durumu değişmiş. Sayfa yenilendi, güncel hâline bak." and the page is read again,
+      which draws what the enrolment now is. Any other refusal (a ban) says "İşlem tamamlanamadı. Biraz sonra yeniden
+      dene." and the card stays. A 404 can also mean the course is gone (COURSE_NOT_FOUND); the page read again then
+      answers its not-found page, which is not drawn here.
+    invoke: { action: withdrawEnrollmentRequest }
+    on:
+      DONE: { guard: stillWaiting, target: applyCard, effect: [toastWithdrawn], source: "apps/tedris/features/courses/components/leave-course.tsx:43" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.gone:
+        - { guard: staleApproved, target: enrolled, effect: [readAgain, toastConflict], source: "apps/tedris/features/courses/components/leave-course.tsx:40" }
+        - { guard: staleRejected, target: applyCard, effect: [readAgain, toastConflict], source: "apps/tedris/features/courses/components/leave-course.tsx:40" }
+      FAIL.other: { target: pending, effect: [toastFailed] }
+
+  enrolled:
+    title: The talebe holds a seat
+    type: final
+    source: apps/tedris/features/courses/components/course-aside.tsx:271
+    description: >-
+      The page is read again and the card is the enrolled one ("Devam ediyor", the next celse, the progress bar): the
+      course page of an enrolled talebe, which tedris.course.readProgramme draws and from which tedris.course.leave
+      starts. Reached by an open enrolment, and by a stale pending card whose application the team approved. The button
+      that had the focus is gone and nothing moves the focus (CRS-05), so the focus falls to the document. After an open
+      enrolment a toast says "Kursa kaydoldunuz." (MDRS-224: "kurs" where the page says "ders").
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The action answered "unauthenticated": sendToSignIn (lib/send-to-sign-in.ts) sends the person to sign in and back
+      to exactly this address, and draws no toast. realm.auth.signIn takes over.
+
+assertions:
+  - id: window-only-for-an-application-that-waits
+    never: "state == 'received' and approval == 'open'"
+    say: "the window \"Başvurun alındı\" opens only when the API answered PENDING"
+    source: apps/tedris/features/courses/components/course-aside.tsx:90

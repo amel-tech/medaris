@@ -1,0 +1,54 @@
+# tedris.decks.explore on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web on :4000 and tedrisat on :3001.
+#   node apps/engine/src/cli.ts replay graphs/tedris/decks/explore --bind graphs/tedris/decks/explore/binding.yaml --out <dir> [--cover transitions] [--absent]
+# NOT REPLAYED in the writing phase: nothing below has been walked, and every locator is from the code (the markup of explore-decks-page.tsx,
+# deck-summary-card.tsx and the kit), not from a browser. The only checks made are that the binding loads (`replay --emit-spec`, which walks nothing) and
+# that the helper has no syntax error.
+#
+# Two scenarios, one for each world the stack can be made to hold (flow.yaml, context `world`). They are in two files, because a walk takes the shortest
+# scenario for each transition and `publicOnly` adds none: this file holds `mixed` (the main story and the walk of every transition), binding.publicOnly.yaml
+# holds the other, and binding.shared.yaml what both use (the data, events, states, effects and locators; it is not a binding to run on its own).
+#   mixed       (the main story) `talebe`, who is enrolled in the three seeded courses, comes in from Desteler through the entry `decks->decksExplore` of the
+#               navigation graph. The page then holds the seeded course deck "Sarf Kavramları" (written by the müderris, a Kelime deck of "Bina ve İzhar
+#               Şerhi"), the three decks that `setup` makes (public-decks.mjs, below) and whatever other walks have published. The walk narrows by Hadis,
+#               Kelime, an address with ?type=QUIZ, types the word "zümrüt" (only the Hadis deck has it), empties the box, adds the Hadis deck, reloads,
+#               and takes it out again. It ends with the deck out of the collection, as e2e decks#8 does.
+#   publicOnly  (binding.publicOnly.yaml) `other` (no role, no enrolment, nothing of their own) opens the page by its address: no course section content and no "Senin desten".
+#               It takes the same steps; its deck link is the Hadis deck's, since there is no course deck to press first.
+# Not bound, so the replay cannot reach them (reported): `world: courseOnly` and `bare` (they need a platform on which nobody has published a deck, which other
+# walks keep from being true), `read: failed` (the stack has no way to make the explore read fail: FAIL.unreadable, RETRY), every refusal of the two writes
+# (FAIL.refused, CLOSE_TOAST: nothing makes tedrisat refuse a collect of a listed deck) and FAIL.signedOut (the session that ends).
+#
+# What the walk makes, and takes away. `setup` runs tedris/decks/explore/public-decks.mjs make (run from graphs/bindings/): three decks, published through the real route
+# (the author asks, the başnazım approves): "Zümrüt hadis seçkisi" and "Yakut kelime seçkisi" written by `medreseNazir`, "Lâl kelime defteri" written by
+# `talebe`, one card each. `teardown` runs `remove`, which deletes them by author and name (a deck's collection rows go with it) and the approval's
+# notifications by the deck's id. `setup` removes any left by a walk that died, so it can run twice. Nothing else is made, changed or removed, and
+# the seeded decks are only read. After a walk: no deck of those names, no row in decks_users for them, no notification that targets them.
+# Run it under the lock like every replay; the helper changes data, and `talebe` and `other` are shared accounts.
+#
+# The effects read the row with SQL (helpers/sql.mjs): no API gives one person's collection row, and the e2e (decks#8) trusts what Desteler lists, which is
+# another flow's page. `call` holds the server action to see the busy control: a server action is a POST to the page's own address, whose status is 200
+# whatever it answers, so it cannot compare a refusal's status (graphs/README.md).
+schema: delurio-graph/0
+kind: binding
+extends: binding.shared.yaml
+flow: tedris.decks.explore
+
+scenarios:
+  mixed:
+    given: { read: ok, world: mixed }
+    as: talebe
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'decks->decksExplore' }
+    vars:
+      viewerSub: '{secret.E2E_TALEBE_SUB}'
+      deckTitle: Zümrüt hadis seçkisi
+      ownDeckTitle: Lâl kelime defteri
+      courseDeckTitle: '{seed.titles.decks.course}'
+      openedDeck: '{seed.decks.course}'
+      word: zümrüt
+    samples: { title: '{deckTitle}' }
+    setup:
+      - run: [node, ../tedris/decks/explore/public-decks.mjs, make]
+        expect: 'public-decks made 3'
+    teardown:
+      - run: [node, ../tedris/decks/explore/public-decks.mjs, remove]

@@ -1,0 +1,204 @@
+# "İçeriği gör" on Pasif kapsamlar (nizam-web /pasif-kapsamlar), read from the code of the branch (the tree of PR #394) on 15 Nov 2026.
+# Nothing here is approved, and nothing was opened in a browser: every behaviour below is from the code. The unit spec
+# apps/nizam/test/inactive-scopes.spec.tsx pins contentPath, the map of the API's codes and which rows get the button; no spec or
+# e2e draws the refusal toast.
+#   - What it draws: the başnazım on the list of scopes that have no manager, pressing "İçeriği gör" on a köşk or a course. The
+#     page writes one audit row through the API, then opens the köşk (/kosks/<id>) or the course (/kosks/<köşk>/courses/<id>/edit, a
+#     redirect to the curriculum). A medrese row has no such button. When the API refuses (the scope was given a manager since the
+#     list was read, or any other answer) a sticky toast says "İçerik açılamadı" and the row stays.
+#   - What it leaves to nizam.inactive.reassign, which draws the same page: the read of the list and its failure box, the filter by
+#     kind, the empty line, the three columns Neden / Ne zamandır / Son yönetici, the "… ata" buttons and their dialog.
+#   - Findings it carries (the inventory's ids): F-W2-1, and F-X-19, F-X-4 and F-X-5 where the page meets them. Four more are this
+#     flow's own, proposed as VIEWC-1 to VIEWC-4 (ui.yaml `rules`). The domain's own finding about the audit kind is VIEWC-3's source.
+schema: delurio-graph/0
+kind: flow
+id: nizam.inactive.viewContent
+status: captured
+domain: medaris.api
+ui: nizam.inactive.viewContent
+title: View the content of a passive scope
+summary: >-
+  A scope with no manager (a köşk, a medrese or a course whose last manager was taken away or whose term ended) is closed to
+  everyone, the başnazım included, except through Pasif kapsamlar. There each köşk and course row has "İçeriği gör": the page asks
+  the API to write one audit row ("inactive_scope.view": who, which scope, when) and, once it answers, opens the köşk's management
+  page or the course's curriculum. Every press writes a row, and the page's notice says so. A medrese row has no such button, because
+  Nizam has no page of a medrese to open. When the API refuses, a toast that stays until it is closed says "İçerik açılamadı" with
+  the reason, and the list is left as it was.
+source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx
+
+scope:
+  shows: the "İçeriği gör" button of a köşk or course row on Pasif kapsamlar, the call it makes, the page it opens and the toast of a refusal
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the read of the list, its failure box with 'Yeniden dene', the empty line, the filter by kind, the columns Neden / Ne zamandır / Son yönetici and the '… ata' buttons with their dialog: nizam.inactive.reassign"
+    - "who may open the page: a köşk nazımı and a Medaris nazımı without platform.inactive_scopes_manage get the 'izniniz yok' screen (inactive.e2e.ts#4 and #5, nizam.shell.noAccessAndNotFound); a Medaris nazımı who holds the permission is drawn nowhere here, see VIEWC-4 and decision D1"
+    - "the pages the button opens and what they do: the köşk's management page (nizam.kosks.manage) and the course's curriculum (nizam.courses.curriculum)"
+    - "the audit page where the rows are read afterwards (nizam.platform.auditLog); the row is checked by the binding with a read of the database, not by a screen"
+    - "a session that ended or a token tedrisat refuses: recordScopeView then answers 'unauthenticated' and the page sends the person to sign in again and back (redirectIfUnauthenticated, realm.auth.sessionEnded), with no toast"
+    - "the phone layout, where each row is a card (Table responsive='stack'), and the page's loading skeleton"
+    - "the toast's own life: it stays until closed or until the next navigation dismisses the toasts of before it (useDismissStaleToasts, MDRS-214)"
+
+decisions:
+  D1:
+    question: >-
+      Should a Medaris nazımı who holds only "Pasif kapsamları yönet" see "İçeriği gör" at all? The page, the API and the notice
+      allow them ("izni olan Medaris nazımları açabilir"), but the button is drawn for every row of the list whatever the person
+      holds, and the pages it opens (/kosks/<id>, the course curriculum) answer such a person with "Bu bölüm için izniniz yok" or the
+      hosting page, after the audit row is written (VIEWC-4, from the code; not seen).
+    recommend: >-
+      Decide what the permission is for. Either let the API's answer carry a path the person may open (the köşk's page for a nazım,
+      the permission's own page for a Medaris nazımı) or draw the button only for the başnazım and say so in the notice.
+    affects: [listed]
+
+context:
+  scope:
+    values: [kosk, course, madrasah]
+    initial: any
+    say:
+      kosk: "the row the person acts on is a köşk with no manager"
+      course: "the row the person acts on is a course with no hoca, in a köşk that has a nazım"
+      madrasah: "the row the person looks at is a medrese with no başmüderris"
+  answer:
+    values: [normal, forbidden, broken]
+    initial: any
+    say:
+      normal: "the API answers by the scope's standing: 204 while it has no manager, 404 once it has one"
+      forbidden: "the API answers 403: the person's permission was withdrawn after the list was read (a Medaris nazımı; the başnazım is never refused)"
+      broken: "the API answers anything else: a 5xx, a network error, a 400 the page cannot send"
+  standing:
+    values: [passive, attended]
+    initial: passive
+    say:
+      passive: "the scope still has no manager as far as the API knows (what the list showed)"
+      attended: "someone gave the scope a manager after the list was read, so the API no longer finds it passive"
+
+guards:
+  viewable: "scope != 'madrasah'"
+  opens: "answer == 'normal' and standing == 'passive'"
+  stale: "answer == 'normal' and standing == 'attended'"
+
+effects:
+  attendedMeanwhile: { set: { standing: attended } } # another başnazım presses "Köşk nazımı ata" on the same row in another tab
+  refusalWritesNothing: { set: { standing: attended } } # the API refused because the scope is attended; no audit row was written for the press
+
+failures:
+  recording:
+    from: viewInactiveScope
+    notPassive: [INACTIVE_SCOPE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [HTTP_400]
+# `failed` stands for the 400 of a malformed type or id, which the page cannot send, and, since the toast's text map has a generic line
+# (inactive-view.tsx:74, present.ts:84-90), for any other answer too: a 5xx, a network error. `forbidden` is a Medaris nazımı whose
+# permission was withdrawn after the list was read; the başnazım is never refused.
+
+# The main story: the başnazım opens Pasif kapsamlar and presses "İçeriği gör" on a köşk with no manager.
+main:
+  given: { scope: kosk, answer: normal }
+  events: [PRESS, DONE]
+
+initial: listed
+states:
+  listed:
+    title: Pasif kapsamlar, the list of scopes with no manager
+    by: human
+    description: >-
+      The list is on the page, one row for each köşk, medrese and course that once had a manager and has none now. A köşk and a course
+      row carry "İçeriği gör" beside the "… ata" button; a medrese row has only the "… ata" button, because contentPath gives a medrese
+      no address (present.ts:68-74). The notice above the table says that only the başnazım and a Medaris nazımı with the permission may
+      open a passive scope and that every opening is written to the audit log. The page sets no initial focus. A Medaris nazımı with the
+      permission has no menu entry for the page and reaches it by address (F-W2-1), and is shown the same button (VIEWC-4).
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:196
+    on:
+      PRESS:
+        guard: viewable
+        target: recording
+        say: "they press 'İçeriği gör: <name>' on a köşk or course row; the page marks that one row busy and calls the API"
+        source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:186
+      ATTENDED_ELSEWHERE:
+        guard: "viewable and standing == 'passive'"
+        target: listed
+        effect: [attendedMeanwhile]
+        say: "someone else gives the scope a manager (Köşk nazımı ata, from another tab or another başnazım); this page is not told and keeps the row"
+        source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:84
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  recording:
+    title: Write the audit row
+    description: >-
+      recordScopeView is a Server Action that calls POST /nizam/inactive-scopes/{type}/{id}/view as the person. The API checks that the
+      person may manage passive scopes, then that the scope is still passive (it has no held manager, is not hidden and exists), and
+      only then writes one audit row `inactive_scope.view` (entity the type in lower case, the scope's id, details {type}). The row's
+      button shows its busy state (aria-busy, aria-disabled, a hidden "Yükleniyor"); every other button of the page stays as it was.
+      The busy state ends the moment the answer arrives, before the page is pushed (VIEWC-2).
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:69
+    invoke: { action: viewInactiveScope }
+    on:
+      DONE:
+        - guard: "opens and scope == 'kosk'"
+          target: kosk_opened
+          say: "the API answered 204: the page pushes /kosks/<id>"
+          source: apps/nizam/features/inactive-scopes/present.ts:69
+        - guard: "opens and scope == 'course'"
+          target: course_curriculum_opened
+          say: "the API answered 204: the page pushes /kosks/<köşk>/courses/<id>/edit, which redirects to the curriculum (F-X-19)"
+          source: apps/nizam/features/inactive-scopes/present.ts:70
+      FAIL.notPassive:
+        guard: stale
+        target: viewFailed
+        effect: [refusalWritesNothing]
+        say: "404 INACTIVE_SCOPE_NOT_FOUND: the scope has a manager now; nothing is written and the toast says it is no longer passive"
+        source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:230
+      FAIL.forbidden:
+        guard: "answer == 'forbidden'"
+        target: viewFailed
+        say: "403 AUTHZ_FORBIDDEN: the toast says the person may not do this; nothing is written"
+        source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:68
+      FAIL.failed:
+        guard: "answer == 'broken'"
+        target: viewFailed
+        say: "any other answer: the toast carries the generic line"
+        source: apps/nizam/features/inactive-scopes/present.ts:84
+
+  viewFailed:
+    title: The refusal toast
+    by: human
+    description: >-
+      A sonner error toast that stays until closed: "İçerik açılamadı" and, under it, the reason ("Bu kapsam artık pasif değil.", "Bunu
+      yapma izniniz yok." or "Bir şeyler ters gitti. Biraz sonra yeniden deneyin."). The list behind it is the one the page read: the row
+      is still there with both of its buttons, even when the scope is attended now, and nothing re-reads the list (VIEWC-1). The toast
+      has no role of its own and is the only thing that says it failed (F-X-4, F-X-5).
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:73
+    on:
+      PRESS:
+        guard: viewable
+        target: recording
+        say: "they press the same button again; the page asks again and, for an attended scope, is refused again"
+        source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:186
+      CLOSE_TOAST: { target: listed, say: "they close the toast with its 'Kapat' button" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  kosk_opened:
+    type: final
+    title: The köşk's management page opens
+    leavesPage: true # /kosks/<id>; for the başnazım the page stays at that address (kosk-entry.ts:47)
+
+  course_curriculum_opened:
+    type: final
+    title: The course's curriculum opens
+    leavesPage: true # /kosks/<köşk>/courses/<id>/edit answers with a redirect to .../curriculum (app/kosks/[id]/courses/[courseId]/edit/page.tsx:15)
+
+  left: { type: final, title: The person leaves Pasif kapsamlar, leavesPage: true }
+
+assertions:
+  - id: medrese-has-no-button
+    never: "state == 'recording' and scope == 'madrasah'"
+    say: A medrese row has no "İçeriği gör", so the call is never made for one
+    source: apps/nizam/features/inactive-scopes/present.ts:68
+  - id: opens-only-while-passive
+    never: "state in ['kosk_opened', 'course_curriculum_opened'] and (standing == 'attended' or answer != 'normal')"
+    say: The page opens a scope's content only after the API found it passive and wrote the audit row
+    source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:72
+  - id: row-opens-its-own-page
+    never: "(state == 'kosk_opened' and scope != 'kosk') or (state == 'course_curriculum_opened' and scope != 'course')"
+    say: A köşk row opens the köşk and a course row opens the course, never the other
+    source: apps/nizam/features/inactive-scopes/present.ts:68

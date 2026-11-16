@@ -1,0 +1,108 @@
+# What every binding of nazar.bans.decide shares: the locators of the nodes that role and name cannot find, the events no node
+# sends, the addresses of the states and the checks of what a decision leaves in the database. It holds no scenario: the files that
+# extend it do (binding.yaml, binding.moved.yaml, binding.nazir.yaml). NOT RUN: every locator is from the code and unverified until a
+# walk (the owner's word: replays come once, at the end).
+#
+# The people. A scenario makes one course of its own in the seeded medrese (helpers/course.mjs make bansDecide) and puts open bans on
+# spare talebe accounts through the API (helpers/madrasah-bans.mjs up). The page names a person by the name tedrisat holds (STACK.md):
+#   applicantC  "Esma Başvuran"     applicantD  "Salih Başvuran"     applicantF  "Tahsin Başvuran"     applicantH  "Rıza Başvuran" (only binding.moved.yaml)
+# The row nodes below match any of the four: a row of another walk is never decided here, and a repeated node is pressed on its first
+# item (the list is newest first, ban.repository.ts:700), so what a press decides is told to the effects by the people, not by the row.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.bans.decide
+
+data:
+  made: { json: ../.local/made/bansDecide.json }
+
+states:
+  listed: { url: '{nazar}/medrese/*/yasaklamalar**' }
+  empty: { url: '{nazar}/medrese/*/yasaklamalar**' }
+  forbidden: { url: '{nazar}/medrese/*/yasaklamalar**' }
+  # NAVIGATE goes to the medrese's Pano
+  left: { url: '{nazar}/medrese/*' }
+
+events:
+  # the reason is a textarea with no node that sends an event: the binding fills the one textbox of the dialog
+  FILL_IN:
+    - fill: { role: textbox, within: { role: dialog }, value: '{reasonText}' }
+  CLEAR:
+    - fill: { role: textbox, within: { role: dialog }, value: '' }
+  # the focus starts in the reason: Tab leaves it empty, and the field's blur is what shows its error (F-B-6)
+  LEAVE_EMPTY:
+    - key: Tab
+  NAVIGATE:
+    - goto: '{nazar}/medrese/{seed.madrasah}'
+
+nodes:
+  # ---- the page ----
+  # the shell's <main> is the same on every page of the medrese: this one holds the heading "Yasaklamalar"
+  bansPage: { role: main, hasText: Yasaklamalar }
+  forbiddenAlert: { role: status, hasText: Bu sayfaya izniniz yok }
+  kademeAlert: { role: status, hasText: 'Yasağı, koyan kademe ya da üstü kaldırır' }
+  tabActive: { role: link, name: '/^Etkin/', within: { role: navigation, name: Yasak durumu } }
+  tabLifted: { role: link, name: '/^Kaldırılan/', within: { role: navigation, name: Yasak durumu } }
+  # the counts are numbers the page formats: the first span is the Etkin tab's, the second the Kaldırılan's
+  tabActiveCount: { css: '.mds-tab__count', nth: 0, hasText: '/^\d+$/' }
+  tabLiftedCount: { css: '.mds-tab__count', nth: 1, hasText: '/^\d+$/' }
+
+  # ---- the rows: the words alone find too many ("Ders" is in every course's title) ----
+  scopeCourse: { text: '/^Ders$/', within: { role: table } }
+  scopeMadrasah: { text: '/^Medrese$/', within: { role: table } }
+  scopeMadrasahDetail: { text: '/bütün dersleri$/', within: { role: table } }
+  newBadge: { text: '/^Yeni$/', within: { role: table } }
+  scopeExtendedFrom: { text: '/dersinden genişletildi$/', within: { role: table } }
+  bannedByYou: { text: '/\(siz\)$/', within: { role: table } }
+  bannedByAdmin: { text: Medaris yönetimi, within: { role: table } }
+  permanentBadge: { text: Kalıcı yasak talebi bekliyor, within: { role: table } }
+  rowNote: { testId: lift-note }
+  # the three buttons are named by the person: only the walk's own three are ever pressed
+  liftButton: { role: button, name: '/^Yasağı kaldır: (Esma Başvuran|Salih Başvuran|Tahsin Başvuran|Rıza Başvuran)$/' }
+  widenButton: { role: button, name: '/^Medreseden de yasakla: (Esma Başvuran|Salih Başvuran|Tahsin Başvuran|Rıza Başvuran)$/' }
+  requestButton: { role: button, name: '/^Kalıcı yasak talebi aç: (Esma Başvuran|Salih Başvuran|Tahsin Başvuran|Rıza Başvuran)$/' }
+
+  # ---- the toasts: a region "Bildirimler" of dialogs; the words with a person in them are found by their ending ----
+  toastLifted: { role: dialog, name: Yasak kaldırıldı, hasText: '/için yasak kalktı\./' }
+  toastWidened: { role: dialog, name: Medreseden de yasaklandı, hasText: '/artık medresenin hiçbir dersine erişemez\./' }
+  toastRequested: { role: dialog, name: Kalıcı yasak talebi açıldı }
+  # one of three titles and one of five messages (text: oneOf is found by its first only)
+  toastMoved: { role: alertdialog, name: '/Yasak kaldırılamadı|Medreseden yasaklanamadı|Talep açılamadı/', hasText: '/liste yenilendi|açılamaz/' }
+  toastRefused: { role: alertdialog, name: '/Yasak kaldırılamadı|Medreseden yasaklanamadı|Talep açılamadı/', hasText: '/yalnız onu koyan kademe|yetkiniz yok/' }
+  toastFailed: { role: alertdialog, name: '/Yasak kaldırılamadı|Medreseden yasaklanamadı|Talep açılamadı/', hasText: '/denetleyip|ters gitti/' }
+
+  # ---- the dialog: found by its title; the page behind it is inert ----
+  dialogEyebrow: { text: Hadis ve Siyer Medresesi, within: { role: dialog } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog } }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog } }
+  dialogPerson: { testId: ban-person, hasText: '/Başvuran/' }
+  dialogEmail: { testId: ban-person, hasText: '/@medaris\.test/' }
+  summaryScopeTerm: { text: Kapsam, within: { testId: ban-summary } }
+  summaryBannedByTerm: { text: Yasaklayan, within: { testId: ban-summary } }
+  summaryReasonTerm: { text: Gerekçe, within: { testId: ban-summary } }
+  summaryScope: { testId: ban-summary, hasText: '/Ders · |Medrese · /' }
+  summaryBannedBy: { testId: ban-summary, hasText: '/\(siz\)|Medaris yönetimi/' }
+  summaryReason: { testId: ban-summary, hasText: '/ders dışı reklam|aynı davranışı|başka birine kullandırdı/' }
+  # "{course}" is the walk's own course, "Deneme dersi bansDecide"
+  liftBodyCourse: { text: '/dersine yeniden başvurabilir\./', within: { role: dialog } }
+  escalateBody: { text: '/dersindeki yasak da sürer\./', within: { role: dialog } }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/', within: { role: dialog } }
+  # the three submits are named like the row buttons and the dialogs' own titles: told apart by being in the dialog and by the whole name
+  liftSubmit: { role: button, name: '/^Yasağı kaldır$/', within: { role: dialog } }
+  escalateSubmit: { role: button, name: '/^Medreseden de yasakla$/', within: { role: dialog } }
+  permanentSubmit: { role: button, name: '/^Talebi aç$/', within: { role: dialog } }
+  busy: { role: status, hasText: Yükleniyor, within: { role: dialog } }
+
+# What a decision leaves outside the screen, read from tedrisat's database by helpers/madrasah-bans.mjs (the people and the words come from the
+# scenario's `vars`; the walk's own people only). `expect: 'has:'` is the helper saying the line is there.
+effects:
+  liftBan:
+    - run: [node, helpers/madrasah-bans.mjs, check, bansDecide, --who, '{who}', --has, '{liftHas}']
+      expect: 'has:'
+  escalateBan:
+    - run: [node, helpers/madrasah-bans.mjs, check, bansDecide, --who, '{who}', --has, '{widenHas}']
+      expect: 'has:'
+  requestPermanentBan:
+    - run: [node, helpers/madrasah-bans.mjs, check, bansDecide, --who, '{who}', --has, '{askHas}']
+      expect: 'has:'

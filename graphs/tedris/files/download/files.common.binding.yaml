@@ -1,0 +1,142 @@
+# What every walk of tedris.files.download shares (graphs/README.md, "The stack and the bindings"): the made course's ids as data, the places the
+# walk finds nodes by, the exits' addresses, and the checks of what the routes answer (read with curl). The scenarios are in binding.yaml
+# (the refusal storage gives, and a visitor) and binding.forbidden.yaml (a seat taken away before the link is followed): one file for each,
+# because the second needs a `before` on the three file links that would break the first.
+#
+# Data. Every scenario makes its own course (helpers/course.mjs make filesdl ...) and gives it the resources and the homework the flow reads
+# (files-data.mjs up: two links and three files, the files as SQL rows because the stack has no storage, see files-data.mjs). Its ids are read from
+# graphs/.local/made/filesdl.json as {made.course} and {made.lessons.N}, and from graphs/.local/files-download.json as {files.*}.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.files.download
+
+data:
+  made: { json: ../.local/made/filesdl.json }
+  files: { json: ../.local/files-download.json }
+
+events:
+  # the person goes on to another page of the app
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+
+states:
+  # the link was followed without a session: the route redirected to sign-in (not walked: the walk cannot end the web session)
+  sent_to_sign_in: { url: '{tedris}/auth/signin*' }
+  # the 303 of a 403 came back to the celse's address, which keeps the parameter (FILES-1), and the page is the locked card
+  celse_locked: { url: '{tedris}/courses/{files.course}/lessons/{files.lesson}?fileError=forbidden', text: Kayıt başvurusu yap }
+  # not walked: the stack cannot hide the course between the page and the click without this walk's own hook, and COURSE_NOT_FOUND comes after the storage check
+  page_not_found: { text: Sayfa bulunamadı }
+  left: { url: '{tedris}/home' }
+
+# Where role and name cannot find a node. Both resource lists carry data-testid="course-resources" (the course page's card is a div around the
+# list, the celse page's "Ders geneli" is the list itself), the celse's own list "session-resources", the homework's files "assignment-files".
+nodes:
+  # a bare role=main is also on the page a walk leaves for: each page's main is told by what only it holds
+  coursePage: { css: 'main:has([role=tablist][aria-label="Ders bölümleri"])' }
+  celsePage: { css: 'main:has([data-testid=session-resources-card])' }
+  courseResourcesTitle: { css: '[data-testid=course-resources] h2', hasText: Bu dersin kaynakları }
+  # the course's rows, on the course page and under "Ders geneli"
+  courseLinkRow: { css: '[data-testid=course-resources] a[target=_blank]', count: 1 }
+  courseFileRow: { css: '[data-testid=course-resources] a[href^="/api/files/courses/"]', count: 1 }
+  courseFileType: { css: '[data-testid=course-resources] a[href^="/api/files/courses/"] .mds-badge', count: 1 }
+  courseFileSize: { css: '[data-testid=course-resources] a[href^="/api/files/courses/"] .mds-num', count: 1 }
+  # a person who may not read the content: the same list with plain rows (a <div> in the <li>, no anchor), told apart by the name each holds
+  nameOfCourseLink: { css: '[data-testid=course-resources] li > div span.mds-label', hasText: Sarf için okuma listesi }
+  nameOfCourseFile: { css: '[data-testid=course-resources] li > div span.mds-label', hasText: Sarf çalışma kâğıdı }
+  # the celse page
+  homeworkRegion: { css: '[data-testid=session-homework]' }
+  homeworkTitle: { css: '[data-testid=session-homework] h2', hasText: Ödev }
+  assignmentFilesTitle: { css: '[data-testid=assignment-body] h3', hasText: Ödevin dosyaları }
+  assignmentFileRow: { css: '[data-testid=assignment-files] a[href^="/api/files/lessons/"]', count: 1 }
+  assignmentFileType: { css: '[data-testid=assignment-files] .mds-badge', count: 1 }
+  assignmentFileSize: { css: '[data-testid=assignment-files] .mds-num', count: 1 }
+  resourcesRegion: { css: '[data-testid=session-resources-card]' }
+  resourcesTitle: { css: '[data-testid=session-resources-card] h2', hasText: Kaynaklar }
+  ownGroupTitle: { css: '[data-testid=session-resources-card] h3', hasText: Bu celse }
+  courseGroupTitle: { css: '[data-testid=session-resources-card] h3', hasText: Ders geneli }
+  ownLinkRow: { css: '[data-testid=session-resources] a[target=_blank]', count: 1 }
+  ownFileRow: { css: '[data-testid=session-resources] a[href^="/api/files/lessons/"]', count: 1 }
+  ownFileType: { css: '[data-testid=session-resources] a[href^="/api/files/lessons/"] .mds-badge', count: 1 }
+  ownFileSize: { css: '[data-testid=session-resources] a[href^="/api/files/lessons/"] .mds-num', count: 1 }
+  # Sonner's toast: a <li data-sonner-toast> with a title and a description, whose close button is shown on hover or focus
+  fileErrorToast: { css: '[data-sonner-toast]', hasText: Dosya indirilemedi }
+  reasonForbidden: { css: '[data-sonner-toast]', hasText: Bu dosyayı indirme iznin yok. }
+  reasonNotFound: { css: '[data-sonner-toast]', hasText: Bu dosya artık yok. }
+  reasonUnavailable: { css: '[data-sonner-toast]', hasText: Dosyalara şu an ulaşılamıyor. Biraz sonra yeniden dene. }
+  reasonFailed: { css: '[data-sonner-toast]', hasText: Bir sorun çıktı. Biraz sonra yeniden dene. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+
+# What the routes answer, read with the walk's own web session (a Cookie header in a curl config file, never on a command line) and as a visitor.
+# The page requests carry what a browser sends when it follows a link: Sec-Fetch-Dest document, Sec-Fetch-Mode navigate, Sec-Fetch-Site
+# same-origin and the page as the Referer. The effects of a refusal run once the app shows the page it came back to; the three routes behave
+# alike, so the course file's is read in full and the other two for their address.
+effects:
+  # after a 502, 503 or 504: here always a 503 STORAGE_NOT_CONFIGURED, because the stack has no storage
+  noticeUnavailable:
+    - run: [node, ../tedris/files/download/files-data.mjs, signin]
+      expect: 'files-data signin'
+    # the course file, followed from the course page: 303 back to it with the reason, and the page is not cached
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'HTTP/1.1 303 See Other'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'location: /courses/{files.course}?fileError=unavailable'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'cache-control: no-store'
+    # the celse's own file and the homework's file, followed from the celse page
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}/lessons/{files.lesson}', '{tedris}/api/files/lessons/{files.lesson}/resources/{files.ownFile}']
+      expect: 'location: /courses/{files.course}/lessons/{files.lesson}?fileError=unavailable'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}/lessons/{files.lesson}', '{tedris}/api/files/lessons/{files.lesson}/assignment/{files.assignmentFile}']
+      expect: 'location: /courses/{files.course}/lessons/{files.lesson}?fileError=unavailable'
+    # a page that had an earlier reason in its address and another query: the reason is replaced and the query kept
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}?tab=kayitlar&fileError=failed', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'location: /courses/{files.course}?tab=kayitlar&fileError=unavailable'
+    # a fetch() (no Sec-Fetch headers) keeps tedrisat's own refusal: its status and its JSON
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'HTTP/1.1 503'
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'STORAGE_NOT_CONFIGURED'
+    # a page request with no page of this app behind it: plain text in three languages, the refusal's status, no redirect
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'HTTP/1.1 503'
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'content-type: text/plain; charset=utf-8'
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'Dosya indirilemedi. Dosyanın bulunduğu sayfaya dönüp yeniden deneyin.'
+    # a page of another site is no page of this app either
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Site: cross-site', -H, 'Referer: https://example.test/bir-sayfa', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'content-type: text/plain; charset=utf-8'
+    # ids that are not UUIDs: 404 {"code":"NOT_FOUND"}, before a token is asked for and with no redirect, whatever the request is
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Referer: {tedris}/courses/{files.course}', '{tedris}/api/files/courses/{files.course}/resources/not-a-uuid']
+      expect: 'HTTP/1.1 404'
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Referer: {tedris}/courses/{files.course}', '{tedris}/api/files/courses/{files.course}/resources/not-a-uuid']
+      expect: '"code":"NOT_FOUND"'
+  # after a 403: the walk's talebe has been taken off the course (binding.forbidden.yaml), so the same account is now a person with no seat
+  noticeForbidden:
+    - run: [node, ../tedris/files/download/files-data.mjs, signin]
+      expect: 'files-data signin'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'location: /courses/{files.course}?fileError=forbidden'
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'HTTP/1.1 403'
+    - run: [curl, -sS, -D, '-', -K, ../.local/files-download.session.curl, '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'AUTHZ_FORBIDDEN'
+  # after a 403 on a celse's file: the page is the locked card (the state's own check reads the address)
+  lostTheSeat:
+    - run: [node, ../tedris/files/download/files-data.mjs, signin]
+      expect: 'files-data signin'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}/lessons/{files.lesson}', '{tedris}/api/files/lessons/{files.lesson}/resources/{files.ownFile}']
+      expect: 'location: /courses/{files.course}/lessons/{files.lesson}?fileError=forbidden'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -K, ../.local/files-download.session.curl, -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}/lessons/{files.lesson}', '{tedris}/api/files/lessons/{files.lesson}/assignment/{files.assignmentFile}']
+      expect: 'location: /courses/{files.course}/lessons/{files.lesson}?fileError=forbidden'
+  # a visitor: no session, so the route redirects a page request to sign-in with the page as the way back, or the app's root when there is none
+  readsNamesOnly:
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'HTTP/1.1 303 See Other'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', -H, 'Sec-Fetch-Mode: navigate', -H, 'Sec-Fetch-Site: same-origin', -H, 'Referer: {tedris}/courses/{files.course}', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'location: /auth/signin?callbackUrl=%2Fcourses%2F{files.course}'
+    - run: [curl, -sS, -o, /dev/null, -D, '-', -H, 'Sec-Fetch-Dest: document', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'location: /auth/signin?callbackUrl=%2F'
+    - run: [curl, -sS, -D, '-', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: 'HTTP/1.1 401'
+    - run: [curl, -sS, -D, '-', '{tedris}/api/files/courses/{files.course}/resources/{files.courseFile}']
+      expect: '"kind":"unauthenticated"'

@@ -1,0 +1,17 @@
+{
+  "DiscoverPage.title": "Keşfet",
+  "DiscoverPage.kosks": "Köşkler",
+  "DiscoverPage.follow": "Takip et",
+  "DiscoverPage.following": "Takip ediliyor",
+  "DiscoverPage.followFailed": "Takip durumu değiştirilemedi. Biraz sonra yeniden dene.",
+  "KoskPage.discover": "Keşfet",
+  "KoskPage.eyebrow": "Köşk",
+  "KoskPage.follow": "Takip et",
+  "KoskPage.following": "Takip ediliyor",
+  "KoskPage.followFailed": "Takip durumu değiştirilemedi. Biraz sonra yeniden dene.",
+  "common.toast.close": "Kapat",
+  "composed.FollowButton.follow": "Takip et: {kosk}",
+  "composed.FollowButton.following": "Takip ediliyor: {kosk}",
+  "composed.Kosk.name": "{kosk}",
+  "Changes.note": "Takip ettiğin köşklerin, kaydının ya da başvurunun olmadığı dersleri Ana sayfanda “Takip ettiğin köşklerden” bölümünde görünür. Takibi istediğin zaman bırakabilirsin."
+}

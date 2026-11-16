@@ -1,0 +1,43 @@
+# nazar.archive.hideAndRestoreCourse on the local stack, over a course nobody is enrolled in: the window "Dersi gizle" then leaves out
+# "N talebe celselere ve ders kayıtlarına erişemez." (`enrolled` none; e2e courses#10 a1). The same account and page as binding.yaml.
+#   node apps/engine/src/cli.ts replay graphs/nazar/archive/hideAndRestoreCourse \
+#     --bind graphs/nazar/archive/hideAndRestoreCourse/binding.quiet.yaml --to listedWithout --absent --out <dir>
+# NOT RUN. Walk it with `--to listedWithout`, not `--cover transitions`: the data is one hidden course, so the restore of the main file would
+# empty the Arşiv the graph says still holds rows (`held` is kept through a havoc). `--absent` checks that the sentence with the number is
+# not drawn and that the course's menu button is gone from the list after the hide.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.archive.hideAndRestoreCourse
+
+data:
+  hrcQuiet: { json: ../.local/made/hrcQuiet.json }
+
+scenarios:
+  quiet:
+    given: { start: courses, enrolled: none, held: courses, locks: none, pages: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, hrcQuiet, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi hrcQuiet"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hrcQuiet]
+        expect: 'course remove hrcQuiet'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi hrc%'"]
+        expect: '"n":0'
+
+nodes:
+  rowMenu: { role: button, name: 'Diğer işlemler: Deneme dersi hrcQuiet' }
+  menuList: { role: menu, name: 'Diğer işlemler: Deneme dersi hrcQuiet' }
+  toastHidden: { role: dialog, name: Ders gizlendi }
+  hideBody: { css: '[role=alertdialog] p', hasText: '/^Deneme dersi hrcQuiet talebelerden, ziyaretçilerden ve .+ sayfasından gizlenecek; celseleri talebelerin takviminden düşecek\.$/' }
+
+effects:
+  cancelled:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from courses where id = '{hrcQuiet.course}'"]
+      expect: '"shown":true'
+  hideMadrasahCourse:
+    - run: [node, helpers/sql.mjs, "select archived_at is not null as hidden from courses where id = '{hrcQuiet.course}'"]
+      expect: '"hidden":true'

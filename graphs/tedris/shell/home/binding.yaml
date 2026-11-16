@@ -1,0 +1,151 @@
+# tedris.shell.home on the local stack: Ana sayfa (tedris-web, :4000) as a spare talebe who has everything to show, as a visitor who
+# is sent to Keşfet, and as two seeded people (the talebe with three courses and nothing else, and a person with no role and no data).
+#   node apps/engine/src/cli.ts replay graphs/tedris/shell/home --bind graphs/tedris/shell/home/binding.yaml --out <dir>
+#
+# What each scenario starts from (the stack's seed, STACK.md; the date of the seed is 15 Nov 2026, so the next celse is Nahiv Metinleri's
+# on Monday 16 Nov, 20:30 Istanbul, the only seeded celse with a meeting link):
+#   member   (the main story)  applicantA, a spare talebe with no enrolment, no follow and no deck. `home-data.mjs up` makes, through
+#            tedrisat's API as that person, a seat in the köşk's own course (Nahiv Metinleri: open enrolment, so ENROLLED at once), a
+#            follow of the köşk (so the köşk's other two courses are "Takip ettiğin köşklerden") and a deck "Tekrar Defteri" with two
+#            cards in LEARNING with no due time (due now, so the deck is "2 kart tekrar bekliyor"). The walk reads Ana sayfa and opens
+#            the next celse's page. Teardown gives all of it back and clears the account's mail (the invitation sweep mails a person
+#            who takes a seat).
+#   visitor  nobody signed in: `/` goes to /home and /home to /discover. The two redirects are also checked on the wire (`effects`).
+#   talebe   the seeded TALEBE: three courses, so three cards in "Kaldığın yerden devam et"; the köşk has no other course and no deck is
+#            due, so the other two sections are empty. Not walked in the writing phase.
+#   empty    the seeded OTHER: no role, no course, no deck, no follow: every section is its empty look and no celse stands. Not walked in
+#            the writing phase.
+# Nothing the walk makes outlives it. Not walked and not walkable on the stack: every `failed` value (tedrisat answers every read; the
+# stack has no way to make one refuse), `joinable` and `live` (the join window opens ten minutes before a celse and the seeded celses are
+# fixed in time), `elsewhere` (the seeded celses after the first have no link, but the first of any enrolled course is Nahiv's, which has
+# one), and the `RELOAD` of a failed section.
+# `call` is not used on any state: the reads are server-side, so the browser makes no fetch to hold.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.shell.home
+
+samples:
+  minutes: '10' # the join window of the kit's card (SessionJoin joinWindowMinutes)
+
+scenarios:
+  member:
+    given: { who: member, next: waiting, later: some, courses: listed, decks: listed, followed: listed }
+    as: applicantA
+    open: '{tedris}/'
+    vars: { cards: 1, deckRows: 1, followedRows: 2 } # the counts of the repeated nodes below: one course card, one deck, two followed courses
+    setup:
+      - { run: [node, ../tedris/shell/home/home-data.mjs, up, applicantA], expect: 'home-data up APPLICANT_A' }
+    teardown:
+      - { run: [node, ../tedris/shell/home/home-data.mjs, down, applicantA], expect: 'home-data down APPLICANT_A' }
+      - { run: [node, helpers/mail.mjs, clear, 'to:{address}'] }
+  visitor:
+    given: { who: visitor, next: none, later: none, courses: empty, decks: empty, followed: empty }
+    open: '{tedris}/'
+    vars: { cards: 0, deckRows: 0, followedRows: 0 }
+  talebe:
+    given: { who: member, next: waiting, later: some, courses: listed, decks: empty, followed: empty }
+    as: talebe
+    open: '{tedris}/'
+    vars: { cards: 3, deckRows: 0, followedRows: 0 } # three courses, so three cards (the section draws three at most)
+  empty:
+    given: { who: member, next: none, later: none, courses: empty, decks: empty, followed: empty }
+    as: other
+    open: '{tedris}/'
+    vars: { cards: 0, deckRows: 0, followedRows: 0 }
+
+events:
+  NAVIGATE:
+    - goto: '{tedris}/notifications'
+  # RELOAD (a failed section's "Yeniden dene") is not bound: nothing on the stack makes a read fail
+
+states:
+  home: { url: '{tedris}/home' }
+  sent_to_discover: { url: '{tedris}/discover**' }
+  celse_opened: { url: '{tedris}/courses/*/lessons/*' }
+  course_opened: { url: '{tedris}/courses/*' }
+  my_courses_opened: { url: '{tedris}/my-courses' }
+  schedule_opened: { url: '{tedris}/schedule' }
+  decks_opened: { url: '{tedris}/decks' }
+  deck_opened: { url: '{tedris}/decks/*' }
+  study_opened: { url: '{tedris}/decks/study/*' }
+  discover_opened: { url: '{tedris}/discover**' }
+  left: { url: '{tedris}/notifications' }
+
+# What a visitor meets on the wire, which is what anonymous#21 and the unit spec visitor-start.spec.ts assert of the two redirects:
+# `/` answers a permanent redirect to /home (next.config.js) and /home a temporary one to /discover with no cache (SHL-05). curl does
+# not follow redirects; the header names are as Next writes them, in lower case.
+effects:
+  visitorSent:
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/']
+      expect: 'HTTP/1.1 308'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/']
+      expect: 'location: /home'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/home']
+      expect: 'HTTP/1.1 307'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/home']
+      expect: 'location: /discover'
+    - run: [curl, -s, -o, /dev/null, -D, '-', '{tedris}/home']
+      expect: 'no-store'
+
+# Where role and name cannot find a node. The section heads reuse words the frame's bar has too ("Derslerim", "Desteler", "Keşfet",
+# "Programım"), so their links are found inside their own section; a name that is a value the API gives (a title, a köşk) matches any
+# text, so those nodes are found by the page's own classes. The four sections are named by their aria-labelledby ids (home-next,
+# home-later, home-continue, home-decks, home-followed), which a test may rely on: e2e learn#1 finds them the same way.
+nodes:
+  # Ana sayfa's <main>; the celse page it leaves for has a <main> of its own, so the section every member has names it
+  homePage: { role: main, hasText: 'Kaldığın yerden devam et' }
+  runWeek: { css: 'section[aria-labelledby=home-next] > p span', hasText: '/^Hafta \d+/' }
+  runKosk: { css: 'section[aria-labelledby=home-next] > p > bdi' }
+  courseLink: { css: 'section[aria-labelledby=home-next] > p a' }
+
+  # the join card
+  joinCard: { css: 'section.mds-join' }
+  joinEyebrow: { css: 'section.mds-join p.mds-eyebrow' }
+  joinCountdown: { css: 'section.mds-join .mds-badge--secondary time' }
+  joinLive: { css: 'section.mds-join .mds-badge--live' }
+  joinTitle: { css: 'section.mds-join h3' }
+  joinDay: { css: 'section.mds-join p.mds-join__time > time:first-child' }
+  joinLength: { css: 'section.mds-join p.mds-join__time > time[datetime^=PT]', hasText: '/^\d+\s*dk$/' }
+  joinElapsed: { css: 'section.mds-join .mds-join__zone', hasText: '/dakikadır sürüyor/' }
+  platformChip: { css: 'section.mds-join .mds-platform-chip' }
+  joinOpens: { css: 'section.mds-join p.mds-join__status', hasText: '/^Katılım/' }
+  joinReveal: { css: 'section.mds-join details.mds-join__reveal > summary' }
+  elsewhereNote: { css: 'section.mds-join p.mds-join__status', hasText: '/^(Toplantı bağlantısı henüz|Bu celse yüz yüze|Bu celse YouTube)/' }
+
+  # "Sonraki celseler"
+  scheduleLink: { role: link, name: Programım, within: { css: 'section[aria-labelledby=home-later]' } }
+  laterList: { css: 'section[aria-labelledby=home-later] ul' }
+  laterRow: { css: 'section[aria-labelledby=home-later] li', count: 3 }
+  laterLink: { css: 'section[aria-labelledby=home-later] li a', count: 3 }
+  laterLength: { css: 'section[aria-labelledby=home-later] li > span.mds-caption', count: 3 }
+
+  # "Kaldığın yerden devam et"
+  continueLink: { role: link, name: Derslerim, within: { css: 'section[aria-labelledby=home-continue]' } }
+  continueFailed: { css: 'section[aria-labelledby=home-continue] [role=alert]' }
+  continueRetry: { css: 'section[aria-labelledby=home-continue] [role=alert] a' }
+  continueCardTitle: { css: 'section[aria-labelledby=home-continue] h3', count: '{cards}' }
+  continueCardLink: { css: 'section[aria-labelledby=home-continue] h3 a', count: '{cards}' }
+  continueHoca: { css: 'section[aria-labelledby=home-continue] p.mds-card__body', count: '{cards}' }
+  continueProgress: { role: progressbar, name: İlerlemen, within: { css: 'section[aria-labelledby=home-continue]' }, count: '{cards}' }
+  continueMeta: { css: 'section[aria-labelledby=home-continue] .mds-card__footer bdi' }
+  continueNext: { css: 'section[aria-labelledby=home-continue] .mds-card__footer', hasText: '/Sonraki celse|Planlı celse yok/', count: '{cards}' }
+
+  # "Bugün çalışılacak desteler"
+  decksLink: { role: link, name: Desteler, within: { css: 'section[aria-labelledby=home-decks]' } }
+  decksFailed: { css: 'section[aria-labelledby=home-decks] [role=alert]' }
+  decksRetry: { css: 'section[aria-labelledby=home-decks] [role=alert] a' }
+  deckList: { css: 'section[aria-labelledby=home-decks] ul' }
+  deckRow: { css: 'section[aria-labelledby=home-decks] li', count: '{deckRows}' }
+  deckLink: { css: 'section[aria-labelledby=home-decks] li a.mds-body', count: '{deckRows}' }
+  deckCaption: { css: 'section[aria-labelledby=home-decks] li span.mds-caption', count: '{deckRows}' }
+  deckStudy: { css: 'section[aria-labelledby=home-decks] li a.mds-btn', count: '{deckRows}' }
+
+  # "Takip ettiğin köşklerden"
+  followedLink: { role: link, name: Keşfet, within: { css: 'section[aria-labelledby=home-followed]' } }
+  followedFailed: { css: 'section[aria-labelledby=home-followed] [role=alert]' }
+  followedRetry: { css: 'section[aria-labelledby=home-followed] [role=alert] a' }
+  followedList: { css: 'section[aria-labelledby=home-followed] ul' }
+  followedRow: { css: 'section[aria-labelledby=home-followed] li', count: '{followedRows}' }
+  followedCourse: { css: 'section[aria-labelledby=home-followed] li a', count: '{followedRows}' }
+  followedCaption: { css: 'section[aria-labelledby=home-followed] li span.mds-caption', count: '{followedRows}' }

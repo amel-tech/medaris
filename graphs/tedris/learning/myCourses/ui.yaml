@@ -1,0 +1,117 @@
+# The screens of tedris.learning.myCourses: tedris-web's Derslerim (/my-courses, app/my-courses/page.tsx), drawn by
+# features/courses/components/my-courses-page.tsx and its application-row.tsx: the page with its four sections, the page with nothing on it, and the
+# alert that takes the sections' place when the read fails. The "···" menu, its window and the row's own call are tedris.course.leave's; this
+# file draws their buttons and no more. The frame (bar, footer) is tedris.shell.frame's.
+#
+# Words: every `MyCoursesPage.*`, `CalendarSubscription.link` and `CoursePage.*` key is copied letter for letter from
+# libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris`), the key being the path inside that file. The `composed.*` keys are NOT in any
+# i18n file: they are the texts the app builds in code from data and messages, written here with their placeholders (a placeholder the binding
+# gives no sample for matches any text):
+#   composed.MyCoursesPage.title         "{title}"    a course's title, as the API gives it (card title my-courses-page.tsx:103, a row's link :164)
+#   composed.MyCoursesPage.place         "{place}"    the line "<medrese> · <köşk> · <hocas>" (placeAndTeachers, my-courses-page.tsx:57-85); a course of
+#                                                     no medrese has no first part, the imam's star is out of view
+#   composed.MyCoursesPage.moment        "{moment}"   the celse's day, weekday and clock in the viewer's zone ("17 Kas Sal 21:00"), my-courses.ts:62
+#   composed.MyCoursesPage.percent       "{percent}"  the progress as Intl writes it in Turkish ("%40"), libs/ui/src/mds/progress.tsx:40-43
+#   composed.MyCoursesPage.withdrawNamed "Başvuruyu geri çek: {title}"  the row button's aria-label, application-row.tsx:65
+# No catalog entry is authored here: the page changes nothing by itself (the actions it hands over are tedris.course.leave's, which has `changes`).
+schema: delurio-graph/0
+kind: ui
+id: tedris.learning.myCourses
+flow: tedris.learning.myCourses
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  title: Örnek Ders
+  place: Örnek Medrese · Örnek Köşk · Örnek Hoca
+  moment: 17 Kas Sal 21:00
+  percent: '%40'
+  week: '3'
+  date: 15 Kasım 2026
+  count: '1'
+
+nodes:
+  # ---- the page and what every state of it draws: the title, the subtitle and the link to the subscription ----
+  listMain: { type: page, component: Page, role: main, in: [empty, listed, loadFailed], source: apps/tedris/features/courses/components/my-courses-page.tsx:199 } # no name and no initial focus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  listTitle: { type: text, component: Heading, role: heading, text: { key: MyCoursesPage.title }, in: [empty, listed, loadFailed], source: apps/tedris/features/courses/components/my-courses-page.tsx:202 } # h1
+  listSubtitle: { type: text, component: Text, text: { key: MyCoursesPage.subtitle }, in: [empty, listed, loadFailed], source: apps/tedris/features/courses/components/my-courses-page.tsx:203 }
+  calendarLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CalendarSubscription.link }, in: [empty, listed, loadFailed], emits: OPEN_CALENDAR, source: apps/tedris/features/courses/components/my-courses-page.tsx:205 } # a link drawn as a button, with a calendar icon; to /account/calendar
+
+  # ---- when the read failed: an alert in place of every section ----
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: MyCoursesPage.loadErrorTitle }, in: [loadFailed], source: apps/tedris/features/courses/components/my-courses-page.tsx:215 } # tone error, so role alert; it takes no focus
+  loadFailedText: { type: text, component: Text, text: { key: MyCoursesPage.loadError }, in: [loadFailed], source: apps/tedris/features/courses/components/my-courses-page.tsx:216 }
+  retryLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MyCoursesPage.retry }, in: [loadFailed], emits: RELOAD, source: apps/tedris/features/courses/components/my-courses-page.tsx:218 } # href="": the page's own address, so the whole page is read again
+
+  # ---- a person with no seat at all: one sentence and the way to Keşfet ----
+  emptyText: { type: text, component: Text, text: { key: MyCoursesPage.noCourses }, in: [empty], source: apps/tedris/features/courses/components/my-courses-page.tsx:231 }
+  discoverLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MyCoursesPage.goDiscover }, in: [empty], emits: OPEN_DISCOVER, source: apps/tedris/features/courses/components/my-courses-page.tsx:226 }
+
+  # ---- "Devam eden dersler": a card for each ENROLLED seat ----
+  ongoingRegion: { type: page, component: Page, role: region, name: { labelledBy: ongoingHeading }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:235 }
+  ongoingHeading: { type: text, component: Heading, role: heading, text: { key: MyCoursesPage.ongoingTitle }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:44 } # h2, id my-ongoing
+  ongoingCount: { type: text, component: Text, text: { key: MyCoursesPage.ongoingCount, params: { count: ongoingCount } }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:47 } # "{n} ders", beside the h2, not inside it (a span.mds-caption)
+  ongoingEmpty: { type: text, component: Text, text: { key: MyCoursesPage.ongoingEmpty }, in: [listed], when: "not hasCard", source: apps/tedris/features/courses/components/my-courses-page.tsx:247 }
+  cardTitle: { type: text, component: Heading, role: heading, text: { key: composed.MyCoursesPage.title, params: { title: course.title } }, in: [listed], when: hasCard, repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:103 } # h3 of the card; it holds the card's one link
+  cardLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.MyCoursesPage.title, params: { title: course.title } }, in: [listed], when: hasCard, repeat: courses.ongoing, emits: OPEN_ONGOING, source: apps/tedris/features/courses/components/my-courses-page.tsx:102 } # the card is one link: its title, with the card's ::after over the whole card
+  cardBadge: { type: text, component: Text, text: { key: MyCoursesPage.statusEnrolled }, in: [listed], when: hasCard, repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:107 } # "Devam ediyor", a brand badge
+  cardTrigger: { type: action, component: Button, role: button, intent: secondary, name: { key: CoursePage.moreActionsFor, params: { title: course.title } }, in: [listed], when: hasCard, repeat: courses.ongoing, emits: OPEN_MENU, source: apps/tedris/features/courses/components/my-courses-page.tsx:108 } # an icon only, aria-haspopup=menu; the menu it opens is tedris.course.leave's
+  cardPlace: { type: text, component: Text, text: { key: composed.MyCoursesPage.place, params: { place: course.place } }, in: [listed], when: hasCard, repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:138 }
+  cardProgress: { type: text, component: Text, role: progressbar, name: { key: MyCoursesPage.progress }, in: [listed], when: hasCard, repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:142 } # Base UI Progress, named by its visible label; aria-valuenow is the value, aria-valuetext the percent
+  cardPercent: { type: text, component: Text, text: { key: composed.MyCoursesPage.percent, params: { percent: course.percent } }, in: [listed], when: hasCard, repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:142 } # the visible value, aria-hidden (the bar's aria-valuetext says it)
+  nextLabel: { type: text, component: Text, text: { key: MyCoursesPage.nextSession }, in: [listed], when: "hasCard and nextPlanned", repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:121 } # the first words of the card's footer
+  nextTime: { type: text, component: Text, role: time, text: { key: composed.MyCoursesPage.moment, params: { moment: course.nextSession } }, in: [listed], when: "hasCard and nextPlanned", repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:125 } # a <time datetime> in the viewer's zone
+  nextWeek: { type: text, component: Text, text: { key: MyCoursesPage.week, params: { week: course.nextSession.week } }, in: [listed], when: "hasCard and nextPlanned", repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:131 }
+  noNext: { type: text, component: Text, text: { key: MyCoursesPage.noNextSession }, in: [listed], when: "hasCard and nextNone", repeat: courses.ongoing, source: apps/tedris/features/courses/components/my-courses-page.tsx:134 }
+
+  # ---- "Başvurularım": a row for each PENDING application ----
+  applicationsRegion: { type: page, component: Page, role: region, name: { labelledBy: applicationsHeading }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:264 }
+  applicationsHeading: { type: text, component: Heading, role: heading, text: { key: MyCoursesPage.applicationsTitle }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:44 } # h2, id my-applications
+  applicationsCount: { type: text, component: Text, text: { key: MyCoursesPage.applicationsCount, params: { count: applicationsCount } }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:47 } # "{n} başvuru onay bekliyor"
+  applicationsEmpty: { type: text, component: Text, text: { key: MyCoursesPage.applicationsEmpty }, in: [listed], when: "not hasRow", source: apps/tedris/features/courses/components/my-courses-page.tsx:276 }
+  applicationLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.MyCoursesPage.title, params: { title: course.title } }, in: [listed], when: hasRow, repeat: courses.applications, emits: OPEN_APPLIED, source: apps/tedris/features/courses/components/my-courses-page.tsx:163 } # a link of class mds-h4, not a heading (MYC-1)
+  applicationPlace: { type: text, component: Text, text: { key: composed.MyCoursesPage.place, params: { place: course.place } }, in: [listed], when: hasRow, repeat: courses.applications, source: apps/tedris/features/courses/components/my-courses-page.tsx:166 }
+  appliedOn: { type: text, component: Text, text: { key: MyCoursesPage.appliedOn, params: { date: course.appliedAt } }, in: [listed], when: hasRow, repeat: courses.applications, source: apps/tedris/features/courses/components/my-courses-page.tsx:307 } # the date of the enrolment's createdAt, in the viewer's zone
+  applicationBadge: { type: text, component: Text, text: { key: MyCoursesPage.statusPending }, in: [listed], when: hasRow, repeat: courses.applications, source: apps/tedris/features/courses/components/my-courses-page.tsx:292 } # a warning badge with a clock icon, so the state is not colour only
+  rowWithdraw: { type: action, component: Button, role: button, intent: secondary, name: { key: composed.MyCoursesPage.withdrawNamed, params: { title: course.title } }, text: { key: MyCoursesPage.withdraw }, in: [listed], when: hasRow, repeat: courses.applications, emits: WITHDRAW, source: apps/tedris/features/courses/components/application-row.tsx:61 } # ghost, small; asks nothing; its call is the leave call (DSC-03), which tedris.course.leave draws
+
+  # ---- "Erişiminin kaldırıldığı dersler": drawn only when the course team took a seat away ----
+  revokedRegion: { type: page, component: Page, role: region, name: { labelledBy: revokedHeading }, in: [listed], when: hasRevoked, source: apps/tedris/features/courses/components/my-courses-page.tsx:322 }
+  revokedHeading: { type: text, component: Heading, role: heading, text: { key: MyCoursesPage.revokedTitle }, in: [listed], when: hasRevoked, source: apps/tedris/features/courses/components/my-courses-page.tsx:44 } # h2, id my-revoked
+  revokedCount: { type: text, component: Text, text: { key: MyCoursesPage.revokedCount, params: { count: revokedCount } }, in: [listed], when: hasRevoked, source: apps/tedris/features/courses/components/my-courses-page.tsx:47 }
+  revokedLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.MyCoursesPage.title, params: { title: course.title } }, in: [listed], when: hasRevoked, repeat: courses.revoked, emits: OPEN_REVOKED, source: apps/tedris/features/courses/components/my-courses-page.tsx:163 } # it opens the course page, which draws the access-withdrawn card: the only way in
+  revokedPlace: { type: text, component: Text, text: { key: composed.MyCoursesPage.place, params: { place: course.place } }, in: [listed], when: hasRevoked, repeat: courses.revoked, source: apps/tedris/features/courses/components/my-courses-page.tsx:166 }
+  revokedNote: { type: text, component: Text, text: { key: CoursePage.revokedTitle }, in: [listed], when: hasRevoked, repeat: courses.revoked, source: apps/tedris/features/courses/components/my-courses-page.tsx:349 } # "Bu derse erişimin kaldırıldı."; no button, no menu, no badge
+
+  # ---- "Tamamladığın dersler": a row for each COMPLETED seat ----
+  completedRegion: { type: page, component: Page, role: region, name: { labelledBy: completedHeading }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:359 }
+  completedHeading: { type: text, component: Heading, role: heading, text: { key: MyCoursesPage.completedTitle }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:44 } # h2, id my-completed
+  completedCount: { type: text, component: Text, text: { key: MyCoursesPage.completedCount, params: { count: completedCount } }, in: [listed], source: apps/tedris/features/courses/components/my-courses-page.tsx:47 }
+  completedEmpty: { type: text, component: Text, text: { key: MyCoursesPage.completedEmpty }, in: [listed], when: "not hasCompleted", source: apps/tedris/features/courses/components/my-courses-page.tsx:371 }
+  completedLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: composed.MyCoursesPage.title, params: { title: course.title } }, in: [listed], when: hasCompleted, repeat: courses.completed, emits: OPEN_COMPLETED, source: apps/tedris/features/courses/components/my-courses-page.tsx:163 }
+  completedPlace: { type: text, component: Text, text: { key: composed.MyCoursesPage.place, params: { place: course.place } }, in: [listed], when: hasCompleted, repeat: courses.completed, source: apps/tedris/features/courses/components/my-courses-page.tsx:166 }
+  completedOn: { type: text, component: Text, text: { key: MyCoursesPage.completedOn, params: { date: course.completedAt } }, in: [listed], when: hasCompleted, repeat: courses.completed, source: apps/tedris/features/courses/components/my-courses-page.tsx:386 } # completedAt, or updatedAt when the row has none, in the viewer's zone
+  completedBadge: { type: text, component: Text, text: { key: MyCoursesPage.statusCompleted }, in: [listed], when: hasCompleted, repeat: courses.completed, source: apps/tedris/features/courses/components/my-courses-page.tsx:397 } # a success badge with a check
+  recordingsLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: MyCoursesPage.recordings }, in: [listed], when: hasCompleted, repeat: courses.completed, emits: OPEN_RECORDINGS, source: apps/tedris/features/courses/components/my-courses-page.tsx:403 } # ghost, small; every row has one with the same name, and it opens the course page, not the recordings (DSC-11)
+
+edges:
+  - { labelledBy: [ongoingRegion, ongoingHeading] }
+  - { labelledBy: [applicationsRegion, applicationsHeading] }
+  - { labelledBy: [revokedRegion, revokedHeading] }
+  - { labelledBy: [completedRegion, completedHeading] }
+  - { triggers: [calendarLink, calendar_opened] }
+  - { triggers: [discoverLink, discover_opened] }
+  - { triggers: [retryLink, reading] }
+  - { triggers: [cardLink, course_opened] }
+  - { triggers: [cardTrigger, handed_over.leave_menu] }
+  - { triggers: [rowWithdraw, handed_over.withdraw] }
+
+rules:
+  - { id: DSC-03, rule: "\"Başvuruyu geri çek\" on a row calls the server action leaveCourse (application-row.tsx:42), DELETE /courses/:id/enrollment, not withdrawEnrollment (DELETE /courses/:id/enroll). The leave route also deletes an ENROLLED row: Derslerim is read once and is not live, so when the course team approves an application while the page is open the button deletes the new seat and its progress with no confirmation, and the row looks the same as before. The transition WITHDRAW hands over to tedris.course.leave, which draws the call and its outcomes. Fix: call withdrawEnrollment and treat a 404 as 'changed meanwhile, read the page again', as the course page does (leave-course.tsx:34-41)." }
+  - { id: DSC-04, rule: "After a row is withdrawn, or a card is left, the control that had the focus is gone and no code moves the focus: it falls to the document, and the withdrawn row says nothing (no toast). Drawn by tedris.course.leave; recorded here because this page is where the keyboard user is left. Fix: focus the section's h2 (tabIndex -1) or the next row, and say it with a status." }
+  - { id: DSC-11, rule: "Every row of \"Tamamladığın dersler\" has a link \"Ders kayıtlarına git\" whose accessible name is the same on every row (a list of links reads N identical names), and its address is /courses/<id>, the course page, not its recordings tab (my-courses-page.tsx:403-409). Fix: aria-label \"Ders kayıtlarına git: {ders}\" and /courses/<id>?tab=kayitlar, which the course page already reads (course-page.tsx:113). Decision D1 of the flow." }
+  - { id: DSC-12, rule: "An ongoing card's cover is passed as the Card's `media` at size sm with no aria-hidden (my-courses-page.tsx:104), and CoverPattern draws the course's Arabic label as a <p class=\"mds-eyebrow mds-cover__label\"> for every size but xs (cover-pattern.tsx:75-85), so a screen reader reads an unexplained Arabic word before the card's title; the other three sections' covers are xs and aria-hidden. Read from the code: the seed's courses have no coverLabel, so the walk does not show it. Fix: aria-hidden=\"true\" on the cover." }
+  - { id: DSC-19, rule: "The loading state, app/my-courses/loading.tsx:7, is a <main aria-busy=\"true\"> of Skeletons with no heading and no word, so nothing tells a screen reader the page is loading (aria-busy is not announced). It is not a state of this flow's graph. Fix: a visually hidden \"Yükleniyor\" status." }
+  - { id: MYC-1, rule: "new, proposed id. A course is an h3 heading (the card's title) in \"Devam eden dersler\" and a plain link of class mds-h4 in the other three sections (my-courses-page.tsx:163), so a heading list holds only the ongoing courses and the three other sections' courses are reachable only by links or by reading. Fix: draw the titles of the rows as headings of the same level, or draw none of them as headings." }
+  - { id: focus-not-set, rule: "Derslerim sets no focus when it opens (no autoFocus and no focus() in the page or in its components; document.activeElement is body, measured), so the page node has no `initialFocus` and the graph says nothing of the focus when the page opens. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: label-in-name, rule: "The row button's visible text \"Başvuruyu geri çek\" is contained in its name \"Başvuruyu geri çek: {ders}\" (WCAG 2.5.3). Holds. The card's \"···\" button is an icon only and its name \"Diğer işlemler: {ders}\" says which course it belongs to; on the course page the same button is named \"Diğer işlemler\" alone (tedris.course.leave)." }
+  - { id: not-live, rule: "The page is read once on the server and has no live region and no refresh timer: a seat the course team approves, or a course that is completed, while it is open stays where it was drawn until the page is read again (by a reload, by a leave or a withdrawal, which revalidate it). This is what DSC-03 relies on." }

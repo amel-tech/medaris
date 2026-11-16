@@ -1,0 +1,36 @@
+# nazar.bans.courseBans, a medrese nazırı given madrasah.ban alone: the list opens and "Yasakla" is off with a sentence that is not true
+# (COURSEBANS-1).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/bans/courseBans \
+#     --bind graphs/nazar/bans/courseBans/binding.nazir.yaml --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# The seeded nazır (Seher Medrese Nazırı, account medreseNazir) holds nothing (the seed appoints her with an empty body). `setup` gives her
+# madrasah.ban, as the başmüderris does on Medrese nazırları (PUT /madrasahs/<id>/nazirs/<sub>/permissions, helpers/api.mjs --any, the
+# same call nazar.access.medreseNazirRefused uses to leave her bare), and `teardown` puts her back to nothing. With that code she opens a
+# course of her medrese by its address and reads both lists (the guard asks only madrasah.ban), but GET /courses/<id>/enrollments asks
+# course.staff_read, which only enrollment.decide, .remove and .complete confer (effective-permissions.ts:188-192,295): refused 403. The
+# page reads any roster that is not ok as unreadable and says "Dersin talebeleri okunamadı; şu an yasaklayamazsınız." beside a "Yasakla" it
+# has switched off, though the API would take her ban. From the code, not seen at the API (her grant is made here). Not verified: that the
+# nazır reaches /ders/<id> by the medrese's own scope (features/shell/opened-scope.ts: a medrese's nazır opens a course of her medrese).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.bans.courseBans
+
+scenarios:
+  rosterRefused:
+    given: { read: ok, list: none, roster: refused, banAnswer: done, answer: done, after: none }
+    as: medreseNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
+    setup:
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":["madrasah.ban"]}', --any]
+        expect: 'HTTP 200'
+      - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE, applicantG]
+        expect: '"APPLICANT_E":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cbans]
+        expect: 'course remove cbans'
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":[]}', --any]
+        expect: 'HTTP 200'
+    vars: { who: APPLICANT_E }

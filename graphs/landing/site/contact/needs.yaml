@@ -1,0 +1,130 @@
+schema: delurio-graph/0
+kind: needs
+id: landing.site.contact
+status: proposed
+summary: >-
+  What must exist for a visitor who writes to Medaris from landing.site.contact: the flow's closed product list, written on 15 Nov
+  2026 from the flow's own story, the inventory findings L1 to L4 (apps/landing, section 7) and planned.md (P-P14). Each need is
+  what the product must do, never what the page does today. Landing has no browser e2e: its checks are Vitest specs in
+  apps/landing/test that render the page or call the route handler, so `e2e:` below names one of those, and `check` is the
+  inventory's number (landing.md section 6).
+
+needs:
+  - id: message-reaches-medaris
+    need: >-
+      A visitor who sends the form reaches Medaris: the message is mailed to the contact address with the visitor as the reply
+      address, the subject names the topic and the sender, and the page says the message was sent only when the server accepted
+      it.
+    evidence:
+      - state: sending
+      - state: sent
+      - source: apps/landing/app/api/iletisim/route.ts:59
+      - source: apps/landing/components/contact-form.tsx:47
+      - test: apps/landing/test/contact-api.spec.ts
+        name: "mails the message to the contact address with the visitor as Reply-To"
+      - scenario: fromMedreseDoor
+    note: Also drawn as the assertion sent-only-after-a-200, the assertion no-unsafe-message-is-called-sent.
+
+  - id: a-medrese-owner-reaches-us-from-the-home-page
+    need: >-
+      A medrese owner who follows "Bize yazın" on the home page can write to Medaris about teaching there: the topic "Medaris’te
+      ders vermek" is on the form and reaches the mail's subject.
+    evidence:
+      - node: topicField
+      - node: topicChoice
+      - state: formPage
+      - source: apps/landing/lib/contact.ts:8
+      - source: "apps/landing/app/[locale]/page.tsx:302"
+      - test: apps/landing/test/home.spec.ts
+        name: "sets the Qur'an only in the Qur'an face, with its end mark bound to the word before it"
+      - scenario: fromMedreseDoor
+
+  - id: nothing-is-sent-from-an-incomplete-form
+    need: >-
+      A form with an empty field or an address that is not an address is not sent; each field at fault says so in words and the
+      focus goes to the first one.
+    evidence:
+      - state: formInvalid
+      - node: nameError
+      - node: emailError
+      - node: topicError
+      - node: messageError
+      - source: apps/landing/components/contact-form.tsx:39
+      - scenario: fromMedreseDoor
+    note: Also drawn as the assertion only-a-filled-form-is-sent.
+
+  - id: the-server-refuses-what-it-cannot-send
+    need: >-
+      The server refuses, with its own answer, a message that has no sender behind it (503), a field it does not accept (400,
+      naming the fields), a sender that wrote too much (429) and a mail the mail server refused (502).
+    evidence:
+      - state: sending
+      - state: formFailed
+      - source: apps/landing/app/api/iletisim/route.ts:59
+      - source: apps/landing/app/api/iletisim/route.ts:76
+      - test: apps/landing/test/contact-api.spec.ts
+        name: "answers 503 and sends nothing while no SMTP sender is configured"
+      - test: apps/landing/test/contact-api.spec.ts
+        name: "answers 503, not 500, when the sender is half configured"
+      - test: apps/landing/test/contact-api.spec.ts
+        name: "answers 429 after five messages from one sender in ten minutes"
+      - test: apps/landing/test/contact-api.spec.ts
+        name: "answers 502 when the SMTP server refuses the message"
+      - test: apps/landing/test/contact-api.spec.ts
+        name: "is null without SMTP_HOST"
+      - scenario: tooMany
+      - scenario: fromMedreseDoor
+    note: |-
+      contact-api.spec.ts contact-api#2, #3, #6, #7, #8
+      tooMany: the 429, its status compared with the domain's refusal
+      fromMedreseDoor: the 400, through the transition FILL_UNSAFE, its status compared
+
+  - id: page-says-why-it-failed
+    need: >-
+      When the server says no, the page says which of the causes it is: a field to correct (the fields marked, with the server's
+      reason), too many messages (wait, then try again) or a fault on Medaris's side (write to the address). Today every cause
+      shows one banner (L3).
+    missing: no Linear issue; findings L3
+    note: >-
+      Drawn on the state formFailed and on the node failedAlert, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: page-limits-match-the-server
+    need: >-
+      What the page accepts is what the server accepts: a name up to 120 characters, an address up to 254 that the server takes, a
+      message up to 5000, so that nothing a visitor can type fails only after it is sent (L3).
+    missing: no Linear issue; findings L3
+    note: >-
+      Drawn on the nodes nameField, emailField and messageField, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-card-is-announced-and-keeps-the-focus
+    need: >-
+      After a send the visitor hears that the message was sent and the focus is somewhere they can go on from: the status is
+      announced when it appears and the focus is on the card, not on the document (L1).
+    missing: no Linear issue; findings L1
+    note: >-
+      Drawn on the state sent and on the node sentAlert, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: errors-clear-as-they-are-fixed
+    need: A field's error line goes when the visitor fixes the field, not at the next press of "Gönder" (L2).
+    missing: no Linear issue; findings L2
+    note: >-
+      Drawn on the state formInvalid, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+
+  - id: the-form-works-without-script
+    need: The form posts to /api/iletisim itself when no script runs, and the page says what became of it (L4).
+    missing: no Linear issue; findings L4
+    note: >-
+      Drawn on the node form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out
+      what only missing needs name).
+
+  - id: waitlist-signup
+    need: >-
+      A visitor who wants to hear when Medaris opens leaves an address and confirms it from the mail they are sent (a double
+      opt-in), so that the waitlist counts real signups. The PRD of 2026-07-05 (M19-1, P-P14) says the landing form has no submit
+      handler; that is not the case any more for the contact form, and no waitlist form was found (a grep for "waitlist" in
+      apps/landing finds only its CHANGELOG). Not confirmed as still wanted (planned.md, E.3).
+    missing: no Linear issue

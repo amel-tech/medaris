@@ -1,0 +1,270 @@
+# "Bu portala erişiminiz yok" in nazar-web (/erisim-yok), read from the code of the branch (the tree of PR #394) on 15 Nov 2026.
+# Nothing here is approved. Where a line says "seen", it comes from the stack's own smoke run, which signed each persona in and
+# kept a screenshot (scratchpad/stack/smoke/nazar-<ROLE>.png); no replay of this flow has run (the owner's word: replays come at the end).
+# What was seen is the verdict page itself, as the talebe, the köşk nazımı, the Medaris nazımı and the başnazım meet it. Everything else
+# (the redirects, GET /me on an address, what the başnazım meets once a scope opens, the sign-out) is from the code and from the unit spec
+# apps/nazar/test/access.spec.tsx, and was not seen in a browser.
+#
+# What it draws: the three ways a person with no medrese or course seat reaches the page (the root address, an address of a
+# scope or of Hesap, the page's own address), what decides there (the roles read, and GET /me for the addresses that ask who the
+# person is), the verdict, the three ways out of it (Tedris, sign-out, an address typed), and the two people who are not shown
+# it: a person who holds a seat, who is sent on, and the başnazım, who is not sent here by an address and so can open a scope.
+#
+# What it does not draw is in `scope.outOfView`. The retry state a failed read draws instead of the verdict is
+# nazar.shell.errorStates; the pages a seat holder is sent to are nazar.access.landingScope; the round trip after "Çıkış yap" is
+# realm.auth.signOut, started here.
+#
+# The başnazım. "Medaris başnazımı" holds no seat and no role row (his role is the realm role SYSTEM_ADMIN, which only GET /me
+# says), so `/` and `/erisim-yok` treat him as anyone with no seat and tell him he has no access (F-E-17, F-L-8), while the
+# layout of a scope address or of Hesap asks GET /me and lets him in. The page itself never reads GET /me. Seen on the stack:
+# the verdict, with his e-mail, and "Talebe" under his name (NOACC-1).
+#
+# Findings this flow carries (ui.yaml `rules` has the same ids): F-E-17 and F-L-8 (the verdict is false for the başnazım), F-L-7
+# (his frame on Hesap has no menu), F-E-18 (the sign-out asks nothing), F-L-1, F-L-2, F-L-10, and one of its own, NOACC-1
+# (the başnazım is called "Talebe" on this page, and "Medaris başnazımı" on Hesap).
+schema: delurio-graph/0
+kind: flow
+id: nazar.access.noAccess
+status: captured
+domain: medaris.api
+ui: nazar.access.noAccess
+title: Land on the no-access page when no seat is held
+summary: >-
+  A signed-in person who holds no medrese and no course seat (a talebe, a köşk nazımı, a Medaris nazımı) opens Nazar's root,
+  the address of a scope, Hesap or the page itself, and lands on "Bu portala erişiminiz yok": one sentence that says the portal
+  is for medrese and course staff, the account they signed in with, and two buttons, "Tedris’e dön" and "Çıkış yap". The sidebar
+  holds only the brand, the theme toggle and the person, whose role line says what they hold or "Talebe". A person who does hold
+  a seat and opens the page is sent on to their scope. The başnazım, who holds no seat either, meets the same page from "/" and
+  from the page's own address, although the layout lets him open any medrese or course by its address; nothing on the page says
+  so (F-E-17).
+source: apps/nazar/features/access/no-access-page.tsx
+
+scope:
+  shows: >-
+    the roles read and the decision it leads to, the verdict page with its sidebar, its three ways out, and the two people who
+    do not stay on it
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the retry state 'Görevleriniz okunamadı' with 'Yeniden dene', which a failed read of the roles (or of GET /me for an address) draws in place of the verdict: nazar.shell.errorStates. Here it is the exit load_failed, and it is never worded as no access (app/erisim-yok/page.tsx:26)"
+    - "where a person who holds a seat is sent: their remembered or first scope, or the 404 page for a scope that is not theirs: nazar.access.landingScope; Hesap and Bildirimler with a seat: nazar.account.settings, nazar.notifications.inbox"
+    - "the round trip after 'Çıkış yap' and its busy button (aria-busy, the hidden 'Çıkış yapılıyor'): realm.auth.signOut, which this flow starts with no confirmation"
+    - "the theme toggle's own behaviour, its flipped name and the stored choice: common.shell.theme"
+    - "what the başnazım meets once a scope is open (every control, the medrese or course in the picker, remember off) and the 404 page for a medrese or a course that is not there: nazar.access.landingScope. Here it is the exit opened_by_address"
+    - "a signed-out request, which the proxy sends to sign-in before any of this runs (realm.auth.signIn), and a token tedrisat refuses, which sends the person to sign in again (realm.auth.sessionEnded)"
+    - "'Tedris’e dön' is left out when TEDRIS_URL is empty and the e-mail line when the session carries no e-mail; the local stack has both. A person who holds several platform roles has them joined in the user row"
+    - "the phone layout below 768 px (a bar with the Menü button, the brand, the page title and the theme toggle, and no bell) and the root loading skeleton that shows while the roles are read"
+
+decisions:
+  D1:
+    question: >-
+      Should the page tell the başnazım the truth? He has no seat, so "/" and "/erisim-yok" show him "Bu portala erişiminiz
+      yok" and the page offers no way on, but he opens any medrese or course by its address, with every control, and Hesap and
+      Bildirimler too (F-E-17, F-L-8).
+    recommend: >-
+      Read GET /me on /erisim-yok as the layout already does; for roles.systemAdmin say what he may do and offer a way in (an
+      address field, or a link to Nizam, where his work is), and call him "Medaris başnazımı" in the user row (NOACC-1).
+    affects: [verdict]
+  D2:
+    question: >-
+      Should the page lead a köşk nazımı or a Medaris nazımı to Nizam, where their work is? Today the only way on is "Tedris’e
+      dön", and the user row names a role the page does not act on.
+    recommend: >-
+      Yes: a "Nizam’da aç" link for a person who holds KOSK_NAZIM or MEDARIS_NAZIM, as Hesap in Tedris already does for the
+      same people (tedris.account.rolesOverview).
+    affects: [verdict]
+
+context:
+  who:
+    values: [noRole, kosk, platform, chief, staff]
+    initial: any
+    say:
+      noRole: "a talebe, or anyone else who holds no role at all: the user row says Talebe"
+      kosk: "a köşk nazımı with no medrese or course seat (a köşk role makes no seat here, it is Nizam's)"
+      platform: "a Medaris nazımı with no medrese or course seat"
+      chief: "the Medaris başnazım (the realm role SYSTEM_ADMIN, which GET /me says) who holds no seat and no role row"
+      staff: "a person who holds a medrese or a course seat: a başmüderris, a medrese nazırı, a müderris or a ders nazırı"
+  entry:
+    values: [root, here, scope, outside]
+    initial: any
+    say:
+      root: "they open the portal's root address, /"
+      here: "they open /erisim-yok itself, or follow a redirect to it"
+      scope: "they open the address of a medrese or a course (/medrese/<id>, /ders/<id>) that is not theirs, or that they hold no seat in"
+      outside: "they open an address outside any scope: Hesap (/hesap) or Bildirimler (/bildirimler)"
+  read:
+    values: [ok, assignmentsFailed, meFailed]
+    initial: any
+    say:
+      ok: "every read the page makes answers"
+      assignmentsFailed: "GET /me/assignments fails"
+      meFailed: "the roles read answers and GET /me, which an address of a scope or of Hesap asks, fails"
+  address:
+    values: [none, typed]
+    initial: none
+    say:
+      none: "the person has not typed an address on this page"
+      typed: "the person typed the address of a medrese, a course or Hesap on this page"
+
+guards:
+  holdsSeat: "who == 'staff'"
+  isChief: "who == 'chief'"
+  asksWho: "entry == 'scope' or entry == 'outside' or address == 'typed'"
+
+effects:
+  typedAddress: { set: { address: typed } }
+
+failures:
+  reading: { from: getMyAssignments, unreadable: [] }
+  askingWho: { from: getMe, unreadable: [USER_NOT_FOUND] }
+# `unreadable` stands for any answer but a refused token: a refused token (401) sends the person to sign in again and is out of
+# view. The domain lists no refusal code for GET /me/assignments; for GET /me the one it lists is USER_NOT_FOUND. The page treats a
+# network error, a 5xx and a 4xx alike: unstable_rethrow, then anything that is not a 401 is `unavailable` (features/shell/reads.ts:60-67).
+
+# The story the page tells first: a talebe opens the portal's root, lands on the verdict and goes back to Tedris.
+main:
+  given: { who: noRole, entry: root, read: ok }
+  events: [DONE, BACK_TO_TEDRIS]
+
+initial: reading
+states:
+  reading:
+    title: The roles are read
+    description: >-
+      Whatever address the person opened, the first thing the server does is read who they are and what they hold: GET
+      /me/assignments, once per request (`getPortal`, cached for the request), with the name and e-mail from the session. "/" does it
+      to choose where to send them and /erisim-yok does it again when the redirect arrives, so the root costs two reads; the layout
+      of a scope address or of Hesap does it before it asks anything else. While it runs the root loading page draws the shell in
+      skeletons (out of view). A read that fails, for any reason but a refused token, is the retry state and never a verdict.
+    source: apps/nazar/features/shell/reads.ts:44
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: { guard: "read != 'assignmentsFailed'", target: sorting }
+      FAIL.unreadable: { guard: "read == 'assignmentsFailed'", target: load_failed, say: "the retry state, not a verdict about access", source: apps/nazar/app/erisim-yok/page.tsx:26 }
+
+  sorting:
+    title: The roles decide where the person goes
+    description: >-
+      classification only, the code of three files read as one. A person who holds a scope is sent on: /erisim-yok redirects to "/"
+      (page.tsx:27), "/" redirects to the remembered or first scope (app/page.tsx:16, scope.ts:201), and a scope address they hold
+      opens (portal-layout.tsx:111). A person who holds none, asking for "/" or for /erisim-yok itself, stays on the verdict.
+      Asking for a scope address or for an address outside any scope, the layout finds no scope and asks who they are before it
+      redirects (state askingWho): that is the one place the başnazım is told apart. The typed address of a medrese, a course or
+      Hesap, from the verdict (`address`), takes the same way.
+    always:
+      - { guard: holdsSeat, target: sent_on, say: "they hold a seat: /erisim-yok sends them on to \"/\", and \"/\" to their scope", source: apps/nazar/app/erisim-yok/page.tsx:27 }
+      - { guard: asksWho, target: askingWho, say: "an address of a scope or outside any scope, and the person holds no scope: the layout asks GET /me", source: apps/nazar/features/shell/components/portal-layout.tsx:76 }
+      - { target: verdict, say: "\"/\" or /erisim-yok with no seat: the verdict page", source: apps/nazar/app/page.tsx:16 }
+    source: apps/nazar/app/erisim-yok/page.tsx:27
+
+  askingWho:
+    title: The layout asks whether the person is the başnazım
+    description: >-
+      The layout found no scope for the address (portal-layout.tsx:72) and asks GET /me whether the caller is the başnazım
+      (`isAdmin`, admin-scope.ts:24; for Hesap `adminOutsideScopes`, admin-scope.ts:87). Anyone else is redirected to /erisim-yok,
+      so a talebe who asks for a medrese's page, or for Hesap, lands on this page and not on a 404 (e2e access#3). The başnazım is not
+      redirected. For a medrese or a course he also reads it (GET /madrasahs/:id or GET /courses/:id) and draws its page in a frame
+      whose scope is that one, with the role "Medaris başnazımı", every control open, remembered nowhere; a malformed id, or one the API does not
+      have, is the 404 page (out of view). For Hesap and Bildirimler he gets the shell with no menu, no picker and no bell, and a user
+      row that is not a link (F-L-7). So he can open every scope while the verdict page, which does not ask, says he has no access (F-E-17).
+    source: apps/nazar/features/shell/admin-scope.ts:58
+    invoke: { action: getMe }
+    on:
+      DONE:
+        - { guard: "read != 'meFailed' and isChief", target: opened_by_address, say: "the başnazım opens the address", source: apps/nazar/features/shell/components/portal-layout.tsx:91 }
+        - { guard: "read != 'meFailed'", target: verdict, say: "anyone else: redirect(NO_ACCESS_PATH) when they hold no scope at all", source: apps/nazar/features/shell/components/portal-layout.tsx:107 }
+      FAIL.unreadable: { guard: "read == 'meFailed'", target: load_failed, say: "the retry state: a read that fails is no answer either way", source: apps/nazar/features/shell/components/portal-layout.tsx:78 }
+
+  verdict:
+    title: The page says "Bu portala erişiminiz yok"
+    by: human
+    goal: true
+    description: >-
+      The page draws its own frame, outside the portal's layout: a sidebar with the brand, the theme toggle and the person (no scope
+      picker, no menu, no link in the person row), and in the main area one section with an h1 "Bu portala erişiminiz yok", the sentence
+      that Nazar is the portal of medrese and course staff and that the account holds no such seat, "Giriş yaptığınız hesap:" with the
+      e-mail in a code element, and two buttons side by side: "Tedris’e dön" (a link to the Tedris root, same tab) and "Çıkış yap"
+      (a button, with an icon). The user row's role line says "Talebe" when the person holds no role, else the roles held
+      ("Köşk nazımı", "Medaris nazımı"), and the başnazım is called "Talebe" too (NOACC-1, seen). Nothing takes the focus when the page
+      opens. Findings read here: F-E-17 and F-L-8 (the verdict is false for the başnazım, and offers him nothing), NOACC-1, F-E-18 ("Çıkış
+      yap" signs out at once: nazar has a confirmation page and nothing links to it), F-L-1 (no skip link), F-L-2 (the sidebar is an unnamed
+      complementary landmark), F-L-10 (the toggle's name is the kit's default, not nazar's catalog), and focus-not-set.
+      A person who types the address of a medrese, a course or Hesap here reads again and, unless they are the başnazım, comes back to this
+      page (e2e access#3).
+    source: apps/nazar/features/access/no-access-page.tsx:17
+    on:
+      BACK_TO_TEDRIS: { target: tedris_opened, say: "they press Tedris’e dön", source: apps/nazar/features/access/no-access-page.tsx:46 }
+      SIGN_OUT:
+        target: handed_over.sign_out
+        starts: { flow: realm.auth.signOut, given: { app: "'nazar'", entry: "'directButton'" } }
+        say: "they press Çıkış yap: nazar signs out at once, with no confirmation (F-E-18); realm.auth.signOut draws what follows"
+        source: apps/nazar/features/account/components/sign-out-button.tsx:26
+      OPEN_ADDRESS: { target: reading, effect: [typedAddress], say: "they type the address of a medrese, a course or Hesap: nothing on the page leads there" }
+      NAVIGATE: { target: left, say: "they go anywhere else" }
+
+  sent_on:
+    type: final
+    title: They are sent on to their scope
+    leavesPage: true
+    description: >-
+      A person who holds a seat never stays on this page. /erisim-yok redirects to "/", which redirects to the scope they were last in
+      (the cookie nazar-scope) or their first medrese, else their first course (e2e access#4: the sidebar's menu is there and the heading
+      is not). For a scope address or Hesap the page they asked for is theirs, or the 404 page: nazar.access.landingScope,
+      nazar.account.settings.
+
+  opened_by_address:
+    type: final
+    title: The başnazım opens the address
+    leavesPage: true
+    description: >-
+      The address the başnazım typed (or was sent to) opens: a medrese or a course in a frame whose scope is that one, or Hesap and
+      Bildirimler in a shell with no menu (F-L-7). nazar.access.landingScope draws it. The person the verdict page called "Talebe" and told
+      he had no access holds every permission there (F-E-17, NOACC-1).
+
+  tedris_opened:
+    type: final
+    title: Tedris opens
+    leavesPage: true
+    description: "\"Tedris’e dön\" is a plain link to the address in TEDRIS_URL, the Tedris root, in the same tab; Tedris sends a signed-in person on to Ana sayfa (tedris.shell.home)."
+
+  handed_over.sign_out:
+    type: final
+    title: The sign-out starts
+    description: >-
+      The button posts at once: signOut() builds a hidden form and posts POST /api/auth/signout (sign-out-button.tsx:28), and the tab leaves
+      with the answer. realm.auth.signOut draws the rest, in its `directButton` case: Keycloak's end-session, the back-channel call, and
+      the browser's return to nazar, which asks for sign-in again.
+
+  load_failed:
+    type: final
+    title: A read failed, so the page cannot say
+    description: >-
+      The roles (or, for an address, GET /me) could not be read. The page draws the retry state, "Görevleriniz okunamadı" and "Yeniden
+      dene", which is nazar.shell.errorStates. It is never worded as no access: the person may well have a seat the portal could not see
+      (app/erisim-yok/page.tsx:20-22).
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - id: verdict-only-without-a-seat
+    never: "state == 'verdict' and holdsSeat"
+    say: "A person who holds a seat never stays on the no-access page: it sends them on"
+    source: apps/nazar/app/erisim-yok/page.tsx:27
+  - id: a-failed-read-is-never-the-verdict
+    never: "state == 'verdict' and read == 'assignmentsFailed'"
+    say: "When the roles cannot be read the person is shown the retry state, never 'Bu portala erişiminiz yok'"
+    source: apps/nazar/app/erisim-yok/page.tsx:26
+  - id: retry-only-after-a-failed-read
+    never: "state == 'load_failed' and read == 'ok'"
+    say: "The retry state is drawn only after a read that failed"
+    source: apps/nazar/app/erisim-yok/page.tsx:26
+  - id: only-the-chief-opens-by-address
+    never: "state == 'opened_by_address' and not isChief"
+    say: "Nobody but the başnazım gains a scope by typing its address; every one else with no seat is sent to the verdict"
+    source: apps/nazar/features/shell/admin-scope.ts:62
+  - id: a-seat-is-sent-on-only-for-staff
+    never: "state == 'sent_on' and not holdsSeat"
+    say: "A person is sent on to a scope only when they hold a seat"
+    source: apps/nazar/app/erisim-yok/page.tsx:27

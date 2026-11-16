@@ -1,0 +1,205 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.nazirs.appoint
+status: proposed
+summary: >-
+  What must exist for the başmüderris of a medrese to appoint a nazır and see who waits for a permission: the flow's product list.
+  Each need is what the product must do, from the flow's story (FLOWS.md), the inventory's findings (F-B-2, F-B-7, F-B-8, F-B-16)
+  and the flow's own (APPOINT-1 to APPOINT-6), not from what the page does today. Nothing planned in planned.md belongs to this
+  flow (P-15, P-16 and P-17 are the dismissal's and the editor's).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the orchestrator's gaps merge (nothing here was replayed; the e2e check and the unit tests named under `walked` are the only runs,
+# and the replay scenarios of binding.yaml are written and not run):
+# missing:  refused-at-the-search (none), search-only-on-purpose (none), a-search-says-what-it-did (none), ata-says-why-it-is-off (none),
+# cancel-while-pending-answers (none)
+# unwalked: already-a-nazir-is-told (a unit test, no e2e; the replay scenario `member` is written and not run),
+# barred-person-is-refused (a unit test of the wording, no e2e; the replay scenario `barred` is written and not run),
+# nobody-appoints-themselves (no test of the page; the replay scenario `herself` is written and not run),
+# directory-down-is-told (a unit test, no e2e; the local stack cannot make the directory fail, so no replay),
+# failed-appointment-keeps-the-dialog (a unit test, no e2e; the refusals other than `barred` and `self` cannot be caused locally)
+
+needs:
+  - id: find-by-exact-address
+    need: >-
+      The başmüderris finds a person by their exact e-mail address in the realm's directory, which holds people who never opened
+      the app, sees who was found by name and address before doing anything, and is told when no account has the address; nobody
+      is chosen from an unknown address.
+    evidence:
+      - state: asking
+      - state: searching
+      - state: picked
+      - node: emailField
+      - node: emailNobody
+      - node: searchingStatus
+      - node: chosenRegion
+      - node: chosenTitle
+      - node: removePerson
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:64
+      - test: apps/nazar/e2e/nazirs.e2e.ts
+        name: "nazir/05 — 'Medrese nazırı ata' finds the account by its exact e-mail address and appoints it with no permission (criterion 3)"
+      - test: apps/nazar/e2e/nazirs.e2e.ts
+        name: "nazir/05 — an address no account has says so, and nobody is appointed"
+      - test: apps/nazar/test/nazirs-dialogs.spec.tsx
+
+  - id: appoint-holding-nothing
+    need: >-
+      The person found becomes a nazır of the medrese holding no permission, and the appointment is written to the audit log; the
+      roster gets a new row marked "İzin yok", a toast says what happened and that they can do nothing until the başmüderris gives
+      them something, and the person is not given anything by being appointed.
+    evidence:
+      - state: appointing
+      - state: listed
+      - node: toastAppointed
+      - node: awaitingBadge
+      - node: appointedLine
+      - node: submit
+      - node: appointDialog
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
+      - source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:94
+      - test: apps/nazar/e2e/nazirs.e2e.ts
+        name: "nazir/05 — 'Medrese nazırı ata' finds the account by its exact e-mail address and appoints it with no permission (criterion 3)"
+      - test: apps/nazar/test/nazirs-dialogs.spec.tsx
+
+  - id: band-says-who-waits
+    need: >-
+      The page names the nazır who holds nothing yet, with who appointed them and when, or counts them when there are several, so
+      the başmüderris sees who waits for a permission; the band is there on arrival and follows an appointment at once.
+    evidence:
+      - node: bandOne
+      - node: bandOneText
+      - node: bandMany
+      - node: bandManyText
+      - node: awaitingBadge
+      - node: appointedLine
+      - source: apps/nazar/features/nazirs/nazirs.ts:199
+      - test: apps/nazar/e2e/nazirs.e2e.ts
+        name: "nazir/05 — 'Medrese nazırı ata' finds the account by its exact e-mail address and appoints it with no permission (criterion 3)"
+      - test: apps/nazar/e2e/nazirs.e2e.ts
+        name: "nazir/05 — a nazır who holds nothing has 'İzin yok', who appointed them and when, dashes, and the band names them (criteria 2, 3)"
+      - test: apps/nazar/test/nazirs.spec.ts
+    note: "nazirs#2: context: the band names one person and who appointed them (a5, a6)"
+
+  - id: permissions-follow-the-appointment
+    need: >-
+      The row of the person just appointed offers "İzin ver" at once, which opens the permission editor for them, so appointing
+      and giving is one errand and not two searches.
+    evidence:
+      - node: giveButton
+      - state: handed_over.permissions
+      - source: apps/nazar/features/nazirs/components/nazirs-table.tsx:147
+      - test: apps/nazar/e2e/nazirs.e2e.ts
+        name: "nazir/05 — the permission buttons are on the rows and the groups under the table: 'İzinleri düzenle' where something is held, 'İzin ver' where nothing is"
+      - test: apps/nazar/e2e/permissions.e2e.ts
+        name: "nazir/06 — 'İzin ver': a group and one extra permission are saved, and the row shows the group chip and 'Ayrıca 1 izin' (criteria 1, 4, 5)"
+    note: "nazirs#3: context: the button on a row that holds nothing (a2)"
+
+  - id: already-a-nazir-is-told
+    need: >-
+      A person who is a nazır of the medrese already is shown as one, with a line that says so, and cannot be appointed again; the
+      check knows who is a nazır at the moment of the click, not only at the last refresh.
+    evidence:
+      - state: pickedMember
+      - node: alreadyAlert
+      - node: submit
+      - source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:92
+      - test: apps/nazar/test/nazirs-dialogs.spec.tsx
+
+  - id: barred-person-is-refused
+    need: >-
+      A person barred from the medrese or one of its courses cannot be made a nazır of it (the post would undo the ban), and the
+      refusal says why in words the başmüderris understands; the dialog stays open.
+    evidence:
+      - state: appointing
+      - state: picked
+      - node: toastBarred
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
+      - source: apps/nazar/features/nazirs/nazirs.ts:357
+      - test: apps/nazar/test/nazirs.spec.ts
+    note: "apps/nazar/test/nazirs.spec.ts: the wording only"
+
+  - id: nobody-appoints-themselves
+    need: Nobody appoints themselves a nazır, whatever route let them in; the refusal is said in words and nothing is written.
+    evidence:
+      - state: appointing
+      - state: picked
+      - node: toastSelf
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
+      - source: apps/nazar/features/nazirs/nazirs.ts:357
+      - test: apps/nazar/test/nazirs.spec.ts
+    note: "apps/nazar/test/nazirs.spec.ts: the wording only"
+
+  - id: refused-at-the-search
+    need: >-
+      The dialog says at the search that a person cannot be appointed, when the page can know it (they are the signed-in person,
+      or a nazır already), instead of choosing them and refusing after "Ata" (APPOINT-6, decision D2); a person barred is told as
+      soon as the API can say it.
+    missing: no Linear issue; findings APPOINT-6
+    note: >-
+      Drawn on the state picked and on the nodes toastSelf and toastBarred, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: search-only-on-purpose
+    need: >-
+      The e-mail address is searched only when the başmüderris asks (Enter or an explicit button), never when the field is left or
+      the dialog is closed, because every search is written to the audit log (APPOINT-3, decision D1).
+    missing: no Linear issue; findings APPOINT-3
+    note: >-
+      Drawn on the states asking and searching, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-search-says-what-it-did
+    need: >-
+      The search tells a reader of the screen that it ran and how it ended (found, nobody, not available), says when the text
+      cannot be an address, and keeps or gives back the focus: the field is not disabled during the search and the person found is
+      announced and focused (F-B-8, F-B-16, APPOINT-4, APPOINT-5).
+    missing: no Linear issue; findings F-B-8, F-B-16, APPOINT-4
+    note: >-
+      Drawn on the states asking, searching and picked and on the nodes emailNobody, emailDown and searchingStatus, which the code
+      has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: ata-says-why-it-is-off
+    need: >-
+      "Ata" says what is missing while it cannot be pressed (find a person first), the e-mail field is marked required for a
+      reader of the screen (F-B-7, APPOINT-2), and a button that is busy is named in the catalog's words (F-B-2).
+    missing: no Linear issue; findings F-B-7, APPOINT-2, F-B-2
+    note: >-
+      Drawn on the state asking and on the nodes submit and emailField, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: cancel-while-pending-answers
+    need: >-
+      While the appointment is on its way, "Vazgeç", the close icon and Esc are marked as not available, or closing is allowed and
+      the outcome is told in the toast (APPOINT-1).
+    missing: no Linear issue; findings APPOINT-1
+    note: >-
+      Drawn on the state appointing and on the nodes cancel and appointClose, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: directory-down-is-told
+    need: >-
+      When the realm's directory does not answer, the dialog says the search cannot be made now, keeps what was typed, and lets
+      the başmüderris search again.
+    evidence:
+      - state: asking
+      - node: emailDown
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:79
+      - test: apps/nazar/test/nazirs-dialogs.spec.tsx
+
+  - id: failed-appointment-keeps-the-dialog
+    need: >-
+      An appointment the API refuses (no such account, not allowed, any other failure) leaves the dialog open with the person
+      chosen and an error toast that says what to do, so nothing typed is lost and nothing is half written.
+    evidence:
+      - state: appointing
+      - state: picked
+      - node: toastUnknown
+      - node: toastForbidden
+      - node: toastFailed
+      - source: apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:103
+      - source: apps/nazar/features/nazirs/components/appoint-nazir.tsx:109
+      - test: apps/nazar/test/nazirs-dialogs.spec.tsx

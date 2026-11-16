@@ -1,0 +1,54 @@
+# apps/teskilat, the second NestJS service of the repository: 2 handlers (inventory domain.md lines 8571-8597, "apps/teskilat"), 2 actions.
+# It is a shell: no entity, no database (AppModule imports ConfigModule, LoggerModule and RateLimitModule only), no authentication
+# and no authorization (no AuthGuard and no @Authz anywhere, so no request carries a user), no domain behaviour. Its two routes are the
+# same two routes tedrisat has (getHello and getHealth in tedrisat-people.yaml); no flow calls these two, and they are written so that
+# every handler of the repository is in the graph.
+#
+# Names: LAYOUT's, teskilatRoot and teskilatHealth. The controller methods are getHello and getHealth (and tedrisat's actions already
+# carry those two names); the swagger operationIds are getTeskilatHello and getTeskilatHealth.
+#
+# Only the address throttle can refuse either route: 429 at 3000 requests per 60 s per route and client address (invariant
+# rate-limit-before-auth; the per-user layer counts nothing here because no request carries a user). The 429 is not repeated per action.
+# Not a route and not written as an action: Swagger (apps/teskilat/src/swagger.ts) is never mounted under NODE_ENV=production, with no
+# opt-in (SWAGGER_ALLOW_IN_PRODUCTION does not unlock it), and elsewhere is mounted at SWAGGER_PATH (default /docs) only when
+# SWAGGER_ENABLED is set.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+actions:
+  teskilatRoot:
+    route: GET /
+    summary: The greeting of the teşkilat service
+    description: Answers a fixed string and logs "getHello called". It reads nothing and writes nothing.
+    needs: "nothing: no token and no guard on the controller or the method; anyone"
+    result: { status: 200, type: string, const: "Teşkilat Hizmetinden Selamun Aleyküm!" }
+    sideEffects: ["a log line, getHello called"]
+    note: >-
+      The service is apps/teskilat, port 3002 by default, not tedrisat. The same path on tedrisat is the action getHello, which answers its own
+      greeting. operationId in the app's swagger: getTeskilatHello.
+    source: apps/teskilat/src/app.controller.ts:10
+
+  teskilatHealth:
+    route: GET /health
+    summary: The health of the teşkilat service, for a load balancer probe
+    description: >-
+      It checks nothing: no database, no Keycloak, nothing downstream, so ok means only that the process answers. Every field comes from
+      the configuration factory (MDRS-129), none is a literal: the environment used to be a hardcoded development literal, so a production
+      container reported itself as a development one.
+    needs: "nothing: no token and no guard; anyone"
+    result:
+      status: 200
+      type: object
+      required: [status, timestamp, service]
+      properties:
+        status: { enum: [ok, error, degraded] } # the service always answers ok
+        timestamp: { type: string, format: date-time }
+        service: { type: string } # SERVICE_NAME, else the package name (@medaris/teskilat)
+        version: { type: string } # from package.json
+        environment: { type: string } # NODE_ENV, else development
+    sideEffects: ["a log line, Health check requested"]
+    note: >-
+      The same body as tedrisat's getHealth (HealthCheckDto of libs/common). operationId in the app's swagger: getTeskilatHealth. With
+      Swagger suppressed (production) this route still answers.
+    source: apps/teskilat/src/app.controller.ts:25

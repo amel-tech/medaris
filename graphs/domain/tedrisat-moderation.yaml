@@ -1,0 +1,1076 @@
+# The actions of the bans, the archive, the audit log, the platform policies and the passive scopes: 25 handlers of apps/tedrisat
+# (inventory/domain.md, "Area: Bans, archive (hide/restore/delete), audit, platform policies, passive scopes", lines 3798-4243).
+#
+#   bans 9           ban.controller.ts 7, madrasah-ban.controller.ts 2
+#   archive 8        archive.controller.ts 7, madrasah-archive.controller.ts 1
+#   audit log 2      audit.controller.ts
+#   platform policies 3   platform-policy.controller.ts
+#   passive scopes 3      inactive-scope.controller.ts
+#
+# No background job belongs to this area (domain.yaml lists the six; none bans, hides, audits, sets a policy or seats a passive scope).
+#
+# How the actions are written:
+#   - A name is the handler's operationId in the app's own OpenAPI, which already says the resource (createBan, listKoskArchive). One
+#     differs on purpose: listPlatformArchive is the handler `listArchive`, named for what a person asks for (`operationId` says so).
+#   - `source` is the line of the route decorator, as the inventory has it; each refusal's `source` is the line that throws it. Every anchor
+#     of this file was read against the code of the worktree: those of the inventory's controllers and services for this area were still
+#     right, the few that had moved (the restore's audit row, the enrolment policy read, the passive-scope engine rule) are re-anchored.
+#   - Not repeated in each action, because every route of the API has them: 401 HTTP_401 (no token, or a bad one: AuthGuard, no body of
+#     its own; invariant access-token-only) and 429 (the address and per-user throttles; invariant rate-limit-before-auth of domain.yaml).
+#   - Guards run before pipes and pipes before the service. So on the routes with AuthzGuard a malformed id is the guard's own 404 (or a 403)
+#     and never reaches ParseUUIDPipe, while on the routes with AuthGuard alone (bans, audit, policies, passive scopes) a malformed id or
+#     enum is 400 HTTP_400 even for a caller the service would have refused with 403.
+#   - 400 HTTP_400 is a Nest pipe's refusal (ParseUUIDPipe, ParseEnumPipe, ParseIntPipe, ArchiveTypesPipe), its body {type HTTP_ERROR, code
+#     HTTP_400}; 400 VALIDATION_ERROR is a DTO's (whitelisted, unknown properties forbidden: invariant validation-is-strict).
+#   - A BanResponse is a Ban with names added: user {id, name, email} (the talebe), koskName, courseTitle, madrasahName,
+#     extendedFromCourseTitle, bannedBy {id, name, email}, liftedBy {id, name, email} or null, viewerMayLift and viewerMayExtend. A
+#     MadrasahBanResponse is the same without viewerMayExtend and with viewerMayEscalate, viewerMayRequestPermanent and
+#     permanentRequestedAt (the createdAt of its BanPermanentRequest, or null). The reason is always in them.
+#   - No policy is written here (domain.yaml has them); the invariants of the area are at the end. Ids are prefixed ban-, archive-,
+#     audit-, platform-policy- and inactive-scope-.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+actions:
+  # ---- Bans: ban.controller.ts and madrasah-ban.controller.ts (no engine entity for a ban: BanService decides every route) ----
+  createBan:
+    summary: Bar a talebe from a course, or from the whole köşk of the course (Yasakla)
+    route: POST /courses/{courseId}/bans
+    needs: >-
+      a valid access token (AuthGuard only, no @Authz); BanService.create decides by the caller's standing at the place of the ban. Scope
+      COURSE needs one of ban.course, ban.manage_kosk, madrasah.ban at the course: its müderris, the başmüderris of its medrese and the
+      köşk's nazım by default, a ders nazır or a medrese nazır once given the code. Scope KOSK needs one of ban.manage_kosk,
+      platform.ban_scoped at the köşk: the köşk's nazım, a Medaris nazım holding platform.ban_scoped. SYSTEM_ADMIN always. A Medaris
+      nazım holding only platform.ban_scoped cannot place a course ban.
+    body:
+      type: object
+      required: [userId, scope, reason]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid, note: "the talebe; need not have an enrollment, a users row or a Keycloak account (bans.user_id is no foreign key)" }
+        scope: { enum: [COURSE, KOSK], note: "the medrese-wide scope is the nazırs' own route, createMadrasahBan" }
+        reason: { type: string, maxLength: 500, pattern: '\S', sensitivity: internal, note: "required and not blank; trimmed; read by whoever lists and lifts, never sent to the talebe" }
+    result:
+      returns: Ban
+      status: 201
+      note: "a BanResponse. For a person already barred in that scope this is the standing open ban, unchanged, and still 201: no row, no audit row, no notification."
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/ban/ban.service.ts:128, note: "no course with that id (the first thing checked)" }
+      BAN_FORBIDDEN: { status: 403, source: apps/tedrisat/src/ban/ban.service.ts:145, note: "the caller holds none of the codes at that place. Message 'You may not bar a talebe from the whole köşk' (scope KOSK) or 'You may not bar talebe from this course'; context.permission lists the codes" }
+      BAN_TARGET_INVALID: { status: 400, source: apps/tedrisat/src/ban/ban.service.ts:153, note: "userId is the caller ('You cannot bar yourself'), or (:160) the person holds a protected role in the place: for a medrese course any of MUDERRIS, DERS_NAZIR, KOSK_NAZIM, MEDARIS_NAZIM, SYSTEM_ADMIN, MEDRESE_NAZIR, MEDRESE_BASMUDERRIS, otherwise the first five (invariant ban-staff-cannot-be-barred: SYSTEM_ADMIN is never found)" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "userId not a uuid, scope not COURSE or KOSK, reason missing, blank or over 500, an unknown property" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/ban/ban.controller.ts:86, note: "courseId is not a uuid" }
+    sideEffects:
+      - "audit:ban.create, only when a row was created, details {extendedFromBanId null, userId, scope, koskId, madrasahId, courseId, extendedFromCourseId, role, reason}"
+      - "notification:COURSE_BAN_PLACED (KOSK_BAN_PLACED for scope KOSK) to every held KOSK_NAZIM of the köşk and every held MEDARIS_NAZIM, all but the actor; target the köşk, params source, koskName, courseTitle, talebeName, actorName, reason"
+      - "notification:COURSE_ACCESS_REMOVED to each person whose ENROLLED or COMPLETED seat the new ban newly bars (not one an older open ban already barred); target the course, params courseTitle and source, never the reason"
+      - "both notifications are best effort: a failure is logged and the ban stands. No mail, no Keycloak call"
+    source: apps/tedrisat/src/ban/ban.controller.ts:83
+
+  listKoskBans:
+    summary: A köşk's bans, open or lifted (Yasaklamalar)
+    route: GET /kosks/{koskId}/bans
+    needs: >-
+      a valid access token (AuthGuard only); BanService.listForKosk asks for one of ban.manage_kosk, platform.ban_scoped,
+      platform.ban_account at the köşk: the köşk's nazım, a Medaris nazım holding either platform code, SYSTEM_ADMIN.
+    query:
+      type: object
+      properties:
+        status: { enum: [ACTIVE, LIFTED], default: ACTIVE, note: "ACTIVE newest first by createdAt, LIFTED by liftedAt" }
+    result:
+      status: 200
+      type: object
+      required: [items, activeCount, liftedCount, recentCount]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string, format: uuid, references: Ban } }
+            note: "a BanResponse. COURSE and KOSK bans of the köşk; a MADRASAH ban has no köşk and never appears. viewerMayLift: the caller's standing at the row's place, with the lift codes of its scope, reaches the ban's tier. viewerMayExtend: an open COURSE ban, no open KOSK ban for the person in this köşk, and the caller may place a KOSK ban there"
+        activeCount: { type: integer, note: "open bans of the köşk, whatever the status asked" }
+        liftedCount: { type: integer }
+        recentCount: { type: integer, note: "open bans created in the last 24 hours" }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, source: apps/tedrisat/src/ban/ban.service.ts:195, note: "checked before the caller's standing, so a stranger learns whether a köşk exists" }
+      BAN_FORBIDDEN: { status: 403, source: apps/tedrisat/src/ban/ban.service.ts:201, note: "'You may not see this köşk's bans'; context.permission lists the three codes" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/ban/ban.controller.ts:105, note: "koskId is not a uuid, or status is neither ACTIVE nor LIFTED" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/ban/ban.controller.ts:102
+
+  listAllBans:
+    summary: Every ban of every köşk and medrese, open or lifted (Medaris Yasaklamalar)
+    route: GET /bans
+    needs: >-
+      a valid access token (AuthGuard only); BanService.listAll asks for one of platform.ban_scoped, platform.ban_account at the platform:
+      a Medaris nazım holding either, SYSTEM_ADMIN. platform.ban_account only reads: nothing bars an account, and no ban touches
+      Keycloak (invariant keycloak-is-read-only of domain.yaml).
+    query:
+      type: object
+      properties:
+        status: { enum: [ACTIVE, LIFTED], default: ACTIVE }
+        scope: { enum: [COURSE, KOSK, MADRASAH] }
+        q: { type: string, note: "cut to its first 100 characters; matches the person's name or e-mail, % and _ taken literally; a key repeated in the query is ignored" }
+        limit: { type: integer, default: 50, note: "clamped to 1..100, never refused for being outside it" }
+        offset: { type: integer, default: 0, note: "clamped to 0 or more" }
+    result:
+      status: 200
+      type: object
+      required: [items, total, activeCount, liftedCount, recentCount]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string, format: uuid, references: Ban } }
+            note: "a BanResponse, one page"
+        total: { type: integer, note: "how many bans match the filter in all" }
+        activeCount: { type: integer, note: "platform-wide, whatever the filter" }
+        liftedCount: { type: integer, note: "platform-wide" }
+        recentCount: { type: integer, note: "open bans created in the last 24 hours, platform-wide" }
+    refusals:
+      BAN_FORBIDDEN: { status: 403, source: apps/tedrisat/src/ban/ban.service.ts:234, note: "'Only Medaris administration sees all bans'" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/ban/ban.controller.ts:141, note: "status or scope outside its enum, limit or offset not an integer" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/ban/ban.controller.ts:135
+
+  extendBan:
+    summary: Widen a course ban to the whole köşk (Yasağı genişlet)
+    route: POST /bans/{banId}/extend
+    needs: >-
+      a valid access token (AuthGuard only); BanService.extend asks for one of ban.manage_kosk, platform.ban_scoped at the köşk of the
+      ban: the köşk's nazım, a Medaris nazım holding platform.ban_scoped, SYSTEM_ADMIN.
+    body:
+      type: object
+      required: [scope, reason]
+      additionalProperties: false
+      properties:
+        scope: { enum: [KOSK], note: "the only wider scope there is" }
+        reason: { type: string, maxLength: 500, pattern: '\S', sensitivity: internal, note: "the new ban's own reason, required and not blank" }
+    result:
+      returns: Ban
+      status: 200
+      note: "a BanResponse of the new KOSK ban, whose extendedFromCourseId is the course ban's course. The course ban stays open. A person already barred from the köşk gets that standing ban back and nothing is written"
+    refusals:
+      BAN_NOT_FOUND: { status: 404, source: apps/tedrisat/src/ban/ban.service.ts:276 }
+      BAN_ALREADY_LIFTED: { status: 409, source: apps/tedrisat/src/ban/ban.service.ts:277 }
+      BAN_TARGET_INVALID: { status: 400, source: apps/tedrisat/src/ban/ban.service.ts:279, note: "'Only a course ban can be widened': the ban's scope is not COURSE. The protected-role check of createBan is not repeated here (invariant ban-staff-cannot-be-barred)" }
+      BAN_FORBIDDEN: { status: 403, source: apps/tedrisat/src/ban/ban.service.ts:290, note: "'You may not widen a ban to the whole köşk'" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "scope not KOSK, reason blank or over 500" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/ban/ban.controller.ts:179, note: "banId is not a uuid" }
+    sideEffects:
+      - "audit:ban.extend (the action is chosen by extendedFromBanId, which is kept only in these audit details, not in a column), only when a row was created"
+      - "notification:KOSK_BAN_PLACED to the köşk's nazıms and the Medaris nazıms but the actor, and COURSE_ACCESS_REMOVED to the seats the new ban newly bars, as createBan; best effort"
+    source: apps/tedrisat/src/ban/ban.controller.ts:175
+
+  liftBan:
+    summary: Lift a ban with a reason (Yasağı kaldır)
+    route: POST /bans/{banId}/lift
+    needs: >-
+      a valid access token (AuthGuard only); BanService.lift asks for a lift code of the ban's scope at the place the ban sits (its course,
+      its köşk or its medrese) and a standing whose tier reaches the ban's bannedTier. COURSE: ban.course, ban.lift_course,
+      ban.manage_kosk or madrasah.ban. KOSK: ban.manage_kosk or platform.ban_scoped. MADRASAH: madrasah.ban or platform.ban_scoped. The
+      tier of the standing is the rank of the highest role that confers the code used (course 1, medrese 2, köşk 3, platform 4), so a
+      Medaris nazım's or the başnazım's ban is lifted by Medaris administration alone. SYSTEM_ADMIN always, at tier 4.
+    body:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string, maxLength: 500, pattern: '\S', sensitivity: internal, note: "kept with the ban and the lifter's name; required and not blank" }
+    result:
+      returns: Ban
+      status: 200
+      note: "a BanResponse with liftedAt, liftedBy and liftReason set. The enrollment is not touched: a barred talebe keeps the seat, and access returns because the ban no longer matches"
+    refusals:
+      BAN_NOT_FOUND: { status: 404, source: apps/tedrisat/src/ban/ban.service.ts:325 }
+      BAN_ALREADY_LIFTED: { status: 409, source: apps/tedrisat/src/ban/ban.service.ts:326, note: "lifted before; also (:341) lifted by someone else between the read and the write, the update matching no open row" }
+      BAN_LIFT_FORBIDDEN: { status: 403, source: apps/tedrisat/src/ban/ban.service.ts:334, note: "'Only the kademe that placed this ban, or a higher one, may lift it': no standing at the ban's place, or its tier is below the ban's; context.banId" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "reason blank, missing or over 500" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/ban/ban.controller.ts:199, note: "banId is not a uuid" }
+    sideEffects:
+      - "audit:ban.lift, details {userId, scope, koskId, madrasahId, courseId, role (the lifter's), reason}, in the same transaction as the update"
+      - "no notification: the talebe is not told"
+    source: apps/tedrisat/src/ban/ban.controller.ts:195
+
+  escalateBan:
+    summary: Widen a course ban to the whole medrese (Medreseden de yasakla)
+    route: POST /bans/{banId}/escalate
+    needs: >-
+      a valid access token (AuthGuard only); BanService.escalate asks for one of madrasah.ban, platform.ban_scoped at the medrese of the
+      ban's course: its başmüderris, a nazır given madrasah.ban, a Medaris nazım holding platform.ban_scoped, SYSTEM_ADMIN. A köşk nazım
+      and a müderris hold neither.
+    body:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string, maxLength: 500, pattern: '\S', sensitivity: internal, note: "the new ban's own reason, required and not blank" }
+    result:
+      returns: Ban
+      status: 201
+      note: "a MadrasahBanResponse of the new MADRASAH ban (madrasahId set, koskId and courseId null, extendedFromCourseId the course's). The course ban stays open. A person already barred from the medrese gets that ban back and nothing is written"
+    refusals:
+      BAN_NOT_FOUND: { status: 404, source: apps/tedrisat/src/ban/ban.service.ts:521 }
+      BAN_ALREADY_LIFTED: { status: 409, source: apps/tedrisat/src/ban/ban.service.ts:522 }
+      BAN_NOT_ESCALATABLE: { status: 409, source: apps/tedrisat/src/ban/ban.service.ts:525, note: "the ban is not a COURSE ban, or its course is in no medrese" }
+      BAN_FORBIDDEN: { status: 403, source: apps/tedrisat/src/ban/ban.service.ts:535, note: "'You may not widen a ban to the medrese'. The protected-role check of createMadrasahBan is not repeated here" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "reason blank, missing or over 500" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/ban/ban.controller.ts:221, note: "banId is not a uuid" }
+    sideEffects:
+      - "audit:ban.create (the repository's create is called with no extendedFromBanId, so this is not ban.extend), only when a row was created"
+      - "notification:COURSE_ACCESS_REMOVED to the seats the new ban newly bars; no KOSK_BAN_PLACED, a medrese-wide ban has no köşk"
+    source: apps/tedrisat/src/ban/ban.controller.ts:218
+
+  requestPermanentBan:
+    summary: Ask Medaris administration to make a ban permanent (Kalıcı yasak talebi aç)
+    route: POST /bans/{banId}/permanent-request
+    needs: >-
+      a valid access token (AuthGuard only); BanService.requestPermanent asks for madrasah.permanent_ban_request at the medrese of the
+      ban: its başmüderris, a nazır given the code, SYSTEM_ADMIN. A Medaris nazım cannot hold it: the code is granted only inside a
+      medrese.
+    body:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string, maxLength: 500, pattern: '\S', sensitivity: internal, note: "why; required and not blank" }
+    result:
+      returns: Ban
+      status: 201
+      note: "a MadrasahBanResponse of the ban, now with permanentRequestedAt (the BanPermanentRequest row just written). The ban stands as it was: nothing decides the request (invariant ban-permanent-request-is-decided)"
+    refusals:
+      BAN_NOT_FOUND: { status: 404, source: apps/tedrisat/src/ban/ban.service.ts:566 }
+      BAN_ALREADY_LIFTED: { status: 409, source: apps/tedrisat/src/ban/ban.service.ts:567 }
+      BAN_PERMANENT_REQUEST_INVALID: { status: 409, source: apps/tedrisat/src/ban/ban.service.ts:570, note: "the ban is in no medrese ('Only a ban in a medrese's course, or over the medrese, can be made permanent by the medrese'), or (:576) its bannedTier is 4 ('A ban placed by Medaris administration needs no request'); context.banId" }
+      BAN_FORBIDDEN: { status: 403, source: apps/tedrisat/src/ban/ban.service.ts:589, note: "'You may not ask for a permanent ban'" }
+      BAN_PERMANENT_REQUEST_EXISTS: { status: 409, source: apps/tedrisat/src/ban/ban.service.ts:599, note: "one request per ban (unique ban_permanent_requests.ban_id)" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "reason blank, missing or over 500" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/ban/ban.controller.ts:246, note: "banId is not a uuid" }
+    sideEffects:
+      - "audit:ban.permanent_request, details {role, reason}, in the same transaction as the ban_permanent_requests row"
+      - "no notification: Medaris administration is not told, and no route lists or answers the request"
+    source: apps/tedrisat/src/ban/ban.controller.ts:243
+
+  listMadrasahBans:
+    summary: A medrese's bans, open or lifted (Yasaklamalar)
+    route: GET /madrasahs/{id}/bans
+    needs: >-
+      access token, AuthGuard and AuthzGuard: @Authz one of madrasah.ban, platform.ban_scoped on the medrese (byExistingMadrasah): its
+      başmüderris, a nazır given madrasah.ban, a Medaris nazım holding platform.ban_scoped, SYSTEM_ADMIN. A medrese nazır with no grant
+      is refused. The service adds no check of its own.
+    query:
+      type: object
+      properties:
+        status: { enum: [ACTIVE, LIFTED], default: ACTIVE }
+        scope: { enum: [COURSE, MADRASAH], note: "KOSK is refused" }
+        courseId: { type: string, format: uuid, references: Course, note: "narrows to one course's bans" }
+    result:
+      status: 200
+      type: object
+      required: [items, activeCount, liftedCount, recentCount]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string, format: uuid, references: Ban } }
+            note: "a MadrasahBanResponse: the medrese's MADRASAH bans and the COURSE bans on its courses (hidden courses included); a köşk-wide ban is the köşk's list and never appears. viewerMayLift as in listKoskBans; viewerMayEscalate: an open COURSE ban, the caller may place a medrese ban, the person has no open medrese ban; viewerMayRequestPermanent: open, tier below 4, no request yet, the caller holds the code"
+        activeCount: { type: integer }
+        liftedCount: { type: integer }
+        recentCount: { type: integer, note: "open bans created in the last 24 hours" }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110, note: "S5: no medrese, or an id that is not a uuid (the guard answers before ParseUUIDPipe)" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "S14: the caller holds neither code on the medrese" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:81, note: "status outside its enum, scope KOSK or outside COURSE and MADRASAH, courseId not a uuid" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:70
+
+  createMadrasahBan:
+    summary: Bar a talebe from a course of the medrese, or from the whole medrese (Yasakla)
+    route: POST /madrasahs/{id}/bans
+    needs: >-
+      access token, AuthGuard and AuthzGuard: @Authz one of madrasah.ban, platform.ban_scoped on the medrese (byExistingMadrasah). Then
+      BanService.createInMadrasah asks the real code per scope: MADRASAH at the medrese needs madrasah.ban or platform.ban_scoped; COURSE
+      at the course needs ban.course, ban.manage_kosk or madrasah.ban (madrasah.ban reaches the medrese's courses). So a Medaris nazım
+      holding only platform.ban_scoped passes the route guard and is refused 403 BAN_FORBIDDEN for a course ban. SYSTEM_ADMIN always.
+      The ban is the medrese's kademe (tier 2): a köşk nazım or Medaris administration lifts it, a müderris does not.
+    body:
+      type: object
+      required: [userId, scope, reason]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid, note: "the talebe; need not have an enrollment, a users row or a Keycloak account" }
+        scope: { enum: [COURSE, MADRASAH] }
+        courseId: { type: string, format: uuid, references: Course, note: "required, and a course of this medrese, only when scope is COURSE; sent with MADRASAH it is ignored" }
+        reason: { type: string, maxLength: 500, pattern: '\S', sensitivity: internal, note: "required and not blank" }
+    result:
+      returns: Ban
+      status: 201
+      note: "a MadrasahBanResponse. For a person already barred in that scope, the standing ban, unchanged, and still 201"
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110, note: "S5" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "S14: the caller holds neither route-level code on the medrese" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/ban/ban.service.ts:461, note: "scope COURSE and the course is missing or belongs to another medrese: one answer for both" }
+      BAN_FORBIDDEN: { status: 403, source: apps/tedrisat/src/ban/ban.service.ts:476, note: "'You may not bar a talebe from the whole medrese' or 'You may not bar talebe from this course'; context.permission lists the codes" }
+      BAN_TARGET_INVALID: { status: 400, source: apps/tedrisat/src/ban/ban.service.ts:484, note: "userId is the caller, or (:488) the person holds any of RUNS_MADRASAH_ROLES in the medrese or the course ('Someone who runs this medrese or course cannot be barred from it')" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "scope KOSK or anything outside COURSE and MADRASAH, courseId missing or not a uuid for COURSE, userId not a uuid, reason blank or over 500" }
+    sideEffects:
+      - "audit:ban.create, only when a row was created"
+      - "notification:COURSE_ACCESS_REMOVED to the seats the new ban newly bars; no KOSK_BAN_PLACED or COURSE_BAN_PLACED, a medrese-wide ban has no köşk (a COURSE ban placed here does have one, and still announces nothing)"
+    source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+
+  # ---- Archive: archive.controller.ts and madrasah-archive.controller.ts (hide happens on other controllers; here the archives, restore, impact and delete for real) ----
+  listKoskArchive:
+    summary: What is hidden in a köşk
+    route: GET /kosks/{id}/archive
+    needs: >-
+      access token, AuthGuard and AuthzGuard: @Authz one of kosk.manage, platform.kosk_edit on the köşk (byExistingKosk): the köşk's
+      nazım, a Medaris nazım holding platform.kosk_edit, SYSTEM_ADMIN.
+    query:
+      type: object
+      properties:
+        type: { enum: [kosk, madrasah, course, week, session, recording, deck], note: "the köşk's own archive lists course, week, session, recording and deck, never the köşk; recording and madrasah have no rows to list" }
+        q: { type: string, note: "a fragment of the title, trimmed, case-insensitive, % and _ literal" }
+        page: { type: integer, default: 1, note: "clamped to 1 or more" }
+        limit: { type: integer, default: 10, note: "clamped to 1..50" }
+    result:
+      status: 200
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string, format: uuid, note: "the hidden item: a Course, CourseWeek, Lesson or Deck by its type" } }
+            note: "an ArchiveItemResponse: type, id, title, köşk, medrese, course, weekNumber, scheduledAt, weekCount, sessionCount, studentCount (ENROLLED only), archivedAt, archiver {id, name, role}, archivedLevel, and canRestore (the caller's level reaches the level that hid it). Newest hidden first. The courses are the köşk's and the medrese courses it hosts"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+    refusals:
+      KOSK_NOT_FOUND: { status: 404, source: apps/tedrisat/src/kosk/kosk.controller.ts:88, note: "S12: no köşk, or an id that is not a uuid (the guard answers before ParseUUIDPipe); archive.service.ts:127 asks again and cannot be reached but by a race" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "S14: the caller holds neither code on the köşk" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/archive/archive.controller.ts:108, note: "type outside the seven, page or limit not an integer" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/archive/archive.controller.ts:103
+
+  listCourseArchive:
+    summary: What is hidden in a course (its team)
+    route: GET /courses/{id}/archive
+    needs: >-
+      access token, AuthGuard and AuthzGuard: @Authz week.hide on the course (byParam COURSE): its müderris, the köşk's nazım and the
+      başmüderris of a medrese course by default, a ders nazır once given the code; SYSTEM_ADMIN. week.hide is a content code, so a
+      passive scope closes it to everyone but the holders of platform.inactive_scopes_manage and the köşk's nazım.
+    query:
+      type: object
+      properties:
+        types: { type: string, note: "a comma list from the seven archive types; only week and session are kept for a course, any other known name leaves an empty list; a name outside the seven is refused" }
+        page: { type: integer, default: 1, note: "clamped to 1 or more" }
+        limit: { type: integer, default: 10, note: "clamped to 1..50" }
+    result:
+      status: 200
+      type: object
+      required: [counts, items, total, page, limit]
+      properties:
+        counts:
+          type: object
+          properties: { all: { type: integer }, week: { type: integer }, session: { type: integer } }
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string, format: uuid, note: "a CourseWeek or a Lesson by its type" } }
+            note: "an ArchiveItemResponse with canRestore. A session is listed only while its week and the course are shown"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+    refusals:
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/authz/tedrisat-role-resolver.service.ts:397, note: "an absent course (for a caller who is not SYSTEM_ADMIN), or any course of a hidden köşk for a caller who holds neither course.hide nor platform.kosk_edit (the closure, authz.guard.ts:89). A SYSTEM_ADMIN asking for an absent course gets an empty page" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "S14: the caller does not hold week.hide on the course; an id that is not a uuid also lands here for everyone but SYSTEM_ADMIN" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/archive/archive.controller.ts:155, note: "an unknown archive type in types ('Validation failed (unknown archive type: x)'), page or limit not an integer; for SYSTEM_ADMIN also an id that is not a uuid" }
+    sideEffects:
+      - "audit:scope.passive_open, when the course is in a passive scope and the caller is one of those who may still open it (week.hide is a content code); written by the decision engine, not by the route"
+    source: apps/tedrisat/src/archive/archive.controller.ts:150
+
+  listPlatformArchive:
+    summary: What is hidden on the whole platform
+    operationId: listArchive
+    route: GET /archive
+    needs: >-
+      a valid access token (AuthGuard and AuthzGuard, the handler is @AuthzExempt); the service asks for SYSTEM_ADMIN alone. Not a Medaris
+      nazım, whatever it holds.
+    query:
+      type: object
+      properties:
+        koskId: { type: string, format: uuid, references: Kosk }
+        madrasahId: { type: string, format: uuid, references: Madrasah }
+        type: { enum: [kosk, madrasah, course, week, session, recording, deck] }
+        q: { type: string, note: "a fragment of the title, trimmed, case-insensitive" }
+        page: { type: integer, default: 1, note: "clamped to 1 or more" }
+        limit: { type: integer, default: 10, note: "clamped to 1..50" }
+    result:
+      status: 200
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string, format: uuid, note: "a Kosk, Course, CourseWeek, Lesson or Deck by its type" } }
+            note: "an ArchiveItemResponse with canRestore, over every stored type (kosk, course, week, session, deck), every köşk and medrese. A hidden medrese is not a row here"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/archive/archive.service.ts:512, note: "'Only the Medaris başnazımı may use the platform archive'" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/archive/archive.controller.ts:195, note: "koskId or madrasahId not a uuid, type outside the seven, page or limit not an integer; checked before the service, so a caller who is not SYSTEM_ADMIN with such a query gets 400, not 403" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/archive/archive.controller.ts:191
+
+  getArchiveScopes:
+    summary: The köşks and medreses that hold something hidden (the platform archive's scope filter)
+    route: GET /archive/scopes
+    needs: a valid access token (the handler is @AuthzExempt); the service asks for SYSTEM_ADMIN alone.
+    result:
+      status: 200
+      type: object
+      required: [kosks, madrasahs]
+      properties:
+        kosks: { type: array, items: { type: object, properties: { id: { type: string, format: uuid, references: Kosk }, name: { type: string } } } }
+        madrasahs: { type: array, items: { type: object, properties: { id: { type: string, format: uuid, references: Madrasah }, name: { type: string } } } }
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/archive/archive.service.ts:512 }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/archive/archive.controller.ts:228
+
+  restoreArchiveItem:
+    summary: Bring a hidden item back (Geri al)
+    route: POST /archive/{type}/{id}/restore
+    needs: >-
+      a valid access token (the handler is @AuthzExempt: which codes count depends on the item); ArchiveService.restore decides per item.
+      SYSTEM_ADMIN acts at the platform level and restores anything stored. A course, week or session: the highest rung the caller holds on
+      the course (platform.course_hide, course.hide, madrasah.course_hide; a week or session also week.hide or session.manage, and a week
+      that brings no session back also course.edit). A deck: its köşk's manager. A köşk: SYSTEM_ADMIN only (the köşk has its own restore
+      route). Then the kademe: the caller's level must reach the level that hid it (invariant archive-restore-needs-the-level-that-hid).
+    result:
+      status: 200
+      type: object
+      required: [type, id, title]
+      properties:
+        type: { enum: [kosk, course, week, session, deck] }
+        id: { type: string, format: uuid, note: "the item restored: a Kosk, Course, CourseWeek, Lesson or Deck by its type" }
+        title: { type: string }
+    refusals:
+      ARCHIVE_ITEM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/archive/archive.service.ts:408, note: "'No hidden <type> with id <id>': not hidden, missing, a type with no rows (madrasah, recording), or a week or session under a hidden parent (not listed: archive.e2e.spec.ts 'answers 404 for a session of a hidden week'); also (:338) when the row went between the read and the write" }
+      COURSE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/archive/archive.service.ts:314, note: "a course, week or session of a hidden köşk, for a caller holding neither course.hide nor platform.kosk_edit: assertOpen's closure, the same answer as for a missing course" }
+      ARCHIVE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/archive/archive.service.ts:324, note: "'You may not use this archive': the caller acts at no level on the item (a köşk for anyone but SYSTEM_ADMIN too); also (:340) a week that brings sessions back, for a caller with no session-level rung" }
+      ARCHIVE_RESTORE_LEVEL: { status: 403, source: apps/tedrisat/src/archive/archive.service.ts:342, note: "'This was hidden at the <hiddenAt> level; only that level or above brings it back (you act at the <yourLevel> level)'; context {hiddenAt, yourLevel}. The level is read under the row lock; a row with no recorded level counts as the lowest level that could have hidden it" }
+      ARCHIVE_PARENT_HIDDEN: { status: 409, source: apps/tedrisat/src/archive/archive.service.ts:344, note: "a course whose köşk or medrese is still hidden. A week or session under a hidden parent is not listed, so it answers 404 first; its own 409 is reachable only when the parent is hidden between the read and the write" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/archive/archive.controller.ts:251, note: "type outside the seven, id not a uuid" }
+    sideEffects:
+      - "audit:<type>.restore (course.restore, week.restore, session.restore, kosk.restore, deck.restore), details {title, level, courseId or koskId, fromArchive true}, in the same transaction as the update"
+      - "course, week and session: courses.version is incremented (an editor holding the old version is later refused 409 COURSE_VERSION_CONFLICT); a week also restores the sessions hidden at the same instant, not one hidden earlier"
+      - "no notification and no invitation kick: the five-minute invitation sweep reconciles"
+    source: apps/tedrisat/src/archive/archive.controller.ts:246
+
+  getArchiveImpact:
+    summary: What deleting a hidden item for real would take with it
+    route: GET /archive/{type}/{id}/impact
+    needs: a valid access token (the handler is @AuthzExempt); the service asks for SYSTEM_ADMIN alone.
+    result:
+      status: 200
+      type: object
+      required: [type, id, title, courses, weeks, sessions, students, recordings, followers, cards]
+      properties:
+        type: { enum: [kosk, course, week, session, deck] }
+        id: { type: string, format: uuid }
+        title: { type: string }
+        courses: { type: integer, note: "only for a köşk" }
+        weeks: { type: integer }
+        sessions: { type: integer }
+        students: { type: integer, note: "enrollments of the köşk's or the course's courses, any status" }
+        recordings: { type: integer, note: "always 0: the count is not computed" }
+        followers: { type: integer, note: "only for a köşk" }
+        cards: { type: integer, note: "only for a deck" }
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/archive/archive.service.ts:512 }
+      ARCHIVE_ITEM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/archive/archive.service.ts:358, note: "nothing hidden there: not hidden, missing, or a type with no rows (madrasah, recording)" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/archive/archive.controller.ts:269, note: "type outside the seven, id not a uuid; checked before the service" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/archive/archive.controller.ts:265
+
+  deleteArchiveItem:
+    summary: Delete a hidden item for real (Kalıcı olarak sil)
+    route: DELETE /archive/{type}/{id}
+    needs: a valid access token (the handler is @AuthzExempt); the service asks for SYSTEM_ADMIN alone.
+    result: { status: 204, note: "no body; irreversible" }
+    refusals:
+      ARCHIVE_FORBIDDEN: { status: 403, source: apps/tedrisat/src/archive/archive.service.ts:512 }
+      ARCHIVE_ITEM_NOT_FOUND: { status: 404, source: apps/tedrisat/src/archive/archive.service.ts:408, note: "not hidden (only a hidden item is deletable), missing, or a type with no rows (madrasah, recording); also (:372) when the purge found nothing" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/archive/archive.controller.ts:289, note: "type outside the seven, id not a uuid; checked before the service" }
+    sideEffects:
+      - "audit:<type>.delete (course.delete, kosk.delete, week.delete, session.delete, deck.delete), details {the removed counts, actorName, fromArchive true}, written with the delete in one transaction"
+      - "the item and everything under it are deleted in one transaction: a course its sessions, weeks, notes, questions, session resources, homework and files, assignments, exams, evaluations, recordings, course resources, müderris list, role assignments, partner codes and links and enrollments; a köşk all its courses, its followers, its KOSK role assignments; a week its sessions; a deck its cards, their progress and labels"
+      - "a week or a session purged also increments courses.version"
+      - "LessonInvitationService.kick(): the CANCEL mails still owed for purged sessions go out now"
+      - "StorageDeletionService.kick(): the files of the purge leave object storage"
+    source: apps/tedrisat/src/archive/archive.controller.ts:284
+
+  listMadrasahArchive:
+    summary: What is hidden in a medrese (its başmüderris)
+    route: GET /madrasahs/{id}/archive
+    needs: >-
+      access token, AuthGuard and AuthzGuard: @Authz one of madrasah.course_hide, madrasah.hide, platform.madrasah_edit,
+      madrasah.settings_edit on the medrese (byExistingMadrasah): its başmüderris, a nazır given madrasah.course_hide, a Medaris nazım
+      holding platform.madrasah_edit, whoever holds madrasah.settings_edit, SYSTEM_ADMIN.
+    query:
+      type: object
+      properties:
+        types: { type: string, note: "a comma list from course, week, session, recording; a name outside the seven archive types is refused, and kosk, madrasah and deck leave an empty list" }
+        page: { type: integer, default: 1, note: "clamped to 1 or more" }
+        limit: { type: integer, default: 10, note: "clamped to 1..50" }
+    result:
+      status: 200
+      type: object
+      required: [items, total, page, limit, madrasah, counts]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string, format: uuid, note: "a Course, CourseWeek or Lesson by its type" } }
+            note: "an ArchiveItemResponse with canRestore: the medrese's hidden courses and the weeks and sessions in them"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        madrasah:
+          type: object
+          note: "the medrese's own hide state, for its banner: it is not a row of the archive"
+          properties:
+            hidden: { type: boolean }
+            hiddenAt: { type: [string, "null"], format: date-time }
+            hiddenLevel: { type: [string, "null"], enum: [platform, kosk, madrasah, course, null] }
+            hiddenBy: { type: [object, "null"], note: "{id, name, role}" }
+            canRestore: { type: boolean, note: "the medrese ladder (madrasah.hide, platform.madrasah_edit), then the kademe" }
+        counts:
+          type: object
+          properties: { all: { type: integer }, course: { type: integer }, week: { type: integer }, session: { type: integer }, recording: { type: integer, note: "always 0: a recording is never in the archive" } }
+    refusals:
+      MADRASAH_NOT_FOUND: { status: 404, source: apps/tedrisat/src/madrasah/madrasah.controller.ts:110, note: "S5" }
+      AUTHZ_FORBIDDEN: { status: 403, source: libs/common/src/authz/authz.guard.ts:92, note: "S14: the caller holds none of the four codes on the medrese" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/archive/madrasah-archive.controller.ts:79, note: "an unknown archive type in types, page or limit not an integer" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/archive/madrasah-archive.controller.ts:74
+
+  # ---- Audit log: audit.controller.ts (read-only by construction; nothing here updates or deletes a row) ----
+  listAuditLog:
+    summary: The audit trail, newest first (Denetim kaydı)
+    route: GET /nizam/audit-log
+    needs: >-
+      a valid access token (AuthGuard only); PlatformAccessService.assert asks for platform.audit_read at the platform: SYSTEM_ADMIN, or
+      a person who holds a MEDARIS_NAZIM role and the code through a grant or a group (a lapsed role or grant counts for nothing).
+      Never a köşk nazım or a başmüderris.
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        actor: { type: string, maxLength: 200, note: "a uuid is the exact actor id; otherwise a fragment matched case-insensitively against given name, family name, e-mail and 'given family'" }
+        type: { enum: [CONTENT_READ, PRIVATE_DECK_READ, PERSONAL_DATA_READ, USER_LOOKUP, TAKEOVER, SELF_GRANT_REFUSED, GRANT, ROLE_CHANGE, POLICY_CHANGE, BAN, HIDE, HOSTING, APPEAL, PERMANENT_BAN, PERMANENT_DELETE, EXPORT, OTHER], note: "the kind of act; omitted means every kind" }
+        scope: { enum: [PLATFORM, KOSK, MADRASAH], note: "KOSK: the row has a köşk; MADRASAH: no köşk and a medrese; PLATFORM: neither. A row's köşk is its entity if kosk, else details.koskId, else the köşk of the course it is about; its medrese its entity if madrasah, else details.madrasahId" }
+        from: { type: string, format: date-time, note: "not before" }
+        to: { type: string, format: date-time, note: "not after" }
+        cursor: { type: string, maxLength: 400, note: "the nextCursor of the previous page: base64url of '<created_at text>|<id>'" }
+    result:
+      status: 200
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties: { id: { type: string, format: uuid, references: AuditLog } }
+            note: "an AuditEntryResponse: id, number (the row's seq), createdAt, actor {id, name, role: SYSTEM_ADMIN for realm holders, else the widest held role MEDARIS_NAZIM > KOSK_NAZIM > MEDRESE_BASMUDERRIS > MEDRESE_NAZIR > MUDERRIS > DERS_NAZIR, else null}, type (the kind of the action), action, details (the stored jsonb, unfiltered), scope {kind, id, name}. Newest first by (created_at, id), 50 a page"
+        nextCursor: { type: [string, "null"], note: "null on the last page" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "S14: 'Only the Medaris başnazımı and a Medaris nazımı holding platform.audit_read may do this'" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/audit/audit.service.ts:41, note: "'The cursor is not one this list gave out': a cursor that is not base64url of '<timestamp>|<uuid>'" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "type or scope outside its enum, from or to not a date, actor over 200 or cursor over 400 characters, an unknown property; checked before the service" }
+    sideEffects:
+      - "reads the realm for the holders of SYSTEM_ADMIN (KeycloakAdminService.findByRealmRole), cached for five minutes; a directory failure counts as nobody and the page still renders"
+      - "none written: a read of the log is not itself logged"
+    note: >-
+      The audit page's TAKEOVER filter matches permission.take_over and permission.drop, which no code writes, so it never matches
+      (invariant every-audit-filter-has-a-writer in domain.yaml); inactive_scope.view is filed under OTHER, not CONTENT_READ.
+    source: apps/tedrisat/src/audit/audit.controller.ts:45
+
+  exportAuditLog:
+    summary: The filtered audit records as a CSV file
+    route: GET /nizam/audit-log/export
+    needs: the same as listAuditLog (platform.audit_read, SYSTEM_ADMIN, or a Medaris nazım holding it).
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        actor: { type: string, maxLength: 200 }
+        type: { enum: [CONTENT_READ, PRIVATE_DECK_READ, PERSONAL_DATA_READ, USER_LOOKUP, TAKEOVER, SELF_GRANT_REFUSED, GRANT, ROLE_CHANGE, POLICY_CHANGE, BAN, HIDE, HOSTING, APPEAL, PERMANENT_BAN, PERMANENT_DELETE, EXPORT, OTHER] }
+        scope: { enum: [PLATFORM, KOSK, MADRASAH] }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+    result:
+      status: 200
+      type: string
+      contentMediaType: "text/csv; charset=utf-8"
+      note: "a file named denetim-kaydi.csv (Content-Disposition attachment, Cache-Control private, no-store): a UTF-8 byte-order mark, CRLF lines, the header no,time,actor,actor_role,type,action,scope_kind,scope_name, at most 10 000 rows (the newest), every cell neutralised against spreadsheet formulas. details is not exported"
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "S14, as listAuditLog" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "as listAuditLog; sending cursor is refused too, the export has no paging and unknown properties are forbidden" }
+    sideEffects:
+      - "audit:audit.export, entity audit, entityId the actor, details {rows, filter}, written after the rows are read and before the file is sent, so a failed write fails the export"
+      - "reads the realm for the holders of SYSTEM_ADMIN, as listAuditLog"
+    source: apps/tedrisat/src/audit/audit.controller.ts:64
+
+  # ---- Platform policies: platform-policy.controller.ts (no engine entity: the service decides) ----
+  listPlatformPolicies:
+    summary: The platform policies and who applies them on their own (Platform politikaları)
+    route: GET /nizam/platform-policies
+    needs: >-
+      a valid access token (AuthGuard only); PlatformAccessService.assert asks for platform.policy_edit: SYSTEM_ADMIN, or a Medaris nazım
+      holding the code.
+    result:
+      status: 200
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { enum: [ALWAYS_REQUIRE_APPROVAL, RECORDINGS_NEVER_PUBLIC], note: "ALWAYS_REQUIRE_APPROVAL is 'Kayıt her zaman onaylı', RECORDINGS_NEVER_PUBLIC is 'Ders kayıtları herkese açılamaz'; one item per key, a key never written reads enabled false" }
+              enabled: { type: boolean }
+              changedBy: { type: [object, "null"], note: "{id, name}" }
+              changedAt: { type: [string, "null"], format: date-time }
+              ownScopes: { type: array, items: { type: string }, note: "names of the köşks (not hidden ones) that apply the same rule on their own" }
+            note: "a PlatformPolicy with the köşks' names beside it"
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "S14: 'Only the Medaris başnazımı and a Medaris nazımı holding platform.policy_edit may do this'" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:50
+
+  setPlatformPolicy:
+    summary: Switch a platform policy on or off
+    route: PUT /nizam/platform-policies/{key}
+    needs: as listPlatformPolicies (platform.policy_edit, SYSTEM_ADMIN, or a Medaris nazım holding it).
+    body:
+      type: object
+      required: [enabled]
+      additionalProperties: false
+      properties:
+        enabled: { type: boolean }
+    result:
+      returns: PlatformPolicy
+      status: 200
+      note: "the refreshed list, as listPlatformPolicies. In force at once: the engine loads platform_policies on every decision, nothing is cached, and no existing enrollment or recording is rewritten"
+    refusals:
+      HTTP_401: { status: 401, note: "no token on a route that needs one, or a token that does not verify (AuthGuard, invariant access-token-only): listed because a flow draws what a signed-out caller meets", source: libs/common/src/auth-guard/auth-guard.ts:41 }
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "S14; given only after the path and the body pass their pipes" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:73, note: "key is neither ALWAYS_REQUIRE_APPROVAL nor RECORDINGS_NEVER_PUBLIC" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "enabled missing or not a boolean, an unknown property" }
+    sideEffects:
+      - "audit:platform_policy.change, entity platform_policy, entityId the all-zero uuid, details {key, enabled, was}, in the same transaction as the upsert"
+    note: >-
+      PLATFORM_POLICY_LOCKED is a refusal of the köşk, medrese and course writes that try to switch a rule off while it is on, and the
+      swagger of this route names it; this route never throws it.
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:70
+
+  listScopedPolicies:
+    summary: The köşks that apply a policy on their own (Köşk ve medrese politikaları)
+    route: GET /nizam/scoped-policies
+    needs: as listPlatformPolicies (platform.policy_edit, SYSTEM_ADMIN, or a Medaris nazım holding it).
+    result:
+      status: 200
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              scope:
+                type: object
+                properties:
+                  kind: { enum: [KOSK], note: "the DTO also allows MADRASAH, and nothing returns it (invariant platform-policy-scoped-list-covers-every-scope)" }
+                  id: { type: string, format: uuid, references: Kosk }
+                  name: { type: string }
+              key: { enum: [ALWAYS_REQUIRE_APPROVAL, RECORDINGS_NEVER_PUBLIC] }
+              openedBy: { type: [object, "null"], note: "{id, name}: who switched it on, as far as the latest kosk.policy_change audit row says; null for a köşk opened with it on" }
+              openedAt: { type: [string, "null"], format: date-time }
+            note: "each köşk that is not hidden and has its own switch on, per key"
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/platform-access/platform-access.service.ts:46, note: "S14" }
+    sideEffects: ["none: reads only"]
+    source: apps/tedrisat/src/platform-policy/platform-policy.controller.ts:88
+
+  # ---- Passive scopes: inactive-scope.controller.ts (no engine entity: the service decides, by a hand-rolled check) ----
+  getInactiveScopes:
+    summary: Köşks, medreses and courses with no manager (Pasif kapsamlar)
+    route: GET /nizam/inactive-scopes
+    needs: >-
+      a valid access token (AuthGuard only); InactiveScopeService.actor: SYSTEM_ADMIN, or a person who holds a MEDARIS_NAZIM role and
+      platform.inactive_scopes_manage through a grant or a group. This is a hand-rolled check (inactive-scope.repository.ts:217), not
+      PlatformAccessService.
+    query:
+      type: object
+      properties:
+        type: { enum: [KOSK, MADRASAH, COURSE], note: "all three when left out" }
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        properties:
+          type: { enum: [KOSK, MADRASAH, COURSE] }
+          id: { type: string, format: uuid, note: "a Kosk, Madrasah or Course by its type" }
+          name: { type: string }
+          kosk: { type: [object, "null"], note: "{id, name}: the köşk of a course; null for a köşk or a medrese" }
+          reason: { enum: [EXPIRED, REMOVED], note: "EXPIRED: no revokedAt, or the post's end date came first; REMOVED otherwise" }
+          since: { type: string, format: date-time, note: "the earlier of the last post's revokedAt and expiresAt" }
+          lastManager: { type: object, note: "{id, name, email}: from users, else the Keycloak directory, a failure of which is swallowed" }
+          lastRole: { enum: [KOSK_NAZIM, MEDRESE_BASMUDERRIS, MUDERRIS] }
+          wasImam: { type: boolean }
+          muderrisCount: { type: integer, note: "how many müderrisler a course lists; 0 for a köşk or a medrese" }
+          removedBy: { type: [object, "null"], note: "{id, name, email}; null when the post ran out" }
+          removedByRole: { type: [string, "null"], enum: [SYSTEM_ADMIN, MEDARIS_NAZIM, KOSK_NAZIM, null] }
+        note: "oldest first. Only scopes that held a manager once and hold none now; a scope that never had one, and a hidden one, are left out (invariant inactive-scope-needs-a-past-manager)"
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:68, note: "'Only the Medaris başnazımı and a Medaris nazımı who may manage passive scopes open this page'" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:68, note: "type outside KOSK, MADRASAH, COURSE. KEYCLOAK_ADMIN_UNAVAILABLE cannot reach the caller: the directory is read under allSettled and a try/catch" }
+    sideEffects:
+      - "reads the Keycloak directory for people not in users and for the holders of SYSTEM_ADMIN; failures are swallowed and the name stays null"
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:65
+
+  assignInactiveScope:
+    summary: Give a passive scope its manager (Başmüderris ata, Köşk nazımı ata, Müderris ata)
+    route: POST /nizam/inactive-scopes/{type}/{id}/assign
+    needs: as getInactiveScopes (SYSTEM_ADMIN, or a Medaris nazım holding platform.inactive_scopes_manage).
+    body:
+      type: object
+      required: [userId]
+      additionalProperties: false
+      properties:
+        userId: { type: string, format: uuid, note: "the account that takes the scope over; lower-cased; it must be in users or in the Keycloak directory" }
+        endsAt: { type: string, format: date-time, note: "'Görev bitişi': ISO 8601; left out means until taken away; in the past is refused" }
+    result:
+      status: 204
+      note: "no body. The scope is attended again and drops out of the list: a KOSK gets a KOSK_NAZIM role and loses passiveSince and passiveReason; a COURSE gets a MUDERRIS role as its imam and a course_muderris row (named after the person, next in order) unless they are listed already; a MADRASAH goes through MadrasahService.setHeadMuderris, the path of nizam's 'Başmüderris ata'"
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:68 }
+      GRANT_EXPIRY_INVALID: { status: 400, source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:244, note: "'The end date is in the past'" }
+      INACTIVE_SCOPE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:230, note: "'No passive <type> <id>': the scope has a held manager now, is hidden, or does not exist. A scope that never had a manager is NOT refused (invariant inactive-scope-assign-and-view-only-when-passive)" }
+      SELF_GRANT_REFUSED: { status: 403, source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:250, note: "S13: userId is the caller and the caller is not SYSTEM_ADMIN, whatever they hold (always: true); the audit row permission.self_grant_refused is written" }
+      KOSK_NAZIM_UNKNOWN_ACCOUNT: { status: 404, source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:274, note: "'The user directory has no account <id>': neither in users nor in the directory. The code carries the köşk's name for all three types" }
+      VALIDATION_ERROR: { status: 400, source: libs/common/src/pipes/validation.pipe.ts:40, note: "userId not a uuid, endsAt not an ISO 8601 date, an unknown property" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:88, note: "type outside KOSK, MADRASAH, COURSE, or id not a uuid; checked before the service. The head-change refusals of setHeadMuderris (DISMISS_DECISIONS_INCOMPLETE and the others) need a sitting head, and a passive medrese has none: only a race could reach them" }
+    sideEffects:
+      - "audit:inactive_scope.assign, entity the type in lower case, details {type, userId, endsAt}, for KOSK and COURSE; audit:madrasah.head_muderris.set for MADRASAH"
+      - "audit:permission.self_grant_refused when refused as a self-grant"
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:84
+
+  viewInactiveScope:
+    summary: Record that a passive scope's content was opened (İçeriği gör)
+    route: POST /nizam/inactive-scopes/{type}/{id}/view
+    needs: as getInactiveScopes (SYSTEM_ADMIN, or a Medaris nazım holding platform.inactive_scopes_manage).
+    result: { status: 204, note: "no body; the content itself is a page of the web app" }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:68 }
+      INACTIVE_SCOPE_NOT_FOUND: { status: 404, source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:230, note: "the scope has a held manager, is hidden or does not exist; nothing is written. A scope that never had a manager is not refused (invariant inactive-scope-assign-and-view-only-when-passive)" }
+      HTTP_400: { status: 400, source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:109, note: "type outside KOSK, MADRASAH, COURSE, or id not a uuid" }
+    sideEffects:
+      - "audit:inactive_scope.view, one row per call, entity the type in lower case, entityId the scope, details {type}; filed under the audit kind OTHER, not CONTENT_READ"
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.controller.ts:105
+
+invariants:
+  # ---- Bans ----
+  - id: ban-scope-columns-match-scope
+    rule: >-
+      A ban is COURSE (courseId set, koskId set), KOSK (koskId set, courseId null) or MADRASAH (madrasahId set, koskId null), and its tier
+      is 1 to 4; lifted_at is null exactly when lifted_by is.
+    source: apps/tedrisat/src/database/schema/ban.schema.ts:86
+
+  - id: ban-one-open-per-person-and-scope
+    rule: >-
+      A person has at most one open ban per course, per köşk and per medrese. Asking again returns the standing ban without a new row, an
+      audit row or a notification, and the route still answers 2xx.
+    source: apps/tedrisat/src/database/schema/ban.schema.ts:71
+
+  - id: ban-covers-by-scope
+    rule: >-
+      An open COURSE ban bars the course; a KOSK ban every course of the köşk, the medrese courses it hosts included; a MADRASAH ban every
+      course of the medrese, in any köşk.
+    source: apps/tedrisat/src/ban/ban.repository.ts:209
+
+  - id: ban-effects-on-the-talebe
+    rule: >-
+      An open ban refuses enrolling, approving a pending or revoked seat, bulk add, reopening a completed seat, a partner registration and
+      leaving or withdrawing (BAN_ACTIVE, 'the seat stays while the ban does'). The seat keeps its row but the person reads as PUBLIC on the
+      course, so they lose course.view_details, and a note, a question or homework needs an active seat and no open ban. A barred seat
+      leaves the personal schedule, the calendar feed and the profile's course list, owes the person a calendar CANCEL, shows as a ban on
+      the roster, and bars appointing them ders nazır of that course (COURSE_NAZIR_BARRED) or nazır of that medrese (MADRASAH_NAZIR_BARRED).
+    source: apps/tedrisat/src/ban/ban.service.ts:614
+
+  - id: ban-reason-is-for-those-who-lift
+    rule: >-
+      The reason of a ban is required, not blank and at most 500 characters. It is returned to those who list and lift bans and to the
+      nazıms told of a new one, and never to the talebe, who is told 'erişimin kaldırıldı' and never 'yasak'.
+    source: apps/tedrisat/src/ban/ban.service.ts:386
+
+  - id: ban-permission-by-level-and-kademe
+    rule: >-
+      Placing a ban needs the catalogue code of its level, held where the ban would sit; lifting needs the lift code of its level and a
+      tier at or above the banner's. The tier of a person is the rank of the highest role that confers the code they used, so a role with
+      no power of its own never raises the standing of one that has. Course 1, medrese 2, köşk 3, platform 4.
+    source: apps/tedrisat/src/ban/ban-codes.ts:38
+
+  - id: ban-medaris-nazim-has-no-course-ban
+    rule: >-
+      A Medaris nazım holding only platform.ban_scoped places and lifts köşk and medrese bans, never a course ban; SYSTEM_ADMIN everywhere.
+    source: apps/tedrisat/src/ban/ban-codes.ts:38
+
+  - id: ban-staff-cannot-be-barred
+    rule: >-
+      Nobody bars themselves, and nobody who runs the course or the medrese (müderris, ders nazır, köşk nazım, Medaris nazım, SYSTEM_ADMIN;
+      for a medrese course also medrese nazır and başmüderris) can be barred from it, on any route that places a ban.
+    holds: false
+    finding: ban-staff-check-gaps
+    note: >-
+      The check is made by the two create routes only (ban.service.ts:152 and :483); extendBan and escalateBan skip it, so a widened ban can
+      name a person who has since taken a post. And SYSTEM_ADMIN is in both lists but is a realm role, never a role_assignments row, which
+      is all rolesHeld reads (ban.repository.ts:273), so the başnazım can be barred from a course. Read from the code, not run.
+    source: apps/tedrisat/src/ban/ban-tier.ts:66
+
+  - id: ban-widen-keeps-the-narrow-ban
+    rule: >-
+      Widening a course ban (to the köşk, or to the medrese) adds a second, wider ban and leaves the course ban open. Only an open COURSE
+      ban is widened, and widening to the medrese needs a course in a medrese.
+    source: apps/tedrisat/src/ban/ban.service.ts:270
+
+  - id: ban-one-permanent-request-per-ban
+    rule: >-
+      A request for a ban to be made permanent exists at most once per ban, only for a ban in or over a medrese whose tier is below the
+      platform's.
+    source: apps/tedrisat/src/database/schema/ban.schema.ts:121
+
+  - id: ban-permanent-request-is-decided
+    rule: A request for a permanent ban is answered by Medaris administration, which is told of it.
+    holds: false
+    finding: MDRS-194
+    note: >-
+      ban_permanent_requests is write-only: no route lists the requests or decides them, nothing tells Medaris administration, and the ban
+      stands as it was (the code says deciding is a later phase). A medrese can ask and nothing answers.
+    source: apps/tedrisat/src/ban/ban.service.ts:560
+
+  - id: ban-is-lifted-never-deleted
+    rule: A ban is lifted (liftedAt, liftedBy, liftReason), never deleted; lifting a lifted ban is 409.
+    source: apps/tedrisat/src/ban/ban.repository.ts:339
+
+  # ---- Archive ----
+  - id: archive-restore-needs-the-level-that-hid
+    rule: >-
+      The levels are the ban ladder, course 1 < medrese 2 < köşk 3 < platform 4. A hide records the level its hider acted at, and a restore
+      needs a level at or above it. A row with no recorded level counts as the lowest level that could have hidden it: a medrese course
+      the medrese, a köşk's own course the köşk, a week, session or recording the course, a köşk or deck the köşk, a medrese the medrese.
+      The level is read under the row lock, so a re-hide at a higher level between the decision and the write is never undone by a lower one.
+    source: apps/tedrisat/src/archive/hide-level.ts:45
+
+  - id: archive-hide-ladders
+    rule: >-
+      The codes that mean 'I act at this level here' are one table, so whoever could hide something can bring it back: a köşk
+      platform.kosk_edit or kosk.manage; a medrese platform.madrasah_edit or madrasah.hide; a course platform.course_hide, course.hide or
+      madrasah.course_hide; a week or a session also week.hide or session.manage at the course's own level, and a week that brings no session
+      back also course.edit; a deck its köşk's manager. The acting level is the highest rung held; SYSTEM_ADMIN acts at the platform.
+    source: apps/tedrisat/src/archive/hide-level.ts:95
+
+  - id: archive-delete-only-hidden-and-only-by-the-basnazim
+    rule: >-
+      Only SYSTEM_ADMIN deletes for real from the archive, and only a hidden item: nothing shown is deletable, and a type with no rows
+      (madrasah, recording) is never found.
+    source: apps/tedrisat/src/archive/archive.service.ts:363
+
+  - id: archive-purge-takes-the-whole-tree
+    rule: >-
+      The real delete of a course, köşk, week, session or deck removes everything under it in one transaction, writes its audit row in the
+      same one, queues the stored files for deletion and sends the invitation CANCELs still owed.
+    source: apps/tedrisat/src/archive/archive.repository.ts:691
+
+  - id: archive-lists-only-what-has-a-shown-parent
+    rule: >-
+      A week is listed only while its course is shown, a session only while its week and its course are; the köşk's archive never lists the
+      köşk itself. So a part of a hidden whole is not restored on its own: it comes back with the whole, or answers 404.
+    source: apps/tedrisat/src/archive/archive.repository.ts:84
+
+  - id: archive-restore-week-brings-its-sessions
+    rule: >-
+      Restoring a week also restores the sessions hidden at the same instant (equal archived_at); one hidden on its own earlier stays
+      hidden. Bringing sessions back is session work (week.hide or session.manage), not course.edit alone.
+    source: apps/tedrisat/src/archive/archive.repository.ts:514
+
+  - id: archive-restore-parent-first
+    rule: >-
+      A course whose köşk or medrese is still hidden is not restored (409 ARCHIVE_PARENT_HIDDEN). A week or a session under a hidden parent
+      is not in the archive and answers 404 until the parent is back.
+    source: apps/tedrisat/src/archive/restore-course.ts:53
+
+  - id: archive-restore-bumps-the-course-version
+    rule: >-
+      Restoring a course, a week or a session increments courses.version, so an editor holding the old version is refused 409
+      COURSE_VERSION_CONFLICT.
+    source: apps/tedrisat/src/archive/archive.repository.ts:621
+
+  - id: archive-canrestore-leads-to-no-403
+    rule: >-
+      Each item an archive lists says whether the caller may bring it back (canRestore), computed with the same ladder and kademe as the
+      restore, so no button leads to a refusal.
+    source: apps/tedrisat/src/archive/archive.service.ts:418
+
+  - id: archive-types-have-storage
+    rule: >-
+      Every type the archive's filters name (kosk, madrasah, course, week, session, recording, deck) has rows to list, restore and delete.
+    holds: false
+    finding: archive-types-without-storage
+    note: >-
+      madrasah and recording have no rows in the archive's union (STORED_ARCHIVE_ITEM_TYPES holds five). Listing them is empty and restore,
+      impact and delete answer 404 ARCHIVE_ITEM_NOT_FOUND. A hidden medrese is not an archive row (the medrese archive shows it as a banner),
+      the recording count is always 0 and impact's recordings is always 0. The comment of archive-types.ts:8-11 says a medrese has no hide
+      column and there is no recording model, which is stale (madrasahs.archived_at exists, recordings are stored); the consequence is real.
+    source: apps/tedrisat/src/archive/archive-types.ts:48
+
+  # ---- Audit ----
+  - id: audit-is-append-only
+    rule: >-
+      The audit log is the platform's whole trail and is only ever appended: no route updates or deletes a row, and the controller that
+      reads it has no route that writes.
+    source: apps/tedrisat/src/audit/audit.repository.ts:104
+
+  - id: audit-read-needs-audit-read
+    rule: >-
+      Both the page and the CSV need platform.audit_read: SYSTEM_ADMIN, or a person holding a MEDARIS_NAZIM role and the code through a
+      grant or a group. A köşk nazım or a başmüderris is refused 403.
+    source: apps/tedrisat/src/audit/audit.service.ts:97
+
+  - id: audit-export-is-bounded-and-recorded
+    rule: >-
+      One export is at most 10 000 rows, a UTF-8 CSV with a byte-order mark whose cells cannot start a spreadsheet formula, and the export
+      is itself an audit row (audit.export), written before the file is sent.
+    source: apps/tedrisat/src/audit/audit.service.ts:115
+
+  - id: audit-reads-of-people-and-content-are-recorded
+    rule: >-
+      A read that exposes people or content leaves a row: course.content_read (a content read by someone who is neither an enrolled talebe
+      nor the course's müderris), course.roster_read, scope.passive_open (any open of a passive scope's content by the decision engine),
+      deck.admin_read (the başnazım reading another person's private deck), deck.private-read (nizam's preview of a requested deck),
+      kosk_application.contact_read, user.lookup and inactive_scope.view.
+    source: libs/common/src/authz/authz.service.ts:222
+
+  - id: audit-kinds-by-first-matching-rule
+    rule: >-
+      The page's 'Ne yaptı' filter groups the action keys by LIKE rules, the first match winning: CONTENT_READ, PRIVATE_DECK_READ,
+      PERSONAL_DATA_READ, USER_LOOKUP, TAKEOVER, SELF_GRANT_REFUSED, GRANT, ROLE_CHANGE, POLICY_CHANGE, BAN, HIDE, HOSTING, APPEAL,
+      PERMANENT_BAN, PERMANENT_DELETE, EXPORT; everything else is OTHER.
+    source: apps/tedrisat/src/audit/audit-types.ts:16
+
+  # ---- Platform policies ----
+  - id: platform-policy-two-keys
+    rule: >-
+      The platform has two switches, ALWAYS_REQUIRE_APPROVAL and RECORDINGS_NEVER_PUBLIC; a key with no row reads as off. A köşk keeps its
+      own two (always_require_approval, recordings_never_public) and a medrese its three (policy_always_approval, policy_no_public_recordings,
+      policy_closed_course_required).
+    source: apps/tedrisat/src/platform-policy/platform-policy.repository.ts:66
+
+  - id: platform-policy-enrolment-waits-for-approval
+    rule: >-
+      Enrolling is PENDING when any of: the course's requires_approval; its köşk is unlisted; the köşk's always_require_approval; the
+      platform's ALWAYS_REQUIRE_APPROVAL; a medrese policy that forces approval.
+    source: apps/tedrisat/src/course/course.service.ts:1552
+
+  - id: platform-policy-cannot-be-loosened-below
+    rule: >-
+      A köşk's own save cannot switch a rule off while the platform's is on (409 PLATFORM_POLICY_LOCKED; SYSTEM_ADMIN is exempt), and a
+      course cannot switch requiresApproval or isClosed off under a policy above it unless the caller holds setting.approval_off or
+      setting.course_open.
+    source: apps/tedrisat/src/kosk/kosk.service.ts:235
+
+  - id: platform-policy-recordings-never-public-reaches-the-read
+    rule: >-
+      A PUBLIC recording is shown to someone who cannot read the course's content only when the course is not closed and none of the
+      recordings policies above it (the platform's, the köşk's, the medrese's) is on.
+    holds: false
+    finding: medrese-recordings-policy-unread
+    note: >-
+      publicRecordingsAllowed checks isClosed, the platform's RECORDINGS_NEVER_PUBLIC and the köşk's recordings_never_public, and nothing
+      reads the medrese's policy_no_public_recordings: it is stored, shown, saved and fed to the engine (which closes
+      setting.recordings_public), but a PUBLIC recording of a medrese course is still shown to visitors. Read from the code, not run; the
+      medrese-settings e2e only checks the form saves it.
+    source: apps/tedrisat/src/course/course.service.ts:857
+
+  - id: platform-policy-edit-needs-policy-edit
+    rule: >-
+      Reading and changing the platform policies, and the köşks' own, need platform.policy_edit: SYSTEM_ADMIN, or a Medaris nazım holding it.
+    source: apps/tedrisat/src/platform-policy/platform-policy.service.ts:72
+
+  - id: platform-policy-change-is-live-and-audited
+    rule: >-
+      A change of a platform policy is in force at once and is written to the audit log in the same transaction (platform_policy.change,
+      with the key, the new value and the old one); no existing row is rewritten.
+    source: apps/tedrisat/src/platform-policy/platform-policy.repository.ts:104
+
+  - id: platform-policy-scoped-list-covers-every-scope
+    rule: >-
+      The page of scopes that apply a policy on their own lists every kind of scope that has one: the köşks and the medreses.
+    holds: false
+    finding: scoped-policies-lists-only-kosks
+    note: >-
+      scoped() reads kosks only and says so ('Medreses have no policy settings of their own yet'), although madrasah_settings carries three
+      policy columns and the engine enforces them; the DTO's kind allows MADRASAH and nothing returns it.
+    source: apps/tedrisat/src/platform-policy/platform-policy.repository.ts:136
+
+  # ---- Passive scopes ----
+  - id: inactive-scope-needs-a-past-manager
+    rule: >-
+      A scope is passive when it has had at least one assignment of its manager role (KOSK_NAZIM, MEDRESE_BASMUDERRIS, MUDERRIS) and
+      holds none now; one that never had a manager is new, not passive. The list leaves hidden scopes out and is oldest first. The engine
+      closes every content code of a passive scope to everyone but the holders of platform.inactive_scopes_manage and the nazım of the
+      köşk the course is held in.
+    source: apps/tedrisat/src/authz/tedrisat-authz-context.service.ts:101
+
+  - id: inactive-scope-assign-and-view-only-when-passive
+    rule: >-
+      A manager may be named, and an open of the content recorded, only for a scope that is passive now: it has had a manager and has
+      none, and it is not hidden.
+    holds: false
+    finding: inactive-scope-accepts-new-scope
+    note: >-
+      The two routes ask isInactive, which is only 'exists, not hidden, and no manager held now' (inactive-scope.repository.ts:263). It
+      does not ask for a past manager, which the list (lastPosts) and the engine (tedrisat-authz-context.service.ts:101, total above 0) do. So a new köşk, medrese
+      or course that never had a manager is not refused with INACTIVE_SCOPE_NOT_FOUND: assign seats one in it, with only
+      platform.inactive_scopes_manage, and view writes its audit row. The e2e title says 'attended, hidden, new or missing' and tests the
+      first, second and last. Read from the code, not run.
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.repository.ts:263
+
+  - id: inactive-scope-assign-seats-by-type
+    rule: >-
+      Seating a manager of a passive scope is by type: a köşk gets a KOSK_NAZIM and loses passiveSince and passiveReason; a course gets a
+      MUDERRIS who is its imam, and a course_muderris row unless they are listed; a medrese gets its başmüderris through
+      MadrasahService.setHeadMuderris, the same path as nizam's 'Başmüderris ata'. Never the caller, unless SYSTEM_ADMIN. The end date may
+      not be in the past.
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:235
+
+  - id: inactive-scope-is-for-medaris-administration
+    rule: >-
+      The three routes are for SYSTEM_ADMIN and a Medaris nazım who holds platform.inactive_scopes_manage through a grant or a group,
+      decided by a hand-rolled check in the repository and not by PlatformAccessService.
+    source: apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:58

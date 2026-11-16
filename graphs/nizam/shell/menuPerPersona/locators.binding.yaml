@@ -1,0 +1,143 @@
+# What the bindings of nizam.shell.menuPerPersona share: the events no node sends, the places each exit opens, and where role and name
+# cannot find a node of the frame. It carries no scenario and no window size, so it is not walked by itself:
+#   binding.yaml              the seeded köşk nazımı (two köşks) in a wide window (1440 x 900): the main story and the picker
+#   binding.phone.yaml        the same person on a phone (390 x 844): the bar, the sheet and the picker inside it (shell#8)
+#   binding.chief.yaml        the başnazım, wide: every entry, no picker
+#   binding.chiefPhone.yaml   the başnazım on a phone (shell#9)
+#   binding.nazimCut.yaml     the seeded Medaris nazımı, wide: Medreseler and Köşkler only (F-X-12: no Denetim kaydı)
+#   binding.nazimWide.yaml    a Medaris nazımı the walk appoints (applicantE) with the five permissions of shell#10, wide
+#   binding.nazimWidePhone.yaml   the same person on a phone (shell#10)
+#   binding.koskOne.yaml      a köşk nazımı of one köşk the walk makes (applicantF), with one unread notification, wide: the plain label
+#   binding.koskOnePhone.yaml the same person on a phone: the bell is named "Bildirimler, 1 okunmamış"
+# The window size is the binding's, not a scenario's (the replay opens every scenario's browser at `browser.width` and
+# `browser.height`), and two scenarios must not share a `given`, so the persons that add no transition of their own (they only change
+# which nodes are shown) each have a small file; `--cover transitions` walks the shortest scenario per transition, and these would
+# never be chosen beside the first.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/components/shell, libs/ui/src/mds) and is unverified until a walk. Where the walk may need a fix, a comment says so.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+events:
+  ESCAPE: [{ key: Escape }]
+  NAVIGATE: [{ goto: 'about:blank' }]
+  # The picker's rows are the köşks the person manages and the walk presses the one that is not the current: the rows' own node has no
+  # `emits`, because the first row is the current one while the person is on the landing köşk and a press on it would change nothing.
+  CHOOSE_KOSK: [{ click: { css: '[role=menuitem][href^="/kosks/"]:not([aria-current=true])' } }]
+  # WIDEN (the window passes 768 px with the sheet open) is bound to nothing: no action resizes the window (engine limit), so the step
+  # from the sheet to the sidebar is drawn and not walked (shell#8 a10-a12 are the e2e's). FAIL.unreadable of the two reads is not driven
+  # either: nothing here can make GET /me/assignments or GET /me/permissions fail.
+
+states:
+  # An exit has no nodes, so its address is all the replay can check. `*` is one path segment, `**` anything.
+  page_opened: { url: '{nizam}/kosks**' } # Köşkler (/kosks) for the başnazım and the Medaris nazımı, Dersler (/kosks/<id>/dersler) for the köşk nazımı
+  courses_opened: { url: '{nizam}/kosks/*/dersler' } # /kosks/<id> redirects a köşk nazımı to Dersler (app/kosks/[id]/page.tsx:50)
+  kosk_home_opened: { url: '{nizam}/kosks/*/ana-sayfa' }
+  home_opened: { url: '{nizam}/**' } # "/" for the başnazım and the Medaris nazımı, the köşk's home for a köşk nazımı: the walk looks at the address only loosely
+  notifications_opened: { url: '{nizam}/bildirimler' }
+  account_opened: { url: '{nizam}/hesap' }
+  left: { url: 'about:blank' }
+
+# Where role and name are not enough. A link of the menu is looked for inside the navigation "Ana menü" (the sidebar's or the sheet's:
+# one is visible at a time), because the page's own links carry the same words (Köşkler, Medreseler, Dersler). A name given as a string
+# is matched whole; one between slashes is a pattern. A number follows a link's text and a hidden word follows the number ("Bildirimler
+# 1 okunmamış"), so the two that can carry one are found by their beginning. A node whose locator is a role is not seen while a modal
+# dialog is open (the page behind it is aria-hidden), which is what the sheet states ask; a css locator is, so the page nodes of the bar
+# are looked for through their role or inside the banner.
+nodes:
+  # the page and its landmarks
+  sidebar: { css: aside }
+  mainPage: { role: main }
+  menuNav: { role: navigation, name: Ana menü }
+
+  # the brand: three <a href="/"> named by the logo's aria-label, found inside the part they are in
+  brand: { role: link, name: Medaris — Nizam, within: { css: aside } }
+  barBrand: { role: link, name: Medaris — Nizam, within: { role: banner } }
+  sheetBrand: { role: link, name: Medaris — Nizam, within: { role: dialog, name: Ana menü } }
+
+  # the phone's bar: the banner holds the button, the brand, the page's name in a <p> and the bell
+  appBar: { role: banner }
+  menuButton: { role: button, name: Menü, within: { role: banner } }
+  barTitleHome: { text: Ana sayfa, within: { role: banner } }
+  barTitleNotifications: { text: Bildirimler, within: { role: banner } }
+  bell: { role: link, name: Bildirimler, within: { role: banner } }
+  bellUnread: { role: link, name: '/^Bildirimler, \d+ okunmamış$/', within: { role: banner } }
+
+  # the sheet: a Base UI dialog named like the navigation inside it (MENU-5): the role tells them apart
+  sheet: { role: dialog, name: Ana menü }
+  sheetClose: { role: button, name: Kapat, within: { role: dialog, name: Ana menü } }
+
+  # the picker closed: a button named by its content (the hidden words, the name, the caption). The köşk's own name is the label inside
+  # it (a <bdi>), in the aside or in the sheet; the names are the seed's, and a file that makes its own köşk narrows them
+  pickerButton: { role: button, name: '/^Köşk değiştir:\s*.+\s+Köşk nazımı$/' }
+  koskLabelLanding: { css: 'aside bdi, [role=dialog] bdi', hasText: Süleymaniye Köşkü }
+  koskLabelNewest: { css: 'aside bdi, [role=dialog] bdi', hasText: Kubbealtı Köşkü }
+  pickerRole: { css: 'aside .mds-caption, [role=dialog] .mds-caption', hasText: Köşk nazımı }
+
+  # the picker opened: the popup is outside the aside, in a portal; a row is an <a role="menuitem" href="/kosks/<id>[/ana-sayfa]">
+  koskMenu: { role: menu }
+  rowKosk: { css: '[role=menuitem][href^="/kosks/"]', count: 2 } # exactly the two köşks of the seeded nazım
+  currentRowLanding: { css: '[role=menuitem][aria-current=true]', hasText: Süleymaniye Köşkü }
+  currentRowNewest: { css: '[role=menuitem][aria-current=true]', hasText: Kubbealtı Köşkü }
+
+  # the menu: group labels are plain divs, entries are links, all inside the navigation
+  sectionGeneral: { text: Genel, within: { role: navigation, name: Ana menü } }
+  sectionPlatform: { text: Platform, within: { role: navigation, name: Ana menü } }
+  sectionRequests: { text: Talepler, within: { role: navigation, name: Ana menü } }
+  sectionAudit: { text: Denetim, within: { role: navigation, name: Ana menü } }
+  sectionSettings: { text: Ayarlar, within: { role: navigation, name: Ana menü } }
+  sectionKosk: { text: Köşk, within: { role: navigation, name: Ana menü } }
+  sectionManage: { text: Yönetim, within: { role: navigation, name: Ana menü } }
+  # aria-current has no key in the format: the entry of the page is the link that carries it, and the same entry is the link that does not
+  navHome: { css: 'a:not([aria-current])', hasText: '/^Ana sayfa$/', within: { role: navigation, name: Ana menü } }
+  currentHome: { css: 'a[aria-current=page]', hasText: '/^Ana sayfa$/', within: { role: navigation, name: Ana menü } }
+  navNotifications: { css: 'a:not([aria-current])', hasText: '/^Bildirimler/', within: { role: navigation, name: Ana menü } }
+  currentNotifications: { css: 'a[aria-current=page]', hasText: '/^Bildirimler/', within: { role: navigation, name: Ana menü } }
+  navMadrasahs: { role: link, name: Medreseler, within: { role: navigation, name: Ana menü } }
+  navKosks: { css: 'a[href="/kosks"]', within: { role: navigation, name: Ana menü } }
+  navNazims: { role: link, name: Medaris nazımları, within: { role: navigation, name: Ana menü } }
+  navGrants: { role: link, name: İzin grupları, within: { role: navigation, name: Ana menü } }
+  navInactive: { role: link, name: Pasif kapsamlar, within: { role: navigation, name: Ana menü } }
+  navKoskApplications: { role: link, name: Köşk başvuruları, within: { role: navigation, name: Ana menü } }
+  navDeckRequests: { role: link, name: Deste yayın istekleri, within: { role: navigation, name: Ana menü } }
+  navAppeals: { role: link, name: İtirazlar, within: { role: navigation, name: Ana menü } }
+  navPermanentBans: { role: link, name: Kalıcı yasak talepleri, within: { role: navigation, name: Ana menü } }
+  # Yasaklamalar and Arşiv are in the platform menu and in the köşk menu under the same words, so each is told apart by its address
+  navBans: { css: 'a[href="/yasaklamalar"]', within: { role: navigation, name: Ana menü } }
+  navAuditLog: { role: link, name: Denetim kaydı, within: { role: navigation, name: Ana menü } }
+  navArchive: { css: 'a[href="/arsiv"]', within: { role: navigation, name: Ana menü } }
+  navYoutube: { role: link, name: YouTube bağlantısı, within: { role: navigation, name: Ana menü } }
+  navPlatformSettings: { role: link, name: Platform ayarları, within: { role: navigation, name: Ana menü } }
+  navPartners: { role: link, name: Ortak uygulamalar, within: { role: navigation, name: Ana menü } }
+  navCourses: { role: link, name: Dersler, within: { role: navigation, name: Ana menü } }
+  navApplications: { css: 'a[href^="/kosks/"][href$="/basvurular"]', within: { role: navigation, name: Ana menü } } # carries the number after its text
+  navCourseRequests: { role: link, name: Ders talepleri, within: { role: navigation, name: Ana menü } }
+  navKoskDecks: { role: link, name: Köşk desteleri, within: { role: navigation, name: Ana menü } }
+  navKoskBans: { css: 'a[href^="/kosks/"][href$="/yasaklamalar"]', within: { role: navigation, name: Ana menü } }
+  navKoskArchive: { css: 'a[href^="/kosks/"][href$="/arsiv"]', within: { role: navigation, name: Ana menü } }
+  navPermissions: { role: link, name: İzinler, within: { role: navigation, name: Ana menü } }
+  navKoskSettings: { role: link, name: Köşk ayarları, within: { role: navigation, name: Ana menü } }
+
+  # the numbers: a count in a span and a visually hidden word after it. The digits are what the walk's data makes them: the seeded
+  # köşk Süleymaniye has the seed's one waiting application (TALEBE_MALE's, which no walk touches), and Kubbealtı has the two the walk
+  # makes (menuA, applicantC and applicantD); the köşk nazımı's landing köşk is Süleymaniye (his oldest role), the newest is Kubbealtı
+  unreadBadge: { css: '.mds-nav-item__count', hasText: '/^1\s*okunmamış$/', within: { role: navigation, name: Ana menü } }
+  pendingLanding: { css: 'a[href^="/kosks/"][href$="/basvurular"] .mds-nav-item__count', hasText: '/^1\s*bekleyen$/', within: { role: navigation, name: Ana menü } }
+  pendingNewest: { css: 'a[href^="/kosks/"][href$="/basvurular"] .mds-nav-item__count', hasText: '/^2\s*bekleyen$/', within: { role: navigation, name: Ana menü } }
+
+  # the person's row: a link whose name is the name, the role line and a hidden ", Hesap"; the role line is its own span
+  personRow: { css: 'a.mds-nav-user' }
+  roleChief: { css: 'a.mds-nav-user .mds-nav-user__role', hasText: Medaris başnazımı }
+  roleNazim: { css: 'a.mds-nav-user .mds-nav-user__role', hasText: Medaris nazımı }
+  roleKosk: { css: 'a.mds-nav-user .mds-nav-user__role', hasText: Köşk nazımı }
+
+  # what is in no state: under --absent the replay looks for it in the sidebar and in the sheet and must find none. "Çıkış yap" is looked
+  # for as the e2e does (shell#8: no text /çıkış/i in the sheet), here in the aside too
+  signOut: { css: 'aside, [role=dialog]', hasText: '/[Çç]ıkış/' }
+  languageMenu: { role: button, name: Dil }
+  navSessionsAll: { role: link, name: Celseler, within: { role: navigation, name: Ana menü } }
+  navStudentsAll: { role: link, name: Talebeler, within: { role: navigation, name: Ana menü } }
+  navEnrollmentsAll: { role: link, name: Ders kayıtları, within: { role: navigation, name: Ana menü } }

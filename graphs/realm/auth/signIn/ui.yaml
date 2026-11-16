@@ -1,0 +1,55 @@
+# The one screen of realm.auth.signIn: Keycloak's login.ftl on the Medaris theme (apps/keycloak-theme/src/login/pages/Login.tsx,
+# the form in libs/ui/src/giris/login-form.tsx, the card in auth-card.tsx), as the three web apps' clients meet it. Its words
+# are the theme's tr messages, copied with their keys from apps/keycloak-theme/src/login/i18n.ts (the `tr` object); the one
+# exception is invalidUserMessage, Keycloak's own message for a wrong user name or password, which the theme does not override
+# (keycloakify 11.16.0, messages_defaultSet/tr.js:143). The app's own /auth/signin page (its redirecting line, its button, its
+# error box) has the apps' words and is drawn by the navigation graphs; this ui draws none of it.
+# The page is drawn by React in the browser from window.kcContext, so it needs JavaScript (no `script` on the page).
+# `submitting` draws only what changes while the form is on its way, the busy button and its status line: the rest of the
+# card stays as it was, and is not drawn again there.
+schema: delurio-graph/0
+kind: ui
+id: realm.auth.signIn
+flow: realm.auth.signIn
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+
+nodes:
+  loginPage: { type: page, component: Page, role: main, name: { labelledBy: loginTitle }, in: [loginPage, loginPageError], source: libs/ui/src/giris/auth-card.tsx:41 }
+  logoTedris: { type: text, component: Text, role: img, name: { literal: "Medaris — Tedris" }, in: [loginPage, loginPageError], when: "app == 'tedris'", source: libs/ui/src/mds/logo.tsx:52 } # the client id names the app (app-of-client.ts:9)
+  logoNizam: { type: text, component: Text, role: img, name: { literal: "Medaris — Nizam" }, in: [loginPage, loginPageError], when: "app == 'nizam'", source: libs/ui/src/mds/logo.tsx:52 }
+  logoNazar: { type: text, component: Text, role: img, name: { literal: "Medaris — Nazar" }, in: [loginPage, loginPageError], when: "app == 'nazar'", source: libs/ui/src/mds/logo.tsx:52 }
+  loginTitle: { type: text, component: Heading, role: heading, text: { key: loginAccountTitle }, in: [loginPage, loginPageError], source: libs/ui/src/giris/auth-card.tsx:54 } # the one h1, id kc-page-title
+  loginSubtitle: { type: text, component: Text, text: { key: loginAccountSubtitle }, in: [loginPage, loginPageError], source: apps/keycloak-theme/src/login/pages/Login.tsx:67 }
+  credentialAlert: { type: alert, component: Alert, role: alert, text: { key: invalidUserMessage }, in: [loginPageError], source: apps/keycloak-theme/src/login/pages/Login.tsx:42 } # Keycloak's text; one alert, for both fields
+  requiredNote: { type: text, component: Text, text: { key: requiredFields }, in: [loginPage, loginPageError], source: libs/ui/src/giris/login-form.tsx:76 }
+  username: { type: field, component: TextField, role: textbox, text: { key: usernameOrEmail }, value: { literal: "" }, in: [loginPage], source: libs/ui/src/giris/login-form.tsx:79 } # dir=ltr, autocomplete=username, required
+  usernameKept: { type: field, component: TextField, role: textbox, text: { key: usernameOrEmail }, in: [loginPageError], source: libs/ui/src/giris/login-form.tsx:90 } # holds what was typed (login.username), aria-invalid after a wrong password (login.username), aria-invalid after a wrong password
+  password: { type: field, component: TextField, role: textbox, text: { key: password }, in: [loginPage, loginPageError], source: libs/ui/src/giris/login-form.tsx:97 } # type=password, always empty when the page is drawn, aria-invalid after a wrong password
+  showPassword: { type: action, component: Button, role: button, name: { key: showPassword }, in: [loginPage, loginPageError], source: libs/ui/src/giris/password-field.tsx:130 } # keeps one name; aria-pressed and the input's type change, which this graph cannot say
+  forgotPassword: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: doForgotPassword }, in: [loginPage, loginPageError], emits: FORGOT_PASSWORD, source: libs/ui/src/giris/login-form.tsx:105 }
+  rememberMe: { type: action, component: Button, role: checkbox, text: { key: rememberMe }, checked: remember, in: [loginPage, loginPageError], emits: TOGGLE_REMEMBER_ME, source: libs/ui/src/giris/login-form.tsx:113 }
+  signIn: { type: action, component: Button, role: button, intent: confirm, text: { key: doLogIn }, in: [loginPage], emits: SUBMIT, source: libs/ui/src/giris/login-form.tsx:124 }
+  signInAgain: { type: action, component: Button, role: button, intent: confirm, text: { key: doLogIn }, in: [loginPageError], emits: SUBMIT, source: libs/ui/src/giris/login-form.tsx:124 }
+  signInBusy: { type: action, component: Button, role: button, text: { key: doLogIn }, in: [submitting], disabledIn: [submitting], source: libs/ui/src/mds/button.tsx:139 } # aria-busy and aria-disabled, never disabled
+  busyStatus: { type: status, component: Status, role: status, text: { key: loginSubmitting }, in: [submitting], source: libs/ui/src/mds/button.tsx:113 } # a visually hidden <output> beside the button
+  noAccount: { type: text, component: Text, text: { key: noAccount }, in: [loginPage, loginPageError], source: apps/keycloak-theme/src/login/pages/Login.tsx:71 } # under a rule, only when the realm allows registration
+  register: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: doRegister }, in: [loginPage, loginPageError], emits: REGISTER, source: apps/keycloak-theme/src/login/pages/Login.tsx:72 } # #kc-registration, href carries kc_locale
+
+edges:
+  - { labelledBy: [loginPage, loginTitle] }
+  - { triggers: [signIn, submitting] }
+  - { triggers: [signInAgain, submitting] }
+  - { triggers: [forgotPassword, handed_over.forgot_password] }
+  - { triggers: [register, handed_over.register] }
+
+rules:
+  - { id: K3, rule: "login.ftl gives no control the initial focus (no autoFocus on the user name field, libs/ui/src/giris/login-form.tsx:78-95), so a keyboard user starts at the top of the document; after a wrong password the page is drawn anew and nothing moves the focus to the alert or to the first invalid field either. login-reset-password.ftl, by contrast, does autofocus. Fix: autoFocus the first invalid field, else the user name." }
+  - { id: K2, rule: "Every Keycloak page has the same tab title, Keycloak's 'Medaris adresinde oturum açın' (Template.tsx:57, no page passes documentTitle); the login, register, reset, verify-e-mail, error, logout and consent pages cannot be told apart by title (WCAG 2.4.2). Not a node: the graph cannot draw a title." }
+  - { id: K12, rule: "No language control on any Keycloak page: the language is what the app sent (ui_locales and kc_locale, tr from all three apps) or Keycloak's cookie. A person who lands on the form directly cannot change it." }
+  - { id: SHL-02, rule: "tedris /auth/signin (the app's page before this form, drawn by tedris.nav, not here): the redirecting state has a status line and a button but no heading (auth-entry.tsx:111-123)." }
+  - { id: F-P0-2, rule: "nizam /auth/signin: a bare section with no main landmark (features/auth/auth-entry.tsx:90,111)." }
+  - { id: SHL-01, rule: "tedris, nazar (F-E-23): the app's /auth/signin has the app's name as its tab title (no generateMetadata), the same as every other page without one." }
+  - { id: no-javascript, rule: "The form is drawn by React in the browser from window.kcContext; with JavaScript off the page is empty (src/main.tsx:17-24). Once drawn, the form is native (method=post), and the browser's own required check stops an empty submission." }
+  - { id: aria-pressed-and-type, rule: "The reveal button keeps one name and toggles aria-pressed; the input's type switches between password and text (giris.e2e#4). Neither has a word in the graph." }

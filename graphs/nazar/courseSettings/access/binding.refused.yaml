@@ -1,0 +1,144 @@
+# nazar.courseSettings.access, the saves the API refuses and the pages that are out of date, on the local stack. Same data as binding.yaml
+# (binding.common.yaml). Each walk opens the page as the hoca of a course of the walk's own (as a ders nazırı for `forbidden`), presses what its world
+# presses, and then something is done to the course behind her page, so that Kaydet is answered with a refusal. `states.dirty.before` is the something: it
+# runs each time the walk reaches `dirty` (access-data.mjs `interfere`, which does it once and says `already` after), after the first press and before
+# Kaydet. `sendingSample` and `sendingCourse` have no `call` here, so the replay passes through them: a server action answers 200 whatever the API said,
+# and the busy screen is checked in binding.yaml.
+#
+#   staleValues        e2e course-settings#3: someone saves the sample ("Celse 2") after the page was read; the hoca chooses "Berlin" and "Hafta 1 · Celse 1";
+#                      the first write is refused (409), nothing is written, the form is built again with "Hafta 1 · Celse 2" and "İstanbul", and she
+#                      chooses "Örnek ders yok" and saves. (The e2e makes the other save in a second tab, with two saves of its own; here the helper
+#                      makes it through the API, once.)
+#   staleVersion       someone saves the course with no change of value (the version moves); the hoca chooses "Berlin" and the first session; the first
+#                      write is refused, the page is read again, and the same Kaydet is pressed once more and goes through. Not in the e2e.
+#   policyLate         the course asks for approval; the medrese's "Kayıt her zaman onaylı" comes on while the page is open; she unticks the box: 409.
+#   policyAfterSample  the same, and she chooses the first session as well: the sample lands, the course's fields are refused, the page is read again
+#                      (CSA-1: the toast says nothing was changed, and the pressed box is gone).
+#   forbidden          e2e course-settings#10: the ders nazırı holds course.edit and course.settings when she opens the page and ticks "Kapalı ders"; the hoca
+#                      takes the codes back; Kaydet is refused ("Bunu yapma izniniz yok."), nothing is written, and after a reload the page says
+#                      "Bu sayfaya izniniz yok". The page of the ders nazırı also draws the second Kaydet (F-D2c-14): the locators are scoped to the form.
+#   failed             the course is deleted while the page is open and she ticks "Kapalı ders": PATCH /courses/<id> answers COURSE_NOT_FOUND, worded as
+#                      "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.". Not verified: the guard may answer 403 for a course that is gone (the toast would
+#                      then say "Bunu yapma izniniz yok.").
+#
+# NOT RUN: written without a replay. A state check after a refusal reads the course through the API as the başnazım; after `failed` the course is gone
+# and the helper says `gone`.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.courseSettings.access
+
+states:
+  dirty:
+    before:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, interfere, '{interfere}']
+        expect: interfere
+
+scenarios:
+  staleValues:
+    given: { world: staleValues }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, up]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin }
+    vars:
+      interfere: values
+      expectLoaded: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectRefused: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 2","status":"PUBLISHED"'
+      expectSample: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectSaved: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+
+  staleVersion:
+    given: { world: staleVersion }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, up]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin }
+    vars:
+      interfere: version
+      expectLoaded: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectRefused: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectSample: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 1","status":"PUBLISHED"'
+      expectSaved: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Berlin","sample":"Celse 1","status":"PUBLISHED"'
+
+  policyLate:
+    given: { world: policyLate }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, up, --medrese, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin }
+    vars:
+      interfere: policy
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectRefused: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectSample: unused
+      expectSaved: unused
+
+  policyAfterSample:
+    given: { world: policyAfterSample }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, up, --medrese, --approval]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin }
+    vars:
+      interfere: policy
+      expectLoaded: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectSample: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 1","status":"PUBLISHED"'
+      expectRefused: '"isClosed":false,"requiresApproval":true,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 1","status":"PUBLISHED"'
+      expectSaved: unused
+
+  forbidden:
+    given: { world: forbidden }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, up, --codes]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin }
+    vars:
+      interfere: codes
+      expectLoaded: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectRefused: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectSample: unused
+      expectSaved: unused
+
+  failed:
+    given: { world: failed }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, up]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin }
+    vars:
+      interfere: delete
+      expectLoaded: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectRefused: gone
+      expectSample: unused
+      expectSaved: unused

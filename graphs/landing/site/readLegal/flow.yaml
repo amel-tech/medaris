@@ -1,0 +1,218 @@
+# The three legal pages of the public site (landing-web): the terms (/kullanim-sartlari), the cookies page (/cerezler) and
+# the privacy notice (/aydinlatma-metni). A visitor reads them, uses the terms' contents list, and goes from one to
+# another by the links inside them or by the footer. No sign-in, no form, no server call: nothing here is written, so
+# the flow invokes no action. Written from the code on 15 Nov 2026 (captured): the pages are apps/landing/app/[locale]/
+# kullanim-sartlari/page.tsx, apps/landing/app/[locale]/cerezler/page.tsx and apps/landing/app/aydinlatma-metni/
+# page.tsx (outside [locale], with a layout of its own); their words are in those files and in
+# apps/landing/content/{cerezler,aydinlatma-metni,legal}.ts; the footer is apps/landing/components/site-footer.tsx.
+#
+# WHICH BUILD THIS GRAPH DRAWS: the production build, the one a visitor gets. A development server (`next dev`, which
+# is what the local stack runs) shows two more notes that production hides (L15): on the terms a "Taslak — hukuk onayı
+# bekliyor" note (role=note) and on the privacy notice a "Bu metin taslaktır ..." note, both because
+# `IS_DRAFT = process.env.NODE_ENV !== "production"` (content/aydinlatma-metni.ts:35). They are not drawn and not in the
+# catalog. The replay in this phase ran on the dev server, so it saw them and the graph did not draw them; it checks only
+# what the graph shows, so that did not fail it. A walk on a production build was NOT made.
+#
+# What the pages say where the code does something else (inventory findings of apps/landing section 7, and three of this
+# flow's own, LEGAL-1 to LEGAL-3; every one is in ui.yaml `rules` with its fix, and none is fixed here):
+#   L10     The terms promise an acceptance at sign-in that nothing in the repository does. Three sentences: the lead
+#           ("Girişte gördüğünüz şartların özeti"), section 2 ("Giriş, bu şartların kabul edilmesiyle tamamlanır; kabul
+#           tarihi hesapta saklanır") and section 10 ("Esaslı bir değişiklikte girişte şartların yeniden kabul edilmesi
+#           istenebilir"). Measured on the local stack's realm, which is provisioned from config/keycloak: the required
+#           action TERMS_AND_CONDITIONS is disabled and the registration flow's "Terms and conditions" step is DISABLED;
+#           nothing stores an acceptance date. The work is MDRS-191 (Backlog). The live realms were not checked.
+#   L15     The two draft notes above exist only in development.
+#   L5      The footer's "GitHub" opens a new tab with no word of it.
+#   L12     Landing has no catalog: every word is a Turkish literal; the catalog of this graph is made from them.
+#   LEGAL-1 The cookies page lists the cookie `medaris-locale`, which no code writes (libs/ui/src/lib/locale-preference.ts:
+#           "Nothing writes it while the apps are Turkish only (the language menu is gone)").
+#   LEGAL-2 The cookies page says Tedris and Nizam set `NEXT_LOCALE`; neither does. Landing's own next-intl middleware does,
+#           and the page credits it to nobody.
+#   LEGAL-3 Terms section 8 describes a device restriction that is not built (MDRS-125, Backlog); only the first paragraph
+#           says the cookie is "henüz kullanılmıyor", and the four items under it read as rules in force.
+schema: delurio-graph/0
+kind: flow
+id: landing.site.readLegal
+status: captured
+domain: medaris.api
+ui: landing.site.readLegal
+title: Read the terms, the cookies page and the privacy notice
+summary: >-
+  A visitor opens one of the three legal pages, by its address, from the footer of any landing page, from a link on
+  another legal page or from another Medaris app, and reads it. The terms have a contents list whose eleven entries
+  take the visitor to the sections, and sections that tell what an account asks for, why the gender is asked, what a
+  partner application receives and what happens when access is removed. The cookies page lists every cookie and every
+  browser storage key in three tables, with who sets it and for how long. The privacy notice has seven numbered sections
+  under the title the law gives it. The footer, on all three, marks the link of the page the visitor is on and links to the
+  other legal pages, the questions, the contact page and the project's repository. Three statements of these pages are
+  not true of the code (L10, LEGAL-1 to LEGAL-3, above).
+source: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:18
+
+scope:
+  shows: the three legal pages as a visitor reads them in a production build, the contents list of the terms, the footer, and the ways between the pages
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the header (the logo, the theme toggle, \"Giriş yap\", \"Kayıt ol\") and the phone bar: landing.nav's frame `site` draws them, landing.site.enterApp and common.shell.theme walk them"
+    - "the draft notes of the terms and of the privacy notice, which a development server shows and a production build hides (L15); this graph draws the production build"
+    - "most of the prose: the terms' eleven sections, the cookie tables' wording and the notice's seven sections are the pages' content, not behaviour; the graph draws every heading, every cookie row, and the statements that apps/landing/test reads or that a finding is about (their texts are in the catalog); a sentence that is neither is not drawn"
+    - "the terms' other inline links (to the privacy notice at 2, 8 and 9, to the contact page at 11, to section 7 at 3): they go where the drawn ones go, and landing.nav has them as entries"
+    - "where the focus goes after a contents link: the page moves none, so the focus stays on the link the visitor pressed (the browser scrolls the section into view)"
+    - "the phone layout (below 768 px): the contents list and the tables are laid out differently (the tables stack, role and data-label stay), and the header is another bar"
+    - "what the next-intl middleware does with /tr/kullanim-sartlari and other prefixed addresses, and the built-in not-found page for an address that is no page (not verified)"
+    - "the link the Keycloak registration form makes to the privacy notice: it goes to the production address https://medaris.app/aydinlatma-metni whatever the stack (realm.auth.register draws that box)"
+    - "the links from tedris-web and nizam-web's footers to the notice, which open in a new tab: common.shell.privacyNotice"
+
+decisions:
+  D1:
+    question: >-
+      The terms promise that signing in is completed by accepting them, that the date of the acceptance is kept on the
+      account and that a changed text may be accepted again, and nothing does any of it (L10): build it (MDRS-191, in
+      the Keycloak realm), or take the three sentences out until it is built?
+    recommend: >-
+      Reword the three sentences now, so that the page says what happens (the registration form asks the visitor to
+      confirm they read the privacy notice, and nothing else), and build the acceptance with MDRS-191 before the
+      sentences come back. A text that promises an acceptance is what a person relies on when they say they accepted it.
+    affects: [terms]
+
+context:
+  start:
+    values: [terms, cookies, privacy]
+    initial: any
+    say:
+      terms: "the visitor arrives at the terms, /kullanim-sartlari"
+      cookies: "the visitor arrives at the cookies page, /cerezler"
+      privacy: "the visitor arrives at the privacy notice, /aydinlatma-metni (the address every other Medaris app links to)"
+
+# The main story: a visitor reads the terms and takes a section from the contents list, follows the link from section 8
+# to the cookies page, reads the cookie tables, and goes on to the privacy notice by the link at the foot of the cookies
+# page. The footer marks the page they are on at each step.
+main:
+  given: { start: terms }
+  events: [READ_SECTION, OPEN_COOKIES, OPEN_PRIVACY]
+
+initial: arriving
+states:
+  arriving:
+    title: Arrive at one of the three pages
+    description: >-
+      Classification only. The three pages have their own addresses and no page leads to them by a form or a sign-in: a
+      visitor arrives by the address, by the footer of any landing page (landing.nav: frame:site->terms, ->cookies,
+      ->privacy), by the inline links of the legal pages themselves, or from another Medaris app (the privacy notice is
+      the one the apps link to). The graph has one start for each page.
+    source: apps/landing/components/site-footer.tsx:3
+    always:
+      - { guard: "start == 'terms'", target: terms, say: "they arrive at the terms" }
+      - { guard: "start == 'cookies'", target: cookies, say: "they arrive at the cookies page" }
+      - { guard: "start == 'privacy'", target: privacy, say: "they arrive at the privacy notice" }
+
+  terms:
+    title: Kullanım şartları, the terms
+    by: human
+    goal: true
+    description: >-
+      The page: the heading, a lead of two sentences, the dates ("Son güncelleme" 15 Ekim 2026, a <time>, and "Yürürlük
+      tarihi" 4 Ekim 2026), the contents list "İçindekiler" with eleven links on the left, two links under it (to the
+      contact page and to the privacy notice), and on the right the eleven sections, each a region named by its heading.
+      The contents links are plain anchors (#kapsam, #hesap, ...): pressing one moves the page to its section and the
+      address gains the fragment; the page moves no focus (the focus stays on the link). The sections the graph draws
+      statements of: 2 (what an account asks for, why the gender is asked and who sees it, the acceptance sentence, the
+      partner applications), 8 (the device restriction) and 10 (changes). A development server also shows a draft note
+      above the contents; this graph draws the production build and does not (L15). The footer marks "Kullanım
+      şartları" as the current page (aria-current="page") and links to the other four pages and to GitHub.
+      L10: the lead says "Girişte gördüğünüz şartların özeti, bu metnin kısa hâlidir", section 2 says "Giriş, bu şartların
+      kabul edilmesiyle tamamlanır; kabul tarihi hesapta saklanır" and section 10 says "Esaslı bir değişiklikte girişte
+      şartların yeniden kabul edilmesi istenebilir"; the realm shows no terms at sign-in or at registration and stores no
+      acceptance date (the three sentences are drawn as termsIntro, termsAcceptance and termsChanges). LEGAL-3: section 8
+      is about a device restriction that is not built; its first paragraph says the cookie it needs is not used yet
+      ("Bu çerez henüz kullanılmıyor") and its items are written as rules in force (termsDevice, termsDeviceBlocked).
+    source: apps/landing/app/[locale]/kullanim-sartlari/page.tsx:21
+    on:
+      READ_SECTION:
+        target: terms
+        say: "they press a contents link: the page moves to that section and the address gains its fragment"
+        source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:58"
+      OPEN_COOKIES:
+        target: cookies
+        say: "they follow \"Çerezler\" in section 8, where the device cookie is mentioned (landing.nav: terms->cookies)"
+        source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:425"
+      OPEN_PRIVACY:
+        target: privacy
+        say: "they follow \"Aydınlatma Metni\" under the contents list (landing.nav: terms->privacy)"
+        source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:95"
+      OPEN_CONTACT:
+        target: contact_opened
+        say: "they follow \"İletişim\" under the contents list (landing.nav: terms->contact)"
+        source: "apps/landing/app/[locale]/kullanim-sartlari/page.tsx:93"
+      FOOTER_PRIVACY: { target: privacy, say: "they follow \"Aydınlatma Metni\" in the footer (landing.nav: frame:site->privacy)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_COOKIES: { target: cookies, say: "they follow \"Çerezler\" in the footer (landing.nav: frame:site->cookies)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_FAQ: { target: faq_opened, say: "they follow \"Sık sorulan sorular\" in the footer (landing.nav: frame:site->faq)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_CONTACT: { target: contact_opened, say: "they follow \"İletişim\" in the footer (landing.nav: frame:site->contact)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_GITHUB: { target: terms, say: "they follow \"GitHub\": the repository opens in a new tab, this tab stays on the terms, and nothing tells them it is a new tab (L5)", source: apps/landing/components/site-footer.tsx:32 }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  cookies:
+    title: Çerezler, the cookies page
+    by: human
+    goal: true
+    description: >-
+      The page: the heading, an introduction, the date ("Son güncelleme" 12 Ekim 2026, a <time>), a note that says no
+      analytics, measurement or advertising cookie is used, and three groups: "Zorunlu çerezler" (six rows),
+      "Tercih çerezleri" (six rows) and "Tarayıcı depolaması" (three rows). A group is a region named by its heading, with
+      a sentence and a table named by the same heading; a row has the cookie names in a row header and then what it is
+      for, who sets it and for how long. Under the groups a paragraph says what the sign-in cookies cannot be read by
+      (HttpOnly, SameSite=Lax, the __Host- prefix), and three sections: "Çerezleri yönetme", "Medaris dışındaki
+      hizmetler" and "Daha fazla bilgi", whose paragraph links to the privacy notice, the terms and the contact page.
+      The footer marks "Çerezler" as the current page. LEGAL-1: the row `medaris-locale` ("Dil menüsünde seçtiğiniz dili
+      hatırlar") describes a cookie that nothing writes while the apps are Turkish only and the language menu is gone.
+      LEGAL-2: the row `NEXT_LOCALE` says Tedris and Nizam set it; they do not (no next-intl middleware in either; the
+      stack's /discover of Tedris and / of Nizam answer no Set-Cookie), while landing's own middleware sets it on /, on
+      /kullanim-sartlari and on /cerezler (`NEXT_LOCALE=tr`, until the browser is closed) and the page names landing
+      nowhere as a setter.
+    source: apps/landing/app/[locale]/cerezler/page.tsx:22
+    on:
+      OPEN_PRIVACY:
+        target: privacy
+        say: "they follow \"Aydınlatma Metni\" in \"Daha fazla bilgi\" (landing.nav: cookies->privacy)"
+        source: "apps/landing/app/[locale]/cerezler/page.tsx:156"
+      OPEN_TERMS:
+        target: terms
+        say: "they follow \"Kullanım şartları\" in \"Daha fazla bilgi\" (landing.nav: cookies->terms)"
+        source: "apps/landing/app/[locale]/cerezler/page.tsx:157"
+      OPEN_CONTACT:
+        target: contact_opened
+        say: "they follow \"İletişim\" in \"Daha fazla bilgi\" (landing.nav: cookies->contact)"
+        source: "apps/landing/app/[locale]/cerezler/page.tsx:158"
+      FOOTER_PRIVACY: { target: privacy, say: "they follow \"Aydınlatma Metni\" in the footer (landing.nav: frame:site->privacy)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_TERMS: { target: terms, say: "they follow \"Kullanım şartları\" in the footer (landing.nav: frame:site->terms)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_FAQ: { target: faq_opened, say: "they follow \"Sık sorulan sorular\" in the footer (landing.nav: frame:site->faq)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_CONTACT: { target: contact_opened, say: "they follow \"İletişim\" in the footer (landing.nav: frame:site->contact)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_GITHUB: { target: cookies, say: "they follow \"GitHub\": the repository opens in a new tab, this tab stays on the cookies page (L5)", source: apps/landing/components/site-footer.tsx:32 }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  privacy:
+    title: Aydınlatma Metni, the privacy notice
+    by: human
+    goal: true
+    description: >-
+      The page: the title the law gives it ("Kişisel Verilerin Korunması Hakkında Aydınlatma Metni"), the date ("Son
+      güncelleme" 14 Ekim 2026, plain text, no <time>) and seven numbered sections, each a region named by its
+      heading: the data controller, the data processed, the purposes, the transfers, the collection method and legal
+      basis, the rights under article 11 of the KVKK, and how to apply. The graph draws the headings and the statements
+      that apps/landing/test reads (what is processed, where files and the account are kept, who sees the gender and
+      why, what a partner application receives, how consent is withdrawn, where to apply). The page has no link of its
+      own to another page (it names selam@medaris.app as text), so the visitor leaves it by the footer. The page lives
+      outside [locale] and has a layout of its own with its own <html lang="tr">, and the middleware leaves its
+      address alone; it wears the same header and footer. The footer marks "Aydınlatma Metni" as the current page. A
+      development server shows a draft note under the date; this graph draws the production build and does not (L15).
+    source: apps/landing/app/aydinlatma-metni/page.tsx:25
+    on:
+      FOOTER_TERMS: { target: terms, say: "they follow \"Kullanım şartları\" in the footer (landing.nav: frame:site->terms)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_COOKIES: { target: cookies, say: "they follow \"Çerezler\" in the footer (landing.nav: frame:site->cookies)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_FAQ: { target: faq_opened, say: "they follow \"Sık sorulan sorular\" in the footer (landing.nav: frame:site->faq)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_CONTACT: { target: contact_opened, say: "they follow \"İletişim\" in the footer (landing.nav: frame:site->contact)", source: apps/landing/components/site-footer.tsx:22 }
+      FOOTER_GITHUB: { target: privacy, say: "they follow \"GitHub\": the repository opens in a new tab, this tab stays on the notice (L5)", source: apps/landing/components/site-footer.tsx:32 }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  contact_opened: { type: final, title: "The contact page opens (landing.nav: terms->contact, cookies->contact, frame:site->contact)" }
+  faq_opened: { type: final, title: "The questions page opens (landing.nav: frame:site->faq)" }
+  left: { type: final, title: The visitor leaves the page, leavesPage: true }

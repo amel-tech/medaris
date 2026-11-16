@@ -1,0 +1,110 @@
+# What the bindings of nizam.home.medarisNazimCut share: the events no node sends, the places each exit opens, the window, and where
+# role and name cannot find a node. It carries no scenario, so it is not walked by itself:
+#   binding.yaml         applicantF as a Medaris nazımı with three permissions (the main story, e2e dashboard#8): applications, deck
+#                        publication and the ban of an account, one deck waiting for publication, the başnazım taking the deck permission away
+#   binding.seeded.yaml  the stack's own Medaris nazımı (kosk_create, madrasah_create, kosk_edit, audit_read, course_hide): Medreseler and
+#                        Köşkler, no card, five grants, and no "Köşk aç" although kosk_create is hers (e2e dashboard#9). Read only
+#   binding.bare.yaml    applicantF appointed with no permission: the menu is Genel alone, "Size verilmiş bir izin yok."
+#   binding.bans.yaml    applicantF with ban_scoped and inactive_scopes_manage: the bans card and "Yasaklamalar", the passive card with no menu entry
+# A person that adds no transition of its own (it only changes which nodes show) needs a file of its own, because `--cover
+# transitions` walks the shortest scenario per transition and these would never be chosen beside the first.
+#
+# Not bound, with the reason: `read: grantsFailed` (nothing here can make GET /me/grants fail); `applications: waiting` and
+# `appeals: waiting` (the seed holds no köşk application and no appeal, and making one runs through tedris and nazar: not this flow's
+# data); `appeals: empty`, `platform: madrasahs` and `platform: kosks` (the seed's nazım holds both, and a person with one is the same
+# nodes less one: nothing new to walk).
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/components/shell, features/dashboard, libs/ui/src/mds) and is unverified until a walk. Where the walk may need a fix, a
+# comment says so.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.home.medarisNazimCut
+
+# the sidebar shows from 768 px; the walk is the desktop's (the phone's sheet is nizam.shell.menuPerPersona)
+browser: { width: 1440, height: 900 }
+
+events:
+  # she types the address of a page that is the başnazım's alone: tedrisat answers 403 and the page draws the "izniniz yok" screen
+  OPEN_UNHELD: [{ goto: '{nizam}/izin-gruplari' }]
+  RELOAD: [{ reload: true }]
+  # any link away from the home: the bell's page, which every nazım may open
+  NAVIGATE: [{ goto: '{nizam}/bildirimler' }]
+  # REVOKE_DECKS is the başnazım's call to the API (nazim.mjs drop), bound where a scenario can use it: binding.yaml
+
+states:
+  # the home is one address; a state that shows it is told apart by its nodes, not by where it is
+  homeShown: { url: '{nizam}/' }
+  homeStale: { url: '{nizam}/' }
+  homeCut: { url: '{nizam}/' }
+  noAccess: { url: '{nizam}/izin-gruplari' }
+  # An exit has no nodes, so its address is all the replay can check. A row's "İncele" adds ?secili=<id>, hence the trailing **.
+  applications_opened: { url: '{nizam}/talepler/kosk-basvurulari**' }
+  decks_opened: { url: '{nizam}/talepler/deste-yayin-istekleri**' }
+  passive_opened: { url: '{nizam}/pasif-kapsamlar' }
+  bans_opened: { url: '{nizam}/yasaklamalar' }
+  permanent_bans_opened: { url: '{nizam}/talepler/kalici-yasak' }
+  left: { url: '{nizam}/bildirimler' }
+
+# Where role and name are not enough. A menu entry is looked for inside the navigation "Ana menü" (the sidebar's: the phone's sheet is
+# not in the page until it is opened), because the page's own links carry words of the same family (Yasaklamalar and
+# "Yasaklamalar’a git", Köşk başvuruları the card and the entry). A name given as a string is matched whole; one between slashes is a
+# pattern. The three "Tümünü gör" links are one text on three cards, so each is looked for inside its card's section
+# (data-testid is the card's id: home-parts.tsx:28).
+nodes:
+  # the page and the shell
+  page: { css: 'main#main' }
+  roleLine: { css: 'aside .mds-nav-user__role', hasText: Medaris nazımı }
+  groupGeneral: { css: 'aside .mds-nav-section', hasText: Genel } # a string hasText ignores case, and the CSS draws these captions upper case
+  groupPlatform: { css: 'aside .mds-nav-section', hasText: Platform }
+  groupRequests: { css: 'aside .mds-nav-section', hasText: Talepler }
+  groupAudit: { css: 'aside .mds-nav-section', hasText: Denetim }
+
+  # the menu's entries. A number and a hidden word follow Bildirimler's name when something is unread.
+  menuHome: { role: link, name: Ana sayfa, within: { role: navigation, name: Ana menü } }
+  menuNotifications: { role: link, name: '/^Bildirimler/', within: { role: navigation, name: Ana menü } }
+  menuMadrasahs: { role: link, name: Medreseler, within: { role: navigation, name: Ana menü } }
+  menuKosks: { role: link, name: Köşkler, within: { role: navigation, name: Ana menü } }
+  menuApplications: { role: link, name: Köşk başvuruları, within: { role: navigation, name: Ana menü } }
+  menuDecks: { role: link, name: Deste yayın istekleri, within: { role: navigation, name: Ana menü } }
+  menuPermanentBans: { role: link, name: Kalıcı yasak talepleri, within: { role: navigation, name: Ana menü } }
+  menuBans: { role: link, name: Yasaklamalar, within: { role: navigation, name: Ana menü } }
+  # never in her menu (e2e dashboard#8 assertion 4 counts the first five; the rest are the same claim)
+  menuNazims: { role: link, name: Medaris nazımları, within: { role: navigation, name: Ana menü } }
+  menuGrants: { role: link, name: İzin grupları, within: { role: navigation, name: Ana menü } }
+  menuInactive: { role: link, name: Pasif kapsamlar, within: { role: navigation, name: Ana menü } }
+  menuAppeals: { role: link, name: İtirazlar, within: { role: navigation, name: Ana menü } }
+  menuAuditLog: { role: link, name: Denetim kaydı, within: { role: navigation, name: Ana menü } }
+  menuArchive: { role: link, name: Arşiv, within: { role: navigation, name: Ana menü } }
+  menuYoutube: { role: link, name: YouTube bağlantısı, within: { role: navigation, name: Ana menü } }
+  menuPlatformSettings: { role: link, name: Platform ayarları, within: { role: navigation, name: Ana menü } }
+  menuPartners: { role: link, name: Ortak uygulamalar, within: { role: navigation, name: Ana menü } }
+
+  # the greeting is one <p>: its two texts are told apart by what follows the name (the name itself is whoever signed in)
+  greetingPending: { testId: home-greeting, hasText: '/Karar bekleyen \d+ talep var\./' }
+  greetingNone: { testId: home-greeting, hasText: 'Karar bekleyen talep yok.' }
+  # "Köşk aç" is never there: a link to /kosks?ac=1, which e2e dashboard#9 looks for by its address
+  openKosk: { css: 'a[href$="/kosks?ac=1"]' }
+  passiveAlert: { testId: home-passive-alert }
+
+  # the numbers: a Stat is a card with a caption (its label) and a value
+  statKosk: { css: '[data-testid=home-counts] .mds-stat .mds-caption', hasText: Köşk }
+  statMadrasah: { css: '[data-testid=home-counts] .mds-stat .mds-caption', hasText: Medrese }
+  statCourse: { css: '[data-testid=home-counts] .mds-stat .mds-caption', hasText: Ders }
+  statStudents: { css: '[data-testid=home-counts] .mds-stat .mds-caption', hasText: Kayıtlı talebe }
+
+  # the cards' own links, inside their sections
+  applicationsAll: { role: link, name: Tümünü gör, within: { testId: home-applications } }
+  reviewApplication: { role: link, name: '/^İncele: /', within: { testId: home-applications } }
+  decksAll: { role: link, name: Tümünü gör, within: { testId: home-decks } }
+  reviewDeck: { role: link, name: '/^İncele: /', within: { testId: home-decks } }
+  passiveAll: { role: link, name: Tümünü gör, within: { testId: home-passive } }
+
+  # "İzinleriniz": the footnote carries the giver and the day, whoever and whenever they are
+  grantsNote: { testId: home-grants-note }
+
+  # the screen for a page that is not hers. The body names the başnazım when the directory knows them, so it is found by its beginning;
+  # the e-mail line is a caption whose text ends with her address.
+  noAccessBody: { css: '.mds-system-state__text', hasText: '/^Bu bölümün izni hesabınıza verilmemiş/' }
+  noAccessAccount: { css: 'p.mds-caption', hasText: '/^Giriş yaptığınız hesap:/' }

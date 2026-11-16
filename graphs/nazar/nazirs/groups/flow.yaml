@@ -1,0 +1,661 @@
+# The permission groups of a medrese in nazar-web (/medrese/<id>/nazirlar, the section "İzin grupları" under the roster), managed
+# by its başmüderris: a group is defined, edited, renamed and deleted in one dialog, and a change to the permissions of a group
+# people hold, or its deletion, asks what becomes of those people first. Read from the code of PR #394 (apps/nazar/features/nazirs,
+# the API's /madrasahs/:id/permission-groups routes). It says what the code does today; each place where the code is wrong for its
+# people is a finding in ui.yaml `rules` and in the state it touches:
+#   - the scope ("Medrese" or "Ders") is only a filter of the form: the API stores no scope, works it out again from the codes
+#     (the answer says MADRASAH when any code is a medrese code), so a group made as "Medrese" with course permissions only opens
+#     as "Ders" when it is edited, and its update takes any of the 34 codes whatever the scope it was made with (GROUPS-1);
+#   - the question about the people who hold the group is asked before the name is checked: a rename into a taken name together
+#     with a change of permissions is refused only after the person has answered (GROUPS-3);
+#   - "Vazgeç" and the close icons stay on and do nothing while a save or a delete runs (GROUPS-2);
+#   - the name error is not announced and the focus is not moved (F-B-5), the name input is not marked required (F-B-7), a box the
+#     scope or the caller's own permissions switch off says nothing (F-B-10), the dialog's description is its whole body (F-B-12),
+#     a busy button says "Yükleniyor" from a hard-coded default (F-B-2), and the focus of a deleted group's "Düzenle" is lost (F-B-9).
+# Where the walk differs from the e2e (apps/nazar/e2e/groups.e2e.ts): groups#2 counts 33 boxes, the dictionary has 34 now
+# (11 medrese codes and 23 of "Medrese dersleri", GET /madrasahs/:id/permissions answered 11 + 23 on the local stack), so that check
+# is stale and the graph carries 34.
+schema: delurio-graph/0
+kind: flow
+id: nazar.nazirs.groups
+status: captured
+domain: medaris.api
+ui: nazar.nazirs.groups
+title: Manage the medrese's permission groups
+summary: >-
+  The başmüderris opens "Medrese nazırları" and finds the section "İzin grupları" under the roster: a card for each group with its
+  permissions and "N izin · M nazıra verildi", "Grup tanımla" above them and "Düzenle" on each. "Grup tanımla" opens a dialog: a
+  name, a scope ("Medrese" or "Ders") and the permissions, 34 boxes in two sections; "Ders" switches the 11 medrese permissions off
+  and unticks them. A name that is empty, or no permission, is said in the dialog and nothing is sent; a name another group of the
+  medrese has, whatever its case, is said under the field after the call. Saving closes the dialog and a toast says so. "Düzenle"
+  opens the same dialog on a group, with "Grubu sil" in its header. A rename is saved at once, even when people hold the group.
+  Changing its permissions, or deleting it, while people hold it opens a question that names how many ("Bu grubu N kişi kullanıyor")
+  and offers "İzinleri korusunlar" or "İzinleri kaybetsinler" with nothing chosen and the button off until one is; a group nobody
+  holds is saved without a question and deleted after a plain "Grubu sil".
+
+scope:
+  shows: >-
+    the groups section of the Medrese nazırları page, the dialog that defines or edits a group, the question about the people who
+    hold it, and the toasts of a save and a delete
+  world: open
+  outOfView:
+    - "the roster above the groups (the table, 'Medrese nazırı ata', 'İzin ver', 'Görevden al'): nazar.nazirs.appoint, nazar.nazirs.permissions, nazar.nazirs.dismiss"
+    - "giving a group to a nazır (the select 'Hazır izin grubu' of the permissions dialog): nazar.nazirs.permissions"
+    - "a nazır given 'Medrese nazırı ata' reads the cards and gets neither 'Grup tanımla' nor 'Düzenle' (`manages` is false for them, permission-groups.tsx:58, :88), and a nazır with no grant is refused the page: nazar.access.medreseNazirRefused"
+    - "the roster read failing: 'Medrese nazırları okunamadı' with a retry stands in place of the groups too (nazirs-page.tsx:68-75)"
+    - "the count of holders changing between the list and the press: the API answers 400 USERS_POLICY_REQUIRED with context.userCount and the dialog asks the same question with that number (group-dialog.tsx:177-183, :200-203); it needs a second person giving the group meanwhile, which a local walk does not stage"
+    - "a name of over 80 characters ('Grup adı en çok 80 karakter olabilir.'), unticking a box, and an edit that leaves the name blank or every box unticked: the form refuses them as the create form does (groupValid, permissions.ts:363)"
+    - "the dictionary failing to load ('İzin listesi okunamadı' with a retry, group-dialog.tsx:362) and the dialog before the 34 boxes arrive (two skeletons and a busy 'Grubu kaydet')"
+    - "an ended session: every call here sends the person to sign in (realm.auth.signIn)"
+    - "the other 30 permission boxes: all 34 are drawn alike, the graph names the four the e2e and the walk press"
+
+decisions:
+  D1:
+    question: >-
+      Should a group remember the scope it was made with? The API stores none (the response says MADRASAH when any code is a
+      medrese code, else COURSE), so a group made as "Medrese" with only course permissions is edited as "Ders", and a PATCH may
+      put medrese codes into a group that was made as "Ders" because the update accepts any of the 34.
+    recommend: >-
+      Store the scope with the group and refuse, on update, a code the scope does not allow; or drop the choice and let the
+      permissions alone decide, saying so in the dialog.
+    affects: [editForm, editFormCourse]
+  D2:
+    question: >-
+      Should the name be checked before the people are asked? A rename into a taken name together with a change of permissions
+      of a used group gets the question first, and only after the answer the name is refused.
+    recommend: >-
+      Check the name first (the API's updateGroup can run nameTaken before the usersPolicy check), or ask the question only
+      once the rest of the form is accepted.
+    affects: [askEdit, updatingAsked]
+
+context:
+  groups:
+    values: [none, some]
+    initial: any
+    say:
+      none: "the medrese has no permission group: the section says so and offers 'Grup tanımla'"
+      some: "the medrese has groups: the section lists them as cards"
+  held:
+    values: [unused, used]
+    initial: any
+    say:
+      unused: "nobody holds the group the person edits: a change of its permissions is saved at once and it is deleted after a plain question"
+      used: "a nazır holds the group the person edits: a change of its permissions, or its deletion, asks what becomes of them"
+  groupScope:
+    values: [medrese, course]
+    initial: any
+    say:
+      medrese: "the group has a medrese permission among its codes, so the API calls it MADRASAH and its edit opens on 'Medrese'"
+      course: "the group has course permissions only, so the API calls it COURSE and its edit opens on 'Ders', whatever it was made with (GROUPS-1)"
+  answer:
+    values: [done, taken, gone, refused, failed]
+    initial: any
+    say:
+      done: "the server makes, changes or deletes the group"
+      taken: "another group of the medrese has the name, whatever its case (409 PERMISSION_GROUP_NAME_TAKEN)"
+      gone: "the group is not there any more (404 PERMISSION_GROUP_NOT_FOUND)"
+      refused: "the caller may not give permissions (403 AUTHZ_FORBIDDEN or PERMISSION_NOT_GIVABLE, or GRANT_EXCEEDS_GIVER)"
+      failed: "anything else: a body the API refuses, a medrese that is gone, a call that fails"
+  rest:
+    values: [none, some]
+    initial: any
+    say:
+      none: "no other group is left once the one the person deletes is gone: the section says it is empty"
+      some: "other groups are left: the cards stay"
+  cards:
+    values: [none, some]
+    initial: none
+    say:
+      none: "the section shows no card"
+      some: "the section shows cards"
+  scope:
+    values: [MADRASAH, COURSE]
+    initial: MADRASAH
+    say:
+      MADRASAH: "the radio 'Medrese' is chosen: all 34 boxes may be ticked"
+      COURSE: "the radio 'Ders' is chosen: the 11 medrese boxes are off and unticked"
+  typed:
+    values: [empty, filled]
+    initial: empty
+    say: { empty: "the new group has no name yet", filled: "the new group has a name" }
+  picked:
+    values: [none, madrasah, course, both]
+    initial: none
+    say:
+      none: "no box of the new group is ticked"
+      madrasah: "a medrese permission is ticked, no course one"
+      course: "a course permission is ticked, no medrese one"
+      both: "a medrese and a course permission are ticked"
+  tried:
+    values: [true, false]
+    initial: false
+    say: { "true": "they pressed 'Grubu kaydet' and the form refused it", "false": "no refused try yet" }
+  said:
+    values: [none, required, taken]
+    initial: none
+    say:
+      none: "the name field shows its help"
+      required: "the name field says 'Grup adı boş olamaz.'"
+      taken: "the name field says 'Bu adla başka bir grup var. Başka bir ad seçin.'"
+  edits:
+    values: [nothing, name, codes]
+    initial: nothing
+    say:
+      nothing: "the edit dialog holds what the group has: pressing 'Grubu kaydet' only closes it"
+      name: "only the name was changed"
+      codes: "the permissions were changed (and perhaps the name)"
+  asked:
+    values: [true, false]
+    initial: false
+    say: { "true": "the question was answered and 'Grubu kaydet' carries the answer", "false": "no answer is carried yet" }
+  policy:
+    values: [none, keep, revoke]
+    initial: none
+    say:
+      none: "no answer is chosen in the question"
+      keep: "'İzinleri korusunlar' is chosen"
+      revoke: "'İzinleri kaybetsinler' is chosen"
+  last:
+    values: [nothing, saved, deleted, goneSave, goneDelete]
+    initial: nothing
+    say:
+      nothing: "no toast of a save or a delete is up"
+      saved: "the toast 'Grup kaydedildi' is up"
+      deleted: "the toast 'Grup silindi' is up"
+      goneSave: "the toast 'Grup kaydedilemedi: Bu grup artık yok' is up"
+      goneDelete: "the toast 'Grup silinemedi: Bu grup artık yok' is up"
+
+guards:
+  # groupValid (permissions.ts:363): a name and at least one permission
+  ready: "typed == 'filled' and picked != 'none'"
+  # needsUsersAnswer (permissions.ts:401): the permissions changed and people hold the group
+  askNeeded: "edits == 'codes' and held == 'used'"
+
+effects:
+  noCards: { set: { cards: none } }
+  haveCards: { set: { cards: some } }
+  openedCreate: { set: { scope: MADRASAH, typed: empty, picked: none, tried: false, said: none, edits: nothing, asked: false, policy: none, last: nothing } }
+  openedEditMadrasah: { set: { scope: MADRASAH, typed: filled, tried: false, said: none, edits: nothing, asked: false, policy: none, last: nothing } }
+  openedEditCourse: { set: { scope: COURSE, typed: filled, tried: false, said: none, edits: nothing, asked: false, policy: none, last: nothing } }
+  typedName: { set: { typed: filled, said: none } }
+  pickedMadrasah: { set: { picked: madrasah } }
+  pickedCourse: { set: { picked: course } }
+  pickedBoth: { set: { picked: both } }
+  pickedNone: { set: { picked: none } }
+  scopeToCourse: { set: { scope: COURSE } }
+  scopeToMadrasah: { set: { scope: MADRASAH } }
+  tryWithoutName: { set: { tried: true, said: required } }
+  tryAgain: { set: { tried: true } }
+  renamed: { set: { edits: name, said: none } }
+  changedCodes: { set: { edits: codes } }
+  asking: { set: { asked: false, policy: none } }
+  chosenKeep: { set: { policy: keep } }
+  chosenRevoke: { set: { policy: revoke } }
+  answered: { set: { asked: true } }
+  nameTaken: { set: { said: taken } }
+  created: { set: { cards: some, last: saved } }
+  savedChange: { set: { last: saved } }
+  deletedLast: { set: { cards: none, last: deleted } }
+  deletedOne: { set: { cards: some, last: deleted } }
+  goneSaveNone: { set: { cards: none, last: goneSave } }
+  goneSaveSome: { set: { cards: some, last: goneSave } }
+  goneDeleteNone: { set: { cards: none, last: goneDelete } }
+  goneDeleteSome: { set: { cards: some, last: goneDelete } }
+
+failures:
+  opened:
+    from: listMadrasahPermissionGroups
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+    failed: []
+  creating:
+    from: createMadrasahPermissionGroup
+    taken: [PERMISSION_GROUP_NAME_TAKEN]
+    forbidden: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, GRANT_EXCEEDS_GIVER]
+    other: [VALIDATION_ERROR, PERMISSION_GROUP_EMPTY, PERMISSION_UNKNOWN, MADRASAH_NOT_FOUND]
+  creatingCourse:
+    from: createMadrasahPermissionGroup
+    taken: [PERMISSION_GROUP_NAME_TAKEN]
+    forbidden: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, GRANT_EXCEEDS_GIVER]
+    other: [VALIDATION_ERROR, PERMISSION_GROUP_EMPTY, PERMISSION_UNKNOWN, MADRASAH_NOT_FOUND]
+  updating:
+    from: updateMadrasahPermissionGroup
+    taken: [PERMISSION_GROUP_NAME_TAKEN]
+    gone: [PERMISSION_GROUP_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, GRANT_EXCEEDS_GIVER]
+    other: [VALIDATION_ERROR, HTTP_400, PERMISSION_GROUP_EMPTY, PERMISSION_UNKNOWN, MADRASAH_NOT_FOUND]
+  updatingCourse:
+    from: updateMadrasahPermissionGroup
+    taken: [PERMISSION_GROUP_NAME_TAKEN]
+    gone: [PERMISSION_GROUP_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, GRANT_EXCEEDS_GIVER]
+    other: [VALIDATION_ERROR, HTTP_400, PERMISSION_GROUP_EMPTY, PERMISSION_UNKNOWN, MADRASAH_NOT_FOUND]
+  updatingAsked:
+    from: updateMadrasahPermissionGroup
+    taken: [PERMISSION_GROUP_NAME_TAKEN]
+    gone: [PERMISSION_GROUP_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE, GRANT_EXCEEDS_GIVER]
+    other: [VALIDATION_ERROR, HTTP_400, PERMISSION_GROUP_EMPTY, PERMISSION_UNKNOWN, MADRASAH_NOT_FOUND]
+  deleting:
+    from: deleteMadrasahPermissionGroup
+    gone: [PERMISSION_GROUP_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN, PERMISSION_NOT_GIVABLE]
+    other: [VALIDATION_ERROR, HTTP_400, MADRASAH_NOT_FOUND]
+
+# The story the page tells first: the başmüderris of a medrese with no group defines one, ticks a medrese permission and a course
+# permission, and saves it; the card appears.
+main:
+  given: { groups: none, held: unused, groupScope: medrese, answer: done, rest: none }
+  events: [DONE, DEFINE, TYPE_NAME, TICK_MADRASAH, TICK_COURSE, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The groups are read
+    description: >-
+      The page reads the roster and the medrese's groups on the server (GET /madrasahs/:id/nazirs and
+      GET /madrasahs/:id/permission-groups, both for madrasah.nazir_appoint or platform.madrasah_nazir_grant) behind its
+      `loading.tsx` skeletons. Nothing is on the screen of this step. The başmüderris reads them; a 404 is the portal's 404 page;
+      a refusal is the notice of `forbidden`; any other failure of the groups alone leaves the roster and puts an alert in
+      place of the section (`sectionFailed`, not walked: the local API does not fail).
+    invoke: { action: listMadrasahPermissionGroups }
+    on:
+      DONE:
+        - { guard: "groups == 'none'", target: empty, effect: [noCards], say: "the medrese has no group" }
+        - { target: listed, effect: [haveCards], say: "the medrese has groups" }
+      FAIL.forbidden: forbidden
+      FAIL.missing: not_found
+      FAIL.failed: sectionFailed
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:40
+
+  forbidden:
+    title: The page refuses the groups
+    description: >-
+      The roster and the groups share their guard, so a refused caller meets one notice in place of both: "Bu sayfaya izniniz yok"
+      (a neutral Alert, a status, with its title in a paragraph, F-B-13). The nazır's whole story is nazar.access.medreseNazirRefused.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:68
+
+  sectionFailed:
+    title: The groups could not be read
+    description: >-
+      The roster stays and an alert says "İzin grupları şu an okunamadı. Sayfayı yenileyerek yeniden deneyin." in place of the
+      section; there is no retry button, the person reloads. Not walked: the local API answers.
+    by: human
+    on:
+      RELOAD: { target: opened, say: "they reload the page" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/nazirs-page.tsx:106
+
+  empty:
+    title: The medrese has no group
+    description: >-
+      The section says "Bu medresenin henüz izin grubu yok. “Grup tanımla” ile hazır bir izin kümesi oluşturabilirsiniz." and
+      "Grup tanımla" is above it. A toast of the last delete may still be up.
+    by: human
+    on:
+      DEFINE: { target: createForm, effect: [openedCreate], say: "they press 'Grup tanımla'" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/permission-groups.tsx:68
+
+  listed:
+    title: The groups are listed
+    description: >-
+      The page: the roster, then the section "İzin grupları" with "Grup tanımla" and one card for each group (oldest first): its
+      name, its first four permissions as sentences joined by " · " ("ve N izin daha" after them) and "N izin · M nazıra verildi".
+      "Düzenle: <name>" is on each card for the başmüderris. After a save or a delete the page reads again (router.refresh) and a
+      toast of 6 seconds says what was done. Findings read here: F-B-9 (a deleted group's "Düzenle" takes the focus with it, and
+      Base UI has nowhere to give it back to; not verified), and the page's own focus: nothing is focused on load.
+    by: human
+    goal: true
+    on:
+      DEFINE: { target: createForm, effect: [openedCreate], say: "they press 'Grup tanımla'" }
+      EDIT:
+        - { guard: "groupScope == 'course'", target: editFormCourse, effect: [openedEditCourse], source: apps/nazar/features/nazirs/permissions.ts:309, say: "they press 'Düzenle' on a group whose codes are course permissions only: the dialog opens on 'Ders' (GROUPS-1)" }
+        - { target: editForm, effect: [openedEditMadrasah], say: "they press 'Düzenle' on a group with a medrese permission: the dialog opens on 'Medrese'" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nazar/features/nazirs/components/permission-groups.tsx:71
+
+  createForm:
+    title: The new group, scope Medrese
+    description: >-
+      A dialog over the page, "İzin grubu tanımla", with the medrese's name above its title. The scrim does not close it, so a
+      stray click does not lose what was typed. The focus starts in "Grup adı". The 34 boxes arrive after the dictionary is read
+      (GET /madrasahs/:id/permissions) and "Grubu kaydet" is off until then; a başmüderris may give all 34. "Medrese kapsamı · N izin
+      seçili" is the footer. Pressing "Grubu kaydet" with nothing right does not send: "Grup adı boş olamaz." replaces the help under
+      the name when it is empty, "En az bir izin seçin." is an alert above the boxes when none is ticked, and the focus stays on the
+      button (F-B-5 for the name, which is not announced; the permissions line is). The name input is not marked required (F-B-7).
+      A name another group has is said after the call (`taken`). The form is the same form as `editForm`, with no "Grubu sil".
+    by: human
+    on:
+      TYPE_NAME: { target: createForm, effect: [typedName], say: "they type the group's name" }
+      TICK_MADRASAH:
+        - { guard: "picked == 'course' or picked == 'both'", target: createForm, effect: [pickedBoth], say: "they tick a medrese permission beside a course one" }
+        - { target: createForm, effect: [pickedMadrasah], say: "they tick a medrese permission" }
+      TICK_COURSE:
+        - { guard: "picked == 'madrasah' or picked == 'both'", target: createForm, effect: [pickedBoth], say: "they tick a course permission beside a medrese one" }
+        - { target: createForm, effect: [pickedCourse], say: "they tick a course permission" }
+      SCOPE_COURSE:
+        - { guard: "picked == 'madrasah'", target: createFormCourse, effect: [scopeToCourse, pickedNone], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Ders': the medrese boxes go off and the ticked one is unticked" }
+        - { guard: "picked == 'both'", target: createFormCourse, effect: [scopeToCourse, pickedCourse], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Ders': the medrese boxes go off and are unticked, the course one stays" }
+        - { target: createFormCourse, effect: [scopeToCourse], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Ders'" }
+      SUBMIT:
+        - { guard: ready, target: creating, source: apps/nazar/features/nazirs/components/group-dialog.tsx:216, say: "they press 'Grubu kaydet' with a name and a permission" }
+        - { guard: "typed == 'empty'", target: createForm, effect: [tryWithoutName], source: apps/nazar/features/nazirs/components/group-dialog.tsx:212, say: "they press it with no name: 'Grup adı boş olamaz.' and, with no box ticked, 'En az bir izin seçin.'; nothing is sent" }
+        - { target: createForm, effect: [tryAgain], source: apps/nazar/features/nazirs/components/group-dialog.tsx:212, say: "they press it with no permission: 'En az bir izin seçin.'; nothing is sent" }
+      CANCEL:
+        - { guard: "cards == 'none'", target: empty, say: "they press Vazgeç: nothing is made, the focus goes back to 'Grup tanımla'" }
+        - { target: listed, say: "they press Vazgeç: nothing is made" }
+      CLOSE:
+        - { guard: "cards == 'none'", target: empty, say: "they press the close icon or Esc" }
+        - { target: listed, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:255
+
+  createFormCourse:
+    title: The new group, scope Ders
+    description: >-
+      "Ders" is chosen: the 11 medrese boxes are off (a disabled checkbox is skipped by Tab and gives no reason, F-B-10) and
+      unticked, the 23 of "Medrese dersleri" stay on, and the footer reads "Ders kapsamı · N izin seçili". The API's createGroup
+      takes only the 23 course codes when the scope says COURSE, so the form and the API agree on a new group.
+    by: human
+    on:
+      TYPE_NAME: { target: createFormCourse, effect: [typedName], say: "they type the group's name" }
+      TICK_COURSE: { target: createFormCourse, effect: [pickedCourse], say: "they tick a course permission" }
+      SCOPE_MADRASAH: { target: createForm, effect: [scopeToMadrasah], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Medrese' again: the medrese boxes are on, still unticked" }
+      SUBMIT:
+        - { guard: ready, target: creatingCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:216, say: "they press 'Grubu kaydet' with a name and a permission" }
+        - { guard: "typed == 'empty'", target: createFormCourse, effect: [tryWithoutName], source: apps/nazar/features/nazirs/components/group-dialog.tsx:212, say: "they press it with no name" }
+        - { target: createFormCourse, effect: [tryAgain], source: apps/nazar/features/nazirs/components/group-dialog.tsx:212, say: "they press it with no permission" }
+      CANCEL:
+        - { guard: "cards == 'none'", target: empty, say: "they press Vazgeç" }
+        - { target: listed, say: "they press Vazgeç" }
+      CLOSE:
+        - { guard: "cards == 'none'", target: empty, say: "they press the close icon or Esc" }
+        - { target: listed, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/permissions.ts:323
+
+  creating:
+    title: The group is made, scope Medrese
+    description: >-
+      createGroup calls POST /madrasahs/:id/permission-groups with the trimmed name, the scope and the codes in the dictionary's
+      order (answers 201). The ceiling of the codes is checked (a başmüderris holds all), the name is checked against the live
+      groups of the medrese whatever its case, and an audit row is written. "Grubu kaydet" is busy, "Yükleniyor" from a hard-coded
+      default (F-B-2); "Vazgeç" and the close icon stay on and do nothing until the answer (GROUPS-2). A success closes the
+      dialog, a toast says "Grup kaydedildi" and the page reads again. A taken name is said under the field and the dialog stays; a
+      refusal of the caller or any other failure is an error toast over the dialog, which stays (not verified: the toast sits
+      outside the modal, GROUPS-4).
+    invoke: { action: createMadrasahPermissionGroup }
+    on:
+      DONE: { guard: "answer == 'done'", target: listed, effect: [created], source: apps/nazar/features/nazirs/components/group-dialog.tsx:220, say: "the group exists: a toast says so, the dialog closes and the card is on the list" }
+      FAIL.taken: { guard: "answer == 'taken'", target: createForm, effect: [nameTaken], source: apps/nazar/features/nazirs/components/group-dialog.tsx:145, say: "'Bu adla başka bir grup var. Başka bir ad seçin.' under the name; the dialog stays and nothing is announced (F-B-5)" }
+      FAIL.forbidden: { guard: "answer == 'refused'", target: createForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup kaydedilemedi: Bunu yapma izniniz yok.'; the dialog stays" }
+      FAIL.other: { guard: "answer == 'failed' or answer == 'gone'", target: createForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup kaydedilemedi: Bir şeyler ters gitti.'; the dialog stays" }
+    source: apps/nazar/features/nazirs/actions.ts:225
+
+  creatingCourse:
+    title: The group is made, scope Ders
+    description: As `creating`, with "Ders" chosen and the medrese boxes off.
+    invoke: { action: createMadrasahPermissionGroup }
+    on:
+      DONE: { guard: "answer == 'done'", target: listed, effect: [created], source: apps/nazar/features/nazirs/components/group-dialog.tsx:220, say: "the group exists: a toast says so, the dialog closes" }
+      FAIL.taken: { guard: "answer == 'taken'", target: createFormCourse, effect: [nameTaken], source: apps/nazar/features/nazirs/components/group-dialog.tsx:145, say: "the taken name is said under the field" }
+      FAIL.forbidden: { guard: "answer == 'refused'", target: createFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+      FAIL.other: { guard: "answer == 'failed' or answer == 'gone'", target: createFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+    source: apps/nazar/features/nazirs/actions.ts:225
+
+  editForm:
+    title: A group is edited, scope Medrese
+    description: >-
+      "İzin grubunu düzenle" holds the group's name and its permissions ticked, with "Grubu sil" in the header. The footer note
+      says "Bu grubu N kişi kullanıyor. İzinleri değiştirirseniz kullananlara ne olacağını sorarız." for a used group and
+      "Grubu henüz kimse kullanmıyor; …" for one nobody holds. The dialog opens on "Medrese" only for a group with a medrese
+      permission among its codes (GROUPS-1). A rename never asks. Changing the permissions of a used group asks first; of an unused
+      one does not. Pressing "Grubu kaydet" with nothing changed closes the dialog silently, with no toast. Choosing "Ders" here
+      unticks the group's medrese permissions, which is a change of its permissions.
+    by: human
+    on:
+      RENAME:
+        - { guard: "edits == 'codes'", target: editForm, say: "they change the name too" }
+        - { target: editForm, effect: [renamed], say: "they type another name" }
+      TICK_COURSE: { target: editForm, effect: [changedCodes], say: "they tick another course permission" }
+      SCOPE_COURSE: { target: editFormCourse, effect: [scopeToCourse, changedCodes], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Ders': the group's medrese permissions go off and are unticked" }
+      DELETE_GROUP:
+        - { guard: "held == 'used'", target: askDelete, effect: [asking], source: apps/nazar/features/nazirs/components/group-dialog.tsx:274, say: "they press 'Grubu sil' on a group people hold: the question names how many, with no answer chosen" }
+        - { target: askDeleteUnused, effect: [asking], source: apps/nazar/features/nazirs/components/group-dialog.tsx:274, say: "they press 'Grubu sil' on a group nobody holds: a plain question" }
+      SUBMIT:
+        - { guard: "edits == 'nothing'", target: listed, source: apps/nazar/features/nazirs/components/group-dialog.tsx:231, say: "nothing changed: the dialog closes with no call and no toast" }
+        - { guard: askNeeded, target: askEdit, effect: [asking], source: apps/nazar/features/nazirs/components/group-dialog.tsx:235, say: "the permissions of a used group changed: nothing is sent, the question opens" }
+        - { target: updating, source: apps/nazar/features/nazirs/components/group-dialog.tsx:240, say: "a rename, or a change of a group nobody holds: it is sent at once" }
+      CANCEL: { target: listed, say: "they press Vazgeç: nothing is changed, the focus goes back to the card's 'Düzenle'" }
+      CLOSE: { target: listed, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:255
+
+  editFormCourse:
+    title: A group is edited, scope Ders
+    description: >-
+      As `editForm`, on "Ders": the medrese boxes are off, and "Ders kapsamı · N izin seçili" is the footer. A group whose codes are
+      all course permissions opens here whatever scope it was made with, because the API worked the scope out from the codes
+      (GROUPS-1); the e2e's "Kayıt ve talebe işleri" group is one. Choosing "Medrese" turns the medrese boxes on again, unticked.
+    by: human
+    on:
+      RENAME:
+        - { guard: "edits == 'codes'", target: editFormCourse, say: "they change the name too" }
+        - { target: editFormCourse, effect: [renamed], say: "they type another name" }
+      TICK_COURSE: { target: editFormCourse, effect: [changedCodes], say: "they tick another course permission" }
+      SCOPE_MADRASAH: { target: editForm, effect: [scopeToMadrasah], source: apps/nazar/features/nazirs/permissions.ts:323, say: "they choose 'Medrese': the medrese boxes are on, unticked" }
+      DELETE_GROUP:
+        - { guard: "held == 'used'", target: askDelete, effect: [asking], source: apps/nazar/features/nazirs/components/group-dialog.tsx:274, say: "they press 'Grubu sil' on a group people hold" }
+        - { target: askDeleteUnused, effect: [asking], source: apps/nazar/features/nazirs/components/group-dialog.tsx:274, say: "they press 'Grubu sil' on a group nobody holds" }
+      SUBMIT:
+        - { guard: "edits == 'nothing'", target: listed, source: apps/nazar/features/nazirs/components/group-dialog.tsx:231, say: "nothing changed: the dialog closes with no call and no toast" }
+        - { guard: askNeeded, target: askEdit, effect: [asking], source: apps/nazar/features/nazirs/components/group-dialog.tsx:235, say: "the permissions of a used group changed: the question opens" }
+        - { target: updatingCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:240, say: "a rename, or a change of a group nobody holds: it is sent at once" }
+      CANCEL: { target: listed, say: "they press Vazgeç" }
+      CLOSE: { target: listed, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/permissions.ts:309
+
+  updating:
+    title: The group is changed, scope Medrese
+    description: >-
+      updateGroup calls PATCH /madrasahs/:id/permission-groups/:groupId with only what changed (the name, the codes, and
+      usersPolicy when the question was answered). A rename keeps every holder's group; a change of permissions of a group nobody
+      holds is just saved. The name is checked against the other groups of the medrese. "Grubu kaydet" is busy and the header's
+      "Grubu sil" is off. A success closes the dialog with the toast "Grup kaydedildi"; a taken name is said under the field; a
+      group someone deleted meanwhile closes the dialog with an error toast "Bu grup artık yok. Gruplar yenilendi; yeniden seçin."
+      and the list is read again.
+    invoke: { action: updateMadrasahPermissionGroup }
+    on:
+      DONE: { guard: "answer == 'done'", target: listed, effect: [savedChange], source: apps/nazar/features/nazirs/components/group-dialog.tsx:172, say: "the change is saved: a toast says so, the dialog closes and the card is updated" }
+      FAIL.taken: { guard: "answer == 'taken'", target: editForm, effect: [nameTaken], source: apps/nazar/features/nazirs/components/group-dialog.tsx:145, say: "'Bu adla başka bir grup var.' under the name; the dialog stays" }
+      FAIL.gone:
+        - { guard: "answer == 'gone' and rest == 'none'", target: empty, effect: [goneSaveNone], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there and no other is left: an error toast, the dialog closes, the list is read again and says it is empty" }
+        - { guard: "answer == 'gone'", target: listed, effect: [goneSaveSome], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there: an error toast, the dialog closes, the list is read again" }
+      FAIL.forbidden: { guard: "answer == 'refused'", target: editForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+      FAIL.other: { guard: "answer == 'failed'", target: editForm, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+    source: apps/nazar/features/nazirs/actions.ts:240
+
+  updatingCourse:
+    title: The group is changed, scope Ders
+    description: As `updating`, with "Ders" chosen and the medrese boxes off.
+    invoke: { action: updateMadrasahPermissionGroup }
+    on:
+      DONE: { guard: "answer == 'done'", target: listed, effect: [savedChange], source: apps/nazar/features/nazirs/components/group-dialog.tsx:172, say: "the change is saved: a toast says so, the dialog closes" }
+      FAIL.taken: { guard: "answer == 'taken'", target: editFormCourse, effect: [nameTaken], source: apps/nazar/features/nazirs/components/group-dialog.tsx:145, say: "the taken name is said under the field" }
+      FAIL.gone:
+        - { guard: "answer == 'gone' and rest == 'none'", target: empty, effect: [goneSaveNone], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there and no other is left: an error toast, the dialog closes" }
+        - { guard: "answer == 'gone'", target: listed, effect: [goneSaveSome], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there: an error toast, the dialog closes" }
+      FAIL.forbidden: { guard: "answer == 'refused'", target: editFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+      FAIL.other: { guard: "answer == 'failed'", target: editFormCourse, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the dialog stays" }
+    source: apps/nazar/features/nazirs/actions.ts:240
+
+  askEdit:
+    title: What becomes of the people who hold the group
+    description: >-
+      An alertdialog over the dialog: "Bu grubu N kişi kullanıyor", with the group's name above it and the sentence
+      "“<name>” grubunun izinlerini değiştiriyorsunuz. Yeni izinler yalnız grubu bundan sonra alanlara geçer; şimdi kullananlar için
+      ne olacağını seçin." Two radios, "İzinleri korusunlar" (the group's present permissions stay with each, one by one, and they
+      leave the group) and "İzinleri kaybetsinler" (they go from each at once), none chosen, and "Grubu kaydet" is off until one is.
+      The focus starts on "Vazgeç"; the scrim does not close it. N is the count of the list read when the page loaded. Vazgeç or
+      the close icon closes only the question. The name was not checked yet: it is checked after the answer (GROUPS-3).
+    by: human
+    on:
+      CHOOSE_KEEP: { target: askEditChosen, effect: [chosenKeep], say: "they choose 'İzinleri korusunlar'" }
+      CHOOSE_REVOKE: { target: askEditChosen, effect: [chosenRevoke], say: "they choose 'İzinleri kaybetsinler'" }
+      CANCEL:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press Vazgeç: nothing is saved, the form stays as it was" }
+        - { target: editForm, say: "they press Vazgeç: nothing is saved, the form stays as it was" }
+      CLOSE:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press the close icon or Esc" }
+        - { target: editForm, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:400
+
+  askEditChosen:
+    title: The answer is chosen, saving is possible
+    description: The same question with one radio chosen; "Grubu kaydet" is on. The other radio can still be chosen.
+    by: human
+    on:
+      CHOOSE_KEEP: { target: askEditChosen, effect: [chosenKeep], say: "they choose 'İzinleri korusunlar'" }
+      CHOOSE_REVOKE: { target: askEditChosen, effect: [chosenRevoke], say: "they choose 'İzinleri kaybetsinler'" }
+      CONFIRM: { target: updatingAsked, effect: [answered], source: apps/nazar/features/nazirs/components/group-dialog.tsx:243, say: "they press 'Grubu kaydet' in the question" }
+      CANCEL:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press Vazgeç" }
+        - { target: editForm, say: "they press Vazgeç" }
+      CLOSE:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press the close icon or Esc" }
+        - { target: editForm, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:418
+
+  updatingAsked:
+    title: The group is changed with the answer
+    description: >-
+      The same PATCH, now with usersPolicy. The API detaches every holder from the group first: with "keep" each gets the group's
+      old codes as single permissions (same scope, same end, same giver), with "revoke" nothing; the new codes reach only whoever
+      is given the group from now on. The question stays open with its button busy and Vazgeç does nothing meanwhile (GROUPS-2).
+      A taken name closes the question and is said under the name in the form (GROUPS-3).
+    invoke: { action: updateMadrasahPermissionGroup }
+    on:
+      DONE: { guard: "answer == 'done'", target: listed, effect: [savedChange], source: apps/nazar/features/nazirs/components/group-dialog.tsx:172, say: "saved: a toast says so and both dialogs close" }
+      FAIL.taken:
+        - { guard: "answer == 'taken' and scope == 'COURSE'", target: editFormCourse, effect: [nameTaken], source: apps/nazar/features/nazirs/components/group-dialog.tsx:145, say: "the question closes and 'Bu adla başka bir grup var.' stands under the name" }
+        - { guard: "answer == 'taken'", target: editForm, effect: [nameTaken], source: apps/nazar/features/nazirs/components/group-dialog.tsx:145, say: "the question closes and 'Bu adla başka bir grup var.' stands under the name" }
+      FAIL.gone:
+        - { guard: "answer == 'gone' and rest == 'none'", target: empty, effect: [goneSaveNone], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there and no other is left: an error toast, both dialogs close" }
+        - { guard: "answer == 'gone'", target: listed, effect: [goneSaveSome], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group is not there: an error toast, both dialogs close" }
+      FAIL.forbidden: { guard: "answer == 'refused'", target: askEditChosen, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the question stays" }
+      FAIL.other: { guard: "answer == 'failed'", target: askEditChosen, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast; the question stays" }
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:243
+
+  askDelete:
+    title: "Delete a group people hold, and what becomes of them"
+    description: >-
+      "Grubu sil" in the dialog's header opens an alertdialog "Bu grubu N kişi kullanıyor": "“<name>” grubunu siliyorsunuz.
+      Kullananlar için ne olacağını seçin." and the same two radios, none chosen; its button "Grubu sil" is off until one is.
+      The focus starts on "Vazgeç", which closes only the question and deletes nothing.
+    by: human
+    on:
+      CHOOSE_KEEP: { target: askDeleteChosen, effect: [chosenKeep], say: "they choose 'İzinleri korusunlar'" }
+      CHOOSE_REVOKE: { target: askDeleteChosen, effect: [chosenRevoke], say: "they choose 'İzinleri kaybetsinler'" }
+      CANCEL:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press Vazgeç: nothing is deleted" }
+        - { target: editForm, say: "they press Vazgeç: nothing is deleted" }
+      CLOSE:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press the close icon or Esc" }
+        - { target: editForm, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:274
+
+  askDeleteChosen:
+    title: The answer is chosen, deleting is possible
+    description: The same question with one radio chosen; "Grubu sil" is on.
+    by: human
+    on:
+      CHOOSE_KEEP: { target: askDeleteChosen, effect: [chosenKeep], say: "they choose 'İzinleri korusunlar'" }
+      CHOOSE_REVOKE: { target: askDeleteChosen, effect: [chosenRevoke], say: "they choose 'İzinleri kaybetsinler'" }
+      CONFIRM: { target: deleting, effect: [answered], source: apps/nazar/features/nazirs/components/group-dialog.tsx:243, say: "they press 'Grubu sil' in the question" }
+      CANCEL:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press Vazgeç" }
+        - { target: editForm, say: "they press Vazgeç" }
+      CLOSE:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press the close icon or Esc" }
+        - { target: editForm, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:418
+
+  askDeleteUnused:
+    title: Delete a group nobody holds
+    description: >-
+      An alertdialog "Grubu sil": "“<name>” grubu silinecek. Bu grubu kimse kullanmıyor; kimsenin izni değişmez." with no radios,
+      and "Grubu sil" on at once. The focus starts on "Vazgeç". The e2e checks only the used group's question; this one is read
+      from the code.
+    by: human
+    on:
+      CONFIRM: { target: deleting, source: apps/nazar/features/nazirs/components/group-dialog.tsx:243, say: "they press 'Grubu sil' in the question" }
+      CANCEL:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press Vazgeç: nothing is deleted" }
+        - { target: editForm, say: "they press Vazgeç: nothing is deleted" }
+      CLOSE:
+        - { guard: "scope == 'COURSE'", target: editFormCourse, say: "they press the close icon or Esc" }
+        - { target: editForm, say: "they press the close icon or Esc" }
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:452
+
+  deleting:
+    title: The group is deleted
+    description: >-
+      removeGroup calls DELETE /madrasahs/:id/permission-groups/:groupId with {usersPolicy} when people hold it, else with an empty
+      body (answers 204). The API detaches every holder as an update does ("keep": single permissions, "revoke": nothing) and
+      deletes the group softly, with an audit row. The question stays open with its button busy; Vazgeç does nothing meanwhile
+      (GROUPS-2). A success closes both dialogs, "Grup silindi" is a toast and the card is gone. A group someone deleted meanwhile
+      closes both with an error toast; any other refusal leaves the question open with an error toast.
+    invoke: { action: deleteMadrasahPermissionGroup }
+    on:
+      DONE:
+        - { guard: "answer == 'done' and rest == 'none'", target: empty, effect: [deletedLast], source: apps/nazar/features/nazirs/components/group-dialog.tsx:196, say: "deleted, and no group is left: the section says so and a toast says 'Grup silindi'" }
+        - { guard: "answer == 'done'", target: listed, effect: [deletedOne], source: apps/nazar/features/nazirs/components/group-dialog.tsx:196, say: "deleted: the card is gone and a toast says 'Grup silindi'" }
+      FAIL.gone:
+        - { guard: "answer == 'gone' and rest == 'none'", target: empty, effect: [goneDeleteNone], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group was gone already: an error toast, both dialogs close" }
+        - { guard: "answer == 'gone'", target: listed, effect: [goneDeleteSome], source: apps/nazar/features/nazirs/components/group-dialog.tsx:155, say: "the group was gone already: an error toast, both dialogs close" }
+      FAIL.forbidden:
+        - { guard: "answer == 'refused' and held == 'used'", target: askDeleteChosen, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup silinemedi'; the question stays" }
+        - { guard: "answer == 'refused'", target: askDeleteUnused, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup silinemedi'; the question stays" }
+      FAIL.other:
+        - { guard: "(answer == 'failed' or answer == 'taken') and held == 'used'", target: askDeleteChosen, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup silinemedi'; the question stays" }
+        - { guard: "answer == 'failed' or answer == 'taken'", target: askDeleteUnused, source: apps/nazar/features/nazirs/components/group-dialog.tsx:150, say: "an error toast 'Grup silinemedi'; the question stays" }
+    source: apps/nazar/features/nazirs/actions.ts:258
+
+  not_found:
+    title: The medrese is not there
+    description: "A 404 of the groups read is Next's not-found page (lib/tedrisat-read.ts:43-50)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-used-group-is-asked-about
+    never: "(state == 'updating' or state == 'updatingCourse') and edits == 'codes' and held == 'used'"
+    say: A change of the permissions of a group people hold is never sent without the question; the form opens it instead.
+    source: apps/nazar/features/nazirs/permissions.ts:401
+  - id: a-rename-never-asks
+    never: "(state == 'askEdit' or state == 'askEditChosen' or state == 'updatingAsked') and edits != 'codes'"
+    say: The question about the people who hold a group is asked for a change of its permissions, never for a rename alone.
+    source: apps/nazar/features/nazirs/permissions.ts:401
+  - id: nothing-changed-sends-nothing
+    never: "(state == 'updating' or state == 'updatingCourse') and edits == 'nothing'"
+    say: An edit that changed nothing closes the dialog and makes no call.
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:231
+  - id: a-used-group-is-deleted-with-an-answer
+    never: "state == 'deleting' and held == 'used' and policy == 'none'"
+    say: A group people hold is never deleted before the person has chosen what becomes of them.
+    source: apps/nazar/features/nazirs/components/group-dialog.tsx:418
+  - id: an-unfinished-group-is-not-sent
+    never: "(state == 'creating' or state == 'creatingCourse') and not ready"
+    say: A new group is sent only with a name and at least one permission.
+    source: apps/nazar/features/nazirs/permissions.ts:363
+  - id: ders-holds-no-medrese-permission
+    never: "(state == 'createFormCourse' or state == 'creatingCourse') and (picked == 'madrasah' or picked == 'both')"
+    say: With the scope "Ders" chosen no medrese permission is ticked.
+    source: apps/nazar/features/nazirs/permissions.ts:323

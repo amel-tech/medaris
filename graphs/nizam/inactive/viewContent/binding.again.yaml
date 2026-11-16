@@ -1,0 +1,43 @@
+# nizam.inactive.viewContent, a second opening: the başnazım already opened the köşk once (the scenario's `setup` does it through the
+# same API call the button makes), then opens it again from the list, and the database holds two rows, not one (e2e inactive#10 a4,
+# a5: "writes one audit row every time"). The first opening is made by POST /nizam/inactive-scopes/KOSK/<id>/view as the başnazım, not
+# through the page, so what the page's press proves is that the second one adds a row and does not replace the first.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/inactive/viewContent \
+#     --bind graphs/nizam/inactive/viewContent/binding.again.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. The same transitions as binding.yaml's `kosk` walk, so a file of its own; the call is not held
+# here (binding.yaml holds it), and the effect expects two rows where the main file's expects one.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.inactive.viewContent
+
+scenarios:
+  koskAgain:
+    given: { scope: kosk, answer: normal }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    vars:
+      target: '{made.koskName}'
+      kindText: Köşk
+      koskId: '{made.kosk}'
+      targetId: '{made.kosk}'
+      targetEntity: kosk
+    samples: { name: '{made.koskName}', kind: Ders, kosk: '{made.hostName}' }
+    setup:
+      - run: [node, helpers/passive-scopes.mjs, make, viewContent]
+        expect: 'passive-scopes make viewContent ready'
+      # the first opening, as the page makes it
+      - run: [node, helpers/passive-scopes.mjs, view, viewContent, kosk]
+        expect: 'passive-scopes view viewContent kosk'
+    teardown:
+      - run: [node, helpers/passive-scopes.mjs, remove, viewContent]
+        expect: 'passive-scopes remove viewContent'
+
+effects:
+  viewInactiveScope:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*)::int as n from audit_log where action = 'inactive_scope.view' and entity = '{targetEntity}' and entity_id = '{targetId}' and actor_id = '{secret.E2E_SYSTEM_ADMIN_SUB}'"
+      expect: '"n":2'

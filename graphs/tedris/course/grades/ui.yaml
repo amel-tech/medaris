@@ -1,0 +1,75 @@
+# The screens of tedris.course.grades: tedris-web's course page (/courses/<id>, features/courses/components/course-page.tsx) as a talebe who
+# holds a seat meets it around the tab "Notlarım": the tab list on Müfredat, the panel of Notlarım (features/courses/components/exam-grades.tsx,
+# MyGradesTab) with its exams, its memorisation marks or its empty sentence, and the page without the tab when the read of the grades
+# did not answer. Read from the code of the branch on 15 Nov 2026. The rest of the course page is readProgramme's and the other tabs'.
+#
+# Words: every `CoursePage.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris.CoursePage`, the key being
+# the path inside that file). The `composed.Grades.*` keys are NOT in any i18n file: they are values the API gives, written with a
+# placeholder so that a replay can match them:
+#   composed.Grades.course   the course's title, the page's h1                                            (course-page.tsx:274)
+#   composed.Grades.exam     an exam's title; for a retake the code writes "<title> · Telafi"              (exam-grades.tsx:92-95)
+#   composed.Grades.mark     a memorisation homework's title, which is its celse's title                   (exam-grades.tsx:129)
+# Samples are invented: they are the names of the course and the celses the binding's setup makes.
+# This flow invokes no writing action (the read GET /courses/:id/my-grades), so there is no `changes` key.
+schema: delurio-graph/0
+kind: ui
+id: tedris.course.grades
+flow: tedris.course.grades
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  course: Notlar denemesi
+  exam: Ara sınav
+  mark: Birinci ezber
+  week: "2"
+  score: "17"
+  max: "20"
+
+nodes:
+  # ---- the course page and its tab list, the same in every state of this flow ----
+  coursePage: { type: page, component: Page, role: main, in: [curriculum, gradesShown, gradesEmpty, noGradesTab], source: apps/tedris/features/courses/components/course-page.tsx:229 } # no name and no initial focus: the page sets none (rule focus-not-set)
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: composed.Grades.course }, in: [curriculum, gradesShown, gradesEmpty, noGradesTab], source: apps/tedris/features/courses/components/course-page.tsx:274 } # h1
+  tabList: { type: list, component: List, role: tablist, name: { key: CoursePage.tabsLabel }, in: [curriculum, gradesShown, gradesEmpty, noGradesTab], source: apps/tedris/features/courses/components/course-page.tsx:394 } # Base UI tabs, activateOnFocus: the arrow keys move and select
+  tabCurriculum: { type: action, component: Button, role: tab, text: { key: CoursePage.tabCurriculum }, in: [curriculum, gradesShown, gradesEmpty, noGradesTab], emits: OPEN_CURRICULUM, source: apps/tedris/features/courses/components/course-page.tsx:170 } # selected in `curriculum` and `noGradesTab`
+  tabGrades: { type: action, component: Button, role: tab, text: { key: CoursePage.tabGrades }, in: [curriculum, gradesShown, gradesEmpty], emits: OPEN_GRADES, source: apps/tedris/features/courses/components/course-page.tsx:190 } # `seat && grades`: a seat holder whose read answered; selected in `gradesShown` and `gradesEmpty`; no count in its name
+  gradesPanel: { type: page, component: Page, role: tabpanel, name: { labelledBy: tabGrades }, in: [gradesShown, gradesEmpty], source: apps/tedris/features/courses/components/course-page.tsx:470 } # Base UI Tabs.Panel: the panel of Müfredat is not in the page while this one is
+
+  # ---- "Sınavlar": one row per exam of the course ----
+  examsSection: { type: page, component: Page, role: region, name: { labelledBy: examsHeading }, in: [gradesShown], when: hasExams, source: apps/tedris/features/courses/components/exam-grades.tsx:84 }
+  examsHeading: { type: text, component: Heading, role: heading, text: { key: CoursePage.gradesExams }, in: [gradesShown], when: hasExams, source: apps/tedris/features/courses/components/exam-grades.tsx:85 } # h2
+  examsList: { type: list, component: List, role: list, in: [gradesShown], when: hasExams, source: apps/tedris/features/courses/components/exam-grades.tsx:88 } # a <ul class="list-none">; no name
+  examWeek: { type: text, component: Text, text: { key: CoursePage.gradesWeek }, in: [gradesShown], when: hasExams, repeat: exams, source: apps/tedris/features/courses/components/exam-grades.tsx:74 } # a caption, "2. hafta"
+  examTitle: { type: text, component: Text, text: { key: composed.Grades.exam }, in: [gradesShown], when: hasExams, repeat: exams, source: apps/tedris/features/courses/components/exam-grades.tsx:76 } # the title in a <bdi> (a long one is cut with an ellipsis by the stylesheet, `min-inline-0 truncate`, so that the score keeps its place: c0ca032d), with " · Telafi" after it for a retake
+  examClosed: { type: text, component: Text, text: { key: CoursePage.gradesClosed }, in: [gradesShown], when: closed, repeat: exams.closed, source: apps/tedris/features/courses/components/exam-grades.tsx:97 } # for every exam whose results are not released: the API sends no score for it, so the page has none to hide (rule closed-score-is-never-sent)
+  examResult: { type: text, component: Text, text: { oneOf: [CoursePage.gradesScore, CoursePage.gradesAbsent, CoursePage.gradesNotEntered] }, in: [gradesShown], when: released, repeat: exams.released, source: apps/tedris/features/courses/components/exam-grades.tsx:98 } # a released exam: "17/20", or the error badge "Girmedi" (absent), or "Girilmedi" (no result entered); the score is a heading-sized number, not a heading
+
+  # ---- "Ezberler": one row per memorisation homework of the course ----
+  marksSection: { type: page, component: Page, role: region, name: { labelledBy: marksHeading }, in: [gradesShown], when: marks, source: apps/tedris/features/courses/components/exam-grades.tsx:117 }
+  marksHeading: { type: text, component: Heading, role: heading, text: { key: CoursePage.gradesMemorizations }, in: [gradesShown], when: marks, source: apps/tedris/features/courses/components/exam-grades.tsx:121 } # h2
+  marksList: { type: list, component: List, role: list, in: [gradesShown], when: marks, source: apps/tedris/features/courses/components/exam-grades.tsx:124 }
+  markWeek: { type: text, component: Text, text: { key: CoursePage.gradesWeek }, in: [gradesShown], when: marks, repeat: marks, source: apps/tedris/features/courses/components/exam-grades.tsx:74 }
+  markTitle: { type: text, component: Text, text: { key: composed.Grades.mark }, in: [gradesShown], when: marks, repeat: marks, source: apps/tedris/features/courses/components/exam-grades.tsx:76 }
+  markGiven: { type: text, component: Text, text: { oneOf: [CoursePage.gradesFull, CoursePage.gradesIncomplete, CoursePage.gradesNotRecited] }, in: [gradesShown], when: marks, repeat: marks.given, source: apps/tedris/features/courses/components/exam-grades.tsx:130 } # a badge: success "Tam", warning "Eksik", error "Vermedi"; the word is the badge's only content
+  markPending: { type: text, component: Text, text: { key: CoursePage.gradesPending }, in: [gradesShown], when: marks, repeat: marks.pending, source: apps/tedris/features/courses/components/exam-grades.tsx:143 } # a caption, for a homework the hoca has not marked
+
+  # ---- nothing to grade ----
+  emptyNote: { type: text, component: Text, text: { key: CoursePage.gradesEmpty }, in: [gradesEmpty], source: apps/tedris/features/courses/components/exam-grades.tsx:58 } # an EmptyState: one paragraph, no icon, no action
+
+edges:
+  - { labelledBy: [gradesPanel, tabGrades] }
+  - { labelledBy: [examsSection, examsHeading] }
+  - { labelledBy: [marksSection, marksHeading] }
+  - { triggers: [tabGrades, gradesShown] }
+  - { triggers: [tabCurriculum, curriculum] }
+
+rules:
+  - { id: PROG-1, rule: "The tab is not in the address. `?tab=` is read once, when the page is drawn (course-page.tsx:194-198, page.tsx:98), and a click on a tab only sets component state (course-page.tsx:394-397), so a click on Notlarım leaves the address as it was and a reload, the way back or a shared link lands on Müfredat. tedris.course.readProgramme walked this on the stack, and this flow's main story walks it again: after a click on Notlarım the replay reloads and meets Müfredat (RELOAD out of gradesShown). Fix: write `?tab=` with history.replaceState when a tab is chosen." }
+  - { id: GRADES-1, rule: "Nothing in the app leads to Notlarım. The notification EXAM_RESULTS_RELEASED says \"{course} dersinin sınav sonucunu Notlarım’da görebilirsin.\" (tedris.json NotificationsPage.types), but it is a SESSION notification and opens the exam's celse page (apps/tedris/features/notifications/notification-view.ts:65-68, apps/tedrisat/src/course/course-notifier.ts:222-248), whose block \"Sınav\" shows no result and has no link to the tab (session-exam.tsx); no component writes `?tab=notlarim`: the address works only when typed. A talebe told where to look has to find the course, then the tab. Proposed id; not in the inventory. Fix: give the notification the course as its target with `?tab=notlarim`, or a link from the exam block of the celse page." }
+  - { id: GRADES-2, rule: "A read of the grades that fails or is refused takes the tab out of the list and says nothing (public-reads.ts:49-56 turns every failure into null; course-page.tsx:190 draws the tab only for `seat && grades`). A seat holder with a failed read cannot tell \"no grades tab\" from \"grades that could not be read\", and `?tab=notlarim` falls back to Müfredat without a word (course-page.tsx:194-198). A passive scope does the same, with the rest of PROG-2. Read by hand with a browser on the stack (not a replay): a talebe of a passive scope has the tabs Müfredat, Ders kayıtları, Ders destesi and Hocalar, no Notlarım and no Sorularım, and `?tab=notlarim` opens Müfredat. Proposed id; not in the inventory. Fix: keep the tab and draw the SystemState box the roles section of Hesap draws for a failed read." }
+  - { id: GRADES-3, rule: "A talebe whose seat is COMPLETED reads Notlarım (holdsSeat is true for `completed`, course-view.ts:41) but is not told when the results are released: the notification goes to the ENROLLED seats only (course-notification.repository.ts:103-120, `findSeatHolders`). The domain's releaseExamResults carries the same sentence. Proposed id; not in the inventory. Fix: tell the COMPLETED seats too, or say in Notlarım that the results come with no notice." }
+  - { id: GRADES-4, rule: "\"Notlarım\" names two things in the app: the grades tab of the course page (CoursePage.tabGrades) and the panel of a talebe's private notes on a celse and its watch page (LessonNotes.title and notesTab, tedris-learn.json). In Turkish `not` is both a note and a grade, so a talebe told to look in Notlarım may open the wrong one, and a screen reader says the same word for both. Proposed id; not in the inventory. Fix: name the grades tab \"Notlar\" or \"Sınav ve ezber notlarım\"." }
+  - { id: closed-score-is-never-sent, rule: "The page never has to hide a score: GET /courses/:id/my-grades fills `score` and `absent` only once the exam's results are released and sends `released: false, score: null, absent: null` before (exam.repository.ts:392-405), whatever the course team has entered (e2e exam#2 enters 64 for a closed exam). The replay's effect on getMyGrades reads the answer to prove it. MyGradesTab (exam-grades.tsx:96-97) trusts the API and has no check of its own." }
+  - { id: focus-not-set, rule: "The page sets no initial focus (no autoFocus and no focus() in the course page's components outside the dialogs the card opens), so the page node has no `initialFocus`, and a click on a tab keeps the focus on that tab button; the graph says nothing of the focus after OPEN_GRADES." }
+  - { id: label-in-name, rule: "A tab's visible text is its accessible name (WCAG 2.5.3): \"Müfredat\" and \"Notlarım\". Notlarım has no count." }
+  - { id: exam-text-is-the-api-s, rule: "An exam's title and a memorisation's title are the celse's title as the hoca typed it, shown with `bdi` so that mixed directions hold; the rows' week is a caption before it, not part of the title." }

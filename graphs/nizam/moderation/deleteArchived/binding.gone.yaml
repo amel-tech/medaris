@@ -1,0 +1,59 @@
+# nizam.moderation.deleteArchived, the "already gone" branch: the course is deleted behind the page's back, and the page, which was read before,
+# still draws its row. The event GONE_ELSEWHERE is no node's, so the binding gives it: the başnazım's own session in the API deletes the hidden
+# course (DELETE /archive/course/<id>, which is what a second tab of Arşiv would do). Two orders, both walked by `--cover transitions`:
+#   in the list, before "Kalıcı olarak sil" is pressed: the count is asked for a course that is gone, answers 404, and the dialog says
+#       "Silinecekler hesaplanamadı; yine de silebilirsiniz ..." (confirmingBlind); the delete then answers 404 as well;
+#   in the open dialog, with the count on it: the delete answers 404 (deleting FAIL.gone).
+# Either way the dialog closes, the row leaves the list and the toast is the error "Silinemedi" / "Bu öğe zaten silinmiş ya da artık gizli
+# değil." that stays (PURGE-3), and the list is empty again (rest: none).
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/apps/engine/src/cli.ts replay graphs/nizam/moderation/deleteArchived \
+#     --bind graphs/nizam/moderation/deleteArchived/binding.gone.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay; every behaviour is from the code. The event is an API call, not a failure injected into a held call,
+# so it does not depend on when the replay lets a held call go. No `call` is put on `readingImpact` or `deleting` here: a server action answers
+# 200 on /arsiv whatever the API said (an engine limit, not the app), so the replay would call the 404 a mismatch; the busy states are
+# walked by binding.yaml. The setup is the main story's (3 talebe, 2 weeks, 4 celses), and `delItem` is deleted by the event, so
+# `course.mjs remove delItem` in the teardown finds nothing to delete and says so.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.deleteArchived
+
+events:
+  GONE_ELSEWHERE:
+    - run: [node, helpers/api.mjs, systemAdmin, DELETE, '/archive/course/{del.course}']
+      expect: 'HTTP 204'
+
+scenarios:
+  goneMeanwhile:
+    given: { item: course, rest: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->archive' }
+    samples:
+      title: '{del.title}'
+      kosk: Kubbealtı Köşkü
+      value: tümü
+    setup:
+      - run: [node, helpers/course.mjs, make, delItem, --kosk, '{seed.kosk2}', --weeks, '2', --lessons, '2', --talebe, applicantC, applicantD, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_weeks where course_id = '{del.course}'"]
+        expect: '"n":2'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{del.course}'"]
+        expect: '"n":4'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{del.course}'"]
+        expect: '"n":3'
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/courses/{del.course}/archive']
+        expect: '{del.course}'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    teardown:
+      - run: [node, helpers/course.mjs, remove, delItem]
+        expect: 'course remove delItem'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi del%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_G_SUB}')"]
+        expect: '"n":0'

@@ -1,0 +1,241 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.roster.bulkAdd
+status: proposed
+summary: >-
+  What must exist for a course's team to add several talebe at once by e-mail address (nazar.roster.bulkAdd): the flow's product
+  list. Each need is what the product must do, from the flow's story and the planned work in the inventory (planned.md P-08,
+  P-18), not from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# The `replay:` names are the scenarios of binding.yaml, binding.forbidden.yaml and binding.noButton.yaml; NO REPLAY HAS RUN (the first walks
+# are a later phase), so none of them is a proof yet. No e2e covers this dialog (nazar.md section 5, part D1-course-b): the evidence of the
+# built needs is the unit specs apps/nazar/test/enrolments-page.spec.tsx and enrolments-bulk.spec.ts, which mock the server action.
+#
+# Gaps of this file, for that merge:
+# missing:   seats-per-gender-at-bulk-add (MDRS-284); the-answer-is-announced-and-the-focus-follows, a-refusal-is-heard-over-the-dialog,
+# the-dialog-holds-still-while-it-sends, a-call-that-fails-is-told, one-box-says-what-it-holds, the-people-added-are-told,
+# adding-by-address-says-who-it-adds-and-who-it-shows (the last six `missing: none`, no issue)
+# unwalked:  none by the definition (code, no e2e and no replay); of a-refusal-keeps-the-dialog-and-the-list the refusals of the realm
+# (directory) and of anything else (failed) have a unit spec and no replay, and of the-addresses-with-no-account-can-be-copied
+# the browser's refusal of the clipboard has a unit spec and no replay: nothing on the local stack can make either happen
+# Gender separation (kontenjan per gender, MDRS-284): applies, this flow gives seats (seats-per-gender-at-bulk-add).
+
+needs:
+  - id: add-several-talebe-at-once
+    need: >-
+      The course team adds many people who already have a Medaris account in one step, by typing their e-mail addresses; no
+      approval is asked, because the team chose them, a person whose application waits is approved on the way, and nobody already
+      in the course is changed. Only whoever may decide applications in the course can do it.
+    evidence:
+      - state: roster
+      - node: openBulk
+      - state: form
+      - state: formReady
+      - state: sending
+      - state: answered
+      - node: dialog
+      - node: emailsField
+      - node: submit
+      - source: apps/tedrisat/src/course/course.controller.ts:665
+      - source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:198
+      - source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:62
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: mixed
+      - scenario: added
+
+  - id: the-list-is-read-as-typed
+    need: >-
+      A list is read as people write one: one address a line, or separated by commas or semicolons, white space and capitals
+      ignored, each address once; the person sees how many addresses that makes before sending, and a list of more than 500 is
+      refused under the field and not sent.
+    evidence:
+      - state: form
+      - state: formReady
+      - node: counter
+      - node: emailsHelp
+      - node: tooManyError
+      - node: submit
+      - source: apps/nazar/features/enrolments/bulk.ts:19
+      - source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:53
+      - source: apps/tedrisat/src/course/course.controller.ts:665
+      - test: apps/nazar/test/enrolments-bulk.spec.ts
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: mixed
+      - scenario: many
+    note: Also drawn as the assertion a-list-is-sent-only-within-the-limit.
+
+  - id: every-outcome-is-told
+    need: >-
+      The answer says, for each outcome that has people in it, how many were added, how many waiting applications were approved,
+      how many were already in the course, how many addresses have no account, how many entries are not addresses and how many
+      were skipped, and names each skipped address with its reason (barred, taken out by the team, finished the course, changed
+      meanwhile).
+    evidence:
+      - state: answered
+      - node: outcomesList
+      - node: lineEnrolled
+      - node: lineApproved
+      - node: lineAlready
+      - node: lineNotFound
+      - node: lineInvalid
+      - node: lineSkipped
+      - node: skippedTitle
+      - node: skippedLine
+      - source: apps/tedrisat/src/course/course.controller.ts:665
+      - source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:165
+      - source: apps/nazar/features/enrolments/bulk.ts:29
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - test: apps/nazar/test/enrolments-bulk.spec.ts
+      - scenario: mixed
+      - scenario: added
+      - scenario: unmatched
+    note: >-
+      a skipped reason other than "Dersi tamamlamış" (barred, revoked, changed) needs a ban, a removed talebe or a race: the unit
+      specs only
+
+  - id: the-addresses-with-no-account-can-be-copied
+    need: >-
+      The addresses that found no account, and the entries that are not addresses, are given back in one box that can be copied in
+      one press, so the team can add them once their accounts exist; when the browser refuses the copy the box is left selected
+      and the person is told to copy by hand.
+    evidence:
+      - node: unmatchedField
+      - node: unmatchedNote
+      - node: copyButton
+      - node: toastCopied
+      - node: toastCopyFailed
+      - source: apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:80
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: mixed
+      - scenario: unmatched
+
+  - id: a-refusal-keeps-the-dialog-and-the-list
+    need: >-
+      When the list cannot be taken, the person is told why in words, nothing is enrolled, and the dialog and the typed list stay
+      so that they can try again: the course takes no enrolment (a draft or hidden course), the person no longer holds the code,
+      the realm's directory cannot be asked, or anything else.
+    evidence:
+      - state: sending
+      - node: toastForbidden
+      - node: toastClosed
+      - node: toastDirectory
+      - node: toastFailed
+      - source: apps/tedrisat/src/course/course.controller.ts:665
+      - source: apps/nazar/features/enrolments/bulk.ts:69
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: closed
+      - scenario: forbidden
+        binding: graphs/nazar/roster/bulkAdd/binding.forbidden.yaml
+    note: |-
+      Also drawn as the assertion a-refusal-shows-no-answer.
+      directory and failed are drawn and not bound: nothing on the local stack can make the realm fail
+
+  - id: only-the-holder-of-the-code-is-offered-the-form
+    need: >-
+      "Toplu talebe ekle" is offered to a person who may decide applications in the course, and to nobody who only reads the
+      roster or completes or removes talebe; the API still decides every send.
+    evidence:
+      - node: openBulk
+      - source: apps/nazar/features/enrolments/components/enrolments-page.tsx:101
+      - source: apps/tedrisat/src/course/course.controller.ts:665
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: noButton
+        binding: graphs/nazar/roster/bulkAdd/binding.noButton.yaml
+      - scenario: forbidden
+        binding: graphs/nazar/roster/bulkAdd/binding.forbidden.yaml
+    note: Also drawn as the assertion only-a-holder-of-the-code-opens-the-form.
+
+  - id: the-roster-reads-again-when-the-answer-is-closed
+    need: >-
+      Once the answer is closed the roster shows the people who were added, in its tab counts and its tables, without a reload.
+    evidence:
+      - state: answered
+      - state: refreshed
+      - node: tabApplications
+      - node: tabEnrolled
+      - source: apps/nazar/features/enrolments/components/enrolments-tabs.tsx:305
+      - test: apps/nazar/test/enrolments-page.spec.tsx
+      - scenario: mixed
+
+  - id: the-answer-is-announced-and-the-focus-follows
+    need: >-
+      When the answer replaces the form, a screen-reader or keyboard user is told it has arrived and the focus lands on something
+      in it (its first line or the "Kapat" button); the two buttons that close it are not both called "Kapat"; the address counter
+      does not speak on every keystroke (F-D1-07).
+    missing: "no issue: bulk-add-dialog.tsx:68-69, 106, 124-125, 151-156"
+    note: >-
+      Drawn on the state answered and on the nodes outcomesList, counter, closeIconAnswer and closeButton, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-refusal-is-heard-over-the-dialog
+    need: >-
+      A refusal, and the notice of a copy, reach a screen-reader user while the modal dialog is open: they are said inside the
+      dialog or in a region the dialog does not hide (BULK-1).
+    missing: >-
+      no issue: FloatingFocusManager marks the Toaster's portal aria-hidden while a modal dialog is open (not verified in a
+      browser)
+    note: >-
+      Drawn on the nodes toastForbidden, toastClosed, toastDirectory, toastFailed, toastCopied, toastCopyFailed and toastClose,
+      which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs
+      name).
+
+  - id: the-dialog-holds-still-while-it-sends
+    need: >-
+      While the list is on its way, "Vazgeç", the close icon and Escape do not look live and do nothing: they are disabled with
+      the rest of the form, so nobody presses a close that is ignored (BULK-2).
+    missing: "no issue: bulk-add-dialog.tsx:56-60"
+    note: >-
+      Drawn on the state sending and on the nodes cancel, closeIcon, submit and busy, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-call-that-fails-is-told
+    need: >-
+      When the page cannot reach the server at all (the network), the button stops being busy, the dialog can be closed and the
+      person is told to try again (F-D1-20).
+    missing: "no issue: bulk-add-dialog.tsx:65-77 has no try/catch"
+    note: >-
+      Drawn on the state sending, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: one-box-says-what-it-holds
+    need: >-
+      The box of addresses to copy says what is in it: addresses with no Medaris account and entries that are not addresses at
+      all, each told for what it is (BULK-3).
+    missing: "no issue: bulk.ts:49-52 joins both, and the field's help says \"hesap bulunamadı\" for all"
+    note: >-
+      Drawn on the nodes unmatchedField, unmatchedNote, lineNotFound and lineInvalid, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-people-added-are-told
+    need: >-
+      A person put in a course by its team is told so in a notice of their own, as one whose application is approved is; today
+      only the calendar invitations of the celses ahead reach them (BULK-4, decision D1).
+    missing: >-
+      no issue: apps/tedrisat/src/course/bulk-enrollment.service.ts:98-116 sends ENROLLMENT_APPROVED to approved people only
+    note: >-
+      Drawn on the state answered and on the nodes lineEnrolled and lineApproved, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: adding-by-address-says-who-it-adds-and-who-it-shows
+    need: >-
+      Putting a person in a course by their address is decided with the person in mind: whether they must accept or at least be
+      told, and whether the answer may tell any course team which addresses have an account (BULK-5, decision D2; related
+      MDRS-203).
+    missing: "no issue: a decision of the owner, bulk-enrollment.service.ts:76-100"
+    note: >-
+      Drawn on the states formReady and answered and on the nodes lineNotFound and unmatchedField, which the code has: they are
+      not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: seats-per-gender-at-bulk-add
+    need: >-
+      Where a seat is counted, the kontenjan is two counts, one per gender, and a seat is given in the order of application; a
+      list added in bulk gives seats too, so it follows the same rule and says which people it could not seat for want of a place
+      (MDRS-284, per celse and weekly; no kontenjan rule exists in the code, and the bulk route has no limit but the 500 addresses
+      of a list).
+    missing: MDRS-284
+    note: >-
+      Drawn on the state answered and on the nodes lineEnrolled and lineApproved, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

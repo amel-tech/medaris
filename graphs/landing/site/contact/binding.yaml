@@ -1,0 +1,119 @@
+# landing.site.contact on the local stack: the site on :4003, nobody signed in, the mail caught by Mailpit (:8025).
+#   node apps/engine/src/cli.ts replay graphs/landing/site/contact --bind graphs/landing/site/contact/binding.yaml --out <dir>
+# Landing has no sign-in: the visitor account is an empty map and `signIn` is emptied so the base's real sign-in through
+# Keycloak never runs (the same as the navigation graph's binding).
+#
+# What the stack can walk (graphs/.local is the stack's; the stack's .env sets LANDING__SMTP_HOST, _PORT, _SECURITY, _FROM
+# and _FROM_DISPLAY_NAME to Mailpit, security none, so the server has a sender):
+#   answer: sent          walked: the card, and the mail read back from Mailpit (the `effects` below)
+#   typed: unsafe         walked: an address with brackets passes the page and the server answers 400 (L3)
+#   answer: tooMany       walked by the scenario `tooMany`, which sends the five messages one sender may send in ten
+#                         minutes before the page does: the server keeps its window in memory (route.ts:32-33) and keys
+#                         it on the caller's address, which Next sets from the socket (::1 for curl and for the browser
+#                         alike). Walk it last: for the next ten minutes every send from this machine answers 429, the
+#                         other scenarios' too. A restart of landing-web empties the window.
+#   answer: notConfigured NOT walked: it needs landing started with no SMTP_HOST; the stack's landing has one
+#   answer: sendFailed    NOT walked: it needs Mailpit to refuse or be down, which would stop Keycloak's and tedrisat's mail
+#   answer: unreachable   NOT walked: the binding has no verb that takes the network from the browser
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.landing.binding.yaml
+flow: landing.site.contact
+
+accounts:
+  visitor: {}
+signIn: []
+
+samples: { address: selam@medaris.app }
+
+scenarios:
+  # A medrese owner on the home page presses "Bize yazın" (the medrese door), which opens the contact page: the way in is
+  # the navigation graph's entry start->contact, found by its label. The topic is not preselected; the walk picks
+  # "Medaris’te ders vermek". A visitor who opens the address (a link in a mail, a bookmark) has no scenario of their
+  # own: it would be this walk without the entry, and the replay takes the first scenario whose `given` matches.
+  fromMedreseDoor:
+    given: { answer: sent }
+    as: visitor
+    open: '{landing}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'start->contact Nav.writeUs' }
+    vars:
+      name: Ayşe Örnek
+      email: ayse.ornek@example.org
+      unsafeEmail: ayse(ornek)@example.org
+      message: Bir medrese açmak istiyoruz; nasıl başlayabiliriz?
+    # Mailpit keeps what it is sent, so the walk starts from none of the form's mails and leaves none (nobody else mails
+    # selam@medaris.app).
+    setup:
+      - run: [curl, -sf, -X, DELETE, -G, '{mail}/api/v1/search', --data-urlencode, 'query=to:selam@medaris.app']
+    teardown:
+      - run: [curl, -sf, -X, DELETE, -G, '{mail}/api/v1/search', --data-urlencode, 'query=to:selam@medaris.app']
+
+  # The sender has already sent five messages in ten minutes: the setup sends them (the first few are answered 200, the rest
+  # 429; none of the answers matters), so the visitor's own send is the sixth.
+  tooMany:
+    given: { answer: tooMany }
+    as: visitor
+    open: '{landing}/iletisim'
+    vars:
+      name: Ayşe Örnek
+      email: ayse.ornek@example.org
+      unsafeEmail: ayse(ornek)@example.org
+      message: Bir medrese açmak istiyoruz; nasıl başlayabiliriz?
+    setup:
+      - run: [curl, -sf, -X, DELETE, -G, '{mail}/api/v1/search', --data-urlencode, 'query=to:selam@medaris.app']
+      - run: [curl, -s, -o, /dev/null, -X, POST, '{landing}/api/iletisim', -H, 'content-type: application/json', -d, '{"ad":"Sınama Örnek","eposta":"sinama@example.org","konu":"genel","mesaj":"Bu ileti sınırı doldurmak için gönderildi."}']
+      - run: [curl, -s, -o, /dev/null, -X, POST, '{landing}/api/iletisim', -H, 'content-type: application/json', -d, '{"ad":"Sınama Örnek","eposta":"sinama@example.org","konu":"genel","mesaj":"Bu ileti sınırı doldurmak için gönderildi."}']
+      - run: [curl, -s, -o, /dev/null, -X, POST, '{landing}/api/iletisim', -H, 'content-type: application/json', -d, '{"ad":"Sınama Örnek","eposta":"sinama@example.org","konu":"genel","mesaj":"Bu ileti sınırı doldurmak için gönderildi."}']
+      - run: [curl, -s, -o, /dev/null, -X, POST, '{landing}/api/iletisim', -H, 'content-type: application/json', -d, '{"ad":"Sınama Örnek","eposta":"sinama@example.org","konu":"genel","mesaj":"Bu ileti sınırı doldurmak için gönderildi."}']
+      - run: [curl, -s, -o, /dev/null, -X, POST, '{landing}/api/iletisim', -H, 'content-type: application/json', -d, '{"ad":"Sınama Örnek","eposta":"sinama@example.org","konu":"genel","mesaj":"Bu ileti sınırı doldurmak için gönderildi."}']
+    teardown:
+      - run: [curl, -sf, -X, DELETE, -G, '{mail}/api/v1/search', --data-urlencode, 'query=to:selam@medaris.app']
+
+# The visitor fills the four fields with a mouse and a keyboard; the topic is a native select, which the walk sets by
+# typing the first letter of its option while the select has the focus (a `fill` does not work on a select).
+events:
+  FILL:
+    - fill: { role: textbox, name: Ad soyad, value: '{name}' }
+    - fill: { role: textbox, name: E-posta, value: '{email}' }
+    - key: Tab
+    - key: M
+    - fill: { role: textbox, name: Mesaj, value: '{message}' }
+  FILL_UNSAFE:
+    - fill: { role: textbox, name: Ad soyad, value: '{name}' }
+    - fill: { role: textbox, name: E-posta, value: '{unsafeEmail}' }
+    - key: Tab
+    - key: M
+    - fill: { role: textbox, name: Mesaj, value: '{message}' }
+
+# NAVIGATE (the visitor leaves) is not bound: the replay's `--absent` takes the page the walk goes to for this flow's own
+# page, whose `main` it finds there.
+states:
+  formPage: { url: '{landing}/iletisim' }
+  sending: { call: '**/api/iletisim' }
+  home_opened: { url: '{landing}/' }
+  faq_opened: { url: '{landing}/sss' }
+
+# What the send leaves outside the page: the mail in Mailpit, to the contact address, with the visitor as Reply-To and the
+# topic and the name in the subject (lib/contact-mail.ts:130-142). They run again until they pass or the time is up.
+effects:
+  submitContactForm:
+    - run: [curl, -sf, -G, '{mail}/api/v1/search', --data-urlencode, 'query=to:selam@medaris.app']
+      expect: 'İletişim formu · Medaris’te ders vermek · {name}'
+    - run: [curl, -sf, -G, '{mail}/api/v1/search', --data-urlencode, 'query=to:selam@medaris.app']
+      expect: '"ReplyTo":[{"Name":"{name}","Address":"{email}"}]'
+    - run: [curl, -sf, -G, '{mail}/api/v1/search', --data-urlencode, 'query=to:selam@medaris.app']
+      expect: 'Konu: Medaris’te ders vermek'
+
+nodes:
+  # inline text that is a bare text node beside the title in one element: no element has it as its text
+  failedText: { skip: 'a bare text node and a link after the alert title in one div: no element holds the sentence as its text' }
+  sentText: { skip: 'a bare text node after the alert title in one div: no element holds the sentence as its text' }
+  # the options of a native select are not in a listbox and are not visible to the browser while it is closed
+  topicChoices: { skip: 'the options of a native select: the browser lists them under the combobox and shows them only when it is open' }
+  topicChoice: { skip: 'the options of a native select are not visible while it is closed; the walk chooses one by typing its first letter' }
+  # a name that appears more than once on the page
+  failedMail: { role: link, name: selam@medaris.app, within: { role: alert, hasText: Mesajınız gönderilemedi } }
+  infoMail: { role: link, name: selam@medaris.app, within: { css: dl } }
+  privacyLink: { role: link, name: Aydınlatma Metni, within: { css: form } }
+  faqLink: { role: link, name: Sık sorulan sorular, within: { css: '.mds-card:has(h2:text-is("Önce bakmak isterseniz"))' } }
+  sentFaq: { role: link, name: Sık sorulan sorular, within: { css: '.mds-card:has(.mds-alert--success)' } }

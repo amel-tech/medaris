@@ -1,0 +1,104 @@
+# The screens of tedris.discover.readMadrasah: tedris-web's medrese page (/madrasahs/<id>, app/madrasahs/[madrasahId]/page.tsx and
+# features/courses/components/madrasah-page.tsx) for a visitor and for a signed-in person, with no course, and the not-found page every
+# failed read ends on. The frame around it (the bar, the theme switch, the footer) is tedris.shell.frame's.
+#
+# Words: every `MadrasahPage.*` and `SystemPages.*` key is copied from libs/i18n/src/locales/tr/tedris.json (the app reads it as `tedris`),
+# the key being the path inside that file. The `composed.*` keys are NOT in any i18n file: they are texts the app builds in code from data or
+# from a message with its rich-text tags resolved, written here with their placeholders so a replay can match them:
+#   composed.Breadcrumb.label            the landmark's name, the default of the kit's Breadcrumb (libs/ui/src/mds/breadcrumb.tsx:19), no catalog
+#   composed.MadrasahPage.name           the medrese's name, as the heading and as the breadcrumb's last item (madrasah-page.tsx:161,170)
+#   composed.MadrasahPage.headLine       "Başmüderris" + the name, madrasah-page.tsx:183-184 (the message MadrasahPage.headMuderris and a <bdi>)
+#   composed.MadrasahPage.description    one paragraph of the medrese's own description, split on blank lines (:151-154,196-198)
+#   composed.MadrasahPage.course         a course's title, in its card and as a caption in the side list (:72,286)
+#   composed.MadrasahPage.hocas          the hocas of a course, each with their unvan (:34-49,124)
+#   composed.MadrasahPage.kosk           a köşk's name (:92,280)
+#   composed.MadrasahPage.nextTime       "Paz 21:00": weekday and clock of the next celse (next-session.ts:41-55)
+#   composed.MadrasahPage.headName       the başmüderris's name in the side card (:252)
+#   composed.AnonymousInvite.apply/.signIn/.register   the message AnonymousInvite.apply ("... <signIn>giriş yap</signIn> ya da
+#                                        <register>kayıt ol</register>.") with its two tags resolved: the sentence and its two link texts
+#                                        (components/anonymous-invite.tsx:54-60)
+# A node that the two pages differ in (the badge, the hint, the invitation) is `in` both states with a `when`, so the replay checks that it is
+# gone where the graph says so, with or without --absent.
+# Samples are neutral; the binding overrides the ones that must match what the stack seeds.
+schema: delurio-graph/0
+kind: ui
+id: tedris.discover.readMadrasah
+flow: tedris.discover.readMadrasah
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Örnek medrese
+  head: Örnek başmüderris
+  description: Örnek tanıtım yazısı.
+  count: "2"
+  course: Örnek ders
+  hoca: Örnek hoca
+  kosk: Örnek köşk
+  next: Sal 21:00
+
+nodes:
+  # ---- the page and its head ----
+  madrasahPage: { type: page, component: Page, role: main, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:156 } # no name and no initialFocus: the <main> is not labelled and nothing moves the focus when the page opens (rule focus-not-set)
+  breadcrumb: { type: page, component: Page, role: navigation, name: { key: composed.Breadcrumb.label }, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:158 } # an <ol>: "Keşfet / <medrese adı>"
+  breadcrumbDiscover: { type: action, component: LinkButton, role: link, text: { key: MadrasahPage.discover }, in: [readByVisitor, readByMember], emits: OPEN_DISCOVER, source: apps/tedris/features/courses/components/madrasah-page.tsx:160 } # a plain <a>, so a full page load
+  breadcrumbCurrent: { type: text, component: Text, text: { key: composed.MadrasahPage.name, params: { name: madrasah.name } }, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:161 } # aria-current=page, never a link
+  eyebrow: { type: text, component: Text, text: { key: MadrasahPage.eyebrow }, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:168 }
+  title: { type: text, component: Heading, role: heading, text: { key: composed.MadrasahPage.name, params: { name: madrasah.name } }, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:169 } # h1
+  coursesCount: { type: text, component: Text, text: { key: MadrasahPage.coursesCount, params: { count: courses.length } }, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:174 } # "2 ders", counted over the listed courses
+  headLine: { type: text, component: Text, text: { key: composed.MadrasahPage.headLine, params: { head: headMuderris.name } }, in: [readByVisitor, readByMember], when: headNamed, source: apps/tedris/features/courses/components/madrasah-page.tsx:183 } # the two spans run together in the accessibility tree: "2 dersBaşmüderris Nuri ..." (MAD-2)
+  about: { type: text, component: Text, text: { key: composed.MadrasahPage.description, params: { description: madrasah.description } }, in: [readByVisitor, readByMember], repeat: description.paragraphs, source: apps/tedris/features/courses/components/madrasah-page.tsx:196 }
+  approvalNotice: { type: text, component: Text, text: { key: MadrasahPage.approvalNotice }, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:199 } # the same sentence for every medrese and every course (MAD-1)
+
+  # ---- "Dersler" ----
+  coursesSection: { type: page, component: Page, role: region, name: { labelledBy: coursesTitle }, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:202 }
+  coursesTitle: { type: text, component: Heading, role: heading, text: { key: MadrasahPage.courses }, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:207 } # h2
+  coursesHintVisitor: { type: text, component: Text, text: { key: MadrasahPage.coursesHintAnonymous }, in: [readByVisitor, readByMember], when: isVisitor, source: apps/tedris/features/courses/components/madrasah-page.tsx:210 }
+  coursesHintMember: { type: text, component: Text, text: { key: MadrasahPage.coursesHint }, in: [readByVisitor, readByMember], when: "not isVisitor", source: apps/tedris/features/courses/components/madrasah-page.tsx:210 }
+  noCourses: { type: text, component: Text, text: { key: MadrasahPage.noCourses }, in: [readByVisitor, readByMember], when: "listing == 'none'", source: apps/tedris/features/courses/components/madrasah-page.tsx:219 }
+
+  # a card per listed course (the Card kit component: one link, in its title, that covers the whole card)
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: composed.MadrasahPage.course, params: { course: course.title } }, in: [readByVisitor, readByMember], when: hasCourses, repeat: courses, source: apps/tedris/features/courses/components/madrasah-page.tsx:72 } # h3; the cover above it is decorative and, on this page, prints no label (DSC-12 not seen)
+  courseLink: { type: action, component: LinkButton, role: link, name: { key: composed.MadrasahPage.course, params: { course: course.title } }, in: [readByVisitor, readByMember], when: hasCourses, repeat: courses, emits: OPEN_COURSE, source: apps/tedris/features/courses/components/madrasah-page.tsx:71 }
+  statusBadge: { type: text, component: Text, text: { oneOf: [MadrasahPage.statusEnrolled, MadrasahPage.statusPending, MadrasahPage.statusCompleted] }, in: [readByVisitor, readByMember], when: badged, repeat: courses.held, source: apps/tedris/features/courses/components/madrasah-page.tsx:84 } # a badge in the card's header: brand "Devam ediyor", warning with a clock "Onay bekliyor", success "Tamamlandı"; only on a card in which the person holds something
+  inPersonBadge: { type: text, component: Text, text: { key: MadrasahPage.inPerson }, in: [readByVisitor, readByMember], when: heldInPerson, repeat: courses.inPerson, source: apps/tedris/features/courses/components/madrasah-page.tsx:121 } # MDRS-283; public, like the title
+  hocaLine: { type: text, component: Text, text: { key: composed.MadrasahPage.hocas, params: { hoca: course.muderris } }, in: [readByVisitor, readByMember], when: hasCourses, repeat: courses, source: apps/tedris/features/courses/components/madrasah-page.tsx:124 }
+  koskLink: { type: action, component: LinkButton, role: link, name: { key: composed.MadrasahPage.kosk, params: { kosk: course.koskName } }, in: [readByVisitor, readByMember], when: hasCourses, repeat: courses, emits: OPEN_KOSK, source: apps/tedris/features/courses/components/madrasah-page.tsx:91 } # a second link inside the card, which stays a separate tab stop
+  nextCelse: { type: text, component: Text, text: { key: MadrasahPage.nextSession }, in: [readByVisitor, readByMember], when: plannedCelse, repeat: courses, source: apps/tedris/features/courses/components/madrasah-page.tsx:101 }
+  nextCelseTime: { type: text, component: Text, text: { key: composed.MadrasahPage.nextTime, params: { next: course.nextSessionAt } }, in: [readByVisitor, readByMember], when: plannedCelse, repeat: courses, source: apps/tedris/features/courses/components/madrasah-page.tsx:102 } # a <time datetime>; never the meeting link
+  noNextCelse: { type: text, component: Text, text: { key: MadrasahPage.noNextSession }, in: [readByVisitor, readByMember], when: unplannedCelse, repeat: courses, source: apps/tedris/features/courses/components/madrasah-page.tsx:111 }
+
+  # the invitation under the cards, a visitor's only
+  invite: { type: text, component: Text, text: { key: composed.AnonymousInvite.apply }, in: [readByVisitor, readByMember], when: isVisitor, source: apps/tedris/components/anonymous-invite.tsx:55 }
+  inviteSignIn: { type: action, component: LinkButton, role: link, text: { key: composed.AnonymousInvite.signIn }, in: [readByVisitor, readByMember], when: isVisitor, emits: OPEN_SIGN_IN, source: apps/tedris/components/anonymous-invite.tsx:41 } # /auth/signin?callbackUrl=%2Fmadrasahs%2F<id>
+  inviteRegister: { type: action, component: LinkButton, role: link, text: { key: composed.AnonymousInvite.register }, in: [readByVisitor, readByMember], when: isVisitor, emits: OPEN_REGISTER, source: apps/tedris/components/anonymous-invite.tsx:46 } # /auth/register
+
+  # ---- the side cards ----
+  aside: { type: page, component: Page, role: complementary, in: [readByVisitor, readByMember], source: apps/tedris/features/courses/components/madrasah-page.tsx:245 }
+  headTitle: { type: text, component: Heading, role: heading, text: { key: MadrasahPage.headMuderris }, in: [readByVisitor, readByMember], when: headNamed, source: apps/tedris/features/courses/components/madrasah-page.tsx:247 } # h2, Card headingLevel 2
+  headName: { type: text, component: Text, text: { key: composed.MadrasahPage.headName, params: { head: headMuderris.name } }, in: [readByVisitor, readByMember], when: headNamed, source: apps/tedris/features/courses/components/madrasah-page.tsx:252 }
+  headCount: { type: text, component: Text, text: { key: MadrasahPage.headMuderrisCourses, params: { count: headMuderris.courseCount } }, in: [readByVisitor, readByMember], when: headNamed, source: apps/tedris/features/courses/components/madrasah-page.tsx:255 } # how many of the listed courses the head teaches; 0 is drawn as "0 dersinde"
+  kosksTitle: { type: text, component: Heading, role: heading, text: { key: MadrasahPage.kosks }, in: [readByVisitor, readByMember], when: hasCourses, source: apps/tedris/features/courses/components/madrasah-page.tsx:264 } # h2
+  kosksHint: { type: text, component: Text, text: { key: MadrasahPage.kosksHint }, in: [readByVisitor, readByMember], when: hasCourses, source: apps/tedris/features/courses/components/madrasah-page.tsx:265 }
+  kosksList: { type: list, component: List, role: list, name: { key: MadrasahPage.kosksLabel, params: { name: madrasah.name } }, in: [readByVisitor, readByMember], when: hasCourses, source: apps/tedris/features/courses/components/madrasah-page.tsx:266 } # named "<medrese adı> medresesinin derslerini açtığı köşkler" (MAD-3)
+  koskAsideLink: { type: action, component: LinkButton, role: link, name: { key: composed.MadrasahPage.kosk, params: { kosk: kosk.name } }, in: [readByVisitor, readByMember], when: hasCourses, repeat: kosks, emits: OPEN_KOSK, source: apps/tedris/features/courses/components/madrasah-page.tsx:279 }
+  koskAsideCourse: { type: text, component: Text, text: { key: composed.MadrasahPage.course, params: { course: course.title } }, in: [readByVisitor, readByMember], when: hasCourses, repeat: kosks.courses, source: apps/tedris/features/courses/components/madrasah-page.tsx:285 } # the titles of this medrese's courses in that köşk, as plain text under the link
+
+  # ---- the not-found page ----
+  notFoundRegion: { type: page, component: Page, role: region, name: { labelledBy: notFoundTitle }, in: [notFoundPage], source: libs/ui/src/mds/system-state.tsx:36 } # a <section> inside a shell that draws no <main> (MAD-4); no initialFocus
+  notFoundTitle: { type: text, component: Heading, role: heading, text: { key: SystemPages.notFoundTitle }, in: [notFoundPage], source: apps/tedris/features/errors/system-page.tsx:55 } # h1
+  notFoundText: { type: text, component: Text, text: { key: SystemPages.notFoundText }, in: [notFoundPage], source: apps/tedris/features/errors/system-page.tsx:62 }
+
+edges:
+  - { labelledBy: [coursesSection, coursesTitle] }
+  - { labelledBy: [notFoundRegion, notFoundTitle] }
+
+rules:
+  - { id: overview-exposes-head-id, rule: "GET /madrasahs/{id}/overview gives headMuderris.id, the başmüderris's account id, to a caller with no token (madrasah.controller.ts:355-367 applies no mask, madrasah.repository.ts:1220-1226 builds the object with id: headId), though GET /madrasahs/{id} masks createdBy and nazirIds for the same caller because \"a person's id is not for the public\" (anonymous-mask.ts:3-8). THIS PAGE reads the whole object (public-reads.ts:81-84, with the viewer's token or none) and uses only `name` and `courseCount` (madrasah-page.tsx:175-184,252-256); it passes strings to its children, so the id goes to nobody. Checked on the stack on 15 Nov 2026 with no token: the API answered 200 and the id was in the body (it equals the başmüderris's account id, compared in a script that printed no id); the visitor's page, its flight payload (an RSC request) and a signed-in person's page (DOM and the six same-origin responses of the load) did not contain it. So the leak is the API's and not the page's; a browser that calls the API directly (or anyone with the address) reads it. Fix: drop `id` from MadrasahHeadMuderrisResponse, since no page reads it, or mask it as the medrese read does, and add the test the köşk response has (public-pages.e2e.spec.ts:273)." }
+  - { id: DSC-10, rule: "Every failure of the two reads is `null` (public-reads.ts:49-55) and drawn as the not-found page (layout.tsx:20, page.tsx:63), so an outage of tedrisat reads as \"Sayfa bulunamadı. Aradığın sayfa yok ya da artık burada değil.\" and a person who follows a good link is told the medrese is gone. The köşk page tells the two apart (\"Köşk yüklenemedi\"). Not walked: the stack's API answers every read. Fix: throw on anything but a 404 and draw the segment's error state." }
+  - { id: DSC-12, rule: "NOT seen on this page. The inventory records that a course cover prints the course's Arabic label as an unnamed <p> before the card title; on this page courseCover(course) reads `coverLabel`, which MadrasahCourseResponse does not carry (it has `category`), so the cover prints nothing (checked on the stack: no .mds-cover__label on the page). The finding holds on the köşk page and on Derslerim; it would reach this page the day the overview carries `coverLabel`." }
+  - { id: MAD-1, rule: "The fixed notice \"Her dersin kendi hocaları vardır. Medresenin derslerine kayıt onaylıdır: başvurduğunda, dersin kadrosu onaylayınca kaydın kesinleşir.\" is drawn for every medrese and says every course asks for approval (madrasah-page.tsx:199, MadrasahPage.approvalNotice). It reads neither the medrese's policyAlwaysApproval nor a course's requiresApproval. On the stack the seeded medrese has no such policy and its course \"Bina ve İzhar Şerhi\" takes anyone: its own page says \"Kayıt onay gerektirmez\" and its button is \"Kayıt ol\" (seen as a signed-in person with no seat, 15 Nov 2026); only \"İsâgûcî ile Mantığa Giriş\" says \"Kayıt onaya bağlı\". Proposed id; not in the inventory. Fix: say it per card, or only where it is true (decision D1)." }
+  - { id: MAD-2, rule: "The line under the title is two <span>s with an aria-hidden separator between them and no text node between them (madrasah-page.tsx:173-186). The accessibility tree reads it as one run, \"2 dersBaşmüderris Nuri ...\" (Playwright's snapshot of the page); whether a screen reader says the two words apart was NOT verified. Proposed id; low. Fix: a visually hidden space or a comma between the spans." }
+  - { id: MAD-3, rule: "The side list is named \"{name} medresesinin derslerini açtığı köşkler\" (MadrasahPage.kosksLabel). A medrese whose name ends in \"Medresesi\" (the seeded one does) is read \"Hadis ve Siyer Medresesi medresesinin ...\", the word twice. Proposed id; low. Fix: \"Derslerini açtığı köşkler: {name}\"." }
+  - { id: MAD-4, rule: "On the not-found page this address answers there is no <main> landmark: NotFoundState draws SystemState with `shell`, which makes a <section> because the shell is expected to own <main> (libs/ui/src/mds/system-state.tsx:34-36), and app/not-found.tsx draws no shell around it (seen on the stack as a visitor: 0 <main> in the document, the region \"Sayfa bulunamadı\" is the page's only landmark besides the bar and the footer). Proposed id; belongs to tedris.shell.systemPages, recorded here because this flow ends on that page. Fix: draw SystemState without `shell` in not-found.tsx." }
+  - { id: focus-not-set, rule: "The page sets no initial focus (no autoFocus and no focus() in features/courses or in the segment), so no node has `initialFocus`; checked on the stack: document.activeElement is the body after the load. Recorded so the silence is not read as an omission; the inventory does not call it a finding." }

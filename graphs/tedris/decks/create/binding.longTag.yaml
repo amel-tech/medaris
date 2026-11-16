@@ -1,0 +1,26 @@
+# tedris.decks.create, one tag of forty-one characters: after "Oluştur" has been pressed the tags field says "Bir etiket en çok 40
+# karakter olabilir." (the catalog's {max} is 40 here, and the ui's sample says 20 for the other message, so this file gives its own).
+# Nothing is sent, so nothing is made.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/decks/create \
+#     --bind graphs/tedris/decks/create/binding.longTag.yaml --cover transitions --absent --out <dir>
+# A file of its own for the same reason as binding.short.yaml. NOT RUN in the writing phase.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.decks.create
+
+scenarios:
+  longTag:
+    given: { name: valid, tags: tooLong }
+    as: applicantC
+    open: '{tedris}/decks'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'decks->decksCreate' }
+    samples: { max: '40' }
+    vars:
+      deckTitle: Uzun etiketli deste denemesi
+      deckName: Uzun etiketli deste denemesi
+      deckDescription: ''
+      deckTags: uzunetiketuzunetiketuzunetiketuzunetiketu
+    teardown:
+      - run: [node, ../tedris/decks/create/own-decks.mjs, remove, applicantC, '{deckTitle}']
+        expect: own-decks remove

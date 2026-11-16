@@ -1,0 +1,127 @@
+# nazar.homework.review on the local stack (graphs/bindings/local.nazar.binding.yaml): nazar-web on :4002, the seeded müderris `muderris` signed in
+# through Keycloak's real form, on Ödevler of a course of the walk's own.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nazar/homework/review \
+#     --bind graphs/nazar/homework/review/binding.yaml [--main] [--to <state>] [--cover transitions] [--absent] --out <dir>
+# NOT RUN: written in the writing phase, when no replay is run (the owner's word); it was checked only for loading (`replay ... --emit-spec`). Every
+# behaviour below is from the code, none seen in a browser.
+#
+# Data. Each scenario's `setup` runs review-data.mjs (a helper of this folder): it makes a published course of its own ("Deneme dersi nhwrev", three
+# celses in one week, in the seed's second köşk, `muderris` as its hoca, applicantC "Esma Başvuran" holding a seat), sets homework on the first two
+# celses, makes the talebe's hand-in on the first (a file row by SQL, no note) and, as the scenario needs, a review file row and a sent review.
+# `teardown` removes the course with everything under it, the seat's mail and the notifications that point at it, and the storage deletions the removal
+# queued under our own key prefix. Both are idempotent, so a walk that died leaves nothing the next one trips on. The seeded courses, the seeded
+# hand-in of TALEBE and every other account are never touched. Run by hand, review-data.mjs changes data: take the replay lock.
+# Every walk comes in as a person does, through the course menu's "Ödevler" (the nav graph's entry frame:ders->dersHomework), except the refusal,
+# which is an address.
+#
+# Scenarios, each with a `given` of its own (the main story is `reviews`):
+#   reviews   (main) a hand-in with a file and no review. The walk narrows the list to one celse and to a celse with nothing, follows the hand-in's
+#             file (the stack has no store: 503, the page loads again with the toast "Dosyalara şu an ulaşılamıyor..."), opens "Değerlendir", sends with
+#             nothing (the field's error), opens and cancels the upload panel (and presses "Yükle" with no file), types a note and sends it.
+#   draft     a review file is attached and not sent ("Gönderilmedi"): the dialog lists it with its trash button; the walk follows it (503), removes it
+#             and sends with a note.
+#   sent      a review was sent with a file and no note ("Değerlendirildi", "Değerlendirmeyi aç", "Yeniden gönder"): the walk removes the file (the
+#             talebe's block is now empty, NHWREV-3) and sends again with a note.
+#   changed   a review with a note was sent and the talebe added a note after it ("Sonradan değişti"): the dialog opens with the stored note.
+#   nothing   no homework and no hand-in: "Henüz ödev yok".
+#   refused   the ders nazırı holds enrollment.decide and no submission.read: the address says "Bu sayfaya izniniz yok".
+# binding.dersNazir.yaml: a ders nazırı who was given submission.read reviews the same hand-in.
+#
+# Not bound, with the reason (the transitions out of each are reported as not walked):
+#   - PICK_FILE and everything after it (`uploading`, `FAIL.noStorage`, `limit`, `wrongType`, `refused`, `failed`, a successful upload): the replay has
+#     no action that sets a file input, and the stack answers 503 to every upload (no Bunny Storage) all the same. `upload: noStorage` is what the
+#     stack would say.
+#   - `download: served`, `forbidden`, `notFound`, `failed`: every download answers 503 first (assertConfigured precedes every check,
+#     lesson-submission.service.ts:285, :331), so the stack cannot make tedrisat answer 403, 404 or 200.
+#   - `answer: empty`, `refused`, `failed` and `removing`'s FAIL.gone: the stack cannot make a call fail for a person who holds a seat; a race
+#     (another person removing the file, the grant taken away under the open dialog) would need an event that runs while the page is open.
+#   - `loadFailed`, `not_found`, `sent_to_sign_in`: a failed read, a missing course and a session that ends cannot be made on request.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.homework.review
+
+scenarios:
+  reviews:
+    given: { handedIn: true, access: granted, before: fresh, answer: saved, upload: noStorage, download: unavailable }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersHomework' }
+    vars:
+      typedNote: Çekimlerin doğru; ikinci tablodaki iki satırı düzelttim.
+    setup:
+      - run: [node, ../nazar/homework/review/review-data.mjs, make, fresh]
+        expect: 'review-data make fresh'
+    teardown:
+      - run: [node, ../nazar/homework/review/review-data.mjs, remove]
+        expect: 'review-data remove'
+
+  draft:
+    given: { handedIn: true, access: granted, before: draft, answer: saved, upload: noStorage, download: unavailable }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersHomework' }
+    vars:
+      typedNote: Eklediğim dosyada iki satırı düzelttim.
+    setup:
+      - run: [node, ../nazar/homework/review/review-data.mjs, make, draft]
+        expect: 'review-data make draft'
+    teardown:
+      - run: [node, ../nazar/homework/review/review-data.mjs, remove]
+        expect: 'review-data remove'
+
+  sent:
+    given: { handedIn: true, access: granted, before: sent, answer: saved, upload: noStorage, download: unavailable }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersHomework' }
+    vars:
+      typedNote: Dosyayı sildim; asıl düzeltmeler bu notta.
+    setup:
+      - run: [node, ../nazar/homework/review/review-data.mjs, make, sent]
+        expect: 'review-data make sent'
+    teardown:
+      - run: [node, ../nazar/homework/review/review-data.mjs, remove]
+        expect: 'review-data remove'
+
+  changed:
+    given: { handedIn: true, access: granted, before: changed, answer: saved, upload: noStorage, download: unavailable }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersHomework' }
+    vars:
+      typedNote: Eklediğiniz satırı da gördüm; şimdi tamam.
+    setup:
+      - run: [node, ../nazar/homework/review/review-data.mjs, make, changed]
+        expect: 'review-data make changed'
+    teardown:
+      - run: [node, ../nazar/homework/review/review-data.mjs, remove]
+        expect: 'review-data remove'
+
+  nothing:
+    given: { handedIn: false, access: granted, before: fresh, answer: saved, upload: noStorage, download: unavailable }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersHomework' }
+    vars:
+      typedNote: Not yazılmaz; sayfa boş.
+    setup:
+      - run: [node, ../nazar/homework/review/review-data.mjs, make, none]
+        expect: 'review-data make none'
+    teardown:
+      - run: [node, ../nazar/homework/review/review-data.mjs, remove]
+        expect: 'review-data remove'
+
+  refused:
+    given: { handedIn: true, access: refused, before: fresh, answer: saved, upload: noStorage, download: unavailable }
+    as: dersNazir
+    # no menu entry for this person: only the address brings them here
+    open: '{nazar}/ders/{made.course}/odevler'
+    vars:
+      typedNote: Yazılmaz; sayfa reddediyor.
+    setup:
+      - run: [node, ../nazar/homework/review/review-data.mjs, make, refused]
+        expect: 'review-data make refused'
+    teardown:
+      - run: [node, ../nazar/homework/review/review-data.mjs, remove]
+        expect: 'review-data remove'

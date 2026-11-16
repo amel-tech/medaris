@@ -1,0 +1,142 @@
+# tedris.discover.visitorPath on the local stack: tedris-web on :4000, nobody signed in, the seed's köşk, medrese and courses.
+#   node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/tedris/discover/visitorPath \
+#     --bind graphs/tedris/discover/visitorPath/binding.yaml --absent --out <dir>
+# The visitor is an empty account and `signIn` is emptied, so the base's real sign-in through Keycloak never runs (landing's
+# bindings do the same). `--absent` matters here: what a visitor does not have (the follow buttons, the köşk application link, the
+# köşk's decks, a talebe's tabs) is drawn as nodes that the visitor's session never shows, and the replay checks they are not there.
+#
+# What each scenario starts from (the stack's seed, STACK.md):
+#   fullIntro      (the main story)  the open course "Bina ve İzhar Şerhi" with what a visitor reads of a course the seed does not give it,
+#                  made by visitor-data.mjs in `setup` and taken away in `teardown`: its first celse is the sample celse (agenda and
+#                  source), that celse has a public YouTube recording, and the course lists one resource. The walk: Keşfet, the köşk's
+#                  card, the course's card, the tab "Ders kayıtları", and "Başvurmak için giriş yap", which leaves for Keycloak.
+#   approvalCourse the approval course "İsâgûcî ile Mantığa Giriş" as the seed made it: no sample, no public recording, no resource,
+#                  the card says "Kayıt onaya bağlı". Walked once, `--to recordings`: 270 of 278 checks passed and the 8 that did not were
+#                  two nodes (resourceName, agendaStep) found by any text because this scenario gave their placeholders no sample; the
+#                  samples were added after that walk and the scenario has not been walked since, so it is not named in needs.yaml.
+# Nothing in the walk writes: the three reads of a visitor. Data that is made (setup) is a PATCH of one celse through the API as
+# the müderris and two rows of SQL (a recording and a course resource); see visitor-data.mjs for why those two are SQL.
+#
+# Walked: the main story (fullIntro, 348 node checks, all passed, with --absent) and `--to madrasah` (139, all passed).
+# Not walked: OPEN_MADRASAH from the köşk page and the course page, OPEN_KOSK from the course and medrese pages, OPEN_COURSE from the
+# medrese page, BACK_TO_DISCOVER, OPEN_PROGRAMME, SIGN_IN from Keşfet, the köşk page and the medrese page, and REGISTER everywhere;
+# they are bound so a later walk takes them. NAVIGATE is `about:blank`, as realm.auth.signIn does.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.discover.visitorPath
+
+accounts:
+  visitor: {}
+signIn: []
+
+scenarios:
+  fullIntro:
+    given: { intro: full, approval: open }
+    as: visitor
+    open: '{tedris}/discover'
+    vars:
+      kosk: '{seed.titles.kosk}'
+      madrasah: '{seed.titles.madrasah}'
+      course: '{seed.titles.courses.open}'
+      courseId: '{seed.courses.open}'
+      source: Bina, ilk fasıl
+    samples:
+      kosk: '{seed.titles.kosk}'
+      madrasah: '{seed.titles.madrasah}'
+      course: '{seed.titles.courses.open}'
+      title: Canlı ders
+      step: Sîgaların tekrarı
+      source: '{source}'
+      resource: Bina şerhi, ilk bölüm
+      recording: Örnek celse kaydı
+    setup:
+      - { run: [node, ../tedris/discover/visitorPath/visitor-data.mjs, up], expect: 'visitor-data up' }
+    teardown:
+      - { run: [node, ../tedris/discover/visitorPath/visitor-data.mjs, down], expect: 'visitor-data down' }
+  approvalCourse:
+    given: { intro: bare, approval: needed }
+    as: visitor
+    open: '{tedris}/discover'
+    vars:
+      kosk: '{seed.titles.kosk}'
+      madrasah: '{seed.titles.madrasah}'
+      course: '{seed.titles.courses.approval}'
+      courseId: '{seed.courses.approval}'
+      source: Bina, ilk fasıl # unused: this course has no sample celse
+    samples:
+      kosk: '{seed.titles.kosk}'
+      madrasah: '{seed.titles.madrasah}'
+      course: '{seed.titles.courses.approval}'
+      # the nodes drawn only when `intro` is full are found by their words; a node of a composed text with no sample is found by
+      # any text, so the absent check (`--absent`) saw it everywhere: these are the words visitor-data.mjs writes, and nothing on
+      # this course says them
+      title: Canlı ders
+      step: Sîgaların tekrarı
+      resource: Bina şerhi, ilk bölüm
+      recording: Örnek celse kaydı
+    setup:
+      - { run: [node, ../tedris/discover/visitorPath/visitor-data.mjs, down], expect: 'visitor-data down' } # a crashed walk of the other scenario leaves nothing behind
+    teardown:
+      - { run: [node, ../tedris/discover/visitorPath/visitor-data.mjs, down], expect: 'visitor-data down' }
+
+# NAVIGATE (the visitor leaves) is closing the page, as the nav replay and the engine's own bindings do it.
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+states:
+  discover: { url: '{tedris}/discover' }
+  kosk: { url: '{tedris}/kosks/{seed.kosk}' }
+  madrasah: { url: '{tedris}/madrasahs/{seed.madrasah}' }
+  course: { url: '{tedris}/courses/{courseId}' }
+  recordings: { url: '{tedris}/courses/{courseId}' } # a tab is client state: the address stays
+  # the app's own /auth/signin and /auth/register pages answer with a redirect to Keycloak, which is where the browser ends
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/**' }
+  handed_over.register: { url: '{keycloak}/realms/medaris/**' }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot tell a node from its twin on another page of the walk (`--absent` looks for every node in every state
+# it is not drawn in) or from the bar around the page, whose "Giriş yap", "Kayıt ol" and "Keşfet" links are outside <main>.
+nodes:
+  # ---- Keşfet ----
+  discoverPage: { role: main, hasText: '/Köşkler bir ilmin derslerini/' }
+  discoverTitle: { css: 'main h1', hasText: '/^Keşfet$/' }
+  kosksHeading: { role: heading, name: Köşkler, within: { role: region, name: Köşkler } }
+  koskLink: { role: link, name: '{kosk}', within: { role: region, name: Köşkler } }
+  madrasahsHeading: { role: heading, name: Medreseler, within: { role: region, name: Medreseler } }
+  madrasahLink: { role: link, name: '{madrasah}', within: { role: region, name: Medreseler } }
+  # the sentence holds its two links: a text of the whole paragraph, found by its own words
+  inviteDiscover: { css: 'main p', hasText: '/Köşklere, medreselere ve derslerin tanıtımına/' }
+  # the tag "Takip et: <köşk>" of a card, whoever the card is
+  discoverFollow: { role: button, name: '/Takip/' }
+  # ---- a köşk ----
+  koskPage: { role: main, hasText: '/Köşkün dersleri ve köşkte açılan/' }
+  breadcrumbDiscover: { role: link, name: Keşfet, within: { role: navigation, name: Sayfa yolu } }
+  koskTitle: { css: 'main h1', hasText: '{kosk}' }
+  coursesHeading: { role: heading, name: '/^Dersler$/' }
+  courseLink: { role: link, name: '{course}', within: { role: region, name: Dersler } }
+  koskMadrasahLink: { role: link, name: '{madrasah}', within: { role: region, name: Dersler } }
+  inviteApply: { css: 'main p', hasText: '/^Bir derse başvurmak için giriş yap ya da kayıt ol\.$/' }
+  koskFollow: { role: button, name: '/Takip/' }
+  # ---- a medrese ----
+  madrasahPage: { role: main, hasText: '/Medresenin bütün dersleri/' }
+  madrasahTitle: { css: 'main h1', hasText: '{madrasah}' }
+  madrasahKoskLink: { role: link, name: '{kosk}', within: { role: region, name: Dersler } }
+  # ---- the invitation's links: a lower-case "giriş yap" and "kayıt ol" inside <main> (the card's "Kayıt ol" and the bar's are not these) ----
+  inviteSignIn: { role: link, name: '/^giriş yap$/', within: { role: main } }
+  inviteRegister: { role: link, name: '/^kayıt ol$/', within: { role: main } }
+  # ---- a course ----
+  coursePage: { role: main, hasText: '/Derse kayıt/' }
+  courseKoskLink: { role: link, name: '{kosk}', within: { role: navigation, name: Sayfa yolu } }
+  courseTitle: { css: 'main h1', hasText: '{course}' }
+  courseMadrasahLink: { role: link, name: '{madrasah}', within: { css: 'p', hasText: '/ hafta/' } }
+  noAccount: { css: 'main p', hasText: '/^Hesabın yok mu\? Kayıt ol$/' }
+  cardRegister: { role: link, name: '/^Kayıt ol$/', within: { role: complementary } }
+  # "Ders kayıtları" and, once the course has recordings, the count after it: "Ders kayıtları 1"
+  tabRecordings: { role: tab, name: '/^Ders kayıtları/' }
+  lockedWeek: { role: button, name: '/kilitli/' }
+  # the row's type label is one piece of its meta line, with the source and the time: found inside the line, not as the whole of it
+  sampleMark: { text: '/Örnek celse · Canlı ders/' }
+  sampleHeading: { role: heading, name: '/^Örnek celse$/' }
+  sourceHeading: { role: heading, name: '/^Kaynaklar$/' }
+  sampleSource: { text: '{source}', within: { css: '#ornek-celse' } }

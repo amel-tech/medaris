@@ -1,0 +1,155 @@
+# The screens of nizam.shell.menuPerPersona: nizam-web's frame (apps/nizam/components/shell/shell-frame.tsx, nizam-shell.tsx;
+# libs/ui/src/mds/app-shell.tsx, app-bar.tsx, nav-item.tsx, scope-picker.tsx) in the sidebar and on the phone's bar and sheet, with
+# the menu of each kind of person. The page under the frame is not drawn: its `<main>` is the one node of it, with no name and no
+# focus. The theme toggle, the privacy-notice link and the loading skeletons are out of view (see the flow).
+#
+# Words: every `Shell.*` and `AccountPage.*` key is copied from libs/i18n/src/locales/tr/nizam.json (the app reads it as `nizam.<key>`),
+# the key being the path inside that file. Four messages are built in code and are in no i18n file, so they are `composed.*`, each
+# with its code line:
+#   composed.Shell.brand       "Medaris — Nizam"  the logo's aria-label, which names the brand link (libs/ui/src/mds/logo.tsx:54-55: "Medaris — "
+#                                                 and the app's name, `appNames.nizam`, passed by shell-frame.tsx:183)
+#   composed.Shell.koskName    "{name}"           the köşk's name in the picker, in a row and in the card (scope-picker.tsx:44-46, 81, <bdi>)
+#   composed.Shell.personName  "{person}"         the person's name in the row at the foot (shell-frame.tsx:163, <bdi>)
+#   composed.Shell.pickerName  "Köşk değiştir: {name} Köşk nazımı"
+#                                                 the picker button's accessible name, made from its content: the visually hidden
+#                                                 Shell.switchKosk, the name, and the caption Shell.roles.kosk (scope-picker.tsx:43-48)
+# The samples are neutral. The replay reads the binding's `samples` and its `nodes`, not these, so every node whose text has a
+# placeholder is found by a locator of the binding (which also knows each person's own names).
+# `changes` is absent on purpose: the flow invokes two reads and nothing that writes.
+schema: delurio-graph/0
+kind: ui
+id: nizam.shell.menuPerPersona
+flow: nizam.shell.menuPerPersona
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Süleymaniye Köşkü
+  person: Örnek Kişi
+  count: '1'
+
+focus:
+  kept: pickerButton # Esc closes the popup and Base UI's menu returns the focus to its trigger (not seen here)
+  sheet: pickerButton # entering the sheet from the picker's popup (Esc): the same return of focus, inside the dialog (not seen here)
+
+nodes:
+  # ---- the page and its landmarks -------------------------------------------------------------------------------------------------
+  sidebar: { type: page, component: Page, role: complementary, in: [wide, picking, kept], source: libs/ui/src/mds/app-shell.tsx:81 } # an <aside> with no name that wraps the primary <nav> (MENU-5); `max-md:hidden`
+  mainPage: { type: page, component: Page, role: main, in: [wide, picking, kept, bar], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main">: no name, no initialFocus (rule focus-not-set), no skip link points at it (F-UI-P0-1)
+  menuNav: { type: page, component: Page, role: navigation, name: { key: Shell.nav }, in: [wide, picking, kept, sheet, sheetPicking], source: libs/ui/src/mds/app-shell.tsx:98 } # the sidebar's, or the sheet's (app-bar.tsx:92): one is visible at a time
+
+  # ---- the brand: a plain <a href="/"> in the sidebar, the bar and the sheet's head (F-P0-8) ---------------------------------------------
+  brand: { type: action, component: LinkButton, role: link, name: { key: composed.Shell.brand }, in: [wide, picking, kept], source: apps/nizam/components/shell/shell-frame.tsx:182 }
+  barBrand: { type: action, component: LinkButton, role: link, name: { key: composed.Shell.brand }, in: [bar], source: apps/nizam/components/shell/shell-frame.tsx:182 }
+  sheetBrand: { type: action, component: LinkButton, role: link, name: { key: composed.Shell.brand }, in: [sheet, sheetPicking], source: apps/nizam/components/shell/shell-frame.tsx:182 } # the first tabbable element of the sheet, which Base UI focuses (MENU-6)
+
+  # ---- the phone's bar ------------------------------------------------------------------------------------------------------------
+  appBar: { type: page, component: Page, role: banner, in: [bar], source: libs/ui/src/mds/app-bar.tsx:63 } # <header class="mds-appbar">, drawn below 768 px only
+  menuButton: { type: action, component: Button, role: button, intent: secondary, name: { key: Shell.menu }, in: [bar], emits: OPEN_SHEET, source: libs/ui/src/mds/app-bar.tsx:64 } # an icon named by its aria-label; the sheet's trigger and the node the focus returns to
+  barTitleHome: { type: text, component: Text, text: { key: Shell.items.home }, in: [bar], when: "place == 'home'", source: apps/nizam/components/shell/shell-frame.tsx:203 } # a <p>, not a heading: the active entry's label, else "Nizam"
+  barTitleNotifications: { type: text, component: Text, text: { key: Shell.items.notifications }, in: [bar], when: "place == 'notifications'", source: apps/nizam/components/shell/shell-frame.tsx:203 }
+  bell: { type: action, component: LinkButton, role: link, name: { key: Shell.bell }, in: [bar], when: "unread == 'none'", emits: PICK_NOTIFICATIONS, source: apps/nizam/components/shell/shell-frame.tsx:214 } # a plain <a> (F-P0-8), an icon with no number of its own; not drawn for a person with no menu (out of view)
+  bellUnread: { type: action, component: LinkButton, role: link, name: { key: Shell.bellUnread, params: { count: unread.count } }, in: [bar], when: "unread == 'some'", emits: PICK_NOTIFICATIONS, source: apps/nizam/features/notifications/notification-view.ts:200 } # bellLabel: the count is in the name, not on the icon
+
+  # ---- the sheet: a Base UI dialog; the page behind it is inert, so nothing of the bar or the page is listed here -------------------------
+  sheet: { type: page, component: Page, role: dialog, name: { key: Shell.nav }, in: [sheet, sheetPicking], initialFocus: sheetBrand, source: libs/ui/src/mds/app-bar.tsx:78 } # aria-label "Ana menü", the same words as the <nav> inside it (MENU-5)
+  sheetClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: Shell.close }, in: [sheet, sheetPicking], emits: CLOSE_SHEET, source: libs/ui/src/mds/app-bar.tsx:82 } # the second tabbable of the sheet, after the brand
+
+  # ---- the köşk picker (a köşk nazımı only), closed: in the sidebar and in the sheet --------------------------------------------------------
+  pickerButton: { type: action, component: Button, role: button, intent: secondary, name: { key: composed.Shell.pickerName, params: { name: kosk.name } }, text: { key: composed.Shell.koskName, params: { name: kosk.name } }, in: [wide, picking, kept, sheet, sheetPicking], when: pickerMenu, emits: OPEN_PICKER, source: libs/ui/src/mds/scope-picker.tsx:60 } # a Base UI Menu trigger, aria-haspopup=menu; named by its content, so the visible name and caption are in its name (no SCOPE-3 here)
+  koskLabelLanding: { type: text, component: Text, text: { key: composed.Shell.koskName, params: { name: kosk.name } }, in: [wide, picking, kept, sheet, sheetPicking], when: "isKosk and (scope == 'landing' or koskCard)", source: libs/ui/src/mds/scope-picker.tsx:45 } # the köşk in scope: the button's or the plain label's own text. A nazım of one köşk has one köşk, so the landing node stands for it whatever `scope` says
+  koskLabelNewest: { type: text, component: Text, text: { key: composed.Shell.koskName, params: { name: kosk.name } }, in: [wide, picking, kept, sheet, sheetPicking], when: "pickerMenu and scope == 'newest'", source: libs/ui/src/mds/scope-picker.tsx:45 } # on Bildirimler or after the other row was chosen (MENU-2)
+  pickerRole: { type: text, component: Text, text: { key: Shell.roles.kosk }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: libs/ui/src/mds/scope-picker.tsx:47 } # the caption under the name, in the button and in the plain label
+
+  # ---- the picker, opened: a Base UI popup next to the button; it is no modal, so the sidebar stays ----------------------------------------------
+  koskMenu: { type: list, component: List, role: menu, name: { labelledBy: pickerButton }, in: [picking, sheetPicking], source: libs/ui/src/mds/scope-picker.tsx:72 } # Base UI gives the popup aria-labelledby of its trigger; the focus is moved into it (not drawn)
+  rowKosk: { type: action, component: LinkButton, role: menuitem, intent: secondary, text: { key: composed.Shell.koskName, params: { name: kosk.name } }, in: [picking, sheetPicking], repeat: kosks, source: libs/ui/src/mds/scope-picker.tsx:74 } # an <a role="menuitem" href="/kosks/<id>[/ana-sayfa]">, one per köşk: choosing one is a whole page load (MENU-4); the walk presses the row that is not current (binding event CHOOSE_KOSK)
+  currentRowLanding: { type: action, component: LinkButton, role: menuitem, intent: secondary, text: { key: composed.Shell.koskName, params: { name: kosk.name } }, in: [picking, sheetPicking], when: "scope == 'landing'", source: libs/ui/src/mds/scope-picker.tsx:78 } # the row of the köşk in scope: aria-current="true" and data-selected; the same link as a row, so the binding finds it by the attribute
+  currentRowNewest: { type: action, component: LinkButton, role: menuitem, intent: secondary, text: { key: composed.Shell.koskName, params: { name: kosk.name } }, in: [picking, sheetPicking], when: "scope == 'newest'", source: libs/ui/src/mds/scope-picker.tsx:78 }
+
+  # ---- the menu: the same links in the sidebar's <nav> and in the sheet's. A group label is a plain <div>, an entry a link -------------------------
+  sectionGeneral: { type: text, component: Text, text: { key: Shell.groups.general }, in: [wide, picking, kept, sheet, sheetPicking], source: apps/nizam/components/shell/shell-frame.tsx:124 } # NavSection: CSS uppercases it (needs lang="tr")
+  navHome: { type: action, component: LinkButton, role: link, name: { key: Shell.items.home }, in: [wide, picking, kept, sheet, sheetPicking], when: "place != 'home'", emits: PICK_HOME, source: apps/nizam/lib/shell-nav.ts:62 } # "/" for the başnazım and a Medaris nazımı; /kosks/<köşk in scope>/ana-sayfa for a köşk nazımı (shell-nav.ts:196-201)
+  currentHome: { type: action, component: LinkButton, role: link, text: { key: Shell.items.home }, in: [wide, picking, kept, sheet, sheetPicking], when: "place == 'home'", emits: PICK_HOME, source: libs/ui/src/mds/nav-item.tsx:56 } # the entry of the page: aria-current="page", a node of its own because the format has no key for it
+  navNotifications: { type: action, component: LinkButton, role: link, text: { key: Shell.items.notifications }, in: [wide, picking, kept, sheet, sheetPicking], when: "place != 'notifications'", emits: PICK_NOTIFICATIONS, source: apps/nizam/lib/shell-nav.ts:63 } # /bildirimler; carries the unread number after its text, so the link is found by its beginning
+  currentNotifications: { type: action, component: LinkButton, role: link, text: { key: Shell.items.notifications }, in: [wide, picking, kept, sheet, sheetPicking], when: "place == 'notifications'", emits: PICK_NOTIFICATIONS, source: libs/ui/src/mds/nav-item.tsx:56 }
+
+  # Platform: the başnazım's and the Medaris nazımı's
+  sectionPlatform: { type: text, component: Text, text: { key: Shell.groups.platform }, in: [wide, picking, kept, sheet, sheetPicking], when: platformMenu, source: apps/nizam/lib/shell-nav.ts:77 }
+  navMadrasahs: { type: action, component: LinkButton, role: link, name: { key: Shell.items.madrasahs }, in: [wide, picking, kept, sheet, sheetPicking], when: platformMenu, source: apps/nizam/lib/shell-nav.ts:79 } # a Medaris nazımı holds madrasah_create, head_muderris_manage or madrasah_edit to see it
+  navKosks: { type: action, component: LinkButton, role: link, name: { key: Shell.items.kosks }, in: [wide, picking, kept, sheet, sheetPicking], when: platformMenu, emits: PICK_PAGE, source: apps/nizam/lib/shell-nav.ts:85 } # kosk_create, kosk_nazim_manage, kosk_edit or hosting_grant; the entry the walk follows for a başnazım and a Medaris nazımı
+  navNazims: { type: action, component: LinkButton, role: link, name: { key: Shell.items.nazims }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:86 } # the başnazım's alone
+  navGrants: { type: action, component: LinkButton, role: link, name: { key: Shell.items.grants }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:92 }
+  navInactive: { type: action, component: LinkButton, role: link, name: { key: Shell.items.inactive }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:93 }
+
+  # Talepler: the başnazım's, and a Medaris nazımı's when their permissions open them
+  sectionRequests: { type: text, component: Text, text: { key: Shell.groups.requests }, in: [wide, picking, kept, sheet, sheetPicking], when: widerMenu, source: apps/nizam/lib/shell-nav.ts:102 }
+  navKoskApplications: { type: action, component: LinkButton, role: link, name: { key: Shell.items.koskApplications }, in: [wide, picking, kept, sheet, sheetPicking], when: widerMenu, source: apps/nizam/lib/shell-nav.ts:104 } # kosk_application_decide
+  navDeckRequests: { type: action, component: LinkButton, role: link, name: { key: Shell.items.deckRequests }, in: [wide, picking, kept, sheet, sheetPicking], when: widerMenu, source: apps/nizam/lib/shell-nav.ts:110 } # deck_publish
+  navAppeals: { type: action, component: LinkButton, role: link, name: { key: Shell.items.appeals }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:116 } # not in the Medaris menu whatever they hold (F-X-12)
+  navPermanentBans: { type: action, component: LinkButton, role: link, name: { key: Shell.items.permanentBans }, in: [wide, picking, kept, sheet, sheetPicking], when: widerMenu, source: apps/nizam/lib/shell-nav.ts:122 } # ban_account; no page behind it: "Sayfa bulunamadı" (F-P0-4, F-X-11)
+
+  # Denetim
+  sectionAudit: { type: text, component: Text, text: { key: Shell.groups.audit }, in: [wide, picking, kept, sheet, sheetPicking], when: widerMenu, source: apps/nizam/lib/shell-nav.ts:131 }
+  navBans: { type: action, component: LinkButton, role: link, name: { key: Shell.items.bans }, in: [wide, picking, kept, sheet, sheetPicking], when: widerMenu, source: apps/nizam/lib/shell-nav.ts:133 } # /yasaklamalar; ban_scoped or ban_account. The köşk menu has an entry with the same words (navKoskBans)
+  navAuditLog: { type: action, component: LinkButton, role: link, name: { key: Shell.items.auditLog }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:134 } # a Medaris nazımı with audit_read has none (F-X-12)
+  navArchive: { type: action, component: LinkButton, role: link, name: { key: Shell.items.archive }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:140 } # /arsiv; the köşk menu has an entry with the same words (navKoskArchive)
+
+  # Ayarlar: the başnazım's alone
+  sectionSettings: { type: text, component: Text, text: { key: Shell.groups.settings }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:144 }
+  navYoutube: { type: action, component: LinkButton, role: link, name: { key: Shell.items.youtube }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:146 } # no page behind it: "Sayfa bulunamadı" (F-P0-4, F-X-11)
+  navPlatformSettings: { type: action, component: LinkButton, role: link, name: { key: Shell.items.platformSettings }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:152 }
+  navPartners: { type: action, component: LinkButton, role: link, name: { key: Shell.items.partners }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:159 } # the entry the e2e of shell#9 does not know (F-X-20)
+
+  # Köşk and Yönetim: the köşk nazımı's, each pointing at the köşk in scope
+  sectionKosk: { type: text, component: Text, text: { key: Shell.groups.kosk }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:216 }
+  navCourses: { type: action, component: LinkButton, role: link, name: { key: Shell.items.courses }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, emits: PICK_PAGE, source: apps/nizam/lib/shell-nav.ts:218 } # the entry the walk follows for a köşk nazımı; also marked on a course's own pages (coursePathAlias)
+  navApplications: { type: action, component: LinkButton, role: link, text: { key: Shell.items.applications }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:224 } # carries the pending number after its text, so the link is found by its beginning
+  navCourseRequests: { type: action, component: LinkButton, role: link, name: { key: Shell.items.courseRequests }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:232 }
+  navKoskDecks: { type: action, component: LinkButton, role: link, name: { key: Shell.items.decks }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:238 }
+  navKoskBans: { type: action, component: LinkButton, role: link, name: { key: Shell.items.bans }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:244 } # /kosks/<köşk>/yasaklamalar
+  navKoskArchive: { type: action, component: LinkButton, role: link, name: { key: Shell.items.archive }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:250 } # /kosks/<köşk>/arsiv
+  sectionManage: { type: text, component: Text, text: { key: Shell.groups.manage }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:259 }
+  navPermissions: { type: action, component: LinkButton, role: link, name: { key: Shell.items.permissions }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:261 }
+  navKoskSettings: { type: action, component: LinkButton, role: link, name: { key: Shell.items.koskSettings }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:267 }
+
+  # ---- the numbers: above zero only, and left out (never an error) where the read fails or nothing is there ------------------------------------
+  unreadBadge: { type: text, component: Text, text: { key: Shell.countLabels.unread }, in: [wide, picking, kept, sheet, sheetPicking], when: "unread == 'some'", source: libs/ui/src/mds/nav-item.tsx:61 } # the number sits in the link beside a visually hidden word; the digits are in the link's text, not in this node
+  pendingLanding: { type: text, component: Text, text: { key: Shell.countLabels.pending }, in: [wide, picking, kept, sheet, sheetPicking], when: "isKosk and waiting == 'some' and (scope == 'landing' or koskCard)", source: apps/nizam/components/shell/shell-frame.tsx:132 } # the waiting applications of the landing köşk: counts[koskId]
+  pendingNewest: { type: text, component: Text, text: { key: Shell.countLabels.pending }, in: [wide, picking, kept, sheet, sheetPicking], when: "pickerMenu and waiting == 'some' and scope == 'newest'", source: apps/nizam/components/shell/shell-frame.tsx:132 } # the same entry, with the other köşk's number: the badge follows the köşk in scope
+
+  # ---- the person: the role line and the row at the foot of the sidebar and of the sheet ----------------------------------------------------------
+  personRow: { type: action, component: LinkButton, role: link, text: { key: composed.Shell.personName, params: { person: person.name } }, in: [wide, picking, kept, sheet, sheetPicking], emits: PICK_PERSON, source: apps/nizam/components/shell/shell-frame.tsx:159 } # <a class="mds-nav-user" href="/hesap">: the name, the role line and a hidden ", Hesap"; a plain <a> (F-P0-8); found by its class
+  roleChief: { type: text, component: Text, text: { key: Shell.roles.chief }, in: [wide, picking, kept, sheet, sheetPicking], when: isChief, source: apps/nizam/lib/shell-nav.ts:356 }
+  roleNazim: { type: text, component: Text, text: { key: Shell.roles.medaris }, in: [wide, picking, kept, sheet, sheetPicking], when: isNazim, source: apps/nizam/lib/shell-nav.ts:356 }
+  roleKosk: { type: text, component: Text, text: { key: Shell.roles.kosk }, in: [wide, picking, kept, sheet, sheetPicking], when: isKosk, source: apps/nizam/lib/shell-nav.ts:356 }
+
+  # ---- what is in no state, so the replay under --absent finds none of it ---------------------------------------------------------------------------
+  signOut: { type: action, component: LinkButton, role: link, text: { key: AccountPage.signOut }, source: apps/nizam/features/account/components/account-page.tsx:265 } # shown in no state: nothing in the frame signs out, the sheet has none (shell#8: no /çıkış/i text and no control), and Hesap has the only one; the binding looks in the aside and in the dialog
+  languageMenu: { type: action, component: Button, role: button, intent: secondary, name: { key: Shell.languageMenu }, source: apps/nizam/lib/i18n/routing.ts:4 } # shown in no state: Turkish only for now and "so is the language menu" (routing.ts:4-6); the message "Dil" is in the catalog and used by no component (P-19)
+  navSessionsAll: { type: action, component: LinkButton, role: link, name: { key: Shell.items.sessions }, source: apps/nizam/lib/shell-nav.ts:206 } # shown in no state: the köşk-wide Celseler is drawn by the design and has no page (MDRS-211)
+  navStudentsAll: { type: action, component: LinkButton, role: link, name: { key: Shell.items.students }, source: apps/nizam/lib/shell-nav.ts:206 } # likewise Talebeler
+  navEnrollmentsAll: { type: action, component: LinkButton, role: link, name: { key: Shell.items.enrollments }, source: apps/nizam/lib/shell-nav.ts:206 } # likewise Ders kayıtları
+
+edges:
+  - { triggers: [pickerButton, picking] }
+  - { triggers: [pickerButton, sheetPicking] }
+  - { triggers: [menuButton, sheet] }
+  - { labelledBy: [koskMenu, pickerButton] }
+  - { returnsFocus: [sheet, menuButton] } # Esc and "Kapat" give the focus back to the trigger, as Base UI's dialog does; a followed link leaves the page, so the focus is on the body there
+
+rules:
+  - { id: F-P0-8, rule: "The brand, the person's row and the bell are plain <a> (apps/nizam/components/shell/shell-frame.tsx:159, :182, :214), so each is a full document load where the menu's own entries use next/link (:126-136). The brand link and the person's row are in the sheet too. Fix: use Link (next/link) for the three." }
+  - { id: F-UI-P0-1, rule: "There is no skip link: <main id=\"main\"> exists and nothing points at it (libs/ui/src/mds/app-shell.tsx:41; F-X-9 is the same finding). A keyboard or screen-reader user passes the brand, the theme toggle, the picker and up to 17 menu links on every page load (the başnazım's menu). Fix: a first-child <a href=\"#main\"> in AppShell, visible on focus." }
+  - { id: F-P0-4, rule: "Two entries of the başnazım's menu, \"Kalıcı yasak talepleri\" (/talepler/kalici-yasak) and \"YouTube bağlantısı\" (/ayarlar/youtube), have no page (apps/nizam/lib/shell-nav.ts:122-127, :146-151), and a Medaris nazımı holding platform.ban_account is offered the first (ITEM_PERMISSIONS, :299). Both open \"Sayfa bulunamadı\" (nizam.shell.noAccessAndNotFound). The köşk menu's own comment says the menu holds only pages that exist (:206-212). F-X-11 is the same finding. Fix: leave them out until the pages exist (decision D3)." }
+  - { id: F-X-12, rule: "The menu and the permission map disagree (apps/nizam/lib/shell-nav.ts:178-186, :282-306): ITEM_PERMISSIONS lists appeals, audit-log, inactive, youtube, platform-settings and partners, but medarisGroups holds none of them, so a Medaris nazımı who holds the permission, and whom tedrisat lets into the page, has no entry. The stack's own Medaris nazımı holds platform.audit_read and has no \"Denetim kaydı\". Fix: decision D2." }
+  - { id: F-X-20, rule: "shell.e2e.ts#9 (the başnazım's whole menu on a phone) is stale: it expects 21 texts and the menu now ends with \"Ortak uygulamalar\" (shell-nav.ts:159-164), so its toEqual fails. The graph draws the code's 17 entries and carries the check with that entry. shell#8 and shell#10 hold as written." }
+  - { id: MENU-1, rule: "With one köşk the picker is a plain label (libs/ui/src/mds/scope-picker.tsx:55-57), but the visually hidden words \"Köşk değiştir: \" are in its body for both cases (:43), so a screen reader says \"Köşk değiştir: <name> Köşk nazımı\" for something that cannot be changed. New finding, from the code; not seen in a browser. Fix: render the action words only in the menu branch." }
+  - { id: MENU-2, rule: "The menu does not keep the köşk the person works in. A köşk nazımı of two köşks lands, by \"/\", on the köşk of their OLDEST role (apps/nizam/app/(home)/page.tsx:29-32; GET /me/assignments is ordered by creation, assignment.repository.ts:115), and on a page whose address names no köşk (Bildirimler, Hesap) the menu names the NEWEST köşk of the list (shell-nav.ts:372-379 takes the first of getManagedKosks, which is ordered by featured and then newest first, kosk.repository.ts:408; shell-frame.tsx:88-95). The picker, \"Ana sayfa\" and every köşk entry therefore change köşk between two clicks, and nothing says so. nazar-web keeps the scope in a cookie. New finding, from the code; the stack's seeded köşk nazımı has two köşks, so a walk can show it. Fix: remember the köşk (decision D1)." }
+  - { id: MENU-3, rule: "The number on \"Başvurular\" is a full roster read, made for every köşk the person manages each time the layout renders, which is every full page load and every refresh of the layout (apps/nizam/components/shell/nizam-shell.tsx:79-84: GET /kosks/:id/enrollments/pending). The answer holds each waiting applicant's name and e-mail (course.repository.ts:2126-2148) and the handler writes one course.roster_read audit row per call, \"every read of it is written\" (course.service.ts:1578-1587), so a nazım of two köşks writes two audit rows per page load (the seeded one writes two each time he opens any page), and the audit log fills with reads nobody made on purpose. New finding, from the code; the rows were not counted on the stack. Fix: a count that is not an audited roster read (the course badge counts exist: getBadgeCounts)." }
+  - { id: MENU-4, rule: "The picker's rows are Menu.LinkItem, which draws a plain <a href> (libs/ui/src/mds/scope-picker.tsx:74-83), so choosing a köşk is a whole document load where the menu's own entries go through next/link. The same shape as SCOPE-1 of nazar.shell.scopeAndMenu and as F-P0-8. New finding, from the code. Fix: render the rows with next/link (LinkItem takes `render`)." }
+  - { id: MENU-5, rule: "The sidebar is an <aside> (a complementary landmark) with no accessible name that wraps the primary <nav aria-label=\"Ana menü\"> (libs/ui/src/mds/app-shell.tsx:81-103), and the sheet's dialog and the <nav> inside it carry the same name, \"Ana menü\" (app-bar.tsx:78 and :92): a screen reader says \"Ana menü, dialog ... Ana menü, navigation\". It is the same code nazar.shell.scopeAndMenu records as F-L-2 and F-L-3. New finding for nizam, from the code. Fix: make the aside a <div> or name it, and name the dialog \"Menü\"." }
+  - { id: MENU-6, rule: "The sheet opens with the focus on the brand link of its head, not on \"Kapat\": Base UI focuses the first tabbable element of the popup (utils/popups createDefaultInitialFocus, FloatingFocusManager), and nizam passes an <a href=\"/\"> as the AppBar's `logo` (shell-frame.tsx:182-185, app-bar.tsx:80-88). A keyboard user who opens the menu and presses Enter leaves for the home page. shell#8 asserts only that the focus is inside the head, which holds. New finding, low, from the code and Base UI's source; not seen in a browser. Fix: give the dialog `initialFocus` on \"Kapat\" or make the brand in the sheet's head not a link." }
+  - { id: focus-not-set, rule: "Nothing in apps/nizam/components/shell gives a page focus when it opens (no autoFocus, no focus()), so the page node carries no `initialFocus` and the graph says nothing of the focus after a page loads or a köşk is chosen (a whole load leaves it on the document's start). The frame moves it in three places only: into the sheet on opening, back to \"Menü\" on Esc and \"Kapat\", and back to the picker's button when its popup closes (Base UI; not seen here)." }
+  - { id: label-in-name, rule: "A link's visible text is in its accessible name for every entry of the menu, the bell, the brand and the picker's button (named by its content: the hidden words, the name and the caption). The person's row is named by its content, name, role line and a hidden \", Hesap\". Holds." }
+  - { id: sheet-has-no-sign-out, rule: "\"Çıkış yap\" is not in the sheet or the sidebar (canvas rule 18; shell#8): the link lives on Hesap and the confirmation on /auth/signout. The node signOut is shown in no state, so a replay under --absent looks for none in the aside and in the dialog." }

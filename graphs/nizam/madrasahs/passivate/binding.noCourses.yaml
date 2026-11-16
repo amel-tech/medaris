@@ -1,0 +1,27 @@
+# nizam.madrasahs.passivate for a medrese with nothing under it: the warning says "Altında kapanacak ders yok" and "Önümüzdeki 7 günde
+# canlı celse yok", and has no talebe line, no course list and no note about talebe. The same walk as binding.yaml (the button, the
+# dialog, the confirmation, the row), with `courses: none`; it adds no transition, so it needs a file of its own to be walked at all.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay \
+#     graphs/nizam/madrasahs/passivate --bind graphs/nizam/madrasahs/passivate/binding.noCourses.yaml --to ready --out <dir>
+#
+# NOT RUN: written without a replay. `setup` makes the medrese "Deneme medresesi pasife" with APPLICANT_C as its başmüderris and a hosting
+# right in the seed's second köşk, and no course; `teardown` deletes it. Both are safe to run twice. This file does not set the e2e's
+# "2 ders kapanır" text of binding.yaml (the medrese has no course).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.madrasahs.passivate
+
+scenarios:
+  noCourses:
+    given: { may: chief, courses: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup:
+      - run: [node, ../nizam/madrasahs/passivate/passivate-data.mjs, make, pasife, --head, APPLICANT_C]
+        expect: '"tag":"pasife"'
+    teardown:
+      - run: [node, ../nizam/madrasahs/passivate/passivate-data.mjs, remove, pasife]
+        expect: 'passivate-data remove pasife'

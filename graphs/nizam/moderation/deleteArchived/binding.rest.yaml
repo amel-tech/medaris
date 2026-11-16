@@ -1,0 +1,63 @@
+# nizam.moderation.deleteArchived, the list that is still not empty: the köşk holds a SECOND hidden course (`delRest`, no talebe) next to
+# the one the walk deletes (`delItem`, as in binding.yaml), so the filtered list has two rows, and after the delete the table is shorter,
+# the count reads "1 gizli öğe" and the line "Toplam 1 öğe, 1 tanesi gösteriliyor" follows (listedAfter, `rest: some`). The walk is the
+# main story's, to the last step.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/apps/engine/src/cli.ts replay graphs/nizam/moderation/deleteArchived \
+#     --bind graphs/nizam/moderation/deleteArchived/binding.rest.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay; every behaviour is from the code. `delRest` is hidden first and `delItem` after it, so `delItem` is the
+# newest row, but the walk finds its button by its title and does not rely on the order. `delRest` is never pressed, opened or deleted by
+# the walk: `teardown` removes it with `course.mjs remove delRest`. The same spares as binding.yaml (applicantC, D and G) are enrolled in
+# `delItem` only.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.deleteArchived
+
+scenarios:
+  leavesOthers:
+    given: { item: course, rest: some }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->archive' }
+    samples:
+      title: '{del.title}'
+      kosk: Kubbealtı Köşkü
+      value: tümü
+    setup:
+      - run: [node, helpers/course.mjs, make, delRest, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi delRest"'
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/courses/{second.course}/archive']
+        expect: '{second.course}'
+      - run: [node, helpers/course.mjs, make, delItem, --kosk, '{seed.kosk2}', --weeks, '2', --lessons, '2', --talebe, applicantC, applicantD, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_weeks where course_id = '{del.course}'"]
+        expect: '"n":2'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{del.course}'"]
+        expect: '"n":4'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{del.course}'"]
+        expect: '"n":3'
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/courses/{del.course}/archive']
+        expect: '{del.course}'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    teardown:
+      - run: [node, helpers/course.mjs, remove, delItem]
+        expect: 'course remove delItem'
+      - run: [node, helpers/course.mjs, remove, delRest]
+        expect: 'course remove delRest'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi del%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_G_SUB}')"]
+        expect: '"n":0'
+
+# the second course's own record, for the setup's hide
+data:
+  second: { json: ../.local/made/delRest.json }
+
+states:
+  readingImpact: { call: '{nizam}/arsiv' }
+  deleting: { call: '{nizam}/arsiv' }

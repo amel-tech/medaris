@@ -1,0 +1,52 @@
+# The screens of common.shell.theme: any page of tedris-web, nazar-web, nizam-web or landing-web, drawn as far as the theme
+# toggle goes. Only the toggle, the page it sits on and the colour scheme the page wears are drawn; the rest of each bar belongs
+# to that app's navigation graph. The flow invokes no action and writes no record (only the browser's local storage), so there is
+# no Changes.note.
+#
+# Words: both keys are copied by script, letter for letter, from libs/i18n/src/locales/tr/tedris.json (the app reads them as
+# `tedris.PhoneMenu`), the first app of the flow; the key is the path inside that file. The same two texts are, letter for
+# letter, nizam-web's `Shell.themeDark` / `Shell.themeLight` (libs/i18n/src/locales/tr/nizam.json:724-725) and the defaults
+# of the kit's ThemeToggle that nazar-web and landing-web leave in place (libs/ui/src/mds/theme-toggle.tsx:35-36); checked by
+# script on 15 Nov 2026. So one catalog serves the four apps and no word differs between them.
+#
+# The two `*Page` nodes are not elements a person looks at: they stand for <html data-theme="light|dark">, the attribute the
+# whole page's colour tokens follow. The binding finds them by that attribute (nodes: lightPage, darkPage).
+schema: delurio-graph/0
+kind: ui
+id: common.shell.theme
+flow: common.shell.theme
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+
+# After a press the focus stays on the toggle: it is the element that was pressed and React keeps it while its name changes
+# (probe: the focused element was the button, named "Açık temaya geç" after the first press and "Koyu temaya geç" after the
+# second, in all four apps). Opening another page moves no focus the graph says (a page that loads anew starts at the document).
+focus:
+  dark: toggleToLight
+  light: toggleToDark
+
+nodes:
+  # ---- the page the toggle sits on ----
+  # Each app's <main> is drawn in a place of its own (app-shell.tsx:41 for nazar and nizam, the page for tedris and landing),
+  # so no anchor is given. It has no name and the apps set no initial focus when it opens (rule focus-not-set).
+  page: { type: page, component: Page, role: main, in: [light, dark] }
+
+  # ---- the colour scheme the page wears ----
+  lightPage: { type: page, component: Page, role: document, in: [light], source: "libs/ui/src/lib/theme.ts:13" } # <html data-theme="light">: set in each root layout's markup and by ThemeScript
+  darkPage: { type: page, component: Page, role: document, in: [dark], source: "libs/ui/src/mds/theme-toggle.tsx:23" } # <html data-theme="dark">: written by the press, and by ThemeScript on a page that opens with dark stored
+
+  # ---- the toggle ----
+  # One IconButton (libs/ui/src/mds/icon-button.tsx:31): a moon while the page is light, a sun while it is dark (decorative, aria-hidden),
+  # named by aria-label, and the same text as a tooltip. Two of it are in the DOM of every page (a phone bar and a wide bar); the
+  # bar that is not drawn is display:none, so only one is exposed.
+  toggleToDark: { type: action, component: Button, role: button, name: { key: PhoneMenu.themeDark }, in: [light], emits: TOGGLE, source: "libs/ui/src/mds/theme-toggle.tsx:58" } # F-UI-P0-3: the name is the action and flips; no aria-pressed
+  toggleToLight: { type: action, component: Button, role: button, name: { key: PhoneMenu.themeLight }, in: [dark], emits: TOGGLE, source: "libs/ui/src/mds/theme-toggle.tsx:58" } # the same element as toggleToDark, renamed
+
+rules:
+  - { id: focus-not-set, rule: "None of the four apps sets an initial focus when a page opens, so the page node has no `initialFocus` and the graph says nothing of the focus on opening. After a press the focus stays on the toggle (see `focus`). Recorded so the silence is not read as an omission." }
+  - { id: light-until-chosen, rule: "The page is light until the person presses the toggle, whatever their system prefers: the markup says data-theme=\"light\" and ThemeScript never reads prefers-color-scheme (libs/ui/src/lib/theme.ts:9-11, MDRS-245). Probe: a browser context that prefers dark got data-theme=\"light\" on landing. Not a defect; stated so a dark-mode user is not surprised." }
+  - { id: F-UI-P0-3, rule: "The toggle's accessible name flips with the state (\"Koyu temaya geç\" / \"Açık temaya geç\") and the button has no aria-pressed, so the name changes under a focused control and some screen readers read it again (libs/ui/src/mds/theme-toggle.tsx:56-60). The inventory found it in nizam-web; the component is the kit's, so it is the same in tedris-web, nazar-web and landing-web (tedris inventory records the flip, with no id). A flipping name without aria-pressed is a pattern the ARIA Authoring Practices allow, so the fix is optional: a fixed name with aria-pressed, or leave it." }
+  - { id: F-L-10, rule: "nazar-web passes no labels to the toggle (features/shell/components/portal-frame.tsx:94, portal-menu.tsx:87), so its name is the kit's Turkish default and does not go through nazar's catalog: the en and ar catalogs of the app could never reach it. Fix: pass darkLabel and lightLabel from nazar.Shell, as tedris-web and nizam-web do. landing-web has no catalog at all, by design." }
+  - { id: THEME-1, rule: "Without JavaScript the toggle is drawn and does nothing: the component's own comment says so (theme-toggle.tsx:32), the button is a plain client-side onClick, and the page does not hide it until it has hydrated. Observed on landing with JavaScript off: the button is in the page, a press leaves data-theme=\"light\". The graph's pages carry no `script` key, so the replay does not walk them without JavaScript. Fix: render the button only after it has mounted, or hide it with a noscript style. Proposed id; not in the inventory." }
+  - { id: name-settles-after-load, rule: "A page that opens always draws the toggle as the light one first (on the server and on the client's first render) and the effect corrects it once the page has hydrated (theme-toggle.tsx:41-45), so for a short moment a dark page offers \"Koyu temaya geç\" with a moon. Deliberate, so that hydration matches; stated because the state `dark` on a page that has just opened is reached a moment after the page is drawn, not at once. Not a finding." }

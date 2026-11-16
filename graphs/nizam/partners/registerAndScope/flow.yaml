@@ -1,0 +1,503 @@
+# Ortak uygulamalar (nizam-web, /ayarlar/ortak-uygulamalar): the başnazım registers a partner application by its Keycloak client id
+# and name, switches it on and off, chooses the köşks it works with and renames it. Read from the code of PR #394's branch on 15 Nov
+# 2026 (apps/nizam/app/ayarlar/ortak-uygulamalar/page.tsx, features/partners/{reads,actions,present}.ts and
+# components/partners-view.tsx, libs/ui/src/mds/{dialog,field,button,switch,table,checkbox,alert}.tsx and
+# libs/ui/src/components/sonner.tsx) and, for what the API answers, apps/tedrisat/src/integration/{partner-admin.controller,
+# partner-admin.service,partner-registry.repository}.ts and dto/partner-admin.dto.ts. The running stack was looked at with read-only
+# SQL (the registry holds no partner, none is bound to a köşk) and no page was opened in a browser: everything about what the screen
+# looks like and where the focus goes is from the code. It says what the code does today:
+#   - One page, three places to write. The add form sits on the page and is checked in the browser before anything is sent; each
+#     row has a switch (one call at once, the switch moves first and moves back if the server refuses), "Köşkleri seç" and "Adını
+#     değiştir", each a form dialog with its own call. A partner is never deleted (partner-admin.service.ts): a wrongly typed client
+#     id stays in the list for good (decision D1).
+#   - What the API refuses is said where the person is looking: a client id that exists or is a Medaris front-end client under the
+#     field, a refused switch or add in a toast, a refused rename under the field of its dialog, a refused köşk choice in an alert
+#     inside its dialog. A 403 on the first read is the shell's refusal (nizam.shell.noAccessAndNotFound), any other failure on that
+#     read is a box with "Tekrar dene".
+#   - What it does that its people will not expect (each is in ui.yaml `rules`): the switch is `disabled` while its save runs and the
+#     focus falls (F-W3-6); the field errors are no live region and the focus stays put (F-W3-13, F-UI-W3-1); unticking a köşk
+#     deletes the partner's codes there for good with no confirmation (F-W3-15); and six more of this flow's own, F-W3-partners-1 to
+#     -6.
+#   - e2e checks it takes over: none. No e2e file of nizam names a partner (rg partner apps/nizam/e2e is empty); the page is pinned
+#     by the unit test apps/nizam/test/partners.spec.tsx and the API by apps/tedrisat/test/e2e/partner-enrollment.e2e.spec.ts.
+schema: delurio-graph/0
+kind: flow
+id: nizam.partners.registerAndScope
+status: captured
+domain: medaris.api
+ui: nizam.partners.registerAndScope
+title: Register a partner application and choose its köşks
+summary: >-
+  The başnazım opens Ortak uygulamalar and reads the partner applications the registry holds (or "Kayıtlı ortak uygulama yok."). To add
+  one they type its Keycloak client id and a name and press "Ekle": an empty field, a client id with a character the realm does not allow
+  and a blank name are said under their fields before anything is sent; a client id that is registered already, and one that is one of
+  Medaris's own front-ends, are refused by the server and said under the client id. The new partner is open and works with no köşk until
+  one is chosen. Each row has a switch (Açık / Kapalı: a closed partner cannot register anyone and its codes are shown in no course),
+  "Köşkleri seç" (a dialog of every köşk with a box each; unticking a köşk deletes the partner's codes there, for good) and "Adını
+  değiştir" (a dialog with the name). A person tedrisat refuses is shown the shell's refusal; a read that fails is a box with "Tekrar
+  dene".
+
+scope:
+  shows: >-
+    the page: its header, the add form, the table of the registered partners and its row controls, the two dialogs, the toasts of a
+    write and the box that says the list could not be read
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the shell around the page (sidebar, person row, bell, phone bar): nizam.shell.menuPerPersona; the entry that leads here is nizam.nav's `frame:shell->partners`, drawn to the başnazım alone"
+    - "the refusal a person tedrisat answers 403 meets (a köşk nazımı, a Medaris nazımı without platform.partner_manage, a başmüderris, a talebe): nizam.shell.noAccessAndNotFound; this flow ends there"
+    - "a Medaris nazımı holding platform.partner_manage: the API admits them and the page is the same, but the menu has no entry for them (F-X-12) and the seed has none; they reach it by the address"
+    - "an ended session: each call sends the person to sign in (redirectIfUnauthenticated, realm.auth.signIn) instead of drawing an error"
+    - "the other sentences the page keeps for a refused write: VALIDATION_ERROR (errors.invalid, 'Girilen bilgiler geçerli değil.', which the page's own check makes unreachable) and KOSK_NOT_FOUND (errors.koskGone, 'Seçilen köşklerden biri artık yok. Sayfayı yenileyin.'); they stand where the refused sentences stand, as the generic one does here"
+    - "the partner's other rows and the other köşks' boxes: the walk draws the one partner it registers and the one köşk it ticks; every other row and box has the same controls"
+    - "the table's order (by name, then client id) and the phone layout (below 768 px each row is a card with the column's words as labels)"
+    - "the loading skeleton (loading.tsx, `aria-busy`) while the page reads, and the 'Henüz köşk yok.' line of a platform with no köşk at all"
+    - "what the registry does for the partner afterwards: its tokens on /integrations/* (the partner's own calls), the consent page its people see (realm.auth.partnerConsent) and the codes the köşk's courses map to it (nazar.courseSettings.partnerCodes)"
+    - "the close button of each toast ('Kapat', common.toast.close) and a toast that is still on screen from an earlier step"
+    - "another tedrisat instance, which reads a change of the registry within a minute (PARTNER_REGISTRY_TTL_MS)"
+
+decisions:
+  D1:
+    question: >-
+      Should a partner application ever be removed? Today it never is (partner-admin.service.ts, integration-partner.schema.ts): the only
+      way out is the switch, so a client id typed wrongly, or a test registration, stays in the list and keeps its name and its audit
+      rows for good, and the client id cannot be registered again.
+    recommend: >-
+      Keep "never deleted" for a partner that has registered anyone (its links must stay), and allow removing one that has no
+      registration, no code and no köşk, with a confirmation.
+    affects: [listed, adding]
+  D2:
+    question: >-
+      Should "Kaydet" in "Çalıştığı köşkler" ask first when the choice takes a köşk away? It deletes the partner's codes in that
+      köşk's courses at once, each written to the audit log, and choosing the köşk again brings none back (F-W3-15).
+    recommend: >-
+      A confirmation that says how many codes and in how many courses go, as the other destructive dialogs of nizam do, before the call.
+    affects: [kosksForm, savingKosks]
+
+context:
+  # what the world is: a walk picks one value of each
+  read:
+    values: [ok, failed, forbidden]
+    initial: any
+    say:
+      ok: "the registry's read answers"
+      failed: "the read fails for any reason but a 403 (tedrisat does not answer, it errs): the page draws its box"
+      forbidden: "tedrisat answers 403: the person is not the başnazım and holds no platform.partner_manage"
+  held:
+    values: [none, one, off, scoped]
+    initial: any
+    say:
+      none: "no partner application is registered"
+      one: "one is registered, open, working with no köşk"
+      off: "one is registered, switched off, working with no köşk"
+      scoped: "one is registered, open, working with a köşk, and a course of that köşk holds one of its codes"
+  entry:
+    values: [valid, badShape, noName]
+    initial: any
+    say:
+      valid: "the client id and the name they type are right"
+      badShape: "the client id has a character the realm does not allow (a space, an accent, a symbol)"
+      noName: "the client id is right and the name is blank"
+  answer:
+    values: [added, exists, frontEnd, forbidden, failed]
+    initial: any
+    say:
+      added: "the server registers the partner, open and with no köşk"
+      exists: "a partner is registered under that client id already, open or not"
+      frontEnd: "the client id is one of Medaris's own front-ends (the clients of KEYCLOAK_ALLOWED_CLIENTS)"
+      forbidden: "the caller lost platform.partner_manage"
+      failed: "anything else: the server does not answer, errs, or refuses the body"
+  write:
+    values: [saved, gone, forbidden, failed]
+    initial: any
+    say:
+      saved: "the server saves the switch, the name or the köşks"
+      gone: "no partner is registered under that client id any more (404 PARTNER_UNKNOWN)"
+      forbidden: "the caller lost platform.partner_manage"
+      failed: "anything else: the server does not answer, errs, or refuses the body"
+  renameTo:
+    values: [valid, empty]
+    initial: any
+    say:
+      valid: "they type a new name"
+      empty: "they erase the name, press Kaydet, and then type a name"
+  # what the screen remembers
+  row:
+    values: [none, on, off]
+    initial: none
+    say: { none: "the table has no row", on: "the partner's row shows the switch on", off: "the partner's row shows the switch off" }
+  kosks:
+    values: [none, some]
+    initial: none
+    say: { none: "the partner works with no köşk: 'Köşk seçilmedi'", some: "the partner works with a köşk: its name is in the row" }
+  ticked:
+    values: [none, some]
+    initial: none
+    say: { none: "the köşk's box in the dialog is not ticked", some: "the köşk's box in the dialog is ticked" }
+  typed:
+    values: [empty, valid, badShape, noName]
+    initial: empty
+    say: { empty: "both fields of the add form are empty", valid: "both are right", badShape: "the client id is not allowed", noName: "the name is blank" }
+  said:
+    values: [none, empty, badShape, noName, exists, frontEnd]
+    initial: none
+    say:
+      none: "nothing is said under the add form's fields"
+      empty: "'İstemci kimliğini yazın.' and 'Bir ad yazın.'"
+      badShape: "the shape sentence under the client id"
+      noName: "'Bir ad yazın.' under the name"
+      exists: "'Bu istemci kimliğiyle kayıtlı bir ortak uygulama var.' under the client id"
+      frontEnd: "'Bu istemci Medaris'in kendi uygulamalarından biri; ortak uygulama olamaz.' under the client id"
+  nameIn:
+    values: [same, new, empty]
+    initial: same
+    say: { same: "the rename dialog still holds the partner's name", new: "it holds a new name", empty: "it holds nothing" }
+  fault:
+    values: [none, empty, gone, forbidden, failed]
+    initial: none
+    say:
+      none: "no sentence in the open dialog"
+      empty: "'Bir ad yazın.' under the rename field"
+      gone: "'Bu ortak uygulama bulunamadı. Sayfayı yenileyin.'"
+      forbidden: "'Bunun için izniniz yok.'"
+      failed: "'Bir sorun oldu. Yeniden deneyin.'"
+  toast:
+    values: [none, added, turnedOn, turnedOff, kosksSaved, kosksCleared, renamed, gone, forbidden, failed]
+    initial: none
+    say:
+      none: "no toast"
+      added: "'Ortak uygulama eklendi'"
+      turnedOn: "'Ortak uygulama açıldı'"
+      turnedOff: "'Ortak uygulama kapatıldı'"
+      kosksSaved: "'Köşkler kaydedildi', the partner works with 1 köşk"
+      kosksCleared: "'Köşkler kaydedildi', the partner works with 0 köşk"
+      renamed: "'Ad değiştirildi'"
+      gone: "'Kaydedilemedi' with the sentence of a partner that is gone"
+      forbidden: "'Kaydedilemedi' with the sentence of a missing permission"
+      failed: "'Kaydedilemedi' with the generic sentence"
+
+guards:
+  # sameKosks(held, chosen) of present.ts:44: an unchanged selection just closes the dialog
+  unchanged: "(ticked == 'none' and kosks == 'none') or (ticked == 'some' and kosks == 'some')"
+  # a row exists to press something on
+  hasRow: "row != 'none'"
+
+effects:
+  again: { havoc: [read] } # "Tekrar dene" reads the page again, and the answer may differ
+  arrivedOne: { set: { row: on, kosks: none } }
+  arrivedOff: { set: { row: off, kosks: none } }
+  arrivedScoped: { set: { row: on, kosks: some } }
+  clearToast: { set: { toast: none } }
+  # the add form
+  typedValid: { set: { typed: valid, said: none } }
+  typedBadShape: { set: { typed: badShape, said: none } }
+  typedNoName: { set: { typed: noName, said: none } }
+  saidEmpty: { set: { said: empty } }
+  saidBadShape: { set: { said: badShape } }
+  saidNoName: { set: { said: noName } }
+  saidExists: { set: { said: exists } }
+  saidFrontEnd: { set: { said: frontEnd } }
+  added: { set: { row: on, kosks: none, typed: empty, said: none, toast: added } }
+  # a refused write: the toast
+  toastGone: { set: { toast: gone } }
+  toastForbidden: { set: { toast: forbidden } }
+  toastFailed: { set: { toast: failed } }
+  # the switch
+  pressOff: { set: { row: off, toast: none } }
+  pressOn: { set: { row: on, toast: none } }
+  rowBackOn: { set: { row: on } }
+  rowBackOff: { set: { row: off } }
+  toastTurnedOn: { set: { toast: turnedOn } }
+  toastTurnedOff: { set: { toast: turnedOff } }
+  # the rename dialog
+  openRename: { set: { nameIn: same, fault: none, toast: none } }
+  typedNewName: { set: { nameIn: new, fault: none } }
+  erasedName: { set: { nameIn: empty, fault: none } }
+  nameEmptySaid: { set: { fault: empty } }
+  faultGone: { set: { fault: gone } }
+  faultForbidden: { set: { fault: forbidden } }
+  faultFailed: { set: { fault: failed } }
+  toastRenamed: { set: { toast: renamed } }
+  # the köşks dialog
+  openKosksNone: { set: { ticked: none, fault: none, toast: none } }
+  openKosksSome: { set: { ticked: some, fault: none, toast: none } }
+  tickedOn: { set: { ticked: some } }
+  tickedOff: { set: { ticked: none } }
+  kosksNowSome: { set: { kosks: some, toast: kosksSaved } }
+  kosksNowNone: { set: { kosks: none, toast: kosksCleared } }
+
+failures:
+  reading:
+    from: listPartnerApplications
+    forbidden: [AUTHZ_FORBIDDEN]
+    unreadable: []
+  adding:
+    from: createPartnerApplication
+    exists: [PARTNER_EXISTS]
+    frontEnd: [PARTNER_FRONT_END_CLIENT]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+  turningOff:
+    from: updatePartnerApplication
+    gone: [PARTNER_UNKNOWN]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+  turningOn:
+    from: updatePartnerApplication
+    gone: [PARTNER_UNKNOWN]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+  renaming:
+    from: updatePartnerApplication
+    gone: [PARTNER_UNKNOWN]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+  savingKosks:
+    from: setPartnerApplicationKosks
+    gone: [PARTNER_UNKNOWN]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR, KOSK_NOT_FOUND]
+# `forbidden` of `reading` is the 403 the page turns into forbidden() (reads.ts:19-20); `unreadable` stands for every other failure, which the
+# page treats alike (a null, reads.ts:23). The writes map a refusal by its `code` (present.ts:30-41): the codes the page words are
+# PARTNER_EXISTS, PARTNER_FRONT_END_CLIENT, PARTNER_UNKNOWN, KOSK_NOT_FOUND, VALIDATION_ERROR and AUTHZ_FORBIDDEN, anything else is the
+# generic sentence. The graph draws the three sentences it can tell apart (gone, forbidden, generic) and leaves the other two to
+# outOfView: they stand in the same places.
+
+# The story the page tells first: the başnazım registers a partner, switches it off and on, chooses a köşk for it, takes the köşk away
+# again and renames it.
+main:
+  given: { read: ok, held: none, entry: valid, answer: added, write: saved, renameTo: valid }
+  events: [DONE, FILL_ADD, SUBMIT_ADD, DONE, TURN_OFF, DONE, TURN_ON, DONE, CHOOSE_KOSKS, TOGGLE_KOSK, SAVE_KOSKS, DONE, CHOOSE_KOSKS, TOGGLE_KOSK, SAVE_KOSKS, DONE, RENAME, FILL_NAME, SUBMIT_RENAME, DONE]
+
+initial: reading
+
+states:
+  reading:
+    title: The partner applications are read
+    description: >-
+      The page's server side asks tedrisat for GET /nizam/partner-applications (page.tsx:22): every registered partner, open or not, by
+      name and then client id, each with the köşks it works with, and every köşk, hidden ones included, by name, to choose from.
+      tedrisat asks platform.partner_manage: the başnazım passes, a Medaris nazımı only when granted it, nobody else. A 403 is told apart
+      and the page calls forbidden() (page.tsx:23); any other failure is a null that the page draws as a box (reads.ts:23). Nothing is on
+      the screen of this step: the loading skeleton (loading.tsx) is out of view.
+    includes: ["the partners with their köşks", "every köşk to choose from"]
+    source: apps/nizam/app/ayarlar/ortak-uygulamalar/page.tsx:22
+    invoke: { action: listPartnerApplications }
+    on:
+      DONE: { guard: "read == 'ok'", target: arrived }
+      FAIL.forbidden: { guard: "read == 'forbidden'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'section'" } }, say: "a 403: the page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" (nizam.shell.noAccessAndNotFound)", source: apps/nizam/features/partners/reads.ts:19 }
+      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "any other failure is a null: the page still draws its header and a box in place of the form and the table", source: apps/nizam/features/partners/reads.ts:23 }
+
+  arrived:
+    title: What the answer holds
+    description: >-
+      Not a screen: the page's rows are the answer's partners (`useState(initial.items)`). Whether the table is empty, holds a partner that
+      is open or closed and works with no köşk, or one that works with a köşk, is what the walk finds in the registry.
+    source: apps/nizam/features/partners/components/partners-view.tsx:56
+    always:
+      - { guard: "held == 'scoped'", target: listed, effect: [arrivedScoped], say: "the partner is open and works with a köşk: its name is in the row" }
+      - { guard: "held == 'one'", target: listed, effect: [arrivedOne], say: "the partner is open and works with no köşk: 'Köşk seçilmedi'" }
+      - { guard: "held == 'off'", target: listed, effect: [arrivedOff], say: "the partner is switched off and works with no köşk: 'Köşk seçilmedi'" }
+      - { target: listed, say: "no partner is registered: 'Kayıtlı ortak uygulama yok.'" }
+
+  loadFailed:
+    title: The list could not be read
+    by: human
+    description: >-
+      The header ("Ortak uygulamalar" and its sentence) stands, and in place of the add form and the table an error Alert says "Ortak
+      uygulamalar okunamadı" with "Biraz sonra yeniden deneyin." and a "Tekrar dene" button, which reads the page again (router.refresh).
+      The alert is a role=alert, so it is announced; no focus is set (focus-not-set).
+    source: apps/nizam/features/partners/components/partners-view.tsx:199
+    on:
+      RETRY: { target: reading, effect: [again], say: "they press Tekrar dene, which reads the page again", source: apps/nizam/features/partners/components/partners-view.tsx:205 }
+      NAVIGATE: { target: left, say: "they follow the menu or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  listed:
+    title: The partner applications are listed
+    by: human
+    goal: true
+    description: >-
+      The page: "Ortak uygulamalar" and its sentence, the section "Ortak uygulama ekle" with the two fields "İstemci kimliği" and "Ad" and
+      "Ekle", and the section "Kayıtlı ortak uygulamalar" with the table (Ad, İstemci kimliği, Köşkler, Durum, İşlemler) or its one line
+      "Kayıtlı ortak uygulama yok.". A row has the name, the client id in a monospace, the köşks ("Köşk seçilmedi" or one line a köşk),
+      the switch and the two buttons "Köşkleri seç" and "Adını değiştir", each followed by a visually hidden name of the partner. No
+      focus is set when the page opens or after a write (focus-not-set); a toast says what a write did. Findings read here:
+      F-W3-partners-6 (the switch's name carries its state), F-W3-partners-4 (a pasted text over the length is cut without a word) and
+      D1 (a partner cannot be removed).
+    source: apps/nizam/features/partners/components/partners-view.tsx:189
+    on:
+      FILL_ADD:
+        - { guard: "entry == 'valid'", target: listed, effect: [typedValid, clearToast], say: "they type the client id and the name", source: apps/nizam/features/partners/components/partners-view.tsx:328 }
+        - { guard: "entry == 'badShape'", target: listed, effect: [typedBadShape, clearToast], say: "they type a client id with a space or a symbol and a name", source: apps/nizam/features/partners/components/partners-view.tsx:328 }
+        - { guard: "entry == 'noName'", target: listed, effect: [typedNoName, clearToast], say: "they type a client id and leave the name blank", source: apps/nizam/features/partners/components/partners-view.tsx:347 }
+      SUBMIT_ADD:
+        - { guard: "typed == 'valid'", target: adding, effect: [clearToast], say: "they press Ekle (or Enter in a field): the form is right and goes to tedrisat", source: apps/nizam/features/partners/components/partners-view.tsx:271 }
+        - { guard: "typed == 'empty'", target: addProblem, effect: [saidEmpty, clearToast], say: "they press Ekle with nothing typed: both fields say what is missing and nothing is sent", source: apps/nizam/features/partners/components/partners-view.tsx:264 }
+        - { guard: "typed == 'badShape'", target: addProblem, effect: [saidBadShape, clearToast], say: "the client id says it may hold only letters, digits, dot, underscore and hyphen", source: apps/nizam/features/partners/present.ts:14 }
+        - { guard: "typed == 'noName'", target: addProblem, effect: [saidNoName, clearToast], say: "the name says 'Bir ad yazın.'", source: apps/nizam/features/partners/present.ts:20 }
+      TURN_OFF: { guard: "row == 'on'", target: turningOff, effect: [pressOff], say: "they press the row's switch: it moves at once and the call goes", source: apps/nizam/features/partners/components/partners-view.tsx:83 }
+      TURN_ON: { guard: "row == 'off'", target: turningOn, effect: [pressOn], say: "they press the row's switch: it moves at once and the call goes", source: apps/nizam/features/partners/components/partners-view.tsx:83 }
+      CHOOSE_KOSKS:
+        - { guard: "hasRow and kosks == 'none'", target: kosksForm, effect: [openKosksNone], say: "they press 'Köşkleri seç': the dialog opens with no box ticked", source: apps/nizam/features/partners/components/partners-view.tsx:170 }
+        - { guard: "hasRow and kosks == 'some'", target: kosksForm, effect: [openKosksSome], say: "they press 'Köşkleri seç': the dialog opens with the partner's köşk ticked", source: apps/nizam/features/partners/components/partners-view.tsx:170 }
+      RENAME: { guard: hasRow, target: renameForm, effect: [openRename], say: "they press 'Adını değiştir': the dialog opens with the name", source: apps/nizam/features/partners/components/partners-view.tsx:179 }
+      NAVIGATE: { target: left, say: "they follow the menu or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  addProblem:
+    title: The add form says what is wrong
+    by: human
+    description: >-
+      The fields keep what was typed and a sentence stands under the one that is wrong, in the place of its help line: "İstemci
+      kimliğini yazın." or the shape sentence or, from the server, "Bu istemci kimliğiyle kayıtlı bir ortak uygulama var." and "Bu
+      istemci Medaris'in kendi uygulamalarından biri; ortak uygulama olamaz."; "Bir ad yazın." under the name. The sentences are Base
+      UI's Field.Error: no live region, and the focus stays on the button that was pressed, so a screen reader says nothing (F-W3-13,
+      F-UI-W3-1, F-X-2). Typing in a field takes its sentence away. A name over 100 characters cannot be typed, so "Ad en çok 100
+      karakter olabilir." never shows (F-W3-partners-4).
+    source: apps/nizam/features/partners/components/partners-view.tsx:264
+    on:
+      FIX_ADD: { target: listed, effect: [typedValid], say: "they correct what is wrong: the sentence goes", source: apps/nizam/features/partners/components/partners-view.tsx:328 }
+      NAVIGATE: { target: left, say: "they follow the menu or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  adding:
+    title: The partner is registered
+    description: >-
+      The server action createPartner, POST /nizam/partner-applications with the client id (trimmed) and the name (trimmed): the partner
+      is registered open and bound to no köşk, with an audit row (integration_partner.create). "Ekle" is busy (aria-disabled, aria-busy,
+      a hidden "Yükleniyor") and both fields are disabled, so a person who pressed Enter in a field loses the focus (F-W3-partners-3).
+      The rest of the page stays live.
+    source: apps/nizam/features/partners/components/partners-view.tsx:272
+    invoke: { action: createPartnerApplication }
+    on:
+      DONE: { guard: "answer == 'added'", target: listed, effect: [added], say: "the row is in the table, switched on, working with no köşk; both fields are empty again; the toast 'Ortak uygulama eklendi' says to choose its köşks next", source: apps/nizam/features/partners/components/partners-view.tsx:287 }
+      FAIL.exists: { guard: "answer == 'exists'", target: addProblem, effect: [saidExists], say: "409 PARTNER_EXISTS: the sentence stands under the client id and what was typed stays", source: apps/nizam/features/partners/components/partners-view.tsx:277 }
+      FAIL.frontEnd: { guard: "answer == 'frontEnd'", target: addProblem, effect: [saidFrontEnd], say: "409 PARTNER_FRONT_END_CLIENT: the sentence stands under the client id and what was typed stays", source: apps/nizam/features/partners/components/partners-view.tsx:277 }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: listed, effect: [toastForbidden], say: "a toast 'Kaydedilemedi' says 'Bunun için izniniz yok.'; the fields keep what was typed", source: apps/nizam/features/partners/components/partners-view.tsx:280 }
+      FAIL.failed: { guard: "answer == 'failed'", target: listed, effect: [toastFailed], say: "a toast 'Kaydedilemedi' says 'Bir sorun oldu. Yeniden deneyin.'; the fields keep what was typed", source: apps/nizam/features/partners/components/partners-view.tsx:280 }
+
+  turningOff:
+    title: The partner is being switched off
+    description: >-
+      The switch has moved to "Kapalı" at once (put({...partner, enabled}), before the answer) and is `disabled` while the call runs; the
+      server action updatePartner, PATCH /nizam/partner-applications/:clientId with enabled: false, closes the partner (its tokens are
+      refused, its codes are offered in no course, what it registered stays) and writes integration_partner.disable. Disabling the
+      switch that has the focus drops the focus to the page (F-W3-6, F-X-8). A refusal puts only this row's switch back.
+    source: apps/nizam/features/partners/components/partners-view.tsx:85
+    invoke: { action: updatePartnerApplication }
+    on:
+      DONE: { guard: "write == 'saved'", target: listed, effect: [toastTurnedOff], say: "the toast 'Ortak uygulama kapatıldı' says the partner can register nobody and its codes are in no course", source: apps/nizam/features/partners/components/partners-view.tsx:105 }
+      FAIL.gone: { guard: "write == 'gone'", target: listed, effect: [rowBackOn, toastGone], say: "404 PARTNER_UNKNOWN: the switch goes back to Açık and a toast 'Kaydedilemedi' says the partner is not found", source: apps/nizam/features/partners/components/partners-view.tsx:98 }
+      FAIL.forbidden: { guard: "write == 'forbidden'", target: listed, effect: [rowBackOn, toastForbidden], say: "the switch goes back and the toast says 'Bunun için izniniz yok.'", source: apps/nizam/features/partners/components/partners-view.tsx:98 }
+      FAIL.failed: { guard: "write == 'failed'", target: listed, effect: [rowBackOn, toastFailed], say: "the switch goes back and the toast says 'Bir sorun oldu. Yeniden deneyin.'", source: apps/nizam/features/partners/components/partners-view.tsx:98 }
+
+  turningOn:
+    title: The partner is being switched on
+    description: >-
+      As turningOff the other way: the switch has moved to "Açık" at once and is `disabled` while the call runs (F-W3-6); PATCH with
+      enabled: true opens the partner again for the köşks it works with and writes integration_partner.enable.
+    source: apps/nizam/features/partners/components/partners-view.tsx:85
+    invoke: { action: updatePartnerApplication }
+    on:
+      DONE: { guard: "write == 'saved'", target: listed, effect: [toastTurnedOn], say: "the toast 'Ortak uygulama açıldı' says the partner can register people again in its köşks", source: apps/nizam/features/partners/components/partners-view.tsx:105 }
+      FAIL.gone: { guard: "write == 'gone'", target: listed, effect: [rowBackOff, toastGone], say: "the switch goes back to Kapalı and a toast says the partner is not found", source: apps/nizam/features/partners/components/partners-view.tsx:98 }
+      FAIL.forbidden: { guard: "write == 'forbidden'", target: listed, effect: [rowBackOff, toastForbidden], say: "the switch goes back and the toast says 'Bunun için izniniz yok.'", source: apps/nizam/features/partners/components/partners-view.tsx:98 }
+      FAIL.failed: { guard: "write == 'failed'", target: listed, effect: [rowBackOff, toastFailed], say: "the switch goes back and the toast says 'Bir sorun oldu. Yeniden deneyin.'", source: apps/nizam/features/partners/components/partners-view.tsx:98 }
+
+  renameForm:
+    title: The Adını değiştir dialog
+    by: human
+    description: >-
+      A form dialog over the page (the scrim does not close it), titled "Adını değiştir" with the partner's name above the title and one
+      field "Ad" that holds the partner's name, with "Vazgeç" and "Kaydet". The dialog passes no initialFocus, so Base UI focuses the
+      first tabbable, the close icon, and not the field (F-W3-partners-1, not verified in a browser). A blank name is said under the
+      field when Kaydet is pressed ("Bir ad yazın.") and nothing is sent; the sentence is no live region (F-UI-W3-1). The whole body is
+      the dialog's description (F-UI-W1-1).
+    source: apps/nizam/features/partners/components/partners-view.tsx:402
+    on:
+      FILL_NAME:
+        - { guard: "renameTo == 'valid'", target: renameForm, effect: [typedNewName], say: "they type a new name", source: apps/nizam/features/partners/components/partners-view.tsx:428 }
+        - { guard: "renameTo == 'empty'", target: renameForm, effect: [erasedName], say: "they erase the name", source: apps/nizam/features/partners/components/partners-view.tsx:428 }
+      RETYPE_NAME: { guard: "fault != 'none'", target: renameForm, effect: [typedNewName], say: "they type a name after the sentence: the sentence goes", source: apps/nizam/features/partners/components/partners-view.tsx:430 }
+      SUBMIT_RENAME:
+        - { guard: "nameIn != 'empty'", target: renaming, say: "they press Kaydet (or Enter in the field)", source: apps/nizam/features/partners/components/partners-view.tsx:386 }
+        - { guard: "nameIn == 'empty'", target: renameForm, effect: [nameEmptySaid], say: "'Bir ad yazın.' stands under the field and nothing is sent", source: apps/nizam/features/partners/components/partners-view.tsx:383 }
+      CANCEL: { target: listed, effect: [clearToast], say: "Vazgeç, the close icon or Escape: the dialog closes and nothing is saved; the focus goes back to 'Adını değiştir'", source: apps/nizam/features/partners/components/partners-view.tsx:405 }
+
+  renaming:
+    title: The new name is saved
+    description: >-
+      The server action updatePartner, PATCH /nizam/partner-applications/:clientId with the name (trimmed); an audit row
+      integration_partner.rename keeps the old name. The field is disabled and "Kaydet" is busy; "Vazgeç", the close icon and Escape stay
+      on and do nothing while it runs (`if (!next && !pending)`, F-W3-partners-2).
+    source: apps/nizam/features/partners/components/partners-view.tsx:387
+    invoke: { action: updatePartnerApplication }
+    on:
+      DONE: { guard: "write == 'saved'", target: renamed, effect: [toastRenamed], say: "the dialog closes, the row carries the new name and the toast 'Ad değiştirildi' says that from now on the new name shows", source: apps/nizam/features/partners/components/partners-view.tsx:394 }
+      FAIL.gone: { guard: "write == 'gone'", target: renameForm, effect: [faultGone], say: "'Bu ortak uygulama bulunamadı. Sayfayı yenileyin.' stands under the field and the dialog stays open", source: apps/nizam/features/partners/components/partners-view.tsx:391 }
+      FAIL.forbidden: { guard: "write == 'forbidden'", target: renameForm, effect: [faultForbidden], say: "'Bunun için izniniz yok.' stands under the field", source: apps/nizam/features/partners/components/partners-view.tsx:391 }
+      FAIL.failed: { guard: "write == 'failed'", target: renameForm, effect: [faultFailed], say: "'Bir sorun oldu. Yeniden deneyin.' stands under the field", source: apps/nizam/features/partners/components/partners-view.tsx:391 }
+
+  kosksForm:
+    title: The Çalıştığı köşkler dialog
+    by: human
+    description: >-
+      A form dialog (md) titled "Çalıştığı köşkler" with the partner's name above it, a sentence that says what unticking does ("Seçimi
+      kaldırılan köşkte bu uygulamanın derslere bağlı kodları silinir ve denetim kaydına yazılır; köşk yeniden seçilse de geri gelmez. …"),
+      one box for every köşk of the platform, hidden ones included, with the partner's köşks ticked, the count "{n} köşk seçili" in the
+      footer and "Vazgeç" and "Kaydet". As in the rename dialog the first tabbable, the close icon, takes the focus (F-W3-partners-1).
+      Nothing asks before a köşk is taken away: the intro paragraph is the only warning (F-W3-15, D2). A refused save is an error Alert
+      inside the dialog that stays until the dialog is closed, however the boxes change (F-W3-partners-5). Kaydet with the selection the
+      partner already has just closes the dialog: no call, no toast.
+    source: apps/nizam/features/partners/components/partners-view.tsx:491
+    on:
+      TOGGLE_KOSK:
+        - { guard: "ticked == 'none'", target: kosksForm, effect: [tickedOn], say: "they tick the köşk's box: the footer counts one more", source: apps/nizam/features/partners/components/partners-view.tsx:532 }
+        - { guard: "ticked == 'some'", target: kosksForm, effect: [tickedOff], say: "they untick the köşk's box: nothing asks, and the footer counts one less", source: apps/nizam/features/partners/components/partners-view.tsx:532 }
+      SAVE_KOSKS:
+        - { guard: unchanged, target: listed, effect: [clearToast], say: "Kaydet with the selection the partner has: the dialog closes, nothing is sent and no toast is shown", source: apps/nizam/features/partners/components/partners-view.tsx:468 }
+        - { guard: "not unchanged", target: savingKosks, say: "they press Kaydet", source: apps/nizam/features/partners/components/partners-view.tsx:472 }
+      CANCEL: { target: listed, effect: [clearToast], say: "Vazgeç, the close icon or Escape: the dialog closes and nothing is saved; the focus goes back to 'Köşkleri seç'", source: apps/nizam/features/partners/components/partners-view.tsx:494 }
+
+  savingKosks:
+    title: The köşks are saved
+    description: >-
+      The server action setPartnerKosks, PUT /nizam/partner-applications/:clientId/kosks with every ticked köşk's id: the köşks named
+      are the partner's from now on, the others are unbound, and in one transaction the partner's codes in the unbound köşks' courses are
+      deleted, each with an audit row (course.partner_code_remove); binding a köşk again brings none back, what the partner already
+      registered stays. The boxes are disabled and "Kaydet" is busy; "Vazgeç", the close icon and Escape do nothing while it runs
+      (F-W3-partners-2).
+    source: apps/nizam/features/partners/components/partners-view.tsx:473
+    invoke: { action: setPartnerApplicationKosks }
+    on:
+      DONE:
+        - { guard: "write == 'saved' and ticked == 'some'", target: listed, effect: [kosksNowSome], say: "the dialog closes, the row lists the köşk and the toast says the partner works with 1 köşk", source: apps/nizam/features/partners/components/partners-view.tsx:480 }
+        - { guard: "write == 'saved' and ticked == 'none'", target: listed, effect: [kosksNowNone], say: "the dialog closes, the row says 'Köşk seçilmedi', the partner's codes in that köşk are gone and the toast says it works with 0 köşk", source: apps/nizam/features/partners/components/partners-view.tsx:480 }
+      FAIL.gone: { guard: "write == 'gone'", target: kosksForm, effect: [faultGone], say: "404 PARTNER_UNKNOWN: an alert 'Kaydedilemedi' inside the dialog says the partner is not found", source: apps/nizam/features/partners/components/partners-view.tsx:477 }
+      FAIL.forbidden: { guard: "write == 'forbidden'", target: kosksForm, effect: [faultForbidden], say: "the alert says 'Bunun için izniniz yok.'", source: apps/nizam/features/partners/components/partners-view.tsx:477 }
+      FAIL.failed: { guard: "write == 'failed'", target: kosksForm, effect: [faultFailed], say: "the alert says 'Bir sorun oldu. Yeniden deneyin.'", source: apps/nizam/features/partners/components/partners-view.tsx:477 }
+
+  renamed:
+    type: final
+    title: The partner has its new name
+    description: >-
+      The dialog is closed, the row carries the new name and the toast "Ad değiştirildi" / "Bundan sonra {name} adı görünür." says so.
+      The page goes on, but every name of the row's controls ("Açık {name}", "Köşkleri seç {name}", "Adını değiştir {name}") now carries
+      the new name, so the graph does not draw the page a second time. Base UI gives the focus back to 'Adını değiştir' (not verified).
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+  handed_over.no_access:
+    type: final
+    leavesPage: true
+    title: The shell says the section is not theirs
+    description: >-
+      tedrisat answered 403: the page's forbidden() draws "Bu bölüm için izniniz yok" in the shell, which nizam.shell.noAccessAndNotFound
+      draws.
+
+assertions:
+  - { id: only-a-form-the-page-accepts-is-sent, never: "state == 'adding' and typed != 'valid'", say: "Only an add form that is right is sent: a client id of the allowed shape and a name that is not blank", source: apps/nizam/features/partners/components/partners-view.tsx:264 }
+  - { id: no-partner-is-renamed-to-nothing, never: "state == 'renaming' and nameIn == 'empty'", say: "A blank name is never sent", source: apps/nizam/features/partners/components/partners-view.tsx:381 }
+  - { id: an-unchanged-selection-is-not-sent, never: "state == 'savingKosks' and unchanged", say: "The köşks are sent only when the selection differs from what the partner has", source: apps/nizam/features/partners/components/partners-view.tsx:468 }
+  - { id: a-failed-read-draws-no-table, never: "state == 'loadFailed' and read == 'ok'", say: "The box that says the list could not be read is drawn only when the read failed", source: apps/nizam/features/partners/components/partners-view.tsx:199 }
+  - { id: a-new-partner-is-open-and-has-no-kosk, never: "state == 'listed' and toast == 'added' and (row != 'on' or kosks != 'none')", say: "A partner just added is switched on and works with no köşk", source: apps/tedrisat/src/integration/partner-admin.service.ts:56 }

@@ -1,0 +1,55 @@
+# nizam.notifications.triage, the one failure the local stack can cause: a refused mark. It extends binding.yaml and adds two scenarios,
+# `refuses` and `lastRefuses`, which start as `triage` and `lastUnread` do (the same rows) with `answer: failed`.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/notifications/triage \
+#     --bind graphs/nizam/notifications/triage/refused.binding.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml). How the refusal is made: the page draws the account's rows from its first read; when the walk reaches `listed`,
+# its `before` removes the walk's NEWEST UNREAD row with ./triage.mjs gone (a row the walk made, and only that), the one the walk presses
+# first. The page still shows that row (it keeps its first read, rule not-live), so the press asks the API to mark a row it no longer has:
+# 404 NOTIFICATION_NOT_FOUND, the one refusal a person can meet. The page puts the list back and leaves the error toast, the transition
+# markingOne -> listed (or markingLast -> listed) on FAIL.refused; CLOSE_TOAST then shuts it. `gone` removes nothing and says so when the walk
+# holds no unread row any more, so coming back to `listed` after the refusal is safe.
+#
+# What it does not do: the other transitions that an `answer: failed` start makes possible (a failed tab or chip, a failed "more", a failed
+# "Tümünü okundu say", a refused title link) cannot be made to fail here, so a walk of this file with `--cover transitions` reports them as
+# mismatches that are not defects of the page; read the transitions above and leave the rest to binding.yaml's "not walkable" list. The
+# inherited `effects` run only after a DONE, which these two scenarios reach only on those other paths: after `gone` the walk holds fewer
+# unread rows than the set made, so `unread below` would hold without a mark, and nothing here relies on it.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: nizam.notifications.triage
+
+scenarios:
+  refuses:
+    given: { read: ok, scope: kosk, holds: several, pages: several, answer: failed }
+    as: koskNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->notifications' }
+    vars: { person: koskNazim }
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, koskNazim, --set, triage]
+        expect: 'ready: triage total=26 unread=3'
+    teardown:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+        expect: 'removed'
+  # the same for the one unread notice: markingLast is refused and the row is unread again, with the button enabled again
+  lastRefuses:
+    given: { read: ok, scope: kosk, holds: one, pages: one, answer: failed }
+    as: koskNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->notifications' }
+    vars: { person: koskNazim }
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, koskNazim, --set, last]
+        expect: 'ready: last total=3 unread=1'
+    teardown:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+        expect: 'removed'
+
+states:
+  # a state's entry replaces the base's whole entry, so the address is written again
+  listed:
+    url: '{nizam}/bildirimler'
+    before:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, gone, '{person}']
+        expect: 'gone'

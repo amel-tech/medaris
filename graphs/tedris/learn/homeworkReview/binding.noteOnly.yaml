@@ -1,0 +1,29 @@
+# tedris.learn.homeworkReview, the review with a note and no file (graphs/tedris/learn/homeworkReview/binding.yaml says how the data is
+# made and taken away): the block holds the title, the badge, the by-line and the note, and no "Düzeltilmiş dosyalar". It adds no
+# transition to the main story's, so it has a file of its own to be walked at all.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkReview \
+#     --bind graphs/tedris/learn/homeworkReview/binding.noteOnly.yaml --absent --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkReview
+
+scenarios:
+  noteOnly:
+    given: { reviewed: true, content: noteOnly, download: unavailable, answer: saved }
+    as: applicantH
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+      edited: 'Çekimleri yazdım; ikinci tablodaki iki satırı düzelttim.'
+    setup:
+      - run: [node, helpers/course.mjs, make, hwreview, --weeks, '1', --lessons, '2', --talebe, applicantH]
+        expect: '"tag":"hwreview"'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, hand, hwreview, applicantH]
+        expect: 'review-data hand'
+      - run: [node, ../tedris/learn/homeworkReview/review-data.mjs, send, hwreview, note]
+        expect: 'review-data send'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hwreview]
+        expect: course remove hwreview

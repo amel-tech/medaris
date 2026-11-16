@@ -1,0 +1,442 @@
+# Appointing a Medaris nazımı, from "Medaris nazımları" in nizam-web (/medaris-nazimlari), read from the code of PR #394's branch on 15 Nov 2026
+# (apps/nizam/app/medaris-nazimlari/page.tsx, features/permissions/{reads,actions,present}.ts, features/permissions/components/{nazims-view,
+# permissions-dialog,nazim-picker,permission-boxes}.tsx, features/madrasahs/actions.ts for the search; the API's GET /nizam/medaris-nazims and
+# POST /nizam/medaris-nazims in apps/tedrisat/src/assignment/admin/, GET /users/lookup in apps/tedrisat/src/user/). Nothing here was walked in a
+# browser: every behaviour is "from the code" until the walk phase. The unit specs under apps/nizam/test and the e2e named in needs.yaml are the
+# only runs. Read-only looks at the API on the stack (GET /nizam/medaris-nazims, /nizam/permissions, /nizam/permission-groups, /me and
+# /users/lookup as the başnazım; nothing was written): the one Medaris nazımı in office is the seeded Selma Medaris Nazımı (five single permissions,
+# no end, appointed by Vedat Başnazım); there is no permission group yet; the catalogue has 19 platform codes in five sections.
+#
+# What the flow draws: the başnazım reads who is in office (a row each: the person, the groups and single permissions they hold, the end with
+# "Bugün bitiyor" or "{n} gün kaldı" inside 30 days, who gave it and when), opens "Medaris nazımı ata", finds the person by their exact e-mail
+# address in the realm's directory, picks a ready group, ticks single permissions, may type an end, and sends. The row of the new person is
+# then in the list. The appointed person opening Ana sayfa is nizam.home.medarisNazimCut, which this flow starts.
+#
+# The order of the checks of POST /nizam/medaris-nazims (the one the ledger's security.md asks to be drawn as the code has it): AuthGuard
+# (401), then the body pipe (400 VALIDATION_ERROR), then PermissionAdminService.actor() (403 AUTHZ_FORBIDDEN unless the token carries the
+# realm role SYSTEM_ADMIN), then the end (400 GRANT_EXPIRY_INVALID when it is not ahead), the codes (400 PERMISSION_UNKNOWN), the group (404
+# PERMISSION_GROUP_NOT_FOUND, 400 PERMISSION_GROUP_SCOPE_INVALID) and, in one transaction, the seat (409 MEDARIS_NAZIM_ALREADY_APPOINTED).
+# There is NO self-grant check on this route (the controller injects no SelfGrantGuard; its only caller is the başnazım, whom the guard would
+# never ask anyway), and the account is not checked for existence (domain invariant medaris-nazim-is-a-known-account, holds: false). So the
+# başnazım can pick his own address and be appointed a Medaris nazımı (`person: chief`, MAPPT-2). The köşk routes order it the other way
+# round (self-grant before the permission check, so anyone signed in can write an audit row: security.md), which is not this flow's.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - The address is searched on Enter and also when the field is left, and tedrisat audits every search, found or not (F-X-14, F-W2-3). The
+#     field is disabled while it searches, so it loses the focus; the answers "no account" and "not available" are a field error with no live
+#     region (F-UI-W3-1). Text that is no address is neither searched nor told (MAPPT-4).
+#   - "Kaydet" is natively disabled until a person is chosen and the end is fine, and nothing says why (MAPPT-1, the family of F-X-3). While the
+#     save is on its way "Vazgeç", the close icon and Esc do nothing and are not marked (MAPPT-6). The count under the boxes is not announced
+#     (MAPPT-5). The star of the e-mail field is aria-hidden and the input carries no `required` (MAPPT-7).
+#   - The page knows the list and still lets the başnazım choose a person who is a Medaris nazımı already, and only the server's 409 says so
+#     after "Kaydet" (MAPPT-3). It lets him choose himself (MAPPT-2).
+#   - The dialog has no `initialFocus`: it opens on its close icon, not on the field (F-W2-12). "İzin gruplarını düzenle" is a plain link out
+#     of the dialog that drops what was typed (MAPPT-10). The row buttons of a person with no name are named "İzinleri düzenle: " (F-W2-11).
+#   - The boxes offer permissions whose pages have no menu entry for a Medaris nazımı (F-W2-1, F-X-12): the person is given something the
+#     menu cannot reach.
+schema: delurio-graph/0
+kind: flow
+id: nizam.nazims.appoint
+status: captured
+domain: medaris.api
+ui: nizam.nazims.appoint
+title: Appoint a Medaris nazımı
+summary: >-
+  The başnazım opens "Medaris nazımları" and reads who is in office: each person with the groups and single permissions they hold, the end
+  ("Süresiz", a date, and within 30 days "Bugün bitiyor" or "{n} gün kaldı") and who gave it. "Medaris nazımı ata" opens a dialog. The
+  başnazım types the exact e-mail address of a person; Enter (or leaving the field) searches the realm's directory, which holds people who
+  never opened the app, and the person found is shown under "Seçilen kişi". He may pick a ready platform group (its permissions are ticked and
+  locked), tick single permissions beside it and type an end date and time; an end that is not ahead is refused under the field where it is
+  typed. "Kaydet" makes the appointment and its permissions, which end together: a toast says "Medaris nazımı atandı", the dialog closes and
+  the list has the new row. An address no account has and a directory that does not answer are said in the dialog; text that is no address
+  is ignored in silence. A person who is a Medaris nazımı already, or a group that was deleted meanwhile, is refused after "Kaydet" in a
+  toast and the dialog stays open. The appointed person opening Ana sayfa meets the cut home of nizam.home.medarisNazimCut.
+
+scope:
+  shows: >-
+    the Medaris nazımları list with its row of data, the "Medaris nazımı ata" dialog, the e-mail search and its answers, the chosen person, the
+    group, the boxes the walk ticks and the end field, the save and the refusals it meets, and the toasts that follow
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "'İzinleri düzenle' of a row, which opens the same dialog for a person in office and PUTs their grants (nizam.nazims.editPermissions), and 'Görevden al', which asks what to do with what the person handed on (nizam.nazims.dismiss): here they are exits"
+    - "the permission groups page and what the 'İzin gruplarını düzenle' link leads to (nizam.nazims.groups): here it is an exit"
+    - "the other sixteen boxes of the nineteen platform codes: the graph draws the five section headings and the three boxes the walk touches (two come from the group, one is ticked); a box is a box"
+    - "the second half of a list read that fails: the page reads the Medaris nazımları, the catalogue and the groups together; any one failing draws the 'yüklenemedi' box and, when the catalogue or the groups are the ones missing, turns 'Medaris nazımı ata' off (ready, nazims-view.tsx:59). Drawn as `loadFailed`; the stack cannot make a read fail, so it is not bound"
+    - "a caller who is not the başnazım: the page answers 403 and shows 'Bu bölüm için izniniz yok' (exit `refused`; nizam.shell.noAccessAndNotFound, e2e permissions#2)"
+    - "an end left half typed ('Bitiş tarihini ve saatini tamamlayın.', isUnfinishedEnd): a datetime-local field cannot be left half typed by the replay's fill; the unit spec pins it"
+    - "an end that passes while the dialog is open (the dialog reads the time once, when it opens): the server's GRANT_EXPIRY_INVALID, drawn with the other refusals as `refused`; nothing can make it on request"
+    - "the phone layout (the table becomes cards below 768 px), the loading skeleton (app/medaris-nazimlari/loading.tsx) and the shell's sidebar (nizam.shell.menuPerPersona)"
+    - "a session that has ended: the lookup and the save send the person to sign in (realm.auth.sessionEnded)"
+    - "a person with no name in the list ('Adı bilinmiyor') and the rows of every other Medaris nazımı the walk did not make: world open"
+    - "the appointed person's side: what her menu and home show (nizam.home.medarisNazimCut, which `APPOINTEE_OPENS_HOME` starts) and the people who hold course-wide or course-scoped groups (the 'courseGroupNote' of the edit dialog)"
+
+decisions:
+  D1:
+    question: >-
+      Should the dialog say before "Kaydet" that the person chosen is a Medaris nazımı already, or is the başnazım himself? The page holds the
+      list and the viewer's identity and checks neither, so the person meets a refusal in a toast after sending (MAPPT-3), or is appointed
+      (MAPPT-2).
+    recommend: >-
+      Warn beside the chosen person, as nazar's ders nazırı dialog does ("{name} bu dersin ders nazırı zaten."), keep "Kaydet" off for both, and
+      have the API refuse the başnazım's own id.
+    affects: [picked, appointing, appointed]
+  D2:
+    question: >-
+      Should the address be searched only on Enter or on an explicit "Ara" button, not also when the field is left? Every search is written to
+      the audit log (the help line says so) and tabbing through the field makes audited searches nobody meant (F-X-14).
+    recommend: "Search on Enter or on a button only, and say the result in a live region; or say in the help line that leaving the field searches."
+    affects: [asking, searching]
+  D3:
+    question: >-
+      Should "Kaydet" say what is missing while it is off (nobody chosen, an end in the past)? Today it is natively disabled with no word why
+      (MAPPT-1).
+    recommend: "Keep it enabled and say 'Önce bir kişi bulun' when it is pressed, or tie the reason to it with aria-describedby."
+    affects: [asking, searching, pickedBadEnd]
+
+context:
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "the three reads the page makes (the Medaris nazımları, the catalogue, the groups) all answer"
+      failed: "one of them fails: the page draws the 'Medaris nazımları yüklenemedi' box with 'Yeniden dene'"
+  roster:
+    values: [some, empty]
+    initial: any
+    say:
+      some: "at least one Medaris nazımı is in office (the stack's own, Selma, who holds five single permissions and no end)"
+      empty: "nobody is in office: the table says 'Henüz görevde Medaris nazımı yok.'"
+  person:
+    values: [fresh, already, chief, nobody, notAddress, down, groupGone, refused]
+    initial: any
+    say:
+      fresh: "they type the address of an account that is no Medaris nazımı: found, and appointed"
+      already: "they type the address of a person who is a Medaris nazımı already: found and chosen like anyone, refused after 'Kaydet' with 409"
+      chief: "they type their own address: found and chosen with no warning, and appointed (nothing on this route refuses oneself)"
+      nobody: "they type an address no account has"
+      notAddress: "they type text that cannot be an address (no @, or no dot and two letters after it) and press Enter: nothing is searched and nothing is said"
+      down: "they type an address and the directory does not answer"
+      groupGone: "they type the address of a person who is found, and the group they chose is deleted by someone else before they press 'Kaydet': refused with 404 when a group was chosen, appointed when none was"
+      refused: "they type the address of a person who is found, and the save is refused for another reason (not allowed, an end that passed while the dialog was open, an unknown code, a group that is not the platform's, a body the server refuses)"
+  group:
+    values: [none, chosen]
+    initial: none
+    say:
+      none: "'Hazır izin grubu' says 'Grup yok'"
+      chosen: "a ready platform group is chosen: its boxes are ticked and locked ('Gruptan gelir.'), and the footer counts them"
+  ticks:
+    values: [none, some]
+    initial: none
+    say:
+      none: "no single permission is ticked besides the group"
+      some: "'Denetim kaydını oku' is ticked (the box the e2e's permissions#9 ticks)"
+  until:
+    values: [none, soon, today, far, past]
+    initial: none
+    say:
+      none: "the end field is empty: no end, 'Süresiz'"
+      soon: "an end a few days ahead is typed, inside the 30 days the list warns about: '{n} gün kaldı'"
+      today: "an end later today is typed: 'Bugün bitiyor'"
+      far: "an end more than 30 days ahead is typed: the list prints the date and no warning"
+      past: "an end that is not ahead is typed: the field says so at once and 'Kaydet' is off"
+  note:
+    values: [none, nobody, down]
+    initial: none
+    say:
+      none: "nothing is said under the e-mail field but its help"
+      nobody: "the field says no account has this address"
+      down: "the field says the search cannot be made now"
+  toast:
+    values: [none, appointed, already, groupGone, refused]
+    initial: none
+    say:
+      none: "no toast of this flow is up"
+      appointed: "'Medaris nazımı atandı' is up (6 seconds)"
+      already: "an error toast says the person is a Medaris nazımı already; it stays until it is closed"
+      groupGone: "an error toast says the group is no longer there; it stays until it is closed"
+      refused: "an error toast with the sentence of another refusal (not allowed, the end, anything else); it stays until it is closed"
+
+guards:
+  # canSave of permissions-dialog.tsx:134 is `picked && problem === null`; the end's problem is read live, as the field is typed in
+  found: "person in ['fresh', 'already', 'chief', 'groupGone', 'refused']"
+  appointable: "person in ['fresh', 'chief'] or (person == 'groupGone' and group == 'none')"
+  givesSomething: "group == 'chosen' or ticks == 'some'"
+
+effects:
+  reset: { set: { note: none, group: none, ticks: none, until: none } } # the dialog's opening effect (permissions-dialog.tsx:82): the person, the group, the boxes and the end are forgotten; a toast is not touched
+  clearNote: { set: { note: none } }
+  nobodyNote: { set: { note: nobody } }
+  downNote: { set: { note: down } }
+  forgot: { set: { note: none } } # `remove()` of the picker (nazim-picker.tsx:67): the person goes, the group, the boxes and the end stay
+  groupChosen: { set: { group: chosen } }
+  ticked: { set: { ticks: some } }
+  endNone: { set: { until: none } }
+  endSoon: { set: { until: soon } }
+  endToday: { set: { until: today } }
+  endFar: { set: { until: far } }
+  endPast: { set: { until: past } }
+  appointedToast: { set: { toast: appointed } }
+  alreadyToast: { set: { toast: already } }
+  groupGoneToast: { set: { toast: groupGone } }
+  refusedToast: { set: { toast: refused } }
+
+failures:
+  reading:
+    from: listMedarisNazims
+    forbidden: [AUTHZ_FORBIDDEN]
+    unreadable: []
+  searching:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN, VALIDATION_ERROR]
+  appointing:
+    from: appointMedarisNazim
+    alreadyAppointed: [MEDARIS_NAZIM_ALREADY_APPOINTED]
+    groupGone: [PERMISSION_GROUP_NOT_FOUND]
+    refused: [AUTHZ_FORBIDDEN, GRANT_EXPIRY_INVALID, PERMISSION_UNKNOWN, PERMISSION_GROUP_SCOPE_INVALID, VALIDATION_ERROR]
+# `unreadable` stands for any answer but a refused token (a 401 is the guard's and is left out of the domain): the page treats a network error,
+# a 5xx and a 404 alike (features/permissions/reads.ts:26-37). The page's own forbidden is the 403.
+# `unavailable` of the search is every failure of GET /users/lookup but a refused token: lookupUserByEmail answers 'unavailable' for all of
+# them (features/madrasahs/actions.ts:141), so an address the page accepts and the server's isEmail refuses (a 400) is said as "Arama şu an
+# yapılamıyor." (MAPPT-9).
+
+# The story the page tells first: the başnazım reads the list, finds a person by address, chooses a group, ticks a box, types an end a few days
+# ahead and saves; the list has the new row with its group, its box, "{n} gün kaldı" and who gave it.
+main:
+  given: { read: ok, roster: some, person: fresh }
+  events: [DONE, OPEN_APPOINT, SEARCH, DONE, CHOOSE_GROUP, TICK_PERMISSION, TYPE_END_SOON, SAVE, DONE]
+
+initial: reading
+
+states:
+  reading:
+    title: The list is read
+    description: >-
+      The page reads GET /nizam/medaris-nazims, GET /nizam/permissions (the catalogue) and GET /nizam/permission-groups together on the server,
+      behind a loading skeleton (loading.tsx). The list answers the appointments held now, oldest first, each with its groups, its single
+      platform permissions, its end (the earliest end among the appointment and the permissions) and who appointed; one whose end has passed is
+      not listed. A 403 on any read is Next's `forbidden()`, which draws "Bu bölüm için izniniz yok" (exit `refused`; only the başnazım passes);
+      any other failure leaves that read null and the page draws the 'yüklenemedi' box (`loadFailed`). The graph draws the first read; the other
+      two (the catalogue and the groups) are what the dialog is made from.
+    invoke: { action: listMedarisNazims }
+    on:
+      DONE: { guard: "read == 'ok'", target: listed, source: apps/nizam/app/medaris-nazimlari/page.tsx:32, say: "the three reads answered: the page draws the list" }
+      FAIL.forbidden: { target: refused, source: apps/nizam/app/medaris-nazimlari/page.tsx:27, say: "a caller who is not the başnazım meets the 403 screen" }
+      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, source: apps/nizam/features/permissions/components/nazims-view.tsx:228, say: "a read failed: the page draws the box 'Medaris nazımları yüklenemedi' with 'Yeniden dene'" }
+    source: apps/nizam/app/medaris-nazimlari/page.tsx:22
+
+  loadFailed:
+    title: A read failed
+    description: >-
+      The title, the intro and, under "Görevde", an error Alert (role alert) "Medaris nazımları yüklenemedi" with "Medaris nazımları şu an
+      okunamıyor. Biraz sonra yeniden deneyin." and "Yeniden dene", which refreshes the page (the reads run again). No table is drawn. Whether
+      "Medaris nazımı ata" is on depends on which read failed (it is off when the catalogue or the groups are the missing ones), so it is left
+      out of this state. Not bound: the stack cannot make a read fail.
+    by: human
+    on:
+      RETRY: { target: reading, source: apps/nizam/features/permissions/components/nazims-view.tsx:231, say: "'Yeniden dene': the page is read again" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+    source: apps/nizam/features/permissions/components/nazims-view.tsx:228
+
+  listed:
+    title: The list of Medaris nazımları
+    description: >-
+      The page: the title "Medaris nazımları" (h1), its intro ("Medaris nazımı yalnız sizin verdiğiniz izinlerle çalışır ..."), the button
+      "Medaris nazımı ata", and under "Görevde" the count ("{count} kişi") and the table named "Görevdeki Medaris nazımları". A row says, in
+      its cells, the person (avatar, name and address), what they hold (a badge for each group, with "grubu" said only to a reader of the
+      screen and "her ders" for a group of every course, then the single permissions as "ve ..." after a group or alone; "İzin verilmemiş" when
+      they hold nothing), the end ("Süresiz", or the date and, within 30 days, "Bugün bitiyor" or "{n} gün kaldı"), who gave it with the day,
+      and the buttons "İzinleri düzenle: {name}" and "Görevden al: {name}". The table is empty ("Henüz görevde Medaris nazımı yok.") when nobody
+      is in office. The page sets no focus of its own (rule focus-not-set). The row buttons whose person has no name are named "İzinleri
+      düzenle: " (F-W2-11). The end column prints the day only, so the hour a permission ends at is told in the dialog and nowhere else.
+    by: human
+    goal: true
+    on:
+      OPEN_APPOINT: { target: asking, effect: [reset], source: apps/nizam/features/permissions/components/nazims-view.tsx:211, say: "they press 'Medaris nazımı ata'" }
+      EDIT_ROW: { guard: "roster == 'some'", target: handed_over.edit_permissions, starts: { flow: nizam.nazims.editPermissions }, source: apps/nizam/features/permissions/components/nazims-view.tsx:176, say: "they press 'İzinleri düzenle: name' on a row" }
+      DISMISS_ROW: { guard: "roster == 'some'", target: handed_over.dismiss, starts: { flow: nizam.nazims.dismiss }, source: apps/nizam/features/permissions/components/nazims-view.tsx:185, say: "they press 'Görevden al: name' on a row" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/permissions/components/nazims-view.tsx:198
+
+  asking:
+    title: The dialog asks for an e-mail address
+    description: >-
+      A modal "Medaris nazımı ata" over the page (a form dialog; the scrim does not close it), with "Platform" above its title and, under "Medaris
+      nazımı" (a field with a star), one e-mail field with its help ("Kayıtlı hesabın e-posta adresini eksiksiz yazın; her arama denetim kaydına
+      yazılır."). Below it: "Hazır izin grubu" with "Grup yok" chosen and the link "İzin gruplarını düzenle", "İzinler" with the nineteen boxes in
+      five sections, "Bitiş tarihi ve saati (isteğe bağlı)", a note about the audit log, and the footer: the count "0 izin", "Vazgeç" and
+      "Kaydet". The dialog has no `initialFocus`, so Base UI gives the focus to the first thing it can: the close icon, not the field (F-W2-12).
+      "Kaydet" is natively disabled and nothing says why (MAPPT-1). Enter searches (and does not send the form); leaving the field with
+      an address in it searches too (F-X-14). Text that is not an address is neither searched nor told (MAPPT-4), and an address that no account
+      has is not searched twice in a row. The group, the boxes and the end are on screen already and can be set before a person is found; the
+      graph draws them set after, as the e2e does.
+    by: human
+    on:
+      SEARCH:
+        - { guard: "person == 'notAddress'", target: asking, source: apps/nizam/features/permissions/components/nazim-picker.tsx:41, say: "they type text that is no address and press Enter: `isEmailLike` fails, so nothing is searched and nothing is said" }
+        - { target: searching, effect: [clearNote], source: apps/nizam/features/permissions/components/nazim-picker.tsx:60, say: "they type an address and press Enter, or leave the field" }
+      OPEN_GROUPS: { target: groups_opened, starts: { flow: nizam.nazims.groups }, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle': a plain link, the page is loaded anew and what was typed is lost (MAPPT-10)" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç, the close icon or Escape: the dialog closes, nothing is written, the focus goes back to 'Medaris nazımı ata'" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:178
+
+  searching:
+    title: The directory is searched
+    description: >-
+      lookupUserByEmail calls GET /users/lookup?email=: Keycloak is searched for the exact address (the first enabled account), so a person who
+      never opened the app is found too, and tedrisat writes the search to the audit log whatever it finds. The e-mail input is disabled and
+      aria-busy while it runs, so the focus it had is dropped (F-W2-3), and a hidden <output> says "Aranıyor". Closing the dialog meanwhile is
+      allowed; the answer is then dropped. Every failure but an ended session is "Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.", an
+      address the page accepts and the server's validation refuses included (MAPPT-9).
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "person == 'nobody'", target: asking, effect: [nobodyNote], source: apps/nizam/features/permissions/components/nazim-picker.tsx:52, say: "no account has the address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field" }
+        - { guard: "found and until == 'past'", target: pickedBadEnd, source: apps/nizam/features/permissions/components/nazim-picker.tsx:47, say: "the person is found while the end typed earlier is in the past: the person is chosen and 'Kaydet' stays off" }
+        - { guard: found, target: picked, source: apps/nizam/features/permissions/components/nazim-picker.tsx:47, say: "the person is found: the field is replaced by 'Seçilen kişi' with their name and address, and 'Kaydet' is on" }
+      FAIL.unavailable: { guard: "person == 'down'", target: asking, effect: [downNote], source: apps/nizam/features/permissions/components/nazim-picker.tsx:54, say: "the directory did not answer: 'Arama şu an yapılamıyor.' under the field; the same address may be searched again" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "they close the dialog while the search runs; its answer is dropped" }
+    source: apps/nizam/features/madrasahs/actions.ts:123
+
+  picked:
+    title: A person is chosen
+    description: >-
+      The e-mail field is replaced by a section "Seçilen kişi": the person's avatar, name and address, and an icon button "Seçimi kaldır: {name}";
+      a hidden <output> says "{name} seçildi". Nothing moves the focus when the field unmounts, and "Seçimi kaldır" removes itself and gives the
+      focus to nothing (F-X-8). Nothing warns that the person is a Medaris nazımı already (MAPPT-3) or is the başnazım himself (MAPPT-2). "Kaydet"
+      is on. With a group chosen, the group's boxes are ticked and locked ('Gruptan gelir.') and the footer counts them, "Gruptan {n} izin ve
+      {m} ek izin"; without one it counts the ticked boxes, "{m} izin". The footer count is not a live region (MAPPT-5).
+    by: human
+    on:
+      REMOVE: { target: asking, effect: [forgot], source: apps/nizam/features/permissions/components/nazim-picker.tsx:67, say: "they press 'Seçimi kaldır': the e-mail field is back, empty, and the focus is not moved; the group, the boxes and the end stay" }
+      CHOOSE_GROUP: { guard: "group == 'none'", target: picked, effect: [groupChosen], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:231, say: "they choose a ready group: its boxes are ticked and locked, the footer says 'Gruptan 2 izin ve 0 ek izin'" }
+      TICK_PERMISSION: { guard: "ticks == 'none'", target: picked, effect: [ticked], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:273, say: "they tick 'Denetim kaydını oku': the footer counts it as one more" }
+      TYPE_END_SOON: { guard: "until != 'soon'", target: picked, effect: [endSoon], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type an end a few days ahead" }
+      TYPE_END_TODAY: { guard: "until != 'today'", target: picked, effect: [endToday], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type an end later today" }
+      TYPE_END_FAR: { guard: "until != 'far'", target: picked, effect: [endFar], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type an end more than 30 days ahead" }
+      TYPE_END_PAST: { guard: "until != 'past'", target: pickedBadEnd, effect: [endPast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:106, say: "they type an end that is not ahead: 'Bitiş zamanı şu andan sonra olmalı.' appears under the field at once and 'Kaydet' goes off" }
+      CLEAR_END: { guard: "until != 'none'", target: picked, effect: [endNone], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they empty the end field: no end" }
+      SAVE: { target: appointing, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:136, say: "they press 'Kaydet'" }
+      OPEN_GROUPS: { target: groups_opened, starts: { flow: nizam.nazims.groups }, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle': what was typed is lost" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç, the close icon or Escape: nothing is written" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nizam/features/permissions/components/nazim-picker.tsx:111
+
+  pickedBadEnd:
+    title: The end is not ahead
+    description: >-
+      As `picked`, with the end field's error under it: "Bitiş zamanı şu andan sonra olmalı." (it replaces the help line; a Field error with no
+      live region, F-UI-W3-1) and "Kaydet" off (`canSave` is false while the end has a problem). Nothing says why "Kaydet" is off beyond that
+      line (MAPPT-1). Typing an end that is ahead, or emptying the field, brings "Kaydet" back. The end is read against the moment the
+      dialog opened, so a long-open dialog does not notice the end has passed (the server's GRANT_EXPIRY_INVALID is `refused`).
+    by: human
+    on:
+      REMOVE: { target: asking, effect: [forgot], source: apps/nizam/features/permissions/components/nazim-picker.tsx:67, say: "they press 'Seçimi kaldır': the end stays as it was" }
+      CHOOSE_GROUP: { guard: "group == 'none'", target: pickedBadEnd, effect: [groupChosen], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:231, say: "they choose a ready group" }
+      TICK_PERMISSION: { guard: "ticks == 'none'", target: pickedBadEnd, effect: [ticked], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:273, say: "they tick a box" }
+      TYPE_END_SOON: { target: picked, effect: [endSoon], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type an end a few days ahead: the error goes and 'Kaydet' is on" }
+      TYPE_END_TODAY: { target: picked, effect: [endToday], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type an end later today" }
+      TYPE_END_FAR: { target: picked, effect: [endFar], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type an end more than 30 days ahead" }
+      CLEAR_END: { target: picked, effect: [endNone], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they empty the end field" }
+      OPEN_GROUPS: { target: groups_opened, starts: { flow: nizam.nazims.groups }, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle'" }
+      CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç, the close icon or Escape" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:289
+
+  appointing:
+    title: The appointment is on its way
+    description: >-
+      appointNazim calls POST /nizam/medaris-nazims with the person's id, the group (or null), the single permissions beside the group (a code
+      the group carries is not sent again) and the end (or null). 201 with the new row. The API makes the seat (revoking a lapsed one the same
+      person held), the permissions and the audit rows medaris_nazim.appoint and permission.grant in one transaction, all ending at the same
+      instant. "Kaydet" is busy (aria-disabled, aria-busy; its hidden word is the kit's default "Yükleniyor", not a catalogue message, MAPPT-8)
+      and the group, the boxes, the end and "Seçimi kaldır" are disabled. "Vazgeç", the close icon and Esc stay on and do nothing meanwhile
+      (`if (!saving) onOpenChange(next)`, MAPPT-6).
+    invoke: { action: appointMedarisNazim }
+    on:
+      DONE: { guard: appointable, target: appointed, effect: [appointedToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:162, say: "a toast says 'Medaris nazımı atandı', the dialog closes, the list is read again and has the new person's row" }
+      FAIL.alreadyAppointed: { guard: "person == 'already'", target: picked, effect: [alreadyToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:155, say: "MEDARIS_NAZIM_ALREADY_APPOINTED: a sticky error toast 'Medaris nazımı atanamadı' says 'Bu kişi zaten Medaris nazımı.'; the dialog stays open with the person chosen" }
+      FAIL.groupGone: { guard: "person == 'groupGone' and group == 'chosen'", target: picked, effect: [groupGoneToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:155, say: "PERMISSION_GROUP_NOT_FOUND: an error toast says 'Bu grup artık yok.'; the dialog stays open, the group still chosen (its option is not taken out)" }
+      FAIL.refused: { guard: "person == 'refused'", target: picked, effect: [refusedToast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:155, say: "any other refusal: an error toast with the sentence of its code, or 'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'; the dialog stays open" }
+    source: apps/nizam/features/permissions/actions.ts:27
+
+  appointed:
+    title: The new Medaris nazımı is in the list
+    description: >-
+      The toast "Medaris nazımı atandı" with "{name} Medaris nazımı oldu." (6 seconds), the dialog closed and the list read again: the count has
+      gone up and the table has a row for the person, appointed by the başnazım today: the group's badge (with "grubu" said to a reader of the
+      screen), the single permissions ("ve Denetim kaydını oku" after a group, alone otherwise, "İzin verilmemiş" when nothing was given), the end
+      as typed ("Süresiz", the date, with "Bugün bitiyor" or "{n} gün kaldı" inside 30 days) and the buttons. The focus returns to "Medaris
+      nazımı ata", which outlives the refresh. Appointing a second person is the same dialog again; the graph draws one. The appointed person
+      opening Ana sayfa is another person's step (`APPOINTEE_OPENS_HOME`): nizam.home.medarisNazimCut draws what she sees, and with nothing given
+      it draws the bare home.
+    by: human
+    goal: true
+    on:
+      APPOINTEE_OPENS_HOME:
+        - { guard: "person != 'chief' and givesSomething", target: handed_over.cut, starts: { flow: nizam.home.medarisNazimCut, given: { granted: "'some'" } }, source: apps/nizam/app/(home)/page.tsx:62, say: "the person appointed signs in and opens Ana sayfa: her menu and home are cut to what she was given (nizam.home.medarisNazimCut)" }
+        - { guard: "person != 'chief'", target: handed_over.cut, starts: { flow: nizam.home.medarisNazimCut, given: { granted: "'none'" } }, source: apps/nizam/app/(home)/page.tsx:62, say: "the person appointed with nothing opens Ana sayfa: a bare home that says nothing was given" }
+      EDIT_ROW: { target: handed_over.edit_permissions, starts: { flow: nizam.nazims.editPermissions }, source: apps/nizam/features/permissions/components/nazims-view.tsx:176, say: "they press 'İzinleri düzenle: name' on the new row" }
+      DISMISS_ROW: { target: handed_over.dismiss, starts: { flow: nizam.nazims.dismiss }, source: apps/nizam/features/permissions/components/nazims-view.tsx:185, say: "they press 'Görevden al: name' on the new row" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:162
+
+  refused:
+    title: The page is refused
+    description: >-
+      A read answered 403: the caller is not the başnazım. The page is Next's `forbidden()` and draws "Bu bölüm için izniniz yok" inside the shell
+      (nizam.shell.noAccessAndNotFound draws it; e2e permissions#2). The başnazım never meets it.
+    type: final
+
+  groups_opened:
+    title: They go to the permission groups
+    description: >-
+      "İzin gruplarını düzenle" is `<a href="/izin-gruplari">`, a plain link: the browser loads the page anew, the dialog and everything typed
+      in it are gone, with no question asked (MAPPT-10). nizam.nazims.groups draws the page.
+    type: final
+    leavesPage: true
+
+  handed_over.edit_permissions:
+    title: They go on to change permissions
+    description: >-
+      "İzinleri düzenle: name" opens the dialog "İzinleri düzenle" over the same page for that person; nizam.nazims.editPermissions draws it.
+    type: final
+
+  handed_over.dismiss:
+    title: They go on to dismiss
+    description: >-
+      "Görevden al: name" opens the question "Görevden al" over the same page for that person; nizam.nazims.dismiss draws it.
+    type: final
+
+  handed_over.cut:
+    title: The appointed person opens Ana sayfa
+    description: >-
+      The person appointed signs in at Nizam and opens Ana sayfa; nizam.home.medarisNazimCut draws the cut home (menu, numbers, cards and
+      "İzinleriniz" limited to what she was given).
+    type: final
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: kaydet-sends-only-a-found-person
+    never: "state == 'appointing' and person in ['nobody', 'notAddress', 'down']"
+    say: "'Kaydet' sends only a person the search found: nobody is appointed from an address that was not found."
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:134
+  - id: a-past-end-is-never-sent
+    never: "state == 'appointing' and until == 'past'"
+    say: "An end that is not ahead is told under the field and 'Kaydet' is off: it is never sent."
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:134
+  - id: a-found-person-is-the-only-one-chosen
+    never: "state in ['picked', 'pickedBadEnd'] and person in ['nobody', 'notAddress', 'down']"
+    say: "Only an address the search found gives a chosen person."
+    source: apps/nizam/features/permissions/components/nazim-picker.tsx:47
+  - id: a-refusal-keeps-the-dialog
+    never: "state == 'appointed' and toast in ['already', 'groupGone', 'refused']"
+    say: "A refused appointment leaves the dialog open with the person chosen; the list gets no new row."
+    source: apps/nizam/features/permissions/components/permissions-dialog.tsx:155
+  - id: the-chief-does-not-start-the-cut
+    never: "state == 'handed_over.cut' and person == 'chief'"
+    say: "The başnazım appointing himself never hands the cut home to anyone: his own home is the başnazım's."
+    source: apps/nizam/app/(home)/page.tsx:62

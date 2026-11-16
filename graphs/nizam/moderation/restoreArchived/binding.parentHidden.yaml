@@ -1,0 +1,54 @@
+# nizam.moderation.restoreArchived on the local stack: a course of a medrese its başmüderris hid. The köşk's nazımı is above the medrese, so the row has a "Geri al"; pressing it is refused while the
+# medrese is still hidden (FAIL.parentHidden: 409 ARCHIVE_PARENT_HIDDEN, "Bağlı olduğu öğe hâlâ gizli; önce onu geri alın.", and the row keeps its button: RESTORE-5).
+#   node apps/engine/src/cli.ts replay graphs/nizam/moderation/restoreArchived \
+#     --bind graphs/nizam/moderation/restoreArchived/binding.parentHidden.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Read only the walk that covers `FAIL.parentHidden`.
+#
+# Data, all the walk's own: the köşk "Deneme köşkü arsKosk"; a medrese "Deneme medresesi arsMed" with the spare account APPLICANT_H as its başmüderris and a hosting right in that köşk (data.mjs
+# make-medrese, as the başnazım through the API, the way nazar/archive/hideMedrese/medrese.mjs does it); and one course of that medrese opened in that köşk (helpers/course.mjs --madrasah ... --kosk ...).
+# The başmüderris hides the course (POST /courses/:id/archive stamps the medrese's kademe) before the page opens, so the nazım's Arşiv lists it with a button. The event FAIL.parentHidden is the
+# başmüderris hiding the whole medrese (POST /madrasahs/:id/hide) while the press's call is held, so the page's call finds the medrese hidden. That the replay runs an event's actions before it
+# releases the held call is not verified (see binding.stale.yaml). `teardown` removes the course, deletes the medrese (as the başnazım, hidden or shown; its başmüderris role and hosting right go
+# with it) and the köşk.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.restoreArchived
+
+data:
+  mine: { json: ../.local/made/arsKosk.json }
+  med: { json: ../.local/made/arsMed.json }
+
+events:
+  FAIL.parentHidden:
+    - run: [node, helpers/make-medrese.mjs, hide, --as, applicantH, --tag, arsMed]
+      expect: 'hide-medrese arsMed by APPLICANT_H'
+
+scenarios:
+  parentHidden:
+    given: { view: kosk, held: courses }
+    as: koskNazim
+    open: '{nizam}/kosks/{mine.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'frame:shell->koskArchive' }
+    setup:
+      - run: [node, helpers/make-kosk.mjs, make, arsKosk, KOSK_NAZIM]
+        expect: '"tag":"arsKosk"'
+      - run: [node, helpers/make-medrese.mjs, make, arsMed, --kosk, arsKosk, --head, applicantH]
+        expect: '"tag":"arsMed"'
+      - run: [node, helpers/course.mjs, make, arsMedCourse, --madrasah, '{med.madrasah}', --kosk, '{mine.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi arsMedCourse"'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, applicantH, --tag, arsMedCourse]
+        expect: 'hide-course arsMedCourse'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, arsMedCourse]
+        expect: 'course remove arsMedCourse'
+      - run: [node, helpers/make-medrese.mjs, remove, arsMed]
+        expect: 'remove-medrese arsMed'
+      - run: [node, helpers/make-kosk.mjs, remove, arsKosk]
+        expect: 'kosk remove arsKosk'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ars%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from madrasahs where handle like 'deneme-ars%'"]
+        expect: '"n":0'

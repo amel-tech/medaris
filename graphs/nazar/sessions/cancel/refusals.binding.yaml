@@ -1,0 +1,114 @@
+# nazar.sessions.cancel, the answers of a race: the three refusals of "Celseyi iptal et" that the local stack can cause. It extends binding.yaml
+# and adds a scenario for each, which starts as `cancels` does (a course of the walk's own, Celseler through the course menu) with a different
+# `answer`:
+#   moved      someone saved the course since the page was read (COURSE_VERSION_CONFLICT): a cancel with no make-up is refused and the dialog
+#              closes; a cancel with a make-up is NOT, because it carries the version the make-up left (CANCEL-2), so the same scenario walks
+#              that path to a success and the `effects` of the make-up check it
+#   already    the celse was cancelled by someone else since the page was read: with no make-up the stale version is refused first (the same
+#              toast as moved); with a make-up the make-up is made and the cancel is refused with LESSON_ALREADY_CANCELLED, the make-up stands
+#              ("Telafi celsesi eklendi, ama celse iptal edilemedi")
+#   forbidden  the ders nazırı, who held session.manage when the page was read, lost it (AUTHZ_FORBIDDEN): the cancel is refused and the dialog
+#              stays; with a make-up the first call, the make-up, is the one refused, and nothing was written
+#   node apps/engine/src/cli.ts replay graphs/nazar/sessions/cancel --bind graphs/nazar/sessions/cancel/refusals.binding.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml).
+#
+# How each is made: the walk is in `form` when the dialog is open and nothing is sent, and a state's `before` runs when the walk reaches the
+# state, before it is checked, so the race is made there: `cancel.mjs meanwhile <mode>` does what someone else would do (saves the course by
+# giving the second celse another link, cancels the same celse as the hoca, or takes every permission from the ders nazırı, as the hoca would
+# on Ders nazırları). The page still holds what it read, so "Celseyi iptal et" asks the API about a course that is no longer as the page saw it.
+# Every mode is safe to run twice, because the walk reaches `form` more than once (a self-loop of the note, the check box and the date, and a
+# refused make-up that leaves the dialog open).
+#
+# The states that call drop the `call` of binding.yaml: a Next server action answers 200 on the page's own address whatever it decided, and the
+# replay compares a FAIL class with the call's HTTP status (SPEC.md section 7), which cannot pass here. The busy dialog is walked in binding.yaml.
+#
+# The scenarios of binding.yaml are inherited and walk here without a race: their `meanwhile` is none, which `form` leaves alone.
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nazar.sessions.cancel
+
+scenarios:
+  moved:
+    given: { holds: manage, answer: moved }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSessions' }
+    setup:
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/course.mjs, make, cancelCelse, --weeks, '1', --lessons, '3', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+      - run: [node, ../nazar/sessions/cancel/cancel.mjs, link]
+        expect: 'cancel link'
+      - run: [node, helpers/mail.mjs, search, 'to:{secret.E2E_APPLICANT_C_EMAIL} subject:Davet', --wait, '90']
+        expect: 'Davet'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cancelCelse]
+        expect: 'course remove cancelCelse'
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi cancelCelse'"]
+        expect: '"n":0'
+    vars:
+      note: Hoca yolda kaldı; bu haftanın okuması telafi edilecek.
+      makeUpDate: '2027-03-02'
+      meanwhile: moved
+      hoca: muderris
+
+  already:
+    given: { holds: manage, answer: already }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSessions' }
+    setup:
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/course.mjs, make, cancelCelse, --weeks, '1', --lessons, '3', --talebe, applicantC]
+        expect: '"APPLICANT_C":"ENROLLED"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cancelCelse]
+        expect: 'course remove cancelCelse'
+      - run: [node, helpers/notify.mjs, applicantC, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi cancelCelse'"]
+        expect: '"n":0'
+    vars:
+      note: Hoca yolda kaldı; bu haftanın okuması telafi edilecek.
+      makeUpDate: '2027-03-02'
+      meanwhile: cancelled
+      hoca: muderris
+
+  # The ders nazırı reads the page with session.manage (the başmüderris is the course's hoca and appoints her) and loses it while the dialog is
+  # open. A course of the medrese, as nazar.course.overview makes one for her.
+  forbidden:
+    given: { holds: manage, answer: forbidden }
+    as: dersNazir
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSessions' }
+    setup:
+      - run: [node, helpers/course.mjs, make, cancelCelse, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '3']
+        expect: '"title":"Deneme dersi cancelCelse"'
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, session.manage, --as, basmuderris]
+        expect: 'course-nazir-grants DERS_NAZIR'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, cancelCelse]
+        expect: 'course remove cancelCelse'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi cancelCelse'"]
+        expect: '"n":0'
+    vars:
+      note: Hoca yolda kaldı; bu haftanın okuması telafi edilecek.
+      makeUpDate: '2027-03-02'
+      meanwhile: revoke
+      hoca: basmuderris
+
+states:
+  # a state's entry replaces the base's whole entry: no `call` here
+  makingUp: {}
+  cancellingAlone: {}
+  cancellingAfterMakeUp: {}
+  # the race is made when the dialog is open and nothing was sent, before the state is checked
+  form:
+    before:
+      - run: [node, ../nazar/sessions/cancel/cancel.mjs, meanwhile, '{meanwhile}', --as, '{hoca}']
+        expect: 'meanwhile'

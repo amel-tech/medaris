@@ -1,0 +1,28 @@
+# nizam.moderation.decideBan at the Medaris list, read by a köşk nazım: the page says "Bu bölüm için izniniz yok" (the exit no_access, bans-medaris#8;
+# nizam.shell.noAccessAndNotFound walks the same screen for every refused page). tedrisat answers 403 BAN_FORBIDDEN to GET /bans for a caller
+# who holds neither platform.ban_scoped nor platform.ban_account, and the page turns it into forbidden().
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideBan \
+#     --bind graphs/nizam/moderation/decideBan/binding.noAccess.yaml --to no_access --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`). The read is made by the server while the page is
+# built, so no node sends the edge FAIL.forbidden and no call can be held: the binding gives it as an event whose action only waits for the screen
+# (as nizam.courses.decideApplications' binding.noAccess.yaml does). Nothing is made or changed. `viewer`, `row`, `answer` and `after` are what a
+# successful read would show, and the read is refused, so none is drawn. A müderris at the köşk's list (bans#9) and a köşk that is not there are
+# the same screen; they are nizam.shell.noAccessAndNotFound's.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.decideBan
+
+events:
+  FAIL.forbidden:
+    - waitText: Bu bölüm için izniniz yok
+
+states:
+  no_access: { url: '{nizam}/yasaklamalar', text: Bu bölüm için izniniz yok }
+
+scenarios:
+  refusedAtMedaris:
+    given: { viewer: chief, read: forbidden, row: low, answer: done, after: more }
+    as: koskNazim
+    open: '{nizam}/yasaklamalar'
+    vars: { reasonText: Yeniden değerlendirildi, who: APPLICANT_C, liftHas: 'COURSE lifted', widenHas: KOSK open }

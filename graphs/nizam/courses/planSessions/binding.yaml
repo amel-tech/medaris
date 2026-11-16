@@ -1,0 +1,339 @@
+# nizam.courses.planSessions on the local stack (graphs/README.md, "The stack and the bindings"): nizam-web at http://localhost:4001, the köşk nazımı of the
+# seed's second köşk ("Kubbealtı Köşkü", `seed.kosk2`) signed in through Keycloak's real form, and the page "Celse planla" of a course made for the walk.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/planSessions \
+#     --bind graphs/nizam/courses/planSessions/binding.yaml --out <dir>                                  (the main story)
+#   ... --cover transitions --absent --out <dir>                                                          (every scenario below)
+#
+# NOT RUN: the owner's word is that replays happen once, at the end; every locator, every account fact and every address is from the code and unverified until
+# the walk. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>`, read-only: it writes a spec and walks nothing).
+#
+# The data. Every scenario that opens the page makes the one course "Deneme dersi nzPlan" in `seed.kosk2` (helpers/course.mjs make nzPlan --kosk --weeks 1
+# --lessons 0: one week and no celse, the köşk nazımı opens it and MUDERRIS is its hoca) and the dates file the form is typed from (helpers/dates.mjs: a Tuesday two to three weeks ahead and so on, worked out from today), and removes both in `teardown`; `make`
+# removes an nzPlan left by a crashed walk first. The seeded courses are never planned into. A walk that makes celses deletes them with the course
+# (helpers/course.mjs remove deletes the course as the başnazım, with everything under it). What a walk cannot undo: the audit rows of the writes and the
+# calendar-invitation mails to the enrolled talebe, of whom the course has none.
+#
+# The two e2e checks this flow carries, as scenarios (apps/nizam/e2e/courses.e2e.ts, "nizam/55 Celse planla"):
+#   courses#14  weeklyPlain  a weekly repeat on two days that ends on a date: the preview says "3 celse", the button "3 celse oluştur", the celses are made
+#                            with the title "Haftanın tekrarı" and no link (3 rows more in `lessons`, none with a meeting_url). The e2e's three Fridays
+#                            and its `nextWeekday(5, 20)` are not copied; the walk's own dates give three celses on a Tuesday and a Thursday.
+#   courses#15  weeklyCount  "Belirli sayıda celseden sonra" with 2, one day, and "Yalnız ilk celseye ekle": two celses, the link on the first and none on the
+#                            second. The e2e chooses the radio after the day and the date; the model chooses it first (the form is whole only when all of it
+#                            is typed, so the order does not change what is made).
+#
+# Scenarios not here: `fromOpen: true` is binding.fromOpen.yaml (the page reached from Ders aç, entered through nizam.courses.open's binding.sessionsFailed.yaml),
+# and `answer: patternRefused`, `forbidden` and `failed` (the API would have to refuse a pattern
+# it has just previewed, a köşk nazımı would have to lose session.manage between the preview and the press without the page being refused first, or the
+# write would have to fail: nothing the stack can be made to do on request). The second answer of a refused preview (`previewed` stays what it is) is drawn
+# as a refusal again, and walked so.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.planSessions
+
+scenarios:
+  # The main story: from Celseler (the nav entry courseSessions->courseSessionsNew, the link "Celse planla"), a weekly repeat on Tuesday and Thursday from a Tuesday two to
+  # three weeks away, ending 8 days later (three celses), the first with a link, the preview read, the celses made. Lands on Celseler with the toast.
+  weekly:
+    given: { fromOpen: false, read: ok, plan: weekly, fields: linked, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'courseSessions->courseSessionsNew' }
+    setup:
+      - run: [node, helpers/course.mjs, make, nzPlan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '0']
+        expect: '"title":"Deneme dersi nzPlan"'
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzPlan]
+        expect: 'course remove nzPlan'
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '1'
+      madeUrl: 'https://meet.example.test/plan/ilk'
+
+  # e2e courses#14: the same repeat with no link: "3 celse" in the preview, "3 celse oluştur", three celses titled "Haftanın tekrarı", none with a link.
+  weeklyPlain:
+    given: { fromOpen: false, read: ok, plan: weekly, fields: valid, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions/new'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzPlan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '0']
+        expect: '"title":"Deneme dersi nzPlan"'
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzPlan]
+        expect: 'course remove nzPlan'
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '0'
+      madeUrl: none
+
+  # e2e courses#15: "Belirli sayıda celseden sonra" and 2, on Wednesdays (the start date is a Tuesday, so the first is the day after), the link on the first only.
+  weeklyCount:
+    given: { fromOpen: false, read: ok, plan: weeklyCount, fields: linked, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions/new'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzPlan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '0']
+        expect: '"title":"Deneme dersi nzPlan"'
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzPlan]
+        expect: 'course remove nzPlan'
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Çar
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '2'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.google.com/abc-defg-hij'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '2'
+      createdTitle: Haftanın tekrarı
+      linksMade: '1'
+      madeUrl: 'https://meet.google.com/abc-defg-hij'
+
+  # One celse, "Tek seferlik", on a date nine days away: the page keeps the title "Haftanın tekrarı" (NPLAN-4).
+  single:
+    given: { fromOpen: false, read: ok, plan: single, fields: valid, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions/new'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzPlan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '0']
+        expect: '"title":"Deneme dersi nzPlan"'
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzPlan]
+        expect: 'course remove nzPlan'
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '1'
+      createdTitle: Haftanın tekrarı
+      linksMade: '0'
+      madeUrl: none
+
+  # A pattern on Monday and Saturday over a Tuesday and the Wednesday after: no day of it falls in the range, tedrisat answers INVALID_SESSION_PATTERN (NO_SESSIONS),
+  # the preview is cleared and the alert says so; the end date is then moved to the start date and the answer is the same. Nothing is made.
+  previewRefused:
+    given: { fromOpen: false, read: ok, plan: weekly, fields: valid, previewed: refused, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions/new'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzPlan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '0']
+        expect: '"title":"Deneme dersi nzPlan"'
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzPlan]
+        expect: 'course remove nzPlan'
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Pzt
+      dayB: Cmt
+      startDate: '{when.noStart}'
+      endDate: '{when.noEnd}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '0'
+      madeUrl: none
+
+  # An empty title: the preview works (it does not read the title), the button is on, and pressing it says "Celse başlığını yazın." under the field; the person then clears
+  # the days ("En az bir gün seçin." is announced), chooses them again, types the title, and the celses are made.
+  noTitle:
+    given: { fromOpen: false, read: ok, plan: weekly, fields: noTitle, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions/new'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzPlan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '0']
+        expect: '"title":"Deneme dersi nzPlan"'
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzPlan]
+        expect: 'course remove nzPlan'
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: ''
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '0'
+      madeUrl: none
+
+  # A first-celse link that is not https: "Toplantı bağlantısı https:// ile başlamalı…" under the field; the link is then put right and the celses are made with it.
+  badLink:
+    given: { fromOpen: false, read: ok, plan: weekly, fields: badLink, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions/new'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzPlan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '0']
+        expect: '"title":"Deneme dersi nzPlan"'
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzPlan]
+        expect: 'course remove nzPlan'
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'http://meet.example.test/plan/ilk'
+      fixField: meetingUrl
+      fixValue: 'https://meet.example.test/plan/ilk'
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '1'
+      madeUrl: 'https://meet.example.test/plan/ilk'
+
+  # A Medaris nazımı passes the köşk layout and does not manage the köşk: forbidden(), the "Bu bölüm için izniniz yok" screen. (Whether GET /courses/:id answers her is the
+  # course page's public read: the course is PUBLISHED, so it does; if it did not, the page would be the `missing` branch and draw the same screen.) Nothing is made.
+  denied:
+    given: { fromOpen: false, read: denied, plan: weekly, fields: valid, previewed: lines, answer: created }
+    as: medarisNazim
+    open: '{nizam}/kosks/{made.kosk}/courses/{made.course}/sessions/new'
+    setup:
+      - run: [node, helpers/course.mjs, make, nzPlan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '0']
+        expect: '"title":"Deneme dersi nzPlan"'
+      - run: [node, helpers/dates.mjs, write, nzPlan]
+        expect: 'dates nzPlan'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nzPlan]
+        expect: 'course remove nzPlan'
+      - run: [node, helpers/dates.mjs, clear, nzPlan]
+        expect: 'dates nzPlan'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '0'
+      madeUrl: none
+
+  # A course id no course has, in a köşk that exists: notFound() draws the same screen. Nothing is made, so there is nothing to remove.
+  unknownCourse:
+    given: { fromOpen: false, read: missing, plan: weekly, fields: valid, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/00000000-0000-4000-8000-000000000000/sessions/new'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '0'
+      madeUrl: none
+
+  # A köşk id and a course id that name nothing: both reads answer 404, each is turned into null, and the page takes it for the API being down (NPLAN-2): the card "Ders bilgisi okunamadı"
+  # with its retry, which draws the same card again.
+  unreadable:
+    given: { fromOpen: false, read: failed, plan: weekly, fields: valid, previewed: lines, answer: created }
+    as: koskNazim
+    open: '{nizam}/kosks/00000000-0000-4000-8000-000000000001/courses/00000000-0000-4000-8000-000000000000/sessions/new'
+    vars:
+      dayA: Sal
+      dayB: Per
+      startDate: '{when.start}'
+      endDate: '{when.end}'
+      howMany: '4'
+      singleDate: '{when.single}'
+      titleText: Haftanın tekrarı
+      firstUrl: 'https://meet.example.test/plan/ilk'
+      fixField: title
+      fixValue: Haftanın tekrarı
+      refillEnd: '{when.noStart}'
+      planned: '3'
+      createdTitle: Haftanın tekrarı
+      linksMade: '0'
+      madeUrl: none

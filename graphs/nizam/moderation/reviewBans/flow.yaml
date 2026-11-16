@@ -1,0 +1,371 @@
+# Yasaklamalar as Medaris administration reads it (nizam-web, /yasaklamalar), read from the code of PR #394 on 16 Nov 2026: apps/nizam/app/yasaklamalar/page.tsx,
+# features/bans (all-bans-view.tsx, present.ts, reads.ts, actions.ts), libs/ui/src/mds (tabs, choice-chips, table, button, alert) and tedrisat's GET /bans
+# (ban.controller.ts:135, ban.service.ts:228-262, ban.repository.ts:394-444, ban-codes.ts). Nothing was opened in a browser; the stack was asked one read-only
+# question (GET /bans as the three kinds of reader, which answered 200 with no bans for the başnazım and 403 BAN_FORBIDDEN for the köşk nazımı and the seeded
+# Medaris nazımı). What a screen looks like, where the focus goes and what a screen reader says are from the code.
+#
+# This flow only reads. The two things a person does with a row (lift it, widen it to the köşk) each open a dialog and leave this flow in an exit, where
+# nizam.moderation.decideBan begins; the köşk's own list of the same bans is that flow's too.
+#
+# What the code does today, which the graph draws and does not correct:
+#   - Who reads. The başnazım, and a Medaris nazımı who holds platform.ban_scoped or platform.ban_account (ban-codes.ts:65-69). The menu entry follows the same
+#     rule (shell-nav.ts:300). Anyone else (the köşk nazımı, a Medaris nazımı with neither code, such as the seeded one) is answered 403, and the page calls
+#     forbidden(): the shell's "Bu bölüm için izniniz yok". So the page does NOT show every ban to every Medaris nazımı; the notice of a new ban does tell every one
+#     of them (TRIAGE-2 of nizam.notifications.triage), and one code opens every ban of every köşk and medrese, with the person's name, e-mail and the reason.
+#   - The first page is read on the server (the open bans, 20 of them, newest first). Everything after it is a server action the page calls from the browser:
+#     a tab, a chip and the search each ask again from the first row, and "Daha fazla göster" asks for the next twenty and appends them. The tabs' two numbers are
+#     the platform's whole counts, whatever the chip and the search leave; the line under them ("{n} etkin yasak") is the narrowed list's own count.
+#   - The kind chips send scope COURSE or KOSK. The API also lists a medrese-wide ban (scope MADRASAH), which the page labels "Köşk" and no chip finds (REVBANS-2).
+#   - The row's buttons follow what the API says per row (viewerMayLift, viewerMayExtend): the başnazım lifts every open ban; a Medaris nazımı with
+#     platform.ban_scoped lifts the köşk-wide ones and widens course bans; one with platform.ban_account alone can do neither and reads.
+schema: delurio-graph/0
+kind: flow
+id: nizam.moderation.reviewBans
+status: captured
+domain: medaris.api
+ui: nizam.moderation.reviewBans
+title: Read every ban as Medaris
+summary: >-
+  The başnazım, or a Medaris nazımı who holds platform.ban_scoped or platform.ban_account, opens Yasaklamalar from the menu and reads every ban of every
+  köşk: two tabs, "Etkin" and "Kaldırılan", each carrying the platform's whole count; under them a search box for a person's name or e-mail and the kind chips
+  Tümü, Ders and Köşk; and a table of who is barred, from what (a course with its köşk, or a whole köşk), why, who placed it in what role and when, and, in the
+  Etkin tab, the buttons the viewer's own permissions allow (lift, widen to the köşk) or a sentence that says who may; in the Kaldırılan tab, who lifted it,
+  when and why. The tabs, the chips and the search ask the server again and show a skeleton meanwhile; "Daha fazla göster" adds the next twenty rows below the
+  first. A reader the API refuses sees the section refusal in place of all of it. A press on a row's button opens a dialog that nizam.moderation.decideBan draws.
+
+scope:
+  shows: >-
+    Yasaklamalar for Medaris administration: the title, the two tabs and their counts, the search box and the kind chips, the table in both tabs with its empty,
+    narrowed-to-nothing and busy states, "Daha fazla göster", the row buttons and notes by what the viewer may do, and the unreadable page
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the dialogs a row's button opens and what they write, 'Yasağı kaldır' and 'Yasağı genişlet': nizam.moderation.decideBan (e2e bans-medaris#5, #6, #7)"
+    - "the köşk's own list of its bans, /kosks/<id>/yasaklamalar, and its one-click 'Köşkten de yasakla' (F-W5-1): nizam.moderation.decideBan"
+    - "placing a ban: nizam.moderation.banStudent from a course's roster"
+    - "the section refusal screen and the shell around the page: nizam.shell.noAccessAndNotFound (the exit handed_over.no_access), nizam.shell.menuPerPersona"
+    - "the row of a medrese-wide ban (scope MADRASAH), which the page labels 'Köşk' (REVBANS-2); the walk's data makes none"
+    - "a ban older than a day (no 'Yeni' badge): no route ages a ban, so the walk's data is all new"
+    - "the first read's loading skeleton (loading.tsx) and the phone layout (below 768 px each row is a card)"
+    - "the device-events tab that the page's own comment says waits for a backend (P-02, MDRS-125), the Medrese and Platform chips (MDRS-113) and the permanent-ban request area (nizam.moderation.decidePermanentBan)"
+
+decisions:
+  D1:
+    question: >-
+      Should a Medaris nazımı who holds only platform.ban_account (a permission that bans and lifts nothing) read the reason and the e-mail address of every
+      ban on the platform? Today one of the two codes opens the whole list with them, and the notice of a new ban already tells every Medaris nazımı the reason
+      whether or not they hold either (TRIAGE-2).
+    recommend: >-
+      Show the reason and the e-mail only to those who may act on the ban (the başnazım and holders of platform.ban_scoped), and tell only the people who may
+      read a ban that it was placed; a reader who only watches sees the person, the scope and the kademe.
+    affects: [listed, handed_over.no_access]
+  D2:
+    question: >-
+      Should the list name a medrese-wide ban 'Medrese' (with the medrese's name) and have a chip for it? Today it is labelled 'Köşk' with no köşk name and neither
+      chip finds it (REVBANS-2).
+    recommend: >-
+      Label the scope by what it is, add the 'Medrese' chip next to 'Ders' and 'Köşk', and leave 'Platform' until MDRS-113 builds platform-level bans.
+    affects: [listed, noMatch]
+
+context:
+  viewer:
+    values: [chief, scoped, reader, stranger]
+    initial: any
+    say:
+      chief: "the başnazım (the realm role SYSTEM_ADMIN): reads every ban, lifts every open ban and widens every open course ban"
+      scoped: "a Medaris nazımı holding platform.ban_scoped: reads every ban, lifts the köşk-wide ones, widens the course ones, and may not lift a course ban"
+      reader: "a Medaris nazımı holding platform.ban_account alone: reads every ban and may do nothing to one"
+      stranger: "a person the API refuses the list: a köşk nazımı, a Medaris nazımı holding neither code (the seeded one), anyone else who opens the address"
+  read:
+    values: [ok, unreadable]
+    initial: any
+    say:
+      ok: "the server's first read answers"
+      unreadable: "the first read fails with anything but a 403 (the stack cannot be made to)"
+  refetch:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "the reads the browser makes after the first (a tab, a chip, the search, more, a retry) answer"
+      failed: "such a read fails (the stack cannot be made to)"
+  courseBans:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the platform holds course-scope bans, open and lifted both"
+      none: "the platform holds no course-scope ban"
+  koskBans:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the platform holds köşk-scope bans, open and lifted both"
+      none: "the platform holds no köşk-scope ban"
+  match:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the name they type is the name of a person who is on the list in both tabs"
+      none: "the name they type is nobody's on the list"
+  pages:
+    values: [one, several]
+    initial: any
+    say:
+      one: "the list they look at holds twenty rows or fewer"
+      several: "the list they look at holds more than twenty open bans, so the first page is full and rows are left"
+  tab:
+    values: [ACTIVE, LIFTED]
+    initial: ACTIVE
+    say:
+      ACTIVE: "the Etkin tab, which the page opens on"
+      LIFTED: "the Kaldırılan tab"
+  scope:
+    values: [all, course, kosk]
+    initial: all
+    say:
+      all: "the chip Tümü: no kind chosen"
+      course: "the chip Ders: scope COURSE"
+      kosk: "the chip Köşk: scope KOSK"
+  typed:
+    values: [none, some]
+    initial: none
+    say:
+      none: "the search box is empty"
+      some: "a name is typed in the search box"
+  loaded:
+    values: [first, all]
+    initial: first
+    say:
+      first: "only the first twenty rows of the list are on the screen"
+      all: "every row of the list is on the screen (the button for more is gone)"
+  toast:
+    values: [none, failed]
+    initial: none
+    say:
+      none: "no toast"
+      failed: "'Yasaklar yüklenemedi' is on the screen as a sticky toast, raised by a re-read that failed; nothing here clears it"
+
+guards:
+  anyBans: "courseBans == 'some' or koskBans == 'some'"
+  narrowed: "scope != 'all' or typed == 'some'"
+  # the narrowed list holds a row: with no chip, any ban; with a chip, a ban of that kind (both tabs hold both kinds in the walk's data, and the name is on both)
+  holds: "(scope == 'all' and anyBans) or (scope == 'course' and courseBans == 'some') or (scope == 'kosk' and koskBans == 'some')"
+  hidden: "typed == 'some' and match == 'none'"
+  # "Daha fazla göster" shows while the Etkin list is longer than what is on the screen
+  moreButton: "pages == 'several' and tab == 'ACTIVE' and loaded == 'first'"
+
+effects:
+  toLifted: { set: { tab: LIFTED, loaded: first } } # a tab keeps the chip and the search
+  toActive: { set: { tab: ACTIVE, loaded: first } }
+  toAll: { set: { scope: all, loaded: first } }
+  toCourse: { set: { scope: course, loaded: first } }
+  toKosk: { set: { scope: kosk, loaded: first } }
+  typedIn: { set: { typed: some, loaded: first } }
+  erased: { set: { typed: none, loaded: first } }
+  loadedAll: { set: { loaded: all } }
+  toasted: { set: { toast: failed } }
+
+failures:
+  reading: { from: listAllBans, forbidden: [BAN_FORBIDDEN], unreadable: [] }
+  narrowing: { from: listAllBans, unreadable: [] }
+  loadingMore: { from: listAllBans, unreadable: [] }
+# `forbidden` is the 403 the page turns into forbidden() (reads.ts:22). `unreadable` stands for every other answer: the first read makes it a null (reads.ts:25)
+# and the page draws the alert; a read the browser makes returns a failed result (actions.ts:50-64) and the view draws the alert and a sticky toast. The domain
+# lists HTTP_400 for a status or a scope outside its enum, which this page never sends, so no code is named.
+
+# The story the page tells first: the başnazım reads the open bans, goes to the lifted ones and back, narrows to the köşk-wide bans and widens again, then
+# types a name.
+main:
+  given: { viewer: chief, read: ok, refetch: ok, courseBans: some, koskBans: some, match: some, pages: one }
+  events: [DONE, OPEN_LIFTED, DONE, OPEN_ACTIVE, DONE, PICK_KOSK, DONE, PICK_ALL, DONE, TYPE_NAME, DONE]
+
+initial: reading
+
+states:
+  reading:
+    title: The first page of bans is read
+    description: >-
+      The page asks on the server, in one go, for GET /bans (the open bans, limit 20) and for the person (GET /me, for "(siz)" on a ban they placed). The API
+      answers the başnazım and a Medaris nazımı with platform.ban_scoped or platform.ban_account with the page, the narrowed `total` and the platform's three counts
+      (open, lifted, opened in the last day), and every row with what the caller may do; a köşk nazımı or a Medaris nazımı with neither code is answered 403. Nothing
+      is on the screen of this step (the loading skeleton, loading.tsx, is out of view). The three reads that follow, a tab, a chip or the search and "Daha fazla
+      göster", are `narrowing` and `loadingMore`.
+    invoke: { action: listAllBans }
+    on:
+      DONE: { guard: "viewer != 'stranger' and read == 'ok'", target: classify }
+      FAIL.forbidden: { guard: "viewer == 'stranger'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'section'" } }, say: "a 403 BAN_FORBIDDEN: the page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" (TRIAGE-2 reads here)", source: apps/nizam/features/bans/reads.ts:22 }
+      FAIL.unreadable: { guard: "viewer != 'stranger' and read == 'unreadable'", target: loadFailed, say: "any other failure is a null: the view opens on its error alert, with no toast", source: apps/nizam/features/bans/reads.ts:25 }
+    source: apps/nizam/app/yasaklamalar/page.tsx:24
+
+  classify:
+    title: What the list holds decides which screen
+    description: >-
+      Classification only. A list that holds nothing is the tab's own empty line when no chip and no search narrows it, and "Bu süzgece uyan yasak yok" when one
+      does; a name nobody on the list has leaves the same line. The search is the server's (q matches the person's name or e-mail), so the line comes with the answer.
+    always:
+      - { guard: "not holds and narrowed", target: noMatch, source: apps/nizam/features/bans/components/all-bans-view.tsx:340 }
+      - { guard: "not holds", target: empty, source: apps/nizam/features/bans/components/all-bans-view.tsx:340 }
+      - { guard: hidden, target: noMatch, source: apps/nizam/features/bans/components/all-bans-view.tsx:340 }
+      - { target: listed }
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:328
+
+  listed:
+    title: The bans are listed
+    description: >-
+      The page: the title and its line, a section "Yasaklar" (with "{n} yeni yasak" beside it when a ban of the last day is open), the two tabs with the platform's
+      counts, the search box and the kind chips, and a table named by its caption ("Bütün köşklerdeki etkin yasaklar" or "Bütün köşklerde kaldırılan yasaklar") under a line
+      that counts the narrowed list ("{n} etkin yasak"). In the Etkin tab a row has the person (name, "Yeni" for a ban placed in the last 24 hours, e-mail address), the
+      scope ("Ders" with the course's title and the köşk's name, or "Köşk" with the köşk's name and, for one placed from a course, "{course} dersinden genişletildi"), the
+      reason, who placed it with the role they placed it in ("(siz)" when it was the viewer), when, and the buttons the viewer's permissions allow: "Yasağı kaldır" where the
+      API says viewerMayLift, "Yasağı genişlet" on an open course ban where it says viewerMayExtend; where a ban may not be lifted, a sentence instead ("Bu yasağı yalnız
+      Medaris yönetimi kaldırabilir." for a ban Medaris placed, "Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir." for any other). The başnazım is offered both buttons
+      on every open course ban and the lift on every other open ban; a Medaris nazımı with platform.ban_scoped the lift on köşk bans, the widening on course bans and the
+      sentences on the rest; one with platform.ban_account only the sentences. In the Kaldırılan tab a row says who lifted it, when and why, and has no button. When the
+      list is longer than the screen holds, "Daha fazla göster" is under the table. No focus is set when the page opens (focus-not-set). Findings read here: TRIAGE-2 (the
+      page admits one code, and shows every reason and e-mail), REVBANS-1 (the widening is offered over a köşk ban the page does not hold), REVBANS-2 (a medrese-wide ban reads
+      "Köşk" and no chip finds it), REVBANS-3 (the sentence blames the kademe where the permission is missing), REVBANS-5 (the lifted tab is ordered by the lift but shows the
+      placing time), F-W5-10 (no count or change is announced) and F-W5-1 (the widening here has a reason dialog, the köşk's list has none).
+    by: human
+    goal: true
+    on:
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: narrowing, effect: [toLifted], say: "they press Kaldırılan: the list is asked again for the lifted bans, with the chip and the search kept", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: narrowing, effect: [toActive], say: "they press Etkin", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      PICK_ALL: { guard: "scope != 'all'", target: narrowing, effect: [toAll], say: "they press Tümü", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_COURSE: { guard: "scope != 'course'", target: narrowing, effect: [toCourse], say: "they press Ders", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_KOSK: { guard: "scope != 'kosk'", target: narrowing, effect: [toKosk], say: "they press Köşk", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      TYPE_NAME: { guard: "typed == 'none'", target: narrowing, effect: [typedIn], say: "they type a name in Kişi ara; 300 ms after the typing stops the list is asked again", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
+      CLEAR_NAME: { guard: "typed == 'some'", target: narrowing, effect: [erased], say: "they erase what they typed", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
+      LOAD_MORE: { guard: moreButton, target: loadingMore, say: "they press Daha fazla göster", source: apps/nizam/features/bans/components/all-bans-view.tsx:347 }
+      LIFT:
+        - { guard: "tab == 'ACTIVE' and viewer == 'chief'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'chief'", read: "'ok'" } }, say: "the başnazım presses Yasağı kaldır on a row: the same lift dialog as on the köşk's list, here on the Medaris list (decideBan's viewer chief)", source: apps/nizam/features/bans/components/all-bans-view.tsx:289 }
+        - { guard: "tab == 'ACTIVE' and viewer == 'scoped'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'medaris'", read: "'ok'" } }, say: "a Medaris nazımı holding platform.ban_scoped presses Yasağı kaldır on a row (decideBan's viewer medaris)", source: apps/nizam/features/bans/components/all-bans-view.tsx:289 }
+      EXTEND:
+        - { guard: "tab == 'ACTIVE' and viewer == 'chief'", target: handed_over.extend, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'chief'", read: "'ok'" } }, say: "the başnazım presses Yasağı genişlet on an open course row (decideBan's viewer chief)", source: apps/nizam/features/bans/components/all-bans-view.tsx:303 }
+        - { guard: "tab == 'ACTIVE' and viewer == 'scoped'", target: handed_over.extend, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'medaris'", read: "'ok'" } }, say: "a Medaris nazımı holding platform.ban_scoped presses Yasağı genişlet on an open course row (decideBan's viewer medaris)", source: apps/nizam/features/bans/components/all-bans-view.tsx:303 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:330
+
+  empty:
+    title: The tab holds nothing
+    description: >-
+      Nothing narrows the list and it is empty: the table keeps its header and holds one line, "Etkin yasak yok" or "Kaldırılan yasak yok"; the line "{n} etkin yasak" over
+      it reads 0, the tabs carry the platform's counts, and the search and the chips are still there. "N yeni yasak" is gone with the last open ban.
+    by: human
+    on:
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: narrowing, effect: [toLifted], say: "they press Kaldırılan", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: narrowing, effect: [toActive], say: "they press Etkin", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      PICK_COURSE: { guard: "scope != 'course'", target: narrowing, effect: [toCourse], say: "they press Ders", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_KOSK: { guard: "scope != 'kosk'", target: narrowing, effect: [toKosk], say: "they press Köşk", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      TYPE_NAME: { guard: "typed == 'none'", target: narrowing, effect: [typedIn], say: "they type a name", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:340
+
+  noMatch:
+    title: Nothing fits the filters
+    description: >-
+      The chip or the search leaves no row: the table keeps its header and holds one line, "Bu süzgece uyan yasak yok", the same line for a kind that holds nothing and for a
+      name nobody has. No button takes the filters off: the way back is Tümü and an emptied box. The tabs still carry the platform's whole counts, so "Etkin 3" can sit over a
+      table that says nothing fits (F-W5-10). REVBANS-2 reads here: a medrese-wide ban is on neither chip.
+    by: human
+    on:
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: narrowing, effect: [toLifted], say: "they press Kaldırılan", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: narrowing, effect: [toActive], say: "they press Etkin", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      PICK_ALL: { guard: "scope != 'all'", target: narrowing, effect: [toAll], say: "they press Tümü", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_COURSE: { guard: "scope != 'course'", target: narrowing, effect: [toCourse], say: "they press Ders", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_KOSK: { guard: "scope != 'kosk'", target: narrowing, effect: [toKosk], say: "they press Köşk", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      TYPE_NAME: { guard: "typed == 'none'", target: narrowing, effect: [typedIn], say: "they type a name", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
+      CLEAR_NAME: { guard: "typed == 'some'", target: narrowing, effect: [erased], say: "they erase what they typed", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:340
+
+  narrowing:
+    title: The list is asked again
+    description: >-
+      A tab, a chip or the search changed the query, so the browser calls the server action loadAllBans (GET /bans with the status, the kind, the name and the offset 0). The
+      table is replaced by three skeleton rows in a <div aria-busy> with a visually hidden "Yükleniyor"; the tabs, the search box and the chips stay and keep what they hold.
+      Nothing is announced (F-W5-10). An answer older than the newest question is dropped (the ticket, all-bans-view.tsx:96-110).
+    invoke: { action: listAllBans }
+    on:
+      DONE: { guard: "refetch == 'ok'", target: classify }
+      FAIL.unreadable: { guard: "refetch == 'failed'", target: loadFailed, effect: [toasted], say: "the failure turns the list into the alert and raises a sticky toast with the same words", source: apps/nizam/features/bans/components/all-bans-view.tsx:114 }
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:445
+
+  loadingMore:
+    title: The next twenty are asked for
+    description: >-
+      "Daha fazla göster" is busy (aria-busy and aria-disabled, never `disabled`, so it keeps the focus) and a hidden status says "Yükleniyor" while loadAllBans asks for the next
+      twenty with the same query and the offset of the rows on the screen. The rows on the screen stay. When the answer comes the rows are appended below them and, if none is left,
+      the button goes away with the focus on it (REVBANS-4); nothing says how many came (F-W5-10).
+    invoke: { action: listAllBans }
+    on:
+      DONE: { guard: "refetch == 'ok'", target: classify, effect: [loadedAll], say: "the rows are appended; the button stays only while rows are left (the walk's data has one page more, so it goes)", source: apps/nizam/features/bans/components/all-bans-view.tsx:124 }
+      FAIL.unreadable: { guard: "refetch == 'failed'", target: loadFailed, effect: [toasted], say: "the failure replaces the whole table with the alert, rows already read included", source: apps/nizam/features/bans/components/all-bans-view.tsx:114 }
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:345
+
+  loadFailed:
+    title: The list could not be read
+    description: >-
+      The page keeps its title, the tabs, the search box and the chips; in the table's place an alert (role alert, tone error) says "Yasaklar yüklenemedi", that the bans cannot be read
+      now and to try again, with "Yeniden dene", which asks the same query again. After a failed re-read (not after a failed first read) a sticky toast says the same. Not walked:
+      nothing on the stack makes tedrisat fail a read. The tabs, the chips and the box ask again as before.
+    by: human
+    on:
+      RETRY: { target: narrowing, say: "they press Yeniden dene: the same query is asked again", source: apps/nizam/features/bans/components/all-bans-view.tsx:441 }
+      OPEN_LIFTED: { guard: "tab == 'ACTIVE'", target: narrowing, effect: [toLifted], say: "they press Kaldırılan", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      OPEN_ACTIVE: { guard: "tab == 'LIFTED'", target: narrowing, effect: [toActive], say: "they press Etkin", source: apps/nizam/features/bans/components/all-bans-view.tsx:386 }
+      PICK_ALL: { guard: "scope != 'all'", target: narrowing, effect: [toAll], say: "they press Tümü", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_COURSE: { guard: "scope != 'course'", target: narrowing, effect: [toCourse], say: "they press Ders", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      PICK_KOSK: { guard: "scope != 'kosk'", target: narrowing, effect: [toKosk], say: "they press Köşk", source: apps/nizam/features/bans/components/all-bans-view.tsx:429 }
+      TYPE_NAME: { guard: "typed == 'none'", target: narrowing, effect: [typedIn], say: "they type a name", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
+      CLEAR_NAME: { guard: "typed == 'some'", target: narrowing, effect: [erased], say: "they erase what they typed", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:438
+
+  handed_over.no_access:
+    title: The section refusal opens
+    description: "The page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" at the same address: nizam.shell.noAccessAndNotFound draws it."
+    type: final
+    leavesPage: true
+
+  handed_over.lift:
+    title: The lift dialog opens
+    description: "\"Yasağı kaldır\" opens a dialog with the ban's summary and a required reason: nizam.moderation.decideBan draws it. The page stays at its address."
+    type: final
+
+  handed_over.extend:
+    title: The widening dialog opens
+    description: "\"Yasağı genişlet\" opens a dialog that asks for the new ban's own required reason: nizam.moderation.decideBan draws it. The page stays at its address."
+    type: final
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-stranger-meets-no-list
+    never: "viewer == 'stranger' and state in ['listed', 'empty', 'noMatch', 'narrowing', 'loadingMore', 'loadFailed']"
+    say: A person the API refuses the list is never shown the table, the skeleton or the error alert; they get the section refusal.
+    source: apps/nizam/app/yasaklamalar/page.tsx:25
+  - id: decisions-only-on-open-bans
+    never: "state in ['handed_over.lift', 'handed_over.extend'] and tab == 'LIFTED'"
+    say: A row of the Kaldırılan tab offers no decision; the buttons are drawn only on an open ban.
+    source: apps/nizam/features/bans/present.ts:143
+  - id: a-reader-decides-nothing
+    never: "viewer == 'reader' and state in ['handed_over.lift', 'handed_over.extend']"
+    say: A Medaris nazımı who holds platform.ban_account alone is drawn no button, because the API answers every row with viewerMayLift and viewerMayExtend false.
+    source: apps/tedrisat/src/ban/ban.service.ts:639
+  - id: rows-mean-the-list-holds-something
+    never: "state == 'listed' and not holds"
+    say: The table is drawn with rows only when the narrowed list holds something.
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:340
+  - id: empty-means-nothing-narrows
+    never: "state == 'empty' and (holds or narrowed)"
+    say: The tab's own empty line shows only when the platform holds no ban of the tab and no chip or search is set.
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:340
+  - id: nothing-fits-means-a-filter-is-set
+    never: "state == 'noMatch' and not narrowed"
+    say: The "nothing fits" line shows only while a chip or a search is set.
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:340
+  - id: more-needs-rows-left
+    never: "state == 'loadingMore' and not moreButton"
+    say: Rows are asked for only from a list that has rows left, in the Etkin tab.
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:343

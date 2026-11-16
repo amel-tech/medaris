@@ -1,0 +1,204 @@
+# nizam.madrasahs.browse on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001 and Medreseler read as the seeded
+# başnazım (SYSTEM_ADMIN), as the seeded Medaris nazımı and as the seeded köşk nazımı, each signed in through Keycloak's real form.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/madrasahs/browse \
+#     --bind graphs/nizam/madrasahs/browse/binding.yaml --cover transitions --absent --out <dir>
+#
+# NOT RUN: no replay was run when this was written (the owner's word: replays happen once, at the end). The file was checked only by loading it
+# (replay --emit-spec). Where it rests on the code alone it says so.
+#
+# The data. The seed holds one medrese, "Hadis ve Siyer Medresesi", active, and the Pasif and Gizli tabs and the warning need a passive and a hidden
+# one. `setup` has medreses.mjs (a helper of this folder, tedrisat's HTTP API as the başnazım, no SQL) make "Gezinti Pasif Medresesi" (handle
+# gezinti-pasif), which it passivates through the API (preview, then deactivate with its confirmation), and "Gezinti Gizli Medresesi"
+# (gezinti-gizli), which it hides; the spare talebe APPLICANT_F is their başmüderris first and is the hidden one's still. `teardown` deletes every
+# medrese whose short name begins "gezinti-" (the başnazım alone may; the role goes with it). Both `setup`s start by removing what a crashed walk left.
+# The seeded medrese is never passivated, hidden or changed: the walk only presses the buttons that OPEN a dialog on its row ("Pasife al", "Başmüderrisi
+# değiştir", "Nazar’da aç") and stops there, and the one button that writes without a dialog, "Geri al", is pressed on the walk's own hidden medrese
+# (it makes it active, which teardown then deletes). The counts the tabs show are read, not typed here: medreses.mjs writes the directory's counts to
+# graphs/.local/made/browse-medreses.json, read below as {counts.*}, and fails when the stack holds a passive or hidden medrese that is not the walk's.
+# What the walk leaves behind is the audit rows of the creations, the passivation, the hiding and the deletions (no route removes one).
+# Every run of the helper by hand takes the replay lock (CONVENTIONS, round R2). APPLICANT_F is this flow's: no other flow of the batch should use it.
+#
+# Scenarios, by `given` (each is a different one: two scenarios never share a given):
+#   chief         (the main story) the başnazım, one passive and one hidden medrese: the numbers, the warning that names the passive one, every row with its
+#                 buttons, Pasif, Gizli, Tümü, then a text that finds the passive medrese ("gezinti pasif"); the row buttons, "Medrese aç", "Arşiv" and
+#                 "Nazar’da aç" are each taken once. Carries e2e madrasahs#1 and #2.
+#   chiefNobody   the same data and a text that finds nobody ("yokboyle"): "Aramaya uyan medrese yok.", the text erased, a tab pressed with a text typed.
+#   medarisOpen   the seeded Medaris nazımı (platform.madrasah_create among five, none of the others): "Medrese aç" and no button on any row, no "Arşiv",
+#                 no "Nazar’da aç". Read only; it presses "Medrese aç" once.
+#   manyPassive   the başnazım, two passive and one hidden medrese: "2 medrese pasif" and the names, then the Pasif tab.
+#   activeOnly    the başnazım with only the seeded medrese (`expect 0 0` fails the walk when another walk left a passive or hidden one): Pasif and Gizli say
+#                 "Bu durumda medrese yok.", and no warning is drawn.
+#   stranger      the seeded köşk nazımı opens /medreseler by address (the menu has no entry for them): tedrisat answers 403 and the shell draws "Bu bölüm için
+#                 izniniz yok" (seen as a GET: HTTP 403 AUTHZ_FORBIDDEN as the köşk nazımı).
+#
+# Not bound, with the reason:
+#   viewer: unread       the roles or permission reads fail: nothing on the stack makes tedrisat refuse /me/assignments, /me/roles or /me/permissions to a person
+#                        the directory still answers (F-W2-2).
+#   viewer: medarisEdit  a Medaris nazımı who holds platform.madrasah_edit and head_muderris_manage and not madrasah_create: the seed has none, and changing a
+#                        seeded person's permissions is not this flow's to do (nizam.nazims.* write them).
+#   read: failed         the directory read fails for a reason other than a 403: the stack cannot be made to (loadFailed, RETRY).
+#   world: empty         the seeded medrese may not be removed (emptyAll).
+#   hit: active, hit: hidden  the same transitions as `passive` with another kind of row; not walked twice.
+# The server's answer after a tab or a text is a soft navigation of the page, so `call` is left off: the replay checks the page the read leaves.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.madrasahs.browse
+
+data:
+  counts: { json: ../.local/made/browse-medreses.json }
+
+scenarios:
+  chief:
+    given: { viewer: chief, read: ok, world: mixed, hit: passive }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup: [{ run: [node, ../nizam/madrasahs/browse/medreses.mjs, up, mixed], expect: 'browse up mixed' }]
+    teardown: [{ run: [node, ../nizam/madrasahs/browse/medreses.mjs, down], expect: 'browse down' }]
+    vars:
+      search: gezinti pasif
+      passiveName: Gezinti Pasif Medresesi
+      hiddenName: Gezinti Gizli Medresesi
+      activeName: '{seed.titles.madrasah}'
+  chiefNobody:
+    given: { viewer: chief, read: ok, world: mixed, hit: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup: [{ run: [node, ../nizam/madrasahs/browse/medreses.mjs, up, mixed], expect: 'browse up mixed' }]
+    teardown: [{ run: [node, ../nizam/madrasahs/browse/medreses.mjs, down], expect: 'browse down' }]
+    vars:
+      search: yokboyle
+      passiveName: Gezinti Pasif Medresesi
+      hiddenName: Gezinti Gizli Medresesi
+      activeName: '{seed.titles.madrasah}'
+  medarisOpen:
+    given: { viewer: medarisOpen, read: ok, world: mixed, hit: passive }
+    as: medarisNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup: [{ run: [node, ../nizam/madrasahs/browse/medreses.mjs, up, mixed], expect: 'browse up mixed' }]
+    teardown: [{ run: [node, ../nizam/madrasahs/browse/medreses.mjs, down], expect: 'browse down' }]
+    vars:
+      search: gezinti pasif
+      passiveName: Gezinti Pasif Medresesi
+      hiddenName: Gezinti Gizli Medresesi
+      activeName: '{seed.titles.madrasah}'
+  manyPassive:
+    given: { viewer: chief, read: ok, world: manyPassive, hit: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup: [{ run: [node, ../nizam/madrasahs/browse/medreses.mjs, up, many], expect: 'browse up many' }]
+    teardown: [{ run: [node, ../nizam/madrasahs/browse/medreses.mjs, down], expect: 'browse down' }]
+    vars:
+      search: yokboyle
+      passiveName: Gezinti Pasif Medresesi
+      hiddenName: Gezinti Gizli Medresesi
+      activeName: '{seed.titles.madrasah}'
+  activeOnly:
+    given: { viewer: chief, read: ok, world: activeOnly, hit: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup:
+      - run: [node, ../nizam/madrasahs/browse/medreses.mjs, down]
+        expect: 'browse down'
+      - run: [node, ../nizam/madrasahs/browse/medreses.mjs, expect, '0', '0']
+        expect: 'browse expect'
+    vars:
+      search: yokboyle
+      passiveName: Gezinti Pasif Medresesi
+      hiddenName: Gezinti Gizli Medresesi
+      activeName: '{seed.titles.madrasah}'
+  stranger:
+    given: { viewer: stranger, read: ok, world: activeOnly, hit: none }
+    as: koskNazim
+    open: '{nizam}/medreseler'
+    vars:
+      search: yokboyle
+      passiveName: Gezinti Pasif Medresesi
+      hiddenName: Gezinti Gizli Medresesi
+      activeName: '{seed.titles.madrasah}'
+
+events:
+  # the search box is a field no node sends an event from: the binding types in it (the address follows after 300 ms)
+  TYPE_SEARCH: [{ fill: { role: searchbox, name: Medrese ara, value: '{search}' } }]
+  CLEAR_SEARCH: [{ fill: { role: searchbox, name: Medrese ara, value: '' } }]
+  # the menu, the person row or the address bar: the Medaris home, where both the başnazım and a Medaris nazımı land
+  NAVIGATE: [{ goto: '{nizam}/' }]
+  # RETRY (the box that says the list could not be read) is not bound: the stack cannot make tedrisat fail the read
+
+# What the walk checks outside the page's words: the address a tab and the search write (e2e madrasahs#2: toHaveURL(/durum=gizli/), /q=zeyrek/).
+effects:
+  toActive: [{ waitUrl: '{nizam}/medreseler?*durum=etkin*' }]
+  toPassive: [{ waitUrl: '{nizam}/medreseler?*durum=pasif*' }]
+  toHidden: [{ waitUrl: '{nizam}/medreseler?*durum=gizli*' }]
+  typedIn: [{ waitUrl: '{nizam}/medreseler?*q=*' }]
+
+states:
+  listed: { url: '{nizam}/medreseler**' }
+  emptyStatus: { url: '{nizam}/medreseler**' }
+  emptySearch: { url: '{nizam}/medreseler**' }
+  emptyAll: { url: '{nizam}/medreseler**' }
+  loadFailed: { url: '{nizam}/medreseler**' }
+  # the exits that open a dialog leave the page at its address; the dialog is the next flow's
+  handed_over.open: { url: '{nizam}/medreseler**' }
+  handed_over.assign: { url: '{nizam}/medreseler**' }
+  handed_over.change: { url: '{nizam}/medreseler**' }
+  handed_over.passivate: { url: '{nizam}/medreseler**' }
+  handed_over.restore: { url: '{nizam}/medreseler**' }
+  handed_over.archive: { url: '{nizam}/arsiv' }
+  handed_over.no_access: { url: '{nizam}/medreseler' }
+  left: { url: '{nizam}/' }
+
+# Where role and name cannot find a node. The shell's <main> is on every page the walk leaves for, so the page node is found by the sentence only this
+# page says. The table is Table responsive="stack": its rows carry explicit roles and every cell but the first and the last a data-label (the column's
+# words), which is the hook for the cells; the name and the short name are two <bdi> in the row's <th>. A repeat node is checked on every item it finds,
+# so a node about one kind of row is found by the row's state cell, and the sentences that are data (a date) by a pattern.
+nodes:
+  madrasahsPage: { role: main, hasText: '/Bir medrese, başmüderrisiyle birlikte açılır/' }
+
+  # the warning: one data-testid, a title <p class=mds-alert__title>, then the body <p>; the one-medrese title carries the name, the other a number
+  passiveWarningOne: { testId: passive-warning, hasText: '{passiveName} pasif' }
+  passiveBodyOne: { css: '[data-testid=passive-warning] .mds-alert__title ~ p', hasText: 'Başmüderrisin görev süresi' }
+  passiveWarningMany: { testId: passive-warning, hasText: '{counts.passiveCount} medrese pasif' }
+  passiveBodyMany: { css: '[data-testid=passive-warning] .mds-alert__title ~ p', hasText: '{counts.passiveNames}.' }
+
+  archiveLink: { role: link, name: Arşiv, within: { testId: madrasahs } }
+
+  # the tabs: the name ends with the count; the number is the span inside the tab whose label is the node's own, read from the directory by setup
+  tabAll: { role: tab, name: '/^Tümü/' }
+  tabActive: { role: tab, name: '/^Etkin/' }
+  tabPassive: { role: tab, name: '/^Pasif/' }
+  tabHidden: { role: tab, name: '/^Gizli/' }
+  tabAllCount: { css: '[role=tab]:has-text("Tümü") .mds-tab__count:text-is("{counts.all}")' }
+  tabActiveCount: { css: '[role=tab]:has-text("Etkin") .mds-tab__count:text-is("{counts.active}")' }
+  tabPassiveCount: { css: '[role=tab]:has-text("Pasif") .mds-tab__count:text-is("{counts.passive}")' }
+  tabHiddenCount: { css: '[role=tab]:has-text("Gizli") .mds-tab__count:text-is("{counts.hidden}")' }
+
+  # the cells every row has
+  rowName: { css: '[data-testid=madrasahs] tbody th bdi.font-semibold' }
+  rowHandle: { css: '[data-testid=madrasahs] tbody th bdi.font-mono', hasText: '/^@[a-z0-9-]+$/' }
+  rowCourses: { css: '[data-testid=madrasahs] tbody td[data-label="Ders"]', hasText: '/^\d+$/' }
+  rowHosting: { css: '[data-testid=madrasahs] tbody td[data-label="Barındırma hakkı"]' }
+
+  # the başmüderris and the state, by the kind of row: the row is found by its state cell
+  rowHeadActive: { css: '[data-testid=madrasahs] tbody tr:has(td[data-label="Durum"]:has-text("Etkin")) td[data-label="Başmüderris"]' }
+  rowHeadHidden: { css: '[data-testid=madrasahs] tbody tr:has(td[data-label="Durum"]:has-text("Gizli")) td[data-label="Başmüderris"]' }
+  rowUnassigned: { css: '[data-testid=madrasahs] tbody tr:has(td[data-label="Durum"]:has-text("Pasif")) td[data-label="Başmüderris"]', hasText: 'Atanmamış' }
+  rowTermEnded: { css: '[data-testid=madrasahs] tbody tr:has(td[data-label="Durum"]:has-text("Pasif")) td[data-label="Başmüderris"] .mds-caption', hasText: '/^Görev süresi .+ doldu$/' }
+  rowStatusActive: { css: '[data-testid=madrasahs] tbody td[data-label="Durum"]', hasText: '/^Etkin$/' }
+  rowStatusPassive: { css: '[data-testid=madrasahs] tbody td[data-label="Durum"]', hasText: '/^Pasif/' }
+  rowSincePassive: { css: '[data-testid=madrasahs] tbody tr:has(td[data-label="Durum"]:has-text("Pasif")) td[data-label="Durum"] .mds-caption', hasText: '/ beri$/' }
+  rowStatusHidden: { css: '[data-testid=madrasahs] tbody td[data-label="Durum"]', hasText: '/^Gizli/' }
+  rowSinceHidden: { css: '[data-testid=madrasahs] tbody tr:has(td[data-label="Durum"]:has-text("Gizli")) td[data-label="Durum"] .mds-caption', hasText: '/ beri$/' }
+
+  # the buttons: named after the row's medrese
+  restoreButton: { role: button, name: '/^Geri al: /' }
+  assignButton: { role: button, name: '/^Başmüderris ata: /' }
+  changeButton: { role: button, name: '/^Başmüderrisi değiştir: /' }
+  passivateButton: { role: button, name: '/^Pasife al: /' }
+  nazarLink: { role: link, name: '/^Nazar’da aç, yeni sekmede: /' }

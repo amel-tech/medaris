@@ -1,0 +1,513 @@
+# "İtirazlar" of nizam-web (/talepler/itirazlar), read by the başnazım (or a Medaris nazımı who holds platform.appeal_decide): the appeals
+# that medreses opened against a köşk's refusal of their course request, waiting and decided. Read from the code of PR #394
+# (apps/nizam/app/talepler/itirazlar, apps/nizam/features/appeals, the shared reject dialog of features/deck-review,
+# apps/tedrisat/src/appeal); nothing was walked or looked at in a browser, so every behaviour below is "from the code". It says what the code
+# does today:
+#   - the page reads every waiting appeal of the platform (GET /appeals?status=PENDING, oldest first, at most 100) and draws two tabs with
+#     the counts the API gives, the list, and the card of the selected appeal (the first on load). The card names the medrese, the köşk, the
+#     köşk's reason for refusing and the medrese's reason for appealing; it names no person (DAPP-8);
+#   - "Kabul et" is one click. It asks nothing, takes no note and cannot be undone: the appeal becomes ACCEPTED and its course request goes
+#     back to PENDING in the köşk's own "Ders talepleri", where the köşk's nazım decides it again (nizam.courseRequests.decide, which this
+#     flow starts). No course is made and none is accepted here (DAPP-1, DAPP-4);
+#   - "Reddet" opens the shared reject dialog (kind "appeal"): a "Karar notu" that is required and that the medrese reads; the request stays
+#     refused. An appeal is decided once, and a request is appealed once, so after "Kabul et" a second refusal by the köşk is final (DAPP-5);
+#   - nobody is told, in either direction: not the başnazım that an appeal waits, not the medrese or the köşk that it was decided, although
+#     both toasts say the answer was "iletildi" / "gönderildi" (DAPP-2, nazar.appeals.open D1);
+#   - an appeal decided meanwhile, or gone, closes the dialog with an error toast and the row leaves; any other refusal keeps the dialog open.
+#
+# How a person reaches the page (CHIEF-1, MCUT-2, F-W5-12, F-X-12), said once here:
+#   - the başnazım: the sidebar (and the phone sheet), group "Talepler", entry "İtirazlar" (lib/shell-nav.ts:116-121; the entry has no count
+#     badge, only the köşk nazımı's "Başvurular" has one);
+#   - the Medaris home counts the waiting appeals in its greeting ("Karar bekleyen N talep var.", features/dashboard/present.ts:29-36) and has
+#     no card and no link for them, so a başnazım whose only waiting item is an appeal reads a number that leads nowhere (CHIEF-1,
+#     nizam.home.chiefOverview);
+#   - a Medaris nazımı who holds platform.appeal_decide is let in by the API and the page, but the menu never shows her the entry
+#     (medarisGroups, lib/shell-nav.ts:178-186) and neither does the home: she reaches it by typing the address (MCUT-2, F-W5-12);
+#   - nobody is notified when an appeal opens (nazar.appeals.open, createMadrasahAppeal writes an audit row and nothing else), so the person
+#     who may decide learns of an appeal only by opening the list, or from the number she cannot follow.
+# `nazar.appeals.open` starts this flow and passes no `given` (FLOWS.md section 2: none), so nothing is declared here for it.
+schema: delurio-graph/0
+kind: flow
+id: nizam.moderation.decideAppeal
+status: captured
+domain: medaris.api
+ui: nizam.moderation.decideAppeal
+title: Decide a medrese's appeal against a refused course request
+summary: >-
+  The başnazım opens "İtirazlar" from the menu's "Talepler" group. The Bekleyen tab holds the appeals that wait, oldest first, with the first
+  one already selected: a card names the course the medrese asked for, the medrese, the köşk, the köşk's "Ret gerekçesi" and the medrese's
+  "İtiraz gerekçesi", with "Kabul et" and "Reddet". Choosing another row changes the card. "Kabul et" decides at once, with no question and no
+  note: a toast says "İtiraz kabul edildi", the appeal leaves the list, and the course request is back in the köşk's list of waiting requests
+  for its nazım to decide again (nizam.courseRequests.decide). "Reddet" opens a dialog that asks for a "Karar notu": the dialog's "Reddet" is
+  off until there is one, and an empty field that is left says "Bir gerekçe yazın.". Sent, the dialog closes, a toast says "İtiraz reddedildi",
+  the appeal leaves the list and the request stays refused. The Karara bağlanan tab lists the decided appeals, newest decision first, with the
+  outcome and, for a refusal, the note. An appeal decided first by someone else, or one that is gone, is told in an error toast and leaves the
+  list; a refusal of the permission or any other failure keeps the page (and the dialog) as it was. Someone who may not decide appeals meets
+  "Bu bölüm için izniniz yok". A failed read says "İtirazlar okunamadı" and offers "Tekrar dene".
+
+scope:
+  shows: >-
+    the page "İtirazlar" for the person who decides: the header, the two tabs with their counts, the list and the card of the selected appeal,
+    "Kabul et" and its busy state, the reject dialog and its toasts, the empty lines, the failed reads, and the screen that says no
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame (sidebar, the menu's entry 'İtirazlar' in the group 'Talepler', the bell, the phone sheet): nizam.shell.menuPerPersona, nizam.shell.landingByRole; the way a person comes to know that an appeal waits (the Medaris home's number, which has no card for appeals): nizam.home.chiefOverview and nizam.home.medarisNazimCut"
+    - "the medrese's side: the başmüderris asking the köşk for a course (nazar.offsite.requestCourse), reading the köşk's refusal and appealing it (nazar.appeals.open, which starts this flow), and reading the decision and the note afterwards (the row of its İtirazlar says Kabul edildi or Reddedildi: nazar.appeals.open does not draw that row either)"
+    - "the köşk's side before and after: the refusal that makes the appeal possible (nizam.courseRequests.decide) and the second decision of the köşk's nazım on a request that an accepted appeal sent back (the same flow, started from here); an accepted request later gets its course through nizam.courses.open"
+    - "the screen 'Bu bölüm için izniniz yok' for every other way in, and the 'Sayfa bulunamadı' of an address no page answers: nizam.shell.noAccessAndNotFound"
+    - "the loading skeleton of app/talepler/itirazlar/loading.tsx, the list's limit of 100 appeals per tab (the count can say more than the list holds, and nothing says so), and the one-column layout of a narrow screen"
+    - "appeals against a hide, a ban or a hosting decision, and the appeals of other bodies: planned (MDRS-139, MDRS-194), needs.yaml"
+    - "a decision that never reaches the server (accept and reject have no catch around the action call: the button stays busy) and an ended session (the action answers unauthenticated and the page sends the person to sign in and back: realm.auth.signIn)"
+
+decisions:
+  D1:
+    question: >-
+      Should the people concerned be told? An appeal that opens, and its decision, write a row and an audit entry and send no notification and no
+      mail, so the person who decides finds an appeal only by opening İtirazlar, the medrese finds the answer only by opening its İtirazlar
+      again, and the köşk's nazım finds a returned request only by opening Ders talepleri. The toasts nevertheless say "medreseye iletildi" and
+      "yeniden köşkün kararına gönderildi".
+    recommend: >-
+      Yes: notify the holders of platform.appeal_decide when an appeal opens (and show a count and a link for it on the Medaris home and a menu
+      entry for every holder), notify the medrese's başmüderris and the nazırs holding madrasah.appeal_open when it is decided, with the note,
+      and notify the köşk's nazım when an appeal sends a request back. Until then word the toasts "kaydedildi". Same decision as
+      nazar.appeals.open D1.
+    affects: [listed, accepting, rejecting]
+  D2:
+    question: >-
+      Should "Kabul et" ask first, and may it carry a note? It decides at once, nothing says what it will do, the appeal keeps no note and the
+      medrese reads "Kabul edildi" and nothing else, while "Reddet" asks, demands a note and tells who reads it.
+    recommend: >-
+      Ask once, in the words of what follows ("Talep köşkün yeniden kararına gönderilir; bu geri alınamaz."), and take an optional note that the
+      medrese and the köşk's nazım read.
+    affects: [listed, accepting]
+  D3:
+    question: >-
+      Should a second refusal be appealable? A request is appealed once (one appeal per request, a unique index), so when "Kabul et" sends the
+      request back and the köşk refuses it again, the medrese has no "İtiraz aç" and nothing says so, before or after.
+    recommend: >-
+      Say it where the person decides ("Köşk yeniden reddederse medrese bir daha itiraz edemez") and on the medrese's row; or let a request be
+      appealed once for each refusal. Product decision.
+    affects: [listed, accepting]
+
+context:
+  # --- what the world is (case variables) ---
+  read:
+    values: [nothing, one, many, refused, unreadable]
+    initial: any
+    say:
+      nothing: "the page may be read and no appeal waits"
+      one: "the page may be read and exactly one appeal waits"
+      many: "the page may be read and more than one appeal waits; the model never empties the list by deciding, which would take as many decisions as there are appeals"
+      refused: "the API answers 403 AUTHZ_FORBIDDEN: the person is neither the başnazım nor a Medaris nazımı who holds platform.appeal_decide (the seeded Medaris nazımı holds five other codes; a köşk nazımı; a medrese nazırı)"
+      unreadable: "the read failed for any other reason (a server error, a 429, a 404, which the page does not tell from the rest): 'İtirazlar okunamadı' with a retry"
+  decidedTab:
+    values: [none, rejected, accepted, failed]
+    initial: any
+    say:
+      none: "the Karara bağlanan tab holds no appeal"
+      rejected: "its newest appeal is a refusal, with its note"
+      accepted: "its newest appeal is an accepted one (it has no note: DAPP-1)"
+      failed: "reading that tab fails (the API is down, the person lost the permission since the page was read)"
+  answer:
+    values: [accepted, rejected, answered, gone, forbidden, other]
+    initial: any
+    say:
+      accepted: "the API takes 'Kabul et': 204, the appeal is ACCEPTED and its course request is PENDING again"
+      rejected: "the API takes 'Reddet': 204, the appeal is REJECTED with the trimmed note"
+      answered: "someone decided the appeal while the page was open: 409 APPEAL_NOT_PENDING"
+      gone: "the appeal is gone (its request or medrese was deleted): 404 APPEAL_NOT_FOUND"
+      forbidden: "the person lost the permission since the page was read: 403 AUTHZ_FORBIDDEN"
+      other: "any other refusal or failure (a note over 1000 characters, a server error)"
+  retry:
+    values: [served, failed]
+    initial: any
+    say:
+      served: "the read that 'Tekrar dene' repeats works this time"
+      failed: "it fails again"
+  # --- what the screen remembers (shown-state variables) ---
+  settledHere:
+    values: [notYet, accepted, rejected, answered, vanished]
+    initial: notYet
+    say:
+      notYet: "nothing was decided in this visit"
+      accepted: "this visit accepted an appeal"
+      rejected: "this visit refused an appeal"
+      answered: "this visit tried to decide an appeal that someone had decided; it left the list"
+      vanished: "this visit tried to decide an appeal that was gone; it left the list"
+  reason:
+    values: [blank, typed]
+    initial: blank
+    say: { blank: "the dialog's note is blank (or only spaces)", typed: "the dialog's note holds text" }
+  last:
+    values: [nothing, accepted, rejected, answered, gone, forbidden, failed, loadFailed]
+    initial: nothing
+    say:
+      nothing: "no toast of this page is up"
+      accepted: "the success toast 'İtiraz kabul edildi' is up (it closes by itself after 6 seconds)"
+      rejected: "the success toast 'İtiraz reddedildi' is up (it closes by itself after 6 seconds)"
+      answered: "an error toast says the appeal was decided a moment ago"
+      gone: "an error toast says the appeal is gone"
+      forbidden: "an error toast says the person may not do this"
+      failed: "an error toast says the action could not be completed"
+      loadFailed: "an error toast says the appeals could not be read"
+
+guards:
+  nothingWaits: "read == 'nothing' or (read == 'one' and settledHere != 'notYet')"
+  nothingDecidedHere: "settledHere == 'notYet' or settledHere == 'vanished'"
+  decidedHere: "settledHere == 'accepted' or settledHere == 'rejected' or settledHere == 'answered'"
+  decidedEmptyNow: "decidedTab == 'none' and nothingDecidedHere"
+  firstRejected: "settledHere == 'rejected' or settledHere == 'answered' or (nothingDecidedHere and decidedTab == 'rejected')"
+  firstAccepted: "settledHere == 'accepted' or (nothingDecidedHere and decidedTab == 'accepted')"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  openDialog: { set: { reason: blank, last: nothing } }
+  typedReason: { set: { reason: typed } }
+  clearedReason: { set: { reason: blank } }
+  # the appeal is gone from the waiting list and its toast comes up
+  acceptedIt: { set: { last: accepted, settledHere: accepted } }
+  refusedIt: { set: { last: rejected, settledHere: rejected } }
+  answeredElsewhere: { set: { last: answered, settledHere: answered } }
+  vanishedIt: { set: { last: gone, settledHere: vanished } }
+  forbiddenToast: { set: { last: forbidden } }
+  failedToast: { set: { last: failed } }
+  loadFailedToast: { set: { last: loadFailed } }
+
+failures:
+  opened:
+    from: listAppeals
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [HTTP_400]
+    signedOut: [HTTP_401]
+  retrying:
+    from: listAppeals
+    other: [AUTHZ_FORBIDDEN, HTTP_400]
+    signedOut: [HTTP_401]
+  loadingDecided:
+    from: listAppeals
+    other: [AUTHZ_FORBIDDEN, HTTP_400]
+    signedOut: [HTTP_401]
+  retryingDecided:
+    from: listAppeals
+    other: [AUTHZ_FORBIDDEN, HTTP_400]
+    signedOut: [HTTP_401]
+  accepting:
+    from: acceptAppeal
+    answered: [APPEAL_NOT_PENDING]
+    gone: [APPEAL_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [HTTP_400]
+    signedOut: [HTTP_401]
+  rejecting:
+    from: rejectAppeal
+    answered: [APPEAL_NOT_PENDING]
+    gone: [APPEAL_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [VALIDATION_ERROR, HTTP_400]
+    signedOut: [HTTP_401]
+
+# The story the page tells first: the başnazım reads the one waiting appeal, looks at the decided tab (empty), comes back, refuses the appeal
+# with a note, and finds it on the decided tab.
+main:
+  given: { read: one, decidedTab: none, answer: rejected, retry: failed }
+  events: [DONE, OPEN_DECIDED, DONE, OPEN_PENDING, REJECT, TYPE_REASON, SUBMIT, DONE, OPEN_DECIDED, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The waiting appeals are read
+    description: >-
+      The page (a server component, force-dynamic) reads GET /appeals?status=PENDING: the waiting appeals oldest first (at most 100) and both
+      tab counts. The service asks that the caller be the başnazım or a Medaris nazımı who holds platform.appeal_decide (it asks inside the
+      service: the route has an AuthGuard and no AuthzGuard). A 403 is forbidden(), which draws "Bu bölüm için izniniz yok"; a 401 sends the
+      person to sign in and back; any other failure, a 404 included, gives the page a null and the view draws "İtirazlar okunamadı" with a
+      retry (nothing tells a 404 from a 500). While it reads, app/talepler/itirazlar/loading.tsx draws a skeleton (not drawn here). The page
+      sets no initial focus (focus-not-set). The menu entry that leads here is the başnazım's alone (F-W5-12).
+    invoke: { action: listAppeals }
+    on:
+      DONE: { guard: "read == 'nothing' or read == 'one' or read == 'many'", target: waitingTab, source: apps/nizam/app/talepler/itirazlar/page.tsx:28, say: "the page is read" }
+      FAIL.forbidden: { guard: "read == 'refused'", target: noAccess, source: apps/nizam/app/talepler/itirazlar/page.tsx:24, say: "403: forbidden()" }
+      FAIL.other: { guard: "read == 'unreadable'", target: unreadable, source: apps/nizam/features/platform-admin/reads.ts:42, say: "any other failure: a null read" }
+      FAIL.signedOut: sent_to_sign_in
+    source: apps/nizam/app/talepler/itirazlar/page.tsx:22
+
+  waitingTab:
+    title: Is the Bekleyen tab empty?
+    description: >-
+      Not a screen: the Bekleyen tab shows its list, or its empty line when nothing waits any more (the last waiting appeal was decided here or
+      none waited when the page was read).
+    always:
+      - { guard: nothingWaits, target: empty, source: apps/nizam/features/appeals/components/appeals-view.tsx:280, say: "no appeal waits: 'Karar bekleyen itiraz yok.'" }
+      - { target: listed, source: apps/nizam/features/appeals/components/appeals-view.tsx:282, say: "at least one appeal waits: the list and the card of the selected one" }
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:280
+
+  noAccess:
+    title: The page says the person has no permission here
+    by: human
+    description: >-
+      The shell stays and a section, "Bu bölüm için izniniz yok", takes the place of the page: a sentence that names the başnazım when the
+      directory knows who it is ("... gerekirse şu kişiden isteyin: {name}.") and otherwise says it in general terms, the account that is signed
+      in with its e-mail, and "Ana sayfaya dön" (a link to "/"). It is the answer for the seeded Medaris nazımı (she holds five codes and not
+      platform.appeal_decide), for a köşk nazımı and for any account that holds no role of the platform. The words are
+      nizam.shell.noAccessAndNotFound's; here they are drawn once.
+    on:
+      BACK: { target: home_opened, say: "'Ana sayfaya dön'" }
+      NAVIGATE: left
+    source: apps/nizam/components/errors/no-access.tsx:27
+
+  unreadable:
+    title: The appeals could not be read
+    by: human
+    description: >-
+      The header stays and an error Alert, "İtirazlar okunamadı" / "İtirazlar şu anda alınamıyor. Biraz sonra yeniden deneyin.", with "Tekrar
+      dene" takes the place of the tabs and the list (the view's `failed` is true and no tab has been read). After a failed retry a sticky error
+      toast says the same. The Alert has role alert, so it is announced when it appears.
+    on:
+      RETRY: { target: retrying, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:250, say: "they press 'Tekrar dene'" }
+      NAVIGATE: left
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:247
+
+  retrying:
+    title: The waiting appeals are read again
+    description: >-
+      The server action loadAppeals calls the same GET from the browser. "Tekrar dene" is not busy and the Alert stays while it runs (`failed` is
+      cleared only by a success). A success draws the tabs and the list; a failure puts up the sticky error toast and leaves the Alert.
+    invoke: { action: listAppeals }
+    on:
+      DONE: { guard: "retry == 'served'", target: waitingTab, source: apps/nizam/features/appeals/components/appeals-view.tsx:79, say: "the read works: the Bekleyen tab (the model draws its list, not the empty line)" }
+      FAIL.other: { guard: "retry == 'failed'", target: unreadable, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "it fails again: the sticky toast" }
+      FAIL.signedOut: sent_to_sign_in
+    source: apps/nizam/features/appeals/actions.ts:18
+
+  listed:
+    title: The waiting appeals are listed
+    by: human
+    goal: true
+    description: >-
+      The Bekleyen tab is selected and holds a list (a `ul`, no name of its own) of one button per waiting appeal, oldest first: the course's
+      title, the medrese and the köşk, and the day the appeal was opened. The selected one carries aria-current and is the first on load (F-W5-7).
+      Beside it, a card (a region named by its title, an h2): the eyebrow "DERS TALEBİNE İTİRAZ", the title, the badge "Karar bekliyor", the
+      medrese and the köşk, "Ret gerekçesi" (the köşk's) and "İtiraz gerekçesi" (the medrese's), and "Kabul et" and "Reddet". The card names no
+      person who appealed (DAPP-8) and says nothing of what "Kabul et" will do (DAPP-1). The tabs are `Tabs mode="tabs"` with no TabsPanel,
+      so the list and the card are not a tab panel; choosing a row or switching a tab announces nothing and moves no focus (F-W5-6). A toast
+      of the last decision may still be up.
+    on:
+      PICK: { guard: "read == 'many'", target: listed, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:160, say: "they choose another row: the card shows that appeal" }
+      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they open 'Karara bağlanan'" }
+      REJECT: { target: confirmReject, effect: [openDialog], source: apps/nizam/features/appeals/components/appeals-view.tsx:225, say: "they press 'Reddet': the dialog asks for the note" }
+      ACCEPT: { target: accepting, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:222, say: "they press 'Kabul et': nothing is asked, the decision is sent (DAPP-1)" }
+      NAVIGATE: left
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:283
+
+  empty:
+    title: Nothing waits
+    by: human
+    description: >-
+      The Bekleyen tab is selected and says "Karar bekleyen itiraz yok." (an EmptyState), with no card. This is the page when no appeal was opened,
+      and the page after the last waiting appeal was decided here: the counts follow, and the focus that the dialog gave back to the card's
+      "Reddet" (or that "Kabul et" held) is lost with the card (F-W5-5). A toast of the last decision may still be up.
+    on:
+      OPEN_DECIDED: { target: loadingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they open 'Karara bağlanan'" }
+      NAVIGATE: left
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:281
+
+  loadingDecided:
+    title: The decided appeals are read
+    description: >-
+      The first time the Karara bağlanan tab is opened (and the first time after a decision, which empties the cache of the other tab) the
+      server action loadAppeals reads GET /appeals?status=DECIDED (newest decision first, at most 100); the tab is selected at once and a
+      skeleton (an aria-busy block of three bars, no role) stands in the list until the answer.
+    invoke: { action: listAppeals }
+    on:
+      DONE:
+        - { guard: decidedEmptyNow, target: decidedEmpty, source: apps/nizam/features/appeals/components/appeals-view.tsx:281, say: "nothing was decided: 'Karara bağlanmış itiraz yok.'" }
+        - { guard: "decidedTab != 'failed'", target: decidedList, source: apps/nizam/features/appeals/components/appeals-view.tsx:283, say: "the decided appeals are listed, the newest decision selected" }
+      FAIL.other: { guard: "decidedTab == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "the read fails: the sticky toast, and the Alert replaces the tabs (same as CREQ-3 of nizam.courseRequests.decide)" }
+      FAIL.signedOut: sent_to_sign_in
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:60
+
+  decidedList:
+    title: The decided appeals are listed
+    by: human
+    description: >-
+      The Karara bağlanan tab is selected and lists the decided appeals, newest decision first, each with the day it was decided and, after a
+      dot, its outcome ("Kabul edildi" or "Reddedildi"). The card of the selected one has the badge of its outcome, the same facts as a waiting
+      appeal, and no buttons; for a refusal, a neutral Alert "Karar notu" carries the note the başnazım wrote (a status, not an alert). An accepted
+      appeal has no note, so its card ends after the two reasons (DAPP-1). Within one visit a decision made here is the newest.
+    on:
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they go back to 'Bekleyen'; its list was kept (a decision here replaced it with what was left)" }
+      NAVIGATE: left
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:283
+
+  decidedEmpty:
+    title: Nothing was decided
+    by: human
+    description: "The Karara bağlanan tab is selected and says \"Karara bağlanmış itiraz yok.\" (an EmptyState)."
+    on:
+      OPEN_PENDING: { target: waitingTab, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:90, say: "they go back to 'Bekleyen'" }
+      NAVIGATE: left
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:281
+
+  decidedFailed:
+    title: The decided appeals could not be read
+    by: human
+    description: >-
+      The tab that failed has no list (`lists[DECIDED]` is undefined), so the view draws the error Alert in place of the whole block, tabs
+      included: "İtirazlar okunamadı" with "Tekrar dene" and a sticky toast with the same words. The tabs are gone, so there is no way back to
+      the Bekleyen list that was read, except reloading the page (the twin of CREQ-3).
+    on:
+      RETRY_DECIDED: { target: retryingDecided, effect: [clearNote], source: apps/nizam/features/appeals/components/appeals-view.tsx:250, say: "they press 'Tekrar dene'" }
+      NAVIGATE: left
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:247
+
+  retryingDecided:
+    title: The decided appeals are read again
+    description: "The same call as loadingDecided; the Alert stays while it runs. A success draws the tabs with the Karara bağlanan tab selected and its list."
+    invoke: { action: listAppeals }
+    on:
+      DONE: { guard: "retry == 'served'", target: decidedList, source: apps/nizam/features/appeals/components/appeals-view.tsx:79, say: "the read works: the decided appeals (the model draws a list, not the empty line)" }
+      FAIL.other: { guard: "retry == 'failed'", target: decidedFailed, effect: [loadFailedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:72, say: "it fails again: the sticky toast" }
+      FAIL.signedOut: sent_to_sign_in
+    source: apps/nizam/features/appeals/actions.ts:18
+
+  accepting:
+    title: The acceptance is on its way
+    description: >-
+      The server action acceptAppeal calls POST /appeals/:id/accept, which has no body. The service asks the same as for the list, then one
+      conditional update that applies only while the appeal is PENDING: ACCEPTED, who decided and when, and, in the same transaction, the
+      course request goes back to PENDING with its decision cleared (only if it is still REJECTED), and an audit row (appeal.accept). The
+      köşk's earlier reason stays on the request. No notification, no mail (DAPP-2). "Kabul et" is busy (aria-disabled and aria-busy, a
+      spinner and a hidden status that says "Yükleniyor" from a hard-coded default); "Reddet" stays on and opens its dialog, so a second
+      decision can be started on the same appeal (DAPP-6). APPEAL_NOT_PENDING (decided first) and APPEAL_NOT_FOUND (gone) take the row off
+      the waiting list and say so in a sticky error toast ("Karar kaydedilemedi" with "Bu itiraz az önce karara bağlanmış." or "Bu itiraz
+      artık yok."); the gone one also counts as decided in the Karara bağlanan tab's number (DAPP-3). AUTHZ_FORBIDDEN and any other failure keep
+      the page as it is, with the error toast. A session that ended is sent to sign in, with no toast. If the call itself fails (no network)
+      nothing catches it: the button stays busy (not verified).
+    invoke: { action: acceptAppeal }
+    on:
+      DONE: { guard: "answer == 'accepted'", target: acceptedHandOver, effect: [acceptedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:125, say: "204: the toast 'İtiraz kabul edildi', the appeal leaves the list" }
+      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/appeals/components/appeals-view.tsx:108, say: "409: the row leaves, an error toast says it was decided" }
+      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:108, say: "404: the row leaves, an error toast says it is gone" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: listed, effect: [forbiddenToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "403: the page stays as it was, with an error toast" }
+      FAIL.other: { guard: "answer == 'other'", target: listed, effect: [failedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "any other failure: the page stays as it was, with an error toast" }
+      FAIL.signedOut: sent_to_sign_in
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:115
+
+  acceptedHandOver:
+    title: The request waits for the köşk again
+    description: >-
+      A step with no screen: the appeal is ACCEPTED and its course request is PENDING again, which is what the köşk's nazım reads in "Ders
+      talepleri" (nizam.courseRequests.decide takes over, for the köşk's nazım). It looks like any waiting request: the card says nothing of
+      the appeal or of the earlier refusal (DAPP-4). Nobody is told. The medrese's row reads "Kabul edildi" on its own İtirazlar (nazar.appeals.open
+      draws no such row). If the köşk refuses the request again, it is final: a request is appealed once (DAPP-5).
+    always:
+      - { target: waitingTab, starts: { flow: nizam.courseRequests.decide }, source: apps/tedrisat/src/appeal/appeal.repository.ts:258, say: "a waiting course request of the köşk exists again, and the köşk's nazım decides it again" }
+    source: apps/tedrisat/src/appeal/appeal.repository.ts:258
+
+  confirmReject:
+    title: Reddet asks for the note
+    by: human
+    description: >-
+      A modal form dialog over the page (the page is inert; the scrim does not close it): the appeal's title above the heading "İtirazı reddet",
+      the sentence "Talep reddedilmiş kalır. Karar notunu medrese görür.", "* zorunlu alan", a textarea "Karar notu" of four rows (at most 1000
+      characters, empty each time the dialog opens) with the help "Medrese bu notu okuyacak.", "Vazgeç", and "Reddet", which is natively disabled
+      while the note is blank, with nothing but the help to say why (F-W5-4, F-X-3). The focus starts in the textarea (the ref is passed through
+      Textarea's props; not verified in a browser). The dialog's description is the whole body (F-UI-W1-1). Vazgeç, the close icon and Esc close it
+      and nothing is written.
+    on:
+      TYPE_REASON: { target: confirmRejectReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they write the note: 'Reddet' goes on" }
+      LEAVE_REASON: { target: confirmRejectTouched, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:114, say: "they leave the empty field: 'Bir gerekçe yazın.' stands where the help was" }
+      CANCEL: { target: listed, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "Vazgeç, the close icon or Esc: the dialog closes and the focus goes back to the card's 'Reddet'" }
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:78
+
+  confirmRejectTouched:
+    title: Reddet says a note is needed
+    by: human
+    description: >-
+      The same dialog after the empty field was left: "Bir gerekçe yazın." replaces the help line under the textarea (the words say gerekçe, the
+      field says "Karar notu": DAPP-7), with no live region and no focus move (F-X-2); "Reddet" is still off.
+    on:
+      TYPE_REASON: { target: confirmRejectReady, effect: [typedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they write the note: the message goes at once" }
+      CANCEL: { target: listed, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "Vazgeç, the close icon or Esc" }
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:104
+
+  confirmRejectReady:
+    title: Reddet is on
+    by: human
+    description: >-
+      The same dialog with a note in the textarea and "Reddet" on; the sent note is the text trimmed. After a refusal of the permission or a
+      failure the dialog returns here with its error toast and what they wrote (F-W5-3: nothing inside the dialog says it failed).
+    on:
+      SUBMIT: { target: rejecting, effect: [clearNote], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:72, say: "they press 'Reddet'" }
+      CLEAR_REASON: { target: confirmReject, effect: [clearedReason], source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113, say: "they empty the field again: the button goes off (the error shows once they leave the field)" }
+      CANCEL: { target: listed, source: apps/nizam/features/deck-review/components/reject-dialog.tsx:81, say: "Vazgeç, the close icon or Esc: the dialog closes, what they wrote is dropped" }
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92
+
+  rejecting:
+    title: The refusal is on its way
+    description: >-
+      The server action rejectAppeal calls POST /appeals/:id/reject with the trimmed note (required, at most 1000 characters). The service asks the
+      same as for the list, then one conditional update that applies only while the appeal is PENDING: REJECTED, who decided and when, the
+      note, and an audit row (appeal.reject), in one transaction; the course request stays REJECTED. No notification (DAPP-2). The dialog's
+      "Reddet" is busy (aria-disabled and aria-busy, a spinner, a hidden status that says "Yükleniyor" from a hard-coded default); "Vazgeç" and
+      the close icon stay on and do nothing while it runs. APPEAL_NOT_PENDING (decided first) and APPEAL_NOT_FOUND (gone) take the row off the
+      waiting list, close the dialog and say so in a sticky error toast ("Karar kaydedilemedi" with "Bu itiraz az önce karara bağlanmış." or "Bu
+      itiraz artık yok."); the gone one also counts as decided in the Karara bağlanan tab's number (DAPP-3). AUTHZ_FORBIDDEN and any other
+      failure leave the dialog open with the error toast ("Bu işlem için izniniz yok." or "İşlem tamamlanamadı. Biraz sonra yeniden deneyin.").
+      A session that ended is sent to sign in, with no toast. If the call itself fails (no network) nothing catches it: the button stays busy
+      (not verified).
+    invoke: { action: rejectAppeal }
+    on:
+      DONE: { guard: "answer == 'rejected'", target: waitingTab, effect: [refusedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:139, say: "204: the toast 'İtiraz reddedildi', the appeal leaves the list, the dialog closes" }
+      FAIL.answered: { guard: "answer == 'answered'", target: waitingTab, effect: [answeredElsewhere], source: apps/nizam/features/appeals/components/appeals-view.tsx:108, say: "409: the row leaves, the dialog closes, an error toast says it was decided" }
+      FAIL.gone: { guard: "answer == 'gone'", target: waitingTab, effect: [vanishedIt], source: apps/nizam/features/appeals/components/appeals-view.tsx:108, say: "404: the row leaves, the dialog closes, an error toast says it is gone" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmRejectReady, effect: [forbiddenToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "403: the dialog stays open with an error toast" }
+      FAIL.other: { guard: "answer == 'other'", target: confirmRejectReady, effect: [failedToast], source: apps/nizam/features/appeals/components/appeals-view.tsx:109, say: "any other failure: the dialog stays open with an error toast" }
+      FAIL.signedOut: sent_to_sign_in
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:131
+
+  home_opened:
+    title: The home page opens
+    type: final
+    leavesPage: true
+    description: "'Ana sayfaya dön' is a plain link to \"/\", which sends the person where their role lands (nizam.shell.landingByRole): the Medaris home for the Medaris nazımı."
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The read, or an action, answered 401: the page sends the person to sign in (reauth) and back to this address (redirectIfUnauthenticated,
+      passOnSignIn) and draws no toast. realm.auth.signIn takes over. Not walked.
+
+  left:
+    title: They go to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-note-is-always-sent
+    never: "state == 'rejecting' and reason == 'blank'"
+    say: A refusal is never sent without a note; the dialog's button stays off until one is written.
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92
+  - id: the-page-is-drawn-only-where-the-read-allows
+    never: "(state == 'listed' or state == 'empty' or state == 'loadingDecided' or state == 'decidedList' or state == 'decidedEmpty' or state == 'confirmReject' or state == 'confirmRejectTouched' or state == 'confirmRejectReady' or state == 'accepting' or state == 'rejecting') and read == 'refused'"
+    say: The list, the card and the dialog are drawn only for a person the API let through.
+    source: apps/nizam/app/talepler/itirazlar/page.tsx:24
+  - id: empty-means-nothing-waits
+    never: "state == 'empty' and read == 'many'"
+    say: The empty line shows only when no appeal waits.
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:280
+  - id: rows-mean-something-waits
+    never: "(state == 'listed' or state == 'accepting') and read == 'nothing'"
+    say: The list is drawn only while an appeal waits.
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:280
+  - id: the-accepted-toast-comes-only-after-the-api-took-it
+    never: "last == 'accepted' and settledHere != 'accepted'"
+    say: '"İtiraz kabul edildi" shows only after the API answered 204.'
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:125
+  - id: the-refused-toast-comes-only-after-the-api-took-it
+    never: "last == 'rejected' and settledHere != 'rejected'"
+    say: '"İtiraz reddedildi" shows only after the API answered 204.'
+    source: apps/nizam/features/appeals/components/appeals-view.tsx:139

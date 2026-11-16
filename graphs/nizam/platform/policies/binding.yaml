@@ -1,0 +1,193 @@
+# nizam.platform.policies on the local stack (graphs/bindings/local.nizam.binding.yaml): Platform ayarları of nizam-web (http://localhost:4001/ayarlar/platform)
+# as the başnazım (SYSTEM_ADMIN), who arrives by the sidebar's entry (the nizam navigation graph's entry frame:shell->platformSettings), and as the köşk
+# nazımı, who is refused.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/platform/policies \
+#     --bind graphs/nizam/platform/policies/binding.yaml [--cover transitions] --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code, the catalog and a read-only
+# look at the two GETs of the API as the başnazım on 16 Nov 2026 (both switches off, neither key has a row, no köşk applies a rule); none was looked at in a
+# browser. Loaded with `replay <dir> --bind <dir>/binding.yaml --emit-spec --out <scratchpad>/emit/nizam.platform.policies` (it walks nothing).
+#
+# ============ THIS FLOW CHANGES GLOBAL STATE: WALK IT ALONE ============
+# The two platform policies are rows of one table that every walk of the platform reads on every decision: an enrolment that waits for approval instead of
+# being seated (tedris.course.apply, nazar.roster.*, nizam.courses.decideApplications), a recording that is shown or not to an outsider (the recordings
+# flows), a köşk, medrese or course save that answers PLATFORM_POLICY_LOCKED (nizam.kosks.editAndHide's locked branch, nazar.courseSettings.*). While a scenario
+# of this binding is between its press and its teardown, one of them is switched on for the whole platform. So it must be walked ALONE, under the replay lock
+# and with no other walk running, never beside a flow that reads the policies. What the binding does so that a crash or a wrong walk costs nothing:
+#   - `setup` RECORDS each policy exactly (policies.mjs keep, in this folder): either "no row" (a key nobody ever switched has none and reads as off) or the
+#     row's enabled, changed_by and changed_at. The record is graphs/.local/made/platform-policies.json. Nothing is written before it exists.
+#   - the walk switches ONE policy and switches it back inside the scenario (the main story: 'Kayıt her zaman onaylı' on, then off), or the other one
+#     (`--cover transitions` takes the second switch in a path of its own); a path that left both on at one moment still ends at the same teardown.
+#   - `teardown` puts every recorded value back EXACTLY (policies.mjs restore): the row deleted where there was none, the row rewritten with its three
+#     columns where there was one, in one transaction, read back and compared; it is idempotent (a second run says `none`), it needs no answer from the API for
+#     the values, and it also removes the köşk the scenario ownScope made. A walk that stopped midway leaves the record: the NEXT `setup` restores it first, and
+#     so does a hand run:  (cd graphs/bindings && node helpers/policies.mjs restore)
+#   - the old e2e (platform-admin.e2e.ts restorePolicies) deleted EVERY row and inserted back what it had seen: never copy that (F-X-20).
+# The audit log: audit_log is append-only by design ("nothing ever updates or deletes a row", audit.schema.ts:17, and the API has no route that could), and each
+# switch writes one `platform_policy.change` row ({key, enabled, was}). The teardown deletes, by SQL, exactly the rows this flow wrote: that action, by the
+# başnazım, for one of the two keys, with a record number above the one `setup` recorded (as the app's own e2e does for its rows, and as nizam.platform.auditLog's
+# helper does for its own). What stays: the three rows of the köşk of ownScope (kosk.create, kosk.policy_change and the deletion's trace). If the owner would
+# rather no helper wrote to the audit table, the one `delete from audit_log` of `restore` goes, and the switch rows stay: nothing else changes.
+#
+# The scenarios, by what the person starts from (the main story is the first, so the picks that any scenario could walk are walked there):
+#   switches    the başnazım, both switches off (the seed's rest state), no köşk applies a rule on its own: the main story and every transition of a save.
+#               e2e platform-admin#7 (a switch is saved at once and logged; its heading and "Politikalar nasıl birleşir" are on the page).
+#   ownScope    the same, with a köşk of the walk's own that applies "Kayıt her zaman onaylı" itself (made and removed by policies.mjs: an unlisted köşk with the
+#               spare talebe applicantB as its only nazım, switched by an update so that the log names who and when): the caption under the switch and the
+#               table's row. The name of platform-admin#7 promises this table; its body does not look at it, so this scenario is the one that does.
+#   refused     a köşk nazımı opens the address: tedrisat answers 403 and the shell says "Bu bölüm için izniniz yok". e2e platform-admin#6, the policies half (its
+#               other half, /denetim-kaydi, is nizam.platform.auditLog's). Writes nothing, so it has no setup.
+# Not bound, with the reason:
+#   began: approval | recordings | both   the page opening with a switch already on: each would hold a platform policy on for the whole scenario instead of one
+#                                         step; no transition needs it (the three routers of `opened` are drawn, and the main story's two presses cover on and off)
+#   read: failed | recovers               the stack has no way to make the API refuse the two reads for one account (the box 'Ayarlar okunamadı' is drawn from the code)
+#   read: forbidden for a Medaris nazımı  who holds platform.policy_edit and is admitted: the seeded one holds five other permissions, and giving it this one changes
+#                                         another persona (nizam.nazims.editPermissions)
+#   answer: forbidden | failed | signedOut   the server refusing a save for the başnazım: the stack cannot make PUT /nizam/platform-policies answer 403 or 5xx for them,
+#                                         and a binding cannot abort a request; so the rollback of a switch and the two error toasts are drawn from the code
+#   sent_to_sign_in                       the session ending between a press and its answer
+# `call` holds each save to see its switch disabled. A server action is a POST to the page's own address and answers 200 whatever the API said, so a FAIL
+# status could not be compared there either.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.platform.policies
+
+scenarios:
+  switches:
+    given: { read: ok, began: neither, scoped: none, answer: saved }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->platformSettings' }
+    setup:
+      - run: [node, helpers/policies.mjs, keep]
+        expect: 'policies kept'
+    teardown:
+      - run: [node, helpers/policies.mjs, restore]
+        expect: 'policies restored'
+  ownScope:
+    given: { read: ok, began: neither, scoped: some, answer: saved }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->platformSettings' }
+    samples: { scope: Politika Deneme Köşkü, names: Politika Deneme Köşkü, person: Vedat Başnazım }
+    setup:
+      - run: [node, helpers/policies.mjs, keep]
+        expect: 'policies kept'
+      - run: [node, helpers/policies.mjs, scope-make]
+        expect: 'scope-make politika-deneme'
+    teardown:
+      - run: [node, helpers/policies.mjs, restore]
+        expect: 'policies restored'
+  refused:
+    given: { read: forbidden, began: neither, scoped: none, answer: saved }
+    as: koskNazim
+    open: '{nizam}/ayarlar/platform'
+
+events:
+  # the sidebar's "Denetim kaydı" (the başnazım's menu); the entry is the shell's, so no node of this flow sends the event
+  OPEN_AUDIT_LOG: [{ click: { role: link, name: Denetim kaydı, within: { css: aside } } }]
+  NAVIGATE: [{ goto: '{nizam}/' }]
+  # a switch, the toast's "Kapat", "Tekrar dene" and "Ana sayfaya dön" are pressed by their nodes (TOGGLE_APPROVAL, TOGGLE_RECORDINGS, CLOSE_TOAST, RETRY, GO_HOME)
+
+states:
+  policies: { url: '{nizam}/ayarlar/platform' }
+  # a save is a Next server action: a POST to the page's own address, held while the busy switch is checked; the answer is 200 whatever the API said
+  savingApproval: { call: '{nizam}/ayarlar/platform' }
+  savingRecordings: { call: '{nizam}/ayarlar/platform' }
+  loadFailed: { url: '{nizam}/ayarlar/platform' } # not reachable on the stack
+  refused: { url: '{nizam}/ayarlar/platform' } # forbidden() keeps the address; the answer is 403
+  # the exits have no nodes of this flow: each needs an address
+  handed_over.audit_log: { url: '{nizam}/denetim-kaydi' }
+  home_opened: { url: '{nizam}/kosks/**' } # '/' sends a köşk nazımı to their köşk's home
+  left: { url: '{nizam}/' }
+  # sent_to_sign_in is not bound: the stack cannot end the session between a press and its answer
+
+# What a step leaves outside the screen, read as the table says it (and never the API's own view of it). The values are exact: `get` says `enabled=false`
+# for a key with no row too, since that is how the platform reads it; `audit` reads the newest platform_policy.change row of the key written after the
+# record was taken (audit_log.seq), so the rows of earlier walks cannot satisfy it.
+effects:
+  # the world the graph says the page opens in: both off. A rest state that is not this one fails here, before any press.
+  beganNeither:
+    - run: [node, helpers/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
+      expect: 'enabled=false'
+    - run: [node, helpers/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
+      expect: 'enabled=false'
+  # e2e platform-admin#7: the switch is saved at once (the row says so) and written to the log, in one transaction
+  savedApprovalOn:
+    - run: [node, helpers/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
+      expect: 'enabled=true'
+    - run: [node, helpers/policies.mjs, audit, ALWAYS_REQUIRE_APPROVAL, 'true', 'false']
+      expect: 'audit ALWAYS_REQUIRE_APPROVAL enabled=true was=false'
+  savedApprovalOff:
+    - run: [node, helpers/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
+      expect: 'enabled=false'
+    - run: [node, helpers/policies.mjs, audit, ALWAYS_REQUIRE_APPROVAL, 'false', 'true']
+      expect: 'audit ALWAYS_REQUIRE_APPROVAL enabled=false was=true'
+  savedRecordingsOn:
+    - run: [node, helpers/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
+      expect: 'enabled=true'
+    - run: [node, helpers/policies.mjs, audit, RECORDINGS_NEVER_PUBLIC, 'true', 'false']
+      expect: 'audit RECORDINGS_NEVER_PUBLIC enabled=true was=false'
+  savedRecordingsOff:
+    - run: [node, helpers/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
+      expect: 'enabled=false'
+    - run: [node, helpers/policies.mjs, audit, RECORDINGS_NEVER_PUBLIC, 'false', 'true']
+      expect: 'audit RECORDINGS_NEVER_PUBLIC enabled=false was=true'
+
+# Where role and name cannot find a node. The page's <main> is found by its introduction, because the page a walk leaves for has a <main> of its own. A
+# heading's words are also the start of another ("Politikalar" is in "Politikalar nasıl birleşir"), so the headings are found by an exact pattern and the three
+# sections by the id their aria-labelledby names; the table's scroll frame can be a region of the same name as its section. The toasts are sonner's:
+# a [data-sonner-toast] holds [data-title] and [data-description] (sonner 2.0.7; not verified in a browser), and an earlier toast can still be on screen
+# when the next one comes, so each description is found inside the toast whose title it belongs to.
+nodes:
+  pageMain: { role: main, hasText: '/Platform politikaları her köşkte, medresede ve derste geçerlidir/' }
+  refusedMain: { role: main, hasText: Bu bölüm için izniniz yok }
+  pageTitle: { role: heading, name: '/^Platform ayarları$/' } # the menu's entry of the same words is a link
+  policiesSection: { css: 'section[aria-labelledby=policies-title]' }
+  policiesHeading: { role: heading, name: '/^Politikalar$/' }
+  policiesList: { css: '[data-testid=platform-settings] ul' }
+  approvalSwitch: { role: switch, name: '/^Kayıt her zaman onaylı$/' }
+  recordingsSwitch: { role: switch, name: '/^Ders kayıtları herkese açılamaz$/' }
+  # the description is in the switch's own row; the same words as the table's cell and the toast's description are other nodes
+  approvalDescription: { css: '[data-testid=policy-ALWAYS_REQUIRE_APPROVAL] .mds-choice__desc' }
+  recordingsDescription: { css: '[data-testid=policy-RECORDINGS_NEVER_PUBLIC] .mds-choice__desc' }
+  approvalOwnScopes: { css: '[data-testid=policy-ALWAYS_REQUIRE_APPROVAL] p.mds-caption', hasText: 'Kendi kapsamında uygulayan: Politika Deneme Köşkü' }
+  instantNote: { css: 'p.mds-caption', hasText: Her değişiklik anında geçerli olur }
+  combineSection: { css: 'section[aria-labelledby=combine-title]' }
+  combineHeading: { role: heading, name: '/^Politikalar nasıl birleşir$/' }
+  stepsList: { css: '[data-testid=platform-settings] ol' }
+  stepRoleDefault: { css: '[data-testid=platform-settings] ol > li', hasText: Rolün varsayılanı ve aldığı izinler }
+  stepPlatform: { css: '[data-testid=platform-settings] ol > li', hasText: Platform politikası }
+  stepKosk: { css: '[data-testid=platform-settings] ol > li', hasText: '/Köşk politikası/' }
+  stepMadrasah: { css: '[data-testid=platform-settings] ol > li', hasText: '/Medrese politikası/' }
+  stepCourse: { css: '[data-testid=platform-settings] ol > li', hasText: '/Ders politikası/' }
+  combineWarning: { role: status, hasText: Üst kademenin verdiği izin, alttaki politikayı aşar }
+  scopedSection: { css: 'section[aria-labelledby=scoped-title]' }
+  scopedHeading: { role: heading, name: '/^Köşk ve medrese politikaları$/' }
+  scopedTable: { role: table, name: '/^Köşk ve medrese politikaları$/' }
+  colScope: { role: columnheader, name: '/^Kapsam$/' }
+  colPolicy: { role: columnheader, name: '/^Politika$/' }
+  colBy: { role: columnheader, name: '/^Açan$/' }
+  colAt: { role: columnheader, name: '/^Tarih$/' }
+  # the table's rows: the first cell is a <th scope=row> with the köşk's name and its kind under it
+  rowScope: { role: rowheader, hasText: Politika Deneme Köşkü }
+  rowKind: { css: 'tbody th .mds-caption', hasText: Köşk }
+  rowPolicy: { role: cell, hasText: Kayıt her zaman onaylı }
+  rowBy: { role: cell, hasText: Vedat Başnazım }
+  rowAt: { role: cell, hasText: '/^\d{1,2} [^ ]+ \d{2}:\d{2}$/' }
+  # the toasts
+  toastOnTitle: { css: '[data-sonner-toast] [data-title]', hasText: Politika açıldı }
+  toastOffTitle: { css: '[data-sonner-toast] [data-title]', hasText: Politika kapatıldı }
+  toastApprovalOnBody: { css: '[data-sonner-toast]:has([data-title]:has-text("Politika açıldı")) [data-description]', hasText: Kayıt her zaman onaylı }
+  toastApprovalOffBody: { css: '[data-sonner-toast]:has([data-title]:has-text("Politika kapatıldı")) [data-description]', hasText: Kayıt her zaman onaylı }
+  toastRecordingsOnBody: { css: '[data-sonner-toast]:has([data-title]:has-text("Politika açıldı")) [data-description]', hasText: Ders kayıtları herkese açılamaz }
+  toastRecordingsOffBody: { css: '[data-sonner-toast]:has([data-title]:has-text("Politika kapatıldı")) [data-description]', hasText: Ders kayıtları herkese açılamaz }
+  toastFailedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Politika kaydedilemedi }
+  toastForbiddenBody: { css: '[data-sonner-toast] [data-description]', hasText: Bu işlem için izniniz yok. }
+  toastFailedBody: { css: '[data-sonner-toast] [data-description]', hasText: İşlem tamamlanamadı. Biraz sonra yeniden deneyin. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]', nth: 0 } # sonner puts the newest toast first
+  # the box of a failed read; Next's route announcer is a role=alert too, so the box is found by its words
+  loadFailedAlert: { role: alert, hasText: Ayarlar okunamadı }
+  # the refusal: a <section> named by its h1, inside the shell's <main>
+  refusedSection: { role: region, name: '/^Bu bölüm için izniniz yok$/' }
+  refusedTitle: { role: heading, name: Bu bölüm için izniniz yok }

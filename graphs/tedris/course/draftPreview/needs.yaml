@@ -1,0 +1,185 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.course.draftPreview
+status: proposed
+summary: >-
+  What must exist for the people who run a draft course to read it as students will, and for everyone else not to learn it is
+  there: tedris.course.draftPreview. Each need is what the product must do, from the flow's story (design tedris/14 and the e2e's
+  own criteria); none is read off what the page does today. planned.md carries no item for this flow, so no key below is a Linear
+  key: the defects are findings, not features.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code, or code that does the opposite; each is a defect and has no Linear key found, none searched):
+# back-to-the-draft-in-nazar (CRS-10), staff-from-nazar-reach-the-draft (DRAFT-1), preview-tab-names-the-draft (DRAFT-2),
+# preview-says-when-no-celse-is-dated, preview-sample-row-leads-nowhere (CRS-15)
+# unwalked (code, and no e2e check and no replay takes it): visitor-gets-not-found (the scenario visitorNotFound is bound and was not walked;
+# e2e course#3 asserts only the status, which no graph carries)
+
+needs:
+  - id: staff-preview-a-draft
+    need: >-
+      The people who run a draft course can open it by its address and read the course page as students will meet it once it is
+      published, with a plain mark that it is a draft and that only managers see it.
+    evidence:
+      - state: previewShown
+      - node: previewBanner
+      - node: previewBannerTitle
+      - node: draftBadge
+      - node: courseTitle
+      - node: previewAside
+      - node: previewCardTitle
+      - node: previewCardBadge
+      - node: previewCardText
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedris/features/courses/components/course-page.tsx:239
+      - source: apps/tedris/features/courses/preview.ts:8
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+        name: "an editor sees the banner, the badge and the preview card, and cannot apply"
+      - scenario: editorDated
+    note: "system-pages.e2e.ts system-pages#5 (a1 to a4: the banner, its text, the badge \"Taslak\" and the card heading)"
+
+  - id: every-editor-may-preview
+    need: >-
+      Everyone who may edit the course or was given the right to view it unpublished can open the preview: a hoca of the course,
+      the köşk's nazım, the başnazım, a ders nazırı with that right.
+    evidence:
+      - state: reading
+      - state: previewShown
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: apps/tedrisat/src/course/course.service.ts:355
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+        name: "an editor sees the banner, the badge and the preview card, and cannot apply"
+      - scenario: editorDated
+    note: |-
+      Also drawn as the assertion only-staff-see-the-preview, the assertion staff-are-not-turned-away.
+      system-pages.e2e.ts system-pages#5 (the hoca only)
+      editorDated: the hoca only. The köşk's nazım and the başnazım were opened in a browser probe (200, the preview), not walked;
+      a ders nazırı with course.view_unpublished on the draft was not tried (the seeded one holds it on another course and got the
+      404)
+
+  - id: preview-offers-no-application
+    need: >-
+      A preview cannot be mistaken for the real page: nothing in it applies for the course, whatever the button would be called,
+      and the card says so.
+    evidence:
+      - node: previewCardText
+      - node: applyButton
+      - source: apps/tedris/features/courses/components/course-page.tsx:348
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+        name: "an editor sees the banner, the badge and the preview card, and cannot apply"
+      - scenario: editorDated
+    note: |-
+      system-pages.e2e.ts system-pages#5 (a5: no button whose name starts "Kayıt")
+      editorDated: with --absent, the node applyButton is checked hidden in every state
+
+  - id: preview-names-the-first-celse
+    need: >-
+      The preview tells the staff when students will first meet the course: the time of the earliest celse that has one, in the
+      course's own zone, whatever order the weeks are listed in.
+    evidence:
+      - node: firstSessionLabel
+      - node: firstSessionTime
+      - source: apps/tedris/features/courses/preview.ts:12
+      - source: apps/tedris/features/courses/preview.ts:26
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+        name: "an editor sees the banner, the badge and the preview card, and cannot apply"
+      - scenario: editorDated
+    note: |-
+      system-pages.e2e.ts system-pages#5 (a6: the earliest celse, not the later one; its text is the date of its own seed)
+      editorDated: a later week holds the earlier celse (1 Aralık, listed second); the card names it
+
+  - id: preview-says-when-no-celse-is-dated
+    need: >-
+      When no celse of the draft has a time yet, the preview says so, so the staff know the card students will see is still
+      missing its time.
+    missing: no Linear issue
+    note: |-
+      Drawn on the state previewUnscheduled, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
+      Half built: the card leaves out "İlk celse" and its time (replay editorUndated passed), but its sentence still says students
+      see the time of the first celse here, and it gives no hint that the draft needs one. A defect (honesty), so no Linear key; I
+      did not search Linear.
+
+  - id: back-to-the-draft-in-nazar
+    need: >-
+      "Düzenlemeye dön" takes the staff back to where this course is edited: its curriculum in Nazar, as the button's own
+      accessible name says.
+    missing: no Linear issue; CRS-10
+    note: |-
+      Drawn on the state nazar_opened and on the node backToEditing, which the code has: they are not evidence, so that a replay
+      still walks them (SPEC.md §13 leaves out what only missing needs name).
+      Half built (CRS-10): the link is drawn and goes to NAZAR_URL, the bare origin, which for a hoca lands on their first course,
+      not on this one (seen: "Bina ve İzhar Şerhi", not the draft). e2e system-pages#5 a7 asserts the bare address, so it carries
+      today's behaviour, and the replay of editorDated pressed the link and met Nazar's landing. A defect, so no Linear key; I did
+      not search Linear.
+
+  - id: member-gets-not-found
+    need: >-
+      A signed-in person who may not edit the draft gets the same page as for a course that is not there, with the true status, so
+      the page never says a draft exists.
+    evidence:
+      - state: notFound
+      - node: notFoundTitle
+      - node: notFoundText
+      - node: homeLink
+      - state: home_opened
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: "apps/tedris/app/courses/[courseId]/layout.tsx:27"
+      - source: apps/tedrisat/src/course/course.service.ts:355
+      - test: apps/tedris/e2e/system-pages.e2e.ts
+        name: "anyone who may not edit it gets the not-found page"
+      - scenario: memberNotFound
+    note: |-
+      Also drawn as the assertion only-staff-see-the-preview.
+      system-pages.e2e.ts system-pages#6 (a2: "Sayfa bulunamadı"; a1, the 404 status, is not carried: the replay does not read a
+      navigation's status)
+      memberNotFound: --to home_opened: the page, then "Ana sayfaya dön" to /home
+
+  - id: visitor-gets-not-found
+    need: A visitor gets the same page as a member does, whoever they are elsewhere, and the link on it leads to Keşfet.
+    evidence:
+      - state: notFound
+      - state: discover_opened
+      - source: apps/tedrisat/src/course/course.controller.ts:260
+      - source: "apps/tedris/app/courses/[courseId]/layout.tsx:27"
+      - source: apps/tedris/app/page.tsx:13
+    note: >-
+      walked: nothing. e2e course#3 asserts only the 404 status, which no graph carries. The scenario visitorNotFound is bound and
+      was not walked; its locators were counted in a browser probe (the region, the heading, the sentence and the link, one each;
+      the link ends on /discover).
+
+  - id: staff-from-nazar-reach-the-draft
+    need: >-
+      A staff member who follows a link to the draft from Nazar, with a Nazar session and none in Tedris, sees the draft or is
+      asked to sign in to see it; they are not told the page is missing.
+    missing: no Linear issue; DRAFT-1
+    note: |-
+      Drawn on the state notFound, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      DRAFT-1. The 404 for a visitor must stay (no draft is announced), so the fix is on the link: Nazar sends the person through
+      Tedris's own sign-in. Seen in a browser on 15 Nov 2026 (Nazar signed in, Tedris not: 404). A defect, so no Linear key; I did
+      not search Linear.
+
+  - id: preview-tab-names-the-draft
+    need: >-
+      The browser tab of a preview says which course it is and that it is a preview, so several previews open at once can be told
+      apart.
+    missing: no Linear issue; DRAFT-2
+    note: |-
+      Drawn on the state previewShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      DRAFT-2. The title is "Tedris" (the metadata is read with no token). A defect (accessibility, WCAG 2.4.2), so no Linear key;
+      I did not search Linear.
+
+  - id: preview-sample-row-leads-nowhere
+    need: >-
+      No row of a preview points at a place that is not on the page: the sample celse's row, which links to the section a preview
+      does not draw, is not a link there.
+    missing: no Linear issue; CRS-15
+    note: |-
+      Drawn on the state previewShown, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      CRS-15. Read from the code and not walked: the draft of the walk has no celse marked as the sample. A defect, so no Linear
+      key; I did not search Linear.

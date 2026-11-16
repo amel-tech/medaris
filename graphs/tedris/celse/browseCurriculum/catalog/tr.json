@@ -1,0 +1,18 @@
+{
+  "SessionPage.curriculum": "Müfredat",
+  "SessionPage.curriculumCourse": "Ders sayfasında aç",
+  "SessionPage.curriculumLabel": "Müfredat: Hafta {week} / {weeks}, {title}",
+  "SessionPage.curriculumNoMatch": "Bu aramaya uyan celse yok.",
+  "SessionPage.curriculumSearch": "Hafta ya da başlık ara",
+  "SessionPage.curriculumSearchLabel": "Celse ara",
+  "SessionPage.curriculumWeek": "Hafta {week} / {weeks}",
+  "SessionPage.neighbours": "Celseler arasında",
+  "SessionPage.nextWeek": "Sonraki · Hafta {number}",
+  "SessionPage.previousWeek": "Önceki · Hafta {number}",
+  "SessionPage.rowCancelled": "İptal edildi",
+  "SessionPage.rowDone": ", sona erdi",
+  "SessionPage.rowViewing": "Bu celse",
+  "SessionPage.sessionsCount": "{count} celse",
+  "composed.Pager.nextName": "Sonraki celse: Hafta {nextNumber}, {nextTitle}",
+  "composed.Pager.previousName": "Önceki celse: Hafta {previousNumber}, {previousTitle}"
+}

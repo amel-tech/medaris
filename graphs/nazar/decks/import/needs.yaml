@@ -1,0 +1,232 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.decks.import
+status: proposed
+summary: >-
+  What must exist for the hoca of a course to move cards into a course deck from a file: the flow's product list. No replay has
+  been run (and no scenario of this flow can reach the choice of a file until the engine has an `attach` action), so no `walked`
+  entry names one: the unit specs under apps/nazar/test and the API's own e2e under apps/tedrisat/test/e2e are listed as `test:`;
+  they are not web e2e checks. Nothing of this flow has a web e2e check (FLOWS.md: "e2e: none"; no e2e of apps/nazar touches
+  Deste).
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# missing (no code, or code that does the opposite; Linear key `none`): template-failure-is-told, no-deck-says-why, the-confirmation-names-the-deck,
+# rows-are-told-in-the-persons-words, file-needs-are-said, refusals-are-told-by-cause, csv-survives-excel, big-files-reach-the-api,
+# closing-while-sending-is-honest, a-failed-call-is-told, card-type-follows-the-deck, the-dialog-is-accessible
+# unwalked (code, no web e2e and no replay yet): take-the-template, no-deck-no-import, pick-the-deck, the-file-is-checked-before-sending,
+# a-good-file-adds-every-row, a-bad-file-adds-nothing-and-lists-its-rows, only-the-decks-staff-import
+
+needs:
+  - id: take-the-template
+    need: >-
+      The hoca takes a template of the file from the import dialog itself, as an Excel workbook or as a CSV: the three columns
+      with their names and an example of each card type, the same for every deck. The browser saves it under a name that says what
+      it is.
+    evidence:
+      - state: sampling
+      - node: sampleLead
+      - node: sampleXlsx
+      - node: sampleCsv
+      - source: apps/nazar/app/api/decks/sample/route.ts:12
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:386
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:134
+      - test: apps/nazar/test/deck-sample-route.spec.ts
+
+  - id: template-failure-is-told
+    need: >-
+      A template that cannot be made says so where the person is, in a sentence, and not as an empty answer behind a link that the
+      browser reports in its own way. (decision D3; F-D1-19)
+    missing: no Linear issue; findings F-D1-19
+    note: >-
+      Drawn on the state sampling and on the nodes sampleXlsx and sampleCsv, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: no-deck-no-import
+    need: In a course with no deck there is nothing to import into, so the import cannot be started from the list.
+    evidence:
+      - state: listNoDeck
+      - node: importButton
+      - node: emptyTitle
+      - source: apps/nazar/features/decks/components/decks-actions.tsx:30
+
+  - id: no-deck-says-why
+    need: >-
+      The person who meets the import button off in a course with no deck is told what to do first and where ("Deste aç"), by the
+      button itself or by the page, and the button is still reachable by keyboard and screen reader with that hint. (decision D1;
+      F-D1-15)
+    missing: no Linear issue; findings F-D1-15
+    note: >-
+      Drawn on the state listNoDeck and on the nodes importButton and newButton, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: pick-the-deck
+    need: >-
+      From the list the hoca chooses which of the course's decks receives the cards, from all of them, drafts included; from a
+      deck's own page the deck is fixed and the dialog does not ask.
+    evidence:
+      - state: dialog
+      - state: choosingDeck
+      - node: deckField
+      - node: deckShownFirst
+      - node: deckShownSecond
+      - node: optionFirst
+      - node: optionSecond
+      - state: deckPage
+      - source: apps/tedrisat/src/flashcard/course-decks.controller.ts:68
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:94
+      - source: apps/nazar/features/decks/components/deck-detail-screen.tsx:105
+
+  - id: the-confirmation-names-the-deck
+    need: >-
+      After a clean file the hoca reads where the cards went, by the deck's name, in the confirmation, and does not start from a
+      deck chosen for them without their knowing. (decision D6; IMPORT-5)
+    missing: no Linear issue; findings IMPORT-5
+    note: >-
+      Drawn on the state imported and on the nodes importedToast, deckField and deckShownFirst, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-file-is-checked-before-sending
+    need: >-
+      A file that is not an .xlsx or a .csv by its name, or is over 5 MB, is turned down at once, under the field, in a sentence,
+      and nothing is sent; a press of "Aktar" with no file says so under the field.
+    evidence:
+      - state: dialog
+      - node: errNoFile
+      - node: errType
+      - node: errSize
+      - node: fileHelp
+      - source: apps/nazar/features/decks/decks.ts:303
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:54
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: a-good-file-adds-every-row
+    need: >-
+      A file whose rows are all right adds every row as a card of the chosen deck at once, in file order, and nothing else
+      changes; the hoca is told how many cards were added and the page shows the new total. The API takes at most 1000 rows and 5
+      MB.
+    evidence:
+      - state: sending
+      - state: imported
+      - node: importedToast
+      - node: summaryAfter
+      - node: cardsHeadingAdded
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+      - source: apps/nazar/features/decks/actions.ts:175
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:60
+      - test: apps/tedrisat/test/e2e/flashcard-bulk.e2e.spec.ts
+
+  - id: a-bad-file-adds-nothing-and-lists-its-rows
+    need: >-
+      A file with one bad row adds no card at all, and the hoca is told every bad row at once, by its row in the spreadsheet (the
+      header being row 1), so the file can be fixed and sent again in one go.
+    evidence:
+      - state: sending
+      - state: dialog
+      - node: rowAlert
+      - node: rowAlertTitle
+      - node: rowList
+      - node: rowItem
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+      - source: apps/nazar/features/decks/decks.ts:268
+      - source: apps/nazar/features/decks/components/import-cards-dialog.tsx:143
+      - test: apps/tedrisat/test/e2e/flashcard-bulk.e2e.spec.ts
+      - test: apps/nazar/test/decks.spec.ts
+
+  - id: rows-are-told-in-the-persons-words
+    need: >-
+      What is wrong with a row is said in the app's language and with the names the person sees (the columns of the template, the
+      labels of the card), not as the API's English with its property names, and a file with more than 1000 rows gets a sentence
+      about the cap and not a bad row that does not exist. (decision D2; F-D1-19, IMPORT-2)
+    missing: no Linear issue; findings F-D1-19, IMPORT-2
+    note: >-
+      Drawn on the nodes rowAlert, rowAlertTitle and rowItem, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: file-needs-are-said
+    need: >-
+      Before sending, the dialog says what the file must hold: the three columns and their names, the two card types, the cap of
+      1000 rows and the 5 MB, and the first row being the header. (IMPORT-2)
+    missing: no Linear issue; findings IMPORT-2
+    note: >-
+      Drawn on the state dialog and on the nodes fileHelp and sampleLead, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: refusals-are-told-by-cause
+    need: >-
+      A file the API turns down for a reason the person can fix (no data row, other column names, too many requests, a service
+      that is down, a deck that is gone) is told with that reason and what to change, not as "İşlem tamamlanamadı. Tekrar
+      deneyin." for every cause. (decision D3; IMPORT-3)
+    missing: no Linear issue; findings IMPORT-3
+    note: >-
+      Drawn on the states sending and dialog and on the nodes failedAlert and failedText, which the code has: they are not
+      evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: csv-survives-excel
+    need: >-
+      A CSV that the person's own spreadsheet application saved is read as a CSV: semicolons as Excel writes them in a Turkish
+      locale, a byte-order mark, and the type a Windows browser gives a .csv (application/vnd.ms-excel); and the template's Arabic
+      text survives Excel. (IMPORT-3)
+    missing: no Linear issue; findings IMPORT-3
+    note: >-
+      Drawn on the states sending and dialog and on the node failedAlert, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: big-files-reach-the-api
+    need: >-
+      A file of up to the 5 MB the dialog promises reaches the API; a file between 1 and 5 MB is not turned away by the framework
+      before the app can answer it. (decision D4; F-D1-18)
+    missing: no Linear issue; findings F-D1-18
+    note: >-
+      Drawn on the states sending and error_page, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: closing-while-sending-is-honest
+    need: >-
+      While a file is being sent the dialog cannot be closed by accident: closing is refused and said, or it stops the send, so
+      that cards are never added after the person has left and a refusal is never lost. (decision D5; IMPORT-1)
+    missing: no Linear issue; findings IMPORT-1
+    note: >-
+      Drawn on the states sending and abandoned and on the nodes closeIcon and cancel, which the code has: they are not evidence,
+      so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-failed-call-is-told
+    need: >-
+      A call that cannot be made (the network is down, the server answers nothing readable) is caught and told in the dialog, and
+      the busy button is freed; it does not end in the error page. (F-D1-20)
+    missing: no Linear issue; findings F-D1-20
+    note: >-
+      Drawn on the states sending and error_page and on the node failedAlert, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: card-type-follows-the-deck
+    need: >-
+      The type of an imported card is the deck's, or a row of the other type is refused or told, so that the unedited template
+      does not put a hadith card into a Kelime deck. (decision D6; IMPORT-4)
+    missing: no Linear issue; findings IMPORT-4
+    note: >-
+      Drawn on the states sending and imported and on the node deckField, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: only-the-decks-staff-import
+    need: >-
+      Only those who may fill a course deck can import into it: the müderris of the course, who holds deck.manage_course by role,
+      and whoever was given it; everybody else, including a talebe of the course, is refused by the API whatever the page shows.
+    evidence:
+      - state: sending
+      - node: failedAlert
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:461
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:457
+      - test: apps/tedrisat/test/e2e/flashcard-bulk.e2e.spec.ts
+
+  - id: the-dialog-is-accessible
+    need: >-
+      The dialog tells assistive technology what it asks: the deck and the file are marked required, its first focus is on its
+      first field, the answers of a refused press (no file, a type, a size) are announced and the focus goes to the field, the
+      close and busy words come from the catalog, and the dialog is described by one sentence and not by its whole body. (F-D1-03,
+      F-D1-16, F-L-12, F-D1-24, F-A-13, IMPORT-2)
+    missing: no Linear issue; findings F-D1-03, F-D1-16, F-L-12
+    note: >-
+      Drawn on the nodes importDialog, closeIcon, deckField, fileField, errNoFile, errType, errSize, submit and busy, which the
+      code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

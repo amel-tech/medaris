@@ -1,0 +1,209 @@
+# nazar.nazirs.appoint on the local stack: the başmüderris of "Hadis ve Siyer Medresesi" at http://localhost:4002, on
+# /medrese/<id>/nazirlar.
+#   node apps/engine/src/cli.ts replay graphs/nazar/nazirs/appoint --bind graphs/nazar/nazirs/appoint/binding.yaml --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay (the walk phase comes later); every locator and every command below comes from the
+# code and the catalog and is unverified until a walk.
+#
+# What a walk writes, and how it is taken away (all through tedrisat's HTTP API with helpers/api.mjs, as the başmüderris; SQL only to
+# read). The person appointed is APPLICANT_E (applicantE, "Betül Başvuran"), a spare talebe nobody else appoints: never a seeded staff
+# account. The seeded roster holds one nazır, MEDRESE_NAZIR ("Seher Medrese Nazırı"), who holds nothing, so the band names her before
+# the appointment and counts two after.
+#   setup     (idempotent, so a walk that died leaves nothing to trip the next one) lifts any ban of APPLICANT_E (./unbar.mjs), dismisses
+#             APPLICANT_E from the medrese's nazırs (DELETE with no decisions: the person gave nobody anything; 404 is fine), and
+#             clears what the seeded nazır holds (PUT permissions with an empty list) so that the band reads as the scenario's `before`
+#   scenario  `appoints` and `firstOne` make the role MEDRESE_NAZIR of APPLICANT_E (POST /madrasahs/:id/nazirs/:userId); `barred` bans
+#             APPLICANT_E from the medrese first (POST /madrasahs/:id/bans, scope MADRASAH); `firstOne` gives the seeded nazır one
+#             permission (madrasah.students_view) so that nobody waits
+#   teardown  dismisses APPLICANT_E again, lifts the ban, and takes the seeded nazır's permission back (PUT with an empty list)
+# What it leaves behind: the audit rows of every write and of every search (user.lookup, madrasah_nazir.appoint, nazir dismissal, ban
+# create and lift, permission grants), the dismissed role row (revoked, kept as history) and, after `barred`, one lifted ban in the
+# medrese's list: no route deletes them. "Kaldırılmış" will list a ban of Betül Başvuran, which a bans walk of the same medrese may meet.
+#
+# Not bound, each for what the stack cannot be made to do on request:
+#   person: down        the directory does not answer (Keycloak would have to be stopped)
+#   person: vanished    the account is gone between the search and the click
+#   person: refused     the başmüderris loses her permission between the two
+#   person: unwell      the directory or the server fails on the click
+#   states opened -> refused, not_found   a nazır who holds nothing meets the refusal (nazar.access.medreseNazirRefused walks it), and a
+#                                         medrese that is not there is the 404 page (nazar.shell.errorStates)
+# `GIVE_PERMISSIONS` is taken in every scenario that reaches `listed` with someone waiting: the walk presses the last "İzin ver" button,
+# which is the new nazır's after an appointment (the roster is oldest first).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.nazirs.appoint
+
+scenarios:
+  # The main story: the menu's "Medrese nazırları", "Medrese nazırı ata", the address typed and searched, the person found and appointed.
+  appoints:
+    given: { person: fresh, before: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/appoint/unbar.mjs, applicantE, --madrasah, '{seed.madrasah}']
+        expect: unbarred
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_E_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":[]}', --any]
+        expect: 'HTTP '
+    teardown:
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_E_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments where user_id = '{secret.E2E_APPLICANT_E_SUB}' and role = 'MEDRESE_NAZIR' and scope_id = '{seed.madrasah}' and revoked_at is null"]
+        expect: '"n":0'
+    vars:
+      nazirEmail: '{secret.E2E_APPLICANT_E_EMAIL}'
+
+  # Nobody waits before: every nazır holds something (the seeded one is given a permission for the walk), so the band appears with the
+  # new nazır's name and not with a count.
+  firstOne:
+    given: { person: fresh, before: none }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/nazirlar'
+    setup:
+      - run: [node, ../nazar/nazirs/appoint/unbar.mjs, applicantE, --madrasah, '{seed.madrasah}']
+        expect: unbarred
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_E_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":["madrasah.students_view"]}']
+        expect: madrasah.students_view
+    teardown:
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_E_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":[]}', --any]
+        expect: 'HTTP '
+    vars:
+      nazirEmail: '{secret.E2E_APPLICANT_E_EMAIL}'
+
+  # An address no account has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and nobody is chosen (e2e nazirs#5). Nothing is written.
+  nobody:
+    given: { person: nobody, before: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/nazirlar'
+    vars:
+      nazirEmail: kimse.yok@example.test
+
+  # Text that is not an address: nothing is searched and nothing is said (APPOINT-4). Nothing is written.
+  notAddress:
+    given: { person: notAddress, before: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/nazirlar'
+    vars:
+      nazirEmail: kimse
+
+  # The seeded nazır's own address: found, and "Bu kişi zaten bu medresenin nazırı." with "Ata" off. Nothing is written.
+  member:
+    given: { person: member, before: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/nazirlar'
+    vars:
+      nazirEmail: '{secret.E2E_MEDRESE_NAZIR_EMAIL}'
+
+  # The başmüderris's own address: found and chosen, "Ata" is on, and the server refuses it (SELF_GRANT_REFUSED, APPOINT-6). Nothing is written
+  # (the refusal comes before anything else is read).
+  herself:
+    given: { person: herself, before: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/nazirlar'
+    vars:
+      nazirEmail: '{secret.E2E_MEDRESE_BASMUDERRIS_EMAIL}'
+
+  # A person barred from the medrese: found and chosen like anyone; "Ata" is refused with MADRASAH_NAZIR_BARRED in a toast. The ban is made
+  # for the walk and lifted after it.
+  barred:
+    given: { person: barred, before: one }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/nazirlar'
+    setup:
+      - run: [node, ../nazar/nazirs/appoint/unbar.mjs, applicantE, --madrasah, '{seed.madrasah}']
+        expect: unbarred
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_E_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, PUT, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_MEDRESE_NAZIR_SUB}/permissions', '{"permissions":[]}', --any]
+        expect: 'HTTP '
+      - run: [node, helpers/api.mjs, basmuderris, POST, '/madrasahs/{seed.madrasah}/bans', '{"userId":"{secret.E2E_APPLICANT_E_SUB}","scope":"MADRASAH","reason":"Deneme için yasak."}']
+        expect: '"scope":"MADRASAH"'
+    teardown:
+      - run: [node, ../nazar/nazirs/appoint/unbar.mjs, applicantE, --madrasah, '{seed.madrasah}']
+        expect: unbarred
+      - run: [node, helpers/api.mjs, basmuderris, DELETE, '/madrasahs/{seed.madrasah}/nazirs/{secret.E2E_APPLICANT_E_SUB}', '{"decisions":[]}', --any]
+        expect: 'HTTP '
+    vars:
+      nazirEmail: '{secret.E2E_APPLICANT_E_EMAIL}'
+
+events:
+  # the address field has no node that sends an event: the binding types in it and presses Enter (the address is searched on Enter, and
+  # also when the field is left)
+  SEARCH:
+    - fill: { role: textbox, name: Nazırın e-posta adresi, value: '{nazirEmail}' }
+    - key: Enter
+  # Vazgeç and the close icon both send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç }
+  NAVIGATE:
+    - goto: '{nazar}/medrese/{seed.madrasah}'
+
+states:
+  listed: { url: '{nazar}/medrese/*/nazirlar' }
+  # the lookup and the appointment are Next server actions: a POST to the page's own address, held while the busy state is checked
+  searching: { call: '{nazar}/medrese/*/nazirlar' }
+  appointing: { call: '{nazar}/medrese/*/nazirlar' }
+  # exits with no screen of their own are checked by their address
+  refused: { url: '{nazar}/medrese/*/nazirlar' }
+  not_found: { url: '{nazar}/medrese/*/nazirlar' }
+  handed_over.permissions: { url: '{nazar}/medrese/*/nazirlar' }
+  left: { url: '{nazar}/medrese/*' }
+
+# Role and name find most nodes. Below are the ones they cannot find alone: data in the text, a name that several elements share, a
+# status found by its words.
+nodes:
+  # the shell's one <main id="main"> is on every page; the intro line is this page's own
+  nazirsPage: { role: main, hasText: '/yalnız sizin ya da izinli/' }
+  # the band: an Alert, role status, holding the title and the line. One person is named; several are counted (the two nodes must not
+  # find the same element)
+  bandOne: { role: status, hasText: '/^\D.* henüz izin almadı/' }
+  bandOneText: { text: '/atadı\. Siz izin verene kadar hiçbir işlem yapamaz\./' }
+  bandMany: { role: status, hasText: '/^\d+ nazır henüz izin almadı/' }
+  bandManyText: { text: '/Siz izin verene kadar hiçbir işlem yapamazlar\./' }
+  # the table's caption is the medrese's name and "nazırları"; the rows carry the people's names
+  rosterTable: { role: table, name: '/ nazırları$/' }
+  awaitingBadge: { text: '/^İzin yok$/' }
+  appointedLine: { text: '/^Atayan: .+ · .+$/' }
+  # the last row is the newest: the one just appointed
+  giveButton: { role: button, name: '/^İzin ver: /', nth: -1 }
+  dismissButton: { role: button, name: '/^Görevden al: /' }
+  # the medrese's name above the dialog's title
+  appointEyebrow: { css: '.mds-eyebrow', hasText: '{seed.titles.madrasah}' }
+  # a toast has a "Kapat" of its own, so the dialog's is found inside the dialog
+  appointClose: { role: button, name: Kapat, within: { role: dialog, name: Medrese nazırı ata } }
+  # "Ata" alone, not "Medrese nazırı ata"
+  submit: { role: button, name: '/^Ata$/' }
+  # the hidden <output> and the notice are statuses found by their words
+  searchingStatus: { role: status, hasText: Aranıyor }
+  alreadyAlert: { role: status, hasText: Bu kişi zaten bu medresenin nazırı. }
+  # an icon button named by aria-label
+  removePerson: { role: button, name: '/^Seçimi kaldır: /' }
+  # the five error toasts share one title: they are told apart by their sentence
+  toastBarred: { role: alertdialog, hasText: yasaklı }
+  toastSelf: { role: alertdialog, hasText: Kendinize rol ya da izin veremezsiniz }
+  toastUnknown: { role: alertdialog, hasText: Bu hesap bulunamadı. }
+  toastForbidden: { role: alertdialog, hasText: Bunu yapma izniniz yok. }
+  toastFailed: { role: alertdialog, hasText: Bir şeyler ters gitti. }
+
+# What an appointment leaves outside the screen, read through the API and the database. The roster has the new nazır, with the role given by
+# the başmüderris and still held (e2e nazirs#4 a9), no permission of any kind (a11), and the audit row (a10).
+effects:
+  addMadrasahNazir:
+    - run: [node, helpers/api.mjs, basmuderris, GET, '/madrasahs/{seed.madrasah}/nazirs']
+      expect: '{secret.E2E_APPLICANT_E_SUB}'
+    - run: [node, helpers/sql.mjs, "select granted_by = '{secret.E2E_MEDRESE_BASMUDERRIS_SUB}' as by_head, revoked_at is null as live from role_assignments where user_id = '{secret.E2E_APPLICANT_E_SUB}' and role = 'MEDRESE_NAZIR' and scope_id = '{seed.madrasah}' order by created_at desc limit 1"]
+      expect: '"by_head":true,"live":true'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from permission_grants where user_id = '{secret.E2E_APPLICANT_E_SUB}' and revoked_at is null"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'madrasah_nazir.appoint' and entity_id = '{seed.madrasah}' and details->>'userId' = '{secret.E2E_APPLICANT_E_SUB}' and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  # every search is written to the audit log, found or not (the help line says so)
+  lookupUser:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'user.lookup' and actor_id = '{secret.E2E_MEDRESE_BASMUDERRIS_SUB}' and details->>'email' = lower('{nazirEmail}') and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'

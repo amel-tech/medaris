@@ -1,0 +1,58 @@
+# nazar.courses.open, the walk of open-course#7: "a köşk that took its right back after the page opened refuses the course, and says why".
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/courses/open \
+#     --bind graphs/nazar/courses/open/binding.hostingGone.yaml --cover transitions --out <dir>
+#
+# NOT RUN: the owner's word is that replays happen once, at the end; every locator is from the code and unverified until the walk.
+#
+# Why a file of its own. The refusal needs the köşk to take its right back between the page being drawn and "Dersi aç" being pressed, and
+# nothing on the page does that. `nodes.submit.before` runs walk-data.mjs revoke before every press of the button, which no other
+# scenario may do; a binding has one `nodes` for all its scenarios, so this scenario lives where its `before` can. The first press (the blank
+# form, refused by the page before any call) revokes too, which changes nothing the page has drawn: the radios are only re-read when the
+# refusal comes. A second revoke finds nothing to take back and says so.
+#
+# The medrese is the walk's own, with two köşks (Kubbealtı Köşkü, chosen first, and Süleymaniye Köşkü); Kubbealtı Köşkü takes the right
+# back, so the page re-reads the köşks and lists only Süleymaniye Köşkü, with nothing chosen: "Bir köşk seçin." stands under the choice at
+# once (the form keeps `attempted`). The walk goes on by picking the other one, which would be refused again here (the scenario's answer
+# is hostingRight, a case no later press changes), so it ends on the form. The one-köşk version of the same refusal (the form replaced by the
+# 'no köşk' alert, OPEN-6) is the second scenario: `first` is the one köşk there is.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.courses.open
+
+# `opening` holds no server call here: walking a FAIL class makes the replay compare the call's HTTP status with the refusal's (403), and a
+# Next server action answers 200 on the page's own address whatever the API said, so the call is left off and only the address is checked
+states:
+  opening: { url: '{nazar}/medrese/*/dersler/yeni' }
+
+nodes:
+  submit:
+    before:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, revoke, nazar-courses-open, first]
+        expect: 'walk-data revoke nazar-courses-open'
+
+scenarios:
+  hostingGoneOfTwo:
+    given: { hosting: two, locks: none, fields: valid, lookup: found, answer: hostingRight }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, two]
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }
+  hostingGoneOfOne:
+    given: { hosting: one, locks: none, fields: valid, lookup: found, answer: hostingRight }
+    as: applicantE
+    open: '{nazar}/medrese/{made.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'medreseCourses->medreseCoursesYeni' }
+    setup:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, make, nazar-courses-open, --kosks, one]
+        expect: '"tag":"nazar-courses-open"'
+    teardown:
+      - run: [node, ../nazar/courses/open/walk-data.mjs, remove, nazar-courses-open]
+        expect: 'walk-data remove nazar-courses-open'
+    vars: { courseTitle: Deneme dersi aç, hocaA: '{secret.E2E_APPLICANT_G_EMAIL}', hocaB: '{secret.E2E_APPLICANT_H_EMAIL}', wantClosed: '"closed":', wantApproval: '"requiresApproval":' }

@@ -1,0 +1,94 @@
+# The screens of realm.auth.signOut: the confirmation page of tedris (apps/tedris/features/auth/sign-out-confirm.tsx), of nizam
+# (apps/nizam/features/auth/sign-out-confirm.tsx) and of nazar (apps/nazar/features/auth/sign-out-confirm.tsx), the busy button of
+# nazar's direct sign-out (apps/nazar/features/account/components/sign-out-button.tsx), and Keycloak's fallback page
+# logout-confirm.ftl on the Medaris theme (apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx, with LogoutConfirmForm in
+# libs/ui/src/giris/message-screen.tsx and the card in auth-card.tsx).
+# The catalog is one file for three apps whose words differ, so a key is the whole next-intl path, namespace first, and not the
+# path under one file's root: `tedris.Auth.signOutTitle` ("Çıkış yapılsın mı?") and `nazar.Auth.signOutTitle` ("Çıkış yapmak
+# istiyor musunuz?") would otherwise be one key. Nizam's are `nizam.SignOutPage.*`, tedris's Hesap sentence
+# `tedrisAccount.AccountProfile.signOutText` (the namespace its useAccountTranslations reads). Keycloak's four keep the key the
+# theme gives them (apps/keycloak-theme/src/login/i18n.ts, the `tr` object, lines 300-303). No message is authored here: the
+# `changes` note is the sentence tedris's Hesap shows beside its sign-out button.
+# Everything is drawn from the code. The page of tedris sits in the app's legacy `<main>` with the top bar over it (drawn by
+# tedris.shell.frame); the pages of nizam and nazar have no chrome (nizam: isBarePath, nazar: frame none). In `signingOut` only what
+# changes while the form is on its way is drawn: the busy button, its status line and, in tedris and nizam, the disabled "Vazgeç".
+schema: delurio-graph/0
+kind: ui
+id: realm.auth.signOut
+flow: realm.auth.signOut
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: tedrisAccount.AccountProfile.signOutText }
+
+nodes:
+  # ---- tedris: /auth/signout ----
+  tedrisMain: { type: page, component: Page, role: main, in: [confirmPage], when: "app == 'tedris'", source: apps/tedris/components/tab-view/index.tsx:87 } # the legacy <main data-legacy-main> the app wraps every /auth page in; no name
+  tedrisCard: { type: page, component: Page, role: region, name: { labelledBy: tedrisTitle }, in: [confirmPage], when: "app == 'tedris'", source: apps/tedris/features/auth/sign-out-confirm.tsx:45 } # <section aria-labelledby>
+  tedrisLogo: { type: text, component: Text, role: img, name: { literal: "Medaris" }, in: [confirmPage], when: "app == 'tedris'", source: apps/tedris/features/auth/sign-out-confirm.tsx:51 } # lg wordmark, no app name under it
+  tedrisTitle: { type: text, component: Heading, role: heading, text: { key: tedris.Auth.signOutTitle }, in: [confirmPage], when: "app == 'tedris'", source: apps/tedris/features/auth/sign-out-confirm.tsx:53 } # h1
+  tedrisBody: { type: text, component: Text, text: { key: tedris.Auth.signOutDescription }, in: [confirmPage], when: "app == 'tedris'", source: apps/tedris/features/auth/sign-out-confirm.tsx:56 }
+  tedrisConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: tedris.Auth.signOutConfirm }, in: [confirmPage], when: "app == 'tedris'", emits: CONFIRM, source: apps/tedris/features/auth/sign-out-confirm.tsx:60 }
+  tedrisCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: tedris.Auth.signOutCancel }, in: [confirmPage], when: "app == 'tedris'", emits: CANCEL, source: apps/tedris/features/auth/sign-out-confirm.tsx:69 } # router.back(), else /home
+  tedrisConfirmBusy: { type: action, component: Button, role: button, text: { key: tedris.Auth.signOutConfirm }, in: [signingOut], disabledIn: [signingOut], when: "app == 'tedris'", source: apps/tedris/features/auth/sign-out-confirm.tsx:63 } # aria-busy and aria-disabled, never disabled
+  tedrisCancelBusy: { type: action, component: Button, role: button, text: { key: tedris.Auth.signOutCancel }, in: [signingOut], disabledIn: [signingOut], when: "app == 'tedris'", source: apps/tedris/features/auth/sign-out-confirm.tsx:73 } # really disabled while busy
+  tedrisBusyStatus: { type: status, component: Status, role: status, text: { key: tedris.Auth.signingOut }, in: [signingOut], when: "app == 'tedris'", source: apps/tedris/features/auth/sign-out-confirm.tsx:64 } # a visually hidden <output> beside the button
+
+  # ---- nizam: /auth/signout ----
+  nizamMain: { type: page, component: Page, role: main, name: { labelledBy: nizamTitle }, in: [confirmPage], when: "app == 'nizam'", source: apps/nizam/features/auth/sign-out-confirm.tsx:38 }
+  nizamLogo: { type: text, component: Text, role: img, name: { literal: "Medaris" }, in: [confirmPage], when: "app == 'nizam'", source: apps/nizam/features/auth/sign-out-confirm.tsx:43 } # md wordmark, no app name under it
+  nizamTitle: { type: text, component: Heading, role: heading, text: { key: nizam.SignOutPage.title }, in: [confirmPage], when: "app == 'nizam'", source: apps/nizam/features/auth/sign-out-confirm.tsx:44 } # h1
+  nizamBody: { type: text, component: Text, text: { key: nizam.SignOutPage.body }, in: [confirmPage], when: "app == 'nizam'", source: apps/nizam/features/auth/sign-out-confirm.tsx:47 }
+  nizamConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: nizam.SignOutPage.confirm }, in: [confirmPage], when: "app == 'nizam'", emits: CONFIRM, source: apps/nizam/features/auth/sign-out-confirm.tsx:49 }
+  nizamCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: nizam.SignOutPage.cancel }, in: [confirmPage], when: "app == 'nizam'", emits: CANCEL, source: apps/nizam/features/auth/sign-out-confirm.tsx:58 } # router.back(), else /
+  nizamConfirmBusy: { type: action, component: Button, role: button, text: { key: nizam.SignOutPage.confirm }, in: [signingOut], disabledIn: [signingOut], when: "app == 'nizam'", source: apps/nizam/features/auth/sign-out-confirm.tsx:52 }
+  nizamCancelBusy: { type: action, component: Button, role: button, text: { key: nizam.SignOutPage.cancel }, in: [signingOut], disabledIn: [signingOut], when: "app == 'nizam'", source: apps/nizam/features/auth/sign-out-confirm.tsx:62 }
+  nizamBusyStatus: { type: status, component: Status, role: status, text: { key: nizam.SignOutPage.busy }, in: [signingOut], when: "app == 'nizam'", source: apps/nizam/features/auth/sign-out-confirm.tsx:53 }
+
+  # ---- nazar: /auth/signout (only by its address, F-E-18) ----
+  nazarMain: { type: page, component: Page, role: main, name: { labelledBy: nazarTitle }, in: [confirmPage], when: "app == 'nazar'", source: apps/nazar/features/auth/sign-out-confirm.tsx:28 } # SystemState without `shell` is the page's <main aria-labelledby>
+  nazarTitle: { type: text, component: Heading, role: heading, text: { key: nazar.Auth.signOutTitle }, in: [confirmPage], when: "app == 'nazar'", source: apps/nazar/features/auth/sign-out-confirm.tsx:29 } # h1
+  nazarBody: { type: text, component: Text, text: { key: nazar.Auth.signOutDescription }, in: [confirmPage], when: "app == 'nazar'", source: apps/nazar/features/auth/sign-out-confirm.tsx:45 } # the <p> of the SystemState
+  nazarConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: nazar.Auth.signOutConfirm }, in: [confirmPage], when: "app == 'nazar'", emits: CONFIRM, source: apps/nazar/features/auth/sign-out-confirm.tsx:32 }
+  nazarCancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: nazar.Auth.signOutCancel }, in: [confirmPage, signingOut], when: "app == 'nazar' and not direct", emits: CANCEL, source: apps/nazar/features/auth/sign-out-confirm.tsx:39 } # href="/"; in signingOut it is still a live link (SOUT-1), where tedris and nizam disable theirs
+  nazarConfirmBusy: { type: action, component: Button, role: button, text: { key: nazar.Auth.signOutConfirm }, in: [signingOut], disabledIn: [signingOut], when: "app == 'nazar' and not direct", source: apps/nazar/features/auth/sign-out-confirm.tsx:34 }
+  nazarBusyStatus: { type: status, component: Status, role: status, text: { key: nazar.Auth.signOutBusy }, in: [signingOut], when: "app == 'nazar' and not direct", source: apps/nazar/features/auth/sign-out-confirm.tsx:35 }
+
+  # ---- nazar's direct button, busy: the person is still on Hesap (or the no-access page), which the other flows draw ----
+  directButtonBusy: { type: action, component: Button, role: button, text: { key: nazar.Account.signOut }, in: [signingOut], disabledIn: [signingOut], when: direct, source: apps/nazar/features/account/components/sign-out-button.tsx:32 } # aria-busy and aria-disabled
+  directBusyStatus: { type: status, component: Status, role: status, text: { key: nazar.Account.signOutBusy }, in: [signingOut], when: direct, source: apps/nazar/features/account/components/sign-out-button.tsx:37 }
+
+  # ---- Keycloak's fallback page: logout-confirm.ftl ----
+  kcMain: { type: page, component: Page, role: main, name: { labelledBy: kcTitle }, in: [keycloakAsks], source: libs/ui/src/giris/auth-card.tsx:41 }
+  kcLogoTedris: { type: text, component: Text, role: img, name: { literal: "Medaris — Tedris" }, in: [keycloakAsks], when: "app == 'tedris'", source: libs/ui/src/mds/logo.tsx:52 } # the client id names the app (app-of-client.ts:9)
+  kcLogoNizam: { type: text, component: Text, role: img, name: { literal: "Medaris — Nizam" }, in: [keycloakAsks], when: "app == 'nizam'", source: libs/ui/src/mds/logo.tsx:52 }
+  kcLogoNazar: { type: text, component: Text, role: img, name: { literal: "Medaris — Nazar" }, in: [keycloakAsks], when: "app == 'nazar'", source: libs/ui/src/mds/logo.tsx:52 }
+  kcTitle: { type: text, component: Heading, role: heading, text: { key: logoutConfirmTitle }, in: [keycloakAsks], source: libs/ui/src/giris/auth-card.tsx:54 } # the one h1, id kc-page-title
+  kcBody: { type: text, component: Text, text: { key: logoutConfirmBody }, in: [keycloakAsks], source: apps/keycloak-theme/src/login/pages/LogoutConfirm.tsx:31 }
+  kcConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: logoutConfirmAction }, in: [keycloakAsks], emits: CONFIRM_AT_KEYCLOAK, source: libs/ui/src/giris/message-screen.tsx:72 } # button#kc-logout, a native submit of form#kc-logout-confirm
+  kcCancel: { type: action, component: LinkButton, role: link, intent: dismiss, text: { key: logoutConfirmCancel }, in: [keycloakAsks], emits: CANCEL_AT_KEYCLOAK, source: libs/ui/src/giris/message-screen.tsx:80 } # a#kc-cancel-logout to the client's base URL; left out when Keycloak has none
+
+edges:
+  - { labelledBy: [tedrisCard, tedrisTitle] }
+  - { labelledBy: [nizamMain, nizamTitle] }
+  - { labelledBy: [nazarMain, nazarTitle] }
+  - { labelledBy: [kcMain, kcTitle] }
+  - { triggers: [tedrisConfirm, signingOut] }
+  - { triggers: [nizamConfirm, signingOut] }
+  - { triggers: [nazarConfirm, signingOut] }
+  - { triggers: [kcConfirm, endingAtKeycloak] }
+  - { triggers: [kcCancel, atAppRoot] }
+
+rules:
+  - { id: SHL-13, rule: "tedris: if `signOut` throws, the button silently becomes pressable again and the error goes only to the console (apps/tedris/features/auth/sign-out-confirm.tsx:26-35); the graph draws it as FORM_NOT_SENT. Nizam (sign-out-confirm.tsx:28-31) and nazar (sign-out-confirm.tsx:22-25, sign-out-button.tsx:26-29) do not catch it at all: the busy state stays and nothing is said. Fix: an Alert tone=error with a retry text, in all three." }
+  - { id: F-E-18, rule: "nazar: the page the graph calls confirmPage is reached only by typing /auth/signout (lib/auth.ts:45 registers only pages.signIn, and nothing links to it). The two real 'Çıkış yap' buttons, on Hesap (features/account/components/account-page.tsx:186) and on the no-access page (features/access/no-access-page.tsx:50), post at once, so tedris and nizam ask and nazar does not. e2e auth-pages#3 asserts the unlinked page. Fix: link it, or delete it and update auth-pages#3 (decision D1)." }
+  - { id: SHL-01, rule: "tedris /auth/signout: no generateMetadata (app/auth/signout/page.tsx), so the tab title is the app's name, the same as sign-in and register (WCAG 2.4.2). Not a node: the graph cannot draw a title. Fix: a title from Auth.signOutConfirm." }
+  - { id: F-E-23, rule: "nazar /auth/signout: no generateMetadata, the tab title is 'Medaris Nazar' (app/auth/signout/page.tsx), as on sign-in, the 404 and the error screen. Fix: a title from nazar.Auth.signOutTitle." }
+  - { id: F-P0-3, rule: "nizam /auth/signout and the signed-out root: no generateMetadata, the tab title is 'Nizam' while the h1 says 'Çıkış yapılsın mı?' (app/auth/signout/page.tsx). Fix: a title from SignOutPage.title." }
+  - { id: K2, rule: "Keycloak's logout-confirm.ftl passes no documentTitle (Template.tsx:57), so its tab title is the sign-in title 'Medaris adresinde oturum açın' (WCAG 2.4.2). Fix: pass documentTitle with logoutConfirmTitle." }
+  - { id: focus-not-set, rule: "None of the four pages gives a control the initial focus: tedris, nizam and nazar draw the card and leave the focus at the top of the document (no autoFocus in the three sign-out-confirm.tsx; nizam's FocusHeading is used on other pages, not on this one), and Keycloak's page has none either. A keyboard user lands before the logo and tabs to 'Çıkış yap'. Fix: focus the h1 or the confirm button on mount." }
+  - { id: MDRS-222, rule: "Answered in the code: signOut sends id_token_hint and post_logout_redirect_uri (libs/auth/src/server/routes.ts:397-402), so Keycloak shows neither its English default page nor its 'Uygulamaya Dön' link while the store can be read. What remains is the fallback page for an unreadable store, now themed and Turkish (LogoutConfirm.tsx), whose 'Vazgeç' goes to the client's base URL: that client setting is Keycloak's configuration (config/keycloak/clients), right in the three local clients and not read in production." }
+  - { id: SOUT-1, rule: "nazar: while the sign-out is on its way, 'Vazgeç' stays a live link to / (apps/nazar/features/auth/sign-out-confirm.tsx:39, no disabled), where tedris (sign-out-confirm.tsx:73) and nizam (sign-out-confirm.tsx:62) disable theirs. A press then starts a second navigation while the form post is in flight and the browser follows the last one to finish, so the person may end on / with the app's session removed and Keycloak's end-session never visited, and no word said (not walked). Fix: disable it while busy, as the others do." }
+  - { id: SOUT-2, rule: "The three confirmation pages say the same thing in different words and only two of them say what stays: tedris and nizam 'Bu tarayıcıda Medaris’ten çıkarsın.' (second person singular), nazar 'Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır.' (plural), and nazar's title is 'Çıkış yapmak istiyor musunuz?' where the others have 'Çıkış yapılsın mı?', which is also Keycloak's own title (logoutConfirmTitle). Hesap's sentence in tedris adds 'Derslerin ve tercihlerin hesabında kalır.' but the page where the choice is made does not. Not a defect in itself; a wording question for the design (canvas medaris/16)." }
+  - { id: SOUT-3, rule: "tedris: /auth/signout is public, so a person whose session ended before they pressed the link meets it as a visitor, with the visitor's top bar, and that bar's 'Giriş yap' carries callbackUrl=/auth/signout (seen: href /auth/signin?callbackUrl=%2Fauth%2Fsignout). Signing in from there ends on the 'Çıkış yapılsın mı?' page again, asking the person who has just signed in whether to sign out. The graph draws only the page itself (`session: gone`). Fix: a visitor has nothing to sign out of: send the page to /discover, or leave callbackUrl off on this page." }
+  - { id: SOUT-4, rule: "tedris /auth/signout: the app's top bar (the logo link, the 'Ana menü' navigation, the theme button, Bildirimler and Hesabım) is drawn inside the legacy <main data-legacy-main> (components/tab-view/index.tsx:87, PhoneChrome is a child of it), so the page has no banner landmark and its navigation sits inside main; the footer is outside it (aria snapshot of the page on 2026-11-15, not in the inventory). The same wrapper holds the other /auth pages. The graph draws the card, which is the flow's, and leaves the bar to tedris.shell.frame. Fix: mount the bar outside the wrapper, or let these pages own their main as the ownsItsMain pages do." }

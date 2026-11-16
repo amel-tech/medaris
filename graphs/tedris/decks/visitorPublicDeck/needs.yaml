@@ -1,0 +1,164 @@
+schema: delurio-graph/0
+kind: needs
+id: tedris.decks.visitorPublicDeck
+status: proposed
+summary: >-
+  What must exist for a person with no account who is handed the address of a deck: tedris.decks.visitorPublicDeck. Each need is
+  what the product must do, from the flow's story; none is read off what the page does today. Nothing here comes from planned.md:
+  no planned feature (P-nn) names these pages. `walked` names an e2e check where one carries the need and nothing else: no replay
+  of this phase has run, so no scenario is named as walked. The scenarios that carry each need are named in a comment (`replay:
+  <scenario>`, bound in binding*.yaml, not yet run).
+
+needs:
+  - id: read-a-public-deck
+    need: >-
+      A person with no account who has the address of a public deck reads it: its name, that it is public, how many cards it holds
+      and of which kind, and its cards, without signing in and without anything of a member's (no collection, no copy, no
+      progress).
+    evidence:
+      - state: deckPage
+      - state: readingDeck
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:184
+      - source: apps/tedrisat/src/flashcard/flashcard.controller.ts:148
+      - source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:39"
+      - source: apps/tedris/features/flashcards/components/deck-public-view.tsx:31
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "shows a public deck and its cards, six at a time, with the way to sign in"
+    note: |-
+      Also drawn as the assertion closed-deck-draws-nothing.
+      replay: manyCards, fewCards (binding.few.yaml), emptyDeck. learn#13 asserts eight cards; the replay's deck has twelve.
+
+  - id: cards-six-at-a-time
+    need: >-
+      A public deck's cards are shown six at a time, with the count shown and a way to show six more, so that a long deck does not
+      fill the page.
+    evidence:
+      - state: deckPage
+      - node: loadMore
+      - node: showing
+      - source: apps/tedris/features/flashcards/components/deck-public-view.tsx:45
+      - source: apps/tedris/features/flashcards/deck-model.ts:114
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "shows a public deck and its cards, six at a time, with the way to sign in"
+    note: "replay: manyCards"
+
+  - id: study-without-saving
+    need: >-
+      A visitor may study a public deck: turn a card and pass it, and nothing is written, neither in the browser's requests nor in
+      the database, and the page says so before they start.
+    evidence:
+      - state: studying
+      - state: studyOver
+      - node: signInNote
+      - source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:38"
+      - source: apps/tedris/features/flashcards/components/study-session.tsx:88
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "'Çalış' studies without writing anything"
+    note: >-
+      learn#14 also counts the non-GET requests the page made; the replay cannot and carries only the database half (the effects
+      nextCard and endsRound count flashcard_progress rows). replay: manyCards, oneCard, fewCards.
+
+  - id: cut-to-ten-cards
+    need: >-
+      A visitor's round is the deck's first ten cards in their order, whatever the size of the deck, so that a stranger is not
+      handed a whole deck to work through.
+    evidence:
+      - state: studying
+      - node: studySubtitle
+      - node: cardRegion
+      - source: apps/tedris/features/flashcards/study-model.ts:13
+    note: >-
+      walked: nothing. learn#14's deck has eight cards, so no e2e check sees the cut. replay: manyCards (twelve cards: "Kart 1 /
+      10").
+
+  - id: closed-deck-asks-for-sign-in-and-says-nothing
+    need: >-
+      A deck that is not public (a private deck, a course's, a köşk's, a medrese's, a hidden one, or no deck) sends the visitor to
+      sign in and back to the same address, with the same answer for every one of them and nothing of the deck in the page, so
+      that the page cannot be used to find out which decks exist.
+    evidence:
+      - state: readingDeck
+      - state: readingStudy
+      - state: handed_over.redirected
+      - source: apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:184
+      - source: "apps/tedris/app/decks/(medaris)/[id]/page.tsx:42"
+      - source: "apps/tedris/app/decks/(medaris)/study/[id]/page.tsx:41"
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "a private deck sends the visitor to sign in and gives nothing away"
+    note: |-
+      Also drawn as the assertion closed-deck-draws-nothing.
+      replay: privateDeck, privateStudy. learn#15 looks for the text "gizli anlam" in the page source; the replay's effect
+      sentAway looks for the seeded deck's name and every one of its cards' backs in both pages.
+
+  - id: member-pages-stay-behind-sign-in
+    need: >-
+      The member pages of Desteler (the list, create, explore, a deck's cards and its edit page) are never shown to a visitor:
+      they are sent to sign in and back, before the page runs.
+    evidence:
+      - state: gate
+      - source: apps/tedris/lib/public-paths.ts:29
+      - source: apps/tedris/proxy.ts:28
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "the pages that stay behind the sign-in still do"
+    note: |-
+      Also drawn as the assertion member-address-never-reads-a-deck.
+      replay: memberPage (/decks), binding.create.yaml, binding.explore.yaml. /decks/<id>/cards and /decks/<id>/edit answer the
+      same 307 (curl as a visitor, 15 Nov 2026) and have no scenario.
+
+  - id: sign-in-from-the-note-keeps-the-page
+    need: >-
+      A visitor who wants their progress kept signs in from the note on the page and comes back to the same deck, or the same
+      study page, not to Ana sayfa.
+    evidence:
+      - state: handed_over.sign_in
+      - node: signInLink
+      - source: apps/tedris/lib/invite-hrefs.ts:9
+      - source: apps/tedris/features/flashcards/components/deck-public-view.tsx:73
+    note: >-
+      walked: nothing by e2e (learn#13 checks the link's href, not the round trip). replay: manyCards walks to the Keycloak
+      address; the trip back is realm.auth.signIn's.
+
+  - id: visitor-sees-no-member-controls
+    need: >-
+      A visitor is not offered what needs an account: no button to add the deck to a collection, none to copy a card, no progress,
+      no card status.
+    evidence:
+      - node: collectButton
+      - node: copyButton
+      - node: readerProgressTitle
+      - node: cardStatus
+      - source: apps/tedris/features/flashcards/components/deck-public-view.tsx:31
+      - test: apps/tedris/e2e/learn.e2e.ts
+        name: "shows a public deck and its cards, six at a time, with the way to sign in"
+    note: learn#13 asserts the collection and copy buttons are absent; the rest of this list is `--absent` in the replay only.
+
+  - id: find-a-public-deck-from-the-app
+    need: >-
+      A visitor can find a public deck from inside the app, for example from Keşfet, so that "Keşfet" in the deck's breadcrumb
+      leads to a place that lists decks. Today the address has to be handed to them.
+    missing: >-
+      decision D1; the API already lists public decks for a caller with no token (listDecks, isPublic=true) and no page calls it;
+      no Linear issue
+    note: >-
+      Drawn on the state discover_opened and on the node crumbDiscover, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: empty-deck-says-it-is-empty
+    need: >-
+      A visitor who studies a public deck with no card is told the deck has no cards, not that nothing is due today and to come
+      back tomorrow.
+    missing: "DCK-27: the empty round reads \"Bugün için bitti / Yarın yeniden bak\"; no Linear issue"
+    note: >-
+      Drawn on the state studyOver and on the nodes nothingTitle and nothingText, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: closed-deck-is-a-real-redirect
+    need: >-
+      The answer to a visitor for a deck the API does not give is a redirect to sign in (a 307 with no page), the same as the
+      member addresses get, not a 200 page that carries the redirect in its stream.
+    missing: >-
+      VPD-1 (new): measured on the stack's dev server, 200 plus a meta refresh; not verified in a production build; no Linear
+      issue
+    note: >-
+      Drawn on the states readingDeck, readingStudy and handed_over.redirected, which the code has: they are not evidence, so that
+      a replay still walks them (SPEC.md §13 leaves out what only missing needs name).

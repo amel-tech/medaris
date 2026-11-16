@@ -1,0 +1,104 @@
+# What every walk of nazar.roster.complete shares: where the page's nodes are found, the events no node sends, the address each state
+# must be at, the data of the walk's own course, and what a completion leaves outside the screen. It makes nothing and removes
+# nothing: the scenarios (binding.yaml, binding.decider.yaml, binding.bare.yaml, binding.gone.yaml, binding.refused.yaml) make their
+# own course and take it away again.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code and the
+# catalog; none was seen in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.roster.complete
+
+# a wide window, so that the course's sidebar (the way the walks come in) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+# The course of the walks, made by helpers/course.mjs in each scenario's `setup` and read from the file it writes ({rc.course}).
+data:
+  rc: { json: ../.local/made/rosCom.json }
+
+# The events no node sends. The box is filled in at once (the filtering is the browser's own, nothing waits for the server); the word
+# a talebe is found by is the first name of one of the twelve (Esma, applicantC), or a part of another's e-mail address (basvuran-d,
+# Salih, applicantD), and the word nobody has is "böyle biri yok".
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+  TYPE_NAME: [{ fill: { role: searchbox, name: Talebe ara, value: Esma } }]
+  TYPE_EMAIL: [{ fill: { role: searchbox, name: Talebe ara, value: basvuran-d } }]
+  TYPE_NOBODY: [{ fill: { role: searchbox, name: Talebe ara, value: böyle biri yok } }]
+  ERASE: [{ fill: { role: searchbox, name: Talebe ara, value: '' } }]
+
+# The address and the words each state must show. Every state of the page is at the same address; an exit has no nodes of this flow, so
+# it needs one. `completing` and `reopening` are the server action's POST to the page's own address (a Next server action answers 200
+# there), so their `call` is set only in binding.yaml, to hold the busy row while it is checked, and never to compare a status.
+states:
+  applications: { url: '{nazar}/ders/*/talebeler' }
+  enrolled: { url: '{nazar}/ders/*/talebeler' }
+  completed: { url: '{nazar}/ders/*/talebeler' }
+  forbidden: { url: '{nazar}/ders/*/talebeler' }
+  loadFailed: { url: '{nazar}/ders/*/talebeler' }
+  not_found: { url: '{nazar}/ders/*/talebeler', text: Sayfa bulunamadı }
+  left: { url: 'about:blank' }
+
+# Where role and name cannot find a node, or find too many. A bare role main is also matched on the page a walk leaves for, so the page
+# is told by its title. A tab is named with its number after the label; a talebe's name is data, so the buttons are found by the start of
+# their label and the first row by what its place on the page says. The table of each tab sits in a wrapper with its own test id
+# (roster-table.tsx:198).
+nodes:
+  studentsPage: { role: main, hasText: '/^Talebeler/' }
+  tabApplications: { role: tab, name: '/^Başvurular/' }
+  tabEnrolled: { role: tab, name: '/^Kayıtlı/' }
+  tabCompleted: { role: tab, name: '/^Tamamlayanlar/' }
+  tabRemoved: { role: tab, name: '/^Erişimi kaldırılanlar/' }
+  countEnrolled: { css: '.mds-tab__count', within: { role: tab, name: '/^Kayıtlı/' }, hasText: '/^\d+$/' }
+  countCompleted: { css: '.mds-tab__count', within: { role: tab, name: '/^Tamamlayanlar/' }, hasText: '/^\d+$/' }
+  panelApplications: { role: tabpanel, name: '/^Başvurular/' }
+  panelEnrolled: { role: tabpanel, name: '/^Kayıtlı/' }
+  panelCompleted: { role: tabpanel, name: '/^Tamamlayanlar/' }
+  # the header cell and its sort button say "Talebe", the search box "Talebe ara"
+  colStudent: { role: columnheader, name: '/^Talebe$/' }
+  sortByName: { role: button, name: '/^Talebe$/' }
+  # the rows of the open tab: the talebe's name is the row header
+  rowsEnrolled: { role: rowheader, within: { testId: roster-enrolled } }
+  rowsCompleted: { role: rowheader, within: { testId: roster-completed } }
+  rowFirstAscending: { css: 'tbody tr:first-child th', within: { testId: roster-enrolled }, hasText: Aylin Başvuran }
+  rowFirstDescending: { css: 'tbody tr:first-child th', within: { testId: roster-enrolled }, hasText: Tahsin Başvuran }
+  rowByName: { css: 'tbody tr th', within: { testId: roster-enrolled }, hasText: Esma Başvuran, nth: 0 }
+  rowByEmail: { css: 'tbody tr th', within: { testId: roster-enrolled }, hasText: Salih Başvuran, nth: 0 }
+  progressBars: { role: progressbar, name: '/^Talebenin girdiği ilerleme: /', within: { testId: roster-enrolled } }
+  # one button a row; the row being decided is the first one (the walk presses the first item, or the only row a search leaves)
+  complete: { role: button, name: '/^Tamamladı say: /' }
+  remove: { role: button, name: '/^Dersten çıkar: /' }
+  reopen: { role: button, name: '/^Yeniden aç: /' }
+  rowComplete: { role: button, name: '/^Tamamladı say: /', nth: 0 }
+  rowRemove: { role: button, name: '/^Dersten çıkar: /', nth: 0 }
+  rowReopen: { role: button, name: '/^Yeniden aç: /', nth: 0 }
+  # the counter is two messages in one paragraph
+  showing: { testId: roster-showing, hasText: '/^\d+ talebeden \d+ tanesi gösteriliyor$/' }
+  moreButton: { role: button, name: Daha fazla göster }
+  # the busy button's hidden <output>; every button of a row that is driven by `loading` draws an empty one, so it is found by its words
+  busyStatus: { css: output, hasText: Yükleniyor }
+  # the toasts: a dialog in the "Bildirimler" region. The talebe in the words is whoever the walk's row was, so the name is a pattern.
+  toastCompleted: { role: dialog, name: Talebe Tamamlayanlar’a taşındı, hasText: '/ dersi tamamladı\.$/' }
+  toastReopened: { role: dialog, name: Kayıt yeniden açıldı, hasText: '/ yeniden Kayıtlı sekmesinde\.$/' }
+  toastGone: { role: dialog, name: İşlem tamamlanamadı, hasText: Bu talebenin kaydı artık böyle değil }
+  toastRefused: { role: alertdialog, name: İşlem tamamlanamadı, hasText: Bunu yapma izniniz yok. }
+  toastFailed: { role: alertdialog, name: İşlem tamamlanamadı, hasText: Bir şeyler ters gitti }
+  failedRegion: { role: region, name: Talebeler okunamadı }
+
+# What a completion leaves in the database, read as the SQL the stack's own Postgres answers (helpers/sql.mjs, a select: nothing is
+# written). The walk's course holds twelve talebe, so a completion leaves eleven enrolled and one completed, and a reopening gives it back.
+effects:
+  completedPlain:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'COMPLETED'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'ENROLLED'"]
+      expect: '"n":11'
+  completedSearched:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'COMPLETED'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'ENROLLED'"]
+      expect: '"n":11'
+  reopened:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'COMPLETED'"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{rc.course}' and status = 'ENROLLED'"]
+      expect: '"n":12'

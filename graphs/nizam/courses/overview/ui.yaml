@@ -1,0 +1,185 @@
+# The screens of nizam.courses.overview: nizam-web's Genel bakış of a course (/kosks/<kosk>/courses/<course>,
+# app/kosks/[id]/courses/[courseId]/page.tsx, drawn by features/kosks/components/course-overview.tsx), the screen it gives for a course the
+# reader may not read (components/errors/no-access.tsx) and the box that says nothing could be read (features/kosks/components/load-failed.tsx).
+# The shell around the page (the sidebar, the köşk picker, the person row, the bell) is nizam.shell.menuPerPersona's. Read from the code on
+# 16 Nov 2026; nothing was opened in a browser.
+#
+# Words: every `CourseOverview.*`, `KoskManage.*`, `NoAccess.*` and `Sessions.*` key is copied from libs/i18n/src/locales/tr/nizam.json, and
+# `common.imamStar.title` from common.json (the app reads them as `nizam.<key>` and `common.<key>`), the key being the path inside the file.
+# The `composed.*` keys are NOT in any i18n file: they are texts the app builds in code from messages and data, written here with their
+# placeholders so a replay can match them:
+#   composed.CourseOverview.courseName      "{course}"       the course's title in the breadcrumb's current item, in a <bdi> (breadcrumb.tsx:36)
+#   composed.CourseOverview.courseLine      "{course} · {line}"   the <p> under the h1: the title in a <bdi>, " · ", then the köşk, "{n} hafta", "{n} celse" and the
+#                                           days and times the course meets, joined by " · " with the empty parts left out (course-overview.tsx:244-274)
+#   composed.CourseOverview.openInNazarName "Nazar’da aç (ders nazırları ve ders ayarları, yeni sekmede açılır)"   the link's accessible name: its text, a
+#                                           space and the visually hidden CourseOverview.openInNazarHint (course-overview.tsx:285-289)
+#   composed.CourseOverview.number          "{n}"            a Stat's big number, formatted for the page's language (libs/ui/src/mds/stat.tsx:47)
+#   composed.CourseOverview.sessionTitle    "{session}"      a celse's title in the row header, in a <bdi> (course-overview.tsx:106)
+#   composed.CourseOverview.when            "{when}"         a celse's time, "17 Kas Sal 21:00", in the viewer's zone (archive/present.ts:77), and the long form
+#                                           in the warning ("17 Kasım Salı 21:00", course-overview.tsx:318)
+#   composed.CourseOverview.ways            "{ways}"         the ways in a Katılım cell names, joined by " · ": "Yüz yüze", the meeting platform (Zoom, Google Meet,
+#                                           Jitsi Meet, YouTube, or "Bilinmeyen platform" and its host), "YouTube yayını" or "Yalnız yayın"
+#                                           (features/courses/components/attendance-cell.tsx:41-80)
+#   composed.CourseOverview.dash            "—"              the Katılım cell of a cancelled celse, a bare dash (course-overview.tsx:143)
+#   composed.CourseOverview.name            "{name}"         a waiting talebe's name, a hoca's name with "Hoca" or the unvan (`formatHocaName`, libs/utils/src/hoca-unvan.js:60)
+#   composed.CourseOverview.applied         "{applied}"      the Başvuru cell: CourseOverview.today "Bugün {time}", CourseOverview.yesterday "Dün {time}" or "29 Eyl 14:05"
+#                                           (features/archive/present.ts:51)
+#   composed.CourseOverview.zone            "{zone}"         the course's zone id as the API gives it, e.g. Europe/Istanbul (course-overview.tsx:484, KOVERVIEW-4)
+#   composed.NoAccess.account               "Giriş yaptığınız hesap: {email}"   (no-access.tsx:33-37)
+# The Katılım "Eksik" badge also carries, visually hidden, Sessions.attendance.missingDetail; the node is named by its two parts, "Eksik: toplantı
+# bağlantısı, canlı yayın ya da yüz yüze işareti yok", and the graph writes the visible word. Samples are invented and neutral.
+# No message says what a flow changes: the flow only reads, so there is no `changes` key.
+schema: delurio-graph/0
+kind: ui
+id: nizam.courses.overview
+flow: nizam.courses.overview
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  course: Örnek Ders
+  line: Örnek Köşk · 2 hafta · 4 celse · Cuma 21:00
+  n: "3"
+  session: Celse 1
+  title: Celse 1
+  when: 17 Kas Sal 21:00
+  ways: Zoom
+  name: Örnek Kişi
+  applied: Bugün 14:05
+  zone: Europe/Istanbul
+  email: ornek@example.test
+  day: Salı
+  number: "1"
+  count: "2"
+
+# Nothing in the page sets a focus: no `initialFocus` on the page and no `focus` here (rule focus-not-set).
+nodes:
+  # ---- the page: the shell's <main>, the breadcrumb, the h1 and its badge, the course's line ----
+  overviewPage: { type: page, component: Page, role: main, in: [overview], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main">: no name, no initialFocus; the binding finds it by the page's own data-testid inside it
+  breadcrumb: { type: page, component: Page, role: navigation, name: { key: CourseOverview.breadcrumbLabel }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:258 } # <nav aria-label="Sayfa yolu"> of a list of two items
+  crumbCourses: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.courses }, in: [overview], emits: OPEN_COURSES, source: apps/nizam/features/kosks/components/course-overview.tsx:260 } # to /kosks/<id>/dersler
+  crumbCurrent: { type: text, component: Text, text: { key: composed.CourseOverview.courseName, params: { course: course.title } }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:260 } # the current item, aria-current=page, never a link
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: CourseOverview.title }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:264 } # h1 "Genel bakış" and the state's badge: its accessible name ends with "Yayında" or "Taslak" (F-W4-17); the tab's title is "Genel bakış" for every course (page.tsx:22)
+  badgePublished: { type: text, component: Text, text: { key: CourseOverview.published }, in: [overview], when: "status == 'published'", source: apps/nizam/features/kosks/components/course-overview.tsx:266 } # a Badge inside the h1
+  badgeDraft: { type: text, component: Text, text: { key: CourseOverview.draft }, in: [overview], when: "status == 'draft'", source: apps/nizam/features/kosks/components/course-overview.tsx:266 } # e2e kosk-view#15
+  courseLine: { type: text, component: Text, text: { key: composed.CourseOverview.courseLine, params: { course: course.title, line: course.line } }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:270 }
+
+  # ---- the three buttons of the page's head ----
+  openInNazar: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: composed.CourseOverview.openInNazarName }, text: { key: CourseOverview.openInNazar }, in: [overview], when: isChief, emits: OPEN_NAZAR, source: apps/nizam/features/kosks/components/course-overview.tsx:277 } # target=_blank and rel=noopener noreferrer, and the new tab is said in the name; to <nazar>/ders/<id>/nazirlar; drawn only for the başnazım and only while NAZAR_URL is set (the local stack sets it); e2e kosk-view#13
+  editSyllabus: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.editSyllabus }, in: [overview], emits: EDIT_SYLLABUS, source: apps/nizam/features/kosks/components/course-overview.tsx:292 } # /edit, which redirects to Müfredat; here the name is true (F-W4-1 is the other three)
+  planSession: { type: action, component: LinkButton, role: link, intent: confirm, text: { key: CourseOverview.planSession }, in: [overview], emits: PLAN_SESSION, source: apps/nizam/features/kosks/components/course-overview.tsx:299 } # the primary button, /edit again: it does not open Celse planla (F-W4-1, F-X-19)
+
+  # ---- the warning: a celse ahead has no way in ----
+  missingAlert: { type: alert, component: Alert, role: status, text: { key: CourseOverview.missingTitle, params: { day: missing.day } }, in: [overview], when: "programme == 'lacking'", source: apps/nizam/features/kosks/components/course-overview.tsx:305 } # a warning tone is role=status, which is not announced when the page loads, only when it changes; the title is the weekday of the first such celse, written in full
+  missingBody: { type: text, component: Text, text: { key: CourseOverview.missingBody, params: { title: missing.title, when: missing.when } }, in: [overview], when: "programme == 'lacking'", source: apps/nizam/features/kosks/components/course-overview.tsx:315 } # names the first such celse only (the first of all ahead, not of the four listed) and holds no link; the row's button is the way to the fix and lands on Müfredat (F-W4-1)
+
+  # ---- the three numbers: a region named by its aria-label, each number a Stat (two spans, the label and the number) ----
+  statsRegion: { type: page, component: Page, role: region, name: { key: CourseOverview.summaryLabel }, in: [overview], when: "answer == 'ok'", source: apps/nizam/features/kosks/components/course-overview.tsx:340 } # <section aria-label="Dersin sayıları">
+  statStudents: { type: text, component: Text, text: { key: CourseOverview.stats.students }, in: [overview], when: "answer == 'ok'", source: apps/nizam/features/kosks/components/course-overview.tsx:344 } # a plain card, not a link (MDRS-291, decision D2)
+  valueStudents: { type: text, component: Text, text: { key: composed.CourseOverview.number, params: { n: stats.enrolled } }, in: [overview], when: "answer == 'ok'", source: apps/nizam/features/kosks/components/course-overview.tsx:346 } # the talebe whose seat is ENROLLED; a COMPLETED one is not counted here
+  statPending: { type: text, component: Text, text: { key: CourseOverview.stats.pending }, in: [overview], when: "answer == 'ok'", source: apps/nizam/features/kosks/components/course-overview.tsx:349 } # a plain card, not a link (MDRS-291)
+  valuePending: { type: text, component: Text, text: { key: composed.CourseOverview.number, params: { n: stats.pending } }, in: [overview], when: "answer == 'ok'", source: apps/nizam/features/kosks/components/course-overview.tsx:351 } # the numbers' own read; it falls by one after an answer to an application, when the page is refreshed (nizam.courses.decideApplications)
+  statWeeks: { type: text, component: Text, text: { key: CourseOverview.stats.weeks }, in: [overview], when: "answer == 'ok'", source: apps/nizam/features/kosks/components/course-overview.tsx:354 } # "Devam eden hafta" (weeks under way) over a number that counts the weeks that have BEGUN (KOVERVIEW-1)
+  valueWeeks: { type: text, component: Text, text: { key: composed.CourseOverview.number, params: { n: stats.started } }, in: [overview], when: "answer == 'ok'", source: apps/nizam/features/kosks/components/course-overview.tsx:356 } # startedWeekCount: the weeks with a live celse dated at or before now (course-stats.repository.ts:24)
+  weeksOf: { type: text, component: Text, text: { key: CourseOverview.stats.weeksOf, params: { count: stats.weeks } }, in: [overview], when: "answer == 'ok'", source: apps/nizam/features/kosks/components/course-overview.tsx:359 }
+  statsFailedAlert: { type: alert, component: Alert, role: alert, text: { key: CourseOverview.loadFailedTitle }, in: [overview], when: "answer == 'statsFailed'", source: apps/nizam/features/kosks/components/course-overview.tsx:333 } # an error Alert is role=alert; in the numbers' place
+  statsFailedText: { type: text, component: Text, text: { key: CourseOverview.loadFailed }, in: [overview], when: "answer == 'statsFailed'", source: apps/nizam/features/kosks/components/course-overview.tsx:334 }
+  statsRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseOverview.retry }, in: [overview], when: "answer == 'statsFailed'", emits: RETRY, source: apps/nizam/features/kosks/components/course-overview.tsx:335 } # router.refresh: the whole page is read again
+
+  # ---- Sıradaki celseler: the nearest four celses ahead, a cancelled one keeping its slot ----
+  nextSection: { type: page, component: Page, role: region, name: { labelledBy: nextHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:366 }
+  nextHeading: { type: text, component: Heading, role: heading, text: { key: CourseOverview.nextHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:368 } # h2, id next-heading
+  allSessions: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.allSessions }, in: [overview], emits: OPEN_SESSIONS, source: apps/nizam/features/kosks/components/course-overview.tsx:371 } # to /kosks/<id>/courses/<id>/sessions
+  sessionsTable: { type: list, component: List, role: table, name: { key: CourseOverview.nextHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:378 } # `responsive="stack"`: explicit table roles, named by the hidden caption
+  columnSession: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.session }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:101 }
+  columnWhen: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.when }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:115 }
+  columnLength: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.length }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:125 }
+  columnAttendance: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.attendance }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:139 }
+  columnStatus: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.status }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:147 }
+  columnSessionActions: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.actions }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:158 } # its text is visually hidden
+  noSessions: { type: text, component: Text, role: cell, text: { key: CourseOverview.noSessions }, in: [overview], when: "programme == 'empty'", source: apps/nizam/features/kosks/components/course-overview.tsx:383 } # the table's one cell, whatever the reason: nothing is ahead, or every celse is behind us
+  rowSession: { type: text, component: Text, role: rowheader, text: { key: composed.CourseOverview.sessionTitle, params: { session: session.title } }, in: [overview], when: hasRows, repeat: sessions, source: apps/nizam/features/kosks/components/course-overview.tsx:106 }
+  rowWeek: { type: text, component: Text, text: { key: CourseOverview.weekNumber, params: { number: session.week } }, in: [overview], when: hasRows, repeat: sessions, source: apps/nizam/features/kosks/components/course-overview.tsx:108 } # the grey line under the title: "Hafta 1"
+  rowWhen: { type: text, component: Text, role: cell, text: { key: composed.CourseOverview.when, params: { when: session.when } }, in: [overview], when: hasRows, repeat: sessions, source: apps/nizam/features/kosks/components/course-overview.tsx:119 }
+  rowLength: { type: text, component: Text, role: cell, text: { key: CourseOverview.minutes, params: { count: session.minutes } }, in: [overview], when: hasRows, repeat: sessions, source: apps/nizam/features/kosks/components/course-overview.tsx:131 } # a cancelled celse keeps its length
+  attendanceMissing: { type: text, component: Text, text: { key: Sessions.attendance.missing }, in: [overview], when: "programme == 'lacking'", repeat: sessions, source: apps/nizam/features/courses/components/attendance-cell.tsx:25 } # a warning Badge "Eksik" and, visually hidden, ": toplantı bağlantısı, canlı yayın ya da yüz yüze işareti yok" (data-testid="attendance-missing"); e2e kosk-view#11
+  attendanceWays: { type: text, component: Text, text: { key: composed.CourseOverview.ways, params: { ways: session.ways } }, in: [overview], when: hasRows, repeat: sessions, source: apps/nizam/features/courses/components/attendance-cell.tsx:41 } # "Zoom", "Yüz yüze", ...: the celses with a way in; e2e kosk-view#11 a-Zoom
+  attendanceCancelled: { type: text, component: Text, text: { key: composed.CourseOverview.dash }, in: [overview], when: hasRows, repeat: sessions, source: apps/nizam/features/kosks/components/course-overview.tsx:143 } # a bare "—" with no text alternative (F-W1-11)
+  statusPlanned: { type: text, component: Text, text: { key: CourseOverview.status.planned }, in: [overview], when: hasRows, repeat: sessions, source: apps/nizam/features/kosks/components/course-overview.tsx:153 } # a celse with no way in is still "Planlandı": the lack is said once, in Katılım
+  statusCancelled: { type: text, component: Text, text: { key: CourseOverview.status.cancelled }, in: [overview], when: hasRows, repeat: sessions, source: apps/nizam/features/kosks/components/course-overview.tsx:151 }
+  rowAdd: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: CourseOverview.addLinkLabel, params: { name: session.title } }, text: { key: CourseOverview.addLink }, in: [overview], when: "programme == 'lacking'", repeat: sessions, emits: EDIT_SESSION, source: apps/nizam/features/kosks/components/course-overview.tsx:165 } # /edit: it lands on Müfredat, not where a link is added (F-W4-1); the visible words are contained in the name (WCAG 2.5.3)
+  rowEdit: { type: action, component: LinkButton, role: link, intent: secondary, name: { key: CourseOverview.editSessionLabel, params: { name: session.title } }, text: { key: CourseOverview.editSession }, in: [overview], when: hasRows, repeat: sessions, emits: EDIT_SESSION, source: apps/nizam/features/kosks/components/course-overview.tsx:165 } # the same address, /edit (F-W4-1); none on a cancelled row
+
+  # ---- Bekleyen başvurular: the waiting applications ----
+  pendingSection: { type: page, component: Page, role: region, name: { labelledBy: pendingHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:389 }
+  pendingHeading: { type: text, component: Heading, role: heading, text: { key: CourseOverview.pendingHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:394 } # h2, id pending-heading
+  studentsLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.students }, in: [overview], emits: OPEN_STUDENTS, source: apps/nizam/features/kosks/components/course-overview.tsx:397 } # to /students, whose first tab is Başvurular
+  pendingTable: { type: list, component: List, role: table, name: { key: CourseOverview.pendingHeading }, in: [overview], when: "applications != 'unreadable'", source: apps/nizam/features/kosks/components/course-overview.tsx:412 }
+  columnTalebe: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.talebe }, in: [overview], when: "applications != 'unreadable'", source: apps/nizam/features/kosks/components/course-overview.tsx:185 }
+  columnApplied: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.applied }, in: [overview], when: "applications != 'unreadable'", source: apps/nizam/features/kosks/components/course-overview.tsx:192 }
+  columnDecide: { type: text, component: Text, role: columnheader, text: { key: CourseOverview.columns.actions }, in: [overview], when: "applications != 'unreadable'", source: apps/nizam/features/kosks/components/course-overview.tsx:206 } # visually hidden
+  noPending: { type: text, component: Text, role: cell, text: { key: CourseOverview.noPending }, in: [overview], when: "applications == 'none'", source: apps/nizam/features/kosks/components/course-overview.tsx:417 }
+  rowName: { type: text, component: Text, role: rowheader, text: { key: composed.CourseOverview.name, params: { name: applicant.name } }, in: [overview], when: hasApplications, repeat: applications, source: apps/nizam/features/kosks/components/course-overview.tsx:188 }
+  rowApplied: { type: text, component: Text, role: cell, text: { key: composed.CourseOverview.applied, params: { applied: applicant.applied } }, in: [overview], when: hasApplications, repeat: applications, source: apps/nizam/features/kosks/components/course-overview.tsx:196 }
+  approveRow: { type: action, component: Button, role: button, intent: confirm, name: { key: CourseOverview.approveLabel, params: { name: applicant.name } }, text: { key: CourseOverview.approve }, in: [overview], when: hasApplications, repeat: applications, emits: APPROVE, source: apps/nizam/features/kosks/components/course-overview.tsx:220 } # per-row busy; what it does is nizam.courses.decideApplications's; the visible word is contained in the name
+  rejectRow: { type: action, component: Button, role: button, intent: secondary, name: { key: CourseOverview.rejectLabel, params: { name: applicant.name } }, text: { key: CourseOverview.reject }, in: [overview], when: hasApplications, repeat: applications, emits: REJECT, source: apps/nizam/features/kosks/components/course-overview.tsx:229 } # a link-style button, natively disabled while any row is busy; no confirmation and no reason (F-W4-7)
+  rosterFailedAlert: { type: alert, component: Alert, role: alert, text: { key: CourseOverview.loadFailedTitle }, in: [overview], when: "applications == 'unreadable'", source: apps/nizam/features/kosks/components/course-overview.tsx:405 } # the same words as the numbers' box
+  rosterFailedText: { type: text, component: Text, text: { key: CourseOverview.loadFailed }, in: [overview], when: "applications == 'unreadable'", source: apps/nizam/features/kosks/components/course-overview.tsx:406 }
+  rosterRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: CourseOverview.retry }, in: [overview], when: "applications == 'unreadable'", emits: RETRY, source: apps/nizam/features/kosks/components/course-overview.tsx:407 }
+
+  # ---- Ders kadrosu: the hocas ----
+  teamSection: { type: page, component: Page, role: region, name: { labelledBy: teamHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:423 }
+  teamHeading: { type: text, component: Heading, role: heading, text: { key: CourseOverview.teamHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:424 } # h2, id team-heading
+  teamList: { type: list, component: List, role: list, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:431 } # a <ul> in a card
+  teamRow: { type: list, component: ListItem, role: listitem, text: { key: composed.CourseOverview.name, params: { name: hoca.name } }, in: [overview], repeat: hocas, source: apps/nizam/features/kosks/components/course-overview.tsx:433 } # an avatar (decorative), the name as `formatHocaName` writes it ("Ad Soyad Hoca" with no unvan), and the caption "Hoca"
+  imamStar: { type: action, component: Button, role: button, intent: secondary, name: { key: common.imamStar.title }, in: [overview], when: "hocas == 'several'", source: apps/nizam/features/kosks/components/course-overview.tsx:443 } # a small Popover button after the imam's name: it opens a bubble on hover, focus and press and moves no focus; e2e kosk-view#11 asserts it. Where the köşk's roster of courses could not be read it is silently missing (course-overview.tsx:93)
+
+  # ---- Ders ayarları: the settings summary ----
+  settingsSection: { type: page, component: Page, role: region, name: { labelledBy: settingsHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:457 }
+  settingsHeading: { type: text, component: Heading, role: heading, text: { key: CourseOverview.settingsHeading }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:462 } # h2, id settings-heading
+  settingsLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: CourseOverview.settings }, in: [overview], emits: OPEN_SETTINGS, source: apps/nizam/features/kosks/components/course-overview.tsx:465 } # /edit: it opens Müfredat, not the settings (F-W4-1); the same words as the h2 beside it
+  infoStatusTerm: { type: text, component: Text, role: term, text: { key: CourseOverview.info.status }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:471 }
+  infoStatusPublished: { type: text, component: Text, role: definition, text: { key: CourseOverview.published }, in: [overview], when: "status == 'published'", source: apps/nizam/features/kosks/components/course-overview.tsx:472 }
+  infoStatusDraft: { type: text, component: Text, role: definition, text: { key: CourseOverview.draft }, in: [overview], when: "status == 'draft'", source: apps/nizam/features/kosks/components/course-overview.tsx:472 }
+  infoEnrollmentTerm: { type: text, component: Text, role: term, text: { key: CourseOverview.info.enrollment }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:475 }
+  infoApprovalRequired: { type: text, component: Text, role: definition, text: { key: CourseOverview.approvalRequired }, in: [overview], when: "enrollment == 'approval'", source: apps/nizam/features/kosks/components/course-overview.tsx:477 }
+  infoOpenEnrollment: { type: text, component: Text, role: definition, text: { key: CourseOverview.openEnrollment }, in: [overview], when: "enrollment == 'open'", source: apps/nizam/features/kosks/components/course-overview.tsx:477 }
+  infoZoneTerm: { type: text, component: Text, role: term, text: { key: CourseOverview.info.timeZone }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:483 }
+  infoZone: { type: text, component: Text, role: definition, text: { key: composed.CourseOverview.zone, params: { zone: course.zone } }, in: [overview], source: apps/nizam/features/kosks/components/course-overview.tsx:484 } # the raw zone id, not a name (KOVERVIEW-4)
+
+  # ---- the screen for a course the reader may not read ----
+  refusedMain: { type: page, component: Page, role: main, in: [refused], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main"> of the shell; no name, no initialFocus (rule focus-not-set)
+  refusedBox: { type: page, component: Page, role: region, name: { labelledBy: refusedTitle }, in: [refused], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState with `shell`: a <section aria-labelledby>
+  refusedTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [refused], source: apps/nizam/components/errors/no-access.tsx:30 } # h1
+  refusedBody: { type: text, component: Text, text: { key: NoAccess.body, params: { name: person.name } }, in: [refused], source: apps/nizam/components/errors/no-access.tsx:44 } # names the Medaris başnazımı; where the directory knows no one it is NoAccess.bodyGeneric, which the stack does not show
+  refusedAccount: { type: text, component: Text, text: { key: composed.NoAccess.account, params: { email: person.email } }, in: [refused], source: apps/nizam/components/errors/no-access.tsx:33 } # left out when the session has no e-mail address
+  refusedBack: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: NoAccess.back }, in: [refused], emits: BACK_HOME, source: apps/nizam/components/errors/no-access.tsx:38 } # a link to "/"
+
+  # ---- the box that says nothing could be read ----
+  loadFailedMain: { type: page, component: Page, role: main, in: [loadFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # <main id="main"> of the shell; the box is all there is in it: no heading, no h1 (KOVERVIEW-2)
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: KoskManage.loadFailedTitle }, in: [loadFailed], source: apps/nizam/features/kosks/components/load-failed.tsx:23 }
+  loadFailedText: { type: text, component: Text, text: { key: KoskManage.loadFailed }, in: [loadFailed], source: apps/nizam/features/kosks/components/load-failed.tsx:24 }
+  loadFailedRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskManage.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/kosks/components/load-failed.tsx:25 } # loading while the page is read again
+
+edges:
+  - { labelledBy: [nextSection, nextHeading] }
+  - { labelledBy: [pendingSection, pendingHeading] }
+  - { labelledBy: [teamSection, teamHeading] }
+  - { labelledBy: [settingsSection, settingsHeading] }
+  - { labelledBy: [refusedBox, refusedTitle] }
+
+rules:
+  - { id: focus-not-set, rule: "No page of this flow moves the focus when it opens: the page nodes carry no `initialFocus` and there is no `focus`. Nothing in apps/nizam/features/kosks/components/course-overview.tsx or app/kosks/[id]/courses/[courseId]/page.tsx calls focus() or sets autoFocus; the overview, the refusal and the box are drawn by whatever the browser or Next's router does after a load. Recorded so the silence is not read as an omission; the inventory does not call it a finding. The links leave the page (a full document request), so there is no return to draw." }
+  - { id: F-W4-1, rule: "Four controls are named after one page and open another. `editHref` is `/kosks/<id>/courses/<id>/edit` (course-overview.tsx:81) and /edit only redirects to /curriculum (edit/page.tsx:16, no guard, no title): 'Müfredatı düzenle' (:294) is true, but 'Celse planla' (:299) does not open Celse planla (/sessions/new), 'Ders ayarları' (:465) does not open the settings (/ayarlar), and a row's 'Toplantı bağlantısı ekle' / 'Düzenle' (:168) does not open the Celseler form that adds a link. A user, and a screen-reader user who trusts the link's name, lands on a page that does not match it; e2e kosk-view#12 cannot pass as written (it waits for the /edit address, which a redirect never commits). Fix: link to /curriculum, /sessions/new, /ayarlar and /sessions. Decision D1." }
+  - { id: F-X-19, rule: "The shared form of F-W4-1, listed by the inventory for the pages that reach /edit: the overview's three links (course-overview.tsx:81), the Talebeler page's 'Derse dön' (students/page.tsx:52), TaughtCourses and the inactive-scopes table (features/inactive-scopes/present.ts:71). Each button lands on the curriculum page, not on the page its name promises. Fix: link each button to its own page." }
+  - { id: F-X-15, rule: "Cited, and it HOLDS on this page: 'Nazar’da aç' opens a new tab and says so in its name, with a visually hidden '(ders nazırları ve ders ayarları, yeni sekmede açılır)' (course-overview.tsx:285-289), and the visible words are contained in the name (WCAG 2.5.3). The finding is about other pages' links that do not say so (kosk-home, account-page, sessions-view.tsx:289-296)." }
+  - { id: F-W4-17, rule: "Cited from the inventory: the <title> is the catalog's 'Genel bakış' with no course or köşk name (page.tsx:22-25), and the h1 holds the title and the state's badge, so its accessible name is 'Genel bakış Yayında' or 'Genel bakış Taslak'; the course's name is only in the line under it and in the breadcrumb. Tabs and history entries are indistinguishable between courses. Fix: put the course's title in <title> and in the h1." }
+  - { id: F-X-10, rule: "The loading file of this page (app/kosks/[id]/courses/[courseId]/loading.tsx:8) is an `aria-busy=true` <div> of skeletons that are aria-hidden (libs/ui/src/mds/skeleton.tsx:20): while the six reads run a screen reader hears nothing. The same finding as F-W1-8 on the köşk home. Fix: add a visually hidden status text 'Yükleniyor' to the skeleton (it needs a catalog key)." }
+  - { id: F-W1-11, rule: "Cited: the Katılım cell of a cancelled celse is a bare '—' with no text alternative here too (course-overview.tsx:143), where the shared AttendanceCell hides a null view behind 'Katılım bilgisi gösterilmez' (attendance-cell.tsx:16-22). The same shape is the Süre cell of a celse with no length (:134). Fix: render <AttendanceCell view={null}> or write 'İptal edildi'." }
+  - { id: KOVERVIEW-1, rule: "Proposed id; not in the inventory. The card 'Devam eden hafta' (weeks under way) shows `startedWeekCount`, the weeks of the programme that have BEGUN: at least one of their live celses is dated at or before now (course-stats.repository.ts:24-58). A course in its fifth week of ten says 5, not 1: a number that only grows, under a label that reads as the current week, with 'Toplam {n} hafta' under it. Whether the owner meant 'weeks so far' was not verified; the words and the number do not say the same thing. Fix: label it 'Başlayan hafta' or count the weeks that are under way." }
+  - { id: KOVERVIEW-2, rule: "Proposed id; not in the inventory. When nothing can be read (the numbers, the köşk or the course fail together), the page is an error Alert alone in <main> (page.tsx:53-63, load-failed.tsx:19-35): no h1 and no heading of any kind, and the tab still says 'Genel bakış'. A screen-reader user who opens the page by its address finds no heading to land on; the words are the köşk page's ('Bölüm yüklenemedi'), not the overview's. The same box serves every köşk page that reads (the same lack as KOSKHOME-3 on the home). Not walkable on the stack; from the code. Fix: give the box a heading, or render it under the page's own h1." }
+  - { id: KOVERVIEW-3, rule: "Proposed id; not in the inventory. The numbers' read decides the refusal, but a failed read of the köşk or of the course is `null`, and `if (!kosk || !course || course.koskId !== kosk.id) notFound()` (page.tsx:65) draws it as 'Bu bölüm için izniniz yok' with a 404: while the numbers answer, a 5xx on GET /courses/:id or GET /kosks/:id tells a nazım of the course that they have no permission, where the page has a retry box for the same failure when the numbers fail too (page.tsx:53). Read from the code (getCourse and getKoskById return null on any error, features/kosks/actions/index.ts:47-70); not walkable on the stack. Fix: tell a failed read apart from a missing record, and draw the retry box for it." }
+  - { id: KOVERVIEW-4, rule: "Proposed id; not in the inventory (the table notes the fact only). The 'Saat dilimi' of the settings summary is the raw zone id, e.g. 'Europe/Istanbul' (course-overview.tsx:484), a string for a program, in a page of Turkish; the settings page writes zones by name. Low severity. Fix: write the zone as the settings page does." }
+  - { id: KOVERVIEW-5, rule: "Proposed id; not in the inventory. A Medaris nazımı who holds platform.kosk_edit is let into a köşk's Dersler (dersler/page.tsx:42-46; tedrisat asks kosk.manage or platform.kosk_edit), where each course's title is a plain link to this page (kosk-course-table.tsx:122-126, drawn whatever the reader holds), and this page refuses them: the numbers' read asks course.staff_read, which a platform permission does not give (seen on the stack: GET /courses/<seeded>/stats as the seeded Medaris nazımı answers 403 AUTHZ_FORBIDDEN). So the list offers a link that ends on 'Bu bölüm için izniniz yok'; the nav graph's `koskCourses->courseOverview` entry has no guard for it. The `refused` scenario of binding.yaml is exactly this arrival, by address. Fix: draw the title as plain text for a reader the overview refuses, or let the Medaris nazımı read the numbers." }
+  - { id: label-in-name, rule: "A node's visible text is contained in its accessible name (WCAG 2.5.3). Holds: the row's button says 'Toplantı bağlantısı ekle' or 'Düzenle' and is named '... : <celse>', 'Onayla' and 'Reddet' are named 'Onayla: <name>' and 'Reddet: <name>', and 'Nazar’da aç' is named 'Nazar’da aç (… yeni sekmede açılır)'." }
+  - { id: warning-not-announced, rule: "The warning for a celse with no way in is an Alert with the warning tone, which is role=status (alert.tsx:23): it is in the page when it loads, so it is not announced; only a change would be. An observation, not a finding (the inventory makes none). Its text names the first such celse only and holds no link (the row's button, which lands on Müfredat, is the way to the fix: F-W4-1)." }

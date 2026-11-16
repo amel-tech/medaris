@@ -1,0 +1,71 @@
+# nazar.courseSettings.access on the local stack: the hoca of a course of the walk's own at http://localhost:4002, and the saves that are accepted.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nazar/courseSettings/access \
+#     --bind graphs/nazar/courseSettings/access/binding.yaml --cover transitions --out <scratchpad>/replay/nazar.courseSettings.access
+#   ... --bind graphs/nazar/courseSettings/access/binding.refused.yaml --cover transitions ...      (the saves that are refused, and the stale ones)
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). The binding loads (`replay <dir> --bind <this file> --emit-spec
+# --out <dir>`, read-only). Every locator, every var and every expectation is from the code, unverified until a walk. binding.common.yaml holds the data,
+# the events, the locators and the effects the two files share.
+#
+# Scenarios of this file:
+#   saves       the main story (e2e course-settings#2): a course that is open, without approval, not in person, in Istanbul, with no sample. The walk enters
+#               through the sidebar's "Ders ayarları" (the nav entry), ticks "Kapalı ders", chooses "Hafta 1 · Celse 1", ticks "Kayıt onayı gereksin" and
+#               "Celseler yüz yüze yapılır", chooses "Berlin", presses Kaydet, sees the toast, reloads and reads each value back. `--cover transitions` also
+#               walks, from the same course: Vazgeç, Esc on each list, the other options, a pressed control put back.
+#   policyOpen  the course sits in a medrese whose two policies hold it closed and its enrolment on approval: the page opens with the two boxes ticked and
+#               shut, each with its reason. The course's own approval flag is false, and the box is ticked all the same (locked-approval-shown-ticked).
+# The refusals are in binding.refused.yaml: `call` on `sendingSample` and `sendingCourse` here only holds the busy screen (Kaydet busy, the controls and
+# Vazgeç off): the save is a Next server action, which answers 200 on the page's own address, so a refusal cannot be told from its status.
+#
+# Not bound, with the reason:
+#   - the second sample write failing after the first landed ('Örnek ders kaydedilemedi; şu an bu dersin örnek dersi yok.'): the stack cannot make it;
+#   - VALIDATION_ERROR: the page's own lists hold only valid values;
+#   - a page edited while a policy holds two of its boxes, and a second round of edits after a save: the graph does not draw them (flow.yaml scope.outOfView);
+#   - the sidebar's aria-current on "Ders ayarları" (e2e course-settings#1 a8): a graph cannot say it.
+schema: delurio-graph/0
+kind: binding
+extends: binding.common.yaml
+flow: nazar.courseSettings.access
+
+# the save is a Next server action: a POST to the page's own address, held while the busy page is checked
+states:
+  sendingSample: { call: '{nazar}/ders/*/ayarlar' }
+  sendingCourse: { call: '{nazar}/ders/*/ayarlar' }
+
+scenarios:
+  # e2e course-settings#1 and #2: every control open, Kaydet waiting for a change; then the five changes in one Kaydet, each read back after a reload.
+  saves:
+    given: { world: saves }
+    as: muderris
+    open: '{nazar}/ders/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersSettings' }
+    setup:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, up]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin }
+    vars:
+      expectLoaded: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectSample: '"isClosed":false,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":"Celse 1","status":"PUBLISHED"'
+      expectSaved: '"isClosed":true,"requiresApproval":true,"inPerson":true,"timeZone":"Europe/Berlin","sample":"Celse 1","status":"PUBLISHED"'
+      expectRefused: unused
+
+  # A policy holds two boxes: opened by address (the entry is the same page), read only. Read only: nothing is saved here.
+  policyOpen:
+    given: { world: policyOpen }
+    as: muderris
+    open: '{nazar}/ders/{made.course}/ayarlar'
+    setup:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, up, --medrese, --lock]
+        expect: 'up '
+    teardown:
+      - run: [node, ../nazar/courseSettings/access/access-data.mjs, down]
+        expect: down
+    samples: { name: '{made.title}', week: '1', firstTitle: Celse 1, secondTitle: Celse 2, city: Berlin }
+    vars:
+      expectLoaded: '"isClosed":true,"requiresApproval":false,"inPerson":false,"timeZone":"Europe/Istanbul","sample":null,"status":"PUBLISHED"'
+      expectSample: unused
+      expectSaved: unused
+      expectRefused: unused

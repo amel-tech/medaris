@@ -1,0 +1,180 @@
+# The contact page of the public site (landing-web, /iletisim): a visitor writes to Medaris. No sign-in, nobody is
+# asked who they are; the page has one form and one server call, POST /api/iletisim, which mails the message to
+# selam@medaris.app with the visitor as Reply-To. Written from the code on 15 Nov 2026 (captured): the form is
+# apps/landing/components/contact-form.tsx, the call apps/landing/app/api/iletisim/route.ts, the mail
+# apps/landing/lib/contact-mail.ts.
+#
+# What the page does today, where it differs from what a visitor needs (inventory findings, apps/landing, section 7):
+#   L1  After a send the form is unmounted, so the focused "Gönder" disappears and the focus falls to the document;
+#       the success alert (role=status) is mounted already holding its text, which many screen readers do not announce.
+#   L2  A field error is never cleared while the visitor fixes the field; only the next press of "Gönder" resets it.
+#   L3  The server's 400 (with the names of the fields at fault), 429, 502 and 503, and a network failure, all show
+#       the same banner; the page has no maxLength and a weaker address check than the server's, so a long message or an
+#       address with a bracket passes the page and then fails with that banner.
+#   L4  <form method="post"> has no action: with no script, a native submit posts to the page's own address.
+# The graph draws what the code does; none of these is fixed here.
+#
+# On the local stack the mail goes to Mailpit (LANDING__SMTP_* in the root .env point at localhost:1025), so the
+# success branch is walked and checked in Mailpit; the other server answers need another setting of the stack and are
+# written in the binding's header.
+schema: delurio-graph/0
+kind: flow
+id: landing.site.contact
+status: captured
+domain: medaris.api
+ui: landing.site.contact
+title: Write to Medaris from the contact page
+summary: >-
+  A visitor opens the contact page, presses "Gönder" on the empty form and is told what is missing, with the focus in
+  the first field that fails. They fill the four fields (name, address, topic, message) and send: the page calls the
+  server, which mails the message to Medaris, and the form is replaced by a card that says it was sent. A medrese owner
+  who followed "Bize yazın" from the home page does the same and picks the topic "Medaris’te ders vermek"; nothing
+  preselects it. When the server says no (no sender configured, a field it refuses, too many messages from one sender,
+  the mail refused, no answer at all) the form stays, keeps what was typed and shows one banner for every cause.
+source: apps/landing/components/contact-form.tsx:29
+
+scope:
+  shows: the contact form from the empty page to the card that says it was sent, and every answer the server can give
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the way into the page: the header and footer links and the home page's \"Bize yazın\" are the navigation graph's entries (landing.nav: frame:site->contact, start->contact)"
+    - "the page's other links: the privacy notice in the form's note and in the card \"İletişim bilgileri\", the questions in the side card; landing.nav draws them"
+    - "the phone layout (below 768 px): the form is the same, the header differs (landing.nav)"
+    - "what a visitor typed being kept when the server says no: the draw shows the form again; the replay's fields keep their values"
+    - "a field that fails the page's own check while the banner is still shown: both show at once, nothing in the flow depends on it"
+    - "a second press of \"Gönder\" while a message is going: the page ignores it (contact-form.tsx:35)"
+    - "the throttle's per-process window (route.ts:29-46): the flow says only that a sender is refused after five messages in ten minutes"
+    - "what happens to the mail after the server handed it over: nothing in landing reads it back"
+
+context:
+  typed:
+    values: [empty, valid, unsafe]
+    initial: empty
+    say:
+      empty: "the form as it opens: nothing typed (a field left empty, or an address that fails the page's pattern, gets the same answer)"
+      valid: "the four fields are filled and both the page and the server accept them"
+      unsafe: "the four fields are filled, the page accepts them and the server refuses one: an address with a bracket or a comma, or a message of more than 5000 characters"
+  answer:
+    values: [sent, notConfigured, tooMany, sendFailed, unreachable]
+    initial: any
+    say:
+      sent: "the server has a sender and mails the message: it answers 200"
+      notConfigured: "the server has no usable sender (LANDING SMTP_HOST unset, or set with the rest wrong): it answers 503 before it reads the message"
+      tooMany: "this sender has already sent five messages in ten minutes, or sixty were sent in all: it answers 429"
+      sendFailed: "the mail server refuses the message or cannot be reached: the server answers 502"
+      unreachable: "the browser gets no answer from the server at all"
+
+effects:
+  fillValid: { set: { typed: valid } }
+  fillUnsafe: { set: { typed: unsafe } }
+
+failures:
+  sending:
+    from: submitContactForm
+    notConfigured: [contact-delivery-not-configured]
+    invalid: [invalid]
+    tooMany: [too-many]
+    sendFailed: [contact-send-failed]
+    network: []
+
+# The main story: the visitor presses "Gönder" on the empty form, is told what is missing, fills the fields and sends
+# again; the server mails the message and the page says so.
+main:
+  given: { answer: sent }
+  events: [SUBMIT, FILL, SUBMIT, DONE]
+
+initial: formPage
+states:
+  formPage:
+    title: The empty form
+    by: human
+    description: >-
+      The page as it opens: a heading, a line of introduction, the form "Bize yazın" with four fields (Ad soyad,
+      E-posta, Konu, Mesaj), a note on what is done with them, and "Gönder"; beside it two cards, one with the contact
+      address and one that points to the questions. Nothing has the focus: the page sets none, so the focus starts at
+      the document. The topic is not preselected, also when the visitor came from the home page's "Bize yazın".
+    source: apps/landing/components/contact-form.tsx:101
+    on:
+      FILL: { target: formPage, effect: [fillValid], say: "they fill the four fields with sound values" }
+      FILL_UNSAFE: { target: formPage, effect: [fillUnsafe], say: "they fill the four fields; the address has a bracket, which the page lets through and the server refuses" }
+      SUBMIT:
+        - { guard: "typed == 'empty'", target: formInvalid, say: "a field is empty or the address fails the page's pattern: nothing is sent", source: "apps/landing/components/contact-form.tsx:39" }
+        - { target: sending, say: "the page's check passes: it sends the four values, trimmed", source: "apps/landing/components/contact-form.tsx:47" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  formInvalid:
+    title: The form says what is missing
+    by: human
+    description: >-
+      Each field that failed the page's check shows its own line under it (the address field's hint is replaced by its
+      line) and carries aria-invalid; the focus goes to the first field that failed, "Ad soyad" when the form is empty.
+      The page sends nothing. The lines are plain spans with no role and no live region; each is the description of its
+      field (aria-describedby), so it is read when the field takes the focus, and the focus goes to the first only (not
+      checked with a screen reader). Finding L2: fixing a field does not clear its line (the replay saw all four stay
+      after the fields were filled); they are cleared together when "Gönder" is pressed again.
+    source: apps/landing/components/contact-form.tsx:42
+    on:
+      FILL: { target: formInvalid, effect: [fillValid], say: "they fill the fields: the four lines stay (L2)" }
+      FILL_UNSAFE: { target: formInvalid, effect: [fillUnsafe], say: "they fill the fields with an address the server will refuse: the four lines stay (L2)" }
+      SUBMIT:
+        - { guard: "typed == 'empty'", target: formInvalid, say: "still incomplete: the lines are shown again and the focus goes to the first field that fails" }
+        - { target: sending, say: "the check passes: the lines are cleared and the message is sent" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  sending:
+    title: The message is sent
+    description: >-
+      POST /api/iletisim with {ad, eposta, konu, mesaj}. "Gönder" is aria-disabled and aria-busy, not disabled, so it
+      keeps the focus; a hidden status says "Mesajınız gönderiliyor". Any banner from an earlier try is gone while it
+      goes. The server checks in this order: a usable SMTP sender (503), the fields (400), the throttle (429), the send
+      (502); only a 200 gives the card. The page cannot tell the answers apart: every status that is not 2xx, and a
+      request that fails, set the one error state (L3).
+    invoke: { action: submitContactForm }
+    source: apps/landing/components/contact-form.tsx:47
+    on:
+      DONE: { guard: "answer == 'sent' and typed == 'valid'", target: sent, say: "the server answers 200 {ok: true}: the form is replaced by the card", source: "apps/landing/components/contact-form.tsx:59" }
+      FAIL.notConfigured: { guard: "answer == 'notConfigured'", target: formFailed, say: "503: the banner, and the visitor is told to write to the address directly", source: "apps/landing/components/contact-form.tsx:59" }
+      FAIL.invalid: { guard: "typed == 'unsafe' and answer != 'notConfigured' and answer != 'unreachable'", target: formFailed, say: "400 with the names of the fields at fault, which the page throws away: the same banner (L3)", source: "apps/landing/components/contact-form.tsx:59" }
+      FAIL.tooMany: { guard: "typed == 'valid' and answer == 'tooMany'", target: formFailed, say: "429: the same banner, with no word about waiting ten minutes (L3)", source: "apps/landing/components/contact-form.tsx:59" }
+      FAIL.sendFailed: { guard: "typed == 'valid' and answer == 'sendFailed'", target: formFailed, say: "502: the same banner (L3)", source: "apps/landing/components/contact-form.tsx:59" }
+      FAIL.network: { guard: "answer == 'unreachable'", target: formFailed, say: "no answer: the same banner (L3)", source: "apps/landing/components/contact-form.tsx:60" }
+
+  formFailed:
+    title: The form could not send
+    by: human
+    description: >-
+      The form with an alert above its fields: "Mesajınız gönderilemedi", with a line that says what was typed is kept
+      and gives the contact address as a mail link. The four values are still in the fields. The alert is announced
+      (role=alert) and the focus stays on "Gönder", where it was when the visitor pressed it. They may press it again,
+      or change the fields first; a 400 needs the fields changed, the others need only time or another setting of the
+      server.
+    source: apps/landing/components/contact-form.tsx:113
+    on:
+      FILL: { target: formFailed, effect: [fillValid], say: "they change the fields to sound values" }
+      SUBMIT: { target: sending, say: "they send it again; the banner goes while it is sent" }
+      NAVIGATE: { target: left, say: "they leave the page; what they wrote is lost" }
+
+  sent:
+    title: The card says the message was sent
+    goal: true
+    by: human
+    description: >-
+      The form is replaced, in the same place, by a card: a success alert with the title "Mesajınız gönderildi" and a
+      line that the answer goes to the address they wrote, and two links, "Ana sayfaya dönün" and "Sık sorulan sorular".
+      The side cards stay. Finding L1: the form is unmounted, so the focused "Gönder" is gone and the focus is on the
+      document; the alert has its text from the moment it is mounted, which many screen readers do not announce. The
+      graph says nothing of the focus here, because the code puts it nowhere.
+    source: apps/landing/components/contact-form.tsx:73
+    on:
+      HOME: { target: home_opened, say: "they follow \"Ana sayfaya dönün\"" }
+      FAQ: { target: faq_opened, say: "they follow \"Sık sorulan sorular\" in the card" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  home_opened: { type: final, title: "The home page opens (landing.nav: contact->start)" }
+  faq_opened: { type: final, title: "The questions page opens (landing.nav: contact->faq)" }
+  left: { type: final, title: The visitor leaves the page, leavesPage: true }
+
+assertions:
+  - { id: only-a-filled-form-is-sent, never: "state == 'sending' and typed == 'empty'", say: "The page sends nothing while a required field is empty or the address fails its pattern", source: "apps/landing/components/contact-form.tsx:43" }
+  - { id: sent-only-after-a-200, never: "state == 'sent' and answer != 'sent'", say: "The card that says the message was sent is shown only when the server answered 200", source: "apps/landing/components/contact-form.tsx:59" }
+  - { id: no-unsafe-message-is-called-sent, never: "state == 'sent' and typed != 'valid'", say: "A message the server refuses is never reported as sent", source: "apps/landing/app/api/iletisim/route.ts:86" }

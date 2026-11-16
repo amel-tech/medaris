@@ -1,0 +1,26 @@
+# nazar.shell.scopeAndMenu for a müderris, on the local stack, in a wide window (1440 x 900): "Hamdi Müderris", MUDERRIS and imam of
+# the three seeded courses and of no medrese. The picker is a menu with the Dersler group alone (no Medrese group), the course menu has
+# fifteen entries (he holds every course permission by role), Pano of the course is the course's own page since he runs no medrese
+# (SCOPE-2), and no number is drawn: every celse of "Bina ve İzhar Şerhi" has a meeting link and it takes anyone, so nothing waits.
+#   node apps/engine/src/cli.ts replay graphs/nazar/shell/scopeAndMenu --bind graphs/nazar/shell/scopeAndMenu/binding.hoca.yaml \
+#     --to wide --to picking --to kept --absent --out <dir>
+# NOT RUN: written without a replay. It makes and removes nothing: the stack's seed is the data (STACK.md). The three courses are the
+# seed's; if another walk has made someone a second müderris of one of them, that row carries the imam's star (out of view).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nazar.shell.scopeAndMenu
+
+browser: { width: 1440, height: 900 }
+
+scenarios:
+  hoca:
+    given: { opensAt: wide, who: hoca, counts: none }
+    as: muderris
+    open: '{nazar}/ders/{seed.courses.open}'
+
+nodes:
+  pickerButton: { role: button, name: '/^Kapsam değiştir: (Bina ve İzhar Şerhi|İsâgûcî ile Mantığa Giriş|Nahiv Metinleri)$/' }
+  rowCourse: { css: '[role=menuitem][href^="/ders/"]', hasText: '/^(Bina ve İzhar Şerhi|İsâgûcî ile Mantığa Giriş|Nahiv Metinleri)/' }
+  courseDetail: { css: '[role=menuitem][href^="/ders/"] .mds-caption', hasText: '/^Hoca\s*·\s*Süleymaniye Köşkü$/' }
+  currentCourseRow: { css: '[role=menuitem][href^="/ders/"][aria-current=true]', hasText: Bina ve İzhar Şerhi }

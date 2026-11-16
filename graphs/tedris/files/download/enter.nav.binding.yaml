@@ -1,0 +1,9 @@
+# The way into tedris.files.download on a celse's page: the course page of the walk's own course, then the card's "Derse devam et" (the next
+# celse). tedris.nav's own binding gives no locator for an entry that needs an item (`data: true`), so this file names the celse by its address.
+schema: delurio-graph/0
+kind: binding
+nav: tedris.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  'course->celse CoursePage.continue': { css: 'a[href="/courses/{course}/lessons/{lesson}"]', nth: 0 }

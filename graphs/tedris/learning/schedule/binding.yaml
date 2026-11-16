@@ -1,0 +1,39 @@
+# tedris.learning.schedule on the local stack (graphs/README.md, "The stack and the bindings"): Programım (tedris-web, :4000), each
+# scenario arriving by the top bar's "Programım" link (the tedris navigation graph's entry frame:app->schedule).
+#   node apps/engine/src/cli.ts replay graphs/tedris/learning/schedule --bind graphs/tedris/learning/schedule/binding.yaml --out <dir>
+#   ... --bind binding.yaml --to emptyWeek --out <dir>
+#   ... --bind binding.mixed.yaml --to week --out <dir>
+#
+# What each scenario starts from (the stack's seed, STACK.md):
+#   talebe  (the main story)  the seeded TALEBE, enrolled in the three seeded courses: Nahiv Metinleri (Mon and Wed 20:30), Bina ve
+#           İzhar Şerhi (Tue and Thu 21:00) and İsâgûcî ile Mantığa Giriş (Sat 14:00), all published, so every window of the seed holds
+#           five celses, each still to come: "Planlandı", a calendar button, and a line that says where it meets (the platform chip for
+#           the first Nahiv celse, which has a meeting link, the no-link sentence for the others). Nothing is created and nothing is
+#           removed: the walk only reads. The main story presses "Sonraki yedi günü göster" and "Bugüne dön" and types an address with
+#           a bad day (e2e schedule#3 and #4), then opens a celse. If another walk cancels, adds an exam to or puts a celse on air in
+#           one of the three seeded courses, `rows: ahead` no longer holds for this account.
+#   empty   applicantD, a spare talebe with no enrolment anywhere: "Bu yedi günde celsen yok." in every window. Nothing is made.
+#           (`other` is not used: tedris.course.apply and tedris.learning.myCourses give it a seat while they walk.)
+# The scenario with every look of a row is binding.mixed.yaml.
+# Walked once on 15 Nov 2026, before the owner moved the replays to the end of the round, and both passed: the main story (`talebe`,
+# 10 events, the nav entry and the five reads, ending on a celse's page) and `--to emptyWeek` (`empty`). Everything else is for the walk
+# phase: `mixed` (never run), the exits `calendar_menu_opened`, `account_opened`, `subscription_opened`, `left`, and the events JOIN,
+# OPEN_CALENDAR_MENU, OPEN_ZONE, OPEN_SUBSCRIPTION and NAVIGATE. Not walkable on the stack at all: every `failed` value (tedrisat
+# answers every read; the stack has no way to make one refuse) and `RETRY`.
+# `call` is not used on any state: the read is server-side, so the browser makes no fetch to hold.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.learning.schedule
+
+scenarios:
+  talebe:
+    given: { answer: listed, following: listed, rows: ahead }
+    as: talebe
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->schedule' }
+  empty:
+    given: { answer: empty, following: empty, rows: ahead }
+    as: applicantD
+    open: '{tedris}/home'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:app->schedule' }

@@ -1,0 +1,11 @@
+# The nazar navigation graph's binding, with the one entry nazar.decks.import's `onDeckPage` scenario needs: a deck's card on Ders desteleri. The entry is
+# `data: true` (a card per deck of a course) and the nav binding skips it because the stack seeds no deck in the course it opens; here the walk's own
+# course has two, "Aktarma denemesi A" and "B", and the card of the first is pressed. The link's name is a long concatenation of the cover's
+# initials, the title, "0 kart · Kelime", "Taslak" and "talebe henüz görmüyor" (F-D1-23), so it is found by the title inside it.
+schema: delurio-graph/0
+kind: binding
+nav: nazar.nav
+extends: ../../nav/binding.yaml
+
+entries:
+  dersDeck->dersDeckOne: { role: link, name: '/Aktarma denemesi A/' }

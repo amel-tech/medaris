@@ -1,0 +1,117 @@
+# The screens of tedris.decks.editOrDelete: the owner's page of a deck (/decks/<id>) behind, the "Desteyi düzenle" dialog (opened by the route
+# /decks/<id>/edit) and the "Desteyi sil?" alertdialog over it, and the toasts. Read from apps/tedris/features/flashcards/components/{deck-detail-page,
+# deck-header,deck-owner-overview,deck-edit-dialog}.tsx and the kit's libs/ui/src/mds/{dialog,alert-dialog,button,field,toast}.tsx on 15 Nov 2026,
+# not seen in a browser; the words are copied from libs/i18n/src/locales/tr/tedris.json (namespace Decks, read by the app as tedris.Decks).
+#
+# Words that are not in the app's i18n file (catalog keys `composed.*`, each with the code line it comes from):
+#   composed.Deck.name            "{title}"          the deck's name, drawn as data: the h1 (deck-header.tsx:54-56) and the name box's value (deck-edit-dialog.tsx:50)
+#   composed.Deck.newName         "{newTitle}"       the same after a save, with the name the walk typed
+#   composed.Deck.description     "{description}"    the deck's description, drawn as data (deck-header.tsx:105-107, deck-edit-dialog.tsx:51)
+#   composed.Deck.newDescription  "{newDescription}" the same after a save
+#   composed.Dialog.close         "Kapat"            the close icon of both dialogs: the kit's default `closeLabel` (libs/ui/src/mds/dialog.tsx:62, alert-dialog.tsx:47)
+#   composed.AlertDialog.cancel   "Vazgeç"           the delete dialog's cancel button: the kit's default `cancelLabel` (libs/ui/src/mds/alert-dialog.tsx:42)
+#   composed.Button.loading       "Yükleniyor"       the busy buttons' hidden status: the kit's default `loadingLabel` (libs/ui/src/mds/button.tsx:62)
+# Changes.note is the one entry that is NOT copied from the app: the app has no message that says what the flow changes for both its writes ("Deste
+# güncellendi" only confirms a save, and a delete has none), so it is one short, factual Turkish sentence written for this flow.
+#
+# What is not drawn (the world is open): the app's top bar and footer (tedris.shell.frame), the owner's header (breadcrumb, caption, tabs, "Çalış"), the
+# progress and sample-card sections and the aside's "Kimler görebilir" card with its publication buttons (tedris.decks.publish), the dialog's eyebrow (the
+# deck's name again) and the toasts' close buttons.
+schema: delurio-graph/0
+kind: ui
+id: tedris.decks.editOrDelete
+flow: tedris.decks.editOrDelete
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: "Deneme destesi: düzenleme"
+  newTitle: "Deneme destesi: düzenlendi"
+  description: Düzenlemeden önceki açıklama.
+  newDescription: Düzenlemeden sonraki açıklama.
+  count: "3"
+  min: "5"
+
+# The deck's page keeps no focus of its own on load and none after the edit dialog closes (the page was loaded anew to open it, so Base UI has no opener
+# to give the focus back to: DCK-18), so the page node has no `initialFocus` and no `focus` entry names a state; the graph says nothing of the focus where
+# the code says nothing. Only the delete confirmation has an opener, and it says so below.
+nodes:
+  # ---- the deck's page, behind both dialogs: drawn only where no dialog is open (an open modal makes it inert) ----
+  deckPage: { type: page, component: Page, role: main, in: [overview, saved, deletingClosed], source: apps/tedris/features/flashcards/components/deck-detail-page.tsx:55 } # the page's own <main>; it has no name; the app draws no other <main> on /decks/*
+  deckHeading: { type: text, component: Heading, role: heading, text: { key: composed.Deck.name, params: { title: deck.title } }, in: [overview, deletingClosed], source: apps/tedris/features/flashcards/components/deck-header.tsx:54 } # the h1, dir=auto; the breadcrumb's last item repeats the name (not drawn)
+  deckHeadingSaved: { type: text, component: Heading, role: heading, text: { key: composed.Deck.newName, params: { newTitle: deck.newTitle } }, in: [saved], source: apps/tedris/features/flashcards/components/deck-header.tsx:54 } # after the refresh: the name that was typed
+  statusPrivate: { type: text, component: Text, text: { key: Decks.statusPRIVATE }, in: [overview, saved, deletingClosed], when: "publication == 'private'", source: apps/tedris/features/flashcards/components/deck-header.tsx:59 } # a badge with a padlock icon
+  statusPending: { type: text, component: Text, text: { key: Decks.statusPENDING }, in: [overview, saved, deletingClosed], when: "publication == 'pending'", source: apps/tedris/features/flashcards/components/deck-header.tsx:59 } # a badge with a clock icon; an edit leaves it as it is
+  deckDescription: { type: text, component: Text, text: { key: composed.Deck.description, params: { description: deck.description } }, in: [overview, deletingClosed], source: apps/tedris/features/flashcards/components/deck-header.tsx:105 }
+  deckDescriptionSaved: { type: text, component: Text, text: { key: composed.Deck.newDescription, params: { newDescription: deck.newDescription } }, in: [saved], source: apps/tedris/features/flashcards/components/deck-header.tsx:105 }
+  deckAsideTitle: { type: text, component: Heading, role: heading, text: { key: Decks.deckTitle }, in: [overview, saved, deletingClosed], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:237 } # h2 of the aside's "Deste" card
+  deckAsideText: { type: text, component: Text, text: { key: Decks.deckText }, in: [overview, saved, deletingClosed], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:238 }
+  editLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: Decks.edit }, in: [overview, saved, deletingClosed], emits: EDIT, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240 } # a plain <a href="/decks/<id>/edit">: a full page load, and it opens a dialog (DCK-18)
+  deleteButton: { type: action, component: Button, role: button, intent: secondary, text: { key: Decks.delete }, in: [overview, saved, deletingClosed], emits: DELETE, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:247 } # ghost variant with a trash icon; the opener of the confirmation
+
+  # ---- the success toast of a save: Base UI's, in the "Bildirimler" region; low priority, so it closes by itself after six seconds ----
+  toastSaved: { type: status, component: Status, role: dialog, name: { key: Decks.savedTitle }, text: { key: Decks.savedTitle }, in: [saved], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:89 } # a title only, no description
+
+  # ---- the error toast of a delete that was refused: tone error, so it stays until closed (high priority: Base UI gives it role alertdialog) ----
+  toastDeleteFailed: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: toastDeleteFailedTitle }, in: [overview], when: "last == 'deleteFailed'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:95 }
+  toastDeleteFailedTitle: { type: text, component: Text, text: { key: Decks.deleteFailedTitle }, in: [overview], when: "last == 'deleteFailed'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:97 }
+  toastDeleteFailedText: { type: text, component: Text, text: { key: Decks.tryAgain }, in: [overview], when: "last == 'deleteFailed'", source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:98 }
+
+  # ---- Desteyi düzenle: a form Dialog over the page; the scrim does not close it ----
+  editDialog: { type: page, component: Page, role: dialog, name: { labelledBy: editDialogTitle }, in: [editForm, filled, invalid, saving], initialFocus: titleField, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:95 } # the focus starts in the name box (deck-edit-dialog.tsx:105); no returnsFocus: the dialog has no opener to give it back to (DCK-18)
+  editDialogTitle: { type: text, component: Heading, role: heading, text: { key: Decks.editTitle }, in: [editForm, filled, invalid, saving], source: libs/ui/src/mds/dialog.tsx:87 } # Base UI Dialog.Title: an h2
+  editClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Dialog.close }, in: [editForm, filled, invalid, saving], emits: CLOSE, source: libs/ui/src/mds/dialog.tsx:97 } # an icon button named only by aria-label; live while the call is out (EDITDEL-1)
+  requiredNote: { type: text, component: Text, text: { key: Decks.required }, in: [editForm, filled, invalid, saving], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:116 } # "* zorunlu alan"
+  titleField: { type: field, component: TextField, role: textbox, text: { key: Decks.nameLabel }, value: { key: composed.Deck.name, params: { title: deck.title } }, in: [editForm, filled, invalid, saving], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:123 } # holds the deck's name; maxLength 100; the "*" is decorative and the control is not `required` (DCK-07)
+  titleHelp: { type: text, component: Text, text: { key: Decks.nameHelp }, in: [editForm, filled, saving], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:119 }
+  titleRequired: { type: text, component: Text, text: { key: Decks.nameRequired }, in: [invalid], when: "said == 'noName'", source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:62 } # replaces the help line; not a live region (DCK-06)
+  titleShort: { type: text, component: Text, text: { key: Decks.nameTooShort, params: { min: limit.min } }, in: [invalid], when: "said == 'shortName'", source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:63 }
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: Decks.descriptionLabel }, value: { key: composed.Deck.description, params: { description: deck.description } }, in: [editForm, filled, invalid, saving], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:133 } # a text area of three rows; maxLength 1000
+  descriptionHelp: { type: text, component: Text, text: { key: Decks.descriptionHelp }, in: [editForm, filled, invalid, saving], source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:132 }
+  pendingAlert: { type: alert, component: Alert, role: status, name: { key: Decks.pendingTitle }, text: { key: Decks.pendingText }, in: [editForm, filled, invalid, saving], when: "publication == 'pending'", source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:141 } # a neutral Alert is a status; drawn only while a request waits
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: Decks.cancel }, in: [editForm, filled, invalid, saving], emits: CANCEL, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:108 } # live while the call is out (EDITDEL-1)
+  save: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.save }, in: [editForm, filled, invalid, saving], disabledIn: [saving], emits: SUBMIT, source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:109 } # never natively disabled: busy (aria-disabled, aria-busy) while the call is out
+  busySaving: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [saving], source: libs/ui/src/mds/button.tsx:114 } # the hidden <output> beside "Kaydet"; empty when the button is not busy
+  toastSaveFailed: { type: alert, component: Alert, role: alertdialog, name: { labelledBy: toastSaveFailedTitle }, in: [filled, overview], when: "last == 'saveFailed'", source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:82 } # stays until closed; portaled outside the modal dialog: whether the keyboard reaches it was not verified
+  toastSaveFailedTitle: { type: text, component: Text, text: { key: Decks.saveFailedTitle }, in: [filled, overview], when: "last == 'saveFailed'", source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:84 }
+  toastSaveFailedText: { type: text, component: Text, text: { key: Decks.tryAgainKept }, in: [filled, overview], when: "last == 'saveFailed'", source: apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:85 } # says what was typed is kept: true in `filled`, false in `overview` after the dialog was closed (EDITDEL-1)
+
+  # ---- Desteyi sil?: the kit's AlertDialog; role alertdialog, the scrim does not close it, the focus starts on "Vazgeç" ----
+  deleteDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: deleteDialogTitle }, in: [confirmDelete, deleting], initialFocus: deleteCancel, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:254 } # the focus starts on "Vazgeç" (libs/ui/src/mds/alert-dialog.tsx:62-65)
+  deleteDialogTitle: { type: text, component: Heading, role: heading, text: { key: Decks.deleteTitle }, in: [confirmDelete, deleting], source: libs/ui/src/mds/alert-dialog.tsx:74 } # h2
+  deleteBody: { type: text, component: Text, text: { key: Decks.deleteText, params: { title: deck.title, count: deck.count } }, in: [confirmDelete, deleting], source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:264 } # the whole body is the dialog's description (DCK-24); says nothing of readers or requests (decision D2)
+  deleteClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Dialog.close }, in: [confirmDelete, deleting], emits: CLOSE, source: libs/ui/src/mds/alert-dialog.tsx:82 } # live while the call is out (DCK-30)
+  deleteCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: composed.AlertDialog.cancel }, in: [confirmDelete, deleting], emits: CANCEL, source: libs/ui/src/mds/alert-dialog.tsx:95 } # the focus starts here; live while the call is out (DCK-30)
+  deleteConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: Decks.delete }, in: [confirmDelete, deleting], disabledIn: [deleting], emits: CONFIRM_DELETE, source: apps/tedris/features/flashcards/components/deck-owner-overview.tsx:259 } # destructive variant; busy (aria-disabled, aria-busy) while the call is out
+  busyDeleting: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [deleting], source: libs/ui/src/mds/button.tsx:114 }
+
+edges:
+  - { labelledBy: [editDialog, editDialogTitle] }
+  - { labelledBy: [deleteDialog, deleteDialogTitle] }
+  - { labelledBy: [toastSaveFailed, toastSaveFailedTitle] }
+  - { labelledBy: [toastDeleteFailed, toastDeleteFailedTitle] }
+  - { triggers: [editLink, editForm] }
+  - { triggers: [deleteButton, confirmDelete] }
+  - { triggers: [save, saving] }
+  - { triggers: [deleteConfirm, deleting] }
+  - { returnsFocus: [deleteDialog, deleteButton] } # "Vazgeç", "Kapat" or Esc: the opener is a plain button, so Base UI restores the focus to it; not verified in a browser
+
+rules:
+  - { id: DCK-18, rule: "The edit dialog is a route opened by a link: 'Düzenle' is an <a href=\"/decks/<id>/edit\"> (deck-owner-overview.tsx:240), so opening it is a full page load, and every way out ('Vazgeç', the close icon, Esc, a save) is router.replace('/decks/<id>') (deck-edit-dialog.tsx:56,90). Base UI has no opener element to restore the focus to, so the focus lands on nothing after the dialog closes, and the graph draws no returnsFocus edge for it. Not verified in a browser. Fix: after the replace, focus the page heading or the 'Düzenle' link." }
+  - { id: DCK-06, rule: "A refused name shows its message under the field and returns without moving the focus (deck-edit-dialog.tsx:67-71); Base UI's Field.Error has no role and no aria-live (libs/ui/src/mds/field.tsx:50-58), so the error is read only when the person tabs back to the field. Not verified with a screen reader. Fix: focus the field on a refused submit, or make the message a live region." }
+  - { id: DCK-07, rule: "`Field required` only draws a decorative '*' (libs/ui/src/mds/field.tsx:42-46); the name box does not carry `required` or `aria-required` (deck-edit-dialog.tsx:123), so assistive technology is not told it is required; the sentence '* zorunlu alan' says so for sighted people. Fix: pass `required` to the Input." }
+  - { id: DCK-23, rule: "Words not in the catalog: the close icons' 'Kapat' and the delete dialog's 'Vazgeç' are the kit's defaults (libs/ui/src/mds/dialog.tsx:62, alert-dialog.tsx:42,47; the deck delete passes neither), and the busy buttons' 'Yükleniyor' is the kit's (button.tsx:62); the toasts' close button 'Kapat' is toast.tsx:97. Harmless while the app is Turkish only. Fix: pass closeLabel, cancelLabel and loadingLabel from the catalog." }
+  - { id: DCK-24, rule: "The whole body of a Dialog (here the form) is the Base UI Dialog.Description (libs/ui/src/mds/dialog.tsx:103-112), and the delete dialog's text is its AlertDialog description, so aria-describedby points at the whole content. Not verified with a screen reader. Fix: describe the dialog with a short sentence only." }
+  - { id: DCK-26, rule: "readDeck has no reauthIfRefused (features/flashcards/reads.ts:69-87), which the list, explore and study reads have: a token tedrisat refuses (401) on /decks/<id> or /decks/<id>/edit lands on the segment's error page instead of re-authenticating. Not verified end to end." }
+  - { id: DCK-28, rule: "app/decks/(medaris)/[id]/edit/page.tsx has no generateMetadata, so the tab title while the edit dialog is open is the app's root 'Medaris Tedris' (measured on the refusal screens of the same route by tedris.decks.accessRefusals), while /decks/<id> says '<name> | Desteler'. After the replace the title changes to the deck's. Fix: add one." }
+  - { id: DCK-30, rule: "While 'Desteyi sil' is working, 'Vazgeç', 'Kapat' and Esc still close the dialog (onOpenChange={setConfirmOpen}, deck-owner-overview.tsx:256) but the request is not cancelled: the deck is deleted and the page leaves for /decks although the person chose to cancel. The graph draws it as deletingClosed. Not walked. Fix: ignore close requests while `deleting`." }
+  - { id: EDITDEL-1, rule: "new, provisional id. The same holds for the edit dialog: while 'Kaydet' is busy, 'Vazgeç', 'Kapat' and Esc call close() = router.replace('/decks/<id>') (deck-edit-dialog.tsx:56,97) and nothing cancels the server action. The save then finishes with the dialog gone: success raises 'Deste güncellendi', a refusal raises 'Kaydedilemedi' whose text says 'yazdıkların korundu' (what you typed is kept), over a page that has no form. The graph draws it as savingClosed. Not walked. Fix: ignore close requests while busy, or keep the dialog open until the call answers." }
+  - { id: EDITDEL-2, rule: "new, provisional id. A successful delete says nothing: remove() calls router.push('/decks') with no toast (deck-owner-overview.tsx:88-92), where a save raises 'Deste güncellendi' and a card's delete raises 'Kart silindi' (Decks.cardDeletedTitle). The catalog has no 'deckDeleted' message. The only sign is the page changing, which a screen-reader user hears as a new page and a sighted one sees as a list with one row fewer; the most final write of the screen is the only one that confirms nothing. Fix: a success toast on /decks (the DismissStaleToasts rule keeps a toast fired just before the push)." }
+  - { id: EDITDEL-3, rule: "new, provisional id, derived by reading and not run. The API does not trim or reject a blank name: UpdateFlashcardDeckDto takes the create DTO's @MinLength(5) on the raw string (apps/tedrisat/src/flashcard/dto/create-flashcard-deck.dto.ts:16-19), so PATCH or POST with a title of five spaces is accepted and stored, and the deck is listed with a blank name. This page trims first (actions/index.ts:56-58) and refuses an empty name (deck-model.ts:157), so only an API client reaches it. Fix: @Transform to trim, then validate." }
+  - { id: EDITDEL-4, rule: "new, provisional id, NOT VERIFIED in a browser. deleteDeck calls revalidateDecks() (actions/index.ts:19-24), which revalidates /decks/[id] and /decks/[id]/cards; in a Server Action Next re-renders the page the person is on in the same response, and the deck behind /decks/<id> is already gone, so loadDeckPage calls notFound() (deck-page-data.ts:36). The page may draw 'Sayfa bulunamadı' for the time between the action's answer and the router.push('/decks') of remove(), with the dialog gone. decks#16 asserts only the final address. Fix: revalidate only /decks and /decks/explore after a delete, or push before revalidating." }
+  - { id: deck-edit-updated-at, rule: "API, the domain's invariant deck-edit-bumps-updated-at holds: false. PATCH /flashcard/decks/{id} sets only the fields sent: the column `updated_at` has no onUpdate (apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:84) and FlashcardDeckRepository.update does not set it (flashcard-deck.repository.ts:203-218), so an edit never bumps it, although the köşk's deck list is ordered by it (deck-review.repository.ts:358) and nizam's köşk decks view shows it (apps/nizam/features/deck-review/components/kosk-decks-view.tsx:209). Nothing on this page shows the date, so the talebe does not see it; a nazım's deck list is stale. Not walked: the effect check reads the title and the status, and does not assert the date." }
+  - { id: accepted-write-500, rule: "API, the domain's invariant accepted-write-never-500 holds: false. PATCH /flashcard/decks/{id} with the empty body {} passes the DTO and leaves drizzle no value to set (flashcard-deck.repository.ts:203-218), so it answers 500; so does a JSON null title or tags (derived by reading, not run). This page cannot send it: updateDeck always sends a trimmed title and a description (actions/index.ts:53-59), and the form sends nothing when nothing changed (deck-edit-dialog.tsx:72). It is drawn as the failure class `failed` (INTERNAL_ERROR) of `saving` and is not bound." }
+  - { id: focus-not-set, rule: "The deck's page sets no focus on load or after a dialog closes: no autoFocus and no focus() in features/flashcards other than the dialogs' initialFocus. The page node has no `initialFocus` and no `focus` entry names a state; recorded so that the silence is not read as an omission." }
+  - { id: label-in-name, rule: "A button's or link's visible text is contained in its accessible name (WCAG 2.5.3): 'Düzenle', 'Desteyi sil', 'Kaydet', 'Vazgeç' carry no other name. The icon buttons 'Kapat' have a name and no text. Holds." }
+  - { id: confirm-before-deleting, rule: "'Desteyi sil' on the page opens an alertdialog and sends nothing; the confirmation's focus starts on 'Vazgeç' and the scrim does not close it (kit AlertDialog); the delete is sent only by the destructive button inside it (decks#16). The words 'Bu işlem geri alınamaz.' are true: the deck is deleted for good." }

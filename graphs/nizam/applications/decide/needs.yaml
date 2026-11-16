@@ -1,0 +1,231 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.applications.decide
+status: proposed
+summary: >-
+  What must exist for the başnazım, and a Medaris nazımı who holds the permission, to decide a köşk application: the flow's
+  product list, from its story and from planned.md, never from what the page does today. Gender separation is given (kontenjan per
+  gender, gender always required), but no seat is decided in this flow, so neither shows up here. No replay has run in this phase,
+  so no replay scenario is named as walking a need; the bound scenarios (decides, tabs, staleLink, none, noPhone, refused of
+  binding.yaml, meanwhile of binding.meanwhile.yaml, forbidden of binding.forbidden.yaml) are in each need's note.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# For the gaps merge:
+# missing (no code): contact-read-only-on-request, the-two-writes-are-one, tabs-say-what-they-changed,
+# the-link-says-when-its-application-is-gone, the-applicant-is-led-to-the-kosk, the-answered-application-names-its-kosk,
+# focus-follows-a-decision, a-failed-read-keeps-the-way-back, the-lists-are-whole
+# unwalked (code, no e2e and no replay yet): an-answer-is-given-once, only-those-who-may-decide
+
+needs:
+  - id: read-with-contact-details
+    need: >-
+      The başnazım, and a Medaris nazımı who holds "Köşk başvurularını karara bağla", read what members asked for: the waiting
+      applications oldest first with the applicant's name, field and date, and for the one they choose the köşk's name, field,
+      description, why, the köşks already open in that field, and the applicant's roles, e-mail address and telephone number
+      ("Verilmedi" when none). Nobody else reads any of it.
+    evidence:
+      - state: waitingDetail
+      - state: selecting
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:64
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:86
+      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:268
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/15 — the tab counts are the table's, and the detail shows the applicant and 'Verilmedi' for a missing phone (criterion 1)"
+    note: >-
+      Bound, not yet run: decides, tabs, noPhone. The e2e's "Verilmedi" case is the scenario noPhone (an application with no
+      number).
+
+  - id: contact-read-only-on-request
+    need: >-
+      The applicant's e-mail address and telephone number are personal data, so they are read, and the read recorded, only when
+      the reader asks for them, and the page says so before the read and not after. Choosing a tab, or answering an application,
+      reads nobody's.
+    evidence:
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:86
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/15 — seeing the contact details writes an audit row (criterion 5)"
+    missing: no Linear issue; findings F-W3-7, APPDEC-2; code exists in part
+    note: |-
+      Drawn on the states selecting and waitingDetail, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      Partly built (findings F-W3-7 and APPDEC-2): the read is recorded, and the e2e proves it, but the page makes it for the
+      application it selects on its own: the first on load, the next after every decision, the first of a tab on every switch. A
+      defect, not a planned feature, so no Linear key. The bound check is the effect getKoskApplication of binding.yaml.
+
+  - id: open-the-kosk-from-the-application
+    need: >-
+      The başnazım opens the köşk from a waiting application in one step: the köşk form comes filled with the application's name
+      and description and the applicant chosen as the köşk's nazım, the köşk is made with its nazım, and the application is
+      accepted with it and the applicant is told.
+    evidence:
+      - state: koskForm
+      - state: approving
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:310
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:104
+      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:164
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/15 — Köşkü aç opens the köşk form with the application's values and accepts it once the köşk exists (criteria 3, 4)"
+    note: >-
+      Bound, not yet run: decides. The form's prefill is nizam.kosks.open's (its `prefilled` effect draws no value; the e2e's
+      `toHaveValue` of the name and the description is not carried by either graph yet), so platform-admin#4 is carried for the
+      approval row, `status APPROVED` and `kosk_id`, which is the effect approveKoskApplication.
+
+  - id: the-two-writes-are-one
+    need: >-
+      Opening a köşk from an application and accepting the application land together or not at all, or a failed second step says
+      that the köşk exists and offers to finish; a köşk is never made twice for one application.
+    evidence:
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:310
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:104
+    missing: no Linear issue; findings F-W3-8; code exists in part
+    note: |-
+      Drawn on the states approving and waitingDetail, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      Finding F-W3-8 and decision D2. A defect, so no Linear key. The refusal of the second call is bound for the case "forbidden"
+      (binding.forbidden.yaml walks it to a waiting application and a köşk that exists).
+
+  - id: reject-with-a-reason
+    need: >-
+      The başnazım refuses an application with a reason; the reason is required, is kept, and is shown to the applicant in their
+      notifications; the application moves to the answered tab with the reason beside it.
+    evidence:
+      - state: rejectForm
+      - state: rejectFormReady
+      - state: rejecting
+      - state: decidedDetail
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:124
+      - source: apps/nizam/features/deck-review/components/reject-dialog.tsx:41
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/15 — Reddet cannot be sent without a reason, then moves the application to Karara bağlanan (criteria 2, 6)"
+    note: >-
+      Bound, not yet run: decides (the refusal and its effect rejectKoskApplication: `status REJECTED` and the reason), tabs (the
+      answered detail and "Ret gerekçesi"). Cancelling both dialogs is walked by the transitions of decides.
+
+  - id: an-answer-is-given-once
+    need: >-
+      An application is answered once. When someone else answered it first, the second decision is refused, the row leaves the
+      waiting list, and the page says that it was answered meanwhile (for an approval, also that the köşk was opened all the
+      same).
+    evidence:
+      - state: approving
+      - state: rejecting
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:104
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:124
+      - source: apps/nizam/features/platform-admin/present.ts:43
+    note: >-
+      Unwalked until a replay runs: no e2e check covers it (platform-admin has none). Bound: meanwhile of binding.meanwhile.yaml,
+      for both decisions. For the approval the page does not say that the köşk exists (F-W3-8).
+
+  - id: waiting-and-answered-tabs
+    need: >-
+      The waiting and the answered applications are two lists with their real counts, the answered one newest first with the
+      outcome of each; both stay readable however many there are.
+    evidence:
+      - state: waitingDetail
+      - state: loadingTab
+      - state: decidedDetail
+      - state: empty
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:64
+      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:381
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/15 — the tab counts are the table's, and the detail shows the applicant and 'Verilmedi' for a missing phone (criterion 1)"
+    note: "Bound, not yet run: tabs, none. Each list stops at 100 rows with no word (APPDEC-6, below)."
+
+  - id: tabs-say-what-they-changed
+    need: >-
+      A person who cannot see the page is told that a tab switch changed the list, and how many applications it holds; the tabs
+      and the list are one pattern.
+    missing: no Linear issue; findings F-W3-5, F-X-1
+    note: |-
+      Drawn on the states waitingDetail and decidedDetail, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      Findings F-W3-5 and F-X-1: a tablist with no tab panel and no announcement. A defect, so no Linear key.
+
+  - id: open-the-one-named
+    need: The link on the Medaris home ("İncele") opens the application it names, selected, and reads that one's contact details.
+    evidence:
+      - state: reading
+      - source: apps/nizam/app/talepler/kosk-basvurulari/page.tsx:25
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:90
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — 'İncele' opens the application it points at, 'Tümünü gör' the list, and 'Köşk aç' the form (criterion 4)"
+    note: >-
+      dashboard#2 is carried here for its first two points (the address and the row marked `aria-current`; the mark is not a thing
+      a replay checks). Its last three (the link "Tümünü gör" and "Köşk aç" on the home) belong to nizam.home.chiefOverview.
+      Bound, not yet run: decides (the address with ?secili=).
+
+  - id: the-link-says-when-its-application-is-gone
+    need: >-
+      A link to an application that is no longer waiting, or to none, says so and selects nothing, instead of opening another
+      person's application and reading their contact details.
+    missing: no Linear issue; findings APPDEC-1
+    note: |-
+      Drawn on the state reading, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+      Finding APPDEC-1 and decision D1. A defect, so no Linear key. The silent fallback is bound: staleLink.
+
+  - id: only-those-who-may-decide
+    need: >-
+      Only the başnazım and a Medaris nazımı who holds the permission read or decide an application; anyone else, a köşk nazımı
+      and the Medaris nazımı without the code included, meets the refusal screen; a permission taken away is felt at the next
+      decision.
+    evidence:
+      - state: no_access
+      - state: rejecting
+      - source: apps/tedrisat/src/kosk-application/nizam-kosk-applications.controller.ts:64
+      - source: apps/nizam/app/talepler/kosk-basvurulari/page.tsx:29
+    note: >-
+      Unwalked until a replay runs: no e2e check covers the refusal of this page (shell#10 only counts the menu entry). Bound:
+      refused (the seeded Medaris nazımı, who holds five other codes), forbidden of binding.forbidden.yaml (a Medaris nazımı with
+      the code, who reads and decides, then loses it).
+
+  - id: the-applicant-is-led-to-the-kosk
+    need: >-
+      When an application is accepted the applicant is told the köşk opened and is led to it, and the köşk is known to be the one
+      opened from that application and from no other.
+    missing: no Linear issue; findings F-3
+    note: |-
+      Drawn on the state approving, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      Finding F-3 (drawn by tedris.discover.applyForKosk): the notice carries the köşk's name and no target, and the API does not
+      check that the köşk was opened from the application. A defect, so no Linear key.
+
+  - id: the-answered-application-names-its-kosk
+    need: An accepted application shows which köşk it opened, as a link, so the reader can go from the request to its result.
+    missing: no Linear issue; findings APPDEC-3
+    note: |-
+      Drawn on the state decidedDetail, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13
+      leaves out what only missing needs name).
+      Finding APPDEC-3: the API sends `koskId` and the page does not draw it. A defect, so no Linear key.
+
+  - id: focus-follows-a-decision
+    need: >-
+      After a decision, a keyboard or screen-reader user is put somewhere useful (the next application, or the tabs when none is
+      left) and told what happened; the toast of a success is not the only word.
+    missing: no Linear issue; findings APPDEC-5
+    note: |-
+      Drawn on the states rejecting and approving, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+      Finding APPDEC-5 (from the code; not verified in a browser). A defect, so no Linear key.
+
+  - id: a-failed-read-keeps-the-way-back
+    need: >-
+      When a later read fails (the answered tab, one application's detail) the person keeps the tabs and the list and can try
+      again from where they are.
+    missing: no Linear issue; findings APPDEC-4
+    note: |-
+      Drawn on the states unreadable and detailUnreadable, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      Finding APPDEC-4 (from the code; nothing makes the API fail on request, so it is not bound). A defect, so no Linear key.
+
+  - id: the-lists-are-whole
+    need: >-
+      Every waiting and every answered application can be reached, however many there are: a page of rows with a way to the next,
+      and a line that says how many are shown.
+    missing: no Linear issue; findings APPDEC-6
+    note: |-
+      Drawn on the states waitingDetail and decidedDetail, which the code has: they are not evidence, so that a replay still walks
+      them (SPEC.md §13 leaves out what only missing needs name).
+      Finding APPDEC-6: tedrisat lists at most 100 per tab, and the counts are the real totals. A defect, so no Linear key.

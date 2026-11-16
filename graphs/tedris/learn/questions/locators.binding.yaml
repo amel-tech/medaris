@@ -1,0 +1,104 @@
+# What tedris.learn.questions's two bindings share: the events no node sends (typing, choosing a celse, the reload, the hoca's answer),
+# the exits' addresses, the effects that read the database, the samples, and where role and name cannot find a node. It carries no
+# scenario, so it is not walked by itself:
+#   binding.yaml      the watch page of a recording (the main story, and `--to lateEdit` for the second person's step during an edit)
+#   binding.tab.yaml  the course's tab "Sorularım" (`--to confirming`: the celse is chosen, a question is asked, the card is deleted)
+# The scenarios are in files of their own because `--to <state>` takes the shortest way from the first scenario that reaches the state,
+# and every state is the same on both places, the watch page being the shorter way to all of them.
+#
+# The second person. The hoca answers in nazar-web (:4002), on her own page /ders/<course>/sorular (the page of nazar.questions.answer,
+# written later): the form of a waiting question is a text area labelled "Cevabınız" and a button "Cevapla" (nazar e2e questions.e2e.ts#1).
+# TEAM_ANSWERS runs those four steps `as: muderris`, who is the course's one hoca; the walk then goes on in the talebe's own browser,
+# whose page is stale until RELOAD.
+#
+# Not bound, so the replay cannot reach them: `loadFailed` and RETRY (the stack cannot make tedrisat refuse the read), FAIL.forbidden,
+# FAIL.failed and FAIL.gone of the three writes (nothing local makes them answer so), and `sent_to_sign_in` (a session that is over).
+# The effects read the database with SQL (no API gives a talebe's question to the walk): reads only, nothing is written by them.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.learn.questions
+
+browser: { width: 1280, height: 900 }
+
+samples:
+  # the sample celse is the first of a course made by helpers/course.mjs: week "Hafta 1", celse "Celse 1"
+  session: Celse 1
+  title: Celse 1
+  week: '1'
+
+events:
+  # the ask box: the first text area named "Sorun" (the card's own, once it is in edit mode, comes after it)
+  TYPE:
+    - fill: { role: textbox, name: Sorun, nth: 0, value: '{asked}' }
+  # the course tab's select is the kit's Select: a click opens its list and a click on an option chooses (e2e lesson-questions#1 ask())
+  PICK_CELSE:
+    - click: { role: combobox, name: Celse }
+    - click: { role: option, name: '{celse}' }
+  # the card's edit form
+  REWRITE:
+    - fill: { role: textbox, name: Sorun, within: { role: article }, value: '{rewritten}' }
+  EMPTY:
+    - fill: { role: textbox, name: Sorun, within: { role: article }, value: '' }
+  RELOAD: [{ reload: true }]
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+  # the course team, in nazar: the hoca writes the answer under the talebe's question and presses "Cevapla"
+  TEAM_ANSWERS:
+    - goto: '{nazar}/ders/{course}/sorular'
+      as: muderris
+    - fill: { label: Cevabınız, value: '{answer}' }
+      as: muderris
+    - click: { role: button, name: Cevapla }
+      as: muderris
+    - waitText: Cevaplandı
+      as: muderris
+
+states:
+  # an exit has no nodes, so its address is all the replay can check
+  left: { url: '{tedris}/discover**' }
+
+effects:
+  # e2e lesson-questions#1 a8, a12, a16 and #4 a11 read the rows; here the same, after the step that wrote them
+  askLessonQuestion:
+    - run: [node, helpers/sql.mjs, "select body, answer from lesson_questions where lesson_id = '{lesson}'"]
+      expect: '{asked_token}'
+  updateLessonQuestion:
+    - run: [node, helpers/sql.mjs, "select body from lesson_questions where lesson_id = '{lesson}'"]
+      expect: '{rewritten_token}'
+  deleteLessonQuestion:
+    - run: [node, helpers/sql.mjs, "select 'gone' as q where not exists (select 1 from lesson_questions where lesson_id = '{lesson}')"]
+      expect: '"q":"gone"'
+  # the hoca's answer is a row of the talebe's question, with her sub as the answerer
+  teamAnswers:
+    - run: [node, helpers/sql.mjs, "select answer from lesson_questions where lesson_id = '{lesson}'"]
+      expect: '{answer_token}'
+
+nodes:
+  # a bare role main is also matched on the page a walk leaves for (the hoca's nazar page); this caption is on both places and on no other page
+  page: { role: main, hasText: 'Sorularını ve cevaplarını yalnızca sen' }
+  # the time of asking, and the hoca's name with her unvan, are the walk's own, so each line is matched by its start
+  askedAt: { text: '/^Sorulma: /' }
+  answerBy: { text: '/^Cevap: /' }
+  # the ask box comes before the card in the page, and the card's own text area (in edit mode) is also named "Sorun"
+  bodyField: { role: textbox, name: Sorun, nth: 0 }
+  editField: { role: textbox, name: Sorun, within: { role: article } }
+  # "Silinsin mi?" is also the start of "Silinsin mi? Cevabı da silinir.": an anchored pattern tells them apart
+  deleteAsk: { text: '/^Silinsin mi\?$/' }
+  # the heading "Soru sor" is on both places, in a region on the watch page and in the form on the tab: two nodes with one locator and
+  # complementary `when` would fail the hidden check, so each is found inside its own container
+  panelTitle: { role: heading, name: Soru sor, within: { role: region, name: Soru sor } }
+  askTitle: { role: heading, name: Soru sor, within: { role: form, name: Soru sor } }
+  # the tab's eyebrow is also the text of the select's chosen option once a celse is picked: the card's own is inside the article
+  cardSession: { text: 'Hafta 1 · Celse 1', within: { role: article } }
+  # the help line is under the ask box and, in edit mode, under the card's text area as well
+  bodyHelp: { text: '/^Markdown yazabilirsin\. En çok/', nth: 0 }
+  editHelp: { text: '/^Markdown yazabilirsin\. En çok/', within: { role: article } }
+  # the ask form's alerts and the card's edit form's alerts say the same words ("Soru boş olamaz."), and the edit form is inside the card:
+  # the ask form's are the ones in a form that is not inside an article, the card's the ones inside it
+  pickCelseAlert: { css: 'form:not(article form) [role=alert]', hasText: Önce bir celse seç. }
+  askBlankAlert: { css: 'form:not(article form) [role=alert]', hasText: Soru boş olamaz. }
+  askForbiddenAlert: { css: 'form:not(article form) [role=alert]', hasText: Soru sormak için derse kayıtlı olman gerekir. }
+  askFailedAlert: { css: 'form:not(article form) [role=alert]', hasText: Soru gönderilemedi. Biraz sonra yeniden dene. }
+  cardBlankAlert: { role: alert, hasText: Soru boş olamaz., within: { role: article } }
+  cardForbiddenAlert: { role: alert, hasText: Soru sormak için derse kayıtlı olman gerekir., within: { role: article } }
+  cardFailedAlert: { role: alert, hasText: Soru kaydedilemedi. Biraz sonra yeniden dene., within: { role: article } }

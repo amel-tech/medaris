@@ -1,0 +1,118 @@
+# nizam.nazims.appoint on the local stack: the başnazım (Vedat Başnazım, SYSTEM_ADMIN) at http://localhost:4001 in the real Keycloak sign-in of
+# local.nizam.binding.yaml. The data, the locators and the effects every file shares are in locators.binding.yaml (it extends
+# ../../../bindings/local.nizam.binding.yaml); this file holds the scenarios.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/nazims/appoint \
+#     --bind graphs/nizam/nazims/appoint/binding.yaml --cover transitions --absent --out <dir>
+#   (binding.groupGone.yaml is walked on its own, with --cover transitions: the group is deleted while the dialog is open)
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). It loads: `replay <dir> --bind <this file>
+# --emit-spec --out <dir>` wrote a spec and walked nothing; every locator and every command is from the code and unverified until a walk.
+#
+# Every scenario opens Ana sayfa, presses the menu's "Medaris nazımları" (the nav graph's entry frame:shell->nazims) and starts from the same
+# data (locators.binding.yaml): the stack's own Medaris nazımı in office, the spare applicantE who is no Medaris nazımı, and one platform group.
+# `setup` begins with nazim.mjs `down`, which dismisses what a walk that died left, so each scenario can be run again at once. The helper of
+# nizam.home.medarisNazimCut (helpers/nazim.mjs) is reused as it is: its `down` dismisses the person in `setup` and in
+# `teardown`, its `up` makes the person who holds a seat already in `already`. It refuses the seeded Medaris nazımı, so she is never changed.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   appoints    the main story (e2e permissions#9): the list, "Medaris nazımı ata", the address typed and searched, the person found, the group
+#               chosen, "Denetim kaydını oku" ticked, an end a few days ahead typed, "Kaydet": the toast, the new row with its group, its box,
+#               "{n} gün kaldı" and the giver. The cover also walks, from the same start: the end 'later today' ("Bugün bitiyor"), 60 days
+#               ahead (the date only), none ("Süresiz"), and in the past (the field says so and "Kaydet" is off), "Seçimi kaldır", Vazgeç, the row
+#               buttons, "İzin gruplarını düzenle" and the appointed person opening Ana sayfa (the cut)
+#   already     the person is a Medaris nazımı already (applicantD, made by nazim.mjs up with platform.kosk_nazim_manage): found and chosen like anyone,
+#               "Kaydet" is refused in a toast (409), the dialog stays open; she holds what she held
+#   nobody      an address no account has (the e2e's "kimse-yok-boyle@example.test"): "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and
+#               nobody is chosen
+#   notAddress  text that is no address, then Enter: nothing is searched and nothing is said (MAPPT-4)
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.nazims.appoint
+
+scenarios:
+  appoints:
+    given: { read: ok, roster: some, person: fresh }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
+        expect: 'appoint up'
+    teardown:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
+        expect: 'appoint down'
+    vars:
+      typed: '{appt.email}'
+      foundName: '{appt.name}'
+      foundEmail: '{appt.email}'
+
+  # The person holds a seat already (applicantD, with one permission): the page does not know, the server's 409 says so after "Kaydet". Nothing is changed.
+  already:
+    given: { read: ok, roster: some, person: already }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, helpers/nazim.mjs, up, applicantD, --codes, platform.kosk_nazim_manage]
+        expect: 'up APPLICANT_D codes=platform.kosk_nazim_manage'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
+        expect: 'appoint up'
+    teardown:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, helpers/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
+        expect: 'appoint down'
+    vars:
+      typed: '{appt.otherEmail}'
+      foundName: '{appt.otherName}'
+      foundEmail: '{appt.otherEmail}'
+
+  # An address no account has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and nobody is chosen. Nothing is written.
+  nobody:
+    given: { read: ok, roster: some, person: nobody }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
+        expect: 'appoint up'
+    teardown:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
+        expect: 'appoint down'
+    vars:
+      typed: kimse-yok-boyle@example.test
+      foundName: '-'
+      foundEmail: '-'
+
+  # Text that is no address, then Enter: nothing is searched and nothing is said. Nothing is written.
+  notAddress:
+    given: { read: ok, roster: some, person: notAddress }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
+        expect: 'appoint up'
+    teardown:
+      - run: [node, helpers/nazim.mjs, down, applicantE]
+        expect: 'down APPLICANT_E'
+      - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
+        expect: 'appoint down'
+    vars:
+      typed: kimse
+      foundName: '-'
+      foundEmail: '-'

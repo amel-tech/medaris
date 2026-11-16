@@ -1,0 +1,35 @@
+# tedris.learn.homeworkMemorize, the mark is there before the card reads: what the talebe meets when nazar.evaluation.markRecited has saved
+# "Tam" with a note and the talebe opens the celse after (the flow it will start this one from is not written yet, so the walk comes in by
+# the nav, as `waits` does).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/tedris/learn/homeworkMemorize \
+#     --bind graphs/tedris/learn/homeworkMemorize/binding.marked.yaml --to marked --out <dir>
+# The same throwaway course as binding.yaml; `setup` has the müderris save the mark before the page is opened.
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: tedris.learn.homeworkMemorize
+
+scenarios:
+  marked:
+    given: { mark: given, verdict: full, note: written, earlier: none }
+    as: applicantD
+    open: '{tedris}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'course->celse CoursePage.continue' }
+    vars:
+      course: '{made.course}'
+      lesson: '{made.lessons.0}'
+    samples:
+      description: İlk fasıl ezberden okunacak.
+      note: Üçüncü satırı bir daha oku.
+    setup:
+      - run: [node, helpers/course.mjs, make, memorize, --weeks, '1', --lessons, '2', --talebe, applicantD]
+        expect: '"course"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.0}/assignment', '{"kind":"MEMORIZE","description":"İlk fasıl ezberden okunacak."}']
+        expect: '"kind":"MEMORIZE"'
+      - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{made.lessons.0}/evaluations/{secret.E2E_APPLICANT_D_SUB}', '{"status":"FULL","note":"Üçüncü satırı bir daha oku."}']
+        expect: '"status":"FULL"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, memorize]
+        expect: course remove memorize
+      - run: [node, helpers/notify.mjs, applicantD, clear]
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']

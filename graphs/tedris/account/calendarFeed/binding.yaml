@@ -1,0 +1,144 @@
+# tedris.account.calendarFeed on the local stack (graphs/README.md, "The stack and the bindings"): Takvim aboneliği (tedris-web, :4000) as
+# the spare talebe `applicantG`, entered through Hesap's own link "Takvim bağlantını yönet" (the tedris navigation graph's entry
+# account->accountCalendar).
+#   node apps/engine/src/cli.ts replay graphs/tedris/account/calendarFeed --bind graphs/tedris/account/calendarFeed/binding.yaml --cover transitions --out <dir>
+# NOT RUN in the writing phase (the owner moved every replay to the walk phase): the binding was only loaded (`--emit-spec`).
+#
+# Data. Nothing seeded is touched and no course is made: the page is the account's own, and what it keeps is one row of
+# calendar_feed_tokens (a SHA-256 of the secret), which no route deletes. `calendar-feed-data.mjs` (this folder) removes it with SQL.
+#   fresh    `reset`: applicantG has no link, so the page offers "Bağlantı oluştur"; the walk makes the link in the browser (the main story),
+#            copies it, reloads, and renews it. `teardown` deletes the row and checks with SQL that applicantG holds none.
+#   exists   `arm`: a link made two days ago with a secret the helper chose and keeps in a git-ignored curl config, so the page opens masked
+#            and a calendar app's poll of "the kept link" and, after the renewal, of "the replaced link" can be made with curl and compared.
+# The link a walk makes in the browser is shown once and exists only there: the replay cannot read it, so the page's own link is never
+# polled (the e2e check schedule#10 reads it from the field). What the replay does read is the database: `check` after each (re)generation
+# (one row, made just now, a 64-character hash, and a different one from the hash `snap` remembered when the dialog opened).
+#
+# Not drivable here, so not walked (the coverage will list these transitions as unreached; each is also in the report):
+#   - `FAIL.unreadable` of the read (feed: unreadable) and `FAIL.refused` / `FAIL.signedOut` of the calls: tedrisat answers every call, and
+#     the stack has no way to make it refuse one or to end the session in the middle of a step. No scenario starts at `unreadable`.
+#   - the clipboard's refusal (clipboard: refused): no action of a binding can make the browser refuse `navigator.clipboard.writeText`.
+#     No scenario starts at `refused`; the success path is bound, and whether Chromium lets a page with no permission grant write (the
+#     e2e check schedule#11 grants it) is not known: if it does not, `toastCopied` is the first thing the walk phase will find.
+#   - OPEN_APPLE (the webcal: link) leaves the page for a protocol the browser cannot open headless: the exit has no `url`, so it is not bound.
+#   - sent_to_sign_in, for the same reason as FAIL.signedOut.
+# The success toast closes after 6 seconds: TOAST_ENDS waits 7 seconds. A walk that is slower than 6 seconds between the copy and the next
+# check will not see the toast (a check that follows a copy within a second or two is the aim); the walk phase measures it.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.account.calendarFeed
+
+scenarios:
+  # The main story. No link yet: the walk makes one, copies the two addresses, reloads (masked), asks and changes its mind, then renews.
+  fresh:
+    given: { feed: none, clipboard: allowed }
+    as: applicantG
+    open: '{tedris}/account'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'account->accountCalendar' }
+    setup:
+      - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, reset, applicantG]
+        expect: 'calendar-feed reset'
+    teardown:
+      - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, down, applicantG]
+        expect: 'calendar-feed down'
+      - run: [node, helpers/sql.mjs, "select count(*) as c from calendar_feed_tokens where user_id = '{secret.E2E_APPLICANT_G_SUB}'"]
+        expect: '"c":0'
+
+  # A link of an earlier visit: masked, polled at its known address, then renewed so that the address stops answering.
+  exists:
+    given: { feed: exists, clipboard: allowed }
+    as: applicantG
+    open: '{tedris}/account'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'account->accountCalendar' }
+    setup:
+      - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, arm, applicantG]
+        expect: 'calendar-feed arm'
+    teardown:
+      - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, down, applicantG]
+        expect: 'calendar-feed down'
+      - run: [node, helpers/sql.mjs, "select count(*) as c from calendar_feed_tokens where user_id = '{secret.E2E_APPLICANT_G_SUB}'"]
+        expect: '"c":0'
+
+events:
+  # the person goes to another page
+  NAVIGATE: [{ goto: '{tedris}/home' }]
+  # the page is read again
+  RELOAD: [{ reload: true }]
+  # Esc, wherever the focus is in the dialog
+  ESCAPE: [{ key: Escape }]
+  # the success toast closes by itself after 6 seconds (libs/ui/src/mds/toast.tsx:36)
+  TOAST_ENDS: [{ run: [sleep, '7'] }]
+  # someone else: a calendar app reads the address the helper armed, as it would every hour, and later the same address once it was replaced
+  CALENDAR_APP_POLLS:
+    - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, poll, current]
+      expect: 'poll current: 200 text/calendar no-store noindex VCALENDAR Medaris'
+  OLD_LINK_POLLS:
+    - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, poll, old]
+      expect: 'poll old: 404 CALENDAR_FEED_NOT_FOUND no-store'
+
+states:
+  # the page is read on the server, before it is drawn; the walk's address is the page's
+  reading: { url: '{tedris}/account/calendar' }
+  # the Server Action posts to the page's own address and answers 200 there: the call is held to see the busy state, and its status compared to "not an error"
+  issuing: { call: '{tedris}/account/calendar' }
+  renewing: { call: '{tedris}/account/calendar' }
+  # a calendar app's poll is a curl, so the browser is where it was
+  pollingCurrent: { url: '{tedris}/account/calendar' }
+  pollingOld: { url: '{tedris}/account/calendar' }
+  # the exits
+  left: { url: '{tedris}/home' }
+  account_opened: { url: '{tedris}/account' }
+
+effects:
+  # the walk opens the dialog: the stored hash is remembered, so that the renewal can be shown to have replaced it
+  originMasked:
+    - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, snap, applicantG]
+      expect: 'calendar-feed snap'
+  originUnknown:
+    - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, snap, applicantG]
+      expect: 'calendar-feed snap'
+  originIssued:
+    - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, snap, applicantG]
+      expect: 'calendar-feed snap'
+  # after the first link and after a renewal: one row, made just now, a 64-character hash, and a different one from the one remembered
+  regenerateMyCalendarFeed:
+    - run: [node, ../tedris/account/calendarFeed/calendar-feed-data.mjs, check, applicantG]
+      expect: 'calendar-feed check ok'
+
+# Where role and name cannot find a node. The page's <main> is told by the title of the how-to card (a bare role=main also matches Hesap's, the page the
+# entry comes from; "kişisel takvim bağlantın" would match Hesap's own text, since hasText ignores case). The two fields are told apart by what they hold:
+# a hidden link is 32 bullets in the `value` attribute, which React keeps in step with a controlled input (not verified in a browser).
+# The alerts and the toasts are found by their kit classes and attributes: an Alert has no name, and a high-priority toast is aria-hidden until it is focused.
+nodes:
+  calendarMain: { role: main, hasText: 'Takvimine nasıl eklenir' }
+  crumbCurrent: { css: '.mds-breadcrumb__current' }
+  googleFieldHidden: { css: 'input#calendar-google[value^="••"]' }
+  googleField: { css: 'input#calendar-google:not([value^="••"])' }
+  appleFieldHidden: { css: 'input#calendar-apple[value^="••"]' }
+  appleField: { css: 'input#calendar-apple:not([value^="••"])' }
+  createdAt: { text: '/^Oluşturuldu: /' }
+  copyNowAlert: { css: '.mds-alert--warning[role=status]' }
+  copyNowTitle: { css: '.mds-alert--warning .mds-alert__title' }
+  createFailed: { css: '.mds-alert--error[role=alert]' }
+  delayAlert: { css: '.mds-alert--neutral[role=status]' }
+  delayTitle: { css: '.mds-alert--neutral .mds-alert__title' }
+  busyStatus: { css: 'output', hasText: 'Yükleniyor' }
+  dialogBusy: { css: 'output', hasText: 'Yükleniyor', within: { role: alertdialog } }
+  closeIcon: { role: button, name: Kapat, within: { role: alertdialog } }
+  copiedToast: { css: '[role=dialog]', hasText: 'Bağlantı kopyalandı' }
+  copiedTitle: { css: '[role=dialog] p.mds-toast__title', hasText: 'Bağlantı kopyalandı' }
+  copyFailedToast: { css: '[role=alertdialog]', hasText: 'Kopyalanamadı.' }
+  copyFailedTitle: { css: '[role=alertdialog] p.mds-toast__title', hasText: 'Kopyalanamadı.' }
+  toastClose: { css: 'button.mds-toast__close' }
+  # the explanations are <li> elements, which have no name of their own; the first step's catalog text holds a <code> tag, so it is found by its words
+  googleStep1: { css: 'ol li', hasText: '/calendar\.google\.com adresini aç/' }
+  googleStep2: { css: 'ol li', hasText: 'Soldaki “Diğer takvimler”in yanındaki artı düğmesine, sonra “URL ile”ye tıkla.' }
+  googleStep3: { css: 'ol li', hasText: 'Google Takvim için olan bağlantıyı yapıştır ve “Takvim ekle”ye tıkla.' }
+  appleStep1: { css: 'ol li', hasText: 'iPhone ya da iPad’de “Apple Takvim’de aç”a dokun.' }
+  appleStep2: { css: 'ol li', hasText: 'Takvim sorduğunda “Abone ol”a, sonra “Ekle”ye dokun.' }
+  appleStep3: { css: 'ol li', hasText: 'Mac’te Takvim uygulamasında Dosya › Yeni Takvim Aboneliği’ni seç ve Apple Takvim için olan bağlantıyı yapıştır.' }
+  what1: { css: 'aside li', hasText: 'Kayıtlı olduğun derslerin celseleri: 30 gün öncesinden 180 gün sonrasına kadar.' }
+  what2: { css: 'aside li', hasText: 'Saati değişen celse güncellenir; iptal edilen celse takvimde iptal olarak görünür.' }
+  what3: { css: 'aside li', hasText: 'Toplantı bağlantıları takvime yazılmaz. Her takvim kaydı celse sayfasına bağlanır; toplantı bağlantısı orada.' }
+  what4: { css: 'aside li', hasText: 'Dersten ayrılırsan ya da bir derse erişimin kalkarsa o dersin celseleri takviminden çıkar.' }

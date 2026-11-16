@@ -1,0 +1,24 @@
+# tedris.celse.attend, the standing `inPersonStream` (a running celse held face to face and streamed: the stream card, whose eyebrow says Canlı ders (ATT-1)). Same data, exits and locators as binding.yaml (see locators.binding.yaml).
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/attend --bind graphs/tedris/celse/attend/binding.inPersonStream.yaml --to live --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: tedris.celse.attend
+
+samples:
+  title: Yüz yüze yayınlı celse
+  previous: Yayınlı celse
+  next: Biten celse
+
+scenarios:
+  inPersonStream:
+    given: { access: open, standing: live, means: stream, place: inPerson, agenda: none, resources: none, exam: none, neighbours: both }
+    as: applicantE
+    open: '{tedris}/courses/{att.course}/lessons/{att.inPersonStream}'
+    vars: { steps: 3 }
+    setup:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, up]
+        expect: 'attend-data up'
+    teardown:
+      - run: [node, ../tedris/celse/attend/attend-data.mjs, down]
+      - run: [node, helpers/mail.mjs, clear, 'to:{address}']

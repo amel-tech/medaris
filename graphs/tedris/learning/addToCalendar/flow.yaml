@@ -1,0 +1,379 @@
+# A talebe puts one celse into their own calendar, or all of their courses: from a row of Programım, from the celse's own page
+# or from the enrolled card of the course page, they open "Takvime ekle" and choose Google Takvim (a pre-filled event in a new
+# tab), Apple Takvim (.ics) (the file of one celse, from tedris-web's own route) or "Tüm derslerime abone ol" (the way to the
+# personal feed, which a calendar app then polls at /calendar/<token>.ics). Written from the code of the branch (captured);
+# nothing here is a plan. The subscription page itself is tedris.account.calendarFeed's, and Programım's own page is
+# tedris.learning.schedule's: this flow draws only the menu, what follows from it and the page it stands on.
+#
+# Findings this flow touches (ui.yaml `rules` carries the same ids):
+#   CRS-09   the course card's "Apple Takvim (.ics)" is a plain link: a refusal replaces the course page with the raw JSON body
+#   DSC-18   the kit puts a <p> note inside the role=menu popup, next to the menuitems
+#   DSC-21   the Google event says "oturum sayfasındadır"; the .ics from tedrisat says "celse sayfasındadır" (measured, both)
+#   feed-misses-basmuderris-and-ders-nazir  (the domain's id, no inventory id) the feed holds the courses its owner is enrolled in,
+#            teaches or runs as köşk nazımı, and not those of a medrese's başmüderris or of a ders nazırı (measured on the stack)
+#   ADDCAL-1 (new, provisional id) the course card's menu is another component than the celse page's and Programım's: two rows
+#            instead of three, no subscription row, no note, no toast, and focus handling by Radix instead of Base UI
+#   ADDCAL-2 (new, provisional id) the error toast's close button "Kapat" is hard-coded in libs/ui/src/mds/toast.tsx, not a catalog
+#            message (the same default as LEAVE-2 / MDRS-233)
+#   ADDCAL-3 (new, provisional id) a download that works says nothing: no toast and no status, only the browser's own download
+# E2E carried: schedule#5, #6, #7, #8 (the menu on Programım), #9 (the celse page's menu; the cancelled celse's page has none),
+# session#2, #3, #4 (the button is on the page: visible only), schedule#10 for the feed read (the rest of #10 is
+# tedris.account.calendarFeed's). The e2e checks the file through a Playwright download; the replay reads the same route through
+# curl with the walk's own web session (see binding.yaml).
+schema: delurio-graph/0
+kind: flow
+id: tedris.learning.addToCalendar
+status: captured
+domain: medaris.api
+ui: tedris.learning.addToCalendar
+title: Add a celse, or all my courses, to my calendar
+summary: >-
+  A talebe opens "Takvime ekle" where an upcoming celse is drawn: the icon button on its row in Programım ("Takvime ekle:
+  <celse>"), the text button in the action card of the celse's page, or the button on the enrolled card of the course page.
+  On Programım and on the celse page the menu has three rows and a note: "Google Takvim (yeni sekmede açılır)" opens Google's
+  pre-filled event in a new tab (the celse page's address, never the meeting link), "Apple Takvim (.ics)" fetches the file
+  from tedris-web's route and saves it as medaris-<id>.ics with no word said, and "Tüm derslerime abone ol" goes to Takvim
+  aboneliği, where the person makes the link that a calendar app reads (the flow tedris.account.calendarFeed). Esc closes the
+  menu and the focus is on its button again. When the file cannot be fetched one error toast says so ("Takvim dosyası
+  indirilemedi. Biraz sonra yeniden dene.") and stays until it is closed. The course card's menu is a different one: two
+  rows, no note, no subscription row, and its file row is a plain link, so a refusal replaces the page with the raw JSON body
+  (CRS-09). No menu is drawn on a cancelled, a live or an ended celse. The feed that a calendar app reads holds every course
+  the owner is enrolled in or teaches, as the köşk nazımı runs a köşk's, and misses those of a başmüderris and of a ders nazırı.
+
+scope:
+  shows: the three places the menu stands in, the menu, the file's download and its failure toast, the way to the subscription, and the feed a calendar app reads
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of Programım (the days, the other rows, the window, the zone line, the subscription link): tedris.learning.schedule"
+    - "the rest of the celse page (the pager, the Müfredat popup, the meeting link, the notes, the questions, the homework): tedris.celse.attend and the learn flows"
+    - "the rest of the course page (its header, programme and tabs, the progress bar of the enrolled card): tedris.course.readProgramme"
+    - "the subscription page: making the link, copying it, the masked link and renewing it: tedris.account.calendarFeed, started here when the person chooses the subscription row"
+    - "the celse page of a person with no seat (the locked card, which has no menu) and of a draft or hidden course: tedris.celse.locked, tedris.shell.systemPages"
+    - "Google's own page after the new tab opens: the event's address is built in the browser (calendar-links.ts:32) and checked by e2e schedule#6, not replayed"
+    - "the calendar invitations that tedrisat e-mails with an iCalendar attachment (sweepLessonInvitations): a mail, not a screen of this flow"
+    - "what a calendar app does with the feed (the hourly refresh it is asked for, how it shows a cancelled celse)"
+    - "a visitor: the menu is drawn only to a signed-in person, and the route sends a visitor to sign in (state sent_to_sign_in)"
+
+context:
+  place:
+    values: [schedule, celse, course, closed]
+    initial: any
+    say:
+      schedule: "the talebe is on Programım and uses the icon button on the row of an upcoming celse"
+      celse: "the talebe is on the page of an upcoming celse of a course they hold a seat in and uses the button in its action card"
+      course: "the talebe is on the course page of a course they hold a seat in and uses the button on the enrolled card, which offers the next celse"
+      closed: "the talebe is on the page of a celse that is cancelled, live or already over, where no calendar button is drawn"
+  notice:
+    values: [none, failed]
+    initial: none
+    say:
+      none: "no toast"
+      failed: "an error toast says the calendar file could not be downloaded; it stays until it is closed"
+
+guards:
+  onSchedule: "place == 'schedule'"
+  onCelse: "place == 'celse'"
+  onCourse: "place == 'course'"
+  onKit: "place == 'schedule' or place == 'celse'"
+  toasted: "notice == 'failed'"
+
+effects:
+  clearNotice: { set: { notice: none } }
+  toastFailed: { set: { notice: failed } }
+
+failures:
+  downloading:
+    from: webGetLessonCalendar
+    signedOut: [redirectToSignIn]
+    refused: [HTTP_404, LESSON_NOT_FOUND, LESSON_NOT_SCHEDULED, CALENDAR_NOT_CONFIGURED, HTTP_500]
+  linking:
+    from: webGetLessonCalendar
+    signedOut: [redirectToSignIn]
+    refused: [HTTP_404, LESSON_NOT_FOUND, LESSON_NOT_SCHEDULED, CALENDAR_NOT_CONFIGURED, HTTP_500]
+  feedRead:
+    from: webGetCalendarFeed
+    notFound: [HTTP_404, CALENDAR_FEED_NOT_FOUND]
+    tooMany: [HTTP_429]
+    unavailable: [CALENDAR_NOT_CONFIGURED, HTTP_502]
+
+# The main story, from Programım: open the menu and close it with Esc (schedule#5), open it again and take the file (schedule#7),
+# open it once more and go to the subscription (schedule#8), where a calendar app then reads the feed (schedule#10).
+main:
+  given: { place: schedule }
+  events: [OPEN_MENU, CLOSE_MENU, OPEN_MENU, CHOOSE_ICS, DONE, OPEN_MENU, CHOOSE_SUBSCRIBE, CALENDAR_APP_POLLS, DONE]
+
+initial: arriving
+states:
+  arriving:
+    title: The page opens
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:36
+    description: >-
+      A step with no screen: the talebe is on Programım (place schedule), on the page of an upcoming celse (celse), on the
+      course page (course), or on a celse's page where the button is not drawn (closed). Nothing here is drawn; the pages are.
+    always:
+      - { guard: onSchedule, target: row }
+      - { guard: onCelse, target: celseCard }
+      - { guard: onCourse, target: courseCard }
+      - { target: not_offered }
+
+  row:
+    title: Programım, with the calendar button on a row
+    by: human
+    goal: true
+    source: apps/tedris/features/schedule/components/schedule-page.tsx:175
+    description: >-
+      The row of an upcoming celse ("Planlandı") ends in the icon button "Takvime ekle: <celse>"; a row that is cancelled,
+      live or over has none. The page sets no focus of its own on load (focus-not-set). Back here after a menu closed and after
+      the file was saved (the focus is on the button again, measured). A toast of an earlier failed download, when the person
+      has not closed it, is still on the page (rowFailed).
+    on:
+      OPEN_MENU: menu
+      CLOSE_TOAST: { guard: toasted, target: row, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:97 }
+      NAVIGATE: left
+
+  celseCard:
+    title: The celse page, with the calendar button in its action card
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/session-page.tsx:248
+    description: >-
+      The text button "Takvime ekle" (outlined, large) beside the way in, in the action card of an upcoming celse of a course
+      the talebe has a seat in. It is drawn when the celse has a time, is upcoming and the caller is not content-locked, and
+      not on a live celse, whose card has only the way in. The page sets no focus on load. Back here as on Programım, and the
+      error toast of a failed download is on this page too.
+    on:
+      OPEN_MENU: menu
+      CLOSE_TOAST: { guard: toasted, target: celseCard, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:97 }
+      NAVIGATE: left
+
+  rowFailed:
+    title: Programım, with the error toast of a failed download
+    by: human
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:87
+    description: >-
+      The page as it was, and the toast "Takvim dosyası indirilemedi. Biraz sonra yeniden dene." in the "Bildirimler" region: an
+      error toast stays until its "Kapat" is pressed (libs/ui/src/mds/toast.tsx:30). The same toast is drawn for every refusal
+      and for a request that never arrived; the status and the route's code are not told. The focus is on the row's button
+      (measured). The person may open the menu again, and the toast stays through it.
+    on:
+      OPEN_MENU: menu
+      CLOSE_TOAST: { target: row, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:97 }
+      NAVIGATE: left
+
+  celseFailed:
+    title: The celse page, with the error toast of a failed download
+    by: human
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:87
+    description: >-
+      The same toast on the celse page (its layout carries a toast host, apps/tedris/app/courses/[courseId]/lessons/[lessonId]/layout.tsx:34).
+      The focus is on the card's button.
+    on:
+      OPEN_MENU: menu
+      CLOSE_TOAST: { target: celseCard, effect: [clearNotice], source: libs/ui/src/mds/toast.tsx:97 }
+      NAVIGATE: left
+
+  courseCard:
+    title: The course page, with the calendar button on the enrolled card
+    by: human
+    goal: true
+    source: apps/tedris/features/courses/components/course-aside.tsx:295
+    description: >-
+      The enrolled card offers its next celse ("Derse devam et") and, under it, the outlined full-width button "Takvime ekle"
+      of another component than the other two places' (add-to-calendar.tsx, Radix; ADDCAL-1). It is not drawn while the next
+      celse is running, nor when the course has no next celse. The course page has no ToastHost of the unified kit (the segments that have one are home, the celse page, the decks and Programım), so the kit's calendar menu could not toast there.
+    on:
+      OPEN_MENU: courseMenu
+      NAVIGATE: left
+
+  menu:
+    title: The menu of Programım and of the celse page
+    by: human
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:93
+    description: >-
+      Base UI's menu (libs/ui/src/mds/menu.tsx:38): a popup named by its button ("Takvime ekle: <celse>" on Programım,
+      "Takvime ekle" on the celse page) with three rows, "Google Takvim (yeni sekmede açılır)", "Apple Takvim (.ics)" and,
+      after a rule, "Tüm derslerime abone ol", and under them a note, "Takvim kaydı bu celse sayfasına bağlanır; toplantı
+      bağlantısı takvime yazılmaz." (a <p> inside the menu: DSC-18). The page behind is not inert and the focus is on the
+      popup, not on its first row (menu-focus-on-popup, measured). Esc closes it and the focus goes back to the button.
+    on:
+      CHOOSE_GOOGLE: google_opened
+      CHOOSE_ICS: downloading
+      CHOOSE_SUBSCRIBE: { target: subscribed, starts: { flow: tedris.account.calendarFeed }, say: "the menu goes to /account/calendar with router.push; tedris.account.calendarFeed draws and walks that page", source: apps/tedris/features/courses/components/calendar-menu.tsx:133 }
+      CLOSE_MENU:
+        - { guard: onSchedule, target: row }
+        - { target: celseCard }
+      OPEN_MENU:
+        - { guard: onSchedule, target: row, say: "the button toggles: pressing it again closes the menu" }
+        - { target: celseCard, say: "the button toggles: pressing it again closes the menu" }
+
+  courseMenu:
+    title: The menu of the course card
+    by: human
+    source: apps/tedris/features/courses/components/add-to-calendar.tsx:42
+    description: >-
+      Radix's dropdown menu: two rows, both links, "Google Takvim (yeni sekmede açılır)" (a new tab, noopener) and "Apple Takvim
+      (.ics)" (a plain link to /api/lessons/<id>/calendar?locale=tr, no download attribute). There is no subscription row and no
+      note (ADDCAL-1). The focus is on the popup. Esc closes it and the focus goes back to the button (measured).
+    on:
+      CHOOSE_GOOGLE: google_opened
+      CHOOSE_ICS: linking
+      CLOSE_MENU: courseCard
+      OPEN_MENU: { target: courseCard, say: "the button toggles: pressing it again closes the menu" }
+
+  downloading:
+    title: Fetch the file of the celse
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:68
+    description: >-
+      The menu has closed and the focus is on its button. The browser fetches /api/lessons/<id>/calendar?locale=tr with the
+      page's own cookie (credentials same-origin); the route (route.ts:23) asks tedrisat for GET /lessons/<id>/calendar.ics
+      with the session's token and hands the file on, with no screen busy meanwhile. Success: a download of
+      medaris-<id>.ics is started (a blob and a temporary link) and nothing else is said (ADDCAL-3); the file holds one
+      VEVENT with UID lesson-<id>@medaris.app, the course's title and the celse's as the summary, and the celse page's address
+      as URL and LOCATION, never the meeting link. A redirect (the session is over) sends the browser to sign in. Any other
+      answer, and a request that fails, draws one error toast, whatever the status (404 for a hidden or removed celse, 409 for
+      one with no time, 503, 500): the page stays as it was.
+    invoke: { action: webGetLessonCalendar }
+    on:
+      DONE:
+        - { guard: onSchedule, target: row, say: "the browser saves the file; the page shows nothing new", source: apps/tedris/features/courses/components/calendar-menu.tsx:79 }
+        - { target: celseCard, say: "the browser saves the file; the page shows nothing new", source: apps/tedris/features/courses/components/calendar-menu.tsx:79 }
+      FAIL.signedOut: { target: sent_to_sign_in, source: apps/tedris/features/courses/components/calendar-menu.tsx:74 }
+      FAIL.refused:
+        - { guard: onSchedule, target: rowFailed, effect: [toastFailed], source: apps/tedris/features/courses/components/calendar-menu.tsx:87 }
+        - { target: celseFailed, effect: [toastFailed], source: apps/tedris/features/courses/components/calendar-menu.tsx:87 }
+
+  linking:
+    title: Follow the file link of the course card
+    source: apps/tedris/features/courses/components/add-to-calendar.tsx:96
+    description: >-
+      The link is a plain navigation to the same route, so the browser asks it itself. The route answers an attachment, which
+      the browser saves while the course page stays; the focus is on the button again (measured). A refusal replaces the page
+      with the route's JSON body, such as {"error":"LESSON_NOT_FOUND"} (CRS-09): the person leaves the app's page for a
+      document with no way back but the browser's. A session that is over is sent to sign in.
+    invoke: { action: webGetLessonCalendar }
+    on:
+      DONE: { target: courseCard, say: "the browser saves the file; the course page stays", source: apps/tedris/features/courses/components/add-to-calendar.tsx:97 }
+      FAIL.signedOut: { target: sent_to_sign_in, source: "apps/tedris/app/api/lessons/[id]/calendar/route.ts:39" }
+      FAIL.refused: { target: raw_json_error, source: "apps/tedris/app/api/lessons/[id]/calendar/route.ts:70" }
+
+  subscribed:
+    title: Takvim aboneliği, with a link made
+    by: human
+    source: apps/tedris/app/account/calendar/page.tsx:16
+    description: >-
+      The page of tedris.account.calendarFeed, reached with router.push from "Tüm derslerime abone ol". The person makes the
+      link there ("Bağlantı oluştur", shown once) and pastes it into Google or Apple Calendar, which then poll it. This flow
+      draws only the page's heading; what the page does is the started flow's. The calendar app's poll is an event of its
+      own, caused by someone else.
+    on:
+      CALENDAR_APP_POLLS: feedRead
+      NAVIGATE: left
+
+  feedRead:
+    title: A calendar app reads the feed
+    source: apps/tedris/app/calendar/[file]/route.ts:17
+    description: >-
+      GET /calendar/<token>.ics on tedris-web, with no session: the secret in the address is the credential (an address that
+      is not 43 base64url characters and ".ics" is a 404 before tedrisat is asked, route.ts:22). The route passes it on to
+      tedrisat's GET /calendar/<token>.ics with no Authorization header and hands the answer on inline, with Cache-Control
+      private no-store and X-Robots-Tag noindex. tedrisat limits a feed's owner to 20 reads a minute (429) and the address to
+      600.
+    invoke: { action: webGetCalendarFeed }
+    on:
+      DONE: feed_served
+      FAIL.notFound: { target: feed_refused.not_found, source: "apps/tedris/app/calendar/[file]/route.ts:40" }
+      FAIL.tooMany: { target: feed_refused.too_many, source: "apps/tedris/app/calendar/[file]/route.ts:40" }
+      FAIL.unavailable: { target: feed_refused.unavailable, source: "apps/tedris/app/calendar/[file]/route.ts:35" }
+
+  feed_served:
+    title: The feed is served
+    type: final
+    source: apps/tedris/app/calendar/[file]/route.ts:60
+    description: >-
+      200 text/calendar, inline as medaris.ics. METHOD:PUBLISH, X-WR-CALNAME Medaris, REFRESH-INTERVAL and X-PUBLISHED-TTL of one
+      hour, and one VEVENT per celse of every course the owner is enrolled in (ENROLLED or COMPLETED, not barred), teaches
+      (MUDERRIS) or runs as köşk nazımı, from 30 days back to 180 days ahead; a hidden course is never in it, a draft only for
+      the köşk's nazım, and a cancelled or removed celse stays as STATUS:CANCELLED with the same UID. The meeting link is
+      never in it. It is not "every course the owner manages", as the route's own words say: the courses of a medrese's
+      başmüderris and of a ders nazırı are missing (feed-misses-basmuderris-and-ders-nazir, measured: 0 events for both).
+
+  feed_refused.not_found:
+    title: The address is not a feed
+    type: final
+    source: apps/tedris/app/calendar/[file]/route.ts:22
+    description: >-
+      404 {"error":"CALENDAR_FEED_NOT_FOUND"} (or {"error":"Not found"} for a name that is not 43 characters and ".ics"): the
+      link was replaced by a new one, or never made. The calendar app keeps what it had and says its own words.
+
+  feed_refused.too_many:
+    title: The feed is read too often
+    type: final
+    source: apps/tedris/app/calendar/[file]/route.ts:40
+    description: >-
+      429 {"error":"HTTP_429"} with Retry-After as tedrisat sent it, for more than 20 reads a minute of one owner's feed.
+
+  feed_refused.unavailable:
+    title: The feed cannot be served
+    type: final
+    source: apps/tedris/app/calendar/[file]/route.ts:35
+    description: >-
+      503 {"error":"CALENDAR_NOT_CONFIGURED"} (tedrisat has no TEDRIS_WEB_URL) or 502 {"error":"Failed to fetch the calendar
+      feed"} (tedrisat did not answer).
+
+  google_opened:
+    title: Google Takvim opens in a new tab
+    type: final
+    leavesPage: true
+    source: apps/tedris/features/courses/components/calendar-menu.tsx:105
+    description: >-
+      window.open("https://calendar.google.com/calendar/render?action=TEMPLATE&text=<course> — <celse>&dates=<UTC start>/<UTC
+      end>&details=<line + page address>&location=<page address>", "_blank", "noopener,noreferrer"). Built in the browser from
+      the page's own origin; no API is called; the meeting link is never put in. A celse with no length ends when it starts.
+      The details line says "Toplantı bağlantısı oturum sayfasındadır:" where the .ics says "celse" (DSC-21). A popup blocker's
+      answer is not handled. The tab leaves the app; the page the person came from stays open.
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:39
+    description: >-
+      The route redirected (307) to /auth/signin?callbackUrl=<the route's own address>: no access token, or tedrisat answered
+      401. The menu hands the navigation to the browser (window.location.assign, calendar-menu.tsx:75), so the sign-in page is
+      shown; after signing in the browser comes back to the route and the file downloads. realm.auth.signIn takes over.
+
+  raw_json_error:
+    title: The course page is replaced by the route's JSON
+    type: final
+    leavesPage: true
+    source: apps/tedris/app/api/lessons/[id]/calendar/route.ts:70
+    description: >-
+      The browser shows {"error":"<code>"} at /api/lessons/<id>/calendar?locale=tr, with the status of the refusal (CRS-09);
+      the course page, its header and the way back are gone.
+
+  not_offered:
+    title: No calendar button
+    type: final
+    source: apps/tedris/features/courses/components/session-action-card.tsx:384
+    description: >-
+      The page of a celse that is cancelled, live or already over has no "Takvime ekle" (the button is drawn only when the state
+      is upcoming), and neither has such a row of Programım. Measured on the celse page of a celse that was held.
+
+  left:
+    title: The person goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: the-menu-is-offered-only-for-an-upcoming-celse
+    never: "state == 'not_offered' and place != 'closed'"
+    say: "the router reaches the page with no button only for the place where none is drawn"
+    source: apps/tedris/features/courses/components/session-action-card.tsx:384
+  - id: only-the-kit-menu-has-a-subscription-row
+    never: "state == 'courseMenu' and place != 'course'"
+    say: "the course card's own menu is the only one of the other kind; the kit's menu serves Programım and the celse page"
+    source: apps/tedris/features/courses/components/add-to-calendar.tsx:42
+  - id: a-toast-follows-only-the-kit-menu
+    never: "notice == 'failed' and place == 'course'"
+    say: "the course page has no ToastHost of the unified kit, so a refusal there is never this toast (it is the raw JSON page)"
+    source: apps/tedris/features/courses/components/add-to-calendar.tsx:96

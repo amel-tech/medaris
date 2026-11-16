@@ -1,0 +1,343 @@
+# The sîga generator of a course deck: "Sîga üret" on one deck's page in nazar-web (/ders/<id>/deste/<deckId>), read from the code of
+# PR #394's branch on 15 Nov 2026 (apps/nazar/features/decks/components/siga-generator-dialog.tsx and deck-detail-screen.tsx, the
+# rules in features/decks/siga.ts and actions.ts, the API's POST /flashcard/decks/:deckId/cards). MDRS-248.
+#
+# A "sîga card" is not a card type of its own. It is an ordinary card (`type` VOCABULARY or HADEETH, the deck's own cardType) that
+# carries its sîga in `contentMeta` ({kok, bab, kip, sahis, cinsiyet, sayi}); tedris-web reads those keys to lay the deck out as
+# sarf tables. The API takes `contentMeta` as any object and compares neither it nor the card's type with anything (domain finding
+# no-card-type-match; put-deck-changes-card-type is the same family).
+#
+# What the dialog does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - the scrim closes the second step while it is idle, so a stray click throws the 28 drafts away; Esc and the close icon do too, with
+#     no question (F-D1-21);
+#   - "Geri" drops the corrections: the next "Önizle" builds every draft again from the root and the meanings (SIGA-5);
+#   - the two meanings are optional in step 1 and a card with no meaning cannot be saved, which the person learns only after "Önizle"
+#     and "28 kartı kaydet", as 28 identical messages (SIGA-3);
+#   - the generator is offered in every deck, writes the deck's own card type into each card and never looks at what the deck already
+#     holds, so a second run of the same root writes 28 more cards (SIGA-1, SIGA-2);
+#   - errors are not announced and the focus does not move to them (SIGA-4); Enter in any of the 56 boxes saves all (SIGA-6); a
+#     refused save says one sentence whatever the reason, at the foot of a long scrolling list (SIGA-7).
+schema: delurio-graph/0
+kind: flow
+id: nazar.decks.siga
+status: captured
+domain: medaris.api
+ui: nazar.decks.siga
+title: Generate the sîga drafts and save them as cards
+summary: >-
+  The müderris opens one deck of her course and presses "Sîga üret". A dialog, "Sîga üretici", asks for a root of three Arabic
+  letters, a bâb (six, "Nasara – yensuru" first), the tenses to make (mâzî and muzâri, both on) and, optionally, the meaning of
+  each as "O …" says it. A root the generator cannot conjugate (empty, not three Arabic letters, a hamza or a weak letter, a
+  doubled root) is said under its field; no tense at all is said under the tenses. Otherwise "Önizle" builds the drafts in the
+  browser, with no call: 14 sîgas for each tense, the Arabic fully vowelled and the Turkish with the person in front ("O (erkek)
+  yardım etti"), each pair in a group named by its sîga ("Gâib · müfred"). She corrects any of the 56 boxes, may go back ("Geri",
+  which keeps what she typed in step 1 and drops the corrections) and saves all: one POST with the whole list, all cards or none,
+  each with its sîga in `contentMeta`. A toast says how many cards were added, the dialog closes and the deck page reads again. A
+  refused save leaves the drafts and says "İşlem tamamlanamadı. Tekrar deneyin." under them.
+
+scope:
+  shows: >-
+    the deck page's "Sîga üret" button and cards section, the dialog in its two steps (the form, the 28 or 14 drafts), the busy
+    save, the failure line and the toast that follows
+  world: open
+  outOfView:
+    - "the deck page's other parts: the quick-add row and its paste, a card's Düzenle and Sil, Excel'den aktar, the settings, Yayımla and Desteyi sil: nazar.decks.openAndFill, nazar.decks.import, nazar.decks.publishAndDelete"
+    - "the page's own refusals (no deck.manage_course, a deck that is not in the course, a read that fails): nazar.access.dersNazirPages; this flow starts on the page that opened"
+    - "how a talebe reads the cards, as sarf tables: tedris.course.deckTab (apps/tedris/features/courses/siga-table.ts)"
+    - "an ended session: the save sends the person to sign in (handleUnauthenticated) instead of drawing the failure line"
+    - "ticking the Muzâri again after it was unticked (only the Mâzî is ticked again; the model has no way back to both)"
+    - "filling the 28 'Anlam' boxes one by one instead of going back (the same result as going back and typing the meanings)"
+
+decisions:
+  D1:
+    question: >-
+      Is a sîga a kind of card? The generator writes `type: <the deck's cardType>` into every card and keeps the sîga in
+      `contentMeta`; nothing compares the type with the deck's (and a PUT of the deck can change the deck's cardType later,
+      leaving the cards under the old one). It is offered in a "Hadis" deck as well as in a "Kelime" deck, and the deck page
+      never shows the deck's type.
+    recommend: >-
+      Keep `contentMeta` as the marker, since tedris-web already reads it, and decide the type: offer "Sîga üret" only in a
+      "Kelime" deck, or say in the dialog which type the cards get. Until then a hadis deck can hold conjugation cards.
+    affects: [rootStep, saving]
+  D2:
+    question: >-
+      What should the generator do when the deck already holds the sîgas of that root and bâb? It is not told what the deck
+      holds, the API has no uniqueness rule, and tedris-web puts the second card of a cell into the plain grid.
+    recommend: >-
+      Hand the dialog the deck's cards, say in step 2 which sîgas the deck already has and leave them out unless the müderris
+      keeps them.
+    affects: [preview, saving]
+  D3:
+    question: >-
+      Must a meaning be typed? The fields are not marked required, "Önizle" accepts them empty, and the card is then refused
+      by the dialog itself, 28 times, only when she presses save.
+    recommend: >-
+      Either mark both meanings required in step 1 (and name the rule), or let a card be saved with an empty back; the API
+      requires 3 characters, so the first needs the dialog to say it early.
+    affects: [rootTyped, preview]
+
+context:
+  root:
+    values: [fine, empty, letters, weak, doubled]
+    initial: any
+    say:
+      fine: "the root is three Arabic letters of a sâlim verb (ن ص ر)"
+      empty: "the root is left empty"
+      letters: "the root is not three Arabic letters (two letters, a Latin word, tâ marbûta)"
+      weak: "the root holds a hamza or a weak letter (قول)"
+      doubled: "the root is muzâaf, its last two letters the same (مدد)"
+  meanings:
+    values: [typed, none]
+    initial: any
+    say:
+      typed: "she types the mâzî and the muzâri meanings in step 1"
+      none: "she leaves both meanings empty"
+  tenses:
+    values: [both, mazi, none]
+    initial: any
+    say:
+      both: "she leaves mâzî and muzâri ticked"
+      mazi: "she unticks muzâri, so only the mâzî is made"
+      none: "she unticks both"
+  answer:
+    values: [created, gone, forbidden, failed]
+    initial: any
+    say:
+      created: "the API adds the cards"
+      gone: "the deck is gone by the time she saves (DECK_NOT_FOUND)"
+      forbidden: "she no longer holds deck.manage_course (AUTHZ_FORBIDDEN)"
+      failed: "any other refusal or a server error (HTTP_400, INTERNAL_ERROR)"
+  kips:
+    values: [both, mazi, none]
+    initial: both
+    say: { both: "mâzî and muzâri are ticked", mazi: "only mâzî is ticked", none: "neither is ticked" }
+  bab:
+    values: [nasara, daraba]
+    initial: nasara
+    say: { nasara: "the bâb picker stands on its first option", daraba: "she chose Daraba – yadribu" }
+  said:
+    values: [none, required, letters, weak, doubled, kips]
+    initial: none
+    say:
+      none: "no problem is shown in step 1"
+      required: "'Kökü yazın.' is shown under the root"
+      letters: "'Kök üç Arapça harf olmalı.' is shown"
+      weak: "'Hemzeli ya da illetli kök bu üreticide yok; yalnız sâlim fiil.' is shown"
+      doubled: "'Muzâaf kök bu üreticide yok.' is shown"
+      kips: "'En az bir kip seçin.' is shown under the tenses, the root being right"
+  retyped:
+    values: [true, false]
+    initial: false
+    say: { "true": "she wrote a root the generator can read after it was refused", "false": "the root is the one the scenario types" }
+  mended:
+    values: [true, false]
+    initial: false
+    say: { "true": "she went back and typed the meanings", "false": "the meanings are what the scenario typed" }
+  backs:
+    values: [filled, blank, flagged, refused]
+    initial: filled
+    say:
+      filled: "every draft has a meaning"
+      blank: "the drafts have empty meanings"
+      flagged: "she pressed save on drafts with empty meanings: every one says 'Bu alan 3 ile 5000 karakter arasında olmalı.'"
+      refused: "the API refused the save: the failure line stands under the drafts"
+  cards:
+    values: [none, some]
+    initial: none
+    say: { none: "the deck holds no card", some: "the deck holds the cards this dialog added" }
+
+guards:
+  # readRoot(): the root problem the form would say (siga.ts:141-158), until she writes a root that reads
+  rootBad: "root != 'fine' and not retyped"
+
+effects:
+  opened: { set: { kips: both, bab: nasara, said: none, retyped: false, mended: false, backs: filled } } # the dialog is mounted anew
+  pickedDaraba: { set: { bab: daraba } }
+  untickedMuzari: { set: { kips: mazi } }
+  untickedMazi: { set: { kips: none } }
+  tickedAgain: { set: { kips: mazi } }
+  tickedFixes: { set: { kips: mazi, said: none } }
+  retypedClears: { set: { retyped: true, said: none } }
+  retypedKipsLeft: { set: { retyped: true, said: kips } } # the root reads now; no tense is ticked, so that message stands
+  mendedMeanings: { set: { mended: true } }
+  saidRequired: { set: { said: required } }
+  saidLetters: { set: { said: letters } }
+  saidWeak: { set: { said: weak } }
+  saidDoubled: { set: { said: doubled } }
+  saidKips: { set: { said: kips } }
+  draftsBlank: { set: { backs: blank, said: none } }
+  draftsFilled: { set: { backs: filled, said: none } }
+  flagged: { set: { backs: flagged } }
+  wentBack: { set: { backs: filled, said: none } } # the drafts are dropped, whatever was corrected in them
+  sending: { set: { backs: filled } } # a refusal's line is cleared when the save starts (siga-generator-dialog.tsx:111)
+  refused: { set: { backs: refused } }
+  added: { set: { cards: some } }
+
+failures:
+  saving:
+    from: createCards
+    gone: [DECK_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [HTTP_400, INTERNAL_ERROR]
+
+# The story the page tells first: a root that reads, both tenses, the drafts, back to the form with what she typed, the drafts again,
+# one meaning corrected, and all saved.
+main:
+  given: { root: fine, meanings: typed, tenses: both, answer: created }
+  events: [OPEN_SIGA, TYPE, PREVIEW, BACK, PREVIEW, EDIT, SAVE, DONE]
+
+initial: deck
+
+states:
+  deck:
+    title: The deck page, before the dialog
+    by: human
+    description: >-
+      One deck of the course at /ders/<id>/deste/<deckId>: the deck's title as the h1 (with the invalid `lang="auto"`, F-D1-14),
+      "Taslak · talebe görünmez" under it, then "Kartlar" with the number of cards, the buttons "Sîga üret" and "Excel'den aktar",
+      the quick-add row, the cards (or "Bu destede henüz kart yok."), and the deck's settings. "Sîga üret" is always drawn, in a
+      "Kelime" deck and a "Hadis" deck alike (D1). Nothing on the page has the focus. Reached by a link of the deck list, so the
+      graph starts after the page has been read: its refusals are nazar.access.dersNazirPages's.
+    source: apps/nazar/features/decks/components/deck-detail-screen.tsx:68
+    on:
+      OPEN_SIGA: { target: rootStep, effect: [opened], say: "they press 'Sîga üret'" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  saved:
+    title: The deck page after the save
+    by: human
+    goal: true
+    description: >-
+      The dialog is gone and the page has read the deck again: "Kartlar · 28" (14 for one tense), the cards in the grid, each tile
+      with its Arabic front and the Turkish back, and a toast "28 kart eklendi" for six seconds. The cards are in the deck at once;
+      a talebe sees them when the deck is published (it is a draft here). The 28 cards are not a group the page knows: each is
+      edited or deleted one at a time. The focus goes back to "Sîga üret" if Base UI returns it to the element that was focused
+      when the dialog opened; the dialog is unmounted by its parent rather than closed, so this is not verified. Opening the
+      generator again for the same root writes 28 more cards (SIGA-1).
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:128
+    on:
+      OPEN_SIGA: { target: rootStep, effect: [opened], say: "they press 'Sîga üret' again" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  rootStep:
+    title: "Step 1: the form, nothing typed"
+    by: human
+    description: >-
+      The dialog "Sîga üretici" over the page, size md. No `initialFocus` is passed, so Base UI's own default applies: the first
+      tabbable element in the popup, which is the close icon of the header (not verified). Under the title the scope sentence
+      "Sülâsî mücerred, sâlim fiil, ma'lûm: mâzî ve muzâri, her biri 14 sîga."; "Kök" (empty, RTL, with the hint "Üç harf, ör. ن ص ر"),
+      "Bâb" (a Base UI select standing on "Nasara – yensuru", its Arabic model verb under it), "Kipler" (two ticked checkboxes,
+      "Mâzî · 14 sîga" and "Muzâri · 14 sîga") and, for each ticked tense, its meaning field with a hint ("“O …” diye: ör. yardım
+      etti"). The asterisks on "Kök" and "Bâb" are drawn and never given to the controls (F-D1-03). The scrim does not close this
+      step (a form dialog); "Vazgeç", the close icon and Esc do. Where the page behind sits is inert.
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:149
+    on:
+      TYPE: { target: rootTyped, say: "they type a root, and the meanings of the tenses that are ticked" }
+      CANCEL: { target: deck, say: "Vazgeç: nothing was made" }
+      CLOSE: { target: deck, say: "the close icon or Esc: nothing was made" }
+
+  rootTyped:
+    title: "Step 1: the form, typed"
+    by: human
+    description: >-
+      The same dialog with the root and the meanings typed. They may pick another bâb (the Arabic line under the select follows),
+      untick a tense (its meaning field leaves the form) and tick it again. "Önizle" is the form's default button, so Enter in any
+      field presses it. A problem is shown after a try and follows the fields live: the four root messages replace the hint under
+      "Kök" (`Field.Error`, not a live region), "En az bir kip seçin." is a bare `<p class="mds-error">` tied to both checkboxes by
+      `aria-describedby`; none of them is announced and the focus stays on the button (SIGA-4). The meanings are optional here,
+      although a card without one cannot be saved (SIGA-3).
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:99
+    on:
+      PICK_BAB: { guard: "bab == 'nasara'", target: rootTyped, effect: [pickedDaraba], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:285, say: "they pick Daraba – yadribu in the list; the vowels of the drafts change, the screen of this step only its Arabic line" }
+      UNTICK_MUZARI: { guard: "tenses != 'both' and kips == 'both'", target: rootTyped, effect: [untickedMuzari], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:307, say: "they untick 'Muzâri · 14 sîga': its meaning field goes" }
+      UNTICK_MAZI: { guard: "tenses == 'none' and kips == 'mazi'", target: rootTyped, effect: [untickedMazi], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:298, say: "they untick 'Mâzî · 14 sîga' too: nothing is ticked and no meaning field is left" }
+      TICK:
+        - { guard: "kips == 'none' and said == 'kips'", target: rootTyped, effect: [tickedFixes], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:298, say: "they tick 'Mâzî · 14 sîga' again after the message: it goes at once" }
+        - { guard: "kips == 'none'", target: rootTyped, effect: [tickedAgain], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:298, say: "they tick 'Mâzî · 14 sîga' again before any try" }
+      RETYPE:
+        - { guard: "rootBad and said != 'none' and kips == 'none'", target: rootTyped, effect: [retypedKipsLeft], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:82, say: "they write a root that reads: its message goes, and the tenses' message was there all the time" }
+        - { guard: "rootBad and said != 'none'", target: rootTyped, effect: [retypedClears], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:82, say: "they write a root that reads: its message goes at once" }
+      TYPE_MEANINGS: { guard: "meanings == 'none' and not mended", target: rootTyped, effect: [mendedMeanings], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:322, say: "they type the meanings they left out" }
+      PREVIEW: { target: checking, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:99, say: "they press 'Önizle' (or Enter)" }
+      CANCEL: { target: deck, say: "Vazgeç: nothing was made" }
+      CLOSE: { target: deck, say: "the close icon or Esc: what they typed is thrown away" }
+
+  checking:
+    title: Can the root and the tenses be drafted?
+    description: >-
+      Not a screen: `preview()` sets `sent`, and stops when the root does not read (readRoot) or no tense is ticked. The messages
+      appear in `sent`, so they show on this press and then follow the fields. Otherwise generateSigas() builds the drafts in the
+      browser: no call is made. A root is refused in this order: empty, not three Arabic letters, a hamza or a weak letter, a doubled
+      root; a root and a tense that are both wrong are shown together (the graph keeps the root's message in `said` and draws the tenses'
+      message too, while nothing is ticked).
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:99
+    always:
+      - { guard: "rootBad and root == 'empty'", target: rootTyped, effect: [saidRequired], source: apps/nazar/features/decks/siga.ts:148, say: "'Kökü yazın.' under the root" }
+      - { guard: "rootBad and root == 'letters'", target: rootTyped, effect: [saidLetters], source: apps/nazar/features/decks/siga.ts:154, say: "'Kök üç Arapça harf olmalı.' under the root" }
+      - { guard: "rootBad and root == 'weak'", target: rootTyped, effect: [saidWeak], source: apps/nazar/features/decks/siga.ts:155, say: "'Hemzeli ya da illetli kök bu üreticide yok; yalnız sâlim fiil.' under the root" }
+      - { guard: "rootBad and root == 'doubled'", target: rootTyped, effect: [saidDoubled], source: apps/nazar/features/decks/siga.ts:156, say: "'Muzâaf kök bu üreticide yok.' under the root" }
+      - { guard: "kips == 'none'", target: rootTyped, effect: [saidKips], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:84, say: "'En az bir kip seçin.' under the tenses" }
+      - { guard: "meanings == 'none' and not mended", target: preview, effect: [draftsBlank], source: apps/nazar/features/decks/siga.ts:385, say: "the drafts are built, every meaning empty (SIGA-3)" }
+      - { target: preview, effect: [draftsFilled], source: apps/nazar/features/decks/siga.ts:370, say: "the drafts are built: 14 for each ticked tense" }
+
+  preview:
+    title: "Step 2: the drafts"
+    by: human
+    description: >-
+      The body is replaced: "Harekeyi ve anlamı kontrol edin; kartlar düzelttiğiniz hâliyle kaydedilir.", then an h3 "Mâzî" and,
+      with both ticked, an h3 "Muzâri", each with an `<ol>` of 14 groups. A group is a `<fieldset>` whose legend is its sîga ("Gâib ·
+      müfred", "Mütekellim · maa'l-gayr") and two boxes, "Arapça" (the vowelled form, RTL) and "Anlam" ("O (erkek) yardım etti"). The
+      footer is replaced too: "Vazgeç" and "Önizle" leave and "Geri" and "28 kartı kaydet" come, so the focused button unmounts
+      (F-D1-21). There is no "Vazgeç" here; the close icon and Esc close the dialog, and so does a click on the scrim, because
+      `dismissible={!pending}` (F-D1-21): all 28 drafts and every correction are dropped with no question. "Geri" returns to step 1
+      with what was typed there, and the drafts are built anew by the next "Önizle", so a correction made here is gone (SIGA-5).
+      With empty meanings every "Anlam" box is empty and nothing says so until the person presses save (SIGA-3). Enter in any box
+      presses save (SIGA-6). A refusal's line stands at the very end of this long body (SIGA-7).
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:188
+    on:
+      EDIT: { target: preview, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:224, say: "they correct one box: a vowel, or a meaning" }
+      BACK: { target: rootTyped, effect: [wentBack], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:168, say: "they press 'Geri': step 1 keeps the root, the bâb, the tenses and the meanings; the drafts and their corrections are dropped" }
+      SAVE:
+        - { guard: "backs == 'blank' or backs == 'flagged'", target: preview, effect: [flagged], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:112, say: "a draft with an empty meaning stops the save: each such 'Anlam' says 'Bu alan 3 ile 5000 karakter arasında olmalı.' and nothing is sent" }
+        - { target: saving, effect: [sending], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:113, say: "they press '28 kartı kaydet' (or Enter)" }
+      CLOSE: { target: deck, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:154, say: "the close icon, Esc: the dialog closes at once and the drafts are lost" }
+      SCRIM: { target: deck, source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:156, say: "a click on the scrim: the same (F-D1-21)" }
+
+  saving:
+    title: The cards are on their way
+    description: >-
+      The server action createCards makes one call, POST /flashcard/decks/:deckId/cards, with the whole list: every card
+      `{type: the deck's cardType, contentFront, contentBack, contentMeta}`, the faces trimmed. One insert: all 28 or none. "Geri"
+      is disabled and the save button is busy (aria-disabled, aria-busy; "Yükleniyor" from a hard-coded default, F-D1-24). Esc, the
+      scrim and the close icon are ignored while it runs (the icon is not marked); the dialog stays open. A call that cannot reach the
+      server at all is not caught: the button stays busy and nothing is said (F-D1-20, not verified).
+    invoke: { action: createCards }
+    on:
+      DONE: { guard: "answer == 'created'", target: saved, effect: [added], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:128, say: "a toast '28 kart eklendi', the dialog closes, the page reads the deck again" }
+      FAIL.gone: { guard: "answer == 'gone'", target: preview, effect: [refused], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:124, say: "the deck is not there: the same sentence as any refusal, and nothing the person can do about it (SIGA-7)" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: preview, effect: [refused], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:124, say: "she may not: the same sentence" }
+      FAIL.other: { guard: "answer == 'failed'", target: preview, effect: [refused], source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:124, say: "any other refusal: the same sentence" }
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:113
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-preview-has-a-root-that-reads
+    never: "state == 'preview' and rootBad"
+    say: Drafts are built only from a root the generator can conjugate.
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:101
+  - id: a-preview-has-a-tense
+    never: "state == 'preview' and kips == 'none'"
+    say: Drafts are built only while a tense is ticked.
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:101
+  - id: nothing-is-sent-with-an-empty-meaning
+    never: "state == 'saving' and (backs == 'blank' or backs == 'flagged')"
+    say: A card whose face is shorter than 3 characters is never sent; the dialog stops the save itself.
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:112
+  - id: saved-means-cards
+    never: "state == 'saved' and cards == 'none'"
+    say: After a save the deck holds cards.
+    source: apps/nazar/features/decks/components/siga-generator-dialog.tsx:128

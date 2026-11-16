@@ -1,0 +1,130 @@
+# tedris.course.draftPreview on the local stack: a draft course's page in tedris-web (:4000) as the seeded müderris (the preview, the
+# main story), as the same müderris when no celse has a time, as a talebe (the not-found page and its way home) and as a visitor.
+#   node apps/engine/src/cli.ts replay graphs/tedris/course/draftPreview \
+#     --bind graphs/tedris/course/draftPreview/binding.yaml --absent --out <dir>          (the main story: scenario editorDated)
+#   ... --to home_opened         (the not-found page and "Ana sayfaya dön" for a member: scenario memberNotFound)
+#   ... --to previewUnscheduled  (the card with no "İlk celse": scenario editorUndated)
+#
+# Data. Nothing the seed holds is changed. The seed has no draft, so the walk makes its own with the shared helper
+# (helpers/draft-course.mjs, which tedris.shell.systemPages uses too): `make` makes a DRAFT course "Sistem sayfaları denemesi" in the
+# seeded köşk as the köşk's nazım, with the seeded müderris as its hoca and one dated celse (7 Aralık 2026, 21:00), and writes its id to
+# graphs/.local/system-pages.json, read here as {sp.draft}; `remove` deletes it (as the başnazım; the weeks and celses go with it). `make`
+# first deletes any course of that title in the köşk, so a walk that died leaves nothing in the way. The two walks of the two flows must
+# not overlap: they share the title and the file, and the replay lock keeps them apart.
+# editorDated adds with SQL (sql.mjs, tedrisat's own database in the stack's Postgres container: no API route adds one celse without
+# re-sending the course) a second week whose celse is EARLIER than the first week's, so the card has to name the earliest and not the
+# first one listed (e2e system-pages#5 a6, whose two celses are in the same order). editorUndated takes the one celse's time away with
+# SQL: no route stores a celse without a time for a draft course, and the stack's course has one.
+#
+# Where role and name cannot find a node, `nodes` says: the banner's title and the card's badge are both the word "Önizleme", so each
+# is found by its class; "Taslak" is the one badge with that word; the <main> and the <aside> carry no name, so the card's heading is
+# what finds them (a bare role would also match the page the walk leaves for); "Düzenlemeye dön" is found by its address, which is
+# NAZAR_URL (e2e system-pages#5 a7), and by the aria-label that starts with its visible words; and the control the page never draws is
+# found as any button whose name starts "Kayıt" (e2e system-pages#5 a5), checked absent by --absent.
+#
+# Not bound, so the replay cannot reach them (reported): the HTTP status of the not-found page (e2e system-pages#6 a1: the replay does
+# not read a navigation's status), a draft opened by a ders nazırı who holds course.view_unpublished or by the başnazım (the same page;
+# only the müderris was walked), the preview that throws (tedris.shell.systemPages), and NAVIGATE (the walks end before it).
+# Walked on 15 Nov 2026, with --absent, three runs and all three passed first time: the main story (editorDated), --to home_opened
+# (memberNotFound: the not-found page, then "Ana sayfaya dön" to /home) and --to previewUnscheduled (editorUndated). Not walked: visitorNotFound
+# (its locators were counted in a browser outside the replay: the region, the heading, the sentence and the link, one each, and the link ends on
+# /discover) and NAVIGATE. The başnazım and the köşk's nazım were opened in a browser outside the replay too (the same preview).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.course.draftPreview
+
+data:
+  sp: { json: ../.local/system-pages.json }
+
+# `title` is the title draft-course.mjs gives the course it makes (its TITLE); `when` is the first celse's time as the card writes it, in the course's
+# zone: editorDated's earlier celse is 1 Aralık 2026 18:00 UTC, which is 21:00 in Europe/Istanbul. Both hold for every scenario, so that a node the graph
+# does not show is looked for by its exact words and not by any text (a `<time>` of Ana sayfa or of Keşfet would match "any text").
+samples:
+  title: Sistem sayfaları denemesi
+  when: 1 Aralık Salı 21:00
+
+scenarios:
+  # The main story: the hoca opens their draft (e2e system-pages#5). Two celses, the earlier in the second week.
+  editorDated:
+    given: { viewer: editor, draft: dated }
+    as: muderris
+    open: '{tedris}/courses/{sp.draft}'
+    setup:
+      - run: [node, helpers/draft-course.mjs, make]
+        expect: 'draft-course make'
+      - run:
+          - node
+          - helpers/sql.mjs
+          - "with w as (insert into course_weeks(course_id, week_number, title, order_index) values ('{sp.draft}', 2, 'İkinci hafta', 1) returning id) insert into lessons(week_id, title, type, order_index, scheduled_at, duration_minutes) select id, 'Erken celse', 'LIVE', 0, '2026-12-01T18:00:00Z', 60 from w returning title"
+        expect: 'Erken celse'
+    teardown:
+      - run: [node, helpers/draft-course.mjs, remove]
+        expect: 'draft-course remove'
+
+  # The same hoca, a draft that nobody has dated yet: the card has no "İlk celse".
+  editorUndated:
+    given: { viewer: editor, draft: undated }
+    as: muderris
+    open: '{tedris}/courses/{sp.draft}'
+    setup:
+      - run: [node, helpers/draft-course.mjs, make]
+        expect: 'draft-course make'
+      - run:
+          - node
+          - helpers/sql.mjs
+          - "update lessons set scheduled_at = null where week_id in (select id from course_weeks where course_id = '{sp.draft}')"
+        expect: '"rows":1'
+    teardown:
+      - run: [node, helpers/draft-course.mjs, remove]
+        expect: 'draft-course remove'
+
+  # A talebe opens the same address and gets the not-found page (e2e system-pages#6).
+  memberNotFound:
+    given: { viewer: member, draft: dated }
+    as: talebe
+    open: '{tedris}/courses/{sp.draft}'
+    setup:
+      - run: [node, helpers/draft-course.mjs, make]
+        expect: 'draft-course make'
+    teardown:
+      - run: [node, helpers/draft-course.mjs, remove]
+        expect: 'draft-course remove'
+
+  # Nobody is signed in: the same page (e2e course#3 asserts its status). NOT walked in this phase.
+  visitorNotFound:
+    given: { viewer: visitor, draft: dated }
+    open: '{tedris}/courses/{sp.draft}'
+    setup:
+      - run: [node, helpers/draft-course.mjs, make]
+        expect: 'draft-course make'
+    teardown:
+      - run: [node, helpers/draft-course.mjs, remove]
+        expect: 'draft-course remove'
+
+events:
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  previewShown: { url: '{tedris}/courses/{sp.draft}' }
+  previewUnscheduled: { url: '{tedris}/courses/{sp.draft}' }
+  notFound: { url: '{tedris}/courses/{sp.draft}' }
+  # Nazar's landing sends the person on to a course of theirs once it has loaded
+  nazar_opened: { url: '{nazar}/**' }
+  home_opened: { url: '{tedris}/home' }
+  # the link is "/", which the page redirects to Keşfet for a visitor
+  discover_opened: { url: '{tedris}/discover' }
+  left: { url: '{tedris}/discover' }
+
+nodes:
+  # the course page's <main>; the page the walk leaves for has one of its own
+  previewPage: { role: main, hasText: '/Ders yayımlandığında/' }
+  # the banner's own title and the card's badge are the same word, so each is found by its class
+  previewBannerTitle: { css: '.mds-alert__title', hasText: '/^Önizleme$/' }
+  draftBadge: { css: '.mds-badge', hasText: '/^Taslak$/' }
+  previewAside: { role: complementary, hasText: '/Ders yayımlandığında/' }
+  previewCardBadge: { css: 'aside .mds-badge', hasText: '/^Önizleme$/' }
+  # e2e system-pages#5 a7: the address is NAZAR_URL; the accessible name is the aria-label that holds the visible words
+  backToEditing: { css: 'a[href="{nazar}"][aria-label^="Düzenlemeye dön: "]' }
+  # e2e system-pages#5 a5: no button whose name starts "Kayıt", whatever its label
+  applyButton: { role: button, name: '/^Kayıt/' }

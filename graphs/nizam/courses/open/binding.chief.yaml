@@ -1,0 +1,26 @@
+# nizam.courses.open, the başnazım's walk (P-CHIEF): she opens courses in any köşk, not only in the ones she manages (`koskAbilities`:
+# `me.roles.systemAdmin || managesKosk`, apps/nizam/features/kosks/kosk-abilities.ts:56), and the API passes her by the realm bypass. The page and
+# the form are the köşk nazımı's, and she is not a nazım of the walk's köşk (KOSK_NAZIM is), so this is the one walk where the person who opens
+# the course is neither the köşk's nazım nor named in it.
+#   ... replay graphs/nizam/courses/open --bind graphs/nizam/courses/open/binding.chief.yaml --out <dir>        (the main story only)
+#
+# NOT RUN (see binding.yaml). It is a file of its own because the scenario takes the same `given` as `opens`, so under `--cover` it would never
+# be chosen and a cover of it would walk every transition again: the main story is the walk it is for.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.open
+
+scenarios:
+  chief:
+    given: { fromRequest: false, access: open, request: accepted, lookup: found, policy: free, answer: created }
+    as: systemAdmin
+    open: '{nizam}/kosks/{made.kosk}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'koskCourses->courseNew' }
+    setup:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, make, nizam-courses-open]
+        expect: '"tag":"nizam-courses-open"'
+    teardown:
+      - run: [node, ../nizam/courses/open/walk-data.mjs, remove, nizam-courses-open]
+        expect: 'walk-data remove nizam-courses-open'
+    vars: { courseTitle: Deneme dersi nizam-courses-open, hocaA: '{secret.E2E_MUDERRIS_EMAIL}', hocaB: '{secret.E2E_APPLICANT_C_EMAIL}', startDate: '2027-03-01', weeks: '2', day: Pzt, wantApproval: '"requires_approval":', wantLessons: '"lessons":2' }

@@ -1,0 +1,244 @@
+# nazar.nazirs.groups on the local stack: the başmüderris of "Hadis ve Siyer Medresesi" at http://localhost:4002, on Medrese nazırları.
+#   node apps/engine/src/cli.ts replay graphs/nazar/nazirs/groups --bind graphs/nazar/nazirs/groups/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay (the first walks are a later phase). What is here comes from the code and the catalog; every
+# locator, every command and every account fact below is unverified until a walk.
+#
+# The walk makes its own groups and leaves the seed alone. `setup` and `teardown` run ./groups.mjs (a helper of this folder, through
+# tedrisat's HTTP API and the shared helpers/lib.mjs) as the başmüderris: it deletes every group named "Gezinti grup ..." (with "revoke"
+# where someone holds it) and takes the holder out of the medrese, so a walk that died leaves nothing in the next one's way, then makes
+# the scenario's groups. The scenarios that need a used group give the group to APPLICANT_D, a spare talebe account (a man, no
+# enrolment) whom the helper appoints a nazır of the medrese with nothing else and dismisses again; no other walk of this batch is
+# expected to use that account at the same time, and a replay runs under the lock, so none does. The seed's own nazır (MEDRESE_NAZIR),
+# its courses and every group whose name does not start with the prefix are never read or changed. Names are plain ASCII so that the
+# API's case-insensitive check (lower(name)) means the same in any database collation.
+# The medrese is expected to hold no other group (the stack's seed makes none; this walk's `empty` start needs it): every other writer who
+# makes a group here removes it again.
+#
+# The binding gives no `samples`: a catalog text with a placeholder ("Bu grubu {count} kişi kullanıyor", "“{name}” grubu kaydedildi.") then
+# matches any value there, which is what a walk needs, since a group is renamed and its holders counted while it goes.
+#
+# What each scenario walks (the `given` of flow.yaml picks the branch, `--cover transitions` takes every transition it can reach from it):
+#   defines      the main story. An empty section, "Grup tanımla", the empty form refused ("Grup adı boş olamaz.", "En az bir izin seçin."),
+#                a name and two boxes, "Ders" switching the medrese box off (groups#3) and "Medrese" again, the group saved ("Grup kaydedildi",
+#                "2 izin · 0 nazıra verildi", groups#2), its edit, "Grubu sil" on a group nobody holds (the plain question) and the empty
+#                section again.
+#   taken        two groups, A and B: a new group named "GEZINTI GRUP A" is refused under the field whatever its case (groups#4), and so is
+#                a rename of A into "GEZINTI GRUP B".
+#   usedCourse   a course-only group held by one nazır, the e2e's "Kayıt ve talebe işleri": the edit opens on "Ders" (GROUPS-1), a rename is
+#                saved at once (groups#5), a change of permissions asks and "İzinleri korusunlar" keeps them (groups#6), the delete asks and
+#                "İzinleri kaybetsinler" takes them back (groups#7), Vazgeç on the question deletes nothing (groups#8).
+#   usedMedrese  the same with a group that has a medrese permission: the edit opens on "Medrese"; "Ders" there unticks it.
+#   unusedCourse a course-only group nobody holds: the edit opens on "Ders", a change of permissions is saved with no question, the delete
+#                asks plainly.
+#   Each walk presses the first "Düzenle: Gezinti grup ..." (a repeated node is pressed on its first item, and the page lists oldest first).
+#
+# e2e carried (apps/nazar/e2e/groups.e2e.ts), against the walk's own data: the e2e's SQL seed of three groups and their holders is not
+# the stack's. groups#1: a1 (the intro sentence) and a2 and a5 in substance (`usedCourse`'s group reads "2 izin · 1 nazıra verildi"); a3 and
+# a4 name the e2e's own seeded groups and are not carried literally. groups#2: a1, a2, a4-a9 (a3 counts 33 boxes and the dictionary has 34
+# now, 11 + 23, so that count is stale and the graph carries 34); a10 is read through the API by `verify`, which prints each group's codes
+# ("madrasah.course_open,week.hide") instead of the database; a11, the audit row, is not carried. groups#3: a1-a5. groups#4: a1-a2.
+# groups#5: a1-a4. groups#6: a1-a6, and a7-a8 as `verify`'s "kept". groups#7: a1-a5, and a6 as `verify`'s "revoked". groups#8: a1 (a2, that
+# nothing was deleted, is not read by an effect).
+#
+# Not bound, each with its reason:
+#   - `answer: gone`, `refused` and `failed`: they need a second person deleting the group mid-walk, a başmüderris who may not give
+#     permissions, or a server that fails; the local stack cannot be made to on request. `FAIL.gone`, `FAIL.forbidden` and `FAIL.other` of
+#     every invoking state, and the error toasts, stay unwalked (a unit test, apps/nazar/test/group-dialog.spec.tsx, covers the toast).
+#   - `forbidden`, `sectionFailed` and `not_found`: the başmüderris is never refused, the API answers, and an unknown medrese is the portal's
+#     404 before this page reads anything (nazar.shell.errorStates walks the 404 page, nazar.access.medreseNazirRefused the refusal).
+#   - the stale count (someone is given the group while its question is open): it needs a second person; apps/nazar/test/group-dialog.spec.tsx
+#     covers it.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nazar.binding.yaml
+flow: nazar.nazirs.groups
+
+scenarios:
+  defines:
+    given: { groups: none, held: unused, groupScope: medrese, answer: done, rest: none }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, up, --madrasah, '{seed.madrasah}']
+        expect: 'ready: 0 groups'
+    teardown:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, down, --madrasah, '{seed.madrasah}']
+        expect: 'restored'
+    vars:
+      groupName: Gezinti grup kabul
+      renameTo: Gezinti grup kabul yeni
+      holder: none
+
+  taken:
+    given: { groups: some, held: unused, groupScope: medrese, answer: taken, rest: some }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, up, --madrasah, '{seed.madrasah}', --make, 'Gezinti grup A=madrasah.course_open,week.hide;Gezinti grup B=madrasah.course_open,enrollment.decide']
+        expect: 'ready: 2 groups'
+    teardown:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, down, --madrasah, '{seed.madrasah}']
+        expect: 'restored'
+    vars:
+      groupName: GEZINTI GRUP A
+      renameTo: GEZINTI GRUP B
+      holder: none
+
+  usedCourse:
+    given: { groups: some, held: used, groupScope: course, answer: done, rest: none }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, up, --madrasah, '{seed.madrasah}', --make, 'Gezinti grup kayit=enrollment.decide,enrollment.complete', --hold, 'Gezinti grup kayit=APPLICANT_D']
+        expect: 'ready: 1 groups, 1 held'
+    teardown:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, down, --madrasah, '{seed.madrasah}', --hold, APPLICANT_D]
+        expect: 'restored'
+    vars:
+      groupName: Gezinti grup kayit
+      renameTo: Gezinti grup kayit yeni
+      holder: APPLICANT_D
+
+  usedMedrese:
+    given: { groups: some, held: used, groupScope: medrese, answer: done, rest: none }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, up, --madrasah, '{seed.madrasah}', --make, 'Gezinti grup yasak=madrasah.course_open,enrollment.decide', --hold, 'Gezinti grup yasak=APPLICANT_D']
+        expect: 'ready: 1 groups, 1 held'
+    teardown:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, down, --madrasah, '{seed.madrasah}', --hold, APPLICANT_D]
+        expect: 'restored'
+    vars:
+      groupName: Gezinti grup yasak
+      renameTo: Gezinti grup yasak yeni
+      holder: APPLICANT_D
+
+  unusedCourse:
+    given: { groups: some, held: unused, groupScope: course, answer: done, rest: none }
+    as: basmuderris
+    open: '{nazar}/medrese/{seed.madrasah}/dersler'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->medreseNazirs' }
+    setup:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, up, --madrasah, '{seed.madrasah}', --make, 'Gezinti grup ders=enrollment.decide,week.hide']
+        expect: 'ready: 1 groups'
+    teardown:
+      - run: [node, ../nazar/nazirs/groups/groups.mjs, down, --madrasah, '{seed.madrasah}']
+        expect: 'restored'
+    vars:
+      groupName: Gezinti grup ders
+      renameTo: Gezinti grup ders yeni
+      holder: none
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in. The create form and the edit form have the
+  # same field, and only one of them is open at a time.
+  TYPE_NAME:
+    - fill: { role: textbox, name: Grup adı, value: '{groupName}' }
+  RENAME:
+    - fill: { role: textbox, name: Grup adı, value: '{renameTo}' }
+  # the menu's "Medrese ayarları" (the exit with no screen of its own)
+  NAVIGATE:
+    - click: { role: link, name: Medrese ayarları, within: { role: navigation, name: Ana menü } }
+  RELOAD: [{ reload: true }]
+
+states:
+  listed: { url: '{nazar}/medrese/*/nazirlar' }
+  empty: { url: '{nazar}/medrese/*/nazirlar' }
+  # a save and a delete are Next server actions: a POST to the page's own address, held while the busy button is checked. The calls are
+  # not compared with a status (a server action answers 200 whatever it decided).
+  creating: { call: '{nazar}/medrese/*/nazirlar' }
+  creatingCourse: { call: '{nazar}/medrese/*/nazirlar' }
+  updating: { call: '{nazar}/medrese/*/nazirlar' }
+  updatingCourse: { call: '{nazar}/medrese/*/nazirlar' }
+  updatingAsked: { call: '{nazar}/medrese/*/nazirlar' }
+  deleting: { call: '{nazar}/medrese/*/nazirlar' }
+  left: { url: '{nazar}/medrese/*/ayarlar' }
+
+# Where role and name cannot find a node, or would find the wrong one. Most nodes are found by role and name; the ones below sit in a
+# dialog that has a twin (the question's "Vazgeç" and the dialog's), or say a number or a name that changes with the walk's data.
+nodes:
+  # the shell's one <main>; every page of the medrese has one, so it is told apart by the section's heading
+  nazirsPage: { role: main, hasText: İzin grupları }
+  # the menu has lists too
+  groupList: { role: list, within: { testId: permission-groups } }
+  # a card's three lines; every walk's group name starts with "Gezinti grup", and another group of the medrese is not a card of this walk
+  cardName: { css: '[data-testid=permission-group] bdi', hasText: '/^Gezinti grup/' }
+  cardSummary: { css: '[data-testid=permission-group] span.mds-body-sm', hasText: '/[a-zçğıöşü]/' }
+  cardUsage: { css: '[data-testid=permission-group] span.mds-caption', hasText: '/^\d+ izin · \d+ nazıra verildi$/' }
+  editGroup: { role: button, name: '/^Düzenle: Gezinti grup/' }
+  # the toasts say the walk's group name, which any value of the sample matches
+  toastSaved: { role: dialog, name: Grup kaydedildi }
+  toastDeleted: { role: dialog, name: Grup silindi }
+  # the dialog's own controls: the question's "Vazgeç" and "Grubu kaydet" are in the accessibility tree beside them while it is open
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: '/^İzin grubu/' } }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: '/^İzin grubu/' } }
+  submit: { role: button, name: Grubu kaydet, within: { role: dialog, name: '/^İzin grubu/' } }
+  deleteGroup: { role: button, name: Grubu sil, within: { role: dialog, name: İzin grubunu düzenle } }
+  # the medrese's name is also in the sidebar behind the dialog
+  dialogEyebrow: { css: 'p.mds-eyebrow', hasText: Hadis ve Siyer Medresesi, within: { role: dialog, name: '/^İzin grubu/' } }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # "İzinler" is also inside other sentences of the dialog
+  permissionsLabel: { css: 'p.mds-label', hasText: '/^İzinler/' }
+  permissionsHelp: { css: 'p.mds-help', hasText: '/^Yalnız verebileceğiniz izinler listelenir\. \d+ izin seçili\.$/' }
+  # the two fieldsets: "Medrese" is a substring of "Medrese dersleri"
+  madrasahSection: { role: group, name: '/^Medrese$/' }
+  courseSection: { role: group, name: Medrese dersleri }
+  # the footer says how many boxes are ticked
+  metaMadrasah: { css: 'p.mds-dialog__meta', hasText: '/^Medrese kapsamı · \d+ izin seçili$/' }
+  metaCourse: { css: 'p.mds-dialog__meta', hasText: '/^Ders kapsamı · \d+ izin seçili$/' }
+  usedNote: { css: 'p.mds-caption', hasText: '/^Bu grubu \d+ kişi kullanıyor\. İzinleri değiştirirseniz/' }
+  unusedNote: { css: 'p.mds-caption', hasText: '/^Grubu henüz kimse kullanmıyor/' }
+  unusedNoteEdit: { css: 'p.mds-caption', hasText: '/^Grubu henüz kimse kullanmıyor/' }
+  # the radios are named by their label alone; "Medrese" would also be found in the name of the other radio's help
+  scopeMadrasah: { role: radio, name: '/^Medrese$/' }
+  scopeCourse: { role: radio, name: '/^Ders$/' }
+  # the question over the dialog. Its words say a count (the walk's one holder), and its buttons share their names with the dialog's.
+  askEditDialog: { role: alertdialog, name: '/^Bu grubu \d+ kişi kullanıyor$/' }
+  askEditEyebrow: { css: 'p.mds-eyebrow', hasText: '/^Gezinti grup/', within: { role: alertdialog } }
+  askEditTitle: { role: heading, name: '/^Bu grubu \d+ kişi kullanıyor$/', within: { role: alertdialog } }
+  askEditIntro: { text: '/grubunun izinlerini değiştiriyorsunuz/', within: { role: alertdialog } }
+  askEditClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  askEditCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  askEditConfirm: { role: button, name: Grubu kaydet, within: { role: alertdialog } }
+  askEditGroup: { role: radiogroup, name: Bu grubu kullananlar, within: { role: alertdialog } }
+  askEditKeep: { role: radio, name: İzinleri korusunlar, within: { role: alertdialog } }
+  askEditRevoke: { role: radio, name: İzinleri kaybetsinler, within: { role: alertdialog } }
+  askDeleteDialog: { role: alertdialog, name: '/^Bu grubu \d+ kişi kullanıyor$/' }
+  askDeleteEyebrow: { css: 'p.mds-eyebrow', hasText: '/^Gezinti grup/', within: { role: alertdialog } }
+  askDeleteTitle: { role: heading, name: '/^Bu grubu \d+ kişi kullanıyor$/', within: { role: alertdialog } }
+  askDeleteIntro: { text: '/grubunu siliyorsunuz/', within: { role: alertdialog } }
+  askDeleteClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  askDeleteCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  askDeleteConfirm: { role: button, name: Grubu sil, within: { role: alertdialog } }
+  askDeleteGroup: { role: radiogroup, name: Bu grubu kullananlar, within: { role: alertdialog } }
+  askDeleteKeep: { role: radio, name: İzinleri korusunlar, within: { role: alertdialog } }
+  askDeleteRevoke: { role: radio, name: İzinleri kaybetsinler, within: { role: alertdialog } }
+  # the question of a group nobody holds: its title is the same word as its button
+  askUnusedDialog: { role: alertdialog, name: Grubu sil }
+  askUnusedEyebrow: { css: 'p.mds-eyebrow', hasText: '/^Gezinti grup/', within: { role: alertdialog } }
+  askUnusedTitle: { role: heading, name: Grubu sil, within: { role: alertdialog } }
+  askUnusedBody: { text: '/grubu silinecek\. Bu grubu kimse kullanmıyor/', within: { role: alertdialog } }
+  askUnusedClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  askUnusedCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  askUnusedConfirm: { role: button, name: Grubu sil, within: { role: alertdialog } }
+
+# What a save or a delete leaves outside the screen, read through the API as the başmüderris (graphs/nazar/nazirs/groups/groups.mjs verify).
+# After a save or a delete with a holder it says whether the nazır still holds the group (`held`), kept the group's old codes as single
+# permissions (`kept`, "İzinleri korusunlar") or lost them (`revoked`, "İzinleri kaybetsinler"), and fails on any other state. Without a
+# holder it says how many groups and holders there are.
+effects:
+  createMadrasahPermissionGroup:
+    - run: [node, ../nazar/nazirs/groups/groups.mjs, verify, --madrasah, '{seed.madrasah}', --holder, '{holder}']
+      expect: 'madrasah.course_open,week.hide'
+  updateMadrasahPermissionGroup:
+    - run: [node, ../nazar/nazirs/groups/groups.mjs, verify, --madrasah, '{seed.madrasah}', --holder, '{holder}']
+      expect: 'ok: '
+  deleteMadrasahPermissionGroup:
+    - run: [node, ../nazar/nazirs/groups/groups.mjs, verify, --madrasah, '{seed.madrasah}', --holder, '{holder}']
+      expect: 'ok: '

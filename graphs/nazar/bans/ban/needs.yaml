@@ -1,0 +1,228 @@
+schema: delurio-graph/0
+kind: needs
+id: nazar.bans.ban
+status: proposed
+summary: >-
+  What must exist for the başmüderris of a medrese to bar a talebe from a course or from the whole medrese (nazar.bans.ban): the
+  flow's product list. Each need is what the product must do, from the flow's story and the planned work in the inventory
+  (planned.md P-01, P-29, P-35), not from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# The `replay:` names are the scenarios of binding.yaml; NO REPLAY HAS RUN (the first walks are a later phase), so none of them is a
+# proof yet. The e2e checks students#4 and bans#7 are carried by the scenarios row and email.
+#
+# Gaps of this file, for that merge:
+# missing:   the-people-above-are-told (MDRS-113), the-keycloak-account-is-disabled (MDRS-197), a-ban-notice-by-e-mail (MDRS-189),
+# a-standing-ban-is-said, the-form-says-what-is-missing, the-lookup-moves-the-focus-and-says-who, a-lookup-only-on-request
+# unwalked:  a-nazir-given-the-grant-bans (code, no e2e, no replay: the stack has no such nazır), and of a-refused-ban-says-why every
+# toast but BAN_TARGET_INVALID (the other refusals cannot be made on the local stack)
+# Gender separation (kontenjan per gender, MDRS-284): not applicable, a ban is not a seat decision.
+
+needs:
+  - id: ban-from-a-talebes-row
+    need: >-
+      From the list of the medrese's talebe the başmüderris bars one of them, choosing one of the talebe's own courses or the
+      whole medrese and giving a reason; the ban holds at once, is recorded with who placed it, at what level and why, and the
+      page says it was placed.
+    evidence:
+      - state: studentsPage
+      - node: studentsPage
+      - state: rowForm
+      - state: rowReady
+      - state: rowSubmitting
+      - state: savedRow
+      - node: rowBan
+      - node: dialogRow
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+      - source: apps/nazar/features/students/components/students-table.tsx:169
+      - source: apps/nazar/features/bans/components/ban-dialog.tsx:131
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — 'Yasakla' opens the dialog with the talebe's courses, wants a reason, and bars them from the course chosen (criterion 4)"
+      - scenario: row
+
+  - id: ban-by-exact-email
+    need: >-
+      From the page of bans the başmüderris bars a person who is not in the list: she writes their exact e-mail address, the
+      person is found in the realm's directory (also one who never opened the app), and is barred from a course of the medrese or
+      from the whole medrese with a reason. An address with no account, and a directory that does not answer, are said in words.
+    evidence:
+      - state: bansPage
+      - node: bansPage
+      - state: headerForm
+      - state: headerLooking
+      - state: headerReady
+      - state: headerSubmitting
+      - state: savedHeader
+      - node: emailNotFound
+      - node: emailDown
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+      - source: apps/nazar/features/bans/components/ban-dialog.tsx:55
+      - test: apps/nazar/e2e/bans.e2e.ts
+        name: "nazir/11 — 'Yasakla' finds the person by e-mail and bars them from the course chosen"
+      - scenario: email
+      - scenario: unknown
+    note: >-
+      `down` and `noCourses` are drawn and not bound: no way to make the directory or the courses read fail on the local stack
+
+  - id: choose-a-course-or-the-whole-medrese
+    need: >-
+      The ban names its scope: one course (the talebe loses that course's celses, recordings and content, cannot apply again and
+      cannot leave) or the whole medrese (every course, and no application to any); the first course is chosen to begin with, the
+      narrowest, and the person is told which they chose.
+    evidence:
+      - node: scopeGroup
+      - node: rowCourse
+      - node: headerCourse
+      - node: madrasahRadio
+      - node: toastSavedCourse
+      - node: toastSavedMadrasah
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+      - source: apps/nazar/features/bans/components/ban-dialog.tsx:253
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — 'Yasakla' opens the dialog with the talebe's courses, wants a reason, and bars them from the course chosen (criterion 4)"
+      - scenario: row
+
+  - id: a-reason-is-always-given
+    need: >-
+      No ban is placed without a reason of at most 500 characters that holds something other than white space; it is read by those
+      who see the ban and by whoever lifts it, never by the talebe.
+    evidence:
+      - node: reasonField
+      - node: reasonHelp
+      - node: reasonRequired
+      - node: submit
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+      - source: apps/nazar/features/bans/components/ban-dialog.tsx:276
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — 'Yasakla' opens the dialog with the talebe's courses, wants a reason, and bars them from the course chosen (criterion 4)"
+      - scenario: row
+    note: Also drawn as the assertion never-without-a-reason.
+
+  - id: a-refused-ban-says-why
+    need: >-
+      When the server refuses the ban the dialog stays open with what was typed and says, in words, what was refused: not allowed
+      at that level, the person cannot be barred (herself, or someone who runs the medrese or the course), the course is gone, the
+      reason is refused, anything else; the refusal is announced and stays until read.
+    evidence:
+      - node: toastForbidden
+      - node: toastNotAllowed
+      - node: toastInvalidTarget
+      - node: toastCourseGone
+      - node: toastInvalid
+      - node: toastFailed
+      - state: rowReady
+      - state: headerReady
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+      - source: apps/nazar/features/bans/bans.ts:352
+      - scenario: runsTheCourse
+    note: only BAN_TARGET_INVALID can be made locally (a spare talebe made the hoca of the course, then barred from it)
+
+  - id: the-talebe-is-told-their-access-was-removed
+    need: >-
+      The talebe learns that their access to each course the ban newly bars was removed, in those words and not "yasak", and never
+      the reason; a person already barred in that scope is not told again.
+    evidence:
+      - state: savedRow
+      - state: savedHeader
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+      - source: apps/tedrisat/src/ban/ban.service.ts:392
+      - scenario: row
+    note: the replay's effect reads the notification row; the talebe's own list is tedris.account.notifications
+
+  - id: the-people-above-are-told
+    need: >-
+      Every ban is put in front of the people above the one who placed it: a ban of the medrese reaches the köşk's nazımları that
+      host the course, and the Medaris nazımları who may lift or widen it, so that the higher levels see what the lower ones do
+      (MDRS-113, P-01). Today the medrese route tells the talebe and nobody else (BAN-1); FLOWS.md's start of
+      nizam.notifications.triage for this flow has nothing to show.
+    missing: MDRS-113; findings BAN-1
+    note: >-
+      Drawn on the states savedRow and savedHeader, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-keycloak-account-is-disabled
+    need: >-
+      A platform-wide ban also disables the person's account in Keycloak through the Admin API (MDRS-197, P-35, part of MDRS-113);
+      a medrese ban does not, and nothing in this flow does.
+    missing: MDRS-197
+    note: >-
+      Drawn on the states savedRow and savedHeader, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-ban-notice-by-e-mail
+    need: >-
+      The ban's notices (to the talebe, and to the people above) are also sent by e-mail (MDRS-189, P-29, deferred screens); the
+      invitation mail exists and the ban notices do not.
+    missing: MDRS-189
+    note: >-
+      Drawn on the states savedRow and savedHeader, which the code has: they are not evidence, so that a replay still walks them
+      (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-standing-ban-is-said
+    need: >-
+      When the person is already barred in that scope the page says so and shows the standing ban's own reason and banner, instead
+      of "Yasak kaydedildi" over a reason that was dropped (BAN-4, decision D1).
+    missing: no Linear issue; findings BAN-4
+    note: >-
+      Drawn on the states savedRow and savedHeader and on the nodes toastSavedCourse and toastSavedMadrasah, which the code has:
+      they are not evidence, so that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: the-form-says-what-is-missing
+    need: >-
+      The button that sends a ban is not off with nothing said: a send with no person or no reason says which is missing, and the
+      error is announced and the focus moves to the field (F-B-6, F-B-7).
+    missing: no Linear issue; findings F-B-6, F-B-7
+    note: |-
+      Drawn on the nodes submit, reasonRequired and emailField, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+      Also drawn as the assertion never-without-a-person.
+
+  - id: the-lookup-moves-the-focus-and-says-who
+    need: >-
+      After the address finds someone, the focus goes to the reason and a line says who was found ("{name} seçildi"); "Seçimi
+      kaldır" returns the focus to the e-mail field; the field stays enabled while it searches (F-B-8, F-B-16).
+    missing: no Linear issue; findings F-B-8, F-B-16
+    note: >-
+      Drawn on the nodes emailField, personName, removePerson and searching, which the code has: they are not evidence, so that a
+      replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-lookup-only-on-request
+    need: >-
+      A lookup of the realm's directory, which is written to the audit log, happens when the person asks (Enter or a button), not
+      when they tab through the field; an input that is not an address is told so (BAN-2, BAN-5).
+    missing: no Linear issue; findings BAN-2, BAN-5
+    note: >-
+      Drawn on the state headerLooking and on the nodes emailField and emailHelp, which the code has: they are not evidence, so
+      that a replay still walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: only-those-who-may-ban-ban
+    need: >-
+      "Yasakla" is offered, and works, for the başmüderris and for a nazır the medrese gave madrasah.ban; a medrese nazır with no
+      grant meets a refusal and no button.
+    evidence:
+      - state: studentsPage
+      - node: studentsPage
+      - state: bansPage
+      - node: bansPage
+      - node: rowBan
+      - node: headerBan
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+      - source: apps/nazar/features/bans/components/bans-page.tsx:58
+      - test: apps/nazar/e2e/students.e2e.ts
+        name: "nazir/10 — a medrese nazır is refused: a notice and no list"
+      - test: apps/nazar/e2e/bans.e2e.ts
+        name: "nazir/11 — a medrese nazır is refused: a notice, no list and no 'Yasakla'"
+    note: "students#5: the refusal itself is nazar.access.medreseNazirRefused's"
+
+  - id: a-nazir-given-the-grant-bans
+    need: >-
+      A medrese nazır given madrasah.ban opens the same dialog and places a ban of the medrese's level (kademe 2), which a köşk's
+      nazımı or Medaris lifts and a müderris does not.
+    evidence:
+      - state: rowForm
+      - state: headerForm
+      - source: apps/tedrisat/src/ban/madrasah-ban.controller.ts:113
+      - source: apps/tedrisat/src/ban/ban.service.ts:449

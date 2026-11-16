@@ -1,0 +1,24 @@
+# nizam.courseRequests.decide, the Karara bağlanan tab with an accepted request in it. It extends binding.yaml and adds one scenario, `accepted`:
+# a request the köşk's nazım accepted with a course of the walk's own (requests.mjs up --accepted 1 makes the request, `helpers/course.mjs make
+# crd-accepted` the course, and the nazım accepts the one with the other through POST /course-requests/:id/accept). The tab then holds it with
+# the outcome "Kabul edildi", a badge of the same word and no reason; the card names no course (CREQ-6). `teardown` removes the course
+# first, then the requests. It adds no transition: it is here for the nodes of `firstAccepted`.
+#   node apps/engine/src/cli.ts replay graphs/nizam/courseRequests/decide --bind graphs/nizam/courseRequests/decide/accepted.binding.yaml --out <dir>
+# NOT RUN (see binding.yaml).
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nizam.courseRequests.decide
+
+scenarios:
+  accepted:
+    given: { read: one, decidedTab: accepted, answer: rejected, retry: failed }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/ders-talepleri'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, up, --waiting, '1', --accepted, '1', --alone]
+        expect: 'ready: 1 waiting, 0 rejected, 1 accepted'
+    teardown:
+      - run: [node, ../nizam/courseRequests/decide/requests.mjs, down]
+        expect: 'restored'

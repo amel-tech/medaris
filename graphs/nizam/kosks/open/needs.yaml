@@ -1,0 +1,137 @@
+schema: delurio-graph/0
+kind: needs
+id: nizam.kosks.open
+status: proposed
+summary: >-
+  What must exist for the başnazım (and whoever opens a köşk) in nizam.kosks.open: the flow's product list, written from the
+  flow's story and the open decisions, never from what the page does today.
+
+# The writer's notes of 15-16 Nov 2026, from the 0.8.0 shape of this file (`drawn`, `built`, `walked`; a need that was
+# built and walked by no e2e and no replay was called `unwalked`). Converted to SPEC.md §13 on 16 Nov 2026 by script.
+#
+# Gaps of this file, for that merge:
+# missing:   the-form-says-what-is-missing, lookup-only-on-request, a-refusal-is-announced, a-medaris-nazim-opens,
+# focus-returns-when-the-form-was-opened-by-the-address
+# unwalked:  a-kosk-application-fills-the-form (this flow draws its start; nizam.applications.decide walks it, with an
+# application the seed does not make)
+
+needs:
+  - id: open-a-kosk-with-its-nazims
+    need: >-
+      The başnazım opens a köşk with at least one köşk nazımı in one step. The köşk and its nazımları exist together or not at
+      all, the nazımları can manage it at once, and the başnazım is its owner without being a nazım.
+    evidence:
+      - state: form
+      - state: opening
+      - state: opened
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:310
+      - source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:123
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/10 — 'Köşk aç' stays off until the name and a nazım are right, then opens the köşk with its nazım (criteria 1-5)"
+      - scenario: opened
+      - scenario: quickLink
+    note: Also drawn as the assertion never-without-a-nazim.
+
+  - id: find-a-nazim-by-exact-email
+    need: >-
+      Each nazım is found by the exact e-mail address of an account in the realm, even one that has never opened the app; a person
+      already chosen is not added twice; an address with no account, and a directory that does not answer, are said in words.
+    evidence:
+      - state: looking
+      - state: form
+      - source: apps/tedrisat/src/user/users.controller.ts:57
+      - source: apps/nizam/features/kosks/components/nazim-picker.tsx:59
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/10 — 'Köşk aç' stays off until the name and a nazım are right, then opens the köşk with its nazım (criteria 1-5)"
+      - scenario: opened
+      - scenario: notFound
+
+  - id: a-taken-short-name-is-said-under-its-field
+    need: >-
+      A short name another köşk uses is refused under its own field in words, nothing is made, and what the person typed is kept.
+      An untouched field is not blamed; a field left empty or wrong is, once they have left it.
+    evidence:
+      - state: form
+      - state: opening
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:310
+      - source: apps/nizam/features/kosks/components/open-kosk-dialog.tsx:105
+      - test: apps/nizam/e2e/kosks.e2e.ts
+        name: "nizam/10 — the form says what is missing, and a short name another köşk uses is refused under its own field"
+      - scenario: handleTaken
+      - scenario: noName
+      - scenario: shortName
+      - scenario: badHandle
+    note: Also drawn as the assertion a-refused-short-name-is-not-sent-again.
+
+  - id: the-form-says-what-is-missing
+    need: >-
+      A person who cannot send the form is told in words what is missing (the name, a nazım, a short name or tags that are wrong),
+      and a keyboard or screen-reader user can reach the button and the message. Nothing that blocks them is silent.
+    missing: >-
+      no Linear issue; F-W3-1, F-X-3: the button is natively disabled and the messages written for a submit try never show;
+      replay: manyTags walks the silent case
+    note: >-
+      Drawn on the states form and settle, which the code has: they are not evidence, so that a replay still walks them (SPEC.md
+      §13 leaves out what only missing needs name).
+
+  - id: lookup-only-on-request
+    need: >-
+      A person's address is searched in the realm only when the person asks (Enter or a button), never because they tabbed through
+      the field, since every search is written to the audit log; the result is announced and the focus is kept.
+    missing: "no Linear issue; F-W3-14, F-X-14, F-W2-3: the field searches on blur and is disabled while it does"
+    note: >-
+      Drawn on the state looking, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-refusal-is-announced
+    need: >-
+      A refusal the server gives (a taken short name, an unknown account, no permission) is announced to a screen reader and the
+      focus goes to what the person must correct.
+    missing: "no Linear issue; F-UI-W3-1, F-W3-13: the field error is no live region and the focus stays on a disabled button"
+    note: >-
+      Drawn on the state form, which the code has: they are not evidence, so that a replay still walks them (SPEC.md §13 leaves
+      out what only missing needs name).
+
+  - id: a-medaris-nazim-opens
+    need: >-
+      DECISION OPEN: a Medaris nazımı holding platform.kosk_create opens a köşk from the page, as the API allows, or the
+      permission is taken off the role's defaults. Today the API admits them and the page offers "Köşk aç" to the başnazım alone.
+    evidence:
+      - source: apps/tedrisat/src/kosk/kosk.controller.ts:310
+    missing: >-
+      F-W3-open-1; P-14 (MDRS-107) says köşk creation is restricted to the başnazım and the Medaris nazımı; code exists in part
+    note: >-
+      Drawn on the state kosksPage and on the node kosksPage, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: open-from-the-home-link
+    need: The home page's "Köşk aç" link opens the Köşkler page with the form already open.
+    evidence:
+      - state: start
+      - source: apps/nizam/features/dashboard/components/medaris-home.tsx:308
+      - source: apps/nizam/app/kosks/page.tsx:68
+      - test: apps/nizam/e2e/dashboard.e2e.ts
+        name: "nizam/01 — 'İncele' opens the application it points at, 'Tümünü gör' the list, and 'Köşk aç' the form (criterion 4)"
+      - scenario: quickLink
+    note: "quickLink: opens the address; the link on the home page is the navigation graph's entry start->kosks, not pressed here"
+
+  - id: focus-returns-when-the-form-was-opened-by-the-address
+    need: >-
+      When the form was opened by /kosks?ac=1 and is closed, or has made the köşk, the focus goes to a control of the page (the
+      "Köşk aç" button or the heading) instead of falling to the page itself.
+    missing: "no Linear issue; F-W3-open-4: found by the replay on quickLink"
+    note: >-
+      Drawn on the states closedFromLink and openedFromLink, which the code has: they are not evidence, so that a replay still
+      walks them (SPEC.md §13 leaves out what only missing needs name).
+
+  - id: a-kosk-application-fills-the-form
+    need: >-
+      "Köşkü aç" on a köşk application opens the form with the application's name and description and the applicant as the nazım,
+      so that opening the köşk from an application is one decision; if the köşk is opened and the application cannot be closed,
+      the page says so (F-W3-8).
+    evidence:
+      - state: start
+      - state: form
+      - source: apps/nizam/features/platform-admin/components/applications-view.tsx:421
+      - test: apps/nizam/e2e/platform-admin.e2e.ts
+        name: "nizam/15 — Köşkü aç opens the köşk form with the application's values and accepts it once the köşk exists (criteria 3, 4)"

@@ -1,0 +1,33 @@
+# nizam.moderation.restoreArchived on the local stack, over an Arşiv with nothing in it: the köşk's nazımı in a köşk of the walk's own, with nothing hidden.
+#   node apps/engine/src/cli.ts replay graphs/nizam/moderation/restoreArchived \
+#     --bind graphs/nizam/moderation/restoreArchived/binding.empty.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. The list says "Gizlenen öğe yok" and the count "0 gizli öğe"; every type and search the walk then chooses reads the (empty) list again and says "Bu süzgece
+# uyan gizli öğe yok". The köşk is a new one ("Deneme köşkü arsKosk"), so nothing another walk hid can be in its Arşiv. `setup` makes only the köşk; `teardown` removes it.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.restoreArchived
+
+data:
+  mine: { json: ../.local/made/arsKosk.json }
+
+scenarios:
+  empty:
+    given: { view: kosk, held: none }
+    as: koskNazim
+    open: '{nizam}/kosks/{mine.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'frame:shell->koskArchive' }
+    setup:
+      - run: [node, helpers/make-kosk.mjs, make, arsKosk, KOSK_NAZIM]
+        expect: '"tag":"arsKosk"'
+    teardown:
+      - run: [node, helpers/make-kosk.mjs, remove, arsKosk]
+        expect: 'kosk remove arsKosk'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]
+        expect: '"n":0'
+
+effects:
+  # nothing is hidden in the köşk: the API says so, as the nazım
+  listKoskArchive:
+    - run: [node, helpers/api.mjs, koskNazim, GET, '/kosks/{mine.kosk}/archive']
+      expect: '"total":0'

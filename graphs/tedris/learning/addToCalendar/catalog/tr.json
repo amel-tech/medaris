@@ -1,0 +1,12 @@
+{
+  "AddToCalendar.apple": "Apple Takvim (.ics)",
+  "AddToCalendar.button": "Takvime ekle",
+  "AddToCalendar.downloadFailed": "Takvim dosyası indirilemedi. Biraz sonra yeniden dene.",
+  "AddToCalendar.google": "Google Takvim (yeni sekmede açılır)",
+  "AddToCalendar.note": "Takvim kaydı bu celse sayfasına bağlanır; toplantı bağlantısı takvime yazılmaz.",
+  "AddToCalendar.rowLabel": "Takvime ekle: {title}",
+  "AddToCalendar.subscribe": "Tüm derslerime abone ol",
+  "CalendarSubscription.title": "Takvim aboneliği",
+  "SchedulePage.title": "Programım",
+  "composed.Toast.close": "Kapat"
+}

@@ -1,0 +1,353 @@
+# The frame of nazar-web (apps/nazar/features/shell): the scope picker and the menu of a scope, wide and on a phone, and the
+# scope a cookie remembers. Read from the code of the branch (the tree of PR #394) on 15 Nov 2026. Nothing here is approved,
+# and nothing in it was seen in a browser by its writer: every behaviour is "from the code" unless a line says otherwise.
+#
+# What this flow draws and what its neighbours draw:
+#   - nazar.nav draws where each menu entry leads and which entries a persona is offered. This flow draws what the nav cannot:
+#     the picker closed and opened (its rows, the checked one, Esc and the focus), a scope chosen and the menu that changes
+#     with it, the menu of each kind of person, the numbers on three entries, the cookie that makes Bildirimler and Hesap draw
+#     the menu of the last scope, and the phone's bar and sheet.
+#   - It carries what nazar-web's e2e file shell.e2e.ts says (shell#1 to #9, course-nazirs#1) as the code does it today: the
+#     course menu has 15 entries for a hoca and 12 for a ders nazırı with no grant, not the 13 the file lists (F-L-5), and the
+#     placeholder page of shell#4 cannot be reached (F-L-4).
+#   - The medrese menu has 9 entries, not the 8 the plan's story says (Pano, Bildirimler, Dersler, Talebeler, Medrese nazırları,
+#     Yasaklamalar, İtirazlar, Arşiv, Medrese ayarları: features/shell/nav.ts:71-94).
+#
+# Findings it carries (ui.yaml `rules` has the same ids): F-L-1, F-L-2, F-L-3, F-L-4, F-L-5, F-L-6, F-L-14, F-L-19, F-L-20 with
+# MDRS-223, and three of its own, SCOPE-1, SCOPE-2 and SCOPE-3. A nazır's refusals themselves are nazar.access.medreseNazirRefused's.
+schema: delurio-graph/0
+kind: flow
+id: nazar.shell.scopeAndMenu
+status: captured
+domain: medaris.api
+ui: nazar.shell.scopeAndMenu
+title: Read the scope picker and the menu, and move between scopes
+summary: >-
+  Every page of nazar-web draws one frame: from 768 px a sidebar with the brand, the scope picker, the menu of the scope and
+  the person's row; below it a 56 px bar with a "Menü" button, a bell and a sheet that holds the picker, the same menu and the
+  person's row (and no "Çıkış yap"). The scopes are the medrese a person holds a seat in and the courses they teach or look after, read
+  from GET /me/assignments. With two or more the picker is a button named "Kapsam değiştir: {name}"; opened, it lists the
+  medrese and the courses with the current one marked, and a row is a plain link: choosing it loads that scope's own page, which
+  writes the cookie "nazar-scope", and the menu is the scope's (9 entries for a medrese; 15 for a course, fewer for a ders
+  nazırı who was not granted Ödevler, Değerlendirme and Ders destesi). With one scope the picker is a card and nothing opens.
+  Bildirimler and Hesap belong to no scope and draw the menu of the one the cookie names. Three entries carry a number when
+  the API says there is something to see, and drop it, without an error, when it cannot be read.
+source: apps/nazar/features/shell/components/portal-frame.tsx:36
+
+scope:
+  shows: >-
+    the frame in its two windows: the sidebar and the bar with its sheet; the picker closed and opened; the menu of a medrese
+    and of a course for each kind of person; the numbers on Dersler, Celseler and Talebeler; the cookie, as the menu a page outside
+    any scope draws
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the page under the frame (the Pano, Genel bakış and every section): another flow's. A link of the menu leaves for it, and its own frame is this flow again, started there (`scope`, `place`)"
+    - "the brand and the theme toggle at the top of the sidebar and of the bar (common.shell.theme; F-L-10)"
+    - "the unread count: the number on Bildirimler and the bell's name \"Bildirimler, {count} okunmamış\" (Shell.bellUnread). The accounts of the stack hold no notification, so the bell is only walked as \"Bildirimler\" (nazar.notifications.inbox makes some)"
+    - "the imam star after a role, which shows only among more than one müderris of a course (the stack's courses have one)"
+    - "a scope opened by address, with no seat in it: the başnazım opens any medrese or course, a medrese's başmüderrisi and nazırs open its courses. The scope is appended to the picker's list for that page, role included, and no cookie is written (portal-layout.tsx:101); the Dersler list and the Pano's celse rows are the only links to such a page (nazar.nav `notModeled`)"
+    - "a person with no scope at all (no picker, no menu, the person's row is no link, and a redirect to /erisim-yok), the başnazım in that case, and the root address that opens the remembered scope: nazar.access.noAccess and nazar.access.landingScope"
+    - "the retry state \"Görevleriniz okunamadı\", the 404 page and the error pages: nazar.shell.errorStates. A roles read the session refuses sends the person to sign in again (realm.auth.sessionEnded)"
+    - "the loading skeleton while the layout reads the roles (app/loading.tsx)"
+    - "the refusals a page draws for a nazır or a ders nazırı who was not given its permission (\"Bu sayfaya izniniz yok\"): nazar.access.medreseNazirRefused and nazar.access.dersNazirPages. A ders nazırı holding submission.read or deck.manage_course draws Ödevler or Ders destesi (nazar.access.dersNazirPages walks those)"
+    - "narrowing the window with the sidebar open, which swaps one frame for the other and changes nothing the graph could name"
+
+decisions:
+  D1:
+    question: >-
+      Should the menu offer a nazır only the pages they may open (MDRS-223, F-L-20)? Today a medrese nazır with no grant is
+      offered all 9 entries and most of the pages behind them refuse, and a ders nazırı with no grant is offered 12 of which
+      most refuse. Only Ödevler, Değerlendirme and Ders destesi are cut by permission.
+    recommend: >-
+      Yes: give every entry of both menus the permission its page asks (a list of codes, any of them), as MDRS-290 did for three,
+      so that a person is not offered a link whose only answer is "Bu sayfaya izniniz yok".
+    affects: [wide, bar, sheet]
+  D2:
+    question: >-
+      Should a row of the picker move with the client router, as the menu's links do since MDRS-258, so that choosing a scope
+      does not load the whole page again?
+    recommend: >-
+      Yes: Menu.LinkItem takes a `render` prop; pass next/link, as PortalNav does (SCOPE-1). Until then every choice streams the
+      root loading skeleton before the layout reads the roles again.
+    affects: [picking, sheetPicking]
+
+context:
+  opensAt:
+    values: [wide, phone]
+    initial: any
+    say:
+      wide: "the window is 768 px or wider when the page opens: the sidebar"
+      phone: "the window is narrower than 768 px when the page opens: the bar, and the sheet behind its menu button"
+  who:
+    values: [head, nazir, hoca, dersBare, dersSeeded]
+    initial: any
+    say:
+      head: "a medrese's başmüderrisi who also teaches two of its courses: a medrese and two courses, so the picker is a menu with both groups; he opens on the medrese"
+      nazir: "a medrese nazırı: one scope, the medrese, so the picker is a card and nothing opens. She holds no permission until the başmüderris grants one, so the API refuses her the badge count (MDRS-223)"
+      hoca: "a müderris of three courses and of no medrese: the picker is a menu with the Dersler group alone; he opens on a course and holds every course permission"
+      dersBare: "a ders nazırı with no grant in the course: two course scopes (this one and the seeded one), the course menu of 12 entries, and no number (the count is refused for lack of course.staff_read)"
+      dersSeeded: "a ders nazırı holding what the stack's seed gave: enrollment.decide, session.manage and course.view_unpublished, so 13 entries (Değerlendirme is drawn) and the numbers are readable"
+  counts:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the counts the menu asks for answer and are above zero: Dersler has a number, and so have Celseler and Talebeler of the course"
+      none: "no number is drawn, because nothing waits or the count was refused (403) and left out"
+  scope:
+    values: [medrese, ders]
+    initial: medrese
+    say:
+      medrese: "the frame is a medrese's: its menu, and the cookie names it"
+      ders: "the frame is a course's: its menu, and the cookie names it"
+  place:
+    values: [home, notifications]
+    initial: home
+    say:
+      home: "the page is the scope's own (Pano of the medrese, Genel bakış of a course)"
+      notifications: "the page is Bildirimler, which belongs to no scope and draws the menu of the scope the cookie names"
+
+# `who` folds the person with what they hold, because the pairs a case variable would allow are not all people the app has:
+# a medrese nazır has no course menu, a hoca no medrese. `counts` is separate from `who` only because the same person meets
+# both: it follows what the walk set up (a course with an application and a celse with no way in, or none).
+guards:
+  hasMedrese: "who == 'head' or who == 'nazir'"
+  pickerMenu: "who != 'nazir'"
+  isDersNazir: "who == 'dersBare' or who == 'dersSeeded'"
+  holdsHomework: "who == 'head' or who == 'hoca'"
+  holdsEvaluation: "who == 'head' or who == 'hoca' or who == 'dersSeeded'"
+  holdsDeck: "who == 'head' or who == 'hoca'"
+  framed: "state in ['wide', 'picking', 'kept', 'bar', 'sheet', 'sheetPicking']"
+
+effects:
+  toMedrese: { set: { scope: medrese, place: home } } # a medrese's own page opens and writes the cookie
+  toCourse: { set: { scope: ders, place: home } }
+  backHome: { set: { place: home } }
+  onNotifications: { set: { place: notifications } } # the page belongs to no scope: the cookie is read, not written
+
+failures:
+  reading: { from: getMyAssignments, unreadable: [] }
+# `unreadable` stands for any answer but a refused token: the domain lists no refusal code for the read (a 401 is the guard's and
+# is left out of the domain), and the layout answers every failure but a 401 with the retry state.
+
+# The story the frame tells first: the başmüderris who teaches two courses opens the picker on his medrese and closes it with Esc,
+# opens it again and chooses a course (the menu is the course's), goes to Bildirimler (the menu is still the course's: the cookie),
+# opens the picker and chooses the medrese again, and follows Dersler.
+main:
+  given: { opensAt: wide, who: head, counts: some }
+  events: [DONE, OPEN_PICKER, ESCAPE, OPEN_PICKER, CHOOSE_COURSE, PICK_NOTIFICATIONS, OPEN_PICKER, CHOOSE_MEDRESE, PICK_PAGE]
+
+initial: reading
+states:
+  reading:
+    title: The roles are read
+    description: >-
+      Every page draws its frame from one read, GET /me/assignments, made on the server once per request (getPortal): the
+      person's name and e-mail come from the session, the scopes from the assignments (a medrese the person holds a seat in, the courses
+      they teach or look after; two roles in one scope make one scope with the stronger; medreses first, then courses, each
+      group by name in Turkish collation), and the roles of the person's row. Two reads follow and may fail without an error:
+      the numbers (GET /notifications/unread-count, GET /madrasahs/:id/badge-counts or GET /courses/:id/badge-counts: a count
+      that cannot be read, a 403 for a nazır, is no number), and, for a course, GET /courses/:id/my-permissions, whose answer
+      cuts Ödevler, Değerlendirme and Ders destesi out of the menu; a read that fails holds nothing. A medrese's menu asks
+      nothing. Nothing is on the screen: the loading skeleton is out of view, and a failed read is the retry state of
+      nazar.shell.errorStates.
+    invoke: { action: getMyAssignments }
+    on:
+      DONE: arriving
+      FAIL.unreadable: { target: roles_unreadable, say: "the read failed: the layout draws the retry state and never says \"no access\"", source: apps/nazar/features/shell/reads.ts:63 }
+    source: apps/nazar/features/shell/reads.ts:44
+
+  arriving:
+    title: The page a person opens belongs to a scope
+    description: >-
+      Classification only. A person with a medrese opens on it, anyone else on a course; a window below 768 px gets the bar, a
+      wider one the sidebar. Both frames are in the page and the style sheet shows one (`max-md:hidden` on the aside, the bar
+      drawn only below 768 px). The scoped page writes the cookie once it has hydrated.
+    always:
+      - { guard: "hasMedrese and opensAt == 'wide'", target: wide, effect: [toMedrese], source: apps/nazar/features/shell/components/portal-layout.tsx:111 }
+      - { guard: hasMedrese, target: bar, effect: [toMedrese], source: apps/nazar/features/shell/components/portal-layout.tsx:111 }
+      - { guard: "opensAt == 'wide'", target: wide, effect: [toCourse], source: apps/nazar/features/shell/components/portal-layout.tsx:111 }
+      - { target: bar, effect: [toCourse], source: apps/nazar/features/shell/components/portal-layout.tsx:111 }
+    source: apps/nazar/features/shell/components/portal-layout.tsx:59
+
+  wide:
+    title: The sidebar
+    by: human
+    goal: true
+    description: >-
+      The sidebar (an <aside>, sticky, with no accessible name: F-L-2) holds, in this order, the brand and the theme toggle, the
+      scope picker, the <nav aria-label="Ana menü"> and the person's row; beside it the page's own <main id="main">, which no
+      skip link points at (F-L-1) and which takes no focus when the page opens. The picker is a button named "Kapsam değiştir:
+      {name}" when the person holds two scopes or more, with the scope's mark, its name and its role beneath, whose visible role
+      line is not in its name (SCOPE-3), and a plain card when they hold one (F-L-14). The menu is the scope's: for a medrese
+      Genel (Pano, Bildirimler), Medrese (Dersler, Talebeler, Medrese nazırları, Yasaklamalar, İtirazlar, Arşiv) and Yönetim
+      (Medrese ayarları), nine entries whoever holds the seat, though a nazır with no grant is refused the page behind most of them
+      (MDRS-223, F-L-20); for a course Genel, Ders (Genel bakış, Müfredat, Celseler, Talebeler, Sorular, Ödevler, Değerlendirme,
+      Ders kayıtları, Ders destesi, Yasaklamalar, Arşiv) and Yönetim (Ders nazırları, Ders ayarları): fifteen for a hoca, twelve
+      for a ders nazırı with no grant (Ödevler, Değerlendirme and Ders destesi are cut by submission.read, session.manage and
+      deck.manage_course, the only three entries cut by permission: F-L-20), thirteen with session.manage. The entry of the page is
+      `aria-current="page"`: the longest matching address, and of two equal ones the later (a hoca with no medrese has Pano and
+      Genel bakış at one address, and the one in the course's own group is marked: SCOPE-2). A number follows Dersler, Celseler
+      and Talebeler when it is above zero, with a visually hidden label ("derste bekleyen başvuru", "katılım yolu eksik",
+      "bekleyen başvuru"). Pano of a course is the Pano of the first medrese the person holds a seat in, or the course's own page
+      when they hold none. The person's row is a link to /hesap, with ", ayarlar" read after the roles; there is no "Çıkış yap" in the
+      frame at all (it lives on Hesap, F-E-18). On a page outside any scope (Bildirimler, Hesap) the same frame is drawn for the
+      scope the cookie names, with Bildirimler marked. Findings read here: F-L-1, F-L-2, F-L-14, F-L-20, MDRS-223, SCOPE-2,
+      SCOPE-3.
+    on:
+      OPEN_PICKER: { guard: pickerMenu, target: picking, say: "they press the picker's button", source: apps/nazar/features/shell/components/scope-picker.tsx:128 }
+      PICK_PANO:
+        - { guard: "scope == 'ders' and who == 'head'", target: wide, effect: [toMedrese], say: "Pano of a course is the first medrese's Pano: the scope changes to it", source: apps/nazar/features/shell/scope.ts:214 }
+        - { target: wide, effect: [backHome], say: "the scope's own page: a medrese's Pano, or a course's Genel bakış for a person with no medrese", source: apps/nazar/features/shell/scope.ts:214 }
+      PICK_NOTIFICATIONS: { target: wide, effect: [onNotifications], say: "Bildirimler opens, in the frame of the scope the cookie names", source: apps/nazar/features/shell/nav.ts:56 }
+      PICK_PAGE: { target: page_opened, say: "they follow another entry of the menu (Dersler, or Celseler for a course); every entry is a link", source: apps/nazar/features/shell/components/portal-menu.tsx:34 }
+      PICK_PERSON: { target: account_opened, say: "they follow the person's row to Hesap", source: apps/nazar/features/shell/components/user-row.tsx:45 }
+      NAVIGATE: { target: left, say: "they follow a link of the page or leave" }
+    source: apps/nazar/features/shell/components/portal-frame.tsx:89
+
+  picking:
+    title: The picker is opened
+    by: human
+    description: >-
+      A Base UI Menu opens a popup named "Kapsamlar" next to the button. It lists the scopes the person holds in two groups,
+      "Medrese" and "Dersler" (a group with no row is left out: a hoca has no Medrese group), each row an <a role="menuitem">
+      with the scope's mark, its name and a second line, the role for a medrese and the role and the köşk's name for a course
+      ("Hoca·Süleymaniye Köşkü": the dot is a separate aria-hidden span), and a check icon on the current scope, whose row is
+      `aria-current="true"`; under the groups a line says "Yalnız görev aldığınız medrese ve dersler listelenir." Only the scopes
+      the person holds are listed: no other course, no köşk. The popup does not make the rest of the page inert (Base UI's menu leaves its
+      focus manager non-modal: MenuPopup.js, read and not seen), so the sidebar stays; a Base UI menu moves the focus into its popup and, on Esc, gives it back to the button (e2e shell#1 a8, not seen
+      here). Each row is a plain anchor, so choosing one is a whole page load and not a client navigation (SCOPE-1): the page
+      that opens is the scope's own page and writes the cookie. Choosing the row of the scope the person is on loads it again.
+    on:
+      ESCAPE: { target: kept, say: "Esc closes the popup", source: apps/nazar/features/shell/components/scope-picker.tsx:127 }
+      CHOOSE_MEDRESE: { guard: hasMedrese, target: wide, effect: [toMedrese], say: "they choose the medrese: its Pano opens and the cookie names it", source: apps/nazar/features/shell/components/scope-picker.tsx:158 }
+      CHOOSE_COURSE: { target: wide, effect: [toCourse], say: "they choose a course: its Genel bakış opens and the cookie names it", source: apps/nazar/features/shell/components/scope-picker.tsx:158 }
+      NAVIGATE: { target: left, say: "they leave" }
+    source: apps/nazar/features/shell/components/scope-picker.tsx:113
+
+  kept:
+    title: The picker is closed again
+    by: human
+    description: >-
+      The popup went away on Esc and the focus is back on the picker's button, as Base UI's menu does and as shell#1 a8 asserts
+      (not seen here). The frame is the sidebar's, whatever the focus.
+    on:
+      OPEN_PICKER: { guard: pickerMenu, target: picking, say: "they press the button again", source: apps/nazar/features/shell/components/scope-picker.tsx:128 }
+      PICK_PANO:
+        - { guard: "scope == 'ders' and who == 'head'", target: wide, effect: [toMedrese], say: "Pano of a course is the first medrese's Pano", source: apps/nazar/features/shell/scope.ts:214 }
+        - { target: wide, effect: [backHome], say: "the scope's own page", source: apps/nazar/features/shell/scope.ts:214 }
+      PICK_NOTIFICATIONS: { target: wide, effect: [onNotifications], say: "Bildirimler opens, in the frame of the cookie's scope", source: apps/nazar/features/shell/nav.ts:56 }
+      PICK_PAGE: { target: page_opened, say: "they follow another entry of the menu", source: apps/nazar/features/shell/components/portal-menu.tsx:34 }
+      PICK_PERSON: { target: account_opened, say: "they follow the person's row", source: apps/nazar/features/shell/components/user-row.tsx:45 }
+      NAVIGATE: { target: left, say: "they leave" }
+    source: apps/nazar/features/shell/components/scope-picker.tsx:128
+
+  bar:
+    title: The phone's bar
+    by: human
+    goal: true
+    description: >-
+      Below 768 px the aside is hidden and a 56 px banner is drawn: a "Menü" button (an icon named by its aria-label), the logo,
+      the page's name in a <p>, not a heading (the menu item of the page, else "Hesap ve ayarlar" for Hesap, else "Nazar"), the
+      theme toggle and the bell, a link named "Bildirimler" that shows no number whatever is unread (shell#7). The page's own
+      <main> sits under it and takes no focus. The sidebar's menu is not in the page for a reader, and the sheet is not mounted
+      until the button is pressed.
+    on:
+      OPEN_SHEET: { target: sheet, say: "they press Menü", source: libs/ui/src/mds/app-bar.tsx:64 }
+      PICK_NOTIFICATIONS: { target: bar, effect: [onNotifications], say: "the bell opens Bildirimler, drawn in the frame of the cookie's scope", source: apps/nazar/features/shell/components/portal-menu.tsx:86 }
+      NAVIGATE: { target: left, say: "they follow a link of the page or leave" }
+    source: libs/ui/src/mds/app-bar.tsx:63
+
+  sheet:
+    title: The sheet holds the menu
+    by: human
+    description: >-
+      A Base UI dialog named "Ana menü" (the same words as the <nav> inside it: F-L-3) over a scrim. The page behind it is
+      inert. It holds, in order, a head with the logo and "Kapat", the scope picker (the same button or card as the sidebar's),
+      the <nav> with the menu of the scope and, at its foot, the person's row. It has no "Çıkış yap" (shell#5 a7). The focus
+      goes to "Kapat". Esc and "Kapat" close it and give the focus back to "Menü". A plain click on any link inside the nav
+      closes it and the next page opens beneath: a client navigation here, because the menu's items go through next/link.
+      Widening the window past 768 px closes it too (the style sheet shows the sidebar). The picker opens above the sheet (its
+      popup is z-70, the sheet's z 61).
+    on:
+      CLOSE_SHEET: { target: bar, say: "they press Kapat", source: libs/ui/src/mds/app-bar.tsx:82 }
+      ESCAPE: { target: bar, say: "Esc closes the sheet", source: libs/ui/src/mds/app-bar.tsx:62 }
+      OPEN_PICKER: { guard: pickerMenu, target: sheetPicking, say: "they press the picker's button inside the sheet", source: apps/nazar/features/shell/components/scope-picker.tsx:128 }
+      PICK_PAGE: { target: page_opened, say: "they follow an entry of the menu: the sheet closes and the page opens", source: libs/ui/src/mds/app-bar.tsx:92 }
+      PICK_PANO: { target: pano_opened, say: "Pano, in the sheet, is a link like the others: the sheet closes and the page opens", source: libs/ui/src/mds/app-bar.tsx:92 }
+      PICK_NOTIFICATIONS: { target: notifications_opened, say: "Bildirimler, in the sheet: the sheet closes and the page opens", source: libs/ui/src/mds/app-bar.tsx:92 }
+      PICK_PERSON: { target: account_opened, say: "the person's row leads to Hesap", source: apps/nazar/features/shell/components/user-row.tsx:45 }
+      WIDEN: { target: wide, say: "the window passes 768 px: the sheet closes and the sidebar shows (not walked: no action resizes the window)", source: libs/ui/src/mds/app-bar.tsx:54 }
+      NAVIGATE: { target: left, say: "they leave" }
+    source: libs/ui/src/mds/app-bar.tsx:78
+
+  sheetPicking:
+    title: The picker is opened inside the sheet
+    by: human
+    description: >-
+      The same popup as the sidebar's, opened over the sheet. Esc closes the popup and leaves the sheet open. Choosing a row
+      loads the scope's own page and the sheet is gone with the old page, so the step is drawn as leaving for the new page
+      (`medrese_opened`, `course_opened`) and not as a return to the bar: a return would claim that the focus is on "Menü", and a
+      whole page load leaves it on the document's start.
+    on:
+      ESCAPE: { target: sheet, say: "Esc closes the popup only", source: apps/nazar/features/shell/components/scope-picker.tsx:127 }
+      CHOOSE_MEDRESE: { guard: hasMedrese, target: medrese_opened, say: "they choose the medrese", source: apps/nazar/features/shell/components/scope-picker.tsx:158 }
+      CHOOSE_COURSE: { target: course_opened, say: "they choose a course", source: apps/nazar/features/shell/components/scope-picker.tsx:158 }
+      NAVIGATE: { target: left, say: "they leave" }
+    source: apps/nazar/features/shell/components/scope-picker.tsx:147
+
+  roles_unreadable:
+    title: The roles could not be read
+    description: "The layout draws the retry state \"Görevleriniz okunamadı\" with \"Yeniden dene\" (features/shell/components/portal-layout.tsx:29-43); nazar.shell.errorStates draws it."
+    type: final
+    leavesPage: true
+
+  page_opened:
+    title: An entry of the menu opens its page
+    description: "Dersler, Talebeler, Celseler and the rest: each page is another flow's and draws this frame again; the scope is the same."
+    type: final
+    leavesPage: true
+
+  pano_opened:
+    title: Pano opens from the sheet
+    description: "The medrese's Pano, or a course's own page for a person who holds no medrese seat: this frame again, on that page. The sheet closed with the click."
+    type: final
+    leavesPage: true
+
+  notifications_opened:
+    title: Bildirimler opens from the sheet
+    description: "/bildirimler, drawn in the frame of the scope the cookie names (nazar.notifications.inbox draws the page). The bell of the bar does the same without the sheet and stays in `bar`."
+    type: final
+    leavesPage: true
+
+  medrese_opened:
+    title: The medrese is chosen
+    description: "The medrese's own page (the Pano) loads and the cookie names the medrese: this frame again, started on the medrese (nazar.pano.decideApplications)."
+    type: final
+    leavesPage: true
+
+  course_opened:
+    title: A course is chosen
+    description: "The course's own page (Genel bakış) loads and the cookie names the course: this frame again, started on a course (nazar.course.overview)."
+    type: final
+    leavesPage: true
+
+  account_opened:
+    title: The person's row opens Hesap
+    description: "/hesap, drawn in the frame of the cookie's scope (nazar.account.settings)."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-picker-opens-only-with-several-scopes
+    never: "(state == 'picking' or state == 'sheetPicking') and not pickerMenu"
+    say: The picker is a control only for a person who holds two scopes or more; a medrese nazır's is a card that cannot be opened (F-L-14).
+    source: apps/nazar/features/shell/components/scope-picker.tsx:100
+  - id: the-menu-is-of-a-scope-the-person-holds
+    never: "framed and ((scope == 'medrese' and not hasMedrese) or (scope == 'ders' and who == 'nazir'))"
+    say: A person with no medrese seat never has the medrese's menu, and a medrese nazır never has a course's. Pano of a course leads to a medrese only for someone who holds a seat in one.
+    source: apps/nazar/features/shell/scope.ts:214

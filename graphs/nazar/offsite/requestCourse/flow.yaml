@@ -1,0 +1,399 @@
+# "Medrese dışı ders talebi" in nazar-web (/medrese/<id>/dersler/talep): the başmüderris asks a köşk to open a course that will
+# not belong to the medrese. Read from the code of PR #394 (apps/nazar/features/offsite, the API's POST and GET
+# /madrasahs/:id/offsite-course-requests, apps/tedrisat/src/madrasah/course); nothing was walked or looked at in a browser
+# (every behaviour below is "from the code"). It says what the code does today:
+#   - the page reads the köşks (public, 50 a page, ten pages at most) and, beside them, the medrese's own requests, which it
+#     uses only as the permission probe: it draws none of them (OFFSITE-1);
+#   - the form is never disabled; "Talebi gönder" checks it in the browser, says what is missing under the fields and moves
+#     the focus to the first wrong text field; a complete form is sent, a toast says so and the page goes back to Dersler;
+#   - a request makes no course: it is a CourseRequest row, PENDING, that the köşk's nazım reads in nizam
+#     (nizam.courseRequests.decide, the flow this one starts);
+#   - after a refused köşk (KOSK_NOT_FOUND) the page reads the köşks again but the form keeps the vanished köşk as its choice
+#     (OFFSITE-2).
+# Findings this flow touches (ui.yaml `rules` carries the same ids): F-A-1 (a failed read draws a second h1), F-A-10 (no catch
+# around the action), F-A-16 (the refusal is a neutral Alert, a status), F-L-12 (field errors are not announced, softened here by
+# the focus move), F-L-6 (the toast region's name), and the new OFFSITE-1 to OFFSITE-4. FLOWS.md also names F-A-4, F-A-5 and
+# F-A-6: they are the findings of the open-course form (the hoca picker and the köşk radio group); this page has neither
+# control, and ui.yaml `rules` says so.
+schema: delurio-graph/0
+kind: flow
+id: nazar.offsite.requestCourse
+status: captured
+domain: medaris.api
+ui: nazar.offsite.requestCourse
+title: Ask a köşk to open a course outside the medrese
+summary: >-
+  The başmüderris opens "Medrese dışı ders talebi gönder" on Dersler and meets a form with three fields (the köşk, the
+  suggested course name, the reason) and a card, "Talepten sonra", that says what follows: the request goes to the chosen köşk's
+  nazım and Medaris management sees it, the köşk's nazım opens the course if they accept, and the course never belongs to the
+  medrese. The first köşk by name is already chosen. "Talebi gönder" with a field missing sends nothing, says what is missing under
+  the field and puts the focus on the first wrong text field. A complete form is sent: a toast says "Talep gönderildi", the page
+  goes back to Dersler, and the request waits in the köşk nazım's list of course requests (the flow this one starts). No course is
+  made and nothing on the medrese's side shows the request afterwards (OFFSITE-1). A nazır with no grant meets "Bu sayfaya izniniz
+  yok" and no form; a köşk that vanished meanwhile gives a toast and a refreshed list; a list of no köşk or a read that failed
+  says so and offers the way back or a retry.
+
+scope:
+  shows: >-
+    the page "Medrese dışı ders talebi" for the medrese's başmüderris: its header and breadcrumb, the form with its field
+    errors and the list of köşks, the card of what follows, the busy send, the toasts, and the page's three other answers
+    (the refusal, no köşk listed, a read that failed)
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the frame (sidebar, scope picker, bell): nazar.shell.scopeAndMenu; the way in from the Pano's card of hosting köşks goes to the same address (a bare link, not walked here): nazar.pano.decideApplications"
+    - "the list of Dersler the person comes from and goes back to, and its own button 'Medrese dışı ders talebi gönder': nazar.courses.browse"
+    - "the köşk nazım reading the request, accepting it (the course form opens filled in) or rejecting it with a reason: nizam.courseRequests.decide; the başmüderris reading a rejection and appealing it on İtirazlar: nazar.appeals.open"
+    - "a medrese nazır refused on every page of the medrese (the same alert on Pano, Dersler, Yeni, Talep, Arşiv): nazar.access.medreseNazirRefused (e2e offsite#4 is carried there; this flow draws the state and walks it once)"
+    - "the upper limits of the form (a name of more than 200 characters, a reason of more than 2000) and a name of one character: the same fields, messages 'Ders adı en az 2 karakter olmalı.', 'Ders adı en çok 200 karakter olabilir.', 'Gerekçe en çok 2000 karakter olabilir.'; the walk types none of them"
+    - "the loading skeleton (loading.tsx) shown while the köşks are read, and the 50-köşk pages: the list reads at most ten pages of fifty (500 köşks) and stops there"
+    - "a request that never reaches the server (no catch around the action: F-A-10) and an ended session (the action answers unauthenticated and the page sends the person to sign in and back: realm.auth.signIn)"
+    - "the medrese being hidden or gone (a 404 is Next's not-found page)"
+
+decisions:
+  D1:
+    question: >-
+      Should the başmüderris be able to see the requests she has sent, and their state? The page reads them (GET
+      /madrasahs/:id/offsite-course-requests answers every request of the medrese, any status, with its köşk and sender) and
+      throws them away: it asks only whether the call is allowed. No notification is sent when the köşk decides either.
+    recommend: >-
+      Draw the list under the form (title, köşk, state, the köşk's reason when rejected), so that she knows what waits and what
+      was answered; until then a request, once sent, is gone from her sight, and only a rejection comes back, as a row on İtirazlar.
+    affects: [sent]
+  D2:
+    question: >-
+      Should the page say that a köşk where the medrese holds a hosting right is the wrong place to ask? The help line says the
+      medrese opens its own courses in such köşks with "Medrese dersi aç", but the list offers every köşk alike and the API takes any
+      köşk that is not hidden.
+    recommend: >-
+      Leave it (the API's rule is deliberate: hosting rights are neither required nor looked at); consider marking, or leaving out,
+      the köşks that already host the medrese, since "Medrese dersi aç" is the way there.
+    affects: [form]
+
+context:
+  read:
+    values: [ok, refused, noKosk, unreadable]
+    initial: any
+    say:
+      ok: "the permission probe lets the person through and at least one köşk is listed: the form is drawn"
+      refused: "the probe answers 403: she is a medrese nazır the grant has not reached; the page says 'Bu sayfaya izniniz yok' and draws no form"
+      noKosk: "the probe lets her through and no köşk is listed: a warning and the way back, no form"
+      unreadable: "a read failed for another reason (the köşk list, or the probe with anything but a 403 or a 404): 'Köşkler okunamadı' with a retry"
+  answer:
+    values: [sent, koskGone, invalid, forbidden, other]
+    initial: any
+    say:
+      sent: "the API takes the request: 201, a PENDING CourseRequest of the medrese in the chosen köşk"
+      koskGone: "the chosen köşk was hidden or deleted since the page was read: 404 KOSK_NOT_FOUND"
+      invalid: "the API refuses the name or the reason: 400 VALIDATION_ERROR (the page's own check agrees with the API's, so it takes a skewed deployment or a client that skips the page)"
+      forbidden: "the grant was taken away since the page was read: 403 AUTHZ_FORBIDDEN"
+      other: "any other refusal or failure (the medrese is hidden: 404 MADRASAH_NOT_FOUND, a server error)"
+  title:
+    values: [empty, filled]
+    initial: empty
+    say: { empty: "the name is blank (or only spaces)", filled: "the name holds two or more characters" }
+  reason:
+    values: [empty, filled]
+    initial: empty
+    say: { empty: "the reason is blank (or only spaces)", filled: "the reason holds text" }
+  attempted:
+    values: [false, true]
+    initial: false
+    say: { "false": "'Talebi gönder' has not been pressed yet: no error is drawn", "true": "it was pressed once: from then on each blank field says so at once and stops saying it when it is filled" }
+  kosk:
+    values: [first, other, gone]
+    initial: first
+    say:
+      first: "the köşk chosen is the first by name, which the form starts with (the walk's own köşk is named to be first)"
+      other: "the person chose another köşk from the list"
+      gone: "the chosen köşk is no longer listed (the API said KOSK_NOT_FOUND and the list was read again); the form still holds it as its choice (OFFSITE-2)"
+  toast:
+    values: [none, koskGone, invalid, forbidden, other]
+    initial: none
+    say:
+      none: "no refusal toast is up"
+      koskGone: "an error toast says the köşk is gone; it stays until it is closed"
+      invalid: "an error toast asks to check the name and the reason"
+      forbidden: "an error toast says the person has no permission"
+      other: "an error toast says something went wrong"
+
+guards:
+  titleSaid: "attempted and title == 'empty'"
+  reasonSaid: "attempted and reason == 'empty'"
+  titleBlank: "title == 'empty'"
+  reasonBlank: "title == 'filled' and reason == 'empty'"
+  complete: "title == 'filled' and reason == 'filled'"
+
+effects:
+  titleTyped: { set: { title: filled } }
+  reasonTyped: { set: { reason: filled } }
+  # a refused press and a press that sends set the same thing; they are two effects so that the binding can check, after the first
+  # only, that nothing was written (e2e offsite#2 a4)
+  refuse: { set: { attempted: true } }
+  attempt: { set: { attempted: true } }
+  pickedFirst: { set: { kosk: first } }
+  pickedOther: { set: { kosk: other } }
+  koskWentAway: { set: { kosk: gone, toast: koskGone } }
+  toastInvalid: { set: { toast: invalid } }
+  toastForbidden: { set: { toast: forbidden } }
+  toastOther: { set: { toast: other } }
+
+failures:
+  opened:
+    from: listOffsiteCourseRequests
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [MADRASAH_NOT_FOUND]
+    other: []
+    signedOut: [HTTP_401]
+  sending:
+    from: requestOffsiteCourse
+    koskGone: [KOSK_NOT_FOUND]
+    invalid: [VALIDATION_ERROR]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [MADRASAH_NOT_FOUND]
+    signedOut: [HTTP_401]
+
+# The story the page tells first: an empty send (both errors, the focus on the name), the name typed, a send with the reason
+# missing (the focus on the reason), a look at the list of köşks and a choice, the reason typed, and the send.
+main:
+  given: { read: ok, answer: sent }
+  events: [DONE, SUBMIT, FILL_TITLE, SUBMIT, OPEN_KOSK, CHOOSE_OTHER, OPEN_KOSK, CHOOSE_FIRST, FILL_REASON, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The köşks and the permission are read
+    description: >-
+      The page (a server component) reads, together, the köşks (GET /kosks?page&limit=50, the public list, page after page until
+      all are read, at most ten pages) and, as the permission probe, the medrese's own requests (GET
+      /madrasahs/:id/offsite-course-requests, which asks madrasah.offsite_course_request). The köşk list is open to everyone, so a
+      refusal can only come from the probe; the page takes the köşk answer only where the probe let her through
+      (kosks = access.status === "ok" ? listed : access). While it reads, loading.tsx draws a busy output and three bars (not drawn
+      here). The title, the breadcrumb and the intro are drawn whatever the answer. A 403 is the refusal state; a 404 is Next's
+      not-found page; any other failure is "Köşkler okunamadı" with a retry, also when it was the probe that failed and the köşk
+      list was fine (OFFSITE-4); a 401 sends her to sign in again with a fresh token (redirectToSignIn reauth). An empty list is the
+      "no köşk" state. The page sets no initial focus (focus-not-set).
+    invoke: { action: listOffsiteCourseRequests }
+    on:
+      DONE:
+        - { guard: "read == 'ok'", target: form, source: apps/nazar/features/offsite/components/offsite-page.tsx:77, say: "she may, and a köşk is listed: the form, with the first köşk by name chosen" }
+        - { guard: "read == 'noKosk'", target: noKosk, source: apps/nazar/features/offsite/components/offsite-page.tsx:69, say: "she may, and no köşk is listed" }
+        - { guard: "read == 'unreadable'", target: unreadable, source: apps/nazar/features/offsite/components/offsite-page.tsx:61, say: "she may, and the köşk list could not be read" }
+      FAIL.forbidden: { guard: "read == 'refused'", target: refused, source: apps/nazar/features/offsite/components/offsite-page.tsx:61, say: "the probe answers 403" }
+      FAIL.missing: not_found
+      FAIL.other: { guard: "read == 'unreadable'", target: unreadable, source: apps/nazar/features/offsite/components/offsite-page.tsx:61, say: "the probe failed with anything but 403 or 404" }
+      FAIL.signedOut: sent_to_sign_in
+    source: apps/nazar/features/offsite/components/offsite-page.tsx:38
+
+  refused:
+    title: The page refuses the person
+    by: human
+    description: >-
+      The title, the breadcrumb and the intro stay and an alert, "Bu sayfaya izniniz yok", says that the person may not open
+      the page; the form is not drawn (e2e offsite#4, carried by nazar.access.medreseNazirRefused). The alert is a neutral
+      Alert, whose role is status: it is already in the page when it loads and is not announced, and its title is a paragraph, not
+      a heading (F-A-16). The seed's medrese nazır holds no grant (the permission matrix gives MEDRESE_NAZIR no code by role), so
+      this is what she meets.
+    on:
+      OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
+      NAVIGATE: left
+    source: apps/nazar/features/offsite/components/offsite-page.tsx:61
+
+  noKosk:
+    title: No köşk is listed
+    by: human
+    description: >-
+      A warning alert, "Talep gönderilecek köşk yok" with "Listelenen bir köşk yok; talep bir köşkün nazımına gideceği için şimdilik
+      gönderilemez.", and "Derslere dön". The form is not drawn. The local stack always lists köşks, so this state is not walked.
+    on:
+      BACK: { target: courses_opened, say: "she presses 'Derslere dön'" }
+      OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
+      NAVIGATE: left
+    source: apps/nazar/features/offsite/components/offsite-page.tsx:70
+
+  unreadable:
+    title: The köşks could not be read
+    by: human
+    description: >-
+      The header stays and a section, "Köşkler okunamadı", with "Köşk listesi şu an okunamadı. Birkaç saniye sonra yeniden deneyin."
+      and "Yeniden dene", takes the place of the form. The section's heading is an h1, under the page's own h1: two level-1
+      headings (F-A-1, F-L-16). "Yeniden dene" asks the server again (router.refresh) and shows the busy label meanwhile. The
+      words are about the köşk list even when it was the permission probe that failed (OFFSITE-4). Not walked: the local stack cannot
+      be made to fail a read on request.
+    on:
+      RETRY: { target: opened, say: "she presses 'Yeniden dene': the server reads again" }
+      OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
+      NAVIGATE: left
+    source: apps/nazar/features/offsite/components/offsite-page.tsx:61
+
+  form:
+    title: The form
+    by: human
+    description: >-
+      The page: title, intro, a breadcrumb "Dersler / Medrese dışı ders talebi", the sentence "zorunlu alan" behind its asterisk, the
+      köşk (a Select, the first köşk by name already chosen, with its help "medrese dersini barındırma hakkı olan köşklerde “Medrese
+      dersi aç” ile kendiniz açarsınız"), the course name (with the help "Önerdiğiniz ad; dersi açan değiştirebilir."), the reason (a
+      textarea of five rows, with its help), "Vazgeç" and "Talebi gönder", and beside them the card "Talepten sonra" with three lines:
+      the first names the chosen köşk and follows the choice at once, the second says the köşk's nazım opens the course and picks its
+      hocas if they accept, the third that the course will not belong to the medrese (not in its courses, its talebe not the medrese's
+      talebe). The form has native validation off; "Talebi gönder" is never disabled, and the page's own check runs when it is
+      pressed. Once it has been pressed (`attempted`), each blank field says so under itself at once, in place of its help line, and
+      stops when it is filled; the messages are plain <div>s with no live region (F-L-12), softened by the focus move. The köşk has an
+      error of its own, "Bir köşk seçin.", which the page can never draw: a köşk is chosen whenever the form is drawn (OFFSITE-3). The
+      page sets no initial focus (focus-not-set). The server's köşk list is the only data: nothing is typed or stored before the send.
+    on:
+      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:161, say: "she types the name (two or more characters); where an error was drawn it goes at once" }
+      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:183, say: "she types the reason" }
+      OPEN_KOSK: { target: choosingKosk, say: "she opens the list of köşks" }
+      SUBMIT:
+        - { guard: titleBlank, target: refusedTitle, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:62, say: "the name is blank: nothing is sent, 'Ders adı boş olamaz.' stands under it (and 'Bir gerekçe yazın.' under the reason if that is blank too), the focus goes to the name" }
+        - { guard: reasonBlank, target: refusedReason, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:64, say: "the name is fine and the reason is blank: nothing is sent, 'Bir gerekçe yazın.' stands under it, the focus goes to the reason" }
+        - { guard: complete, target: sending, effect: [attempt], source: apps/nazar/features/offsite/components/offsite-form.tsx:74, say: "the form passes the page's check: the request is sent" }
+      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:189, say: "'Vazgeç', a plain link to Dersler: nothing is written" }
+      OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
+      NAVIGATE: left
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:115
+
+  refusedTitle:
+    title: The send was refused, on the name
+    by: human
+    description: >-
+      The same form after a refused "Talebi gönder" whose first wrong text field is the name: "Ders adı boş olamaz." under it (the
+      error replaces its help), "Bir gerekçe yazın." under the reason if that is blank too, and the focus on "Ders adı"
+      (element.focus(), e2e offsite#2 a3). Nothing was sent. Both errors appear together, but the focus moves to the first only, so
+      a screen-reader user hears the reason's error only when they reach the field (the shape of F-L-18). The köşk's choice and
+      what was typed are kept.
+    on:
+      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:161, say: "she types the name: its error goes at once; the focus is where she types" }
+      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:183, say: "she types the reason" }
+      OPEN_KOSK: { target: choosingKosk, say: "she opens the list of köşks" }
+      SUBMIT: { guard: titleBlank, target: refusedTitle, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:62, say: "she presses it again with the name still blank: the focus goes back to it (once she has typed the name, the press is the form's)" }
+      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:189, say: "'Vazgeç': nothing is written" }
+      OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
+      NAVIGATE: left
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:62
+
+  refusedReason:
+    title: The send was refused, on the reason
+    by: human
+    description: >-
+      The same form after a refused "Talebi gönder" whose name is fine and whose reason is blank: "Bir gerekçe yazın." under the
+      reason and the focus on "Gerekçe" (element.focus()). Nothing was sent.
+    on:
+      FILL_TITLE: { target: form, effect: [titleTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:161, say: "she changes the name" }
+      FILL_REASON: { target: form, effect: [reasonTyped], source: apps/nazar/features/offsite/components/offsite-form.tsx:183, say: "she types the reason: its error goes at once; the focus is where she types" }
+      OPEN_KOSK: { target: choosingKosk, say: "she opens the list of köşks" }
+      SUBMIT: { guard: reasonBlank, target: refusedReason, effect: [refuse], source: apps/nazar/features/offsite/components/offsite-form.tsx:64, say: "she presses it again with the reason still blank: the focus goes back to it (once she has typed the reason, the press is the form's)" }
+      CANCEL: { target: courses_opened, source: apps/nazar/features/offsite/components/offsite-form.tsx:189, say: "'Vazgeç': nothing is written" }
+      OPEN_COURSES: { target: courses_opened, say: "she follows 'Dersler' in the breadcrumb" }
+      NAVIGATE: left
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:64
+
+  choosingKosk:
+    title: The list of köşks is open
+    by: human
+    description: >-
+      The kit's Select (Base UI) opened on "Köşk": a listbox with every köşk the API listed, by name in Turkish order (the page reads
+      them all, so nothing is paged here). The list has no name of its own (libs/ui/src/mds/select.tsx:80 sets none). Choosing one
+      closes the list, writes the name in the box and changes the first line of the card, "Talep {köşk}’nün nazımına gider; Medaris
+      yönetimi talebi görür."; Esc closes it and changes nothing. The page behind stays drawn (not verified; the same Select is
+      measured so in tedris.discover.applyForKosk). After a vanished köşk the list no longer holds it.
+    on:
+      CHOOSE_FIRST: { guard: "kosk != 'gone'", target: form, effect: [pickedFirst], source: apps/nazar/features/offsite/components/offsite-form.tsx:140, say: "she chooses the köşk the form started with" }
+      CHOOSE_OTHER: { target: form, effect: [pickedOther], source: apps/nazar/features/offsite/components/offsite-form.tsx:140, say: "she chooses another köşk: the card names it at once" }
+      DISMISS: { target: form, say: "Esc: the list closes and the choice stays" }
+      NAVIGATE: left
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:132
+
+  sending:
+    title: The request is on its way
+    description: >-
+      sendOffsiteRequest, a server action, calls POST /madrasahs/:id/offsite-course-requests with the köşk's id and the name and the
+      reason trimmed. "Talebi gönder" is busy (aria-disabled and aria-busy, a spinner, and a visually hidden status that says
+      "Talep gönderiliyor", a message of the catalog: F-A-14 does not touch it); the fields stay editable. In one transaction the API
+      checks that the medrese and the köşk are not hidden, inserts a CourseRequest (PENDING, requestedBy the caller) and writes the
+      audit row course_request.create. It makes no course, adds nothing to the medrese's list and sends nobody a notification. A refused
+      send keeps the form and what was typed and gives one error toast, "Talep gönderilemedi", worded by the code: KOSK_NOT_FOUND
+      "Bu köşk artık yok. Köşk listesi yenilendi; yeniden seçin." (and the page reads the köşks again), VALIDATION_ERROR "Ders adını ve
+      gerekçeyi denetleyip yeniden deneyin.", AUTHZ_FORBIDDEN "Bunu yapma izniniz yok.", anything else "Bir şeyler ters gitti. Biraz
+      sonra yeniden deneyin."; an error toast stays until it is closed. A session that ended is sent to sign in and back to this page,
+      with no toast. If the call itself fails (no network) nothing catches it: the button stays busy and React hands the error to the
+      nearest boundary (F-A-10, not verified).
+    invoke: { action: requestOffsiteCourse }
+    on:
+      DONE: { guard: "answer == 'sent'", target: recorded, source: apps/nazar/features/offsite/components/offsite-form.tsx:80, say: "the API answers 201" }
+      FAIL.koskGone: { guard: "answer == 'koskGone'", target: form, effect: [koskWentAway], source: apps/nazar/features/offsite/components/offsite-form.tsx:97, say: "404 KOSK_NOT_FOUND: the error toast, and router.refresh() reads the köşks again; the form still holds the gone köşk (OFFSITE-2)" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: form, effect: [toastInvalid], source: apps/nazar/features/offsite/components/offsite-form.tsx:92, say: "400 VALIDATION_ERROR: the error toast" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: form, effect: [toastForbidden], source: apps/nazar/features/offsite/components/offsite-form.tsx:92, say: "403 AUTHZ_FORBIDDEN: the error toast" }
+      FAIL.other: { guard: "answer == 'other'", target: form, effect: [toastOther], source: apps/nazar/features/offsite/components/offsite-form.tsx:92, say: "any other code: the generic error toast" }
+      FAIL.signedOut: sent_to_sign_in
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:74
+
+  recorded:
+    title: The request is in the köşk nazım's list
+    description: >-
+      The CourseRequest is PENDING and the köşk's nazım (or the başnazım) finds it in "Ders talepleri" of the köşk (GET
+      /kosks/:id/course-requests, which lists the waiting ones oldest first). Nothing is sent to them and nothing is shown to the
+      başmüderris: no notification either way. A step with no screen of its own; nizam.courseRequests.decide takes over.
+    always:
+      - { target: sent, starts: { flow: nizam.courseRequests.decide }, say: "the request waits for the köşk's nazım" }
+    source: apps/tedrisat/src/madrasah/course/madrasah-course.repository.ts:410
+
+  sent:
+    title: Dersler is open and a toast says the request went
+    by: human
+    goal: true
+    description: >-
+      The success toast, "Talep gönderildi" with "“<ad>” talebiniz <köşk>’nün nazımına iletildi." (the name and the köşk as the API answered them), comes up and the page goes to
+      Dersler (router.push to the list with no filter); the toast outlives the navigation (e2e offsite#3 a2, a3) and closes by
+      itself after six seconds. The request is not in Dersler's list: no course was made (offsite#3 a5, a6). Dersler is
+      nazar.courses.browse's page; only the toast is drawn here. The toast region is named "Bildirimler", the name of the menu
+      entry and the bell (F-L-6). Nothing on the page tells her afterwards what became of the request (OFFSITE-1).
+    on:
+      NAVIGATE: left
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:81
+
+  courses_opened:
+    title: Dersler opens
+    type: final
+    leavesPage: true
+    description: >-
+      "Vazgeç", the breadcrumb's "Dersler" and "Derslere dön" are plain links to /medrese/<id>/dersler (a full page load or a client
+      navigation; nothing is written). nazar.courses.browse takes over.
+
+  not_found:
+    title: The medrese is not there
+    type: final
+    leavesPage: true
+    description: "A 404 of either read is Next's not-found page (lib/tedrisat-read.ts:46); the page's own header is not drawn, and whether the shell stays around it is F-L-15 (not verified)."
+
+  sent_to_sign_in:
+    title: The session is over
+    type: final
+    leavesPage: true
+    description: >-
+      The read, or the action, answered 401: the page sends the person to sign in (reauth) and back to this address, draws no toast
+      and keeps nothing she typed (lib/unauthenticated.ts:25, lib/tedrisat-read.ts:40). realm.auth.signIn takes over. Not walked.
+
+  left:
+    title: She goes to another page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: only-a-complete-form-is-sent
+    never: "state == 'sending' and (title == 'empty' or reason == 'empty')"
+    say: A form with a blank name or a blank reason is never sent; the page's own check stops it.
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:61
+  - id: the-form-is-drawn-only-where-the-reads-allow
+    never: "state in ['form', 'refusedTitle', 'refusedReason', 'choosingKosk', 'sending'] and read != 'ok'"
+    say: The form is drawn only when the person may and a köşk is listed.
+    source: apps/nazar/features/offsite/components/offsite-page.tsx:61
+  - id: the-toast-comes-only-after-the-api-took-it
+    never: "state == 'sent' and answer != 'sent'"
+    say: '"Talep gönderildi" shows only after the API answered that it recorded the request.'
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:80
+  - id: the-first-error-takes-the-focus
+    never: "state == 'refusedReason' and title == 'empty'"
+    say: The focus goes to the reason only when the name is fine.
+    source: apps/nazar/features/offsite/components/offsite-form.tsx:62

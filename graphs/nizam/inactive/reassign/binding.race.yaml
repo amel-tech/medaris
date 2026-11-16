@@ -1,0 +1,57 @@
+# nizam.inactive.reassign, a manager given behind the page's back (INACTIVE_SCOPE_NOT_FOUND, the refusal "Bu kapsam artık pasif değil."):
+# the window is open on a row, and before the button is pressed `helpers/inactive-scopes.mjs heal` gives each of the walk's three scopes a manager through the API
+# (OTHER, as the başnazım), so the save is refused with 404. NOT RUN, like its sisters; see locators.binding.yaml for what every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/inactive/reassign \
+#     --bind graphs/nizam/inactive/reassign/binding.race.yaml --cover transitions --out <dir>
+# It is a file of its own because a `before` is the binding's and not a scenario's, and the other scenarios must not have it. All three
+# kinds are healed, so the walk meets the refusal whichever row the cover presses. The window stays open, a sticky toast says why, and the
+# list is not read again (REASSIGN-4): the row the walk presses stays on the page. It does not hold the save (a server action's status is
+# 200 whatever the API answered, so a refusal's status cannot be compared).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.inactive.reassign
+
+scenarios:
+  raced:
+    given: { read: ok, list: rows, lookup: found, endAt: future, answer: notPassive }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    setup:
+      - run: [node, helpers/inactive-scopes.mjs, down]
+        expect: 'inactive-reassign down'
+      - run: [node, helpers/inactive-scopes.mjs, up]
+        expect: 'inactive-reassign up'
+      - run: [node, helpers/course.mjs, make, inreassign, --hoca, OTHER, --weeks, '1', --lessons, '1']
+        expect: '"tag":"inreassign"'
+      - run: [node, helpers/inactive-scopes.mjs, passive]
+        expect: 'inactive-reassign passive'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, inreassign]
+        expect: 'course remove inreassign'
+      - run: [node, helpers/inactive-scopes.mjs, down]
+        expect: 'inactive-reassign down'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+      endValue: '{scopes.endFuture}'
+
+nodes:
+  koskSubmit:
+    role: button
+    name: Köşk nazımı ata
+    before:
+      - run: [node, helpers/inactive-scopes.mjs, heal]
+        expect: 'inactive-reassign healed'
+  madrasahSubmit:
+    role: button
+    name: Başmüderris ata
+    before:
+      - run: [node, helpers/inactive-scopes.mjs, heal]
+        expect: 'inactive-reassign healed'
+  courseSubmit:
+    role: button
+    name: Hoca ata
+    before:
+      - run: [node, helpers/inactive-scopes.mjs, heal]
+        expect: 'inactive-reassign healed'

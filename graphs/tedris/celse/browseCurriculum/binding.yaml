@@ -1,0 +1,118 @@
+# tedris.celse.browseCurriculum on the local stack (graphs/README.md, "The stack and the bindings"): tedris-web on :4000, the page of
+# the fourth celse of a course the walk makes, read by the spare talebe `applicantG` as a seat holder.
+# NOT RUN in the writing phase (walk phase): the binding loads, `--emit-spec` writes a spec of 1 bound walk, nothing was walked.
+#   node apps/engine/src/cli.ts replay graphs/tedris/celse/browseCurriculum --bind graphs/tedris/celse/browseCurriculum/binding.yaml --out <dir>
+#
+# Data. `helpers/course.mjs make browseCurr` opens a published course of its own in the second köşk ("Deneme dersi browseCurr") with six
+# weeks of one celse each, titled "Celse 1" to "Celse 6", the first 17 days back and one a week after it, at 21:00 in Istanbul: celses
+# 1 to 3 are over, celse 4 is four days ahead (the one "Derse devam et" leads to, and the walk's), celse 5 is eleven days ahead and
+# celse 6 eighteen. `cancel-celse.mjs` (this folder) cancels celse 5 as the hoca, because the shared helper has no option for it: the
+# pager then skips it (celse 4's next card is celse 6) and the popup marks it. So the page of celse 4 reads "Müfredat: Hafta 4 / 6,
+# Celse 4", with 6 rows (three done, this one, the cancelled one, one ahead). The helper seats `applicantG` (the course takes anyone,
+# so ENROLLED at once); its `remove` has the talebe leave, deletes the course, and clears its mails and notifications. Nothing the seed
+# holds is touched. The ids are in graphs/.local/made/browseCurr.json, read here as {made.course} and {made.lessons.<n>} (n from 0).
+#
+# Why the walk opens the celse by its address and does not enter through the nav. The nav's way in is the course page's "Derse devam
+# et". Measured on the stack with a browser of its own: the course page of a course with a week that is over throws a hydration error
+# (a `<time>` in the lesson row of a done week), React draws the tree again on the client, and a click made in the first seconds after
+# the load is lost (the same click after a four-second wait navigates). The replay's first press would be that click, so the walk
+# does not take it. The address is the celse page itself; BROWSE-2 in ui.yaml carries the finding.
+#
+# Scenarios (a scenario per `place`; --to and the main story take the first whose `given` fits):
+#   middle   the main story: celse 4, with a card on both sides. Not walked yet (walk phase).
+#   first    celse 1: no card before the button. Bound, not walked (walk phase).
+#   last     celse 6: no card after the button. Bound, not walked (walk phase).
+# The first call of a celse page after a fresh start compiles it (15 to 30 s). The dates the rows show are the walk's own (a day and a
+# month), which is why the rows are found by the code's own attributes (the state of the celse and aria-selected), not by their words.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.tedris.binding.yaml
+flow: tedris.celse.browseCurriculum
+
+browser: { width: 1280, height: 900 }
+
+data:
+  made: { json: ../.local/made/browseCurr.json }
+
+# What the catalog's placeholders are on the walk's page ("Müfredat: Hafta 4 / 6, Celse 4", "Önceki celse: Hafta 3, Celse 3"). {number}
+# of "Önceki · Hafta {number}" and "Sonraki · Hafta {number}" has no value here on purpose: it is 3 in one and 6 in the other, so those
+# two eyebrows are found by a pattern.
+samples:
+  week: "4"
+  weeks: "6"
+  title: Celse 4
+  count: "6"
+  previousNumber: "3"
+  previousTitle: Celse 3
+  nextNumber: "6"
+  nextTitle: Celse 6
+
+scenarios:
+  middle:
+    given: { place: middle }
+    as: applicantG
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.3}'
+    setup:
+      - run: [node, helpers/course.mjs, make, browseCurr, --weeks, '6', --lessons, '1', --start, '-17', --hoca, MUDERRIS, --talebe, applicantG]
+      - run: [node, ../tedris/celse/browseCurriculum/cancel-celse.mjs, browseCurr, '5']
+        expect: cancelled
+    teardown:
+      - run: [node, helpers/course.mjs, remove, browseCurr]
+  first:
+    given: { place: first }
+    as: applicantG
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.0}'
+    samples: { week: "1", title: Celse 1, nextNumber: "2", nextTitle: Celse 2 }
+    setup:
+      - run: [node, helpers/course.mjs, make, browseCurr, --weeks, '6', --lessons, '1', --start, '-17', --hoca, MUDERRIS, --talebe, applicantG]
+      - run: [node, ../tedris/celse/browseCurriculum/cancel-celse.mjs, browseCurr, '5']
+        expect: cancelled
+    teardown:
+      - run: [node, helpers/course.mjs, remove, browseCurr]
+  last:
+    given: { place: last }
+    as: applicantG
+    open: '{tedris}/courses/{made.course}/lessons/{made.lessons.5}'
+    samples: { week: "6", title: Celse 6, previousNumber: "4", previousTitle: Celse 4 }
+    setup:
+      - run: [node, helpers/course.mjs, make, browseCurr, --weeks, '6', --lessons, '1', --start, '-17', --hoca, MUDERRIS, --talebe, applicantG]
+      - run: [node, ../tedris/celse/browseCurriculum/cancel-celse.mjs, browseCurr, '5']
+        expect: cancelled
+    teardown:
+      - run: [node, helpers/course.mjs, remove, browseCurr]
+
+events:
+  # the button has the focus (Esc just gave it back) and the Down arrow opens the popup
+  OPEN_BY_KEY: [{ key: ArrowDown }]
+  CLOSE: [{ key: Escape }]
+  # the field is filled in, which replaces what it holds: "xyz" keeps no row, "hafta 2" keeps the one row of week 2, "hafta 4" this celse
+  TYPE_NOTHING: [{ fill: { role: searchbox, name: Celse ara, value: xyz } }]
+  TYPE_QUERY: [{ fill: { role: searchbox, name: Celse ara, value: hafta 2 } }]
+  TYPE_QUERY_THIS: [{ fill: { role: searchbox, name: Celse ara, value: hafta 4 } }]
+  ENTER_FIRST: [{ key: Enter }]
+  # the focus is on this celse's row: Enter closes; Up moves to the row before it and Enter goes there
+  CHOOSE_CURRENT: [{ key: Enter }]
+  CHOOSE_OTHER: [{ key: ArrowUp }, { key: Enter }]
+  NAVIGATE: [{ goto: '{tedris}/discover' }]
+
+states:
+  # An exit has no nodes, so its address is all the replay can check.
+  previous_opened: { url: '{tedris}/courses/{made.course}/lessons/{made.lessons.2}' }
+  next_opened: { url: '{tedris}/courses/{made.course}/lessons/{made.lessons.5}' }
+  celse_opened: { url: '{tedris}/courses/{made.course}/lessons/{made.lessons.1}' }
+  programme_opened: { url: '{tedris}/courses/{made.course}?tab=mufredat' }
+  left: { url: '{tedris}/discover' }
+
+nodes:
+  # the celse page has a <main> of its own, with the row in it
+  celsePage: { css: 'main:has([data-testid=session-pager])' }
+  # the title of the popup and its count are two runs of one paragraph; the count follows an aria-hidden "·" in its own span
+  popupTitle: { css: '.mds-popup p.mds-label', hasText: Müfredat }
+  popupCount: { css: '.mds-popup p.mds-label span.font-regular', hasText: '6 celse' }
+  # the rows are found by the code's own attributes: the state of the celse and aria-selected
+  rowCurrent: { css: '[role=option][aria-selected=true]' }
+  rowEnded: { css: '[role=option][data-state=ended]', count: 3 }
+  rowCancelled: { css: '[role=option][data-state=cancelled]' }
+  rowAhead: { css: '[role=option][data-state=upcoming][aria-selected=false]' }
+  firstRowOther: { css: '[role=option][data-state=ended]' }
+  firstRowThis: { css: '[role=option][aria-selected=true]' }
