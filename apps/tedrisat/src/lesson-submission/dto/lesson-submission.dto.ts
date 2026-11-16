@@ -170,6 +170,11 @@ export class CourseSubmissionSessionResponse {
   hasAssignment!: boolean;
   @ApiProperty({
     description:
+      'Its homework is recited to the müderris (`kind` MEMORIZE): the talebe hand nothing in on it, and it is marked on "Değerlendirme" (`GET /courses/:id/evaluations`) instead, so `handedInCount` says nothing about it.',
+  })
+  isMemorization!: boolean;
+  @ApiProperty({
+    description:
       'How many of the course\'s enrolled talebe (ENROLLED or COMPLETED) handed homework in on the session: a submission with a note or at least one file. The "N" of "N / M teslim", against `talebeCount`.',
   })
   handedInCount!: number;

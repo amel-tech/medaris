@@ -39,7 +39,7 @@ describe("nazar's <html> (MDRS-245)", () => {
     expect(head).not.toContain("prefers-color-scheme");
   });
 
-  it("carries the viewer's language, Arabic mirrored (MDRS-248)", async () => {
+  it("is Turkish, left to right, whatever the old cookie named (MDRS-248)", async () => {
     const { default: RootLayout } = await import("../app/layout");
     intl.locale = "tr";
     let markup = renderToStaticMarkup(await RootLayout({ children: "page" }));
@@ -47,8 +47,8 @@ describe("nazar's <html> (MDRS-245)", () => {
     expect(htmlTag(markup)).toContain('dir="ltr"');
     intl.locale = "ar";
     markup = renderToStaticMarkup(await RootLayout({ children: "page" }));
-    expect(htmlTag(markup)).toContain('lang="ar"');
-    expect(htmlTag(markup)).toContain('dir="rtl"');
+    expect(htmlTag(markup)).toContain('lang="tr"');
+    expect(htmlTag(markup)).toContain('dir="ltr"');
     intl.locale = "tr";
   });
 });

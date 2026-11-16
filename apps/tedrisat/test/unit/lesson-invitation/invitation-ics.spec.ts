@@ -19,6 +19,7 @@ const input = (overrides: Partial<InvitationInput> = {}): InvitationInput => ({
   sequence: 0,
   sessionPageUrl: PAGE,
   attendance: { inPerson: false, hasMeetingLink: true, hasLiveStream: false },
+  isExam: false,
   locale: "tr",
   organizer: { address: "no-reply@medaris.test", name: 'Medaris "Ders"' },
   attendee: "talebe@example.org",
@@ -67,6 +68,15 @@ describe("lesson invitation .ics (MDRS-121)", () => {
     expect(prop(ics, "URL")).toBe(PAGE);
     expect(prop(ics, "DESCRIPTION")).toContain(PAGE);
     expect(ics).not.toMatch(/meet|zoom|X-GOOGLE-CONFERENCE/i);
+  });
+
+  it("says an exam celse is an exam, in the recipient's language (MDRS-248)", () => {
+    expect(prop(buildInvitationIcs(input({ isExam: true })), "SUMMARY")).toBe(
+      "Bina ve İzhar Şerhi — Sınav: Açılış\\; giriş\\, mukaddime"
+    );
+    expect(
+      prop(buildInvitationIcs(input({ isExam: true, locale: "en" })), "SUMMARY")
+    ).toContain("— Exam: ");
   });
 
   it("says how the session is attended, as the one-session file does (MDRS-283)", () => {

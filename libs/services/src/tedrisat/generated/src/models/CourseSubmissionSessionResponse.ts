@@ -32,6 +32,12 @@ export interface CourseSubmissionSessionResponse {
      */
     hasAssignment: boolean;
     /**
+     * Its homework is recited to the müderris (`kind` MEMORIZE): the talebe hand nothing in on it, and it is marked on "Değerlendirme" (`GET /courses/:id/evaluations`) instead, so `handedInCount` says nothing about it.
+     * @type {boolean}
+     * @memberof CourseSubmissionSessionResponse
+     */
+    isMemorization: boolean;
+    /**
      * How many of the course's enrolled talebe (ENROLLED or COMPLETED) handed homework in on the session: a submission with a note or at least one file. The "N" of "N / M teslim", against `talebeCount`.
      * @type {number}
      * @memberof CourseSubmissionSessionResponse
@@ -45,6 +51,7 @@ export interface CourseSubmissionSessionResponse {
 export function instanceOfCourseSubmissionSessionResponse(value: object): value is CourseSubmissionSessionResponse {
     if (!('lessonId' in value) || value['lessonId'] === undefined) return false;
     if (!('hasAssignment' in value) || value['hasAssignment'] === undefined) return false;
+    if (!('isMemorization' in value) || value['isMemorization'] === undefined) return false;
     if (!('handedInCount' in value) || value['handedInCount'] === undefined) return false;
     return true;
 }
@@ -61,6 +68,7 @@ export function CourseSubmissionSessionResponseFromJSONTyped(json: any, ignoreDi
         
         'lessonId': json['lessonId'],
         'hasAssignment': json['hasAssignment'],
+        'isMemorization': json['isMemorization'],
         'handedInCount': json['handedInCount'],
     };
 }
@@ -78,6 +86,7 @@ export function CourseSubmissionSessionResponseToJSONTyped(value?: CourseSubmiss
         
         'lessonId': value['lessonId'],
         'hasAssignment': value['hasAssignment'],
+        'isMemorization': value['isMemorization'],
         'handedInCount': value['handedInCount'],
     };
 }

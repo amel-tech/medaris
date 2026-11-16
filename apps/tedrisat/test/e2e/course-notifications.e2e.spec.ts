@@ -265,6 +265,8 @@ describe("Course notifications (MDRS-213, e2e)", () => {
             courseTitle: "Siyer okumaları",
             source: "Beyazıt Köşkü",
             sessionAt: sessionAt.toISOString(),
+            // MDRS-248: the note the müderris wrote for talebe.
+            reason: "Müderris hasta",
           },
         });
       }

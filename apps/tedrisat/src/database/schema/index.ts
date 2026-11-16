@@ -1,3 +1,4 @@
+export * from "./appeal.schema";
 export * from "./audit.schema";
 export * from "./ban.schema";
 export * from "./calendar-feed.schema";
@@ -13,6 +14,7 @@ export * from "./integration-partner.schema";
 export * from "./kosk.schema";
 export * from "./kosk-application.schema";
 export * from "./lesson-assignment.schema";
+export * from "./lesson-exam.schema";
 export * from "./lesson-invitation.schema";
 export * from "./lesson-note.schema";
 export * from "./lesson-question.schema";

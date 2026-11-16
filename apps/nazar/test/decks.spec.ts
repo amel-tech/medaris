@@ -12,6 +12,7 @@ import {
   importRowProblems,
   masteredPercent,
   newCardDraft,
+  parsePastedCards,
 } from "~/features/decks/decks";
 
 const deck: DeckFact = {
@@ -94,6 +95,30 @@ describe("the card form", () => {
         contentBack: "selam",
       })
     ).toEqual({});
+  });
+});
+
+describe("pasting cards into Kart ekle", () => {
+  it("reads Excel's two columns and ön;arka lines, one card per line", () => {
+    const pasted = "نَصَرَ\tyardım etti\n\nنَصَرَا ; ikisi yardım etti \r\n";
+    expect(parsePastedCards(pasted, "VOCABULARY")).toEqual({
+      drafts: [
+        { type: "VOCABULARY", contentFront: "نَصَرَ", contentBack: "yardım etti" },
+        {
+          type: "VOCABULARY",
+          contentFront: "نَصَرَا",
+          contentBack: "ikisi yardım etti",
+        },
+      ],
+      skipped: [],
+    });
+  });
+
+  it("skips a line without a back or with a too short face, and names it", () => {
+    const pasted = "نَصَرَ;yardım etti\nyalnız ön\nab;cd e";
+    const { drafts, skipped } = parsePastedCards(pasted, "HADEETH");
+    expect(drafts).toHaveLength(1);
+    expect(skipped).toEqual([2, 3]);
   });
 });
 

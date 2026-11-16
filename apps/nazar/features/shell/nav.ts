@@ -89,10 +89,7 @@ export const NAV: Readonly<Record<ScopeKind, readonly NavSectionDef[]>> = {
     },
     {
       id: "management",
-      entries: [
-        { id: "rules", icon: "shieldCheck", to: page("kabul-kurallari") },
-        { id: "settings", icon: "settings", to: page("ayarlar") },
-      ],
+      entries: [{ id: "settings", icon: "settings", to: page("ayarlar") }],
     },
   ],
   ders: [
@@ -120,6 +117,12 @@ export const NAV: Readonly<Record<ScopeKind, readonly NavSectionDef[]>> = {
           icon: "inbox",
           to: page("odevler"),
           requires: "submission.read",
+        },
+        {
+          id: "evaluation",
+          icon: "check",
+          to: page("degerlendirme"),
+          requires: "session.manage",
         },
         { id: "recordings", icon: "video", to: page("kayitlar") },
         {

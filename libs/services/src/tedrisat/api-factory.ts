@@ -3,6 +3,8 @@ import {
   BansApi,
   Configuration,
   CoursesApi,
+  EvaluationsApi,
+  ExamsApi,
   FlashcardCardsApi,
   FlashcardDeckLabelApi,
   FlashcardDecksApi,
@@ -33,6 +35,7 @@ export type {
   ArchiverResponse,
   ArchiveScopesResponse,
   AskLessonQuestionDto,
+  AssignmentKind,
   AssignmentResponse,
   BanListResponse,
   BanPersonResponse,
@@ -79,6 +82,12 @@ export type {
   EnrolledCourseResponse,
   EnrollmentBanResponse,
   EnrollmentResponse,
+  EvaluationBoardResponse,
+  EvaluationColumnKind,
+  EvaluationColumnResponse,
+  EvaluationMarkResponse,
+  EvaluationStatus,
+  EvaluationTalebeResponse,
   FlashcardCreateLabelResponse,
   FlashcardDeckCreateLabelResponse,
   FlashcardDeckExploreResponse,
@@ -149,6 +158,7 @@ export type {
   NotificationResponse,
   OffsiteCourseRequestResponse,
   OpenMadrasahCourseDto,
+  OwnEvaluationResponse,
   OwnSubmissionResponse,
   PaginatedArchiveResponse,
   PaginatedKoskResponse,
@@ -168,6 +178,7 @@ export type {
   ResourceFileResponse,
   ResourceResponse,
   RosterEnrollmentResponse,
+  SaveEvaluationDto,
   SaveLessonAssignmentDto,
   SaveSubmissionNoteDto,
   ScheduleSessionResponse,
@@ -282,6 +293,9 @@ export function createTedrisatAPIs(config: TedrisatAPIConfig) {
     // The homework the course team sets on a celse, apart from its
     // resources: its description and its own files (`session.manage`).
     lessonAssignments: new LessonAssignmentsApi(configuration),
+    // "Değerlendirme": marks on memorisation homework (MDRS-248)
+    evaluations: new EvaluationsApi(configuration),
+    exams: new ExamsApi(configuration),
     // The two label controllers MDRS-58 published for the first time. Generated
     // classes that only `./generated/src` exported were reachable by no app —
     // this factory is what `@medaris/services/tedrisat` hands out.

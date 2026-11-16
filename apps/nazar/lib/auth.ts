@@ -1,4 +1,4 @@
-import { createAuth } from "@medaris/auth/server";
+import { createAuth, parseSignInLimit } from "@medaris/auth/server";
 import { env } from "~/env";
 import { LOCALES } from "~/lib/i18n/locale";
 
@@ -19,6 +19,12 @@ import { LOCALES } from "~/lib/i18n/locale";
  * Nazar has no locale routing: the sign-in page is always `/auth/signin`, and
  * Keycloak's pages open in Turkish (`ui_locales` and `kc_locale`, MDRS-274).
  */
+/**
+ * `AUTH_SIGN_IN_LIMIT`: the start route's cap, and the sign-in page's budget
+ * per tab, which the page passes on to `AuthEntry`.
+ */
+export const signInLimit = parseSignInLimit(env.AUTH_SIGN_IN_LIMIT);
+
 export const {
   auth,
   getAccessToken,
@@ -43,4 +49,5 @@ export const {
     url: env.AUTH_STORE_URL,
     keyPrefix: env.AUTH_STORE_KEY_PREFIX,
   },
+  ...(signInLimit ? { signInLimit } : {}),
 });

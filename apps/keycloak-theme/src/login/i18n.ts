@@ -67,6 +67,8 @@ const i18n = i18nBuilder
       emailVerifyInstruction1:
         "We have sent a verification link to {0}. Open it to activate your account.",
       emailVerifyInstruction2: "Didn’t get the e-mail?",
+      emailVerifySpamHint:
+        "If the e-mail has not arrived, check your Junk/Spam folder.",
       emailForgotTitle: "Forgot your password?",
       emailInstruction:
         "Enter your username or e-mail address and we will send you a link to choose a new password.",
@@ -215,6 +217,7 @@ const i18n = i18nBuilder
       emailVerifyInstruction1:
         "{0} adresine bir doğrulama bağlantısı gönderdik. Hesabınızı etkinleştirmek için bağlantıyı açın.",
       emailVerifyInstruction2: "E-posta gelmedi mi?",
+      emailVerifySpamHint: "E-posta gelmediyse Gereksiz/Spam klasörüne bakın.",
       emailForgotTitle: "Şifrenizi mi unuttunuz?",
       emailInstruction:
         "Kullanıcı adınızı veya e-posta adresinizi girin; yeni şifre belirlemeniz için size bir bağlantı gönderelim.",
@@ -358,6 +361,8 @@ const i18n = i18nBuilder
       emailVerifyInstruction1:
         "أرسلنا رابط التحقق إلى {0}. افتحه لتفعيل حسابك.",
       emailVerifyInstruction2: "لم تصلك الرسالة؟",
+      emailVerifySpamHint:
+        "إن لم تصلك الرسالة فتحقّق من مجلد البريد غير المرغوب فيه.",
       emailForgotTitle: "نسيت كلمة المرور؟",
       emailInstruction:
         "أدخل اسم المستخدم أو البريد الإلكتروني، وسنرسل إليك رابطًا لاختيار كلمة مرور جديدة.",

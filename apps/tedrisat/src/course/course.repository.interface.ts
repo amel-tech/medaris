@@ -6,6 +6,7 @@ import type { IPurgeCounts } from "./course-purge";
 import { CourseLevel } from "./domain/course-level.enum";
 import { CourseStatus } from "./domain/course-status.enum";
 import { EnrollmentStatus } from "./domain/enrollment-status.enum";
+import type { ExamFormat, ILessonExam } from "./domain/exam";
 import type { ILessonAssignment } from "./domain/lesson-assignment";
 import { LessonType } from "./domain/lesson-type.enum";
 
@@ -94,6 +95,11 @@ export interface ILesson {
    * detail only; a session write's answer leaves it out.
    */
   assignment?: ILessonAssignment | null;
+  /**
+   * What makes the session an exam (MDRS-248), or null when it is not one.
+   * Course content, like its homework. Read with the course detail only.
+   */
+  exam?: ILessonExam | null;
 }
 
 export interface IWeek {
@@ -192,7 +198,8 @@ export type LessonContentField =
   | "inPersonOverride"
   | "hasLiveStream"
   | "recordingAvailableAt"
-  | "assignment";
+  | "assignment"
+  | "exam";
 
 /** A session's resource as a response carries it: `url` and `file` are content (MDRS-286, MDRS-287). */
 export type ILessonResourceView = Omit<ILessonResource, "url" | "file"> &
@@ -484,11 +491,23 @@ export interface IBatchSession {
   weekNumber: number;
 }
 
+/** "Sınav" on "Celse planla" (MDRS-248); every field has a default. */
+export interface IExamPlan {
+  format?: ExamFormat;
+  maxScore?: number;
+  topics?: string | null;
+  /** In person there; null or absent is online. */
+  location?: string | null;
+  isRetake?: boolean;
+}
+
 export interface ICreateSessionBatch {
   title: string;
   durationMinutes: number;
   /** Set on the first session only. */
   meetingUrl?: string;
+  /** The one session planned is an exam (MDRS-248). */
+  exam?: IExamPlan;
   /**
    * Expands the pattern against the course's zone. Called inside the write
    * transaction, after the course row is locked, so a concurrent change of

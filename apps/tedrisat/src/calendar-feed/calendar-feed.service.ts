@@ -97,6 +97,7 @@ export class CalendarFeedService {
           title: s.lessonTitle,
           scheduledAt: s.scheduledAt,
           durationMinutes: s.durationMinutes,
+          isExam: s.isExam,
         },
         // The feed holds the courses its owner is enrolled in, teaches or
         // manages: readers of their content, who are told how each session

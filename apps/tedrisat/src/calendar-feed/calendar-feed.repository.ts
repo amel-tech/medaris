@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { and, asc, eq, gte, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type { CalendarAttendance } from "../course/calendar/lesson-calendar";
 import { CourseStatus } from "../course/domain/course-status.enum";
 import { EnrollmentStatus } from "../course/domain/enrollment-status.enum";
@@ -18,6 +18,7 @@ import {
   lessons,
 } from "../database/schema/course.schema";
 import { kosks } from "../database/schema/kosk.schema";
+import { lessonExams } from "../database/schema/lesson-exam.schema";
 import {
   ASSIGNED_ROLES,
   roleAssignments,
@@ -33,6 +34,8 @@ export interface IFeedSession {
   lessonTitle: string;
   scheduledAt: Date;
   durationMinutes: number | null;
+  /** The session is an exam (MDRS-248). */
+  isExam: boolean;
   /**
    * The lesson, or the week holding it, was removed (MDRS-95), or the
    * session was cancelled and keeps its slot (MDRS-158).
@@ -152,6 +155,7 @@ export class CalendarFeedRepository {
         lessonTitle: lessons.title,
         scheduledAt: lessons.scheduledAt,
         durationMinutes: lessons.durationMinutes,
+        isExam: sql<boolean>`exists (select 1 from ${lessonExams} where ${lessonExams.lessonId} = ${lessons.id})`,
         lessonArchivedAt: lessons.archivedAt,
         lessonCancelledAt: lessons.cancelledAt,
         weekArchivedAt: courseWeeks.archivedAt,

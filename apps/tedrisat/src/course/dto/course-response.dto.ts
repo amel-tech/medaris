@@ -1,6 +1,7 @@
 import { HOCA_UNVANS, type HocaUnvan } from "@medaris/utils/src/hoca-unvan.js";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { BAN_SCOPES, type BanScope } from "../../database/schema/ban.schema";
+import { LessonExamResponse } from "../../exam/dto/exam.dto";
 import { CourseLevel } from "../domain/course-level.enum";
 import { CourseStatus } from "../domain/course-status.enum";
 import { EnrollmentStatus } from "../domain/enrollment-status.enum";
@@ -142,6 +143,13 @@ export class LessonResponse {
       "The homework the course team set on the session, apart from its `resources`: a description and its own files; null when the session has none. Course content, whether there is any included: absent unless the caller holds `view_details` on the course (MDRS-103), a sample session's included. Carried by the course read, never by a session write's answer.",
   })
   assignment?: LessonAssignmentResponse | null;
+  @ApiPropertyOptional({
+    type: () => LessonExamResponse,
+    nullable: true,
+    description:
+      'What makes the session an exam ("Sınav", MDRS-248); null when it is not one. Course content, like `assignment`: absent unless the caller holds `view_details` on the course. Carried by the course read, never by a session write\'s answer.',
+  })
+  exam?: LessonExamResponse | null;
 }
 
 /** A lesson written through a session-level endpoint (MDRS-95). */

@@ -199,7 +199,9 @@ const counts = (over: Record<string, Record<string, unknown>> = {}) => ({
     { lessonId: "l-2", hasAssignment: false, handedInCount: 0 },
     { lessonId: "l-3", hasAssignment: true, handedInCount: 1 },
     { lessonId: "l-4", hasAssignment: false, handedInCount: 0 },
-  ].map((session) => ({ ...session, ...over[session.lessonId] })),
+  ]
+    .map((session) => ({ ...session, isMemorization: false }))
+    .map((session) => ({ ...session, ...over[session.lessonId] })),
 });
 const answer = (
   list: unknown[] = items(),
@@ -412,6 +414,24 @@ describe("Ödevler", () => {
     await choose("Celse", "Hafta 1 · Mastar (0)");
     expect(status("l-2")).toContain("Ödev verilmedi");
     expect(status("l-2")).toContain("0 / 3 teslim");
+  });
+
+  it("says a recited celse is marked on Değerlendirme, with no hand-in count (MDRS-248)", async () => {
+    state.submissions = {
+      status: "ok",
+      data: answer([], {
+        "l-1": { hasAssignment: false, handedInCount: 0 },
+        "l-2": { hasAssignment: true, isMemorization: true },
+        "l-3": { hasAssignment: false, handedInCount: 0 },
+      }),
+    };
+    await mount();
+    const status =
+      document.querySelector('[data-testid="homework-status-l-2"]')
+        ?.textContent ?? "";
+    expect(status).toContain("Ezber · Değerlendirme’de işaretlenir");
+    expect(status).not.toContain("Ödev verildi");
+    expect(status).not.toContain("teslim");
   });
 
   it("draws a celse with homework that nobody handed in yet, at 0 / M, instead of the empty state", async () => {

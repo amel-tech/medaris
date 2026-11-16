@@ -41,6 +41,13 @@ import {
     SessionStatusToJSON,
     SessionStatusToJSONTyped,
 } from './SessionStatus';
+import type { LessonExamResponse } from './LessonExamResponse';
+import {
+    LessonExamResponseFromJSON,
+    LessonExamResponseFromJSONTyped,
+    LessonExamResponseToJSON,
+    LessonExamResponseToJSONTyped,
+} from './LessonExamResponse';
 import type { SessionRefResponse } from './SessionRefResponse';
 import {
     SessionRefResponseFromJSON,
@@ -196,6 +203,12 @@ export interface SessionResponse {
      */
     assignment?: LessonAssignmentResponse | null;
     /**
+     * What makes the session an exam ("Sınav", MDRS-248); null when it is not one. Course content: absent unless the caller holds `view_details` on the course (MDRS-103).
+     * @type {LessonExamResponse}
+     * @memberof SessionResponse
+     */
+    exam?: LessonExamResponse | null;
+    /**
      * Course content: absent unless the caller holds `view_details` on the course (MDRS-103). The session's recording, or null when it has none. Its `url` is null while it is PROCESSING, and before its `availableAt` for anyone but the course team (MDRS-288).
      * @type {SessionRecordingResponse}
      * @memberof SessionResponse
@@ -278,6 +291,7 @@ export function SessionResponseFromJSONTyped(json: any, ignoreDiscriminator: boo
         'inPerson': json['inPerson'],
         'hasLiveStream': json['hasLiveStream'] == null ? undefined : json['hasLiveStream'],
         'assignment': json['assignment'] == null ? undefined : LessonAssignmentResponseFromJSON(json['assignment']),
+        'exam': json['exam'] == null ? undefined : LessonExamResponseFromJSON(json['exam']),
         'recording': json['recording'] == null ? undefined : SessionRecordingResponseFromJSON(json['recording']),
         'previous': json['previous'] == null ? undefined : SessionRefResponseFromJSON(json['previous']),
         'next': json['next'] == null ? undefined : SessionRefResponseFromJSON(json['next']),
@@ -318,6 +332,7 @@ export function SessionResponseToJSONTyped(value?: SessionResponse | null, ignor
         'inPerson': value['inPerson'],
         'hasLiveStream': value['hasLiveStream'],
         'assignment': LessonAssignmentResponseToJSON(value['assignment']),
+        'exam': LessonExamResponseToJSON(value['exam']),
         'recording': SessionRecordingResponseToJSON(value['recording']),
         'previous': SessionRefResponseToJSON(value['previous']),
         'next': SessionRefResponseToJSON(value['next']),

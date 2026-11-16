@@ -6,6 +6,7 @@ import {
   type KoskResponse,
   type MadrasahOverviewResponse,
   type MadrasahResponse,
+  type MyGradesResponse,
   type RecordingResponse,
   type SessionResponse,
 } from "@medaris/services/tedrisat";
@@ -132,6 +133,18 @@ export const getMySubmissions = (courseId: string): Promise<string[] | null> =>
         await viewerApi()
       ).submissions.listMySubmissions({ id: courseId }, NO_STORE)
     ).items.map((item) => item.lessonId)
+  );
+
+/**
+ * "Notlarım" (MDRS-248): the talebe's own exam results (a score only once
+ * released, tedrisat's rule) and memorisation marks; null when the read
+ * failed, and then the tab is left out.
+ */
+export const getMyGrades = (
+  courseId: string
+): Promise<MyGradesResponse | null> =>
+  orNull(async () =>
+    (await viewerApi()).exams.getMyGrades({ id: courseId }, NO_STORE)
   );
 
 /** Whether the visitor has a usable token — what tedrisat will see. */

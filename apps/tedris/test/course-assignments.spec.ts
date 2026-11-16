@@ -54,6 +54,7 @@ const homework = (lessonId: string) => ({
   id: `a-${lessonId}`,
   lessonId,
   description: null,
+  kind: "FILE",
   files: [],
   createdAt: new Date("2026-09-20T10:00:00Z"),
   updatedAt: new Date("2026-09-20T10:00:00Z"),
@@ -234,6 +235,13 @@ describe("the rules of the homework marks", () => {
     expect(assignmentMark(live(), viewer(["l1"]))).toBe("set");
     expect(assignmentMark(live(), viewer(null))).toBe("set");
     expect(assignmentMark(live(), viewer([], false))).toBe("set");
+  });
+
+  it("never mark homework recited to the müderris pending: nothing is handed in on the page (MDRS-248)", () => {
+    const recited = live({
+      assignment: { ...homework("l1"), kind: "MEMORIZE" },
+    });
+    expect(assignmentMark(recited, viewer([]))).toBe("set");
   });
 
   it("leave a celse without homework, and a cancelled one, unmarked", () => {

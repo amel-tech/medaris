@@ -32,6 +32,13 @@ export class ScheduleSessionResponse {
     type: String,
     nullable: true,
     description:
+      "The note the müderris left for talebe when cancelling the session (MDRS-248); null while it stands or when none was written.",
+  })
+  cancelReason!: string | null;
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description:
       "The meeting link; null when none was added, and always null once the session is cancelled or over. Only an enrolled caller receives this response, so the link is theirs to read.",
   })
   meetingUrl!: string | null;
@@ -45,4 +52,9 @@ export class ScheduleSessionResponse {
       "A live stream is set for the session (MDRS-283), whatever its status; never the link, which the session page gives while it is LIVE.",
   })
   hasLiveStream!: boolean;
+  @ApiProperty({
+    description:
+      'The celse is an exam ("Sınav", MDRS-248): the schedule and the home page mark it.',
+  })
+  isExam!: boolean;
 }

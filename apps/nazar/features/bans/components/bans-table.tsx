@@ -3,6 +3,7 @@
 import { Avatar } from "@medaris/ui/mds/avatar";
 import { Badge } from "@medaris/ui/mds/badge";
 import { Button } from "@medaris/ui/mds/button";
+import { EmptyState } from "@medaris/ui/mds/empty-state";
 import { Field } from "@medaris/ui/mds/field";
 import { Icon } from "@medaris/ui/mds/icon";
 import { Input } from "@medaris/ui/mds/input";
@@ -17,7 +18,7 @@ import {
   type BanRow,
   type BanStatus,
   BLANK,
-  bansHref,
+  bansHrefAt,
   type Filters,
   type ScopeOption,
 } from "../bans";
@@ -46,19 +47,22 @@ export interface BanTabView {
  * dialogs from here, which is why this is a client component.
  */
 export function BansTable({
-  madrasahId,
-  madrasahName,
+  path,
+  scopeName,
   rows,
   filters,
   tabs,
-  scopeOptions,
+  scopeOptions = [],
 }: {
-  madrasahId: string;
-  madrasahName: string;
+  /** the list's own path, `/medrese/<id>/yasaklamalar` or `/ders/<id>/yasaklamalar` */
+  path: string;
+  /** the medrese's or the course's name, over the decision dialogs */
+  scopeName: string;
   rows: BanRow[];
   filters: Filters;
   tabs: BanTabView[];
-  scopeOptions: ScopeOption[];
+  /** the scope filter's choices; none leaves the filter out (a course's list) */
+  scopeOptions?: ScopeOption[];
 }) {
   const t = useTranslations("nazar");
   const locale = useLocale();
@@ -72,7 +76,7 @@ export function BansTable({
 
   const refresh = () => startTransition(() => router.refresh());
   const filter = (next: Filters) =>
-    startTransition(() => router.replace(bansHref(madrasahId, next)));
+    startTransition(() => router.replace(bansHrefAt(path, next)));
   const active = filters.status === "ACTIVE";
 
   const wanted = query.trim().toLocaleLowerCase(locale);
@@ -237,7 +241,7 @@ export function BansTable({
           value: tab.status,
           label: t(`Bans.tabs.${tab.status}`),
           count: tab.count,
-          href: bansHref(madrasahId, { ...filters, status: tab.status }),
+          href: bansHrefAt(path, { ...filters, status: tab.status }),
         }))}
       />
       <fieldset className="flex min-inline-0 flex-wrap items-center gap-2 border-0 p-0">
@@ -262,12 +266,14 @@ export function BansTable({
             onChange={(event) => setQuery(event.target.value)}
           />
         </Field>
-        <Select
-          aria-label={t("Bans.filters.scope.label")}
-          options={scopeOptions}
-          value={scopeValue}
-          onChange={(value) => filter({ ...filters, scope: value ?? ALL })}
-        />
+        {scopeOptions.length > 0 ? (
+          <Select
+            aria-label={t("Bans.filters.scope.label")}
+            options={scopeOptions}
+            value={scopeValue}
+            onChange={(value) => filter({ ...filters, scope: value ?? ALL })}
+          />
+        ) : null}
       </fieldset>
       <Table
         caption={t(`Bans.caption.${filters.status}`)}
@@ -290,7 +296,7 @@ export function BansTable({
               </Button>
             </span>
           ) : (
-            t(`Bans.empty.${filters.status}`)
+            <EmptyState>{t(`Bans.empty.${filters.status}`)}</EmptyState>
           )
         }
         sort={active ? { key: "when", direction: "descending" } : undefined}
@@ -301,7 +307,7 @@ export function BansTable({
           key={`${deciding.kind}:${deciding.row.id}`}
           kind={deciding.kind}
           row={deciding.row}
-          madrasahName={madrasahName}
+          madrasahName={scopeName}
           onClose={() => setDeciding(null)}
           onDone={refresh}
         />

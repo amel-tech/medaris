@@ -4,6 +4,7 @@ import { DatabaseService } from "../database/database.service";
 import { auditLog } from "../database/schema/audit.schema";
 import { lessons } from "../database/schema/course.schema";
 import {
+  assignmentEvaluations,
   lessonAssignmentFiles,
   lessonAssignments,
 } from "../database/schema/lesson-assignment.schema";
@@ -13,6 +14,7 @@ import {
 } from "../storage/storage-deletions";
 import type { IStoredFile } from "../storage/stored-file";
 import type { Tx } from "./course-purge";
+import { AssignmentKind } from "./domain/assignment-kind.enum";
 import {
   type ILessonAssignment,
   lessonAssignmentOf,
@@ -122,15 +124,17 @@ export class LessonAssignmentRepository {
   }
 
   /**
-   * Sets the celse's homework, or changes its description: made with the
-   * first save (`lesson_assignment.create`), changed by a later one with a
-   * different description (`lesson_assignment.update`). A save that changes
+   * Sets the celse's homework, or changes its description or how it is
+   * handed in (`kind`, MDRS-248; absent keeps it, FILE for new homework):
+   * made with the first save (`lesson_assignment.create`), changed by a later
+   * one that differs (`lesson_assignment.update`). A save that changes
    * nothing writes nothing. The description is never copied into the audit
    * log, only its length.
    */
   async save(
     lessonId: string,
     description: string | null,
+    kind: AssignmentKind | undefined,
     write: IAssignmentWrite
   ): Promise<ILessonAssignment> {
     return this.db.transaction(async (tx) => {
@@ -138,21 +142,23 @@ export class LessonAssignmentRepository {
       // Two first saves at once: one inserts, the other finds its row.
       const [made] = await tx
         .insert(lessonAssignments)
-        .values({ lessonId, description })
+        .values({ lessonId, description, kind: kind ?? AssignmentKind.FILE })
         .onConflictDoNothing({ target: lessonAssignments.lessonId })
         .returning();
       if (made) {
         await this.record(tx, write, "create", made.id, {
           lessonId,
           descriptionLength: description?.length ?? 0,
+          kind: made.kind,
         });
         return (await this.find(lessonId, tx)) as ILessonAssignment;
       }
       const [held] = await this.lock(tx, lessonId);
-      if (held.description !== description) {
+      const nextKind = kind ?? held.kind;
+      if (held.description !== description || held.kind !== nextKind) {
         await tx
           .update(lessonAssignments)
-          .set({ description, updatedAt: new Date() })
+          .set({ description, kind: nextKind, updatedAt: new Date() })
           .where(eq(lessonAssignments.id, held.id));
         await this.record(tx, write, "update", held.id, {
           lessonId,
@@ -160,6 +166,9 @@ export class LessonAssignmentRepository {
             from: held.description?.length ?? 0,
             to: description?.length ?? 0,
           },
+          ...(held.kind !== nextKind
+            ? { kind: { from: held.kind, to: nextKind } }
+            : {}),
         });
       }
       return (await this.find(lessonId, tx)) as ILessonAssignment;
@@ -169,14 +178,19 @@ export class LessonAssignmentRepository {
   /**
    * Takes the celse's homework off ("Bu celsenin ödevi var" turned off): the
    * row, its files' rows, each file's object marked for removal from storage,
-   * and `lesson_assignment.delete` with what went. False when there is none.
-   * The talebe's submissions stay: they are theirs.
+   * the course team's marks on it (MDRS-248), and `lesson_assignment.delete`
+   * with what went. False when there is none. The talebe's submissions stay:
+   * they are theirs.
    */
   async remove(lessonId: string, write: IAssignmentWrite): Promise<boolean> {
     return this.db.transaction(async (tx) => {
       await this.assertLive(tx, lessonId);
       const [held] = await this.lock(tx, lessonId);
       if (!held) return false;
+      const marks = await tx
+        .delete(assignmentEvaluations)
+        .where(eq(assignmentEvaluations.assignmentId, held.id))
+        .returning({ id: assignmentEvaluations.id });
       const files = await tx
         .delete(lessonAssignmentFiles)
         .where(eq(lessonAssignmentFiles.assignmentId, held.id))
@@ -192,6 +206,8 @@ export class LessonAssignmentRepository {
       await this.record(tx, write, "delete", held.id, {
         lessonId,
         descriptionLength: held.description?.length ?? 0,
+        kind: held.kind,
+        evaluations: marks.length,
         files: files.map((file) => ({
           fileId: file.id,
           fileName: file.fileName,

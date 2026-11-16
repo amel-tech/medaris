@@ -119,6 +119,8 @@ export interface SessionFact {
   cancelledAt: string | null;
   /** the session that makes up for this one once it is cancelled */
   replacementId: string | null;
+  /** an exam ("Sınav") or its retake ("Telafi", MDRS-248); null for a plain session */
+  exam: "exam" | "retake" | null;
 }
 
 /** Every live session of the course as a flat fact, by date. A lesson of another kind, or without a time, is no session. */
@@ -145,6 +147,7 @@ export function sessionFacts(
         replacementId: lesson.cancelledAt
           ? (lesson.replacementLessonId ?? null)
           : null,
+        exam: lesson.exam ? (lesson.exam.isRetake ? "retake" : "exam") : null,
       });
     }
   }
