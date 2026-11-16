@@ -172,9 +172,23 @@ jobs:
   verify:
     name: Verify
     runs-on: ubuntu-latest
-    # Cold Nx cache every run (see docs/migration/mdrs-15-ci-unification.md §3),
-    # so this is sized for a full 8-project build, not a cache hit.
+    # Sized for a full cold build: the remote cache below usually saves most of
+    # it, but a change to a shared global (this file, the lockfile) or a cache
+    # outage still builds everything.
     timeout-minutes: 45
+    # Remote cache: a self-hosted server speaking Nx's HTTP cache spec
+    # (NX_REMOTE_CACHE_URL, a repository variable), started by
+    # .github/actions/nx-remote-cache after the install. A push to main reads
+    # and writes it with the write token, a secret of the `nx-cache`
+    # environment, whose deployment branch policy admits main alone, so a pull
+    # request's job cannot reach that token even by naming the environment.
+    # Every other run gets the read-only token, which the server refuses to
+    # store with: a pull request replays what main built and never writes. Nx
+    # fails the whole command when its cache server is unreachable or answers an
+    # error, so it talks to a local proxy that turns every such failure into a
+    # miss; losing the cache makes CI slower, never red. An empty `environment`
+    # name attaches none.
+    environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'nx-cache' || '' }}
     #
     # Deliberately NO postgres service. The backend's inherited pull-request.yaml
     # ran one, but nothing can use it. Four of tedrisat's eight suites are e2e and
@@ -228,6 +242,12 @@ jobs:
       # hand; the loop that replaced it is gone too.
       - name: Seed the root env file from the example
         run: cp .env.example .env
+
+      - name: Remote cache
+        uses: ./.github/actions/nx-remote-cache
+        with:
+          url: ${{ vars.NX_REMOTE_CACHE_URL }}
+          token: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.NX_REMOTE_CACHE_WRITE_TOKEN || secrets.NX_REMOTE_CACHE_READ_TOKEN }}
 
       # Workspace-root lint + warning ratchet. Covers the 13 root config files
       # that no per-project `lint` target can see, and fails when Biome's
@@ -284,6 +304,14 @@ jobs:
           echo '--- projects affected by this change ---'
           pnpm exec nx show projects --affected || true
 
+      # Reads, hits and writes of this job, in the job summary: the measure of
+      # what the cache saves.
+      - name: Remote cache summary
+        if: always()
+        uses: ./.github/actions/nx-remote-cache
+        with:
+          summary: 'true'
+
   # tedrisat on a runner of its own (2026-10-25). Its `test` target was the
   # whole critical path of Verify (9m 55s and 14m 17s of the runs that measured
   # it), and running four spec files at a time inside it gained nothing while
@@ -299,6 +327,8 @@ jobs:
     name: Verify (tedrisat)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # The remote cache as in Verify above.
+    environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'nx-cache' || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -323,6 +353,12 @@ jobs:
       - name: Seed the root env file from the example
         run: cp .env.example .env
 
+      - name: Remote cache
+        uses: ./.github/actions/nx-remote-cache
+        with:
+          url: ${{ vars.NX_REMOTE_CACHE_URL }}
+          token: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.NX_REMOTE_CACHE_WRITE_TOKEN || secrets.NX_REMOTE_CACHE_READ_TOKEN }}
+
       # Only when tedrisat is affected, as it would be in the single command
       # Verify used to run. `--json` and jq, not grep: without a TTY,
       # `nx show projects` prints one JSON array on one line, so a line match
@@ -338,6 +374,14 @@ jobs:
             echo "tedrisat is not affected by this change." \
               | tee -a "$GITHUB_STEP_SUMMARY"
           fi
+
+      # Reads, hits and writes of this job, in the job summary: the measure of
+      # what the cache saves.
+      - name: Remote cache summary
+        if: always()
+        uses: ./.github/actions/nx-remote-cache
+        with:
+          summary: 'true'
 
   # The `Security gates` job moved to security.yaml on 2026-10-25, where it
   # fails only on an advisory the change brings in. See that file's header.
