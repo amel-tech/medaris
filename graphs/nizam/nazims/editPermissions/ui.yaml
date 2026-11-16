@@ -32,6 +32,7 @@ kind: ui
 id: nizam.nazims.editPermissions
 flow: nizam.nazims.editPermissions
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note } # the one authored message of this catalog

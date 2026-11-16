@@ -39,6 +39,7 @@ kind: ui
 id: nizam.kosks.nazims
 flow: nizam.kosks.nazims
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: AddNazimDialog.intro }

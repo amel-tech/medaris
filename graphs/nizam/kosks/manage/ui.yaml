@@ -25,6 +25,7 @@ kind: ui
 id: nizam.kosks.manage
 flow: nizam.kosks.manage
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

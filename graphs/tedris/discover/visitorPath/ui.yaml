@@ -28,6 +28,7 @@ kind: ui
 id: tedris.discover.visitorPath
 flow: tedris.discover.visitorPath
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

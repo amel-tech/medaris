@@ -22,6 +22,7 @@ kind: ui
 id: nazar.settings.edit
 flow: nazar.settings.edit
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Settings.policiesNote }

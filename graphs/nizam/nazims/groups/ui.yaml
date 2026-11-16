@@ -17,6 +17,7 @@ kind: ui
 id: nizam.nazims.groups
 flow: nizam.nazims.groups
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: GroupsPage.usersNote }

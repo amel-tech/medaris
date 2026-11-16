@@ -12,6 +12,7 @@ kind: ui
 id: nazar.homework.review
 flow: nazar.homework.review
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Homework.review.notSentNote }

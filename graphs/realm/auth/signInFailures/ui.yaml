@@ -18,6 +18,7 @@ kind: ui
 id: realm.auth.signInFailures
 flow: realm.auth.signInFailures
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 

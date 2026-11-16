@@ -16,6 +16,7 @@ kind: ui
 id: nizam.home.decideApplications
 flow: nizam.home.decideApplications
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

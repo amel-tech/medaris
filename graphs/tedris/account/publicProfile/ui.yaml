@@ -10,6 +10,7 @@ kind: ui
 id: tedris.account.publicProfile
 flow: tedris.account.publicProfile
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 

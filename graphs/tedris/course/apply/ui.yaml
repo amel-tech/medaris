@@ -8,6 +8,7 @@ kind: ui
 id: tedris.course.apply
 flow: tedris.course.apply
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { when: "bugün 10:02’de" }

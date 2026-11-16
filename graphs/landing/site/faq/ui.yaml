@@ -10,6 +10,7 @@ kind: ui
 id: landing.site.faq
 flow: landing.site.faq
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { path: "Aydınlatma Metni’nin 7. bölümünde yazan yollardan biriyle veri sorumlusuna yazarak" }

@@ -21,6 +21,7 @@ kind: ui
 id: nazar.curriculum.sessionHomework
 flow: nazar.curriculum.sessionHomework
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

@@ -18,6 +18,7 @@ kind: ui
 id: tedris.shell.systemPages
 flow: tedris.shell.systemPages
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

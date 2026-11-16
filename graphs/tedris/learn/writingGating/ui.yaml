@@ -16,6 +16,7 @@ kind: ui
 id: tedris.learn.writingGating
 flow: tedris.learn.writingGating
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

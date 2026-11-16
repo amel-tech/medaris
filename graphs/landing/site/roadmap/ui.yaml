@@ -21,6 +21,7 @@ kind: ui
 id: landing.site.roadmap
 flow: landing.site.roadmap
 status: proposed
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: {}

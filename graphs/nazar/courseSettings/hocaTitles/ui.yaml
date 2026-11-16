@@ -26,6 +26,7 @@ kind: ui
 id: nazar.courseSettings.hocaTitles
 flow: nazar.courseSettings.hocaTitles
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: CourseSettings.hocas.intro }

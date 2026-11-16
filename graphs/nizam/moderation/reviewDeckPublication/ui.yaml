@@ -17,6 +17,7 @@ kind: ui
 id: nizam.moderation.reviewDeckPublication
 flow: nizam.moderation.reviewDeckPublication
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note } # the one authored message of this catalog: no app message says what a decision changes

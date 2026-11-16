@@ -24,6 +24,7 @@ kind: ui
 id: tedris.celse.cancelled
 flow: tedris.celse.cancelled
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

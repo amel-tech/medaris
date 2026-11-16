@@ -16,6 +16,7 @@ kind: ui
 id: nazar.courses.changeHocas
 flow: nazar.courses.changeHocas
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

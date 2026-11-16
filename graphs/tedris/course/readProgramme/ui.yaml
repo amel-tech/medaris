@@ -30,6 +30,7 @@ kind: ui
 id: tedris.course.readProgramme
 flow: tedris.course.readProgramme
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

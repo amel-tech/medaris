@@ -21,6 +21,7 @@ kind: ui
 id: tedris.decks.create
 flow: tedris.decks.create
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { min: "5", max: "20" }

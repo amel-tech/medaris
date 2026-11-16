@@ -37,6 +37,7 @@ kind: ui
 id: nizam.moderation.deleteArchived
 flow: nizam.moderation.deleteArchived
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

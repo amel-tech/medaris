@@ -18,6 +18,7 @@ kind: ui
 id: tedris.celse.browseCurriculum
 flow: tedris.celse.browseCurriculum
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

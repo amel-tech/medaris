@@ -31,6 +31,7 @@ kind: ui
 id: nizam.home.koskNazimLanding
 flow: nizam.home.koskNazimLanding
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

@@ -16,6 +16,7 @@ kind: ui
 id: tedris.course.draftPreview
 flow: tedris.course.draftPreview
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

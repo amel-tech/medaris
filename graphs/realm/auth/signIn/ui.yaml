@@ -12,6 +12,7 @@ kind: ui
 id: realm.auth.signIn
 flow: realm.auth.signIn
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 

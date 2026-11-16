@@ -16,6 +16,7 @@ kind: ui
 id: nizam.kosks.editAndHide
 flow: nizam.kosks.editAndHide
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

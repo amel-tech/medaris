@@ -29,6 +29,7 @@ kind: ui
 id: tedris.shell.home
 flow: tedris.shell.home
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

@@ -34,6 +34,7 @@ kind: ui
 id: tedris.celse.attend
 flow: tedris.celse.attend
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

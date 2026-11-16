@@ -16,6 +16,7 @@ kind: ui
 id: nazar.nazirs.appoint
 flow: nazar.nazirs.appoint
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Appoint.appointedBody } # the app's own sentence says what the appointment does: "{name} atandı; siz izin verene kadar hiçbir işlem yapamaz."

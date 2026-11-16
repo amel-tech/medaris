@@ -26,6 +26,7 @@ kind: ui
 id: nazar.access.dersNazirPages
 flow: nazar.access.dersNazirPages
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

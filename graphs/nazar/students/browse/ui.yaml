@@ -9,6 +9,7 @@ kind: ui
 id: nazar.students.browse
 flow: nazar.students.browse
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

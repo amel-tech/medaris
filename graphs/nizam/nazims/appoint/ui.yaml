@@ -35,6 +35,7 @@ kind: ui
 id: nizam.nazims.appoint
 flow: nizam.nazims.appoint
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: NazimsPage.intro } # "Medaris nazımı yalnız sizin verdiğiniz izinlerle çalışır ve Nizam’da yalnız o bölümleri görür. Süresi dolan izin kendiliğinden düşer."

@@ -21,6 +21,7 @@ kind: ui
 id: nizam.madrasahs.restore
 flow: nizam.madrasahs.restore
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

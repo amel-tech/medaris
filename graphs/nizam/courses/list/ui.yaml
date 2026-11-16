@@ -29,6 +29,7 @@ kind: ui
 id: nizam.courses.list
 flow: nizam.courses.list
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

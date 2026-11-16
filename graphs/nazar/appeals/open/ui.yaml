@@ -21,6 +21,7 @@ kind: ui
 id: nazar.appeals.open
 flow: nazar.appeals.open
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

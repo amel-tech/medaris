@@ -26,6 +26,7 @@ kind: ui
 id: tedris.files.download
 flow: tedris.files.download
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

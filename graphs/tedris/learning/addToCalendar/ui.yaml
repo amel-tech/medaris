@@ -13,6 +13,7 @@ kind: ui
 id: tedris.learning.addToCalendar
 flow: tedris.learning.addToCalendar
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

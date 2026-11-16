@@ -21,6 +21,7 @@ kind: ui
 id: nazar.courseSettings.partnerCodes
 flow: nazar.courseSettings.partnerCodes
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

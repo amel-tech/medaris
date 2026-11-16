@@ -24,6 +24,7 @@ kind: ui
 id: nazar.roster.bulkAdd
 flow: nazar.roster.bulkAdd
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: CourseStudents.bulk.intro }

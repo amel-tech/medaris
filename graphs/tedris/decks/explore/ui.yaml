@@ -20,6 +20,7 @@ kind: ui
 id: tedris.decks.explore
 flow: tedris.decks.explore
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

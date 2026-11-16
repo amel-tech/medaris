@@ -20,6 +20,7 @@ kind: ui
 id: nazar.bans.ban
 flow: nazar.bans.ban
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: BanDialog.intro }

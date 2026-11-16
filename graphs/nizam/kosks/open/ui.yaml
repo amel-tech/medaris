@@ -10,6 +10,7 @@ kind: ui
 id: nizam.kosks.open
 flow: nizam.kosks.open
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { name: "Nazlı Talebe", handle: "ornek-calisma" } # {name} is the person the picker finds (the seed's talebe), {handle} the short name the form is given

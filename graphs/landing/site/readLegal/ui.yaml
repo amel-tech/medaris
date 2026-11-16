@@ -28,6 +28,7 @@ kind: ui
 id: landing.site.readLegal
 flow: landing.site.readLegal
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 

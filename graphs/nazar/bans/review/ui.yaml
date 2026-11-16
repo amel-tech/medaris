@@ -18,6 +18,7 @@ kind: ui
 id: nazar.bans.review
 flow: nazar.bans.review
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

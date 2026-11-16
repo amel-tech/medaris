@@ -28,6 +28,7 @@ kind: ui
 id: nizam.decks.legacyCards
 flow: nizam.decks.legacyCards
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

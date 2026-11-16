@@ -27,6 +27,7 @@ kind: ui
 id: nazar.decks.import
 flow: nazar.decks.import
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Decks.importDone }

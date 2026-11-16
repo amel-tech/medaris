@@ -23,6 +23,7 @@ kind: ui
 id: tedris.decks.importExport
 flow: tedris.decks.importExport
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Decks.importedText }

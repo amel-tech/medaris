@@ -14,6 +14,7 @@ kind: ui
 id: nizam.shell.noAccessAndNotFound
 flow: nizam.shell.noAccessAndNotFound
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { name: Örnek Başnazım, email: ornek.nazim@example.test }

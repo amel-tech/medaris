@@ -15,6 +15,7 @@ kind: ui
 id: tedris.course.leave
 flow: tedris.course.leave
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

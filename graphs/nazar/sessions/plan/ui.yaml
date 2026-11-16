@@ -12,6 +12,7 @@ kind: ui
 id: nazar.sessions.plan
 flow: nazar.sessions.plan
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

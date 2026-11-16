@@ -21,6 +21,7 @@ kind: ui
 id: nizam.account.settings
 flow: nizam.account.settings
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: AccountPage.zoneHelp }

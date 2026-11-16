@@ -25,6 +25,7 @@ kind: ui
 id: nazar.courses.browse
 flow: nazar.courses.browse
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

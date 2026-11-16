@@ -19,6 +19,7 @@ kind: ui
 id: nizam.moderation.decideAppeal
 flow: nizam.moderation.decideAppeal
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

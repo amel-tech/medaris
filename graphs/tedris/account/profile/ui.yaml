@@ -22,6 +22,7 @@ kind: ui
 id: tedris.account.profile
 flow: tedris.account.profile
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

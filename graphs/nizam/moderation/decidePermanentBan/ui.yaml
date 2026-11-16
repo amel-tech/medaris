@@ -28,6 +28,7 @@ kind: ui
 id: nizam.moderation.decidePermanentBan
 flow: nizam.moderation.decidePermanentBan
 status: proposed
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note } # the one authored message of this catalog

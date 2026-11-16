@@ -22,6 +22,7 @@ kind: ui
 id: tedris.celse.watchRecording
 flow: tedris.celse.watchRecording
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

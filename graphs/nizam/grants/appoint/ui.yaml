@@ -38,6 +38,7 @@ kind: ui
 id: nizam.grants.appoint
 flow: nizam.grants.appoint
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: KoskGrantDialog.chosenNote }

@@ -17,6 +17,7 @@ kind: ui
 id: nazar.recordings.add
 flow: nazar.recordings.add
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

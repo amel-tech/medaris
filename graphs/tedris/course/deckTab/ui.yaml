@@ -10,6 +10,7 @@ kind: ui
 id: tedris.course.deckTab
 flow: tedris.course.deckTab
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

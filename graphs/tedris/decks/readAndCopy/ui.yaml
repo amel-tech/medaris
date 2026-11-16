@@ -20,6 +20,7 @@ kind: ui
 id: tedris.decks.readAndCopy
 flow: tedris.decks.readAndCopy
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

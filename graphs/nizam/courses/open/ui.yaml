@@ -18,6 +18,7 @@ kind: ui
 id: nizam.courses.open
 flow: nizam.courses.open
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { koskGenitive: "Deneme nizam-courses-open Köşkü’nün", count: "2", from: "1 Mart", to: "8 Mart 2027", days: "Pazartesi", time: "21:00", minutes: "60", name: "Deneme dersi nizam-courses-open" }

@@ -28,6 +28,7 @@ kind: ui
 id: nazar.courseNazirs.permissions
 flow: nazar.courseNazirs.permissions
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note } # the one authored message of this catalog: the app has no sentence for what an edit of a post changes

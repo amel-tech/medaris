@@ -13,6 +13,7 @@ kind: ui
 id: nazar.evaluation.examScores
 flow: nazar.evaluation.examScores
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Changes.note }

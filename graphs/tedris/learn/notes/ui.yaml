@@ -10,6 +10,7 @@ kind: ui
 id: tedris.learn.notes
 flow: tedris.learn.notes
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { time: "1:05" }

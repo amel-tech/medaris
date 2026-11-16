@@ -13,6 +13,7 @@ kind: ui
 id: nazar.offsite.requestCourse
 flow: nazar.offsite.requestCourse
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: Offsite.sentBody }

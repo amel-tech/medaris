@@ -24,6 +24,7 @@ kind: ui
 id: nizam.moderation.banStudent
 flow: nizam.moderation.banStudent
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: BanDialog.intro }

@@ -27,6 +27,7 @@ kind: ui
 id: nizam.home.chiefOverview
 flow: nizam.home.chiefOverview
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples:

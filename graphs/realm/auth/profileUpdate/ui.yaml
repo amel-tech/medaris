@@ -17,6 +17,7 @@ kind: ui
 id: realm.auth.profileUpdate
 flow: realm.auth.profileUpdate
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 samples: { "0": "Aydınlatma Metni" } # {0} of privacyNoticeRead is where the link goes (linkedOptionLabel.tsx:46)

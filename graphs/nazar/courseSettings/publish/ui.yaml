@@ -18,6 +18,7 @@ kind: ui
 id: nazar.courseSettings.publish
 flow: nazar.courseSettings.publish
 status: captured
+kit: ../../../kit
 catalog: catalog/tr.json
 locales: [tr]
 changes: { key: CourseSettings.unpublishNote }
