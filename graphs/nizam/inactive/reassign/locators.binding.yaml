@@ -6,7 +6,7 @@
 # NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). Every locator is from the code and
 # unverified until a walk; `replay <dir> --bind <file> --emit-spec --out <dir>` loads it and walks nothing.
 #
-# The rows. A row is found by the name of the scope it belongs to, which the walk made (scopes.mjs, `{scopes.*}`, and the course the shared
+# The rows. A row is found by the name of the scope it belongs to, which the walk made (helpers/inactive-scopes.mjs, `{scopes.*}`, and the course the shared
 # helper made, `{made.*}`): the list holds every other passive scope of the stack too, and a walk must never press another's button.
 # A name in a plain string is matched whole, a /regex/ is not filled in, so each name is spelled out in a string. The row is
 # `tbody tr` with the scope's name in it; the course's köşk is the seed's second one, which is not the name of a scope of the walk.
@@ -128,5 +128,5 @@ states:
 # every state that invokes assignInactiveScope ends DONE.
 effects:
   assignInactiveScope:
-    - run: [node, ../nizam/inactive/reassign/scopes.mjs, reassigned]
+    - run: [node, helpers/inactive-scopes.mjs, reassigned]
       expect: 'reassigned ok'

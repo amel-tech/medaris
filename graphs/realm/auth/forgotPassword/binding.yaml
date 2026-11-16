@@ -88,7 +88,7 @@ scenarios:
   # The other way to the page: the stack's PENDING_PASSWORD account, which an administrator asked for a new password. The walk types
   # its address and password into the sign-in form (the `before` of holdingSignIn below) and Keycloak holds the sign-in on the
   # new-password page. The walk saves the account's own password again, which uses the required action up, so `setup` and
-  # `teardown` run rearm.mjs of realm.auth.profileUpdate's folder (admin REST: the same password put back, UPDATE_PASSWORD asked
+  # `teardown` run helpers/rearm.mjs (admin REST: the same password put back, UPDATE_PASSWORD asked
   # for again) and delete the tedrisat `users` row that the landing on /home gives the account (the seed makes none for a pending
   # account; the way realm.auth.profileUpdate's binding does it, with helpers/sql.mjs because no API deletes a person).
   # No `enter`: realm.auth.signIn's hand-over to the new-password page does not start this flow (an ask in the report).
@@ -102,10 +102,10 @@ scenarios:
       landedAt: '{tedris}/home'
       userName: e2e-eylem-sifre
     setup:
-      - { run: [node, ../realm/auth/profileUpdate/rearm.mjs, password], expect: armed }
+      - { run: [node, helpers/rearm.mjs, password], expect: armed }
       - { run: [node, helpers/sql.mjs, "delete from users where id = '{secret.E2E_PENDING_PASSWORD_SUB}'"], expect: '"rows"' }
     teardown:
-      - { run: [node, ../realm/auth/profileUpdate/rearm.mjs, password], expect: armed }
+      - { run: [node, helpers/rearm.mjs, password], expect: armed }
       - { run: [node, helpers/sql.mjs, "delete from users where id = '{secret.E2E_PENDING_PASSWORD_SUB}'"], expect: '"rows"' }
 
   # Not walked in this phase. nizam and nazar send a talebe's sign-in to /yetki-yok and /erisim-yok (the stack's smoke); the

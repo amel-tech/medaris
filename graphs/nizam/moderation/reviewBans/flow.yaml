@@ -234,8 +234,12 @@ states:
       TYPE_NAME: { guard: "typed == 'none'", target: narrowing, effect: [typedIn], say: "they type a name in Kişi ara; 300 ms after the typing stops the list is asked again", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
       CLEAR_NAME: { guard: "typed == 'some'", target: narrowing, effect: [erased], say: "they erase what they typed", source: apps/nizam/features/bans/components/all-bans-view.tsx:145 }
       LOAD_MORE: { guard: moreButton, target: loadingMore, say: "they press Daha fazla göster", source: apps/nizam/features/bans/components/all-bans-view.tsx:347 }
-      LIFT: { guard: "tab == 'ACTIVE' and viewer != 'reader'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan }, say: "they press Yasağı kaldır on a row", source: apps/nizam/features/bans/components/all-bans-view.tsx:289 }
-      EXTEND: { guard: "tab == 'ACTIVE' and viewer != 'reader'", target: handed_over.extend, starts: { flow: nizam.moderation.decideBan }, say: "they press Yasağı genişlet on an open course row", source: apps/nizam/features/bans/components/all-bans-view.tsx:303 }
+      LIFT:
+        - { guard: "tab == 'ACTIVE' and viewer == 'chief'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'chief'", read: "'ok'" } }, say: "the başnazım presses Yasağı kaldır on a row: the same lift dialog as on the köşk's list, here on the Medaris list (decideBan's viewer chief)", source: apps/nizam/features/bans/components/all-bans-view.tsx:289 }
+        - { guard: "tab == 'ACTIVE' and viewer == 'scoped'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'medaris'", read: "'ok'" } }, say: "a Medaris nazımı holding platform.ban_scoped presses Yasağı kaldır on a row (decideBan's viewer medaris)", source: apps/nizam/features/bans/components/all-bans-view.tsx:289 }
+      EXTEND:
+        - { guard: "tab == 'ACTIVE' and viewer == 'chief'", target: handed_over.extend, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'chief'", read: "'ok'" } }, say: "the başnazım presses Yasağı genişlet on an open course row (decideBan's viewer chief)", source: apps/nizam/features/bans/components/all-bans-view.tsx:303 }
+        - { guard: "tab == 'ACTIVE' and viewer == 'scoped'", target: handed_over.extend, starts: { flow: nizam.moderation.decideBan, given: { viewer: "'medaris'", read: "'ok'" } }, say: "a Medaris nazımı holding platform.ban_scoped presses Yasağı genişlet on an open course row (decideBan's viewer medaris)", source: apps/nizam/features/bans/components/all-bans-view.tsx:303 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nizam/features/bans/components/all-bans-view.tsx:330
 

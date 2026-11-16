@@ -27,7 +27,7 @@ needs:
       - courseMenu
     built:
       - route: apps/tedris/features/courses/components/calendar-menu.tsx:36
-      - route: apps/tedris/features/schedule/components/schedule-page.tsx:175
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:173
       - route: apps/tedris/features/courses/components/session-page.tsx:248
       - route: apps/tedris/features/courses/components/course-aside.tsx:295
     walked:
@@ -123,7 +123,7 @@ needs:
     drawn:
       - not_offered
     built:
-      - route: apps/tedris/features/schedule/components/schedule-page.tsx:175
+      - route: apps/tedris/features/schedule/components/schedule-page.tsx:173
       - route: apps/tedris/features/courses/components/session-action-card.tsx:384
     walked:
       - e2e: apps/tedris/e2e/schedule.e2e.ts

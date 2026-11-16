@@ -164,6 +164,8 @@ needs:
       /yol-haritasi, linked from both). landing.site.roadmap draws the page; the link is in this flow's header.
     drawn:
       - banner
+      - headerRoadmap
+      - handed_over.roadmap
     missing: MDRS-246
 
   - id: chosen-language-follows-into-the-app

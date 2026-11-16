@@ -20,7 +20,7 @@
 #   - `teardown` puts every recorded value back EXACTLY (policies.mjs restore): the row deleted where there was none, the row rewritten with its three
 #     columns where there was one, in one transaction, read back and compared; it is idempotent (a second run says `none`), it needs no answer from the API for
 #     the values, and it also removes the köşk the scenario ownScope made. A walk that stopped midway leaves the record: the NEXT `setup` restores it first, and
-#     so does a hand run:  (cd graphs/bindings && node ../nizam/platform/policies/policies.mjs restore)
+#     so does a hand run:  (cd graphs/bindings && node helpers/policies.mjs restore)
 #   - the old e2e (platform-admin.e2e.ts restorePolicies) deleted EVERY row and inserted back what it had seen: never copy that (F-X-20).
 # The audit log: audit_log is append-only by design ("nothing ever updates or deletes a row", audit.schema.ts:17, and the API has no route that could), and each
 # switch writes one `platform_policy.change` row ({key, enabled, was}). The teardown deletes, by SQL, exactly the rows this flow wrote: that action, by the
@@ -59,10 +59,10 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->platformSettings' }
     setup:
-      - run: [node, ../nizam/platform/policies/policies.mjs, keep]
+      - run: [node, helpers/policies.mjs, keep]
         expect: 'policies kept'
     teardown:
-      - run: [node, ../nizam/platform/policies/policies.mjs, restore]
+      - run: [node, helpers/policies.mjs, restore]
         expect: 'policies restored'
   ownScope:
     given: { read: ok, began: neither, scoped: some, answer: saved }
@@ -71,12 +71,12 @@ scenarios:
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->platformSettings' }
     samples: { scope: Politika Deneme Köşkü, names: Politika Deneme Köşkü, person: Vedat Başnazım }
     setup:
-      - run: [node, ../nizam/platform/policies/policies.mjs, keep]
+      - run: [node, helpers/policies.mjs, keep]
         expect: 'policies kept'
-      - run: [node, ../nizam/platform/policies/policies.mjs, scope-make]
+      - run: [node, helpers/policies.mjs, scope-make]
         expect: 'scope-make politika-deneme'
     teardown:
-      - run: [node, ../nizam/platform/policies/policies.mjs, restore]
+      - run: [node, helpers/policies.mjs, restore]
         expect: 'policies restored'
   refused:
     given: { read: forbidden, began: neither, scoped: none, answer: saved }
@@ -108,30 +108,30 @@ states:
 effects:
   # the world the graph says the page opens in: both off. A rest state that is not this one fails here, before any press.
   beganNeither:
-    - run: [node, ../nizam/platform/policies/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
+    - run: [node, helpers/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
       expect: 'enabled=false'
-    - run: [node, ../nizam/platform/policies/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
+    - run: [node, helpers/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
       expect: 'enabled=false'
   # e2e platform-admin#7: the switch is saved at once (the row says so) and written to the log, in one transaction
   savedApprovalOn:
-    - run: [node, ../nizam/platform/policies/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
+    - run: [node, helpers/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
       expect: 'enabled=true'
-    - run: [node, ../nizam/platform/policies/policies.mjs, audit, ALWAYS_REQUIRE_APPROVAL, 'true', 'false']
+    - run: [node, helpers/policies.mjs, audit, ALWAYS_REQUIRE_APPROVAL, 'true', 'false']
       expect: 'audit ALWAYS_REQUIRE_APPROVAL enabled=true was=false'
   savedApprovalOff:
-    - run: [node, ../nizam/platform/policies/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
+    - run: [node, helpers/policies.mjs, get, ALWAYS_REQUIRE_APPROVAL]
       expect: 'enabled=false'
-    - run: [node, ../nizam/platform/policies/policies.mjs, audit, ALWAYS_REQUIRE_APPROVAL, 'false', 'true']
+    - run: [node, helpers/policies.mjs, audit, ALWAYS_REQUIRE_APPROVAL, 'false', 'true']
       expect: 'audit ALWAYS_REQUIRE_APPROVAL enabled=false was=true'
   savedRecordingsOn:
-    - run: [node, ../nizam/platform/policies/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
+    - run: [node, helpers/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
       expect: 'enabled=true'
-    - run: [node, ../nizam/platform/policies/policies.mjs, audit, RECORDINGS_NEVER_PUBLIC, 'true', 'false']
+    - run: [node, helpers/policies.mjs, audit, RECORDINGS_NEVER_PUBLIC, 'true', 'false']
       expect: 'audit RECORDINGS_NEVER_PUBLIC enabled=true was=false'
   savedRecordingsOff:
-    - run: [node, ../nizam/platform/policies/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
+    - run: [node, helpers/policies.mjs, get, RECORDINGS_NEVER_PUBLIC]
       expect: 'enabled=false'
-    - run: [node, ../nizam/platform/policies/policies.mjs, audit, RECORDINGS_NEVER_PUBLIC, 'false', 'true']
+    - run: [node, helpers/policies.mjs, audit, RECORDINGS_NEVER_PUBLIC, 'false', 'true']
       expect: 'audit RECORDINGS_NEVER_PUBLIC enabled=false was=true'
 
 # Where role and name cannot find a node. The page's <main> is found by its introduction, because the page a walk leaves for has a <main> of its own. A

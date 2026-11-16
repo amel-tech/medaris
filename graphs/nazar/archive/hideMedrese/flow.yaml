@@ -40,7 +40,7 @@ scope:
     - "a medrese nazır with no grant meets the forbidden alert instead of the list (archive#8): drawn here as the refusal of the read and walked once; her whole story, page by page, is nazar.access.medreseNazirRefused"
     - "a nazır given madrasah.course_hide or madrasah.settings_edit opens the page and meets no 'Medreseyi gizle' (runsMedrese, MDRS-108); the başnazım, who also opens the page, may hide from it"
     - "the tabs, the paging and 'Geri al' of a course hidden on its own, with its toasts and refusals (ARCHIVE_ITEM_NOT_FOUND, ARCHIVE_FORBIDDEN, ARCHIVE_RESTORE_LEVEL): nazar.archive.hideAndRestoreCourse"
-    - "the same two writes from nizam's Medreseler (hide, 'Geri al', the kademe caption): nizam.madrasahs.restore"
+    - "the restore from nizam's Medreseler ('Geri al' and the kademe caption): nizam.madrasahs.restore. nizam can only restore a medrese; it has no button that hides one (apps/nizam/features/madrasahs has restoreMadrasah and no hide)"
     - "the failed read 'Arşiv okunamadı' with its retry (not an answer of the API's)"
     - "what a talebe or a hoca meets in a hidden medrese or course: tedris.discover.readMadrasah, tedris.discover.readKosk"
 
@@ -79,7 +79,7 @@ context:
     initial: untouched
     say:
       untouched: "nobody else has touched the medrese since her page was read"
-      adminHid: "the başnazım hid the medrese in nizam while her page showed it as shown"
+      adminHid: "the başnazım hid the medrese at the platform level (from this page in nazar, which she may open, or through the API: nizam has no hide button) while the başmüderris's page showed it as shown"
       adminRestored: "the başnazım brought the medrese back while her page showed it as hidden"
       adminRehid: "the başnazım brought it back and hid it again at the platform level while her page showed it as hidden by her"
   last:
@@ -188,7 +188,7 @@ states:
     goal: true
     on:
       HIDE: { target: confirmHide, effect: [clearNote], say: "they press Medreseyi gizle" }
-      ADMIN_HIDES: { guard: untouched, target: shownMedrese, effect: [adminHides], say: "the başnazım hides the medrese in nizam, as the platform; this page does not know", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:489 }
+      ADMIN_HIDES: { guard: untouched, target: shownMedrese, effect: [adminHides], say: "the başnazım hides the medrese at the platform level (nizam has no hide button, so from her own copy of this page in nazar or through the API); this page does not know", source: apps/tedrisat/src/madrasah/madrasah.controller.ts:489 }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nazar/features/archive/components/archive-page.tsx:112
 

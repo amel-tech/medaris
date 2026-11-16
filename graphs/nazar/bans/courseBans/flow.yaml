@@ -47,7 +47,7 @@ scope:
     - "narrowing by name (the search box) and the line 'Bu süzgece uyan yasak yok.': the table is the one nazar.bans.review draws"
     - "barring from the medrese's own Talebeler or Yasaklamalar, by e-mail address, with a scope choice: nazar.bans.ban"
     - "the köşk's widening (extendBan) and every ban of the whole köşk, which nizam's pages make: nizam.moderation.banStudent, nizam.moderation.decideBan"
-    - "who reads a request for a permanent ban: nizam.moderation.decidePermanentBan (planned, MDRS-140); nazar.bans.decide carries the start"
+    - "who reads a request for a permanent ban: nizam.moderation.decidePermanentBan (planned, MDRS-140); this flow and nazar.bans.decide start it on the request's DONE"
     - "the talebe's side of a ban (the notice 'erişimin kaldırıldı', a refused seat or celse): tedris.account.notifications, tedris.course.apply"
     - "the course page every persona meets when the course is not theirs or does not exist (404, /erisim-yok), and the failed read ('Yasaklar okunamadı', the shell's retry state): nazar.shell.errorStates"
     - "an ended session: the dialogs send the person to sign in (realm.auth.signIn) instead of drawing an error"
@@ -520,10 +520,10 @@ states:
       requestPermanentBan calls POST /bans/:banId/permanent-request with the reason: one row of ban_permanent_requests per ban and an audit
       row. The ban stands as it was. No notification is sent and no route lists or answers the request, so nothing reaches Medaris
       administration, although the toast says "Talep Medaris yönetimine iletildi" (BANDEC-4, MDRS-140, MDRS-194). The dialog stays open while
-      it runs, as for the lift. The start of nizam.moderation.decidePermanentBan (planned) is drawn by nazar.bans.decide, not repeated here.
+      it runs, as for the lift. The start of nizam.moderation.decidePermanentBan (planned) is on the DONE below, as in nazar.bans.decide.
     invoke: { action: requestPermanentBan }
     on:
-      DONE: { guard: "answer == 'done'", target: classify, effect: [requested], source: apps/nazar/features/bans/components/reason-dialog.tsx:73, say: "the row wears 'Kalıcı yasak talebi bekliyor' and loses its request button" }
+      DONE: { guard: "answer == 'done'", target: classify, effect: [requested], starts: { flow: nizam.moderation.decidePermanentBan, given: { requested: "true" } }, source: apps/nazar/features/bans/components/reason-dialog.tsx:73, say: "the row wears 'Kalıcı yasak talebi bekliyor' and loses its request button. The start is the PLANNED second half (MDRS-140): no code reads the request today" }
       FAIL.moved:
         - { guard: "answer == 'moved' and after == 'none'", target: classify, effect: [movedLast], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "the ban is lifted or gone and no other is open: an error toast, the dialog closes, the list is empty" }
         - { guard: "answer == 'moved'", target: classify, effect: [moved], source: apps/nazar/features/bans/components/reason-dialog.tsx:87, say: "the ban is lifted or gone, or a request exists already, or it is a ban Medaris placed: an error toast, the dialog closes and the list is read again" }

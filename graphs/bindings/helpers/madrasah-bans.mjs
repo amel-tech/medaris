@@ -1,5 +1,5 @@
-// The walk data of nazar.bans.decide: open bans on spare talebe accounts, in the seeded medrese, placed through tedrisat's HTTP API,
-// and taken away again. It is the binding's `setup` and `teardown`: `node ../nazar/bans/decide/bans.mjs <command> ...` (the working
+// The walk data of nazar.bans.decide and nazar.bans.courseBans: open bans on spare talebe accounts, in the seeded medrese, placed through tedrisat's HTTP API,
+// and taken away again. It is the binding's `setup` and `teardown`: `node helpers/madrasah-bans.mjs <command> ...` (the working
 // directory of a binding's setup is graphs/bindings/). It uses the shared helpers' library (lib.mjs, db.mjs) and no password is ever
 // on a command line or printed.
 //
@@ -30,7 +30,7 @@
 // read or touched: only the named people's.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { query } from "../../../bindings/helpers/db.mjs";
+import { query } from "./db.mjs";
 import {
   accountKey,
   Fail,
@@ -41,11 +41,11 @@ import {
   run,
   seed,
   subOf,
-} from "../../../bindings/helpers/lib.mjs";
+} from "./lib.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const usage =
-  "usage: bans.mjs up <tag> [--course KEY,..] [--wide KEY,..] [--medaris KEY,..] | down <tag> --people KEY,.. | lift <tag> --who KEY,.. [--newest] | request <tag> --who KEY | state <tag> --who KEY,.. | check <tag> --who KEY,.. --has <text>";
+  "usage: madrasah-bans.mjs up <tag> [--course KEY,..] [--wide KEY,..] [--medaris KEY,..] | down <tag> --people KEY,.. | lift <tag> --who KEY,.. [--newest] | request <tag> --who KEY | state <tag> --who KEY,.. | check <tag> --who KEY,.. --has <text>";
 
 const keys = (list) =>
   (list ?? "")

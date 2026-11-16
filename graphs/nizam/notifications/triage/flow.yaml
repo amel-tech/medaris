@@ -10,8 +10,7 @@
 #   - Unlike nazar's page, nizam's SENDS `types`. Every read, the two counts and "Tümünü okundu say" ask for COURSE_BAN_PLACED and
 #     KOSK_BAN_PLACED only (features/notifications/notification-view.ts:143, actions.ts:105,112, reads.ts:139-141), so the rows of
 #     a talebe-side kind that the same table holds (ENROLLMENT_APPROVED and the others) are neither listed, counted nor marked here.
-#     (The tedris flow's comment says "the nazar and nizam notification pages send `types`": that is true of nizam and false of
-#     nazar, whose page lists and counts every type.)
+#     (nazar's page lists and counts every type, and tedris's sends none: nizam's is the only notification page that sends `types`.)
 #   - The only two kinds nizam words are ban notices. They are written by tedrisat when a ban is placed in a köşk (ban.service.ts:350):
 #     to the köşk's nazımları and to every Medaris nazımı, never to the one who placed the ban, and never to the başnazım (TRIAGE-1).
 #   - `userId`: the API's list and mark answers carry the owner's `userId`, outside the published contract (ledger/security.md,

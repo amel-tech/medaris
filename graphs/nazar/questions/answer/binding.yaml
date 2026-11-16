@@ -7,7 +7,7 @@
 #
 # Data. The seed has no waiting question that a walk may answer (its one question is TALEBE's, on the course whose other flows read it), so
 # each scenario makes a course of its own with the shared helper (helpers/course.mjs make answer: "Deneme dersi answer", one week of
-# celses three days ago and later, the spare talebe `applicantE` seated: the course takes anyone) and ./questions.mjs asks the questions
+# celses three days ago and later, the spare talebe `applicantE` seated: the course takes anyone) and helpers/questions.mjs asks the questions
 # through the API as that talebe and answers some as the hoca. `course.mjs make` removes an old course of its tag first, so a walk that
 # died leaves nothing in the way; `teardown` removes the course, which takes the questions with it (course-purge.ts), and
 # graphs/.local/made/answerQ.json. No SQL writes anything: the `effects` in locators.binding.yaml read the database.
@@ -46,10 +46,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, answer, --weeks, '1', --lessons, '3', --start, '-3', --hoca, MUDERRIS, --talebe, APPLICANT_E]
         expect: '"tag":"answer"'
-      - run: [node, ../nazar/questions/answer/questions.mjs, up, answer, --talebe, APPLICANT_E, --hoca, MUDERRIS, --waiting, '1', --answered, '1']
+      - run: [node, helpers/questions.mjs, up, answer, --talebe, APPLICANT_E, --hoca, MUDERRIS, --waiting, '1', --answered, '1']
         expect: 'questions up answer: 1 waiting, 1 answered'
     teardown:
-      - run: [node, ../nazar/questions/answer/questions.mjs, down, answer]
+      - run: [node, helpers/questions.mjs, down, answer]
       - run: [node, helpers/course.mjs, remove, answer]
         expect: 'course remove answer'
 
@@ -73,12 +73,12 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, answer, --madrasah, '{seed.madrasah}', --hoca, basmuderris, --weeks, '1', --lessons, '2', --start, '-3', --talebe, applicantE]
         expect: '"tag":"answer"'
-      - run: [node, ../nazar/questions/answer/questions.mjs, up, answer, --talebe, APPLICANT_E, --hoca, BASMUDERRIS, --waiting, '1', --answered, '0']
+      - run: [node, helpers/questions.mjs, up, answer, --talebe, APPLICANT_E, --hoca, BASMUDERRIS, --waiting, '1', --answered, '0']
         expect: 'questions up answer: 1 waiting, 0 answered'
       - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none, --as, basmuderris]
         expect: 'course-nazir-grants DERS_NAZIR'
     teardown:
-      - run: [node, ../nazar/questions/answer/questions.mjs, down, answer]
+      - run: [node, helpers/questions.mjs, down, answer]
       - run: [node, helpers/course.mjs, remove, answer]
         expect: 'course remove answer'
 

@@ -1,6 +1,6 @@
 // The walk data of nizam.moderation.decideBan: open bans on spare talebe accounts, in a köşk of the walk's own (a course made by
 // helpers/course.mjs), placed through tedrisat's HTTP API, and taken away again. It is the binding's `setup`, `teardown`, `events` and
-// `effects`: `node ../nizam/moderation/decideBan/bans.mjs <command> ...` (the working directory of a binding's setup is
+// `effects`: `node helpers/kosk-bans.mjs <command> ...` (the working directory of a binding's setup is
 // graphs/bindings/). It uses the shared helpers' library (lib.mjs, db.mjs); no password is ever on a command line or printed. It never
 // touches a ban of anybody but the people it is given: those are spare accounts of this flow's scenarios.
 //
@@ -23,7 +23,7 @@
 //        none is open (it may run twice in one walk).
 //   drop <tag> --who ACCOUNT --code CODE
 //        the başnazım takes one platform permission from a Medaris nazım of the walk's own (a spare appointed by
-//        ../nizam/home/medarisNazimCut/nazim.mjs up), through the API the Medaris nazımları page uses: the permission the lift needs goes
+//        helpers/nazim.mjs up), through the API the Medaris nazımları page uses: the permission the lift needs goes
 //        while the list is still on her screen (BAN_LIFT_FORBIDDEN). Idempotent: `dropped <KEY> <code>`, or `already <KEY> <code>` when she
 //        does not hold it. Never the seed's own Medaris nazım.
 //   state <tag> --who KEY,KEY
@@ -38,7 +38,7 @@
 // touched: only the named people's, in the köşk the made course sits in (or the seed's second köşk when the course is gone already).
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { query } from "../../../bindings/helpers/db.mjs";
+import { query } from "./db.mjs";
 import {
   accountKey,
   env,
@@ -50,11 +50,11 @@ import {
   run,
   seed,
   subOf,
-} from "../../../bindings/helpers/lib.mjs";
+} from "./lib.mjs";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const usage =
-  "usage: bans.mjs up <tag> [--low KEY,..] [--platform KEY,..] [--wide KEY,..] | down <tag> --people KEY,.. | lift <tag> --who KEY,.. [--newest] [--as ACCOUNT] | drop <tag> --who ACCOUNT --code CODE | state <tag> --who KEY,.. | check <tag> --who KEY,.. (--has <text> | --audit <action>)";
+  "usage: kosk-bans.mjs up <tag> [--low KEY,..] [--platform KEY,..] [--wide KEY,..] | down <tag> --people KEY,.. | lift <tag> --who KEY,.. [--newest] [--as ACCOUNT] | drop <tag> --who ACCOUNT --code CODE | state <tag> --who KEY,.. | check <tag> --who KEY,.. (--has <text> | --audit <action>)";
 
 const keys = (list) =>
   (list ?? "")

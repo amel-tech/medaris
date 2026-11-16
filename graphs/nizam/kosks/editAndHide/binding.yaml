@@ -29,7 +29,7 @@
 # walk, because a köşk nazım is refused only while the platform's own switch is on. `setup` saves the row the table has for the key (the
 # stack has none: both policies are off and untouched) to graphs/.local/made/editandhide-policy.json and switches the policy on by SQL;
 # `teardown` puts the row back exactly (key, enabled, changed_by, changed_at), or deletes it if there was none, and removes the file
-# (walk-data.mjs policy lock | restore). SQL because the API (PUT /nizam/platform-policies/:key) stamps changed_by and changed_at with the
+# (helpers/policies.mjs lock | unlock). SQL because the API (PUT /nizam/platform-policies/:key) stamps changed_by and changed_at with the
 # caller and the moment and writes a platform_policy.change audit row each way, so it cannot give the row back as it was. The lock never
 # overwrites the saved original, so a second setup after a crashed walk still knows the truth. The policy closes recordings to people
 # outside a course, and the walks run one at a time under the replay lock; ALWAYS_REQUIRE_APPROVAL, which would change every
@@ -84,11 +84,11 @@ scenarios:
     setup:
       - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, make, editandhide, applicantG, --ruled]
         expect: '"ruled":true'
-      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, policy, lock, RECORDINGS_NEVER_PUBLIC, editandhide]
+      - run: [node, helpers/policies.mjs, lock, RECORDINGS_NEVER_PUBLIC, editandhide]
         expect: 'policy lock RECORDINGS_NEVER_PUBLIC on'
     teardown:
       # the policy first, so that it is put back even if the köşk cannot be deleted
-      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, policy, restore, editandhide]
+      - run: [node, helpers/policies.mjs, unlock, editandhide]
         expect: 'policy restore editandhide'
       - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, remove, editandhide]
         expect: 'kosk remove editandhide'

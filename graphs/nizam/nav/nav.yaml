@@ -167,11 +167,16 @@ personas:
     facts: { signedIn: true, landing: nazar, variant: none, held: [], koskManaged: zero }
   koskNazim:
     title: Nazım of one köşk (P-KOSK)
-    say: a köşk nazımı of the köşk "Süleymaniye Köşkü" of the local seed; lands on that köşk's home
+    say: >-
+      a köşk nazımı of exactly one köşk; lands on that köşk's home. The seeded KOSK_NAZIM manages two köşks (seed.json
+      `kosk` and `kosk2`), so no seeded account is this persona: it takes an account made nazım of one köşk of its own
+      (the binding does not bind it)
     facts: { signedIn: true, landing: nizam, variant: kosk, held: [], koskManaged: one }
   koskNazimMany:
     title: Nazım of two köşks (P-KOSK)
-    say: a köşk nazımı of two köşks; the menu's köşk label is a picker. The seed has no such account
+    say: >-
+      a köşk nazımı of two köşks; the menu's köşk label is a picker. The seeded KOSK_NAZIM is this persona: nazım of
+      "Süleymaniye Köşkü" and "Kubbealtı Köşkü" (seed.json `kosk` and `kosk2`)
     facts: { signedIn: true, landing: nizam, variant: kosk, held: [], koskManaged: many }
   medarisNazim:
     title: Medaris nazımı with the seeded permissions (P-MEDARIS)
@@ -192,8 +197,9 @@ personas:
   medarisWide:
     title: Medaris nazımı holding every permission behind a menu entry (P-MEDARIS)
     say: >-
-      a Medaris nazımı whose permissions open every entry of the Medaris menu; the seed has no such account, the
-      permissions are given by the başnazım on the Medaris nazımları page
+      a Medaris nazımı whose permissions open every entry of the Medaris menu; the seeded one holds five, so the
+      permissions are given by the başnazım on the Medaris nazımları page (the binding gives them to a spare account
+      with helpers/nazim.mjs)
     facts:
       signedIn: true
       landing: nizam
@@ -246,9 +252,14 @@ pages:
     evidence: apps/nizam/app/kosks/[id]/dersler/page.tsx:42-46; tedrisat kosk-admin.controller.ts:234 asks kosk.manage or platform.kosk_edit
   courseApplications:
     route: /kosks/:kosk/basvurular
-    opensFor: "signedIn and koskManager"
-    refusal: the "Bu bölüm için izniniz yok" screen; a Medaris nazımı reaching the köşk by platform.kosk_edit alone is refused
-    evidence: apps/nizam/app/kosks/[id]/basvurular/page.tsx:34-35; tedrisat course.controller.ts:523 asks course.manage_all on the köşk
+    # The köşk-wide list is the köşk nazımı's alone (CDA-5). The başnazım is not a nazım of any köşk, so tedrisat's guard
+    # (course.manage_all, which SYSTEM_ADMIN holds) lets her through and KoskService.assertManager then refuses her with
+    # KOSK_FORBIDDEN; the page says "Bu bölüm için izniniz yok" at the address she opened. The menu entry is the köşk
+    # nazımı's only (Shell.items.applications), but the links to this page from the köşk home and from Dersler are drawn for
+    # her too (`koskManager`), so the checker says link-refused for the chief: a finding of the code, not of this graph.
+    opensFor: "signedIn and variant == 'kosk'"
+    refusal: the "Bu bölüm için izniniz yok" screen (KOSK_FORBIDDEN) for the başnazım, who is no row of the köşk's nazımlar, and for a Medaris nazımı who reaches the köşk by platform.kosk_edit alone
+    evidence: apps/nizam/app/kosks/[id]/basvurular/page.tsx:34-35; tedrisat course.controller.ts:523 asks course.manage_all on the köşk, then course.service.ts:1575 calls koskService.assertManager (kosk.service.ts:128-139; kosk.repository.ts:488 reads a KOSK_NAZIM row of this köşk only)
   courseRequests:
     route: /kosks/:kosk/ders-talepleri
     opensFor: "signedIn and koskManager"
@@ -493,7 +504,7 @@ entries:
   - { from: koskManage, to: koskCourses, how: link, label: KoskManage.nazimView, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:364 }
   - { from: koskManage, to: tedris, how: link, label: KoskManage.publicPage, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:370 }
   - { from: koskManage, to: koskSettings, how: link, label: KoskManage.openSettings, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:466 }
-  - { from: koskManage, to: archive, how: link, label: KoskManage.toArchive, when: "variant == 'chief'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:542 }
+  - { from: koskManage, to: archive, how: link, label: KoskManage.toArchive, when: "variant == 'chief' or variant == 'medaris'", source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:542 } # no guard in the code: everyone who has the view gets "Arşiv’e git", and the view is the başnazım's and a Medaris nazımı's (a köşk nazımı is sent on to Dersler before it is drawn); the archive is the başnazım's alone, so a Medaris nazımı with platform.kosk_edit is sent to a refusal (MANAGE-1)
   - { from: koskManage, to: koskHosting, how: link, label: KoskManage.hostingLink, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:584 }
   - { from: koskManage, to: koskArchive, how: link, label: KoskManage.archive, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:614 }
 
@@ -554,7 +565,11 @@ entries:
   - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.breadcrumbRoot, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
   - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.cancel, back: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
   - { from: legacyDecks, to: legacyDeckCards, how: button, label: "the row's eye icon, which has no accessible name (F-P0-10)", data: true, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:52 }
-  - { from: notifications, to: koskBans, how: link, label: NotificationsPage.listLabel, when: koskBansReader, data: true, source: apps/nizam/features/notifications/components/notification-row.tsx:60 }
+  # A ban notice is written for the köşk's nazımlar and for every Medaris nazımı, never for the başnazım (ban.service.ts:346-385,
+  # ban.repository.ts:435-456 nazimRecipients: TRIAGE-1, TRIAGE-2), and its title is a link to the köşk's Yasaklamalar whoever holds it
+  # (notification-view.ts:68-75, notification-row.tsx:60). So the link is offered to a köşk nazımı and to every Medaris
+  # nazımı, and a Medaris nazımı with no ban code meets the refusal at the other end: a finding of the code (TRIAGE-2).
+  - { from: notifications, to: koskBans, how: link, label: NotificationsPage.listLabel, when: "variant == 'kosk' or variant == 'medaris'", data: true, source: apps/nizam/features/notifications/components/notification-row.tsx:60 }
 
 goals:
   # One goal per flow of FLOWS.md, named by the flow's id: the screen the flow starts on, for the personas the flow names,

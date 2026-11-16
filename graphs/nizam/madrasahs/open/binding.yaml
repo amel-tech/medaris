@@ -10,7 +10,7 @@
 #
 # What a walk writes, and how it is taken away. The main story really opens a medrese (POST /madrasahs): a row of `madrasahs`, one
 # MEDRESE_BASMUDERRIS role assignment for APPLICANT_F, and audit rows (madrasah.create, user.lookup). The head is never a seeded persona. `setup`
-# and `teardown` remove every medrese with the walk's short name through the API, as the başnazım: ./remove-madrasah.mjs does DELETE
+# and `teardown` remove every medrese with the walk's short name through the API, as the başnazım: helpers/remove-madrasah.mjs does DELETE
 # /madrasahs/:id, which is the başnazım's alone and takes the medrese with every role assignment of its scope, the head's included, in
 # one transaction (apps/tedrisat/src/madrasah/madrasah.controller.ts:691). No SQL is used to write; the one helper is this folder's own
 # (it uses the shared lib.mjs): ask, to move it to graphs/bindings/helpers/ as remove-kosk.mjs was. `setup` removes too, so a walk that died
@@ -47,8 +47,8 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
-    setup: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
-    teardown: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    setup: [{ run: [node, helpers/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    teardown: [{ run: [node, helpers/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
     vars:
       madrasahName: Örnek Açılış Medresesi
       madrasahHandle: ornek-acilis
@@ -66,8 +66,8 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/medreseler'
     samples: { handle: ornek-otomatik-acilis-medresesi, madrasah: Örnek Otomatik Açılış Medresesi }
-    setup: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{rowHandle}', --numbered], expect: removed }]
-    teardown: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{rowHandle}', --numbered], expect: removed }]
+    setup: [{ run: [node, helpers/remove-madrasah.mjs, '{rowHandle}', --numbered], expect: removed }]
+    teardown: [{ run: [node, helpers/remove-madrasah.mjs, '{rowHandle}', --numbered], expect: removed }]
     vars:
       madrasahName: Örnek Otomatik Açılış Medresesi
       madrasahHandle: ''
@@ -160,8 +160,8 @@ scenarios:
     as: medarisNazim
     open: '{nizam}/medreseler'
     samples: { name: Selma Medaris Nazımı, handle: ornek-kendini-atayan, madrasah: Örnek Kendini Atayan Medrese }
-    setup: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
-    teardown: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    setup: [{ run: [node, helpers/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    teardown: [{ run: [node, helpers/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
     vars:
       madrasahName: Örnek Kendini Atayan Medrese
       madrasahHandle: ornek-kendini-atayan

@@ -10,7 +10,7 @@
 # in plain ASCII (the browser's Turkish lower-casing and the database's lower() then mean the same). `setup` and `teardown` both clear every
 # group with that prefix first (with "revoke" where somebody holds it), so a walk that died leaves nothing in the next one's way, and
 # `teardown` ends with the clearing. The scenarios with a used group appoint a spare talebe account, APPLICANT_G ("Dilek Başvuran"), a Medaris
-# nazımı for the length of the walk with ../nizam/home/medarisNazimCut/nazim.mjs (the helper of nizam.home.medarisNazimCut: it appoints with
+# nazımı for the length of the walk with helpers/nazim.mjs (the helper of nizam.home.medarisNazimCut: it appoints with
 # no permission, and dismisses), then give her the walk's group; `down` of that helper takes her seat away. The seeded Medaris nazımı, every
 # group whose name does not start with the prefix, and every seed account are never read or changed. The audit rows (permission_group.create,
 # update, delete, medaris_nazim.appoint, dismiss) stay: the API has no way to remove them.
@@ -126,14 +126,14 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/izin-gruplari?grup={made.u}'
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, none]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, none]
         expect: 'up APPLICANT_G'
       - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'u|Deneme grubu yonetim kullanilan|platform.audit_read,platform.policy_edit', --hold, u=APPLICANT_G]
         expect: 'ready: 1 groups, held by APPLICANT_G'
     teardown:
       - run: [node, ../nizam/nazims/groups/groups.mjs, down]
         expect: restored
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
         expect: 'down APPLICANT_G'
     vars:
       groupName: Deneme grubu yonetim yeni
@@ -244,14 +244,14 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/izin-gruplari?grup={made.a}'
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, none]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, none]
         expect: 'up APPLICANT_G'
       - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'a|Deneme grubu yonetim A|platform.audit_read,platform.policy_edit']
         expect: 'ready: 1 groups'
     teardown:
       - run: [node, ../nizam/nazims/groups/groups.mjs, down]
         expect: restored
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
         expect: 'down APPLICANT_G'
     vars:
       groupName: Deneme grubu yonetim yeni
@@ -267,14 +267,14 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/izin-gruplari?grup={made.u}'
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, none]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, none]
         expect: 'up APPLICANT_G'
       - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'u|Deneme grubu yonetim kullanilan|platform.audit_read,platform.policy_edit', --hold, u=APPLICANT_G]
         expect: 'ready: 1 groups, held by APPLICANT_G'
     teardown:
       - run: [node, ../nizam/nazims/groups/groups.mjs, down]
         expect: restored
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
         expect: 'down APPLICANT_G'
     vars:
       groupName: Deneme grubu yonetim yeni
@@ -290,14 +290,14 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/izin-gruplari?grup={made.u}'
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, none]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, none]
         expect: 'up APPLICANT_G'
       - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'u|Deneme grubu yonetim kullanilan|platform.audit_read,platform.policy_edit', --hold, u=APPLICANT_G]
         expect: 'ready: 1 groups, held by APPLICANT_G'
     teardown:
       - run: [node, ../nizam/nazims/groups/groups.mjs, down]
         expect: restored
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
         expect: 'down APPLICANT_G'
     vars:
       groupName: Deneme grubu yonetim yeni

@@ -341,7 +341,7 @@ pages:
   medreseNazirs:
     opensFor: medreseNazirsOpen
     refusal: an alert says "Bu sayfaya izniniz yok"; a nazır given madrasah.nazir_appoint sees only "Görevden al" on the rows they appointed
-    evidence: getMadrasahNazirs asks madrasah.nazir_appoint or platform.madrasah_nazir_grant
+    evidence: listMadrasahNazirs asks madrasah.nazir_appoint or platform.madrasah_nazir_grant
   medreseBans:
     opensFor: medreseBansOpen
     refusal: an alert says "Bu sayfaya izniniz yok" and "Yasakla" is not drawn
@@ -380,6 +380,11 @@ pages:
     opensFor: courseArchiveOpen
     refusal: an alert says "Bu sayfaya izniniz yok"
     evidence: GET /courses/:id/archive asks week.hide
+  dersDeckOne:
+    # The generated route names both parameters {id} (the course and the deck), so one sample could not give both and a
+    # replay could not open the page; the deck's own parameter is {deck} here. The seed makes a course deck, "Sarf Kavramları"
+    # (seed.json decks.course), which the binding opens.
+    route: /ders/{id}/deste/{deck}
   dersBans:
     opensFor: courseBansOpen
     refusal: an alert says "Bu sayfaya izniniz yok" and "Yasakla" is not drawn
@@ -573,7 +578,7 @@ goals:
   - { id: nazar.courseSettings.access, say: "Change who may take the course", page: dersSettings, for: [muderris], within: 1 }
   - { id: nazar.courseSettings.publish, say: "Draft a course and publish it again", page: dersSettings, for: [muderris], within: 1 }
   - { id: nazar.courseSettings.hocaTitles, say: "Give each hoca a title", page: dersSettings, for: [muderris], within: 1 }
-  - { id: nazar.courseSettings.partnerCodes, say: "Open the course settings (the partner codes card is the başnazım's and the köşk nazımı's: no click path leads the başnazım to a course, F-L-8)", page: dersSettings, for: [muderris], within: 1 }
+  - { id: nazar.courseSettings.partnerCodes, say: "Open the course settings, where the partner codes card is (the başnazım's: the köşk nazımı holds the code too but nazar gives them no scope, PCODES-1; and no click path leads the başnazım to a course, F-L-8, so he opens it by its address)", page: dersSettings, for: [sistemAdmin], within: 1 }
   - { id: nazar.sessions.inPersonSeats, say: "Approve in-person seats by gender (planned: the page exists, the seats do not)", page: dersSessions, for: [muderris, dersNazir], within: 1 }
 
 notModeled:

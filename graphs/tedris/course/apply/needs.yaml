@@ -36,11 +36,12 @@ needs:
 
   - id: the-team-hears-of-the-application
     need: >-
-      The application reaches the people who decide it, in nazar and in nizam, and the talebe is told when it is
-      decided. (Both screens are other flows; this flow starts them.)
+      The application reaches the people who decide it, in nazar and in nizam (the course's lists and the köşk's home), and
+      the talebe is told when it is decided. (Those screens are other flows; this flow starts them.)
     drawn:
       - reachesNazar
       - reachesNizam
+      - reachesKoskHome
     built:
       - action: medaris.api:listCourseEnrollments
       - action: medaris.api:approveEnrollment

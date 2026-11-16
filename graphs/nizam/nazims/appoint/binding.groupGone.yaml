@@ -20,12 +20,12 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
         expect: 'appoint up'
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
         expect: 'appoint down'

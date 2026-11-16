@@ -5,8 +5,8 @@
 #   ... --to home_opened         (the not-found page and "Ana sayfaya dön" for a member: scenario memberNotFound)
 #   ... --to previewUnscheduled  (the card with no "İlk celse": scenario editorUndated)
 #
-# Data. Nothing the seed holds is changed. The seed has no draft, so the walk makes its own with the helper of tedris.shell.systemPages
-# (graphs/tedris/shell/systemPages/draft-course.mjs, reused by its path): `make` makes a DRAFT course "Sistem sayfaları denemesi" in the
+# Data. Nothing the seed holds is changed. The seed has no draft, so the walk makes its own with the shared helper
+# (helpers/draft-course.mjs, which tedris.shell.systemPages uses too): `make` makes a DRAFT course "Sistem sayfaları denemesi" in the
 # seeded köşk as the köşk's nazım, with the seeded müderris as its hoca and one dated celse (7 Aralık 2026, 21:00), and writes its id to
 # graphs/.local/system-pages.json, read here as {sp.draft}; `remove` deletes it (as the başnazım; the weeks and celses go with it). `make`
 # first deletes any course of that title in the köşk, so a walk that died leaves nothing in the way. The two walks of the two flows must
@@ -51,7 +51,7 @@ scenarios:
     as: muderris
     open: '{tedris}/courses/{sp.draft}'
     setup:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, make]
+      - run: [node, helpers/draft-course.mjs, make]
         expect: 'draft-course make'
       - run:
           - node
@@ -59,7 +59,7 @@ scenarios:
           - "with w as (insert into course_weeks(course_id, week_number, title, order_index) values ('{sp.draft}', 2, 'İkinci hafta', 1) returning id) insert into lessons(week_id, title, type, order_index, scheduled_at, duration_minutes) select id, 'Erken celse', 'LIVE', 0, '2026-12-01T18:00:00Z', 60 from w returning title"
         expect: 'Erken celse'
     teardown:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, remove]
+      - run: [node, helpers/draft-course.mjs, remove]
         expect: 'draft-course remove'
 
   # The same hoca, a draft that nobody has dated yet: the card has no "İlk celse".
@@ -68,7 +68,7 @@ scenarios:
     as: muderris
     open: '{tedris}/courses/{sp.draft}'
     setup:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, make]
+      - run: [node, helpers/draft-course.mjs, make]
         expect: 'draft-course make'
       - run:
           - node
@@ -76,7 +76,7 @@ scenarios:
           - "update lessons set scheduled_at = null where week_id in (select id from course_weeks where course_id = '{sp.draft}')"
         expect: '"rows":1'
     teardown:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, remove]
+      - run: [node, helpers/draft-course.mjs, remove]
         expect: 'draft-course remove'
 
   # A talebe opens the same address and gets the not-found page (e2e system-pages#6).
@@ -85,10 +85,10 @@ scenarios:
     as: talebe
     open: '{tedris}/courses/{sp.draft}'
     setup:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, make]
+      - run: [node, helpers/draft-course.mjs, make]
         expect: 'draft-course make'
     teardown:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, remove]
+      - run: [node, helpers/draft-course.mjs, remove]
         expect: 'draft-course remove'
 
   # Nobody is signed in: the same page (e2e course#3 asserts its status). NOT walked in this phase.
@@ -96,10 +96,10 @@ scenarios:
     given: { viewer: visitor, draft: dated }
     open: '{tedris}/courses/{sp.draft}'
     setup:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, make]
+      - run: [node, helpers/draft-course.mjs, make]
         expect: 'draft-course make'
     teardown:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, remove]
+      - run: [node, helpers/draft-course.mjs, remove]
         expect: 'draft-course remove'
 
 events:

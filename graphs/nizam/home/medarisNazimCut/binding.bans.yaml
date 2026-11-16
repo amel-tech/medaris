@@ -17,8 +17,8 @@ scenarios:
     as: applicantF
     open: '{nizam}/'
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantF, --codes, 'platform.ban_scoped,platform.inactive_scopes_manage']
+      - run: [node, helpers/nazim.mjs, up, applicantF, --codes, 'platform.ban_scoped,platform.inactive_scopes_manage']
         expect: 'up APPLICANT_F'
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantF]
+      - run: [node, helpers/nazim.mjs, down, applicantF]
         expect: 'down APPLICANT_F'

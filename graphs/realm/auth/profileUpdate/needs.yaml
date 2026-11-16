@@ -77,7 +77,7 @@ needs:
       - back_in_app
     built:
       - action: medaris.api:startSignIn
-      - route: apps/tedris/features/account/components/account-settings.tsx:80
+      - route: apps/tedris/features/account/components/account-settings.tsx:87
       - route: libs/auth/src/shared/account-action.ts:44
     walked:
       - replay: accountCancel # the cancel, not the save

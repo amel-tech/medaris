@@ -1,0 +1,2012 @@
+# The known gaps of every needs.yaml (graphs/README.md, "needs.yaml and the gaps"): the needs the product has not met, and the ones the code has but nothing walks.
+#
+# Built by script from the 175 needs.yaml files, each parsed with a YAML parser (none failed to parse; every needs.yaml names its own flow id).
+# 2640 needs in all: 1264 missing, 545 unwalked, 831 met and not listed. 175 flows have at least one gap, and every key below is the id of a
+# flow.yaml in this tree. Neither this file nor a needs.yaml is read by `delurio check`.
+#
+#   missing   The need has a `missing:` key: no code, or code that does not meet the need (a finding the flow draws). The comment is the
+#             need's Linear key, or "no Linear key" where it has none; "code exists in part" where the need also lists `built`; and the
+#             finding ids of the flow's ui.yaml `rules` that the need names (graphs/FINDINGS.md).
+#   unwalked  The need lists `built` and no e2e check and no replay scenario in `walked`. 360 have no `walked` at all; 185 have only
+#             a Vitest spec (`test:`), which draws the markup without a browser and does not walk the app; the comment says which. Why a need
+#             is unwalked is in its own `note` in needs.yaml, where the writer gave one. The narrower rule (built, no `walked` at all) would list
+#             only the first 360; the writers' own header comments list the unit-spec-only needs as unwalked too, so they are kept here.
+#
+# Not listed: 730 needs walked by an e2e check, and 101 walked only by a `replay:` entry. A `replay:` entry names a scenario that the
+# flow's binding defines (every name resolves to a scenario, checked by script). The walk phase has not run, so no replay has passed them as
+# a whole; those needs are met on paper and are the first the walk phase proves. A writer's header comment that calls such a need
+# "unwalked" means "not yet replayed"; this file does not list it.
+#
+# Gender separation is given (kontenjan per gender, gender always required); the needs that decide a seat carry MDRS-284.
+# Linear keys by the number of needs they hold: MDRS-284 (37), MDRS-238 (17), MDRS-140 (12), MDRS-246 (11), MDRS-141 (11), MDRS-197 (9),
+# MDRS-113 (8), MDRS-239 (8), MDRS-189 (7), MDRS-125 (6), MDRS-295 (4), MDRS-202 (4), MDRS-201 (4), MDRS-240 (4), and 32 more keys with
+# one to four each; 1063 missing needs have no key.
+#
+# It only shrinks: a need that is met leaves the list. Flow writers do not edit it; the orchestrator merges each wave's gaps.
+
+status: proposed
+gaps:
+  common.shell.privacyNotice:
+    notice-for-a-visitor: unwalked  # no e2e, no replay
+    link-says-it-opens-a-tab: missing  # no Linear key
+    notice-found-as-a-landmark-in-nizam: missing  # no Linear key
+    notice-from-nazar: missing  # no Linear key
+  common.shell.theme:
+    name-follows-the-language: missing  # no Linear key
+    choice-follows-the-person-between-apps: missing  # no Linear key
+    no-dead-control-without-javascript: missing  # no Linear key
+    choice-follows-other-tabs: unwalked  # no e2e, no replay
+    refused-storage-still-switches-the-page: unwalked  # no e2e, no replay
+  landing.site.contact:
+    page-says-why-it-failed: missing  # no Linear key; finding L3
+    page-limits-match-the-server: missing  # no Linear key; finding L3
+    the-card-is-announced-and-keeps-the-focus: missing  # no Linear key; finding L1
+    errors-clear-as-they-are-fixed: missing  # no Linear key; finding L2
+    the-form-works-without-script: missing  # no Linear key; finding L4
+    waitlist-signup: missing  # no Linear key
+  landing.site.enterApp:
+    the-entry-says-no-in-words: missing  # no Linear key; finding ENTER-1
+    phone-visitor-can-register-from-any-page: missing  # no Linear key; finding L6
+    roadmap-from-the-header: missing  # MDRS-246
+    chosen-language-follows-into-the-app: missing  # MDRS-295
+  landing.site.faq:
+    registration-answer-says-gender: missing  # no Linear key; finding L9
+    answers-name-the-buttons-as-the-apps-do: missing  # no Linear key; finding FAQ-1
+    answers-are-named-regions: missing  # no Linear key; finding L11
+    answers-follow-the-apps: missing  # no Linear key; finding FAQ-1
+  landing.site.readLegal:
+    cookies-page-is-exact: missing  # no Linear key; finding LEGAL-1, LEGAL-2
+    terms-acceptance-at-sign-in: missing  # MDRS-191
+    terms-reacceptance-after-a-change: missing  # MDRS-191
+    device-restriction-before-it-is-promised: missing  # MDRS-125
+    new-tab-is-announced: missing  # no Linear key; finding L5
+    counsel-approves-the-texts: missing  # no Linear key
+  landing.site.roadmap:
+    public-static-page: missing  # MDRS-246
+    reachable-from-header-and-footer: missing  # MDRS-246
+    four-phases-in-order: missing  # MDRS-246
+    every-status-is-one-of-four: missing  # MDRS-246
+    items-follow-to-their-issues: missing  # MDRS-246
+    no-donation-wording: missing  # MDRS-246
+    recordings-without-the-host: missing  # MDRS-246
+    content-is-hand-written-data: missing  # MDRS-246
+    accessible-and-responsive: missing  # MDRS-246
+    the-test-that-pins-the-words: missing  # MDRS-246
+    which-issues-count-as-yayinda: missing  # no Linear key; finding ROADMAP-1, ROADMAP-2, ROADMAP-3
+    far-items-and-what-stays-out: missing  # no Linear key
+    yayinda-is-true-while-production-waits: missing  # no Linear key
+    header-link-on-a-phone: missing  # no Linear key
+  nazar.access.dersNazirPages:
+    genel-bakis-opens-for-every-post: unwalked  # no e2e, no replay
+    menu-offers-only-what-opens: missing  # no Linear key
+    desk-pages-open: unwalked  # no e2e, no replay
+    bans-page-opens-for-a-ban-code: missing  # no Linear key
+    refusal-says-whom-to-ask: missing  # no Linear key
+    refusal-says-the-course-is-passive: missing  # no Linear key
+    refusal-is-announced-and-leads-somewhere: missing  # no Linear key
+    one-name-for-the-deck-page: missing  # no Linear key
+  nazar.access.landingScope:
+    the-first-landing-is-the-first-medrese-then-course: unwalked  # unit spec only, no e2e, no replay
+    head-and-nazirs-open-their-medreses-courses: unwalked  # unit spec only, no e2e, no replay
+    admin-is-told-what-he-may-do: missing  # no Linear key
+    a-failed-read-is-a-retry: unwalked  # unit spec only, no e2e, no replay
+    opened-scope-is-worded-honestly: missing  # no Linear key; finding LSCOPE-1
+  nazar.access.medreseNazirRefused:
+    appeals-refusal-is-walked: unwalked  # unit spec only, no e2e, no replay
+    menu-draws-what-opens: missing  # MDRS-223; finding MDRS-223
+    lands-on-a-page-that-opens: missing  # no Linear key; finding REFUSED-1
+    refusal-says-how-to-ask: missing  # no Linear key; finding F-A-16, F-B-13
+    nazir-appoint-sees-own-rows: unwalked  # unit spec only, no e2e, no replay
+    awaiting-notice-speaks-to-the-giver: missing  # no Linear key; finding REFUSED-2
+    partial-courses-grants-say-why: missing  # no Linear key; finding F-A-8
+    head-contrast-is-walked: unwalked  # no e2e, no replay
+  nazar.access.noAccess:
+    failed-read-is-not-a-verdict: unwalked  # no e2e, no replay
+    chief-is-told-the-truth: missing  # no Linear key; finding F-E-17, F-L-8
+    chief-is-named-by-his-role: missing  # no Linear key; finding NOACC-1, F-E-4, F-L-7
+    nazim-is-led-to-nizam: missing  # no Linear key
+    sign-out-asks-first: missing  # no Linear key; finding F-E-18
+  nazar.account.settings:
+    the-imam-star-explains-itself: unwalked  # no e2e, no replay
+    chief-is-told-what-they-are: missing  # no Linear key; finding F-E-4, F-E-13, F-E-17
+    nazir-is-told-whom-to-ask: missing  # no Linear key; finding NAZSET-2
+    sign-out-asks-first: missing  # no Linear key; finding F-E-18
+    a-save-is-visibly-busy-and-keeps-the-focus: missing  # no Linear key; finding F-E-12, NAZSET-1
+    a-failed-read-says-what-failed: missing  # no Linear key; finding F-E-11, F-E-16
+    role-names-in-english-and-arabic: missing  # MDRS-202
+    v2-role-names-everywhere: missing  # MDRS-144
+  nazar.appeals.open:
+    read-the-refusals: unwalked  # unit spec only, no e2e, no replay
+    appeal-a-refusal: unwalked  # unit spec only, no e2e, no replay
+    one-appeal-per-refusal: unwalked  # unit spec only, no e2e, no replay
+    only-those-allowed-appeal: unwalked  # unit spec only, no e2e, no replay
+    a-missing-reason-is-said: missing  # no Linear key; finding F-B-6, F-B-appeals-4
+    the-dialog-says-it-is-final: missing  # no Linear key
+    appeal-is-told: missing  # no Linear key; finding F-B-appeals-5
+    focus-and-a-word-after-sending: missing  # no Linear key; finding F-B-9, F-B-appeals-2
+    other-appeals: missing  # MDRS-139
+  nazar.archive.hideAndRestoreCourse:
+    a-nazir-is-offered-what-they-hold: missing  # no Linear key; finding F-A-8
+    focus-follows-a-hide-or-a-restore: missing  # no Linear key; finding F-A-2
+    a-failed-call-is-told: missing  # no Linear key; finding F-A-10
+    a-tab-name-has-its-count-apart: missing  # no Linear key; finding F-A-12
+    last-row-of-a-page: missing  # no Linear key; finding HIDE-1
+    recordings-can-be-hidden: missing  # no Linear key; finding HIDE-2
+  nazar.archive.hideMedrese:
+    a-hidden-medrese-says-why-a-course-stays: missing  # no Linear key
+    the-kademe-rule-is-told: unwalked  # unit spec only, no e2e, no replay
+    only-the-head-is-offered-it: unwalked  # unit spec only, no e2e, no replay
+    a-race-is-told-honestly: unwalked  # unit spec only, no e2e, no replay
+    already-hidden-has-its-own-title: missing  # no Linear key; finding HIDEMED-2
+    focus-follows-the-hiding: missing  # no Linear key; finding F-A-3, F-A-2
+    restore-button-says-what-it-shows: missing  # no Linear key; finding HIDEMED-1
+    no-dead-controls-while-hiding: missing  # no Linear key; finding HIDEMED-3
+    a-failed-call-is-told: missing  # no Linear key; finding F-A-10
+  nazar.bans.ban:
+    the-people-above-are-told: missing  # MDRS-113; finding BAN-1
+    the-keycloak-account-is-disabled: missing  # MDRS-197
+    a-ban-notice-by-e-mail: missing  # MDRS-189
+    a-standing-ban-is-said: missing  # no Linear key; finding BAN-4
+    the-form-says-what-is-missing: missing  # no Linear key; finding F-B-6, F-B-7
+    the-lookup-moves-the-focus-and-says-who: missing  # no Linear key; finding F-B-8, F-B-16
+    a-lookup-only-on-request: missing  # no Linear key; finding BAN-2, BAN-5
+    a-nazir-given-the-grant-bans: unwalked  # no e2e, no replay
+  nazar.bans.courseBans:
+    the-hoca-reads-and-uses-the-page: missing  # no Linear key
+    bar-a-talebe-of-the-course: unwalked  # unit spec only, no e2e, no replay
+    read-the-courses-bans-in-two-tabs: unwalked  # unit spec only, no e2e, no replay
+    a-row-offers-what-its-kademe-reaches: unwalked  # unit spec only, no e2e, no replay
+    lift-with-a-reason: unwalked  # unit spec only, no e2e, no replay
+    widen-to-the-medrese: unwalked  # unit spec only, no e2e, no replay
+    ask-medaris-for-a-permanent-ban: unwalked  # unit spec only, no e2e, no replay
+    a-permanent-request-is-answered: missing  # MDRS-140
+    bans-reach-the-people-above: missing  # MDRS-113
+    widen-refuses-a-person-who-runs-the-course: missing  # no Linear key
+    a-hoca-is-not-named-over-an-open-ban: missing  # no Linear key
+    the-picker-leaves-out-who-cannot-be-barred: missing  # no Linear key
+    a-refused-roster-is-told-as-refused: missing  # no Linear key
+    the-ban-dialog-says-who-reads-the-reason: missing  # no Linear key
+    a-wider-ban-is-visible-where-its-person-vanishes: missing  # no Linear key
+  nazar.bans.decide:
+    a-permanent-request-is-answered: missing  # MDRS-140
+    bans-reach-the-people-above: missing  # MDRS-113
+    every-moved-code-is-told: unwalked  # no e2e, no replay
+    widen-refuses-a-person-who-runs-the-course: missing  # no Linear key
+    a-hoca-is-not-named-over-an-open-ban: missing  # no Linear key
+    an-empty-reason-is-told: missing  # no Linear key; finding F-B-6
+    the-focus-follows-a-decision: missing  # no Linear key; finding F-B-9, F-B-4
+    a-busy-dialog-can-be-left-or-says-it-cannot: missing  # no Linear key; finding BANDEC-1
+  nazar.bans.review:
+    counts-and-narrowing-are-told: missing  # no Linear key; finding F-B-4
+    a-refusal-says-what-it-is: missing  # no Linear key; finding F-B-13
+    the-list-is-bounded: missing  # no Linear key; finding BANS-2
+    every-ban-reaches-the-people-above: missing  # MDRS-113
+    a-permanent-request-is-answered: missing  # MDRS-140
+    staff-cannot-be-barred-on-any-route: missing  # no Linear key; finding ban-staff-check-gaps
+  nazar.course.overview:
+    see-what-waits: unwalked  # unit spec only, no e2e, no replay
+    follow-a-box-to-the-work: unwalked  # unit spec only, no e2e, no replay
+    nothing-waiting-is-said: unwalked  # unit spec only, no e2e, no replay
+    open-the-course-in-tedris: unwalked  # unit spec only, no e2e, no replay
+    box-leads-where-the-reader-may-go: missing  # no Linear key; finding OVERVIEW-1
+    box-name-carries-its-number: missing  # no Linear key; finding F-C-course-a-18
+    a-failed-read-is-told: missing  # no Linear key; finding OVERVIEW-3
+    tab-names-the-course: missing  # no Linear key; finding OVERVIEW-2
+    retry-an-unreadable-course: unwalked  # unit spec only, no e2e, no replay
+  nazar.courseNazirs.appoint:
+    barred-person-is-refused: unwalked  # unit spec only, no e2e, no replay
+    past-end-is-told: unwalked  # unit spec only, no e2e, no replay
+    search-only-on-purpose: missing  # no Linear key; finding F-D2c-6
+    a-search-says-what-it-did: missing  # no Linear key; finding F-D2c-4, F-D2c-5, CAPPOINT-4
+    kaydet-says-why-it-is-off: missing  # no Linear key; finding CAPPOINT-2, F-D2c-12, F-D2c-16
+    cancel-while-pending-answers: missing  # no Linear key; finding CAPPOINT-1
+    selection-count-is-announced: missing  # no Linear key; finding CAPPOINT-3
+  nazar.courseNazirs.dismiss:
+    a-refusal-is-worded: unwalked  # no e2e, no replay
+    a-post-already-gone-is-info: missing  # no Linear key; finding CNDIS-4
+    focus-follows-the-row-leaving: missing  # no Linear key; finding F-D2c-8
+    confirmation-is-announced-as-one: missing  # no Linear key; finding CNDIS-1
+    a-busy-dialog-says-so: missing  # no Linear key; finding CNDIS-3, F-D2c-13
+    blocked-row-is-reachable-and-names-who: missing  # no Linear key; finding CNDIS-2
+    the-person-is-told: missing  # no Linear key
+    adopt-or-drop-what-was-handed-on: missing  # MDRS-201
+  nazar.courseNazirs.permissions:
+    an-end-not-ahead-is-refused-on-the-page: unwalked  # unit spec only, no e2e, no replay
+    a-refused-save-keeps-the-form: unwalked  # unit spec only, no e2e, no replay
+    nothing-changed-writes-nothing: unwalked  # unit spec only, no e2e, no replay
+    nothing-changed-says-so: missing  # no Linear key; finding F-D2c-18
+    every-change-is-audited: unwalked  # no e2e, no replay
+    keyboard-starts-on-the-work: missing  # no Linear key; finding F-D2c-15, F-D2c-16
+    end-problem-is-announced: missing  # no Linear key; finding F-D2c-4
+    the-end-shows-the-hour: missing  # no Linear key; finding CNP-2
+    count-is-announced: missing  # no Linear key; finding CNP-4
+    focus-after-a-stale-save: missing  # no Linear key; finding CNP-1, F-D2c-8
+    closing-asks-when-the-form-changed: missing  # no Linear key
+  nazar.courseSettings.access:
+    in-person-mark: unwalked  # unit spec only, no e2e, no replay
+    stale-course-fields-told: missing  # no Linear key; finding stale-course-fields-not-told
+    policy-lock-shown-and-worded: unwalked  # unit spec only, no e2e, no replay
+    late-policy-refusal-worded: unwalked  # unit spec only, no e2e, no replay
+    late-policy-shows-the-lock: missing  # no Linear key; finding CSA-2
+    partial-save-honest: missing  # no Linear key; finding CSA-1
+    zone-list-usable: missing  # no Linear key; finding F-D2c-17
+    focus-after-save: missing  # no Linear key; finding F-D2c-7, focus-not-set
+    cards-have-own-kaydet-names: missing  # no Linear key; finding F-D2c-14
+  nazar.courseSettings.hocaTitles:
+    a-title-belongs-to-one-course: unwalked  # unit spec only, no e2e, no replay
+    the-eight-titles-and-the-plain-hoca: unwalked  # unit spec only, no e2e, no replay
+    see-the-name-before-saving: unwalked  # unit spec only, no e2e, no replay
+    only-course-settings-changes-titles: unwalked  # unit spec only, no e2e, no replay
+    a-hoca-with-no-account-keeps-the-name: unwalked  # unit spec only, no e2e, no replay
+    the-title-shows-where-the-person-is-the-hoca: unwalked  # unit spec only, no e2e, no replay
+    a-refused-save-says-what-is-stored: missing  # no Linear key
+    a-save-keeps-the-place-and-says-it: missing  # no Linear key
+    an-unsaved-choice-is-not-lost-silently: missing  # no Linear key
+    a-button-that-is-off-says-why: missing  # no Linear key
+  nazar.courseSettings.partnerCodes:
+    the-card-lists-the-partners-codes: unwalked  # unit spec only, no e2e, no replay
+    the-card-is-for-its-holders: unwalked  # unit spec only, no e2e, no replay
+    kosk-nazim-reaches-the-card: missing  # no Linear key
+    a-code-is-added: unwalked  # unit spec only, no e2e, no replay
+    a-code-must-have-the-right-shape: unwalked  # unit spec only, no e2e, no replay
+    a-code-held-elsewhere-is-refused: unwalked  # unit spec only, no e2e, no replay
+    a-code-is-taken-off: unwalked  # unit spec only, no e2e, no replay
+    focus-after-a-refusal: missing  # no Linear key; finding F-D2c-9, F-D2c-4
+    a-removal-is-told-in-the-page: missing  # no Linear key; finding F-L-17
+    a-card-says-why-it-is-absent: missing  # no Linear key
+    a-partner-seat-follows-the-gender-quota: missing  # MDRS-284
+  nazar.courseSettings.publish:
+    a-failed-status-change-is-worded: unwalked  # unit spec only, no e2e, no replay
+    draft-link-leads-staff-to-the-draft: missing  # no Linear key; finding DRAFT-1
+    public-link-address-is-current: missing  # no Linear key; finding PUB-1
+    drafting-says-how-many-talebe: missing  # no Linear key
+    cancel-and-close-say-they-are-busy: missing  # no Linear key; finding PUB-2
+    busy-words-are-in-the-catalog: missing  # no Linear key; finding F-D2c-13
+  nazar.courses.browse:
+    see-how-the-exams-went: unwalked  # no e2e, no replay
+    a-refused-read-is-told-as-a-refusal: missing  # no Linear key; finding F-A-8, F-A-16
+    the-controls-follow-what-the-reader-holds: missing  # no Linear key; finding F-A-8
+    a-filter-says-what-it-found: missing  # no Linear key; finding COURSES-1
+    the-select-says-what-cuts-the-list: missing  # no Linear key; finding COURSES-2
+    a-course-can-be-narrowed-to-by-its-kosk: missing  # no Linear key; finding COURSES-3
+    a-failed-read-can-be-retried: unwalked  # no e2e, no replay
+    a-failed-page-keeps-one-heading: missing  # no Linear key; finding F-A-1, F-A-14
+    the-title-links-only-where-the-reader-may-open: missing  # no Linear key; finding F-A-9
+  nazar.courses.changeHocas:
+    choose-the-imam: unwalked  # no e2e, no replay
+    a-refusal-is-told-and-the-dialog-stays: unwalked  # no e2e, no replay
+    say-the-search-outcomes: missing  # no Linear key; finding F-A-4, HOCAS-2, HOCAS-3
+    search-only-when-asked: missing  # no Linear key; finding HOCAS-1, HOCAS-4
+    say-why-kaydet-is-off: missing  # no Linear key; finding HOCAS-6, F-A-5
+    menu-offers-only-what-the-person-may-do: missing  # no Linear key; finding F-A-8
+  nazar.courses.open:
+    every-answer-is-announced: missing  # no Linear key
+    lookup-only-on-request: missing  # no Linear key
+    removing-a-hoca-is-said: missing  # no Linear key
+    give-a-hoca-an-unvan: unwalked  # no e2e, no replay
+    the-last-kosk-leaving-keeps-the-work: missing  # no Linear key
+    a-partial-grant-is-told-the-truth: missing  # no Linear key
+    leaving-keeps-the-form: missing  # no Linear key
+    naming-oneself-is-explained: missing  # no Linear key
+  nazar.curriculum.edit:
+    edit-and-save-the-whole-course: unwalked  # unit spec only, no e2e, no replay
+    a-save-over-someone-elses-is-refused: unwalked  # unit spec only, no e2e, no replay
+    only-what-the-caller-may-change: unwalked  # unit spec only, no e2e, no replay
+    refused-save-says-so: missing  # no Linear key; finding F-C-course-a-01
+    unsaved-edits-survive-a-link: missing  # no Linear key; finding F-C-course-a-13
+    a-save-keeps-the-focus-and-says-it: missing  # no Linear key; finding EDIT-1
+    a-failed-call-is-told: missing  # no Linear key; finding F-C-course-a-19
+    read-only-says-what-stays-live: missing  # no Linear key; finding read-only, EDIT-3
+    conflict-is-announced: missing  # no Linear key; finding EDIT-2
+    leaving-a-week-out-says-it-hides-it: missing  # no Linear key; finding F-C-course-a-16
+    preview-the-draft-from-the-editor: missing  # no Linear key
+  nazar.curriculum.hideRestore:
+    hide-a-week-or-a-celse: unwalked  # unit spec only, no e2e, no replay
+    a-week-hides-with-its-celses: unwalked  # unit spec only, no e2e, no replay
+    see-what-is-hidden: unwalked  # unit spec only, no e2e, no replay
+    restore-by-kademe: unwalked  # unit spec only, no e2e, no replay
+    restore-a-week-brings-its-celses: unwalked  # no e2e, no replay
+    an-answer-that-came-late-is-told: unwalked  # unit spec only, no e2e, no replay
+    gate-the-hide-page: missing  # no Linear key; finding F-C-course-a-17
+    hoca-who-may-hide-reads-the-archive: missing  # no Linear key; finding HIDEREST-3
+    archive-is-one-click-from-the-hide-page: missing  # no Linear key; finding HIDEREST-2
+    focus-follows-hide-and-restore: missing  # no Linear key; finding F-C-course-a-15
+    restore-says-what-came-back: missing  # no Linear key; finding HIDEREST-4
+    a-course-gone-is-worded: missing  # no Linear key; finding HIDEREST-1
+    a-failed-call-is-told: missing  # no Linear key; finding F-C-course-a-19
+    delete-a-hidden-week-with-a-recording: missing  # MDRS-244; finding MDRS-244
+  nazar.curriculum.resources:
+    errors-are-announced: missing  # no Linear key; finding F-C-course-a-01, F-C-course-a-07
+    reorder-the-course-list: missing  # no Linear key; finding RESOURCES-1
+    file-refusals-are-worded: unwalked  # unit spec only, no e2e, no replay
+    focus-follows-the-panel-and-the-removal: missing  # no Linear key; finding F-C-course-a-14, F-C-course-a-15, F-C-course-a-25
+    row-buttons-say-which-row: missing  # no Linear key; finding F-C-course-a-03
+    kaydet-says-why-it-is-off: missing  # no Linear key; finding F-C-course-a-30
+    save-keeps-the-place: missing  # no Linear key; finding RESOURCES-2
+    a-failed-save-is-told: missing  # no Linear key; finding F-C-course-a-19
+  nazar.curriculum.sessionHomework:
+    give-homework-at-once: unwalked  # unit spec only, no e2e, no replay
+    choose-how-it-is-handed-in: unwalked  # unit spec only, no e2e, no replay
+    describe-the-homework: unwalked  # unit spec only, no e2e, no replay
+    an-unsaved-description-is-not-lost: missing  # no Linear key; finding HWSET-8
+    attach-and-remove-files: unwalked  # unit spec only, no e2e, no replay
+    take-off-asks: unwalked  # unit spec only, no e2e, no replay
+    take-off-names-the-marks: missing  # no Linear key; finding HWSET-1
+    a-write-says-it-worked: missing  # no Linear key; finding HWSET-5, HWSET-9
+    page-says-what-the-nazir-may: missing  # no Linear key; finding read-only, HWSET-2
+    a-stale-write-does-not-replace: missing  # no Linear key; finding HWSET-4
+    a-reader-without-session-manage-reads-it: unwalked  # unit spec only, no e2e, no replay
+    the-talebe-meets-the-homework: unwalked  # no e2e, no replay
+  nazar.decks.import:
+    take-the-template: unwalked  # unit spec only, no e2e, no replay
+    template-failure-is-told: missing  # no Linear key; finding F-D1-19
+    no-deck-no-import: unwalked  # no e2e, no replay
+    no-deck-says-why: missing  # no Linear key; finding F-D1-15
+    pick-the-deck: unwalked  # no e2e, no replay
+    the-confirmation-names-the-deck: missing  # no Linear key; finding IMPORT-5
+    the-file-is-checked-before-sending: unwalked  # unit spec only, no e2e, no replay
+    a-good-file-adds-every-row: unwalked  # unit spec only, no e2e, no replay
+    a-bad-file-adds-nothing-and-lists-its-rows: unwalked  # unit spec only, no e2e, no replay
+    rows-are-told-in-the-persons-words: missing  # no Linear key; finding F-D1-19, IMPORT-2
+    file-needs-are-said: missing  # no Linear key; finding IMPORT-2
+    refusals-are-told-by-cause: missing  # no Linear key; finding IMPORT-3
+    csv-survives-excel: missing  # no Linear key; finding IMPORT-3
+    big-files-reach-the-api: missing  # no Linear key; finding F-D1-18
+    closing-while-sending-is-honest: missing  # no Linear key; finding IMPORT-1
+    a-failed-call-is-told: missing  # no Linear key; finding F-D1-20
+    card-type-follows-the-deck: missing  # no Linear key; finding IMPORT-4
+    only-the-decks-staff-import: unwalked  # unit spec only, no e2e, no replay
+    the-dialog-is-accessible: missing  # no Linear key; finding F-D1-03, F-D1-16, F-L-12
+  nazar.decks.openAndFill:
+    see-the-decks-of-the-course: unwalked  # unit spec only, no e2e, no replay
+    open-a-deck: unwalked  # unit spec only, no e2e, no replay
+    fill-a-deck-with-the-keyboard: unwalked  # unit spec only, no e2e, no replay
+    paste-a-batch: unwalked  # unit spec only, no e2e, no replay
+    edit-a-card-in-place: unwalked  # unit spec only, no e2e, no replay
+    delete-a-card-after-asking: unwalked  # unit spec only, no e2e, no replay
+    staff-change-every-card-of-a-course-deck: missing  # no Linear key; finding OPENFILL-1
+    a-refusal-says-why: missing  # no Linear key; finding OPENFILL-1
+    a-saved-edit-says-so: missing  # no Linear key; finding OPENFILL-5
+    writes-are-announced: missing  # no Linear key; finding F-D1-11, F-D1-16
+    required-fields-are-said: missing  # no Linear key; finding F-D1-03
+    cards-have-names: missing  # no Linear key; finding F-D1-25, F-D1-26
+    a-failed-call-is-told: missing  # no Linear key; finding F-D1-20
+    the-dialog-starts-in-the-title: missing  # no Linear key; finding OPENFILL-2
+    a-deck-page-is-told-by-its-title: missing  # no Linear key; finding OPENFILL-4, F-D1-14
+    the-talebe-see-the-published-deck: unwalked  # no e2e, no replay
+  nazar.decks.publishAndDelete:
+    publish-to-the-talebe: unwalked  # no e2e, no replay
+    take-it-back-to-a-draft: unwalked  # no e2e, no replay
+    retitle-and-reweek: unwalked  # unit spec only, no e2e, no replay
+    delete-a-draft-after-asking: unwalked  # no e2e, no replay
+    a-published-deck-says-why-it-cannot-be-deleted: unwalked  # no e2e, no replay
+    a-reader-without-the-code-is-told: unwalked  # no e2e, no replay
+    a-save-sends-only-what-was-typed: missing  # no Linear key; finding DECKPD-1
+    a-refusal-leaves-the-page-true: missing  # no Linear key; finding DECKPD-2
+    a-write-in-flight-keeps-the-focus: missing  # no Linear key; finding DECKPD-3, F-D1-24
+    a-refused-form-is-told: missing  # no Linear key; finding F-D1-16
+    the-page-loads-without-a-second-shell: missing  # no Linear key; finding F-D1-17
+    the-delete-dialog-speaks-the-catalog: missing  # no Linear key; finding F-D1-24
+    a-vanished-deck-is-told: missing  # no Linear key; finding DECKPD-4
+  nazar.decks.siga:
+    generate-the-sigas-of-a-root: unwalked  # unit spec only, no e2e, no replay
+    refuse-a-root-it-cannot-conjugate: unwalked  # unit spec only, no e2e, no replay
+    choose-the-tenses: unwalked  # unit spec only, no e2e, no replay
+    review-and-correct-the-drafts: unwalked  # unit spec only, no e2e, no replay
+    save-all-or-none-with-the-sîga-kept: unwalked  # unit spec only, no e2e, no replay
+    the-talebe-reads-a-table: unwalked  # unit spec only, no e2e, no replay
+    a-sîga-card-has-a-decided-type: missing  # no Linear key; finding SIGA-2
+    the-generator-knows-what-the-deck-holds: missing  # no Linear key; finding SIGA-1
+    a-meaning-is-asked-for-early: missing  # no Linear key; finding SIGA-3
+    a-problem-is-announced-and-focused: missing  # no Linear key; finding SIGA-4, F-D1-16
+    going-back-keeps-the-corrections: missing  # no Linear key; finding SIGA-5
+    the-drafts-are-not-thrown-away-by-a-stray-click-or-key: missing  # no Linear key; finding F-D1-21, SIGA-6
+    a-refusal-says-why-and-where: missing  # no Linear key; finding SIGA-7, F-D1-24, F-D1-20
+    the-dialog-meets-the-rules-of-its-primitives: missing  # no Linear key; finding F-D1-03, F-D1-24, F-B-12
+  nazar.evaluation.examScores:
+    enter-moves-to-the-next-row: unwalked  # no e2e, no replay
+    the-table-shows-the-results: unwalked  # no e2e, no replay
+    no-talebe-says-so: unwalked  # no e2e, no replay
+    the-score-is-read-by-the-talebe-after-release: unwalked  # no e2e, no replay
+    release-asks-first: missing  # no Linear key
+    a-score-change-after-release-is-told: missing  # no Linear key; finding read-only
+    completed-talebe-is-told: missing  # no Linear key
+    page-speaks-of-exams: missing  # no Linear key
+    keyboard-and-focus-follow-the-person: missing  # no Linear key
+    the-board-can-be-downloaded: missing  # no Linear key
+    a-refused-download-is-worded: missing  # no Linear key
+    question-bank-and-timed-exams: missing  # no Linear key
+  nazar.evaluation.markRecited:
+    the-talebe-is-told-of-a-mark: missing  # no Linear key
+    a-save-that-cannot-pass-says-why: missing  # no Linear key; finding MARK-1
+    keys-and-focus-stay-with-the-person: missing  # no Linear key; finding F-D1-12, F-D1-27, MARK-2
+    a-mark-is-heard-by-a-screen-reader: missing  # no Linear key; finding MARK-4
+    the-note-limit-is-told: missing  # no Linear key; finding MARK-3
+    a-cell-has-a-row-header: missing  # no Linear key; finding F-D1-22
+    the-board-can-be-downloaded: missing  # no Linear key; finding evaluation-export-invalid-path
+    a-refused-download-is-worded: missing  # no Linear key; finding F-D1-13
+  nazar.files.download:
+    download-the-evaluation-sheet: missing  # no Linear key
+    refusal-says-why-on-every-page: missing  # no Linear key
+    refusal-keeps-what-i-was-doing: missing  # no Linear key
+    success-is-confirmed: missing  # no Linear key
+    session-over-goes-to-sign-in-and-back: unwalked  # no e2e, no replay
+    a-download-is-walked-to-its-end: missing  # no Linear key
+  nazar.homework.review:
+    the-list-change-is-announced: missing  # no Linear key; finding F-D1-04
+    a-served-download-is-saved: unwalked  # no e2e, no replay
+    a-refused-download-keeps-the-page: missing  # no Linear key; finding NHWREV-1
+    a-file-is-uploaded-and-listed: unwalked  # no e2e, no replay
+    file-changes-say-who-sees-them: missing  # no Linear key; finding NHWREV-2
+    a-sent-review-is-never-emptied: missing  # no Linear key; finding NHWREV-3, HWREVIEW-1, NHWREV-7
+    the-review-limit-is-worded: missing  # no Linear key; finding NHWREV-4
+    a-typed-note-is-kept: missing  # no Linear key; finding NHWREV-6, NHWREV-5
+    a-failed-send-is-told: unwalked  # no e2e, no replay
+    the-dialog-works-for-keyboard-and-screen-reader: missing  # no Linear key; finding F-D1-09, F-D1-10, F-D1-31
+  nazar.nazirs.appoint:
+    already-a-nazir-is-told: unwalked  # unit spec only, no e2e, no replay
+    barred-person-is-refused: unwalked  # unit spec only, no e2e, no replay
+    nobody-appoints-themselves: unwalked  # unit spec only, no e2e, no replay
+    refused-at-the-search: missing  # no Linear key; finding APPOINT-6
+    search-only-on-purpose: missing  # no Linear key; finding APPOINT-3
+    a-search-says-what-it-did: missing  # no Linear key; finding F-B-8, F-B-16, APPOINT-4
+    ata-says-why-it-is-off: missing  # no Linear key; finding F-B-7, APPOINT-2, F-B-2
+    cancel-while-pending-answers: missing  # no Linear key; finding APPOINT-1
+    directory-down-is-told: unwalked  # unit spec only, no e2e, no replay
+    failed-appointment-keeps-the-dialog: unwalked  # unit spec only, no e2e, no replay
+  nazar.nazirs.dismiss:
+    adopt-edit-or-drop-each-grant: missing  # MDRS-201
+    each-answer-names-its-person: missing  # no Linear key; finding F-B-3
+    focus-after-a-dismissal: missing  # no Linear key; finding F-B-9
+    an-already-gone-nazir-is-not-an-error: missing  # no Linear key; finding DISMISS-1
+    not-appointed-by-you-is-worded: missing  # no Linear key; finding F-B-15
+    a-refusal-is-told-in-the-dialog: unwalked  # no e2e, no replay
+    a-moved-list-is-asked-again: unwalked  # no e2e, no replay
+    a-dropped-seat-with-a-grantee-asks-first: unwalked  # no e2e, no replay
+    a-failed-read-can-be-retried: unwalked  # no e2e, no replay
+  nazar.nazirs.groups:
+    group-codes-are-all-34: unwalked  # unit spec only, no e2e, no replay
+    count-moves-meanwhile: unwalked  # unit spec only, no e2e, no replay
+    group-keeps-its-scope: missing  # no Linear key; finding GROUPS-1
+    name-before-people: missing  # no Linear key; finding GROUPS-3
+    errors-are-announced: missing  # no Linear key; finding F-B-5, F-B-7, F-B-10
+    the-dialog-is-described-by-its-intro: missing  # no Linear key; finding F-B-12
+    busy-controls-say-so: missing  # no Linear key; finding GROUPS-2, F-B-2
+    focus-after-a-delete: missing  # no Linear key; finding F-B-9
+    error-toast-over-a-modal: missing  # no Linear key; finding GROUPS-4
+  nazar.nazirs.permissions:
+    read-all-or-nothing: unwalked  # unit spec only, no e2e, no replay
+    a-refused-save-says-so: unwalked  # unit spec only, no e2e, no replay
+    group-the-course-permissions: missing  # MDRS-226; finding MDRS-226
+    say-why-a-permission-is-off: missing  # no Linear key; finding F-B-10
+    say-what-is-wrong-where-it-is: missing  # no Linear key; finding F-B-5
+    tell-the-count-as-it-changes: missing  # no Linear key; finding PERM-2
+    keep-the-ends-that-differ: missing  # no Linear key; finding PERM-3
+  nazar.notifications.inbox:
+    read-the-list: unwalked  # unit spec only, no e2e, no replay
+    switch-the-tabs: unwalked  # unit spec only, no e2e, no replay
+    open-a-row-and-leave: unwalked  # unit spec only, no e2e, no replay
+    mark-a-row-with-no-address: unwalked  # unit spec only, no e2e, no replay
+    mark-every-row-read: unwalked  # unit spec only, no e2e, no replay
+    read-the-next-rows: unwalked  # unit spec only, no e2e, no replay
+    the-number-follows-the-marks: unwalked  # no e2e, no replay
+    every-failure-is-told: unwalked  # unit spec only, no e2e, no replay
+    a-refused-mark-on-a-link-is-told: missing  # no Linear key; finding INBOX-1
+    a-row-names-its-course: missing  # no Linear key; finding INBOX-3
+    a-taken-mark-is-told: missing  # no Linear key; finding INBOX-4, F-E-8
+    every-kind-has-a-sentence: missing  # no Linear key; finding F-E-20
+    a-row-opens-like-a-link: missing  # no Linear key; finding F-E-5
+    focus-after-a-mark: missing  # no Linear key; finding F-E-8, F-E-9
+    d2-hocas-are-told-what-waits: missing  # no Linear key
+    email-copy-of-a-notice: missing  # MDRS-189
+  nazar.offsite.requestCourse:
+    the-request-reaches-the-koshk-nazim: unwalked  # no e2e, no replay
+    a-refused-send-says-why: unwalked  # unit spec only, no e2e, no replay
+    the-empty-and-failed-reads-are-said: unwalked  # unit spec only, no e2e, no replay
+    see-what-became-of-a-request: missing  # no Linear key; finding OFFSITE-1
+    a-failed-call-is-told: missing  # no Linear key; finding F-A-10
+    a-vanished-koshk-is-deselected: missing  # no Linear key; finding OFFSITE-2
+    every-wrong-field-is-announced: missing  # no Linear key; finding F-L-12
+  nazar.pano.decideApplications:
+    head-decides-what-she-lists: missing  # no Linear key
+    a-decision-already-made-is-told: unwalked  # unit spec only, no e2e, no replay
+    focus-follows-a-decision: missing  # no Linear key; finding F-A-2
+    a-failed-call-is-told: missing  # no Linear key; finding F-A-10
+    seats-per-gender-at-approval: missing  # MDRS-284
+  nazar.questions.answer:
+    change-an-answer: unwalked  # no e2e, no replay
+    empty-course: unwalked  # no e2e, no replay
+    page-through-questions: unwalked  # no e2e, no replay
+    failed-read-retry: unwalked  # no e2e, no replay
+    asker-is-told: missing  # no Linear key
+    answer-keeps-a-colleagues-answer: missing  # no Linear key; finding ANSWER-2
+    answer-is-announced: missing  # no Linear key; finding F-D1-08
+  nazar.recordings.add:
+    the-stream-is-one-click: unwalked  # no e2e, no replay
+    only-holders-of-the-codes: unwalked  # no e2e, no replay
+    a-problem-is-said-under-the-field: unwalked  # no e2e, no replay
+    the-problem-is-heard: missing  # no Linear key; finding field-errors-not-announced
+    a-celse-that-is-gone-is-told: unwalked  # no e2e, no replay
+    a-read-that-fails-can-be-retried: unwalked  # no e2e, no replay
+    a-time-before-the-celse-is-refused: unwalked  # no e2e, no replay
+    a-closed-course-keeps-the-switch-off: unwalked  # no e2e, no replay
+    the-medrese-policy-keeps-recordings-private: missing  # no Linear key; finding RECADD-1
+    a-recording-that-is-not-ready-says-so: missing  # no Linear key; finding RECADD-2
+    a-wrong-recording-can-be-taken-back: missing  # no Linear key
+    focus-follows-a-write: missing  # no Linear key; finding F-C-course-a-25, F-C-course-a-26
+    the-bunny-video-leaves-with-its-recording: missing  # MDRS-260
+    publish-to-the-medaris-channel: missing  # MDRS-204
+  nazar.recordings.upload:
+    upload-only-where-held: unwalked  # unit spec only, no e2e, no replay
+    choose-a-video-and-be-told-what-is-wrong: unwalked  # unit spec only, no e2e, no replay
+    release-time-never-opens-early: unwalked  # unit spec only, no e2e, no replay
+    release-time-saved-is-said: missing  # no Linear key; finding UPLOAD-3
+    start-a-signed-upload: unwalked  # unit spec only, no e2e, no replay
+    without-a-library-the-person-is-told: unwalked  # unit spec only, no e2e, no replay
+    stop-and-continue-an-upload: unwalked  # unit spec only, no e2e, no replay
+    continue-only-an-unfinished-upload: missing  # no Linear key; finding UPLOAD-2
+    replace-a-link-or-a-video: unwalked  # unit spec only, no e2e, no replay
+    replaced-videos-leave-the-library: unwalked  # unit spec only, no e2e, no replay
+    unheld-videos-leave-the-library: missing  # MDRS-260; finding UPLOAD-1
+    see-an-upload-through-processing: unwalked  # unit spec only, no e2e, no replay
+    a-change-of-status-is-told: missing  # no Linear key; finding F-C-course-a-21
+    a-failed-upload-stays-visible: missing  # MDRS-259; finding MDRS-259
+    no-upload-on-a-cancelled-celse: missing  # no Linear key; finding upload-on-cancelled-session
+  nazar.roster.bulkAdd:
+    the-answer-is-announced-and-the-focus-follows: missing  # no Linear key; finding F-D1-07
+    a-refusal-is-heard-over-the-dialog: missing  # no Linear key; finding BULK-1
+    the-dialog-holds-still-while-it-sends: missing  # no Linear key; finding BULK-2
+    a-call-that-fails-is-told: missing  # no Linear key; finding F-D1-20
+    one-box-says-what-it-holds: missing  # no Linear key; finding BULK-3
+    the-people-added-are-told: missing  # no Linear key; finding BULK-4
+    adding-by-address-says-who-it-adds-and-who-it-shows: missing  # no Linear key; finding BULK-5
+    seats-per-gender-at-bulk-add: missing  # MDRS-284
+  nazar.roster.complete:
+    complete-a-talebes-course: unwalked  # unit spec only, no e2e, no replay
+    reopen-a-completion: unwalked  # unit spec only, no e2e, no replay
+    find-a-talebe-in-the-roster: unwalked  # unit spec only, no e2e, no replay
+    a-moved-seat-is-told: unwalked  # unit spec only, no e2e, no replay
+    buttons-follow-the-code: unwalked  # unit spec only, no e2e, no replay
+    tell-the-talebe-about-a-completion: missing  # no Linear key; finding ROSCOM-4
+    say-when-a-course-was-completed: missing  # no Linear key; finding ROSCOM-3
+    a-barred-talebe-is-told-at-the-row: missing  # no Linear key; finding ROSCOM-2
+    keep-focus-after-a-decision: missing  # no Linear key; finding F-D1-05, ROSCOM-1, F-D1-20
+    say-a-change-out-loud: missing  # no Linear key; finding F-D1-04
+    icazet-record: missing  # MDRS-149
+  nazar.roster.decide:
+    decide-in-place: unwalked  # unit spec only, no e2e, no replay
+    a-decision-already-made-is-told: unwalked  # unit spec only, no e2e, no replay
+    a-reader-without-the-decide-code-sees-no-button: unwalked  # unit spec only, no e2e, no replay
+    refuse-who-holds-no-code: unwalked  # unit spec only, no e2e, no replay
+    menu-follows-the-page-rule: missing  # no Linear key; finding F-D1-29
+    note-says-what-makes-an-application-wait: missing  # no Linear key; finding ROSTER-1
+    a-barred-applicant-is-shown-as-barred: missing  # no Linear key; finding ROSTER-2
+    one-busy-mark-per-row: missing  # no Linear key; finding ROSTER-3
+    focus-follows-a-decision: missing  # no Linear key; finding F-D1-05
+    a-failed-call-is-told: missing  # no Linear key; finding F-D1-20
+    staff-see-the-talebe-list-by-permission-or-by-default: missing  # MDRS-203
+    seats-per-gender-at-approval: missing  # MDRS-284
+    a-rejection-may-carry-a-reason: missing  # no Linear key
+  nazar.roster.remove:
+    a-removal-can-be-taken-back: missing  # no Linear key; finding RMV-2
+    the-reason-says-who-reads-it: missing  # no Linear key; finding RMV-1
+    the-form-says-what-is-missing: missing  # no Linear key; finding F-D1-06
+    focus-follows-a-removal: missing  # no Linear key; finding F-D1-05
+    a-failed-call-is-told: missing  # no Linear key; finding F-D1-20
+    a-busy-dialog-says-so: missing  # no Linear key; finding RMV-3
+    the-length-limit-is-said: missing  # no Linear key; finding RMV-4
+    staff-see-the-roster-by-decision: missing  # MDRS-203
+  nazar.sessions.cancel:
+    cancel-keeps-the-celse: unwalked  # unit spec only, no e2e, no replay
+    confirm-before-cancelling: unwalked  # unit spec only, no e2e, no replay
+    the-note-reaches-the-talebe: unwalked  # unit spec only, no e2e, no replay
+    make-up-in-the-same-step: unwalked  # unit spec only, no e2e, no replay
+    telafi-leads-to-the-make-up: unwalked  # unit spec only, no e2e, no replay
+    only-session-managers-cancel: unwalked  # unit spec only, no e2e, no replay
+    a-refused-make-up-cancels-nothing: unwalked  # unit spec only, no e2e, no replay
+    a-stale-page-is-refused: unwalked  # unit spec only, no e2e, no replay
+    a-failed-cancel-after-a-make-up-is-told: unwalked  # unit spec only, no e2e, no replay
+    a-stale-page-is-refused-with-a-make-up: missing  # no Linear key; finding CANCEL-2
+    a-failed-cancel-leaves-no-stray-make-up: missing  # no Linear key; finding CANCEL-2
+    make-up-has-a-way-in: missing  # no Linear key; finding CANCEL-1
+    a-make-up-date-is-sane: missing  # no Linear key; finding CANCEL-5
+    the-date-error-clears-and-names-its-field: missing  # no Linear key; finding CANCEL-3, F-L-12
+    the-dialog-says-it-is-final: missing  # no Linear key; finding CANCEL-4
+    the-confirm-looks-final: missing  # no Linear key; finding F-C-course-a-20
+    the-note-limit-is-shown: missing  # no Linear key; finding CANCEL-6
+    focus-after-a-cancel: missing  # no Linear key; finding F-C-course-a-25, F-L-17
+    a-busy-dialog-says-so: missing  # no Linear key; finding F-C-course-a-26, F-C-course-a-28
+    cancel-only-a-live-celse: missing  # no Linear key; finding cancel-no-type-check
+    refusal-says-why-in-its-own-words: missing  # no Linear key; finding lesson-cancelled-text-streams-only
+    a-cancel-frees-in-person-seats: missing  # MDRS-284
+  nazar.sessions.inPersonSeats:
+    the-celse-is-marked-in-person: unwalked  # no e2e, no replay
+    who-opens-celseler: unwalked  # no e2e, no replay
+    set-the-seats-per-gender: missing  # MDRS-284
+    see-the-applications-in-order: missing  # MDRS-284
+    give-a-seat-at-approval: missing  # MDRS-284
+    a-full-quota-refuses-its-gender-only: missing  # MDRS-284
+    parallel-approvals-never-pass-the-quota: missing  # MDRS-284
+    a-seat-ends-with-the-course-seat: missing  # MDRS-284
+    move-a-talebe-between-remote-and-in-person: missing  # MDRS-284
+    the-same-list-in-nizam: missing  # MDRS-284
+    the-order-is-a-rule-or-advice: missing  # no Linear key
+    seats-on-the-course-or-the-celse: missing  # no Linear key
+    a-count-below-the-seats-given: missing  # no Linear key
+    approve-off-when-full: missing  # no Linear key
+    which-permission-gives-a-seat: missing  # no Linear key
+    declining-an-application: missing  # no Linear key
+    a-celse-cancelled-or-unmarked: missing  # no Linear key
+  nazar.sessions.manage:
+    set-the-meeting-link: unwalked  # no e2e, no replay
+    change-the-time: unwalked  # no e2e, no replay
+    mark-in-person: unwalked  # no e2e, no replay
+    set-or-remove-the-stream: unwalked  # no e2e, no replay
+    set-the-recording-access: unwalked  # no e2e, no replay
+    buttons-follow-the-codes: unwalked  # no e2e, no replay
+    a-stale-page-is-refused: unwalked  # no e2e, no replay
+    sessions-list-in-30-seconds-on-a-phone: unwalked  # no e2e, no replay
+    a-link-can-be-removed: missing  # no Linear key; finding MANAGE-5
+    a-change-is-recorded: missing  # no Linear key; finding MANAGE-1
+    a-change-of-way-in-is-told: missing  # MDRS-189; finding MANAGE-3
+    a-gone-celse-is-told: missing  # no Linear key; finding MANAGE-2
+    focus-follows-a-form: missing  # no Linear key; finding F-C-course-a-08, F-L-17, F-C-course-a-25
+    a-refused-send-is-announced: missing  # no Linear key; finding F-C-course-a-01, F-C-course-a-07
+    a-field-error-goes-when-the-field-is-right: missing  # no Linear key; finding MANAGE-4
+    a-button-is-named-by-its-words: missing  # no Linear key; finding MANAGE-6
+  nazar.sessions.plan:
+    plan-a-weekly-repeat: unwalked  # no e2e, no replay
+    plan-one-celse: unwalked  # no e2e, no replay
+    read-the-preview-before-making: unwalked  # no e2e, no replay
+    a-first-link-on-the-first-celse-only: unwalked  # no e2e, no replay
+    button-says-what-is-missing: missing  # no Linear key; finding F-C-course-a-09
+    preview-is-announced: missing  # no Linear key; finding F-C-course-a-10
+    a-field-in-error-is-announced: missing  # no Linear key; finding PLAN-1
+    a-title-or-link-that-is-wrong-is-said: unwalked  # unit spec only, no e2e, no replay
+    a-refused-write-leaves-the-form: unwalked  # unit spec only, no e2e, no replay
+    the-planner-is-for-those-who-may-manage-sessions: unwalked  # unit spec only, no e2e, no replay
+    no-celse-in-the-past-unasked: missing  # no Linear key; finding PLAN-4
+    quota-per-gender-when-planning: missing  # MDRS-284
+  nazar.settings.edit:
+    refusals-keep-the-draft-and-are-told: unwalked  # unit spec only, no e2e, no replay
+    the-two-working-policies-reach-courses: unwalked  # no e2e, no replay
+    no-public-recordings-is-enforced: missing  # no Linear key; finding policy-no-public-recordings-inert
+    leaving-a-changed-form-warns: missing  # no Linear key; finding SET-2
+    focus-stays-usable-after-vazgec-and-save: missing  # no Linear key; finding F-B-11
+    a-refused-courses-read-is-told-as-a-refusal: missing  # no Linear key; finding SET-1
+    admission-rules: missing  # MDRS-138
+  nazar.shell.errorStates:
+    the-roles-read-failing-is-a-retry: unwalked  # unit spec only, no e2e, no replay
+    a-failed-page-read-keeps-the-shell: unwalked  # unit spec only, no e2e, no replay
+    a-thrown-page-is-told-and-retried: unwalked  # no e2e, no replay
+    a-broken-root-has-a-document: unwalked  # unit spec only, no e2e, no replay
+    a-person-who-cannot-be-read-can-leave: missing  # no Linear key; finding ERR-4
+    one-h1-per-page: missing  # no Linear key; finding one-h1-per-page, F-L-16
+    an-error-face-is-announced-and-focused: missing  # no Linear key; finding F-E-15
+    a-face-names-its-tab: missing  # no Linear key; finding F-E-23, ERR-2, ERR-5
+    a-retry-says-it-is-being-tried: missing  # no Linear key; finding ERR-1
+    a-scope-404-answers-404: missing  # no Linear key; finding ERR-3
+  nazar.shell.scopeAndMenu:
+    nazir-is-offered-only-what-opens: missing  # MDRS-223; finding MDRS-223
+    the-menu-offers-only-what-opens: missing  # no Linear key; finding F-L-20, F-D2c-2, F-D2c-3
+    unread-is-on-the-bell-and-the-entry: unwalked  # no e2e, no replay
+    bildirimler-has-a-name-of-its-own: missing  # no Linear key; finding F-L-6
+    skip-link-first: missing  # no Linear key; finding F-L-1
+    landmarks-are-named: missing  # no Linear key; finding F-L-2, F-L-3
+    picker-rows-use-the-router: missing  # no Linear key; finding SCOPE-1
+    picker-name-carries-the-role: missing  # no Linear key; finding SCOPE-3
+    one-link-per-page: missing  # no Linear key; finding SCOPE-2
+  nazar.students.browse:
+    narrow-by-course: unwalked  # unit spec only, no e2e, no replay
+    say-there-are-no-talebe-yet: unwalked  # unit spec only, no e2e, no replay
+    retry-a-failed-read: unwalked  # unit spec only, no e2e, no replay
+    say-a-change-out-loud: missing  # no Linear key; finding F-B-4
+    say-why-it-is-refused-or-failed: missing  # no Linear key; finding F-B-1, F-B-13
+    reading-leaves-a-trace: missing  # no Linear key; finding students-read-unaudited
+    ban-only-where-it-may-be-given: missing  # no Linear key; finding STUDENTS-2
+    a-page-change-keeps-the-place: missing  # no Linear key; finding STUDENTS-1
+    a-long-word-or-page-is-held: missing  # no Linear key; finding STUDENTS-4, STUDENTS-5
+    the-course-filter-for-every-reader: missing  # no Linear key; finding STUDENTS-3
+  nizam.account.settings:
+    medaris-nazim-reads-their-permissions: missing  # no Linear key; finding NIZSET-2
+    no-role-is-told-and-keeps-the-rest: unwalked  # unit spec only, no e2e, no replay
+    dates-follow-the-zone: unwalked  # no e2e, no replay
+    a-failed-save-restores-the-zone: unwalked  # no e2e, no replay
+    a-save-is-visibly-busy-and-keeps-the-focus: missing  # no Linear key; finding F-W1-7
+    the-second-list-follows-the-zone-held: missing  # no Linear key; finding NIZSET-1
+    the-imam-star-explains-itself: unwalked  # unit spec only, no e2e, no replay
+    a-hoca-goes-to-nazar: unwalked  # unit spec only, no e2e, no replay
+    new-tab-is-said: missing  # no Linear key; finding new-tab-is-said, F-W1-14, F-X-15
+    a-failed-read-is-told-and-retried: unwalked  # no e2e, no replay
+    sign-out-survives-a-failed-read: missing  # no Linear key; finding NIZSET-4
+    page-structure-is-in-order: missing  # no Linear key; finding F-W1-9, NIZSET-3
+    loading-is-announced: missing  # no Linear key; finding F-W1-8
+    choose-the-language: missing  # MDRS-295; finding read-only
+  nizam.applications.decide:
+    contact-read-only-on-request: missing  # no Linear key; code exists in part; finding F-W3-7, APPDEC-2
+    the-two-writes-are-one: missing  # no Linear key; code exists in part; finding F-W3-8
+    an-answer-is-given-once: unwalked  # no e2e, no replay
+    tabs-say-what-they-changed: missing  # no Linear key; finding F-W3-5, F-X-1
+    the-link-says-when-its-application-is-gone: missing  # no Linear key; finding APPDEC-1
+    only-those-who-may-decide: unwalked  # no e2e, no replay
+    the-applicant-is-led-to-the-kosk: missing  # no Linear key; finding F-3
+    the-answered-application-names-its-kosk: missing  # no Linear key; finding APPDEC-3
+    focus-follows-a-decision: missing  # no Linear key; finding APPDEC-5
+    a-failed-read-keeps-the-way-back: missing  # no Linear key; finding APPDEC-4
+    the-lists-are-whole: missing  # no Linear key; finding APPDEC-6
+  nizam.courseRequests.decide:
+    kabul-et-says-what-it-does: missing  # no Linear key
+    the-reasons-error-is-announced: missing  # no Linear key
+    the-medrese-is-told-of-the-answer: missing  # no Linear key
+    a-request-answered-meanwhile-is-told: unwalked  # no e2e, no replay
+    an-accepted-request-names-its-course: missing  # no Linear key
+    a-failed-read-is-told-and-retried: unwalked  # no e2e, no replay
+    a-failed-read-keeps-the-tabs: missing  # no Linear key
+    the-page-says-which-kosk: missing  # no Linear key
+    a-change-of-tab-or-row-is-announced: missing  # no Linear key
+    the-focus-follows-an-answer: missing  # no Linear key
+  nizam.courses.curriculum:
+    add-a-week-or-a-celse: unwalked  # unit spec only, no e2e, no replay
+    a-refused-save-says-so: missing  # no Linear key
+    hide-a-week: unwalked  # unit spec only, no e2e, no replay
+    hiding-says-what-it-does-and-keeps-the-place: missing  # no Linear key
+    links-on-the-course-and-its-celses: unwalked  # unit spec only, no e2e, no replay
+    reorder-the-course-list: missing  # no Linear key
+    attach-a-file: unwalked  # unit spec only, no e2e, no replay
+    file-refusals-are-worded: unwalked  # unit spec only, no e2e, no replay
+    taking-a-file-off-asks: unwalked  # unit spec only, no e2e, no replay
+    download-a-file: unwalked  # unit spec only, no e2e, no replay
+    a-refused-download-keeps-the-edits: missing  # no Linear key
+    a-save-over-someone-elses-is-refused: unwalked  # unit spec only, no e2e, no replay
+    a-conflict-offers-the-current-course: missing  # no Linear key
+    unsaved-edits-survive-a-link: missing  # no Linear key
+    a-save-keeps-the-focus-and-says-it: missing  # no Linear key
+    a-failed-call-is-told: missing  # no Linear key
+    the-form-is-locked-while-it-is-sent: missing  # no Linear key
+    name-each-row-and-field: missing  # no Linear key
+    buttons-land-on-the-page-they-name: missing  # no Linear key
+  nizam.courses.decideApplications:
+    reject-asks-once-and-may-carry-a-reason: missing  # no Linear key
+    a-decision-already-made-is-told: unwalked  # unit spec only, no e2e, no replay
+    a-barred-talebe-is-told-so: missing  # no Linear key; finding HOME-1
+    a-failed-call-keeps-the-row: unwalked  # no e2e, no replay
+    a-row-in-flight-says-so: missing  # no Linear key; finding CDA-2, CDA-3
+    one-busy-mark-per-row: missing  # no Linear key; finding HOME-3
+    a-talebe-who-applies-again-is-listed: missing  # no Linear key; finding CDA-1
+    focus-follows-a-decision: missing  # no Linear key; finding F-W4-6
+    the-menus-number-costs-no-roster-read: missing  # no Linear key; finding CDA-4
+    the-basnazim-reads-the-list-or-is-told-why-not: missing  # no Linear key; code exists in part; finding CDA-5
+    the-note-says-why-an-application-waits: missing  # no Linear key; finding ROSTER-1
+    one-set-of-words-for-a-decision: missing  # no Linear key; finding CDA-6
+    an-unreadable-roster-is-an-alert: missing  # no Linear key; finding F-W4-10
+    seats-per-gender-at-approval: missing  # MDRS-284
+  nizam.courses.editHocalar:
+    see-who-teaches: unwalked  # no e2e, no replay
+    take-a-hoca-off: unwalked  # no e2e, no replay
+    a-refusal-is-told-by-its-code: unwalked  # no e2e, no replay
+    a-moved-course-is-not-overwritten: unwalked  # no e2e, no replay
+    search-only-when-asked: missing  # no Linear key; finding F-W4-20
+    say-the-search-outcomes: missing  # no Linear key; finding F-UI-W4-1, F-W4-hocalar-6, F-W4-hocalar-8
+    say-why-kaydet-is-off: missing  # no Linear key; finding F-X-3
+    offer-the-button-to-those-who-may: missing  # no Linear key; finding F-W4-hocalar-3
+    keep-what-the-dialog-does-not-show: missing  # no Linear key; finding F-W4-hocalar-4, F-W4-hocalar-5
+    read-only-the-hocas: missing  # no Linear key; finding F-W4-hocalar-1
+    a-gone-course-is-told: missing  # no Linear key; finding F-W4-hocalar-2, F-W4-hocalar-9
+  nizam.courses.list:
+    hide-says-how-many-talebe-lose-access: missing  # no Linear key; finding NCL-2
+    a-failed-hide-is-told-in-the-window: missing  # no Linear key; finding F-X-4
+    focus-follows-a-hide-or-a-restore: missing  # no Linear key; finding F-W4-6
+    a-tab-name-has-its-count-apart: missing  # no Linear key; finding NCL-3
+    closing-follows-the-busy-state: missing  # no Linear key; finding NCL-1
+    a-medrese-course-can-always-be-opened: missing  # no Linear key; finding F-W4-21
+    the-page-names-the-kosk-in-its-title: missing  # no Linear key; finding F-W4-17
+  nizam.courses.manageSessions:
+    mark-in-person: unwalked  # no e2e, no replay
+    set-or-remove-the-stream: unwalked  # no e2e, no replay
+    a-celse-is-flagged-and-the-flag-clears: unwalked  # no e2e, no replay
+    a-stale-page-is-refused: unwalked  # no e2e, no replay
+    the-talebe-are-told-of-a-new-time-and-a-cancel: unwalked  # no e2e, no replay
+    a-link-can-be-removed: missing  # no Linear key; finding MANAGE-5
+    a-change-is-recorded: missing  # no Linear key; finding MANAGE-1
+    a-change-of-way-in-is-told: missing  # MDRS-189; finding MANAGE-3
+    a-cancel-carries-a-note-and-a-make-up: missing  # no Linear key; finding NMSESS-2
+    a-cancel-says-it-is-final: missing  # no Linear key; finding CANCEL-4
+    a-refusal-reads-the-page-again: missing  # no Linear key; finding NMSESS-1
+    the-title-opens-the-celse: missing  # no Linear key; finding NMSESS-3, F-W4-12
+    a-time-cannot-be-moved-into-the-past: missing  # no Linear key; finding NMSESS-4
+    focus-follows-a-form: missing  # no Linear key; finding F-W4-9, F-W4-6, F-C-course-a-25
+    a-refused-send-is-announced: missing  # no Linear key; finding F-UI-W4-1
+    a-button-is-named-by-its-words: missing  # no Linear key; finding F-W4-11, MANAGE-6
+  nizam.courses.open:
+    every-answer-is-announced: missing  # no Linear key
+    the-required-fields-are-exposed: missing  # no Linear key
+    lookup-only-on-request: missing  # no Linear key
+    give-a-hoca-an-unvan: unwalked  # no e2e, no replay
+    removing-a-hoca-is-said: missing  # no Linear key
+    a-schedule-the-server-refuses-is-said-before: missing  # no Linear key
+    the-kosk-can-fix-approval: unwalked  # no e2e, no replay
+    accept-a-request-by-opening-its-course: unwalked  # no e2e, no replay
+    a-request-answer-that-failed-is-told-truly: missing  # no Linear key
+    a-request-that-is-gone-is-said: missing  # no Linear key
+    a-refused-course-is-said-with-its-reason: missing  # no Linear key
+    a-refused-celse-plan-is-explained-and-kept: missing  # no Linear key
+    say-when-a-hoca-is-unknown-or-the-celses-fail: unwalked  # no e2e, no replay
+    the-days-have-names: missing  # no Linear key
+    kontenjan-per-gender: missing  # MDRS-284
+    gender-is-always-required: missing  # MDRS-284
+  nizam.courses.overview:
+    refuse-a-course-the-reader-may-not-read: unwalked  # unit spec only, no e2e, no replay
+    retry-an-unreadable-overview: unwalked  # unit spec only, no e2e, no replay
+    cards-link-to-talebeler: missing  # MDRS-291
+    links-open-the-page-they-name: missing  # no Linear key; finding F-W4-1, F-X-19
+    numbers-say-what-they-count: missing  # no Linear key; finding KOVERVIEW-1
+    a-failed-read-is-not-a-refusal: missing  # no Linear key; finding KOVERVIEW-3, KOVERVIEW-2
+    a-link-only-where-it-opens: missing  # no Linear key; finding KOVERVIEW-5
+    the-tab-names-the-course: missing  # no Linear key; finding F-W4-17
+    kontenjan-per-gender: missing  # MDRS-284
+    gender-always-required: missing  # MDRS-284
+  nizam.courses.planSessions:
+    plan-one-celse: unwalked  # no e2e, no replay
+    button-says-what-is-missing: missing  # no Linear key; finding F-X-3
+    preview-is-announced: missing  # no Linear key; finding F-W4-13
+    a-field-in-error-is-announced: missing  # no Linear key; finding F-W4-15, F-X-2
+    a-title-or-link-that-is-wrong-is-said: unwalked  # no e2e, no replay
+    a-refused-write-leaves-the-form: unwalked  # no e2e, no replay
+    the-planner-is-for-those-who-manage-the-kosk: unwalked  # no e2e, no replay
+    a-course-that-is-not-there-is-said-so: missing  # no Linear key; finding NPLAN-2
+    the-planner-after-a-refused-open: unwalked  # no e2e, no replay
+    no-celse-in-the-past-unasked: missing  # no Linear key; finding NPLAN-1
+    the-page-names-its-course: missing  # no Linear key; finding F-W4-17
+    quota-per-gender-when-planning: missing  # MDRS-284
+  nizam.courses.roster:
+    reopen-a-completion: unwalked  # no e2e, no replay
+    a-refused-change-says-why: unwalked  # no e2e, no replay
+    the-page-for-a-reader-with-no-roster-right: unwalked  # no e2e, no replay
+    a-course-under-another-kosks-address: unwalked  # no e2e, no replay
+    a-removal-can-be-taken-back: missing  # no Linear key
+    the-dialog-tells-the-truth-about-applying-again: missing  # no Linear key; finding NROS-1, RMV-2
+    removing-and-barring-go-together: missing  # no Linear key; finding NROS-2
+    the-reason-says-who-reads-it: missing  # no Linear key; finding RMV-1
+    a-completion-is-told-to-the-talebe: missing  # no Linear key; finding ROSCOM-4
+    say-when-a-course-was-completed: missing  # MDRS-149; finding ROSCOM-3
+    a-barred-talebe-is-told-at-the-row: missing  # no Linear key; finding NROS-4, ROSCOM-2
+    a-stale-row-is-read-again: missing  # no Linear key; finding NROS-3
+    an-unreadable-roster-says-why: missing  # no Linear key; finding F-W4-10, NROS-6
+    the-form-says-what-is-missing: missing  # no Linear key; finding F-W4-14
+    focus-and-words-follow-a-decision: missing  # no Linear key; finding F-W4-6, F-D1-04
+    a-busy-dialog-says-so: missing  # no Linear key; finding NROS-5, ROSCOM-1
+    the-length-limit-is-said: missing  # no Linear key; finding RMV-4
+    a-failed-call-is-told: missing  # no Linear key; finding NROS-7, F-D1-20
+    the-page-names-its-course: missing  # no Linear key; finding F-W4-17
+    back-goes-to-the-course: missing  # no Linear key; finding F-W4-1
+    a-reinstated-seat-follows-the-kontenjan: missing  # MDRS-284
+  nizam.courses.settingsAndPublish:
+    kaydet-waits-for-a-change: unwalked  # unit spec only, no e2e, no replay
+    the-sample-moves-with-the-version-and-a-stale-page-is-told: unwalked  # no e2e, no replay
+    the-recordings-policy-is-changed-by-the-manager: unwalked  # unit spec only, no e2e, no replay
+    the-recordings-policy-is-kept-on-the-write: missing  # no Linear key
+    the-policy-saves-with-its-own-word: missing  # no Linear key
+    the-kosk-policy-holds-the-approval-box: unwalked  # unit spec only, no e2e, no replay
+    a-locked-rule-is-worded: missing  # no Linear key
+    a-refusal-reads-the-page-again: missing  # no Linear key
+    the-enrolled-count-is-in-the-warning: unwalked  # no e2e, no replay
+    the-warning-says-who-loses-the-course: missing  # no Linear key
+    the-hide-that-finds-it-done-is-done: unwalked  # no e2e, no replay
+    a-hoca-who-is-a-nazim-elsewhere-gets-the-limited-page: unwalked  # unit spec only, no e2e, no replay
+    the-public-page-link: unwalked  # no e2e, no replay
+    a-new-tab-is-said: missing  # no Linear key
+    opening-the-page-writes-no-second-audit-row: missing  # no Linear key
+    focus-after-a-save: missing  # no Linear key
+    leaving-a-changed-form-asks: missing  # no Linear key
+    the-tab-names-the-course: missing  # no Linear key
+    cancel-and-close-say-they-are-busy: missing  # no Linear key
+    a-hidden-course-says-so: missing  # no Linear key
+    the-page-has-its-own-skeleton: missing  # no Linear key
+    the-zone-list-is-usable: missing  # no Linear key
+  nizam.decks.koskDecks:
+    the-page-links-to-the-archive: missing  # no Linear key
+    edit-a-decks-cards: unwalked  # no e2e, no replay
+    edit-the-cards-on-the-design-system: missing  # no Linear key
+    the-proposer-is-told-of-an-acceptance: missing  # no Linear key
+    a-stale-proposal-link-says-so: missing  # no Linear key; finding KDECK-1
+    an-answer-is-given-once: unwalked  # no e2e, no replay
+    a-failed-read-explains-itself: missing  # no Linear key; finding F-W5-9
+    the-first-read-failing-is-told-by-the-page: unwalked  # no e2e, no replay
+    a-failed-write-is-told-where-it-happens: missing  # no Linear key; finding F-W5-3
+    the-focus-follows-an-answer: missing  # no Linear key; finding F-W5-5, KDECK-4
+    the-hide-dialog-says-who-can-undo-it: missing  # no Linear key; finding KDECK-3
+    a-proposal-card-says-its-card-type: missing  # no Linear key; finding KDECK-5
+    the-edit-link-says-its-words: missing  # no Linear key; finding KDECK-6
+    a-long-list-is-paged: unwalked  # no e2e, no replay
+    hiding-is-audited: missing  # no Linear key
+  nizam.decks.legacyCards:
+    see-your-decks-in-a-table: unwalked  # no e2e, no replay
+    only-what-is-yours-is-offered: missing  # no Linear key
+    make-a-deck: unwalked  # no e2e, no replay
+    a-bad-value-is-told-on-the-field: missing  # no Linear key
+    rename-in-place: unwalked  # no e2e, no replay
+    a-refused-save-is-undone: missing  # no Linear key
+    a-saved-change-is-said-in-the-persons-words: missing  # no Linear key
+    delete-a-deck-after-asking: unwalked  # no e2e, no replay
+    open-a-decks-cards: unwalked  # no e2e, no replay
+    edit-a-card-in-place: unwalked  # no e2e, no replay
+    delete-a-card-after-asking: unwalked  # no e2e, no replay
+    the-table-keeps-the-right-text: missing  # no Linear key
+    import-cards-from-a-file: unwalked  # no e2e, no replay
+    big-files-can-be-imported: missing  # no Linear key
+    the-import-says-it-is-working: missing  # no Linear key
+    export-a-deck: unwalked  # no e2e, no replay
+    get-a-sample-file: unwalked  # no e2e, no replay
+    a-failure-says-why-in-the-persons-words: missing  # no Linear key
+    every-control-has-a-name: missing  # no Linear key
+    every-word-is-the-persons-own: missing  # no Linear key
+    the-table-keeps-an-order: missing  # no Linear key
+    a-failed-read-is-told: unwalked  # no e2e, no replay
+    a-page-has-a-title-and-a-loading-state: missing  # no Linear key
+    one-place-to-edit-a-deck: missing  # no Linear key
+  nizam.grants.appoint:
+    a-stranger-leaves-no-audit-row: unwalked  # no e2e, no replay
+    a-refusal-is-worded: unwalked  # unit spec only, no e2e, no replay
+    warn-before-naming-oneself: missing  # no Linear key
+    a-refused-write-reads-the-list-again: missing  # no Linear key
+    text-that-is-no-address-is-told: missing  # no Linear key
+    kaydet-says-why-it-is-off: missing  # no Linear key
+    the-count-is-announced: missing  # no Linear key
+    a-post-with-no-permission-reads-izin-yok: missing  # no Linear key
+    a-dismissal-names-who-stands-in-the-way: missing  # no Linear key
+    the-end-shows-its-hour: missing  # no Linear key
+    the-tab-names-the-kosk: missing  # no Linear key
+    the-dialogs-open-on-their-first-field: missing  # no Linear key
+  nizam.home.chiefOverview:
+    every-waiting-request-has-a-way-in: missing  # no Linear key
+    a-row-opens-its-own-item: missing  # no Linear key
+    the-warning-names-every-scope: missing  # no Linear key
+    reach-the-lists-of-the-platform: unwalked  # unit spec only, no e2e, no replay
+    a-failed-home-says-so: unwalked  # no e2e, no replay
+    a-failed-home-has-a-heading: missing  # no Linear key
+    a-failed-roles-read-says-so: missing  # no Linear key
+    every-word-is-in-the-catalog: missing  # no Linear key
+    the-greeting-fits-the-person: missing  # no Linear key
+    reports-and-dashboards: missing  # no Linear key
+  nizam.home.decideApplications:
+    the-reason-reaches-who-the-dialog-says: missing  # no Linear key
+    a-decision-already-made-is-told: unwalked  # unit spec only, no e2e, no replay
+    a-barred-talebe-is-told-so: missing  # no Linear key; finding HOME-1
+    a-failed-call-keeps-the-row-and-the-reason: unwalked  # unit spec only, no e2e, no replay
+    a-failed-save-is-told-in-the-dialog: missing  # no Linear key; finding F-W1-13, F-X-4
+    the-list-follows-the-server: missing  # no Linear key; finding HOME-2
+    one-busy-mark-per-row: missing  # no Linear key; finding HOME-3
+    focus-follows-a-decision: missing  # no Linear key; finding F-W1-4, F-X-7
+    a-row-the-viewer-may-not-decide-says-why: unwalked  # unit spec only, no e2e, no replay
+    the-applicants-card-is-for-the-kosks-own-management: unwalked  # no e2e, no replay
+    a-locked-page-says-why: missing  # no Linear key; finding HOME-6
+    seats-per-gender-at-approval: missing  # MDRS-284
+  nizam.home.koskNazimLanding:
+    read-cancelled-celse: unwalked  # no e2e, no replay
+    cancelled-celse-says-so-in-words: missing  # no Linear key
+    row-button-reaches-the-celse: missing  # no Linear key
+    failed-read-says-so: unwalked  # no e2e, no replay
+    no-heading-when-the-read-fails: missing  # no Linear key
+    list-says-how-much-it-shows: missing  # MDRS-211
+    tab-switch-is-not-an-audited-read: missing  # no Linear key
+    tabs-control-a-panel: missing  # no Linear key
+    loading-is-announced: missing  # no Linear key
+  nizam.home.medarisNazimCut:
+    a-nazim-with-no-permission-is-told-so: unwalked  # no e2e, no replay
+    a-failed-grants-read-is-said: unwalked  # no e2e, no replay
+    an-open-page-stops-offering-what-was-taken: missing  # no Linear key
+    the-home-greets-the-person: missing  # no Linear key
+    every-counted-request-has-a-way-in: missing  # no Linear key
+    permanent-ban-requests-exist-before-they-are-offered: missing  # MDRS-194
+    the-footnote-names-who-gave: missing  # no Linear key
+    the-menu-and-the-permissions-agree: missing  # no Linear key
+  nizam.hosting.grantAndRevoke:
+    a-medaris-nazim-with-the-code-works-the-page: unwalked  # no e2e, no replay
+    no-medrese-left-is-said: unwalked  # no e2e, no replay
+    a-failed-list-is-said: unwalked  # no e2e, no replay
+    the-reason-a-button-is-off-is-said: missing  # no Linear key
+    the-focus-survives-a-withdrawal: missing  # no Linear key
+    a-refusal-brings-the-page-up-to-date: missing  # no Linear key
+    a-failed-list-can-be-tried-again-in-place: missing  # no Linear key
+    a-call-in-flight-is-not-answered-by-a-live-button: missing  # no Linear key
+    the-grant-window-starts-on-its-list: missing  # no Linear key
+    the-page-names-its-kosk: missing  # no Linear key
+    the-list-of-medreses-is-read-when-needed: missing  # no Linear key
+    appeal-a-withdrawn-right: missing  # MDRS-139
+  nizam.inactive.reassign:
+    a-filter-says-what-it-did: missing  # no Linear key
+    a-permitted-medaris-nazim-has-a-menu-entry: missing  # no Linear key
+    the-button-says-why-it-is-off: missing  # no Linear key
+    the-window-starts-on-the-first-field: missing  # no Linear key
+    a-search-says-what-it-did: missing  # no Linear key
+    a-refusal-has-its-own-words: missing  # no Linear key; code exists in part
+    a-stale-row-goes-after-a-refusal: missing  # no Linear key
+    cancel-while-sending-answers: missing  # no Linear key
+    the-focus-goes-somewhere-after-an-assignment: missing  # no Linear key
+    a-scope-that-never-had-a-manager-is-refused: missing  # no Linear key
+    a-passive-medrese-from-passivate-shows-here: unwalked  # no e2e, no replay
+  nizam.inactive.viewContent:
+    openings-found-in-the-audit-page: missing  # no Linear key
+    list-follows-the-refusal: missing  # no Linear key
+    refusal-is-announced: missing  # no Linear key
+    other-refusals-are-told: unwalked  # no e2e, no replay
+    one-press-one-opening: missing  # no Linear key
+    medaris-nazim-opens-what-they-may: missing  # no Linear key
+    medaris-nazim-finds-the-page: missing  # no Linear key
+  nizam.kosks.browse:
+    a-long-list-is-paged: unwalked  # no e2e, no replay
+    a-hidden-kosk-says-who-locked-it: unwalked  # no e2e, no replay
+    a-refused-restore-says-why: unwalked  # no e2e, no replay
+    an-empty-list-says-so: unwalked  # no e2e, no replay
+    a-failed-read-says-so-and-retries: unwalked  # no e2e, no replay
+    a-medaris-nazim-reads-the-list: unwalked  # no e2e, no replay
+    a-person-with-no-right-meets-izniniz-yok: unwalked  # no e2e, no replay
+    the-courses-a-nazim-teaches-elsewhere: unwalked  # no e2e, no replay
+    role-aware-navigation: missing  # MDRS-107; code exists in part
+    a-nazim-reaches-the-list-by-the-menu: missing  # MDRS-107
+    a-medaris-nazim-may-open: missing  # no Linear key; code exists in part
+    the-list-says-how-many-and-when-it-changes: missing  # no Linear key
+    the-numbers-follow-the-filter: missing  # no Linear key
+    a-page-past-the-end-has-a-way-back: missing  # no Linear key
+    a-bad-address-is-a-refusal-not-a-crash: missing  # no Linear key
+    a-failure-of-the-viewer-read-is-said: missing  # no Linear key
+    the-focus-survives-a-restore: missing  # no Linear key
+  nizam.kosks.editAndHide:
+    a-locked-platform-policy-is-said-in-words: missing  # no Linear key; code exists in part
+    a-refused-save-is-announced-and-the-focus-goes-to-it: missing  # no Linear key; code exists in part
+    a-save-is-confirmed-in-a-way-that-stays: missing  # no Linear key; code exists in part
+    the-person-lands-where-the-kosk-went: missing  # no Linear key; code exists in part
+    a-hidden-kosk-says-so-on-its-settings: missing  # no Linear key; code exists in part
+    the-page-names-its-kosk: missing  # no Linear key; code exists in part
+    a-busy-dialog-is-not-closed-by-mistake: missing  # no Linear key; code exists in part
+    medaris-yonetimi-corrects-a-kosk: unwalked  # no e2e, no replay
+    a-refusal-is-said-in-words: unwalked  # no e2e, no replay
+  nizam.kosks.manage:
+    restore-at-once: unwalked  # no e2e, no replay
+    add-a-nazim-from-here: unwalked  # no e2e, no replay
+    a-hosting-only-nazim-is-sent-to-hosting: unwalked  # no e2e, no replay
+    others-are-refused: unwalked  # no e2e, no replay
+    the-view-offers-only-what-the-reader-can-do: missing  # no Linear key
+    a-stale-page-is-read-again: missing  # no Linear key
+    a-write-is-said-where-the-person-is: missing  # no Linear key
+    the-tab-names-the-kosk: missing  # no Linear key
+    a-disabled-button-says-why: missing  # no Linear key
+    a-lookup-runs-on-request: missing  # no Linear key
+    a-hidden-kosk-cannot-be-followed-from-here: missing  # no Linear key
+    an-unreadable-page-says-so: unwalked  # no e2e, no replay
+  nizam.kosks.nazims:
+    the-page-says-a-passive-kosk-is-reopened: missing  # no Linear key; finding KNZ-1
+    a-medaris-nazim-who-may-add-can-add-here: missing  # no Linear key; finding KNZ-2
+    a-person-who-is-a-nazim-already-is-told-at-once: missing  # no Linear key; finding KNZ-5
+    the-picker-stops-at-ten: missing  # no Linear key; finding KNZ-4
+  nizam.kosks.open:
+    the-form-says-what-is-missing: missing  # no Linear key
+    lookup-only-on-request: missing  # no Linear key
+    a-refusal-is-announced: missing  # no Linear key
+    a-medaris-nazim-opens: missing  # no Linear key; code exists in part
+    focus-returns-when-the-form-was-opened-by-the-address: missing  # no Linear key
+  nizam.madrasahs.browse:
+    a-viewer-is-offered-only-what-they-may-do: unwalked  # no e2e, no replay
+    an-unread-viewer-is-not-trusted: missing  # no Linear key
+    the-list-says-when-it-cannot-be-read: unwalked  # no e2e, no replay
+    the-archive-is-one-click-away: unwalked  # no e2e, no replay
+    the-chief-opens-a-medrese-in-nazar: unwalked  # no e2e, no replay
+    a-passive-medrese-says-why-it-is-passive: missing  # no Linear key; finding MBROWSE-1
+    a-medrese-with-no-head-is-in-the-passive-list: missing  # no Linear key; finding MBROWSE-1
+    the-numbers-say-what-they-count: missing  # no Linear key; finding MBROWSE-2
+    a-change-of-rows-is-announced: missing  # no Linear key; finding MBROWSE-3
+    the-rest-of-a-long-list-is-reachable: missing  # no Linear key; finding MBROWSE-4
+    a-tab-is-chosen-not-passed: missing  # no Linear key; finding MBROWSE-5
+  nizam.madrasahs.headMuderris:
+    a-stale-list-is-refused-and-asked-again: unwalked  # no e2e, no replay
+    a-dropped-seat-with-a-grantee-is-refused: unwalked  # no e2e, no replay
+    nobody-takes-over-a-row-given-to-themselves: unwalked  # no e2e, no replay
+    an-unreadable-list-can-be-retried: unwalked  # no e2e, no replay
+    say-why-the-button-is-off: missing  # no Linear key; finding F-X-3
+    refuse-the-same-head-in-words: missing  # no Linear key; finding HEAD-1
+    name-a-permission-in-words: missing  # no Linear key; finding HEAD-2
+    say-a-second-search-found-nobody: missing  # no Linear key; finding HEAD-3
+    tell-naming-oneself-from-a-take-over: missing  # no Linear key; finding HEAD-4
+    answer-each-person-by-a-radio: missing  # no Linear key; finding F-W2-5
+    open-on-the-first-field: missing  # no Linear key; finding F-W2-12
+    keep-the-focus-after-a-change: missing  # no Linear key; finding F-W2-10
+    search-on-a-button-not-on-blur: missing  # no Linear key; finding F-W2-3, F-X-14
+    answer-for-each-item: missing  # MDRS-201
+  nizam.madrasahs.open:
+    an-empty-short-name-is-made-from-the-name: unwalked  # no e2e, no replay
+    an-empty-short-name-is-explained: missing  # no Linear key
+    a-medaris-nazim-with-the-permission-opens: unwalked  # no e2e, no replay
+    a-medaris-nazim-cannot-name-themselves: unwalked  # no e2e, no replay
+    the-refusal-of-self-naming-says-what-happened: missing  # no Linear key
+    the-form-says-what-is-missing: missing  # no Linear key
+    lookup-only-on-request: missing  # no Linear key
+    a-search-answer-is-always-said: missing  # no Linear key
+    a-refusal-is-announced: missing  # no Linear key
+    the-head-is-an-account-of-the-realm: missing  # no Linear key; code exists in part
+    the-list-names-every-head: missing  # no Linear key
+    a-person-who-may-not-open-is-told: unwalked  # no e2e, no replay
+    a-directory-that-does-not-answer-is-said: unwalked  # no e2e, no replay
+  nizam.madrasahs.passivate:
+    a-stale-confirmation-asks-again: unwalked  # unit spec only, no e2e, no replay
+    refusals-while-confirming: unwalked  # no e2e, no replay
+    refusals-of-the-preview-are-told-apart: missing  # no Linear key; finding F-W2-passivate-1
+    a-medaris-nazim-may-passivate: unwalked  # no e2e, no replay
+    the-list-says-why-a-medrese-is-passive: missing  # no Linear key; finding F-W2-passivate-4
+    passive-is-one-rule: missing  # no Linear key; finding F-W2-passivate-5, inactive-scope-accepts-new-scope
+    the-result-and-the-stale-notice-are-announced: missing  # no Linear key; finding F-W2-10, F-W2-passivate-3
+    the-closing-is-told-to-those-it-closes: missing  # no Linear key; finding MDRS-265
+    the-passive-medrese-waits-for-a-head: unwalked  # no e2e, no replay
+  nizam.madrasahs.restore:
+    its-courses-come-back-with-it: unwalked  # no e2e, no replay
+    a-passive-medrese-comes-back-passive: unwalked  # no e2e, no replay
+    a-medaris-nazim-with-the-code-restores: unwalked  # no e2e, no replay
+    a-viewer-who-cannot-restore-is-told-why: missing  # no Linear key
+    the-kademe-is-told-where-it-can-apply: unwalked  # no e2e, no replay
+    a-race-is-told-in-words: unwalked  # no e2e, no replay
+    a-refusal-brings-the-page-up-to-date: missing  # no Linear key; finding RESTORE-4
+    the-page-does-not-offer-what-the-api-refuses: missing  # no Linear key; finding F-W2-2
+    focus-follows-the-restore: missing  # no Linear key; finding F-W2-10, F-X-7
+    the-busy-word-is-in-the-catalog: missing  # no Linear key; finding RESTORE-3
+  nizam.moderation.banStudent:
+    the-talebe-is-told-without-the-reason: unwalked  # unit spec only, no e2e, no replay
+    a-person-who-runs-the-course-is-refused: unwalked  # unit spec only, no e2e, no replay
+    a-person-already-barred-is-answered-with-the-standing-ban: unwalked  # unit spec only, no e2e, no replay
+    the-hoca-bars-the-course: missing  # no Linear key; finding F-D2c-3
+    the-check-of-who-may-be-barred-is-complete: missing  # no Linear key; finding ban-staff-check-gaps, BANDEC-3
+    a-ban-that-stands-is-told: missing  # no Linear key; finding BANST-2
+    a-refusal-is-told-inside-the-window: missing  # no Linear key; finding F-W5-3, F-X-4
+    the-button-says-why-it-is-off: missing  # no Linear key; finding F-W5-4, F-X-3, F-X-2
+    the-window-waits-while-it-sends: missing  # no Linear key; finding F-W5-2, BANST-5, BANST-4
+    the-focus-goes-somewhere-after-a-ban: missing  # no Linear key; finding BANST-3
+    the-roster-names-the-scope-it-shows: missing  # no Linear key; finding BANST-6
+    a-ban-is-placed-at-the-platform-level: missing  # MDRS-197
+    the-talebe-is-told-by-mail: missing  # MDRS-189
+    the-ban-is-recognised-on-another-device: missing  # MDRS-125
+  nizam.moderation.decideAppeal:
+    the-menu-leads-to-the-list: unwalked  # no e2e, no replay
+    every-holder-is-led-to-the-list: missing  # no Linear key
+    the-deciders-are-told-an-appeal-waits: missing  # no Linear key
+    read-the-waiting-appeals: unwalked  # unit spec only, no e2e, no replay
+    the-card-names-the-author-and-the-day: missing  # no Linear key
+    accept-an-appeal: unwalked  # unit spec only, no e2e, no replay
+    accept-asks-first-and-may-carry-a-note: missing  # no Linear key
+    the-koskss-card-says-it-was-sent-back: missing  # no Linear key
+    a-second-refusal-is-appealable-or-said: missing  # no Linear key
+    refuse-an-appeal-with-a-note: unwalked  # unit spec only, no e2e, no replay
+    the-note-has-its-own-error: missing  # no Linear key
+    the-notes-error-is-announced: missing  # no Linear key
+    the-people-concerned-are-told-the-decision: missing  # no Linear key
+    one-decision-at-a-time: missing  # no Linear key
+    an-appeal-decided-meanwhile-is-told: unwalked  # unit spec only, no e2e, no replay
+    a-failed-decision-is-told-where-it-is-read: missing  # no Linear key
+    the-decided-appeals-keep-their-outcome: unwalked  # no e2e, no replay
+    only-those-allowed-decide: unwalked  # unit spec only, no e2e, no replay
+    a-failed-read-is-told-and-retried: unwalked  # no e2e, no replay
+    the-focus-and-a-word-follow-a-decision: missing  # no Linear key
+    appeals-of-other-decisions: missing  # MDRS-139
+  nizam.moderation.decideBan:
+    lifted-before-you-or-no-longer-allowed-is-told: unwalked  # no e2e, no replay
+    every-refusal-is-told: unwalked  # no e2e, no replay
+    widen-refuses-a-person-who-runs-a-course: missing  # no Linear key
+    a-hoca-is-not-named-over-an-open-ban: missing  # no Linear key
+    one-widening-asks-the-same-way-everywhere: missing  # no Linear key
+    a-widening-names-the-ban-it-widens: missing  # no Linear key
+    a-refusal-is-told-in-the-dialog-and-the-list-follows: missing  # no Linear key
+    the-list-and-the-focus-follow-a-decision: missing  # no Linear key
+    an-empty-reason-is-told: missing  # no Linear key
+    the-lift-says-what-it-lifts: missing  # no Linear key
+    the-note-under-a-ban-tells-the-true-reason: missing  # no Linear key
+    a-medrese-ban-reads-as-one: missing  # no Linear key
+    bans-at-every-level-reach-the-people-above: missing  # MDRS-113
+    a-ban-at-platform-level: missing  # MDRS-113
+    a-ban-recognises-the-device: missing  # MDRS-125
+    a-ban-can-close-the-account: missing  # MDRS-197
+  nizam.moderation.decidePermanentBan:
+    who-may-ask: missing  # no Linear key
+    page-behind-the-menu-entry: missing  # MDRS-140
+    decider-holds-the-ban-permission: missing  # MDRS-140
+    deciders-are-told-and-read-the-request: missing  # MDRS-140
+    person-is-checked-where-it-bites: missing  # MDRS-140
+    approve-closes-the-account: missing  # MDRS-197
+    closing-is-fail-closed-and-repeatable: missing  # MDRS-197
+    the-service-account-may-disable-only: missing  # no Linear key
+    closed-account-keeps-no-session: missing  # MDRS-197
+    closed-account-is-not-appointed: missing  # MDRS-197; finding ban-staff-check-gaps
+    reject-with-a-note-ban-stays: missing  # MDRS-140
+    requester-sees-the-outcome: missing  # MDRS-140
+    every-step-is-audited: missing  # MDRS-140; finding PBAN-1
+    a-lifted-ban-withdraws-its-request: missing  # no Linear key
+    platform-ban-is-listed: missing  # MDRS-113; finding NDB-4
+    a-lift-reopens-the-account: missing  # MDRS-197
+    medaris-home-card-counts: missing  # MDRS-140; finding F-W1-15
+    device-follows-the-platform-ban: missing  # MDRS-125
+  nizam.moderation.deleteArchived:
+    the-list-pages-ten-at-a-time: unwalked  # no e2e, no replay
+    the-count-names-everything-that-goes: missing  # no Linear key; code exists in part
+    already-gone-is-handled: unwalked  # no e2e, no replay
+    a-count-that-fails-does-not-block-the-delete: unwalked  # no e2e, no replay
+    already-gone-is-a-notice-not-an-error: missing  # no Linear key; code exists in part
+    a-refused-delete-is-told-in-the-dialog: missing  # no Linear key; code exists in part
+    a-week-or-session-with-a-recording-can-be-deleted: missing  # MDRS-244; code exists in part
+    the-focus-goes-somewhere-after-a-delete: missing  # no Linear key; code exists in part
+    a-delete-does-not-skip-a-row-of-the-next-page: missing  # no Linear key; code exists in part
+    a-busy-dialog-is-not-closed-by-mistake: missing  # no Linear key; code exists in part
+    a-late-count-does-not-fill-another-dialog: missing  # no Linear key; code exists in part
+  nizam.moderation.restoreArchived:
+    a-failed-read-is-told-and-retried: unwalked  # no e2e, no replay
+    focus-follows-a-restore: missing  # no Linear key; finding F-W5-5, F-X-7
+    every-row-is-reachable: missing  # no Linear key; finding RESTORE-1
+    the-type-filter-offers-only-what-can-list: missing  # no Linear key; finding RESTORE-3
+    a-flipped-row-names-the-real-level: missing  # no Linear key; finding RESTORE-2
+    every-refusal-has-turkish-words: missing  # no Linear key; finding RESTORE-4
+    a-hidden-parent-is-named: missing  # no Linear key; finding RESTORE-5
+  nizam.moderation.reviewBans:
+    a-medaris-nazim-with-one-permission-reads: unwalked  # unit spec only, no e2e, no replay
+    an-unreadable-list-recovers: unwalked  # unit spec only, no e2e, no replay
+    a-change-of-the-list-is-told: missing  # no Linear key; finding F-W5-10, REVBANS-4
+    the-last-page-keeps-the-focus: missing  # no Linear key; finding REVBANS-4
+    a-medrese-wide-ban-reads-as-medrese: missing  # no Linear key; finding REVBANS-2, NDB-4
+    platform-level-bans-have-a-chip: missing  # MDRS-113
+    a-widening-is-offered-only-where-it-changes-something: missing  # no Linear key; finding REVBANS-1
+    a-row-says-what-it-lacks: missing  # no Linear key; finding REVBANS-3, NDB-5
+    the-lifted-tab-is-ordered-as-it-shows: missing  # no Linear key; finding REVBANS-5
+    a-reader-sees-only-what-her-permission-is-for: missing  # no Linear key; finding TRIAGE-2
+    a-banned-device-is-read-here: missing  # MDRS-125
+  nizam.moderation.reviewDeckPublication:
+    take-a-published-deck-back: unwalked  # no e2e, no replay
+    reviewer-never-answers-own-deck: unwalked  # no e2e, no replay
+    a-settled-request-says-so: unwalked  # no e2e, no replay
+    the-list-is-paged: unwalked  # no e2e, no replay
+    look-only-when-asked: missing  # no Linear key; finding DECKREV-1, DECKREV-2
+    answers-are-on-the-record: missing  # no Linear key; finding DECKREV-4
+    answered-request-says-when-it-was-asked: missing  # no Linear key; finding DECKREV-5
+    decision-follows-the-cards: missing  # no Linear key; finding DECKREV-6
+    a-change-is-announced: missing  # no Linear key; finding F-W5-5, F-W5-6, F-W5-7
+  nizam.nazims.appoint:
+    an-empty-office-says-so: unwalked  # unit spec only, no e2e, no replay
+    lookup-only-on-request: missing  # no Linear key
+    kaydet-says-why-it-is-off: missing  # no Linear key
+    the-person-is-checked-before-sending: missing  # no Linear key; code exists in part
+    only-a-known-account-is-appointed: missing  # no Linear key; code exists in part
+    a-refusal-is-announced: missing  # no Linear key
+    the-dialog-opens-on-its-field: missing  # no Linear key
+    a-ceiling-on-what-a-medaris-nazim-may-give: missing  # MDRS-209
+  nizam.nazims.dismiss:
+    nothing-to-ask-when-nothing-was-given: unwalked  # no e2e, no replay
+    groups-they-defined-are-listed: unwalked  # no e2e, no replay
+    what-they-gave-themselves-is-told: unwalked  # no e2e, no replay
+    adopt-edit-or-drop-each-grant: missing  # MDRS-201
+    say-why-the-button-is-off: missing  # no Linear key; finding F-W2-4, F-X-3
+    each-answer-names-its-person: missing  # no Linear key; finding F-W2-5
+    focus-after-a-dismissal: missing  # no Linear key; finding F-W2-10
+    a-person-who-is-gone-is-not-an-error: missing  # no Linear key; finding NZDIS-1
+    loading-is-announced: missing  # no Linear key; finding NZDIS-2
+    a-refusal-names-whose-rows-block-it: missing  # no Linear key; finding NZDIS-5
+    a-person-without-a-name-has-a-name-in-the-buttons: missing  # no Linear key; finding F-W2-11
+    a-refusal-is-told-in-the-dialog: unwalked  # no e2e, no replay
+    a-moved-list-is-asked-again: unwalked  # no e2e, no replay
+    a-failed-read-can-be-retried: unwalked  # no e2e, no replay
+  nizam.nazims.editPermissions:
+    a-wrong-end-is-announced: missing  # no Linear key
+    a-refusal-says-what-is-true-now: missing  # no Linear key
+    a-save-that-changes-nothing-says-so: missing  # no Linear key
+    a-refusal-keeps-the-form: unwalked  # unit spec only, no e2e, no replay
+    the-dialog-starts-on-the-work: missing  # no Linear key
+    the-table-shows-the-hour: missing  # no Linear key
+    the-count-is-announced: missing  # no Linear key
+    the-checks-do-not-expire: missing  # no Linear key
+  nizam.nazims.groups:
+    scope-is-fixed-once-made: unwalked  # no e2e, no replay
+    a-refusal-is-told: unwalked  # no e2e, no replay
+    group-the-course-permissions: missing  # MDRS-226; finding MDRS-226
+    warn-before-an-edit-is-dropped: missing  # no Linear key; finding F-W2-8
+    the-question-is-described-by-its-intro: missing  # no Linear key; finding F-W2-13, F-X-6, F-UI-W1-1
+    the-list-is-a-list: missing  # no Linear key; finding F-W2-9
+    busy-buttons-say-so: missing  # no Linear key; finding F-W2-groups-1, F-UI-W1-3
+    a-stale-count-can-be-answered: missing  # no Linear key; finding F-W2-groups-3, F-W2-groups-2
+    focus-after-a-make-or-a-delete: missing  # no Linear key; finding F-W2-groups-4
+    say-why-one-course-is-off: missing  # no Linear key; finding F-W2-groups-5
+    no-call-when-nothing-changed: missing  # no Linear key; finding F-W2-groups-6
+  nizam.notifications.triage:
+    read-the-next-notices: unwalked  # unit spec only, no e2e, no replay
+    every-failure-is-told: unwalked  # unit spec only, no e2e, no replay
+    the-basnazim-is-told: missing  # no Linear key; finding TRIAGE-1
+    a-notice-leads-where-the-person-may-read: missing  # no Linear key; finding TRIAGE-2
+    a-taken-mark-is-told: missing  # no Linear key; finding F-W1-5, F-W1-6, F-X-8
+    a-retry-says-it-ran: missing  # no Linear key; finding F-W1-16
+    a-title-opens-with-its-mark-kept: missing  # no Linear key; finding F-W1-17
+    a-chip-narrows-or-is-not-drawn: missing  # no Linear key; finding TRIAGE-3
+    a-failed-read-never-leaves-the-skeleton: missing  # no Linear key; finding TRIAGE-5
+    more-kinds-of-notice: missing  # no Linear key
+    email-copy-of-a-ban-notice: missing  # MDRS-189
+  nizam.partners.registerAndScope:
+    register-a-partner-by-client-id: unwalked  # unit spec only, no e2e, no replay
+    a-client-id-is-registered-once: unwalked  # unit spec only, no e2e, no replay
+    the-form-says-what-is-wrong: unwalked  # unit spec only, no e2e, no replay
+    a-refusal-is-announced: missing  # no Linear key
+    switch-a-partner-on-and-off: unwalked  # unit spec only, no e2e, no replay
+    a-switch-keeps-the-focus: missing  # no Linear key
+    choose-the-kosks-a-partner-works-with: unwalked  # unit spec only, no e2e, no replay
+    taking-a-kosk-away-deletes-the-codes: unwalked  # unit spec only, no e2e, no replay
+    removing-a-kosk-asks-first: missing  # no Linear key; code exists in part
+    rename-a-partner: unwalked  # unit spec only, no e2e, no replay
+    a-dialog-starts-in-its-field: missing  # no Linear key
+    the-list-could-not-be-read: unwalked  # unit spec only, no e2e, no replay
+    a-wrong-partner-can-be-removed: missing  # no Linear key; code exists in part
+    a-medaris-nazim-with-the-permission-finds-the-page: missing  # no Linear key; code exists in part; finding F-X-12
+  nizam.platform.auditLog:
+    an-older-page-that-fails-says-so: unwalked  # no e2e, no replay
+    the-export-says-how-much-it-holds: missing  # no Linear key
+    a-failed-export-says-so: missing  # no Linear key
+    the-log-says-how-long-it-is-kept: missing  # no Linear key
+    a-change-of-rows-is-announced: missing  # no Linear key
+    the-filter-form-keeps-its-place: missing  # no Linear key
+    a-granted-medaris-nazim-finds-the-page: missing  # no Linear key
+    every-kind-the-log-lists-can-be-chosen: missing  # no Linear key
+    a-deleted-scope-is-named-as-deleted: missing  # no Linear key
+    a-name-too-long-is-refused-in-words: missing  # no Linear key
+    the-notice-says-who-sees-the-log: missing  # no Linear key
+    the-log-cannot-be-changed: unwalked  # no e2e, no replay
+  nizam.platform.policies:
+    see-who-applies-a-rule-on-their-own: unwalked  # unit spec only, no e2e, no replay
+    a-policy-binds-every-scope-below: unwalked  # unit spec only, no e2e, no replay
+    a-read-that-fails-is-said-and-retried: unwalked  # unit spec only, no e2e, no replay
+    a-refused-save-puts-the-switch-back: unwalked  # no e2e, no replay
+    a-medaris-nazim-with-the-permission-finds-the-page: missing  # no Linear key; code exists in part
+    a-switch-says-it-is-saving: missing  # no Linear key; code exists in part
+    ask-before-a-platform-wide-change: missing  # no Linear key; code exists in part
+    a-switch-names-who-applies-it: missing  # no Linear key; code exists in part
+    the-table-covers-medreses: missing  # no Linear key; code exists in part
+    two-switches-do-not-fight: missing  # no Linear key; code exists in part
+    a-change-that-changes-nothing-is-not-logged: missing  # no Linear key; code exists in part
+  nizam.shell.landingByRole:
+    a-failed-read-is-told-not-denied: unwalked  # unit spec only, no e2e, no replay
+    a-failed-read-on-the-root-says-so: missing  # no Linear key
+    a-failed-no-role-page-has-a-heading: missing  # no Linear key
+    a-failed-hand-over-announces-once: missing  # no Linear key
+    the-role-line-is-not-claimed-while-unread: missing  # no Linear key
+    one-spelling-of-nazir: missing  # no Linear key
+    the-welcome-page-has-its-own-title: missing  # no Linear key
+  nizam.shell.menuPerPersona:
+    chief-sees-every-entry: unwalked  # no e2e, no replay
+    medaris-menu-offers-each-permitted-page: missing  # no Linear key
+    menu-offers-only-pages-that-exist: missing  # no Linear key
+    the-whole-kosk-menu-has-its-pages: missing  # MDRS-211
+    a-nazim-of-several-kosks-has-a-picker: unwalked  # no e2e, no replay
+    one-kosk-is-not-a-choice: missing  # no Linear key
+    menu-keeps-the-kosk-the-person-works-in: missing  # no Linear key
+    badge-is-not-an-audited-roster-read: missing  # no Linear key
+    sheet-opens-on-a-safe-control: missing  # no Linear key
+    skip-link-first: missing  # no Linear key
+    links-use-the-router: missing  # no Linear key
+    landmarks-are-named: missing  # no Linear key
+    role-names-in-english-and-arabic: missing  # MDRS-202
+    v2-role-names: missing  # MDRS-144
+    language-is-no-part-of-the-address: unwalked  # no e2e, no replay
+    grant-ceiling-for-a-medaris-nazim: missing  # MDRS-209
+    course-permissions-in-groups: missing  # MDRS-226
+  nizam.shell.noAccessAndNotFound:
+    a-refusal-shows-the-account-and-the-way-back: unwalked  # no e2e, no replay
+    a-refusal-names-the-chief-or-says-so-in-general: unwalked  # no e2e, no replay
+    a-refusal-reads-without-a-name: unwalked  # no e2e, no replay
+    an-address-no-page-owns-says-so: unwalked  # no e2e, no replay
+    a-menu-person-keeps-the-shell-around-the-face: unwalked  # no e2e, no replay
+    the-kalici-yasak-entry-opens-a-page: missing  # MDRS-140; finding F-P0-4, F-X-11
+    the-youtube-entry-opens-a-page: missing  # MDRS-195; finding F-P0-4, F-X-11
+    a-refusal-and-a-missing-page-are-announced-and-focused: missing  # no Linear key; finding NOACC-1
+    a-refusal-is-served-as-a-refusal: missing  # no Linear key; finding NOACC-2
+    a-face-names-its-tab: missing  # no Linear key; finding NOACC-3
+    a-refusal-names-whom-to-ask-only-to-someone-who-can-ask: missing  # no Linear key
+  nizam.youtube.liveBroadcasts:
+    menu-entry-opens-the-page: missing  # MDRS-238; finding F-P0-4, F-X-11
+    owner-setup-is-done: missing  # MDRS-237
+    legal-pages-name-youtube-api-services: missing  # MDRS-237
+    paid-courses-answer-is-recorded: missing  # no Linear key
+    connect-the-channel: missing  # MDRS-238
+    only-a-holder-connects: missing  # MDRS-238
+    who-else-may-connect: missing  # no Linear key
+    connection-status-and-reconnect: missing  # MDRS-238
+    the-connect-failures-are-told: missing  # MDRS-238
+    the-token-is-kept-encrypted: missing  # MDRS-238
+    disconnect-the-channel: missing  # no Linear key
+    where-the-callback-lives: missing  # no Linear key
+    open-where-the-hoca-runs-it: missing  # no Linear key
+    course-choice-youtube: missing  # MDRS-238
+    visibility-is-stated-explicitly: missing  # MDRS-238
+    public-broadcast-under-the-platform-policy: missing  # no Linear key; finding RECADD-1
+    a-broadcast-per-celse: missing  # MDRS-238
+    a-celse-with-none-can-be-given-one: missing  # no Linear key
+    one-stream-per-hoca: missing  # MDRS-238
+    whose-stream-a-ders-nazir-uses: missing  # no Linear key
+    the-quota-is-guarded: missing  # MDRS-238
+    reschedule-and-cancel-reach-the-broadcast: missing  # MDRS-238
+    when-youtube-does-not-answer: missing  # no Linear key
+    every-call-on-the-channel-is-audited: missing  # MDRS-238
+    the-stream-key-panel: missing  # MDRS-238
+    the-key-is-masked-shown-and-copied: missing  # MDRS-238
+    how-the-key-is-shown-is-decided: missing  # no Linear key
+    only-the-streams-people-see-the-key: missing  # MDRS-238
+    the-key-is-never-stored-logged-or-sampled: missing  # MDRS-238
+    follow-the-life-of-the-broadcast: missing  # MDRS-239
+    states-in-plain-words: missing  # MDRS-239
+    missed-start-warns: missing  # MDRS-239
+    youtube-starts-and-stops-by-itself: missing  # MDRS-239
+    one-worker-shared-by-all-lessons: missing  # MDRS-239
+    polling-or-sse: missing  # no Linear key
+    the-talebes-player-shows-the-state: missing  # MDRS-239; finding YT-2
+    monitor-preview: missing  # MDRS-239
+    a-never-started-broadcast: missing  # no Linear key
+    attach-the-recording-when-the-broadcast-ends: missing  # MDRS-240
+    ready-only-when-youtube-has-processed: missing  # MDRS-240; finding RECADD-2
+    which-notification-the-talebe-get: missing  # no Linear key
+    a-failed-archive-is-told: missing  # MDRS-240
+    the-recording-visibility-follows-the-course: missing  # MDRS-240
+    a-hocas-recording-is-kept: missing  # no Linear key
+    the-manual-link-beside-a-broadcast: missing  # no Linear key
+    live-chat-feed-in-medaris-ui: missing  # MDRS-241; finding read-only
+    live-lesson-in-tedris-with-timestamp-and-chat: missing  # MDRS-147
+    publish-to-the-medaris-channel: missing  # MDRS-204
+  realm.auth.forgotPassword:
+    confirmation-names-the-way-on: missing  # no Linear key; finding FORGOT-1, K3
+    link-lasts-thirty-minutes: unwalked  # no e2e, no replay
+    a-link-works-once: missing  # no Linear key; code exists in part; finding FORGOT-3
+    page-checks-before-posting: unwalked  # no e2e, no replay
+    email-rule-before-posting: missing  # no Linear key; finding FORGOT-2
+    length-from-the-realm: missing  # no Linear key; finding K9
+    reset-reason-is-linked: missing  # no Linear key; finding K5, K4
+    sign-out-other-devices-choice: unwalked  # no e2e, no replay
+    password-change-is-told: missing  # no Linear key; finding FORGOT-4
+    smtp-reset-mail: missing  # MDRS-188
+  realm.auth.partnerConsent:
+    the-partners-terms-are-shown: unwalked  # no e2e, no replay
+    partner-client-gives-terms: missing  # no Linear key; finding CONSENT-3
+    take-the-consent-back: unwalked  # no e2e, no replay
+    consent-texts-read-in-the-console: missing  # no Linear key; finding CONSENT-2
+    wrong-request-goes-back-to-the-partner: unwalked  # no e2e, no replay
+    sign-in-first: unwalked  # no e2e, no replay
+    the-page-opens-where-they-read: missing  # no Linear key; finding CONSENT-1, K2
+    a-language-of-their-own: missing  # MDRS-202; code exists in part; finding K12
+  realm.auth.profileUpdate:
+    the-tokens-carry-the-saved-profile: unwalked  # no e2e, no replay
+    tell-what-is-missing-near-the-button: missing  # no Linear key; finding K7
+    a-box-to-tick-says-so-in-its-own-words: missing  # no Linear key; finding PROFILE-3
+    one-title-per-page: missing  # no Linear key; finding K2
+    focus-on-the-first-missing-field: missing  # no Linear key; finding PROFILE-1
+    busy-state-while-saving: missing  # no Linear key; finding PROFILE-2
+    the-notice-link-is-the-environments-own: missing  # no Linear key; finding K13
+  realm.auth.register:
+    taken-address-under-the-field: unwalked  # no e2e, no replay
+    resend-the-mail: unwalked  # no e2e, no replay
+    an-expired-form-is-explained: unwalked  # no e2e, no replay
+    focus-stays-while-typing: missing  # no Linear key; finding K1
+    form-opens-where-they-type: missing  # no Linear key; finding REG-1
+    reasons-are-announced: missing  # no Linear key; finding REG-2
+    password-rules-stay-and-are-announced: missing  # no Linear key; finding REG-3, K8
+    accounts-are-not-enumerated: missing  # no Linear key; finding REG-4
+    resend-is-offered-when-it-works: missing  # no Linear key; finding REG-5, K14
+    verify-in-another-browser-ends-signed-in: missing  # no Linear key; finding REG-6
+    a-mistyped-address-can-be-corrected: missing  # no Linear key; finding K14
+    one-title-for-each-page: missing  # no Linear key; finding K2
+    one-way-of-speaking: missing  # no Linear key; finding K10
+    change-of-address-mail: missing  # MDRS-188
+    terms-and-consent-at-registration: missing  # MDRS-191; finding K11
+  realm.auth.sessionEnded:
+    a-link-to-a-protected-page-asks-to-sign-in: unwalked  # no e2e, no replay
+    the-tab-learns-by-itself: unwalked  # no e2e, no replay
+    the-end-is-noticed-at-once: unwalked  # no e2e, no replay
+    a-refused-token-gets-new-tokens: unwalked  # no e2e, no replay
+    the-text-they-typed-is-not-lost: missing  # no Linear key; finding WRT-13
+    the-page-says-the-session-ended: missing  # no Linear key; finding SESSION-1
+    the-same-in-nazar-and-nizam: unwalked  # no e2e, no replay
+  realm.auth.signIn:
+    remember-me: missing  # no Linear key; code exists in part
+    one-sign-in-for-the-three-apps: missing  # no Linear key; code exists in part
+    the-form-opens-where-they-type: missing  # no Linear key; finding K3
+    one-title-for-each-page: missing  # no Linear key; finding K2, SHL-01, F-E-23
+    the-form-works-without-script: missing  # no Linear key
+    a-language-of-their-own: missing  # MDRS-202; code exists in part; finding K12
+    a-banned-device-is-refused: missing  # MDRS-125
+    second-step-with-a-one-time-code: missing  # MDRS-190
+  realm.auth.signInFailures:
+    a-failure-another-try-fixes-is-retried-once: unwalked  # no e2e, no replay
+    a-signed-in-browser-is-not-shown-an-error: unwalked  # no e2e, no replay
+    a-way-out-that-is-not-the-same-failure: missing  # no Linear key; finding SIF-4, SIF-6
+    the-box-is-announced: missing  # no Linear key; finding SHL-03, F-E-1, F-P0-1
+    each-page-has-its-own-title: missing  # no Linear key; finding SHL-01, F-E-23, F-P0-3
+    a-refusal-moves-the-focus: missing  # no Linear key; finding K3
+    a-pause-says-how-long-and-who-to-ask: missing  # no Linear key; finding SIF-1, SIF-2
+    a-refusal-does-not-tell-strangers-the-account-exists: missing  # no Linear key; finding SIF-3
+    a-ban-switches-the-account-off: missing  # MDRS-197; code exists in part
+    a-blocked-cookie-is-named: unwalked  # no e2e, no replay
+    the-error-link-goes-to-sign-in: missing  # no Linear key; finding SIF-5
+  realm.auth.signOut:
+    sign-out-when-the-session-already-ended: unwalked  # no e2e, no replay
+    tell-the-person-when-sign-out-cannot-start: missing  # no Linear key; finding SHL-13
+    nazar-asks-before-signing-out: missing  # no Linear key; finding F-E-18
+    a-sign-out-page-has-its-own-title: missing  # no Linear key; finding SHL-01, F-E-23, F-P0-3
+    focus-starts-on-the-question: missing  # no Linear key; finding focus-not-set
+    nothing-cancels-a-sign-out-in-flight: missing  # no Linear key; finding SOUT-1
+  tedris.account.calendarFeed:
+    copy-refusal-says-so: unwalked  # no e2e, no replay
+    masked-link-is-readable-to-a-screen-reader: missing  # no Linear key
+    an-unreadable-status-asks-before-making-a-link: unwalked  # no e2e, no replay
+    a-refused-call-is-told-in-red: unwalked  # no e2e, no replay
+    a-refused-renewal-says-the-old-link-still-works: missing  # no Linear key
+    making-the-link-is-announced: missing  # no Linear key
+    a-lost-connection-is-answered-on-the-page: missing  # no Linear key
+    the-session-ending-sends-to-sign-in: unwalked  # no e2e, no replay
+    the-words-of-the-kit-are-in-the-persons-language: missing  # no Linear key
+    switch-the-feed-off: missing  # no Linear key
+  tedris.account.notifications:
+    news-by-day: unwalked  # no e2e, no replay
+    open-what-it-is-about: unwalked  # no e2e, no replay
+    narrow-to-unread: unwalked  # no e2e, no replay
+    mark-one-read: unwalked  # no e2e, no replay
+    mark-all-read: unwalked  # no e2e, no replay
+    older-news-on-request: unwalked  # no e2e, no replay
+    refusal-puts-the-list-back: unwalked  # no e2e, no replay
+    only-mine: unwalked  # no e2e, no replay
+    bell-says-how-many: missing  # no Linear key
+    marking-says-it-is-done: missing  # no Linear key
+    focus-stays-after-a-mark: missing  # no Linear key
+    failed-retry-says-so: missing  # no Linear key
+    every-kind-has-words: missing  # no Linear key
+    the-help-lists-every-kind: missing  # no Linear key
+    loading-says-so: missing  # no Linear key
+    a-network-failure-is-handled: missing  # no Linear key
+    a-mark-by-link-is-not-lost: missing  # no Linear key
+    two-marks-do-not-undo-each-other: missing  # no Linear key
+    lists-have-their-own-names: missing  # no Linear key
+    title-says-the-site: missing  # no Linear key
+    labels-are-the-apps-own: missing  # no Linear key
+    answers-match-the-contract: missing  # no Linear key
+    unknown-type-keeps-its-code: missing  # no Linear key
+    repeated-types-is-a-400: missing  # no Linear key
+    cancelled-celse-leads-to-its-make-up: missing  # no Linear key
+    email-preferences: missing  # MDRS-189
+  tedris.account.profile:
+    failed-save-restores-the-choice: unwalked  # no e2e, no replay
+    gender-is-required: unwalked  # no e2e, no replay
+    gender-change-reaches-everyone: unwalked  # no e2e, no replay
+    failed-read-says-so: unwalked  # no e2e, no replay
+    page-survives-a-failed-read: missing  # no Linear key
+    name-seen-everywhere: missing  # no Linear key
+    say-what-the-profile-link-edits: missing  # no Linear key
+    blank-name-is-announced: missing  # no Linear key
+    long-name-is-stopped-early: missing  # no Linear key
+    a-lost-connection-is-told: missing  # no Linear key
+    a-new-list-is-announced: missing  # no Linear key
+    choose-the-language: missing  # MDRS-295
+    delete-my-account: missing  # MDRS-243
+  tedris.account.publicProfile:
+    visitor-asked-to-sign-in-first: unwalked  # no e2e, no replay
+    no-link-to-a-hidden-page: unwalked  # no e2e, no replay
+    kunye-is-chosen: missing  # MDRS-141; code exists in part
+    kunye-is-unique: missing  # MDRS-141; code exists in part
+    kunye-null-is-a-400: missing  # no Linear key; code exists in part
+    kunye-at-registration: missing  # MDRS-141
+    gender-follows-the-account: missing  # MDRS-141; code exists in part; finding read-only
+    gender-is-always-set: missing  # MDRS-284; code exists in part
+    others-are-private-by-default: missing  # MDRS-141; code exists in part
+    preview-of-what-others-see: missing  # MDRS-141; code exists in part
+    others-see-only-what-is-open: missing  # MDRS-141; code exists in part
+    a-profile-has-a-page-to-read: missing  # MDRS-141
+    consent-covers-the-kunye: missing  # MDRS-141; code exists in part
+    gender-decision-before-switch-on: missing  # MDRS-141
+    switched-on-from-one-place: missing  # no Linear key; code exists in part
+    personal-data-reads-are-permissioned-and-audited: missing  # MDRS-141
+    icazet-visibility: missing  # MDRS-149
+  tedris.account.rolesOverview:
+    platform-permissions-in-words: missing  # no Linear key
+    failed-read-says-so: unwalked  # no e2e, no replay
+    new-tab-is-announced: missing  # no Linear key
+    chief-finds-their-role: missing  # no Linear key
+  tedris.celse.attend:
+    the-meeting-link-waits-for-the-window: missing  # no Linear key
+    the-date-card-says-in-person: unwalked  # no e2e, no replay
+    the-stream-card-says-in-person: missing  # no Linear key
+    an-in-person-celse-names-its-place: missing  # no Linear key
+    a-seat-at-an-in-person-celse-is-per-gender: missing  # MDRS-284
+    the-page-says-when-it-changes: missing  # no Linear key
+    the-page-has-its-own-title: missing  # no Linear key
+    a-failed-read-is-not-a-missing-celse: missing  # no Linear key
+    the-agenda-marks-the-step-now: unwalked  # no e2e, no replay
+    the-kaynak-and-resources-are-listed: unwalked  # no e2e, no replay
+    the-exam-is-read: unwalked  # no e2e, no replay
+    a-finished-celse-says-it-has-no-recording: unwalked  # no e2e, no replay
+  tedris.celse.browseCurriculum:
+    the-neighbours-at-the-ends: unwalked  # no e2e, no replay
+    the-popup-is-named-and-announced: missing  # no Linear key; code exists in part; finding CLS-04, CLS-05, BROWSE-1
+    rows-follow-the-clock: missing  # no Linear key; code exists in part; finding CLS-09
+    a-celse-on-air-is-marked: unwalked  # no e2e, no replay
+  tedris.celse.cancelled:
+    cancelled-celse-recording-is-offered: missing  # no Linear key
+    title-says-which-celse: missing  # no Linear key
+    whole-note-from-the-row: missing  # no Linear key
+    read-failure-is-not-a-missing-celse: missing  # no Linear key
+    cancel-only-a-live-celse: missing  # no Linear key; code exists in part
+    refusal-says-why-in-its-own-words: missing  # no Linear key; code exists in part
+  tedris.celse.locked:
+    the-team-hears-of-the-application: unwalked  # no e2e, no replay
+    enrolled-locked-talebe-is-told-why: missing  # MDRS-265; finding CLS-02
+    barred-talebe-is-refused-kindly: unwalked  # no e2e, no replay
+    pending-card-says-the-right-thing: missing  # no Linear key; finding LOCKED-2
+    applicant-can-take-it-back-here: missing  # no Linear key; finding CLS-12
+    focus-and-announcement-after-applying: missing  # no Linear key; finding CLS-19, CLS-10
+    every-locked-celse-offers-the-way-in: missing  # no Linear key; finding LOCKED-1, LOCKED-3
+    seats-are-separate-per-gender: missing  # MDRS-284
+  tedris.celse.watchRecording:
+    recording-public-honours-medrese-policy: missing  # no Linear key; finding policy-no-public-recordings-inert
+    failed-recording-seen-by-team: missing  # MDRS-259; finding MDRS-259
+    notes-position-on-bunny: missing  # MDRS-264; finding MDRS-264
+    bunny-recording-plays: unwalked  # no e2e, no replay
+    recording-failed-read-is-not-found: unwalked  # no e2e, no replay
+    recording-with-stream-link: unwalked  # no e2e, no replay
+  tedris.celse.watchStream:
+    the-hoca-sees-the-chat-only: unwalked  # no e2e, no replay
+    the-end-of-the-stream-is-told-by-the-player: unwalked  # no e2e, no replay
+    a-celse-with-nothing-to-watch-goes-back: unwalked  # no e2e, no replay
+    a-held-recording-says-when-it-opens: unwalked  # no e2e, no replay
+    a-stream-that-cannot-be-framed-has-a-link: unwalked  # no e2e, no replay
+    the-page-says-live-only-when-it-is: missing  # no Linear key; finding CLS-08
+    the-frame-keeps-its-name: missing  # no Linear key; finding WATCH-1
+    the-line-matches-the-panel: missing  # no Linear key; finding WATCH-2
+    the-page-finds-the-recording-by-itself: missing  # no Linear key; finding WATCH-3
+    a-chat-only-column-is-not-named-twice: missing  # no Linear key; finding WATCH-4
+    stream-states-come-from-the-broadcast: missing  # MDRS-239
+    a-live-lesson-shows-its-timestamp-and-chat: missing  # MDRS-147
+  tedris.course.apply:
+    the-team-hears-of-the-application: unwalked  # no e2e, no replay
+    apply-card-says-what-will-happen: missing  # no Linear key; code exists in part; finding CRS-APPLY-1
+    stale-withdraw-draws-the-real-state: unwalked  # no e2e, no replay
+    kontenjan-per-gender: missing  # MDRS-284
+    gender-required-before-a-seat: missing  # MDRS-284
+    admission-rules: missing  # MDRS-138
+  tedris.course.deckTab:
+    study-the-featured-deck: unwalked  # no e2e, no replay
+    browse-and-turn-the-cards: unwalked  # no e2e, no replay
+    test-yourself-and-keep-the-marks: unwalked  # no e2e, no replay
+    retry-the-missed-cards: unwalked  # no e2e, no replay
+    cards-read-failure-is-told: unwalked  # no e2e, no replay
+    unsaved-marks-can-be-sent-again: unwalked  # no e2e, no replay
+    several-decks-and-the-deck-of-the-week: unwalked  # no e2e, no replay
+    decks-read-failure-is-told: missing  # no Linear key; finding DECKTAB-1
+    a-round-survives-a-change-of-view: missing  # no Linear key; finding DECKTAB-2
+    card-side-is-told-without-colour: missing  # no Linear key; finding CRS-11
+    tab-is-in-the-address: missing  # no Linear key; finding PROG-1
+  tedris.course.draftPreview:
+    preview-says-when-no-celse-is-dated: missing  # no Linear key
+    back-to-the-draft-in-nazar: missing  # no Linear key; finding CRS-10
+    visitor-gets-not-found: unwalked  # no e2e, no replay
+    staff-from-nazar-reach-the-draft: missing  # no Linear key; finding DRAFT-1
+    preview-tab-names-the-draft: missing  # no Linear key; finding DRAFT-2
+    preview-sample-row-leads-nowhere: missing  # no Linear key; finding CRS-15
+  tedris.course.grades:
+    marks-eksik-and-vermedi: unwalked  # no e2e, no replay
+    absent-and-not-entered-are-said: unwalked  # no e2e, no replay
+    a-retake-says-so: unwalked  # no e2e, no replay
+    empty-says-so: unwalked  # no e2e, no replay
+    passive-scope-shuts-grades: unwalked  # no e2e, no replay
+    grades-on-an-address: unwalked  # no e2e, no replay
+    tab-is-in-the-address: missing  # no Linear key
+    failed-read-is-told: missing  # no Linear key
+    release-leads-to-grades: missing  # no Linear key
+    completed-talebe-is-told: missing  # no Linear key
+    grades-have-one-name: missing  # no Linear key
+  tedris.course.leave:
+    leave-from-the-course-page-and-meet-the-apply-card: unwalked  # no e2e, no replay
+    the-confirmation-names-the-progress: missing  # no Linear key
+    taking-back-never-removes-an-approved-seat: missing  # no Linear key
+    success-is-said-and-the-focus-goes-somewhere: missing  # no Linear key
+    a-stale-answer-says-so-and-reads-the-page-again: unwalked  # no e2e, no replay
+    a-row-that-cannot-go-says-why-and-stays: unwalked  # no e2e, no replay
+    the-last-course-leaves-an-empty-page-that-points-on: unwalked  # no e2e, no replay
+    a-completed-or-revoked-record-is-kept: unwalked  # no e2e, no replay
+    a-left-seat-frees-the-gender-count: missing  # MDRS-284
+  tedris.course.readProgramme:
+    a-completed-seat-keeps-the-celses: unwalked  # no e2e, no replay
+    a-waiting-talebe-reads-the-next-celse-locked: unwalked  # no e2e, no replay
+    the-tab-is-in-the-address: missing  # no Linear key; finding PROG-1
+    a-closed-seat-is-told-why: missing  # MDRS-265; finding MDRS-265, PROG-2
+    a-week-shows-its-number-once: missing  # no Linear key; finding PROG-3
+    loading-is-announced: missing  # no Linear key; finding CRS-08
+  tedris.course.recordings:
+    failed-read-offers-retry: unwalked  # no e2e, no replay
+    retry-says-what-happened: missing  # no Linear key
+    medrese-policy-hides-public-recordings: missing  # no Linear key
+    failed-upload-is-seen-by-staff: missing  # MDRS-259
+    public-and-host-reach-the-name: missing  # no Linear key
+    bunny-rows: unwalked  # no e2e, no replay
+  tedris.course.updateProgress:
+    completion-is-the-teams: missing  # no Linear key; code exists in part; finding PROGRESS-2
+    a-refused-number-is-announced: missing  # no Linear key; code exists in part; finding CRS-01, CRS-02
+    a-failed-save-says-what-happened: missing  # no Linear key; code exists in part; finding CRS-03, PROGRESS-1, CRS-04
+  tedris.decks.accessRefusals:
+    hidden-public-deck-is-gone: missing  # no Linear key
+    forbidden-words-are-true: missing  # no Linear key
+    unavailable-screen: unwalked  # no e2e, no replay
+    one-screen-for-every-refusal: missing  # no Linear key
+    refusals-are-a-page: missing  # no Linear key
+  tedris.decks.browse:
+    open-a-deck-from-the-list: unwalked  # no e2e, no replay
+    a-person-with-nothing-is-pointed-on: unwalked  # no e2e, no replay
+    a-failed-read-says-so: unwalked  # no e2e, no replay
+    the-count-is-announced: missing  # no Linear key
+    the-failed-read-has-a-heading: missing  # no Linear key
+    loading-is-announced: missing  # no Linear key
+    the-empty-sentence-names-its-cause: missing  # no Linear key
+    study-needs-a-card: missing  # no Linear key
+    a-long-list-is-paged: missing  # no Linear key
+    words-come-from-the-catalog: missing  # no Linear key
+  tedris.decks.create:
+    tags-are-the-authors-own: unwalked  # no e2e, no replay
+    refusal-keeps-the-values: unwalked  # unit spec only, no e2e, no replay
+    a-refusal-says-why: missing  # no Linear key; code exists in part; finding DCKCREATE-1
+    limits-counted-as-the-api-counts: missing  # no Linear key; code exists in part; finding DCKCREATE-1
+    errors-are-announced: unwalked  # unit spec only, no e2e, no replay
+  tedris.decks.editOrDelete:
+    unchanged-form-closes-silently: unwalked  # no e2e, no replay
+    a-refused-save-keeps-the-words: unwalked  # no e2e, no replay
+    a-refused-delete-says-so: unwalked  # no e2e, no replay
+    delete-confirms-it-is-done: missing  # no Linear key
+    closing-while-the-call-is-out-does-nothing: missing  # no Linear key
+    edit-is-dated: missing  # no Linear key
+    an-accepted-edit-is-never-a-500: missing  # no Linear key
+    a-deck-name-is-never-blank-in-the-api: missing  # no Linear key
+    the-dialog-gives-the-focus-back: missing  # no Linear key
+    a-refused-name-is-announced: missing  # no Linear key
+    published-edit-is-told-or-reviewed: missing  # no Linear key
+    delete-says-what-goes-with-the-deck: missing  # no Linear key
+    no-flash-after-a-delete: unwalked  # no e2e, no replay
+  tedris.decks.explore:
+    narrow-by-a-word: unwalked  # no e2e, no replay
+    refused-change-is-undone: unwalked  # no e2e, no replay
+    collect-is-announced: missing  # no Linear key
+    filtering-is-announced: missing  # no Linear key
+    failed-read-says-so: unwalked  # no e2e, no replay
+    failed-read-is-a-page: missing  # no Linear key
+    open-a-deck-from-the-list: unwalked  # no e2e, no replay
+    lists-are-paged: missing  # no Linear key
+    collection-state-is-the-api: missing  # no Linear key
+    refusal-says-why: missing  # no Linear key
+  tedris.decks.importExport:
+    export-in-both-formats: missing  # no Linear key
+    export-failure-is-told: missing  # no Linear key
+    export-file-keeps-the-name: missing  # no Linear key
+    template-in-both-formats: unwalked  # no e2e, no replay
+    template-links-say-what-they-are: missing  # no Linear key
+    file-needs-are-said: missing  # no Linear key
+    refusals-are-told-by-cause: missing  # no Linear key
+    csv-is-read-by-its-name: missing  # no Linear key
+    csv-survives-excel: missing  # no Linear key
+    a-cell-is-told-as-what-it-is: missing  # no Linear key
+    closing-while-sending-is-honest: missing  # no Linear key
+    limits-are-held: unwalked  # no e2e, no replay
+    the-dialog-is-accessible: missing  # no Linear key
+  tedris.decks.manageCards:
+    a-too-short-face-is-refused: unwalked  # no e2e, no replay
+    the-refusal-is-said-and-the-focus-goes-to-it: missing  # no Linear key
+    faces-are-required-for-assistive-technology: missing  # no Linear key
+    an-edit-that-changes-nothing-writes-nothing: missing  # no Linear key
+    deleting-says-what-happens-to-the-progress: missing  # no Linear key
+    the-list-has-an-order-the-buttons-can-name: missing  # no Linear key
+    the-focus-goes-somewhere-after-a-card-is-added-or-deleted: missing  # no Linear key
+    a-write-that-is-closed-is-stopped-or-says-so: missing  # no Linear key
+    a-refused-write-is-said-and-keeps-what-was-typed: unwalked  # no e2e, no replay
+    the-api-takes-only-the-fields-of-a-card: missing  # no Linear key
+    a-card-id-that-is-no-uuid-is-a-400: missing  # no Linear key
+    an-accepted-write-is-never-a-500: missing  # no Linear key
+    a-decks-type-is-fixed-and-every-card-has-it: missing  # no Linear key
+    course-staff-write-the-cards-of-their-course-decks: missing  # no Linear key
+    the-kits-own-words-are-in-the-catalog: missing  # no Linear key
+  tedris.decks.publish:
+    take-a-public-deck-back: unwalked  # no e2e, no replay
+    author-is-told-of-the-answer: unwalked  # no e2e, no replay
+    refused-deck-says-why-and-asks-again: missing  # no Linear key
+    stale-page-tells-the-truth: missing  # no Linear key
+    reviewers-find-a-waiting-request: unwalked  # no e2e, no replay
+    course-deck-is-not-offered-to-the-public: missing  # no Linear key
+  tedris.decks.readAndCopy:
+    no-deck-to-copy-into-sends-to-create: unwalked  # no e2e, no replay
+    a-refused-write-puts-the-page-back: unwalked  # no e2e, no replay
+    staff-and-the-bashnazim-are-not-offered-the-collection: missing  # no Linear key; code exists in part; finding READCOPY-2
+    a-refusal-tells-its-cause: missing  # no Linear key; finding refusals-say-try-again
+    closing-the-dialog-stops-the-copy: missing  # no Linear key; finding READCOPY-1, DCK-30
+    changes-are-announced: missing  # no Linear key; finding DCK-09, DCK-10
+    the-copy-dialog-starts-in-its-form: missing  # no Linear key; finding DCK-19, DCK-06, DCK-24
+  tedris.decks.study:
+    failed-write-keeps-the-card: unwalked  # no e2e, no replay
+    session-over-goes-back-to-the-round: unwalked  # no e2e, no replay
+    refused-write-can-be-skipped: missing  # no Linear key; finding STUDY-1
+    network-failure-resets-the-buttons: missing  # no Linear key; finding DCK-02
+    turn-and-rate-are-announced: missing  # no Linear key; finding DCK-01, DCK-03, DCK-04
+    empty-deck-says-so: missing  # no Linear key; finding DCK-27
+    hard-card-returns-in-the-round: missing  # no Linear key
+    caption-counts-the-round: missing  # no Linear key; finding STUDY-2
+  tedris.decks.visitorPublicDeck:
+    cut-to-ten-cards: unwalked  # no e2e, no replay
+    sign-in-from-the-note-keeps-the-page: unwalked  # no e2e, no replay
+    find-a-public-deck-from-the-app: missing  # no Linear key
+    empty-deck-says-it-is-empty: missing  # no Linear key
+    closed-deck-is-a-real-redirect: missing  # no Linear key
+  tedris.discover.applyForKosk:
+    the-form-says-what-is-missing-to-everyone: missing  # no Linear key; code exists in part; finding DSC-05
+    a-refusal-names-the-field: missing  # no Linear key; code exists in part; finding DSC-08, APPLYKOSK-1
+    medaris-management-sees-the-application: unwalked  # no e2e, no replay
+    only-management-opens-a-kosk: unwalked  # no e2e, no replay
+    the-applicant-is-told-the-result: unwalked  # no e2e, no replay
+    the-applicant-is-led-to-the-kosk: missing  # no Linear key; finding F-3
+  tedris.discover.browse:
+    a-failure-the-address-causes-can-be-left: missing  # no Linear key
+    a-visitor-sees-only-medreses-with-a-course: unwalked  # no e2e, no replay
+    a-member-sees-a-medrese-that-has-no-course: unwalked  # no e2e, no replay
+    the-invitation-brings-a-visitor-back: unwalked  # no e2e, no replay
+    a-page-past-the-end-is-answered: missing  # no Linear key
+    an-unknown-medrese-in-the-address-is-not-shown-as-an-id: missing  # no Linear key
+    loading-is-announced: missing  # no Linear key
+    the-notice-region-has-a-turkish-name: missing  # no Linear key
+  tedris.discover.followKosk:
+    hidden-kosk-cannot-be-followed: missing  # no Linear key; code exists in part; finding F-5
+    a-refusal-puts-the-button-back: unwalked  # no e2e, no replay
+    follow-keeps-focus-and-says-its-state-once: missing  # no Linear key; finding DSC-01, DSC-02, FOLLOW-1
+  tedris.discover.readKosk:
+    a-person-reads-their-waiting-application: unwalked  # no e2e, no replay
+    a-failed-read-is-not-a-missing-page: unwalked  # no e2e, no replay
+    the-way-on-to-a-medrese: unwalked  # no e2e, no replay
+    the-way-on-to-a-deck: unwalked  # no e2e, no replay
+    kosk-ids-of-people-stay-off-reads: missing  # no Linear key
+    failed-read-box-has-a-heading-and-a-way-back: missing  # no Linear key
+    cover-label-is-not-read-aloud: missing  # no Linear key
+    loading-says-so: missing  # no Linear key
+    not-found-has-a-main: missing  # no Linear key
+    nazim-sees-which-course-is-a-draft: missing  # no Linear key
+  tedris.discover.readMadrasah:
+    in-person-label: unwalked  # no e2e, no replay
+    empty-medrese-says-so: unwalked  # no e2e, no replay
+    unnamed-head-is-left-out: unwalked  # no e2e, no replay
+    outage-is-not-a-404: missing  # no Linear key
+    approval-notice-is-true: missing  # no Linear key
+    head-id-is-not-public: missing  # no Linear key
+    address-by-handle: missing  # MDRS-294
+  tedris.discover.visitorPath:
+    registration-returns-to-the-page: missing  # no Linear key
+    medrese-notice-is-true: missing  # no Linear key
+    programme-names-a-week-once: missing  # no Linear key
+    sample-row-does-not-say-completed: missing  # no Linear key
+    loading-is-heard: missing  # no Linear key
+  tedris.files.download:
+    refusal-keeps-what-i-was-doing: missing  # no Linear key
+    refusal-reason-reaches-everyone: missing  # no Linear key
+    refusal-is-announced-in-their-language: missing  # no Linear key
+    success-is-confirmed: missing  # no Linear key
+    a-download-is-walked-to-its-end: missing  # no Linear key
+  tedris.learn.homeworkHandIn:
+    see-what-the-hoca-set: unwalked  # no e2e, no replay
+    know-what-is-handed-in: unwalked  # no e2e, no replay
+    add-files-to-the-homework: unwalked  # no e2e, no replay
+    files-are-removed-after-one-question: unwalked  # no e2e, no replay
+    write-a-note-with-the-homework: unwalked  # no e2e, no replay
+    hand-in-reaches-the-course-team: unwalked  # no e2e, no replay
+    a-hand-in-outlives-the-homework: unwalked  # no e2e, no replay
+    quota-closes-the-picker-safely: missing  # no Linear key; finding WRT-12
+    refusals-are-said-in-words: missing  # no Linear key; finding WRT-03, WRT-07, WRT-08
+    steps-are-announced-and-keep-focus: missing  # no Linear key; finding WRT-01
+    a-typed-note-is-kept: missing  # no Linear key; finding WRT-13, WRT-10
+    a-seat-that-ended-is-told: missing  # no Linear key; finding HAND-2, PROGRESS-1
+  tedris.learn.homeworkMemorize:
+    see-what-to-recite: unwalked  # no e2e, no replay
+    told-when-marked: missing  # no Linear key
+    failed-read-can-be-retried: missing  # no Linear key
+    mark-is-named-as-the-hocas: missing  # no Linear key
+    kind-of-homework-is-content: missing  # no Linear key
+    earlier-work-stays-readable: unwalked  # no e2e, no replay
+    earlier-heading-says-what-it-lists: missing  # no Linear key
+    a-completed-talebe-reads-the-mark: unwalked  # no e2e, no replay
+    refused-read-is-told: unwalked  # no e2e, no replay
+  tedris.learn.homeworkReview:
+    review-reaches-the-talebe-when-sent: unwalked  # no e2e, no replay
+    read-the-review: unwalked  # no e2e, no replay
+    download-a-returned-file: unwalked  # no e2e, no replay
+    review-names-the-version-it-answers: unwalked  # no e2e, no replay
+    refused-download-keeps-the-page: missing  # no Linear key
+    review-appears-without-reload: missing  # no Linear key
+    a-sent-review-is-never-empty: missing  # no Linear key
+    change-after-review-is-announced: missing  # no Linear key
+  tedris.learn.notes:
+    note-time-from-player: unwalked  # no e2e, no replay
+    player-position-on-bunny: missing  # MDRS-264
+    refusals-are-told: unwalked  # no e2e, no replay
+    saved-note-is-announced: missing  # no Linear key; finding WRT-02, WRT-01
+    drafts-are-kept: missing  # no Linear key; finding WRT-13
+    notes-shared-as-hasiye: missing  # no Linear key
+    removed-talebe-keeps-own-notes: unwalked  # no e2e, no replay
+  tedris.learn.questions:
+    question-lands-on-the-team-list: unwalked  # no e2e, no replay
+    stale-card-tells-the-truth: unwalked  # no e2e, no replay
+    refused-asks-and-failed-reads: unwalked  # no e2e, no replay
+    questions-paged: unwalked  # no e2e, no replay
+    ask-from-the-celse-page: missing  # MDRS-267
+    player-position-on-a-question: missing  # MDRS-264
+  tedris.learn.writingGating:
+    removed-talebe-sees-own-writing: missing  # MDRS-268; finding read-only, MDRS-268
+    passive-course-is-explained: missing  # MDRS-265; finding MDRS-265, CLS-02
+    a-ban-bars-writing-not-the-seat: unwalked  # no e2e, no replay
+    barred-talebe-is-told-the-access-is-gone: missing  # no Linear key; finding CLS-02
+    refusal-says-why: missing  # no Linear key; finding WG-2
+    hidden-celse-takes-no-writing: missing  # no Linear key; finding WG-1
+  tedris.learning.addToCalendar:
+    the-event-names-the-celse-in-the-celse-words: missing  # no Linear key
+    a-saved-file-says-so: missing  # no Linear key
+    a-refused-file-is-one-toast: unwalked  # no e2e, no replay
+    a-refused-file-never-replaces-the-course-page: missing  # no Linear key
+    one-menu-wherever-it-stands: missing  # no Linear key
+    the-feed-holds-every-course-i-run: missing  # no Linear key
+    the-feed-refuses-a-wrong-address: unwalked  # no e2e, no replay
+    the-session-ending-sends-to-sign-in: unwalked  # no e2e, no replay
+  tedris.learning.myCourses:
+    next-celse-or-none: unwalked  # no e2e, no replay
+    open-a-course-from-every-relation: unwalked  # no e2e, no replay
+    failed-read-says-so: unwalked  # no e2e, no replay
+    withdraw-never-removes-an-approved-seat: missing  # no Linear key
+    leave-from-the-card: unwalked  # no e2e, no replay
+    completed-link-names-its-course: missing  # no Linear key
+    cover-is-not-read-aloud: missing  # no Linear key
+    loading-says-so: missing  # no Linear key
+    every-course-is-a-heading: missing  # no Linear key
+  tedris.learning.schedule:
+    the-weeks-have-an-end: missing  # no Linear key
+    an-in-person-celse-says-so: unwalked  # no e2e, no replay
+    a-streamed-celse-says-so: unwalked  # no e2e, no replay
+    an-in-person-celse-offers-a-seat: missing  # MDRS-284
+    the-cancellation-note-can-be-read-in-full: missing  # no Linear key
+    times-in-the-viewers-zone: missing  # no Linear key
+    an-empty-week-says-why-and-leads-on: missing  # no Linear key
+    a-failed-read-is-told-and-can-be-retried: unwalked  # no e2e, no replay
+    loading-is-announced: missing  # no Linear key
+  tedris.session.registerInPerson:
+    the-celse-is-marked-in-person: unwalked  # no e2e, no replay
+    apply-for-an-in-person-seat: missing  # MDRS-284
+    kontenjan-per-gender-per-celse: missing  # MDRS-284
+    gender-is-mirrored-from-the-account: unwalked  # no e2e, no replay
+    gender-reaches-the-api-and-is-checked: missing  # MDRS-284
+    only-an-enrolled-talebe-asks: missing  # MDRS-284
+    seat-given-at-approval-in-order: missing  # MDRS-284
+    take-back-and-let-go: missing  # MDRS-284
+    full-quota-says-so-for-the-callers-gender: missing  # MDRS-284
+    calendar-location: missing  # MDRS-284; finding MANAGE-3
+    waiting-list-or-remote-only: missing  # no Linear key
+    registration-window: missing  # no Linear key
+    registering-enrols-or-not: missing  # no Linear key
+    place-of-the-seat-and-its-visibility: missing  # no Linear key; finding in-person-names-no-place
+    talebe-sees-their-place-in-line: missing  # no Linear key
+    team-hears-of-an-application: missing  # no Linear key
+    letting-a-seat-go-asks-first: missing  # no Linear key
+  tedris.shell.frame:
+    the-visitors-current-place-is-honest: missing  # no Linear key
+    the-bar-marks-hesabim-and-bildirimler: missing  # no Linear key
+    the-sheet-closes-on-the-same-page-too: unwalked  # no e2e, no replay
+    bell-says-how-many-are-unread: missing  # MDRS-167
+    the-error-page-keeps-the-bar: missing  # no Linear key
+    the-error-page-has-a-main: missing  # no Linear key
+    the-person-row-says-who-they-are: missing  # MDRS-235
+    a-skip-link-comes-first: missing  # no Linear key
+    a-language-menu: missing  # MDRS-295
+  tedris.shell.home:
+    a-celse-opens-the-meeting-ten-minutes-before: unwalked  # no e2e, no replay
+    a-celse-without-a-link-says-why: unwalked  # no e2e, no replay
+    each-part-fails-alone: unwalked  # no e2e, no replay
+    retry-one-section: missing  # no Linear key
+    failed-celses-are-an-alert: missing  # no Linear key
+    a-visitor-takes-one-hop: missing  # no Linear key
+    an-in-person-celse-is-called-so: missing  # no Linear key
+    the-page-has-its-own-title: missing  # no Linear key
+  tedris.shell.systemPages:
+    a-visitor-is-not-told-what-exists: unwalked  # no e2e, no replay
+    outage-is-not-a-missing-page: missing  # no Linear key
+    error-page-keeps-the-system-frame: missing  # no Linear key
+    retry-that-fails-says-so: missing  # no Linear key
+    app-failure-has-a-page: unwalked  # no e2e, no replay
+    app-failure-page-is-translatable: missing  # MDRS-234
+    faces-are-landmarks: missing  # no Linear key
+    missing-celse-answers-404: missing  # no Linear key
+    faces-name-themselves-in-the-title: missing  # no Linear key

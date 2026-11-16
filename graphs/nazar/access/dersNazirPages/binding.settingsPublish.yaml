@@ -19,7 +19,7 @@ scenarios:
       - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'course.settings,course.publish']
         expect: 'course-nazir-grants APPLICANT_D'
     teardown:
-      - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, clear, '{dnp.course}']
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --dismiss]
       - run: [node, helpers/course.mjs, remove, dnp]
         expect: course remove dnp
       - run: [node, helpers/notify.mjs, applicantE, clear]

@@ -75,6 +75,10 @@ scenarios:
     given: { read: noColumns }
     as: muderris
     open: '{nazar}/ders/{made.course}'
+    vars:
+      lesson: '{made.lessons.0}'
+      talebe: '{secret.E2E_APPLICANT_F_SUB}'
+      note: Son iki satır eksik.
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
     setup:
       - run: [node, helpers/course.mjs, make, mark-recited, --weeks, '1', --lessons, '2', --talebe, applicantF]
@@ -90,6 +94,10 @@ scenarios:
     given: { read: noTalebe }
     as: muderris
     open: '{nazar}/ders/{made.course}'
+    vars:
+      lesson: '{made.lessons.0}'
+      talebe: '{secret.E2E_APPLICANT_F_SUB}'
+      note: Son iki satır eksik.
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersEvaluation' }
     setup:
       - run: [node, helpers/course.mjs, make, mark-recited, --weeks, '1', --lessons, '2']
@@ -104,6 +112,10 @@ scenarios:
     given: { read: refused }
     as: dersNazir
     open: '{nazar}/ders/{made.course}/degerlendirme'
+    vars:
+      lesson: '{made.lessons.0}'
+      talebe: '{secret.E2E_APPLICANT_F_SUB}'
+      note: Son iki satır eksik.
     setup:
       - run: [node, helpers/course.mjs, make, mark-recited, --weeks, '1', --lessons, '2', --talebe, applicantF]
         expect: '"course"'
@@ -122,6 +134,10 @@ scenarios:
     given: { read: missing }
     as: muderris
     open: '{nazar}/ders/00000000-0000-4000-8000-000000000000/degerlendirme'
+    vars:
+      lesson: '{made.lessons.0}'
+      talebe: '{secret.E2E_APPLICANT_F_SUB}'
+      note: Son iki satır eksik.
 
 events:
   # a key mark: the focus must be in the list, so the row's name is clicked first (it is a child of the focusable <li>)

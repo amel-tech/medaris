@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-// The data of nizam.inactive.reassign's walks: one köşk, one medrese and one course of the walk's own, each left with no manager, so
+// The data of nizam.inactive.reassign's walks (made through the API, with SQL only for the course's post; helpers/passive-scopes.mjs makes the scopes of
+// nizam.inactive.viewContent by SQL alone, which is a different thing): one köşk, one medrese and one course of the walk's own, each left with no manager, so
 // that Pasif kapsamlar has a row of every kind to give a manager to; and the checks that read what an assignment left. Run from
 // graphs/bindings/ (the replay's working directory):
 //
-//   node ../nizam/inactive/reassign/scopes.mjs up         makes the köşk and the medrese (each with a manager, OTHER, who will leave)
+//   node helpers/inactive-scopes.mjs up         makes the köşk and the medrese (each with a manager, OTHER, who will leave)
 //   node helpers/course.mjs make inreassign --hoca OTHER --weeks 1 --lessons 1     (the course, by the shared helper: see binding.yaml)
-//   node ../nizam/inactive/reassign/scopes.mjs passive    takes every manager away and checks that the three are on the list
-//   node ../nizam/inactive/reassign/scopes.mjs reassigned the check after an assignment: a scope is attended by the new manager
-//   node ../nizam/inactive/reassign/scopes.mjs heal       gives every scope a manager behind the page's back (binding.race.yaml)
-//   node ../nizam/inactive/reassign/scopes.mjs nothing    fails unless no scope of the stack has no manager (the scenario `empty`)
-//   node ../nizam/inactive/reassign/scopes.mjs down       deletes the köşk and the medrese, and the file
+//   node helpers/inactive-scopes.mjs passive    takes every manager away and checks that the three are on the list
+//   node helpers/inactive-scopes.mjs reassigned the check after an assignment: a scope is attended by the new manager
+//   node helpers/inactive-scopes.mjs heal       gives every scope a manager behind the page's back (binding.race.yaml)
+//   node helpers/inactive-scopes.mjs nothing    fails unless no scope of the stack has no manager (the scenario `empty`)
+//   node helpers/inactive-scopes.mjs down       deletes the köşk and the medrese, and the file
 //
 // What it makes, and why each step is what it is
 //   up       POST /kosks as the başnazım (kosk.controller.ts:310: the başnazım opens a köşk with at least one nazım, never himself) with
@@ -48,7 +49,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
-import { query } from "../../../bindings/helpers/db.mjs";
+import { query } from "./db.mjs";
 import {
   accountKey,
   call,
@@ -60,7 +61,7 @@ import {
   refusal,
   run,
   subOf,
-} from "../../../bindings/helpers/lib.mjs";
+} from "./lib.mjs";
 
 const TAG = "inactive-reassign";
 const COURSE_TAG = "inreassign"; // the tag of the course helpers/course.mjs makes for this flow: "Deneme dersi inreassign"
@@ -78,7 +79,7 @@ const AGES = { kosk: 2, madrasah: 5, course: 3 }; // days since the post ended
 const DAY = 86_400_000;
 const TYPES = { kosk: "KOSK", madrasah: "MADRASAH", course: "COURSE" };
 const usage =
-  "usage: scopes.mjs up | passive | reassigned | heal | nothing | down (the course is made and removed by helpers/course.mjs, tag inreassign)";
+  "usage: inactive-scopes.mjs up | passive | reassigned | heal | nothing | down (the course is made and removed by helpers/course.mjs, tag inreassign)";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid = (v, what) => {

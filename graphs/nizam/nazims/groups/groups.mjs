@@ -7,7 +7,7 @@
 //          first clears what a walk that died could have left (every group whose name starts with the prefix, with "revoke" where someone
 //          holds it), then makes each group (the scope is PLATFORM when its codes start with "platform.", else ALL_COURSES) and, for
 //          --hold, gives the group to the account, which must already be a Medaris nazımı (the walk's setup runs
-//          ../nizam/home/medarisNazimCut/nazim.mjs up first). Writes graphs/.local/made/nizam-groups.json: one key for each group with its id
+//          helpers/nazim.mjs up first). Writes graphs/.local/made/nizam-groups.json: one key for each group with its id
 //          (`{made.a}` in the binding) and, under `_`, what `verify` needs. Prints `ready: N groups`, plus `, held by ACCOUNT`.
 //   down   the clearing alone. Prints `restored`. The holder's seat is taken away by nazim.mjs down, not here.
 //   note   keep|revoke   writes the answer the walk chose in the question (the flow's effect chosenKeep or chosenRevoke runs it).

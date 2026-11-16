@@ -1,19 +1,19 @@
-// The time zone of an account, kept and put back, for the walk of nizam.account.settings. The walk chooses zones on Hesap, which writes
-// users.time_zone through PATCH /me (the stack's accounts hold none: GET /me answers timeZone null, and the page then shows İstanbul),
-// so the walk's `setup` keeps what the account holds, sets İstanbul, and its `teardown` puts the kept value back, exactly as it was
-// (a zone, or null). It is the binding's `setup`, `teardown` and `effects`: `node zone.mjs <command> <ACCOUNT> [zone]`, run from
-// graphs/bindings/. A copy of nazar.account.settings's helper of the same name with its own file of kept values; the two could be one
-// helper in graphs/bindings/helpers (asked for in the report).
+// The time zone of an account, kept and put back, for the walks of nazar.account.settings and nizam.account.settings. The walks choose
+// zones on Hesap, which writes users.time_zone through PATCH /me (the stack's accounts hold none: GET /me answers timeZone null, and the
+// page then shows İstanbul), so a walk's `setup` keeps what the account holds, sets İstanbul, and its `teardown` puts the kept value back,
+// exactly as it was (a zone, or null). It is the binding's `setup`, `teardown` and `effects`: `node helpers/zone.mjs <command> <ACCOUNT>
+// [zone]`, run from graphs/bindings/.
 //
-//   keep    <ACCOUNT>          writes the zone the account holds (or `null`) to graphs/.local/made/nizam-account-settings-<KEY>.json,
+//   keep    <ACCOUNT>          writes the zone the account holds (or `null`) to graphs/.local/made/zone-<KEY>.json,
 //                              unless that file is already there (a walk that crashed left it: the first value is the true one)
 //   set     <ACCOUNT> <zone>   PATCH /me { timeZone }; `null` clears the zone
 //   get     <ACCOUNT>          prints `zone <KEY> <zone|null>`: what tedrisat holds now, for an `effects` check
 //   restore <ACCOUNT>          PATCH /me with the kept value, deletes the file; `(nothing kept)` is not a failure
 //
-// ACCOUNT is a role key of graphs/.local/accounts.env or the name a binding gives it (koskNazim). The API is the shared helpers' own
-// (graphs/bindings/helpers/lib.mjs): a real sign-in, no password on a command line, nothing secret printed. It changes one account's own
-// setting and nobody else's; run it under the replay lock when you run it by hand.
+// ACCOUNT is a role key of graphs/.local/accounts.env or the name a binding gives it (basmuderris, koskNazim). The API is the shared
+// helpers' own (lib.mjs): a real sign-in, no password on a command line, nothing secret printed. It changes one account's own setting and
+// nobody else's; run it under the replay lock when you run it by hand. The kept file is named by the account alone: the two flows keep
+// different accounts, and a walk of either that finds the other's leftover of the same account keeps the true first value.
 import {
   existsSync,
   mkdirSync,
@@ -22,16 +22,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
-import {
-  accountKey,
-  Fail,
-  LOCAL,
-  must,
-  run,
-} from "../../../bindings/helpers/lib.mjs";
+import { accountKey, Fail, LOCAL, must, run } from "./lib.mjs";
 
 const MADE = resolve(LOCAL, "made");
-const fileOf = (key) => resolve(MADE, `nizam-account-settings-${key}.json`);
+const fileOf = (key) => resolve(MADE, `zone-${key}.json`);
 const usage =
   "usage: zone.mjs keep|get|restore <ACCOUNT> | set <ACCOUNT> <zone|null>";
 

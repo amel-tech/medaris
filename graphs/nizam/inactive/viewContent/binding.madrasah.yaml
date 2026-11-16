@@ -24,8 +24,8 @@ scenarios:
       targetEntity: madrasah
     samples: { name: '{made.madrasahName}', kind: Ders, kosk: '{made.hostName}' }
     setup:
-      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, make, viewContent]
+      - run: [node, helpers/passive-scopes.mjs, make, viewContent]
         expect: 'passive-scopes make viewContent ready'
     teardown:
-      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, remove, viewContent]
+      - run: [node, helpers/passive-scopes.mjs, remove, viewContent]
         expect: 'passive-scopes remove viewContent'

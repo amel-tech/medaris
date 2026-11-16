@@ -20,9 +20,7 @@
 //   paged up <tag> [--count 23]     a long list, by SQL: <count> invented people "Sayfalı Yasaklı 01".., each with an open course ban on the tag's course placed
 //   paged down                      by the köşk's nazım, 1..<count> minutes old, so that the Etkin list holds more than a page (e2e bans-medaris#4). `down` removes them
 //                                   and their bans. No route makes a user row for a person who never signed in, and the bulk is a statement of its own.
-//   medaris up <ACCOUNT> --codes <code,code>   appoints a spare account as a Medaris nazımı holding exactly these platform permissions (POST /nizam/medaris-nazims, or
-//                                   PUT .../grants when it holds the seat already), as the başnazım
-//   medaris down <ACCOUNT>          dismisses it again (DELETE /nizam/medaris-nazims/<id>); `dismissed=none` when it is not one. The seed's own MEDARIS_NAZIM is refused.
+//   (a Medaris nazımı for the reader scenarios: helpers/nazim.mjs up <ACCOUNT> --codes <code,code> and down <ACCOUNT>)
 //   counts                          reads GET /bans as the başnazım for each tab with no filter, fails unless the list's own `total` equals the tab's count (e2e
 //                                   bans-medaris#2) and writes graphs/.local/made/reviewbans-counts.json {activeText, liftedText, ...}, which the binding reads as {counts.*}.
 //                                   Prints `counts agree`.
@@ -35,7 +33,6 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { query } from "../../../bindings/helpers/db.mjs";
 import {
-  accountKey,
   Fail,
   LOCAL,
   must,
@@ -48,7 +45,7 @@ import {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const usage =
-  "usage: bans-data.mjs up <tag> [--no-kosk] | down <tag> | paged up <tag> [--count n] | paged down | medaris up <ACCOUNT> --codes <code,..> | medaris down <ACCOUNT> | counts";
+  "usage: bans-data.mjs up <tag> [--no-kosk] | down <tag> | paged up <tag> [--count n] | paged down | counts";
 
 const MADE = resolve(LOCAL, "made");
 const STATE = resolve(MADE, "reviewbans-state.json");
@@ -233,65 +230,6 @@ async function paged(command, tag, count) {
   console.log(`ready: ${n} paged`);
 }
 
-const CHIEF = "SYSTEM_ADMIN";
-const medarisRows = async () =>
-  (await must(CHIEF, "GET", "/nizam/medaris-nazims")).body;
-const codesOf = (row) => (row?.permissions ?? []).map((p) => p.code);
-
-async function medaris(command, account, codes) {
-  if (!account) throw new Fail(usage, 2);
-  if (accountKey(account) === "MEDARIS_NAZIM")
-    throw new Fail(
-      "the seed's own Medaris nazımı is never changed by a walk",
-      2
-    );
-  const sub = subOf(account);
-  const row = (await medarisRows()).find((r) => r.user?.id === sub);
-  if (command === "up") {
-    if (!codes) throw new Fail("medaris up needs --codes <code,code>", 2);
-    const wanted = codes.split(",").map((c) => c.trim());
-    await must(account, "GET", "/me"); // tedrisat makes the person's row at their first call; the appointment names it
-    if (row)
-      await must(CHIEF, "PUT", `/nizam/medaris-nazims/${sub}/grants`, {
-        permissions: wanted,
-      });
-    else
-      await must(CHIEF, "POST", "/nizam/medaris-nazims", {
-        userId: sub,
-        permissions: wanted,
-      });
-    const now = codesOf((await medarisRows()).find((r) => r.user?.id === sub));
-    const same =
-      now.length === wanted.length && wanted.every((c) => now.includes(c));
-    if (!same)
-      throw new Fail(
-        `medaris up ${accountKey(account)}: holds ${now.join(",") || "none"}, wanted ${wanted.join(",")}`
-      );
-    console.log(`medaris up ${accountKey(account)} codes=${now.join(",")}`);
-    return;
-  }
-  if (command === "down") {
-    if (!row) {
-      console.log(`medaris down ${accountKey(account)} dismissed=none`);
-      return;
-    }
-    // what the person handed on to someone else must be answered; this nazım hands nothing on
-    const given =
-      (await must(CHIEF, "GET", `/nizam/medaris-nazims/${sub}/given`)).body ??
-      [];
-    const decisions = given
-      .filter(
-        (g) =>
-          (g.kind === "ROLE" || g.kind === "GRANT") && g.to && g.to.id !== sub
-      )
-      .map((g) => ({ kind: g.kind, id: g.id, action: "DROP" }));
-    await must(CHIEF, "DELETE", `/nizam/medaris-nazims/${sub}`, { decisions });
-    console.log(`medaris down ${accountKey(account)} dismissed=1`);
-    return;
-  }
-  throw new Fail(usage, 2);
-}
-
 async function counts() {
   const read = async (status) =>
     (await must(CHIEF, "GET", `/bans?status=${status}&limit=1`)).body;
@@ -325,9 +263,8 @@ run("reviewbans-data", async () => {
     rest,
     "no-kosk": noKosk,
     count,
-    codes,
   } = options(process.argv.slice(2), {
-    values: ["count", "codes"],
+    values: ["count"],
     flags: ["no-kosk"],
   });
   const [command, ...more] = rest;
@@ -341,8 +278,6 @@ run("reviewbans-data", async () => {
     return paged("up", more[1], count);
   if (command === "paged" && more[0] === "down" && more.length === 1)
     return paged("down");
-  if (command === "medaris" && more.length === 2)
-    return medaris(more[0], more[1], codes);
   if (command === "counts" && more.length === 0) return counts();
   throw new Fail(usage, 2);
 });

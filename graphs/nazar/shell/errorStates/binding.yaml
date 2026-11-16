@@ -8,7 +8,7 @@
 # GET as the başmüderris, 15 Nov 2026: status, title, headings and landmarks). A later walk checks each of them.
 #
 # The four 404 scenarios need no data and change nothing (access#6 a1 and a3, auth-pages#4 a2). The two failed-read scenarios make
-# their failure through throttle.mjs (this folder): it spends the başmüderris's request budget for one route, so tedrisat answers
+# their failure through helpers/throttle.mjs: it spends the başmüderris's request budget for one route, so tedrisat answers
 # that route with 429 for the rest of the window (60 s) and every other call is left alone; nazar-web takes any answer but 401 for
 # a failed read. It is written from the code and has not been run: the walk phase proves it, or replaces it. The failure is made in
 # the state's `before`, right before the state is checked, so the time the sign-in and the first compile take does not matter; the
@@ -55,7 +55,7 @@ scenarios:
     as: basmuderris
     open: '{nazar}/'
     teardown:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, /me/assignments]
+      - run: [node, helpers/throttle.mjs, clear, basmuderris, /me/assignments]
         expect: 'clear /me/assignments'
 
   # A page's own read fails (İtirazlar) and the retry works once the window has lifted.
@@ -64,14 +64,14 @@ scenarios:
     as: basmuderris
     open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
     teardown:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
+      - run: [node, helpers/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
         expect: clear
 
 events:
   # the roles face and the 404 page have no other link than the address bar. Hesap asks for the roles too, so where the roles read is
   # being refused the walk first waits for the window to lift (at once, where nothing is refused), or it would arrive at the same face.
   NAVIGATE:
-    - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, /me/assignments]
+    - run: [node, helpers/throttle.mjs, clear, basmuderris, /me/assignments]
       expect: 'clear /me/assignments'
     - goto: '{nazar}/hesap'
 
@@ -85,12 +85,12 @@ states:
   # The failure is made right before the state is checked (the page has already been opened once, so the reload is what fails).
   rolesUnreadable:
     before:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, hold, basmuderris, /me/assignments]
+      - run: [node, helpers/throttle.mjs, hold, basmuderris, /me/assignments]
         expect: held
       - goto: '{nazar}/'
   readFailed:
     before:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, hold, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
+      - run: [node, helpers/throttle.mjs, hold, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
         expect: held
       - goto: '{nazar}/medrese/{seed.madrasah}/itirazlar'
 
@@ -104,7 +104,7 @@ nodes:
     within: { css: 'main.mds-system-state--page', hasText: Görevleriniz okunamadı }
     # the window lifts within 60 s of being spent; the retry that works needs it to have lifted
     before:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, /me/assignments]
+      - run: [node, helpers/throttle.mjs, clear, basmuderris, /me/assignments]
         expect: 'clear /me/assignments'
   # The shell's landmarks and the page's own heading are found only where the box sits in them: the page a walk leaves for (the Pano, Hesap,
   # İtirazlar once it is read) has the same sidebar, menu, <main id="main"> and heading, and --absent would find them there. The loading
@@ -119,7 +119,7 @@ nodes:
     name: Yeniden dene
     within: { css: 'main#main section.mds-system-state' }
     before:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
+      - run: [node, helpers/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
         expect: clear
   notFoundPage: { css: 'main.mds-system-state--page', hasText: Sayfa bulunamadı }
   errorPage: { css: 'main.mds-system-state--page', hasText: Sayfa açılamadı }

@@ -2,7 +2,7 @@
 // The way back for a walk that opens a medrese (nizam.madrasahs.open): deletes the medrese a walk made, as the başnazım may, with
 // the role it gave its başmüderris. A name nobody holds is not a failure, so the same line is the walk's `setup` and `teardown`.
 //
-//   node ../nizam/madrasahs/open/remove-madrasah.mjs <handle> [--numbered]
+//   node helpers/remove-madrasah.mjs <handle> [--numbered]
 //
 // <handle> is the short name the walk typed, or (when the form leaves it empty) the one tedrisat makes from the name.
 // --numbered also removes the ones the server numbers when a handle is taken: <handle>-2, <handle>-3, ...
@@ -15,15 +15,7 @@
 // It refuses to touch the seed's medrese (the id in graphs/.local/seed.json) and any medrese that holds a course: a walk's own
 // medrese has none, and DELETE would leave a course's köşk with no medrese.
 //
-// Written for this flow, in its own folder; it uses the shared helpers' lib.mjs. To be moved to graphs/bindings/helpers/ by the
-// orchestrator (the way remove-kosk.mjs was).
-import {
-  Fail,
-  must,
-  options,
-  run,
-  seed,
-} from "../../../bindings/helpers/lib.mjs";
+import { Fail, must, options, run, seed } from "./lib.mjs";
 
 run("remove-madrasah", async () => {
   const { rest, numbered } = options(process.argv.slice(2), {

@@ -36,7 +36,7 @@ scope:
   world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
   outOfView:
     - "the switched-on page: the form, the preview, the four switches, the toasts and the refusals (needs.yaml carries each, from the code)"
-    - "Hesap, which leaves the card \"Herkese açık profil\" and its link out while the profile is off (account-settings.tsx:401); the rest of Hesap is tedris.account.profile"
+    - "Hesap, which leaves the card \"Herkese açık profil\" and its link out while the profile is off (account-settings.tsx:430); the rest of Hesap is tedris.account.profile"
     - "the three API routes, which no screen of any app calls while the page is off: a direct call answers 404 PUBLIC_PROFILE_UNAVAILABLE for every signed-in caller before it reads or writes anything, and 401 with no token (domain: getMyPublicProfile, updateMyPublicProfile, getUserPublicProfile)"
     - "the loading skeleton that streams first (app/account/loading.tsx) and is replaced by the not-found markup, which is why the status is 200 and not 404"
     - "a session that ends under the page, which sends the person to sign in again (realm.auth.sessionEnded)"

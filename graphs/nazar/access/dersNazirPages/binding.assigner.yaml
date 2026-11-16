@@ -49,7 +49,7 @@ scenarios:
       - run: [node, helpers/api.mjs, muderris, POST, '/courses/{dnp.course}/nazirs', '{"userId":"{secret.E2E_APPLICANT_F_SUB}","permissions":[]}']
         expect: 'appointedBy'
     teardown:
-      - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, clear, '{dnp.course}']
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --dismiss]
       - run: [node, helpers/course.mjs, remove, dnp]
         expect: course remove dnp
       - run: [node, helpers/notify.mjs, applicantE, clear]

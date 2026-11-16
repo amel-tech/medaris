@@ -43,7 +43,7 @@ scenarios:
     open: '{nizam}/kosks/{made.kosk}'
     vars: { lookupEmail: '{secret.E2E_APPLICANT_G_EMAIL}' }
     setup:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
       - run: [node, ../nizam/kosks/manage/manage-data.mjs, rights, kmanage]
         expect: 'rights kmanage held'
@@ -52,7 +52,7 @@ scenarios:
     teardown:
       - run: [node, helpers/course.mjs, remove, kmanagec]
         expect: 'course remove kmanagec'
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 
   # The köşk is hidden before the page opens (manage-data.mjs status ... hidden): the warning, the status "Gizli", "Köşkü geri al" in place of "Köşkü gizle".
@@ -62,12 +62,12 @@ scenarios:
     open: '{nizam}/kosks/{made.kosk}'
     vars: { lookupEmail: '{secret.E2E_APPLICANT_G_EMAIL}' }
     setup:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
       - run: [node, ../nizam/kosks/manage/manage-data.mjs, status, kmanage, hidden]
         expect: 'status kmanage HIDDEN'
     teardown:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 
   # The köşk has no nazım before the page opens (status ... passive: the preview, then the deactivation with its confirmation): the warning, "Bu köşkün köşk nazımı yok.", and one nazım added brings it back.
@@ -77,12 +77,12 @@ scenarios:
     open: '{nizam}/kosks/{made.kosk}'
     vars: { lookupEmail: '{secret.E2E_APPLICANT_G_EMAIL}' }
     setup:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
       - run: [node, ../nizam/kosks/manage/manage-data.mjs, status, kmanage, passive]
         expect: 'status kmanage PASSIVE'
     teardown:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 
   # A hosting right and no course in the köşk: the withdrawal's dialog has nothing to ask.
@@ -92,12 +92,12 @@ scenarios:
     open: '{nizam}/kosks/{made.kosk}'
     vars: { lookupEmail: '{secret.E2E_APPLICANT_G_EMAIL}' }
     setup:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
       - run: [node, ../nizam/kosks/manage/manage-data.mjs, rights, kmanage]
         expect: 'rights kmanage held'
     teardown:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 
   # No hosting right, and the address looked up is the köşk's own nazım's (applicantE): the add is refused with 409.
@@ -107,10 +107,10 @@ scenarios:
     open: '{nizam}/kosks/{made.kosk}'
     vars: { lookupEmail: '{secret.E2E_APPLICANT_E_EMAIL}' }
     setup:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
     teardown:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 
   # applicantC made a Medaris nazımı with platform.kosk_edit and nothing else: the view, the hosting section as a box, "Ekle" refused (F-W3-4).
@@ -120,16 +120,16 @@ scenarios:
     open: '{nizam}/kosks/{made.kosk}'
     vars: { lookupEmail: '{secret.E2E_APPLICANT_G_EMAIL}' }
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantC, --codes, platform.kosk_edit]
+      - run: [node, helpers/nazim.mjs, up, applicantC, --codes, platform.kosk_edit]
         expect: 'up APPLICANT_C codes=platform.kosk_edit'
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
       - run: [node, ../nizam/kosks/manage/manage-data.mjs, rights, kmanage]
         expect: 'rights kmanage held'
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+      - run: [node, helpers/nazim.mjs, down, applicantC]
         expect: 'down APPLICANT_C'
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 
   # applicantE is the köşk's nazım: the address redirects to Dersler and the view is never drawn.
@@ -138,10 +138,10 @@ scenarios:
     as: applicantE
     open: '{nizam}/kosks/{made.kosk}'
     setup:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
     teardown:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 
   # applicantD made a Medaris nazımı with platform.hosting_grant and nothing else: the address redirects to Barındırma hakları.
@@ -150,14 +150,14 @@ scenarios:
     as: applicantD
     open: '{nizam}/kosks/{made.kosk}'
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantD, --codes, platform.hosting_grant]
+      - run: [node, helpers/nazim.mjs, up, applicantD, --codes, platform.hosting_grant]
         expect: 'up APPLICANT_D codes=platform.hosting_grant'
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+      - run: [node, helpers/nazim.mjs, down, applicantD]
         expect: 'down APPLICANT_D'
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 
   # The seeded köşk nazımı opens a köşk that is not theirs: tedrisat refuses the hosting read and the page says it is not theirs.
@@ -166,9 +166,9 @@ scenarios:
     as: koskNazim
     open: '{nizam}/kosks/{made.kosk}'
     setup:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, kmanage, applicantE]
+      - run: [node, helpers/make-kosk.mjs, make, kmanage, applicantE]
         expect: '"handle":"deneme-kmanage"'
     teardown:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, kmanage]
+      - run: [node, helpers/make-kosk.mjs, remove, kmanage]
         expect: 'kosk remove kmanage'
 

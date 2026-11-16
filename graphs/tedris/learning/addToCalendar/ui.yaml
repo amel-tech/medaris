@@ -26,9 +26,9 @@ focus:
 
 nodes:
   # ---- Programım: the page around a row, and the row's button ----
-  scheduleMain: { type: page, component: Page, role: main, in: [row, rowFailed, menu, downloading], when: onSchedule, source: apps/tedris/features/schedule/components/schedule-page.tsx:227, script: actions } # no name, no initial focus: the page sets none (focus-not-set)
-  scheduleTitle: { type: text, component: Heading, role: heading, text: { key: SchedulePage.title }, in: [row, rowFailed, menu, downloading], when: onSchedule, source: apps/tedris/features/schedule/components/schedule-page.tsx:230 } # h1
-  rowTrigger: { type: action, component: Button, role: button, intent: secondary, name: { key: AddToCalendar.rowLabel, params: { title: title } }, in: [row, rowFailed, menu, downloading], when: onSchedule, emits: OPEN_MENU, source: apps/tedris/features/courses/components/calendar-menu.tsx:93 } # an icon only; aria-haspopup=menu, aria-expanded. Drawn only on a row whose state is upcoming (schedule-page.tsx:175)
+  scheduleMain: { type: page, component: Page, role: main, in: [row, rowFailed, menu, downloading], when: onSchedule, source: apps/tedris/features/schedule/components/schedule-page.tsx:225, script: actions } # no name, no initial focus: the page sets none (focus-not-set)
+  scheduleTitle: { type: text, component: Heading, role: heading, text: { key: SchedulePage.title }, in: [row, rowFailed, menu, downloading], when: onSchedule, source: apps/tedris/features/schedule/components/schedule-page.tsx:228 } # h1
+  rowTrigger: { type: action, component: Button, role: button, intent: secondary, name: { key: AddToCalendar.rowLabel, params: { title: title } }, in: [row, rowFailed, menu, downloading], when: onSchedule, emits: OPEN_MENU, source: apps/tedris/features/courses/components/calendar-menu.tsx:93 } # an icon only; aria-haspopup=menu, aria-expanded. Drawn only on a row whose state is upcoming (schedule-page.tsx:173)
 
   # ---- the celse page: the page around the action card, and the card's button ----
   celseMain: { type: page, component: Page, role: main, in: [celseCard, celseFailed, menu, downloading], when: onCelse, source: apps/tedris/features/courses/components/session-page.tsx:337, script: actions } # no name, no initial focus

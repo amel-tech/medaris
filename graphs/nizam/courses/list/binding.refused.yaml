@@ -26,11 +26,11 @@ scenarios:
     as: koskNazim
     open: '{nizam}/'
     setup:
-      - run: [node, ../nizam/courses/list/data.mjs, make-kosk, nclx, APPLICANT_F]
+      - run: [node, helpers/make-kosk.mjs, make, nclx, APPLICANT_F]
         expect: '"tag":"nclx"'
     teardown:
-      - run: [node, ../nizam/courses/list/data.mjs, remove-kosk, nclx]
-        expect: 'data remove-kosk nclx'
+      - run: [node, helpers/make-kosk.mjs, remove, nclx]
+        expect: 'kosk remove nclx'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where name like 'Deneme köşkü nclx%'"]
         expect: '"n":0'
 

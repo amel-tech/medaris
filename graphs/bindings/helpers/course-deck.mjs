@@ -1,24 +1,31 @@
-// The walk data of nazar.decks.siga: one draft deck in the walk's own course, made and removed through tedrisat's HTTP API as the
-// müderris of that course. It is the binding's `setup`, `teardown` and `effects`: `node deck.mjs make|remove|cards|gone <tag> ...`.
+// A deck of a walk's own course, made and removed through tedrisat's HTTP API as the müderris of that course. It is the binding's `setup`,
+// `teardown` and `effects`, for nazar.decks.siga (a draft "Sîga denemesi") and nazar.decks.publishAndDelete (a draft or published deck with
+// three cards): `node helpers/course-deck.mjs make|remove|cards|gone <tag> ...`, run from graphs/bindings/.
 //
-//   make <tag> [--type VOCABULARY|HADEETH]   opens the draft deck "Sîga denemesi" (POST /courses/:id/decks) in the course that
-//                                            `helpers/course.mjs make <tag>` recorded in graphs/.local/made/<tag>.json, and records
-//                                            it in graphs/.local/made/<tag>-deck.json ({tag, course, deck, title, type}), which the
-//                                            binding reads as the data source `deck` ({deck.deck}). Making a tag again removes the old
-//                                            deck first.
+//   make <tag> [--type VOCABULARY|HADEETH] [--title <text>] [--description <text>] [--published] [--cards <front=back,front=back>] [--unpublish]
+//                                            opens a deck (POST /courses/:id/decks, as `MUDERRIS`) in the course that `helpers/course.mjs
+//                                            make <tag>` recorded in graphs/.local/made/<tag>.json, and records it in
+//                                            graphs/.local/made/<tag>-deck.json ({tag, course, deck, title, type, published}), which the
+//                                            binding reads as a data source ({deck.deck}). The title is "Sîga denemesi" unless --title says
+//                                            otherwise; the deck is a draft unless --published (no talebe sees a draft); --cards adds the
+//                                            cards (POST /flashcard/decks/:id/cards, all VOCABULARY, in the order given). Making a tag again
+//                                            removes the old deck first (with --unpublish, as `remove` does). Prints the record as JSON.
 //   cards <tag>                              prints what the deck holds, for an `effects` check:
 //                                            `cards <n> <TYPE> metas=<n> kips=<kip,kip> kok=<root> bab=<bab> first=<front> back=<back>`
 //                                            where `first` is the card of the gâib, müzekker, müfred sîga of the mâzî (or the first card).
 //   gone <tag>                               the müderris deletes the deck (DELETE /courses/:id/decks/:deckId), as the person who
 //                                            "meanwhile" removes it does; a second `gone` says "already gone", and `remove` then has
 //                                            nothing left to do for it.
-//   remove <tag>                             deletes the deck, and every deck of that title in the course (a crashed walk may have left
-//                                            one); `none` when there is nothing. Run it BEFORE `course.mjs remove`: a course's decks are
-//                                            not deleted with it (decks.course_id is `on delete set null`), they stay behind as private
-//                                            decks of their author.
+//   remove <tag> [--unpublish] [--title <text>]
+//                                            deletes the deck, and every deck of that title in the course (a crashed walk may have left
+//                                            one); `none` when there is nothing. With --unpublish a deck is taken back to a draft first
+//                                            (PATCH /courses/:id/decks/:deckId { draft: true }: a course deck is deleted only while it is a
+//                                            draft, and a walk may have published it). Run it BEFORE `course.mjs remove`: a course's decks
+//                                            are not deleted with it (decks.course_id is `on delete set null`), they stay behind as private
+//                                            decks of their author. Prints `deck remove <tag> <result>`.
 //
-// A deck is made `draft`, so no talebe ever sees it. The generator's cards are removed with the deck (the API deletes a draft deck with
-// its cards). Nothing secret is printed: no token, no password. Run it under the replay lock when walks are running and you run it by hand.
+// The generator's cards are removed with the deck (the API deletes a draft deck with its cards). Nothing here writes a progress row, so none
+// is left behind. Nothing secret is printed: no token, no password. Run it under the replay lock when walks are running and you run it by hand.
 import {
   existsSync,
   mkdirSync,
@@ -27,20 +34,13 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
-import {
-  call,
-  Fail,
-  LOCAL,
-  must,
-  options,
-  run,
-} from "../../../bindings/helpers/lib.mjs";
+import { call, Fail, LOCAL, must, options, run } from "./lib.mjs";
 
 const HOCA = "MUDERRIS";
 const TITLE = "Sîga denemesi";
 const MADE = resolve(LOCAL, "made");
 const usage =
-  "usage: deck.mjs make <tag> [--type VOCABULARY|HADEETH] | cards <tag> | gone <tag> | remove <tag>";
+  "usage: course-deck.mjs make <tag> [--type VOCABULARY|HADEETH] [--title T] [--description D] [--published] [--cards front=back,..] [--unpublish] | cards <tag> | gone <tag> | remove <tag> [--unpublish] [--title T]";
 
 const courseFile = (tag) => resolve(MADE, `${tag}.json`);
 const deckFile = (tag) => resolve(MADE, `${tag}-deck.json`);
@@ -53,19 +53,26 @@ function keep(tag, made) {
 }
 
 // the draft decks of that title in the course, whatever the file says
-async function titled(course) {
+async function titled(course, title) {
   const r = await call(HOCA, "GET", `/courses/${course}/decks/manage`);
   if (r.status !== 200 || !Array.isArray(r.body)) return []; // the course is gone: nothing to list
-  return r.body.filter((d) => d.title === TITLE).map((d) => d.id);
+  return r.body.filter((d) => d.title === title).map((d) => d.id);
 }
 
-async function remove(tag) {
+async function remove(tag, o = {}) {
   const made = read(deckFile(tag));
   const course = made?.course ?? read(courseFile(tag))?.course;
   const ids = new Set(made?.deck ? [made.deck] : []);
-  if (course) for (const id of await titled(course)) ids.add(id);
+  if (course)
+    for (const id of await titled(course, o.title ?? made?.title ?? TITLE))
+      ids.add(id);
   let deleted = 0;
   for (const id of ids) {
+    // a published deck is refused with 409 COURSE_DECK_NOT_DRAFT: the way back is to a draft first
+    if (course && o.unpublish)
+      await call(HOCA, "PATCH", `/courses/${course}/decks/${id}`, {
+        draft: true,
+      });
     let r = course
       ? await call(HOCA, "DELETE", `/courses/${course}/decks/${id}`)
       : { status: 404 };
@@ -86,17 +93,42 @@ async function make(tag, o) {
     throw new Fail(
       `graphs/.local/made/${tag}.json is missing: run helpers/course.mjs make ${tag} first`
     );
-  await remove(tag);
+  const title = o.title ?? TITLE;
+  await remove(tag, { unpublish: o.unpublish, title });
   const type = o.type ?? "VOCABULARY";
   if (!["VOCABULARY", "HADEETH"].includes(type))
     throw new Fail(`--type is VOCABULARY or HADEETH, not ${type}`, 2);
+  const cards = (o.cards ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map((pair) => {
+      const at = pair.indexOf("=");
+      if (at < 1)
+        throw new Fail(`--cards is front=back,front=back, not ${pair}`, 2);
+      return {
+        type: "VOCABULARY",
+        contentFront: pair.slice(0, at),
+        contentBack: pair.slice(at + 1),
+      };
+    });
   const r = await must(HOCA, "POST", `/courses/${made.course}/decks`, {
-    title: TITLE,
+    title,
+    ...(o.description ? { description: o.description } : {}),
     cardType: type,
-    draft: true,
+    draft: o.published !== true,
   });
-  const out = { tag, course: made.course, deck: r.body.id, title: TITLE, type };
+  const out = {
+    tag,
+    course: made.course,
+    deck: r.body.id,
+    title,
+    type,
+    published: o.published === true,
+  };
+  // written at once, so a failure below still leaves the id `remove` needs
   keep(tag, out);
+  if (cards.length)
+    await must(HOCA, "POST", `/flashcard/decks/${r.body.id}/cards`, cards);
   return out;
 }
 
@@ -137,15 +169,19 @@ async function gone(tag) {
   return `deck ${made.deck} deleted`;
 }
 
-run("siga-deck", async () => {
-  const { rest, type } = options(process.argv.slice(2), { values: ["type"] });
+run("course-deck", async () => {
+  const o = options(process.argv.slice(2), {
+    values: ["type", "title", "description", "cards"],
+    flags: ["published", "unpublish"],
+  });
+  const { rest } = o;
   const [verb, tag, ...more] = rest;
   if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,40}$/.test(tag ?? "") || more.length)
     throw new Fail(usage, 2);
-  if (verb === "make") console.log(JSON.stringify(await make(tag, { type })));
+  if (verb === "make") console.log(JSON.stringify(await make(tag, o)));
   else if (verb === "cards") console.log(await cards(tag));
   else if (verb === "gone") console.log(await gone(tag));
   else if (verb === "remove")
-    console.log(`deck remove ${tag} ${await remove(tag)}`);
+    console.log(`deck remove ${tag} ${await remove(tag, o)}`);
   else throw new Fail(usage, 2);
 });

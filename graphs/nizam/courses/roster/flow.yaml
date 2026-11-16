@@ -57,7 +57,7 @@ scope:
   world: open
   outOfView:
     - "Onayla and Reddet on Başvurular and the approval note for a course that asks for approval: nizam.courses.decideApplications"
-    - "the ban dialog and the lift dialog themselves (scope, reason, the toast, the row's badge afterwards): nizam.moderation.banStudent; this flow ends where 'Yasakla' and 'Yasağı kaldır' are pressed"
+    - "the ban dialog (scope, reason, the toast, the row's badge afterwards): nizam.moderation.banStudent; the lift dialog is the LiftDialog of nizam.moderation.decideBan (drawn there on Yasaklamalar, not on this row); this flow ends where 'Yasakla' and 'Yasağı kaldır' are pressed"
     - "the same completion and removal from nazar: nazar.roster.complete, nazar.roster.remove (the same API; their ROSCOM-*, RMV-* findings are cited here as the twins they are)"
     - "what the talebe sees afterwards (the notice with the reason, the locked course page, the refused apply and leave, Programım without the celses): tedris.account.notifications, tedris.course.readProgramme, tedris.course.apply, tedris.course.leave, tedris.learning.schedule"
     - "a talebe barred from the whole köşk or in the course's medrese: the row says only 'Yasaklı · Köşk' (the badge for the course scope is the one drawn)"
@@ -372,7 +372,7 @@ states:
       TAB_REMOVED: { target: removedList, say: "they open Erişimi kaldırılanlar", source: apps/nizam/features/applications/components/students-tabs.tsx:97 }
       REOPEN: { guard: mayReopen, target: reopening, effect: [clearNote], say: "they press Yeniden aç on the row", source: apps/nizam/features/applications/components/roster-table.tsx:231 }
       BAN: { guard: mayBanCompleted, target: handed_over.ban, starts: { flow: nizam.moderation.banStudent }, say: "they press Yasakla on the completed talebe's row: the ban dialog opens (nizam.moderation.banStudent)", source: apps/nizam/features/applications/components/roster-table.tsx:134 }
-      LIFT: { guard: "held == 'barred'", target: handed_over.lift, starts: { flow: nizam.moderation.banStudent }, say: "they press Yasağı kaldır on the barred talebe's row: the lift dialog opens (nizam.moderation.banStudent)", source: apps/nizam/features/applications/components/roster-table.tsx:141 }
+      LIFT: { guard: "held == 'barred'", target: handed_over.lift, starts: { flow: nizam.moderation.decideBan, given: { read: "'ok'" } }, say: "they press Yasağı kaldır on the barred talebe's row: the lift dialog opens. It is the LiftDialog that nizam.moderation.decideBan draws on Yasaklamalar; decideBan begins at that list, so the hand-over is approximate and the roster-row lift itself is drawn by no flow", source: apps/nizam/features/applications/components/roster-table.tsx:141 }
       BACK: { target: handed_over.curriculum, starts: { flow: nizam.courses.curriculum }, say: "they press Derse dön: it goes to /edit, which redirects to the Müfredat page, not to the overview (F-W4-1)", source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
       NAVIGATE: { target: left, say: "they follow the menu or leave by an address" }
     source: apps/nizam/features/applications/components/roster-table.tsx:249
@@ -487,7 +487,7 @@ states:
     title: They press Yasağı kaldır, and the lift dialog takes over
     type: final
     description: >-
-      The LiftDialog opens over this page for the barred talebe (a required reason); the rest is nizam.moderation.banStudent. After the lift the
+      The LiftDialog opens over this page for the barred talebe (a required reason); the dialog is the one nizam.moderation.decideBan draws on Yasaklamalar (its own start is that list, so the roster-row lift is in no flow). After the lift the
       page reads itself again and the row has "Yasakla" back.
 
   handed_over.curriculum:

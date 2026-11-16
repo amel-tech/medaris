@@ -252,8 +252,8 @@ states:
     goal: true
     on:
       OPEN_APPOINT: { target: asking, effect: [reset], source: apps/nizam/features/permissions/components/nazims-view.tsx:211, say: "they press 'Medaris nazımı ata'" }
-      EDIT_ROW: { guard: "roster == 'some'", target: handed_over.edit_permissions, source: apps/nizam/features/permissions/components/nazims-view.tsx:176, say: "they press 'İzinleri düzenle: name' on a row" }
-      DISMISS_ROW: { guard: "roster == 'some'", target: handed_over.dismiss, source: apps/nizam/features/permissions/components/nazims-view.tsx:185, say: "they press 'Görevden al: name' on a row" }
+      EDIT_ROW: { guard: "roster == 'some'", target: handed_over.edit_permissions, starts: { flow: nizam.nazims.editPermissions }, source: apps/nizam/features/permissions/components/nazims-view.tsx:176, say: "they press 'İzinleri düzenle: name' on a row" }
+      DISMISS_ROW: { guard: "roster == 'some'", target: handed_over.dismiss, starts: { flow: nizam.nazims.dismiss }, source: apps/nizam/features/permissions/components/nazims-view.tsx:185, say: "they press 'Görevden al: name' on a row" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nizam/features/permissions/components/nazims-view.tsx:198
 
@@ -274,7 +274,7 @@ states:
       SEARCH:
         - { guard: "person == 'notAddress'", target: asking, source: apps/nizam/features/permissions/components/nazim-picker.tsx:41, say: "they type text that is no address and press Enter: `isEmailLike` fails, so nothing is searched and nothing is said" }
         - { target: searching, effect: [clearNote], source: apps/nizam/features/permissions/components/nazim-picker.tsx:60, say: "they type an address and press Enter, or leave the field" }
-      OPEN_GROUPS: { target: groups_opened, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle': a plain link, the page is loaded anew and what was typed is lost (MAPPT-10)" }
+      OPEN_GROUPS: { target: groups_opened, starts: { flow: nizam.nazims.groups }, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle': a plain link, the page is loaded anew and what was typed is lost (MAPPT-10)" }
       CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç, the close icon or Escape: the dialog closes, nothing is written, the focus goes back to 'Medaris nazımı ata'" }
       NAVIGATE: { target: left, say: "they leave the page" }
     source: apps/nizam/features/permissions/components/permissions-dialog.tsx:178
@@ -316,7 +316,7 @@ states:
       TYPE_END_PAST: { guard: "until != 'past'", target: pickedBadEnd, effect: [endPast], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:106, say: "they type an end that is not ahead: 'Bitiş zamanı şu andan sonra olmalı.' appears under the field at once and 'Kaydet' goes off" }
       CLEAR_END: { guard: "until != 'none'", target: picked, effect: [endNone], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they empty the end field: no end" }
       SAVE: { target: appointing, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:136, say: "they press 'Kaydet'" }
-      OPEN_GROUPS: { target: groups_opened, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle': what was typed is lost" }
+      OPEN_GROUPS: { target: groups_opened, starts: { flow: nizam.nazims.groups }, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle': what was typed is lost" }
       CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç, the close icon or Escape: nothing is written" }
       NAVIGATE: { target: left, say: "they leave the page" }
     source: apps/nizam/features/permissions/components/nazim-picker.tsx:111
@@ -337,7 +337,7 @@ states:
       TYPE_END_TODAY: { target: picked, effect: [endToday], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type an end later today" }
       TYPE_END_FAR: { target: picked, effect: [endFar], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they type an end more than 30 days ahead" }
       CLEAR_END: { target: picked, effect: [endNone], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:306, say: "they empty the end field" }
-      OPEN_GROUPS: { target: groups_opened, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle'" }
+      OPEN_GROUPS: { target: groups_opened, starts: { flow: nizam.nazims.groups }, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246, say: "they follow 'İzin gruplarını düzenle'" }
       CANCEL: { target: listed, effect: [reset], source: apps/nizam/features/permissions/components/permissions-dialog.tsx:181, say: "Vazgeç, the close icon or Escape" }
       NAVIGATE: { target: left, say: "they leave the page" }
     source: apps/nizam/features/permissions/components/permissions-dialog.tsx:289
@@ -375,8 +375,8 @@ states:
       APPOINTEE_OPENS_HOME:
         - { guard: "person != 'chief' and givesSomething", target: handed_over.cut, starts: { flow: nizam.home.medarisNazimCut, given: { granted: "'some'" } }, source: apps/nizam/app/(home)/page.tsx:62, say: "the person appointed signs in and opens Ana sayfa: her menu and home are cut to what she was given (nizam.home.medarisNazimCut)" }
         - { guard: "person != 'chief'", target: handed_over.cut, starts: { flow: nizam.home.medarisNazimCut, given: { granted: "'none'" } }, source: apps/nizam/app/(home)/page.tsx:62, say: "the person appointed with nothing opens Ana sayfa: a bare home that says nothing was given" }
-      EDIT_ROW: { target: handed_over.edit_permissions, source: apps/nizam/features/permissions/components/nazims-view.tsx:176, say: "they press 'İzinleri düzenle: name' on the new row" }
-      DISMISS_ROW: { target: handed_over.dismiss, source: apps/nizam/features/permissions/components/nazims-view.tsx:185, say: "they press 'Görevden al: name' on the new row" }
+      EDIT_ROW: { target: handed_over.edit_permissions, starts: { flow: nizam.nazims.editPermissions }, source: apps/nizam/features/permissions/components/nazims-view.tsx:176, say: "they press 'İzinleri düzenle: name' on the new row" }
+      DISMISS_ROW: { target: handed_over.dismiss, starts: { flow: nizam.nazims.dismiss }, source: apps/nizam/features/permissions/components/nazims-view.tsx:185, say: "they press 'Görevden al: name' on the new row" }
       NAVIGATE: { target: left, say: "they follow a link or the menu" }
     source: apps/nizam/features/permissions/components/permissions-dialog.tsx:162
 

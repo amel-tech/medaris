@@ -23,7 +23,7 @@ summary: >-
   A signed-in talebe with no enrolment opens a course. The card "Derse kayıt" offers one button. Where the card says the
   course needs approval it reads "Kayıt başvurusu yap", and the API puts the application in PENDING: the window "Başvurun
   alındı" opens, closing it hands the focus to "Başvuruyu geri çek", the card shows when the application went in, and the
-  course team decides in nazar or in nizam (those are the flows this one starts). Where the card says enrolment is open it
+  course team decides in nazar or in nizam, on its two lists or on the köşk's home (those are the flows this one starts). Where the card says enrolment is open it
   reads "Kayıt ol", the API gives the seat at once and a toast says "Kursa kaydoldunuz.". The talebe may take a waiting
   application back without being asked and may apply again. The same API call is offered by the locked celse page, which
   is tedris.celse.locked and invokes this flow.
@@ -35,7 +35,7 @@ scope:
     - "the visitor's card (\"Başvurmak için giriş yap\", \"Kayıt ol\" link to the realm): tedris.discover.visitorPath"
     - "leaving an enrolled seat, with its confirmation (\"Dersten ayrıl\"), and taking the application back from Derslerim: tedris.course.leave"
     - "the enrolled, completed and revoked cards and the rest of the course page (header, programme, tabs): tedris.course.readProgramme"
-    - "what the course team does with the application: nazar.roster.decide, nizam.courses.decideApplications (the list shared with nizam.home.decideApplications and nazar.pano.decideApplications)"
+    - "what the course team does with the application: nazar.roster.decide, nizam.courses.decideApplications and nizam.home.decideApplications (the list it shares with nazar.pano.decideApplications)"
     - "the same \"Kayıt başvurusu yap\" on a locked celse page, which opens its own copy of the window and does not move the focus (CLS-12, CLS-19): tedris.celse.locked"
     - "an application whose request never reaches the server (CRS-04): the page's own words for it are not verified"
     - "kontenjan: the code gives a seat with no count and no gender rule (invariants seat-quota-per-gender and gender-always-known); needs.yaml carries it as missing (MDRS-284)"
@@ -162,7 +162,17 @@ states:
       is one application with two places to decide it, and whoever decides first settles it for both. A step with no
       screen of its own.
     always:
-      - { target: received, starts: { flow: nizam.courses.decideApplications, given: { approval: "'needed'" } } }
+      - { target: reachesKoskHome, starts: { flow: nizam.courses.decideApplications, given: { approval: "'needed'" } } }
+
+  reachesKoskHome:
+    title: The application is on the köşk's home in nizam
+    source: apps/nizam/features/dashboard/components/kosk-home.tsx:84
+    description: >-
+      The same row a third time: the köşk's home in nizam lists the newest waiting applications of the köşk's courses, with
+      "Onayla" and "Reddet" on each row, and counts all of them in "Bekleyen başvuru". It is still one application with
+      three places to decide it, and whoever decides first settles it for all of them. A step with no screen of its own.
+    always:
+      - { target: received, starts: { flow: nizam.home.decideApplications, given: { approval: "'needed'" } } }
 
   received:
     title: The window "Başvurun alındı"

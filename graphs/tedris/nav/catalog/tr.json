@@ -86,5 +86,6 @@
   "SystemPages.notFoundAction": "Ana sayfaya dön",
   "SystemPages.notFoundTitle": "Sayfa bulunamadı",
   "WatchPage.details": "Celse ayrıntıları",
-  "common.legal.privacyNotice": "Aydınlatma Metni"
+  "common.legal.privacyNotice": "Aydınlatma Metni",
+  "composed.MyCoursesPage.courseCard": "{title}"
 }

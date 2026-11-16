@@ -27,14 +27,14 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+      - run: [node, helpers/nazim.mjs, down, applicantD]
         expect: 'down APPLICANT_D'
       - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
         expect: edit-data down
       - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, up]
         expect: edit-data up
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+      - run: [node, helpers/nazim.mjs, down, applicantD]
         expect: 'down APPLICANT_D'
       - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
         expect: edit-data down
@@ -46,14 +46,14 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+      - run: [node, helpers/nazim.mjs, down, applicantD]
         expect: 'down APPLICANT_D'
       - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
         expect: edit-data down
       - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, up, --forever]
         expect: edit-data up
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+      - run: [node, helpers/nazim.mjs, down, applicantD]
         expect: 'down APPLICANT_D'
       - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
         expect: edit-data down

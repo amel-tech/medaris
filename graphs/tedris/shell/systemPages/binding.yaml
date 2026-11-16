@@ -6,7 +6,7 @@
 #   ... --to discover_opened   (a visitor's not-found page and its way back: scenario visitorMissingCourse)
 #
 # Data. Nothing the seed holds is changed. The error page needs a course that throws, which the seed has not got, so
-# draft-course.mjs (this folder) makes a DRAFT köşk course of its own, "Sistem sayfaları denemesi", as the köşk's nazım, with the
+# helpers/draft-course.mjs makes a DRAFT köşk course of its own, "Sistem sayfaları denemesi", as the köşk's nazım, with the
 # müderris account as its hoca and one scheduled celse; `break` then gives it the time zone "Nope/Zone" with SQL (courses.time_zone:
 # the API takes only a real zone when a course is made), because the preview card formats the first celse's time in the course's zone
 # and throws a RangeError (e2e system-pages#10 does the same). "Yeniden dene" is pressed after `fix` has put the zone back, so the
@@ -48,10 +48,10 @@ scenarios:
     as: muderris
     open: '{tedris}/courses/{sp.draft}'
     setup:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, make]
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, break]
+      - run: [node, helpers/draft-course.mjs, make]
+      - run: [node, helpers/draft-course.mjs, break]
     teardown:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, remove]
+      - run: [node, helpers/draft-course.mjs, remove]
 
   # A member opens a celse that does not exist, of a course they are enrolled in (session#8).
   memberMissingCelse:
@@ -104,7 +104,7 @@ nodes:
   # "Yeniden dene" is pressed after the course's zone is put back, so the segment has something to read
   retryButton:
     before:
-      - run: [node, ../tedris/shell/systemPages/draft-course.mjs, fix]
+      - run: [node, helpers/draft-course.mjs, fix]
   # the global document's words are the error page's; its own <main> tells them apart
   shellErrorPage: { css: 'main.mds-system-state--page' }
   shellErrorTitle: { css: 'main.mds-system-state--page h1' }

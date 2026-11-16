@@ -3,16 +3,15 @@
 // single permissions and an end (or none), the days the end field is typed with, what the page's save is checked against, and the two
 // events that happen to the seat while the dialog is open. All through tedrisat's HTTP API as the başnazım (SYSTEM_ADMIN), no SQL.
 //
-// The appointment itself (and its end) is the one thing ../../home/medarisNazimCut/nazim.mjs cannot do: its `up` gives no group and no end, which is
-// what this flow edits. So the binding uses nazim.mjs for what it does (`down` dismisses the seat, before `up` and in the teardown, and for the
-// event "the person is dismissed while the dialog is open") and this file for the rest. The seat is applicantD ("Salih Başvuran"), a spare talebe;
-// never the seeded Medaris nazımı.
+// The appointment itself (and its end) is helpers/nazim.mjs's `up --group <id> --end <instant>`, which this file runs as a child; `down` of
+// the same helper dismisses the seat (before `up` and in the teardown, and for the event "the person is dismissed while the dialog is open"),
+// and this file does the rest. The seat is applicantD ("Salih Başvuran"), a spare talebe; never the seeded Medaris nazımı.
 //
 //   node ../nizam/nazims/editPermissions/edit-data.mjs up [--forever]
 //       makes the group "Deneme grubu epDialog" (PLATFORM scope: platform.audit_read, platform.inactive_scopes_manage) if it is not there, appoints
 //       applicantD with that group, the single permissions platform.madrasah_create and platform.deck_publish and an end twenty days ahead at 18:00
 //       in Istanbul (--forever: no end), writes graphs/.local/editperm.json (the binding's data source `ep`) and prints `edit-data up`.
-//       It fails when applicantD already holds a seat: run `nazim.mjs down applicantD` first (the binding does).
+//       It fails when applicantD already holds a seat: run `helpers/nazim.mjs down applicantD` first (the binding does).
 //   node ../nizam/nazims/editPermissions/edit-data.mjs held [--group chosen|none] [--deck ticked|unticked] [--end ahead|none]
 //       reads the seat as the başnazım and fails unless it holds what is asked: `group` the walk's group or no group, `deck` platform.deck_publish
 //       as a single permission or not, `end` an end (the row's `expiresAt`) or none. platform.madrasah_create must always be held. Prints
@@ -31,6 +30,7 @@
 // `YYYY-MM-DDTHH:mm`. What these cannot undo: the audit rows (medaris_nazim.appoint, permission.grant, permission.revoke, permission.group_*), and the
 // revoked rows kept as history. Run it under the replay lock when walks are running and you run it by hand. Not run when written (the owner
 // moved every replay to the end): every call below is from the code and the domain's description of it.
+import { spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -38,7 +38,8 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   Fail,
   LOCAL,
@@ -55,6 +56,10 @@ const GROUP = "Deneme grubu epDialog";
 const GROUP_CODES = ["platform.audit_read", "platform.inactive_scopes_manage"];
 const SINGLES = ["platform.madrasah_create", "platform.deck_publish"];
 const FILE = resolve(LOCAL, "editperm.json");
+const HELPERS = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../bindings/helpers"
+);
 const DAY = 86_400_000;
 const ZONE = "Europe/Istanbul";
 
@@ -113,13 +118,26 @@ async function ensureGroup() {
   ).body;
 }
 
-async function appoint(sub, groupId, expiresAt) {
-  await must(ADMIN, "POST", "/nizam/medaris-nazims", {
-    userId: sub,
-    groupId,
-    permissions: SINGLES,
-    ...(expiresAt ? { expiresAt: expiresAt.toISOString() } : {}),
-  });
+// the appointment, as the shared helper makes it: the group and the two single permissions, and an end or none
+function appoint(groupId, expiresAt) {
+  const r = spawnSync(
+    process.execPath,
+    [
+      resolve(HELPERS, "nazim.mjs"),
+      "up",
+      SPARE,
+      "--codes",
+      SINGLES.join(","),
+      "--group",
+      groupId,
+      ...(expiresAt ? ["--end", expiresAt.toISOString()] : []),
+    ],
+    { cwd: HELPERS, encoding: "utf8" }
+  );
+  if (r.status !== 0)
+    throw new Fail(
+      `nazim.mjs up: ${(r.stderr || r.stdout).trim().split("\n").pop()}`
+    );
 }
 
 async function up({ forever }) {
@@ -132,7 +150,7 @@ async function up({ forever }) {
   const group = await ensureGroup();
   const now = Date.now();
   const endAt = forever ? null : at(dayOf(now + 20 * DAY), "18:00");
-  await appoint(sub, group.id, endAt);
+  appoint(group.id, endAt);
   const row = await rowOf(sub);
   if (!row)
     throw new Fail("up: the seat is not in the list after the appointment");
@@ -212,7 +230,7 @@ async function shorten() {
     )
     .map((g) => ({ kind: g.kind, id: g.id, action: "DROP" }));
   await must(ADMIN, "DELETE", `/nizam/medaris-nazims/${d.sub}`, { decisions });
-  await appoint(d.sub, d.groupId, new Date(Date.now() + 2 * 3_600_000));
+  appoint(d.groupId, new Date(Date.now() + 2 * 3_600_000));
   console.log("edit-data shorten 2h");
 }
 

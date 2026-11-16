@@ -7,14 +7,14 @@
 //       the Medaris nazımı ACC opens a köşk and names the `--to` accounts its nazımları (POST /kosks, which a Medaris nazımı holding
 //       platform.kosk_create may call: kosk.controller.ts:309). Each nazım row is a KOSK_NAZIM role given by ACC, which is what the
 //       dismissal dialog lists, one row a person. A köşk with that short name left by an earlier walk is removed first, so every start
-//       is the same. ACC must already be a Medaris nazımı holding platform.kosk_create (../../home/medarisNazimCut/nazim.mjs up).
+//       is the same. ACC must already be a Medaris nazımı holding platform.kosk_create (helpers/nazim.mjs up).
 //   state --nazim ACC [--kosk <handle> --who ACC[,ACC]]
 //       read as the başnazım, for an `effects` check. Prints `nazim <KEY> held|none` and, per --who account,
 //       `kosk-nazim <KEY> held, given by <KEY|ROLE>` or `kosk-nazim <KEY> none` (`kosk <handle> none` when the köşk is gone).
 //
 // <ACC> is the role key of graphs/.local/accounts.env (APPLICANT_C) or the binding's name for it (applicantC). Only spare talebe accounts
 // are ever used here, never the seed's own Medaris nazımı (its row is not this flow's to change): both commands refuse it. Removing the
-// köşk afterwards is helpers/remove-kosk.mjs; dismissing the Medaris nazımı is ../../home/medarisNazimCut/nazim.mjs down. Nothing
+// köşk afterwards is helpers/remove-kosk.mjs; dismissing the Medaris nazımı is helpers/nazim.mjs down. Nothing
 // secret is printed: no password, no token.
 import {
   accountKey,

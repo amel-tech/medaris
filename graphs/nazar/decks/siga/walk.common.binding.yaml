@@ -10,7 +10,7 @@
 # (apps/nazar/features/decks, libs/ui/src/mds) and the catalog and is unverified until a walk; where a walk may need a fix, a comment says so.
 #
 # Data. Each scenario makes its own course (`helpers/course.mjs make siga`: one week of one celse, in the seed's second köşk, `MUDERRIS` as
-# hoca, nobody enrolled) and, in it, one draft deck "Sîga denemesi" (deck.mjs make siga: POST /courses/:id/decks as `MUDERRIS`). The walk
+# hoca, nobody enrolled) and, in it, one draft deck "Sîga denemesi" (helpers/course-deck.mjs make siga: POST /courses/:id/decks as `MUDERRIS`). The walk
 # enters as that müderris, who holds deck.manage_course in her own course. Nothing seeded is read or changed: the seeded course
 # "Bina ve İzhar Şerhi" and its deck "Sarf Kavramları" are other flows' data. `teardown` deletes the deck BEFORE the course (the course's delete
 # leaves its decks behind as their author's private decks: decks.course_id is `on delete set null`), then the course. graphs/.local/made/siga.json
@@ -94,5 +94,5 @@ nodes:
 # corrected text is what is sent).
 effects:
   createCards:
-    - run: [node, ../nazar/decks/siga/deck.mjs, cards, siga]
+    - run: [node, helpers/course-deck.mjs, cards, siga]
       expect: '{expectCards}'

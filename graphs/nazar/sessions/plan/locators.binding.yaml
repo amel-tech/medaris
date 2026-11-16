@@ -99,6 +99,9 @@ events:
     - fill: { css: 'input[name=startDate]', value: '{startDate}' }
     - fill: { css: 'input[name=endDate]', value: '{endDate}' }
     - fill: { css: 'input[name=title]', value: '{titleText}' }
+  # a refused pattern changed and asked again (REFILL): the end date moved to the start date, which a pattern on Monday and Saturday over one Tuesday still gives no celse for
+  REFILL:
+    - fill: { css: 'input[name=endDate]', value: '{refillEnd}' }
   FILL_IN_COUNT:
     - click: { role: button, name: '{dayA}', within: { role: group, name: 'Günler *' } }
     - click: { role: button, name: '{dayB}', within: { role: group, name: 'Günler *' } }

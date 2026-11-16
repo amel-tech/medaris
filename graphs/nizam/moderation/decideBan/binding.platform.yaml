@@ -6,7 +6,7 @@
 # NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`). A scenario that adds no transition of its own is
 # not walked by `--cover transitions` of binding.yaml, so this one has a file of its own.
 #
-# The ban is the başnazım's: ./bans.mjs up places it through the API as SYSTEM_ADMIN (tier 4), on applicantC, who is enrolled in the walk's own course.
+# The ban is the başnazım's: helpers/kosk-bans.mjs up places it through the API as SYSTEM_ADMIN (tier 4), on applicantC, who is enrolled in the walk's own course.
 # Nothing in the seed is changed. The same teardown as binding.yaml's.
 schema: delurio-graph/0
 kind: binding
@@ -27,10 +27,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --platform, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --platform, APPLICANT_C]
         expect: 'ready: 1 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
         expect: removed
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'

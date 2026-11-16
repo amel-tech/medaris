@@ -6,6 +6,8 @@
 # they are pages of tedris-web and Keycloak, which other graphs draw, and two plain responses (503, 404) that have no words of
 # the app's, only the one line named in the flow's description of refused.not_configured.
 # No `changes` note: the flow invokes no action that writes (two GET routes that only redirect).
+# One node is not code: headerRoadmap, the header's link to the planned roadmap page (MDRS-246). It carries no `source` and its key is
+# `planned.Header.roadmap`, the same key and word as in landing.site.roadmap's catalog ("Yol haritası", the writer's, for review).
 schema: delurio-graph/0
 kind: ui
 id: landing.site.enterApp
@@ -24,6 +26,7 @@ nodes:
   banner: { type: page, component: Page, role: banner, in: [home], source: apps/landing/components/site-header.tsx:54 } # two <header> elements are rendered; below 768 px the other is shown, at 768 and up this one
   headerSignIn: { type: action, component: LinkButton, role: link, text: { key: Header.signIn }, in: [home], emits: SIGN_IN, source: apps/landing/components/site-header.tsx:60 } # a plain <a href="/api/tedris/signin">, not <Link>
   headerRegister: { type: action, component: LinkButton, role: link, text: { key: Header.register }, in: [home], emits: REGISTER, source: apps/landing/components/site-header.tsx:63 } # wide layout only (L6)
+  headerRoadmap: { type: action, component: LinkButton, role: link, text: { key: planned.Header.roadmap }, in: [home], emits: OPEN_ROADMAP } # PLANNED (MDRS-246, decided 4 October): no code yet, so no `source`; the word is landing.site.roadmap's key, for review there (D5)
 
   # ---- the hero ----
   hero: { type: page, component: Page, role: region, name: { labelledBy: heroTitle }, in: [home], source: "apps/landing/app/[locale]/page.tsx:205" }

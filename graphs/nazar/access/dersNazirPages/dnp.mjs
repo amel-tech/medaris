@@ -1,11 +1,8 @@
-// The two things nazar.access.dersNazirPages's walks need that graphs/bindings/helpers does not give: dismissing every ders nazırı post of the
-// walk's own course, and one call to tedrisat that is MEANT to be refused, with the status and the code it answers printed on one line. It is
-// the binding's `teardown` and `effects`: `node ../nazar/access/dersNazirPages/dnp.mjs <verb> ...` from graphs/bindings/.
+// What nazar.access.dersNazirPages's walks need that graphs/bindings/helpers does not give: one call to tedrisat that is MEANT to be
+// refused, with the status and the code it answers printed on one line. It is the binding's `effects`:
+// `node ../nazar/access/dersNazirPages/dnp.mjs try ...` from graphs/bindings/. (Dismissing every ders nazırı post of the walk's own
+// course is helpers/course-nazir-grants.mjs --course <id> --dismiss.)
 //
-//   clear <courseId>
-//        Dismisses every ders nazırı post of the course (DELETE /courses/:id/nazirs/:postId) as the başnazım, the people a post appointed
-//        first: a post whose holder still has appointees is refused with 409 DISMISS_SEAT_HANDED_ON until they are gone, so it goes round
-//        again, four times at most. Prints `dnp clear <id>: <n> dismissed, <m> left`; a course that is not there (404) is `none`.
 //   try <ACCOUNT> <METHOD> <path> [json-body]
 //        One call as ACCOUNT, whatever it answers: prints `dnp try <METHOD> <path>: <status> <code>` (`ok` for a 2xx, no code), exit 0. In
 //        the path, `@post:<ACCOUNT2>` stands for the id of ACCOUNT2's ders nazırı post in that course (read as the başnazım), so a call
@@ -21,8 +18,7 @@ import {
   subOf,
 } from "../../../bindings/helpers/lib.mjs";
 
-const usage =
-  "usage: dnp.mjs clear <courseId> | try <ACCOUNT> <METHOD> <path> [json-body]";
+const usage = "usage: dnp.mjs try <ACCOUNT> <METHOD> <path> [json-body]";
 
 async function posts(courseId) {
   const r = await call("SYSTEM_ADMIN", "GET", `/courses/${courseId}/nazirs`);
@@ -34,33 +30,6 @@ async function posts(courseId) {
 
 run("dnp", async () => {
   const [verb, ...args] = process.argv.slice(2);
-  if (verb === "clear") {
-    const [courseId, ...more] = args;
-    if (!courseId || more.length) throw new Fail(usage, 2);
-    let left = await posts(courseId);
-    if (left === null) {
-      console.log(`dnp clear ${courseId}: none`);
-      return;
-    }
-    let dismissed = 0;
-    for (let pass = 0; pass < 4 && left.length > 0; pass++) {
-      for (const post of left) {
-        const r = await call(
-          "SYSTEM_ADMIN",
-          "DELETE",
-          `/courses/${courseId}/nazirs/${post.id}`
-        );
-        if (r.status >= 200 && r.status < 300) dismissed++;
-        else if (r.status !== 404 && r.status !== 409)
-          throw new Fail(`DELETE nazirs/${post.id}: ${refusal(r)}`);
-      }
-      left = (await posts(courseId)) ?? [];
-    }
-    console.log(
-      `dnp clear ${courseId}: ${dismissed} dismissed, ${left.length} left`
-    );
-    return;
-  }
   if (verb === "try") {
     const [account, method, rawPath, rawBody, ...more] = args;
     if (!account || !method || !rawPath || more.length)

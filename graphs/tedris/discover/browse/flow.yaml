@@ -259,7 +259,7 @@ states:
       OPEN_COURSE: { guard: madrasahShown, target: course_opened, say: "a course listed on a medrese card leads to /courses/<id>", source: apps/tedris/features/discover/components/madrasah-card.tsx:61 }
       APPLY_FOR_KOSK: { guard: member, target: application_opened, starts: { flow: tedris.discover.applyForKosk }, say: "\"Köşk açma başvurusu\" leads to /kosk-applications/new", source: apps/tedris/features/discover/components/discover-page.tsx:206 }
       SIGN_IN: { guard: visitor, target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }, say: "the link \"giriş yap\" of the invitation goes to /auth/signin with this page as callbackUrl", source: apps/tedris/components/anonymous-invite.tsx:41 }
-      REGISTER: { guard: visitor, target: handed_over.register, starts: { flow: realm.auth.register }, say: "the link \"kayıt ol\" goes to /auth/register, which ends on Ana sayfa (no callbackUrl, lib/invite-hrefs.ts:11)", source: apps/tedris/components/anonymous-invite.tsx:46 }
+      REGISTER: { guard: visitor, target: handed_over.register, starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }, say: "the link \"kayıt ol\" goes to /auth/register, which ends on Ana sayfa (no callbackUrl, lib/invite-hrefs.ts:11)", source: apps/tedris/components/anonymous-invite.tsx:46 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   emptyResult:
@@ -279,7 +279,7 @@ states:
       TYPE_SHARED_WORD: { guard: "listedSomething and search != 'both'", target: readingKosks, effect: [typedSharedWord], say: "they type another word, one that finds something", source: apps/tedris/features/discover/components/discover-filters.tsx:50 }
       APPLY_FOR_KOSK: { guard: member, target: application_opened, starts: { flow: tedris.discover.applyForKosk }, say: "\"Köşk açma başvurusu\" is drawn here too", source: apps/tedris/features/discover/components/discover-page.tsx:206 }
       SIGN_IN: { guard: visitor, target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }, say: "the invitation is drawn here too", source: apps/tedris/components/anonymous-invite.tsx:41 }
-      REGISTER: { guard: visitor, target: handed_over.register, starts: { flow: realm.auth.register }, say: "the invitation is drawn here too", source: apps/tedris/components/anonymous-invite.tsx:46 }
+      REGISTER: { guard: visitor, target: handed_over.register, starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }, say: "the invitation is drawn here too", source: apps/tedris/components/anonymous-invite.tsx:46 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   loadFailed:

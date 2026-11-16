@@ -1,10 +1,10 @@
 // Makes the one thing tedris.shell.systemPages needs that the seed has not got: a DRAFT course whose page throws when it is drawn,
 // and takes it away again (the flow's setup, its event and its teardown).
 //
-//   node ../tedris/shell/systemPages/draft-course.mjs make     a draft köşk course, one scheduled celse, the müderris account as its hoca
-//   node ../tedris/shell/systemPages/draft-course.mjs break    its time zone becomes "Nope/Zone", which the preview card cannot format
-//   node ../tedris/shell/systemPages/draft-course.mjs fix      its time zone is Europe/Istanbul again
-//   node ../tedris/shell/systemPages/draft-course.mjs remove   the course and everything under it is deleted
+//   node helpers/draft-course.mjs make     a draft köşk course, one scheduled celse, the müderris account as its hoca
+//   node helpers/draft-course.mjs break    its time zone becomes "Nope/Zone", which the preview card cannot format
+//   node helpers/draft-course.mjs fix      its time zone is Europe/Istanbul again
+//   node helpers/draft-course.mjs remove   the course and everything under it is deleted
 //
 // Why a draft with a bad zone: a draft is shown to those who may edit it as a preview (apps/tedris/features/courses/components/
 // course-page.tsx:147-170), and the preview card writes the first celse's time with Intl.DateTimeFormat in the course's zone
@@ -20,16 +20,8 @@
 // Prints `draft-course <mode> <what was done>`. Nothing secret is printed.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { query } from "../../../bindings/helpers/db.mjs";
-import {
-  Fail,
-  LOCAL,
-  must,
-  nameOf,
-  run,
-  seed,
-  subOf,
-} from "../../../bindings/helpers/lib.mjs";
+import { query } from "./db.mjs";
+import { Fail, LOCAL, must, nameOf, run, seed, subOf } from "./lib.mjs";
 
 const TITLE = "Sistem sayfaları denemesi";
 const FILE = resolve(LOCAL, "system-pages.json");

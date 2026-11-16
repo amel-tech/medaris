@@ -9,14 +9,73 @@
 //   --as            who sets them (default MUDERRIS, the müderris of every seeded course)
 //
 // Prints `course-nazir-grants <ACCOUNT> <courseId> <the codes now held, in the API's order>`.
-import { accountKey, Fail, must, options, run, subOf } from "./lib.mjs";
+//
+//   node helpers/course-nazir-grants.mjs --course <id> --dismiss
+//
+//   --dismiss       the way back: dismisses every ders nazırı post of the course (DELETE /courses/{id}/nazirs/{postId}) as the başnazım,
+//                   the people a post appointed first: a post whose holder still has appointees is refused with 409
+//                   DISMISS_SEAT_HANDED_ON until they are gone, so it goes round again, four times at most. Prints
+//                   `course-nazir-grants dismiss <id>: <n> dismissed, <m> left`; a course that is not there (404) is `none`.
+import {
+  accountKey,
+  call,
+  Fail,
+  must,
+  options,
+  refusal,
+  run,
+  subOf,
+} from "./lib.mjs";
 
 const SEED = ["enrollment.decide", "course.view_unpublished", "session.manage"];
+
+// the posts of a course as the başnazım reads them, or null when the course is not there
+async function posts(courseId) {
+  const r = await call("SYSTEM_ADMIN", "GET", `/courses/${courseId}/nazirs`);
+  if (r.status === 404) return null;
+  if (r.status < 200 || r.status >= 300)
+    throw new Fail(`GET /courses/${courseId}/nazirs: ${refusal(r)}`);
+  return r.body.items ?? [];
+}
+
+async function dismiss(courseId) {
+  let left = await posts(courseId);
+  if (left === null) {
+    console.log(`course-nazir-grants dismiss ${courseId}: none`);
+    return;
+  }
+  let dismissed = 0;
+  for (let pass = 0; pass < 4 && left.length > 0; pass++) {
+    for (const post of left) {
+      const r = await call(
+        "SYSTEM_ADMIN",
+        "DELETE",
+        `/courses/${courseId}/nazirs/${post.id}`
+      );
+      if (r.status >= 200 && r.status < 300) dismissed++;
+      else if (r.status !== 404 && r.status !== 409)
+        throw new Fail(`DELETE nazirs/${post.id}: ${refusal(r)}`);
+    }
+    left = (await posts(courseId)) ?? [];
+  }
+  console.log(
+    `course-nazir-grants dismiss ${courseId}: ${dismissed} dismissed, ${left.length} left`
+  );
+}
 
 run("course-nazir-grants", async () => {
   const o = options(process.argv.slice(2), {
     values: ["course", "nazir", "codes", "as"],
+    flags: ["dismiss"],
   });
+  if (o.dismiss === true) {
+    if (!o.course || o.nazir || o.codes !== undefined || o.as || o.rest.length)
+      throw new Fail(
+        "usage: course-nazir-grants.mjs --course <id> --dismiss",
+        2
+      );
+    return dismiss(o.course);
+  }
   if (!o.course || !o.nazir || o.codes === undefined || o.rest.length)
     throw new Fail(
       "usage: course-nazir-grants.mjs --course <id> --nazir <ACCOUNT> --codes <code,code,...|none|seed> [--as <ACCOUNT>]",

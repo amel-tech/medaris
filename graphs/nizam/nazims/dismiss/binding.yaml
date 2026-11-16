@@ -5,7 +5,7 @@
 # NOT RUN: written without a replay (the walk phase comes later). Every locator below is from the code and the catalog and is unverified until a walk; what the code leaves in
 # doubt is named in the notes. Read-only check done: the binding loads (replay --emit-spec).
 #
-# Who is made and who is dismissed. applicantC ("Esma Başvuran") is made a Medaris nazımı holding platform.kosk_create (../../home/medarisNazimCut/nazim.mjs up, API only, as the
+# Who is made and who is dismissed. applicantC ("Esma Başvuran") is made a Medaris nazımı holding platform.kosk_create (helpers/nazim.mjs up, API only, as the
 # başnazım); she then opens a köşk, "Deneme köşkü nazim-dismiss", and names applicantG ("Dilek Başvuran") and applicantB ("Ferhat Başvuran") its nazımları
 # (./dismiss.mjs hand: POST /kosks as her). Each of the two nazım seats is a KOSK_NAZIM role row given by her, which is what the dialog lists, one row a person. The roster has the
 # seeded nazımı first and Esma second (oldest appointment first), so the row the walk presses is the one named "Görevden al: Esma Başvuran".
@@ -47,14 +47,14 @@ scenarios:
       expectAfter: 'nazim APPLICANT_C none; kosk-nazim APPLICANT_G held, given by SYSTEM_ADMIN; kosk-nazim APPLICANT_B none'
       expectAudit: '"outcome":"1/1"'
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
+      - run: [node, helpers/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
         expect: 'up APPLICANT_C codes=platform.kosk_create'
       - run: [node, ../nizam/nazims/dismiss/dismiss.mjs, hand, --nazim, applicantC, --kosk, nazim-dismiss, --to, 'applicantG,applicantB']
         expect: 'handed APPLICANT_C kosk=nazim-dismiss'
     teardown:
       - run: [node, helpers/remove-kosk.mjs, nazim-dismiss]
         expect: 'remove-kosk nazim-dismiss removed'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+      - run: [node, helpers/nazim.mjs, down, applicantC]
         expect: 'down APPLICANT_C'
   one:
     given: { given: one }
@@ -68,14 +68,14 @@ scenarios:
       expectAfter: 'nazim APPLICANT_C none; kosk-nazim APPLICANT_G held, given by SYSTEM_ADMIN; kosk-nazim APPLICANT_B none'
       expectAudit: '"outcome":"1/0"'
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
+      - run: [node, helpers/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
         expect: 'up APPLICANT_C codes=platform.kosk_create'
       - run: [node, ../nizam/nazims/dismiss/dismiss.mjs, hand, --nazim, applicantC, --kosk, nazim-dismiss, --to, applicantG]
         expect: 'handed APPLICANT_C kosk=nazim-dismiss'
     teardown:
       - run: [node, helpers/remove-kosk.mjs, nazim-dismiss]
         expect: 'remove-kosk nazim-dismiss removed'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+      - run: [node, helpers/nazim.mjs, down, applicantC]
         expect: 'down APPLICANT_C'
   nothing:
     given: { given: nothing }
@@ -91,12 +91,12 @@ scenarios:
     setup:
       - run: [node, helpers/remove-kosk.mjs, nazim-dismiss]
         expect: 'remove-kosk nazim-dismiss removed'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
+      - run: [node, helpers/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
         expect: 'up APPLICANT_C codes=platform.kosk_create'
     teardown:
       - run: [node, helpers/remove-kosk.mjs, nazim-dismiss]
         expect: 'remove-kosk nazim-dismiss removed'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+      - run: [node, helpers/nazim.mjs, down, applicantC]
         expect: 'down APPLICANT_C'
 
 # The chips are pressed by events, because the nodes cannot say which row: the first answer is Dilek's Devral, the last answer Ferhat's Düşür. The rows come in no fixed order (both
@@ -109,7 +109,7 @@ events:
   # somebody else dismisses Esma while the dialog is open: the başnazım's own call through the API (nazim.mjs down), which also drops what she gave. The dialog does not notice; the
   # next 'Görevden al' is answered 404 MEDARIS_NAZIM_NOT_FOUND and the page shows the toast 'Bu kişi artık Medaris nazımı değil.' with the dialog still open (NZDIS-1).
   GONE_ELSEWHERE:
-    - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+    - run: [node, helpers/nazim.mjs, down, applicantC]
       expect: 'down APPLICANT_C'
 
 states:
@@ -187,7 +187,7 @@ effects:
     - run: [node, ../nizam/nazims/dismiss/dismiss.mjs, state, --nazim, applicantC, --kosk, nazim-dismiss, --who, 'applicantG,applicantB']
       expect: '{expectAfter}'
     # the platform permission is gone too (permissions#4: every grant of the person is revoked): the API itself says she no longer holds it
-    - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, lacks, applicantC, platform.kosk_create]
+    - run: [node, helpers/nazim.mjs, lacks, applicantC, platform.kosk_create]
       expect: 'lacks APPLICANT_C platform.kosk_create'
     - run: [node, helpers/sql.mjs, "select (details->>'tookOver') || '/' || (details->>'dropped') as outcome from audit_log where action = 'medaris_nazim.dismiss' and entity_id = '{secret.E2E_APPLICANT_C_SUB}' order by seq desc limit 1"]
       expect: '{expectAudit}'

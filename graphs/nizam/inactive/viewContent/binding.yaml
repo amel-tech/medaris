@@ -9,7 +9,7 @@
 #
 # What a walk makes and how it is taken away. `setup` makes four scopes with no manager (a köşk, a course, a medrese and a second
 # köşk) and the köşk that has a nazım and holds the course, all under the tag viewContent, by SQL: no route makes them
-# (passive-scopes.mjs says why, and that the NOT NULL columns were read from the database). `teardown` removes them, the people made
+# (helpers/passive-scopes.mjs says why, and that the NOT NULL columns were read from the database). `teardown` removes them, the people made
 # for them, and every audit row that names one of their ids: the opening this walk writes, and any read the opened page wrote.
 # `make` removes first, so a walk that died leaves nothing for the next one to trip on; a second `remove` finds nothing. If a walk
 # dies before its teardown the four scopes stay in Pasif kapsamlar (and in the home's warning and the passive counts) until the next
@@ -41,10 +41,10 @@ scenarios:
       targetEntity: kosk
     samples: { name: '{made.koskName}', kind: Ders, kosk: '{made.hostName}' }
     setup:
-      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, make, viewContent]
+      - run: [node, helpers/passive-scopes.mjs, make, viewContent]
         expect: 'passive-scopes make viewContent ready'
     teardown:
-      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, remove, viewContent]
+      - run: [node, helpers/passive-scopes.mjs, remove, viewContent]
         expect: 'passive-scopes remove viewContent'
   course:
     given: { scope: course, answer: normal }
@@ -59,10 +59,10 @@ scenarios:
       targetEntity: course
     samples: { name: '{made.courseTitle}', kind: Ders, kosk: '{made.hostName}' }
     setup:
-      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, make, viewContent]
+      - run: [node, helpers/passive-scopes.mjs, make, viewContent]
         expect: 'passive-scopes make viewContent ready'
     teardown:
-      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, remove, viewContent]
+      - run: [node, helpers/passive-scopes.mjs, remove, viewContent]
         expect: 'passive-scopes remove viewContent'
 
 states:

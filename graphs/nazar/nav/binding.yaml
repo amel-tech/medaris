@@ -114,7 +114,6 @@ pages:
   signIn: { skip: 'opened with a session it sends the person on to "/" at once (enterSignIn finds the session)' }
   medreseSegment: { skip: 'a route with no sample for {bolum}: every address answers the 404 page (F-L-4)' }
   dersSegment: { skip: 'a route with no sample for {bolum}: every address answers the 404 page (F-L-4)' }
-  dersDeckOne: { skip: 'the stack seeds no deck, and the route repeats {id} for the course and the deck, so one sample cannot give both' }
   erisimYok:
     shows: { role: heading, name: Bu portala erişiminiz yok }
 
@@ -185,6 +184,11 @@ pages:
   dersDeck:
     samples: { id: '{seed.courses.open}' }
     refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
+  # the seed's course deck "Sarf Kavramları" (a published deck of the course, made by the hoca); the nav graph names the
+  # deck's parameter {deck}, so the course and the deck each have a sample
+  dersDeckOne:
+    samples: { id: '{seed.courses.open}', deck: '{seed.decks.course}' }
+    refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
   dersBans:
     samples: { id: '{seed.courses.open}' }
     refusal: { text: '/Bu sayfaya izniniz yok|Sayfa bulunamadı|Bu portala erişiminiz yok/' }
@@ -205,6 +209,9 @@ entries:
   frame:medrese->medreseCourses: { role: link, name: '/^Dersler/' }
   frame:ders->dersSessions: { role: link, name: '/^Celseler/' }
   frame:ders->dersStudents: { role: link, name: '/^Talebeler/' }
+  # "Ders nazırları" is also the h1 of its page, which is a heading and not a link, and no other entry of the menu starts with
+  # these words ("Medrese nazırları" is the medrese menu's); the anchored name keeps a count or a hidden word after it
+  frame:ders->dersNazirs: { role: link, name: '/^Ders nazırları/' }
   # the person row is a link with the name, the roles and a hidden ", ayarlar"
   frame:medrese->hesap: { css: 'a.mds-nav-user' }
   frame:ders->hesap: { css: 'a.mds-nav-user' }
@@ -230,7 +237,9 @@ entries:
   medresePano->dersSessions: { skip: 'one "Düzenle: <title>" link per session row; several match' }
   medresePano->dersOverview: { skip: 'the card of a course the person holds a seat in; the başmüderris of the stack holds none' }
   medreseCoursesYeni->medreseSettings: { skip: 'drawn only while a policy locks a box of the form; the stack sets no policy' }
-  dersDeck->dersDeckOne: { skip: 'the stack seeds no deck' }
+  # the deck card's link: a card is one link, to the course's seeded deck (decks-page.tsx:104); the course's other decks, which a
+  # walk of another flow made and did not remove, are other links
+  dersDeck->dersDeckOne: { css: 'a[href="/ders/{seed.courses.open}/deste/{seed.decks.course}"]' }
   bildirimler->tedrisTarget: { skip: 'the stack seeds no notification for these accounts' }
   # the buttons that sign out are never followed; the link back from the confirmation page is
   hesap->realmSignIn: { follow: false }

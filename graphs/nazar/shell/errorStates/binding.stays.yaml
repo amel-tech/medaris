@@ -17,14 +17,14 @@ scenarios:
     as: basmuderris
     open: '{nazar}/'
     teardown:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, /me/assignments]
+      - run: [node, helpers/throttle.mjs, clear, basmuderris, /me/assignments]
         expect: 'clear /me/assignments'
   readFailed:
     given: { arrival: readFailed, recovery: stays }
     as: basmuderris
     open: '{nazar}/medrese/{seed.madrasah}/itirazlar'
     teardown:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
+      - run: [node, helpers/throttle.mjs, clear, basmuderris, '/madrasahs/{seed.madrasah}/appeals']
         expect: clear
 
 nodes:

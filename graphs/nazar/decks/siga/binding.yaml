@@ -7,7 +7,7 @@
 # deleted under the dialog in binding.gone.yaml and made a "Hadis" deck in binding.hadeeth.yaml. NOT RUN in the writing phase.
 #
 # What a walk writes, and how it is taken away. `setup` makes a published course with one week and one celse (`helpers/course.mjs make siga`,
-# in the second köşk, `MUDERRIS` its hoca) and, in it, one draft deck "Sîga denemesi" (deck.mjs). Only a walk that reaches the save writes
+# in the second köşk, `MUDERRIS` its hoca) and, in it, one draft deck "Sîga denemesi" (helpers/course-deck.mjs). Only a walk that reaches the save writes
 # cards: 28 (14 for one tense) in that deck. `teardown` deletes the deck (and its cards) and then the course. The two helpers are safe to run
 # twice, and `setup` removes what a crashed walk left. Nothing else of the stack is read or changed.
 #
@@ -37,14 +37,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'
@@ -66,14 +66,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 14 VOCABULARY metas=14 kips=mazi kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'
@@ -95,14 +95,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 14 VOCABULARY metas=14 kips=mazi kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'
@@ -123,14 +123,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'
@@ -151,14 +151,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'
@@ -179,14 +179,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'
@@ -207,14 +207,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'
@@ -235,14 +235,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'
@@ -264,14 +264,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 14 VOCABULARY metas=14 kips=mazi kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'

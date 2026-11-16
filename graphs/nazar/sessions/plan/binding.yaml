@@ -32,18 +32,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -65,18 +66,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -98,18 +100,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -131,18 +134,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -165,18 +169,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Pzt
       dayB: Cmt
       startDate: '{when.noStart}'
       endDate: '{when.noEnd}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -199,18 +204,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -232,18 +238,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -265,18 +272,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -298,18 +306,19 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'
@@ -332,20 +341,21 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, planWk, --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi planWk"'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, write, planWk]
+      - run: [node, helpers/dates.mjs, write, planWk]
         expect: 'dates planWk'
       - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
         expect: 'course-nazir-grants DERS_NAZIR'
     teardown:
       - run: [node, helpers/course.mjs, remove, planWk]
         expect: 'course remove planWk'
-      - run: [node, ../nazar/sessions/plan/dates.mjs, clear, planWk]
+      - run: [node, helpers/dates.mjs, clear, planWk]
         expect: 'dates planWk'
     vars:
       dayA: Sal
       dayB: Per
       startDate: '{when.start}'
       endDate: '{when.end}'
+      refillEnd: '{when.noStart}'
       howMany: '4'
       singleDate: '{when.single}'
       examDate: '{when.exam}'

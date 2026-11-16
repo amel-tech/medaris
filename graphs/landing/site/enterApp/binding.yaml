@@ -76,6 +76,9 @@ nodes:
   # "Dersleri keşfedin" (hero, talebe door)
   headerSignIn: { role: link, name: Giriş yap, within: { role: banner } }
   headerRegister: { role: link, name: Kayıt ol, within: { role: banner } }
+  # the header's link to the public roadmap is planned (MDRS-246, decided 4 October): no code stands behind it, so nothing here can find it; the transition
+  # OPEN_ROADMAP that leaves from it is therefore not walked, and `--cover transitions` reports it unbound, which is the truth until the page is built
+  headerRoadmap: { skip: "planned: no code (landing.site.roadmap)" }
   heroRegister: { role: link, name: Talebe olarak kaydolun, within: { css: 'section.karsilama-hero' } }
   heroExplore: { role: link, name: Dersleri keşfedin, within: { css: 'section.karsilama-hero' } }
   doorRegister: { role: link, name: Kaydolun, within: { css: '#talebeler' } }

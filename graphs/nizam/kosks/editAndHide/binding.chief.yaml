@@ -21,10 +21,10 @@ scenarios:
     setup:
       - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, make, editandhide, applicantG, --ruled]
         expect: '"ruled":true'
-      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, policy, lock, RECORDINGS_NEVER_PUBLIC, editandhide]
+      - run: [node, helpers/policies.mjs, lock, RECORDINGS_NEVER_PUBLIC, editandhide]
         expect: 'policy lock RECORDINGS_NEVER_PUBLIC on'
     teardown:
-      - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, policy, restore, editandhide]
+      - run: [node, helpers/policies.mjs, unlock, editandhide]
         expect: 'policy restore editandhide'
       - run: [node, ../nizam/kosks/editAndHide/walk-data.mjs, remove, editandhide]
         expect: 'kosk remove editandhide'

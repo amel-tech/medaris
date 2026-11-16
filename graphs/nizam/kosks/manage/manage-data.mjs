@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The köşk of nizam.kosks.manage's walks, put into the shape a scenario starts from, and what a colleague does to it behind the
-// page. The köşk itself is made by ../../shell/noAccessAndNotFound/make-kosk.mjs (tag kmanage), which writes graphs/.local/made/<tag>.json;
+// page. The köşk itself is made by helpers/make-kosk.mjs (tag kmanage), which writes graphs/.local/made/<tag>.json;
 // this helper reads the köşk's id from that file and goes through tedrisat's HTTP API as the başnazım (SYSTEM_ADMIN), the way the
 // pages do. No SQL. Nothing secret is printed.
 //

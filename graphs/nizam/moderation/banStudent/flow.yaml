@@ -69,7 +69,7 @@ scope:
   outOfView:
     - "the rest of the roster: the search, the paging, 'Tamamladı say', 'Dersten çıkar' and the other tabs (Tamamlayanlar has the same 'Yasakla' and the same window): nizam.courses.roster"
     - "deciding the waiting applications on the first tab: nizam.courses.decideApplications"
-    - "lifting a ban or widening a course ban to the köşk, from this row or from Yasaklamalar: nizam.moderation.decideBan; the tabs, counts and search of Yasaklamalar: nizam.moderation.reviewBans"
+    - "lifting a ban or widening a course ban to the köşk, on Yasaklamalar: nizam.moderation.decideBan; the tabs, counts and search of Yasaklamalar: nizam.moderation.reviewBans. The lift from a roster row (Yasağı kaldır, roster-table.tsx:141) opens the same LiftDialog; nizam.courses.roster hands over to decideBan for it, but decideBan begins at Yasaklamalar, so that lift on the roster is drawn by no flow"
     - "barring from a medrese's Talebeler or Yasaklamalar, by e-mail address, with the medrese as a scope: nazar.bans.ban; from a course's own Yasaklamalar in nazar: nazar.bans.courseBans"
     - "the Medaris nazımı's Bildirimler, where the notice is read and marked: nizam.notifications.triage (started by DONE)"
     - "the talebe's side of a ban (the notice 'erişimin kaldırıldı', being refused a seat or a celse): tedris.account.notifications, tedris.course.apply"

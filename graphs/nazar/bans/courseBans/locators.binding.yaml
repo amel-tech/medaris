@@ -140,19 +140,19 @@ nodes:
   permanentSubmit: { role: button, name: '/^Talebi aç$/', within: { role: dialog, name: '/^Kalıcı yasak talebi aç$/' } }
   busy: { role: status, hasText: Yükleniyor, within: { role: dialog } }
 
-# What a write leaves outside the screen, read from tedrisat's database by ../decide/bans.mjs (the people and the words come from the
+# What a write leaves outside the screen, read from tedrisat's database by helpers/madrasah-bans.mjs (the people and the words come from the
 # scenario's `vars`; the walk's own people only). `expect: 'has:'` is the helper saying the line is there. The helper is nazar.bans.decide's
 # own, written for its walk: if the orchestrator promotes it to graphs/bindings/helpers/, change the path here (and in the setups).
 effects:
   createBan:
-    - run: [node, ../nazar/bans/decide/bans.mjs, check, cbans, --who, '{who}', --has, '{placeHas}']
+    - run: [node, helpers/madrasah-bans.mjs, check, cbans, --who, '{who}', --has, '{placeHas}']
       expect: 'has:'
   liftBan:
-    - run: [node, ../nazar/bans/decide/bans.mjs, check, cbans, --who, '{who}', --has, '{liftHas}']
+    - run: [node, helpers/madrasah-bans.mjs, check, cbans, --who, '{who}', --has, '{liftHas}']
       expect: 'has:'
   escalateBan:
-    - run: [node, ../nazar/bans/decide/bans.mjs, check, cbans, --who, '{who}', --has, '{widenHas}']
+    - run: [node, helpers/madrasah-bans.mjs, check, cbans, --who, '{who}', --has, '{widenHas}']
       expect: 'has:'
   requestPermanentBan:
-    - run: [node, ../nazar/bans/decide/bans.mjs, check, cbans, --who, '{who}', --has, '{askHas}']
+    - run: [node, helpers/madrasah-bans.mjs, check, cbans, --who, '{who}', --has, '{askHas}']
       expect: 'has:'

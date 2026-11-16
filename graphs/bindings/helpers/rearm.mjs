@@ -3,10 +3,10 @@
 // as the admin of accounts.env (E2E_KEYCLOAK_ADMIN_USER / _PASSWORD), read inside this process: no password is ever in a
 // command line or printed.
 //
-//   node ../realm/auth/profileUpdate/rearm.mjs profile  [PENDING_PROFILE]   remove the privacy-notice tick
-//   node ../realm/auth/profileUpdate/rearm.mjs email    [PENDING_EMAIL]      mark the e-mail address not verified
-//   node ../realm/auth/profileUpdate/rearm.mjs password [PENDING_PASSWORD]  put the same password back and ask for a new one
-//   node ../realm/auth/profileUpdate/rearm.mjs status   [PENDING_PROFILE]   print what the account holds (for an `effects` check)
+//   node helpers/rearm.mjs profile  [PENDING_PROFILE]   remove the privacy-notice tick
+//   node helpers/rearm.mjs email    [PENDING_EMAIL]      mark the e-mail address not verified
+//   node helpers/rearm.mjs password [PENDING_PASSWORD]  put the same password back and ask for a new one
+//   node helpers/rearm.mjs status   [PENDING_PROFILE]   print what the account holds (for an `effects` check)
 //
 // Each re-arm is idempotent: an account that is already armed is left alone and the line says so. The three prints:
 //   rearm <ACCOUNT> profile: armed | already armed
@@ -21,7 +21,7 @@
 // profile is touched. The window is a second; a walk is under the replay lock, so no other walk signs in meanwhile.
 //
 // Never use this on a Keycloak that is not the local one: it refuses any address but localhost.
-import { env, Fail, run } from "../../../bindings/helpers/lib.mjs";
+import { env, Fail, run } from "./lib.mjs";
 
 const MODES = {
   profile: "PENDING_PROFILE",

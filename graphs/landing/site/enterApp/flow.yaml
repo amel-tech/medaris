@@ -21,6 +21,11 @@
 #           button, and Keycloak's form is drawn by React: with JavaScript off, "Giriş yap" and "Kayıt ol" end on a page that
 #           does nothing. Read from the code, not run with script off.
 # The graph draws what the code does; none of them is fixed here.
+#
+# One thing here is not code. The owner decided on 4 October (MDRS-246) that the header and the footer link to a public roadmap
+# page, /yol-haritasi. The page is landing.site.roadmap (status proposed) and the header link is drawn on `home` as PLANNED: the node
+# `headerRoadmap` (ui.yaml) and the transition OPEN_ROADMAP, which has no `source` because no code stands behind it. The footer's
+# link belongs to landing.site.readLegal and is not drawn here. Until the page is built nothing in this file may be walked to it.
 schema: delurio-graph/0
 kind: flow
 id: landing.site.enterApp
@@ -97,6 +102,7 @@ states:
       REGISTER: { target: registerRoute, say: "they take \"Kayıt ol\" or \"Talebe olarak kaydolun\" or \"Kaydolun\" (the header, the hero, the talebe door or the closing)", source: "apps/landing/components/site-header.tsx:63" }
       EXPLORE: { target: discoverRoute, say: "they take \"Dersleri keşfedin\" (the hero or the talebe door)", source: "apps/landing/app/[locale]/page.tsx:236" }
       OPEN_OTHER_INTENT: { target: unknownRoute, say: "they type an address under /api/tedris that is neither register nor signin; no link on the site leads there", source: "apps/landing/app/api/tedris/[intent]/route.ts:17" }
+      OPEN_ROADMAP: { target: handed_over.roadmap, starts: { flow: landing.site.roadmap }, say: "PLANNED (MDRS-246, no code yet): they take the header's link to the roadmap, a plain link to /yol-haritasi" }
       NAVIGATE: { target: left, say: "they leave the page" }
 
   signInRoute:
@@ -119,7 +125,7 @@ states:
     invoke: { action: enterTedris }
     source: apps/landing/app/api/tedris/[intent]/route.ts:28
     on:
-      DONE: { guard: "tedrisUrl == 'set'", target: handed_over.register, starts: { flow: realm.auth.register }, say: "307 to tedris's /auth/register, which opens Keycloak's registration form", source: "apps/landing/app/api/tedris/[intent]/route.ts:28" }
+      DONE: { guard: "tedrisUrl == 'set'", target: handed_over.register, starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }, say: "307 to tedris's /auth/register, which opens Keycloak's registration form", source: "apps/landing/app/api/tedris/[intent]/route.ts:28" }
       FAIL.notConfigured: { guard: "tedrisUrl == 'unset'", target: refused.not_configured, say: "503 and one line of plain text (ENTER-1)", source: "apps/landing/app/api/tedris/[intent]/route.ts:23" }
 
   discoverRoute:
@@ -166,6 +172,13 @@ states:
     title: They go on to Keşfet
     description: >-
       The browser is on tedris-web's /discover, which opens to a visitor with no account. tedris.discover.browse draws it.
+
+  handed_over.roadmap:
+    type: final
+    title: They go on to the public roadmap
+    description: >-
+      PLANNED (MDRS-246): no code yet. The browser is on the landing site's /yol-haritasi, a static page that landing.site.roadmap
+      draws. The link is the header's, beside "Giriş yap" and "Kayıt ol" (the footer carries one too).
 
   refused.not_configured:
     type: final

@@ -20,7 +20,7 @@
 #   otherDevice     the mail's link opened in another browser (a second browser context with no session): the two info pages, then
 #                   tedris's front door as a visitor. Walked with --to.
 #   pendingEmail    the seed's PENDING_EMAIL account signs in on Keycloak's form and is held on the verification page (the way in from
-#                   realm.auth.signIn's handed_over.verify_email). The account is armed again by ../realm/auth/profileUpdate/rearm.mjs email
+#                   realm.auth.signIn's handed_over.verify_email). The account is armed again by helpers/rearm.mjs email
 #                   (the profileUpdate writer's helper) before and after, and Mailpit's mail to it is cleared. Walked with --to verifyEmailPage.
 #   Not walked, and not given a scenario: entry signInForm (the link on Keycloak's sign-in form: it needs the sign-in flow's own walk
 #   as its way in), session usable, answer emailTaken and expired, cooldown over (a resend after 30 s needs a 30 s wait), the
@@ -84,13 +84,16 @@ scenarios:
     as: pendingEmail
     signIn: false
     open: '{tedris}/auth/signin'
+    # the mailbox of the seeded account is the one cleared; `username` is read only by the effects of a registration (`verificationMailed`,
+    # `emailVerified`), which this scenario never reaches, and the replay wants every placeholder an effect holds to be bound
+    vars: { address: '{secret.E2E_PENDING_EMAIL_EMAIL}', username: '{secret.E2E_PENDING_EMAIL_EMAIL}' }
     setup:
-      - run: [node, ../realm/auth/profileUpdate/rearm.mjs, email, PENDING_EMAIL]
+      - run: [node, helpers/rearm.mjs, email, PENDING_EMAIL]
         expect: 'rearm PENDING_EMAIL email:'
       - run: [node, helpers/mail.mjs, clear, 'to:{address}']
         expect: clear
     teardown:
-      - run: [node, ../realm/auth/profileUpdate/rearm.mjs, email, PENDING_EMAIL]
+      - run: [node, helpers/rearm.mjs, email, PENDING_EMAIL]
         expect: 'rearm PENDING_EMAIL email:'
       - run: [node, helpers/mail.mjs, clear, 'to:{address}']
         expect: clear
@@ -188,7 +191,7 @@ effects:
       expect: 'emailVerified=true'
   # the account is still not verified, and its sign-in sent the verification mail
   mailedBySignIn:
-    - run: [node, ../realm/auth/profileUpdate/rearm.mjs, status, PENDING_EMAIL]
+    - run: [node, helpers/rearm.mjs, status, PENDING_EMAIL]
       expect: 'emailVerified=false'
     - run: [node, helpers/mail.mjs, search, 'to:{address}', --wait, '20']
       expect: 'E-posta adresinizi doğrulayın'

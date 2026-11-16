@@ -18,11 +18,11 @@ scenarios:
     open: '{nizam}/kosks/{mine.kosk}/ana-sayfa'
     enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'frame:shell->koskArchive' }
     setup:
-      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, make-kosk, arsKosk, KOSK_NAZIM]
+      - run: [node, helpers/make-kosk.mjs, make, arsKosk, KOSK_NAZIM]
         expect: '"tag":"arsKosk"'
     teardown:
-      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, remove-kosk, arsKosk]
-        expect: 'remove-kosk arsKosk'
+      - run: [node, helpers/make-kosk.mjs, remove, arsKosk]
+        expect: 'kosk remove arsKosk'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]
         expect: '"n":0'
 

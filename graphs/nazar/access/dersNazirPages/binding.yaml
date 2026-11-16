@@ -32,13 +32,13 @@ scenarios:
         expect: '"tag":"dnp"'
       - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --nazir, applicantD, --codes, 'none']
         expect: 'course-nazir-grants APPLICANT_D'
-      - run: [node, ../nazar/questions/answer/questions.mjs, up, dnp, --talebe, APPLICANT_E, --hoca, MUDERRIS, --waiting, '1', --answered, '0']
+      - run: [node, helpers/questions.mjs, up, dnp, --talebe, APPLICANT_E, --hoca, MUDERRIS, --waiting, '1', --answered, '0']
         expect: 'questions up dnp: 1 waiting, 0 answered'
       - run: [node, helpers/api.mjs, muderris, PUT, '/lessons/{dnp.lessons.0}/assignment', '{"kind":"MEMORIZE","description":"Birinci bab ezberden okunacak."}']
         expect: '"kind":"MEMORIZE"'
     teardown:
-      - run: [node, ../nazar/access/dersNazirPages/dnp.mjs, clear, '{dnp.course}']
-      - run: [node, ../nazar/questions/answer/questions.mjs, down, dnp]
+      - run: [node, helpers/course-nazir-grants.mjs, --course, '{dnp.course}', --dismiss]
+      - run: [node, helpers/questions.mjs, down, dnp]
       - run: [node, helpers/course.mjs, remove, dnp]
         expect: course remove dnp
       - run: [node, helpers/notify.mjs, applicantE, clear]

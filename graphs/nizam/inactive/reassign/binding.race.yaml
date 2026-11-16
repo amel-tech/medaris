@@ -1,5 +1,5 @@
 # nizam.inactive.reassign, a manager given behind the page's back (INACTIVE_SCOPE_NOT_FOUND, the refusal "Bu kapsam artık pasif değil."):
-# the window is open on a row, and before the button is pressed `scopes.mjs heal` gives each of the walk's three scopes a manager through the API
+# the window is open on a row, and before the button is pressed `helpers/inactive-scopes.mjs heal` gives each of the walk's three scopes a manager through the API
 # (OTHER, as the başnazım), so the save is refused with 404. NOT RUN, like its sisters; see locators.binding.yaml for what every file shares.
 #   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/inactive/reassign \
 #     --bind graphs/nizam/inactive/reassign/binding.race.yaml --cover transitions --out <dir>
@@ -19,18 +19,18 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
     setup:
-      - run: [node, ../nizam/inactive/reassign/scopes.mjs, down]
+      - run: [node, helpers/inactive-scopes.mjs, down]
         expect: 'inactive-reassign down'
-      - run: [node, ../nizam/inactive/reassign/scopes.mjs, up]
+      - run: [node, helpers/inactive-scopes.mjs, up]
         expect: 'inactive-reassign up'
       - run: [node, helpers/course.mjs, make, inreassign, --hoca, OTHER, --weeks, '1', --lessons, '1']
         expect: '"tag":"inreassign"'
-      - run: [node, ../nizam/inactive/reassign/scopes.mjs, passive]
+      - run: [node, helpers/inactive-scopes.mjs, passive]
         expect: 'inactive-reassign passive'
     teardown:
       - run: [node, helpers/course.mjs, remove, inreassign]
         expect: 'course remove inreassign'
-      - run: [node, ../nizam/inactive/reassign/scopes.mjs, down]
+      - run: [node, helpers/inactive-scopes.mjs, down]
         expect: 'inactive-reassign down'
     vars:
       typed: '{secret.E2E_APPLICANT_G_EMAIL}'
@@ -41,17 +41,17 @@ nodes:
     role: button
     name: Köşk nazımı ata
     before:
-      - run: [node, ../nizam/inactive/reassign/scopes.mjs, heal]
+      - run: [node, helpers/inactive-scopes.mjs, heal]
         expect: 'inactive-reassign healed'
   madrasahSubmit:
     role: button
     name: Başmüderris ata
     before:
-      - run: [node, ../nizam/inactive/reassign/scopes.mjs, heal]
+      - run: [node, helpers/inactive-scopes.mjs, heal]
         expect: 'inactive-reassign healed'
   courseSubmit:
     role: button
     name: Hoca ata
     before:
-      - run: [node, ../nizam/inactive/reassign/scopes.mjs, heal]
+      - run: [node, helpers/inactive-scopes.mjs, heal]
         expect: 'inactive-reassign healed'

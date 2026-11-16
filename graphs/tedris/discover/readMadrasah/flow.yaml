@@ -199,7 +199,7 @@ states:
       OPEN_KOSK: { guard: hasCourses, target: kosk_opened, starts: { flow: tedris.discover.readKosk }, say: "the köşk named in a card's footer, or in the side list", source: apps/tedris/features/courses/components/madrasah-page.tsx:91 }
       OPEN_DISCOVER: { target: discover_opened, starts: { flow: tedris.discover.browse }, say: "the breadcrumb's Keşfet", source: apps/tedris/features/courses/components/madrasah-page.tsx:160 }
       OPEN_SIGN_IN: { target: handed_over.sign_in, starts: { flow: realm.auth.signIn, given: { app: "'tedris'", entry: "'signInLink'" } }, say: "\"giriş yap\" in the invitation: /auth/signin?callbackUrl=/madrasahs/<id>, which starts the Keycloak round trip", source: apps/tedris/components/anonymous-invite.tsx:41 }
-      OPEN_REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register }, say: "\"kayıt ol\" in the invitation: /auth/register, which opens Keycloak's registration form", source: apps/tedris/components/anonymous-invite.tsx:46 }
+      OPEN_REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }, say: "\"kayıt ol\" in the invitation: /auth/register, which opens Keycloak's registration form", source: apps/tedris/components/anonymous-invite.tsx:46 }
       NAVIGATE: { target: left, say: "they go on to another page" }
 
   readByMember:

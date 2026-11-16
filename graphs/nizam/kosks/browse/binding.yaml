@@ -145,11 +145,11 @@ scenarios:
     as: applicantF
     open: '{nizam}/kosks'
     setup:
-      - run: [node, ../nizam/kosks/browse/kosks.mjs, medaris, up, APPLICANT_F]
-        expect: 'medaris up APPLICANT_F codes=none'
+      - run: [node, helpers/nazim.mjs, up, APPLICANT_F, --codes, none]
+        expect: 'up APPLICANT_F codes=none'
     teardown:
-      - run: [node, ../nizam/kosks/browse/kosks.mjs, medaris, down, APPLICANT_F]
-        expect: 'medaris down APPLICANT_F'
+      - run: [node, helpers/nazim.mjs, down, APPLICANT_F]
+        expect: 'down APPLICANT_F'
     vars: { tag: brsx, typeActive: Süleymaniye, typePassive: brsx pasif, typeHidden: brsx gizli, typeNobody: zzz yok }
 
   # A talebe: no role at all, so the /kosks layout refuses before the page reads anything.

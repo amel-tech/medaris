@@ -6,7 +6,7 @@
 # (the owner's word: replays come once, at the end).
 #
 # The people. A scenario makes one course of its own in the seed's second köşk, "Kubbealtı Köşkü" (helpers/course.mjs make decideBan --kosk
-# {seed.kosk2}), enrols spare talebe in it and puts open bans on them through the API (./bans.mjs up). The pages name a person by the name
+# {seed.kosk2}), enrols spare talebe in it and puts open bans on them through the API (helpers/kosk-bans.mjs up). The pages name a person by the name
 # tedrisat holds (STACK.md): applicantC "Esma Başvuran", applicantD "Salih Başvuran", applicantE "Betül Başvuran", applicantG "Dilek Başvuran"
 # (the Medaris nazım of binding.medaris.yaml and binding.refused.yaml; never a person a ban is on). Never F or H (other flows'). The list is
 # newest first (ban.repository.ts:405-410) and a repeated node is pressed on its first item, so a press decides the person whose ban was
@@ -118,19 +118,19 @@ nodes:
   extendSubmit: { role: button, name: '/^Yasağı genişlet$/', within: { role: dialog } }
   busy: { role: status, hasText: Yükleniyor, within: { role: dialog } }
 
-# What a decision leaves outside the screen, read from tedrisat's database by ./bans.mjs (the people and the words come from the scenario's
+# What a decision leaves outside the screen, read from tedrisat's database by helpers/kosk-bans.mjs (the people and the words come from the scenario's
 # `vars`; the walk's own people only). `expect: 'has:'` is the helper saying the line is there.
 effects:
   liftBan:
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --has, '{liftHas}']
+    - run: [node, helpers/kosk-bans.mjs, check, decideBan, --who, '{who}', --has, '{liftHas}']
       expect: 'has:'
   # the Medaris list's widening: a köşk ban stands beside the course ban, and the audit row says it is a widening (bans-medaris#5)
   extendBan:
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --has, '{widenHas}']
+    - run: [node, helpers/kosk-bans.mjs, check, decideBan, --who, '{who}', --has, '{widenHas}']
       expect: 'has:'
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --audit, ban.extend]
+    - run: [node, helpers/kosk-bans.mjs, check, decideBan, --who, '{who}', --audit, ban.extend]
       expect: 'audit: ban.extend'
   # the köşk's one-click widening: the same köşk ban, whose audit row says ban.create (NDB-2)
   createBan:
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --has, '{widenHas}']
+    - run: [node, helpers/kosk-bans.mjs, check, decideBan, --who, '{who}', --has, '{widenHas}']
       expect: 'has:'

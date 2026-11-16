@@ -261,7 +261,7 @@ run("appeals", async () => {
     if (what) throw new Fail(usage, 2);
     const read = await call("SYSTEM_ADMIN", "GET", "/appeals?status=PENDING");
     if (read.status === 429) {
-      // the `unreadable` walk spends this route's budget on purpose (nazar/shell/errorStates/throttle.mjs): nothing to compare then
+      // the `unreadable` walk spends this route's budget on purpose (helpers/throttle.mjs): nothing to compare then
       console.log("counts skipped 429");
       return;
     }

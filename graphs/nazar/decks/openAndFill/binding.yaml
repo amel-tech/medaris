@@ -45,6 +45,7 @@ scenarios:
     given: { course: closed }
     as: dersNazir
     open: '{nazar}/ders/{made.course}/deste'
+    vars: { deckTitle: Deneme destesi deck-fill, cardFront: قَرَأَ, cardBack: 'Okudu, okur.', revisedBack: 'Okudu, okuyor.' }
     setup:
       - run: [node, ../nazar/decks/openAndFill/decks-data.mjs, remove]
         expect: 'deck-data remove'

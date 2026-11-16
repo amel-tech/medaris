@@ -11,7 +11,7 @@
 # Where a walk may need a fix, a comment says so.
 #
 # The walk's data, all through tedrisat's API as the başnazım (no SQL), made in `setup` and removed in `teardown`:
-#   a köşk        "Deneme köşkü kmanage" (short name deneme-kmanage), made by ../nizam/shell/noAccessAndNotFound/make-kosk.mjs with
+#   a köşk        "Deneme köşkü kmanage" (short name deneme-kmanage), made by helpers/make-kosk.mjs with
 #                 applicantE (Betül Başvuran) as its only nazım; the seed's two köşks are never hidden, passivated or changed
 #   a right       the seed's medrese "Hadis ve Siyer Medresesi" holds a hosting right in it (manage-data.mjs rights); the medrese's own
 #                 data is not touched

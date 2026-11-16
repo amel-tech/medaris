@@ -34,7 +34,7 @@
 // hand under the replay lock when walks are running.
 //
 // NOT RUN: the owner's word is that nothing writes to the stack before the walk phase. Every call is read from the controllers
-// (kosk.controller.ts:310, 367; kosk-admin.controller.ts:255, 277, 297, 327) and follows graphs/nizam/shell/noAccessAndNotFound/make-kosk.mjs
+// (kosk.controller.ts:310, 367; kosk-admin.controller.ts:255, 277, 297, 327) and follows helpers/make-kosk.mjs
 // and graphs/nizam/madrasahs/passivate/passivate-data.mjs; `node --check` reads it, nothing more.
 import {
   existsSync,

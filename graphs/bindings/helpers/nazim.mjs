@@ -1,31 +1,26 @@
 #!/usr/bin/env node
-// A Medaris nazımı of this flow's own, for a binding's `setup`, `teardown` and `events` (`run` commands: no page exists then).
-// No helper in graphs/bindings/helpers/ appoints one, so this is the flow-local one (the orchestrator may move it there). It goes
-// through tedrisat's HTTP API as the başnazım (SYSTEM_ADMIN), the way the Medaris nazımları page does, and uses no SQL.
+// A Medaris nazımı of a walk's own, for a binding's `setup`, `teardown`, `events` and `effects` (`run` commands: no page exists then).
+// It goes through tedrisat's HTTP API as the başnazım (SYSTEM_ADMIN), the way the Medaris nazımları page does, and uses no SQL.
 //
-//   node nazim.mjs up <ACCOUNT> --codes <code,code | none> [--deck <title>]
-//       appoints the account as a Medaris nazımı holding exactly these platform permissions (POST /nizam/medaris-nazims, or
-//       PUT .../grants when it already holds the seat, so a walk that died before its teardown is put right). `--deck` also
-//       makes the account's own deck of that title and asks for its publication, so the deck queue holds one request.
-//   node nazim.mjs drop <ACCOUNT> --code <code>
+//   node helpers/nazim.mjs up <ACCOUNT> --codes <code,code | none> [--group <name | id>] [--end <ISO instant>] [--deck <title>]
+//       appoints the account as a Medaris nazımı holding exactly these platform permissions as single ones (POST /nizam/medaris-nazims, or
+//       PUT .../grants when it already holds the seat, so a walk that died before its teardown is put right). `--group` also gives the
+//       seat a platform permission group that is there already (by its name, or its id) and `--end` an end (an ISO instant, as the
+//       page's end field sends it); without them the appointment has no group and no end. With a group the seat holds the group's
+//       permissions beside the single ones, so the check is that it holds the singles and the group, not that the two sets are equal.
+//       `--deck` also makes the account's own deck of that title and asks for its publication, so the deck queue holds one request.
+//   node helpers/nazim.mjs drop <ACCOUNT> --code <code>
 //       the başnazım takes one permission away: PUT .../grants with the rest (the other permissions keep their rows)
-//   node nazim.mjs lacks <ACCOUNT> <code>
+//   node helpers/nazim.mjs lacks <ACCOUNT> <code>
 //       fails when the account still holds the code (GET /me/permissions as the account); for an `effects` check
-//   node nazim.mjs down <ACCOUNT> [--deck <title>]
+//   node helpers/nazim.mjs down <ACCOUNT> [--deck <title>]
 //       dismisses the account (DELETE /nizam/medaris-nazims/<id>, answering "Düşür" to anything it handed on, which is nothing
 //       here) and removes the deck of that title; each part on its own, none is a failure
 //
 // <ACCOUNT> is the role key of graphs/.local/accounts.env (APPLICANT_F) or the binding's name for it (applicantF). It must be a
-// spare talebe: never the seed's own Medaris nazımı (its grants are not this flow's to change). Prints one line, `up|dropped|lacks|
+// spare talebe: never the seed's own Medaris nazımı (its grants are not a walk's to change). Prints one line, `up|dropped|lacks|
 // down <ACCOUNT> ...`, for the binding's `expect`. Nothing secret is printed.
-import {
-  accountKey,
-  Fail,
-  must,
-  options,
-  run,
-  subOf,
-} from "../../../bindings/helpers/lib.mjs";
+import { accountKey, Fail, must, options, run, subOf } from "./lib.mjs";
 
 const CHIEF = "SYSTEM_ADMIN";
 
@@ -39,32 +34,53 @@ const csv = (codes) => (codes.length ? codes.join(",") : "none");
 const platformGroupId = (row) =>
   (row?.groups ?? []).find((g) => g.scope === "PLATFORM")?.id ?? null;
 
-async function up(account, { codes, deck }) {
+// the platform group `ref` names (an id, or the name of a group of the platform's scope): its id
+async function groupIdOf(ref) {
+  const groups = (await must(CHIEF, "GET", "/nizam/permission-groups")).body;
+  const found = (groups ?? []).find(
+    (g) => g.scope === "PLATFORM" && (g.id === ref || g.name === ref)
+  );
+  if (!found)
+    throw new Fail(`up: there is no platform permission group ${ref}`);
+  return found.id;
+}
+
+async function up(account, { codes, deck, group, end }) {
   if (!codes) throw new Fail("up needs --codes <code,code | none>", 2);
+  if (end !== undefined && Number.isNaN(Date.parse(end)))
+    throw new Fail(`--end is an ISO instant, not ${end}`, 2);
   const wanted = codes === "none" ? [] : codes.split(",").map((c) => c.trim());
   const sub = subOf(account);
   await must(account, "GET", "/me"); // tedrisat makes the person's row at their first call; the appointment names it
+  const groupId = group ? await groupIdOf(group) : undefined;
+  const given = {
+    permissions: wanted,
+    ...(groupId ? { groupId } : {}),
+    ...(end ? { expiresAt: new Date(end).toISOString() } : {}),
+  };
   const held = await rowOf(sub);
   if (held) {
-    // no group and no end: the body of an appointment that gives single permissions and no date
-    await must(CHIEF, "PUT", `/nizam/medaris-nazims/${sub}/grants`, {
-      permissions: wanted,
-    });
+    // no group and no end unless asked: the body of an appointment that gives single permissions and no date
+    await must(CHIEF, "PUT", `/nizam/medaris-nazims/${sub}/grants`, given);
   } else {
     await must(CHIEF, "POST", "/nizam/medaris-nazims", {
       userId: sub,
-      permissions: wanted,
+      ...given,
     });
   }
-  const now = codesOf(await rowOf(sub));
-  const same =
-    now.length === wanted.length && wanted.every((c) => now.includes(c));
+  const row = await rowOf(sub);
+  const now = codesOf(row);
+  const same = groupId
+    ? wanted.every((c) => now.includes(c)) && platformGroupId(row) === groupId
+    : now.length === wanted.length && wanted.every((c) => now.includes(c));
   if (!same)
     throw new Fail(
-      `up ${accountKey(account)}: holds ${csv(now)}, wanted ${csv(wanted)}`
+      `up ${accountKey(account)}: holds ${csv(now)}${groupId ? ` and group ${platformGroupId(row) ?? "none"}` : ""}, wanted ${csv(wanted)}${groupId ? ` and group ${groupId}` : ""}`
     );
   const queued = deck ? await queueDeck(account, deck) : "";
-  console.log(`up ${accountKey(account)} codes=${csv(now)}${queued}`);
+  console.log(
+    `up ${accountKey(account)} codes=${csv(now)}${groupId ? ` group=${groupId}` : ""}${end ? ` end=${new Date(end).toISOString()}` : ""}${queued}`
+  );
 }
 
 async function drop(account, { code }) {
@@ -159,8 +175,8 @@ async function down(account, { deck }) {
 
 run("nazim", async () => {
   const [command, ...args] = process.argv.slice(2);
-  const { rest, codes, code, deck } = options(args, {
-    values: ["codes", "code", "deck"],
+  const { rest, codes, code, deck, group, end } = options(args, {
+    values: ["codes", "code", "deck", "group", "end"],
   });
   const [account, extra] = rest;
   if (!command || !account)
@@ -173,7 +189,7 @@ run("nazim", async () => {
       "the seed's own Medaris nazımı is never changed by a walk",
       2
     );
-  if (command === "up") await up(account, { codes, deck });
+  if (command === "up") await up(account, { codes, deck, group, end });
   else if (command === "drop") await drop(account, { code });
   else if (command === "lacks") await lacks(account, extra);
   else if (command === "down") await down(account, { deck });

@@ -38,7 +38,7 @@ scenarios:
     open: '{nizam}/kosks/{mine.kosk}/ana-sayfa'
     enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'frame:shell->koskArchive' }
     setup:
-      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, make-kosk, arsKosk, KOSK_NAZIM]
+      - run: [node, helpers/make-kosk.mjs, make, arsKosk, KOSK_NAZIM]
         expect: '"tag":"arsKosk"'
       - run: [node, helpers/course.mjs, make, arsParts, --kosk, '{mine.kosk}', --weeks, '2', --lessons, '1']
         expect: '"title":"Deneme dersi arsParts"'
@@ -67,8 +67,8 @@ scenarios:
         expect: 'course remove arsParts'
       - run: [node, helpers/course.mjs, remove, arsForeign]
         expect: 'course remove arsForeign'
-      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, remove-kosk, arsKosk]
-        expect: 'remove-kosk arsKosk'
+      - run: [node, helpers/make-kosk.mjs, remove, arsKosk]
+        expect: 'kosk remove arsKosk'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ars%'"]
         expect: '"n":0'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]

@@ -221,10 +221,10 @@ states:
     source: apps/nizam/features/kosks/components/nazims-view.tsx:123
     on:
       OPEN_ADD: { guard: chief, target: asking, effect: [reset], source: apps/nizam/features/kosks/components/nazims-view.tsx:148, say: "they press 'Köşk nazımı ekle': the dialog opens with the focus in the e-mail field, the button off" }
-      OPEN_SETTINGS: { target: settings_opened, source: apps/nizam/features/kosks/components/nazims-view.tsx:161, say: "the tab 'Genel' (the breadcrumb's 'Köşk ayarları' for a nazım) is a plain link to /kosks/<id>/ayarlar" }
-      OPEN_HOSTING: { target: hosting_opened, source: apps/nizam/features/kosks/components/nazims-view.tsx:168, say: "the tab 'Barındırma hakları' is a plain link to /kosks/<id>/ayarlar/barindirma" }
-      OPEN_KOSKS: { guard: chief, target: kosks_opened, source: apps/nizam/features/kosks/components/nazims-view.tsx:133, say: "the başnazım's breadcrumb 'Köşkler' leads to /kosks" }
-      OPEN_KOSK: { guard: chief, target: kosk_opened, source: apps/nizam/features/kosks/components/nazims-view.tsx:134, say: "the başnazım's breadcrumb gives the köşk's own name, a link to /kosks/<id>" }
+      OPEN_SETTINGS: { target: settings_opened, starts: { flow: nizam.kosks.editAndHide }, source: apps/nizam/features/kosks/components/nazims-view.tsx:161, say: "the tab 'Genel' (the breadcrumb's 'Köşk ayarları' for a nazım) is a plain link to /kosks/<id>/ayarlar" }
+      OPEN_HOSTING: { target: hosting_opened, starts: { flow: nizam.hosting.grantAndRevoke }, source: apps/nizam/features/kosks/components/nazims-view.tsx:168, say: "the tab 'Barındırma hakları' is a plain link to /kosks/<id>/ayarlar/barindirma" }
+      OPEN_KOSKS: { guard: chief, target: kosks_opened, starts: { flow: nizam.kosks.browse, given: { viewer: "'chief'" } }, source: apps/nizam/features/kosks/components/nazims-view.tsx:133, say: "the başnazım's breadcrumb 'Köşkler' leads to /kosks" }
+      OPEN_KOSK: { guard: chief, target: kosk_opened, starts: { flow: nizam.kosks.manage, given: { reader: "'chief'" } }, source: apps/nizam/features/kosks/components/nazims-view.tsx:134, say: "the başnazım's breadcrumb gives the köşk's own name, a link to /kosks/<id>" }
       NAVIGATE: { target: left, say: "they leave the page by the menu or the address" }
 
   listFailed:

@@ -31,22 +31,22 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/ayarlar/ortak-uygulamalar'
     setup:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-kayit-uygulamasi, --name, 'Deneme kayıt uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, regscope, --weeks, '1', --lessons, '1']
         expect: '"tag":"regscope"'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, add, --course, '{made.course}', --codes, deneme-kayit-kod-1]
+      - run: [node, helpers/partner.mjs, add, --client, deneme-kayit-uygulamasi, --course, '{made.course}', --codes, deneme-kayit-kod-1]
         expect: 'codes'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
         expect: 'kosks=1 codes=1'
     teardown:
       - run: [node, helpers/course.mjs, remove, regscope]
         expect: 'course remove regscope'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
         expect: 'deneme-kayit-uygulamasi none'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi regscope%'"]
         expect: '"n":0'
@@ -66,12 +66,12 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/ayarlar/ortak-uygulamalar'
     setup:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
     teardown:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
         expect: 'deneme-kayit-uygulamasi none'
     vars:
       clientId: deneme-kayit-uygulamasi
@@ -89,14 +89,14 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/ayarlar/ortak-uygulamalar'
     setup:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, up]
+      - run: [node, helpers/partner.mjs, up, --client, deneme-kayit-uygulamasi, --name, 'Deneme kayıt uygulaması']
         expect: 'bound to 0'
     teardown:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
         expect: 'deneme-kayit-uygulamasi none'
     vars:
       clientId: deneme-kayit-uygulamasi
@@ -114,16 +114,16 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/ayarlar/ortak-uygulamalar'
     setup:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, up]
+      - run: [node, helpers/partner.mjs, up, --client, deneme-kayit-uygulamasi, --name, 'Deneme kayıt uygulaması']
         expect: 'bound to 0'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, switch, 'off']
+      - run: [node, helpers/partner.mjs, switch, --client, deneme-kayit-uygulamasi, 'off']
         expect: 'partner off'
     teardown:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
         expect: 'deneme-kayit-uygulamasi none'
     vars:
       clientId: deneme-kayit-uygulamasi
@@ -146,5 +146,5 @@ states:
   # the partner is taken away once the page is read and drawn, before the first press; `race none` does nothing
   listed:
     before:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, race, '{race}']
+      - run: [node, helpers/partner.mjs, race, --client, deneme-kayit-uygulamasi, '{race}']
         expect: 'race'

@@ -21,7 +21,7 @@ data:
 
 events:
   FAIL.parentHidden:
-    - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-medrese, --as, applicantH, --tag, arsMed]
+    - run: [node, helpers/make-medrese.mjs, hide, --as, applicantH, --tag, arsMed]
       expect: 'hide-medrese arsMed by APPLICANT_H'
 
 scenarios:
@@ -31,9 +31,9 @@ scenarios:
     open: '{nizam}/kosks/{mine.kosk}/ana-sayfa'
     enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'frame:shell->koskArchive' }
     setup:
-      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, make-kosk, arsKosk, KOSK_NAZIM]
+      - run: [node, helpers/make-kosk.mjs, make, arsKosk, KOSK_NAZIM]
         expect: '"tag":"arsKosk"'
-      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, make-medrese, arsMed, --kosk, arsKosk, --head, applicantH]
+      - run: [node, helpers/make-medrese.mjs, make, arsMed, --kosk, arsKosk, --head, applicantH]
         expect: '"tag":"arsMed"'
       - run: [node, helpers/course.mjs, make, arsMedCourse, --madrasah, '{med.madrasah}', --kosk, '{mine.kosk}', --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi arsMedCourse"'
@@ -42,10 +42,10 @@ scenarios:
     teardown:
       - run: [node, helpers/course.mjs, remove, arsMedCourse]
         expect: 'course remove arsMedCourse'
-      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, remove-medrese, arsMed]
+      - run: [node, helpers/make-medrese.mjs, remove, arsMed]
         expect: 'remove-medrese arsMed'
-      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, remove-kosk, arsKosk]
-        expect: 'remove-kosk arsKosk'
+      - run: [node, helpers/make-kosk.mjs, remove, arsKosk]
+        expect: 'kosk remove arsKosk'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ars%'"]
         expect: '"n":0'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]

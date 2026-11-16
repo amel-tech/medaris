@@ -6,7 +6,7 @@
 # NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
 #
 # How the page is made stale: `before` on `listed` runs when the walk reaches the state, after the page has been read and drawn and before the
-# walk presses anything: the köşk nazım lifts the newest ban through the API (./bans.mjs lift --newest), and the page, which was read before,
+# walk presses anything: the köşk nazım lifts the newest ban through the API (helpers/kosk-bans.mjs lift --newest), and the page, which was read before,
 # still draws its row and its button. The same scenario `given` as binding.yaml's `decides`, so it has a file of its own. This is what the code
 # does, not what it should do (it should refuse with 409 BAN_ALREADY_LIFTED, as extendBan does).
 schema: delurio-graph/0
@@ -18,7 +18,7 @@ states:
   listed:
     url: '{nizam}/kosks/*/yasaklamalar'
     before:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, lift, decideBan, --who, 'APPLICANT_C,APPLICANT_D,APPLICANT_E', --newest]
+      - run: [node, helpers/kosk-bans.mjs, lift, decideBan, --who, 'APPLICANT_C,APPLICANT_D,APPLICANT_E', --newest]
         expect: 'APPLICANT_'
   empty: { url: '{nizam}/kosks/*/yasaklamalar' }
   widening: { call: '{nizam}/kosks/*/yasaklamalar' }
@@ -26,9 +26,9 @@ states:
 # the köşk ban stands, and the course ban of the person it was widened from is the one lifted behind the page
 effects:
   createBan:
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --has, KOSK open]
+    - run: [node, helpers/kosk-bans.mjs, check, decideBan, --who, '{who}', --has, KOSK open]
       expect: 'has:'
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --has, COURSE lifted]
+    - run: [node, helpers/kosk-bans.mjs, check, decideBan, --who, '{who}', --has, COURSE lifted]
       expect: 'has:'
 
 scenarios:
@@ -39,10 +39,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
         expect: 'ready: 3 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
         expect: removed
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'

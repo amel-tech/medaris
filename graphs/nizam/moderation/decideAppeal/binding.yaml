@@ -128,7 +128,7 @@ scenarios:
       - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
         expect: 'restored'
 
-  # A read that fails: the başnazım's request budget for GET /appeals is spent first (nazar/shell/errorStates/throttle.mjs, the helper of
+  # A read that fails: the başnazım's request budget for GET /appeals is spent first (helpers/throttle.mjs, the helper of
   # nazar.shell.errorStates: it writes no row, and the budget comes back by itself after one window), so tedrisat answers 429 and the page
   # takes it for any failed read: "İtirazlar okunamadı". "Tekrar dene" asks again, is refused again, and puts up the sticky toast. `teardown`
   # waits until the route answers again, so the next walk of this account is not held.
@@ -140,10 +140,10 @@ scenarios:
     setup:
       - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up]
         expect: 'ready: 0 waiting'
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, hold, systemAdmin, '/appeals?status=PENDING']
+      - run: [node, helpers/throttle.mjs, hold, systemAdmin, '/appeals?status=PENDING']
         expect: 'held'
     teardown:
-      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, systemAdmin, '/appeals?status=PENDING']
+      - run: [node, helpers/throttle.mjs, clear, systemAdmin, '/appeals?status=PENDING']
         expect: 'clear'
       - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
         expect: 'restored'

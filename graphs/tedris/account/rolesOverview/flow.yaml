@@ -28,7 +28,7 @@ scope:
     - "a visitor, who is sent to sign in before the page runs, and a token tedrisat refuses, which sends the person to sign in again with `reauth` and not to an error box (realm.auth.sessionEnded)"
     - "the buttons are left out when the target app's address is not set (NIZAM_URL, NAZAR_URL); the local stack sets both"
     - "the imam star after a role, which shows only among more than one müderris of a course; the second line under four permission sentences, the defaults note under the köşk nazımı and müderris groups, and the line that says where a role holds in several scopes"
-    - "what the other app does when it opens (nizam.shell.landingByRole, nazar.access.landingScope)"
+    - "what the other app does when it opens (nizam.shell.landingByRole and nizam.kosks.manage, nazar.access.landingScope)"
     - "the phone layout, where each row is a card, and the loading skeleton while the reads run (ACC-18)"
 
 decisions:
@@ -149,11 +149,16 @@ states:
     source: apps/tedris/features/account/components/roles-section.tsx:89
     on:
       OPEN_NIZAM:
-        guard: nizamRole
-        target: rolesShown
-        starts: { flow: nizam.shell.landingByRole }
-        say: "\"Nizam’da aç\" opens Nizam in a new tab, at the köşk's address for a köşk row and at its root for the Medaris nazımı; this tab stays on Hesap"
-        source: apps/tedris/features/account/components/assignments-table.tsx:121
+        - guard: "nizam == 'platform'"
+          target: rolesShown
+          starts: { flow: nizam.shell.landingByRole, given: { address: "'root'" } }
+          say: "\"Nizam’da aç\" on the Medaris nazımı's row opens Nizam's root in a new tab, where the roles send the person on; this tab stays on Hesap"
+          source: apps/tedris/features/account/components/assignments-table.tsx:121
+        - guard: "nizam == 'kosk'"
+          target: rolesShown
+          starts: { flow: nizam.kosks.manage, given: { reader: "'owner'" } }
+          say: "\"Nizam’da aç\" on a köşk row opens that köşk's own address, /kosks/<id> (openUrl, assignment-view.ts:36-46), not Nizam's root, in a new tab; this tab stays on Hesap"
+          source: apps/tedris/features/account/assignment-view.ts:39
       OPEN_NAZAR:
         guard: nazarRole
         target: rolesShown

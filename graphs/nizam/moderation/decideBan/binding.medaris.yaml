@@ -6,7 +6,7 @@
 # NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
 #
 # The person. The seed's own Medaris nazım holds five platform permissions and none of the ban's (STACK.md), and a walk never changes her, so
-# the walk appoints a spare of its own: applicantG, "Dilek Başvuran", through ../nizam/home/medarisNazimCut/nazim.mjs (the başnazım's API, as the
+# the walk appoints a spare of its own: applicantG, "Dilek Başvuran", through helpers/nazim.mjs (the başnazım's API, as the
 # Medaris nazımları page uses; no SQL), with platform.ban_scoped only. The teardown dismisses her. She bans nobody and is never a person a ban is on.
 #   medarisLifts  a köşk ban the köşk nazım placed on applicantC: her row offers "Yasağı kaldır" (platform.ban_scoped lifts at the köşk's level)
 #                 and the walk lifts it; the dialog names her "medaris nazımı" (app/yasaklamalar/page.tsx:36; on a köşk's list it would say "köşk nazımı", NDB-8). bans-medaris#7
@@ -33,14 +33,14 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
         expect: 'up APPLICANT_G'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --wide, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --wide, APPLICANT_C]
         expect: 'ready: 1 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
         expect: removed
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
         expect: 'down APPLICANT_G'
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'
@@ -57,14 +57,14 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
         expect: 'up APPLICANT_G'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --low, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, APPLICANT_C]
         expect: 'ready: 1 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
         expect: removed
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
         expect: 'down APPLICANT_G'
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'

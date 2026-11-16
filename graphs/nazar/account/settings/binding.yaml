@@ -12,7 +12,7 @@
 #   head          MEDRESE_BASMUDERRIS: one row 'Medrese başmüderrisi' / 'Etkin' / the başnazım as grantor / 'Süresiz', the note, one
 #                 group of 34 sentences. The main story and the only scenario that chooses a zone: its `setup` keeps what the account
 #                 holds (GET /me answers timeZone null: the page shows İstanbul), sets Europe/Istanbul, and its `teardown` puts the
-#                 kept value back (zone.mjs, a helper of this folder).
+#                 kept value back (helpers/zone.mjs).
 #   medreseNazir  MEDRESE_NAZIR: one row 'Etkin', no note, and no permission at all: the card says there is none (NAZSET-2)
 #   hoca          MUDERRIS: three course rows ('Yayında', the köşk and the medrese), one group 'Hoca' over the three courses, no star
 #   hocaImam      MUDERRIS with a course of the walk's own that has a second hoca (the başmüderris, seated beside the hoca): a fourth row
@@ -50,12 +50,12 @@ scenarios:
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:medrese->hesap' }
     samples: { name: 'Nuri Başmüderris', roles: 'Medrese başmüderrisi', email: '{secret.E2E_MEDRESE_BASMUDERRIS_EMAIL}' }
     setup:
-      - run: [node, ../nazar/account/settings/zone.mjs, keep, basmuderris]
+      - run: [node, helpers/zone.mjs, keep, basmuderris]
         expect: 'zone kept MEDRESE_BASMUDERRIS'
-      - run: [node, ../nazar/account/settings/zone.mjs, set, basmuderris, Europe/Istanbul]
+      - run: [node, helpers/zone.mjs, set, basmuderris, Europe/Istanbul]
         expect: 'zone set MEDRESE_BASMUDERRIS Europe/Istanbul'
     teardown:
-      - run: [node, ../nazar/account/settings/zone.mjs, restore, basmuderris]
+      - run: [node, helpers/zone.mjs, restore, basmuderris]
         expect: 'zone restored MEDRESE_BASMUDERRIS'
   medreseNazir:
     given: { holds: medreseNazir, read: ok }
@@ -119,13 +119,13 @@ states:
 # What a save leaves outside the screen: what tedrisat holds for the account, read through the API as that account.
 effects:
   savedIstanbul:
-    - run: [node, ../nazar/account/settings/zone.mjs, get, basmuderris]
+    - run: [node, helpers/zone.mjs, get, basmuderris]
       expect: 'zone MEDRESE_BASMUDERRIS Europe/Istanbul'
   savedNewYork:
-    - run: [node, ../nazar/account/settings/zone.mjs, get, basmuderris]
+    - run: [node, helpers/zone.mjs, get, basmuderris]
       expect: 'zone MEDRESE_BASMUDERRIS America/New_York'
   savedTokyo:
-    - run: [node, ../nazar/account/settings/zone.mjs, get, basmuderris]
+    - run: [node, helpers/zone.mjs, get, basmuderris]
       expect: 'zone MEDRESE_BASMUDERRIS Asia/Tokyo'
 
 # Where role and name cannot find a node. Hesap's <main> is found by its subtitle, because the page a walk leaves for has a <main> of

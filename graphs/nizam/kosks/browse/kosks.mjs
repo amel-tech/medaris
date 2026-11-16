@@ -2,7 +2,7 @@
 // The köşks of nizam.kosks.browse's walks: köşks of the walk's own, so that the directory holds a hidden one to bring back, a passive one,
 // a page past the first, and a köşk the köşk nazımı teaches in without managing. The seed's two köşks are never hidden, changed or
 // removed. Everything goes through tedrisat's HTTP API as the people who may do it (the başnazım, the köşk nazımı); no SQL is used.
-// It follows nizam.shell.noAccessAndNotFound's make-kosk.mjs (POST /kosks as the başnazım, the directory to find a köşk by its short
+// It follows helpers/make-kosk.mjs (POST /kosks as the başnazım, the directory to find a köşk by its short
 // name, DELETE /kosks/<id> to take it away with its role assignments) and helpers/remove-kosk.mjs.
 //
 //   node kosks.mjs make <tag> <part>...      makes the parts, each a köşk "Deneme köşkü <tag> <word>" with the short name deneme-<tag>-<word>:
@@ -23,9 +23,7 @@
 //   node kosks.mjs dismiss <tag>             the başnazım takes KOSK_NAZIM off the hidden köşk, naming himself the successor
 //   node kosks.mjs remove <tag>              deletes every köşk whose short name starts deneme-<tag>- (and the course of `teach`); none is
 //                                            fine, and a second run says `removed 0`
-//   node kosks.mjs medaris up|down <ACCOUNT> appoints the spare account a Medaris nazımı holding no permission (POST /nizam/medaris-nazims
-//                                            with an empty list), or dismisses it: a person the directory refuses (nizam.home.medarisNazimCut's
-//                                            nazim.mjs does the same with --codes none)
+//   (a Medaris nazımı with no permission, for the page of a person the directory refuses: helpers/nazim.mjs up APPLICANT_F --codes none, and down)
 //
 // What it cannot undo: the audit rows of every creation, hide, restore and deletion (the API has no way to remove them; the seed does
 // not depend on them). Run it by hand only under the replay lock (COMMON.md, round R2). Written without being run (the first walks are a
@@ -37,7 +35,6 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { query } from "../../../bindings/helpers/db.mjs";
 import {
-  accountKey,
   Fail,
   LOCAL,
   must,
@@ -51,9 +48,8 @@ const MADE = resolve(LOCAL, "made");
 const CHIEF = "SYSTEM_ADMIN";
 const NAZIM = "KOSK_NAZIM";
 const SPARE = "APPLICANT_G"; // the manager of the made köşks that are not the köşk nazımı's
-const BARE = "APPLICANT_F"; // the Medaris nazımı with no permission
 const usage =
-  "usage: kosks.mjs make <tag> <hidden|hiddenOwn|passive|many|teach>... | status <tag> <word> | restore|rehide|dismiss|remove <tag> | medaris up|down <ACCOUNT>";
+  "usage: kosks.mjs make <tag> <hidden|hiddenOwn|passive|many|teach>... | status <tag> <word> | restore|rehide|dismiss|remove <tag>";
 
 const prefixOf = (tag) => `deneme-${tag}-`;
 const handleOf = (tag, word) => `${prefixOf(tag)}${word}`;
@@ -197,35 +193,6 @@ async function status(tag, word) {
 
 run("kosks", async () => {
   const [command, ...args] = process.argv.slice(2);
-  if (command === "medaris") {
-    const [verb, account, ...more] = args;
-    if (!account || more.length || !["up", "down"].includes(verb))
-      throw new Fail(usage, 2);
-    if (accountKey(account) !== BARE)
-      throw new Fail(`only ${BARE} is made a Medaris nazımı here`, 2);
-    const sub = await known(account);
-    const rows = (await must(CHIEF, "GET", "/nizam/medaris-nazims")).body ?? [];
-    const row = rows.find((r) => r.user?.id === sub);
-    if (verb === "up") {
-      if (row)
-        await must(CHIEF, "PUT", `/nizam/medaris-nazims/${sub}/grants`, {
-          permissions: [],
-        });
-      else
-        await must(CHIEF, "POST", "/nizam/medaris-nazims", {
-          userId: sub,
-          permissions: [],
-        });
-      console.log(`medaris up ${BARE} codes=none`);
-    } else {
-      if (row)
-        await must(CHIEF, "DELETE", `/nizam/medaris-nazims/${sub}`, {
-          decisions: [],
-        });
-      console.log(`medaris down ${BARE}`);
-    }
-    return;
-  }
   const [tag, ...rest] = args;
   if (!command || !tag || !/^[a-z0-9]+$/.test(tag)) throw new Fail(usage, 2);
   if (command === "make") console.log(await make(tag, rest));

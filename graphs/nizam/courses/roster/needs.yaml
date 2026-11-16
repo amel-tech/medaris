@@ -113,7 +113,7 @@ needs:
 
   - id: bar-and-lift-from-the-roster
     need: >-
-      From a talebe's row the nazım opens the ban dialog (and, on a barred talebe's row, the lift dialog); what they do is nizam.moderation.banStudent's.
+      From a talebe's row the nazım opens the ban dialog (and, on a barred talebe's row, the lift dialog); the ban dialog is nizam.moderation.banStudent's and the lift dialog is nizam.moderation.decideBan's.
     drawn: [ban, banCompleted, lift, bannedBadge, handed_over.ban, handed_over.lift]
     built:
       - action: medaris.api:createBan

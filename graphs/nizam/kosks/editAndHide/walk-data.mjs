@@ -4,8 +4,6 @@
 //
 //   node ../nizam/kosks/editAndHide/walk-data.mjs make <tag> <MANAGER_ACCOUNT> [--ruled]
 //   node ../nizam/kosks/editAndHide/walk-data.mjs remove <tag>
-//   node ../nizam/kosks/editAndHide/walk-data.mjs policy lock <KEY> <tag>
-//   node ../nizam/kosks/editAndHide/walk-data.mjs policy restore <tag>
 //
 // make     Opens the köşk "Ayar Deneme Köşkü" (short name ayar-deneme, tag Akaid, the Lâciverd cover, one line of description, listed,
 //          both köşk policies off) through tedrisat's API as the başnazım, with the account as its only nazım (POST /kosks:
@@ -24,18 +22,8 @@
 //          (the e2e kosks#8 reads the same list). An unlisted or hidden köşk is not in it.
 // status <tag>
 //          The köşk's status in the directory as the başnazım reads it, ACTIVE, PASSIVE or HIDDEN, or `none`: `kosk status <STATUS>`.
-// policy lock <KEY> <tag>
-//          Switches the platform policy KEY (ALWAYS_REQUIRE_APPROVAL or RECORDINGS_NEVER_PUBLIC) on. Before it touches anything it writes
-//          the row `platform_policies` has for KEY (or the word that there is none) to graphs/.local/made/<tag>-policy.json, and it never
-//          overwrites that file, so a second lock after a crashed walk still remembers the true original.
-// policy restore <tag>
-//          Puts the row back exactly as the file has it (key, enabled, changed_by, changed_at), or deletes the row if there was none,
-//          and removes the file. Says `none` when there is no file.
-//
-// Why SQL for the policy and not the API (PUT /nizam/platform-policies/:key, platform-policy.controller.ts:67): the API stamps changed_by
-// and changed_at with the caller and the moment and writes an audit row `platform_policy.change` each way, so it cannot give the row
-// back as it was, and the audit log would say a policy was switched on and off. Through SQL the table is exactly what it was and the
-// audit log is untouched by the lock. Everything else is the API. What stays after a walk: the audit rows the API writes and has no way
+// The platform policy of the locked branch (switched on for the length of the walk, put back exactly as it was) is helpers/policies.mjs's
+// `lock <KEY> <tag>` and `unlock <tag>`. Everything here is the API. What stays after a walk: the audit rows the API writes and has no way
 // to remove: kosk.create and kosk.delete, and what the walk itself does to the köşk (kosk.policy_change for a save that touches a
 // policy, kosk.hide for the hide). No nazım lookup is made: the account's id is read from accounts.env.
 import {
@@ -46,7 +34,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
-import { query } from "../../../bindings/helpers/db.mjs";
 import {
   API,
   accountKey,
@@ -60,11 +47,9 @@ import {
 const MADE = resolve(LOCAL, "made");
 const NAME = "Ayar Deneme Köşkü";
 const HANDLE = "ayar-deneme";
-const KEYS = ["ALWAYS_REQUIRE_APPROVAL", "RECORDINGS_NEVER_PUBLIC"];
 const usage =
-  "usage: walk-data.mjs make <tag> <MANAGER_ACCOUNT> [--ruled] | remove <tag> | check <tag> <ACCOUNT> <field=value>... | listed <tag> | status <tag> | policy lock <KEY> <tag> | policy restore <tag>";
+  "usage: walk-data.mjs make <tag> <MANAGER_ACCOUNT> [--ruled] | remove <tag> | check <tag> <ACCOUNT> <field=value>... | listed <tag> | status <tag>";
 const fileOf = (tag) => resolve(MADE, `${tag}.json`);
-const policyFileOf = (tag) => resolve(MADE, `${tag}-policy.json`);
 const goodTag = (tag) => {
   if (!/^[a-z0-9]+$/.test(tag ?? ""))
     throw new Fail("a tag is lower-case letters and digits", 2);
@@ -161,69 +146,6 @@ async function status() {
   return `kosk status ${same[0]?.status ?? "none"}`;
 }
 
-const sqlText = (v) => `'${String(v).replace(/'/g, "''")}'`;
-
-async function lock(key, tag) {
-  if (!KEYS.includes(key))
-    throw new Fail(`${key} is not one of ${KEYS.join(", ")}`, 2);
-  mkdirSync(MADE, { recursive: true });
-  const file = policyFileOf(tag);
-  let was;
-  if (existsSync(file)) {
-    // a walk that died left the original here: it is the truth, not what the table says now
-    was = JSON.parse(readFileSync(file, "utf8"));
-    if (was.key !== key)
-      throw new Fail(
-        `${file} holds the original of ${was.key}, not ${key}: run policy restore ${tag} first`
-      );
-  } else {
-    const rows = (
-      await query(
-        `select key, enabled, changed_by, changed_at from platform_policies where key = ${sqlText(key)}`
-      )
-    )
-      .split("\n")
-      .filter(Boolean)
-      .map((l) => JSON.parse(l));
-    was = { key, row: rows[0] ?? null };
-    writeFileSync(file, `${JSON.stringify(was, null, 2)}\n`);
-  }
-  await query(
-    `insert into platform_policies (key, enabled) values (${sqlText(key)}, true)
-     on conflict (key) do update set enabled = true`
-  );
-  return `policy lock ${key} on (was ${was.row === null ? "no row" : was.row.enabled ? "on" : "off"})`;
-}
-
-async function restore(tag) {
-  const file = policyFileOf(tag);
-  if (!existsSync(file)) return `policy restore ${tag} none`;
-  const { key, row } = JSON.parse(readFileSync(file, "utf8"));
-  if (!KEYS.includes(key))
-    throw new Fail(`${file} names ${key}, which is no policy`);
-  if (row === null) {
-    await query(`delete from platform_policies where key = ${sqlText(key)}`);
-  } else {
-    const uuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (
-      typeof row.enabled !== "boolean" ||
-      (row.changed_by !== null && !uuid.test(row.changed_by)) ||
-      Number.isNaN(Date.parse(row.changed_at))
-    )
-      throw new Fail(
-        `${file} holds a row that is not what platform_policies has`
-      );
-    await query(
-      `insert into platform_policies (key, enabled, changed_by, changed_at)
-       values (${sqlText(key)}, ${row.enabled}, ${row.changed_by === null ? "null" : sqlText(row.changed_by)}, ${sqlText(row.changed_at)}::timestamptz)
-       on conflict (key) do update set enabled = excluded.enabled, changed_by = excluded.changed_by, changed_at = excluded.changed_at`
-    );
-  }
-  rmSync(file, { force: true });
-  return `policy restore ${tag} restored ${key} (${row === null ? "no row" : row.enabled ? "on" : "off"})`;
-}
-
 run("walk-data", async () => {
   const args = process.argv.slice(2);
   const [verb, ...rest] = args;
@@ -253,15 +175,5 @@ run("walk-data", async () => {
     if (!tag || more.length) throw new Fail(usage, 2);
     goodTag(tag);
     console.log(await remove(tag));
-  } else if (verb === "policy" && rest[0] === "lock") {
-    const [, key, tag, ...more] = rest;
-    if (!key || !tag || more.length) throw new Fail(usage, 2);
-    goodTag(tag);
-    console.log(await lock(key, tag));
-  } else if (verb === "policy" && rest[0] === "restore") {
-    const [, tag, ...more] = rest;
-    if (!tag || more.length) throw new Fail(usage, 2);
-    goodTag(tag);
-    console.log(await restore(tag));
   } else throw new Fail(usage, 2);
 });

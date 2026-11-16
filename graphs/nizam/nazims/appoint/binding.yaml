@@ -10,7 +10,7 @@
 # Every scenario opens Ana sayfa, presses the menu's "Medaris nazımları" (the nav graph's entry frame:shell->nazims) and starts from the same
 # data (locators.binding.yaml): the stack's own Medaris nazımı in office, the spare applicantE who is no Medaris nazımı, and one platform group.
 # `setup` begins with nazim.mjs `down`, which dismisses what a walk that died left, so each scenario can be run again at once. The helper of
-# nizam.home.medarisNazimCut (../nizam/home/medarisNazimCut/nazim.mjs) is reused as it is: its `down` dismisses the person in `setup` and in
+# nizam.home.medarisNazimCut (helpers/nazim.mjs) is reused as it is: its `down` dismisses the person in `setup` and in
 # `teardown`, its `up` makes the person who holds a seat already in `already`. It refuses the seeded Medaris nazımı, so she is never changed.
 #
 # Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
@@ -36,12 +36,12 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
         expect: 'appoint up'
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
         expect: 'appoint down'
@@ -57,16 +57,16 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantD, --codes, platform.kosk_nazim_manage]
+      - run: [node, helpers/nazim.mjs, up, applicantD, --codes, platform.kosk_nazim_manage]
         expect: 'up APPLICANT_D codes=platform.kosk_nazim_manage'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
         expect: 'appoint up'
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+      - run: [node, helpers/nazim.mjs, down, applicantD]
         expect: 'down APPLICANT_D'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
         expect: 'appoint down'
@@ -82,12 +82,12 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
         expect: 'appoint up'
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
         expect: 'appoint down'
@@ -103,12 +103,12 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
     setup:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, up]
         expect: 'appoint up'
     teardown:
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantE]
+      - run: [node, helpers/nazim.mjs, down, applicantE]
         expect: 'down APPLICANT_E'
       - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, down]
         expect: 'appoint down'

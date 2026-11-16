@@ -26,9 +26,9 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/kosks/{ncl.kosk}/dersler'
     setup:
-      - run: [node, ../nizam/courses/list/data.mjs, make-kosk, ncl, KOSK_NAZIM]
+      - run: [node, helpers/make-kosk.mjs, make, ncl, KOSK_NAZIM]
         expect: '"tag":"ncl"'
-      - run: [node, ../nizam/courses/list/data.mjs, make-medrese, nclm, --kosk, ncl, --head, APPLICANT_D]
+      - run: [node, helpers/make-medrese.mjs, make, nclm, --kosk, ncl, --head, APPLICANT_D]
         expect: '"tag":"nclm"'
       - run: [node, helpers/course.mjs, make, nclLock, --kosk, '{ncl.kosk}', --weeks, '1', --lessons, '1']
         expect: '"title":"Deneme dersi nclLock"'
@@ -55,10 +55,10 @@ scenarios:
         expect: 'course remove nclHid'
       - run: [node, helpers/course.mjs, remove, nclLock]
         expect: 'course remove nclLock'
-      - run: [node, ../nizam/courses/list/data.mjs, remove-medrese, nclm]
-        expect: 'data remove-medrese nclm'
-      - run: [node, ../nizam/courses/list/data.mjs, remove-kosk, ncl]
-        expect: 'data remove-kosk ncl'
+      - run: [node, helpers/make-medrese.mjs, remove, nclm]
+        expect: 'remove-medrese nclm'
+      - run: [node, helpers/make-kosk.mjs, remove, ncl]
+        expect: 'kosk remove ncl'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ncl%'"]
         expect: '"n":0'
       - run: [node, helpers/sql.mjs, "select (select count(*) from kosks where name like 'Deneme köşkü ncl%') + (select count(*) from madrasahs where name like 'Deneme medresesi ncl%') as n"]

@@ -28,14 +28,14 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --low, APPLICANT_D]
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, APPLICANT_D]
         expect: 'ready: 1 open'
       - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantD]
         expect: 'seat-hoca APPLICANT_D'
     teardown:
       - run: [node, helpers/unseat-hoca.mjs, '{made.course}', applicantD]
         expect: 'unseat-hoca APPLICANT_D'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_D]
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_D]
         expect: removed
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'

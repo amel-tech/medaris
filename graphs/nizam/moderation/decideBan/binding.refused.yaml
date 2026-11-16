@@ -8,7 +8,7 @@
 #
 # How the world is made to refuse: as in binding.medaris.yaml, the spare Medaris nazım is applicantG with platform.ban_scoped, and a köşk ban
 # stands on applicantC. When the dialog's reason is filled in, the binding first has the başnazım take the permission from her through the API
-# (./bans.mjs drop, idempotent: a second FILL_IN in a dialog finds it dropped already). The submit reaches a standing that no longer holds a lift
+# (helpers/kosk-bans.mjs drop, idempotent: a second FILL_IN in a dialog finds it dropped already). The submit reaches a standing that no longer holds a lift
 # code at the köşk (ban.service.ts:329-335, :281-293) and tedrisat answers 403. `call` is left off: a refusal of a server action answers 200 on
 # the page's own address. The one-click widening's BAN_FORBIDDEN (widening FAIL.refused) needs the köşk nazım to lose her role: not bound.
 schema: delurio-graph/0
@@ -23,7 +23,7 @@ states:
 
 events:
   FILL_IN:
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, drop, decideBan, --who, APPLICANT_G, --code, platform.ban_scoped]
+    - run: [node, helpers/kosk-bans.mjs, drop, decideBan, --who, APPLICANT_G, --code, platform.ban_scoped]
       expect: 'APPLICANT_G'
     - fill: { role: textbox, within: { role: dialog }, value: '{reasonText}' }
 
@@ -35,14 +35,14 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
         expect: 'up APPLICANT_G'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --wide, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --wide, APPLICANT_C]
         expect: 'ready: 1 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
         expect: removed
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
         expect: 'down APPLICANT_G'
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'
@@ -59,14 +59,14 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
         expect: 'up APPLICANT_G'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --low, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, APPLICANT_C]
         expect: 'ready: 1 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
         expect: removed
-      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
         expect: 'down APPLICANT_G'
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'

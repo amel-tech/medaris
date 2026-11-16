@@ -360,7 +360,7 @@ states:
     invoke: { action: createSessionBatch }
     on:
       DONE: { guard: "answer == 'created'", target: opened, source: apps/nizam/features/courses/components/course-create-form.tsx:190, say: "the celses exist: a toast says so and Dersler opens" }
-      FAIL.refused: { guard: "answer == 'sessionsFailed'", target: session_planner, source: apps/nizam/features/courses/components/course-create-form.tsx:181, say: "the celses are refused: a toast says so and the person goes to Celse planla of the new course" }
+      FAIL.refused: { guard: "answer == 'sessionsFailed'", target: session_planner, starts: { flow: nizam.courses.planSessions, given: { fromOpen: "true" } }, source: apps/nizam/features/courses/components/course-create-form.tsx:181, say: "the celses are refused: a toast says so and the person goes to Celse planla of the new course" }
     source: apps/nizam/features/courses/components/course-create-form.tsx:174
 
   opened:

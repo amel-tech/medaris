@@ -24,7 +24,7 @@ browser: { width: 1440, height: 900 }
 
 data:
   made: { json: ../.local/made/answer.json } # helpers/course.mjs make answer: {course, lessons, ...}
-  q: { json: ../.local/made/answerQ.json } # ./questions.mjs up answer: {course, followed, waiting, answered, ...}
+  q: { json: ../.local/made/answerQ.json } # helpers/questions.mjs up answer: {course, followed, waiting, answered, ...}
 
 events:
   # the waiting card's text area, the only one on the page (the answered cards have none)
@@ -40,7 +40,7 @@ events:
   # the talebe, in tedris, deletes the question this page shows first: the hoca's page does not know (the API call of
   # tedris.learn.questions' "Sil", made as that talebe)
   QUESTION_DELETED:
-    - run: [node, ../nazar/questions/answer/questions.mjs, drop, answer]
+    - run: [node, helpers/questions.mjs, drop, answer]
       expect: 'questions drop answer'
 
 states:
@@ -62,7 +62,7 @@ effects:
       expect: '"answered_by":"{secret.E2E_MUDERRIS_SUB}"'
     - run: [node, helpers/api.mjs, applicantE, GET, '/courses/{q.course}/questions/mine']
       expect: '{answer_token}'
-    - run: [node, ../nazar/questions/answer/questions.mjs, count, answer]
+    - run: [node, helpers/questions.mjs, count, answer]
       expect: '0 waiting'
   replaced:
     - run: [node, helpers/sql.mjs, "select answer from lesson_questions where id = '{q.followed}'"]

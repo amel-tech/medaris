@@ -5,6 +5,11 @@
 #
 # Not run yet: this file was written from the code and checked only by loading it (loadNavBinding). What the replay
 # finds on a page the first time (a dev page compiles for up to half a minute) will correct the locators below.
+#
+# Data the personas need. A navigation replay has no teardown, so what a persona's `setup` makes is taken away by the
+# `setup` of the persona that runs after it (graph order: koskNazimMany, medarisNazim, medarisWide, chief), and the top-level
+# `setup` clears what a run that died left. A full run leaves nothing; a run kept to some personas with `--persona` may leave
+# a ban notice or a Medaris nazımı seat (`triage.mjs down <ACCOUNT>`, `helpers/nazim.mjs down applicantG` take them away).
 schema: delurio-graph/0
 kind: binding
 nav: nizam.nav
@@ -19,14 +24,59 @@ samples:
   rest: sayfa-yok
 
 # One account stands for each persona it can; each signs in once through Keycloak's real form (the base's signIn).
-#   not bound: `visitor` (a replay always signs in), `koskNazimMany` (the seed gives the köşk nazımı one köşk) and
-#   `medarisWide` (the seed's Medaris nazımı holds five permissions, not the sixteen of the persona).
+#   not bound: `visitor` (a replay always signs in) and `koskNazim` (a nazım of exactly one köşk: the seeded KOSK_NAZIM
+#   manages two, seed.json `kosk` and `kosk2`, so it is `koskNazimMany`; the one-köşk persona needs a spare account made nazım
+#   of a köşk of its own, which no shared helper does yet).
+#
+# A ban notice is what makes the notification row's link to Yasaklamalar (`notifications->koskBans`) appear, and no notice is
+# in the seed. The nav graph offers that link to a köşk nazımı and to every Medaris nazımı (the başnazım is never told), so
+# each of those personas has one notice of its own, written the way tedrisat's ban producer writes it
+# (nizam/notifications/triage/triage.mjs, `--set last`: three rows, one unread) and taken away by the next persona's setup.
+#
+# `medarisWide` is a spare account (applicantG, a woman with a full profile and no enrolment) made a Medaris nazımı holding
+# the sixteen permissions of the persona by the başnazım, through helpers/nazim.mjs, and dismissed again when the başnazım's
+# turn comes. The seeded Medaris nazımı is never changed.
 personas:
   noRole: { as: talebe }
   nazarRoles: { as: muderris }
-  koskNazim: { as: koskNazim }
-  medarisNazim: { as: medarisNazim }
-  chief: { as: systemAdmin }
+  koskNazimMany:
+    as: koskNazim
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, koskNazim, --set, last]
+        expect: 'ready: last'
+  medarisNazim:
+    as: medarisNazim
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, medarisNazim, --set, last]
+        expect: 'ready: last'
+  medarisWide:
+    as: applicantG
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, medarisNazim]
+      - run:
+          - node
+          - helpers/nazim.mjs
+          - up
+          - applicantG
+          - --codes
+          - platform.kosk_create,platform.kosk_nazim_manage,platform.kosk_edit,platform.hosting_grant,platform.madrasah_create,platform.head_muderris_manage,platform.madrasah_edit,platform.kosk_application_decide,platform.deck_publish,platform.appeal_decide,platform.ban_scoped,platform.ban_account,platform.audit_read,platform.inactive_scopes_manage,platform.policy_edit,platform.partner_manage
+        expect: up APPLICANT_G
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, applicantG, --set, last]
+        expect: 'ready: last'
+  chief:
+    as: systemAdmin
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, applicantG]
+      - run: [node, helpers/nazim.mjs, down, applicantG]
+
+# Once, before the first persona signs in (no data source is read yet: the commands name nothing but the apps): what a run
+# that died left.
+setup:
+  - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+  - run: [node, ../nizam/notifications/triage/triage.mjs, down, medarisNazim]
+  - run: [node, ../nizam/notifications/triage/triage.mjs, down, applicantG]
+  - run: [node, helpers/nazim.mjs, down, applicantG]
 
 # The shell: its chrome is the sidebar (an `<aside>`; the phone's menu sheet is a dialog, shown only once opened). The
 # menu entries are looked up inside it, the page's own links inside `<main>`. The person row is a plain link, so its
@@ -201,6 +251,21 @@ entries:
   koskDecks->koskDeckNew KoskDecksPage.accept: { skip: "a teacher's deck proposal; the seed makes none" }
   koskDecks->legacyDeckCards: { skip: "a köşk deck; the seed makes none" }
   legacyDecks->legacyDeckCards: { skip: "a deck; the seed makes none, and the eye icon has no accessible name (F-P0-10)" }
-  notifications->koskBans: { skip: "a ban notification; the seed makes none" }
+  # the Medaris home's rows: each "İncele" is a link named "İncele: <name>" (aria-label, Dashboard.reviewLabel) in its section's
+  # list, so by its name alone it would match the rows of the other lists too; inside the list's test id it is found, one row
+  # being enough (`nth: 0`). A row is there only while the stack holds a waiting item, and a navigation replay has no
+  # teardown to take one away, so the entries are skipped here and a flow that makes its own row gives the locator in its own
+  # enter.nav.binding.yaml (extending this file), as the flows of the other apps do:
+  #   start->deckRequests Dashboard.review:     { role: link, name: '/^İncele/', within: { testId: home-decks-list }, nth: 0 }
+  #   start->koskApplications Dashboard.review: { role: link, name: '/^İncele/', within: { testId: home-applications-list }, nth: 0 }
+  #   start->bans Dashboard.review:             { role: link, name: '/^İncele/', within: { testId: home-bans-list }, nth: 0 }
+  #   start->inactive Dashboard.passive.assign.KOSK: { role: link, name: '/^Köşk nazımı ata/', within: { testId: home-passive-list }, nth: 0 }
+  start->deckRequests Dashboard.review: { skip: "a row of the deck queue: the seed holds no deck publish request (nazim.mjs up <ACCOUNT> --codes none --deck <title> makes one, and nothing here takes it away)" }
+  start->koskApplications Dashboard.review: { skip: "a row of the köşk applications: the seed holds no waiting application, and no route deletes one" }
+  start->bans Dashboard.review: { skip: "a row of the latest bans: the seed holds no ban" }
+  start->inactive Dashboard.passive.assign.KOSK: { skip: "a passive köşk: the seed holds none (viewContent's passive-scopes.mjs makes one)" }
+
+  # the title of a ban notice, which each persona that is offered it gets from its `setup` (see `personas`)
+  notifications->koskBans: { css: '[data-testid="notification-row"] a[href$="/yasaklamalar"]', nth: 0 }
   koskHome->courseSessions: { skip: "a row of the week's celse list; the row's action is named after the celse and its time" }
   nazims->permissionGroups: { skip: "a link inside the permissions dialog of a Medaris nazımı" }

@@ -19,8 +19,8 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
     samples: { handle: ornek-nazim-acilis, madrasah: Örnek Nazım Açılış Medresesi }
-    setup: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
-    teardown: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    setup: [{ run: [node, helpers/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    teardown: [{ run: [node, helpers/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
     vars:
       madrasahName: Örnek Nazım Açılış Medresesi
       madrasahHandle: ornek-nazim-acilis

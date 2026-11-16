@@ -49,10 +49,10 @@ scenarios:
     open: '{nizam}/kosks/{made.kosk}/basvurular'
     vars: { home: '/kosks/*/ana-sayfa' }
     setup:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, noaccess, applicantH]
+      - run: [node, helpers/make-kosk.mjs, make, noaccess, applicantH]
         expect: '"handle":"deneme-noaccess"'
     teardown:
-      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, noaccess]
+      - run: [node, helpers/make-kosk.mjs, remove, noaccess]
         expect: 'kosk remove noaccess'
 
   # An id no köşk has (assignments#5 a1): the köşk's own page cannot place it among the ones he manages and refuses, as for a köşk that is

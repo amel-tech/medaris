@@ -11,9 +11,9 @@
 #
 # Data. Every scenario makes what it needs and takes it away, so no seeded course, köşk, partner or setting is touched:
 #   - a partner application of the walk's own, `deneme-ortak-uygulama` ("Deneme ortak uygulaması"), registered and bound to the
-#     seed's second köşk (Kubbealtı, which no seeded flow reads) by ./partner.mjs, through the başnazım's routes of nizam's
+#     seed's second köşk (Kubbealtı, which no seeded flow reads) by helpers/partner.mjs, through the başnazım's routes of nizam's
 #     "Ortak uygulamalar". The stack's example client `ornek-uygulama` and a partner another walk registers are not read or changed.
-#     There is no route that deletes a partner, so `teardown` ends with one SQL delete of its own rows (see partner.mjs).
+#     There is no route that deletes a partner, so `teardown` ends with one SQL delete of its own rows (see helpers/partner.mjs).
 #   - a course, "Deneme dersi partnerCodes", from helpers/course.mjs: published, one week of one celse, in the seed's second
 #     köşk (so the partner above is its köşk's), MUDERRIS as its one hoca and imam. Its ids are read from
 #     graphs/.local/made/partnerCodes.json as {made.*}; `teardown` deletes it with everything under it, which also takes its
@@ -64,14 +64,14 @@ scenarios:
     as: systemAdmin
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -86,7 +86,7 @@ scenarios:
     as: koskNazim
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
@@ -95,7 +95,7 @@ scenarios:
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -110,14 +110,14 @@ scenarios:
     as: muderris
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -132,14 +132,14 @@ scenarios:
     as: systemAdmin
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up]
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması']
         expect: 'bound to 0'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -154,19 +154,19 @@ scenarios:
     as: systemAdmin
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
       # one call a code, so that "oldest first" is the order they are named in
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, add, --course, '{made.course}', --codes, deneme-kod-1]
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{made.course}', --codes, deneme-kod-1]
         expect: 'codes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, add, --course, '{made.course}', --codes, deneme-kod-2]
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{made.course}', --codes, deneme-kod-2]
         expect: 'codes'
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -181,14 +181,14 @@ scenarios:
     as: systemAdmin
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -203,18 +203,18 @@ scenarios:
     as: systemAdmin
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, add, --course, '{made.course}', --codes, deneme-kod-1]
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{made.course}', --codes, deneme-kod-1]
         expect: 'codes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, add, --course, '{made.course}', --codes, deneme-kod-2]
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{made.course}', --codes, deneme-kod-2]
         expect: 'codes'
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -265,8 +265,8 @@ nodes:
 # What a step leaves outside the screen, read through the API as the başnazım.
 effects:
   addCoursePartnerCode:
-    - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, held, --course, '{made.course}']
+    - run: [node, helpers/partner.mjs, held, --client, deneme-ortak-uygulama, --course, '{made.course}']
       expect: 'held {afterAdd}'
   removeCoursePartnerCode:
-    - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, held, --course, '{made.course}']
+    - run: [node, helpers/partner.mjs, held, --client, deneme-ortak-uygulama, --course, '{made.course}']
       expect: 'held {afterRemoval}'

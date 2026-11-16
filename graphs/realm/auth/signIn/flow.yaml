@@ -160,6 +160,7 @@ states:
     on:
       DONE:
         - { target: landed_on_asked_page, guard: "session == 'usable' and asksForPage", say: "already signed in: straight on to the page the address names" }
+        - { target: landed_on_role_landing, guard: "session == 'usable' and app == 'nizam'", starts: { flow: nizam.shell.landingByRole, given: { address: "'root'" } }, say: "already signed in to nizam: straight on to /, where the roles send the person on (nizam.shell.landingByRole)" }
         - { target: landed_on_role_landing, guard: "session == 'usable'", say: "already signed in: straight on to /" }
         - { target: startingRoundTrip, say: "no session: the page starts the round trip" }
 
@@ -174,8 +175,8 @@ states:
     invoke: { action: startSignIn }
     on:
       DONE: { target: loginPage, say: "Keycloak shows its login form" }
-      FAIL.retryable: { target: error_box.retryable, say: "Keycloak's discovery document or the session store could not be asked" }
-      FAIL.final: { target: error_box.final, say: "this browser has started five round trips in five minutes" }
+      FAIL.retryable: { target: error_box.retryable, starts: { flow: realm.auth.signInFailures, given: { app: app, cause: "'OAuthSignin'", retry: "'spent'", session: "'none'" } }, say: "Keycloak's discovery document or the session store could not be asked: the app's sign-in page shows its box (OAuthSignin) once its one automatic retry is spent" }
+      FAIL.final: { target: error_box.final, starts: { flow: realm.auth.signInFailures, given: { app: app, cause: "'SignInLimit'", retry: "'spent'", session: "'none'" } }, say: "this browser has started five round trips in five minutes (SignInLimit)" }
 
   loginPage:
     title: Keycloak's login form
@@ -194,8 +195,8 @@ states:
       TOGGLE_REMEMBER_ME:
         - { target: loginPage, guard: "not remember", effect: [remembers], say: "they tick Beni hatırla: the single sign-on session lasts 14 days idle and 30 in all, not 5 and 10 hours" }
         - { target: loginPage, guard: remember, effect: [forgets], say: "they untick it" }
-      FORGOT_PASSWORD: { target: handed_over.forgot_password, starts: { flow: realm.auth.forgotPassword }, say: "they take Şifremi unuttum" }
-      REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register }, say: "they take Kayıt ol" }
+      FORGOT_PASSWORD: { target: handed_over.forgot_password, starts: { flow: realm.auth.forgotPassword, given: { entry: "'forgotLink'", app: app } }, say: "they take Şifremi unuttum" }
+      REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register, given: { entry: "'signInForm'" } }, say: "they take Kayıt ol" }
       NAVIGATE: { target: left, say: "they close the page" }
 
   submitting:
@@ -212,8 +213,8 @@ states:
       DONE:
         - { target: finishingRoundTrip, guard: rightAndReady, say: "Keycloak redirects to /api/auth/callback/keycloak with the code and the state" }
         - { target: handed_over.profile_update, guard: "credentials == 'right' and account == 'profileIncomplete'", starts: { flow: realm.auth.profileUpdate, given: { entry: "'signIn'" } }, say: "Keycloak holds them on Profilini tamamla before it redirects" }
-        - { target: handed_over.verify_email, guard: "credentials == 'right' and account == 'emailUnverified'", say: "Keycloak holds them on the e-mail verification page and sends the mail" }
-        - { target: handed_over.update_password, guard: "credentials == 'right' and account == 'passwordUpdateDue'", say: "Keycloak holds them on Yeni şifreni belirle" }
+        - { target: handed_over.verify_email, guard: "credentials == 'right' and account == 'emailUnverified'", starts: { flow: realm.auth.register, given: { entry: "'signInUnverified'" } }, say: "Keycloak holds them on the e-mail verification page and sends the mail" }
+        - { target: handed_over.update_password, guard: "credentials == 'right' and account == 'passwordUpdateDue'", starts: { flow: realm.auth.forgotPassword, given: { entry: "'requiredAction'", app: app } }, say: "Keycloak holds them on Yeni şifreni belirle" }
       FAIL.wrongCredentials: { target: loginPageError, guard: "credentials == 'wrong'", say: "Keycloak shows the form again with one alert and the user name kept" }
 
   loginPageError:
@@ -229,8 +230,8 @@ states:
       TOGGLE_REMEMBER_ME:
         - { target: loginPageError, guard: "not remember", effect: [remembers] }
         - { target: loginPageError, guard: remember, effect: [forgets] }
-      FORGOT_PASSWORD: { target: handed_over.forgot_password, starts: { flow: realm.auth.forgotPassword }, say: "they take Şifremi unuttum" }
-      REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register }, say: "they take Kayıt ol" }
+      FORGOT_PASSWORD: { target: handed_over.forgot_password, starts: { flow: realm.auth.forgotPassword, given: { entry: "'forgotLink'", app: app } }, say: "they take Şifremi unuttum" }
+      REGISTER: { target: handed_over.register, starts: { flow: realm.auth.register, given: { entry: "'signInForm'" } }, say: "they take Kayıt ol" }
       NAVIGATE: { target: left, say: "they close the page" }
 
   finishingRoundTrip:
@@ -244,9 +245,10 @@ states:
     on:
       DONE:
         - { target: landed_on_asked_page, guard: asksForPage, say: "the destination is the page the sign-in address named" }
+        - { target: landed_on_role_landing, guard: "app == 'nizam'", starts: { flow: nizam.shell.landingByRole, given: { address: "'root'" } }, say: "no page was named: the destination is nizam's /, which reads the roles and sends each person to their own landing (nizam.shell.landingByRole)" }
         - { target: landed_on_role_landing, say: "no page was named: the destination is /, which sends each person to their own landing" }
-      FAIL.retryable: { target: error_box.retryable, say: "no round trip of this browser has this state, or the grant failed" }
-      FAIL.final: { target: error_box.final, say: "Keycloak refused the account (access_denied) or the app (invalid_client)" }
+      FAIL.retryable: { target: error_box.retryable, starts: { flow: realm.auth.signInFailures, given: { app: app, cause: "'OAuthCallback'", retry: "'spent'", session: "'none'" } }, say: "no round trip of this browser has this state, or the grant failed (OAuthCallback)" }
+      FAIL.final: { target: error_box.final, starts: { flow: realm.auth.signInFailures, given: { app: app, cause: "'AccessDenied'", retry: "'spent'", session: "'none'" } }, say: "Keycloak refused the account (access_denied: AccessDenied) or the app (invalid_client: Configuration). One transition holds both codes and a given holds one value, so the hand-over is checked for AccessDenied; Configuration shows the same box (signInFailures' finalCode)" }
 
   landed_on_asked_page:
     type: final

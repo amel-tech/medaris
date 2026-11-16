@@ -1,6 +1,6 @@
-// The walk data of nazar.questions.answer, made and removed through tedrisat's HTTP API: questions the spare talebe asked in a
+// The walk data of nazar.questions.answer and of the ders nazırı page of nazar.access.dersNazirPages, made and removed through tedrisat's HTTP API: questions the spare talebe asked in a
 // course of the walk's own, some of them answered by its hoca. It is the binding's `setup`, `teardown`, events and effects:
-// `node ../nazar/questions/answer/questions.mjs <verb> ...` from graphs/bindings/.
+// `node helpers/questions.mjs <verb> ...` from graphs/bindings/.
 //
 //   up <tag> [--talebe ACCOUNT] [--hoca ACCOUNT] [--waiting n] [--answered n]
 //        The course is the one `helpers/course.mjs make <tag> ... --talebe <ACCOUNT>` made (graphs/.local/made/<tag>.json), whose
@@ -33,13 +33,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
-import {
-  Fail,
-  LOCAL,
-  must,
-  options,
-  run,
-} from "../../../bindings/helpers/lib.mjs";
+import { Fail, LOCAL, must, options, run } from "./lib.mjs";
 
 const MADE = resolve(LOCAL, "made");
 const usage =

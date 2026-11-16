@@ -1,13 +1,21 @@
 #!/usr/bin/env node
 // The setup, the teardown and the effect checks of nizam.platform.policies' binding. Run from graphs/bindings/ (the replay's working directory):
 //
-//   node ../nizam/platform/policies/policies.mjs keep                       record both platform policies, exactly, before a walk
-//   node ../nizam/platform/policies/policies.mjs restore                    put every recorded value back, exactly, and forget the record
-//   node ../nizam/platform/policies/policies.mjs get <KEY>                  what the table holds for one key now
-//   node ../nizam/platform/policies/policies.mjs audit <KEY> <enabled> <was>   the newest platform_policy.change row of that key since `keep`
-//   node ../nizam/platform/policies/policies.mjs change-and-back <KEY>      switch one policy and switch it back (two audited changes), for a flow that needs the row
-//   node ../nizam/platform/policies/policies.mjs scope-make                 a köşk of the walk's own that applies "Kayıt her zaman onaylı" itself
-//   node ../nizam/platform/policies/policies.mjs scope-remove               the way back for it
+//   node helpers/policies.mjs keep                       record both platform policies, exactly, before a walk
+//   node helpers/policies.mjs restore                    put every recorded value back, exactly, and forget the record
+//   node helpers/policies.mjs get <KEY>                  what the table holds for one key now
+//   node helpers/policies.mjs audit <KEY> <enabled> <was>   the newest platform_policy.change row of that key since `keep`
+//   node helpers/policies.mjs change-and-back <KEY>      switch one policy and switch it back (two audited changes), for a flow that needs the row
+//   node helpers/policies.mjs scope-make                 a köşk of the walk's own that applies "Kayıt her zaman onaylı" itself
+//   node helpers/policies.mjs scope-remove               the way back for it
+//   node helpers/policies.mjs lock <KEY> <tag>           switch one policy on by SQL, after writing its row (or the word that there is none) to
+//                                                        graphs/.local/made/<tag>-policy.json; the file is never overwritten, so a second lock after
+//                                                        a crashed walk still remembers the true original. Prints `policy lock <KEY> on (was ...)`
+//   node helpers/policies.mjs unlock <tag>               put that row back exactly as the file has it (key, enabled, changed_by, changed_at), or
+//                                                        delete the row if there was none, and remove the file; `none` when there is no file.
+//                                                        Prints `policy restore <tag> ...`. These two are not `keep`/`restore`: they hold one key, by
+//                                                        SQL both ways, and the API's audit row is never written (nizam.kosks.editAndHide: the API
+//                                                        stamps changed_by and changed_at with the caller and the moment, so it cannot give the row back)
 //
 // WHY THIS IS NOT THE API. The two switches are global: every köşk, medrese and course reads them on every decision. The old e2e deleted every
 // row of platform_policies and wrote back what it had seen, so a crash between the two statements left the database with no policies. Nothing here
@@ -29,7 +37,7 @@
 //
 // THE RECORD is graphs/.local/made/platform-policies.json (git-ignored). A walk that died before its teardown leaves it, and the next `keep`
 // first restores it (the values it holds are the ones from before ANY walk) and then records afresh; `restore` run by hand does the same:
-//   (cd graphs/bindings && node ../nizam/platform/policies/policies.mjs restore)
+//   (cd graphs/bindings && node helpers/policies.mjs restore)
 // `restore` also removes the köşk of scope-make, so a teardown with one line leaves nothing, whichever scenario ran.
 //
 // Everything goes through the shared helpers: SQL through the stack's Postgres container (db.mjs), the API as the başnazım (lib.mjs; the real
@@ -39,21 +47,22 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
-import { query } from "../../../bindings/helpers/db.mjs";
-import {
-  Fail,
-  LOCAL,
-  must,
-  run,
-  subOf,
-} from "../../../bindings/helpers/lib.mjs";
+import { query } from "./db.mjs";
+import { Fail, LOCAL, must, run, subOf } from "./lib.mjs";
 
 const KEYS = ["ALWAYS_REQUIRE_APPROVAL", "RECORDINGS_NEVER_PUBLIC"];
 const RECORD = resolve(LOCAL, "made", "platform-policies.json");
+const MADE = resolve(LOCAL, "made");
+const policyFileOf = (tag) => resolve(MADE, `${tag}-policy.json`);
+const goodTag = (tag) => {
+  if (!/^[a-z0-9]+$/.test(tag ?? ""))
+    throw new Fail("a tag is lower-case letters and digits", 2);
+};
 // the köşk of scope-make: unlisted, a spare talebe as its only nazım, and its own "always require approval" on
 const KOSK = {
   handle: "politika-deneme",
@@ -262,6 +271,69 @@ async function scopeMake() {
   console.log(`scope-make ${KOSK.handle} ${id}`);
 }
 
+const sqlText = (v) => `'${String(v).replace(/'/g, "''")}'`;
+
+async function lock(key, tag) {
+  if (!KEYS.includes(key))
+    throw new Fail(`${key} is not one of ${KEYS.join(", ")}`, 2);
+  mkdirSync(MADE, { recursive: true });
+  const file = policyFileOf(tag);
+  let was;
+  if (existsSync(file)) {
+    // a walk that died left the original here: it is the truth, not what the table says now
+    was = JSON.parse(readFileSync(file, "utf8"));
+    if (was.key !== key)
+      throw new Fail(
+        `${file} holds the original of ${was.key}, not ${key}: run policy restore ${tag} first`
+      );
+  } else {
+    const rows = (
+      await query(
+        `select key, enabled, changed_by, changed_at from platform_policies where key = ${sqlText(key)}`
+      )
+    )
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    was = { key, row: rows[0] ?? null };
+    writeFileSync(file, `${JSON.stringify(was, null, 2)}\n`);
+  }
+  await query(
+    `insert into platform_policies (key, enabled) values (${sqlText(key)}, true)
+     on conflict (key) do update set enabled = true`
+  );
+  return `policy lock ${key} on (was ${was.row === null ? "no row" : was.row.enabled ? "on" : "off"})`;
+}
+
+async function unlock(tag) {
+  const file = policyFileOf(tag);
+  if (!existsSync(file)) return `policy restore ${tag} none`;
+  const { key, row } = JSON.parse(readFileSync(file, "utf8"));
+  if (!KEYS.includes(key))
+    throw new Fail(`${file} names ${key}, which is no policy`);
+  if (row === null) {
+    await query(`delete from platform_policies where key = ${sqlText(key)}`);
+  } else {
+    const uuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (
+      typeof row.enabled !== "boolean" ||
+      (row.changed_by !== null && !uuid.test(row.changed_by)) ||
+      Number.isNaN(Date.parse(row.changed_at))
+    )
+      throw new Fail(
+        `${file} holds a row that is not what platform_policies has`
+      );
+    await query(
+      `insert into platform_policies (key, enabled, changed_by, changed_at)
+       values (${sqlText(key)}, ${row.enabled}, ${row.changed_by === null ? "null" : sqlText(row.changed_by)}, ${sqlText(row.changed_at)}::timestamptz)
+       on conflict (key) do update set enabled = excluded.enabled, changed_by = excluded.changed_by, changed_at = excluded.changed_at`
+    );
+  }
+  rmSync(file, { force: true });
+  return `policy restore ${tag} restored ${key} (${row === null ? "no row" : row.enabled ? "on" : "off"})`;
+}
+
 run("policies", async () => {
   const [command, ...rest] = process.argv.slice(2);
   if (command === "keep") return keep();
@@ -282,8 +354,23 @@ run("policies", async () => {
     console.log(`scope-remove ${KOSK.handle} removed ${await removeKosk()}`);
     return undefined;
   }
+  if (command === "lock") {
+    const [key, tag, ...more] = rest;
+    if (!key || !tag || more.length)
+      throw new Fail("usage: lock <KEY> <tag>", 2);
+    goodTag(tag);
+    console.log(await lock(key, tag));
+    return undefined;
+  }
+  if (command === "unlock") {
+    const [tag, ...more] = rest;
+    if (!tag || more.length) throw new Fail("usage: unlock <tag>", 2);
+    goodTag(tag);
+    console.log(await unlock(tag));
+    return undefined;
+  }
   throw new Fail(
-    "commands: keep | restore | get <KEY> | audit <KEY> <enabled> <was> | change-and-back <KEY> | scope-make | scope-remove",
+    "commands: keep | restore | get <KEY> | audit <KEY> <enabled> <was> | change-and-back <KEY> | scope-make | scope-remove | lock <KEY> <tag> | unlock <tag>",
     2
   );
 });

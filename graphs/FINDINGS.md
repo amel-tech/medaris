@@ -1,0 +1,1934 @@
+# Medaris bulguları (graflar sıfırdan, 16 Kasım 2026)
+
+Graflar koddan çıkarılırken bulunanlar. Her bulgunun bağlamı, nedeni, `dosya:satır` kanıtı ve düzeltmesi, bulgunun geçtiği akışın `ui.yaml` `rules` girdisinde; bu dosya hepsini bir yere toplar. Çoğu koddan okunarak yazıldı: bir bulgunun gerçekten görülüp görülmediğini kendi `rules` girdisi söyler ("from the code, not seen", "measured on the stack"). Üç pilot akış dışında hiçbir akış baştan sona yürütülmedi (`graphs/README.md`, Status).
+
+**Nasıl sayıldı.** `ui.yaml` `rules` girdilerindeki farklı kimlik sayısı 1326; hepsi bu dosyada yer alıyor. Bir kimlik birden çok akışta geçiyorsa tek satır olur (akışları satırın sonunda). Bir kimliği iki ayrı akış tesadüfen aynı adla ama başka bir sorun için kullanmışsa ayrı satır alır (14 kimlik bu yüzden bölündü). Farklı kimlikler aynı kökü paylaşıyorsa (yazarlar "aynısı", "ikizi" demiş) tek satırda birleşti ve bu açıkça söylendi: 44 birleşik satır, 85 kimlik başka bir kimliğin altına girdi. Sonuç: 1085 bulgu satırı, 188 "kural" satırı ve her sayfada yinelenen 4 kayıt. Sayılar `graphs/` altındaki dosyalardan betikle çıkarıldı (akışları `flow.yaml`, kimlikleri `ui.yaml` `rules` girdilerinden).
+
+**Kural mı bulgu mu.** `rules` iki şey taşıyor: kodun kullanıcısına yanlış yaptığı şey (bulgu) ve olduğu gibi geçerli olan ya da bilerek seçilmiş şey ("Holds", "kusur sayılmadı", "sessizlik eksik sayılmasın diye kaydedildi"). İkincisi "kural" sayıldı, seviyesi yok, tablolarda ayrı sütunda; aşağıda ayrı bir bölümde.
+
+**Seviye** bulgunun kullanıcısına verdiği zarara göre, kural metni okunarak verildi; uygulamada denenmedi, sahibi gözden geçirmeli. Yüksek: biri olmaması gereken erişimi ya da veriyi alıyor, ya da meşru kişi işinden alıkonuyor; bir yazma kayboluyor, yanlış hedefe gidiyor ya da yanlış onaylanıyor; sayfa kimsenin almadığı bir şeyi "iletildi" diyor ya da yanlış söz veriyor; ya da bir grup ana işi hiç yapamıyor. Orta: iş yapılabiliyor ama bir grup yanılıyor, takılıyor ya da dolambaç yapıyor (duyurulmayan sonuç ve hata, kaybolan odak, adsız denetim, genel "bir şeyler ters gitti", sorusuz geri alınamaz işlem). Düşük: söz, ad, cilâ, yalnız başka dil eklenince ortaya çıkacak ya da nadir yarışta olan, bayat yorum ve test.
+
+**Düzeltme** sütunu yürütme aşamasının (walk phase) bulguyu nerede düzeltebileceğini söyler. `arayüz`: yalnız uygulamanın kendi arayüz kodu ve kendi mesaj dosyaları (`apps/tedris`, `apps/nazar`, `apps/nizam`, `apps/landing`, `apps/keycloak-theme`); yürütme aşaması bunu düzeltir. `kütüphane`: ortak kütüphane (`libs/ui` ve öteki `libs/*`); yürütme aşaması dokunmaz, tek değişiklik tüm uygulamaları etkiler. `API`: `apps/tedrisat` ya da `apps/teskilat`; her yetki ve güvenlik düzeltmesi dahil, yürütme aşaması yalnız öneri yazar. `karar`: önce ürün ya da tasarım kararı gerekir (metinde "D1/D2/D3" ya da "sahibi karar versin" denmiş); karar her zaman öbürlerinden önce gelir. İki katmana dokunan düzeltme `API` sayıldı.
+
+## Sayılar
+
+Bulgu satırları (kural ve her sayfada yinelenen kayıtlar sayılmadı). Düzelen: üç pilot yürütmede düzelenler (aşağıda). Alan satırları her uygulamanın bölümünde.
+
+| Uygulama | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
+|---|---|---|---|---|---|---|
+| tedris | 50 | 4 | 141 | 130 | 6 | 51 |
+| nazar | 57 | 12 | 168 | 168 | 0 | 67 |
+| nizam | 53 | 5 | 231 | 149 | 0 | 56 |
+| landing | 5 | 0 | 8 | 11 | 0 | 6 |
+| realm | 8 | 0 | 30 | 20 | 0 | 6 |
+| common | 2 | 0 | 1 | 7 | 0 | 2 |
+| **Toplam** | 175 | 21 | 579 | 485 | 6 | 188 |
+
+Düzeltmenin nerede yapılacağı, seviyeye göre (bulgu satırları):
+
+| Seviye | arayüz | kütüphane | API | karar |
+|---|---|---|---|---|
+| yüksek | 6 | 0 | 12 | 3 |
+| orta | 448 | 29 | 69 | 33 |
+| düşük | 405 | 32 | 32 | 16 |
+| **Toplam** | 859 | 61 | 113 | 52 |
+
+Yürütme aşamasının uygulamanın kendi arayüzünde düzeltebileceği 859 bulgu var; 61 tanesi ortak kütüphaneye, 113 tanesi API'ye, 52 tanesi bir karara bağlı. Güvenlikle ilgili işaretlenen 54 satır var; bunların başı aşağıda.
+
+## Önce bunlar
+
+Yazım sırasında tutulan güvenlik listesindeki ve bulgulardaki güvenlikle ilgili olanlar; her biri tek satır, saldırı adımı yok. Hepsi koddan okundu; yığında ölçülenler kendi `rules` girdisinde öyle diyor (ACCREF-1 ve overview-exposes-head-id ölçüldü). Sıra zarara göre, sonra yaygınlığa göre. Düzeltmelerin hiçbiri yürütme aşamasının işi değil, biri (APPDEC-1) hariç: öbürleri `API` ya da `karar`. Satır başı `kimlik = aynı kökü paylaşan kimlikler` biçimindedir.
+
+1. **ban-staff-check-gaps** = BANDEC-3, NDB-1 · yüksek · API — Yasağı genişletme ve uzatma, kişinin dersi ya da medreseyi yürütüp yürütmediğine bakmıyor: hoca, müderris ya da nazır sonradan medrese ya da köşk yasağına alınabiliyor; nazar'ın 'Medreseden de yasakla' düğmesi ve nizam'ın 'Köşkten de yasakla' tıklaması bu yola çıkıyor. (`nazar.bans.courseBans`, `nazar.bans.decide`, `nazar.bans.review`, `nizam.moderation.decideBan`, `nizam.moderation.banStudent`; `apps/tedrisat/src/ban/ban.service.ts:515-553, :270-317, :463-467`)
+2. **inactive-scope-accepts-new-scope** + KNZ-1 · yüksek · API — Pasif kapsam atama yolu hiç yöneticisi olmamış köşk, medrese ya da dersi de pasif sayıyor: yalnız `platform.inactive_scopes_manage` olan biri oraya nazım atayabiliyor; köşke nazım eklemek de pasif köşkü sormadan yeniden açıyor (KNZ-1). (`nizam.inactive.reassign`, `nizam.madrasahs.passivate`, `nizam.kosks.nazims`; `apps/tedrisat/src/passivation/passivation-impact.repository.ts:67-72`; `inactive-scope.repository.ts:263-281`; `kosk-admin.repository.ts:407-410`)
+3. **RECADD-1** = SETPUB-5, policy-no-public-recordings-inert, RECS-1, WATCH-3 · yüksek · API — 'Ders kayıtları herkese açılamaz' ilkesi (medresede ve köşkte) kaydediliyor ve gösteriliyor ama kayıt yazılırken uygulanmıyor: hoca ilke kapalıyken de kaydı herkese açık yapabiliyor, kayıt listesi de ilkeye bakmıyor. (`nazar.recordings.add`, `nazar.settings.edit`, `nizam.courses.settingsAndPublish`, `tedris.course.recordings`; `apps/tedrisat/src/course/course.service.ts:857-867`; `apps/nazar/features/recordings/recordings.ts:487-493`)
+4. **ACCREF-1** + public-deck-hidden-still-given · yüksek · API — Gizlenen herkese açık deste, adresi bilen herkese (oturumsuz ziyaretçiye de) verilmeye devam ediyor; gizleme yalnız ders, köşk ya da medreseyle paylaşılan desteleri okunamaz yapıyor. (`tedris.decks.accessRefusals`, `tedris.decks.study`, `tedris.decks.visitorPublicDeck`; `apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:82-99`)
+5. **HEAD-5** = GRANTS-6, MAPPT-2 · orta · karar — Yetki verme yollarında kontrol sırası: izin okunmadan önce var olmayan kimliğe 404 veriliyor (kimliğin var olduğu ayırt ediliyor); köşk yetkilerinin silme yolunda kendine verme denetimi hiç yok; Medaris nazımı atama yolunda başnazım kendi adresini seçip kendini atayabiliyor. (`nizam.madrasahs.headMuderris`, `nizam.grants.appoint`, `nizam.nazims.appoint`; `apps/tedrisat/src/madrasah/madrasah.controller.ts:134`; `kosk-grants.controller.ts:70, :90, :119, :154`; `apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:96`)
+6. **BANDEC-4** · yüksek · API — 'Kalıcı yasak talebi aç' yalnız bir satır ve denetim kaydı yazıyor; bildirim, liste ve karar veren yol yok, oysa pencere 'Talep Medaris yönetimine gider' diyor: talep kimseye ulaşmıyor. (`nazar.bans.courseBans`, `nazar.bans.decide`; `apps/nazar/features/bans/components/reason-dialog.tsx:102`)
+7. **CREQ-1** = DAPP-2, F-B-appeals-5 · yüksek · karar — Üç ekran 'iletildi' diyor (ders talebi reddi 'başmüderrise iletildi', itiraz 'Medaris yönetimine iletildi', itiraz kararı 'medreseye iletildi') ama hiçbir bildirim ya da posta gitmiyor; alıcı ancak kendi listesini açarsa öğreniyor. (`nizam.courseRequests.decide`, `nazar.appeals.open`, `nizam.moderation.decideAppeal`; `apps/tedrisat/src/course-request/course-request.service.ts:166-197`; `apps/tedrisat/src/appeal/appeal.repository.ts:107-150, :239-284`)
+8. **TRIAGE-2** · orta · API — Yasak bildirimi her Medaris nazımına kimin kimi neden yasakladığını yazıyor, yasak izni olsun olmasın; tek bir yasak izni de bütün platformun yasak listesini ad, e-posta ve gerekçeyle açıyor. (nizam gezinti grafında bildirim → yasaklar bağlantısı bu yüzden yalnız alıcılar için çiziliyor.) (`nizam.notifications.triage`, `nizam.moderation.reviewBans`; `apps/tedrisat/src/ban/ban.service.ts:233`; `ban.repository.ts:430-454`)
+9. **overview-exposes-head-id** + F-4 · orta · API — Medrese özeti, oturumsuz çağırana başmüderrisin hesap kimliğini veriyor; köşk okuması da oturum açmış herkese oluşturanın ve nazımların hesap kimliklerini veriyor (öteki okumalar maskeli). Sayfalar bunları göstermiyor. (`tedris.discover.readMadrasah`, `tedris.discover.readKosk`; `apps/tedrisat/src/madrasah/madrasah.controller.ts:355-367`; `apps/tedrisat/src/kosk/kosk.controller.ts:261`)
+10. **F-5** · orta · API — Takip ucu köşkün var olduğuna bakıyor, görünür olduğuna bakmıyor: gizlenmiş köşk takip edilebiliyor (201). (`tedris.discover.followKosk`, `nizam.kosks.browse`, `nizam.kosks.manage`; `apps/tedrisat/src/kosk/kosk.service.ts:276`)
+11. **APPDEC-1** + F-W3-7, APPDEC-2 · orta · arayüz — Köşk başvuru sayfası, bekleyenler arasında olmayan `?secili=` değerini sessizce ilk başvuruya çeviriyor ve başvuranın iletişim bilgisini okuyup okumayı denetime yazıyor; sayfa kendiliğinden de bir başvuruyu seçip okuyor. (`nizam.applications.decide`; `apps/nizam/features/applications/components/applications-view.tsx:73-77`)
+12. **BULK-5** · orta · API — Toplu talebe ekleme, herhangi bir derste kayıt kararı yetkisi olan kişiye bir seferde 500 adres için Medaris hesabı olup olmadığını söylüyor ve bulunanı sormadan derse yazıyor. (`nazar.roster.bulkAdd`; `apps/tedrisat/src/course/bulk-enrollment.service.ts:76-100`)
+13. **SIF-3** + REG-4 · orta · API / karar — Giriş formu duraklatılmış hesabın iletisini şifre ne olursa olsun adresi yazan herkese gösteriyor, kayıt formu da 'Bu e-posta zaten var' diyor: iki yerde yabancıya hesabın var olduğu söyleniyor. (`realm.auth.signInFailures`, `realm.auth.register`; `Keycloak teması ve ayarı (dosya:satır yok)`)
+14. **card-create-takes-only-its-fields** + label-target-oracle (domain) · orta · API — Kart oluşturma ucu gövdeyi süzmeden ekliyor: API çağıranı yeni kartın kimliğini seçebiliyor, alınmış bir kimlik de var olduğunu 500 ile söylüyor; etiket uçlarında özel deste 403, olmayan kimlik 404 veriyor. (`tedris.decks.manageCards`; `apps/tedrisat/src/flashcard/flashcard.service.ts:108`; `flashcard-label.service.ts:167`)
+15. **evaluation-probe-leaks-homework-kind** · orta · API — Değerlendirme ucu oturum açmış herkese 200 ya da 404 vererek hangi celselerin ezber ödevi olduğunu ele veriyor. (`tedris.learn.homeworkMemorize`; `apps/tedrisat/src/evaluation/evaluation.repository.ts:185`)
+16. **CLS-17** · orta · API — On dakikalık katılma penceresi yalnız ekranda uygulanıyor: API toplantı bağlantısını iki gün önceden de gönderiyor ve bağlantı sayfanın ham HTML'inde duruyor. (`tedris.celse.attend`; `apps/tedris/features/courses/components/session-page.tsx:227`)
+17. **PUBPROF-1** · yüksek · karar — Profil herkese açılırsa cinsiyet her zaman görünüyor; gizlilik bildirimindeki cinsiyetle ilgili söz bununla çelişiyor. (`tedris.account.publicProfile`; `apps/tedrisat/src/user/user-profile.service.ts:97`)
+18. **MDRS-268** · orta · API — Kaydı silinen ya da yasaklanan talebe API üzerinden kendi not ve sorularını okumayı ve silmeyi sürdürüyor; hiçbir sayfa bunu sunmuyor. (`tedris.learn.writingGating`; `apps/tedrisat/src/course/course.service.ts:586`)
+19. **students-read-unaudited** + DECKREV-4, MANAGE-1, patch-madrasah-unaudited, VIEWC-3 · orta · API / karar — Denetim kaydı yazmayan ya da yanlış türe yazan yollar: medresenin bütün talebelerinin ad ve e-postası, deste yayım kararı, celse bağlantısı ve saati, medrese adı ve kapağı, pasif kapsam içeriğine bakış. (`nazar.students.browse`, `nizam.moderation.reviewDeckPublication`, `nazar.sessions.manage`, `nazar.settings.edit`, `nizam.inactive.viewContent`; `apps/tedrisat/src/deck-review/deck-review.repository.ts:243-282`; `course.repository.ts:1555-1625`; `madrasah.repository.ts:189`; `audit/audit-types.ts:17-19`)
+20. **grant-end-not-an-instant** + kosk-grant-patch-omitted-end, GROUPS-1 (domain) · orta · API — Yetki verirken: biçimi saat olmayan bitiş 400 yerine 500 doğuruyor; köşk yetkisini değiştirirken bitiş gönderilmezse bitiş sessizce kalkıyor; medrese grubu kapsamı saklanmıyor ve 34 kodun hepsi kabul ediliyor. (`nazar.nazirs.permissions`, `nazar.nazirs.groups`, `nizam.grants.appoint`; `apps/tedrisat/src/kosk/kosk-grants.service.ts:178`; `kosk/dto/kosk-grants.dto.ts:147`; `madrasah/nazir/madrasah-permission.service.ts:115`)
+21. **NOTIF-4** · düşük · API — Bildirim listesi ve okundu cevapları sözleşmede olmayan `userId` alanını taşıyor. (`tedris.account.notifications`; `apps/tedrisat/src/notification/dto/notification-response.dto.ts:8-46`)
+Kimliği olmayan iki not (aynı güvenlik listesinden): köşk nazımı ekleme yolunda kendine verme denetimi izin denetiminden önce geliyor, oturum açmış herkes 403 alıp bir denetim satırı yazdırabiliyor (HEAD-5 ailesinin köşk karşılığı; `ui.yaml`'a girmedi, dosya:satır yok); "SYSTEM_ADMIN başkasının herkese açık destesini düzenleyebiliyor" notu için `rules` ya da `holds: false` girdisi bulunamadı, doğrulanmadı.
+
+## Taban çizgisine giren gezinti hataları
+
+`check --strict graphs/domain graphs/{landing,nazar,nizam,tedris}/nav` 4 grafta 7 hata ve 7 uyarı veriyor. Yedi hatanın yedisi de kodun gerçek bulgusu, graf hatası değil; her biri aşağıdaki kimlikle taban çizgisine (`delurio.baseline.sarif`) girecek. Bu komut 16 Kasım 2026'da çalıştırıldı ve 4 graf, 7 hata, 7 uyarı verdi; hata-bulgu eşlemesi gezinti grafı yazarının koddan okumasıdır, hatalar çalıştırılarak doğrulanmadı.
+
+| Graf | Hata | Bulgu kimliği | Ne |
+|---|---|---|---|
+| nazar | `menu-refused` (6 not) | F-L-20, F-D2c-2, F-D2c-3 | Menü her ders ve medrese girişini herkese çiziyor, sayfa reddediyor |
+| nazar | `unreachable` (3: `/auth/signout`, iki `[bolum]`) | F-E-18, F-L-4 | Hiçbir bağlantının gitmediği sayfalar; iki `[bolum]` dosyası yalnız `notFound()` çağırıyor |
+| nazar | `link-refused` (3) | OVERVIEW-1 | "Sıradaki celse" kutusu ders nazırına izin sınamadan çiziliyor, Celseler sayfası reddediyor |
+| nazar | `goals` (1) | F-L-8, F-E-17, PCODES-1 | Koltuğu olmayan başnazımın hiçbir derse tıklayarak giden yolu yok (ortak uygulama kodları hedefi başnazıma verilince ortaya çıktı) |
+| nizam | `menu-missing` (2: Kalıcı yasak talepleri, YouTube bağlantısı) | F-P0-4 (F-X-11) | Planlı sayfaların menü girişleri bugün var, sayfalar yok (MDRS-140, MDRS-195) |
+| nizam | `unreachable` (1: `/decks`) | F-P0-16 | Eski deste sayfasına hiçbir bağlantı gitmiyor |
+| nizam | `link-refused` (12 not) | MANAGE-1, F-W3-4, KOVERVIEW-5, NCL-4, CDA-5, TRIAGE-2 | Arşiv'e git (2), Barındırma hakları (4), Ders → Genel bakış (2), Düzenle → Müfredat (2), Başvurulara git (1), Bildirim listesi (1): her biri reddedileceği kişiye çiziliyor |
+
+Not: nizam gezinti grafında `notifications→koskBans` bağlantısı artık yalnız yasak bildirimi alanlara (köşk nazımı, Medaris nazımı) çiziliyor; bu TRIAGE-2'yi (ve başnazıma hiç bildirim gitmemesini, TRIAGE-1) gösteriyor. NCL-4, gezinti grafı yazarının önerdiği yeni bir bulgu; ilgili `ui.yaml`'a girene kadar kaynağı onun raporu. (Bu dosyada `nizam.courses.list` altında, kural girdisi olarak henüz yok.)
+
+## Aynı kökü paylaşan bulgular
+
+Farklı kimlikler yazarların kendi sözleriyle ("aynısı", "ikizi", "nazar'daki karşılığı") aynı kökü paylaştığında tek satırda birleşti; satır en çok anılan kimlikle başlar, ötekiler `=` ile arkasından gelir, düzeltme tek yerde yapılır. Seviye üyelerin en yükseği, düzeltme yeri en kısıtlayıcısı. "Ailesi" denen gevşek akrabalıklar (aynı yapıdaki ama ayrı düzeltilen bulgular) birleştirilmedi. Birleşenler:
+
+- **CREQ-1** = DAPP-2, F-B-appeals-5 — yüksek, karar; 3 akış. Bildirim "gerekçe başmüderrise iletildi" diyor ama hiçbir bildirim ya da posta gitmiyor; başmüderris reddi ancak İtirazlar'ı açarsa buluyor.
+- **RECADD-1** = RECS-1, SETPUB-5, WATCH-3, policy-no-public-recordings-inert — yüksek, API; 4 akış. Medresenin "Ders kayıtları herkese açılamaz" ilkesi kaydediliyor ama hiçbir yerde uygulanmıyor; hoca ilke kapalıyken de kaydı herkese açık yapabiliyor.
+- **RMV-2** = NROS-1 — yüksek, karar; 2 akış. Pencere ve sekme erişimin "ders kadrosu onaylarsa" geri geleceğini söylüyor ama bunu onaylayacak hiçbir ekran yok; çıkarılan talebe ekrandan geri alınamıyor.
+- **ban-staff-check-gaps** = BANDEC-3, NDB-1 — yüksek, API; 5 akış. Yasağı genişletme ve uzatma, kişinin dersi ya da medreseyi yürütüp yürütmediğine bakmıyor; hoca, müderris ya da nazıra yasak genişletilebiliyor ve yönetenlerin yasaklanamaması kuralı bozuluyor.
+- **BAN-4** = BANST-2 — orta, API; 2 akış. Zaten yasaklı kişiye yasak konunca pencere "Yasak kaydedildi" diyor; oysa mevcut yasak kendi gerekçesini koruyor, yeni yazılan gerekçe kaydedilmiyor ve yasaklayan bunu bilmiyor.
+- **EPERM-2** = F-W2-groups-6 — orta, arayüz; 2 akış. Hiçbir şey değişmeden 'Kaydet'e basılınca yine gönderiliyor ve 'İzinler kaydedildi' deniyor; API hiçbir şey yazmıyor ve denetim satırı da yok, başnazıma yanlış bildirim veriliyor.
+- **F-B-13** = DNP-1 — orta, arayüz; 8 akış. Reddedilen kişi sayfanın kendi başlığını ve alt yazısını görüyor; ret mesajı başlık değil, geri dönüş bağlantısı yok ve sekme başlığı hâlâ sayfa adını taşıyor.
+- **F-C-course-a-03** = F-W4-3 — orta, arayüz; 4 akış. Her satırda aynı adlı düğmeler var ('Gizle', 'Celse ekle', 'Kaynağı çıkar', 'Yukarı taşı'); ekran okuyucu kullanan kişi düğmenin hangi satırı etkilediğini ayıramıyor.
+- **F-C-course-a-20** = CANCEL-4 — orta, karar; 2 akış. "Celseyi iptal et" onayı birincil renkte ve "Kaydet" gibi görünüyor; geri alınmaz işlem yıkıcı olarak boyanmamış.
+- **F-D1-20** = NROS-7 — orta, arayüz; 11 akış. Tarayıcı sunucuya ulaşamayınca yayın, onay ya da kaldırma işlemi hata fırlatıyor; düğme sonsuza dek meşgul kalıyor ve bildirim çıkmıyor, kişi sayfayı yenilemek zorunda.
+- **F-L-17** = F-C-course-a-08, F-W4-9 — orta, arayüz; 4 akış. İşlemden sonra form kapanıyor ya da satır kalkıyor ama odak taşınmıyor; yazmanın yapıldığını söyleyen tek şey 6 saniyelik bildirim, odak sayfanın başına düşüyor.
+- **F-L-8** = F-E-17 — orta, arayüz; 2 akış. Koltuğu olmayan başnazım "/" adresinden "Bu portala erişiminiz yok" sayfasına düşüyor, oysa düzen ona her medrese ve dersi açıyor; sayfa tersini söylüyor, adres alanı ya da liste vermiyor.
+- **F-W1-8** = F-X-10 — orta, kütüphane; 8 akış. Sayfa yüklenirken tek içeriği ekran okuyucudan gizli iskeletler olan meşgul bir kutu var; ekran okuyucu kullanan kişi yükleme sırasında hiçbir şey duymuyor.
+- **F-W2-open-1** = HEAD-3 — orta, arayüz; 3 akış. Başmüderris seçiliyken yapılan ikinci arama kimseyi bulamasa ya da dizine ulaşamasa da sessiz kalıyor; eski kişi seçili duruyor ve kullanıcı yeni kişiyi seçtiğini sanıyor.
+- **F-W2-open-2** = HEAD-4 — orta, arayüz; 2 akış. Medaris nazımı kendini başmüderris seçince reddediliyor ama bildirim başka bir durum için yazılmış 'rolü devralamazsınız' cümlesini söylüyor; kullanıcı ne yapacağını anlamıyor.
+- **F-W3-12** = KBROWSE-3, MBROWSE-2 — orta, arayüz; 3 akış. Arama, sekme, süzgeç veya sayfa değişince tablo duyurulmadan güncelleniyor; ekran okuyucu kullanıcısı kaç kayıt kaldığını ya da listenin değiştiğini duymuyor.
+- **F-W3-2** = F-X-21 — orta, arayüz; 1 akış. Denetim sayfası her okuyucuya 'Kayıtlar [KVKK saklama süresi] boyunca saklanır.' diyor; köşeli parantezli yer tutucu hiç doldurulmamış ve bir test onu sabitlemiş.
+- **F-W3-6** = F-W3-edit-1 — orta, arayüz; 3 akış. Anahtar kendi kaydı sürerken pasifleşiyor ve odaktaki kontrol pasifleşince odak sayfaya düşüyor; kaydın sürdüğünü söyleyen başka bir şey yok, sonucu yalnız bildirim söylüyor.
+- **F-W3-open-2** = BAN-3, BANST-5, BULK-2, F-W2-open-5, F-W3-hide-1, GROUPS-2, HEAD-6, HIDE-3, NROS-5, PUB-2, PURGE-4, REASSIGN-3, RMV-3, SETPUB-6 — orta, kütüphane; 15 akış. Köşk oluşturulurken 'Vazgeç' ve kapatma düğmeleri açık görünüp hiçbir şey yapmıyor; meşgul düğme ne devre dışı ne de işaretli.
+- **F-W4-4** = F-C-course-a-15, F-C-course-a-16, F-X-7 — orta, arayüz; 11 akış. 'Gizle' ve 'Haftayı gizle' satırı sormadan ve duyurmadan taslaktan çıkarıyor, odak kayboluyor; asıl gizleme Kaydet ile oluyor, düğmenin adı yaptığından fazlasını söylüyor.
+- **F-W4-6** = F-D1-04 — orta, arayüz; 7 akış. Karar, gizleme ya da çıkarma sonrası düğme satırla birlikte kayboluyor ve odak sayfaya düşüyor; tek haber kısa bir bildirim, klavye ve ekran okuyucu kullanıcısı yolunu yitiriyor.
+- **F-W5-12** = F-X-12, MCUT-2 — orta, karar; 3 akış. İtirazlar sayfasının menü girişi yalnız başnazımda; itiraz kararı izni olan Medaris nazımı sayfaya girebiliyor ama menüde bulamıyor.
+- **F-X-14** = BAN-2, F-W3-14, F-W4-20, OPEN-5 — orta, arayüz; 11 akış. Adres alanından çıkılınca da dizin araması yapılıyor ve her arama denetim kaydına yazılıyor; alanda gezinmek ya da 'Vazgeç'e basmak istenmeyen denetimli aramalar üretiyor.
+- **F-X-2** = F-C-course-a-01, F-C-course-a-07, F-UI-W3-1, F-UI-W4-1, F-W4-2 — orta, karar; 20 akış. Alan hata satırı ('Bir gerekçe yazın.' gibi) canlı bölge değil ve odak taşımıyor; devre dışı düğmeyle birlikte ekran okuyucu kullanıcısı nedenini hiç duymuyor.
+- **F-X-3** = CAPPOINT-2 — orta, karar; 15 akış. Form eksikken gönder düğmesi devre dışı kalıyor ve neyin eksik olduğunu söyleyen satır yok; klavye kullanıcısı düğmeye Tab ile ulaşamıyor, Enter formu gönderemiyor.
+- **HEAD-5** = GRANTS-6, MAPPT-2 — orta, karar; 3 akış. Başmüderris atama yolunda sunucu izni okumadan önce olmayan kimliğe 404 veriyor; izni olmayan biri hangi medrese kimliğinin var olduğunu ayırt edebiliyor, sahibi karar vermeli.
+- **IMPEXP-3** = IMPORT-3 — orta, API; 2 akış. CSV, bayt sırası işareti olmadan UTF-8 yazılıyor; Türkçe Excel yerel kod sayfasıyla açınca şablondaki ve dışa aktarılan Arapça metinler bozuk görünüyor.
+- **K3** = PROFILE-1, REG-1 — orta, kütüphane; 5 akış. Giriş sayfası hiçbir denetime odak vermiyor; yanlış şifreden sonra odak uyarıya ya da ilk geçersiz alana gitmiyor, ekran okuyucu hatayı duymayabilir.
+- **NCL-3** = F-A-12, KNZ-6 — orta, kütüphane; 8 akış. Sekme etiketi ile sayı arasında boşluk yok; ekran okuyucu 'Tümü5' ve 'Gizli2' diye okuyor, sayı etiketin parçası gibi duyuluyor.
+- **NFILES-2** = FILES-3, NHWREV-1, WRT-10 — orta, kütüphane; 5 akış. Reddedilen indirme sayfayı baştan yüklüyor; Müfredat'ta kaydedilmemiş yazılanlar ve Ödevler'de açık inceleme notu hiçbir şey söylenmeden kayboluyor.
+- **PERM-2** = CAPPOINT-3, CNP-4 — orta, kütüphane; 4 akış. Alt bilgideki izin sayısı canlı bölge değil; kutu işaretleyen ya da grup seçen kişi yeni sayıyı duymuyor.
+- **PLAN-2** = NPLAN-2 — orta, arayüz; 2 akış. Ders okunamayınca sayfa kendi başlığının altına ikinci bir birinci düzey başlık ("Ders okunamadı") çiziyor; ekran okuyucu aynı sayfada iki ana başlık duyuyor.
+- **REVBANS-2** = NDB-4 — orta, arayüz; 2 akış. Medrese çapındaki yasak köşk adı olmadan 'Köşk' etiketiyle listeleniyor; Medaris nazımı yasağın gerçek kapsamını göremiyor.
+- **ROSCOM-2** = NROS-4 — orta, arayüz; 2 akış. Kadro okuması talebenin açık yasağını getiriyor ama sayfa kullanmıyor; yasaklı, tamamlamış talebede "Yeniden aç" çıkıyor ve ret "Bir şeyler ters gitti" diye sunuluyor.
+- **SET-2** = HOCA-4 — orta, arayüz; 2 akış. Değiştirilmiş ayar formu menü, bağlantı ya da yenilemeyle sessizce kayboluyor; uyarı yok ve "Vazgeç" de sormuyor.
+- **ADDCAL-2** = ACC-23, LEAVE-2, MDRS-233 — düşük, kütüphane; 7 akış. Bildirimin "Kapat" düğmesi ve "Bildirimler" bölgesi katalogdan değil kit sabitinden adlanıyor; yalnız Türkçe gösterildiği sürece görünmüyor, başka dil eklenince çıkıyor.
+- **CAPPOINT-1** = APPOINT-1, CNDIS-3, DISMISS-2, NZDIS-3 — düşük, arayüz; 6 akış. Kayıt sürerken "Vazgeç", kapat simgesi ve Esc hiçbir şey yapmıyor ama devre dışı ya da meşgul işaretli değil; yalnız bitiş alanı kapanıyor, canlı görünen denetim yanıt vermiyor.
+- **CNP-2** = EPERM-4 — düşük, arayüz; 3 akış. "Bitiş" hücresi yalnız günü yazıyor, oysa pencere gün ve saati düzenliyor ve erişim o saatte bitiyor; bugün 14:00'te biten görev gün boyu sürecek gibi okunuyor.
+- **CREQ-5** = DAPP-3 — düşük, arayüz; 2 akış. Listeden çıkan her talep karara bağlanmış sayılıyor; talep yok çıkınca (kimse cevaplamadan) Karara bağlanan sekmesinin sayısı yeniden okunana dek bir fazla kalıyor.
+- **DISMISS-1** = CNDIS-4 — düşük, arayüz; 2 akış. Kişi zaten nazır değilse 'Görevden alınamadı' hata bildirimi çıkıyor ve kendiliğinden kapanmıyor; oysa istenen sonuç oluşmuş.
+- **F-A-14** = RESTORE-3 — düşük, arayüz; 7 akış. Meşgul düğmeler kitin sabit "Yükleniyor" sözünü söylüyor, katalogdan gelmiyor; bugün yalnız Türkçe olduğu için zararsız, başka dil açılınca yanlış olur.
+- **F-B-12** = F-D2c-16 — düşük, kütüphane; 11 akış. Diyalogun bütün gövdesi diyalog açıklaması olarak işaretli; ekran okuyucu açılışta ad, kapsam ve 34 kutuyu birden okuyabilir.
+- **REVBANS-3** = NDB-5 — düşük, arayüz; 2 akış. Yasağı kaldıramayan Medaris nazımına gösterilen 'onu koyan kademe ya da üstü' cümlesi, asıl sebep izin eksikliği olduğunda yanlış sebebi söylüyor.
+- **SHL-12** = CLS-14 — düşük, arayüz; 1 akış. Tedris'in alt bilgisindeki "Aydınlatma Metni" bağlantısı yeni sekmede açılıyor ama bunu görünür ya da gizli hiçbir söz belirtmiyor; ekran okuyucu ve telefon kullanıcıları şaşırıyor.
+
+## Düzelenler
+
+Üç pilot akışın yürütmesinde (`tedris.learning.schedule`, `tedris.decks.create`, `tedris.account.profile`) uygulamada düzeltilenler; düzeltmeler `apps/tedris` ve `libs/i18n` içinde, işlenmemiş durumda ve aynı işle birlikte işlenecek; bulgular o akışların `rules` girdisinden çıkarıldı ya da "düzeldi" diye yeniden yazıldı. Kısmen düzelenler aşağıda ayrı.
+
+- **SCHED-3** · düzeldi — Programım'da canlı celsenin 'Celseye katıl' bağlantısı artık celsenin adını ve yeni sekmede açıldığını söylüyor. (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx`)
+- **DSC-09 (b)** · düzeldi — Programım'ın son gezintisi artık 'Hafta gezintisi' adını taşıyor; eskiden 'Celseler' adıyla hafta bağlantılarını gösteriyordu (DSC-09 başka akışlarda açık). (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx`)
+- **ACC-09** · düzeldi — Hesap sayfasındaki cinsiyet bağlantısı artık 'Cinsiyet: Değiştir' ya da 'Cinsiyet: Ekle' adını taşıyor (aynı kimlik `realm.auth.profileUpdate`'te açık). (`tedris.account.profile`; `apps/tedris/features/account/components/account-settings.tsx`)
+- **ACC-10** · düzeldi — Davet anahtarı kaydedilirken artık devre dışı kalmıyor; odak anahtarda kalıyor ve ikinci basış bir şey yapmıyor (aynı kimlik bildirimler ve herkese açık profil sayfalarında açık). (`tedris.account.profile`; `apps/tedris/features/account/components/account-settings.tsx`)
+- **ACC-16** · düzeldi — profile#1 sayfada olmayan bir dil alanını bekliyordu; iki yanlış iddia ve başlıktaki 've dil' kaldırıldı (e2e çalıştırılmadı). (`tedris.account.profile`; `apps/tedris/e2e/profile.e2e.ts`)
+- **DCK-06 (Oluştur)** · düzeldi — Başarısız 'Oluştur' artık odağı hatalı ilk alana taşıyor ve alanlar hatalı olarak işaretleniyor; öteki deste sayfalarında DCK-06 açık. (`tedris.decks.create`; `apps/tedris/features/flashcards/components/create-deck-page.tsx`)
+
+Kısmen düzelenler: ACC-02 (başarısız Kaydet artık odağı adı eksik ilk kutuya taşıyor; okuyucuya duyurulması hâlâ yok, `tedris.account.profile`, `tedris.account.publicProfile`), DCK-23 (Oluştur'un meşgul etiketi artık Türkçe katalogdan geliyor; kitin sabit "Yükleniyor" ve "Kapat" sözleri duruyor, `libs/ui`). Pilot yürütmenin düzeltmediği ama kendi raporunda öneri olarak yazdığı: DCKCREATE-1 (deste başlığı uzunluğu UTF-16 birimiyle sayılıyor, API karakterle sayıyor).
+
+## tedris
+
+| Alan | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
+|---|---|---|---|---|---|---|
+| tedris/account | 5 | 1 | 20 | 14 | 3 | 4 |
+| tedris/celse | 6 | 0 | 17 | 15 | 0 | 4 |
+| tedris/course | 8 | 1 | 23 | 14 | 0 | 9 |
+| tedris/decks | 11 | 2 | 35 | 32 | 1 | 14 |
+| tedris/discover | 6 | 0 | 15 | 15 | 0 | 3 |
+| tedris/files | 1 | 0 | 1 | 2 | 0 | 1 |
+| tedris/learn | 6 | 0 | 17 | 19 | 0 | 9 |
+| tedris/learning | 3 | 0 | 5 | 9 | 2 | 3 |
+| tedris/session | 1 | 0 | 1 | 0 | 0 | 2 |
+| tedris/shell | 3 | 0 | 7 | 10 | 0 | 2 |
+| **tedris** | 50 | 4 | 141 | 130 | 6 | 51 |
+
+### tedris/account
+
+- **PUBPROF-1** · yüksek · karar · güvenlik — Profil açılırsa cinsiyet her zaman herkese açık görünür; gizlilik bildirimindeki cinsiyetle ilgili söz bununla çelişiyor ve verilen söz tutulmuyor. (`tedris.account.publicProfile`; `apps/tedrisat/src/user/user-profile.service.ts:97`)
+- **ACC-02** · orta · arayüz — Herkese açık profilde künye alanının hatası canlı bölge değil ve başarısız gönderimden sonra odak alana gitmiyor; 'Kaydet'e basan ekran okuyucu kullanıcısı hiçbir şey duymuyor. (`tedris.account.publicProfile`; `apps/tedris/features/public-profile/components/public-profile-page.tsx:77-83`)
+- **ACC-03** · orta · arayüz — İlk okuma kutusundaki 'Yeniden dene' tekrar başarısız olunca ileti, bildirim ya da uyarı çıkmıyor; düğme yalnız meşgul olmaktan çıkıyor, sekmedeki yeniden denemede ise meşgul durumu hiç yok. (`tedris.account.notifications`; `apps/tedris/features/notifications/components/notifications-page.tsx:99-112`)
+- **ACC-04** · orta · arayüz — Satır menüsünden 'Okundu say'a basınca odaklı '…' düğmesi kayboluyor ve odak gövdeye düşüyor; 'Okunmamış' sekmesinde satırın kendisi de listeden çıkıyor. (`tedris.account.notifications`; `apps/tedris/features/notifications/components/notification-row.tsx:85-97`)
+- **ACC-05** · orta · arayüz — Okundu işareti sessiz: rozetler, sayılar ve düğme değişiyor ama hiçbir şey söylenmiyor; katalogdaki 'Tüm bildirimler okundu.' ve 'Geri al' kullanılmıyor, yalnız ret bildirimi çıkıyor. (`tedris.account.notifications`; `apps/tedris/features/notifications/components/notifications-page.tsx:114-150`)
+- **ACC-06** · orta · arayüz — Köşk nazımı ve Medaris nazımı için yazılan yasak bildirimlerinin sayfada karşılığı yok; satır cümlesiz 'Bildirim' başlığıyla, zil simgeli ve okunmamış görünüyor, ne olduğu anlaşılmıyor. (`tedris.account.notifications`; `apps/tedris/features/notifications/notification-view.ts:16-32`)
+- **ACC-07** · orta · karar — "Adın ve soyadın kaydedildi." yalnız Tedrisat'taki kopya için doğru; üst çubuktaki ve Ana sayfa'daki ad değişmez, kişi başarı mesajının yanında eski adı görür. (`tedris.account.profile`; `apps/tedrisat/src/user/user.service.ts:69-93`)
+- **ACC-10** · orta · arayüz — "Tümünü okundu say", "Vazgeç" ve gizlilik anahtarları kullanıldıktan hemen sonra devre dışı kalıyor; odak kaybolup sayfanın başına düşebilir, klavye kullanıcısı yolunu şaşırır. (`tedris.account.notifications`, `tedris.account.publicProfile`; `apps/tedris/features/notifications/components/notifications-page.tsx:270`)
+- **ACC-11** · orta · arayüz — Gizli takvim bağlantısı alanlarda 32 madde işareti olarak duruyor ve kopyalama düğmeleri kapalı; ekran okuyucu uzun bir "madde işareti" dizisi okuyor, gizli olduğunu alanla ilişkilendirmiyor. (`tedris.account.calendarFeed`; `apps/tedris/features/courses/components/calendar-subscription.tsx:22`)
+- **ACC-12** · orta · arayüz — Tarayıcı sunucuya hiç ulaşamazsa kaydetme çağrıları hata yakalamıyor: sayfa hata ekranına düşüyor ya da anahtar mesajsız ve geri alınmadan açık kalıyor; kişi kaydın olmadığını anlamıyor. (`tedris.account.profile`, `tedris.account.calendarFeed` +2; `apps/tedris/features/account/components/account-settings.tsx:137-151`)
+- **ACC-13** · orta · arayüz — Herkese açık profildeki dört anahtarın hepsinin adı "Herkese göster"; hangi alana ait olduğunu söyleyen başlık adın parçası değil, ekran okuyucu kullanıcısı anahtarları ayıramaz. (`tedris.account.publicProfile`; `apps/tedris/features/public-profile/components/public-profile-page.tsx:142-150`)
+- **ACC-20** · orta · arayüz — "Diğer…" seçilince ikinci liste duyurulmadan ve odak taşınmadan açılıyor; saat dilimi orada seçilene kadar eskisi kalıyor, klavye kullanıcısı bunu fark etmiyor. (`tedris.account.profile`; `apps/tedris/features/account/components/account-settings.tsx:213-287`)
+- **ACC-21** · orta · arayüz — Ad ve soyad kutularında uzunluk sınırı yok; 100 karakteri aşan ad, kutuyu ve sınırı söylemeyen genel bir hata bildirimiyle reddediliyor. (`tedris.account.profile`; `apps/tedrisat/src/user/dto/update-me.dto.ts:22-45`)
+- **CALFEED-2** · orta · arayüz — Reddedilen yenileme "Bağlantı oluşturulamadı" diyor ve eski bağlantının hâlâ çalıştığını söylemiyor; bu ziyarette gösterilen bağlantı da kırmızı uyarının altında açık duruyor. (`tedris.account.calendarFeed`; `apps/tedris/features/courses/components/calendar-subscription.tsx:127-131`)
+- **CALFEED-3** · orta · arayüz — "Bağlantı oluştur" yeni bağlantıyı ve uyarıyı yalnızca ekrana çiziyor; uyarı güvenilir duyurulmuyor, odak düğmede kalıyor, ekran okuyucu kullanıcısı işin bittiğini anlamıyor. (`tedris.account.calendarFeed`; `alert.tsx:23`)
+- **HESAP-1** · orta · arayüz — Hesap bilgisi okunamayınca sayfa yalnız bir hata kutusu çiziyor; yeniden dene düğmesi yok, veriye bağlı olmayan saat dilimi, takvim ve "Çıkış yap" da kayboluyor. (`tedris.account.profile`; `page.tsx:44-58`)
+- **HESAP-2** · orta · karar — Hesap'tan Keycloak'a açılan tek kapı cinsiyet satırındaki "Değiştir"; o sayfa ad, soyad ve e-postayı da düzenlettiği için iki yerde ayrı ad tutuluyor. (`tedris.account.profile`)
+- **PUBPROF-2** · orta · arayüz — Web tarafı açık, API tarafı kapalıyken kalıcı "yok" cevabı "Profilin yüklenemedi, biraz sonra yeniden dene" diye gösteriliyor; kişi hiç gelmeyecek bir şeyi bekliyor. (`tedris.account.publicProfile`; `reads.ts:54-64`)
+- **renewing-can-be-dismissed** · orta · arayüz — Yenileme çağrısı sürerken "Vazgeç", çarpı ve Esc iletişim kutusunu kapatıyor; çağrı bitince yeni bağlantı ya da hata, değişmedi sanılan sayfaya uygulanıyor. (`tedris.account.calendarFeed`)
+- **ROLES-2** · orta · karar — Medaris başnazımı bir rol satırı olmadığı için Hesap'ta ne rol ne de Nizam'a giden yol görüyor; sayfa sade hesap sayfası kalıyor, sistem yöneticisi bayrağı okunmuyor. (`tedris.account.rolesOverview`; `page.tsx:30-33`)
+- **SHL-04** · orta · arayüz — Zilin adı okunmamış sayısından bağımsız hep "Bildirimler"; "Bildirimler, 3 okunmamış" adı yalnız eski başlıktaki zilde var, ekran okuyucu kullanıcısı yeni bildirimi duymuyor. (`tedris.account.notifications`, `tedris.shell.frame` +1; `apps/tedris/components/phone-menu/phone-chrome.tsx:20-48`)
+- **ACC-08** · düşük · arayüz — "Nizam’da aç" ve "Nazar’da aç" düğmeleri yeni sekme açar ama erişilebilir adları bunu söylemez; ekran okuyucu kullanıcısı sekmenin değiştiğini bilmez. (`tedris.account.rolesOverview`; `apps/tedris/features/account/components/assignments-table.tsx:119-133`)
+- **ACC-14** · düşük · arayüz — Açık rıza notunda "[Açık rıza metninin adı]" yer tutucusu olduğu gibi duruyor; profil açılmadan önce gerçek belge adı yazılmalı. (`tedris.account.publicProfile`; `apps/tedris/features/public-profile/components/public-profile-page.tsx:237-241`)
+- **ACC-15** · düşük · arayüz — "Neler bildirilir" yan notu sekiz bildirim türünü sayıyor; ödev değerlendirme ve üç sınav bildirimi eksik, liste eski kalmış. (`tedris.account.notifications`; `apps/tedris/features/notifications/components/notification-aside.tsx:17-30`)
+- **ACC-17** · düşük · arayüz — Yüklenemeyen roller kutusunda dıştaki bölüm, yalnız başarılı durumda var olan bir başlığa bağlı; bölümün dıştaki adı boş kalıyor. (`tedris.account.rolesOverview`; `apps/tedris/features/account/components/roles-section.tsx:29`)
+- **ACC-18** · düşük · arayüz — Bildirimler sayfası ve sekmesi okunurken yükleme iskeletinde hiçbir söz ya da ad yok; ekran okuyucu kullanıcısına bir şey söylenmiyor. (`tedris.account.notifications`; `apps/tedris/features/notifications/components/notifications-page.tsx:311`)
+- **ACC-19** · düşük · arayüz — Hesap ve Bildirimler sayfalarının sekme başlığında "| Tedris" eki yok, Takvim ve herkese açık profil sayfalarında var; başlıklar tutarsız. (`tedris.account.profile`, `tedris.account.notifications`; `page.tsx:14-17`)
+- **CALFEED-1** · düşük · kütüphane — Takvim sayfasındaki "Kapat", "Yükleniyor" ve "Bildirimler" sözleri kitte sabit Türkçe, katalogda yok; İngilizce ve Arapçada da Türkçe kalır. (`tedris.account.calendarFeed`; `alert-dialog.tsx:47`)
+- **NOTIF-1** · düşük · arayüz — Okunmamış bildirime basınca sayfa hemen hedefe geçiyor; okundu işareti reddedilirse hata bildirimi artık yok olmuş sayfaya gidiyor ve kişi bildirimin okunmadığını görmüyor. (`tedris.account.notifications`; `apps/tedris/features/notifications/components/notification-row.tsx:56`)
+- **NOTIF-2** · düşük · arayüz — Her gün grubunun listesi aynı "Bildirim listesi" adını taşıyor; liste gezintisinde üç liste birbirinden ayırt edilemiyor. (`tedris.account.notifications`; `apps/tedris/features/notifications/components/notifications-page.tsx:223`)
+- **NOTIF-3** · düşük · arayüz — Art arda iki okundu işareti başlayıp ilki reddedilirse geri alma eski görüntüyü yazıyor; ikincisi sunucuda okundu olsa da sayfada okunmamış görünüyor ve sayaçlar şaşıyor. (`tedris.account.notifications`; `apps/tedris/features/notifications/components/notifications-page.tsx:115`)
+- **NOTIF-4** · düşük · API — Bildirim yanıtlarında tanımda olmayan bir kullanıcı kimliği alanı dönüyor; kişinin kendi kimliği, ama yanıt tanımı ve üretilen istemci bunu bilmiyor. (`tedris.account.notifications`; `apps/tedrisat/src/notification/dto/notification-response.dto.ts:8-46`)
+- **notification-types-code-dropped** · düşük · API — Bilinmeyen bildirim türü isteğinin özel hata kodu istemciye ulaşmıyor, genel 400 görünüyor; sayfa bu parametreyi hiç göndermiyor, yalnız başka istemciler etkilenir. (`tedris.account.notifications`; `apps/tedrisat/src/notification/notification.controller.ts:104`)
+- **ROLES-1** · düşük · arayüz — İzin grupları kod taşımadığı için elenince "Etkin izinlerin" başlığı ve girişi altında hiçbir şey olmadan duruyor; Medaris nazımı bunu görüyor. (`tedris.account.rolesOverview`; `apps/tedris/features/account/components/roles-section.tsx:115`)
+- **unreadable-input-500** · düşük · API — Üç uçta null ya da çift verilen girdi doğrulamadan geçip 400 yerine 500 hatasına düşüyor; Tedris bunları göndermiyor, yalnız başka istemciler etkilenir. (`tedris.account.publicProfile`, `tedris.account.notifications` +1; `apps/tedrisat/src/user/dto/public-profile.dto.ts:140-145`)
+- **ACC-09** · düzeldi — Hesap sayfasındaki cinsiyet bağlantısı artık 'Cinsiyet: Değiştir' ya da 'Cinsiyet: Ekle' adını taşıyor (aynı kimlik `realm.auth.profileUpdate`'te açık). (`tedris.account.profile`)
+- **ACC-10** · düzeldi — Davet anahtarı kaydedilirken artık devre dışı kalmıyor; odak anahtarda kalıyor ve ikinci basış bir şey yapmıyor (aynı kimlik bildirimler ve herkese açık profil sayfalarında açık). (`tedris.account.profile`)
+- **ACC-16** · düzeldi — profile#1 sayfada olmayan bir dil alanını bekliyordu; iki yanlış iddia ve başlıktaki 've dil' kaldırıldı (e2e çalıştırılmadı). (`tedris.account.profile`)
+
+### tedris/celse
+
+- **BROWSE-2** · orta · arayüz — Biten haftası olan dersin sayfasında bir celse satırının saati sunucuyla tarayıcıda uyuşmuyor; hidrasyon hatası çıkıp ağaç yeniden çiziliyor. (`tedris.celse.browseCurriculum`)
+- **CLS-02** · orta · arayüz — Kayıtlı ama dersi pasif ya da engelli talebeye kilit kartı "Derse kaydolduğunda görebilirsin" deyip kayıt başvurusu öneriyor; neden yanlış anlatılıyor, düğme anlamsız bir çağrı yapıyor. (`tedris.celse.locked`; `apps/tedris/features/courses/lesson-lock.ts:19-27`)
+- **CLS-03** · orta · arayüz — Hiçbir celse sayfasında sekme başlığı celseyi anlatmıyor, hepsi "Medaris Tedris"; iptal edilen celse ile telafisi iki sekmede açılınca ayırt edilemiyor. (`tedris.celse.cancelled`, `tedris.celse.attend` +1; `layout.tsx:18-21`)
+- **CLS-04** · orta · arayüz — Müfredat düğmesi "liste kutusu açılır" diyor ama açılan şey adsız bir kap ve içinde başlık, bağlantı, arama ve liste var; ekran okuyucu kullanıcısı beklediğini bulamıyor. (`tedris.celse.browseCurriculum`; `apps/tedris/features/courses/components/session-curriculum.tsx:360-362`)
+- **CLS-05** · orta · arayüz — Müfredatta arama yazılırken "Bu aramaya uyan celse yok." ve değişen satırlar duyurulmuyor; ekran okuyucu kullanıcısı yazarken sonucun değiştiğini duymuyor. (`tedris.celse.browseCurriculum`; `apps/tedris/features/courses/components/session-curriculum.tsx:443-445`)
+- **CLS-08** · orta · arayüz — İzleme sayfası saate bakmadan canlı başlıyor; oynatıcı hiç açılmasa da rozet sınırsız "Canlı" diyerek dakika saymaya, sohbet açık kalmaya devam ediyor. (`tedris.celse.watchStream`; `apps/tedris/features/courses/components/watch-view.tsx:122`)
+- **CLS-10** · orta · arayüz — 409 cevabında "Sayfa yenilendi, güncel hâline bak." deniyor ama sayfa yenilenmiyor; kart eskisi gibi kalıyor, söylenen şey yapılmıyor. (`tedris.celse.locked`; `apps/tedris/features/courses/components/lesson-locked.tsx:91-94`)
+- **CLS-11** · orta · arayüz — Müfredattaki örnek celse satırı bu sayfada var olmayan bir çapaya bağlanıyor; bağlantıya basınca hiçbir şey olmuyor. (`tedris.celse.locked`; `apps/tedris/features/courses/components/course-programme.tsx:105-111`)
+- **CLS-12** · orta · arayüz — Pencere başvurunun "bu sayfadan" geri alınabileceğini söylüyor ama bu sayfada geri çekme düğmesi yok; yalnız ders sayfasında var. (`tedris.celse.locked`)
+- **CLS-15** · orta · karar — Rozet ve kart 30 saniyelik saatle değişiyor ama canlı bölge yok; katılma penceresinin açıldığı, celsenin başladığı ya da bittiği ekran okuyucuya söylenmiyor. (`tedris.celse.attend`; `apps/tedris/features/courses/use-celse-clock.ts:10-18`)
+- **CLS-17** · orta · API · güvenlik — On dakikalık katılma penceresi yalnız ekranda uygulanıyor; API toplantı bağlantısını iki gün önceden de gönderiyor ve sayfanın ham HTML'inde duruyor. (`tedris.celse.attend`; `apps/tedris/features/courses/components/session-page.tsx:227`)
+- **CLS-19** · orta · arayüz — Başvuru penceresinde "Tamam" denince odak sayfa gövdesine düşüyor, düğmenin yerine rozet geliyor ve değişiklik duyurulmuyor; klavye ve ekran okuyucu kullanıcısı yolunu kaybediyor. (`tedris.celse.locked`; `apps/tedris/features/courses/components/course-aside.tsx:97-101`)
+- **DSC-17** · orta · arayüz — İptal edilen celsenin hoca notu Programım'da tek satırda kesiliyor ve tamamı yalnız fare üstü ipucunda; klavye ve dokunmatik kullanıcılar notu okuyamıyor. (`tedris.celse.cancelled`, `tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx:109-120`)
+- **in-person-names-no-place** · orta · API — Yüz yüze celsenin sayfası yeri söylemiyor (modelde yer alanı yok) ve odaya gideceğe "Kaydı eklenirse burada yayımlanır" diyor; talebe odayı celse sayfasından öğrenemez. (`tedris.celse.attend`)
+- **LOCKED-1** · orta · arayüz — Başlangıcı olmayan bir celsede kilit kartı çizilmiyor; yabancı kişi nedeni söyleyen cümleyi de kaydolma düğmesini de görmüyor. (`tedris.celse.locked`; `apps/tedris/features/courses/components/lesson-locked.tsx:194`)
+- **WATCH-2** · orta · API — Hazır ama oynatma bağlantısı imzalanamayan Bunny kaydı "Ders kaydı hazırlanıyor." diye anlatılıyor; oynatılamayan kayıt hazırlanıyor sanılıp boşuna bekleniyor. (`tedris.celse.watchRecording`; `apps/tedrisat/src/course/course.service.ts:196-208`)
+- **WATCH-3** · orta · arayüz — Yayın bitince "Ders kaydı eklenince burada oynar." yazıyor ama sayfa yenilenmiyor; kayıt eklense bile yalnız sayfa elle yenilenince görünüyor, kişi boşuna bekliyor. (`tedris.celse.watchStream`)
+- **ATT-1** · düşük · arayüz — Yayın kartının üst etiketi hep "Canlı ders"; hem yüz yüze hem yayınlanan celse başlayınca "Yüz yüze" yerine "Canlı ders" oluyor ve tarih kartıyla çelişiyor. (`tedris.celse.attend`; `apps/tedris/features/courses/components/session-action-card.tsx:297`)
+- **BROWSE-1** · düşük · arayüz — Müfredat penceresinin başlığında "Müfredat" ile "8 celse" arasında boşluk yok; ekran okuyucu "Müfredat8 celse" okuyor. (`tedris.celse.browseCurriculum`; `apps/tedris/features/courses/components/session-curriculum.tsx:410-418`)
+- **cancel-no-type-check** · düşük · API — İptal ders türünü denetlemiyor; video ders de iptal edilebiliyor ve programdaki bağlantısı bulunamadı sayfasına çıkıyor. Nazar sayfası bunu yapamaz, yalnız API. (`tedris.celse.cancelled`, `nazar.sessions.cancel`; `apps/tedrisat/src/course/course.repository.ts:1330`)
+- **CLS-06** · düşük · arayüz — Telefonda izleme sayfasında video görsel olarak ilk ama sayfa ve sekme sırasında üçüncü; klavye ve ekran okuyucu kullanıcısı videoya geç ulaşıyor. (`tedris.celse.watchStream`, `tedris.celse.watchRecording`; `apps/tedris/features/courses/components/watch-view.tsx:206-246`)
+- **CLS-07** · düşük · arayüz — Kayıt ve yayın kartındaki kapak, düğmeyle aynı adı taşıyan ikinci bir bağlantı; ekran okuyucunun bağlantı listesinde aynı hedef iki kez geçiyor. (`tedris.celse.watchRecording`, `tedris.celse.attend`; `apps/tedris/features/courses/components/session-action-card.tsx:238-246`)
+- **CLS-09** · düşük · arayüz — Kayıt bloğu, müfredat satırı işaretleri ve gezinti satırı yalnız sayfa çizilirken hesaplanıyor; açık kalan sekmede rozet 30 saniyede güncellenirken bunlar eski kalıyor. (`tedris.celse.watchRecording`, `tedris.celse.attend` +1; `page.tsx:49`)
+- **CLS-13** · düşük · arayüz — Celse ve izleme sayfaları dersi iki kez okuyor (önbellekli ve önbelleksiz); her yüklemede aynı API çağrısı iki kez yapılıyor, erişilebilirlik sorunu değil. (`tedris.celse.watchStream`, `tedris.celse.attend`; `page.tsx:2`)
+- **CLS-18** · düşük · arayüz — Kaydol düğmesinin bekleme sözü kitin sabit "Yükleniyor" metni; ders sayfasındaki düğme kendi sözünü veriyor, bu sayfadaki başka dile çevrilmez. (`tedris.celse.locked`; `libs/ui/src/mds/button.tsx:62`)
+- **LOCKED-2** · düşük · arayüz — Başvurusu bekleyen kişinin kartında "Derse kaydolduğunda görebilirsin" yazıyor, yanındaki rozet ise başvurduğunu söylüyor; cümle yabancıya göre yazılmış, çelişiyor. (`tedris.celse.locked`)
+- **MDRS-264** · düşük · karar — Bunny oynatıcılı kayıtta not zamanı oynatıcıdan okunamıyor, elle yazılıyor; YouTube'da oynatıcıdan okunuyor. Bunny'nin buna izin verip vermediği araştırılacak. (`tedris.celse.watchRecording`; `apps/tedris/features/courses/components/watch-page.tsx:57-58`)
+- **SE-01** · düşük · arayüz — Uçtan uca test, düğmeye basınca "Müfredat" liste kutusunun odakta olmasını bekliyor; kod seçili satıra odak veriyor, test eski kalmış ve sonraki kişiyi yanıltıyor. (`tedris.celse.browseCurriculum`; `apps/tedris/e2e/session.e2e.ts:187`)
+- **WATCH-1** · düşük · arayüz — YouTube'un oynatıcı betiği çerçevenin adını yüklenince videonun adı ya da İngilizce "YouTube video player" yapıyor; ekran okuyucu sayfanın verdiği adı değil bunu okuyor. (`tedris.celse.watchStream`, `tedris.celse.watchRecording`; `apps/tedris/features/courses/components/media-player.tsx:61-67`)
+- **WATCH-2** · düşük · arayüz — Çerçevesi, yani sohbeti olmayan yayında da "Soru sormak için canlı sohbete yaz." yazıyor; talebe olmayan bir sohbete yönlendiriliyor, "Soru sor" panelini gözden kaçırabilir. (`tedris.celse.watchStream`; `apps/tedris/features/courses/components/watch-view.tsx:164-170`)
+- **WATCH-4** · düşük · arayüz — Okuma hakkı olan ama koltuğu olmayan kişide yan sütun, bölge, başlık ve çerçeve aynı "Canlı sohbet" adını taşıyor; ekran okuyucu aynı adı dört kez okuyor. (`tedris.celse.watchStream`; `apps/tedris/features/courses/components/watch-view.tsx:247-249`)
+- **yt-nocookie-stale** · düşük · arayüz — Uçtan uca test yayın çerçevesinin youtube-nocookie adresinden gelmesini bekliyor; sayfa artık youtube.com adresini kullanıyor, test eski kalmış. (`tedris.celse.watchStream`; `apps/tedris/e2e/celse-states.e2e.ts:85-88`)
+
+### tedris/course
+
+- **DSC-03** · yüksek · arayüz — Derslerim'deki "Başvuruyu geri çek" kayıtlı satırı da siliyor; sayfa açıkken ekip başvuruyu onaylarsa düğme yeni koltuğu ve ilerlemeyi sormadan, bildirmeden siliyor. (`tedris.course.leave`, `tedris.learning.myCourses`; `apps/tedris/features/courses/components/application-row.tsx:42`)
+- **CRS-01** · orta · kütüphane — İlerleme penceresinde geçersiz sayı yalnız rolsüz bir alan hatası olarak yazılıyor, odak "Kaydet"te kalıyor; ekran okuyucu kullanıcısı hiçbir şey duymuyor, pencere işe yaramıyor sanır. (`tedris.course.updateProgress`; `libs/ui/src/mds/field.tsx:50-53`)
+- **CRS-03** · orta · arayüz — 409 cevabında "Sayfa yenilendi" deniyor ama sayfa yenilenmiyor; bildirim olmayan bir şeyi söylüyor, kart eskisi gibi kalıyor. (`tedris.course.updateProgress`, `tedris.course.apply`; `apps/tedris/features/courses/components/progress-dialog.tsx:44-48`)
+- **CRS-04** · orta · arayüz — Başvuru, geri çekme, ayrılma ve ilerleme çağrıları hata yakalamıyor; sunucuya ulaşılamazsa "İşlem tamamlanamadı" yerine ne görüneceği belli değil, kişi sonucu öğrenemeyebilir. (`tedris.course.leave`, `tedris.course.apply` +1; `apps/tedris/features/courses/components/course-actions-menu.tsx:49-63`)
+- **CRS-05** · orta · arayüz — Başvuru ya da ayrılma başarılı olunca odaktaki düğme yok oluyor ve odak sayfa gövdesine düşüyor; klavye ve ekran okuyucu kullanıcısı yolunu kaybeder, tek söz bildirimde. (`tedris.course.apply`, `tedris.course.leave`)
+- **CRS-10** · orta · arayüz — "Düzenlemeye dön" bağlantısı Nazar'ın ana adresine gidiyor ama adı bu dersin müfredatına götüreceğini söylüyor; hoca düzenleme sayfası yerine Nazar'ın açılışına düşüyor. (`tedris.course.draftPreview`; `page.tsx:93`)
+- **CRS-11** · orta · arayüz — Kartın hangi yüzünün gösterildiği yalnız renkle anlatılıyor; kartı çevirince düğmenin adı değişiyor ama duyurulmuyor, ekran okuyucu kullanıcısı hangi yüzde olduğunu bilemiyor. (`tedris.course.deckTab`; `apps/tedris/features/courses/components/deck-flip-card.tsx:112-120`)
+- **CRS-15** · orta · arayüz — Önizlemede örnek celse satırı sayfada çizilmeyen bir çapaya bağlanıyor; bağlantıya basınca hiçbir şey olmuyor. (`tedris.course.draftPreview`, `tedris.course.readProgramme`; `apps/tedris/features/courses/components/course-programme.tsx:105-111`)
+- **CRS-APPLY-1** · orta · API — Kayıt kartı yalnız dersin ve köşkün ayarına bakıyor; platform ya da medrese onay istiyorsa da "Kayıt onay gerektirmez" yazıyor, tıklayınca "Başvurun alındı" çıkıyor. (`tedris.course.apply`; `page.tsx:89`)
+- **DECKTAB-1** · orta · arayüz — Desteler okunamayınca sayfa "Bu derse bağlı bir deste yok." diyor ve yeniden dene düğmesi yok; hata boş liste gibi gösteriliyor, kayıtlar sekmesi ise hatayı söylüyor. (`tedris.course.deckTab`; `apps/tedris/features/courses/public-reads.ts:117-122`)
+- **DECKTAB-2** · orta · arayüz — "Desteler" görünümüne geçince kart ızgarası bellekten atılıyor; okunan kartlar, çevrilenler ve devam eden turun işaretleri sorulmadan kayboluyor. (`tedris.course.deckTab`; `apps/tedris/features/courses/components/course-decks-tab.tsx:59-63`)
+- **DRAFT-1** · orta · karar — Yalnız Nazar oturumu olan hoca Tedris'te ziyaretçi sayılıyor; taslak "Sayfa bulunamadı" veriyor ve Nazar'daki "Tanıtım sayfasını gör" olmayan bir sayfayı vaat ediyor. (`tedris.course.draftPreview`, `nazar.courseSettings.publish`; `apps/nazar/features/course-settings/course-settings.ts:151`)
+- **DSC-04** · orta · arayüz — Başvuru geri çekilince ya da dersten ayrılınca düğme yok oluyor ve odak sayfa gövdesine düşüyor; bildirim de yok, klavye ve ekran okuyucu kullanıcısı sonucu bilmiyor. (`tedris.course.leave`, `tedris.learning.myCourses`)
+- **GRADES-1** · orta · arayüz — Uygulamada Notlarım'a giden yol yok; "sınav sonucunu Notlarım'da görebilirsin" bildirimi celse sayfasını açıyor, orada ne sonuç ne bağlantı var. (`tedris.course.grades`; `apps/tedris/features/notifications/notification-view.ts:65-68`)
+- **GRADES-2** · orta · arayüz — Notlar okunamayınca Notlarım sekmesi sessizce listeden kalkıyor, adresteki sekme isteği de Müfredat'a düşüyor; talebe notların olmadığını mı okunamadığını mı anlayamıyor. (`tedris.course.grades`; `apps/tedris/features/courses/public-reads.ts:49-56`)
+- **GRADES-3** · orta · API — Dersi tamamlamış talebe Notlarım'ı okuyabiliyor ama sonuçlar açıklanınca bildirim yalnız kayıtlı talebelere gidiyor; tamamlayanlar sonucun açıldığını öğrenmiyor. (`tedris.course.grades`; `apps/tedris/features/courses/course-view.ts:41`)
+- **LEAVE-3** · orta · arayüz — Dersten ayrılma talebenin ilerlemesini de siliyor ama pencere yalnız kaybedilen erişimi ve kalan kartları anlatıyor; geri alınamaz kayıp sorulmadan yaşanıyor. (`tedris.course.leave`; `apps/tedris/features/courses/components/course-actions-menu.tsx:21-26`)
+- **LEAVE-4** · orta · arayüz — Başvuru reddedilmiş (404) ya da durum değişmiş (409) olsa da satır aynı "Başvuru geri çekilemedi" mesajını veriyor; sayfa yenilenmedikçe düğme hep başarısız oluyor. (`tedris.course.leave`; `apps/tedris/features/courses/components/application-row.tsx:44-47`)
+- **preparing-hides-the-ready-without-a-link** · orta · API — Hazır ama oynatma bağlantısı verilemeyen kayıt (Bunny anahtarı yoksa) satırda "Hazırlanıyor" görünüyor; hazır kayıt hazırlanıyor sanılıp boşuna bekleniyor. (`tedris.course.recordings`; `apps/tedris/features/courses/components/recordings-tab.tsx:240`)
+- **PROG-2** · orta · arayüz — Pasif kapsamdaki kayıtlı talebe için API içeriği kilitli veriyor; sayfa yine de "Devam ediyor", haftalara bağlantı, "Derse devam et" ve "İlerlemeni güncelle" gösteriyor ama hiçbiri açılmıyor. (`tedris.course.readProgramme`; `apps/tedrisat/src/course/course.service.ts:402-408`)
+- **PROGRESS-1** · orta · arayüz — Koltuğu sonradan biten talebenin ilerleme kaydı 403 ile reddediliyor ve "Biraz sonra yeniden dene" deniyor; neden bilindiği hâlde yeniden denemek boşuna. (`tedris.course.updateProgress`; `apps/tedris/features/courses/components/progress-dialog.tsx:45-48`)
+- **PROGRESS-2** · orta · arayüz — İlerleme 100 olunca çubuk ekran okuyucuya "%100 tamamlandı" diyor ama rozet "Devam ediyor" kalıyor ve ders ekip onaylayana kadar tamamlanmıyor; talebe yanlış bilgi alır. (`tedris.course.updateProgress`; `libs/ui/src/mds/progress.tsx:40-41`)
+- **PROGRESS-3** · orta · arayüz — Kayıttan sonra pencere kapanınca odak hiçbir yere gitmiyor, açan "İlerlemeni güncelle" düğmesine dönmüyor; klavye ve ekran okuyucu kullanıcısı sayfanın başından başlıyor. (`tedris.course.updateProgress`)
+- **RECS-2** · orta · arayüz — Kayıtlar sekmesinde "Yeniden dene" başarılı olunca düğme yok oluyor, odak taşınmıyor ve listenin geldiği duyurulmuyor; klavye ve ekran okuyucu kullanıcısı sonucu bilmiyor. (`tedris.course.recordings`; `apps/tedris/features/courses/components/recordings-failed.tsx:27`)
+- **CRS-02** · düşük · arayüz — İlerleme penceresi alana odağı tarayıcının otomatik odağıyla veriyor, kitin ilk odak ayarı verilmemiş; bugün çalışıyor ama kırılgan. (`tedris.course.updateProgress`; `apps/tedris/features/courses/components/progress-dialog.tsx:93`)
+- **CRS-08** · düşük · arayüz — Ders sayfası okunurken yükleme iskeletinde işaret, ad ya da söz yok; ekran okuyucu kullanıcısına bir şey söylenmiyor. (`tedris.course.readProgramme`; `loading.tsx:10-12`)
+- **CRS-12** · düşük · arayüz — Yol çubuğunun "Sayfa yolu" adı, ", tamamlandı" ve boş hafta cümlesi katalogdan gelmiyor, kitte sabit Türkçe; başka dil eklenince Türkçe kalır. (`tedris.course.readProgramme`, `tedris.discover.visitorPath`; `breadcrumb.tsx:18`)
+- **CRS-13** · düşük · kütüphane — Bildirim kutusunun bölge adı kütüphanenin İngilizce "Notifications alt+T" varsayılanı, hatalar da nazikçe duyuruluyor; "Kapat" her dilde aynı ve pencerenin "Kapat"ıyla karışıyor. (`tedris.course.updateProgress`, `tedris.course.apply` +1)
+- **CRS-14** · düşük · arayüz — Kayıtlı kartında sıradaki celse ve kaynak yoksa sayfada h2 başlık yok, hafta başlıkları doğrudan h1'in altına geliyor; başlık gezintisi sıçrıyor. (`tedris.course.readProgramme`; `apps/tedris/features/courses/components/course-aside.tsx:271-321`)
+- **CRS-17** · düşük · kütüphane — Dersin kapağındaki Arapça etiket gizlenmediği için ekran okuyucu onu başlıktan önce okuyor; kapak etiketi olan derslerde sayfa gürültülü açılıyor. (`tedris.course.readProgramme`, `tedris.discover.visitorPath`; `apps/tedris/features/courses/components/course-page.tsx:259`)
+- **DRAFT-2** · düşük · arayüz — Taslak önizlemesinin sekme başlığı genel "Tedris"; ne ders adı ne "Önizleme" var, birden çok önizleme açıkken sekmeler ayırt edilemiyor. (`tedris.course.draftPreview`; `apps/tedris/features/courses/public-reads.ts:60-63`)
+- **GRADES-4** · düşük · arayüz — "Notlarım" iki şeyin adı: dersin not sekmesi ve celsedeki kişisel not paneli; "not" hem not hem puan olduğu için talebe yanlışını açabilir. (`tedris.course.grades`)
+- **LEAVE-1** · düşük · arayüz — Satırın "hemen kalkar, API reddederse döner" sözü doğru değil: satır cevap gelene kadar düğmesi kapalı durarak yerinde kalıyor; yorum ve test adı yanıltıyor. (`tedris.course.leave`; `apps/tedris/features/courses/components/application-row.tsx:41`)
+- **MDRS-224** · düşük · arayüz — Başarı bildirimi "Kursa kaydoldunuz." diyor; sayfanın geri kalanı "ders" diyor, sözcük tutarsız. (`tedris.course.apply`)
+- **PROG-1** · düşük · arayüz — Ders sayfasında seçili sekme adreste durmuyor; sekmeye basınca adres değişmiyor, yenileme, geri düğmesi ya da paylaşılan bağlantı Müfredat'a dönüyor. (`tedris.course.readProgramme`, `tedris.course.deckTab` +1; `apps/tedris/features/courses/components/course-page.tsx:194-198`)
+- **PROG-3** · düşük · arayüz — Başlığı varsayılan "Hafta N" olan hafta hem üst etiket hem başlık olarak çiziliyor ve düğmenin adı "Hafta 4 Hafta 4 …" diye iki kez okunuyor. (`tedris.course.readProgramme`; `apps/tedris/features/courses/recordings-model.ts:289`)
+- **public-chip-by-visibility** · düşük · API — "Herkese açık" etiketi kaydın kendi görünürlüğünden çiziliyor; köşk ya da platformun ziyaretçiden sakladığı herkese açık kayıt da koltuk sahibine herkese açık görünüyor. (`tedris.course.recordings`)
+- **RECS-3** · düşük · arayüz — Kayıt satırı bağlantısının adı ve açıklaması "Herkese açık" bilgisini ve barındıran sitenin adını taşımıyor; ekran okuyucu kullanıcısı kaydın herkese açık olduğunu duymuyor. (`tedris.course.recordings`)
+
+### tedris/decks
+
+- **ACCREF-1** · yüksek · API · güvenlik — Gizlenen herkese açık deste adresi bilen herkese hâlâ sunuluyor; gizleme yalnız kurs, köşk ya da medreseyle paylaşılan desteleri okunamaz yapıyor. (`tedris.decks.accessRefusals`, `tedris.decks.study`; `apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:82-99`)
+- **public-deck-hidden-still-given** · yüksek · API · güvenlik — Herkese açık bir deste gizlenince de API onu belirteçsiz çağırana vermeye devam ediyor; adresi bilen ziyaretçi gizlenmiş desteyi okuyor. (`tedris.decks.visitorPublicDeck`; `apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:82-99`)
+- **card-create-takes-only-its-fields** · orta · API · güvenlik — Kart oluşturma ucu gövdeyi süzmeden ekliyor; API çağıranı yeni kartın kimliğini seçebiliyor, alınmış kimlik de var olduğunu söyleyen bir 500 döndürüyor. (`tedris.decks.manageCards`; `apps/tedrisat/src/flashcard/flashcard.service.ts:108`)
+- **DCK-01** · orta · arayüz — "Arka yüzü göster" ve puan düğmeleri her kartta odaktaki öğeyi kaldırıyor, odak sayfa gövdesine düşüyor; Boşluk tuşu dışında klavye yolu kalmıyor, yeniden Tab gerekir. (`tedris.decks.study`, `tedris.decks.visitorPublicDeck`; `apps/tedris/features/flashcards/components/study-session.tsx:221-245`)
+- **DCK-02** · orta · arayüz — Puan verme çağrısı hata yakalamıyor; ağ kesilince üç düğme kapalı kalıyor, bildirim çıkmıyor ve odak kaybolabiliyor; kişi çalışmayı sürdüremez, nedenini bilmez. (`tedris.decks.study`; `apps/tedris/features/flashcards/components/study-session.tsx:94`)
+- **DCK-03** · orta · arayüz — Açılan arka yüz ve sıradaki kart canlı bölge, odak taşıması ya da duyuru olmadan beliriyor; ekran okuyucu kullanıcısı kartı çevirince ya da puan verince hiçbir şey duymuyor. (`tedris.decks.study`, `tedris.decks.visitorPublicDeck`; `apps/tedris/features/flashcards/components/study-session.tsx:201-218`)
+- **DCK-04** · orta · arayüz — "Tur bitti" ve "Bugün için bitti" kartın yerine duyurulmadan ve odak taşınmadan geliyor, odaktaki puan düğmesi kayboluyor; ekran okuyucu kullanıcısı turun bittiğini duymuyor. (`tedris.decks.study`, `tedris.decks.visitorPublicDeck`; `apps/tedris/features/flashcards/components/study-session.tsx:155-176`)
+- **DCK-05** · orta · arayüz — Kartı çevirmek için yüzüne tıklamak rolsüz, sekmesiz bir kutu; Boşluk tuşu ipucu ve kısayol bildirimi olmayan pencere dinleyicisi, üç puan düğmesi de bir grupta değil. (`tedris.decks.study`, `tedris.decks.visitorPublicDeck`; `apps/tedris/features/flashcards/components/study-session.tsx:202-209`)
+- **DCK-06** · orta · kütüphane — Form hataları ("Bir dosya seç.", reddedilen ad vb.) alanın altına rolsüz ve canlı bölgesiz yazılıyor, odak taşınmıyor; ekran okuyucu kullanıcısı hatayı alana dönene dek duymuyor. (`tedris.decks.create`, `tedris.decks.editOrDelete` +3; `libs/ui/src/mds/field.tsx:50-58`)
+- **DCK-08** · orta · arayüz — "Koleksiyona ekle" ve "Çıkar" düğmeyi bütünüyle değiştiriyor; basılan düğme yok oluyor, odak sayfa gövdesine düşüyor ve başarı duyurulmuyor, yalnız hata bildirimi çıkıyor. (`tedris.decks.explore`; `apps/tedris/features/flashcards/components/explore-decks-page.tsx:135-166`)
+- **DCK-10** · orta · arayüz — "Daha fazla göster" son sayfadan sonra kalkıyor ve odak kayboluyor; yeni satırlar ve "n karttan m'si gösteriliyor" satırı duyurulmuyor. (`tedris.decks.readAndCopy`, `tedris.decks.visitorPublicDeck`; `apps/tedris/features/flashcards/components/deck-reader-view.tsx:189-196`)
+- **DCK-11** · orta · arayüz — Arama yazılırken ya da etiket seçilirken "n deste" sayıları ve liste canlı bölge olmadan değişiyor; ekran okuyucu kullanıcısı süzmenin sonucunu duymuyor. (`tedris.decks.explore`, `tedris.decks.browse`; `apps/tedris/features/flashcards/components/explore-decks-page.tsx:183-185`)
+- **DCK-13** · orta · arayüz — Reddedilen deste, özel desteyle aynı metni ve "Özele çek" düğmesini alıyor; ret için cümle yok, yazar yeniden yayın istemeden önce geri çekmek zorunda ve nedeni anlamıyor. (`tedris.decks.publish`; `apps/tedris/features/flashcards/components/deck-owner-overview.tsx:105-110`)
+- **DCK-14** · orta · arayüz — Hata ekranı, sahibi olmadığın her deste için "herkese açık bir deste; kartlarını yalnız sahibi düzenler" diyor; kurstan okunan, herkese açık olmayan deste de böyle adlandırılıyor. (`tedris.decks.accessRefusals`, `tedris.course.deckTab` +1; `apps/tedris/features/errors/system-page.tsx:97-99`)
+- **DCK-17** · orta · arayüz — Kart silinince ya da ilk kart eklenince odağı taşıyan düğme yok oluyor ve odak sayfa gövdesine düşüyor; klavye ve ekran okuyucu kullanıcısı yolunu kaybediyor. (`tedris.decks.manageCards`; `apps/tedris/features/flashcards/components/deck-cards-page.tsx:69-71`)
+- **DCK-18** · orta · arayüz — Deste düzenleme penceresi bir yol olarak açılıyor; kapanınca odak verilecek bir öğe olmadığı için hiçbir yere düşüyor, klavye ve ekran okuyucu kullanıcısı yolunu kaybediyor. (`tedris.decks.editOrDelete`; `apps/tedris/features/flashcards/components/deck-owner-overview.tsx:240`)
+- **DCK-20** · orta · arayüz — İçe aktarma penceresi "en çok 5 MB" diyor ama göndermeden denetlemiyor; boş dosya, büyük dosya, yetki ve ağ hataları tek "Dosya içe aktarılamadı" mesajına düşüyor, neden öğrenilmiyor. (`tedris.decks.importExport`; `apps/tedris/features/flashcards/components/import-cards-dialog.tsx:62-99`)
+- **DCK-21** · orta · arayüz — "Dışa aktar" düz bir indirme bağlantısı; reddedilince tarayıcıya JSON gövde indirtiliyor, sayfa hiçbir şey göstermiyor ve kişi dışa aktarmanın neden olmadığını bilmiyor. (`tedris.decks.importExport`; `apps/tedris/features/flashcards/components/deck-cards-page.tsx:83-90`)
+- **DCK-26** · orta · arayüz — Deste okuması 401 alınca yeniden girişe yönlendirmiyor; çerezde reddedilen belirteci olan kişi giriş sayfası yerine hata sayfasına düşüyor. (`tedris.decks.visitorPublicDeck`, `tedris.decks.editOrDelete` +1; `reads.ts:69-87`)
+- **DCK-28** · orta · arayüz — Deste düzenleme sayfası başlık üretmiyor, sekme başlığı kök "Medaris Tedris" kalıyor; ret ekranları ve diğer sayfalarla başlıklar tutarsız, sayfanın eksik olduğunu söyleyen başlık yok. (`tedris.decks.accessRefusals`, `tedris.decks.editOrDelete`)
+- **DCK-30** · orta · arayüz — Silme sürerken "Vazgeç", "Kapat" ve Esc pencereyi kapatıyor ama istek iptal edilmiyor; kişi vazgeçtiğini sanırken deste siliniyor ve sayfa listeye dönüyor. (`tedris.decks.editOrDelete`; `apps/tedris/features/flashcards/components/deck-owner-overview.tsx:256`)
+- **EDITDEL-1** · orta · arayüz — Kaydet sürerken "Vazgeç", "Kapat" ve Esc pencereyi kapatıyor, istek iptal edilmiyor; kayıt pencere yokken bitiyor, ret bildirimi "yazdıkların korundu" diyor ama yazılanlar ekranda yok. (`tedris.decks.editOrDelete`; `apps/tedris/features/flashcards/components/deck-edit-dialog.tsx:56`)
+- **EXPL-2** · orta · arayüz — Ekleme ve çıkarma reddedilince bütün nedenler (silinmiş, gizlenmiş, yetki, ağ) tek "Bir sorun oluştu. Yeniden dene." bildirimine düşüyor; kalkmış desteye yeniden dene deniyor. (`tedris.decks.explore`; `apps/tedris/features/flashcards/components/explore-decks-page.tsx:92-97`)
+- **IMPEXP-1** · orta · API — Tarayıcı CSV'yi Excel türüyle bildirince (Windows'ta Excel varsa) dosya çalışma kitabı gibi okunuyor ve içe aktarma başarısız olabilir; CSV yükleyenler işini yapamaz. (`tedris.decks.importExport`; `route.ts:18`)
+- **IMPEXP-3** = IMPORT-3 · orta · API — CSV, bayt sırası işareti olmadan UTF-8 yazılıyor; Türkçe Excel yerel kod sayfasıyla açınca şablondaki ve dışa aktarılan Arapça metinler bozuk görünüyor. (`tedris.decks.importExport`, `nazar.decks.import`; `libs/common/src/excel/excel.service.ts:140-166`)
+- **IMPEXP-5** · orta · arayüz — Dosya gönderilirken "Vazgeç", çarpı ve Esc pencereyi kapatıyor ama istek iptal edilmiyor; kartlar yine ekleniyor, ret olursa hata görünmüyor, kişi vazgeçtiğini sanıyor. (`tedris.decks.importExport`; `apps/tedris/features/flashcards/components/import-cards-dialog.tsx:104-106`)
+- **MCARDS-3** · orta · API — Kart listesi sıralamasız okunuyor; düzenleyince sıra değişebilir ve "Düzenle: kart 1" gibi konuma göre adlı düğmeler başka karta işaret edip yanlış kartı değiştirtebilir. (`tedris.decks.manageCards`; `apps/tedrisat/src/flashcard/flashcard.repository.ts:63-70`)
+- **MCARDS-4** · orta · arayüz — Yazma sürerken "Vazgeç", çarpı ve Esc pencereyi kapatıyor, istek iptal edilmiyor; yazarın iptal etmek istediği silme gerçekleşiyor, başarısız yazma "yazdıkların korundu" diyor. (`tedris.decks.manageCards`; `apps/tedris/features/flashcards/components/card-form-dialog.tsx:91`)
+- **PUB-1** · orta · arayüz — Deste yayın isteğinin her reddi, 409 çakışma dahil, tek genel "Bir sorun oluştu. Yeniden dene." bildirimi veriyor ve sayfa yeniden okunmuyor; deste başka yerde değişmişse kişi nedenini öğrenmiyor. (`tedris.decks.publish`; `apps/tedris/features/flashcards/components/deck-owner-overview.tsx:68-77`)
+- **PUB-2** · orta · arayüz — Başarı bildirimi çıkınca düğme yeniden etkin oluyor ama sayfa henüz yenilenmediği için kart hâlâ "Yayın iste" diyor; ikinci basış 409 hata bildirimi veriyor. (`tedris.decks.publish`)
+- **PUB-3** · orta · API — Reddeden inceleyicinin gerekçesi yalnız bildirimde duruyor; yazarın deste sayfası "Yayın isteği reddedildi" diyor ama nedenini söyleyemiyor. (`tedris.decks.publish`; `apps/tedrisat/src/flashcard/dto/flashcard-deck-response.dto.ts:32-36`)
+- **PUB-4** · orta · API · güvenlik — Ders destesini yazan hocaya "Yayın iste" sunuluyor, API de kabul ediyor; onaylanırsa ders destesi herkese açık oluyor. (`tedris.decks.publish`; `apps/tedris/features/flashcards/deck-page-data.ts:39`)
+- **READCOPY-1** · orta · arayüz — Kopyalama kutusunda "Vazgeç", kapatma simgesi ve Esc kutuyu kapatıyor ama istek iptal olmuyor; kart yine kopyalanıyor ve başarı bildirimi çıkıyor. (`tedris.decks.readAndCopy`; `apps/tedris/features/flashcards/components/copy-card-dialog.tsx:83-85`)
+- **READCOPY-2** · orta · arayüz — Sayfa okuyucu mu sahip mi olduğunu yalnız yazarlığa bakarak seçiyor; API'nin okumaya izin verdiği dersin kadrosu ve başnazım okuyucu görünümüne düşüyor. (`tedris.decks.readAndCopy`; `apps/tedris/features/flashcards/deck-page-data.ts:38-39`)
+- **refusals-say-try-again** · orta · arayüz — Üç yazmanın her reddi, 404 ve 403 dahil, aynı "Bir sorun oluştu. Yeniden dene." bildirimini veriyor; deste okunamaz olduysa yeniden denemek işe yaramıyor. (`tedris.decks.readAndCopy`)
+- **STUDY-1** · orta · arayüz — API bir puanı reddedince (kart silinmiş, yetki yok) ekran hep "Kart yerinde duruyor. Yeniden dene." diyor; talebe ne kaydedebiliyor ne sonraki karta geçebiliyor. (`tedris.decks.study`; `apps/tedris/features/flashcards/components/study-session.tsx:97-104`)
+- **VPD-1** · orta · arayüz — Ziyaretçiye verilmeyen deste yükleme iskeletinden sonra yönlendirmeyle çözülüyor; belge 200 dönüyor, ekran okuyucu sözsüz bir alan ve yanlış başlık duyuyor. (`tedris.decks.visitorPublicDeck`; `page.tsx:42`)
+- **accepted-write-500** · düşük · API — Boş gövdeli ya da başlığı null olan deste güncelleme isteği API'de 500 veriyor; sayfa böyle istek göndermediği için yalnız doğrudan API çağıranını etkiliyor. (`tedris.decks.editOrDelete`; `apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:203-218`)
+- **accepted-write-never-500** · düşük · API — Kart güncellemede boş gövde ya da null yüz, kart oluşturmada null öğe 500 veriyor; kart sayfası bunları göndermediği için yalnız doğrudan API çağıranını etkiliyor. (`tedris.decks.manageCards`)
+- **card-routes-malformed-id-400** · düşük · API — Geçersiz biçimli kart kimliği 400 yerine 500 veriyor; kimlikler API'nin kendi ürettikleri olduğundan sayfadan bu duruma düşülmüyor. (`tedris.decks.manageCards`)
+- **DCK-07** · düşük · arayüz — Zorunlu alanlar yalnız süs yıldızıyla işaretleniyor, kutuların kendisinde zorunlu bilgisi yok; ekran okuyucu kullanıcısı alanın gerekli olduğunu duymuyor. (`tedris.decks.importExport`, `tedris.decks.editOrDelete` +1; `libs/ui/src/mds/field.tsx:42-46`)
+- **DCK-09** · düşük · arayüz — Koleksiyona ekleme ve çıkarma başarısı yalnız rozet ve düğme adının değişmesiyle anlatılıyor; bildirim ya da canlı bölge yok, ekran okuyucu kullanıcısı bunu kaçırabilir. (`tedris.decks.readAndCopy`; `apps/tedris/features/flashcards/components/deck-reader-view.tsx:61-81`)
+- **DCK-12** · düşük · arayüz — Liste okunamayınca hata durumu h1 değil h2 çiziliyor, sayfada h1 yok; "Yeniden dene" meşgul durumu göstermiyor, ikinci hata "hiçbir şey olmadı" gibi görünüyor. (`tedris.decks.browse`, `tedris.decks.explore`; `apps/tedris/features/flashcards/components/decks-page.tsx:88-99`)
+- **DCK-15** · düşük · arayüz — Yorumlar kayıp ve reddedilmiş desteye aynı metnin gösterildiğini söylüyor ama kodda iki ayrı ekran var; ikincisine yalnız yarışta ulaşılıyor, yorum yanıltıyor. (`tedris.decks.accessRefusals`, `tedris.decks.study`; `apps/tedris/features/flashcards/components/deck-unavailable.tsx:7-12`)
+- **DCK-16** · düşük · arayüz — Desteler'deki ret ekranlarında ana bölge işareti yok (yükleme iskeletinde var, cevap gelince kayboluyor); ekran okuyucu kullanıcısı ana içeriğe atlayamıyor. (`tedris.decks.accessRefusals`, `tedris.decks.study`; `libs/ui/src/mds/system-state.tsx:30`)
+- **DCK-19** · düşük · arayüz — İçe aktarma ve kart kopyalama pencereleri ilk odak ayarı vermiyor; odak ilk alana değil "Kapat" simgesine düşüyor, kitin kuralı ise ilk alanı söylüyor. (`tedris.decks.readAndCopy`, `tedris.decks.importExport`; `apps/tedris/features/flashcards/components/copy-card-dialog.tsx:81-101`)
+- **DCK-23** · düşük · kütüphane — "Kapat", "Yükleniyor", "tamamlandı", "Bildirimler" ve şablon bağlantı adları katalogdan gelmiyor, kitte ya da sayfada sabit Türkçe; başka dil eklenince Türkçe kalır. (`tedris.decks.browse`, `tedris.decks.create` +6; `libs/ui/src/mds/progress.tsx:32`)
+- **DCK-24** · düşük · kütüphane — Pencerenin bütün gövdesi, form ve uyarılar dâhil, pencerenin açıklaması sayılıyor; ekran okuyucu pencere açılınca bütün içeriği açıklama diye okuyabilir. (`tedris.decks.editOrDelete`, `tedris.decks.importExport` +2; `libs/ui/src/mds/dialog.tsx:103-112`)
+- **DCK-25** · düşük · arayüz — Yüklenirken gösterilen iskelet adsız, sözsüz bir ana bölge; ekran okuyucu kullanıcısına sayfanın yüklendiği söylenmiyor, kapalı desteden yönlendirmede ziyaretçi yalnız bunu görüyor. (`tedris.decks.visitorPublicDeck`, `tedris.decks.browse` +1; `loading.tsx:11-14`)
+- **DCK-27** · düşük · arayüz — Hiç kartı olmayan destede tur "Bugün için bitti... Yarın yeniden bak." diyor; yanlış, destede kart yok ve kart eklemenin yolu da gösterilmiyor. (`tedris.decks.visitorPublicDeck`, `tedris.decks.study`; `apps/tedris/features/flashcards/components/study-session.tsx:155-165`)
+- **DCK-31** · düşük · arayüz — Ziyaretçinin kart tablosunda "Ön yüz" hücreleri satır başlığı değil; okuyucu ve sahip tablolarında öyle, ekran okuyucu gezinmesi tutarsız. (`tedris.decks.visitorPublicDeck`; `apps/tedris/features/flashcards/components/deck-public-view.tsx:101-107`)
+- **DCKCREATE-1** · düşük · arayüz — Sayfa deste adının uzunluğunu UTF-16 birimiyle, API karakterle sayıyor; sayfanın kabul ettiği bazı adlar API'de reddediliyor ve kişi nedenini görmüyor. (`tedris.decks.create`; `apps/tedris/features/flashcards/deck-model.ts:155-162`)
+- **DCKCREATE-2** · düşük · arayüz — Tür seçilince önizlemedeki başlık, örnek kart ve arka yüz duyurulmadan değişiyor; önizleme yalnız örnek olduğu için hafif, ekran okuyucu bunu duymuyor. (`tedris.decks.create`; `apps/tedris/features/flashcards/components/create-deck-page.tsx:218-241`)
+- **deck-card-type-fixed** · düşük · API — Destenin kart türü oluşturmada sabit olmalı ama API'nin güncelleme ucu tür değiştirmeye izin veriyor; bu sayfa türü hiç göndermiyor. (`tedris.decks.manageCards`)
+- **deck-edit-updated-at** · düşük · API — Deste düzenlemesi güncellenme zamanını değiştirmiyor; köşkün deste listesi bu zamana göre sıralandığı için sıralama düzenlemeyi yansıtmıyor. (`tedris.decks.editOrDelete`; `apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:84`)
+- **DECKLIST-1** · düşük · arayüz — Bir sözcük bir desteyle eşleşip basılı etiket onu gizleyince "Aramana uyan deste yok." deniyor; desteyi gizleyen arama değil etiket, cümle yanıltıyor. (`tedris.decks.browse`; `apps/tedris/features/flashcards/components/decks-page.tsx:111-116`)
+- **DECKLIST-2** · düşük · arayüz — Kartı olmayan destede de "Çalış" sunuluyor; çalışma sayfası "Bugün için bitti, yarın bak" diyor, oysa çalışacak bir şey yok. (`tedris.decks.browse`; `apps/tedris/features/flashcards/components/decks-page.tsx:77-83`)
+- **DECKLIST-3** · düşük · API — Deste özeti sayfalama ve sınır olmadan her desteyi ve kart sayısını tek cevapta döndürüyor, sayfa hepsini tek ızgarada çiziyor; yüzlerce desteli kişide yavaşlar. (`tedris.decks.browse`; `apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:102`)
+- **EDITDEL-2** · düşük · arayüz — Deste silinince bildirim çıkmıyor; güncelleme ve kart silme bildirim verirken tek işaret sayfanın değişmesi, ekran okuyucu kullanıcısı bunu yeni sayfa olarak duyuyor. (`tedris.decks.editOrDelete`; `apps/tedris/features/flashcards/components/deck-owner-overview.tsx:88-92`)
+- **EDITDEL-3** · düşük · API — API boş (beş boşluktan oluşan) deste adını kırpmadan ya da reddetmeden saklıyor; sayfa kırpıp reddettiği için yalnız başka istemciler adı boş bir deste oluşturabilir. (`tedris.decks.editOrDelete`; `apps/tedrisat/src/flashcard/dto/create-flashcard-deck.dto.ts:16-19`)
+- **EDITDEL-4** · düşük · arayüz — Deste silinince sayfa, gidiş yapılana kadar kısa süre "Sayfa bulunamadı" gösterebilir; tarayıcıda doğrulanmadı. (`tedris.decks.editOrDelete`; `index.ts:19-24`)
+- **EXPL-1** · düşük · arayüz — Keşfet'te eklenen ya da çıkarılan deste için son basılan durum hep gösteriliyor, yenilemenin getirdiği yok sayılıyor; iki sekmede "Koleksiyonunda" eski kalabiliyor. (`tedris.decks.explore`; `apps/tedris/features/flashcards/components/explore-decks-page.tsx:52`)
+- **IMPEXP-2** · düşük · arayüz — Pencere dosyanın neyi içermesi gerektiğini söylemiyor: üç İngilizce başlık, kart türü, en çok 1000 satır; kişi şablonu bulana kadar dosyası reddediliyor. (`tedris.decks.importExport`; `libs/common/src/excel/excel.service.ts:203-215`)
+- **IMPEXP-4** · düşük · arayüz — Sayı, tarih, formül ya da zengin metin hücresi metin olarak gelmediği için "gerekli" hatası veriyor; kişi dolu hücrenin neden boş sayıldığını anlamıyor. (`tedris.decks.importExport`; `apps/tedris/features/flashcards/deck-model.ts:298-302`)
+- **IMPEXP-6** · düşük · API — Dışa aktarılan dosyanın adı a-z, 0-9 dışındaki her karakteri "_" yapıyor; "Sarf Kavramları" Sarf_Kavramlar_.xlsx oluyor, yalnız Arapça adlı deste alt çizgilere dönüyor. (`tedris.decks.importExport`; `libs/common/src/excel/excel.service.ts:106`)
+- **MCARDS-1** · düşük · arayüz — "Kartı sil?" penceresi kartın ilerlemesinin de silineceğini söylüyor ama yalnız kart siliniyor, ilerleme kayıtları artakalıyor; cümle yanlış, zarar küçük. (`tedris.decks.manageCards`; `apps/tedrisat/src/flashcard/flashcard.repository.ts:134-141`)
+- **MCARDS-2** · düşük · arayüz — Kart düzenleme, değişmese de iki yüzü gönderiyor ve "Kart güncellendi" diyor; deste düzenleme ise sessizce kapanıyor; değişiklik olmadan yazma ve bildirim yapılıyor. (`tedris.decks.manageCards`; `apps/tedris/features/flashcards/components/card-form-dialog.tsx:67-70`)
+- **MDRS-224** · düşük · arayüz — Tablo başlığı ve bildirim deste adına "destesi" ekliyor; adı "… destesi" olan deste "… destesi destesinin kartları" diye okunuyor. (`tedris.decks.readAndCopy`)
+- **STUDY-2** · düşük · arayüz — Başlıktaki "tekrar bekleyen {n} kart" yalnız tekrarları sayıyor; tur hiç çalışılmamış kartları da içerdiği için çubuktaki toplamla uyuşmuyor. (`tedris.decks.study`; `apps/tedris/features/flashcards/components/study-session.tsx:111-112`)
+- **DCK-06 (Oluştur)** · düzeldi — Başarısız 'Oluştur' artık odağı hatalı ilk alana taşıyor ve alanlar hatalı olarak işaretleniyor; öteki deste sayfalarında DCK-06 açık. (`tedris.decks.create`)
+
+### tedris/discover
+
+- **APPLYKOSK-1** · orta · arayüz — Sayfanın e-posta denetimi "ad@alan.c" gibi adresleri kabul ediyor; API reddedince alan adı verilmeyen genel bir hata bildirimi çıkıyor. (`tedris.discover.applyForKosk`; `model.ts:37`)
+- **DSC-01** · orta · arayüz — Takip düğmesi istek sürerken devre dışı bırakılıyor; Enter'a basan klavye kullanıcısının odağı sayfa gövdesine düşüp orada kalıyor. (`tedris.discover.followKosk`; `apps/tedris/features/discover/components/follow-button.tsx:59`)
+- **DSC-05** · orta · arayüz — Zorunlu alan boşken "Başvuruyu gönder" hataları rolsüz ve canlı bölgesiz çiziyor, odak düğmede kalıyor; ekran okuyucu kullanıcısı denemeden sonra hiçbir şey duymuyor. (`tedris.discover.applyForKosk`; `apps/tedris/features/kosk-application/components/kosk-application-page.tsx:60-65`)
+- **DSC-07** · orta · arayüz — Başvuru gönderilince odaklı düğme kalkıyor, odak belgeye düşüyor ve "Başvurun alındı" uyarısını birçok ekran okuyucu duyurmuyor. (`tedris.discover.applyForKosk`; `apps/tedris/features/kosk-application/components/kosk-application-page.tsx:83-97`)
+- **DSC-08** · orta · arayüz — Başvuru gönderiminin her reddi aynı "Başvurun gönderilemedi" bildirimini veriyor; API'nin kodu ve reddettiği alan başvurana söylenmiyor. (`tedris.discover.applyForKosk`; `apps/tedris/features/kosk-application/components/kosk-application-page.tsx:71-77`)
+- **DSC-10** · orta · arayüz — Medrese okumasının her hatası "Sayfa bulunamadı" olarak çiziliyor; tedrisat çöktüğünde geçerli bir bağlantıyı izleyen kişi medresenin artık yok olduğunu sanıyor. (`tedris.discover.readMadrasah`, `tedris.shell.systemPages`; `apps/tedris/features/courses/public-reads.ts:49-55`)
+- **DSC-14** · orta · arayüz — Takip düğmesinin iki eylemi hata yakalamadan bekleniyor; tedris'e ulaşmayan bir istek hata bildirimi çizmek yerine reddediliyor ve hiçbir bildirim çıkmıyor. (`tedris.discover.followKosk`; `apps/tedris/features/discover/components/follow-button.tsx:41-53`)
+- **F-3** · orta · API — Başvuru onayı köşkün bu başvurudan açıldığını ya da başka başvuruya bağlı olmadığını denetlemiyor; başvurana giden bildirim köşkün adını veriyor ama bağlantı vermiyor. (`tedris.discover.applyForKosk`, `nizam.applications.decide`; `apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:156-181`)
+- **F-4** · orta · API · güvenlik — Köşk okuma ucu oturum açmış herkese yaratıcının ve tüm nazımların hesap kimliklerini veriyor; maske yalnız belirteçsiz çağıranda var. Sayfa bunları göstermiyor. (`tedris.discover.readKosk`; `apps/tedrisat/src/kosk/kosk.controller.ts:261`)
+- **F-5** · orta · API · güvenlik — Takip ucu köşkün var olduğuna bakıyor, görünür olduğuna bakmıyor; gizlenmiş köşk, 404 alması gereken oturum açmış kişi tarafından takip edilebiliyor. (`tedris.discover.followKosk`, `nizam.kosks.browse` +1; `apps/tedrisat/src/kosk/kosk.service.ts:276`)
+- **FOLLOW-1** · orta · arayüz — Takip ya da takibi bırakma başarılı olunca bildirim yok ve odak düğmeden kaçıyor; klavye ve ekran okuyucu kullanıcısı bir şey duymadan sayfanın başından başlıyor. (`tedris.discover.followKosk`; `apps/tedris/features/discover/components/follow-button.tsx:47-52`)
+- **MAD-1** · orta · arayüz — Medrese sayfası her medrese için "Medresenin derslerine kayıt onaylıdır" diyor; oysa onay yalnız medrese ya da ders onay istiyorsa gerekiyor, cümle yanlış olabiliyor. (`tedris.discover.readMadrasah`; `apps/tedris/features/courses/components/madrasah-page.tsx:199`)
+- **overview-exposes-head-id** · orta · API · güvenlik — Medrese özet ucu belirteçsiz çağırana başmüderrisin hesap kimliğini veriyor; medrese okuması aynı kimlikleri maskeliyor, özet maskelemiyor. (`tedris.discover.readMadrasah`; `apps/tedrisat/src/madrasah/madrasah.controller.ts:355-367`)
+- **VISIT-1** · orta · arayüz — Medrese sayfası her medrese için "Medresenin derslerine kayıt onaylıdır" diyor; API yalnız medresenin ilkesi açıksa onay istiyor, ziyaretçi yanlış bilgilenebiliyor. (`tedris.discover.visitorPath`; `apps/tedris/features/courses/components/madrasah-page.tsx:199`)
+- **VISIT-3** · orta · arayüz — Örnek celse bittiyse satır herkese tamamlanmış çiziliyor; ziyaretçi hiç katılmadığı celse için "Canlı ders, tamamlandı" duyuyor. (`tedris.discover.visitorPath`; `apps/tedris/features/courses/components/course-programme.tsx:100`)
+- **BROWSE-1** · düşük · API — Köşk listesi çok büyük bir sayfa numarasında API'de 500 veriyor; Keşfet her pozitif sayıyı olduğu gibi iletiyor. (`tedris.discover.browse`; `apps/tedrisat/src/kosk/kosk.controller.ts:157`)
+- **BROWSE-2** · düşük · arayüz — Adreste listede olmayan bir medrese kimliği verilince boş sonuç çıkıyor ve seçim kutusu yer tutucu yerine ham kimliği gösteriyor. (`tedris.discover.browse`; `apps/tedris/features/discover/components/discover-filters.tsx:81-89`)
+- **DSC-02** · düşük · arayüz — Takip düğmesinin adı "Takip et" ile "Takip ediliyor" arasında değişirken aria-pressed de değişiyor; ekran okuyucu durumu iki kez söylüyor. (`tedris.discover.followKosk`; `apps/tedris/features/discover/components/follow-button.tsx:60-61`)
+- **DSC-06** · düşük · arayüz — Başvuru sayfası iki ana bölge (main) çiziyor: kabuk bir tane sarıyor, sayfa kendi içine bir tane daha koyuyor; ekran okuyucu gezinmesi karışıyor. (`tedris.discover.applyForKosk`; `index.tsx:12-22`)
+- **DSC-09** · düşük · arayüz — Köşk okunamayınca sayfada başlık yok, tek öğeli yol izi hiçbir şey çizmiyor ve geri dönüş yalnız üst çubuktan yapılabiliyor. (`tedris.discover.readKosk`, `tedris.discover.visitorPath`; `libs/ui/src/mds/breadcrumb.tsx:22`)
+- **DSC-13** · düşük · arayüz — Sayfa numarası sınırlanmıyor; geçersiz numarada kartsız "3 / 2" çiziliyor, tek sayfalık listede ise geri dönecek bağlantı bile yok. (`tedris.discover.browse`; `apps/tedris/features/discover/discover-query.ts:28-36`)
+- **DSC-15** · düşük · arayüz — Gizlilik bağlantısı yeni sekmede açılıyor ama bağlantı metni bunu söylemiyor. (`tedris.discover.applyForKosk`; `apps/tedris/features/kosk-application/components/kosk-application-page.tsx:215-220`)
+- **DSC-19** · düşük · arayüz — Keşfet, köşk, medrese, derslerim ve program sayfalarının yükleme iskeleti metinsiz; ekran okuyucuya sayfanın yüklendiğini söyleyen bir şey yok. (`tedris.discover.visitorPath`, `tedris.discover.browse` +3; `loading.tsx:7`)
+- **MAD-2** · düşük · arayüz — Başlığın altındaki iki parça arasında metin boşluğu yok; erişilebilirlik ağacı "2 dersBaşmüderris Nuri" diye bitişik okuyor. (`tedris.discover.readMadrasah`; `apps/tedris/features/courses/components/madrasah-page.tsx:173-186`)
+- **MAD-3** · düşük · arayüz — Yan listenin adı "{ad} medresesinin ..." olduğundan adı "Medresesi" ile biten medrese için "Medresesi medresesinin" diye kelime iki kez okunuyor. (`tedris.discover.readMadrasah`)
+- **MAD-4** · düşük · arayüz — Medrese "Sayfa bulunamadı" sayfasında ana bölge (main) yok, yalnız bir bölüm var; ekran okuyucu kullanıcısı ana içeriğe atlayamıyor. (`tedris.discover.readMadrasah`; `libs/ui/src/mds/system-state.tsx:34-36`)
+- **no-way-back** · düşük · API — Gönderilen köşk başvurusunu listeleyen ya da geri çeken bir yer yok ve bir kişinin kaç başvuru yapabileceği sınırlı değil. (`tedris.discover.applyForKosk`; `apps/tedrisat/src/kosk-application/kosk-application.service.ts:10`)
+- **READKOSK-1** · düşük · arayüz — Köşk ve celse adreslerinin "Sayfa bulunamadı" sayfasında ana bölge (main) yok; kabuk kendi main'ini bırakıyor ve sayfa yalnız bir bölüm çiziyor. (`tedris.discover.readKosk`, `tedris.celse.cancelled`; `index.tsx:12-22`)
+- **sign-in-names-the-page** · düşük · karar — "Giriş yap" bağlantısı sayfayı geri dönüş adresi olarak taşıyor, "kayıt ol" taşımıyor; kayıt olan ziyaretçi Ana sayfa'ya düşüyor, bu bir karar bekliyor. (`tedris.discover.visitorPath`; `apps/tedris/lib/invite-hrefs.ts:10`)
+- **VISIT-2** · düşük · arayüz — Başlığı yalnız "Hafta N" olan hafta, programda "Hafta 1 Hafta 1" diye tekrar okunuyor; kayıtlar sekmesi böyle başlığı eliyor, program elemiyor. (`tedris.discover.visitorPath`; `apps/tedris/features/courses/components/recordings-tab.tsx:149`)
+
+### tedris/files
+
+- **FILES-1** · orta · arayüz — Celse dosyası 403 verince kişi kilit kartına dönüyor; kart hata bildirimi çıkarmıyor, adresteki parametre de kalıyor, kaydını yitiren kişi indirmenin neden olmadığını öğrenmiyor. (`tedris.files.download`; `page.tsx:29-41`)
+- **DSC-20** · düşük · kütüphane — Bildirim bölgesi İngilizce varsayılan adını ("Notifications alt+T") koruyor, kalıcı hata bildirimi nazik okunuyor ve "Kapat" düğmesi her dilde aynı. (`tedris.files.download`, `tedris.discover.browse` +1; `libs/ui/src/components/sonner.tsx:59-76`)
+- **FILES-2** · düşük · arayüz — Başarılı indirme sayfada iz bırakmıyor: bildirim, durum metni ya da odak yok; ekran okuyucu kullanıcısı tarayıcının kendi kaydetmesini duymayabilir. (`tedris.files.download`; `apps/tedris/features/courses/components/course-resources.tsx:61`)
+
+### tedris/learn
+
+- **CRS-06** · orta · arayüz — Ders sekmesindeki soru kartında beş adımın her birinde odaklı düğme kalkıyor ve odak belgeye düşüyor; düzenlemeye girince metin alanına odak da gitmiyor. (`tedris.learn.questions`; `apps/tedris/features/courses/components/course-questions.tsx:198-246`)
+- **CRS-07** · orta · arayüz — Ders sekmesinde gönderilen soru için hiçbir şey duyurulmuyor; kutu boşalıp kart ekleniyor ama ekran okuyucu kullanıcısı gönderimin işlediğini anlayamıyor. (`tedris.learn.questions`; `apps/tedris/features/courses/components/course-questions.tsx:415-419`)
+- **evaluation-probe-leaks-homework-kind** · orta · API · güvenlik — Değerlendirme ucu oturum açmış herkese 200 ya da 404 vererek hangi celselerin ezber ödevi olduğunu ele veriyor. (`tedris.learn.homeworkMemorize`; `apps/tedrisat/src/evaluation/evaluation.repository.ts:185`)
+- **HAND-2** · orta · arayüz — Dersten ayrılan ya da çıkarılan talebe teslim bölümünü tam yetkili görüyor; her yazma 403 ve "derse kayıtlı olman gerekir" veriyor, yeniden denemek işe yaramıyor ve yenile denmiyor. (`tedris.learn.homeworkHandIn`)
+- **HWREVIEW-1** · orta · API — Notsuz ve tek dosyalı gönderilmiş değerlendirmenin dosyası ders kadrosunca silinebiliyor; API reddetmiyor, kimseye bildirim gitmiyor ve talebe içi boşalmış bir değerlendirme görüyor. (`tedris.learn.homeworkReview`; `apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:378-392`)
+- **HWREVIEW-2** · orta · arayüz — "Notu kaydet" başarılı olunca üç şey birden beliriyor ama hiçbiri sayfada önceden duran bir canlı bölgede değil; ekran okuyucu kullanıcısı sonucu duymayabilir. (`tedris.learn.homeworkReview`; `apps/tedris/features/courses/components/session-homework.tsx:722`)
+- **HWREVIEW-3** · orta · arayüz — Ödev paneli yalnız açılışta okunuyor; ders kadrosu sayfa açıkken değerlendirme gönderse de talebe sayfayı yenileyene kadar görmüyor, oysa bildirimi geliyor. (`tedris.learn.homeworkReview`; `apps/tedris/features/courses/components/session-homework.tsx:369-390`)
+- **MDRS-265** · orta · API — Pasif dersin kayıtlı talebesi ya da yasaklı kişi "Derse kaydolduğunda görebilirsin" kartı ve bir şey değiştirmeyen "Kayıt başvurusu yap" görüyor; kayıtlar sekmesi de kayıt yok diyor. (`tedris.learn.writingGating`, `tedris.course.readProgramme` +1; `apps/tedris/features/courses/lesson-lock.ts:19-27`)
+- **MDRS-268** · orta · API · güvenlik — Kaydı silinen ya da yasaklanan talebe API üzerinden kendi not ve sorularını okuyup silmeyi sürdürüyor, hiçbir sayfa bunu sunmuyor; erişim sınırı ile ekranlar uyuşmuyor. (`tedris.learn.writingGating`; `apps/tedrisat/src/course/course.service.ts:586`)
+- **MEMO-1** · orta · API — Ezber işareti kaydedilince talebeye bildirim gitmiyor ve kart yalnız açılışta okunuyor; "Bekliyor" gören talebe sayfayı yenilemeden sonucu öğrenmiyor. (`tedris.learn.homeworkMemorize`; `apps/tedris/features/courses/components/session-homework.tsx:189-211`)
+- **QUESTIONS-1** · orta · arayüz — API düzenlemeyi 409 ile reddedince kart eski metinle ve "Cevap bekleniyor" rozetiyle dönüyor, cevap gösterilmiyor ve talebenin yazdığı metin atılıyor. (`tedris.learn.questions`; `apps/tedris/features/courses/components/course-questions.tsx:217-220`)
+- **QUESTIONS-2** · orta · arayüz — Hoca bu arada cevaplamış olsa da silme satırı cevapsız kartın "Silinsin mi?" sorusunu soruyor; cevap, görülmeden soruyla birlikte siliniyor. (`tedris.learn.questions`; `apps/tedris/features/courses/components/course-questions.tsx:339`)
+- **WG-2** · orta · API — Reddedilen her yazma 403 için "derse kayıtlı olman gerekir" deniyor; API kaydı silinmiş, yasaklı ve pasif ders için aynı kodu verdiği için gerçek neden söylenemiyor. (`tedris.learn.writingGating`; `apps/tedris/features/courses/components/lesson-notes.tsx:212`)
+- **WRT-01** · orta · arayüz — Not, ödev dosyası ve soru satırlarında her satır içi adımda odaklı düğme kalkıyor ve odak belgeye düşüyor; düzenlemeye girince alana odak da gitmiyor. (`tedris.learn.notes`, `tedris.learn.homeworkHandIn` +1; `apps/tedris/features/courses/components/lesson-notes.tsx:460-467`)
+- **WRT-02** · orta · arayüz — Not eklenince ve soru gönderilince alan boşalıp satır ekleniyor ama hiçbir canlı bölge duyurmuyor; ekran okuyucu kullanıcısı yazmanın işlediğini anlayamıyor. (`tedris.learn.notes`, `tedris.learn.questions`; `apps/tedris/features/courses/components/lesson-notes.tsx:333-336`)
+- **WRT-04** · orta · arayüz — Aynı celsedeki her sorunun ve kimi notların düzenle/sil düğmeleri aynı adı taşıyor ("Soruyu sil, <celse>"); ekran okuyucu hangi satır olduğunu ayıramıyor. (`tedris.learn.questions`, `tedris.learn.notes`; `apps/tedris/features/courses/components/course-questions.tsx:251`)
+- **WRT-12** · orta · arayüz — Dosya sayısı 10'a varınca dosya alanı odaktayken devre dışı kalıyor; klavye kullanıcısının odağı kayboluyor. (`tedris.learn.homeworkHandIn`; `apps/tedris/features/courses/components/session-homework.tsx:625`)
+- **CLS-16** · düşük · arayüz — Celse sayfasında iki bildirim sistemi var: dosya hataları Sonner'la, takvim hatası kitin bildirim bölgesiyle çıkıyor; canlı bölge işaretleri farklı, hangisinin duyulduğu doğrulanmadı. (`tedris.learn.homeworkReview`, `tedris.celse.locked`; `apps/tedris/features/courses/components/file-error-notice.tsx:33`)
+- **CRS-16** · düşük · arayüz — "Soruların yükleniyor…" satırı içi dolu olarak ekleniyor; yardımcı teknolojiler bunu çoğu zaman okumuyor. (`tedris.learn.questions`; `apps/tedris/features/courses/components/course-questions.tsx:117`)
+- **E2E-LN-01** · düşük · arayüz — Not testinin başlığı API'nin üç kişiye de 404 verdiğini söylüyor; oysa test müderris ve başnazım düzenlemesi için 403 bekliyor, başlık sonraki okuyanı yanıltıyor. (`tedris.learn.writingGating`; `apps/tedris/e2e/lesson-notes.e2e.ts:741-756`)
+- **e2e-title-promises** · düşük · arayüz — Bazı e2e test başlıkları ("izle sayfası yok", "kilit kartı alır") testin doğruladığından fazlasını söylüyor; testler yönlendirmeyi ve yalnız yokluğu denetliyor. (`tedris.learn.writingGating`, `tedris.celse.locked`; `page.tsx:31`)
+- **HAND-1** · düşük · arayüz — Notun uzunluk denetimi ve 400 cümlesi ("Not en çok 4000 karakter olabilir.") hiç çalışmıyor çünkü metin alanı zaten 4000 ile sınırlı; zararsız ölü kod. (`tedris.learn.homeworkHandIn`; `apps/tedris/features/courses/components/session-homework.tsx:1003-1004`)
+- **HAND-3** · düşük · arayüz — Reddedilen yüklemeler durum koduna göre sözcüklendiriliyor: celse silinmişse "Bu dosya artık yok." deniyor, kaldırmada 503 gelse "kaydedilemiyor" denir; asıl neden söylenmiyor. (`tedris.learn.homeworkHandIn`; `apps/tedris/features/courses/file-model.ts:193-196`)
+- **HWREVIEW-4** · düşük · arayüz — Değerlendirme imzasındaki zaman yılsız (gün, ay, saat) yazılıyor; geçen yılın değerlendirmesi bu haftaki gibi okunuyor. (`tedris.learn.homeworkReview`; `apps/tedris/features/courses/components/session-homework.tsx:694-701`)
+- **MEMO-2** · düşük · arayüz — Ezber işareti ("Tam", "Eksik", "Vermedi") "Ödev" başlığının yanında yalnız bir sözcük; ekran okuyucu bunun kimin neye verdiği işaret olduğunu duymuyor. (`tedris.learn.homeworkMemorize`; `apps/tedris/features/courses/components/session-homework.tsx:252-256`)
+- **MEMO-3** · düşük · arayüz — Yalnız not kaydeden talebe, altında dosya olmayan "Notun: ..." satırının üstünde "Teslim ettiğin dosyalar" başlığını görüyor. (`tedris.learn.homeworkMemorize`; `apps/tedris/features/courses/components/session-homework.tsx:283-291`)
+- **NOTES-1** · düşük · arayüz — Reddedilen kaydetme ya da silmeden sonra "Vazgeç" hata satırını silmiyor; satır dokunulmamış notun altında bir sonraki düğme basışına kadar kalıyor. (`tedris.learn.notes`; `apps/tedris/features/courses/components/lesson-notes.tsx:539`)
+- **WG-1** · düşük · API — Ders görünürken arşivlenmiş (gizli) celseye de not ve soru yazılabiliyor; yazılanlar yalnız önceden açık kalmış sayfadan gelebilir, o celse sayfası herkese bulunamadı. (`tedris.learn.writingGating`; `apps/tedrisat/src/course/course.service.ts:507`)
+- **WRT-03** · düşük · arayüz — Not, soru ve ödev notunun hata paragrafı duyuruluyor ama alana bağlı değil; alan aria-invalid işaretli değil ya da hataya işaret etmiyor. (`tedris.learn.homeworkHandIn`, `tedris.learn.notes` +1; `apps/tedris/features/courses/components/session-homework.tsx:1056`)
+- **WRT-05** · düşük · arayüz — Başka sekmede silinmiş notu silmek ya da kaydetmek 404 verip kalıcı "Not silinemedi" diyor ve satır temizlenemiyor; sorular ve dosyalar 404'ü silinmiş sayıyor. (`tedris.learn.notes`; `apps/tedris/features/courses/components/lesson-notes.tsx:494-506`)
+- **WRT-06** · düşük · karar — Ezber durumu okunamayınca kart uyarı gösteriyor ama "Yeniden dene" sunmuyor, diğer panellerde var; tek yol sayfayı yenilemek, çözüm bir karar bekliyor. (`tedris.learn.homeworkMemorize`; `apps/tedris/features/courses/components/session-homework.tsx:270-274`)
+- **WRT-07** · düşük · arayüz — Dosya yüklenirken "Yükleniyor…" düz bir span, hiçbir şey duyurmuyor; ekran okuyucu ilerlemeyi "eklendi" ya da hata çıkana kadar duymuyor. (`tedris.learn.homeworkHandIn`; `apps/tedris/features/courses/components/session-homework.tsx:589-592`)
+- **WRT-08** · düşük · arayüz — Ödev ezber yapılmışken açık kalan sayfada yükleme 409 verince "En çok 10 dosya ekleyebilirsin" deniyor; kod kendi mesajına eşlenmediği için cümle yanlış. (`tedris.learn.homeworkMemorize`, `tedris.learn.homeworkHandIn`; `apps/tedris/features/courses/file-model.ts:178-212`)
+- **WRT-09** · düşük · arayüz — Bileşenin belgesi ve testi dosya sınırını 5 sanıyor, gerçek sınır 10 ve sayfa API'nin sayısını yazıyor; yalnız belge ve test yanlış. (`tedris.learn.homeworkHandIn`; `apps/tedris/features/courses/components/session-homework.tsx:112-113`)
+- **WRT-11** · düşük · arayüz — Not düzenleme modu bir form değil; zaman alanında Enter hiçbir şeyi kaydetmiyor, oysa ekleme formu Enter ile gönderiliyor. (`tedris.learn.notes`; `apps/tedris/features/courses/components/lesson-notes.tsx:514-545`)
+- **WRT-14** · düşük · arayüz — Not ve soru kutusunun yalnız aria-label'ı ve yer tutucusu var, görünür etiketi yok; yazmaya başlayınca görenler ne istendiğini yitiriyor. (`tedris.learn.notes`, `tedris.learn.questions`; `apps/tedris/features/courses/components/lesson-notes.tsx:238-250`)
+
+### tedris/learning
+
+- **ADDCAL-1** · orta · arayüz — Ders sayfasının kayıtlı kartı ayrı bir takvim menüsü kullanıyor: iki satır, abone ol yok, not ve bildirim yok; Programım ve celse sayfasındakinden farklı davranıyor. (`tedris.learning.addToCalendar`; `apps/tedris/features/courses/components/course-aside.tsx:296`)
+- **CRS-09** · orta · arayüz — Ders kartındaki "Apple Takvim (.ics)" düz bir bağlantı; API hata verince tarayıcı ders sayfasından çıkıp ham JSON gövdesine gidiyor ve kişi sayfasını yitiriyor. (`tedris.learning.addToCalendar`; `apps/tedris/features/courses/components/add-to-calendar.tsx:96-100`)
+- **DSC-11** · orta · karar — "Tamamladığın dersler" satırlarının hepsinde aynı adlı "Ders kayıtlarına git" bağlantısı var ve ders sayfasına gidiyor, kayıtlar sekmesine değil; çözüm bir karar bekliyor. (`tedris.learning.myCourses`; `apps/tedris/features/courses/components/my-courses-page.tsx:403-409`)
+- **DSC-16** · orta · arayüz — Programım saatleri hep İstanbul saatiyle gösteriyor; "Saat dilimini değiştir" Hesap ayarına götürüyor ama o ayar bu sayfayı değiştirmiyor, başka dilimdeki talebe yanılabiliyor. (`tedris.learning.schedule`; `page.tsx:26`)
+- **feed-misses-basmuderris-and-ders-nazir** · orta · API — Takvim akışı kayıtlı, müderris ve köşk nazımı olunan dersleri içeriyor; başmüderris ve ders nazırı yönettikleri dersi akışlarında bulamıyor, oysa akış "yönettiği her ders" diyor. (`tedris.learning.addToCalendar`; `apps/tedrisat/src/calendar-feed/calendar-feed.repository.ts:119-190`)
+- **ADDCAL-2** = ACC-23, LEAVE-2, MDRS-233 · düşük · kütüphane — Bildirimin "Kapat" düğmesi ve "Bildirimler" bölgesi katalogdan değil kit sabitinden adlanıyor; yalnız Türkçe gösterildiği sürece görünmüyor, başka dil eklenince çıkıyor. (`tedris.learning.addToCalendar`, `nazar.courseNazirs.appoint` +5; `libs/ui/src/mds/toast.tsx:97`)
+- **ADDCAL-3** · düşük · arayüz — Başarılı takvim indirmesi sayfada iz bırakmıyor; yalnız tarayıcının indirme listesi söylüyor, oysa hata bildirimi çıkıyor. (`tedris.learning.addToCalendar`; `apps/tedris/features/courses/components/calendar-menu.tsx:79-86`)
+- **DSC-12** · düşük · arayüz — Ders kapağı Arapça etiketi başlıktan önce açıklamasız bir paragraf olarak çiziyor ve gizlenmiyor; ekran okuyucu karttan önce anlaşılmaz bir Arapça sözcük okuyor. (`tedris.learning.myCourses`, `tedris.discover.browse` +3; `apps/tedris/features/courses/components/my-courses-page.tsx:104`)
+- **DSC-18** · düşük · kütüphane — Kit, menü açılırken role=menu içine bir paragraf koyuyor; paragraf menünün geçerli çocuğu olmadığından kimi ekran okuyucular notu atlayabiliyor ya da yanlış okuyabiliyor. (`tedris.learning.addToCalendar`; `libs/ui/src/mds/menu.tsx:80`)
+- **DSC-21** · düşük · arayüz — Google etkinliğine yazılan "Toplantı bağlantısı oturum sayfasındadır" satırı "celse" yerine "oturum" diyor; .ics dosyası ise "celse" diyor. (`tedris.learning.addToCalendar`; `apps/tedris/features/courses/components/calendar-menu.tsx:115`)
+- **google-popup-unhandled** · düşük · arayüz — Google Takvim için açılan pencerenin sonucu okunmuyor; açılır pencere engelleyicisi reddedince hiçbir ileti çıkmıyor. (`tedris.learning.addToCalendar`; `apps/tedris/features/courses/components/calendar-menu.tsx:117`)
+- **MYC-1** · düşük · arayüz — Devam eden derslerin başlığı h3, diğer üç bölümün dersleri düz bağlantı; başlık listesi yalnız devam edenleri tutuyor, diğerlerine yalnız bağlantıyla ulaşılıyor. (`tedris.learning.myCourses`; `apps/tedris/features/courses/components/my-courses-page.tsx:163`)
+- **SCHED-1** · düşük · arayüz — "Sonraki yedi günü göster" üst sınırsız; 9999-12-24'ten sonra bağlantı gidiyor ve sayfa "Bir şeyler ters gitti" hata sayfasıyla 200 dönüyor. (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx:299`)
+- **SCHED-2** · düşük · arayüz — Boş hafta tek ve eylemsiz bir cümle ("Bu yedi günde celsen yok."); hiçbir derse kayıtlı olmayan talebe de aynı sözü okuyor, Derslerim ya da Keşfet'e yönlendirilmiyor. (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx:256`)
+- **SCHED-3** · düzeldi — Programım'da canlı celsenin 'Celseye katıl' bağlantısı artık celsenin adını ve yeni sekmede açıldığını söylüyor. (`tedris.learning.schedule`)
+- **DSC-09 (b)** · düzeldi — Programım'ın son gezintisi artık 'Hafta gezintisi' adını taşıyor; eskiden 'Celseler' adıyla hafta bağlantılarını gösteriyordu (DSC-09 başka akışlarda açık). (`tedris.learning.schedule`)
+
+### tedris/session
+
+- **focus-after-apply** · orta · arayüz — "Yüz yüze başvur" basılınca düğme gidip bekleme kartı geliyor ve odağı taşıyan bir şey yok; klavye kullanıcısının odağı belgeye düşebiliyor. (`tedris.session.registerInPerson`)
+
+### tedris/shell
+
+- **CLS-01** · orta · arayüz — Celse okumasının her hatası, 5xx ve ağ hatası dahil, bulunamadı sayfası oluyor; tedrisat çöktüğünde celse yok gibi okunuyor ve yeniden deneme yok. (`tedris.shell.systemPages`, `tedris.celse.attend` +2; `apps/tedris/features/courses/public-reads.ts:49-55`)
+- **HOME-1** · orta · arayüz — Celseler okunamayınca ana sayfa yalnızca düz bir cümle yazıyor; uyarı rolü ve yeniden deneme yok, hata 'planlı celse yok' durumundan yalnızca sözle ayrılıyor. (`tedris.shell.home`; `apps/tedris/features/schedule/components/home-sessions.tsx:86-87`)
+- **SHL-01** · orta · arayüz — Birçok sayfa kendi başlığını koymuyor; sekme ve ekran okuyucu "Medaris Tedris" ya da "Tedris" diyor, eksik celse ya da bozuk sayfa için bile bunu söylemiyor. (`tedris.shell.systemPages`, `realm.auth.signIn` +3)
+- **SHL-06** · orta · arayüz — Sayfa hata verince düzeni gidiyor ve eski üst çubuk görünüyor: hiçbir şeye bağlı olmayan arama kutusu ve üç devre dışı öğeli menü; canlı görünen denetimler işe yaramıyor. (`tedris.shell.systemPages`, `tedris.shell.frame`; `apps/tedris/components/phone-menu/phone-chrome.tsx:38`)
+- **SHL-09** · orta · arayüz — Telefon menüsü hoca, nazım ve başnazım dahil her oturum açanın altına "Talebe" yazıyor; oturum rolleri taşımıyor, görünen rol bağlantı adında da yok. (`tedris.shell.frame`, `tedris.shell.home`; `apps/tedris/components/phone-menu/member-phone-menu.tsx:106`)
+- **SHL-11** · orta · arayüz — Atlama bağlantısı yok; klavye kullanıcısı her sayfada kendi içeriğine varmadan önce çubuğun sekiz dokuz durağını geçiyor. (`tedris.shell.frame`)
+- **SYS-3** · orta · arayüz — Sistem sayfalarında odak hiçbir yere taşınmıyor; "Yeniden dene" sonrası aynı hata sayfası çiziliyor ve ekran okuyucuya denemenin yapıldığını söyleyen bir şey yok. (`tedris.shell.systemPages`)
+- **FRAME-1** · düşük · arayüz — Sayfası kendi main'ine sahip adreslerde hata sayfası bir bölüm çiziyor ve belgede hiç ana bölge (main) kalmıyor; ekran okuyucu ana içeriğe atlayamıyor. (`tedris.shell.frame`; `libs/ui/src/mds/system-state.tsx:104`)
+- **FRAME-2** · düşük · arayüz — Hesabım ve Bildirimler'de üst çubuk hiçbir şeyi geçerli sayfa olarak işaretlemiyor; çan ve Hesabım bağlantısı kendi sayfalarında aria-current almıyor. (`tedris.shell.frame`, `tedris.account.notifications`; `apps/tedris/components/phone-menu/member-phone-menu.tsx:21-31`)
+- **HOME-2** · düşük · arayüz — Yüz yüze bir celse için ana sayfadaki katılım kartının etiketi 'Canlı ders' diyor; metin yüz yüze olduğunu söylüyor, celse sayfası ise 'Yüz yüze' diyor. (`tedris.shell.home`; `apps/tedris/features/schedule/components/home-sessions.tsx:208`)
+- **SHL-05** · düşük · arayüz — "/" kalıcı olarak /home'a, /home ziyaretçiyi /discover'a yönlendiriyor; ziyaretçi iki sıçramayla Keşfet'e varıyor ve sayfanın kendi seçimi hiç çalışmıyor. (`tedris.shell.home`, `tedris.discover.visitorPath`; `page.tsx:26-28`)
+- **SHL-07** · düşük · arayüz — Genel hata belgesi başlık ve cümleyi katalogdan değil sabit yazıyor; cümle "bağlantını denetleyip" ile "bağlantınızı denetleyip" diye iki ağızda. (`tedris.shell.systemPages`; `apps/tedris/app/global-error.tsx:38-45`)
+- **SHL-08** · düşük · karar — Başarısız bölümün "Yeniden dene" bağlantısı sayfayı baştan yüklüyor, oysa cümle bölümün yeniden okunacağını söylüyor; gerçek düğme mi "Sayfayı yenile" adı mı, karar bekliyor. (`tedris.shell.home`, `tedris.learning.schedule`; `apps/tedris/features/home/components/home-sections.tsx:56`)
+- **SHL-10** · düşük · arayüz — Ziyaretçinin çubuğu ve menüsü her sayfada Keşfet'i geçerli sayfa olarak işaretliyor, ders sayfasında bile. (`tedris.shell.frame`; `apps/tedris/components/phone-menu/desktop-bar.tsx:42-47`)
+- **SHL-15** · düşük · arayüz — Bulunamadı sayfasının bağlantısı istemcide oturum durumundan seçiliyor; sağlayıcı yüklenirken üyenin bağlantısı ziyaretçinin "/" adresi oluyor ve Keşfet'e varıyor. (`tedris.shell.systemPages`; `apps/tedris/features/errors/system-page.tsx:33-40`)
+- **SYS-1** · düşük · arayüz — Sistem sayfaları kabuğun main'i sağladığını varsayıyor; kimi adreste bulunamadı sayfasında main yok ya da çubuğun header'ı banner olmuyor. (`tedris.shell.systemPages`, `tedris.account.publicProfile` +1; `libs/ui/src/mds/system-state.tsx:11`)
+- **SYS-2** · düşük · arayüz — Celse düzeni eksik celse için "gerçek 404" diyor ama geliştirme sunucusunda adres bulunamadı sayfasıyla HTTP 200 dönüyor; yorum ve davranış uyuşmuyor. (`tedris.shell.systemPages`; `layout.tsx:9-14`)
+
+## nazar
+
+| Alan | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
+|---|---|---|---|---|---|---|
+| nazar/access | 4 | 0 | 6 | 7 | 0 | 3 |
+| nazar/account | 1 | 0 | 2 | 8 | 0 | 0 |
+| nazar/appeals | 1 | 0 | 4 | 4 | 0 | 0 |
+| nazar/archive | 2 | 0 | 4 | 4 | 0 | 2 |
+| nazar/bans | 4 | 3 | 8 | 12 | 0 | 3 |
+| nazar/course | 1 | 0 | 2 | 2 | 0 | 3 |
+| nazar/courseNazirs | 3 | 0 | 4 | 9 | 0 | 5 |
+| nazar/courseSettings | 4 | 0 | 9 | 7 | 0 | 4 |
+| nazar/courses | 3 | 0 | 12 | 9 | 0 | 4 |
+| nazar/curriculum | 4 | 1 | 13 | 14 | 0 | 3 |
+| nazar/decks | 4 | 2 | 19 | 19 | 0 | 1 |
+| nazar/evaluation | 2 | 1 | 6 | 8 | 0 | 2 |
+| nazar/files | 1 | 1 | 1 | 2 | 0 | 2 |
+| nazar/homework | 1 | 0 | 5 | 4 | 0 | 0 |
+| nazar/nazirs | 4 | 0 | 10 | 13 | 0 | 7 |
+| nazar/notifications | 1 | 0 | 5 | 6 | 0 | 1 |
+| nazar/offsite | 1 | 0 | 1 | 4 | 0 | 4 |
+| nazar/pano | 1 | 0 | 1 | 1 | 0 | 0 |
+| nazar/questions | 1 | 1 | 5 | 1 | 0 | 2 |
+| nazar/recordings | 2 | 2 | 7 | 5 | 0 | 1 |
+| nazar/roster | 4 | 1 | 13 | 5 | 0 | 2 |
+| nazar/sessions | 4 | 0 | 18 | 7 | 0 | 7 |
+| nazar/settings | 1 | 0 | 3 | 1 | 0 | 3 |
+| nazar/shell | 2 | 0 | 6 | 13 | 0 | 5 |
+| nazar/students | 1 | 0 | 4 | 3 | 0 | 3 |
+| **nazar** | 57 | 12 | 168 | 168 | 0 | 67 |
+
+### nazar/access
+
+- **DNP-2** · orta · arayüz — Ders pasife düşünce ders nazırı hiç izni olmayanla aynı "Bu sayfaya izniniz yok" cevabını alıyor, neden söylenmiyor; Ders ayarları da hâlâ sahip olduğu bir izni eksik gösteriyor. (`nazar.access.dersNazirPages`; `libs/common/src/authz/effective-permissions.ts:337`)
+- **F-A-16** · orta · arayüz — Reddedilen sayfada ret, sayfa açılırken zaten ekranda duran sessiz bir bilgi kutusu; ekran okuyucu duyurmuyor, başlığı da başlık değil, kişi yalnız sayfa adını duyup reddi öğrenmiyor. (`nazar.access.dersNazirPages`, `nazar.access.medreseNazirRefused` +5; `libs/ui/src/mds/alert.tsx:23`)
+- **F-D2c-2** · orta · arayüz — Ders menüsü Yasaklamalar, Ders nazırları, Ders ayarları gibi girişleri ders kapsamı olan herkese çiziyor; izni olmayan kişi her birinde "Bu sayfaya izniniz yok" ile karşılaşıyor. (`nazar.access.dersNazirPages`, `nazar.access.medreseNazirRefused` +2; `apps/nazar/features/shell/nav.ts:119`)
+- **F-L-8** = F-E-17 · orta · arayüz — Koltuğu olmayan başnazım "/" adresinden "Bu portala erişiminiz yok" sayfasına düşüyor, oysa düzen ona her medrese ve dersi açıyor; sayfa tersini söylüyor, adres alanı ya da liste vermiyor. (`nazar.access.landingScope`, `nazar.access.noAccess`; `page.tsx:16`)
+- **MDRS-223** · orta · arayüz — Medrese menüsü dokuz girişin hepsini her medrese nazırına gösteriyor; izni olmayan nazır sekiz girişte "Bu sayfaya izniniz yok" görüyor ve Dersler'in sayısı da gelmiyor. (`nazar.access.medreseNazirRefused`, `nazar.shell.scopeAndMenu`; `apps/nazar/features/shell/nav.ts:71-93`)
+- **REFUSED-1** · orta · arayüz — İzni olmayan medrese nazırının ilk karşılaştığı sayfa bir ret; "/", giriş ve menünün Pano'su izin gerektiren Pano'ya gidiyor, Bildirimler ve Hesap'a yalnız menüden varılıyor. (`nazar.access.medreseNazirRefused`; `apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:117`)
+- **DNP-3** · düşük · arayüz — Menüde "Ders destesi", sayfa başlığında "Ders desteleri" yazıyor; bastığı girişin başlığını arayan kişi aynı adı bulamıyor. (`nazar.access.dersNazirPages`)
+- **F-A-17** · düşük · arayüz — Pano karşılaması medrese nazırına ve başnazıma da "{ad} Hoca" diyor; ürün sözü meselesi, erişilebilirlik kusuru değil. (`nazar.access.medreseNazirRefused`, `nazar.pano.decideApplications`; `apps/nazar/test/pano.spec.tsx:707-720`)
+- **F-L-7** · düşük · arayüz — Başnazımın rolü iki türlü anlatılıyor; koltuğu yokken Hesap ve Bildirimler'de çerçevede kapsam, menü, zil ve bağlantı yok, tek çıkış adres çubuğu. (`nazar.access.landingScope`, `nazar.access.noAccess`; `apps/nazar/features/shell/admin-scope.ts:73`)
+- **LSCOPE-1** · düşük · arayüz — Adresle açılan kapsam seçiciye ekleniyor ve "Yalnız görev aldığınız medrese ve dersler listelenir." notunun altında işaretli görünüyor; not o kapsam için yanlış. (`nazar.access.landingScope`; `apps/nazar/features/shell/components/portal-layout.tsx:98`)
+- **NOACC-1** · düşük · arayüz — Koltuğu olmayan başnazımın kullanıcı satırı "Talebe" yazıyor; başnazım rolü listelenmediği için çerçeve talebeye düşüyor. (`nazar.access.noAccess`; `apps/nazar/features/shell/components/portal-frame.tsx:53`)
+- **REFUSED-2** · düşük · arayüz — Medrese nazırları sayfasındaki "Siz izin verene kadar hiçbir işlem yapamaz" uyarısı izin verene seslenirken, "İzin ver" düğmesi olmayan nazır da bunu okuyor. (`nazar.access.medreseNazirRefused`; `apps/nazar/features/nazirs/nazirs.ts:199`)
+- **REFUSED-3** · düşük · arayüz — Reddedilen sayfalarda boşa giden ya da dışarı çıkan yollar kalıyor: ekmek kırıntısındaki "Dersler" yine reddeden sayfaya, "Medrese sayfasını gör" Tedris'e gidiyor. (`nazar.access.medreseNazirRefused`, `nazar.settings.edit`; `apps/nazar/features/courses/components/open-course-page.tsx:38`)
+
+### nazar/account
+
+- **F-E-12** · orta · arayüz — Saat dilimi listelerinde bekleme durumu yok; kayıt sürerken ikinci seçim birincisiyle yarışıyor, "Diğer…" seçilince çıkan ikinci liste duyurulmuyor ve odak oraya taşınmıyor. (`nazar.account.settings`; `apps/nazar/features/account/components/time-zone-form.tsx:44`)
+- **NAZSET-1** · orta · arayüz — Saat dilimi ikinci listeden kaydedilirken kayıt başarısız olursa ikinci liste sayfadan kalkıyor, odak sayfaya düşüyor ve kişi açtığı listeyi kaybediyor; yalnız bildirim bir şey söylüyor. (`nazar.account.settings`; `apps/nazar/features/account/components/time-zone-form.tsx:72`)
+- **F-E-3** · düşük · arayüz — Dil alanı kaldırılmış ama iki mesajı katalogda duruyor ve "Dil" satırını bekleyen eski test maddeleri artık geçersiz; sonraki kişiyi yanıltıyor. (`nazar.account.settings`; `libs/i18n/src/locales/tr/nazar.json:198-199`)
+- **F-E-4** · düşük · arayüz — Koltuğu olmayan başnazımın hesap kartında rol satırı "Talebe" yazıyor, çerçeve ise "Medaris başnazımı" diyor; aynı kişi için iki ayrı cevap var. (`nazar.account.settings`, `nazar.access.landingScope`; `apps/nazar/features/account/components/account-page.tsx:109`)
+- **F-E-11** · düşük · arayüz — "Etkin izinleriniz" altındaki iskelet yüklenirken sessiz; yalnız gizli çubuklar var, ekran okuyucuya "Yükleniyor" denmiyor. (`nazar.account.settings`; `apps/nazar/features/account/components/account-page.tsx:81-89`)
+- **F-E-13** · düşük · arayüz — Koltuğu olmayan başnazımın tablosu kitin sabit "Bu listede henüz bir şey yok." cümlesini gösteriyor; nazar kendi boş durum mesajını vermiyor. (`nazar.account.settings`; `libs/ui/src/mds/table.tsx:54`)
+- **F-E-14** · düşük · kütüphane — Bildirim kutusunun kapat düğmesi "Kapat", bölgesi "Bildirimler" diye kitin sabit sözleriyle adlandırılıyor; bölge adı sayfa ve zille aynı olduğu için ekran okuyucu iki şeye tek ad duyuyor. (`nazar.account.settings`, `nazar.notifications.inbox`; `libs/ui/src/mds/toast.tsx:97`)
+- **F-E-16** · düşük · arayüz — Yalnız izinler okunamadığında uyarı "Görevleriniz yüklenemedi" diyor, oysa görev tablosu yüklenmiş; başlık gerçekte olandan fazlasının yüklenemediğini söylüyor. (`nazar.account.settings`; `apps/nazar/features/account/components/account-page.tsx:62-65`)
+- **F-E-19** · düşük · arayüz — Hesap sayfasında her izin grubu ayrı bir bölge olarak çiziliyor; çok rol ve ders olunca dört kartın bölgelerinin yanında çok sayıda bölge birikiyor ve ekran okuyucu gezintisi uzuyor. (`nazar.account.settings`; `apps/nazar/features/account/components/permissions-list.tsx:47-51`)
+- **NAZSET-2** · düşük · arayüz — İzin almamış medrese nazırı "Etkin izinleriniz" altında izninin olmadığını okuyor ama kimden isteyeceği yazmıyor, oysa Pano'nun reddi başmüderrisi gösteriyor. (`nazar.account.settings`)
+
+### nazar/appeals
+
+- **F-B-6** · orta · arayüz — Gerekçe boşken gönder düğmesi kapalı olduğundan "Bir gerekçe yazın." hatası yalnız boş alandan çıkılınca sessizce görünüyor; hata duyurulmuyor, odak taşınmıyor, ekran okuyucu kullanıcısı duymuyor. (`nazar.appeals.open`, `nazar.bans.ban` +1; `apps/nazar/features/appeals/components/appeal-dialog.tsx:92`)
+- **F-B-appeals-1** · orta · arayüz — İtiraz gönderilirken metin alanı kapanıp odak kayboluyor; "Vazgeç", kapat simgesi ve Esc açık görünüp hiçbir şey yapmıyor, ret gelirse odağı geri veren yok. (`nazar.appeals.open`; `apps/nazar/features/appeals/components/appeal-dialog.tsx:113`)
+- **F-B-appeals-2** · orta · arayüz — İtiraz gönderilince tablo sessizce yeniden okunuyor, rozet "Yok"tan "Bekliyor"a dönüyor ve düğme kayboluyor; yalnız 6 saniyelik bildirim var, ekran okuyucu kullanıcısı sonucu kaçırıyor. (`nazar.appeals.open`; `apps/nazar/features/appeals/components/appeals-table.tsx:90`)
+- **F-B-appeals-6** · orta · kütüphane — Açık bir pencerenin üstünde çıkan "İtiraz gönderilemedi" hata bildiriminin ekran okuyucuya ulaşıp ulaşmadığı doğrulanmadı; ulaşmazsa pencerede kalan ret hiçbir şey söylemez. (`nazar.appeals.open`)
+- **F-B-14** · düşük · arayüz — İtirazlar sayfası yapılmış ama kabuk testi hâlâ "Bu sayfa henüz hazır değil." yer tutucusunu bekliyor; o madde geçemez ve sonraki kişiyi yanıltır. (`nazar.appeals.open`; `apps/nazar/e2e/shell.e2e.ts:192-210`)
+- **F-B-appeals-3** · düşük · arayüz — İtiraz penceresinin adı yalnız "İtiraz aç"; hangi dersin itirazı olduğu ne adda ne açıklamada geçiyor, ekran okuyucu kullanıcısı hangi dersi itiraz ettiğini duymuyor. (`nazar.appeals.open`; `libs/ui/src/mds/dialog.tsx:82-86`)
+- **F-B-appeals-4** · düşük · arayüz — Gerekçe 1000 karakterle sınırlı ama sayaç ya da açıklama yok; yazı bir yerde sessizce duruyor ve kişi nedenini öğrenmiyor. (`nazar.appeals.open`; `apps/nazar/features/appeals/components/appeal-dialog.tsx:110`)
+- **one-appeal-per-request** · düşük · karar — Gönderilen itiraz geri çekilemiyor ve tekrar gönderilemiyor ama pencere bunu söylemiyor; bunun söylenip söylenmeyeceği bir karar bekliyor. (`nazar.appeals.open`; `apps/nazar/features/appeals/appeals.ts:41`)
+
+### nazar/archive
+
+- **F-A-2** · orta · arayüz — Gizle, geri al ve karar işlemlerinden sonra basılan düğme yok oluyor ve odağı taşıyan kod yok; klavye ve ekran okuyucu kullanıcısı sayfa başına düşüyor, yalnız 6 saniyelik bildirim kalıyor. (`nazar.archive.hideMedrese`, `nazar.archive.hideAndRestoreCourse` +1; `apps/nazar/features/archive/components/hide-madrasah.tsx:46-69`)
+- **HIDE-1** · orta · arayüz — Son sayfadaki tek satır geri alınınca sayfa boş kalıyor; tablo "Bu medresede gizlenmiş bir öğe yok." diyor (oysa on öğe gizli) ve sayfalama "11–10 / 10" yazıyor. (`nazar.archive.hideAndRestoreCourse`; `apps/nazar/features/archive/components/archive-list.tsx:72`)
+- **HIDEMED-1** · orta · arayüz — Bandın düğmesi "Medreseyi geri getir" yazıyor ama adı "Geri getir: {ad}"; görünen sözü sesle söyleyen kişi düğmeye ulaşamıyor. (`nazar.archive.hideMedrese`; `apps/nazar/features/archive/components/restore-madrasah.tsx:77-83`)
+- **row-restore-offered-while-parent-hidden** · orta · karar — Gizli medresenin derslerinde "Geri al" görünüyor ama medrese geri gelene kadar her basış reddediliyor; neden yalnız basıştan sonraki hata bildiriminde söyleniyor, karar bekliyor. (`nazar.archive.hideMedrese`; `apps/nazar/features/archive/components/archive-list.tsx:79`)
+- **F-A-3** · düşük · arayüz — Gizli medrese bandı var olmayan bir kimliğe bağlı olduğundan bölümün adı yok ve bandın başlığı başlık değil; ekran okuyucu bölgeyi adsız duyuyor. (`nazar.archive.hideAndRestoreCourse`, `nazar.archive.hideMedrese`; `apps/nazar/features/archive/components/restore-madrasah.tsx:68`)
+- **HIDE-2** · düşük · arayüz — "Ders kayıtları" sekmesi hiçbir şey listeleyemez, sayısı hep 0; arşivde ders kaydı saklanmadığı için sekme ve cümlesi var olmayan bir özellik için çiziliyor. (`nazar.archive.hideAndRestoreCourse`; `apps/tedrisat/src/archive/madrasah-archive.controller.ts:55`)
+- **HIDEMED-2** · düşük · arayüz — Medrese başkası tarafından zaten gizlenmişse bildirim "Medrese gizlendi" başlığını taşıyor; "Gizle"ye basan kişi onu kendisi gizlemiş sanıyor. (`nazar.archive.hideMedrese`; `apps/nazar/features/archive/components/hide-madrasah.tsx:53-59`)
+- **HIDEMED-3** · düşük · arayüz — Medreseyi gizleme çağrısı sürerken "Vazgeç", kapat simgesi ve Esc hiçbir şey yapmıyor ama devre dışı ya da meşgul işaretli değil; yalnız "Gizle" meşgul görünüyor. (`nazar.archive.hideMedrese`; `apps/nazar/features/archive/components/hide-madrasah.tsx:106-108`)
+
+### nazar/bans
+
+- **ban-staff-check-gaps** = BANDEC-3, NDB-1 · yüksek · API · güvenlik — Yasağı genişletme ve uzatma, kişinin dersi ya da medreseyi yürütüp yürütmediğine bakmıyor; hoca, müderris ya da nazıra yasak genişletilebiliyor ve yönetenlerin yasaklanamaması kuralı bozuluyor. (`nazar.bans.courseBans`, `nazar.bans.decide` +3; `apps/tedrisat/src/ban/ban.service.ts:515-553`)
+- **BANDEC-4** · yüksek · API — "Kalıcı yasak talebi aç" yalnız bir satır ve denetim kaydı yazıyor; bildirim, listeleyen ya da karar veren yol yok, oysa pencere "Talep Medaris yönetimine gider" diyor ve talep kimseye ulaşmıyor. (`nazar.bans.decide`, `nazar.bans.courseBans`; `apps/nazar/features/bans/components/reason-dialog.tsx:102`)
+- **F-D2c-3** · yüksek · API · güvenlik — Yasaklamalar sayfası kendi kapısı olmadan ders izniyle açılmayan listeleri okuyor; yasak izni verilmiş her ders nazırı reddediliyor ve verilen izin hiçbir işe yaramıyor. (`nazar.bans.courseBans`, `nazar.access.dersNazirPages`; `apps/nazar/features/bans/components/course-bans-page.tsx:53-60`)
+- **BAN-1** · orta · API — Medrese genelindeki yasak yalnız talebeye haber veriyor; ders ve köşk yasaklarında haber alan köşk nazımlarına ve Medaris nazımlarına bu yolda bildirim gitmiyor. (`nazar.bans.ban`; `apps/tedrisat/src/ban/ban.service.ts:449-507`)
+- **BAN-4** = BANST-2 · orta · API — Zaten yasaklı kişiye yasak konunca pencere "Yasak kaydedildi" diyor; oysa mevcut yasak kendi gerekçesini koruyor, yeni yazılan gerekçe kaydedilmiyor ve yasaklayan bunu bilmiyor. (`nazar.bans.ban`, `nizam.moderation.banStudent`; `apps/tedrisat/src/ban/ban.service.ts:489-505`)
+- **BAN-5** · orta · arayüz — E-posta gibi görünmeyen bir adres ne aranıyor ne de uyarılıyor; Enter ve alandan çıkmak hiçbir şey yapmıyor, kimse bir şey söylemiyor ve aynı adres değişene kadar yeniden aranmıyor. (`nazar.bans.ban`; `apps/nazar/features/nazirs/nazirs.ts:245`)
+- **COURSEBANS-1** · orta · API · güvenlik — Yalnız yasak izni olan nazır yasak listelerini okuyabiliyor ama dersin talebe listesi ona reddediliyor; izni olduğu hâlde yasak koyacağı talebeyi göremiyor. (`nazar.bans.courseBans`; `libs/common/src/authz/effective-permissions.ts:188-192`)
+- **COURSEBANS-4** · orta · arayüz — Sayfa yalnız dersin kendi yasaklarını listeliyor; tüm medrese ya da köşkten yasaklı talebe burada satırsız ve buradan kaldırılamaz, oysa talebe listesinde yasaklı işaretli görünüyor. (`nazar.bans.courseBans`; `apps/tedrisat/src/ban/ban.repository.ts:664-703`)
+- **F-B-4** · orta · arayüz — Arama, süzgeç, sayfalama ve yazma işlemleri satırları ve sekme sayılarını değiştirirken hiçbir duyuru yok; ekran okuyucu kullanıcısı eski sözlerle kalıyor, sekme sayıları da süzgeci yansıtmıyor. (`nazar.bans.review`, `nazar.bans.courseBans` +2; `apps/nazar/features/bans/components/bans-table.tsx:233`)
+- **F-B-9** · orta · arayüz — Satırdaki işlemden sonra pencere kapanıp liste yeniden okununca basılan düğme yok oluyor ve odak sayfaya düşüyor; klavye ve ekran okuyucu kullanıcısı sayfa başına dönüyor. (`nazar.bans.decide`, `nazar.appeals.open` +4; `apps/nazar/features/bans/components/reason-dialog.tsx:78-79`)
+- **F-D2c-11** · orta · arayüz — Yasak penceresinde talebe seçenekleri yalnız adla etiketli; aynı adlı iki talebe ayırt edilemiyor ve yanlış kişiye yalnız üst kademenin geri alabileceği bir yasak konabilir. (`nazar.bans.courseBans`; `apps/nazar/features/bans/bans.ts:311-314`)
+- **BANDEC-1** · düşük · arayüz — Çağrı sürerken "Vazgeç", kapat simgesi ve Esc hiçbir şey yapmıyor ama açık görünüyor; alanlar devre dışı kaldığı için odak da kayboluyor, pencerenin kapanamadığı söylenmiyor. (`nazar.bans.courseBans`, `nazar.bans.decide`; `apps/nazar/features/bans/components/course-ban-dialog.tsx:89-91`)
+- **BANDEC-2** · düşük · arayüz — Her yasak kararında yetki reddi "Bu yasağı koymak için yetkiniz yok." diyor; kalıcı yasak talebi isteyen ve yetkisini yitirmiş başmüderris yasak koymaya çalıştığını sanıyor. (`nazar.bans.decide`, `nazar.bans.courseBans`; `apps/nazar/features/bans/bans.ts:356`)
+- **BANS-1** · düşük · arayüz — "Yasağı, koyan kademe ya da üstü kaldırır" notu okuyan kim olursa olsun köşk nazımının ve Medaris'in yasağını kaldıramayacağını söylüyor; her yasağı kaldırabilen başnazıma da böyle diyor. (`nazar.bans.review`)
+- **BANS-2** · düşük · API — Medresenin bütün yasakları, açık ya da kalkmış, sınırsız ve sayfasız geliyor ve ad süzgeci sayfada işliyor; binlerce yasaklı medresede her sekme ve kapsam değişikliği hepsini yeniden çekiyor. (`nazar.bans.review`; `apps/tedrisat/src/ban/ban.repository.ts:682-703`)
+- **BANS-3** · düşük · arayüz — Adresteki kapsam listede yoksa süzgeç "Bütün kapsamlar" gösteriyor ama liste o ders için boş geliyor; çıkış yalnız "Süzgeçleri temizle" ve kişi neden boş olduğunu anlamıyor. (`nazar.bans.review`; `apps/nazar/features/bans/components/bans-table.tsx:91-95`)
+- **BANS-4** · düşük · arayüz — Yasaklar okunamayınca sayfada iki h1 oluyor, "Yasaklamalar" ve "Yasaklar okunamadı"; başlık düzeni ekran okuyucu kullanıcısını şaşırtıyor. (`nazar.bans.review`; `apps/nazar/features/shell/components/load-failed.tsx:28-30`)
+- **COURSEBANS-2** · düşük · arayüz — Yasakla listesi derse kayıtlı hoca ve ders nazırını da sunuyor, gönderince API reddediyor ve hata bildirimde çıkıyor; seçenek sunulurken elenmediği için kişi boşuna deniyor. (`nazar.bans.courseBans`; `apps/nazar/features/bans/bans.ts:310`)
+- **COURSEBANS-3** · düşük · arayüz — Yasakla penceresinde iki zorunlu alanın yıldızı ekran okuyucudan gizli ve anlamı yazılı değil; gerekçe alanında da gerekçeyi kimin okuyup talebenin görmediğini söyleyen yardım satırı yok. (`nazar.bans.courseBans`; `apps/nazar/features/bans/components/reason-dialog.tsx:159`)
+- **F-D2c-1** · düşük · arayüz — Liste okunamayınca "Yasaklar okunamadı" durumu sayfanın kendi h1'inin altında ikinci bir h1 çiziyor; başlık düzeni ekran okuyucu kullanıcısını şaşırtıyor. (`nazar.bans.courseBans`; `apps/nazar/features/shell/components/page-problem.tsx:30-37`)
+- **F-D2c-10** · düşük · arayüz — "Yasakla" düğmesinin neden kapalı olduğunu söyleyen cümle düğmeye bağlı değil ve düğme kapalı olduğu için klavye kullanıcısı ona hiç varmıyor; neden ekran okuyucuya ulaşmıyor. (`nazar.bans.courseBans`; `apps/nazar/features/bans/components/course-ban-dialog.tsx:164-175`)
+- **F-D2c-15** · düşük · arayüz — Yasaklama ve düzenleme pencereleri ilk odağı işe değil üstteki "Kapat" düğmesine veriyor; klavye kullanıcısı işine başlamak için önce onu geçiyor. Tarayıcıda doğrulanmadı. (`nazar.bans.courseBans`, `nazar.courseNazirs.permissions`; `apps/nazar/features/bans/components/course-ban-dialog.tsx:87-110`)
+- **sorted-by-date** · düşük · arayüz — Etkin tablo "Tarih" sütununda azalan sıralı işaretli ama Kaldırılan tablo işaretsiz ve kaldırılma anına göre sıralanırken sütun yasağın konduğu günü gösteriyor; sıra ile sütun uyuşmuyor. (`nazar.bans.review`; `apps/nazar/features/bans/components/bans-table.tsx:302`)
+
+### nazar/course
+
+- **OVERVIEW-1** · orta · arayüz — Ders özetindeki "Sıradaki celse" ve "Katılım yolu eksik celse" kutuları herkese bağlantı çiziliyor ama Celseler sayfası izin istiyor; izni olmayan ders nazırı bağlantıya basınca reddediliyor. (`nazar.course.overview`; `apps/nazar/features/sessions/components/sessions-page.tsx:54`)
+- **OVERVIEW-3** · orta · arayüz — Kutu yalnız sıfırdan büyük sayı için çiziliyor; okunamayan ya da hata veren sayı hiçbir şey çizmiyor ve tüm kutular eksikse "Bekleyen işiniz yok." deniyor, okuma hatası boş liste gibi söyleniyor. (`nazar.course.overview`; `apps/nazar/features/course-overview/components/course-overview-page.tsx:71-78`)
+- **F-C-course-a-18** · düşük · kütüphane — Ders özeti kutularının başlığı h1'in hemen altında h3 ve değer bağlantının dışında; bağlantı listesi "Bekleyen başvuru" ve "Sıradaki celse"yi sayı ya da saat olmadan okuyor. (`nazar.course.overview`; `card.tsx:8`)
+- **OVERVIEW-2** · düşük · arayüz — Sekme başlığı her ders için "Genel bakış · Medaris Nazar"; başlıkta ders adı yok, birkaç dersi sekmelerde açan müderris sekmeleri ve geçmiş kayıtlarını ayırt edemiyor. (`nazar.course.overview`; `page.tsx:5-8`)
+
+### nazar/courseNazirs
+
+- **CNP-3** · orta · kütüphane — Açık pencerenin üstünde çıkan reddedilmiş kayıt hata bildiriminin ekran okuyucuya ulaşıp ulaşmadığı doğrulanmadı; ulaşmazsa pencerede kalan ret hiçbir şey söylemez. (`nazar.courseNazirs.permissions`, `nizam.grants.appoint`; `apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:201-209`)
+- **F-D2c-4** · orta · kütüphane — Arama, gerekçe, kod ve bitiş zamanı hataları rolü ve canlı bölgesi olmayan düz metin; hata "Kaydet" sonrası çıkınca ekran okuyucu onu duymuyor, kişi alana dönene kadar habersiz kalıyor. (`nazar.courseNazirs.appoint`, `nazar.bans.courseBans` +2; `libs/ui/src/mds/field.tsx:51-53`)
+- **F-D2c-5** · orta · arayüz — E-posta alanı arama sürerken kapanıp odak sayfaya düşüyor; kişi bulununca alan kalkıyor, odak "Kaydet" ya da başlığa gitmiyor ve sonuç duyurulmuyor, yalnız "Aranıyor…" okunuyor. (`nazar.courseNazirs.appoint`; `apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:341`)
+- **F-D2c-8** · orta · arayüz — Görevden alma ya da yasağı kaldırma sonrası satır ve düğmesi yok oluyor, odağın nereye gideceğini seçen kod yok ve odak sayfaya düşüyor; klavye ve ekran okuyucu kullanıcısı başa dönüyor. (`nazar.courseNazirs.dismiss`, `nazar.bans.courseBans`; `apps/nazar/features/course-nazirs/components/end-course-nazir.tsx:62-63`)
+- **CAPPOINT-1** = APPOINT-1, CNDIS-3, DISMISS-2, NZDIS-3 · düşük · arayüz — Kayıt sürerken "Vazgeç", kapat simgesi ve Esc hiçbir şey yapmıyor ama devre dışı ya da meşgul işaretli değil; yalnız bitiş alanı kapanıyor, canlı görünen denetim yanıt vermiyor. (`nazar.courseNazirs.appoint`, `nazar.courseNazirs.dismiss` +4; `apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:229-231`)
+- **CAPPOINT-4** · düşük · arayüz — E-posta olamayacak bir yazı yalnız Enter'da söyleniyor; Tab ile çıkınca ve boş alanda Enter'da hiçbir şey denmiyor, "Kaydet" kapalı kalıyor ve kişi nedenini bilmiyor. (`nazar.courseNazirs.appoint`; `apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:110`)
+- **CNDIS-1** · düşük · arayüz — Görevden alma onayı olağan pencere olarak açılıyor, onay bekleyen pencere için kitin öngördüğü uyarı penceresi değil; ekran okuyucu bunun bir onay olduğunu duymuyor. (`nazar.courseNazirs.dismiss`, `nizam.grants.appoint`; `libs/ui/src/mds/dialog.tsx:49-50`)
+- **CNDIS-2** · düşük · arayüz — Başkalarını atamış kişinin düğmesi kapalı, klavye kullanıcısı "Önce bu kişinin atadığı {n} ders nazırını görevden alın." cümlesine varamıyor; cümle kaç kişi olduğunu söylüyor, kimi söylemiyor. (`nazar.courseNazirs.dismiss`; `apps/nazar/features/course-nazirs/components/course-nazirs-table.tsx:131`)
+- **CNP-1** · düşük · arayüz — Pencere açıkken ders nazırının görevi başka yerde bitirilirse pencere kapanıyor, satır ve açıcısı yok oluyor ve odak taşınmıyor; yalnız kapatılana kadar duran bir hata bildirimi var. (`nazar.courseNazirs.permissions`; `apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:210-213`)
+- **CNP-2** = EPERM-4 · düşük · arayüz — "Bitiş" hücresi yalnız günü yazıyor, oysa pencere gün ve saati düzenliyor ve erişim o saatte bitiyor; bugün 14:00'te biten görev gün boyu sürecek gibi okunuyor. (`nazar.courseNazirs.permissions`, `nizam.grants.appoint` +1; `apps/nazar/lib/dates.ts:6`)
+- **F-D2c-6** · düşük · arayüz — Yardım satırı "Enter'a basın" diyor ama alandan çıkmak da aramayı çalıştırıyor ve her arama denetime yazılıyor; Tab ile geçen ya da "Vazgeç"e basan kişi istemediği bir denetim satırı bırakıyor. (`nazar.courseNazirs.appoint`; `apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:350`)
+- **F-D2c-12** · düşük · arayüz — "E-posta adresi" ve "Talebe" gibi zorunlu alanların yıldızı ekran okuyucudan gizli ve alan zorunlu diye işaretlenmemiş; ekran okuyucu kullanıcısına alanın zorunlu olduğu söylenmiyor. (`nazar.courseNazirs.appoint`, `nazar.bans.courseBans`; `apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:325-352`)
+- **F-D2c-18** · düşük · arayüz — Aynı izin ve bitişle "Kaydet" hiçbir şey yazmadan pencereyi kapatıyor ve bir şey demiyor; kişi hiçbir şeyin kaydedilmediğini anlamıyor. (`nazar.courseNazirs.permissions`; `apps/nazar/features/course-nazirs/components/course-nazir-dialog.tsx:168-171`)
+
+### nazar/courseSettings
+
+- **CSA-1** · orta · arayüz — Örnek celseyi yazıp ders alanlarında reddedilen kayıt "Ayarlar kaydedilemedi" diyor ve ayarın değişmediğini söylüyor, oysa örnek celse değişmiş; bildirim olanın tersini söylüyor. (`nazar.courseSettings.access`; `apps/nazar/features/course-settings/components/course-settings-form.tsx:83-93`)
+- **F-A-10** · orta · arayüz — Sunucu eylemi çağrısı ağ yüzünden düşerse bildirim çıkmıyor, düğme meşgul kalıyor ve hata sayfanın hata sınırına gidiyor; kişi işlemin olup olmadığını bilemiyor. (`nazar.courseSettings.publish`, `nazar.archive.hideAndRestoreCourse` +5; `apps/nazar/features/course-settings/components/course-publish-card.tsx:44`)
+- **F-D2c-7** · orta · arayüz — Kaydet sonrası kayıtlı değerler değişince form ya da kart baştan kuruluyor, basılan "Kaydet" yok oluyor ve odak sayfaya düşüyor; tek işaret 6 saniyelik bildirim. (`nazar.courseSettings.hocaTitles`, `nazar.courseSettings.access`; `apps/nazar/features/course-settings/components/course-settings-page.tsx:114`)
+- **F-D2c-9** · orta · arayüz — Kod alanı çağrı sürerken devre dışı kalıyor; Enter ile ekleyince odak sayfaya düşüyor ve ret gelince cümle odağı yitirmiş alanın altında kalıyor, kimse söylemiyor. (`nazar.courseSettings.partnerCodes`; `apps/nazar/features/course-settings/components/partner-codes-card.tsx:197`)
+- **HOCA-1** · orta · arayüz — Reddedilen yazım yeniden okunduktan sonra kart eski taslağı koruyor; seçimler reddedilen unvanlarda kalıyor ve "Derste ... olarak görünür." satırı dersin sahip olmadığı unvanı yazıyor. (`nazar.courseSettings.hocaTitles`; `apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:81-90`)
+- **HOCA-2** · orta · arayüz — Unvanlar her değişen hoca için ayrı ve işlemsiz yazılıyor; ikinci hocada ret gelirse birincisi kayıtlı kalıyor ve bildirim yalnız ikincinin nedenini söylüyor, bir unvanın kaydedildiğini söylemiyor. (`nazar.courseSettings.hocaTitles`; `apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:78-91`)
+- **HOCA-3** · orta · arayüz — "Kaydet" ve "Vazgeç" unvan değişmeyene kadar kapalı ve nedeni yazılı değil; kapalı düğme Tab'ı atlıyor, basılan düğme odağın altında kapanıp odağı düşürüyor. (`nazar.courseSettings.hocaTitles`; `apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:159`)
+- **PCODES-1** · orta · arayüz — Ortak uygulama kodları kartı köşk nazımı ve başnazım için ama nazar kapsamlarını yalnız medrese ve ders görevlerinden kuruyor; koltuğu olmayan köşk nazımı kartı bulamıyor. (`nazar.courseSettings.partnerCodes`; `apps/nazar/features/course-settings/partner-codes.ts:26-31`)
+- **PCODES-3** · orta · arayüz — Birden çok ortak uygulama olan köşkte her blokta aynı "Kod ekle", "Ekle" ve "Kaldır {kod}" adları tekrarlanıyor; blokları yalnız üstteki başlık ayırıyor, yanlış uygulamanın kodu kaldırılabilir. (`nazar.courseSettings.partnerCodes`; `apps/nazar/features/course-settings/components/partner-codes-card.tsx:59-61`)
+- **CSA-2** · düşük · arayüz — Kayıtlı değerleri değiştirmeyen bir ret sayfayı yeniden okutmuyor; kutu işaretsiz ve açık kalıyor, kilit ya da yetki değişikliği görünmüyor ve kişi aynı reddi yeniden alabiliyor. (`nazar.courseSettings.access`; `apps/nazar/features/course-settings/components/course-settings-form.tsx:92`)
+- **CSA-3** · düşük · arayüz — "Celseler yüz yüze yapılır" kutusunu uçtan uca testlerin hiçbiri denemiyor; kutu yalnız birim testle bağlı. (`nazar.courseSettings.access`; `apps/nazar/test/course-settings-form.spec.tsx:192-230`)
+- **F-D2c-13** · düşük · arayüz — Yükleniyor durumundaki düğmeler kitin sabit "Yükleniyor" sözünü söylüyor, katalogdan gelmiyor; nazar yalnız Türkçeyken zararsız, başka dil açılınca yanlış olur. (`nazar.courseSettings.publish`, `nazar.bans.courseBans` +2; `apps/nazar/features/course-settings/components/course-publish-card.tsx:102-106`)
+- **F-D2c-14** · düşük · arayüz — Yeni "Hocalar ve unvanları" kartı kendi "Kaydet" ve "Vazgeç" düğmelerini getirdiği için uçtan uca testlerin "Kaydet" aramaları iki düğme buluyor; eski testler kırık ve sonraki kişiyi yanıltıyor. (`nazar.courseSettings.access`, `nazar.access.dersNazirPages` +2; `apps/nazar/features/course-settings/components/hoca-unvan-card.tsx:155-172`)
+- **F-D2c-17** · düşük · arayüz — Saat dilimi listesi yaklaşık 418 dilimi yalnız şehir adıyla ve kimlik sırasıyla veriyor; bölge ve arama yok, kişi doğru dilimi bulmakta zorlanıyor. (`nazar.courseSettings.access`; `apps/nazar/features/course-settings/components/course-settings-form.tsx:226-238`)
+- **PCODES-2** · düşük · arayüz — Dersin zaten sahip olduğu bir kodu eklemek API'de değişiklik yapmıyor ama sayfa "Kod eklendi" diyor; bildirim olmayan bir değişikliği bildiriyor. (`nazar.courseSettings.partnerCodes`; `apps/nazar/features/course-settings/components/partner-codes-card.tsx:102-111`)
+- **PUB-1** · düşük · arayüz — Ders sayfası bağlantısı "/tr/" önekli kuruluyor, oysa Tedris adreste dil taşımıyor; bağlantı yönlendirmeyle yine de açılıyor. (`nazar.courseSettings.publish`; `apps/nazar/features/course-settings/course-settings.ts:151-160`)
+
+### nazar/courses
+
+- **COURSES-1** · orta · arayüz — Süzgeç seçilince sayaç düz metin, tablonun meşgul işareti okunmuyor ve canlı bölge yok; "Durum: Taslak" seçen ekran okuyucu kullanıcısı yeni listeden bir şey duymuyor. (`nazar.courses.browse`; `apps/nazar/features/courses/components/courses-table.tsx:191`)
+- **F-A-4** · orta · arayüz — Hoca aramasının sonuçları (bulunamadı, arama yapılamıyor, zaten listede) rolü ve canlı bölgesi olmayan düz hata metni; Enter'a basan ekran okuyucu kullanıcısı başarısızlığı hiç duymuyor. (`nazar.courses.changeHocas`, `nazar.courses.open`; `apps/nazar/features/courses/components/muderris-picker.tsx:111-127`)
+- **F-A-5** · orta · arayüz — "En az bir hoca seçin." ve "Dersin imamını seçin." düz paragraf, uyarı rolü yok ve hiçbir denetime bağlı değil; reddedilen basış odağı arama alanına veriyor, neden okunmuyor. (`nazar.courses.open`, `nazar.courses.changeHocas`; `apps/nazar/features/courses/components/muderris-picker.tsx:264`)
+- **F-A-8** · orta · karar — Ders açma, gizleme veya hoca değiştirme yetkisinin yalnız bir kısmına sahip nazır için düğmeler hep açık görünüyor; reddedilince yanlış 'okunamadı' ya da genel bir bildirim çıkıyor. (`nazar.courses.browse`, `nazar.access.medreseNazirRefused` +3; `apps/nazar/features/courses/components/courses-page.tsx:95-96`)
+- **HOCAS-1** · orta · arayüz — E-posta alanından çıkınca da arama yapılıyor ve her arama denetim kaydına yazılıyor; 'Vazgeç'e basmak ya da sekmeyle geçmek kişinin istemediği kayıtlı bir arama yaratıyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/muderris-picker.tsx:251`)
+- **HOCAS-2** · orta · arayüz — Kişi 'Çıkar' ile listeden alınınca gizli bildirim hâlâ 'listeye eklendi' diyor ve çıkarma hiç söylenmiyor; ekran okuyucu kullanan kişiye listenin tersi anlatılıyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/muderris-picker.tsx:121`)
+- **HOCAS-3** · orta · arayüz — Arama sürerken alan devre dışı kalıp odak düşüyor; Enter'a basan kişi diyalogun başından yeniden başlıyor, aramanın bittiğini de yalnız gizli bildirim söylüyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/muderris-picker.tsx:244`)
+- **OPEN-1** · orta · arayüz — 'Vazgeç', 'Dersler' yolu ve 'Medrese ayarları' bağlantısı soru sormadan sayfada yazılanların hepsini siliyor; kilitli kutu için ayarlara giden kişi her şeyi baştan yazıyor. (`nazar.courses.open`; `apps/nazar/features/courses/components/open-course-form.tsx:264`)
+- **OPEN-2** · orta · arayüz — Nazır kendini hoca olarak eklemeye çalışıp reddedilince genel 'Bir şeyler ters gitti' deniyor; reddin sebebi biliniyor ama söylenmiyor, kişi boşuna yeniden deniyor. (`nazar.courses.open`; `apps/nazar/features/courses/courses.ts:374-395`)
+- **OPEN-3** · orta · arayüz — 'Çıkar' hocayı soru sormadan listeden alıyor, odağı taşımıyor ve bir şey söylemiyor; gizli bildirim kişi gittikten sonra da 'listeye eklendi' demeyi sürdürüyor. (`nazar.courses.open`; `apps/nazar/features/courses/components/muderris-picker.tsx:121`)
+- **OPEN-4** · orta · arayüz — Hoca arama alanı arama sırasında devre dışı kalıp odağını yitiriyor; Enter'a basan kişi sonraki adres için alana yeniden sekmeyle dönmek zorunda. (`nazar.courses.open`; `apps/nazar/features/courses/components/muderris-picker.tsx:244-245`)
+- **OPEN-6** · orta · arayüz — Tek köşk kalmışken barındırma hakkı kalkınca form 'Ders açılabilecek köşk yok' ekranıyla değişiyor; yazılan ad ve hocalar kayboluyor, 'başka bir köşk seçin' sözü de yanlış kalıyor. (`nazar.courses.open`; `apps/nazar/features/courses/components/open-course-form.tsx:133`)
+- **COURSES-2** · düşük · arayüz — Adresteki bilinmeyen köşk listeyi süzüyor ama seçim kutusu "Köşk: tümü" gösteriyor; sayfa "Bu süzgece uyan ders yok." diyor ve seçim süzgeç olduğunu söylemiyor. (`nazar.courses.browse`; `apps/nazar/features/courses/courses.ts:47`)
+- **COURSES-3** · düşük · API — Köşk süzgeci yalnız barındırma hakkı olan köşkleri sayıyor ama liste hakkı çekilmiş köşkteki dersleri de içeriyor; o köşke daraltılamıyor ve kartta görünmüyor, bazı dersler listelenmiyor. (`nazar.courses.browse`; `apps/tedrisat/src/madrasah/madrasah.repository.ts:1483-1488`)
+- **F-A-6** · düşük · arayüz — "Bir köşk seçin." hatası seçim grubunun dışında düz paragraf, gruba bağlı değil ve yalnız köşk yanlışsa reddedilen basış odağı hiçbir yere taşımıyor. (`nazar.courses.open`; `apps/nazar/features/courses/components/open-course-form.tsx:166`)
+- **F-A-7** · düşük · arayüz — Köşk ve 'Seçilen hocalar' alanlarındaki yıldız ekran okuyucudan gizli ve 'zorunlu' bilgisi verilmiyor; ekran okuyucu kullanan kişi bu alanların zorunlu olduğunu duymuyor. (`nazar.courses.open`; `apps/nazar/features/courses/components/open-course-form.tsx:147-165`)
+- **F-A-9** · düşük · arayüz — Ders başlığı her satırda ders sayfasına bağlanıyor; derste koltuğu olmayan nazır, açamayacağı bir sayfaya giden bağlantıyı görüyor. (`nazar.courses.browse`, `nazar.archive.hideAndRestoreCourse` +1; `apps/nazar/features/courses/components/courses-page.tsx:92-94`)
+- **F-A-14** = RESTORE-3 · düşük · arayüz — Meşgul düğmeler kitin sabit "Yükleniyor" sözünü söylüyor, katalogdan gelmiyor; bugün yalnız Türkçe olduğu için zararsız, başka dil açılınca yanlış olur. (`nazar.courses.browse`, `nazar.archive.hideAndRestoreCourse` +5; `button.tsx:62`)
+- **HOCAS-4** · düşük · arayüz — 'Bu kişi zaten listede.' dendikten sonra kişi 'Çıkar' ile alınıp aynı adrese yine Enter'a basılınca arama yapılmıyor ve eski ileti kalıyor; yalnız adres değişince yeniden aranıyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/muderris-picker.tsx:97`)
+- **HOCAS-5** · düşük · arayüz — Kaydedilirken 'Vazgeç' ve kapatma simgesi açık görünüyor ama basınca hiçbir şey olmuyor ve hiçbir şey söylenmiyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/change-muderris.tsx:96-98`)
+- **HOCAS-6** · düşük · arayüz — Tek hocası hesapsız olan derste 'Kaydet' kapalı açılıyor ve yardım satırı hesap gerektiğini söylemiyor; kişi neden kaydedemediğini anlamıyor. (`nazar.courses.changeHocas`; `apps/nazar/features/courses/components/change-muderris.tsx:128`)
+
+### nazar/curriculum
+
+- **HWSET-1** · yüksek · API — Ödevi kapatmak ezber ödevinde ekibin notlarını da siliyor ama soru yalnız açıklama ve dosyayı sayıyor; açıklaması olmayan ödevde notlar hiç sorulmadan yok oluyor. (`nazar.curriculum.sessionHomework`; `apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:216-223`)
+- **EDIT-1** · orta · arayüz — Kaydet'ten sonra editör baştan kuruluyor; basılan düğme ve odak yok oluyor, kaydın tek haberi 6 saniyelik bir bildirim. (`nazar.curriculum.edit`; `curriculum-page.tsx:64`)
+- **EDIT-2** · orta · arayüz — Çakışma uyarısı içeriğiyle birlikte eklenen bir durum bölgesi; odak oraya taşınmıyor ve 'Kaydet' kalıcı kapanıyor, ekran okuyucu uyarıyı duymayabilir. (`nazar.curriculum.edit`; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:344-360`)
+- **EDIT-3** · orta · arayüz — Sayfa 'yalnız okunur' diyor ama yalnız celse yönetimi yetkisi olan ders nazırı için 'Ödev' bölümü canlı ve her değişiklik hemen kaydediliyor; not yanlış. (`nazar.curriculum.edit`; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:334-337`)
+- **F-C-course-a-03** = F-W4-3 · orta · arayüz — Her satırda aynı adlı düğmeler var ('Gizle', 'Celse ekle', 'Kaynağı çıkar', 'Yukarı taşı'); ekran okuyucu kullanan kişi düğmenin hangi satırı etkilediğini ayıramıyor. (`nazar.curriculum.edit`, `nazar.curriculum.resources` +2; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:624-639`)
+- **F-C-course-a-13** · orta · arayüz — 'Haftalık celse üret', 'Hafta ve celse gizle' ve 'Vazgeç' bağlantıları kaydedilmemiş değişiklikler varken soru sormadan sayfadan çıkarıyor; yazılanlar kayboluyor. (`nazar.curriculum.edit`, `nazar.curriculum.resources` +2; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:456-472`)
+- **F-C-course-a-14** · orta · arayüz — 'Dosya yükle' açılınca düğmesi kayboluyor ve odak panele geçmiyor; panel kapanınca da odak geri verilmiyor, klavye ve ekran okuyucu kullanan kişi sayfa başına düşüyor. (`nazar.curriculum.resources`, `nazar.curriculum.sessionHomework` +2; `apps/nazar/features/files/components/file-upload.tsx:147-168`)
+- **F-C-course-a-23** · orta · arayüz — 'Geri al' sonrası satır ve düğmesi kayboluyor, odak taşınmıyor; tek haber 6 saniyelik bir bildirim, klavye ve ekran okuyucu kullanan kişi sayfa başına düşüyor. (`nazar.curriculum.hideRestore`; `apps/nazar/features/archive/components/archive-list.tsx:72`)
+- **HIDEREST-3** · orta · karar — Yalnız celse yönetimi yetkisi olan kişi celse gizleyebiliyor ama Arşiv'i açamıyor; gizlediğini göremiyor ve geri getiremiyor. Hangisinin doğru olduğuna karar gerekiyor. (`nazar.curriculum.hideRestore`; `apps/tedrisat/src/archive/archive.controller.ts:150`)
+- **HWSET-2** · orta · karar — Bilgi notu 'bu sayfa yalnız okunur' diyor ama celse yönetimi yetkisi olan kişi için 'Ödev' bölümü düzenlenebilir ve anında kaydediyor; notun nasıl yazılacağına karar gerekiyor. (`nazar.curriculum.sessionHomework`; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:334-337`)
+- **HWSET-4** · orta · API — Yazmalar sürüm taşımıyor; ödevi açmak başkasının sonradan yazdığı açıklamayı siliyor, tür seçimi başkasının değiştirdiğini eski haline döndürüyor, kimseye söylemeden. (`nazar.curriculum.sessionHomework`; `apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:143`)
+- **HWSET-8** · orta · arayüz — Açıklama yalnız kendi düğmesiyle kaydediliyor ama 'Kaydedilmemiş değişiklikler var' şeridi onu saymıyor; başka bir 'Kaydet' sayfayı yenileyince yazılan açıklama uyarısız kayboluyor. (`nazar.curriculum.sessionHomework`; `curriculum.ts:331-334`)
+- **HWSET-9** · orta · arayüz — Ağ kopması gibi bir hata olursa denetimler geri geliyor ama hiçbir bildirim çıkmıyor; kişi yazmanın yapılıp yapılmadığını bilemiyor. (`nazar.curriculum.sessionHomework`; `apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:108-136`)
+- **RESOURCES-1** · orta · arayüz — Dersin kaynak listesinde taşıma düğmesi yok, yalnız celse satırları taşınıyor; sırayı değiştirmenin tek yolu satırı çıkarıp yeniden eklemek, bu da dosyayı kalıcı siliyor. (`nazar.curriculum.resources`, `nizam.courses.curriculum`; `apps/nazar/features/curriculum/components/lesson-resources-editor.tsx:145-158`)
+- **F-C-course-a-02** · düşük · arayüz — 'Kapak rengi' seçimi yetkisi olmayan kişide ve gönderim sürerken de değişebiliyor ama hiçbir şey kaydetmiyor; işlevsiz bir denetim. (`nazar.curriculum.edit`; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:387-402`)
+- **F-C-course-a-05** · düşük · arayüz — Celse başlığı haftanın başlığıyla aynı seviyede (h3), ödev dosyaları başlığı da hemen altında h4; başlık sırası iç içe geçmiyor, ekran okuyucu yapıyı yanlış okuyor. (`nazar.curriculum.edit`, `nazar.curriculum.sessionHomework` +1; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:592`)
+- **F-C-course-a-06** · düşük · arayüz — Hafta gövdesindeki sıralı listenin ilk ve son maddesi alan ve düğme taşıyor; 'Bu haftada henüz celse yok.' satırı da hiç görünemiyor. (`nazar.curriculum.edit`, `nizam.courses.curriculum`; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:532-569`)
+- **F-C-course-a-17** · düşük · arayüz — Gizle sayfasında yetki kapısı yok; derste koltuğu olan herkes 'Gizle' düğmelerini görüyor ve ret sorudan sonra bildirimle geliyor; başlık editörünkiyle aynı, geri bağlantı yok. (`nazar.curriculum.hideRestore`; `curriculum-page.tsx:19-58`)
+- **F-C-course-a-26** · düşük · arayüz — Yazma sürerken Esc, kapatma simgesi ve 'Vazgeç' basınca hiçbir şey yapmıyor ve nedenini söylemiyor; yalnız gönder düğmesi meşgul görünüyor. (`nazar.curriculum.hideRestore`, `nazar.recordings.add` +4; `apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:155-157`)
+- **F-C-course-a-30** · düşük · arayüz — 'Kaydet' dosya yüklenirken, sayfa yenilenirken ya da çakışma varken sebep söylenmeden kapalı kalıyor; kişi neden kaydedemediğini anlamıyor. (`nazar.curriculum.resources`, `nazar.curriculum.edit` +1; `apps/nazar/features/curriculum/components/curriculum-editor.tsx:1021`)
+- **HIDEREST-1** · düşük · arayüz — Ders arada silinmiş ya da gizlenmişse 'hafta veya celse yok' sanılıp genel 'Bir şeyler ters gitti' bildirimi çıkıyor; asıl sebep söylenmiyor. (`nazar.curriculum.hideRestore`; `apps/nazar/features/curriculum-hide/components/curriculum-list.tsx:61`)
+- **HIDEREST-2** · düşük · arayüz — Sayfa girişi ve başarı bildirimleri Arşiv'den geri alınabileceğini söylüyor ama ne sayfada Arşiv'e bağlantı ne bildirimde eylem var. (`nazar.curriculum.hideRestore`)
+- **HIDEREST-4** · düşük · arayüz — Haftayı geri getirmek yalnız onunla aynı anda gizlenen celseleri getiriyor ve bildirim bunu söylemiyor; önce celseyi sonra haftayı gizleyen hoca celseyi hâlâ eksik buluyor. (`nazar.curriculum.hideRestore`; `apps/tedrisat/src/archive/archive.repository.ts:514`)
+- **HWSET-3** · düşük · arayüz — 'Açıklama en çok 4000 karakter olabilir.' hatası alanın kendi sınırı yüzünden hiç görünemiyor; ölü kod, üstelik alan hatayı duyurmazdı da. (`nazar.curriculum.sessionHomework`; `apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:98`)
+- **HWSET-5** · düşük · arayüz — Her yazmada basılan denetim ve tüm blok devre dışı kalıyor, oysa 'yükleniyor' hâli odağı koruyabilirdi; odak düşebilir (tarayıcıda doğrulanmadı). (`nazar.curriculum.sessionHomework`; `apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:97`)
+- **HWSET-6** · düşük · arayüz — 'Açıklamayı kaydet' başka bir yazma sürerken de 'Kaydediliyor…' diyor; tür seçimi ise taslağı değil kayıtlı açıklamayı gönderiyor ve bunu kimse söylemiyor. (`nazar.curriculum.sessionHomework`; `apps/nazar/features/curriculum/components/lesson-assignment-editor.tsx:298`)
+- **HWSET-7** · düşük · arayüz — 'Teslim şekli' iki bağımsız görünümlü açma düğmesi, radyo grubu değil; seçili olana basmak sessizce hiçbir şey yapmıyor. (`nazar.curriculum.sessionHomework`; `libs/ui/src/mds/choice-chips.tsx:75-92`)
+- **RESOURCES-2** · düşük · arayüz — Başarılı 'Kaydet'ten sonra editör baştan kuruluyor; açılmış celseler kapanıyor, hafta akordeonu başa dönüyor ve kaydedilen bağlantıyı görmek için celse yeniden açılıyor. (`nazar.curriculum.resources`; `curriculum-page.tsx:64`)
+
+### nazar/decks
+
+- **DECKPD-1** · yüksek · arayüz — Form 'Yayımla' ve 'Taslağa çek' sonrası eski taslak bayrağını tutuyor; sonraki 'Kaydet' eski bayrağı da gönderip deste durumunu sessizce geri çeviriyor. (`nazar.decks.publishAndDelete`; `apps/nazar/features/decks/components/deck-settings.tsx:51`)
+- **OPENFILL-1** · yüksek · API · güvenlik — Desteyi açmamış ama ders destesi yönetme yetkisi olan kişinin her kart düzenleme ve silmesi 404 ile reddediliyor ve 'Tekrar deneyin' deniyor; yetkili kişi işinden alıkonuluyor. (`nazar.decks.openAndFill`; `apps/tedrisat/src/flashcard/flashcard.service.ts:86-101`)
+- **DECKPD-2** · orta · arayüz — Deste zaten yayımlıyken 'Önce taslağa çekin' uyarısı çıkıyor ve sayfa yenilenmiyor; hâlâ 'Taslak' ve 'Yayımla' görünüyor, çıkış yolu sayfayı elle yenilemek. (`nazar.decks.publishAndDelete`; `apps/nazar/features/decks/components/deck-settings.tsx:95-98`)
+- **F-D1-11** · orta · arayüz — Reddedilen kart kaydı ve silme düz metinle çıkıyor, duyurulmuyor; kayıt, vazgeçme ya da silmeden sonra form kayboluyor ve odak sayfaya düşüyor. (`nazar.decks.openAndFill`; `apps/nazar/features/decks/components/card-tile.tsx:100`)
+- **F-D1-16** · orta · kütüphane — Dosya, başlık ve adres hataları rolsüz alan hatası olarak beliriyor ve odak düğmede kalıyor; ekran okuyucu kullanan kişi basınca hiçbir şey duymuyor. (`nazar.decks.import`, `nazar.decks.openAndFill` +2; `apps/nazar/features/decks/components/import-cards-dialog.tsx:48-54`)
+- **F-D1-18** · orta · arayüz — İçe aktarma 5 MB'a kadar dosya kabul ediyor ama sunucu eylemi varsayılan olarak 1 MB'ın üstünü reddediyor; büyük dosya ancak genel bir hatayla bitiyor. (`nazar.decks.import`; `apps/nazar/features/decks/decks.ts:300-301`)
+- **F-D1-21** · orta · arayüz — Sîga 2. adımında boşluğa tıklamak, Esc ya da kapatma simgesi soru sormadan diyaloğu kapatıp düzeltilmiş 28 taslağı ve yazılanları atıyor. (`nazar.decks.siga`; `apps/nazar/features/decks/components/siga-generator-dialog.tsx:156`)
+- **F-D1-25** · orta · arayüz — Her kartın düğmeleri sadece 'Düzenle' ve 'Sil' adını taşıyor; yirmi dört kartlı destede ekran okuyucu kullanan kişi aynı adı yirmi dört kez duyuyor. (`nazar.decks.openAndFill`; `apps/nazar/features/decks/components/card-tile.tsx:139-152`)
+- **F-L-12** · orta · kütüphane — Alan hata metni duyurulmuyor (rol ya da canlı bölge yok); hata yalnız kişi alana geri dönünce okunuyor, ekran okuyucu kullanan kişi hatayı hemen duymuyor. (`nazar.decks.import`, `nazar.appeals.open` +2; `libs/ui/src/mds/field.tsx:50-53`)
+- **IMPORT-1** · orta · arayüz — Dosya gönderilirken 'Vazgeç', kapatma simgesi ve Esc diyaloğu kapatıyor ama istek durmuyor; kartlar yine ekleniyor, kişi iptal ettiğini sanıyor. (`nazar.decks.import`; `apps/nazar/features/decks/components/import-cards-dialog.tsx:77-79`)
+- **IMPORT-4** · orta · API — Satırın kart türü destenin türüyle karşılaştırılmıyor; şablon olduğu gibi aktarılınca 'Kelime' destesine hadis kartı giriyor. (`nazar.decks.import`; `apps/nazar/features/decks/components/import-cards-dialog.tsx:99-102`)
+- **IMPORT-5** · orta · arayüz — Diyalog listenin ilk destesi seçili açılıyor ve başarı bildirimi hangi desteye eklendiğini söylemiyor; alanı açmayan kişi kartları yanlış desteye gönderebiliyor. (`nazar.decks.import`; `apps/nazar/features/decks/components/import-cards-dialog.tsx:39-41`)
+- **OPENFILL-5** · orta · karar — Kart düzenleme kaydedilince hiçbir şey söylenmiyor; kutu görünüme dönüyor, bildirim ya da durum satırı yok, 'Kart kaydedildi' metni var ama kullanılmıyor. Karar bekliyor. (`nazar.decks.openAndFill`; `apps/nazar/features/decks/components/card-tile.tsx:61-62`)
+- **SIGA-1** · orta · arayüz — Aynı kök ve bâb ikinci kez üretilince 28 kart daha yazılıyor, kart tekrarını engelleyen kural yok; talebe her sîgayı iki kez görüyor. (`nazar.decks.siga`; `apps/nazar/features/decks/components/deck-detail-screen.tsx:97-101`)
+- **SIGA-2** · orta · API — Üreteç hadis destesinde de sunuluyor ve kartlar deste türüyle yazılıyor; hadis destesine HADEETH türünde çekim kartları girebiliyor. (`nazar.decks.siga`; `apps/nazar/features/decks/components/siga-generator-dialog.tsx:117`)
+- **SIGA-3** · orta · arayüz — Anlam alanları 1. adımda isteğe bağlı görünüyor ama boş anlamla 28 taslak kurulup kayıtta 28 kez hata çıkıyor; odak düğmede kalıyor ve bir şey duyurulmuyor. (`nazar.decks.siga`; `apps/nazar/features/decks/siga.ts:396-408`)
+- **SIGA-4** · orta · kütüphane — Kök, kipler ve anlam hataları rolsüz ve canlı bölgesiz çıkıyor, odak basılan düğmede kalıyor; ekran okuyucu kullanan kişi 'Önizle' ya da kayıttan sonra hiçbir şey duymuyor. (`nazar.decks.siga`)
+- **SIGA-5** · orta · arayüz — 'Geri' 2. adımda düzeltilen ünlü ve anlamları sessizce atıyor, sonraki 'Önizle' hepsini yeniden kuruyor; üstteki ipucu kartların düzeltildiği gibi kaydedileceğini söylüyor. (`nazar.decks.siga`; `apps/nazar/features/decks/components/siga-generator-dialog.tsx:168-172`)
+- **SIGA-6** · orta · arayüz — 2. adımdaki 56 kutudan herhangi birinde Enter'a basmak soru sormadan 28 kartı birden kaydediyor; birlikte geri almak zor. (`nazar.decks.siga`; `apps/nazar/features/decks/components/siga-generator-dialog.tsx:137-141`)
+- **SIGA-7** · orta · arayüz — Reddedilen kayıt sebep ne olursa olsun 'İşlem tamamlanamadı. Tekrar deneyin.' diyor; silinen deste ya da geri alınan yetki için bu öğüt işe yaramıyor, satır da kaydırılan gövdenin sonunda. (`nazar.decks.siga`; `apps/nazar/features/decks/decks.ts:255-258`)
+- **the-header-says-what-the-form-forgets** · orta · arayüz — Başlık altındaki 'Taslak' ya da 'Yayında' satırı sunucudan okunuyor ama formun kendi bayrağı eski kalıyor; başlık ile sonraki 'Kaydet' birbirini tutmuyor. (`nazar.decks.publishAndDelete`)
+- **confirm-before-deleting** · düşük · arayüz — Sil önce soruyor ama onay penceresi silmenin geri alınamayacağını söylemiyor. (`nazar.decks.openAndFill`)
+- **DECKPD-3** · düşük · arayüz — 'Yayımla', 'Taslağa çek' ve 'Desteyi sil' yazma sürerken devre dışı kalıyor; klavye kullanan kişinin bastığı düğme altından gidiyor, odak düşebilir (doğrulanmadı). (`nazar.decks.publishAndDelete`; `apps/nazar/features/decks/components/deck-settings.tsx:163-168`)
+- **DECKPD-4** · düşük · arayüz — Başkası desteyi silmişse sayfa hâlâ desteyi gösteriyor ve 'Tekrar deneyin' deniyor; işe yaramaz bir öğüt, 'Bu deste artık yok' denmeli. (`nazar.decks.publishAndDelete`; `apps/nazar/features/decks/decks.ts:255-258`)
+- **delete-asks-publish-does-not** · düşük · karar — Deste silme sorar ama 'Yayımla' ve 'Taslağa çek' kayıtlı bütün talebelerin gördüğünü hemen değiştirip soru sormuyor; karar bekliyor. (`nazar.decks.publishAndDelete`)
+- **F-A-13** · düşük · kütüphane — Diyalogun bütün gövdesi diyalog açıklaması olarak işaretli; ekran okuyucu açılışta giriş, alanlar ve satırların hepsini açıklama diye okuyabilir. Kısa tek cümle yeterli. (`nazar.decks.import`, `nazar.courses.changeHocas` +1; `libs/ui/src/mds/dialog.tsx:103-112`)
+- **F-D1-02** · düşük · arayüz — Yasaklı deste sayfası yalnız uyarıyı gösteriyor; başlık da listeye dönüş bağlantısı da yok, kişi nerede olduğunu ve nereye gideceğini bilmiyor. (`nazar.decks.publishAndDelete`, `nazar.decks.openAndFill`; `apps/nazar/features/decks/components/deck-detail-page.tsx:53-58`)
+- **F-D1-03** · düşük · arayüz — Zorunlu alanlarda yalnız ekran okuyucudan gizli bir yıldız var, denetimler 'zorunlu' diye işaretli değil; ekran okuyucu kullanan kişi hangi alanın zorunlu olduğunu duymuyor. (`nazar.decks.openAndFill`, `nazar.decks.import` +3; `apps/nazar/features/decks/components/deck-form-dialog.tsx:114-119`)
+- **F-D1-14** · düşük · arayüz — Deste başlığı 'lang=auto' ile çiziliyor ama bu geçerli bir dil etiketi değil (amaç yön 'auto' idi); ekran okuyucu yanlış ses seçebilir. (`nazar.decks.openAndFill`, `nazar.decks.import` +2; `apps/nazar/features/decks/components/decks-page.tsx:117`)
+- **F-D1-15** · düşük · arayüz — Derste hiç deste yokken 'Excel'den aktar' nedeni söylenmeden kapalı duruyor; kişi önce 'Deste aç' gerektiğini anlayamıyor. (`nazar.decks.import`, `nazar.decks.openAndFill`; `apps/nazar/features/decks/components/decks-actions.tsx:28-34`)
+- **F-D1-17** · düşük · arayüz — Deste sayfalarının kendi yükleme ekranı yok; sayfa açılırken portalın tüm kabuk iskeleti gerçek kabuğun altında ikinci bir kabuk gibi çiziliyor (görsel doğrulanmadı). (`nazar.decks.publishAndDelete`, `nazar.decks.import` +1)
+- **F-D1-19** · düşük · arayüz — Şablon bağlantıları hata olunca boş bir 502 dönüyor; indirme sessizce başarısız oluyor ve diyalog hiçbir şey söylemiyor, kişi nedenini bilmiyor. (`nazar.decks.import`, `nazar.files.download`; `apps/nazar/features/decks/components/import-cards-dialog.tsx:134-141`)
+- **F-D1-23** · düşük · arayüz — Deste kutusu tek bağlantı; kapak harfleri, başlık, bilgiler ve yüzde iki kez okunduğu için ekran okuyucuda erişilebilir ad uzun ve tekrarlı. (`nazar.decks.openAndFill`; `apps/nazar/features/decks/components/decks-page.tsx:103-149`)
+- **F-D1-24** · düşük · arayüz — 'Kapat', 'Vazgeç' ve 'Yükleniyor' sözleri kitin Türkçe varsayılanından geliyor, katalogdan değil; yalnız dil eklenince sorun olur. (`nazar.decks.siga`, `nazar.decks.import` +3; `dialog.tsx:62`)
+- **F-D1-26** · düşük · arayüz — 'Kart ekle' satırındaki iki kutunun görünür etiketi yok, yalnız gizli ad ve yer tutucu var; yazılınca ekranda kutuyu adlandıran bir şey kalmıyor. (`nazar.decks.openAndFill`; `apps/nazar/features/decks/components/card-quick-add.tsx:125-150`)
+- **IMPORT-2** · düşük · arayüz — Diyalog dosyanın ne içermesi gerektiğini söylemiyor (üç İngilizce başlık, kart türleri, en çok 1000 satır) ve ilk odak bir alana düşmüyor. (`nazar.decks.import`; `apps/tedrisat/src/flashcard/flashcard-bulk.service.ts:54`)
+- **list-has-no-name** · düşük · kütüphane — Açılan seçenek listesi (deste ya da köşk) adsız bir liste kutusu; ekran okuyucu listenin neyin listesi olduğunu söylemiyor. (`nazar.decks.import`, `nazar.offsite.requestCourse`; `libs/ui/src/mds/select.tsx:80`)
+- **OPENFILL-2** · düşük · arayüz — 'Deste aç' diyaloğunda ilk odak Başlık'a değil, başlıktaki 'Kapat'a düşüyor (tarayıcıda doğrulanmadı). (`nazar.decks.openAndFill`; `apps/nazar/features/decks/components/deck-form-dialog.tsx:95-112`)
+- **OPENFILL-3** · düşük · arayüz — Boş liste durumunda paragraf paragrafın içine konuyor; tarayıcı ayrıştırıcısı dıştakini kapatıyor ve hidrasyon uyuşmazlığı çıkabilir (doğrulanmadı). (`nazar.decks.openAndFill`; `apps/nazar/features/decks/components/decks-page.tsx:93-96`)
+- **OPENFILL-4** · düşük · arayüz — Belge başlığı listede ve her destede 'Ders desteleri · Medaris Nazar'; sekmeler ve geçmiş desteleri birbirinden ayırmıyor. (`nazar.decks.openAndFill`; `page.tsx:5-8`)
+
+### nazar/evaluation
+
+- **F-D1-13** · yüksek · arayüz — 'Excel indir' bağlantısı hiç çalışmıyor: sorgulu yol sunucuda 400 ile reddediliyor, ret sessiz ve adreste ?fileError kalıyor; hoca değerlendirme dosyasını alamıyor. (`nazar.evaluation.examScores`, `nazar.evaluation.markRecited` +1)
+- **EXAM-2** · orta · API — Sonuçlar açıldıktan sonra da puan kutuları ve 'Girmedi' düğmeleri canlı ve sunucu değişikliği kabul ediyor; talebe değişen puanı sonraki okumada görüyor, kimseye haber verilmiyor. (`nazar.evaluation.examScores`; `apps/nazar/features/evaluation/components/evaluation-board.tsx:616-653`)
+- **F-D1-12** · orta · arayüz — Sınavı açmak, 'Bütün ödevler' ve 'Sonuçları talebelere aç' basılan düğmeyi kaldırıyor; odak sayfaya düşüyor ve yeni ekranda hiçbir başlık odaklanmıyor. (`nazar.evaluation.examScores`, `nazar.evaluation.markRecited`; `apps/nazar/features/evaluation/components/evaluation-board.tsx:244-249`)
+- **F-D1-20** = NROS-7 · orta · arayüz — Tarayıcı sunucuya ulaşamayınca yayın, onay ya da kaldırma işlemi hata fırlatıyor; düğme sonsuza dek meşgul kalıyor ve bildirim çıkmıyor, kişi sayfayı yenilemek zorunda. (`nazar.evaluation.examScores`, `nazar.decks.import` +9; `apps/nazar/features/evaluation/components/evaluation-board.tsx:623-627`)
+- **F-D1-28** · orta · arayüz — 'Sonuçları talebelere aç' tek basışla, soru sormadan, geri alınamaz biçimde bütün puanları açıp talebelere bildiriyor; 0/N girilmişken bile açık. (`nazar.evaluation.examScores`; `apps/nazar/features/evaluation/components/evaluation-board.tsx:621-631`)
+- **MARK-1** · orta · arayüz — Reddedilen her kayıt aynı 'Kaydedilemedi' bildirimiyle çıkıyor; ödevin dosya ödevine dönmesi, talebenin ayrılması ve geri alınan yetki ayrı cümleler hak ediyor. (`nazar.evaluation.markRecited`; `apps/nazar/features/evaluation/components/evaluation-board.tsx:131-136`)
+- **MARK-4** · orta · arayüz — Kayıt başarı sözü vermiyor; 2 ya da 3 tuşuyla işaretlenince ya da 'Eksik' 'Vermedi'yi değiştirince ekran okuyucu kullanan kişi hiçbir şey duymuyor (doğrulanmadı). (`nazar.evaluation.markRecited`; `apps/nazar/features/evaluation/components/evaluation-board.tsx:48-53`)
+- **EXAM-1** · düşük · arayüz — Sayfa yazı ve altyazılarında hâlâ yalnız ezber ödevinden söz ediyor, oysa sınav da bir sütun; boş sayfa da sınavın nerede açıldığını söylemiyor. (`nazar.evaluation.examScores`)
+- **EXAM-3** · düşük · arayüz — Reddedilen puanın uyarısı kutuya bağlı değil; uyarı bir kez okunuyor, kutu sonra yalnız 'geçersiz' diyor ve nedenini söylemiyor. (`nazar.evaluation.examScores`; `apps/nazar/features/evaluation/components/evaluation-board.tsx:726-744`)
+- **EXAM-4** · düşük · API — Sonuçları açmak yalnız kayıtlı talebeleri bilgilendiriyor; dersi tamamlamış talebe tahtada, puan alıyor ve notları okuyabiliyor ama açıldığı haberini almıyor. (`nazar.evaluation.examScores`; `apps/tedrisat/src/course/course-notifier.ts:187-197`)
+- **F-D1-01** · düşük · arayüz — Okuma başarısız olunca sayfanın kendi h1'inin altında bir h1 daha çiziliyor; ekran okuyucu başlık gezinmesinde iki sayfa başlığı görüyor. (`nazar.evaluation.examScores`, `nazar.decks.openAndFill` +4; `libs/ui/src/mds/system-state.tsx:24`)
+- **F-D1-22** · düşük · arayüz — Tablonun ilk sütunu (talebe adı) satır başlığı olarak işaretli değil; ekran okuyucu bir hücreyi hangi talebeye ait olduğunu söylemeden okuyor. (`nazar.evaluation.markRecited`, `nazar.evaluation.examScores`; `apps/nazar/features/enrolments/components/roster-table.tsx:115-118`)
+- **F-D1-27** · düşük · arayüz — Satırlar 1, 2, 3 ve ok tuşlarını işliyor ama listenin rolü yok ve ipucu kutulara bağlı değil; klavye modelini ekran okuyucu kullanan kişi öğrenemiyor. (`nazar.evaluation.markRecited`, `nazar.decks.openAndFill` +1)
+- **MARK-2** · düşük · arayüz — Not kutusunda Enter kutuyu bırakıyor ve odak sayfaya düşüyor; 1, 2, 3 ve ok tuşları listeye dönülene kadar çalışmıyor (doğrulanmadı). (`nazar.evaluation.markRecited`; `apps/nazar/features/evaluation/components/evaluation-board.tsx:535`)
+- **MARK-3** · düşük · arayüz — Not 280 karakterde sessizce duruyor; sayaç ya da yardım yok, yer tutucu yalnız 'Not', kutuda 1-3 tuşlarının metin olduğu da söylenmiyor. (`nazar.evaluation.markRecited`; `apps/nazar/features/evaluation/components/evaluation-board.tsx:529`)
+
+### nazar/files
+
+- **evaluation-export-invalid-path** · yüksek · arayüz — 'Excel indir' her basışta 400 'geçersiz yol' alıyor ve sunucuya hiç ulaşmıyor: sorgu içeren yol vekil tarafından reddediliyor; hoca değerlendirme dosyasını hiç alamıyor. (`nazar.files.download`, `nazar.evaluation.markRecited`; `route.ts:24`)
+- **NFILES-2** = FILES-3, NHWREV-1, WRT-10 · orta · kütüphane — Reddedilen indirme sayfayı baştan yüklüyor; Müfredat'ta kaydedilmemiş yazılanlar ve Ödevler'de açık inceleme notu hiçbir şey söylenmeden kayboluyor. (`nazar.files.download`, `nazar.homework.review` +3; `libs/services/src/file-proxy/file-proxy.ts:351-370`)
+- **NFILES-1** · düşük · arayüz — Müfredat dosyası 403 verince kişinin hiçbir yetkisi kalmadığı için uyarı bileşeni çizilmiyor; bildirim çıkmıyor ve ?fileError adreste kalıyor. (`nazar.files.download`; `curriculum-page.tsx:44-55`)
+- **NFILES-3** · düşük · arayüz — Çalışan bir indirme sayfada hiçbir şey söylemiyor (bildirim, durum metni, odak yok); tek işaret tarayıcının kendi kaydetmesi, ekran okuyucu kullanan kişi bunu duymayabilir. (`nazar.files.download`; `apps/nazar/features/files/components/file-link.tsx:10-14`)
+
+### nazar/homework
+
+- **F-D1-10** · orta · arayüz — Değerlendirme dosyası çıkarılınca odaklı düğme kayboluyor, odak taşınmıyor ve haber verilmiyor; 'Dosya yükle' paneli de odak vermiyor ve boş uyarı duyurulmuyor. (`nazar.homework.review`; `apps/nazar/features/homework/components/review-dialog.tsx:176-197`)
+- **NHWREV-2** · orta · arayüz — Gönderilmiş değerlendirmeye dosya eklemek ya da çıkarmak talebeye hemen yansıyor ama diyalog bunu söylemiyor; yalnız 'yeniden gönderirseniz not değişir' diyor. (`nazar.homework.review`; `apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:72-73`)
+- **NHWREV-3** · orta · API — Gönderilmiş değerlendirmenin son dosyası notsuz çıkarılabiliyor; talebe 'Değerlendirildi' başlığı altında boş bir değerlendirme görüyor. (`nazar.homework.review`; `apps/tedrisat/src/lesson-submission/lesson-submission.service.ts:378-396`)
+- **NHWREV-4** · orta · arayüz — Değerlendirmeye altıncı dosya reddedilince 'Bir şeyler ters gitti' deniyor; bunun için yazılmış 'en çok 5 dosya' cümlesi yanlış yerde kaldığı için hiç görünmüyor. (`nazar.homework.review`; `apps/nazar/features/files/files.ts:116-148`)
+- **NHWREV-6** · orta · arayüz — Diyaloğu kapatmak (Kapat, X, Esc) yazılmış notu soru sormadan ve taslak tutmadan atıyor; yalnız dosyalar anında kaydediliyor. (`nazar.homework.review`; `apps/nazar/features/homework/components/review-dialog.tsx:129`)
+- **F-D1-09** · düşük · arayüz — Değerlendirmesi gönderilmiş satırın düğmesinde görünen 'Değerlendirmeyi aç' yazısı erişilebilir adın içinde yok; sesle denetim kullanan kişi düğmeyi söyleyemiyor. (`nazar.homework.review`; `apps/nazar/features/homework/components/review-dialog.tsx:83-96`)
+- **F-D1-31** · düşük · arayüz — Notu olmayan satırda çizgi ekran okuyucudan gizli; Not hücresi ekran okuyucu kullanan kişiye boş görünüyor, 'Not yok' denmiyor. (`nazar.homework.review`; `apps/nazar/features/homework/components/homework-list.tsx:75`)
+- **NHWREV-5** · düşük · arayüz — Gönderme, yükleme ya da çıkarma sürerken 'Kapat', X ve Esc hiçbir şey yapmıyor ve nedenini söylemiyor; iki denetim de 'Kapat' adını taşıyor. (`nazar.homework.review`; `apps/nazar/features/homework/components/review-dialog.tsx:202-204`)
+- **NHWREV-7** · düşük · arayüz — Hiç gönderilmemiş değerlendirmenin son dosyası çıkarılınca satır, sayfa yenilenene dek boş değerlendirme üstünde 'Gönderilmedi' rozetini tutuyor; sunucu hiç değerlendirme yok der. (`nazar.homework.review`; `apps/nazar/features/homework/components/review-dialog.tsx:185-193`)
+
+### nazar/nazirs
+
+- **APPOINT-3** · orta · arayüz — E-posta alanından çıkınca da arama yapılıyor ve her arama denetim kaydına yazılıyor; sekmeyle geçen ya da 'Vazgeç'e basan kişi istemediği kayıtlı bir arama başlatıyor. (`nazar.nazirs.appoint`; `apps/nazar/features/nazirs/components/appoint-nazir.tsx:223`)
+- **APPOINT-5** · orta · arayüz — Arama sonuçları ('hesap bulunamadı', 'Arama şu an yapılamıyor') rolsüz alan hatası; arama sırasında alan devre dışı kaldığından ekran okuyucu kullanan kişi sonucu duymuyor. (`nazar.nazirs.appoint`)
+- **F-B-3** · orta · arayüz — Listede her kişi için 'Devral' ve 'Düşür' adlı düğme çifti var; kişi yalnız gizli bir başlıkta geçiyor, düğme listesi ya da sesle denetim kişileri ayıramıyor. (`nazar.nazirs.dismiss`; `libs/ui/src/mds/choice-chips.tsx:70-79`)
+- **F-B-5** · orta · arayüz — Boş ya da alınmış ad ve geçersiz bitiş sonrası hata duyurulmuyor ve odak düğmede kalıyor; ekran okuyucu kullanan kişi kaydın olmadığını bilmiyor. (`nazar.nazirs.groups`, `nazar.nazirs.permissions` +1; `libs/ui/src/mds/field.tsx:56`)
+- **F-B-8** · orta · arayüz — E-posta alanı arama sırasında devre dışı kalıp odağı düşürüyor; kişi bulunca alan kayboluyor ve odak hiçbir yere gitmiyor, 'Seçimi kaldır' da odağı bırakıyor. (`nazar.nazirs.appoint`, `nazar.bans.ban`; `apps/nazar/features/nazirs/components/appoint-nazir.tsx:214`)
+- **F-B-16** · orta · arayüz — '{ad} seçildi' cümlesi katalogda var ama hiçbir yerde gösterilmiyor; arama başarılı olunca ekran okuyucu kullanan kişiye hiçbir şey söylenmiyor. (`nazar.nazirs.appoint`, `nazar.bans.ban`; `apps/nazar/features/nazirs/components/appoint-nazir.tsx:161-196`)
+- **GROUPS-1** · orta · API — Grubun kapsamı kaydedilmiyor, izin kodlarından çıkarılıyor; yalnız ders izinli 'Medrese' grubu 'Ders' olarak açılıyor ve medrese kutuları kapalı geliyor. (`nazar.nazirs.groups`; `apps/tedrisat/src/madrasah/nazir/madrasah-permission.service.ts:115`)
+- **GROUPS-4** · orta · arayüz — Reddedilen kayıt, kipli diyalog açıkken diyalog dışındaki bildirim bölgesinde bildiriliyor; ekran okuyucu duymayabilir ve klavye ulaşamaz (doğrulanmadı). (`nazar.nazirs.groups`; `apps/nazar/features/nazirs/components/group-dialog.tsx:150-154`)
+- **PERM-2** = CAPPOINT-3, CNP-4 · orta · kütüphane — Alt bilgideki izin sayısı canlı bölge değil; kutu işaretleyen ya da grup seçen kişi yeni sayıyı duymuyor. (`nazar.nazirs.permissions`, `nazar.courseNazirs.appoint` +2; `libs/ui/src/mds/dialog.tsx:114-116`)
+- **PERM-3** · orta · arayüz · güvenlik — Editör tek bir bitiş (en erken olanı) gösterip 'Kaydet'te her izne gönderiyor; farklı bitişli izinler sessizce erkene çekiliyor (doğrulanmadı). (`nazar.nazirs.permissions`; `apps/tedrisat/src/madrasah/nazir/madrasah-nazir.repository.ts:470-507`)
+- **APPOINT-2** · düşük · arayüz — 'Ata' kişi bulunana dek nedeni söylenmeden devre dışı; sekme tuşu onu atlıyor ve Enter formu gönderemiyor. (`nazar.nazirs.appoint`; `apps/nazar/features/nazirs/components/appoint-nazir.tsx:153`)
+- **APPOINT-4** · düşük · arayüz — E-posta gibi görünmeyen metin hiç aranmıyor ve bir şey söylenmiyor; Enter hiçbir şey yapmıyor, alanda hata yok; kişinin adını yazan sessizlikle karşılaşıyor. (`nazar.nazirs.appoint`; `apps/nazar/features/nazirs/nazirs.ts:245`)
+- **APPOINT-6** · düşük · arayüz — Başmüderris kendini bulup seçebiliyor ve 'Ata' açık; sunucu kendi kendini atamayı hep reddediyor ama ret tıklamadan sonra bildirimle geliyor. (`nazar.nazirs.appoint`; `apps/tedrisat/src/madrasah/nazir/madrasah-nazir.controller.ts:117`)
+- **DISMISS-1** = CNDIS-4 · düşük · arayüz — Kişi zaten nazır değilse 'Görevden alınamadı' hata bildirimi çıkıyor ve kendiliğinden kapanmıyor; oysa istenen sonuç oluşmuş. (`nazar.nazirs.dismiss`, `nazar.courseNazirs.dismiss`; `apps/nazar/features/nazirs/components/dismiss-dialog.tsx:129-140`)
+- **F-B-2** · düşük · arayüz — Meşgul düğmeler katalog dışı varsayılan 'Yükleniyor' diyor; on farklı yazma için aynı söz okunuyor ve ikinci dil açılınca bozuluyor. (`nazar.nazirs.appoint`, `nazar.appeals.open` +4; `apps/nazar/features/nazirs/components/appoint-nazir.tsx:150-155`)
+- **F-B-7** · düşük · arayüz — Ad ve e-posta alanlarındaki yıldız gizli ve girdiler 'zorunlu' işaretli değil; ekran okuyucu kullanan kişi alanların zorunlu olduğunu duymuyor. (`nazar.nazirs.groups`, `nazar.bans.ban` +1; `apps/nazar/features/nazirs/components/group-dialog.tsx:296-311`)
+- **F-B-10** · düşük · arayüz — Kişinin veremediği izin nedensiz devre dışı bir kutu; kilitli olanlar 'Gruptan gelir.' derken bu söylemiyor ve sekme tuşu atlıyor. (`nazar.nazirs.permissions`, `nazar.nazirs.groups`; `apps/nazar/features/nazirs/components/permission-section.tsx:49`)
+- **F-B-12** = F-D2c-16 · düşük · kütüphane — Diyalogun bütün gövdesi diyalog açıklaması olarak işaretli; ekran okuyucu açılışta ad, kapsam ve 34 kutuyu birden okuyabilir. (`nazar.nazirs.groups`, `nazar.appeals.open` +9; `libs/ui/src/mds/dialog.tsx:103-112`)
+- **F-B-15** · düşük · arayüz — Başkasının atadığı nazırı görevden almak 403 veriyor ama bunun mesajı yok; genel 'Biraz sonra yeniden deneyin' yanlışlıkla yeniden deneme öneriyor (yalnız eski listeyle ulaşılır). (`nazar.nazirs.dismiss`, `nazar.access.medreseNazirRefused`; `apps/nazar/features/nazirs/nazirs.ts:357-389`)
+- **GROUPS-3** · düşük · API — Sunucu adı kontrol etmeden önce kişileri kontrol ediyor; kullanılan grupta izin değişikliği ve alınmış bir adla yeniden adlandırma önce soru sorup cevaptan sonra reddediliyor. (`nazar.nazirs.groups`; `apps/nazar/features/nazirs/components/group-dialog.tsx:145-149`)
+- **no-date-gate** · düşük · arayüz — Sınamalar hâlâ 'kapıdan sonra' diye adlı ve tarayıcı saatini sabitliyor, oysa Ekim 2026 sürüm kapısı kalktı; 'Görevden al' bugün her satırda açık, bayat sınama yanıltıyor. (`nazar.nazirs.dismiss`, `nizam.nazims.dismiss`)
+- **PERM-1** · düşük · arayüz — Sınama 33 kutu sayıyor ama sözlükte 11 medrese ve 23 ders izni var, editör 34 çiziyor; bayat sınama bir sonraki kişiyi yanıltıyor. (`nazar.nazirs.permissions`)
+- **PERM-4** · düşük · arayüz — Grubun izinleri devre dışı kutular; sekme tuşu onları atlıyor ve 'Gruptan gelir.' cümlesi yalnız satır satır gezen kişiye okunuyor. (`nazar.nazirs.permissions`; `apps/nazar/features/nazirs/components/permission-section.tsx:44-49`)
+
+### nazar/notifications
+
+- **F-E-6** · orta · arayüz — Sekme paneli elle yazılmış, sekmeyle bağlı değil ve bütün panel canlı bölge; sekme değişince ya da 'Daha fazla' basınca liste baştan okunuyor (doğrulanmadı). (`nazar.notifications.inbox`; `apps/nazar/features/notifications/components/notifications-list.tsx:257-264`)
+- **F-E-8** · orta · arayüz — Üç eylemden sonra odak kayboluyor: okundu yapılan satır, 'Tümünü okundu say' ve 'Daha fazla göster' odaktayken kalkıyor ya da kapanıyor (doğrulanmadı). (`nazar.notifications.inbox`; `apps/nazar/features/notifications/notifications.ts:124-140`)
+- **F-E-20** · orta · arayüz — Üç sınav bildirim türünün cümlesi yok; 'Bildirim' diye okunuyor ve ders hedefliyse bağlantı oluyor, kişi ne olduğunu anlamıyor. (`nazar.notifications.inbox`; `apps/tedrisat/src/notification/notification-types.ts:28-30`)
+- **INBOX-3** · orta · API — Satır olayın türünü ve zamanını söylüyor ama hangi ders, celse ya da deste olduğunu söylemiyor; iki dersi olan kişi satırı açmadan ayırt edemiyor. (`nazar.notifications.inbox`; `apps/nazar/features/notifications/notifications.ts:38-45`)
+- **INBOX-4** · orta · arayüz — Okundu işareti sessiz: rozet, sayılar ve düğme değişiyor ama ekran okuyucuya bir şey söylenmiyor; "Tümünü okundu say" sonrası düğme odak altında devre dışı kalıyor. (`nazar.notifications.inbox`; `apps/nazar/features/notifications/components/notifications-list.tsx:129`)
+- **F-E-5** · düşük · arayüz — Satır bağlantısı Ctrl, Cmd ve Shift dahil her tıkta varsayılanı engelleyip aynı sekmede gidiyor; 'yeni sekmede aç' ve adresi kopyalama çalışmıyor. (`nazar.notifications.inbox`; `apps/nazar/features/notifications/components/notifications-list.tsx:138`)
+- **F-E-7** · düşük · arayüz — Sekme yüklenirken panel yalnız gizli iskelet çubukları gösteriyor ve meşgul işareti duyurulmuyor; ekran okuyucu kullanan kişi yüklendiğini duymuyor. (`nazar.notifications.inbox`; `libs/ui/src/mds/skeleton.tsx:20`)
+- **F-E-9** · düşük · arayüz — 'Tümünü okundu say' okunmamış yokken nedensiz devre dışı, hiç bildirim yokken de çizilmiyor; iki farklı biçimde 'işaretlenecek yok' deniyor. (`nazar.notifications.inbox`; `apps/nazar/features/notifications/components/notifications-list.tsx:250`)
+- **F-E-10** · düşük · arayüz — Okuma başarısız olunca sayfanın kendi h1'inin altında ikinci bir h1 çiziliyor; ekran okuyucu başlık gezinmesinde iki sayfa başlığı görüyor. (`nazar.notifications.inbox`; `apps/nazar/features/notifications/components/notifications-page.tsx:31`)
+- **INBOX-1** · düşük · arayüz — Bağlantılı satırda işaretleme reddedilince sayfa aynı anda başka uygulamaya gidiyor ve hata bildirimi onunla gidiyor; satır okunmamış kalıyor, kimseye söylenmiyor. (`nazar.notifications.inbox`; `apps/nazar/features/notifications/components/notifications-list.tsx:139-140`)
+- **INBOX-2** · düşük · arayüz — İki işaretleme çakışıp ilki reddedilince eski anlık durum geri yükleniyor; sunucunun işaretlediği ikinci satır sayfada yine okunmamış görünüyor. (`nazar.notifications.inbox`; `apps/nazar/features/notifications/components/notifications-list.tsx:110`)
+
+### nazar/offsite
+
+- **OFFSITE-1** · orta · arayüz — Medrese kendi dışarıdan ders açma taleplerini okuyor ama hiçbirini göstermiyor; "Talep gönderildi" sonrası gönderilen talebi ve köşk nazımının cevabını görmenin yolu yok. (`nazar.offsite.requestCourse`; `apps/nazar/features/offsite/components/offsite-page.tsx:38-46`)
+- **F-A-1** · düşük · arayüz — Okuma başarısız olunca sayfada ikinci bir birinci düzey başlık çıkıyor; ekran okuyucu kullanan kişi aynı sayfada iki ana başlık duyuyor. (`nazar.offsite.requestCourse`, `nazar.courses.browse` +1; `libs/ui/src/mds/system-state.tsx:48`)
+- **OFFSITE-2** · düşük · arayüz — Köşk bulunamadı cevabından sonra form yenilense de eski seçim kalıyor ve seçim kutusu köşk adı yerine ham değeri gösterebiliyor; nadir bir yarışta kişi neye bastığını göremiyor. (`nazar.offsite.requestCourse`; `apps/nazar/features/offsite/components/offsite-form.tsx:97`)
+- **OFFSITE-3** · düşük · arayüz — "Bir köşk seçin." hatası ve "Köşk seçin" yer tutucusu hiç görünemiyor, çünkü form ilk köşkle başlıyor; alan ayrıca zorunlu olarak işaretlenmiyor. (`nazar.offsite.requestCourse`; `apps/nazar/features/offsite/components/offsite-form.tsx:48-52`)
+- **OFFSITE-4** · düşük · arayüz — Yalnız izin yoklaması başarısız olduğunda sayfa "Köşk listesi şu an okunamadı" diyor; köşk listesi sağlam olduğu hâlde yanlış okuma hakkında konuşuyor. (`nazar.offsite.requestCourse`; `apps/nazar/features/offsite/components/offsite-page.tsx:46`)
+
+### nazar/pano
+
+- **viewer-may-decide-skips-head** · orta · API — Pano karar yetkisini yanlış hesaplıyor: başmüderrisi ve ders nazırına verilen yetkiyi saymıyor, kişinin işlem yapamadığı satırları sessizce listeliyor. (`nazar.pano.decideApplications`; `apps/tedrisat/src/madrasah/portal/madrasah-portal.service.ts:93-97`)
+- **F-A-15** · düşük · arayüz — Bölüm kimlikleri sayfalar arasında aynı sabit metin; gezinmeden sonra gizli kalan eski sayfa ekran okuyucuya yanlış bölüm adı verebilir (doğrulanmadı). (`nazar.pano.decideApplications`, `nazar.courses.browse`)
+
+### nazar/questions
+
+- **ANSWER-2** · yüksek · API — Sayfa bir anlık görüntü: meslektaşının cevapladığı soru hâlâ "Bekliyor" görünüyor ve "Cevapla" sürüm denetimi olmadan onun cevabını geçmişsiz ezip siliyor. (`nazar.questions.answer`; `apps/tedrisat/src/lesson-question/lesson-question.service.ts:173-192`)
+- **ANSWER-1** · orta · arayüz — Her soru kartı yalnız soran talebenin adıyla anılıyor; aynı talebenin yirmi sorusunda ekran okuyucu yirmi aynı adlı makale, alan ve düğme okuyor, ders ismin içinde yok. (`nazar.questions.answer`; `apps/nazar/features/questions/components/questions-list.tsx:150`)
+- **ANSWER-3** · orta · arayüz — "Daha fazla göster" listeye kart ekliyor ama bunu duyurmuyor; son sayfada düğme kalkınca odak belgeye düşüyor, ekran okuyucu kullanan kişi yerini kaybediyor. (`nazar.questions.answer`; `apps/nazar/features/questions/components/questions-list.tsx:87-104`)
+- **ANSWER-4** · orta · arayüz — Gizlenmiş köşkteki ders için dönen hata "Biraz sonra yeniden deneyin" diye söyleniyor, oysa yeniden denemek işe yaramıyor; hiç dönmeyen bir izin hatası için de metin var. (`nazar.questions.answer`; `apps/nazar/features/questions/questions.ts:53-65`)
+- **F-D1-08** · orta · arayüz — Cevap vermek sessiz: bildirim yok, odak düğmeyle birlikte kayboluyor ve hata mesajı metin alanına bağlı değil; ekran okuyucu kullanan kişi sonucu duymuyor. (`nazar.questions.answer`; `apps/nazar/features/questions/components/questions-list.tsx:134-136`)
+- **F-D1-29** · orta · arayüz — Ders menüsü, ilgili izni olmayan ders nazırına da "Talebeler" ve "Sorular"ı sunuyor; sayfa açılınca "Bu sayfaya izniniz yok" diyor, diğer sayfalar ise menüden çıkarılmış. (`nazar.questions.answer`, `nazar.access.dersNazirPages` +1; `apps/nazar/features/shell/nav.ts:114`)
+- **F-D1-30** · düşük · kütüphane — Markdown bağlantısı yeni sekmede açılıyor ama bunu söyleyen bir söz yok; ekran okuyucu kullanan kişi sekmenin değiştiğini bilmiyor. (`nazar.questions.answer`; `libs/ui/src/mds/markdown.tsx:47`)
+
+### nazar/recordings
+
+- **MDRS-259** · yüksek · API — Başarısız ya da takılan Bunny yüklemesi görünmez oluyor: satır "Kayıt yok" diyor, hoca ve ders kadrosu yüklemenin neden olmadığını hiç öğrenmiyor. (`nazar.recordings.upload`, `tedris.celse.watchRecording` +1; `apps/tedrisat/src/course/recording-encoding.poller.ts:131-153`)
+- **RECADD-1** = RECS-1, SETPUB-5, WATCH-3, policy-no-public-recordings-inert · yüksek · API · güvenlik — Medresenin "Ders kayıtları herkese açılamaz" ilkesi kaydediliyor ama hiçbir yerde uygulanmıyor; hoca ilke kapalıyken de kaydı herkese açık yapabiliyor. (`nazar.recordings.add`, `nazar.settings.edit` +2; `apps/nazar/features/recordings/recordings.ts:487-493`)
+- **F-C-course-a-21** · orta · arayüz — Bunny yüklemesi işlenirken sayfa 10 saniyede bir yenileniyor ama "Hazırlanıyor" durumunun "Hazır" olması ya da satırın kaybolması ekran okuyucuya duyurulmuyor. (`nazar.recordings.add`, `nazar.recordings.upload`; `apps/nazar/features/recordings/components/recordings-table.tsx:138`)
+- **F-C-course-a-25** · orta · arayüz — Tetikleyici düğmesi olmayan pencereler kapanınca odağın nereye döneceği belli değil; yazma sonrası basılan satırın düğmesi kalktığı için odak büyük olasılıkla kayboluyor. (`nazar.recordings.add`, `nazar.curriculum.hideRestore` +7)
+- **field-errors-not-announced** · orta · kütüphane — Başlık, bağlantı ve zaman alanlarının hataları canlı bölge değil; odak düğmede kaldığı için ekran okuyucu kullanan kişi "Kaydı ekle"ye basınca hatayı duymuyor (doğrulanmadı). (`nazar.recordings.add`)
+- **RECADD-2** · orta · API — "Yayını kayıt olarak ekle" bağlantıyı hemen "Hazır" yazıyor ve talebelere "Kayıt eklendi" diyor, oysa YouTube yayını arşivleyene kadar kayıt oynamıyor. (`nazar.recordings.add`, `nizam.youtube.liveBroadcasts`)
+- **UPLOAD-2** · orta · arayüz — "Devam et" Bunny'nin yalnızca kodladığı kayıtlarda da sunuluyor; basınca bu tarayıcıda yarım yükleme bulunamadığı hatası çıkıyor, kişi gereksiz yere hata görüyor. (`nazar.recordings.upload`; `apps/nazar/features/recordings/recordings.ts:238`)
+- **UPLOAD-3** · orta · arayüz — Yükleme başlamadan önce celsenin izleme zamanı kaydediliyor; yükleme reddedilirse uyarı yalnız "Video yüklenemedi" diyor ve zamanın zaten değiştiğini söylemiyor. (`nazar.recordings.upload`; `apps/nazar/features/recordings/components/recording-dialog.tsx:259-275`)
+- **UPLOAD-4** · orta · arayüz — Video hazırlanırken diğer sekmeye basmak yok sayılıyor ama sekmeler devre dışı ya da aria-disabled değil; klavye ve ekran okuyucu kullanan kişiye hiçbir şey söylenmiyor. (`nazar.recordings.upload`; `apps/nazar/features/recordings/components/recording-dialog.tsx:596-598`)
+- **F-C-course-a-22** · düşük · arayüz — Kaydın "Aç" bağlantısı yeni sekmede açılıyor ama adı "Kaydı aç: {başlık}" bunu söylemiyor; ekran okuyucu kullanan kişi sekmenin değiştiğini bilmiyor. (`nazar.recordings.add`, `nazar.recordings.upload`; `apps/nazar/features/recordings/components/recordings-table.tsx:241-252`)
+- **F-C-course-a-28** · düşük · kütüphane — Meşgul düğmenin gizli "Yükleniyor" yazısı ve bazı yer tutucular kataloğun dışında sabit yazılmış; başka bir dil eklenince Türkçe kalacak. (`nazar.recordings.add`, `nazar.curriculum.hideRestore` +4; `apps/nazar/features/recordings/components/recording-dialog.tsx:542`)
+- **RECADD-3** · düşük · arayüz — Hem yükleme hem bağlantı izni olan hoca için pencere hep "Bunny’ye yükle" sekmesinde açılıyor; video kütüphanesi kurulu değilse hata ancak dosya seçilince çıkıyor. (`nazar.recordings.add`; `apps/nazar/features/recordings/components/recording-dialog.tsx:173-175`)
+- **UPLOAD-1** · düşük · API — Bunny'de video, kayıt satırı yazılmadan önce oluşuyor; işlem sonradan reddedilirse boş video kütüphanede kalıyor ve silinmesi için hiçbir iş kuyruğa alınmıyor. (`nazar.recordings.upload`; `apps/tedrisat/src/course/recording-upload.service.ts:91-93`)
+- **upload-on-cancelled-session** · düşük · API — İptal edilmiş bir celseye yükleme kabul ediliyor, oysa yapıştırılan bağlantı aynı celsede 409 ile reddediliyor; iki yol birbiriyle çelişiyor. (`nazar.recordings.upload`; `apps/tedrisat/src/course/recording-upload.service.ts:73-107`)
+
+### nazar/roster
+
+- **RMV-2** = NROS-1 · yüksek · karar — Pencere ve sekme erişimin "ders kadrosu onaylarsa" geri geleceğini söylüyor ama bunu onaylayacak hiçbir ekran yok; çıkarılan talebe ekrandan geri alınamıyor. (`nazar.roster.remove`, `nizam.courses.roster`; `apps/nazar/features/enrolments/enrolments.ts:100-117`)
+- **BULK-1** · orta · arayüz — Kip penceresi açıkken dışarıdaki bildirim bölgesi ekran okuyucudan gizleniyor; ret bildirimini ("Talebeler eklenemedi") ekran okuyucu kullanan kişi duymayabilir. (`nazar.roster.bulkAdd`, `nizam.courses.roster`; `libs/ui/src/mds/toast.tsx:125-131`)
+- **BULK-4** · orta · API — Toplu eklenen talebeye bildirim gitmiyor; ancak yaklaşan celse davet postasından ya da Derslerim'e bakarak öğreniyor, önünde celse olmayan derste hiç öğrenmiyor. (`nazar.roster.bulkAdd`; `apps/tedrisat/src/course/bulk-enrollment.service.ts:98-110`)
+- **BULK-5** · orta · API · güvenlik — Herhangi bir derste kayıt kararı yetkisi olan kişi, bir seferde 500 adres için Medaris hesabı olup olmadığını öğrenebiliyor ve bulunan kişi sorulmadan derse yazılıyor. (`nazar.roster.bulkAdd`; `apps/tedrisat/src/course/bulk-enrollment.service.ts:76-100`)
+- **F-B-13** = DNP-1 · orta · arayüz — Reddedilen kişi sayfanın kendi başlığını ve alt yazısını görüyor; ret mesajı başlık değil, geri dönüş bağlantısı yok ve sekme başlığı hâlâ sayfa adını taşıyor. (`nazar.roster.decide`, `nazar.access.dersNazirPages` +6; `apps/nazar/features/shell/components/page-problem.tsx:23-28`)
+- **F-D1-05** · orta · arayüz — İşlem sonrası satır tablodan düşünce basılan düğme de kalkıyor ve odak sayfaya düşüyor; tek söz 6 saniyelik bildirim, ekran okuyucu kullanan kişi yerini kaybediyor. (`nazar.roster.remove`, `nazar.roster.complete` +1; `apps/nazar/features/enrolments/components/remove-dialog.tsx:63-72`)
+- **F-D1-06** · orta · arayüz — Gerekçe boşken gönder düğmesi devre dışı ve nedenini söylemiyor; boş gerekçe hatası canlı bölge olmadığı için ekran okuyucu kullanan kişiye duyurulmuyor. (`nazar.roster.remove`, `nazar.roster.bulkAdd`; `apps/nazar/features/enrolments/components/remove-dialog.tsx:102`)
+- **F-D1-07** · orta · arayüz — "Ekle" cevabı formu aynı pencerede değiştiriyor; odak taşınmıyor, sonuç listesi ekran okuyucuya sessiz, adres sayacı her tuşta konuşuyor ve iki kapatma düğmesi aynı adı taşıyor. (`nazar.roster.bulkAdd`; `apps/nazar/features/enrolments/components/bulk-add-dialog.tsx:68-69`)
+- **RMV-1** · orta · arayüz — Gerekçe kutusu notun yalnız ders kadrosuna göründüğünü söylüyor ama talebe de "Dersten çıkarıldın. Gerekçe: …" bildirimiyle okuyor; hoca açık sözlü not yazarken bunu bilmiyor. (`nazar.roster.remove`, `nizam.courses.roster`; `apps/tedrisat/src/course/course-notifier.ts:72-85`)
+- **ROSCOM-1** · orta · arayüz — Basılan düğme anında doğal olarak devre dışı kalıyor (yanındaki de); meşgul düğme odağı korumalıyken odak kayboluyor, klavye ve ekran okuyucu kullanan kişi yerini yitiriyor. (`nazar.roster.complete`, `nizam.courses.roster`; `apps/nazar/features/enrolments/components/roster-table.tsx:182-183`)
+- **ROSCOM-2** = NROS-4 · orta · arayüz — Kadro okuması talebenin açık yasağını getiriyor ama sayfa kullanmıyor; yasaklı, tamamlamış talebede "Yeniden aç" çıkıyor ve ret "Bir şeyler ters gitti" diye sunuluyor. (`nazar.roster.complete`, `nizam.courses.roster`; `apps/tedrisat/src/course/course.controller.ts:562`)
+- **ROSCOM-4** · orta · API — "Tamamladı say" onay sormuyor ve talebeye bildirim göndermiyor; yaklaşan celseleri takviminden ve programından kimse haber vermeden kalkıyor. (`nazar.roster.complete`, `nizam.courses.roster`; `apps/tedrisat/src/course/course.service.ts:1745`)
+- **ROSTER-1** · orta · arayüz — Tablonun üstündeki not "Bu ders onay istemiyor" diyor, oysa köşk özel olduğunda ya da köşk veya platform hep onay istediğinde başvurular bekliyor; metin yanlış. (`nazar.roster.decide`, `nizam.courses.decideApplications`; `apps/nazar/features/enrolments/components/enrolments-page.tsx:97-99`)
+- **ROSTER-2** · orta · arayüz — Yasaklı talebenin başvurusu "Onayla" açık olarak listeleniyor; basınca dönen yasak hatası bilinmediği için "Bir şeyler ters gitti" deniyor, gerçek neden söylenmiyor. (`nazar.roster.decide`, `nizam.courses.decideApplications`; `apps/nazar/features/enrolments/enrolments.ts:88-123`)
+- **BULK-3** · düşük · arayüz — Hesabı bulunamayan adresler ile adres olmayan girişler aynı kutuda "hesap bulunamadı, sonra tekrar ekleyin" diye gösteriliyor; yanlış yazılan giriş için yanıltıcı. (`nazar.roster.bulkAdd`; `apps/nazar/features/enrolments/bulk.ts:49-52`)
+- **forbidden-keeps-the-header** · düşük · arayüz — Talebeler kodu olmayan kişi, menüde gördüğü sayfada başlığın altında başlıksız bir "Bu sayfaya izniniz yok" okuyor; sekme ve çıkış bağlantısı yok. (`nazar.roster.remove`)
+- **RMV-4** · düşük · arayüz — Gerekçe kutusu 500 karakterde sayaç ya da mesaj olmadan metni sessizce kesiyor; uzun not yazan kişi fazlasının atıldığını fark etmiyor. (`nazar.roster.remove`, `nizam.courses.roster`; `apps/nazar/features/enrolments/components/remove-dialog.tsx:132`)
+- **ROSCOM-3** · düşük · API — Tamamlayanlar listesi "Kayıt tarihi" gösteriyor çünkü kadro cevabında tamamlanma tarihi yok; ders kadrosu bir dersin ne zaman tamamlandığını göremiyor. (`nazar.roster.complete`, `nizam.courses.roster`; `apps/nazar/features/enrolments/enrolments.ts:112`)
+- **ROSTER-3** · düşük · arayüz — Meşgul işareti tüm tablo için tek değer; ikinci satıra basınca birincinin işareti düşüyor ve hızlı basışlarda aynı satıra ikinci çağrı gidebiliyor. (`nazar.roster.decide`; `apps/nazar/features/enrolments/components/enrolments-tabs.tsx:67-69`)
+
+### nazar/sessions
+
+- **CANCEL-1** · orta · arayüz — Telafi celsesi iptal edilenin yalnız başlığı ve süresiyle açılıyor; bağlantısı yok, "Eksik" görünüyor ve talebeler bağlantısız bir celseye davet ediliyor. (`nazar.sessions.cancel`; `apps/nazar/features/sessions/sessions.ts:467-481`)
+- **CANCEL-2** · orta · arayüz — Telafili iptal, sayfanın okunduğu değil son sürümü gönderiyor; arada ertelenmiş ya da gizlenmiş celse yine iptal ediliyor, iptal başarısızsa telafi celsesi ortada kalıyor. (`nazar.sessions.cancel`; `apps/nazar/features/sessions/components/cancel-dialog.tsx:98`)
+- **CANCEL-5** · orta · API — Telafi tarihi için yalnız geçerli tarih olması aranıyor; geçmiş bir tarih bitmiş celse olarak oluşuyor ve iptal edilen satır ona bağlanıyor, uyarı yok. (`nazar.sessions.cancel`; `apps/nazar/features/sessions/sessions.ts:327-335`)
+- **F-A-11** · orta · arayüz — İptal edilen celsenin notu Pano'da tek satıra kesiliyor ve tamamı yalnız fare ipucunda duruyor; klavye ve dokunmatik kullanan kişi 500 karakterlik notu okuyamıyor. (`nazar.sessions.cancel`, `nazar.pano.decideApplications`; `apps/nazar/features/pano/components/pano-tables.tsx:91-97`)
+- **F-C-course-a-09** · orta · arayüz — Önizleme celse üretmiyorsa gönder düğmesi devre dışı ve "0 celse oluştur" yazıyor; neyin eksik olduğu söylenmiyor, desen hataları ancak reddedilmiş bir basıştan sonra görünüyor. (`nazar.sessions.plan`; `apps/nazar/features/sessions/components/plan-form.tsx:670-679`)
+- **F-C-course-a-10** · orta · arayüz — Önizleme (sayı rozeti ve liste) 250 ms sonra yeniden yazılıyor ama canlı bölge değil; yalnız gönder düğmesinin yazısı değişiyor ve o da duyurulmuyor. (`nazar.sessions.plan`; `apps/nazar/features/sessions/components/plan-form.tsx:683-731`)
+- **F-C-course-a-20** = CANCEL-4 · orta · karar — "Celseyi iptal et" onayı birincil renkte ve "Kaydet" gibi görünüyor; geri alınmaz işlem yıkıcı olarak boyanmamış. (`nazar.sessions.cancel`, `nizam.courses.manageSessions`; `apps/nazar/features/sessions/components/cancel-dialog.tsx:153`)
+- **F-L-17** = F-C-course-a-08, F-W4-9 · orta · arayüz — İşlemden sonra form kapanıyor ya da satır kalkıyor ama odak taşınmıyor; yazmanın yapıldığını söyleyen tek şey 6 saniyelik bildirim, odak sayfanın başına düşüyor. (`nazar.sessions.manage`, `nazar.courseSettings.partnerCodes` +2)
+- **lesson-cancelled-text-streams-only** · orta · API — İptal edilmiş celse için 409 hatası hangi yoldan gelirse gelsin "canlı yayın bağlantısı alınmaz" diyor; kayıt eklerken de aynı yanlış cümle çıkıyor. (`nazar.sessions.cancel`, `tedris.celse.cancelled`; `apps/tedrisat/src/course/errors/lesson-cancelled.error.ts:11`)
+- **MANAGE-1** · orta · API · güvenlik — Celsenin bağlantısı, saati ya da yüz yüze işareti değişince denetim kaydı yazılmıyor; talebelere bildirim giden değişikliği kimin yaptığı sonradan söylenemiyor. (`nazar.sessions.manage`, `nizam.courses.manageSessions`; `apps/tedrisat/src/course/course.repository.ts:1555-1625`)
+- **MANAGE-3** · orta · API — Celseye sonradan canlı yayın, toplantı bağlantısı veya yüz yüze işareti eklenince takvim daveti yeniden gönderilmiyor; önceden davet edilen talebe eski bilgiyle kalıyor. (`nazar.sessions.manage`, `nizam.courses.manageSessions`; `apps/tedrisat/src/lesson-invitation/lesson-invitation.repository.ts:226-233`)
+- **MANAGE-4** · orta · arayüz — Alan hatası yalnız form yeniden açılınca siliniyor; düzeltilmiş değer eski cümle altta dururken gönderiliyor ve yazma reddedilirse doğru alan yine eski hatayla geliyor. (`nazar.sessions.manage`, `nizam.courses.manageSessions`; `apps/nazar/features/sessions/components/sessions-table.tsx:170-185`)
+- **MANAGE-5** · orta · arayüz — Toplantı bağlantısı değiştirilebiliyor ama sayfadan hiç kaldırılamıyor: boş alan "https:// ile başlamalı" diye reddediliyor; yanlış yapıştırılan bağlantı ancak başka bir adresle değişir. (`nazar.sessions.manage`, `nizam.courses.manageSessions`; `apps/nazar/features/sessions/sessions.ts:290-293`)
+- **MANAGE-6** · orta · arayüz — Dört satır düğmesinin erişilebilir adı görünen yazıyı içermiyor ("Tarihi değiştir" yerine "… celsesinin tarihini değiştir" okunuyor); sesle denetim kullanan kişi görünen sözle basamıyor. (`nazar.sessions.manage`; `apps/nazar/features/sessions/components/sessions-table.tsx:455-530`)
+- **no-question-asked** · orta · arayüz — Dört yazmanın hiçbiri önce sormuyor: "Bağlantıyı kaldır" yayını soru sormadan siliyor, taşınan saat her kayıtlı talebeye bildirim ve yeni takvim daveti gönderiyor. (`nazar.sessions.manage`)
+- **PLAN-1** · orta · arayüz — Reddedilen gönderimde hata alanın altında çıkıyor ama canlı bölge değil ve odak düğmede kalıyor; klavye ve ekran okuyucu kullanan kişi düğmeye basıp hiçbir şey duymuyor. (`nazar.sessions.plan`; `apps/nazar/features/sessions/components/plan-form.tsx:175-191`)
+- **PLAN-2** = NPLAN-2 · orta · arayüz — Ders okunamayınca sayfa kendi başlığının altına ikinci bir birinci düzey başlık ("Ders okunamadı") çiziyor; ekran okuyucu aynı sayfada iki ana başlık duyuyor. (`nazar.sessions.plan`, `nizam.courses.planSessions`; `apps/nazar/features/sessions/components/plan-page.tsx:36-38`)
+- **PLAN-4** · orta · karar — Geçmiş bir tarih hiçbir yerde reddedilmiyor; dünden başlayan tekrar, bitmiş celseler üretiyor ve uyarı yok (karar D2 bekliyor). (`nazar.sessions.plan`; `apps/nazar/features/sessions/components/plan-form.tsx:283`)
+- **CANCEL-3** · düşük · arayüz — "Tarihi ve saati girin." hatası tarih yazılınca silinmiyor ve boş olan saat alanı yerine hep "Tarih" alanının altında çıkıyor. (`nazar.sessions.cancel`; `apps/nazar/features/sessions/components/cancel-dialog.tsx:76-78`)
+- **CANCEL-6** · düşük · arayüz — Not kutusu 500 karakterde sayaç ya da mesaj olmadan yazmayı durduruyor; kişi kesildiğini fark etmiyor. (`nazar.sessions.cancel`; `apps/nazar/features/sessions/components/cancel-dialog.tsx:168`)
+- **exam-title-is-hidden** · düşük · arayüz — Sınavın adı, süresi ve bağlantıları yalnız varsayılan olarak kapalı "Sınav ayrıntıları" altında düzenleniyor; kişi sınavın adını görmeden planlıyor. (`nazar.sessions.plan`; `apps/nazar/features/sessions/components/plan-form.tsx:451-544`)
+- **F-C-course-a-12** · düşük · arayüz — "Celse türü", "Planlama biçimi" ve "Günler" basılı-düğme grupları, radyo değil; basılana yeniden basmak yok sayılıyor ve gün başlığına yazılan " *" ekran okuyucuda okunuyor. (`nazar.sessions.plan`; `libs/ui/src/mds/choice-chips.tsx:75-92`)
+- **F-C-course-a-27** · düşük · arayüz — Celseler'den açılınca kayıt erişimi penceresinin başında ve bildiriminde celsenin başlığı yerine uzun tarih yazıyor; Ders kayıtları'ndan açılınca başlık yazıyor. (`nazar.sessions.manage`, `nazar.recordings.add`; `apps/nazar/features/sessions/components/sessions-table.tsx:766`)
+- **F-C-course-a-29** · düşük · arayüz — Kaydı olmayan celsenin Durum, Görünürlük ve İşlemler hücrelerinde gizli bir çizgi var; ekran okuyucuya hücreler boş geliyor, Celseler ise gizli bir cümle söylüyor. (`nazar.sessions.manage`, `nazar.recordings.add` +1; `apps/nazar/features/sessions/components/sessions-table.tsx:305-324`)
+- **PLAN-3** · düşük · arayüz — "https://zoom.us/j/…" ve "https://studio.youtube.com/video/…" yer tutucuları kataloğa değil koda yazılmış; bir platformu adlandıran örnek her dilde aynı kalıyor. (`nazar.sessions.plan`; `apps/nazar/features/sessions/components/plan-form.tsx:337`)
+
+### nazar/settings
+
+- **F-B-11** · orta · arayüz — "Vazgeç" ya da başarılı "Kaydet" basılınca düğme odaktayken doğal olarak devre dışı kalıyor ve odak sayfaya düşüyor; klavye ve ekran okuyucu kullanan kişi yerini kaybediyor. (`nazar.settings.edit`; `apps/nazar/features/settings/components/settings-form.tsx:221`)
+- **SET-1** · orta · arayüz — Dersler kartı, ders izni olmayan nazır için de "Dersler şu an okunamadı. Sayfayı yenileyerek yeniden deneyin." diyor; reddedilme kesinti gibi anlatılıyor ve yenilemek işe yaramıyor. (`nazar.settings.edit`; `apps/nazar/features/settings/components/settings-page.tsx:144-148`)
+- **SET-2** = HOCA-4 · orta · arayüz — Değiştirilmiş ayar formu menü, bağlantı ya da yenilemeyle sessizce kayboluyor; uyarı yok ve "Vazgeç" de sormuyor. (`nazar.settings.edit`, `nazar.courseSettings.hocaTitles`; `apps/nazar/features/recordings/components/recording-dialog.tsx:215`)
+- **patch-madrasah-unaudited** · düşük · API · güvenlik — Medrese adı, tanımı ve kapağını değiştiren başka bir yol denetim kaydı yazmıyor; sayfa kullanmasa da erişilebilir, "denetim kaydına yazılır" sözü yalnız ayar yolu için doğru. (`nazar.settings.edit`; `apps/tedrisat/src/madrasah/madrasah.repository.ts:189`)
+
+### nazar/shell
+
+- **ERR-1** · orta · arayüz — Kök hata sayfasındaki "Yeniden dene" meşgul işareti ve duyuru taşımıyor; basınca hiçbir şey olmuyormuş gibi görünüyor, tekrar başarısız olunca da bunu söyleyen yok. (`nazar.shell.errorStates`; `apps/nazar/app/error.tsx:31`)
+- **ERR-4** · orta · arayüz — Görevler okunamayınca çıkan yüzde yalnız "Yeniden dene" var: çıkış yap, Tedris'e dön ya da başka sayfa bağlantısı yok; kişi tıkanıyor. (`nazar.shell.errorStates`)
+- **F-E-15** · orta · kütüphane — Hata yüzlerinin hiçbirinde role="alert" yok ve hiçbiri odağı almıyor; ekran okuyucu kullanan kişi ekranın değiştiğini duymuyor, odak gövdede kalıyor. (`nazar.shell.errorStates`)
+- **F-E-23** · orta · arayüz — Hata yüzlerinin hiçbiri sekme başlığı koymuyor: bilinmeyen yol, çıkış sayfası ve hata ekranı hep "Medaris Nazar" diyor (WCAG 2.4.2). (`nazar.shell.errorStates`, `realm.auth.signOut`)
+- **F-L-1** · orta · kütüphane — Atla bağlantısı yok: ana alan var ama ona giden bir şey yok; klavye ve ekran okuyucu kullanan kişi her sayfada marka, tema düğmesi, seçici ve 9–15 menü bağlantısını geçiyor. (`nazar.shell.scopeAndMenu`, `nazar.access.noAccess`; `libs/ui/src/mds/app-shell.tsx:41`)
+- **F-L-20** · orta · arayüz — Menü, sayfanın sonra reddedeceği girişleri çiziyor: izni olmayan nazıra dokuz giriş, hocaya Yasaklamalar, ders nazırına Ders nazırları ve Ders ayarları; yalnız üçü izne göre süzülüyor. (`nazar.shell.scopeAndMenu`, `nazar.access.dersNazirPages` +1; `apps/nazar/features/shell/nav.ts:115-134`)
+- **ERR-2** · düşük · arayüz — Bir yerleşim 404 verince sekme başlığı istenen sayfanın adını taşıyor ("Pano · Medaris Nazar"); bulunamadı sayfasının kendi başlığı yok. (`nazar.shell.errorStates`)
+- **ERR-3** · düşük · arayüz — Kişinin olmayan kapsam ya da bölümü 404 yerine HTTP 200 dönüyor (noindex, iskelet ve 404 izi içinde); bilinmeyen yollar ise doğru olarak 404 dönüyor. (`nazar.shell.errorStates`)
+- **ERR-5** · düşük · arayüz — Yalnız /erisim-yok sekmeyi "Görevleriniz okunamadı" diye adlandırıyor; aynı yüz kök adreste "Medaris Nazar", portal içinde ise görülmeyen sayfanın adını taşıyor. (`nazar.shell.errorStates`; `page.tsx:8-17`)
+- **F-L-2** · düşük · kütüphane — Kenar çubuğu adsız bir yan alan (complementary) olarak işaretlenmiş ve ana menüyü sarıyor; ekran okuyucu landmark listesinde adsız bir bölge okuyor. (`nazar.shell.scopeAndMenu`, `nazar.access.noAccess`; `libs/ui/src/mds/app-shell.tsx:81-103`)
+- **F-L-3** · düşük · kütüphane — Telefon menüsü penceresi ve içindeki gezinti aynı adı ("Ana menü") taşıyor; ekran okuyucu "Ana menü, dialog … Ana menü, navigation" diye iki kez okuyor. (`nazar.shell.scopeAndMenu`; `libs/ui/src/mds/app-bar.tsx:78`)
+- **F-L-4** · düşük · arayüz — Hiçbir menü girişi yer tutucu sayfaya ulaşmıyor; yer tutucu sayfa ve "Bu sayfa henüz hazır değil." metni ölü kod, bir e2e iddiası da artık tutamaz. (`nazar.shell.scopeAndMenu`)
+- **F-L-5** · düşük · arayüz — Kabuk e2e testi 13 ders girişi bekliyor, kod ise hocaya 15, izni olmayan ders nazırına 12 çiziyor; test kimseyle eşleşmeyen bir listeyle karşılaştırıyor. (`nazar.shell.scopeAndMenu`; `apps/nazar/e2e/shell.e2e.ts:49-63`)
+- **F-L-6** · düşük · kütüphane — Bildirim bölgesi menü girişi ve zil ile aynı "Bildirimler" adını taşıyor ve "Kapat" düğmesinin adı kataloğun dışında sabit yazılmış; iki farklı şey tek adla okunuyor. (`nazar.shell.scopeAndMenu`, `nazar.courses.open` +3; `libs/ui/src/mds/toast.tsx:127-131`)
+- **F-L-16** · düşük · arayüz — Sayfa okuması başarısız olunca yeniden deneme yüzü, sayfanın kendi başlığının altına ikinci bir birinci düzey başlık çiziyor; ekranda iki ana başlık var. (`nazar.shell.errorStates`, `nazar.course.overview`; `libs/ui/src/mds/system-state.tsx:24`)
+- **F-L-19** · düşük · arayüz — Kabuk e2e testinin dört iddiası eskimiş ve olduğu gibi taşınmıyor; biri ders nazırının hesabında hiç yetki olmadığını bekliyor, tohum ise üç yetki veriyor. (`nazar.shell.scopeAndMenu`)
+- **SCOPE-1** · düşük · arayüz — Kapsam seçici düz bağlantı olduğu için her seçim tüm sayfayı yeniden yüklüyor, kabuk iskelet olarak akıyor ve odak belgenin başına düşüyor; menü bağlantıları böyle değil. (`nazar.shell.scopeAndMenu`; `apps/nazar/features/shell/components/scope-picker.tsx:158`)
+- **SCOPE-2** · düşük · arayüz — Medrese koltuğu olmayan hocanın ders menüsünde Pano ile Genel bakış aynı sayfaya gidiyor; ekran okuyucu kullanan kişi iki ayrı hedef duyuyor. (`nazar.shell.scopeAndMenu`; `apps/nazar/features/shell/scope.ts:214-218`)
+- **SCOPE-3** · düşük · arayüz — Kapsam düğmesinin adı etiketle değiştirildiği için görünen rol satırı ("Hoca") erişilebilir adda yok; sesle denetim kullanan kişi görünen sözle basamıyor. (`nazar.shell.scopeAndMenu`; `apps/nazar/features/shell/components/scope-picker.tsx:129`)
+
+### nazar/students
+
+- **STUDENTS-1** · orta · arayüz — Sayfalama iki düz bağlantı: her sayfa değişimi belgeyi baştan yüklüyor, odak başa düşüyor ve sayfanın değiştiğini söyleyen tek şey canlı olmayan aralık yazısı. (`nazar.students.browse`; `button.tsx:136`)
+- **STUDENTS-2** · orta · karar — "Yasakla" listeyi gören herkese çiziliyor, oysa yasaklama ayrı bir izin ister; yalnız görüntüleme izni olan nazır pencereyi açıp gönderirken reddediliyor. (`nazar.students.browse`; `apps/nazar/features/students/components/students-table.tsx:169-178`)
+- **STUDENTS-3** · orta · arayüz — Ders süzgeci başka izinler isteyen bir okumaya dayanıyor; yalnız talebe görüntüleme izni olan nazırda okuma 403 veriyor ve süzgeç sessizce yalnız "Bütün dersler" ile kalıyor. (`nazar.students.browse`; `apps/nazar/features/students/components/students-page.tsx:102-105`)
+- **students-read-unaudited** · orta · karar · güvenlik — Medresenin tüm talebelerinin ad ve e-posta listesi denetim kaydı yazılmadan okunuyor; ders kadrosu okuması ise kayıt bırakıyor (karar D1 bekliyor). (`nazar.students.browse`)
+- **F-B-1** · düşük · arayüz — Okuma başarısız olunca yeniden deneme yüzü sayfanın kendi başlığının altına ikinci bir birinci düzey başlık çiziyor; başlık gezinmesi iki sayfa başlığı listeliyor. (`nazar.students.browse`, `nazar.appeals.open`; `apps/nazar/features/shell/components/load-failed.tsx:28-31`)
+- **STUDENTS-4** · düşük · arayüz — 100 karakteri aşan arama sözcüğü kesilen değerle hiç eşleşmediği için sayfa, kutuda durdukça her 350 ms'de sunucuya yeniden soruyor (doğrulanmadı). (`nazar.students.browse`; `apps/nazar/features/students/students.ts:46`)
+- **STUDENTS-5** · düşük · API — Çok büyük bir sayfa numarası API'de sunucu hatasına dönüşüyor; sayfa "Yeniden dene" ile hiç düzelmeyen bir hata durumunda kalıyor (doğrulanmadı). (`nazar.students.browse`; `apps/nazar/features/archive/archive.ts:53-56`)
+
+## nizam
+
+| Alan | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
+|---|---|---|---|---|---|---|
+| nizam/account | 1 | 0 | 4 | 5 | 0 | 1 |
+| nizam/applications | 1 | 0 | 7 | 1 | 0 | 0 |
+| nizam/courseRequests | 1 | 1 | 4 | 2 | 0 | 0 |
+| nizam/courses | 10 | 1 | 52 | 34 | 0 | 15 |
+| nizam/decks | 2 | 0 | 15 | 15 | 0 | 3 |
+| nizam/grants | 1 | 0 | 5 | 1 | 0 | 1 |
+| nizam/home | 4 | 1 | 11 | 11 | 0 | 3 |
+| nizam/hosting | 1 | 0 | 3 | 4 | 0 | 1 |
+| nizam/inactive | 2 | 0 | 8 | 1 | 0 | 0 |
+| nizam/kosks | 5 | 1 | 16 | 8 | 0 | 3 |
+| nizam/madrasahs | 5 | 1 | 18 | 9 | 0 | 4 |
+| nizam/moderation | 8 | 0 | 35 | 16 | 0 | 13 |
+| nizam/nazims | 4 | 0 | 18 | 15 | 0 | 3 |
+| nizam/notifications | 1 | 0 | 8 | 3 | 0 | 2 |
+| nizam/partners | 1 | 0 | 3 | 4 | 0 | 0 |
+| nizam/platform | 2 | 0 | 12 | 5 | 0 | 1 |
+| nizam/shell | 3 | 0 | 10 | 11 | 0 | 4 |
+| nizam/youtube | 1 | 0 | 2 | 4 | 0 | 2 |
+| **nizam** | 53 | 5 | 231 | 149 | 0 | 56 |
+
+### nizam/account
+
+- **F-W1-7** · orta · arayüz — Saat dilimi seçicileri kayıt sürerken devre dışı kalıyor; odaktaki kutu işlemin ortasında kapanıyor ve bildirim gelene dek "kaydediliyor" diyen yok. (`nizam.account.settings`; `apps/nizam/features/account/components/time-zone-form.tsx:88`)
+- **F-W1-8** = F-X-10 · orta · kütüphane — Sayfa yüklenirken tek içeriği ekran okuyucudan gizli iskeletler olan meşgul bir kutu var; ekran okuyucu kullanan kişi yükleme sırasında hiçbir şey duymuyor. (`nizam.account.settings`, `nizam.courses.list` +6; `loading.tsx:8`)
+- **NIZSET-2** · orta · arayüz — Medaris nazımı "Size ayrıca verilmiş bir izin grubu yok." okuyor, oysa API ona beş izin veriyor; platform izinlerinin katalogda cümlesi yok. (`nizam.account.settings`; `apps/nizam/features/account/account-view.ts:114-125`)
+- **NIZSET-4** · orta · arayüz — Üç okumadan biri başarısız olunca sayfa yalnız başlık, bir uyarı ve "Yeniden dene" bırakıyor; saat dilimi, e-posta ve çıkış kartı da gidiyor, nizam'daki tek çıkış bağlantısı kayboluyor. (`nizam.account.settings`; `reads.ts:34-38`)
+- **F-W1-9** · düşük · arayüz — İzin grupları "Etkin izinleriniz" başlığının altında bir düzey atlayarak h4 oluyor; başlık sırası bozuluyor. (`nizam.account.settings`; `apps/nizam/features/account/components/permissions-list.tsx:88`)
+- **F-W1-9b** · düşük · arayüz — Hesap e2e testinin üç iddiası sayfada olmayan "Dil" alanını bekliyor ve eskimiş; katalogdaki iki dil metni de hiçbir yerde kullanılmıyor. (`nizam.account.settings`)
+- **F-W1-14** · düşük · arayüz — "Nazar'da aç" bağlantısı yeni sekmede açılıyor ve bunu söyleyen bir söz yok; ekran okuyucu kullanan hoca sekmenin değiştiğini bilmiyor. (`nizam.account.settings`; `apps/nizam/features/account/components/account-page.tsx:247-251`)
+- **NIZSET-1** · düşük · arayüz — Birinci listedeki seçim reddedilince geri alma ikinci listeyi geri getirmiyor; birinci liste hiçbir seçeneğin adını taşımadığı bir saat dilimiyle kalıyor. (`nizam.account.settings`; `apps/nizam/features/account/components/time-zone-form.tsx:95`)
+- **NIZSET-3** · düşük · arayüz — Her izin grubu bir bölge (region) olduğu için birden çok rolü olanın sayfasında kartlara ek olarak grup sayısı kadar bölge çıkıyor. (`nizam.account.settings`; `apps/nizam/features/account/components/permissions-list.tsx:83-86`)
+
+### nizam/applications
+
+- **APPDEC-1** · orta · arayüz · güvenlik — "?secili=" bekleyen başvurular arasında değilse sessizce ilk bekleyene düşüyor; "İncele" bağlantısı başka kişinin iletişim bilgisini açıp bu okumayı denetime yazıyor. (`nizam.applications.decide`; `applications-view.tsx:73-77`)
+- **APPDEC-2** · orta · arayüz · güvenlik — Seçili başvuru her değiştiğinde (her karardan ve sekme geçişinden sonra) açılan kişinin iletişim bilgisi okunup denetime yazılıyor; ardışık on ret on okuma bırakıyor, kişi hiçbirini açmamış. (`nizam.applications.decide`; `applications-view.tsx:152`)
+- **APPDEC-4** · orta · arayüz — İlk okumadan sonraki okuma başarısız olunca uyarı sekmeleri, listeyi ve ayrıntıyı siliyor; kişi yalnız "Tekrar dene" ya da yenilemeyle kalıyor, ayrıntı hatasında yeniden deneme de yok. (`nizam.applications.decide`; `applications-view.tsx:372`)
+- **APPDEC-5** · orta · arayüz — Karardan sonra odak taşınmıyor: basılan düğme ve satır kalkıyor, sonraki başvuru iskeletin ardında okunuyor; tek söz 6 saniyelik bildirim, odak sayfaya düşüyor. (`nizam.applications.decide`; `applications-view.tsx:145-153`)
+- **APPDEC-6** · orta · API — API sekme başına en çok 100 başvuru listeliyor, sayfada sayfalama ve açıklama yok; sekme sayıları gerçek toplamı gösteriyor, 120 başvuruda en eski 20 hiç okunamıyor. (`nizam.applications.decide`; `apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:48`)
+- **F-W3-7** · orta · arayüz · güvenlik — Sayfa kendiliğinden bir başvuru seçip başvuranın e-posta ve telefonunu okuyor; istenmemiş bu okuma denetime yazılıyor ve bunu söyleyen cümle okumadan sonra çıkıyor. (`nizam.applications.decide`; `apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:121`)
+- **F-W3-8** · orta · arayüz — Başvurudan köşk açmak iki yazma; ikincisi başarısız olunca köşk var ama sayfa bunu söylemiyor, "Köşkü aç" açık kalıyor ve yeniden basınca ikinci köşk açılmaya çalışılıyor. (`nizam.applications.decide`, `nizam.kosks.open`; `applications-view.tsx:164-176`)
+- **APPDEC-3** · düşük · arayüz — Kabul edilen başvuru yalnız rozetini gösteriyor; API köşk kimliğini veriyor ama sayfa çizmiyor, okuyan kişi açılan köşke geçemiyor. (`nizam.applications.decide`; `applications-view.tsx:349-353`)
+
+### nizam/courseRequests
+
+- **CREQ-1** = DAPP-2, F-B-appeals-5 · yüksek · karar — Bildirim "gerekçe başmüderrise iletildi" diyor ama hiçbir bildirim ya da posta gitmiyor; başmüderris reddi ancak İtirazlar'ı açarsa buluyor. (`nizam.courseRequests.decide`, `nazar.appeals.open` +1; `apps/tedrisat/src/course-request/course-request.service.ts:166-197`)
+- **CREQ-2** · orta · arayüz — Son bekleyen talep cevaplanınca kart ve odağın döneceği "Reddet" düğmesi listeyle birlikte kalkıyor, odak belgeye düşüyor; tek söz 6 saniyelik bildirim. (`nizam.courseRequests.decide`; `apps/nizam/features/platform-admin/components/course-requests-view.tsx:103-111`)
+- **CREQ-3** · orta · arayüz — Karara bağlanan sekme okunamayınca uyarı sekmeleri de siliyor; okunmuş Bekleyen listesine sayfa yenilenene dek dönülemiyor ve "Tekrar dene" başarısız sekmeyi deniyor. (`nizam.courseRequests.decide`; `apps/nizam/features/platform-admin/components/course-requests-view.tsx:262`)
+- **CREQ-4** · orta · arayüz — "Kabul et" bir şeyi kabul etmiyor, yalnız Ders aç formuna götürüyor; formdan çıkınca talep bekliyor, bunu söyleyen tek şey kartın altındaki yazı ve yeni sekmede de açılamıyor. (`nizam.courseRequests.decide`; `apps/nizam/features/platform-admin/components/course-requests-view.tsx:234`)
+- **F-W3-5** · orta · arayüz — Sekmeler hiçbir panele bağlı değil; sekme geçişi ya da satır seçimi duyuru ve odak taşıması olmadan sayfayı değiştiriyor, ekran okuyucu kullanan kişi neyin değiştiğini duymuyor. (`nizam.courseRequests.decide`, `nizam.applications.decide`; `apps/nizam/features/platform-admin/components/course-requests-view.tsx:271-290`)
+- **CREQ-5** = DAPP-3 · düşük · arayüz — Listeden çıkan her talep karara bağlanmış sayılıyor; talep yok çıkınca (kimse cevaplamadan) Karara bağlanan sekmesinin sayısı yeniden okunana dek bir fazla kalıyor. (`nizam.courseRequests.decide`, `nizam.moderation.decideAppeal`; `apps/nizam/features/platform-admin/components/course-requests-view.tsx:103-111`)
+- **CREQ-6** · düşük · arayüz — Kabul edilen talebin kartı ders adı vermiyor; API ders kimliğini gönderiyor ama sayfa kullanmıyor, nazım talepten açılan derse geçemiyor. (`nizam.courseRequests.decide`; `apps/nizam/features/platform-admin/components/course-requests-view.tsx:169-250`)
+
+### nizam/courses
+
+- **F-W4-hocalar-4** · yüksek · API — Hesabı olmayan eski hoca satırları pencerede görünmüyor, ama kayıt listede olmayan her satırı siliyor; bu hocalar kimse fark etmeden dersten düşüyor. (`nizam.courses.editHocalar`; `present.ts:383`)
+- **BANST-6** · orta · arayüz — Satır rozeti "Yasaklı · Bu ders" diyor ama liste tüm medreseyi kapsayan yasağı da işaretliyor; Nazar'da konan medrese çapındaki yasak köşk nazımına "Bu ders" gibi okunuyor. (`nizam.courses.roster`, `nizam.moderation.banStudent`; `apps/nizam/features/applications/components/roster-table.tsx:164`)
+- **CDA-1** · orta · arayüz — Karar verilen satırlar listeden süzülüyor ve bu küme hiç küçülmüyor; reddedilen talebe yeniden başvurunca yeni bekleyen satır sonraki yenilemede süzülüp görünmez oluyor. (`nizam.courses.decideApplications`; `apps/nizam/features/applications/use-decisions.ts:31`)
+- **CDA-2** · orta · arayüz — İşlemdeki satır üç biçimde gösteriliyor ve hiçbiri duyurulmuyor: düğmeler doğal olarak devre dışı kalıyor, dönen işaret ya da durum yazısı yok, basılan düğme odağı yitirebiliyor. (`nizam.courses.decideApplications`; `apps/nizam/features/applications/components/applications-table.tsx:121`)
+- **CDA-3** · orta · arayüz — "Reddet"e basınca satırın "Onayla" düğmesi dönüyor ve ekran okuyucuya "Yükleniyor" diyor, "Reddet" ise hiçbir şey göstermiyor; ret eden kişiye yanlış işlemin sürdüğü söyleniyor. (`nizam.courses.decideApplications`; `apps/nizam/features/kosks/components/course-overview.tsx:223`)
+- **CDA-4** · orta · API · güvenlik — Menü sayısı için her tam çizimde ve her karardan sonra köşk başına tüm bekleyen başvurular ad ve e-postayla okunuyor ve her seferinde denetim satırı yazılıyor; sayı için gereğinden çok veri. (`nizam.courses.decideApplications`; `apps/nizam/components/shell/nizam-shell.tsx:79-83`)
+- **CDA-5** · orta · karar · güvenlik — Köşk geneli liste yalnız köşk nazımının; başnazım "Bu bölüm için izniniz yok" görüyor, oysa her dersin Genel bakışında aynı başvuruları okuyup karara bağlayabiliyor. (`nizam.courses.decideApplications`; `apps/tedrisat/src/kosk/kosk.service.ts:128-139`)
+- **EDIT-4** · orta · arayüz — "Hafta ekle" ve "Celse ekle" sessiz: odak düğmede kalıyor, yeni hafta ya da celse duyurulmuyor ve yeni celse düğmenin üstüne ekleniyor; odak yeni satıra gitmiyor. (`nizam.courses.curriculum`, `nazar.curriculum.edit`; `apps/nizam/features/courses/components/curriculum-editor.tsx:423-438`)
+- **F-C-course-a-04** · orta · arayüz — Her celsenin alanları aynı etiketleri tekrarlıyor ve liste öğesi grup değil; ekran okuyucu bir alanın hangi celseye ait olduğunu söylemiyor. (`nizam.courses.curriculum`, `nazar.curriculum.edit` +1; `apps/nizam/features/courses/components/curriculum-editor.tsx:520-524`)
+- **F-C-course-a-19** · orta · arayüz — Kaydetme çağrısının kendisi başarısız olunca (ağ koptuğunda) "Kaydet" sonsuza dek meşgul kalıyor ve hiçbir şey söylenmiyor; yalnız dosya yükleme hatası yakalanıyor. (`nizam.courses.curriculum`, `nazar.curriculum.edit` +2; `apps/nizam/features/courses/components/curriculum-editor.tsx:239-244`)
+- **F-W4-1** · orta · arayüz — 'Derse dön', 'Celse planla' ve 'Ders ayarları' adlarının söylediği sayfayı değil müfredat sayfasını açıyor; kullanıcı beklemediği bir yere düşüyor. (`nizam.courses.overview`, `nizam.courses.curriculum` +2; `apps/nizam/features/kosks/components/course-overview.tsx:81`)
+- **F-W4-4** = F-C-course-a-15, F-C-course-a-16, F-X-7 · orta · arayüz — 'Gizle' ve 'Haftayı gizle' satırı sormadan ve duyurmadan taslaktan çıkarıyor, odak kayboluyor; asıl gizleme Kaydet ile oluyor, düğmenin adı yaptığından fazlasını söylüyor. (`nizam.courses.curriculum`, `nazar.curriculum.edit` +9; `apps/nizam/features/courses/components/curriculum-editor.tsx:563-569`)
+- **F-W4-5** · orta · arayüz — Müfredat, ders ayarları ve celse planlama formlarından menü, yol işareti ya da Geri ile çıkınca kaydedilmemiş değişiklikler uyarı verilmeden kayboluyor. (`nizam.courses.curriculum`, `nizam.courses.planSessions` +1; `apps/nizam/features/courses/components/curriculum-editor.tsx:441-443`)
+- **F-W4-6** = F-D1-04 · orta · arayüz — Karar, gizleme ya da çıkarma sonrası düğme satırla birlikte kayboluyor ve odak sayfaya düşüyor; tek haber kısa bir bildirim, klavye ve ekran okuyucu kullanıcısı yolunu yitiriyor. (`nizam.courses.decideApplications`, `nazar.homework.review` +5; `apps/nizam/features/applications/use-decisions.ts:73`)
+- **F-W4-7** · orta · arayüz — 'Reddet' bekleyen başvuruyu soru, gerekçe ve geri alma olmadan siliyor ve talebeye bildiriyor; köşk anasayfası ve nazar gerekçe soruyor, aynı karar yerine göre farklı. (`nizam.courses.decideApplications`; `apps/nizam/features/applications/use-decisions.ts:44`)
+- **F-W4-10** · orta · arayüz — Talebeler sayfasında kayıtlar okunamayınca uyarı rolü ve 'Yeniden dene' olmayan çıplak bir cümle çıkıyor; kararlara ulaşılamıyor ve ekran okuyucu haber almıyor. (`nizam.courses.decideApplications`, `nizam.courses.roster`; `page.tsx:62-63`)
+- **F-W4-15** · orta · arayüz — Eksik form gönderilince odak düğmede kalıyor, özet yok ve hata satırlarının bir kısmı canlı bölge değil; ekran okuyucu kullanıcısı basışın reddedildiğini duymuyor. (`nizam.courses.open`, `nizam.courses.planSessions`; `apps/nizam/features/courses/components/course-create-form.tsx:127-130`)
+- **F-W4-16** · orta · arayüz — Başka köşkün nazımı olup bu dersi de veren kişi sayfaya giriyor ama 'Hocaları düzenle' ve 'Dersi gizle' çıkmıyor; kişinin yetkisi ile gördüğü düğmeler uyuşmuyor. (`nizam.courses.settingsAndPublish`; `reads.ts:48`)
+- **F-W4-hocalar-3** · orta · arayüz · güvenlik — Dersler sayfası 'Hocaları düzenle'yi yetkiye bakmadan çiziyor; Ders ayarları yalnızca yöneticiye gösteriyor, API ise başka yetki istiyor: düğme görülüyor ama kimi kişiler için reddediliyor. (`nizam.courses.editHocalar`; `apps/nizam/features/kosks/overview-present.ts:95-100`)
+- **F-W4-hocalar-8** · orta · arayüz — Gizli çıktı, kişi 'Çıkar' ile listeden alındıktan sonra da 'seçildi' demeye devam ediyor ve çıkarma hiçbir şey söylemiyor; ekran okuyucu kullanıcısı listenin tersini duyuyor. (`nizam.courses.editHocalar`; `apps/nizam/features/courses/components/team-picker.tsx:102`)
+- **F-W4-hocalar-9** · orta · arayüz — Pencere açıkken ders silinmişse genel 'İşlem tamamlanamadı, yeniden deneyin' bildirimi çıkıyor ve pencere açık kalıyor; 'Bu ders artık yok.' denmiyor. (`nizam.courses.editHocalar`; `present.ts:1219-1227`)
+- **F-W4-hocalar-10** · orta · arayüz — Pencere 'çıkardığınız hocanın verdiği izinlere ayrıca karar verirsiniz' diyor ama kayıt o izinleri ne listeliyor ne bitiriyor, kararın nerede verileceğini de söylemiyor. (`nizam.courses.editHocalar`; `apps/nizam/features/courses/components/team-picker.tsx:239`)
+- **F-W4-open-1** · orta · kütüphane — Alanların '*' işareti yalnızca çiziliyor ve ekran okuyucudan gizli; hiçbir girdi 'zorunlu' diye işaretlenmiyor, yani zorunlu alanlar ekran okuyucu kullanıcısına söylenmiyor. (`nizam.courses.open`; `libs/ui/src/mds/field.tsx:42-47`)
+- **F-W4-open-2** · orta · arayüz — Ders açılıp celseler eklenemeyince bildirim hep aynı sözü söylüyor; geçersiz tekrar düzeni nedeni ve kullanıcının girdiği düzen gösterilmiyor, düzen yeniden yazılmak zorunda. (`nizam.courses.open`; `apps/nizam/features/courses/components/course-create-form.tsx:181-188`)
+- **F-W4-open-3** · orta · arayüz — Talebin yanıtlanması hangi nedenle başarısız olursa olsun 'başka nazım yanıtlamış olabilir' deniyor; sunucu hatası ve yetki reddi de aynı cümleyle anlatılıyor. (`nizam.courses.open`; `apps/nizam/features/courses/components/course-create-form.tsx:166-172`)
+- **F-W4-open-4** · orta · arayüz — Form 52 hafta ve serbest günlerle 208 celseyi sakin bir özetle kabul ediyor, oysa en fazla 200 celse üretilebiliyor; ders açılıyor, celseler reddediliyor. (`nizam.courses.open`; `apps/tedrisat/src/course/domain/weekly-pattern.ts:16`)
+- **F-W4-open-6** · orta · arayüz — Bulunamayan ya da başkasınca yanıtlanmış talep bağlantısı boş form açıyor ve hiçbir şey söylemiyor; 'Kabul et'e basan kişi hiçbir talebe bağlanmayan bir ders açıyor. (`nizam.courses.open`; `page.tsx:39-43`)
+- **F-W4-open-7** · orta · arayüz · güvenlik — Kendi adresini hoca olarak bulan nazım gibi bazı reddedilişler genel 'Biraz sonra yeniden deneyin' diye çıkıyor; bu hiç düzelmez, kullanıcı doğru nedeni öğrenmiyor. (`nizam.courses.open`; `present.ts:1219-1240`)
+- **F-X-3** = CAPPOINT-2 · orta · karar — Form eksikken gönder düğmesi devre dışı kalıyor ve neyin eksik olduğunu söyleyen satır yok; klavye kullanıcısı düğmeye Tab ile ulaşamıyor, Enter formu gönderemiyor. (`nizam.courses.planSessions`, `nazar.courseNazirs.appoint` +13; `apps/nizam/features/courses/components/session-plan-form.tsx:395-402`)
+- **F-X-19** · orta · arayüz — Genel bakış, Talebeler sayfası ve izinsiz kapsam tablosu müfredata yönlendiren adrese bağlanıyor; düğmeler adlarının söylediği sayfayı açmıyor ve geçmişe iki kayıt giriyor. (`nizam.courses.overview`, `nizam.courses.curriculum` +1; `apps/nizam/features/kosks/components/course-overview.tsx:81`)
+- **HOME-1** · orta · arayüz — Yasaklı talebenin onayı reddedilince nazıma 'Bu başvuruya karar verme yetkiniz yok' deniyor; yetki var, yasaklı olan talebe, yani gerçek neden söylenmiyor. (`nizam.courses.decideApplications`, `nizam.home.decideApplications`; `apps/tedrisat/src/ban/ban.service.ts:616`)
+- **KOVERVIEW-1** · orta · karar — 'Devam eden hafta' kartı o an süren haftayı değil başlamış hafta sayısını gösteriyor; beşinci haftadaki ders '5' diyor, etiket yanlış okunuyor ve sayı yalnızca artıyor. (`nizam.courses.overview`; `apps/tedrisat/src/course/course-stats.repository.ts:24-58`)
+- **KOVERVIEW-3** · orta · arayüz — Köşk ya da ders okuması sunucu hatasıyla başarısız olunca sayfa 'Bu bölüm için izniniz yok' diyor; dersin nazımına yetkisi olmadığı söyleniyor, oysa sorun sunucuda. (`nizam.courses.overview`; `page.tsx:65`)
+- **KOVERVIEW-5** · orta · arayüz · güvenlik — Platform izni olan Medaris nazımı köşkün Dersler sayfasına alınıyor, ders başlığı bağlantı ama genel bakış sayfası onu reddediyor; çalışır görünen bağlantı yetkisiz sayfaya çıkıyor. (`nizam.courses.overview`; `page.tsx:42-46`)
+- **NCL-2** · orta · arayüz — Nizam'daki 'Dersi gizle' penceresi yalnızca dersin gizleneceğini söylüyor; nazar'daki gibi celselerin takvimden kalkacağını ve kaç talebenin erişimi yitireceğini söylemiyor. (`nizam.courses.list`)
+- **NCL-3** = F-A-12, KNZ-6 · orta · kütüphane — Sekme etiketi ile sayı arasında boşluk yok; ekran okuyucu 'Tümü5' ve 'Gizli2' diye okuyor, sayı etiketin parçası gibi duyuluyor. (`nizam.courses.list`, `nazar.archive.hideAndRestoreCourse` +6; `libs/ui/src/mds/tabs.tsx:111-112`)
+- **NCL-4** · orta · arayüz — Köşkün Dersler sayfası, platform.kosk_edit izni olan Medaris nazımına da kendi ders satırlarında 'Düzenle' bağlantısını çiziyor; müfredat sayfası onu 'Bu bölüm için izniniz yok' ile reddediyor. (`nizam.courses.list`; `apps/nizam/features/kosks/components/kosk-course-table.tsx:275`)
+- **NCURR-1** · orta · arayüz — Eski sürüm yüzünden reddedilen 'Kaydet' yalnızca hata bildirimi veriyor; sayfa eski sürümle kalıyor, yeniden basış yine reddediliyor, tek çıkış yenileyip düzenlemeleri kaybetmek. (`nizam.courses.curriculum`; `apps/nizam/features/courses/components/curriculum-editor.tsx:246-253`)
+- **NCURR-2** · orta · arayüz — Kayıt sürerken alanlar ve 'Celse ekle', 'Gizle' gibi düğmeler açık kalıyor; cevap formu değiştirince bu sırada yazılanlar sessizce eziliyor. (`nizam.courses.curriculum`; `apps/nizam/features/courses/components/curriculum-editor.tsx:298-313`)
+- **NCURR-3** · orta · arayüz — Dosya bağlantısı sayfadan çıkıyor; sunucu reddederse sayfa baştan yükleniyor ve kaydedilmemiş düzenlemeler yalnızca 'Dosya indirilemedi' bildirimiyle, söylenmeden kayboluyor. (`nizam.courses.curriculum`; `apps/nizam/features/courses/components/resource-file-parts.tsx:24-31`)
+- **NCURR-7** · orta · arayüz — 'Haftayı kopyala' toplantı bağlantılarını ve celselerin kaynaklarını sayfada söylemeden dışarıda bırakıyor ve kopyayı hep son hafta olarak ekliyor; kullanıcı eksik kopya buluyor. (`nizam.courses.curriculum`; `present.ts:990-1017`)
+- **NMSESS-1** · orta · arayüz — Reddedilen yazma sayfayı yeniden okumuyor; sürüm eski kalıyor, 'Kaydet' ya da onayın her basışı yine 'Sayfayı yenileyin' diye reddediliyor, kullanıcı takılıyor. (`nizam.courses.manageSessions`; `apps/nizam/features/courses/components/sessions-view.tsx:138-142`)
+- **NMSESS-2** · orta · arayüz — 'İptal et' nizam'da not ve telafi celsesi göndermiyor; nazar'dan yapılan iptal hocanın notunu taşıyor, buradan yapılan iptalde talebeye neden söylenmiyor. (`nizam.courses.manageSessions`; `apps/nizam/features/courses/components/sessions-view.tsx:263-268`)
+- **NMSESS-3** · orta · arayüz — Celse başlığı tedris sayfasına değil sunucunun yoluna bağlanıyor; tıklayan kişi var olmayan bir sayfaya ya da girişe düşüyor, celseye ulaşamıyor. (`nizam.courses.manageSessions`; `apps/nizam/features/courses/components/sessions-view.tsx:291`)
+- **NMSESS-4** · orta · API — 'Tarihi değiştir' geçmişte kalan bir zamanı da kabul ediyor; celse 'Geçmiş celseler'e düşüp 'Sona erdi' oluyor ve hiçbir düğme onu geri getiremiyor. (`nizam.courses.manageSessions`; `apps/nizam/features/courses/components/sessions-view.tsx:227-237`)
+- **NPLAN-1** · orta · API — Geçmiş tarih engellenmiyor; dün başlayan tekrar zaten bitmiş celseler üretiyor, uyarı yok ve davet taraması kayıtlı talebeye bunlar için e-posta gönderiyor. (`nizam.courses.planSessions`; `apps/nizam/features/courses/components/session-plan-form.tsx:268-274`)
+- **NROS-2** · orta · arayüz · güvenlik — Pencere yeniden başvuruyu engellemek için 'Yasakla'yı öneriyor ama çıkarılmış talebenin üzerinde Yasakla'ya basılacak satır yok; nazım ikisini birden yapamıyor. (`nizam.courses.roster`; `apps/nizam/features/applications/components/roster-table.tsx:316`)
+- **NROS-6** · orta · arayüz — Kayıtlar okunamayınca iki farklı durum (sunucu cevap vermedi, okuma yetkisi yok) tek cümleyle anlatılıyor; yetkisi olmayan Medaris nazımı nedenini öğrenmiyor. (`nizam.courses.roster`; `page.tsx:62-63`)
+- **policy-in-the-course-form** · orta · karar — Köşkün kayıt politikası dersin formunda duruyor ve köşkün bütün derslerini etkiliyor; 'Ders ayarları kaydedildi' bildirimi yalnızca bu dersi anıyor, yeri için karar gerekiyor. (`nizam.courses.settingsAndPublish`; `apps/tedrisat/src/kosk/kosk.service.ts:247-262`)
+- **SETPUB-2** · orta · arayüz — Politikanın kilitlediği bir kural 'Biraz sonra yeniden deneyin' diye anlatılıyor; bu işlem her seferinde reddedilecek, kullanıcı yanlış yönlendiriliyor. (`nizam.courses.settingsAndPublish`; `present.ts:1219-1237`)
+- **SETPUB-3** · orta · arayüz — Reddedilen kayıt sayfayı yeniden okumuyor; örnek celse çakışmasında sürüm eski kalıyor, 'Kaydet' aynı reddi tekrarlıyor, tek çıkış yenileyip basılı seçimleri kaybetmek. (`nizam.courses.settingsAndPublish`; `apps/nizam/features/courses/components/course-settings-page.tsx:100-104`)
+- **SETPUB-4** · orta · arayüz — 'Taslağa çek' açıklaması yalnızca kayıtlı talebeyi sayıyor ve sıfır hali yok ('kayıtlı 0 talebe...'); tamamlayan talebe ve bekleyen başvurular da erişimi yitiriyor ama sayılmıyor. (`nizam.courses.settingsAndPublish`)
+- **SETPUB-8** · orta · arayüz — Yönetici gizlenmiş bir dersi de açabiliyor ama sayfa dersin gizli olduğunu söylemiyor; 'Dersi gizle' yine sunuluyor ve 'Yayımla' ile 'Taslağa çek' gizli derse yazıyor. (`nizam.courses.settingsAndPublish`; `apps/tedrisat/src/course/course.service.ts:317-338`)
+- **CDA-6** · düşük · arayüz — Aynı karar bir uygulamada iki farklı sözle anlatılıyor: bu sayfaların bildirimleri ile köşk ana sayfasınınki farklı cümle ve başlık kullanıyor. (`nizam.courses.decideApplications`)
+- **F-W1-11** · düşük · arayüz — İptal edilen celsenin Katılım hücresi yalnızca '—' gösteriyor ve metin karşılığı yok; ortak hücre aynı durumda 'Katılım bilgisi gösterilmez' diyor. (`nizam.courses.overview`, `nizam.home.koskNazimLanding`; `apps/nizam/features/kosks/components/course-overview.tsx:143`)
+- **F-W4-8** · düşük · arayüz — Kayıttan sonra form farklı olmaktan çıkınca odaktaki 'Kaydet' kapanıyor ve odak kayboluyor; kaydın yapıldığını söyleyen tek şey kısa bir bildirim. (`nizam.courses.settingsAndPublish`, `nizam.courses.curriculum`; `apps/nizam/features/courses/components/course-settings-page.tsx:315-321`)
+- **F-W4-11** · düşük · arayüz — 'Tarihi değiştir' ve 'Canlı yayın ekle' gibi düğmelerin görünen yazısı erişilebilir adın içinde yok; sesle kumanda kullananlar düğmeyi söyleyerek seçemiyor. (`nizam.courses.manageSessions`)
+- **F-W4-12** · düşük · arayüz — Celse başlığı yeni sekmede açılıyor ama bağlantı bunu söylemiyor; ekran okuyucu kullanıcısı beklemediği bir sekme değişimi yaşıyor. (`nizam.courses.manageSessions`; `apps/nizam/features/courses/components/sessions-view.tsx:288-296`)
+- **F-W4-13** · düşük · arayüz — Celse önizlemesi (sayaç ve liste) yazdıkça değişiyor ama canlı bölge değil; ekran okuyucu kullanıcısı kaç celse üretileceğini duymuyor. (`nizam.courses.planSessions`; `apps/nizam/features/courses/components/session-plan-form.tsx:90-113`)
+- **F-W4-14** · düşük · arayüz — Dersten çıkarma penceresinde gerekçe boşken gönder düğmesi kapalı kalıyor ve nedeni söylenmiyor; ipucu yalnızca 'zorunlu alan' işareti. (`nizam.courses.roster`; `apps/nizam/features/applications/components/remove-dialog.tsx:101`)
+- **F-W4-16** · düşük · arayüz — 'Dersi veren de düzenleyebilir' kolu ölü: yalnızca hoca olan kişiyi köşk düzeni nazar'a gönderiyor, yani kod var olmayan bir yetki izlenimi veriyor. (`nizam.courses.curriculum`, `nizam.courses.editHocalar`; `apps/nizam/features/kosks/kosk-abilities.ts:70-80`)
+- **F-W4-17** · düşük · arayüz — Sekme başlığı ve ana başlık ders ya da köşk adını taşımıyor; iki ders ya da iki köşk açık olan nazım sekmeleri ve geçmiş kayıtlarını birbirinden ayıramıyor. (`nizam.courses.planSessions`, `nizam.courses.curriculum` +6; `apps/nizam/features/courses/components/session-plan-form.tsx:165-171`)
+- **F-W4-18** · düşük · arayüz — Bağlantı alanlarının örnek metinleri koda yazılı, katalogda değil; başka dil eklenince çevrilemiyor ve her dilde tek bir platformu adlandırıyor. (`nizam.courses.manageSessions`, `nizam.courses.curriculum` +1; `apps/nizam/features/courses/components/sessions-view.tsx:606`)
+- **F-W4-19** · düşük · arayüz — Haftalık celse günü grubunun adında '*' gerçek metin olarak duruyor ve grup zorunlu diye işaretlenmiyor; ekran okuyucu adı yıldızla birlikte okuyor. (`nizam.courses.open`, `nizam.courses.planSessions`; `apps/nizam/features/courses/components/course-create-form.tsx:363`)
+- **F-W4-21** · düşük · arayüz — Tedris adresi tanımlı değilse medresenin dersinde 'Dersi gör' çizilmiyor, yalnızca 'Gizle' kalıyor ve dersi açmanın yolu olmuyor. (`nizam.courses.list`; `apps/nizam/features/kosks/components/kosk-course-table.tsx:253`)
+- **F-W4-hocalar-1** · düşük · API · güvenlik — Hocaları düzenle penceresi her açılışta dersin tamamını okuyor ve köşk nazımı için her seferinde bir 'içerik okundu' denetim satırı yazıyor; denetim kaydı gereksiz doluyor. (`nizam.courses.editHocalar`; `apps/nizam/features/courses/components/muderris-dialog.tsx:67`)
+- **F-W4-hocalar-2** · düşük · arayüz — Ders okunurken pencere yalnızca gizli iskelet çubukları gösteriyor; yazı ve canlı bölge yok, ekran okuyucu kullanıcısı bekleyişi ve listenin gelişini duymuyor. (`nizam.courses.editHocalar`; `apps/nizam/features/courses/components/muderris-dialog.tsx:151-155`)
+- **F-W4-hocalar-5** · düşük · arayüz — Pencere hocaları yalnızca adıyla listeliyor, unvanı göstermiyor; listeden çıkarılıp kaydedilen hocanın bu dersteki unvanı da gidiyor ve geri eklenince unvansız dönüyor. (`nizam.courses.editHocalar`; `present.ts:379-393`)
+- **F-W4-hocalar-6** · düşük · arayüz — E-posta alanı aranırken devre dışı kalıyor, odak düşüyor ve geri verilmiyor; Enter'dan sonra kullanıcı pencerenin başından başlıyor, aramanın bittiğini yalnızca gizli bir çıktı söylüyor. (`nizam.courses.editHocalar`; `apps/nizam/features/courses/components/team-picker.tsx:147`)
+- **F-W4-hocalar-7** · düşük · arayüz — Kayıt sürerken 'Vazgeç', kapatma simgesi ve Esc hiçbir şey yapmıyor ama devre dışı ya da meşgul işaretli değil; kullanıcı pencerenin neden kapanmadığını anlamıyor. (`nizam.courses.editHocalar`; `apps/nizam/features/courses/components/muderris-dialog.tsx:122`)
+- **F-W4-open-5** · düşük · arayüz — 'Çıkar' hocayı sormadan listeden alıyor, odağı taşımıyor ve gizli çıktı 'seçildi' demeye devam ediyor; ekran okuyucu kullanıcısı listenin tersini duyuyor. (`nizam.courses.open`; `apps/nizam/features/courses/components/team-picker.tsx:102`)
+- **F-W4-open-8** · düşük · arayüz — Haftanın günü düğmeleri 'Pzt', 'Sal' gibi kısaltmalarla adlandırılmış; ekran okuyucu bunları harf harf okuyor, tam ad ('Pazartesi') yok. (`nizam.courses.open`; `apps/nizam/features/courses/components/course-create-form.tsx:370`)
+- **HOME-3** · düşük · arayüz — Tek bir 'meşgul' bilgisi bütün tabloya hizmet ediyor; ilk çağrı sürerken ikinci basış ilk satırın düğmelerini yeniden açıyor ve ilk yanıt ikinci satırın işaretini siliyor. (`nizam.courses.decideApplications`, `nizam.home.decideApplications`; `apps/nizam/features/applications/use-decisions.ts:30`)
+- **KOVERVIEW-2** · düşük · arayüz — Hiçbir şey okunamayınca genel bakış yalnızca bir hata uyarısı gösteriyor; başlık yok, sekme başlığı 'Genel bakış' kalıyor, ekran okuyucu kullanıcısı inecek bir başlık bulamıyor. (`nizam.courses.overview`; `page.tsx:53-63`)
+- **KOVERVIEW-4** · düşük · arayüz — Ayar özetinde saat dilimi ham kimlik olarak ('Europe/Istanbul') yazılıyor; ayarlar sayfası bölgeyi adıyla yazıyor, Türkçe sayfada yabancı bir dizgi kalıyor. (`nizam.courses.overview`; `apps/nizam/features/kosks/components/course-overview.tsx:484`)
+- **NCL-1** · düşük · arayüz — 'Gizle' sürerken pencere her kapatma yolunu yok sayıyor ama 'Vazgeç' ve kapatma simgesi açık kalıyor; basış hiçbir şey yapmıyor. (`nizam.courses.list`; `apps/nizam/features/kosks/components/hide-course-dialog.tsx:62-64`)
+- **NCURR-4** · düşük · arayüz — Dosya yüklenirken pencere kapanmıyor ama kapatma simgesi ve 'Vazgeç' devre dışı değil; çalışır görünüyor, hiçbir şey yapmıyor ve nedenini söylemiyor. (`nizam.courses.curriculum`; `apps/nizam/features/courses/components/resource-file-parts.tsx:192-197`)
+- **NCURR-5** · düşük · arayüz — Dosya yükleme penceresi odağı dosya alanına vermiyor, kapatma simgesinde başlıyor; dosya alanına üçüncü durakta ulaşılıyor, klavye kullanıcısı gereksiz adım atıyor. (`nizam.courses.curriculum`; `apps/nizam/features/courses/components/resource-file-parts.tsx:190-200`)
+- **NCURR-6** · düşük · arayüz — Kayıtlı dosya bağlantısı yalnızca dosya adıyla adlandırılmış; indirdiğini ya da sayfadan çıkardığını söyleyen söz yok, nazar'daki 'dosyasını indir' adı burada yok. (`nizam.courses.curriculum`; `apps/nizam/features/courses/components/resource-file-parts.tsx:48-50`)
+- **no-exam** · düşük · karar — nizam'ın celse planlayıcısında 'Sınav' yok; sınav yalnızca nazar'da planlanıyor, köşk nazımı kendi uygulamasında sınav planlayamıyor. (`nizam.courses.planSessions`)
+- **NPLAN-3** · düşük · arayüz — 'Planlama biçimi' seçenekleri radyo değil basılı/basılı değil düğmeleri ve gün düğmeleri 'Pzt', 'Sal' kısaltmalarıyla adlandırılmış; ekran okuyucu bunları harf harf okuyor. (`nizam.courses.planSessions`; `libs/ui/src/mds/choice-chips.tsx:75-92`)
+- **NPLAN-4** · düşük · arayüz — Tek seferlik celse 'Haftanın tekrarı' başlığıyla öneriliyor; başlık planlama biçimini izlemiyor, kullanıcı düzeltmezse tek celse 'tekrar' adıyla açılıyor. (`nizam.courses.planSessions`; `apps/nizam/features/courses/components/session-plan-form.tsx:72`)
+- **NROS-3** · düşük · arayüz — Kayıt başka yerde değişmişse satır eski haliyle kalıyor ve hata bildirimi 'sayfayı yenileyin' diyor; kullanıcı eskimiş satıra yeniden basıp aynı reddi alabiliyor. (`nizam.courses.roster`; `apps/nizam/features/applications/components/roster-table.tsx:107-113`)
+- **SETPUB-1** · düşük · API · güvenlik — Ders ayarlarını açmak köşk nazımı ve başnazım için iki denetim satırı yazıyor (içerik okundu, kayıt listesi okundu); denetim kaydı her açılışta şişiyor. (`nizam.courses.settingsAndPublish`; `apps/tedrisat/src/course/course.service.ts:372-411`)
+- **SETPUB-7** · düşük · arayüz — Ders ayarları kendi yükleme iskeletini taşımıyor, genel bakışınkini gösteriyor (başlık, sayı kartları, celse satırları); açılırken görülen şekil gerçek sayfaya uymuyor. (`nizam.courses.settingsAndPublish`)
+- **SETPUB-9** · düşük · arayüz — 'Tanıtım sayfasını gör' yeni sekmede açılıyor ama adı bunu söylemiyor; taslak derste de çiziliyor ve kişiyi Tedris'in reddettiği bir sayfaya götürüyor. (`nizam.courses.settingsAndPublish`; `apps/nizam/features/courses/components/course-settings-page.tsx:205-213`)
+- **upload-says-why-it-is-off** · düşük · arayüz — Kaydedilmemiş celsede 'Dosya yükle' kapalı ve nedeni yazılı, ama cümle düğmeye bağlı değil; ekran okuyucu düğmeye gelince nedeni duymuyor. (`nizam.courses.curriculum`; `apps/nizam/features/courses/components/lesson-resources-editor.tsx:226-236`)
+
+### nizam/decks
+
+- **F-P0-10** · orta · arayüz — Deste satırındaki göz ve çöp düğmeleri ile kart satırındaki çöp düğmesinde yalnızca simge var, adı yok; ekran okuyucu her birine yalnızca 'düğme' diyor. (`nizam.decks.legacyCards`; `apps/nizam/features/decks/hooks/useDecksColumns.tsx:49-60`)
+- **F-P0-11** · orta · arayüz — Düzenlenebilir hücrelerin tek adı yer tutucu; kayıt sürerken girdi iskeletle değişince odak kayboluyor ve kaydı yalnızca bir bildirim duyuruyor. (`nizam.decks.legacyCards`; `apps/nizam/components/data-table/editable/editable-input.tsx:36-43`)
+- **F-P0-16** · orta · karar · güvenlik — Eski deste sayfaları girişten başka koruma taşımıyor, hiçbir rolü olmayan kişi de açabiliyor; başlık, yükleme ve hata sayfası yok; sayfaları kaldırma ya da yenileme kararı bekliyor. (`nizam.decks.legacyCards`)
+- **F-W5-4** · orta · arayüz — Gerekçe boşken gönder düğmesi devre dışı ve 'Bir gerekçe yazın.' yalnızca alandan çıkılınca görünüyor; alandan çıkmayan klavye kullanıcısı düğmeye ulaşamıyor ve nedenini duymuyor. (`nizam.decks.koskDecks`, `nizam.moderation.banStudent` +2; `apps/nizam/features/deck-review/components/reject-dialog.tsx:92`)
+- **F-W5-8** · orta · arayüz · güvenlik — 'Kartları düzenle' tasarım sistemi dışındaki eski sayfaya götürüyor (başlıksız, İngilizce bildirimli, adsız düğmeli) ve destenin o köşke ait olduğunu denetlemiyor; yetki sunucuya kalıyor. (`nizam.decks.koskDecks`, `nizam.decks.legacyCards`; `apps/nizam/features/deck-review/components/kosk-decks-view.tsx:221-228`)
+- **F-X-2** = F-C-course-a-01, F-C-course-a-07, F-UI-W3-1, F-UI-W4-1, F-W4-2 · orta · karar — Alan hata satırı ('Bir gerekçe yazın.' gibi) canlı bölge değil ve odak taşımıyor; devre dışı düğmeyle birlikte ekran okuyucu kullanıcısı nedenini hiç duymuyor. (`nizam.decks.koskDecks`, `nazar.curriculum.edit` +18; `apps/nizam/features/deck-review/components/kosk-deck-form.tsx:76`)
+- **F-X-8** · orta · arayüz — Kayıt sürerken kendi alanı ya da düğmesi devre dışı kalıyor veya yerine başkası konuyor; odak sayfaya düşüyor ve klavye kullanıcısı yolunu kaybediyor. (`nizam.decks.legacyCards`, `nizam.madrasahs.open` +3; `apps/nizam/features/decks/components/decks-table-header.tsx:111`)
+- **KDECK-1** · orta · arayüz — Cevaplanmış ya da silinmiş öneri için 'Kabul et' bağlantısı boş form açıyor ve önerinin kalmadığını söylemiyor; nazım neyin açıldığını anlamıyor. (`nizam.decks.koskDecks`; `page.tsx:53-56`)
+- **KDECK-2** · orta · API — Öneri kabul edilince öneren hocaya bildirim gitmiyor, reddedilince gerekçeli bildirim gidiyor; hoca desteyi ancak listede görerek öğreniyor. (`nizam.decks.koskDecks`; `apps/tedrisat/src/deck-review/deck-review.repository.ts:377-421`)
+- **KDECK-3** · orta · arayüz — 'Deste gizlensin mi?' penceresi herkese 'Arşivden istediğiniz an geri alabilirsiniz' diyor, oysa başnazımın platform düzeyinde gizlediğini köşk nazımı geri alamıyor. (`nizam.decks.koskDecks`; `apps/tedrisat/src/deck-review/deck-review.service.ts:253-257`)
+- **LEGACY-1** · orta · arayüz — Kaydı başarısız olan hücre 'Güncelleme Hatası' bildiriminden sonra da yazılan metni gösteriyor; kullanıcı kaydedilmemiş metni kayıtlı sanıyor. (`nizam.decks.legacyCards`; `apps/nizam/components/data-table/editable/editable-cell.tsx:61-66`)
+- **LEGACY-2** · orta · arayüz — Her hata bildirimi API'nin İngilizce mesajını olduğu gibi yazıyor ('Caller is not authorized...', 'title must be longer...'); Türkçe arayüzde neden anlaşılmıyor. (`nizam.decks.legacyCards`; `apps/nizam/lib/authenticated-action.ts:56`)
+- **LEGACY-4** · orta · arayüz · güvenlik — Başkasına ait herkese açık deste, kendi destenmiş gibi düzenlenebilir hücreler ve çöp düğmesiyle çiziliyor; ilk basış 403 alıp İngilizce hata veriyor. (`nizam.decks.legacyCards`)
+- **LEGACY-7** · orta · arayüz — İçe aktarmada meşgul durumu ve ilerleme yok; 1 MB'ı aşan dosya sunucu eylemi sınırında takılabilir, API ise 5 MB alıyor, aradaki dosyalar sessizce başarısız olabilir. (`nizam.decks.legacyCards`; `apps/nizam/features/decks/components/cards.tsx:61-83`)
+- **LEGACY-10** · orta · arayüz — Tablolar satır sırasına göre anahtarlanıyor; satır silinince ya da sıra değişince bazı hücreler başka satırın metnini gösteriyor, kullanıcı yanlış kartı düzenleyebilir. (`nizam.decks.legacyCards`; `apps/nizam/components/data-table/editable/editable-cell.tsx:23`)
+- **F-P0-12** · düşük · arayüz — Boşluklardan oluşan deste adı yalnızca bildirimle durduruluyor; alan geçersiz diye işaretlenmiyor, alanda mesaj yok ve odak düğmede kalıyor. (`nizam.decks.legacyCards`; `apps/nizam/features/decks/components/decks-table-header.tsx:37-43`)
+- **F-P0-13** · düşük · arayüz — Eski kart sayfasında 'Card Updated', 'Delete Error', 'CSV' gibi İngilizce bildirimler ve menü yazıları koda yazılı, katalogda yok; Türkçe arayüzde İngilizce kalıyor. (`nizam.decks.legacyCards`; `apps/nizam/features/decks/components/decks.tsx:22-54`)
+- **F-P0-14** · düşük · arayüz — 'Kart Güncellendi' bildirimi 'Kartvizit başarıyla güncellendi.' diyor; kartvizit iş kartıdır, cümle yanlış kelimeyi kullanıyor. (`nizam.decks.legacyCards`)
+- **F-P0-15** · düşük · arayüz — Oluşturma 'yetkisiz' cevabını alınca düğme 'Oluşturuluyor...' ve devre dışı kalıyor; yönlendirme gelene kadar yanlış durum gösteriyor. (`nizam.decks.legacyCards`; `apps/nizam/features/decks/components/decks-table-header.tsx:47`)
+- **F-W5-9** · düşük · arayüz — İlk okuma başarısız olunca başlıkta 'Köşk destesi aç' devre dışı ve nedensiz çiziliyor; uyarı zaten ne yapılacağını söylüyor, düğme gereksiz ve basılamıyor. (`nizam.decks.koskDecks`; `apps/nizam/features/deck-review/components/kosk-decks-view.tsx:260-264`)
+- **F-X-18** · düşük · karar — Eski deste sayfaları köşk destelerinin ikinci bir arayüzü gibi duruyor ve köşkü denetlemeyen sayfaya bağlanıyor; bunları kaldırma ya da yenileme kararı bekliyor. (`nizam.decks.legacyCards`)
+- **KDECK-4** · düşük · arayüz — 'Desteyi aç'tan sonra yeni sayfa odağı bir yere koymuyor; odak belgeye düşüyor ve destenin açıldığını söyleyen tek şey 6 saniyelik bir bildirim. (`nizam.decks.koskDecks`; `apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96-97`)
+- **KDECK-5** · düşük · arayüz — Öneri kartı başlık, hoca, ders ve tarihi gösteriyor ama destenin kelime mi hadis mi olduğunu göstermiyor; nazım türü ancak 'Kabul et'ten sonra öğreniyor. (`nizam.decks.koskDecks`; `apps/nizam/features/deck-review/components/kosk-decks-view.tsx:289-327`)
+- **KDECK-6** · düşük · arayüz — 'Kartları düzenle' bağlantısının görünen yazısı erişilebilir adının ('... kartlarını düzenle') içinde yok; sesle kumanda kullananlar gördüklerini söyleyince bağlantıya ulaşamıyor. (`nizam.decks.koskDecks`; `apps/nizam/features/deck-review/components/kosk-decks-view.tsx:225`)
+- **KDECK-7** · düşük · arayüz — Sayfa arşivi iki kez vaat ediyor (pencere ve bildirim) ama arşive hiçbir bağlantı vermiyor; tek yol köşk menüsündeki 'Arşiv', Dersler sayfasında ise bağlantı var. (`nizam.decks.koskDecks`; `apps/nizam/lib/shell-nav.ts:253`)
+- **LEGACY-3** · düşük · API — Deste listesinde sıralama yok; bir düzenlemeden sonra satırlar yer değiştirebiliyor, sayfalama ve arama da yok, tablo kararsız ve büyüdükçe kullanışsız. (`nizam.decks.legacyCards`; `apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:48-51`)
+- **LEGACY-5** · düşük · arayüz — Başarı bildirimleri deste ya da kartı adıyla değil ham kimlik numarasıyla anıyor ('3f2c8a1e-... kimlik numaralı kart silindi'). (`nizam.decks.legacyCards`; `apps/nizam/features/decks/components/decks.tsx:25`)
+- **LEGACY-6** · düşük · arayüz — Çok satırlı hücre yalnızca alandan çıkılınca kaydediliyor, Enter yeni satır açıyor; tek satırlı hücreler Enter ile kaydediyor ve sayfa bunu söylemiyor. (`nizam.decks.legacyCards`; `apps/nizam/components/data-table/editable/editable-textarea.tsx:30-39`)
+- **LEGACY-8** · düşük · arayüz — 'Yeni Güverte', 'İthal Kartlar', 'İptal etmek', 'Silmek' gibi yanlış ya da kodlanmış sözler ve İngilizce 'Close' var; dışa aktarma hatası 'Güncelleme Hatası' diyor. (`nizam.decks.legacyCards`; `apps/nizam/features/decks/components/cards.tsx:109-112`)
+- **LEGACY-9** · düşük · arayüz — Deste yapılırken alanlar ve düğmeler devre dışı kalıyor, odak kayboluyor ve Esc tek çıkış; kapatma simgesi açık kalıp istek sürerken pencereyi kapatıyor. (`nizam.decks.legacyCards`; `apps/nizam/features/decks/components/decks-table-header.tsx:111`)
+
+### nizam/grants
+
+- **F-W2-3** · orta · arayüz — E-posta aramasının düğmesi yok; Enter'da ve alandan çıkılınca çalışıyor, alan aranırken devre dışı kalıp odağı düşürüyor; sonuç ve hata duyurulmuyor, her arama denetime yazılıyor. (`nizam.grants.appoint`, `nizam.courses.open` +7; `apps/nizam/features/madrasahs/components/head-picker.tsx:74-79`)
+- **GRANTS-1** · orta · arayüz · güvenlik — Kendi adresini yazan nazıma uyarı çıkmıyor; kendine yetki verme reddi ve diğer kodlar 'Bir şeyler ters gitti' diye genel cümleyle anlatılıyor, doğru neden söylenmiyor. (`nizam.grants.appoint`; `present.ts:234-253`)
+- **GRANTS-2** · orta · arayüz — Reddedilen yazma listeyi yeniden okumuyor; başka yerde bitirilmiş bir görevin penceresi açık kalıyor ve 'Görevden al' aynı reddi tekrar tekrar veriyor, liste eski kalıyor. (`nizam.grants.appoint`; `grant-dialog.tsx:123-129`)
+- **GRANTS-3** · orta · arayüz — Adres olmayan yazı hiçbir şey yapmıyor ve hiçbir şey söylemiyor; 'Kaydet' kapalı kalıyor ve eksik adımı söyleyen satır yok, nazar 'Geçerli bir e-posta adresi yazın.' diyor. (`nizam.grants.appoint`; `apps/nizam/features/madrasahs/components/head-picker.tsx:55`)
+- **GRANTS-5** · orta · arayüz — Başkalarını atamış ders nazırı için 'Görevden al' açık; onaydan sonra 'atadığı kişiler hâlâ görevde' diye reddediliyor ve kişiler gösterilmiyor, nazar'da düğme baştan kapalı. (`nizam.grants.appoint`; `revoke-dialog.tsx:295-300`)
+- **GRANTS-4** · düşük · arayüz — Hiç izni olmayan görev '0 izin' diye altında hiçbir şey olmadan listeleniyor (hocanın sayfası 'İzin yok' diyor); sayfa onu başka izne çevirebiliyor ama boşa çeviremiyor. (`nizam.grants.appoint`; `apps/nizam/features/grants/components/grants-view.tsx:122-129`)
+
+### nizam/home
+
+- **HOME-4** · yüksek · arayüz · güvenlik — Gerekçe penceresi 'talebeye gönderilmez' diyor ama sunucu gerekçeyi talebenin bildirimine de yazıyor; nazım yazdığı sözün talebeye ulaşacağını bilmeden yazıyor. (`nizam.home.decideApplications`; `apps/tedrisat/src/course/course.service.ts:1703`)
+- **CHIEF-1** · orta · arayüz — 'Karar bekleyen N talep var' dört kuyruğu topluyor ama ana sayfada itirazlar için kart yok; başnazım sayıda kendisinin ulaşamadığı itirazları da görüyor. (`nizam.home.chiefOverview`; `present.ts:29-36`)
+- **CHIEF-3** · orta · arayüz — Uyarı başlığı yöneticisiz bütün kapsamları sayıyor ('5') ama cümle yalnızca üçünü adlandırıyor ve onları pasif olanların hepsi gibi gösteriyor; kalan ikisi gözden kaçıyor. (`nizam.home.chiefOverview`; `apps/tedrisat/src/nizam-dashboard/nizam-dashboard.service.ts:101`)
+- **F-W1-1** · orta · arayüz — Roller okunamayınca ana sayfa yalnızca çıplak bir 'Hoş geldiniz' gösteriyor; başlık, hata, yeniden deneme ve menü yok; başnazım olabilecek kişi rollerin yüklenemediğini anlamıyor. (`nizam.home.chiefOverview`; `page.tsx:90`)
+- **F-W1-2** · orta · arayüz — Celse sekmelerinde ok tuşu her sekmeyi seçip sunucudan liste istiyor ve sekme değişimi hiçbir yerde duyurulmuyor; tablo ekran okuyucunun altında sessizce değişiyor. (`nizam.home.koskNazimLanding`; `apps/nizam/features/dashboard/components/kosk-home.tsx:92-119`)
+- **F-W1-4** · orta · arayüz — Onayla ya da kaydedilen Reddet'ten sonra düğme satırla birlikte kayboluyor ve odak sayfaya düşüyor; tek haber bir bildirim, klavye kullanıcısı yolunu yitiriyor. (`nizam.home.decideApplications`; `apps/nizam/features/dashboard/components/kosk-home.tsx:124-129`)
+- **F-W1-15** · orta · arayüz — Kalıcı yasak kartı her zaman 'Bekleyen talep yok' diyor çünkü API sabit 0 gönderiyor ve menüdeki 'Kalıcı yasak talepleri' olmayan bir sayfaya gidiyor ('Sayfa bulunamadı'). (`nizam.home.medarisNazimCut`, `nizam.home.chiefOverview` +1; `apps/nizam/features/dashboard/components/medaris-home.tsx:147-152`)
+- **HOME-2** · orta · arayüz — Karardan sonra sayfanın kendi listesi ve sayısı eski kalıyor; sekiz bekleyen başvurudan beşi karara bağlanınca kart 'Bekleyen başvuru yok' derken sayı ve menü 3 diyor. (`nizam.home.decideApplications`; `apps/nizam/features/dashboard/components/kosk-home.tsx:84-87`)
+- **HOME-5** · orta · arayüz · güvenlik — Pasif kapsam cümlesi yalnızca karar yetkisi olmayana çıkıyor; kural motoru köşk nazımına her hakkı bıraktığı için pasif dersin başvurularında düğmeler duruyor, uyarı ile yetki çelişiyor. (`nizam.home.decideApplications`; `apps/nizam/features/dashboard/components/kosk-home.tsx:356-363`)
+- **HOME-6** · orta · arayüz — Yalnızca platform köşk düzenleme izni olan Medaris nazımı için sayı 'N başvuru bekliyor' diyor ama kart hiç çizilmiyor ve nedenini söyleyen cümle yok; Başvurular sayfası da reddediyor. (`nizam.home.decideApplications`; `apps/nizam/features/dashboard/components/kosk-home.tsx:499`)
+- **KOSKHOME-2** · orta · arayüz — Geçmiş ve İptal edilen rozetleri bütün celseleri sayıyor ama sekme en yeni 20'yi gösteriyor; sayfalama ya da 'Tümünü gör' yok, 25 celseli köşk '25' yazıp 20 gösteriyor. (`nizam.home.koskNazimLanding`; `apps/tedrisat/src/kosk/kosk-dashboard.repository.ts:29`)
+- **MCUT-1** · orta · arayüz — Selam her Medaris nazımına 'Selâmün aleyküm, ad Bey' diyor; kadın nazım 'Bey' diye karşılanıyor, oysa kayıt formu cinsiyeti zorunlu soruyor ve veri var. (`nizam.home.medarisNazimCut`; `apps/nizam/features/dashboard/components/medaris-home.tsx:55-57`)
+- **CHIEF-2** · düşük · arayüz — Yasak satırındaki 'İncele: ad' bağlantısı hep tüm yasaklar listesine gidiyor, o satırı seçmiyor; ad satırı vaat ediyor, kişi bütün listede satırı yeniden arıyor. (`nizam.home.chiefOverview`; `apps/nizam/features/dashboard/components/medaris-home.tsx:228-237`)
+- **CHIEF-4** · düşük · arayüz — Ana sayfa okunamayınca yalnızca hata uyarısı çiziliyor; başlık yok, odak konmuyor ve ilk çizimde uyarı duyulmayabilir; aynı kutu bütün köşk sayfalarında kullanılıyor. (`nizam.home.chiefOverview`; `page.tsx:67-77`)
+- **F-W1-10** · düşük · arayüz — Satırdaki 'Köşk nazımı ata', 'Celseyi gör' gibi düğmeler her satır için aynı listeye bağlanıyor, o satırı seçmiyor; klavye kullanıcısı listede kapsamı yeniden bulmak zorunda. (`nizam.home.chiefOverview`, `nizam.home.koskNazimLanding` +1; `apps/nizam/features/dashboard/components/medaris-home.tsx:185-197`)
+- **F-W1-12** · düşük · arayüz — Köşk başvurusunun alan adları katalogda değil kodda Türkçe sabit yazılı ve tedrisat'ta ikinci bir kopyası var; başka dilde Türkçe kalır, tablodaki yeni kod ham görünür. (`nizam.home.chiefOverview`, `nizam.applications.decide` +1; `present.ts:51-65`)
+- **F-W1-13** · düşük · arayüz — Başarısız 'Reddet' pencereyi ve yazılan gerekçeyi açık bırakıyor ama hatayı yalnızca pencerenin dışındaki bildirim söylüyor; pencerenin içinde hiçbir şey değişmiyor. (`nizam.home.decideApplications`; `apps/nizam/test/kosk-home-decisions.spec.tsx:196`)
+- **F-X-1** · düşük · arayüz — Sekmeler bir sekme paneline bağlı değil (panel yok, bağlantı boş); sekmeler 'sekme' diye okunuyor ama altındaki tablo panel sayılmıyor, ekran okuyucu ilişkiyi kuramıyor. (`nizam.home.koskNazimLanding`, `nizam.applications.decide` +4; `apps/nizam/features/dashboard/components/kosk-home.tsx:450-464`)
+- **F-X-17** · düşük · arayüz — Bazı metinler katalog dışında kodda yazılı: alan adları, 'Yükleniyor' ve sayfa başlığı 'Nizam'; başka dilde Türkçe kalır, sekme başlığı sayfayı anlatmıyor. (`nizam.home.chiefOverview`, `nizam.decks.legacyCards`; `layout.tsx:15-18`)
+- **KOSKHOME-1** · düşük · API · güvenlik — Geçmiş ya da İptal edilen sekmesini açmak ana sayfanın tamamını yeniden okutuyor ve sunucu başvuru ve içerik okuma denetim satırlarını her seferinde yazıyor; denetim şişiyor. (`nizam.home.koskNazimLanding`; `actions.ts:13`)
+- **KOSKHOME-3** · düşük · arayüz — Köşk anasayfası okunamayınca yalnızca hata uyarısı çiziliyor; başlık yok ve sekme 'Ana sayfa' kalıyor; adresi açan ekran okuyucu kullanıcısı inecek bir başlık bulamıyor. (`nizam.home.koskNazimLanding`; `load-failed.tsx:19-35`)
+- **MCUT-3** · düşük · arayüz — İzinlerin dipnotu verenin adı yoksa 'İzinleri Medaris başnazımı Medaris başnazımı verdi' diye iki kez yazıyor; geri dönüş cümlesi bu durum için yazılmamış. (`nizam.home.medarisNazimCut`; `apps/nizam/features/dashboard/components/medaris-home.tsx:435-440`)
+- **sheet-focus** · düşük · arayüz — Nizam'da yan menü açılınca odak büyük olasılıkla 'Kapat'a değil marka bağlantısına düşüyor; klavye ve ekran okuyucu kullanıcısı beklenmedik yerden başlıyor. (`nizam.home.koskNazimLanding`; `apps/nizam/components/shell/shell-frame.tsx:182`)
+
+### nizam/hosting
+
+- **F-UI-W1-1** · orta · kütüphane — İletişim kutusu gövdenin tamamını açıklama olarak işaretliyor; ekran okuyucu pencere açılırken listeyi, kutuları ve alanları baştan sona okuyor. (`nizam.hosting.grantAndRevoke`, `nizam.courseRequests.decide` +13; `libs/ui/src/mds/dialog.tsx:103`)
+- **HOST-1** · orta · arayüz — Barındırma hakkı geri alınınca düğmenin satırı kayboluyor ve odak sayfaya düşüyor; ekran okuyucu kullanıcısı sonucu yalnız bir bildirimden öğreniyor. (`nizam.hosting.grantAndRevoke`; `revoke-dialog.tsx:90-91`)
+- **HOST-4** · orta · arayüz — Hak verme veya geri alma reddedilince sayfa yenilenmiyor; gizlenmiş medrese ya da geri alınmış hak listede kalıp aynı reddi tekrar tekrar veriyor. (`nizam.hosting.grantAndRevoke`; `grant-dialog.tsx:58-64`)
+- **HOST-2** · düşük · arayüz — Kaydederken 'Vazgeç', kapatma simgesi ve Escape açık görünüp hiçbir şey yapmıyor; kullanıcı pencerenin takıldığını sanıyor. (`nizam.hosting.grantAndRevoke`; `grant-dialog.tsx:78-80`)
+- **HOST-3** · düşük · arayüz — Sayfa, pencere hiç açılmasa da her yüklemede tüm açık medreseleri 50'şer 50'şer ardı ardına okuyor; medrese çoğaldıkça sayfa yavaşlıyor. (`nizam.hosting.grantAndRevoke`; `reads.ts:43-60`)
+- **HOST-5** · düşük · arayüz — Medrese listesi okunamazsa pencere 'Medreseler yüklenemedi' deyip 'Yeniden dene' sunmuyor; kullanıcı sayfayı yenilemek zorunda kalıyor. (`nizam.hosting.grantAndRevoke`; `grant-dialog.tsx:97-100`)
+- **HOST-6** · düşük · arayüz — Hak verme penceresi açılınca odak medrese seçimine değil kapatma simgesine düşüyor; geri alma penceresi ise doğru yere odaklanıyor. (`nizam.hosting.grantAndRevoke`; `grant-dialog.tsx:76-95`)
+
+### nizam/inactive
+
+- **F-W2-1** · orta · arayüz — Medaris nazımına verilebilen bazı izinlerin sayfası menüde yok; 'Pasif kapsamlar' gibi sayfalara yalnız adres yazarak ulaşabiliyor, başnazım da izni verirken bunu bilmiyor. (`nizam.inactive.viewContent`, `nizam.inactive.reassign` +1; `apps/nizam/lib/shell-nav.ts:178-186`)
+- **REASSIGN-1** · orta · arayüz — Biri seçildikten sonraki ikinci arama kimseyi bulamasa ya da hata verse de sessiz kalıyor; ilk kişi seçili kalıyor ve kullanıcı ikinci kişiyi seçtiğini sanıyor. (`nizam.inactive.reassign`; `apps/nizam/features/madrasahs/components/head-picker.tsx:101`)
+- **REASSIGN-2** · orta · arayüz — Nazım kendi adresini seçince atama reddediliyor ama bildirim 'Biraz sonra yeniden deneyin' diyor; sebep bilindiği halde yeniden denemenin işe yarayacağı sanılıyor. (`nizam.inactive.reassign`; `apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:250-264`)
+- **REASSIGN-4** · orta · arayüz — Kapsama bu arada yönetici atanmışsa atama reddediliyor ama liste yenilenmiyor; eski satır kalıyor ve aynı düğme sayfa yenilenene dek aynı reddi veriyor. (`nizam.inactive.reassign`; `apps/nizam/features/inactive-scopes/components/assign-scope-dialog.tsx:86-92`)
+- **REASSIGN-5** · orta · arayüz — Kapsam türü seçilince satırlar ve sayı değişiyor ama canlı bölge yok; ekran okuyucu kullanıcısı hiçbir şey duymuyor, boş tür de duyurulmuyor. (`nizam.inactive.reassign`; `apps/nizam/features/inactive-scopes/components/inactive-view.tsx:218-232`)
+- **VIEWC-1** · orta · arayüz — 'İçeriği gör' reddedilince liste yenilenmiyor; artık pasif olmayan kapsamın satırı kalıyor ve iki düğmesi de aynı reddi vermeye devam ediyor. (`nizam.inactive.viewContent`; `apps/nizam/features/inactive-scopes/components/inactive-view.tsx:72-78`)
+- **VIEWC-3** · orta · API · güvenlik — Pasif kapsam içeriğine bakış denetim kaydında 'Diğer' türüne yazılıyor; sayfanın kaydedileceğini söylediği açılışlar 'içerik okuma' süzgecinde çıkmıyor. (`nizam.inactive.viewContent`; `apps/tedrisat/src/audit/audit-types.ts:17-19`)
+- **VIEWC-4** · orta · API · güvenlik — 'İçeriği gör' her satırda çiziliyor ve denetim satırı yazılıyor, ama yalnız bu izne sahip Medaris nazımı sonra yasaklı sayfaya düşüyor; kayıt olmayan bir bakışı gösteriyor. (`nizam.inactive.viewContent`; `apps/tedrisat/src/inactive-scope/inactive-scope.service.ts:58-70`)
+- **VIEWC-2** · düşük · arayüz — 'İçeriği gör' yanıt gelince meşgul durumdan çıkıyor, sayfa açılana dek düğme boşta görünüyor; ikinci basış ikinci bir denetim kaydı yazıyor. (`nizam.inactive.viewContent`; `apps/nizam/features/inactive-scopes/components/inactive-view.tsx:70`)
+
+### nizam/kosks
+
+- **KNZ-2** · yüksek · arayüz — Sayfa ve API kimin nazım ekleyebileceği konusunda ayrışıyor; ekleme izni olan Medaris nazımı salt okunur sayfa görüyor, yalnız köşk düzenleme izni olan düğmeyi görüp reddediliyor. (`nizam.kosks.nazims`; `apps/tedrisat/src/kosk/kosk-admin.service.ts:117`)
+- **F-W3-1** · orta · arayüz — Form eksikken gönder düğmesi devre dışı kalıyor ve neyin eksik olduğunu söyleyen mesaj hiç gösterilmiyor; klavye ve ekran okuyucu kullanıcısı ölü bir düğmeyle karşılaşıyor. (`nizam.kosks.nazims`, `nizam.hosting.grantAndRevoke` +2; `apps/nizam/features/kosks/components/add-nazim-dialog.tsx:79-81`)
+- **F-W3-3** · orta · arayüz — Platform politikası kilitliyken köşk nazımı 'Kayıt her zaman onaylı' gibi kutuların işaretini kaldırabiliyor; kayıt reddedilip 'Bir şeyler ters gitti' deniyor, sebep söylenmiyor. (`nizam.kosks.editAndHide`; `apps/nizam/features/kosks/components/kosk-settings.tsx:223-244`)
+- **F-W3-4** · orta · arayüz — Yalnız köşk düzenleme izni olan Medaris nazımına 'Köşk nazımı ekle' gösteriliyor ama basınca 'izniniz yok' hatası alıyor; kullanamayacağı düğme sunuluyor. (`nizam.kosks.manage`; `apps/nizam/features/kosks/kosk-entry.ts:51`)
+- **F-W3-12** = KBROWSE-3, MBROWSE-2 · orta · arayüz — Arama, sekme, süzgeç veya sayfa değişince tablo duyurulmadan güncelleniyor; ekran okuyucu kullanıcısı kaç kayıt kaldığını ya da listenin değiştiğini duymuyor. (`nizam.kosks.browse`, `nizam.madrasahs.browse` +1; `apps/nizam/features/kosks/components/kosks-directory.tsx:98-122`)
+- **F-W3-13** · orta · arayüz — Gönderim reddedilince hata alanın altında beliriyor ama duyurulmuyor ve odak düğmede kalıyor; ekran okuyucu kullanıcısı hangi alanın yanlış olduğunu bilmiyor. (`nizam.kosks.editAndHide`, `nizam.kosks.open` +1; `apps/nizam/features/kosks/components/kosk-settings.tsx:67-72`)
+- **F-W3-hide-2** · orta · arayüz — 'Gizle'den sonra sayfa köşk listesine gidiyor ve odak hiçbir yerde kalmıyor; ekran okuyucu kullanıcısı sonucu yalnız İngilizce adlı bölgedeki bir bildirimle öğreniyor. (`nizam.kosks.editAndHide`; `apps/nizam/features/kosks/components/kosk-settings.tsx:289`)
+- **F-W3-hide-3** · orta · arayüz — Ayarlar sayfası köşkün zaten gizli olup olmadığını okumuyor; 'Gizle' 409 ile reddedilip bildirim çıkıyor, sayfa köşkün gizli olduğunu söylemiyor ve 'Geri al' sunmuyor. (`nizam.kosks.editAndHide`; `apps/nizam/features/kosks/components/kosk-settings.tsx:274-281`)
+- **F-W3-open-1** · orta · karar — API köşk açma izni olan Medaris nazımına köşk açtırıyor ama sayfa 'Köşk aç'ı yalnız başnazıma gösteriyor; hangisinin doğru olduğuna sahibi karar vermeli. (`nizam.kosks.open`, `nizam.kosks.browse`; `apps/nizam/features/kosks/components/kosks-directory.tsx:293`)
+- **F-W3-open-2** = BAN-3, BANST-5, BULK-2, F-W2-open-5, F-W3-hide-1, GROUPS-2, HEAD-6, HIDE-3, NROS-5, PUB-2, PURGE-4, REASSIGN-3, RMV-3, SETPUB-6 · orta · kütüphane — Köşk oluşturulurken 'Vazgeç' ve kapatma düğmeleri açık görünüp hiçbir şey yapmıyor; meşgul düğme ne devre dışı ne de işaretli. (`nizam.kosks.open`, `nazar.archive.hideAndRestoreCourse` +13; `apps/nizam/features/kosks/components/open-kosk-dialog.tsx:126`)
+- **KBROWSE-2** · orta · API — Sayı olamayacak kadar büyük sayfa numarası API'de 500 hatası veriyor; sayfa hiç işe yaramayan bir 'Yeniden dene' ile 'Köşkler yüklenemedi' gösteriyor. (`nizam.kosks.browse`)
+- **KBROWSE-4** · orta · arayüz — Kullanıcı bilgisi okunamazsa başnazım 'Köşk aç' ve Arşiv bağlantısını, köşk nazımı 'Siz' etiketini sessizce kaybediyor; okumanın başarısız olduğunu hiçbir şey söylemiyor. (`nizam.kosks.browse`; `page.tsx:35`)
+- **KNZ-1** · orta · API — Köşke nazım eklemek, köşk pasif, gizli ya da hiç yönetilmemiş olsa bile pasiflik işaretini sessizce kaldırıp köşkü yeniden etkin yapıyor. (`nizam.kosks.nazims`; `apps/tedrisat/src/kosk/kosk-admin.repository.ts:407-410`)
+- **KNZ-4** · orta · arayüz — Seçici kişi sayısını sınırlamıyor, API en çok on nazım kabul ediyor; on birinci kişide hata 'Bir şeyler ters gitti' diyor, en çoğun on olduğunu söylemiyor. (`nizam.kosks.nazims`; `apps/tedrisat/src/kosk/dto/kosk-field-rules.ts:42`)
+- **MANAGE-1** · orta · arayüz — "Arşiv'e git" bağlantısı görüntüleme izni olan herkese çiziliyor ama arşiv yalnız başnazımın; köşk düzenleme izni olan Medaris nazımı "Bu bölüm için izniniz yok" ile karşılaşıyor. (`nizam.kosks.manage`; `apps/nizam/features/kosks/components/kosk-manage-page.tsx:542`)
+- **MANAGE-2** · orta · arayüz — Köşk ya da celse zaten istenen durumdaysa veya yoksa sayfa bunu bildirimle söylüyor ama yenilenmiyor; eski satır ve düğme kalıyor, celse için genel bir hata yazılıyor. (`nizam.kosks.manage`, `nazar.sessions.manage`; `apps/nizam/features/kosks/components/hide-kosk-dialog.tsx:41-47`)
+- **MANAGE-3** · orta · arayüz — Köşk yönetiminde dört işlemden sonra basılan düğme değişiyor veya devre dışı kalıyor; odak sayfaya düşüyor ve ekran okuyucu kullanıcısı sonucu yalnız bildirimden öğreniyor. (`nizam.kosks.manage`; `apps/nizam/features/kosks/components/kosk-manage-page.tsx:483-522`)
+- **F-UI-W1-2** · düşük · kütüphane — Bildirimlerin duyurulduğu bölgenin adı İngilizce ('Notifications'); Türkçe arayüzde ekran okuyucu bölgeyi İngilizce adla okuyor. (`nizam.kosks.editAndHide`)
+- **F-W3-9** · düşük · arayüz — Sayfa başlığı ve ana başlık her köşk için aynı ('Köşk ayarları', 'Barındırma hakları'); birden çok köşkün nazımı sekmeleri ve geçmiş girdilerini ayıramıyor. (`nizam.kosks.editAndHide`, `nizam.courseRequests.decide` +3; `page.tsx:15-18`)
+- **F-W3-16** · düşük · arayüz — 'Verdiğiniz dersler' bloğu eski stil sınıflarında kalmış, dekoratif simgeleri ekran okuyucudan gizlenmemiş ve bölümü adsız. (`nizam.kosks.browse`; `apps/nizam/features/kosks/components/taught-courses.tsx:19-37`)
+- **F-W3-open-3** · düşük · arayüz — Seçici bir kişi listeden çıkarılsa da 'X seçildi' duyurusunu koruyor; kaldırma odağı taşımıyor ve ekran okuyucuya bir şey söylemiyor. (`nizam.kosks.nazims`, `nizam.kosks.open`; `nazim-picker.tsx:77`)
+- **F-W3-open-4** · düşük · arayüz — Köşk aç formu adresten (?ac=1) açılınca kapanışta odak hiçbir yere gitmiyor; klavye ve ekran okuyucu kullanıcısı sayfanın başından yeniden başlıyor. (`nizam.kosks.open`)
+- **KBROWSE-1** · düşük · arayüz — Son sayfanın ötesindeki adres (eski yer imi) 'Sonuç yok' gösteriyor ve sayfalama çizmiyor; geri dönecek 'Önceki' düğmesi yok. (`nizam.kosks.browse`; `apps/nizam/features/kosks/components/kosks-directory.tsx:382`)
+- **KNZ-3** · düşük · arayüz — Hata bildirimi kapatılana dek kalıyor ve kimliksiz atılıyor; 'Ekle'ye tekrar basınca aynı bildirim üst üste biniyor, başarıdan sonra da eski hata ekranda duruyor. (`nizam.kosks.nazims`; `apps/nizam/features/kosks/components/add-nazim-dialog.tsx:92-95`)
+- **KNZ-5** · düşük · arayüz — Pencere kimlerin zaten nazım olduğunu bilmiyor; var olan biri 'Ekle'den sonra reddediliyor, bildirim hangi kişi olduğunu söylemiyor ve kimse eklenmiyor. (`nizam.kosks.nazims`)
+
+### nizam/madrasahs
+
+- **inactive-scope-accepts-new-scope** · yüksek · API · güvenlik — Pasif kapsam atama yolu hiç yöneticisi olmamış kapsamı da pasif sayıp yönetici atıyor; liste ve pasife alma penceresinin kuralı atlanıyor, izin sınırı aşılabiliyor. (`nizam.madrasahs.passivate`, `nizam.inactive.reassign`; `apps/tedrisat/src/passivation/passivation-impact.repository.ts:67-72`)
+- **F-W2-10** · orta · arayüz — Geri al, atama veya pasife alma sonrası satır yenilenince basılan düğme kayboluyor ve odak sayfaya düşüyor; sonucu yalnız bir bildirim söylüyor. (`nizam.madrasahs.headMuderris`, `nizam.inactive.reassign` +4; `apps/nizam/features/madrasahs/components/madrasahs-view.tsx:257-310`)
+- **F-W2-open-1** = HEAD-3 · orta · arayüz — Başmüderris seçiliyken yapılan ikinci arama kimseyi bulamasa ya da dizine ulaşamasa da sessiz kalıyor; eski kişi seçili duruyor ve kullanıcı yeni kişiyi seçtiğini sanıyor. (`nizam.madrasahs.open`, `nizam.grants.appoint` +1; `apps/nizam/features/madrasahs/components/head-picker.tsx:101`)
+- **F-W2-open-2** = HEAD-4 · orta · arayüz — Medaris nazımı kendini başmüderris seçince reddediliyor ama bildirim başka bir durum için yazılmış 'rolü devralamazsınız' cümlesini söylüyor; kullanıcı ne yapacağını anlamıyor. (`nizam.madrasahs.open`, `nizam.madrasahs.headMuderris`; `libs/common/src/authz/self-grant.guard.ts:60`)
+- **F-W2-open-4** · orta · API — Medresenin başmüderrisi kullanıcı tablosundan adlandırılıyor ama arama dizindeki herkesi buluyor; uygulamayı hiç açmamış biri atanınca listede adı çıkmayabiliyor. (`nizam.madrasahs.open`; `apps/tedrisat/src/madrasah/madrasah.repository.ts:941`)
+- **F-W2-open-6** · orta · arayüz — Kısa ad reddedilince hata alanın altında beliriyor ama duyurulmuyor; basılan düğme devre dışı kalınca odak iletişim kutusuna düşüyor ve ekran okuyucu hatayı duymuyor. (`nizam.madrasahs.open`)
+- **F-W2-open-7** · orta · arayüz — Bulunamayan adres bir daha aranmıyor; Enter hiçbir şey yapmıyor ve hesap sonradan açılsa da aynı adres yazılınca ne arama ne mesaj çıkıyor. (`nizam.madrasahs.open`, `nizam.madrasahs.headMuderris`; `apps/nizam/features/madrasahs/components/head-picker.tsx:55`)
+- **F-W2-open-8** · orta · arayüz — Başmüderris, ders nazırı ve ders alanları zorunlu çiziliyor ama denetimlerin kendisi zorunlu işaretli değil; ekran okuyucu kullanıcısı bu alanların gerektiğini hiç duymuyor. (`nizam.madrasahs.open`, `nizam.grants.appoint` +1; `apps/nizam/features/madrasahs/components/head-picker.tsx:99`)
+- **F-W2-passivate-1** · orta · arayüz — Etki hesabı her hatada 'Etki hesaplanamadı. Biraz sonra yeniden deneyin.' diyor; izin yok ya da medrese silinmiş gibi yeniden denemenin yardım etmeyeceği durumlar da böyle söyleniyor. (`nizam.madrasahs.passivate`; `apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:71-75`)
+- **F-W2-passivate-3** · orta · arayüz — 'Neleri götüreceği hesaplanıyor' satırı ve 'Etki siz bakarken değişti' notu canlı bölge olmadan çıkıyor; ekran okuyucu kullanıcısı sayıların geldiğini ya da değiştiğini duymayabiliyor. (`nizam.madrasahs.passivate`; `apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:209-210`)
+- **F-W2-passivate-4** · orta · API — Başnazım medreseyi pasife alınca liste 'Başmüderrisin görev süresi doldu' diyor; oysa başmüderris görevden alındı, süre dolmadı; cümle yanlış. (`nizam.madrasahs.passivate`; `apps/nizam/features/madrasahs/components/madrasahs-view.tsx:355-363`)
+- **F-W2-passivate-5** · orta · API — Listedeki Etkin/Pasif/Gizli yalnız bu pencerenin yazdığı bir sütundan geliyor; 'Pasif kapsamlar' başka tanım kullandığı için aynı medrese birinde pasif, ötekinde etkin görünebiliyor. (`nizam.madrasahs.passivate`; `apps/tedrisat/src/madrasah/madrasah.repository.ts:849`)
+- **F-X-14** = BAN-2, F-W3-14, F-W4-20, OPEN-5 · orta · arayüz — Adres alanından çıkılınca da dizin araması yapılıyor ve her arama denetim kaydına yazılıyor; alanda gezinmek ya da 'Vazgeç'e basmak istenmeyen denetimli aramalar üretiyor. (`nizam.madrasahs.open`, `nazar.bans.ban` +9; `apps/nizam/features/madrasahs/components/head-picker.tsx:55`)
+- **HEAD-1** · orta · arayüz — 'Bu kişi zaten bu medresenin başmüderrisi.' mesajı hiç gösterilmiyor; mevcut başmüderris seçilince kullanıcı uyarı almıyor. (`nizam.madrasahs.headMuderris`; `apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:283`)
+- **HEAD-5** = GRANTS-6, MAPPT-2 · orta · karar · güvenlik — Başmüderris atama yolunda sunucu izni okumadan önce olmayan kimliğe 404 veriyor; izni olmayan biri hangi medrese kimliğinin var olduğunu ayırt edebiliyor, sahibi karar vermeli. (`nizam.madrasahs.headMuderris`, `nizam.grants.appoint` +1; `apps/tedrisat/src/madrasah/madrasah.controller.ts:134`)
+- **MBROWSE-1** · orta · API — Pasif medreseler 'Görev süresi doldu' diye yazılıyor; oysa tek pasif etme yolu başnazımın 'Pasife al'ı; API sebebi göndermediği için yanlış bir cümle çıkıyor. (`nizam.madrasahs.browse`; `apps/tedrisat/src/madrasah/madrasah.repository.ts:746-747`)
+- **MBROWSE-3** · orta · arayüz — Sekme ya da arama satırları değiştiriyor ama hiçbir şey duyurmuyor; ekran okuyucu kullanıcısı kaç medrese kaldığını ve listenin değiştiğini duymuyor. (`nizam.madrasahs.browse`; `apps/nizam/features/madrasahs/components/madrasahs-view.tsx:402`)
+- **MBROWSE-4** · orta · arayüz — Sayfa 50 medrese okuyup sayfalama sunmuyor; 50'yi aşan medreselere yalnız arama ya da sekmeyle ulaşılıyor, altta sadece 'Toplam … gösteriliyor' yazıyor. (`nizam.madrasahs.browse`; `reads.ts:14`)
+- **RESTORE-4** · orta · arayüz — Reddedilen geri alma sayfayı yenilemiyor; medrese başkasınca geri alınmış ya da silinmişse satır 'Gizli' ve 'Geri al' ile kalıyor, aynı basış sayfa yenilenene dek aynı reddi veriyor. (`nizam.madrasahs.restore`; `apps/nizam/features/madrasahs/components/madrasahs-view.tsx:121-127`)
+- **F-W2-2** · düşük · arayüz — Roller ya da izinler okunamazsa Medaris nazımına tüm düğmeler açılıyor; izni olmayan düğmeye basınca API reddediyor ve nazım 'izniniz yok' bildirimi görüyor. (`nizam.madrasahs.browse`, `nizam.madrasahs.open` +2; `present.ts:103`)
+- **F-W2-open-3** · düşük · arayüz — 'Kısa ad' isteğe bağlı ama bunu söyleyen bir şey yok; boş bırakılınca adın Türkçe harfleri çevrilerek ve numaralanarak üretildiği kullanıcıya söylenmiyor. (`nizam.madrasahs.open`; `present.ts:274`)
+- **F-W2-passivate-2** · düşük · arayüz — Onay giderken 'Vazgeç' ve kapatma simgesi açık görünüp hiçbir şey yapmıyor; kullanıcı çıkmak istediğinde hiçbir söz almıyor. (`nizam.madrasahs.passivate`; `apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:186-188`)
+- **F-W2-passivate-6** · düşük · arayüz — Onay düğmesi kayıt sürerken hem meşgul hem tümüyle devre dışı oluyor; düğmenin kendi sözleşmesi buna aykırı ve odak kaybolabiliyor. (`nizam.madrasahs.passivate`; `apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:199-201`)
+- **HEAD-2** · düşük · arayüz — İzin verilen kişinin altındaki satır izinleri cümle yerine ham kodla yazıyor ('madrasah.nazir_appoint'); katalog yalnız 19 platform kodunu biliyor. (`nizam.madrasahs.headMuderris`; `apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:168-174`)
+- **HEAD-7** · düşük · API — API özetleri bu yolların yalnız sistem yöneticisine açık olduğunu söylüyor, oysa Medaris nazımı da izne sahip olabiliyor; özetler eski ve yanıltıcı. (`nizam.madrasahs.headMuderris`; `apps/tedrisat/src/madrasah/madrasah.controller.ts:419`)
+- **MBROWSE-5** · düşük · kütüphane — Klavyede ok tuşuyla sekme değiştirince her sekme listeyi yeniden okuyup geçmişe girdi ekliyor; 'Geri' tuşu sekmeleri tek tek geri alıyor. (`nizam.madrasahs.browse`; `tabs.tsx:105`)
+- **RESTORE-1** · düşük · arayüz — 'Geri al' için yazılmış seviye reddi cümlesi ve bildirimi, düğme gösterilen hiç kimse için çıkmıyor; ölü ve yanıltıcı bir metin. (`nizam.madrasahs.restore`; `apps/nizam/features/madrasahs/components/madrasahs-view.tsx:249-255`)
+- **RESTORE-2** · düşük · arayüz — Medrese açma ya da başmüderris izniyle gelen Medaris nazımı gizli satırda boş hücre görüyor ve nedenini öğrenmiyor; dipnot geri almak için medrese düzenleme izni gerektiğini söylemiyor. (`nizam.madrasahs.restore`; `apps/nizam/features/madrasahs/components/madrasahs-view.tsx:238`)
+
+### nizam/moderation
+
+- **BANST-3** · orta · arayüz — Yasak sonrası 'Yasakla' düğmesi satırdan kayboluyor ve odak sayfaya düşüyor; klavye ve ekran okuyucu kullanıcısı sayfanın başından yeniden başlıyor. (`nizam.moderation.banStudent`; `apps/nizam/features/applications/components/roster-table.tsx:223-235`)
+- **BANST-4** · orta · arayüz — Yasak isteği ağ hatasıyla reddedilirse pencere sonsuza dek meşgul kalıyor; 'Vazgeç', kapatma ve Escape çalışmıyor, sayfa yenilenmeden kapanmıyor. (`nizam.moderation.banStudent`; `apps/nizam/features/bans/components/ban-dialog.tsx:85-91`)
+- **DAPP-1** · orta · arayüz — İtirazda 'Kabul et' tek tıkla, soru ve not olmadan karar veriyor ve geri dönüşü yok; talep kalıcı olarak köşke geri gidiyor, medrese yalnız 'Kabul edildi' görüyor. (`nizam.moderation.decideAppeal`; `apps/nizam/features/appeals/components/appeals-view.tsx:115-129`)
+- **DAPP-4** · orta · API — İtiraz kabul edilince talep yine bekleyen olarak çiziliyor; köşkün 'Ders talepleri' kartı itirazı, platformun kararını ve önceki reddi hiç söylemiyor. (`nizam.moderation.decideAppeal`; `apps/nizam/features/platform-admin/components/course-requests-view.tsx:173-250`)
+- **DAPP-5** · orta · karar — Talep yalnız bir kez itiraz edilebiliyor; 'Kabul et'ten sonraki ikinci ret kesin oluyor ve bunu ne başnazım kabul etmeden önce ne medrese sonra öğreniyor. (`nizam.moderation.decideAppeal`; `apps/tedrisat/src/database/schema/appeal.schema.ts:44`)
+- **DECKREV-1** · orta · arayüz — Sayfa kendiliğinden bir talep seçip örnek kartları okuyor ve bu okuma denetim kaydına yazılıyor; her karar ve sekmede istenmemiş özel deste okuma kayıtları birikiyor. (`nizam.moderation.reviewDeckPublication`; `apps/tedrisat/src/deck-review/deck-review.service.ts:102`)
+- **DECKREV-2** · orta · arayüz — Adresteki seçili talep ilk on iki bekleyende yoksa sayfa sessizce en eskisini seçip kartlarını okuyor; ana sayfadaki 'İncele' başka bir talebe götürmüş olabiliyor. (`nizam.moderation.reviewDeckPublication`; `apps/nizam/features/deck-review/components/deck-requests-view.tsx:84-88`)
+- **DECKREV-4** · orta · API · güvenlik — Deste yayım isteğinde 'Yayımla' ve 'Reddet' denetim satırı yazmıyor; karar yalnız destenin sütunlarında duruyor ve sahibin geri çekmesi ya da yeni istek onu siliyor. (`nizam.moderation.reviewDeckPublication`; `apps/tedrisat/src/deck-review/deck-review.repository.ts:243-282`)
+- **DECKREV-5** · orta · arayüz — Cevaplanmış istekte 'İstendi' cevabın saatini gösteriyor, hiçbiri yoksa '1 Ocak 1970' yazıyor; etiket yanlış bilgi veriyor. (`nizam.moderation.reviewDeckPublication`; `apps/tedrisat/src/deck-review/deck-review.repository.ts:249`)
+- **DECKREV-6** · orta · karar — Kartlar yüklenmemişken, okunamamışken ve deste boşken de 'Yayımla' ve 'Reddet' açık; inceleyen kartları görmeden karar verebiliyor, bunun bilerek mi olduğuna sahibi karar vermeli. (`nizam.moderation.reviewDeckPublication`)
+- **F-W5-1** · orta · arayüz — 'Köşkten de yasakla' tek tıkla, soru ve gerekçe olmadan köşk çapında yasak veriyor; Medaris listesindeki aynı işlem gerekçe soruyor. Yanlış basan ancak sonradan kaldırabiliyor. (`nizam.moderation.decideBan`, `nizam.moderation.reviewBans`; `apps/nizam/features/bans/components/bans-view.tsx:137-160`)
+- **F-W5-2** · orta · arayüz — Yasak gönderilirken gerekçe alanı ve seçenekler devre dışı kalıyor; odaktaki alan odağı yitiriyor ve ret gelince odağı geri veren yok, klavye ve ekran okuyucu kullanıcısı kayboluyor. (`nizam.moderation.banStudent`; `apps/nizam/features/bans/components/ban-dialog.tsx:202`)
+- **F-W5-3** · orta · arayüz — Reddedilen ya da başarısız yazma yalnız başka bölgedeki kalıcı bildirimle söyleniyor; açık pencerenin içinde hata yok, ekran okuyucu kullanıcısı bildirimi duymayabiliyor. (`nizam.moderation.deleteArchived`, `nizam.decks.koskDecks` +3; `apps/nizam/features/archive/components/archive-view.tsx:244-247`)
+- **F-W5-5** · orta · arayüz — Karardan sonra satır listeden çıkıyor, odak sayfaya düşüyor ve ayrıntı kartı duyurulmadan başka talebe geçiyor; ekran okuyucu kullanıcısı sonucu yalnız 6 saniyelik bildirimden öğreniyor. (`nizam.moderation.reviewDeckPublication`, `nizam.decks.koskDecks` +3; `apps/nizam/features/deck-review/components/deck-requests-view.tsx:352-448`)
+- **F-W5-6** · orta · arayüz — Sekmeler hiçbir panele bağlı değil; sekme ya da satır değişince sayfa duyurulmadan ve odak taşınmadan değişiyor, ekran okuyucu kullanıcısı neyin değiştiğini bilmiyor. (`nizam.moderation.decideAppeal`, `nizam.moderation.reviewDeckPublication`; `apps/nizam/features/appeals/components/appeals-view.tsx:256-273`)
+- **F-W5-7** · orta · arayüz — Talep listesinde seçili talep ekran okuyucuya seçili diye bildirilmiyor ve listenin adı yok; kullanıcı hangi talebin açık olduğunu duymuyor. (`nizam.moderation.reviewDeckPublication`, `nizam.moderation.decideAppeal`; `apps/nizam/features/deck-review/components/deck-requests-view.tsx:283-293`)
+- **F-W5-10** · orta · arayüz — Arama, süzgeç, sekme ve 'Daha fazla göster' sonrası kaç satır geldiği duyurulmuyor; sayı satırı canlı bölge değil, ekran okuyucu kullanıcısı değişimi duymuyor. (`nizam.moderation.reviewBans`, `nizam.moderation.decideBan`; `apps/nizam/features/bans/components/all-bans-view.tsx:332`)
+- **F-W5-12** = F-X-12, MCUT-2 · orta · karar — İtirazlar sayfasının menü girişi yalnız başnazımda; itiraz kararı izni olan Medaris nazımı sayfaya girebiliyor ama menüde bulamıyor. (`nizam.moderation.decideAppeal`, `nizam.home.medarisNazimCut` +1; `apps/nizam/lib/shell-nav.ts:178-186`)
+- **F-X-5** · orta · kütüphane — Nizam'da iki ayrı bildirim sistemi çalışıyor; Sonner'in bölgesi İngilizce adlı ('Notifications alt+T') ve bildirimler rolsüz çiziliyor, ekran okuyucu bildirimleri duymayabiliyor. (`nizam.moderation.decideBan`, `nizam.courses.list` +5; `apps/nizam/components/providers/client-providers.tsx:42-53`)
+- **F-X-6** · orta · kütüphane — İletişim kutusu gövdenin tamamını açıklama olarak işaretliyor; ekran okuyucu pencere açılırken kişiyi, özeti ve tüm alanları baştan sona okuyor. (`nizam.moderation.decideBan`, `nizam.madrasahs.open`; `libs/ui/src/mds/dialog.tsx:103-112`)
+- **MDRS-244** · orta · API — Gizli haftayı ya da celseyi kalıcı silmek, kaydı silmediği için sunucu hatasıyla bitiyor; pencere silinebilir diyor, kullanıcı 'Kalıcı olarak sil'e basınca açıklamasız hata alıyor. (`nizam.moderation.deleteArchived`; `apps/tedrisat/src/archive/archive.repository.ts:747-808`)
+- **NDB-2** · orta · API · güvenlik — Hızlı genişletme yasağın kimliğini göndermiyor; başkası yasağı kaldırmış olsa da köşk yasağı konuyor ve bildirim 'Köşkten de yasaklandı' diyor; eski görünüme dayanan yasak veriliyor. (`nizam.moderation.decideBan`; `apps/nizam/features/bans/components/bans-view.tsx:137-162`)
+- **NDB-3** · orta · arayüz — Kaldırma penceresi her yasak için 'yeniden başvurabilir' diyor; oysa köşk yasağı kaldırılınca ders yasağı sürüyor ve kişi o derse hâlâ başvuramıyor. (`nizam.moderation.decideBan`; `apps/tedrisat/src/ban/ban.repository.ts:339-365`)
+- **NDB-6** · orta · arayüz — Kaldırma ya da genişletme reddedilince pencere açık kalıyor ve liste yenilenmiyor; kaldırılmış yasağın satırı düğmesiyle ekranda duruyor, kullanıcı elle yenilemek zorunda. (`nizam.moderation.decideBan`; `apps/nizam/features/bans/components/lift-dialog.tsx:82-88`)
+- **NDB-9** · orta · arayüz — Kaldırmadan sonra liste iskelet çubuklara dönüyor ve basılan satırın düğmesi odakla birlikte kayboluyor; odak sayfaya düşüyor, 'Yükleniyor' da canlı bölge değil. (`nizam.moderation.decideBan`; `apps/nizam/features/bans/components/bans-view.tsx:377-381`)
+- **NDB-10** · orta · arayüz — Karar satırları, iki sekme sayısını ve 'yeni yasak' satırını duyurulmadan değiştiriyor; sayılar canlı bölge değil, ekran okuyucu kullanıcısı yalnız bildirimi duyuyor. (`nizam.moderation.decideBan`; `libs/ui/src/mds/tabs.tsx:112`)
+- **platform-ban-account-widens** · orta · karar · güvenlik — Hesap kapatma kararı bu izni yalnız okumak için taşıyan her Medaris nazımına hesap kapatma gücü verecek; yayından önce başnazıma söylenmeli ya da ayrı izin tanımlanmalı, karar sahibinde. (`nizam.moderation.decidePermanentBan`; `apps/tedrisat/src/ban/ban-codes.ts:33-35`)
+- **PURGE-1** · orta · API — Silme penceresi 'bağlı her şey silinecek' deyip hafta, talebe ve celse sayıyor ama not, soru, ödev dosyası, sınav, kaynak ve rol atamalarını saymıyor; 'N ders kaydı' hiç çıkmıyor. (`nizam.moderation.deleteArchived`; `apps/tedrisat/src/archive/archive.repository.ts:629-681`)
+- **RESTORE-1** · orta · arayüz — Köşkün arşiv listesi 50 satır okuyor ve köşk nazımına 'Daha fazla göster' çizmiyor; 50'den fazla gizli öğesi olan köşkte kalanlara ulaşılamıyor. (`nizam.moderation.restoreArchived`; `reads.ts:24`)
+- **RESTORE-4** · orta · arayüz — Geri alma bazı hatalarla reddedilince sayfa kendi cümlesini bulamıyor ve API'nin İngilizce metnini bildirimde gösteriyor; Türkçe arayüzde kullanıcı ne olduğunu anlamıyor. (`nizam.moderation.restoreArchived`; `present.ts:217-229`)
+- **RESTORE-5** · orta · arayüz — Üst öğe gizliyken reddedilen geri alma 'Bağlı olduğu öğe hâlâ gizli' diyor ama hangi medrese ya da köşk olduğunu ve kimin geri alabileceğini söylemiyor; köşk nazımı çıkmazda kalıyor. (`nizam.moderation.restoreArchived`; `apps/nizam/features/archive/components/archive-view.tsx:193-197`)
+- **REVBANS-1** · orta · API — Ders yasağı olan kişinin zaten açık köşk yasağı varsa ve o satır sayfada yoksa 'Yasağı genişlet' yine çiziliyor; basınca mevcut yasak dönüyor ve bildirim yanıltıyor. (`nizam.moderation.reviewBans`, `nizam.moderation.decideBan`; `apps/tedrisat/src/ban/ban.service.ts:228-262`)
+- **REVBANS-2** = NDB-4 · orta · arayüz — Medrese çapındaki yasak köşk adı olmadan 'Köşk' etiketiyle listeleniyor; Medaris nazımı yasağın gerçek kapsamını göremiyor. (`nizam.moderation.reviewBans`, `nizam.moderation.decideBan`; `present.ts:71-99`)
+- **REVBANS-4** · orta · arayüz — 'Daha fazla göster' son sayfada kalkınca odaktaki düğme kayboluyor ve odak belgeye düşüyor; kaç satırın eklendiği de söylenmiyor. (`nizam.moderation.reviewBans`; `apps/nizam/features/bans/components/all-bans-view.tsx:343-353`)
+- **TRIAGE-2** · orta · API · güvenlik — Yasak bildirimi her Medaris nazımına kimin kimi neden yasakladığını yazıyor, yasak izni olmasa da; başlık bağlantısı izin isteyen sayfaya gidip reddediliyor, ayrıntı izin kontrolünü aşıyor. (`nizam.moderation.reviewBans`, `nizam.notifications.triage`; `apps/tedrisat/src/ban/ban.service.ts:233`)
+- **busy-label-not-in-the-catalog** · düşük · arayüz — Meşgul 'Kabul et' ve pencere düğmeleri gizli çıktıda 'Yükleniyor' yazıyor ama bu sabit varsayılan katalogda yok; başka dil eklenince sorun olur. (`nizam.moderation.decideAppeal`, `nizam.courseRequests.decide`; `libs/ui/src/mds/button.tsx:103`)
+- **DAPP-6** · düşük · arayüz — Yalnız 'Kabul et' meşgul oluyor; 'Reddet' açık kalıp ikinci bir karar başlatmaya izin veriyor, API ilkini bırakıp ikincisini reddediyor. (`nizam.moderation.decideAppeal`; `apps/nizam/features/appeals/components/appeals-view.tsx:222-227`)
+- **DAPP-7** · düşük · arayüz — Alan 'Karar notu' diye adlandırılmış ama boş bırakılınca hata 'Bir gerekçe yazın.' diyor; etiket not, hata gerekçe diyor. (`nizam.moderation.decideAppeal`; `apps/nizam/features/deck-review/components/reject-dialog.tsx:104`)
+- **DAPP-8** · düşük · arayüz — İtiraz kartı itirazı kimin yazdığını ve tarihini çizmiyor; karar veren kişi kimin itiraz ettiğini göremiyor, köşkün kartı ise gönderen adını gösteriyor. (`nizam.moderation.decideAppeal`; `apps/nizam/features/appeals/components/appeals-view.tsx:184-236`)
+- **DECKREV-3** · düşük · arayüz — İlk okumadan sonraki bir okuma başarısız olunca hata kutusu sekmeleri, listeyi ve ayrıntıyı kaldırıyor; kullanıcı yalnız 'Tekrar dene' ya da yenilemeyle çıkabiliyor. (`nizam.moderation.reviewDeckPublication`; `apps/nizam/features/deck-review/components/deck-requests-view.tsx:485`)
+- **NDB-7** · düşük · arayüz — Çağrı sürerken 'Vazgeç', kapatma simgesi ve Esc açık görünüp hiçbir şey yapmıyor; pencerenin kapanamayacağını meşgul düğme dışında hiçbir şey söylemiyor. (`nizam.moderation.decideBan`; `apps/nizam/features/bans/components/lift-dialog.tsx:100-102`)
+- **NDB-8** · düşük · arayüz — Köşkün yasak listesinde kaldırma penceresi Medaris nazımına 'köşk nazımı olarak kaldırabilirsiniz' diyor; okuyanın rolü yanlış adlandırılıyor. (`nizam.moderation.decideBan`; `page.tsx:46-50`)
+- **PBAN-1** · düşük · API · güvenlik — Denetim sayfasındaki 'Kalıcı yasak talebi ve kararı' süzgeci boş kalıyor; kalıcı yasak talepleri genel yasak kuralı altında yazıldığı için bu süzgeçte çıkmıyor. (`nizam.moderation.decidePermanentBan`; `apps/tedrisat/src/audit/audit-types.ts:57`)
+- **PURGE-2** · düşük · arayüz — Silmeden sonra sayfa satırı kendi listesinden çıkarıp yenilemiyor; 'Daha fazla göster' bir satır kısa listeden sonraki sayfayı istediği için boşluğa kayan satır hiç yüklenmiyor. (`nizam.moderation.deleteArchived`; `apps/nizam/features/archive/components/archive-view.tsx:228-230`)
+- **PURGE-3** · düşük · arayüz — Zaten silinmiş ya da geri alınmış öğe kalıcı 'Silinemedi' hata bildirimiyle söyleniyor; oysa pencere kapanıp satır başarıdaymış gibi çıkıyor ve kullanıcı ne olduğunu anlamıyor. (`nizam.moderation.deleteArchived`; `apps/nizam/features/archive/components/archive-view.tsx:225-241`)
+- **PURGE-5** · düşük · arayüz — Bir satırın silme sayıları geç gelirse başka satırın penceresine yazılabiliyor; ikinci pencere birinci öğenin sayılarını ikincinin adı altında gösteriyor ve 'Kalıcı olarak sil' açık. (`nizam.moderation.deleteArchived`; `apps/nizam/features/archive/components/archive-view.tsx:200-209`)
+- **RESTORE-2** · düşük · arayüz — Geri alma 'daha üst kademe gizledi' diye reddedilince satır eski kademe bilgisiyle yeniden yazılıyor; 'Bunu köşk nazımı gizledi' cümlesi yanlış kademeyi söyleyebiliyor. (`nizam.moderation.restoreArchived`; `apps/nizam/features/archive/components/archive-view.tsx:187-192`)
+- **RESTORE-3** · düşük · arayüz — 'Tür süzgeci' 'Ders kaydı' ve 'Medrese' seçeneklerini sunuyor ama API bunlar için bir şey saklamıyor; seçince hep 'Bu süzgece uyan gizli öğe yok' çıkıyor. (`nizam.moderation.restoreArchived`; `apps/tedrisat/src/archive/archive-types.ts:8-11`)
+- **REVBANS-3** = NDB-5 · düşük · arayüz — Yasağı kaldıramayan Medaris nazımına gösterilen 'onu koyan kademe ya da üstü' cümlesi, asıl sebep izin eksikliği olduğunda yanlış sebebi söylüyor. (`nizam.moderation.reviewBans`, `nizam.moderation.decideBan`; `present.ts:51-58`)
+- **REVBANS-5** · düşük · arayüz — Kaldırılan sekmesi kaldırılma zamanına göre sıralı ama 'Zaman' sütunu yasağın konma zamanını gösteriyor; sıralı liste sırasız görünüyor ve tabloda sıralama işareti yok. (`nizam.moderation.reviewBans`; `apps/tedrisat/src/ban/ban.repository.ts:419`)
+- **scope-list-is-flat** · düşük · arayüz — Kapsam seçimi köşkleri ve medreseleri tek listede yalnız adlarıyla veriyor; adlarında ortak sözcük olan köşk ve medrese birbirinden ayırt edilemiyor. (`nizam.moderation.deleteArchived`; `apps/nizam/features/archive/components/archive-view.tsx:257-267`)
+
+### nizam/nazims
+
+- **EPERM-1** · orta · arayüz — Reddedilen kayıt sayfayı yenilemiyor; kişi artık Medaris nazımı değilse pencere gitmiş kişi üzerinde açık kalıyor, 'Kaydet' açık ve satır yenilenene dek tabloda duruyor. (`nizam.nazims.editPermissions`; `apps/nizam/features/permissions/components/permissions-dialog.tsx:155-167`)
+- **EPERM-2** = F-W2-groups-6 · orta · arayüz — Hiçbir şey değişmeden 'Kaydet'e basılınca yine gönderiliyor ve 'İzinler kaydedildi' deniyor; API hiçbir şey yazmıyor ve denetim satırı da yok, başnazıma yanlış bildirim veriliyor. (`nizam.nazims.editPermissions`, `nizam.nazims.groups`; `apps/nizam/features/permissions/components/permissions-dialog.tsx:134`)
+- **F-W2-4** · orta · arayüz — 'Görevden al' her satır cevaplanana kadar pasif ve altbilgi nedenini söylemiyor; pasif düğme Tab sırasında olmadığı için klavye kullanıcısı nedenini öğrenemiyor. (`nizam.nazims.dismiss`; `apps/nizam/features/permissions/components/dismiss-dialog.tsx:165`)
+- **F-W2-5** · orta · kütüphane — Zorunlu 'Devral' / 'Düşür' seçimi aç-kapa düğmesi olarak okunuyor, cevap geri alınabiliyor, zorunlu olduğu söylenmiyor ve her satırın düğme adları aynı; kişi yalnız gizli başlıkta. (`nizam.nazims.dismiss`, `nizam.madrasahs.headMuderris`; `apps/nizam/features/permissions/components/dismiss-dialog.tsx:217-233`)
+- **F-W2-8** · orta · arayüz — İzin gruplarında başka bir gruba geçince ya da 'Grup oluştur'a basınca yazılan ve işaretlenip kaydedilmeyen değişiklikler sormadan atılıyor. (`nizam.nazims.groups`; `apps/nizam/features/permissions/components/groups-view.tsx:133`)
+- **F-W2-13** · orta · kütüphane — Pencerenin açıklaması bütün formu kapsıyor; pencere açılınca ekran okuyucu satırları, kutuları ve notları açıklama diye baştan sona okuyabiliyor. (`nizam.nazims.editPermissions`, `nizam.nazims.appoint` +2; `libs/ui/src/mds/dialog.tsx:103-112`)
+- **F-W2-groups-2** · orta · arayüz — Soru açıkken gelen ret, pencerenin dışındaki bildirim bölgesinde çıkıyor; ekran okuyucu kullanıcısı reddedildiğini duymayabilir ve soru açık kalıyor. (`nizam.nazims.groups`; `apps/nizam/features/permissions/components/group-form.tsx:94-98`)
+- **F-W2-groups-3** · orta · arayüz — Sayfa yüklendikten sonra gruba biri eklenirse kayıt 'bir seçim yapın' diye reddediliyor ama sayfada seçilecek bir şey yok ve sayfa yenilenmiyor; başnazım takılıp kalıyor. (`nizam.nazims.groups`; `apps/nizam/features/permissions/components/group-form.tsx:85`)
+- **F-W2-groups-4** · orta · arayüz — Grup oluşturulunca ya da silinince basılan düğme kayboluyor ve odak sayfaya düşüyor; yeni forma, başlığa ya da listeye taşınmıyor. (`nizam.nazims.groups`; `apps/nizam/features/permissions/components/group-form.tsx:127`)
+- **F-X-4** · orta · arayüz — Reddedilen ya da başarısız işlem yalnızca ayrı bir bölgedeki kalıcı bildirimle söyleniyor; pencerenin içinde bir şey yazmıyor, ekran okuyucu kullanıcısı duymayabilir. (`nizam.nazims.editPermissions`, `nizam.courses.list` +4; `apps/nizam/features/permissions/components/permissions-dialog.tsx:156-160`)
+- **MAPPT-1** · orta · arayüz — 'Kaydet' kişi seçilene kadar pasif ve nedenini söyleyen satır yok; klavye kullanıcısı Tab ile düğmeye varamıyor, Enter ile de form gönderilemiyor. (`nizam.nazims.appoint`; `apps/nizam/features/permissions/components/permissions-dialog.tsx:193`)
+- **MAPPT-4** · orta · arayüz — E-posta olamayacak bir yazıyla Enter'a basınca arama yapılmıyor ve hiçbir şey söylenmiyor; 'Kaydet' de neden pasif kaldığını yazmıyor. (`nizam.nazims.appoint`; `nazim-picker.tsx:41`)
+- **MAPPT-7** · orta · kütüphane — 'Medaris nazımı' alanının yıldızı ekran okuyucudan gizli ve girdide 'zorunlu' işareti yok; ekran okuyucu kullanıcısına alanın zorunlu olduğu hiç söylenmiyor. (`nizam.nazims.appoint`; `libs/ui/src/mds/field.tsx:42-45`)
+- **MAPPT-9** · orta · arayüz — Sunucunun geçersiz saydığı bir adres 'Arama şu an yapılamıyor' diye gösteriliyor; sanki dizin çökmüş, oysa neden adresin hatalı olması. (`nizam.nazims.appoint`; `actions.ts:141`)
+- **MAPPT-10** · orta · arayüz — Pencerenin içindeki 'İzin gruplarını düzenle' bağlantısı sayfayı yeniden yüklüyor; seçilen kişi, grup, izinler ve bitiş tarihi sormadan kayboluyor. (`nizam.nazims.appoint`; `apps/nizam/features/permissions/components/permissions-dialog.tsx:246`)
+- **NZDIS-1** · orta · arayüz — Kişi bu arada başkası tarafından görevden alınmışsa ret yalnız hata bildirimi veriyor ve sayfa yenilenmiyor; liste eski haliyle kalıp başnazımı yanlış duruma bakar bırakıyor. (`nizam.nazims.dismiss`; `apps/nizam/features/permissions/components/dismiss-dialog.tsx:108-122`)
+- **NZDIS-2** · orta · arayüz — Liste okunurken gövde iki gizli iskelet çubuğu; yüklendiği ekran okuyucuya söylenmiyor, giriş satırı pencerenin tamamı sanılıyor ve 'Görevden al' neden pasif belli olmuyor. (`nizam.nazims.dismiss`; `apps/nizam/features/permissions/components/dismiss-dialog.tsx:172-176`)
+- **NZDIS-5** · orta · arayüz — Düşürme reddi sunucuda hangi satırların önce görevden alınacağını söylüyor ama sayfa bu kimlikleri yok sayıyor; başnazıma 'o kişiyi' görevden alın deniyor ve kim olduğu yazmıyor. (`nizam.nazims.dismiss`; `apps/tedrisat/src/assignment/admin/permission-admin.controller.ts:150`)
+- **closing-asks-nothing** · düşük · karar — 'Vazgeç', kapatma simgesi ve Esc formu soru sormadan atıyor; perdeye tıklamak kapatmıyor. Soru sorulup sorulmayacağı sahibin kararına bağlı. (`nizam.nazims.editPermissions`, `nazar.courseNazirs.permissions` +1; `apps/nizam/features/permissions/components/permissions-dialog.tsx:181`)
+- **EPERM-3** · düşük · arayüz — Pencerenin 'şimdi'si açıldığı andır; açık kalan pencere ya da kısalmış atama eski bilgiyle denetleniyor, sunucu reddedince bildirim yalnız genel bir bitiş tarihi mesajı veriyor. (`nizam.nazims.editPermissions`; `apps/nizam/features/permissions/components/permissions-dialog.tsx:92`)
+- **F-W2-7** · düşük · arayüz — Nizam'ın izin uçtan uca testleri tohum verideki sabit bitiş tarihine dayanıyor; 31 Aralık 2026'dan sonra atama süresi dolmuş sayılıyor ve testler yanlış yere kırılıyor. (`nizam.nazims.editPermissions`, `nizam.nazims.appoint`; `apps/nizam/e2e/permissions.e2e.ts:127`)
+- **F-W2-9** · düşük · arayüz — Grup listesi 'Gruplar' adlı gezinti bölgesi ve içinde aynı adlı gizli başlık taşıyor; ekran okuyucu adı iki kez okuyor ve bir seçim listesi gezinti diye duyuluyor. (`nizam.nazims.groups`; `apps/nizam/features/permissions/components/groups-view.tsx:84-85`)
+- **F-W2-11** · düşük · arayüz — Adı olmayan kişinin satırında düğmeler 'Görevden al: ' gibi boş adla bitiyor, pencere başlığı boş kalıyor ve bildirim ' artık Medaris nazımı değil' diye başlıyor. (`nizam.nazims.dismiss`, `nizam.nazims.appoint` +1; `nazims-view.tsx:176-190`)
+- **F-W2-12** · düşük · arayüz — İletişim kutuları ilk alana değil başlıktaki kapatma simgesine odaklanarak açılıyor; klavye ve ekran okuyucu kullanıcısı gelinen alandan bir durak önce başlıyor. (`nizam.nazims.appoint`, `nizam.grants.appoint` +3; `libs/ui/src/mds/dialog.tsx:138`)
+- **F-W2-groups-1** · düşük · arayüz — Sorudaki kayıt ya da silme sürerken 'Vazgeç' ve kapatma simgesi açık görünüyor ama hiçbir şey yapmıyor; formun kendi düğmeleri ise pasifleşiyor. (`nizam.nazims.groups`; `apps/nizam/features/permissions/components/users-policy-dialog.tsx:50-52`)
+- **F-W2-groups-5** · düşük · arayüz — Her yeni grupta 'Bir ders' seçeneği pasif çiziliyor ve nedeni sayfada yazmıyor; kendi yardım satırı seçilebilirmiş gibi okunuyor. (`nizam.nazims.groups`; `apps/nizam/features/permissions/components/group-form.tsx:168-169`)
+- **F-W2-groups-7** · düşük · arayüz — Tarayıcı grup adlarını Türkçe harf kuralıyla, sunucu veritabanında başka kuralla karşılaştırıyor; I, İ, ı, i içeren adlarda ikisi farklı karar verebilir. (`nizam.nazims.groups`; `present.ts:291-294`)
+- **MAPPT-3** · düşük · arayüz — Sayfa görevdekilerin listesini tutarken zaten Medaris nazımı olan biri seçilebiliyor; ancak gönderdikten sonra 'Bu kişi zaten Medaris nazımı.' bildirimiyle öğreniliyor. (`nizam.nazims.appoint`)
+- **MAPPT-5** · düşük · kütüphane — Altbilgideki seçili izin sayısı canlı bölge değil; kutu işaretlenince ya da grup seçilince sayı değişiyor ama ekran okuyucu bunu duymuyor. (`nizam.nazims.appoint`; `libs/ui/src/mds/dialog.tsx:115`)
+- **MAPPT-6** · düşük · arayüz — Kayıt sürerken 'Vazgeç', kapatma simgesi ve Esc bir şey yapmıyor ama pasif de gösterilmiyor; kullanıcı pencerenin neden kapanmadığını anlamıyor. (`nizam.nazims.appoint`; `apps/nizam/features/permissions/components/permissions-dialog.tsx:181`)
+- **MAPPT-8** · düşük · arayüz — Meşgul 'Kaydet' düğmesinin gizli sözü kitin sabit 'Yükleniyor' metni; mesaj kataloğunda yok, başka dil eklenince değişmez. (`nizam.nazims.appoint`; `libs/ui/src/mds/button.tsx:62`)
+- **NZDIS-4** · düşük · arayüz — Kişinin başkalarına verdiği izin yokken ama tanımladığı grup varsa pencerede boş bir liste çiziliyor; ekran okuyucu boş liste duyuyor. (`nizam.nazims.dismiss`; `apps/nizam/features/permissions/components/dismiss-dialog.tsx:184-237`)
+- **NZDIS-6** · düşük · kütüphane — Bildirim bölgesi İngilizce 'Notifications alt+T' adını koruyor ve hata bildirimi nazik okunuyor; sayfa bir de kitin 'Bildirimler' bölgesini bastığı için iki bildirim bölgesi var. (`nizam.nazims.dismiss`, `nizam.courses.manageSessions`; `apps/nizam/features/permissions/components/dismiss-dialog.tsx:7`)
+
+### nizam/notifications
+
+- **F-W1-3** · orta · arayüz — Sekmelerin panel bağlantısı boş, elle yapılmış panel sekmelere bağlı değil ve bütün liste canlı bölge; sekme ya da işaret değişince ekran okuyucu listeyi baştan okuyabilir. (`nizam.notifications.triage`; `apps/nizam/features/notifications/components/notifications-page.tsx:327-362`)
+- **F-W1-5** · orta · arayüz — 'Okundu say'a basınca düğme (okunmamışlarda satırın kendisi) kayboluyor, odak yitiyor ve başarıyı söyleyen bildirim yok; ekran okuyucu kullanıcısı işaretin yapıldığını bilemiyor. (`nizam.notifications.triage`; `apps/nizam/features/notifications/components/notification-row.tsx:84-95`)
+- **F-W1-6** · orta · arayüz — 'Tümünü okundu say'a basınca okunmamış sayısı sıfırlandığı için düğme hemen pasifleşiyor ve odak yitiyor; çağrı sürerken de meşgul durumu yok. (`nizam.notifications.triage`; `apps/nizam/features/notifications/components/notifications-page.tsx:316-322`)
+- **F-W1-16** · orta · arayüz — İlk okuma kutusundaki 'Yeniden dene' tekrar başarısız olunca sessizce dönüyor; kutu aynı kalıyor ve denemenin yapıldığını söyleyen hiçbir şey yok. (`nizam.notifications.triage`; `apps/nizam/features/notifications/components/notifications-page.tsx:138`)
+- **F-W1-17** · orta · arayüz — Okunmamış satırın başlığına tıklayınca okundu işareti ve sayfa geçişi birlikte başlıyor; işaret reddedilirse uyarı giden sayfada kaybolur, satır kimseye söylenmeden okunmamış kalır. (`nizam.notifications.triage`; `apps/nizam/features/notifications/components/notification-row.tsx:61`)
+- **TRIAGE-1** · orta · API — Yasaklama bildirimleri yalnız köşk nazımlarına ve Medaris nazımlarına yazılıyor; başnazımın kayıtlı satırı olmadığı için yasaklardan hiç haberdar edilmiyor. (`nizam.notifications.triage`; `apps/tedrisat/src/ban/ban.repository.ts:430-454`)
+- **TRIAGE-3** · orta · arayüz — 'Yasaklar' çipi hiçbir şeyi daraltmıyor, çünkü her tür yasak türü; basınca iskelet ve aynı satırlar geliyor, tekrar basınca 'Tümü' oluyor. (`nizam.notifications.triage`; `apps/nizam/features/notifications/notification-view.ts:145-148`)
+- **TRIAGE-5** · orta · arayüz — Sunucuya hiç ulaşamayan okuma ya da işaretleme yakalanmıyor; ağ ya da sunucu kesilince kullanıcıya hata söylenmiyor ve ekran takılı kalabiliyor. (`nizam.notifications.triage`; `apps/nizam/features/notifications/components/notifications-page.tsx:99-110`)
+- **F-UI-W1-3** · düşük · kütüphane — Kit düğmesinin 'Yükleniyor' sözü ile bildirimin 'Kapat' ve 'Bildirimler' etiketleri sabit Türkçe yazılı; katalogda değiller, başka dil eklenince değişmezler. (`nizam.notifications.triage`, `nizam.account.settings` +8; `libs/ui/src/mds/toast.tsx:97`)
+- **TRIAGE-4** · düşük · arayüz — İki işaretleme üst üste gidip ilki reddedilirse geri alma bütün eski durumu yüklüyor; ikinci satır da sunucuda okunmuş olduğu halde okunmamış görünebiliyor. (`nizam.notifications.triage`; `apps/nizam/features/notifications/components/notifications-page.tsx:149-168`)
+- **TRIAGE-6** · düşük · arayüz — Her günün listesi 'Bildirim listesi' adını taşıyor ve zaten günüyle adlanmış bölgenin içinde; liste gezinen ekran okuyucu aynı adı üç kereye kadar duyuyor. (`nizam.notifications.triage`; `apps/nizam/features/notifications/components/notifications-page.tsx:272`)
+
+### nizam/partners
+
+- **F-W3-15** · orta · karar — 'Çalıştığı köşkler'de bir köşkün işaretini kaldırıp 'Kaydet'e basmak ortak uygulamanın o köşkteki ders kodlarını kalıcı siliyor; onay sorusu ve kod sayısı yok. (`nizam.partners.registerAndScope`; `apps/nizam/features/partners/components/partners-view.tsx:512`)
+- **F-W3-partners-3** · orta · arayüz — 'Ekle' meşgulken alanlar pasifleşiyor ve Enter'a basan kişi odağı yitiriyor; başarıdan sonra alanlar temizleniyor ve odak yeni satıra ya da forma taşınmıyor. (`nizam.partners.registerAndScope`; `apps/nizam/features/partners/components/partners-view.tsx:327`)
+- **F-W3-partners-4** · orta · arayüz — Yapıştırılan uzun metin tarayıcıda sessizce kesiliyor; 'Ad en çok 100 karakter olabilir.' hiç görünemiyor ve kesilmiş istemci kimliği kaydedilebiliyor. (`nizam.partners.registerAndScope`; `apps/nizam/features/partners/components/partners-view.tsx:322`)
+- **F-W3-partners-1** · düşük · arayüz — İki pencere de ilk odağı belirtmiyor; odak gövdedeki alana değil üstteki kapatma simgesine düşüyor, 'Adını değiştir'i açan kişi alana varmak için bir kez Tab'lamak zorunda. (`nizam.partners.registerAndScope`; `apps/nizam/features/partners/components/partners-view.tsx:402`)
+- **F-W3-partners-2** · düşük · arayüz — Ad ya da köşkler kaydedilirken 'Vazgeç', kapatma simgesi ve Esc hiçbir şey yapmıyor ama açık ve işaretsiz duruyor; pencerenin neden kapanmadığı söylenmiyor. (`nizam.partners.registerAndScope`; `apps/nizam/features/partners/components/partners-view.tsx:405`)
+- **F-W3-partners-5** · düşük · arayüz — Köşkler penceresinde reddedilen kaydın hata uyarısı kutular değişince ve 'Kaydet'e yeniden basılınca silinmiyor; pencere kapanana ya da kayıt başarılı olana kadar eski hata duruyor. (`nizam.partners.registerAndScope`; `apps/nizam/features/partners/components/partners-view.tsx:457`)
+- **F-W3-partners-6** · düşük · arayüz — Anahtarın adı kendi durumunu ('Açık', 'Kapalı') taşıyor; ekran okuyucu durumu iki kez söylüyor ve ad anahtara basınca değişiyor. (`nizam.partners.registerAndScope`; `apps/nizam/features/partners/components/partners-view.tsx:149-153`)
+
+### nizam/platform
+
+- **AUDIT-1** · orta · API — Denetim dökümü en yeni 10 000 satırla sınırlı; daha uzun kayıt kesilerek iniyor ve bağlantı, sayfa ya da dosya bunu söylemiyor. (`nizam.platform.auditLog`; `apps/tedrisat/src/audit/audit.service.ts:93`)
+- **AUDIT-2** · orta · arayüz — Her süzgeç değişikliğinde denetim görünümü yeniden kuruluyor; çalışılan seçim, tarih ve kişi kutusu yenisiyle değişiyor ve odak büyük olasılıkla sayfaya düşüyor. (`nizam.platform.auditLog`; `page.tsx:36`)
+- **AUDIT-3** · orta · arayüz — Silinmiş bir köşkün ya da medresenin denetim satırında ad yok; sayfa ad yerine 'Platform' yazıp altına 'Köşk' koyuyor, yani yanlış ad gösteriyor. (`nizam.platform.auditLog`; `apps/nizam/features/platform-admin/components/audit-view.tsx:173`)
+- **AUDIT-4** · orta · arayüz — Kişi kutusuna 200 karakterden uzun yazılırsa API 400 veriyor, sayfa bunu genel 'Kayıt okunamadı' diye gösteriyor ve 'Tekrar dene' aynı isteği yineliyor. (`nizam.platform.auditLog`; `present.ts:131`)
+- **AUDIT-5** · orta · arayüz — 'Ne yaptı' listesinde 'Diğer işlem' seçeneği yok, o satırlara yalnız 'Tümü' ile ulaşılıyor; 'Devral ya da düşür' seçeneği ise hiçbir satırla eşleşmiyor. (`nizam.platform.auditLog`; `present.ts:84-101`)
+- **AUDIT-7** · orta · arayüz — Denetim izni olan Medaris nazımını API ve sayfa içeri alıyor ama menüde girişi yok ve hiçbir yer bağlantı vermiyor; adresi bilmeyen kayda ulaşamıyor. (`nizam.platform.auditLog`)
+- **F-W3-2** = F-X-21 · orta · arayüz — Denetim sayfası her okuyucuya 'Kayıtlar [KVKK saklama süresi] boyunca saklanır.' diyor; köşeli parantezli yer tutucu hiç doldurulmamış ve bir test onu sabitlemiş. (`nizam.platform.auditLog`; `apps/nizam/features/platform-admin/components/audit-view.tsx:337`)
+- **F-W3-4b** · orta · arayüz — 'Dışa aktar' düz indirme bağlantısı; ret ya da hata JSON olarak iniyor ya da açılıyor ve sayfa hiçbir şey söylemiyor, kullanıcı dosyayı bozuk sanıyor. (`nizam.platform.auditLog`; `apps/nizam/features/platform-admin/components/audit-view.tsx:194`)
+- **F-W3-6** = F-W3-edit-1 · orta · arayüz — Anahtar kendi kaydı sürerken pasifleşiyor ve odaktaki kontrol pasifleşince odak sayfaya düşüyor; kaydın sürdüğünü söyleyen başka bir şey yok, sonucu yalnız bildirim söylüyor. (`nizam.platform.policies`, `nizam.kosks.editAndHide` +1; `apps/nizam/features/platform-admin/components/policies-view.tsx:166`)
+- **POL-1** · orta · arayüz — Platform genelindeki anahtar tek basışla, onaysız uygulanıyor; 'Kayıt her zaman onaylı' bütün yeni kayıtları hemen başvuruya çeviriyor ve uyarı cümlesi anahtarların altında kalıyor. (`nizam.platform.policies`; `apps/nizam/features/platform-admin/components/policies-view.tsx:177`)
+- **POL-3** · orta · API — Tablo 'köşk ve medrese' diyor ama API yalnız köşkleri listeliyor; kendi politikasını uygulayan medrese olsa bile 'köşk ya da medrese yok' yazıyor. (`nizam.platform.policies`; `apps/tedrisat/src/platform-policy/platform-policy.repository.ts:136`)
+- **POL-7** · orta · arayüz — Politika düzenleme izni olan Medaris nazımını sayfa ve API kabul ediyor ama Medaris menüsü giriş göstermiyor; kişi sayfaya yalnız adresi bilirse ulaşıyor. (`nizam.platform.policies`; `page.tsx:24`)
+- **AUDIT-6** · düşük · arayüz — Sayfa her okuyucuya 'Bu kaydı yalnız siz görürsünüz' diyor; oysa denetim izni olan her Medaris nazımı da görüyor, yani cümle ikinci tür okuyucu için yanlış. (`nizam.platform.auditLog`)
+- **POL-2** · düşük · arayüz — Kuralı kendi kapsamında zaten uygulayan köşkler anahtarın açıklamasına bağlı değil; anahtardaki kişi bunu duymuyor ve köşk listesinin de adı yok. (`nizam.platform.policies`; `apps/nizam/features/platform-admin/components/policies-view.tsx:169-173`)
+- **POL-4** · düşük · arayüz — Hata kodlarının çevirisi için bakılan ad alanında yalnız 'genel' ve 'yetki' iletileri var; başka bir kod gelirse karşılığı bulunamaz. Şu an tetiklenmiyor. (`nizam.platform.policies`; `present.ts:39`)
+- **POL-5** · düşük · arayüz — İki anahtara üst üste basılırsa tek 'meşgul' anahtarı karışıyor; ilk cevap gelince liste ikinci değişikliği henüz içermeyebiliyor ve ikinci anahtar yanlış görünebiliyor. (`nizam.platform.policies`; `apps/nizam/features/platform-admin/components/policies-view.tsx:57`)
+- **POL-6** · düşük · API — Platform politikası değişmese bile denetim satırı yazılıyor; aynı değeri gönderen istek 'önceki' ile 'yeni' eşit bir satır ekliyor, oysa sayfa denetim kaydını kanıt sayıyor. (`nizam.platform.policies`; `apps/tedrisat/src/platform-policy/platform-policy.repository.ts:121-126`)
+
+### nizam/shell
+
+- **F-P0-3** · orta · arayüz — Çıkış yapılmış karşılama sayfası ve çıkış onayı sayfası kendi başlığını vermiyor; sekmede ve geçmişte yalnız 'Nizam' yazıyor, sayfanın ne olduğu söylenmiyor. (`nizam.shell.landingByRole`, `realm.auth.signOut`; `layout.tsx:16`)
+- **F-P0-4** · orta · arayüz — Menüdeki 'Kalıcı yasak talepleri' ve 'YouTube bağlantısı' girişleri 'Sayfa bulunamadı' açıyor; bu sayfalar yok, giriş canlı görünüp boşa gidiyor. (`nizam.shell.noAccessAndNotFound`, `nizam.home.medarisNazimCut` +3; `apps/nizam/lib/shell-nav.ts:125`)
+- **F-P0-9** · orta · karar — Roller okunamayınca '/' başlıksız, hatasız, yeniden denemesiz ve menüsüz bir 'Hoş geldiniz' çiziyor; nazım olabilecek kişi ne olduğunu anlamıyor. Sahibi karar verecek. (`nizam.shell.landingByRole`; `page.tsx:42-50`)
+- **F-UI-P0-1** · orta · kütüphane — Atlama bağlantısı yok: ana bölüm var ama hiçbir şey ona bağlanmıyor; klavye ve ekran okuyucu kullanıcısı her sayfada marka, seçici ve 17'ye kadar menü bağlantısını geçiyor. (`nizam.shell.menuPerPersona`; `libs/ui/src/mds/app-shell.tsx:41`)
+- **F-X-11** · orta · arayüz — İki menü girişi ve Medaris ana sayfasındaki 'Kalıcı yasak talepleri' kartı sayfası olmayan adreslere gidiyor ve 'Sayfa bulunamadı' ile bitiyor. (`nizam.shell.noAccessAndNotFound`, `nizam.moderation.decidePermanentBan`)
+- **LBR-1** · orta · arayüz — Rolleri okunamayan herkesin, nazım ya da hoca olsa da, kenar çubuğunda adının altında 'Talebe' yazıyor; bu hiçbir rolü olmayan için doğru, okunamayan için yanlış. (`nizam.shell.landingByRole`; `apps/nizam/components/shell/nizam-shell.tsx:63-65`)
+- **MENU-2** · orta · arayüz — İki köşkü olan köşk nazımı '/' ile en eski rolünün köşküne düşüyor, adresinde köşk olmayan sayfalarda menü ise en yeni köşkü gösteriyor; çalıştığı köşk korunmuyor. (`nizam.shell.menuPerPersona`, `nizam.home.koskNazimLanding`; `page.tsx:29-32`)
+- **MENU-3** · orta · API · güvenlik — 'Başvurular' sayısı için her sayfa yüklemesinde yönetilen köşklerin bekleyen başvuru listesi, adlar ve e-postalarla, okunuyor ve her seferinde denetim satırı yazılıyor; yalnız sayı gerekiyor. (`nizam.shell.menuPerPersona`; `apps/nizam/components/shell/nizam-shell.tsx:79-84`)
+- **MENU-6** · orta · kütüphane — Menü paneli açılınca odak 'Kapat'a değil başlıktaki marka bağlantısına düşüyor; menüyü açıp Enter'a basan klavye kullanıcısı istemeden ana sayfaya gidiyor. (`nizam.shell.menuPerPersona`; `apps/nizam/components/shell/shell-frame.tsx:182-185`)
+- **NOACC-1** · orta · arayüz — Nizam'ın erişim yok ve sayfa bulunamadı yüzleri odağı taşımıyor ve duyurulmuyor; reddeden bir sayfaya giden ekran okuyucu kullanıcısı değişen sayfayı fark etmiyor. (`nizam.shell.noAccessAndNotFound`; `apps/nizam/features/assignments/components/no-role-page.tsx:44`)
+- **F-P0-6** · düşük · arayüz — '/yetki-yok' sayfasının yükleme hatası durumunda başlık ve odak taşıma yok; uyarı okunuyor ama sayfanın başlığı yok ve odak yerinde kalıyor. (`nizam.shell.landingByRole`; `apps/nizam/features/assignments/components/no-role-page.tsx:29-40`)
+- **F-P0-7** · düşük · karar — '/nazar-yonlendirme' yüklenemeyince hem kalıcı hata bildirimi hem aynı yazılı uyarı çıkıyor; aynı şey iki kez duyuluyor. Hangisinin kalacağına sahibi karar verecek. (`nizam.shell.landingByRole`; `apps/nizam/features/assignments/components/nazar-redirect-page.tsx:48-62`)
+- **F-P0-8** · düşük · arayüz — Marka, kişi satırı ve zil düz bağlantı olduğu için her biri sayfayı baştan yüklüyor; menü girişleri ise sayfa geçişi kullanıyor. (`nizam.shell.menuPerPersona`; `apps/nizam/components/shell/shell-frame.tsx:159`)
+- **F-UI-P0-2** · düşük · kütüphane — Durum bileşeni çocuk içeriğini paragraf içine koyuyor; blok içerik geçersiz HTML olur, karşılama sayfasında ise boş bir paragraf kalıyor. (`nizam.shell.landingByRole`; `libs/ui/src/mds/system-state.tsx:46`)
+- **F-X-20** · düşük · arayüz — Bazı uçtan uca testler eskimiş: kalkmış /tr yolunu, sabit 2026 tarihlerini, 21 menü girişini bekliyor ya da paylaşılan veritabanını bozuk bırakabiliyor; sonraki kişiyi yanıltıyor. (`nizam.shell.noAccessAndNotFound`, `nizam.grants.appoint` +2; `apps/nizam/e2e/assignments.e2e.ts:24`)
+- **LBR-2** · düşük · karar — Aynı rol bir ekranda iki türlü yazılıyor: kenar çubuğunda 'Medrese nâzırı', yanındaki listede 'Medrese nazırı'; hangi yazımın kalacağı karar bekliyor. (`nizam.shell.landingByRole`)
+- **MENU-1** · düşük · kütüphane — Tek köşklü kişide seçici düz etiket ama gizli 'Köşk değiştir:' sözü yine okunuyor; ekran okuyucu değiştirilemeyen bir şey için 'değiştir' diyor. (`nizam.shell.menuPerPersona`; `libs/ui/src/mds/scope-picker.tsx:129-131`)
+- **MENU-4** · düşük · kütüphane — Köşk seçicinin satırları düz bağlantı olduğu için köşk değiştirmek sayfayı baştan yüklüyor; menü girişleri ise sayfa geçişi kullanıyor. (`nizam.shell.menuPerPersona`; `libs/ui/src/mds/scope-picker.tsx:148-157`)
+- **MENU-5** · düşük · kütüphane — Kenar çubuğu adsız bir yan bölge ve içindeki gezinti 'Ana menü'; açılan panelde pencere ile gezinti aynı adı taşıyor, ekran okuyucu 'Ana menü' diye iki kez söylüyor. (`nizam.shell.menuPerPersona`; `libs/ui/src/mds/app-shell.tsx:81-103`)
+- **NOACC-2** · düşük · arayüz — Yükleme iskeleti olan sayfalarda yetkisiz kişiye verilen ret HTTP 403 değil 200 dönüyor; akış başladıktan sonra durum kodu değişemiyor. (`nizam.shell.noAccessAndNotFound`)
+- **NOACC-3** · düşük · arayüz — Yetki yok ve sayfa yok ekranlarında sekme başlığı ekranı adlandırmıyor; reddeden sayfa kendi başlığını ('İzin grupları' gibi) koruyor, bazı ret ekranlarında yalnız 'Nizam' yazıyor. (`nizam.shell.noAccessAndNotFound`; `layout.tsx:16`)
+
+### nizam/youtube
+
+- **YT-2** · orta · karar — Sunucu yayının bittiğini öğrenmiyor; yayın bağlantısını talebeye planlı başlangıçtan kayıt açılana ya da en çok planlı bitişten 24 saat sonrasına kadar veriyor, bu süre karar değil öneri. (`nizam.youtube.liveBroadcasts`; `apps/tedrisat/src/course/domain/recording.ts:200-207`)
+- **YT-3** · orta · arayüz — 'YouTube bağlantısı' girişi yalnız başnazımın menüsünde; izin Medaris nazımına verilebiliyor ama verilen kişi sayfaya yalnız adresi bilirse ulaşıyor. (`nizam.youtube.liveBroadcasts`; `apps/nizam/lib/shell-nav.ts:149`)
+- **focus-undecided** · düşük · karar — Yayın anahtarı penceresinde ilk odak belirtilmemiş, kitin varsayılanı kapatma simgesi; pencerenin 'Göster'e mi açılacağı ve odağın nereye gideceği inceleme kararı bekliyor. (`nizam.youtube.liveBroadcasts`)
+- **the-key-is-not-a-word** · düşük · karar · güvenlik — Yayın anahtarı bir kimlik bilgisi, 'Göster'e kadar noktalı; bir kez mi gösterileceği, maskeli kopyalanacağı mı yoksa göstermeden mi kopyalanacağı karar bekliyor. (`nizam.youtube.liveBroadcasts`)
+- **the-secret-field-is-text** · düşük · karar — Maskeli anahtar noktalardan oluşan salt okunur metin; ekran okuyucu 'Göster'e basılana kadar anahtarı değil noktaları duyar. Bu tasarım inceleme için bir öneri. (`nizam.youtube.liveBroadcasts`)
+- **YT-1** · düşük · karar — Hoca'nın canlı yayın denetimleri nizam'a yazılmış ama onları kullanan müderris ve ders nazırı nazar-web'de çalışıyor; denetimlerin hangi uygulamada duracağına sahibi karar verecek. (`nizam.youtube.liveBroadcasts`)
+
+## landing
+
+| Alan | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
+|---|---|---|---|---|---|---|
+| landing/site | 5 | 0 | 8 | 11 | 0 | 6 |
+| **landing** | 5 | 0 | 8 | 11 | 0 | 6 |
+
+### landing/site
+
+- **ENTER-2** · orta · arayüz — JavaScript kapalıyken "Giriş yap" ve "Kayıt ol", yönlendirildiğini söyleyen ama hiçbir şey yapmayan bir sayfada bitiyor; giriş ve kayıt tamamlanamıyor. (`landing.site.enterApp`; `apps/tedris/features/auth/auth-entry.tsx:67-82`)
+- **L1** · orta · arayüz — Mesaj gönderilince form kalkıyor, odaktaki "Gönder" yok oluyor ve odak sayfaya düşüyor; başarı mesajı metniyle birlikte geldiği için çoğu ekran okuyucu onu duyurmuyor. (`landing.site.contact`; `apps/landing/components/contact-form.tsx:73-97`)
+- **L2** · orta · arayüz — Bir alanın hata satırı kişi alanı düzeltirken silinmiyor, yalnız sonraki gönderimde sıfırlanıyor; düzelen alan geçersiz işaretli ve hata yazılı kalıyor. (`landing.site.contact`; `apps/landing/components/contact-form.tsx:65-71`)
+- **L3** · orta · arayüz — Sunucunun 400, 429, 502 ve 503 yanıtları tek genel bildirimde toplanıyor, hatalı alanlar atılıyor; sayfada uzunluk sınırı yok, adres kontrolü zayıf, uzun mesaj genel hatayla düşüyor. (`landing.site.contact`; `apps/landing/components/contact-form.tsx:59-62`)
+- **L6** · orta · arayüz — Telefonda başlıkta yalnız simgeli "Giriş yap" var, "Kayıt ol" hiç yok; ziyaretçi SSS, iletişim ve hukuk sayfalarından kayda başlamak için ana sayfaya dönmek zorunda. (`landing.site.enterApp`; `apps/landing/components/site-header.tsx:43-52`)
+- **L10** · orta · karar — Kullanım şartları girişte kabul alındığını ve kabul tarihinin hesapta saklandığını söylüyor ama bunu yapan hiçbir şey yok; metin gerçekte olmayan bir işlemi vaat ediyor. (`landing.site.readLegal`; `page.tsx:27`)
+- **LEGAL-3** · orta · arayüz — Kullanım şartlarının 8. bölümü henüz yapılmamış bir cihaz kısıtlamasını anlatıyor; ilk cümle "henüz kullanılmıyor" dese de altındaki maddeler yürürlükte kural gibi yazılmış ve yanıltıyor. (`landing.site.readLegal`; `apps/landing/content/cerezler.ts:14-15`)
+- **ROADMAP-1** · orta · arayüz — Yol haritası taslağı "Herkese açık profil"i Bugün, Yayında altında gösteriyor ama profil yapılmış ve kapatılmış; ziyaretçi olmayan bir özelliği var sanıyor. (`landing.site.roadmap`; `apps/tedris/features/public-profile/availability.ts:14`)
+- **ENTER-1** · düşük · arayüz — Giriş adresi ayarlanmamışken her kapı, sitenin çerçevesi olmayan sade İngilizce bir 503 yazısı veriyor; ziyaretçi düzeltemeyeceği bir sunucu ayarını okuyor ve geri dönemiyor. (`landing.site.enterApp`; `apps/landing/app/api/tedris/[intent]/route.ts:21-26`)
+- **FAQ-1** · düşük · arayüz — SSS cevabı ders sayfasındaki "Derse kaydol" düğmesine basmayı söylüyor ama tedris'te düğme "Kayıt ol" (ya da "Kayıt başvurusu yap"); ziyaretçi olmayan bir düğmeyi arıyor. (`landing.site.faq`; `apps/tedris/features/courses/components/course-aside.tsx:375`)
+- **L4** · düşük · arayüz — İletişim formunun gönderilecek adresi yok; JavaScript yokken form kendi sayfa adresine gönderiliyor ve işe yarar bir cevap gelmiyor. (`landing.site.contact`; `apps/landing/components/contact-form.tsx:101-107`)
+- **L5** · düşük · arayüz — Alt bilgideki "GitHub" bağlantısı yeni sekmede açılıyor ama bunu ne görünür ne gizli bir yazı söylüyor; hukuk sayfasını okuyan ziyaretçi kendini başka bir sekmede buluyor. (`landing.site.readLegal`; `apps/landing/components/site-footer.tsx:32-39`)
+- **L9** · düşük · arayüz — "Bir derse nasıl kaydolurum?" cevabı kayıt formunun sorduklarını sayarken cinsiyet seçimini atlıyor; cinsiyet her hesap için zorunlu olduğundan ziyaretçi beklemediği bir soruyla karşılaşıyor. (`landing.site.faq`; `page.tsx:190-196`)
+- **L11** · düşük · arayüz — SSS cevap panelleri bölge olarak işaretli değil ve soru düğmesiyle adlandırılmamış; bölgeleri listeleyen ekran okuyucu on bir cevabı bulamıyor. (`landing.site.faq`; `apps/landing/components/faq-item.tsx:46-50`)
+- **LEGAL-1** · düşük · arayüz — Çerezler sayfası artık olmayan dil menüsünün yazdığı "medaris-locale" çerezini listeliyor; hiçbir şey bu çerezi yazmıyor, sayfa var olmayan bir çerezi bildiriyor. (`landing.site.readLegal`; `apps/landing/content/cerezler.ts:120-125`)
+- **LEGAL-2** · düşük · arayüz — Çerezler sayfası "NEXT_LOCALE" çerezini Tedris ve Nizam'a bağlıyor ama o uygulamalar bu çerezi yazmıyor; çerez yanlış uygulamalara atfediliyor. (`landing.site.readLegal`; `apps/landing/content/cerezler.ts:127-131`)
+- **ROADMAP-2** · düşük · arayüz — Taslakta Yakında, Yapılıyor altındaki dört maddenin üçü 4 Ekim'den beri bitmiş; yol haritası bayat kalmış ve bitmiş işleri hâlâ yapılıyor gösteriyor. (`landing.site.roadmap`)
+- **ROADMAP-3** · düşük · arayüz — "Ödev, müzakere, imtihan" tek bir Uzak madde ama ödev yapılmış, imtihan kısmen yapılmış, yalnız müzakere yok; taslak durumu olduğundan geride gösteriyor. (`landing.site.roadmap`)
+- **ROADMAP-4** · düşük · arayüz — "E-posta davetleri ve bildirimleri" Planlandı altında ama ders daveti e-postasının kodu var; davetlerin bugün gidip gitmediği ve hangi bildirimlerin eksik olduğu doğrulanmadı. (`landing.site.roadmap`)
+
+## realm
+
+| Alan | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
+|---|---|---|---|---|---|---|
+| realm/auth | 8 | 0 | 30 | 20 | 0 | 6 |
+| **realm** | 8 | 0 | 30 | 20 | 0 | 6 |
+
+### realm/auth
+
+- **ACC-09** · orta · arayüz — Hesap sayfasındaki 'Değiştir' ve 'Ekle' bağlantıları neyi değiştirdiklerini söylemiyor; ekran okuyucu bağlantılar listesinde hepsini aynı adla duyuyor. (`realm.auth.profileUpdate`; `apps/tedris/features/account/components/account-settings.tsx:87`)
+- **CONSENT-2** · orta · arayüz — Rıza verdikten sonra bakılan Keycloak hesap konsolu ortak uygulamanın izinlerini '${genderScopeConsentText}' gibi ham anahtarlarla gösteriyor; talebe neye izin verdiğini okuyamıyor. (`realm.auth.partnerConsent`; `apps/tedris/features/account/connected-apps.ts:8`)
+- **CONSENT-3** · orta · arayüz — Ortak uygulamanın şartlar ve gizlilik bağlantıları istemci ayarlarından geliyor ama hiçbir yer onları doldurmuyor ve kılavuz da söylemiyor; yeni istemcinin izin sayfasında bu bağlantılar çıkmaz. (`realm.auth.partnerConsent`; `apps/keycloak-theme/src/login/pages/LoginOauthGrant.tsx:34-42`)
+- **F-E-1** · orta · arayüz — Nazar'da giriş hatası kutusu yer değiştirince uyarı rolü, canlı bölge ya da odak taşıma yok; ekran okuyucu 'Giriş sayfasına yönlendiriliyorsunuz' deyip sonrasını duymuyor. (`realm.auth.signInFailures`; `auth-entry.tsx:81`)
+- **F-E-21** · orta · arayüz — Okundu işareti oturumun bittiğini görünce giriş yönlendirmesi başlıyor ama bildirim yine de hedef adresini açıp yönlendirmeyi eziyor; kişi girişe değil oturumsuz bir sayfaya düşüyor. (`realm.auth.sessionEnded`, `nazar.notifications.inbox`; `apps/nazar/features/notifications/components/notifications-list.tsx:139-140`)
+- **F-P0-1** · orta · arayüz — Nizam'da giriş hatası kutusu sessizce yer değiştiriyor; uyarı rolü ve odak taşıma yok, ekran okuyucu kullanıcısı hatayı duymuyor. (`realm.auth.signInFailures`; `auth-entry.tsx:90-110`)
+- **FORGOT-1** · orta · arayüz — 'Gönder'den sonra giriş sayfası yeniden çiziliyor; postanın hangi adrese gittiği, bağlantının 30 dakika geçerli olduğu ve spam klasörüne bakılması gerektiği söylenmiyor. (`realm.auth.forgotPassword`; `apps/keycloak-theme/src/login/pages/LoginVerifyEmail.tsx:47-53`)
+- **FORGOT-2** · orta · arayüz — Yeni şifre sayfası 'e-posta adresinden farklı' kuralını göstermiyor; adres şifre diye yazılırsa gönderildikten sonra realm reddediyor ve iki alanı boş yeni bir sayfa geliyor. (`realm.auth.forgotPassword`; `apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:45-51`)
+- **FORGOT-3** · orta · arayüz — Kullanılmış ya da süresi geçmiş sıfırlama bağlantısı genel 'Giriş tamamlanamadı' sayfasına çıkıyor; bağlantının bittiği yazmıyor ve tek bağlantı sıfırlama formuna gitmiyor. (`realm.auth.forgotPassword`; `apps/keycloak-theme/src/login/pages/ErrorPage.tsx:36-43`)
+- **FORGOT-4** · orta · karar — Şifre sıfırlama oturum açık bitiyor, değiştiği söylenmiyor, e-posta da gelmiyor; 'Diğer cihazlarda çıkış yap' baştan işaretli, kişi seçmeden diğer oturumlarını da kapatıyor. (`realm.auth.forgotPassword`; `libs/ui/src/giris/update-password-form.tsx:185-191`)
+- **K1** · orta · kütüphane — Boş gönderimden sonra her tuş vuruşunda odak ilk geçersiz denetime geri atlıyor; alanları sırayla doldurmayan kişi yazarken odağı kaybediyor. (`realm.auth.register`; `libs/ui/src/giris/register-form.tsx:119-124`)
+- **K2** · orta · arayüz — Bütün Keycloak sayfaları aynı sekme başlığını ('Medaris adresinde oturum açın') taşıyor; sıfırlama, kayıt, izin ve hata sayfaları başlıktan ayırt edilemiyor. (`realm.auth.forgotPassword`, `realm.auth.partnerConsent` +5; `apps/keycloak-theme/src/login/Template.tsx:57`)
+- **K3** = PROFILE-1, REG-1 · orta · kütüphane — Giriş sayfası hiçbir denetime odak vermiyor; yanlış şifreden sonra odak uyarıya ya da ilk geçersiz alana gitmiyor, ekran okuyucu hatayı duymayabilir. (`realm.auth.signIn`, `realm.auth.forgotPassword` +3; `libs/ui/src/giris/login-form.tsx:78-95`)
+- **K5** · orta · arayüz — Sıfırlama formundaki 'Lütfen kullanıcı adını belirtin.' hatası alana bağlı değil ve canlı bölgesi sayfa yenilenince geç oluşuyor; ekran okuyucu hatayı duymuyor. (`realm.auth.forgotPassword`; `apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:64-84`)
+- **K7** · orta · arayüz — 'Kaydet ve devam et' zorunlu cevaplar verilene kadar pasif, odak alamıyor ve neyin eksik olduğunu söyleyen bir şey yok; eksik alanın uyarısı canlı bölge değil. (`realm.auth.profileUpdate`; `apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:77-83`)
+- **K14** · orta · arayüz — Doğrulama sayfasında 'Yeniden gönder' işlem yapan bir GET bağlantısı; yanlış yazılan adres düzeltilemiyor ve girişe dönülemiyor, kişi sayfada takılıyor. (`realm.auth.register`)
+- **PROFILE-3** · orta · arayüz — Aydınlatma kutusundan işaret kalkınca altında '1 en az 1, en fazla {2} değer içermelidir.' yazıyor; çok değerli alan iletisi tek kutuya uygulanıyor ve yer tutucular yanlış doluyor. (`realm.auth.profileUpdate`; `apps/keycloak-theme/src/login/profile-fields.tsx:267`)
+- **REG-2** · orta · kütüphane — Alanların altındaki hata gerekçeleri canlı bölge değil; başarısız gönderimde yalnız ilk geçersiz alana odaklanıldığı için ekran okuyucu yalnız onun hatasını okuyor, ötekileri gezerek bulmak gerekiyor. (`realm.auth.register`; `libs/ui/src/mds/field.tsx:50-52`)
+- **REG-4** · orta · karar · güvenlik — Kayıt formu 'Kullanıcı adı zaten var.' ve 'Bu e-posta zaten var.' diyerek bir adın ya da adresin hesabı olup olmadığını herkese söylüyor; bu bir ürün kararı. (`realm.auth.register`)
+- **REG-5** · orta · arayüz — Doğrulama sayfası 'Yeniden gönder'i hemen sunuyor ama Keycloak ilk 30 saniye reddediyor; uyarı odağı almıyor ve saniye sayısı geri sayım değil, anlık görüntü. (`realm.auth.register`)
+- **SESSION-1** · orta · kütüphane — Eski sekmede oturum bitmiş olsa da sayfa giriş çubuğunu ve yazılan metni koruyor, sekme görününce de hiçbir şey söylemeden yeniden yükleniyor; kişi oturumunun bittiğini öğrenmiyor. (`realm.auth.sessionEnded`; `libs/auth/src/client/session-context.ts:118-125`)
+- **SESSION-2** · orta · API · güvenlik — Oturum çerezdeyse bitişi vekil en çok dakikada bir fark ediyor ve arka kanaldan çıkış 501 dönüyor; başka yerden çıkış yapan kişinin açık sayfası o sürede hâlâ kayıt yazabiliyor. (`realm.auth.sessionEnded`; `libs/auth/src/server/renewal.ts:196-205`)
+- **SHL-03** · orta · arayüz — Tedris'te otomatik giriş yolculuğu başarısız olunca yönlendirme durumu sessizce hata kutusuyla değişiyor; uyarı rolü yok ve 'Devam et'teyse odak kayboluyor. (`realm.auth.signInFailures`; `auth-entry.tsx:85-109`)
+- **SHL-13** · orta · arayüz — Çıkış isteği hata verirse tedris'te düğme sessizce yeniden basılabilir oluyor ve hata yalnız konsola gidiyor; nizam ve nazar'da meşgul durum kalıyor, hiçbir şey söylenmiyor. (`realm.auth.signOut`; `apps/tedris/features/auth/sign-out-confirm.tsx:26-35`)
+- **SIF-1** · orta · API · güvenlik — Bir saniyeden kısa aralıkla iki yanlış şifre hesabı bir dakika duraklatıyor; betik, şifre yöneticisi ya da çift gönderim yüzünden gerçek sahibi de bir dakika dışarıda kalabiliyor. (`realm.auth.signInFailures`)
+- **SIF-2** · orta · arayüz — Reddedilen giriş iletileri 'yönetici ile iletişime geçin' diyor ama sayfa kimseyi adlandırmıyor ve iletişim bağlantısı vermiyor; talebe yöneticinin kim olduğunu bilemiyor. (`realm.auth.signInFailures`)
+- **SIF-3** · orta · API · güvenlik — Duraklatılmış hesap iletisi şifre ne olursa olsun adresi yazan herkese gösteriliyor, bilinmeyen adres ise 'Geçersiz kullanıcı adı veya şifre.' alıyor; form yabancıya hesabın var olduğunu söylüyor. (`realm.auth.signInFailures`)
+- **SIF-4** · orta · arayüz — Nazar'da reddedilen hesabın tek çıkışı 'Ana sayfaya dön' '/' adresine gidip oradan yeniden girişe yönleniyor; düğme 'ana sayfa' diyor ama aynı girişi yeniden başlatıyor. (`realm.auth.signInFailures`)
+- **SOUT-1** · orta · arayüz — Nazar'da çıkış sürerken 'Vazgeç' canlı bağlantı kalıyor; basılırsa ikinci geçiş başlıyor ve kişi oturumu kaldırılmış halde '/' sayfasında kalabiliyor; tedris ve nizam bunu pasifleştiriyor. (`realm.auth.signOut`; `apps/nazar/features/auth/sign-out-confirm.tsx:39`)
+- **WRT-13** · orta · arayüz — Kaydedilmemiş not ya da ödev notu yazılırken oturum biterse, sayfa yenilenirse ya da sayfadan çıkılırsa metin kayboluyor; öncesinde uyarı, sonrasında açıklama yok. (`realm.auth.sessionEnded`, `tedris.learn.homeworkHandIn` +2; `apps/tedris/features/courses/components/lesson-notes.tsx:332`)
+- **CONSENT-1** · düşük · kütüphane — Ortak uygulamanın izin sayfası açılınca hiçbir denetime odak verilmiyor, odak sayfa gövdesinde kalıyor; klavye ve ekran okuyucu kullanıcısı en üstten başlıyor. (`realm.auth.partnerConsent`; `libs/ui/src/giris/consent-form.tsx:45-109`)
+- **F-E-2** · düşük · arayüz — Nazar'ın giriş sayfaları testi 'AccessDenied' için 'Tekrar dene' düğmesi bekliyor ama kod kesin hatada düğme çizmiyor; test eski ve sonrakini yanıltıyor. (`realm.auth.signInFailures`; `auth-entry.tsx:96`)
+- **F-E-18** · düşük · karar — Nazar'da 'Çıkış yap' onay sormadan hemen çıkış yaptırıyor; onay sayfası var ama hiçbir yer ona bağlanmıyor, Tedris ve Nizam ise soruyor. Hangisinin doğru olduğu karar bekliyor. (`realm.auth.signOut`, `nazar.access.noAccess` +1; `auth.ts:45`)
+- **F-P0-2** · düşük · arayüz — Nizam'ın giriş sayfasında ana bölge yok; kutu çıplak bir bölüm olarak duruyor ve çevresinde kabuk çizilmiyor, ekran okuyucu ana içeriğe atlayamıyor. (`realm.auth.signInFailures`, `realm.auth.signIn`; `auth-entry.tsx:90`)
+- **F-P0-19** · düşük · arayüz — Nizam giriş hatası kutusundaki 'Tekrar dene' ve 'Ana sayfaya dön' birleşik düğme yerine eski düğmeyi kullanıyor; yalnız görünüş farkı. (`realm.auth.signInFailures`; `auth-entry.tsx:100-104`)
+- **K4** · düşük · arayüz — Şifre sıfırlama ve e-posta doğrulama sayfaları eski kit ve ham renk sınıflarıyla çiziliyor; görünüm ve koyu tema farklı, sıfırlama düğmesi de meşgul göstermiyor. (`realm.auth.forgotPassword`, `realm.auth.register`; `apps/keycloak-theme/src/login/pages/LoginResetPassword.tsx:57`)
+- **K8** · düşük · kütüphane — Şifre kuralları yazdıkça değişiyor ('karşılandı') ama canlı bölge yok; ekran okuyucu kullanıcısı durumu ancak alana yeniden odaklanınca duyuyor. (`realm.auth.register`; `libs/ui/src/giris/password-field.tsx:35-57`)
+- **K9** · düşük · arayüz — Yeni şifre sayfası 10 karakter kuralını koda yazmış, realm politikasından okumuyor; bugün uyuşuyor, politika değişirse yanlış söyler. (`realm.auth.forgotPassword`; `apps/keycloak-theme/src/login/pages/LoginUpdatePassword.tsx:97`)
+- **K10** · düşük · arayüz — Kayıt, şifre sıfırlama ve giriş hatası akışlarında Türkçe metin 'sen' ile 'siz' arasında gidip geliyor; aynı akışta iki hitap biçimi var. (`realm.auth.forgotPassword`, `realm.auth.register` +1)
+- **K12** · düşük · arayüz — Keycloak sayfalarında dil denetimi yok; dil uygulamanın gönderdiğine bağlı, forma doğrudan gelen kişi dili değiştiremiyor. (`realm.auth.partnerConsent`, `realm.auth.signIn`; `apps/keycloak-theme/src/login/i18n.ts:173`)
+- **K13** · düşük · arayüz — 'Aydınlatma Metni' bağlantısı her ortamda, yerel yığın dahil, canlı adrese gidiyor; yerel yığında bağlantı makineden dışarı çıkıyor. (`realm.auth.profileUpdate`, `realm.auth.register`)
+- **PROFILE-2** · düşük · arayüz — 'Kaydet ve devam et' meşgul durumu göstermiyor; gönderim sürerken sayfa aynı görünüyor ve ikinci basış yeniden gönderebiliyor, oysa öteki sayfaların düğmeleri meşgul oluyor. (`realm.auth.profileUpdate`; `apps/keycloak-theme/src/login/pages/LoginUpdateProfile.tsx:77-84`)
+- **REG-3** · düşük · kütüphane — Şifre kuralları listesi alanın kendi hatası varken gizleniyor; şifresi boş, kısa ya da e-postayla aynı olan, kurallara en çok ihtiyacı olan kişi kuralları göremiyor. (`realm.auth.register`; `libs/ui/src/giris/password-field.tsx:145`)
+- **REG-6** · düşük · arayüz — Doğrulama bağlantısı başka tarayıcıda açılınca 'Medaris'e devam et' tedris ana adresine gidiyor; o tarayıcıda oturum olmadığı için kişi girişi yeniden yapmak zorunda kalabilir. (`realm.auth.register`)
+- **SHL-02** · düşük · arayüz — Tedris'in giriş yönlendirme durumunda durum satırı ve düğme var ama başlık yok; sayfa ekran okuyucuya adsız görünüyor. (`realm.auth.signIn`; `auth-entry.tsx:111-123`)
+- **SIF-5** · düşük · arayüz — Hata sayfasındaki 'Giriş sayfasına dön' bağlantısı giriş sayfasına değil istemcinin ana adresine gidiyor; ziyaretçi herkese açık sayfaya düşüp 'Giriş yap'ı yeniden aramak zorunda. (`realm.auth.signInFailures`; `apps/keycloak-theme/src/login/pages/ErrorPage.tsx:27`)
+- **SIF-6** · düşük · arayüz — Tedris'te hata kutusunun çevresindeki üst çubuk 'Giriş yap'ı giriş sayfasının kendisine dönen bir callbackUrl ile veriyor; oradan giriş sonuçta aynı sayfada bitebilir. (`realm.auth.signInFailures`)
+- **SOUT-2** · düşük · arayüz — Üç çıkış onayı sayfası aynı şeyi farklı sözlerle ve farklı hitapla söylüyor ('çıkarsın' / 'çıkarsınız'), başlıkları da ayrışıyor; uygulamalar arası tutarlılık yok. (`realm.auth.signOut`)
+- **SOUT-3** · düşük · arayüz — Oturumu bitmiş kişi tedris'in herkese açık çıkış sayfasına gelirse 'Giriş yap' onu yine çıkış sayfasına döndürüyor; yeni giriş yapana 'Çıkış yapılsın mı?' soruluyor. (`realm.auth.signOut`)
+- **SOUT-4** · düşük · arayüz — Tedris çıkış sayfasında üst çubuk eski ana bölgenin içinde çiziliyor; sayfada banner bölgesi yok ve gezinti ana bölgenin içinde kalıyor. (`realm.auth.signOut`; `index.tsx:87`)
+
+## common
+
+| Alan | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
+|---|---|---|---|---|---|---|
+| common/shell | 2 | 0 | 1 | 7 | 0 | 2 |
+| **common** | 2 | 0 | 1 | 7 | 0 | 2 |
+
+### common/shell
+
+- **PN-2** · orta · arayüz — Nazar'da alt bilgi ve aydınlatma metnine giden hiçbir bağlantı yok; tedris ve nizam bunu taşırken nazarı kullanan hocalar ve nazırlar kişisel veri bildirimine buradan ulaşamıyor. (`common.shell.privacyNotice`; `apps/nazar/app/layout.tsx:53-57`)
+- **F-L-10** · düşük · arayüz — Nazar'daki tema düğmesinin adı kitin Türkçe varsayılanı; nazar etiket vermediği için uygulamanın kataloğu ona ulaşamıyor, başka dil eklenince ad Türkçe kalır. (`common.shell.theme`, `nazar.access.noAccess`; `apps/nazar/features/shell/components/portal-frame.tsx:94`)
+- **F-P0-5** · düşük · arayüz — Nizam'ın alt bilgisi ana içeriğin içinde çiziliyor, bu yüzden sayfada alt bilgi bölgesi yok; bölgeler arasında gezen ekran okuyucu kullanıcısı alt bilgiyi bulamıyor. (`common.shell.privacyNotice`; `layout.tsx:54`)
+- **F-UI-P0-3** · düşük · kütüphane — Tema düğmesinin adı duruma göre değişiyor ("Koyu temaya geç" / "Açık temaya geç") ve basılı durumu bildirilmiyor; odaktaki düğmenin adı değişince bazı ekran okuyucular yeniden okuyor. (`common.shell.theme`; `libs/ui/src/mds/theme-toggle.tsx:56-60`)
+- **F-X-13** · düşük · arayüz — Nizam sayfasında alt bilgi ana içeriğin içinde olduğu için alt bilgi bölgesi yok; ekran okuyucu kullanan kişi alt bilgiye bölge listesinden ulaşamıyor. (`common.shell.privacyNotice`; `apps/nizam/components/legal-footer/index.tsx:13`)
+- **PN-1** · düşük · arayüz — Nizam'daki "Aydınlatma Metni" bağlantısı yeni sekmede açılıyor ve adında bunu söylemiyor; ekran okuyucu ve telefon kullanıcısı beklemediği bir sekmeye düşüyor. (`common.shell.privacyNotice`; `apps/nizam/components/legal-footer/index.tsx:15-22`)
+- **SHL-12** = CLS-14 · düşük · arayüz — Tedris'in alt bilgisindeki "Aydınlatma Metni" bağlantısı yeni sekmede açılıyor ama bunu görünür ya da gizli hiçbir söz belirtmiyor; ekran okuyucu ve telefon kullanıcıları şaşırıyor. (`common.shell.privacyNotice`; `apps/tedris/components/legal-footer/index.tsx:15-22`)
+- **THEME-1** · düşük · kütüphane — JavaScript kapalıyken tema düğmesi sayfada çiziliyor ama basınca hiçbir şey olmuyor; düğme sayfa hazır olana kadar gizlenmiyor. (`common.shell.theme`; `libs/ui/src/mds/theme-toggle.tsx:32`)
+
+## Her sayfada yinelenen kayıtlar
+
+Aşağıdaki dört kimlik çok sayıda akışın `rules` girdisinde yineleniyor; her biri bir kusur değil, o sayfanın bir davranışının kaydı. Bulgu sayılmadı ve tablolara girmedi.
+
+- **focus-not-set** — 156 akış: sayfa açılışta odağı hiçbir yere vermiyor ve hiçbir kod odağı yer değiştirmiyor, klavye kullanıcısı belgenin başından başlıyor; grafta `initialFocus` yok, "sessizlik eksik sayılmasın diye" yazıldı. Kusur olarak ayrıca yazılanlar kendi kimlikleriyle bu dosyada.
+- **label-in-name** — 124 akış: görünen metin erişilebilir adın içinde (WCAG 2.5.3); graf bunu bir kural olarak yazıyor, ihlal değil.
+- **toast-is-the-only-word** — 24 akış: bir işlemin sonucunu yalnız bildirim (toast) söylüyor; başarı bildirimi altı saniyede kapanıyor, hata kalıyor, sayfada satırın gitmesi ve sayaçların değişmesi dışında söz yok.
+- **no-default-accept** — 19 akış: hiçbir sayfa onaylayıcı eyleme (`intent confirm`) ilk odağı vermiyor; pencereler 'Vazgeç'te ya da ilk alanda başlıyor, bilerek.
+
+## Kural kayıtları (bulgu değil)
+
+188 kayıt; her biri "olduğu gibi geçerli" ya da "bilerek seçilmiş" bir şeyi söylüyor. Kimlik, bir cümle ve akış; ayrıntı akışın `ui.yaml` `rules` girdisinde.
+
+<details><summary>tedris (51)</summary>
+
+**tedris/account**
+
+- **ACC-02** — Reddedilen 'Kaydet' artık odağı adı eksik ilk kutuya taşıyor ve test doğruluyor; graf bu odağı çizemiyor. (`tedris.account.profile`)
+- **http-status-200** — Bulunamadı sayfası 404 yerine 200 dönüyor; sahibin emriyle bilerek böyle bırakıldı. (`tedris.account.publicProfile`)
+- **renewal-asks-first** — Yenileme önce neyin duracağını söyleyen bir soru soruyor; "Yenile" denmeden API çağrılmıyor. (`tedris.account.calendarFeed`)
+- **section-needs-a-role** — Roller bölümü yalnız bir rolü olan kişiye çiziliyor; diğerleri sade hesap sayfasını görür. (`tedris.account.rolesOverview`)
+
+**tedris/celse**
+
+- **iframe-not-walked** — Oynatıcı üçüncü taraf çerçevesi; tekrar oynatma onu bulur ama videoyu oynatmaz, YouTube'un yanıtı doğrulanmaz. (`tedris.celse.watchRecording`)
+- **LOCKED-3** — İptal edilen kilitli celsede iptal kartı kilit kartının önüne geçer; kayıt ders kartından yapılır. (`tedris.celse.locked`)
+- **no-attendance-write** — "Toplantıya katıl" hiçbir şey yazmaz; yoklamayı Nazar'da dersin ekibi işaretler. (`tedris.celse.attend`)
+- **no-meeting-link-here** — İzleme sayfasında toplantı bağlantısı yok; sahibin kararıyla katılım kartı celse sayfasında kalır. (`tedris.celse.watchStream`)
+
+**tedris/course**
+
+- **celse-only** — Yalnız canlı celsenin izleme sayfası var; diğer derslerin kaydı barındıran sitede yeni sekmede açılır. (`tedris.course.recordings`)
+- **chips-pressed** — Görünüm ve deste düğmeleri basılı durumunu bildirir; format bunun için ayrı bir düğüm ister. (`tedris.course.deckTab`)
+- **closed-score-is-never-sent** — Sınav sonuçları açılmadan API puanı hiç göndermez; sayfanın saklayacağı puan yok. (`tedris.course.grades`)
+- **content-is-the-apis** — İçeriği kimin okuyacağına API karar verir; kilitli içerik sayfa çizilmeden kesilir, sayfanın gizleyeceği bir şey yok. (`tedris.course.readProgramme`)
+- **dialog-focus-by-hand** — "Başvurun alındı" penceresi "Tamam"da açılır, odağı tutar, kapanınca "Başvuruyu geri çek"e verir; bunu sayfa yapar. (`tedris.course.apply`)
+- **exam-text-is-the-api-s** — Sınav ve ezber başlığı hocanın yazdığı celse başlığıdır; karışık yön için ayrı yönlü gösterilir. (`tedris.course.grades`)
+- **focus-moved-by-hand** — Deste ızgarasında odak, onu taşıyan kontrol kaybolunca bilerek yeni yere taşınır. (`tedris.course.deckTab`)
+- **menu-focus-on-popup** — Menü fareyle açılınca odak ilk öğeye değil açılır kutuya gider; kütüphanenin davranışı, klavyeyle açılış doğrulanmadı. (`tedris.course.leave` +2)
+- **withdraw-asks-nothing** — Başvuruyu geri çekmek önce sormaz (kaybedilecek bir şey yok); kayıtlı koltuktan ayrılmak ise onay penceresi açar. (`tedris.course.leave` +1)
+
+**tedris/decks**
+
+- **chips-narrow-only-own** — Durum çipleri yalnız "Destelerim" listesini daraltıyor; reddedilen deste "Özel" altında sayılıyor. (`tedris.decks.browse`)
+- **DCK-07** — Bu sayfada geçerli değil: ad ve tür kutuları zorunlu işaretli, ekran okuyucu bunu duyar. (`tedris.decks.create`)
+- **DCK-19** — Burada geçerli değil: kart ekleme ve düzenleme pencereleri ilk alana odak veriyor. (`tedris.decks.manageCards`)
+- **DCK-31** — Bu tabloda "Ön yüz" hücreleri satır başlığı; ziyaretçi tablosunda öyle değil, düzeltme orada. (`tedris.decks.readAndCopy` +1)
+- **deck-born-private** — Yeni deste her zaman özel doğuyor; form görünürlük seçeneği sunmuyor, API de göndermeye izin vermiyor. (`tedris.decks.create`)
+- **deck-limits** — Sayfa API'nin sınırlarını aynen uyguluyor: ad 5-100, açıklama 1000, en çok 20 etiket. (`tedris.decks.create`)
+- **focus-returns** — Kopyalama kutusu kapanınca odak açan düğmeye dönmeli; kodda öyle, tarayıcıda henüz görülmedi. (`tedris.decks.readAndCopy`)
+- **pressed-state-not-drawn** — Dört çip aria-pressed'li düğme; grafik basılı durumu çizemiyor, tekrar oynatma onu denetleyemiyor. (`tedris.decks.browse`)
+- **private-looks-absent** — Başkasının özel destesi, olmayan ve bozuk kimlik aynı ekranı gösteriyor; deste varlığı sızmıyor. (`tedris.decks.accessRefusals`)
+- **rating-is-immediate** — Puan basıldığı anda yazılıyor, geri alma yok; yanlış puanlanan kart yeniden çalışılana dek kalıyor. (`tedris.decks.study`)
+- **take-back-asks-nothing** — "İsteği geri çek" ve "Özele çek" soru sormuyor; sayfa "İstediğin an özele çekebilirsin" diye söz verdiği için. (`tedris.decks.publish`)
+- **toast-roles** — Bildirim rolleri Base UI'dan geliyor: başarı dialog, hata alertdialog; görünüm bölgesi nazik. (`tedris.decks.publish`)
+- **toast-stack** — Eski hata bildirimi kapanana dek duruyor, yeni eylem onu kapatmıyor; grafik yalnız son eylemin bildirimini çiziyor. (`tedris.decks.publish`)
+- **unified-kit-toast** — Hata bildirimi kitin alertdialog'u; "Kapat" adı kit sabiti ve sonraki başarılı puan onu kapatmıyor. (`tedris.decks.study`)
+
+**tedris/discover**
+
+- **badge-with-text** — Kayıt rozeti durumu sözle söylüyor ("Devam ediyor", "Onay bekliyor", "Tamamlandı"); renk tek işaret değil. (`tedris.discover.readKosk`)
+- **filters-in-the-address** — Arama sözcüğü, süzgeçler ve sayfa adreste duruyor; sonuç bir bağlantı, geri düğmesi önceki süzgeci getiriyor. (`tedris.discover.browse` +1)
+- **unlisted-by-link** — Liste dışı köşk, oturum açmışa bağlantıyla açılıyor; ziyaretçiye bulunamadı sayfası. Sekme başlığı herkese "Tedris". (`tedris.discover.readKosk`)
+
+**tedris/files**
+
+- **names-only-looks-alike** — Okuma hakkı olmayan kişi kaynakları ayırt edilmeden düz satır görüyor; adlar programın parçası ve herkese açık. (`tedris.files.download`)
+
+**tedris/learn**
+
+- **delete-is-inline** — Silme sorusu diyalogda değil, kartın düğmelerinin yerine geçen satırda soruluyor; cevap da gidiyorsa yazıyor. (`tedris.learn.questions`)
+- **description-optional** — Ödev açıklaması yalnız hoca yazmışsa çiziliyor; açıklamasız ezber ödevinde başlık ile blok arasında bir şey yok. (`tedris.learn.homeworkMemorize`)
+- **earlier-files** — Önceki teslimin dosya satırları yerelde üretilemiyor (503); grafik onları çizmiyor, teslim akışına bırakıyor. (`tedris.learn.homeworkMemorize`)
+- **no-initial-focus** — Panel ya da sekme açılınca ilk odak ayarlanmıyor; panel başlığıyla, ders sekmesinin formu "Soru sor" adıyla adlanıyor. (`tedris.learn.questions`)
+- **no-storage-locally** — Yerel yığında depolama yok, her dosya 503 alıyor; grafik iki sonucu çiziyor, yerel yürüyüş yalnız ikincisine varıyor. (`tedris.learn.homeworkHandIn`)
+- **private-by-design** — "Yalnızca sen görürsün." doğru: başkasının notunu okuyan uç yok; başnazım, müderris ve köşk nazımı da görmüyor. (`tedris.learn.notes`)
+- **read-only** — Ezber ödevinde talebenin hiçbir denetimi yok, kart yalnız okuyor; API dosyayı yine de 409 ile reddediyor. (`tedris.learn.homeworkMemorize`)
+- **review-hidden-until-sent** — Değerlendirme ve dosyaları gönderilene kadar talebeye görünmüyor; yazılmakta olan değerlendirme sızmıyor. (`tedris.learn.homeworkReview`)
+- **text-not-colour** — Durum rengin yanında sözle de söyleniyor ("Teslim edildi", iptal edilen celse üç yerde); başlık sırası bozulmuyor. (`tedris.learn.homeworkHandIn` +1)
+
+**tedris/learning**
+
+- **a-row-says-one-thing** — Programım satırı başlığın altında yalnız birini söylüyor: iptal notu, platform çipi ya da bağlantısız celse cümlesi. (`tedris.learning.schedule`)
+- **DSC-14** — Programım'da bu bulgu yok: tek istemci çağrısı (.ics) hatayı yakalıyor ve bildirim çıkarıyor. (`tedris.learning.schedule`)
+- **toast-aria-hidden** — Hata bildirimi odaklanana dek aria-hidden alertdialog; bölgenin role=alert'i duyuruyor, ekran okuyucuda doğrulanmadı. (`tedris.learning.addToCalendar` +3)
+
+**tedris/session**
+
+- **gender-never-typed** — Kartta cinsiyet alanı yok, hesaptan geliyor; kontenjan hep iki sayı ve cinsiyet hep dolu. (`tedris.session.registerInPerson`)
+- **two-counts-never-shown-together** — Talebeye yalnız kendi cinsiyetinin kontenjanının dolduğu söyleniyor; diğer sayı ve toplam ekibin sayfasında. (`tedris.session.registerInPerson`)
+
+**tedris/shell**
+
+- **sections-fail-alone** — Ana sayfanın üç bölümü kendi Suspense'inde okunuyor; biri başarısız ya da yavaşsa diğerlerini tutmuyor. (`tedris.shell.home`)
+- **SHL-14** — Telefon çubuğunun sayfa adı başlık değil paragraf; sayfa kendi h1'ini getiriyor, kitin tasarımı böyle. (`tedris.shell.frame`)
+
+</details>
+
+<details><summary>nazar (67)</summary>
+
+**nazar/access**
+
+- **heading-and-landmarks** — Sayfada tek h1, tek ana bölge ve tek bölüm var; durum bileşeni ikinci bir ana bölge açmıyor. (`nazar.access.noAccess`)
+- **same-words-for-missing-and-not-yours** — Olmayan, bilinmeyen ya da kişinin olmayan kapsamlar aynı "Sayfa bulunamadı" ile cevaplanıyor; kimlik ayırt edilmiyor. (`nazar.access.landingScope`)
+- **sidebar-is-brand-and-person** — Yan çubukta marka, tema düğmesi ve kişi var; menü ve bağlantı yok, çünkü gidilecek hesap sayfası yok. (`nazar.access.noAccess`)
+
+**nazar/archive**
+
+- **confirm-before-hiding** — Gizleme önce uyarı penceresiyle soruluyor, hiçbir şey silinmiyor; geri alma bir şey kaybettirmediği için sormuyor. (`nazar.archive.hideMedrese` +4)
+- **section-only-for-the-head** — "Medreseyi gizle" yalnız başmüderris ve başnazıma çiziliyor; nazıra verilebilen bir izin yok, graf başmüderrisi çiziyor. (`nazar.archive.hideMedrese`)
+
+**nazar/bans**
+
+- **actions-absent-not-disabled** — API'nin izin vermediği işlem çizilmiyor (devre dışı değil); kaldırılamayan yasak nedenini cümleyle söylüyor. (`nazar.bans.review` +1)
+- **error-toast-stays** — Hata bildirimi kapatılana kadar kalıyor, ikinci işlemde ilkinin hatası yanında durabilir; graf sonuncuyu çiziyor. (`nazar.bans.courseBans` +2)
+- **reason-never-reaches-the-talebe** — Yasağın, kaldırmanın ve talebin gerekçesini yalnız yasakları listeleyenler okur, talebe asla okumaz. (`nazar.bans.courseBans` +2)
+
+**nazar/course**
+
+- **hidden-course-badge** — Rozet yalnız Yayında ya da Taslak diyor, Hesap ise Gizli diyor; gizli dersin burada açılıp açılmadığı doğrulanmadı. (`nazar.course.overview`)
+- **new-tab-is-said** — "Tedris’te aç" bağlantısı yeni sekmede açıldığını gizli bir sözle adında söylüyor. (`nazar.course.overview`)
+- **no-loading-file** — Bu sayfanın kendi yükleme iskeleti yok, kabuğun iskeleti devreye giriyor; iki durumda da bir şey duyurulmuyor. (`nazar.course.overview`)
+
+**nazar/courseNazirs**
+
+- **confirm-before-dismissing** — Görevden alma bir kez soruyor, kişiyi ve dersi adlandırıyor; odak "Vazgeç"te, basılana kadar bir şey yazılmıyor. (`nazar.courseNazirs.dismiss`)
+- **F-D2c-9** — Bu bulgu ortak kod kartına ait; atama penceresinde geçerli değil, aynı örüntü orada başka bir bulgu. (`nazar.courseNazirs.appoint`)
+- **F-D2c-13** — Atama penceresi "Kaydet" için kendi yükleme sözünü veriyor; bu bulgu bu akışta geçerli değil. (`nazar.courseNazirs.appoint`)
+- **F-D2c-15** — Atama kipinde e-posta alanı ilk odağı alıyor; bu bulgu bu akışta geçerli değil. (`nazar.courseNazirs.appoint`)
+- **the-end-is-an-instant** — Bitiş anı bir anlık zaman ya da boş olarak gidiyor, düz tarih gitmiyor; eşit değer aynen dönüyor, kayma yok. (`nazar.courseNazirs.permissions` +1)
+
+**nazar/courseSettings**
+
+- **F-D2c-7** — Yayımla ve Taslağa çek sayfayı yeniden okuyor ama form taslağını ve odağını koruyor; bu bulgu bu akışta geçerli değil. (`nazar.courseSettings.publish`)
+- **kaldir-asks-nothing** — "Kaldır" onay ve gerekçe istemeden kodu hemen çıkarıyor, sonucu bildirimle söylüyor; bilerek böyle, kusur değil. (`nazar.courseSettings.partnerCodes`)
+- **only-who-may-publish** — Yayımla düğmeleri yalnız ders düzenleme ve yayımlama izni olana çiziliyor; diğerleri yalnız durumu görüyor. (`nazar.courseSettings.publish`)
+- **toast-says-it-too** — Durum değişikliğinin sonucunu hem bildirim hem kartın kendisi söylüyor; ret gelirse kart yeniden okunmuyor. (`nazar.courseSettings.publish` +1)
+
+**nazar/courses**
+
+- **focus-after-a-filter** — Süzgeç seçilince odak tetikleyiciye döner; tarayıcıda doğrulanmadı. (`nazar.courses.browse`)
+- **no-confirmation-needed** — Bu sayfa yalnız okur ve süzer; yazma işlemleri kendi diyaloglarındadır. (`nazar.courses.browse`)
+- **no-confirmation-to-remove** — 'Çıkar' hocayı yerel listeden hemen alır; 'Kaydet'e kadar bir şey yazılmaz. (`nazar.courses.changeHocas` +1)
+- **table-semantics** — Tabloda başlık, sütun başlıkları ve satır başlığı var; durum yalnız renkle değil sözle de verilir. (`nazar.courses.browse`)
+
+**nazar/curriculum**
+
+- **confirm-before-losing** — Dosya çıkarma ve ödevi kapatma önce sorar; açma, tür seçme ve açıklama kaydı sormaz. (`nazar.curriculum.sessionHomework`)
+- **stored-at-once** — Anahtar, tür seçimi, dosya yükleme ve çıkarma anında kaydeder; açıklama ayrı düğme ister. (`nazar.curriculum.sessionHomework`)
+- **upload-says-why-it-is-off** — Yeni celsede 'Dosya yükle' kapalı ve nedeni düğmeye bağlı bir cümleyle söyleniyor. (`nazar.curriculum.resources`)
+
+**nazar/decks**
+
+- **drafts-are-grouped** — Her taslağın iki kutusu başlıklı bir grupta, Arapça kutu sağdan sola; 56 kutu birbirinden ayrılıyor. (`nazar.decks.siga`)
+
+**nazar/evaluation**
+
+- **no-confirmation-and-no-way-back** — İşaret tek basışla kaydedilir, onay sorulmaz ve sayfadan geri alınamaz; bilinçli bir tercih. (`nazar.evaluation.markRecited`)
+- **toasts-announce-the-result** — Sonuç bildirimi 6 saniyelik tosttur; başarılı kayıt söylenmez, sayaç tek canlı bölgedir. (`nazar.evaluation.examScores`)
+
+**nazar/files**
+
+- **error-toast-is-urgent** — Hata bildirimi acil duyurulur ve kapatılana dek kalır; yalnız 'Kapat' adı katalogda değil. (`nazar.files.download`)
+- **file-links-are-anchors** — Dosya bağlantıları indirme özniteliksiz düz bağlantıdır; betiksiz de çalışır, yalnız ret bildirimi betik ister. (`nazar.files.download` +1)
+
+**nazar/nazirs**
+
+- **an-edit-cannot-lift-an-end-by-accident** — Bu sayfa PUT ile her şeyi değiştirir ve bitişi hep gönderir; kayıt bir bitişi yanlışlıkla kaldırmaz. (`nazar.nazirs.permissions`)
+- **confirm-before-delete** — Silme her zaman sorar; yeniden adlandırma sormaz, izin değişikliği yalnız grubu tutan varsa sorar. (`nazar.nazirs.groups` +1)
+- **confirm-with-consequences** — Görevden alma bir kez sorar, devredilenleri listeler; her satır cevaplanmadan düğme kapalıdır. (`nazar.nazirs.dismiss` +1)
+- **courses-problem-is-announced** — 'En az bir ders seçin.' tek canlı uyarıdır; 'Kaydet' bir kez basılınca görünür, sonra forma uyar. (`nazar.nazirs.permissions`)
+- **F-B-9** — Atama penceresinin açıcı düğmesi sayfada kaldığı için odak oraya dönüyor; bu bulgu bu akışta geçerli değil. (`nazar.nazirs.appoint`)
+- **grant-end-not-an-instant** — Bu sayfa bitişi hep anlık ya da boş gönderir; temel biçimli tarih sunucuya buradan ulaşamaz. (`nazar.nazirs.permissions`)
+- **PERM-5** — Hata bildiriminin kipli diyalogda ekran okuyucuya duyulup duyulmadığı kodla bilinmiyor; replay gösterecek. (`nazar.nazirs.permissions`)
+
+**nazar/notifications**
+
+- **not-live** — Sayfa bir kez okunur; açıkken gelen bildirim ya da değişiklik sayfa yeniden okunana dek görünmez. (`nazar.notifications.inbox` +3)
+
+**nazar/offsite**
+
+- **F-A-4** — Medrese dışı ders formunda hoca seçici yok; bu bulgu bu akışta geçerli değil. (`nazar.offsite.requestCourse`)
+- **F-A-5** — Medrese dışı ders formunda hata satırları kutulara bağlı ve ret odağı ilk hataya veriyor; bu bulgu geçerli değil. (`nazar.offsite.requestCourse`)
+- **F-A-6** — Medrese dışı ders formunda köşk bir seçim kutusu ve köşk hatasına ulaşılamıyor; bu bulgu bu akışta geçerli değil. (`nazar.offsite.requestCourse`)
+- **no-course-is-made** — Talep göndermek ders açmaz, yalnız bir ders talebi oluşturur; medresenin listesine bir şey eklenmez. (`nazar.offsite.requestCourse`)
+
+**nazar/questions**
+
+- **badge-is-text** — Kartın durumu "Bekliyor" ve "Cevaplandı" sözleriyle söyleniyor; renk tek işaret değil. (`nazar.questions.answer`)
+- **busy-keeps-focus** — Gönderen düğme devre dışı bırakılmıyor, meşgul işaretleniyor; odak korunuyor ve "Yükleniyor" duyuruluyor. (`nazar.questions.answer` +1)
+
+**nazar/recordings**
+
+- **upload-is-said-at-each-step** — Yükleme adımları pencerede söyleniyor; tek eksik, satırın "Hazırlanıyor"dan "Hazır"a geçişi. (`nazar.recordings.upload`)
+
+**nazar/roster**
+
+- **buttons-follow-the-code** — Yetkisiz okura düğme çizilmiyor, API yine de her yazmayı denetliyor; eksik düğmenin nedeni söylenmiyor. (`nazar.roster.complete`)
+- **skipped-reasons-not-drawn** — Beş atlama nedeninden grafik yalnız "Dersi tamamlamış"ı çiziyor; diğerleri yasak, çıkarma ya da yarış gerektirir. (`nazar.roster.bulkAdd`)
+
+**nazar/sessions**
+
+- **a-row-has-the-buttons-of-the-codes-it-holds** — Her düğme, gereken izne sahip olana çiziliyor; kararı yine API veriyor. (`nazar.sessions.manage`)
+- **confirm-before-cancelling** — "İptal et" önce soruyor; telafi ve not aynı onayın içinde, dışarı tıklamak pencereyi kapatmıyor. (`nazar.sessions.cancel`)
+- **focus-not-decided** — Yüz yüze kontenjan sayfası henüz yapılmadı; odak davranışı yalnız öneri, grafikte çizilmedi. (`nazar.sessions.inPersonSeats`)
+- **no-in-person-mark** — Planlama isteği yüz yüze işareti ve kontenjan taşımıyor; celseler dersin işaretini izliyor, celse başına kontenjan yok. (`nazar.sessions.plan` +1)
+- **planned-words** — "planned" anahtarları ve "Changes.note" sahibinin gözden geçireceği öneri; diğer anahtarlar uygulamanın kendi metni. (`nazar.sessions.inPersonSeats` +1)
+- **telafi-focus** — "Telafisi" bağlantısı telafi satırının ad hücresine odak taşıyor; doğru çalışıyor, hücrenin rolü eksik ama küçük. (`nazar.sessions.cancel`)
+- **two-counts-never-one-total** — Cinsiyet ayrımı verili: iki kontenjan alanı var, toplam yok; koltuk yalnız kendi cinsiyetinin sayısından düşüyor. (`nazar.sessions.inPersonSeats`)
+
+**nazar/settings**
+
+- **checkboxes-not-switches** — Politikalar "Kaydet"i bekleyen onay kutuları, hemen işleyen anahtar değil; kural böyle. (`nazar.settings.edit` +2)
+- **madrasah-settings-save-noop** — Hiçbir şeyi değiştirmeyen kayıt hiçbir şey yazmaz; sayfa değişiklik yokken "Kaydet"i zaten kapalı tutuyor. (`nazar.settings.edit`)
+- **name-is-required-and-said** — Ad kutusu zorunlu ve bu görünür biçimde söyleniyor; ret mesajı alanın altında çıkıyor. (`nazar.settings.edit`)
+
+**nazar/shell**
+
+- **F-L-13** — İki hata yüzü Next'in verdiği yeniden deneme işlevini çağırıyor; "Yeniden dene" ikisinde de çalışıyor (bulgu değil). (`nazar.shell.errorStates`)
+- **F-L-14** — Tek kapsamda seçici düz kart, çok kapsamda menü düğmesi; kabul edilmiş, grafikte iki durum olarak çiziliyor. (`nazar.shell.scopeAndMenu`)
+- **F-L-15** — Sayfanın verdiği 404 de kabuğun dışında, tek ana alanla çiziliyor; kenar çubuğu yok (kodda okundu, doğrulanmadı). (`nazar.shell.errorStates` +1)
+- **same-404-words** — Bulunamadı sayfası farklı nedenlere aynı sözü söylüyor; sayfa hangi kimliklerin var olduğunu belli etmiyor. (`nazar.shell.errorStates`)
+- **scope-memory** — Kapsam çerezi hidrasyondan sonra tarayıcıdan, yalnız kişinin sahip olduğu kapsamda yazılıyor. (`nazar.shell.scopeAndMenu`)
+
+**nazar/students**
+
+- **aria-sort-is-informational** — "İlk kayıt" başlığındaki sıralama bilgisi API'nin verdiği sırayı söylüyor; sütun sıralanamaz, kusur değil. (`nazar.students.browse`)
+- **disabled-link-held-as-it-is** — Gidecek yeri olmayan sayfalama bağlantısı hrefsiz ve aria-disabled; klavye ona ulaşmıyor, grafik testle aynı tutuyor. (`nazar.students.browse`)
+- **filters-replace-history** — Süzgeç ve arama geçmişe kayıt eklemiyor, Geri sayfadan çıkarıyor; ürün tercihi, erişilebilirlik kusuru değil. (`nazar.students.browse`)
+
+</details>
+
+<details><summary>nizam (56)</summary>
+
+**nizam/account**
+
+- **saves-at-once** — Bu sayfada Kaydet yok: seçilen saat dilimi anında kaydediliyor; yalnız bildirim ve yardım satırı bunu söylüyor. (`nizam.account.settings` +1)
+
+**nizam/courses**
+
+- **confirm-before-drafting** — 'Taslağa çek' ve 'Dersi gizle' önce soruyor, odak 'Vazgeç'te başlıyor; 'Yayımla' sormuyor çünkü geri dönüş tek düğme. (`nizam.courses.settingsAndPublish` +1)
+- **count-is-the-lists-own** — 'N başvuru bekliyor' satırı süzülmüş listenin sayısı, menü rozetinden farklı olabilir; canlı bölge olarak duyuruluyor. (`nizam.courses.decideApplications`)
+- **F-D2c-14-does-not-apply** — Bu sayfada tek form, tek 'Kaydet' ve tek 'Vazgeç' var; nazar'daki çift 'Kaydet' bulgusu burada geçmez. (`nizam.courses.settingsAndPublish`)
+- **F-W4-13** — Özet bir bilgi uyarısı olduğu için değişiklikler zaten duyuruluyor; geriye yalnızca fazla gürültü kalıyor. (`nizam.courses.open`)
+- **F-W4-15** — Ders ayarlarında doğrulama ve alan hatası yok, hatalar bildirimle geliyor; bu bulgu orada geçerli değil. (`nizam.courses.settingsAndPublish`)
+- **F-X-15** — 'Nazar'da aç' yeni sekmede açıldığını adında söylüyor ve görünen yazıyı da içeriyor. (`nizam.courses.overview`)
+- **file-removal-asks** — Dosya satırı çıkarılmadan önce soruluyor, odak 'Vazgeç'te başlıyor; bağlantı hemen çıkıyor, 'Vazgeç' geri koyuyor. (`nizam.courses.curriculum` +1)
+- **locked-approval-shown-ticked** — Kilitli kayıt onayı kutusu politika yüzünden işaretli görünüyor; sayfa saklı değeri değil geçerli durumu gösteriyor. (`nizam.courses.settingsAndPublish` +1)
+- **MDRS-221** — Linear'daki 'eski tablo, kaybolan ilk tık' kaydı doğrulanamadı; tablo kayıttan sonra yeniden okunuyor. (`nizam.courses.editHocalar`)
+- **sent-is-never-reset** — İlk reddedilen basıştan sonra her alan sorunu yazarken hemen söyleniyor; grafik bunu 'gönderildi' durumuyla çiziyor. (`nizam.courses.planSessions`)
+- **stale-cancel-is-refused** — İptal sayfanın okunduğu sürümle gidiyor, eskimiş sayfa reddediliyor; telafi celsesi olmadığı için boşluk yok. (`nizam.courses.manageSessions`)
+- **stale-course-fields-not-told** — Ders alanlarının kaydı sürüm taşımıyor, son kayıt kazanıyor; bu sayfanın değil grafiğin kayıtlı sınırı. (`nizam.courses.settingsAndPublish` +1)
+- **submit-is-never-off** — 'Dersi aç' eksik yüzünden hiç devre dışı kalmıyor, basış hataları yazıyor; meşgulken odak korunuyor. (`nizam.courses.open` +1)
+- **upload-failure-is-announced** — Sunucunun reddettiği dosya yüklemesi uyarı rolüyle ve koda göre yazılmış bir cümleyle duyuruluyor. (`nizam.courses.curriculum` +1)
+- **warning-not-announced** — Girişi olmayan celse uyarısı sayfa yüklenirken duyulmuyor, yalnızca değişirse duyulur; bir gözlem, bulgu değil. (`nizam.courses.overview`)
+
+**nizam/decks**
+
+- **a-proposal-is-answered-once** — Öneri bir kez cevaplanıyor; cevaplanmış öneri satırdan düşüyor ve pencere kapanıyor. (`nizam.decks.koskDecks`)
+- **confirm-before-deleting** — Deste ve kart silmeden önce soruluyor, odak güvenli düğmede başlıyor; işlemin geri alınamadığı söyleniyor. (`nizam.decks.legacyCards` +1)
+- **createcards-no-whitelist** — Bu sayfalar kart oluşturma çağrısını kullanmıyor; kartlar yalnızca doğrulanmış içe aktarmayla geliyor. (`nizam.decks.legacyCards`)
+
+**nizam/grants**
+
+- **hours-only-in-the-dialog** — Pencere saati bir kez okuyor; sonradan geçmişe düşen bitiş tarihini yalnızca sunucu yakalıyor. (`nizam.grants.appoint`)
+
+**nizam/home**
+
+- **confirm-before-rejecting** — Reddet'ten önce soru sorulur; Onayla'da soru yoktur, bu bilerek böyledir. (`nizam.home.decideApplications` +4)
+- **MCUT-4** — Pano, görmeye izni olmayan kuyruklar için boş döner; 'Platform sayıları' platformun kendi sayılarıdır (kusur sayılmadı). (`nizam.home.medarisNazimCut`)
+- **section-needs-a-code** — İzni olmayan nazıma kart, menü girişi ve yetki hiç çizilmez; stille gizlenmez, sayfada yoktur. (`nizam.home.medarisNazimCut`)
+
+**nizam/hosting**
+
+- **F-W3-5** — Barındırma hakları sekmeleri bağlantı kipinde çiziyor; bu bulgu o sayfa için geçerli değil. (`nizam.hosting.grantAndRevoke`)
+
+**nizam/kosks**
+
+- **F-W3-4b-not-here** — Denetim kaydının 'Dışa aktar' bağlantısı bu sayfada yoktur; başka akışın konusudur. (`nizam.kosks.manage`)
+- **heading-order** — Başlık sırası düzgündür: h1, h2 ve h3 arasında seviye atlanmaz. (`nizam.kosks.manage`)
+- **no-permanent-delete-here** — Bu sayfada 'Kalıcı olarak sil' düğmesi yoktur; blok yalnızca Arşiv'e yönlendirir. (`nizam.kosks.manage`)
+
+**nizam/madrasahs**
+
+- **confirm-before-passivating** — Medrese, götürdükleri okunduktan sonra pasife alınır; 'Yine de pasife al' sayılar gelene dek kapalıdır. (`nizam.madrasahs.passivate`)
+- **F-W2-6** — Pasife alma onayı bilerek düz iletişim kutusu olarak çizilir (tasarım kuralı); kayda geçmiş bir tercihtir. (`nizam.madrasahs.passivate`)
+- **one-answer-per-person** — Liste kişi başınadır; kişinin tüm kalemlerine tek cevap gider, API'nin koltuksuz devralma ayrımı bu sayfada yoktur. (`nizam.madrasahs.headMuderris`)
+- **stale-list-wipes-the-answers** — Eksik karar reddi tüm cevapları silip listeyi yeniden okur; bildirim yeniden cevaplamayı söyler, kusur sayılmadı. (`nizam.madrasahs.headMuderris`)
+
+**nizam/moderation**
+
+- **answer-is-given-once** — Talep ve başvuru bir kez cevaplanır; sonradan gelen 409'u sayfa 'çözülmüş' sayıp satırı kaldırır. Tutar. (`nizam.moderation.reviewDeckPublication` +1)
+- **BANST-1** — Hoca bu sayfayı kullanamaz; 'müderris yalnız dersi yasaklar' kuralı yalnız API'de geçerlidir, bu grafik onu çizmez. (`nizam.moderation.banStudent`)
+- **chips-toggle** — Süzgeç çipleri basılı durumlu düğmelerdir; basılı olana basmak kapatır. Grafik bu durumu çizemez. (`nizam.moderation.reviewBans`)
+- **focus-open** — Planlanan sayfada odak çizilmedi; öneri, karardan sonra odağı sonraki satıra ya da sekmeye taşımaktır. (`nizam.moderation.decidePermanentBan`)
+- **no-button-leads-to-a-refusal** — Kademesi yetmeyen satırda düğme yerine cümle çıkar; reddedilecek düğme çizilmez (liste okunduğu hâliyle). (`nizam.moderation.restoreArchived`)
+- **no-confirmation-before-a-restore** — 'Geri al' soru sormaz, çünkü geri verir ve silmez; denetim kaydı yazar. Geri dönüşsüz 'Kalıcı olarak sil' sorar. (`nizam.moderation.restoreArchived`)
+- **no-reason-in-notices** — Planlanan sayfada talep bildirimi kişiyi ve medreseyi söyler, gerekçeyi taşımaz; gerekçe izinli sayfada okunur. (`nizam.moderation.decidePermanentBan`)
+- **planned-page** — Sayfa henüz yoktur; arayüz komşu üç sayfadan çizildi, kanıtlanmış davranış değildir, sözler inceleme bekliyor. (`nizam.moderation.decidePermanentBan`)
+- **publish-asks-nothing** — 'Yayımla' soru sormaz, çünkü geri alınabilir; 'Reddet' ve 'Yayından kaldır' gerekçe sorar. Tutar. (`nizam.moderation.reviewDeckPublication`)
+- **reach-the-page** — İtirazlar sayfasına başnazım menüden gelir; Medaris nazımının giriş yolları ayrıca kayıtlıdır, bu kayıt yolları anlatır. (`nizam.moderation.decideAppeal`)
+- **tabs-need-a-panel** — Planlanan sayfa komşularla aynı sekme bileşenini kullanır; panel bağlantısı eksikliği orada da var. (`nizam.moderation.decidePermanentBan`)
+- **tabs-selected-not-drawn** — Seçili sekme ekran okuyucuya işaretlidir; grafik bunu çizemez, açık sekmeyi tablo başlığı ve özet satırı söyler. (`nizam.moderation.reviewBans`)
+- **TRIAGE-2-seen-from-here** — 'Medaris yönetimine görünür' sözü Medaris nazımları için tutar; başnazımın haberdar edilmemesi ayrı bir bulgudur. (`nizam.moderation.banStudent`)
+
+**nizam/nazims**
+
+- **MDRS-226** — Planlı, yapılmadı: izinler kapsam başına düz kutu listesi; toplu işaretleme MDRS-226'da. (`nizam.nazims.groups`)
+- **scrim-does-not-close** — Perdeye tıklamak pencereyi kapatmaz, cevaplar kaybolmaz; Esc ve 'Vazgeç' kapatır. (`nizam.nazims.dismiss` +2)
+- **toast-stays** — Hata bildirimi kapatılana kadar kalır, başarı bildirimi altı saniyede kapanır; graf bunu son sonuç olarak tutar. (`nizam.nazims.dismiss` +2)
+
+**nizam/notifications**
+
+- **chip-pressed-state-not-drawn** — İki çip basılı durumu taşıyor; graf biçiminde basılı durum anahtarı yok, hangisinin basılı olduğu çizilmiyor. (`nizam.notifications.triage`)
+- **user-id-unused** — API cevabındaki sahip kimliğini bu sayfa okumuyor, göstermiyor, göndermiyor; graf bunu çizmiyor. (`nizam.notifications.triage`)
+
+**nizam/platform**
+
+- **select-name-not-value** — Süzgeç seçicileri alan etiketiyle adlanır; seçili değer metindir, graf onu yanındaki metin düğümüyle çizer. (`nizam.platform.auditLog`)
+
+**nizam/shell**
+
+- **one-h1-per-page** — Her sayfanın ana bölümünde tek h1 var; yalnız '/yetki-yok' ve '/' yükleme hatası durumlarında yok. (`nizam.shell.landingByRole` +1)
+- **same-screen** — Yetki yok ekranı üç durum için aynı: bölüm, başkasının köşkü, olmayan köşk; ekran hangisi olduğunu söylemez. (`nizam.shell.noAccessAndNotFound`)
+- **sheet-has-no-sign-out** — 'Çıkış yap' panelde ve kenar çubuğunda yok; bağlantı Hesap'ta, onay /auth/signout'ta. (`nizam.shell.menuPerPersona`)
+- **sidebar-has-no-menu** — Menüsü olmayan kişide kenar çubuğu yalnız marka, tema düğmesi ve kişi satırı; gezinti yok. Graf yokluğu çizemez. (`nizam.shell.landingByRole`)
+
+**nizam/youtube**
+
+- **no-source-on-planned-nodes** — Planlı sayfa, kart, pencere ve rozetler kodda yok, bu yüzden kaynak göstermezler; kaynağı olanlar bugün var. (`nizam.youtube.liveBroadcasts`)
+- **sonner-region-english** — Sonner bölgesinin İngilizce etiketi ve bildirimin rolsüzlüğü başka akışta sayılıyor, burada tekrarlanmıyor. (`nizam.youtube.liveBroadcasts`)
+
+</details>
+
+<details><summary>landing (6)</summary>
+
+**landing/site**
+
+- **L12** — Landing sayfalarında mesaj kataloğu yok ve dil sabit Türkçe; ikinci dil bir lansman kararı. (`landing.site.readLegal`)
+- **L15** — Taslak notları yalnız geliştirme ortamında görünür, üretim derlemesinde görünmez; graf bunu kaydediyor. (`landing.site.readLegal`)
+- **outside-link-says-so** — Siteden çıkan bağlantı yeni sekmede açılıyorsa sayfa bunu söylemeli; yol haritasındaki bağlantı aynı sekmede çiziliyor. (`landing.site.roadmap`)
+- **same-name-twice** — "Dersleri keşfedin", "Talebe olarak kaydolun" ve "Giriş yap" sayfada ikişer bağlantının adı; her çift aynı yere gidiyor. (`landing.site.enterApp`)
+- **state-is-the-answer** — SSS sorusunun açık/kapalı durumu düğmede taşınıyor; grafta bunun anahtarı yok, cevap görünüp görünmemesiyle çiziliyor. (`landing.site.faq`)
+- **status-is-text** — Durum renk ya da simgeyle değil sözle yazılıyor ve her aşamanın listesi başlığıyla adlandırılıyor. (`landing.site.roadmap`)
+
+</details>
+
+<details><summary>realm (6)</summary>
+
+**realm/auth**
+
+- **aria-pressed-and-type** — Göster düğmesi tek ad taşır ve aria-pressed değiştirir, girdi türü değişir; graf bunlara söz vermez. (`realm.auth.signIn` +1)
+- **K11** — Şartlar kutusunda zorunlu işareti yok; realm bunu istemediği için graf çizmiyor. (`realm.auth.register`)
+- **MDRS-222** — Çıkışta kimlik belirteci ve yönlendirme adresi gidiyor; Keycloak'un İngilizce sayfası görünmüyor, yedek sayfa Türkçe. (`realm.auth.signOut`)
+- **no-javascript** — Sayfa tarayıcıda React ile çiziliyor; JavaScript kapalıyken boş. Çizildikten sonra form yerel gönderim yapıyor. (`realm.auth.signIn` +3)
+- **no-username-field** — 'Salt okunur' kullanıcı adı satırı bu sayfada ölü, çünkü Keycloak kullanıcı adı göndermiyor; kişi için kusur değil. (`realm.auth.profileUpdate`)
+- **scope-order** — İzin listesi Keycloak'un sırasında; hiçbir şey sıraya bağlı değil, graf her izne bir düğüm çizer ve sırayı sabitlemez. (`realm.auth.partnerConsent`)
+
+</details>
+
+<details><summary>common (2)</summary>
+
+**common/shell**
+
+- **light-until-chosen** — Sayfa, sistem tercihi ne olursa olsun kişi düğmeye basana kadar açık temada kalıyor; bilerek böyle. (`common.shell.theme`)
+- **name-settles-after-load** — Düğme önce açık tema haliyle çizilip sayfa yüklenince düzeliyor; sunucu çıktısıyla eşleşmek için bilerek. (`common.shell.theme`)
+
+</details>
+
+## API bulguları: alanın (domain) `holds: false` değişmezleri
+
+`graphs/domain/` içinde kodun bozduğu 65 değişmez (invariant), her biri bir bulgu kimliğine (`finding:`) ya da Linear anahtarına bağlı. Bunlar API'nin bulguları; ekranlarda görünenler yukarıdaki satırlarda da var (son sütun). Seviye atanmadı: biçimsel olarak `API` düzeltmesi, yürütme aşamasının işi değil.
+
+| Bulgu | Değişmez | Dosya | Kaynak | `rules`'ta |
+|---|---|---|---|---|
+| ban-extension-audit-only | ban-extension-names-its-origin | domain.yaml | `apps/tedrisat/src/ban/ban.service.ts:301` | - |
+| no-card-type-match | card-type-matches-deck | domain.yaml | `apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:21` | - |
+| audit-types-never-written | every-audit-filter-has-a-writer | domain.yaml | `apps/tedrisat/src/audit/audit-types.ts:28` | - |
+| MDRS-44 | every-handler-declares-its-access | domain.yaml | `libs/common/src/authz/authz.guard.ts:62` | - |
+| session-added-no-producer | every-notification-type-has-a-producer | domain.yaml | `apps/tedrisat/src/notification/notification-types.ts:20` | - |
+| MDRS-284 | gender-always-known | domain.yaml | `apps/tedrisat/src/database/schema/user-profile.schema.ts:33` | - |
+| MDRS-208 | grantable-codes-are-asked-for | domain.yaml | `libs/common/src/authz/permissions.ts:33` | - |
+| medrese-deck-unwritable | medrese-deck-is-writable | domain.yaml | `apps/tedrisat/src/database/schema/flashcard-deck.schema.ts:59` | - |
+| progress-orphans | progress-follows-its-card | domain.yaml | `apps/tedrisat/src/database/schema/flashcard.schema.ts:34` | - |
+| MDRS-284 | seat-quota-per-gender | domain.yaml | `apps/tedrisat/src/course/course.service.ts:1529` | - |
+| MDRS-206 | user-lookup-needs-user-lookup | domain.yaml | `apps/tedrisat/src/user/user.service.ts:104` | - |
+| MDRS-284 | in-person-needs-an-enrolled-seat | planned-in-person.yaml | `None` | - |
+| MDRS-284 | in-person-seat-counted-at-approval | planned-in-person.yaml | `None` | - |
+| MDRS-284 | in-person-seats-are-never-shared | planned-in-person.yaml | `None` | - |
+| kosk-grant-patch-omitted-end | an-edit-cannot-lift-an-end-by-accident | tedrisat-authz.yaml | `apps/tedrisat/src/kosk/dto/kosk-grants.dto.ts:147` | - |
+| grant-end-not-an-instant | grant-end-is-an-instant | tedrisat-authz.yaml | `apps/tedrisat/src/kosk/kosk-grants.service.ts:178` | evet |
+| medaris-nazim-account-unchecked | medaris-nazim-is-a-known-account | tedrisat-authz.yaml | `apps/tedrisat/src/assignment/admin/permission-admin.service.ts:118` | - |
+| kosk-grants-skip-course-checks | nazir-post-needs-a-clear-seat | tedrisat-authz.yaml | `apps/tedrisat/src/kosk/kosk-grants.repository.ts:271` | - |
+| feed-misses-basmuderris-and-ders-nazir | calendar-feed-holds-every-course-its-owner-manages | tedrisat-courses.yaml | `apps/tedrisat/src/calendar-feed/calendar-feed.repository.ts:119` | evet |
+| create-skips-publish-gates | course-create-honours-publish-gates | tedrisat-courses.yaml | `apps/tedrisat/src/course/course.service.ts:884` | - |
+| course-passive-since-no-writer | course-passive-since-has-a-writer | tedrisat-courses.yaml | `apps/tedrisat/src/lesson-invitation/lesson-invitation.repository.ts:131` | - |
+| accepted-write-500 | accepted-write-never-500 | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard.controller.ts:508` | evet |
+| card-create-extra-columns | card-create-takes-only-its-fields | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard.service.ts:108` | - |
+| export-refused-to-staff | card-export-follows-manage-cards | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard.controller.ts:411` | - |
+| card-id-not-uuid-500 | card-routes-malformed-id-400 | tedrisat-decks.yaml | `libs/common/src/authz/authz.guard.ts:120` | - |
+| course-deck-staff-card-routes-404 | course-deck-staff-edit-any-card | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard.service.ts:92` | - |
+| deck-manage-private-reaches-course-decks | course-deck-staff-use-course-routes | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:418` | - |
+| put-deck-changes-card-type | deck-card-type-fixed | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard-deck.controller.ts:357` | - |
+| deck-edit-updated-at | deck-edit-bumps-updated-at | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:203` | evet |
+| hidden-decks-in-lists | hidden-deck-leaves-lists | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard-deck.repository.ts:101` | - |
+| kosk-deck-hide-no-audit | kosk-deck-hide-is-audited | tedrisat-decks.yaml | `apps/tedrisat/src/deck-review/deck-review.service.ts:247` | - |
+| deck-manage-kosk-unused | kosk-deck-written-by-its-nazims | tedrisat-decks.yaml | `apps/tedrisat/src/deck-review/deck-review.service.ts:350` | - |
+| label-target-oracle | label-target-looks-absent | tedrisat-decks.yaml | `apps/tedrisat/src/flashcard/flashcard-label.service.ts:167` | - |
+| kosk-approval-without-link | kosk-approval-names-its-kosk | tedrisat-kosk.yaml | `apps/tedrisat/src/kosk-application/kosk-application-review.service.ts:156` | - |
+| kosk-follow-reaches-hidden | kosk-hidden-cannot-be-followed | tedrisat-kosk.yaml | `apps/tedrisat/src/kosk/kosk.service.ts:276` | - |
+| kosk-person-ids-reach-signed-in-callers | kosk-person-ids-stay-off-public-reads | tedrisat-kosk.yaml | `apps/tedrisat/src/kosk/kosk.controller.ts:182` | - |
+| kosk-passive-status-after-managers-route | kosk-status-follows-its-nazims | tedrisat-kosk.yaml | `apps/tedrisat/src/kosk/kosk.repository.ts:556` | - |
+| evaluation-probe-leaks-homework-kind | evaluation-read-keeps-homework-kind-closed | tedrisat-learning.yaml | `apps/tedrisat/src/evaluation/evaluation.repository.ts:185` | evet |
+| two-course-request-routes | course-request-routes-agree | tedrisat-medrese.yaml | `apps/tedrisat/src/course-request/course-request.service.ts:104` | - |
+| overview-exposes-head-id | madrasah-head-id-is-not-public | tedrisat-medrese.yaml | `apps/tedrisat/src/madrasah/madrasah.repository.ts:1220` | evet |
+| head-account-not-checked | madrasah-head-is-a-known-account | tedrisat-medrese.yaml | `apps/tedrisat/src/madrasah/madrasah.service.ts:168` | - |
+| explore-lists-hidden | madrasah-hidden-is-closed-to-the-public | tedrisat-medrese.yaml | `apps/tedrisat/src/madrasah/madrasah.service.ts:92` | - |
+| policy-no-public-recordings-inert | madrasah-no-public-recordings-closes-recordings | tedrisat-medrese.yaml | `apps/tedrisat/src/course/course.service.ts:857` | evet |
+| viewer-may-decide-skips-head | madrasah-pano-decides-like-the-course-routes | tedrisat-medrese.yaml | `apps/tedrisat/src/madrasah/portal/madrasah-portal.repository.ts:362` | evet |
+| students-read-unaudited | madrasah-students-read-is-audited | tedrisat-medrese.yaml | `apps/tedrisat/src/madrasah/portal/madrasah-portal.controller.ts:67` | evet |
+| patch-madrasah-unaudited | madrasah-update-is-audited | tedrisat-medrese.yaml | `apps/tedrisat/src/madrasah/madrasah.repository.ts:189` | evet |
+| archive-types-without-storage | archive-types-have-storage | tedrisat-moderation.yaml | `apps/tedrisat/src/archive/archive-types.ts:48` | - |
+| MDRS-194 | ban-permanent-request-is-decided | tedrisat-moderation.yaml | `apps/tedrisat/src/ban/ban.service.ts:560` | - |
+| ban-staff-check-gaps | ban-staff-cannot-be-barred | tedrisat-moderation.yaml | `apps/tedrisat/src/ban/ban-tier.ts:66` | evet |
+| inactive-scope-accepts-new-scope | inactive-scope-assign-and-view-only-when-passive | tedrisat-moderation.yaml | `apps/tedrisat/src/inactive-scope/inactive-scope.repository.ts:263` | evet |
+| medrese-recordings-policy-unread | platform-policy-recordings-never-public-reaches-the-read | tedrisat-moderation.yaml | `apps/tedrisat/src/course/course.service.ts:857` | - |
+| scoped-policies-lists-only-kosks | platform-policy-scoped-list-covers-every-scope | tedrisat-moderation.yaml | `apps/tedrisat/src/platform-policy/platform-policy.repository.ts:136` | - |
+| health-probes-nothing | health-means-ready | tedrisat-people.yaml | `apps/tedrisat/src/app.service.ts:26` | - |
+| lookup-message-names-nazirs | lookup-refusal-tells-the-truth | tedrisat-people.yaml | `apps/tedrisat/src/user/errors/user-lookup-forbidden.error.ts:10` | - |
+| notification-types-code-dropped | notification-types-code-reaches-the-client | tedrisat-people.yaml | `apps/tedrisat/src/notification/notification.controller.ts:104` | evet |
+| unreadable-input-500 | unreadable-input-is-a-400 | tedrisat-people.yaml | `apps/tedrisat/src/user/user.service.ts:75` | evet |
+| policy-no-public-recordings-inert | recording-public-honours-medrese-policy | tedrisat-sessions.yaml | `apps/tedrisat/src/course/course.service.ts:857` | evet |
+| upload-on-cancelled-session | recording-upload-refuses-cancelled-session | tedrisat-sessions.yaml | `apps/tedrisat/src/course/recording.repository.ts:445` | evet |
+| cancel-no-type-check | session-cancel-takes-live-sessions-only | tedrisat-sessions.yaml | `apps/tedrisat/src/course/course.repository.ts:1330` | evet |
+| lesson-cancelled-text-streams-only | session-cancelled-message-fits-its-route | tedrisat-sessions.yaml | `apps/tedrisat/src/course/errors/lesson-cancelled.error.ts:11` | evet |
+| archive-lesson-audit-name | session-hide-audit-key-is-documented | tedrisat-sessions.yaml | `apps/tedrisat/src/course/lesson.controller.ts:410` | - |
+| evaluation-export-invalid-path | web-every-file-route-builds-a-proxiable-path | web.yaml | `apps/nazar/app/api/files/courses/[courseId]/evaluations/route.ts:24` | evet |
+| DCK-22 | web-every-route-has-a-caller | web.yaml | `apps/tedris/app/api/decks/route.ts:6` | - |
+| WRT-10 | web-refused-download-keeps-the-page | web.yaml | `libs/services/src/file-proxy/file-proxy.ts:351` | evet |
+| F-D1-19 | web-sample-download-failure-is-explained | web.yaml | `apps/nazar/app/api/decks/sample/route.ts:31` | evet |
+

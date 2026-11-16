@@ -10,10 +10,10 @@
 #
 # Data. Every scenario makes what it needs and takes it away, so no seeded köşk, course, partner or setting is touched:
 #   - a partner application of the walk's own, `deneme-kayit-uygulamasi` ("Deneme kayıt uygulaması"), registered by the page itself in
-#     `registers` and through the başnazım's routes of nizam's "Ortak uygulamalar" by ./partner.mjs elsewhere. It is not the partner of
+#     `registers` and through the başnazım's routes of nizam's "Ortak uygulamalar" by helpers/partner.mjs elsewhere. It is not the partner of
 #     nazar.courseSettings.partnerCodes (`deneme-ortak-uygulama`), so the two walks never meet; the stack's example client
 #     `ornek-uygulama` is never read or changed. There is no route that deletes a partner, so every `teardown` (and every `setup`, for a
-#     crashed walk) ends with `partner.mjs down`: the one SQL delete of this folder (see partner.mjs). `show` then says `none`.
+#     crashed walk) ends with `helpers/partner.mjs down`: the one SQL delete of the partner's rows (see helpers/partner.mjs). `show` then says `none`.
 #   - `scoped` (in refusals.binding.yaml) also makes a course, "Deneme dersi regscope", from helpers/course.mjs in the seed's second köşk
 #     (Kubbealtı Köşkü), binds the partner to that köşk and maps one code of the partner to the course, so that choosing the köşk away
 #     can be seen to delete the code. Its ids are read from graphs/.local/made/regscope.json; `teardown` deletes the course.
@@ -56,12 +56,12 @@ scenarios:
     open: '{nizam}/'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->partners' }
     setup:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
     teardown:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
         expect: 'deneme-kayit-uygulamasi none'
     vars:
       clientId: deneme-kayit-uygulamasi
@@ -81,12 +81,12 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/ayarlar/ortak-uygulamalar'
     setup:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
     teardown:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
         expect: 'deneme-kayit-uygulamasi none'
     vars:
       clientId: deneme-kayit-uygulamasi
@@ -105,12 +105,12 @@ scenarios:
     as: systemAdmin
     open: '{nizam}/ayarlar/ortak-uygulamalar'
     setup:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
     teardown:
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-kayit-uygulamasi]
         expect: 'partner removed'
-      - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+      - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
         expect: 'deneme-kayit-uygulamasi none'
     vars:
       clientId: deneme-kayit-uygulamasi
@@ -162,23 +162,23 @@ events:
 # transition applies.
 effects:
   added:
-    - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
       expect: 'name={partnerName} enabled=on kosks=0'
   toastTurnedOff:
-    - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
       expect: 'enabled=off'
   toastTurnedOn:
-    - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
       expect: 'enabled=on'
   kosksNowSome:
-    - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
       expect: 'kosks=1'
   # the codes of the partner in that köşk are gone with the köşk (scoped; the other scenarios hold none)
   kosksNowNone:
-    - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
       expect: 'kosks=0 codes=0'
   toastRenamed:
-    - run: [node, ../nizam/partners/registerAndScope/partner.mjs, show]
+    - run: [node, helpers/partner.mjs, show, --client, deneme-kayit-uygulamasi]
       expect: 'name={newName} enabled='
 
 states:

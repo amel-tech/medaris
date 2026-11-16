@@ -124,7 +124,7 @@ states:
         source: apps/tedris/components/anonymous-invite.tsx:41
       REGISTER:
         target: handed_over.register
-        starts: { flow: realm.auth.register }
+        starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }
         say: "\"kayıt ol\" in the invitation: /auth/register, which the app's page hands to Keycloak's registration form"
         source: apps/tedris/components/anonymous-invite.tsx:46
       NAVIGATE: left
@@ -152,7 +152,7 @@ states:
         source: apps/tedris/components/anonymous-invite.tsx:41
       REGISTER:
         target: handed_over.register
-        starts: { flow: realm.auth.register }
+        starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }
         say: "\"kayıt ol\" in the invitation: /auth/register"
         source: apps/tedris/components/anonymous-invite.tsx:46
       NAVIGATE: left
@@ -181,7 +181,7 @@ states:
         source: apps/tedris/components/anonymous-invite.tsx:41
       REGISTER:
         target: handed_over.register
-        starts: { flow: realm.auth.register }
+        starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }
         say: "\"kayıt ol\" in the invitation: /auth/register"
         source: apps/tedris/components/anonymous-invite.tsx:46
       NAVIGATE: left
@@ -223,7 +223,7 @@ states:
         source: apps/tedris/features/courses/components/course-aside.tsx:352
       REGISTER:
         target: handed_over.register
-        starts: { flow: realm.auth.register }
+        starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }
         say: "\"Kayıt ol\" in \"Hesabın yok mu?\": /auth/register"
         source: apps/tedris/features/courses/components/course-aside.tsx:358
       NAVIGATE: left
@@ -251,7 +251,7 @@ states:
         source: apps/tedris/features/courses/components/course-aside.tsx:352
       REGISTER:
         target: handed_over.register
-        starts: { flow: realm.auth.register }
+        starts: { flow: realm.auth.register, given: { entry: "'registerPage'" } }
         say: "\"Kayıt ol\" in \"Hesabın yok mu?\""
         source: apps/tedris/features/courses/components/course-aside.tsx:358
       NAVIGATE: left

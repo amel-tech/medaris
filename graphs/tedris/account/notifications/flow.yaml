@@ -25,8 +25,8 @@
 #   NOTIF-3 (new, proposed id) two marks in flight undo each other: a refusal restores the snapshot taken before the first, dropping the second
 #   NOTIF-4 (new, proposed id) the API's list and mark answers carry `userId`, which the published contract (DTO, client, domain) leaves out; read on the stack
 #   The domain's own findings, which this page cannot reach because it never sends `types`: notification-types-code-dropped (the code
-#   INVALID_NOTIFICATION_TYPES reaches the client as HTTP_400) and unreadable-input-500 (types given twice is a 500). The nazar and nizam
-#   notification pages send `types`.
+#   INVALID_NOTIFICATION_TYPES reaches the client as HTTP_400) and unreadable-input-500 (types given twice is a 500). Only nizam's notification page
+#   sends `types` (nizam.notifications.triage); nazar's sends none (nazar.notifications.inbox), so only nizam's page can reach them.
 # E2E carried: none. tedris has no e2e file for this page; the unit specs apps/tedris/test/notifications-page.spec.ts (heading, counts, day groups
 # and badges; "Tümünü okundu say" disabled with nothing unread; the empty list has no button; the retry box; "Daha fazla göster"),
 # notification-state.spec.ts and notification-view.spec.ts pin the same behaviour and are what this flow's assertions come from.

@@ -1,8 +1,8 @@
-// The dates of nazar.sessions.plan's walks, written for the binding to read as a data source. The planner is typed dates, and a
+// The dates of the walks of nazar.sessions.plan and nizam.courses.planSessions, written for the binding to read as a data source. The planner is typed dates, and a
 // walk runs on whatever day it runs on, so they are worked out from today (on Istanbul's clock, the zone the form starts in):
 //
-//   node ../nazar/sessions/plan/dates.mjs write <tag>     writes graphs/.local/made/<tag>.dates.json and prints `dates <tag> start=...`
-//   node ../nazar/sessions/plan/dates.mjs clear <tag>     removes that file (a second clear says `none`)
+//   node helpers/dates.mjs write <tag>     writes graphs/.local/made/<tag>.dates.json and prints `dates <tag> start=...`
+//   node helpers/dates.mjs clear <tag>     removes that file (a second clear says `none`)
 //
 //   start    a Tuesday two to three weeks ahead: a weekly repeat on Tuesday and Thursday from it, ending on `end`, makes three celses
 //            (Tue start, Thu start+2, Tue start+7) and four by count (Thu start+9 as well)
@@ -17,7 +17,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const MADE = resolve(here, "../../../.local/made");
+const MADE = resolve(here, "../../.local/made");
 const DAY = 86_400_000;
 
 const usage = "usage: dates.mjs write <tag> | clear <tag>";

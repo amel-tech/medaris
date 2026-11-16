@@ -22,19 +22,19 @@ scenarios:
     open: '{nizam}/yasaklamalar'
     vars: { typed: Başvuran, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }
     setup:
-      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, down, applicantG]
-        expect: 'medaris down APPLICANT_G'
+      - run: [node, helpers/nazim.mjs, down, applicantG]
+        expect: 'down APPLICANT_G'
       - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
         expect: down reviewbans
       - run: [node, helpers/course.mjs, make, reviewbans, --kosk, '{seed.kosk}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD']
         expect: '"tag":"reviewbans"'
       - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, up, reviewbans]
         expect: 'ready: 3 open, 2 lifted'
-      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, up, applicantG, --codes, platform.ban_scoped]
+      - run: [node, helpers/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
         expect: 'codes=platform.ban_scoped'
     teardown:
-      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, down, applicantG]
-        expect: 'medaris down APPLICANT_G'
+      - run: [node, helpers/nazim.mjs, down, applicantG]
+        expect: 'down APPLICANT_G'
       - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
         expect: down reviewbans
       - run: [node, helpers/course.mjs, remove, reviewbans]

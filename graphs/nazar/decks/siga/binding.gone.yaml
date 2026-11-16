@@ -5,8 +5,8 @@
 #     --bind graphs/nazar/decks/siga/binding.gone.yaml --cover transitions --out <dir>
 # A file of its own for what binding.yaml's header says: `before` on a state is shared by every scenario of its file. The deck is deleted when
 # the walk reaches the form (`rootTyped`), which is after the page was read and before the save, and the dialog's own steps call nothing: the
-# drafts are built in the browser. `deck.mjs gone` says "already gone" the second time, since the walk reaches `rootTyped` again after "Geri".
-# NOT RUN in the writing phase. The seat is the same as binding.yaml's: its `setup` and `teardown` run again here, and `deck.mjs remove`
+# drafts are built in the browser. `helpers/course-deck.mjs gone` says "already gone" the second time, since the walk reaches `rootTyped` again after "Geri".
+# NOT RUN in the writing phase. The seat is the same as binding.yaml's: its `setup` and `teardown` run again here, and `helpers/course-deck.mjs remove`
 # finds nothing left to delete for the deck.
 schema: delurio-graph/0
 kind: binding
@@ -16,7 +16,7 @@ flow: nazar.decks.siga
 states:
   rootTyped:
     before:
-      - run: [node, ../nazar/decks/siga/deck.mjs, gone, siga]
+      - run: [node, helpers/course-deck.mjs, gone, siga]
         expect: 'deck'
 
 scenarios:
@@ -36,14 +36,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 28 VOCABULARY metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga]
+      - run: [node, helpers/course-deck.mjs, make, siga]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'

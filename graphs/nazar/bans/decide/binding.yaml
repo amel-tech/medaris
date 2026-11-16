@@ -15,7 +15,7 @@
 #
 # Data. Every scenario makes its own course and takes it away, so no seeded course, ban or setting is touched: helpers/course.mjs opens
 # "Deneme dersi bansDecide" in the medrese through the API (published, as the başnazım; the ids are read from
-# graphs/.local/made/bansDecide.json as {made.*}) and ./bans.mjs puts open bans on spare accounts through the API, as the
+# graphs/.local/made/bansDecide.json as {made.*}) and helpers/madrasah-bans.mjs puts open bans on spare accounts through the API, as the
 # başmüderris (a course ban, or a medrese-wide ban) or as the başnazım (a ban that "Medaris yönetimi" placed). The teardown removes the
 # bans with SQL (no route deletes a ban or takes a request back, and a ban has no foreign key to the course), then deletes the course.
 # What the walk cannot undo: the audit rows of every ban, lift and request (the API has no way to remove them and nothing depends on
@@ -64,10 +64,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
         expect: '"tag":"bansDecide"'
-      - run: [node, ../nazar/bans/decide/bans.mjs, up, bansDecide, --course, 'APPLICANT_C,APPLICANT_D,APPLICANT_F']
+      - run: [node, helpers/madrasah-bans.mjs, up, bansDecide, --course, 'APPLICANT_C,APPLICANT_D,APPLICANT_F']
         expect: 'ready: 3 open'
     teardown:
-      - run: [node, ../nazar/bans/decide/bans.mjs, down, bansDecide, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_F']
+      - run: [node, helpers/madrasah-bans.mjs, down, bansDecide, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_F']
         expect: removed
       - run: [node, helpers/course.mjs, remove, bansDecide]
         expect: 'course remove bansDecide'
@@ -86,10 +86,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
         expect: '"tag":"bansDecide"'
-      - run: [node, ../nazar/bans/decide/bans.mjs, up, bansDecide, --wide, APPLICANT_C]
+      - run: [node, helpers/madrasah-bans.mjs, up, bansDecide, --wide, APPLICANT_C]
         expect: 'ready: 1 open'
     teardown:
-      - run: [node, ../nazar/bans/decide/bans.mjs, down, bansDecide, --people, APPLICANT_C]
+      - run: [node, helpers/madrasah-bans.mjs, down, bansDecide, --people, APPLICANT_C]
         expect: removed
       - run: [node, helpers/course.mjs, remove, bansDecide]
         expect: 'course remove bansDecide'
@@ -108,10 +108,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
         expect: '"tag":"bansDecide"'
-      - run: [node, ../nazar/bans/decide/bans.mjs, up, bansDecide, --medaris, APPLICANT_C]
+      - run: [node, helpers/madrasah-bans.mjs, up, bansDecide, --medaris, APPLICANT_C]
         expect: 'ready: 1 open'
     teardown:
-      - run: [node, ../nazar/bans/decide/bans.mjs, down, bansDecide, --people, APPLICANT_C]
+      - run: [node, helpers/madrasah-bans.mjs, down, bansDecide, --people, APPLICANT_C]
         expect: removed
       - run: [node, helpers/course.mjs, remove, bansDecide]
         expect: 'course remove bansDecide'
@@ -131,14 +131,14 @@ scenarios:
       - run: [node, helpers/course.mjs, make, bansDecide, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1']
         expect: '"tag":"bansDecide"'
       # the ban first, while the person is a talebe (a ban on a hoca is refused when it is placed), then the post
-      - run: [node, ../nazar/bans/decide/bans.mjs, up, bansDecide, --course, APPLICANT_D]
+      - run: [node, helpers/madrasah-bans.mjs, up, bansDecide, --course, APPLICANT_D]
         expect: 'ready: 1 open'
       - run: [node, helpers/seat-hoca.mjs, '{made.course}', applicantD]
         expect: 'seat-hoca APPLICANT_D'
     teardown:
       - run: [node, helpers/unseat-hoca.mjs, '{made.course}', applicantD]
         expect: 'unseat-hoca APPLICANT_D'
-      - run: [node, ../nazar/bans/decide/bans.mjs, down, bansDecide, --people, APPLICANT_D]
+      - run: [node, helpers/madrasah-bans.mjs, down, bansDecide, --people, APPLICANT_D]
         expect: removed
       - run: [node, helpers/course.mjs, remove, bansDecide]
         expect: 'course remove bansDecide'

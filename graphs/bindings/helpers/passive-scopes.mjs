@@ -5,10 +5,10 @@
 // of the course are made here, under ids derived from the tag, so that a second `make` or a `remove` finds them again whatever a
 // crashed walk left.
 //
-//   node ../nizam/inactive/viewContent/passive-scopes.mjs make   <tag>        remove what the tag made, make it again, check the list sees it
-//   node ../nizam/inactive/viewContent/passive-scopes.mjs remove <tag>        delete everything the tag made, and every audit row about it
-//   node ../nizam/inactive/viewContent/passive-scopes.mjs attend <tag> gone   the başnazım gives the "gone" köşk a nazım (POST .../assign)
-//   node ../nizam/inactive/viewContent/passive-scopes.mjs view   <tag> <kosk|course|gone>   one opening, as the page makes it (POST .../view)
+//   node helpers/passive-scopes.mjs make   <tag>        remove what the tag made, make it again, check the list sees it
+//   node helpers/passive-scopes.mjs remove <tag>        delete everything the tag made, and every audit row about it
+//   node helpers/passive-scopes.mjs attend <tag> gone   the başnazım gives the "gone" köşk a nazım (POST .../assign)
+//   node helpers/passive-scopes.mjs view   <tag> <kosk|course|gone>   one opening, as the page makes it (POST .../view)
 //
 // What `make` writes, and why by SQL. tedrisat has no route that leaves a course without its last müderris (a course never loses it
 // by removal, course.service.ts:1061, owner decision d-1004-13; only a term that runs out does), and a köşk or a medrese goes passive
@@ -34,14 +34,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { query } from "../../../bindings/helpers/db.mjs";
-import {
-  Fail,
-  LOCAL,
-  must,
-  run,
-  subOf,
-} from "../../../bindings/helpers/lib.mjs";
+import { query } from "./db.mjs";
+import { Fail, LOCAL, must, run, subOf } from "./lib.mjs";
 
 const MADE = resolve(LOCAL, "made");
 const file = (tag) => resolve(MADE, `${tag}.json`);

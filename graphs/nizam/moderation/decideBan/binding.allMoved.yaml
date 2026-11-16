@@ -5,7 +5,7 @@
 # NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
 #
 # How the world is made to refuse: as in binding.moved.yaml. When a dialog's reason is filled in, the binding first has the köşk nazım lift the
-# newest ban through the API (./bans.mjs lift --newest). The page is not read again after the refusal, so the next dialog is opened on the same
+# newest ban through the API (helpers/kosk-bans.mjs lift --newest). The page is not read again after the refusal, so the next dialog is opened on the same
 # first row, whose ban is lifted already: the lift and the widening both meet 409, whichever the helper lifts. `call` is left off.
 schema: delurio-graph/0
 kind: binding
@@ -19,7 +19,7 @@ states:
 
 events:
   FILL_IN:
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, lift, decideBan, --who, 'APPLICANT_C,APPLICANT_D,APPLICANT_E', --newest]
+    - run: [node, helpers/kosk-bans.mjs, lift, decideBan, --who, 'APPLICANT_C,APPLICANT_D,APPLICANT_E', --newest]
       expect: 'APPLICANT_'
     - fill: { role: textbox, within: { role: dialog }, value: '{reasonText}' }
 
@@ -31,10 +31,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
         expect: 'ready: 3 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
         expect: removed
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'

@@ -6,8 +6,12 @@
 #
 # What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
 #   - the submit is natively disabled and says "0 celse oluştur" until the preview holds a celse, with no word on what is missing (F-C-course-a-09);
-#     the pattern's own errors can therefore never be said, but four others can: an empty title, a first-celse link that is not https, an exam's
-#     score and its place. Those are said under the field when the button is pressed, announced to no one, with the focus left on the button (PLAN-1);
+#     the pattern's own errors are not said at first, but four others can be: an empty title, a first-celse link that is not https, an exam's
+#     score and its place. Those are said under the field when the button is pressed, announced to no one, with the focus left on the button (PLAN-1).
+#     `sent` is never reset (plan-form.tsx:115 and :179, no setSent(false)), so once such a press has been made the pattern's own messages are said
+#     too, as the person goes on editing ("En az bir gün seçin." as an alert, plan-form.tsx:573-577, and the messages under the time, length, date and
+#     end fields, :232-:624). The graph draws the four first-press messages and not those later ones (it keeps no `sent`: its `fixed` is the one
+#     correction), as nizam.courses.planSessions says of its own copy;
 #   - the preview is not a live region (F-C-course-a-10); the single-choice groups are aria-pressed toggles, not radios (F-C-course-a-12);
 #   - "Vazgeç" and the breadcrumb leave with everything typed and no guard (F-C-course-a-13);
 #   - a failed read draws two h1 (PLAN-2); a placeholder is typed into the code (PLAN-3); a date in the past is taken without a word (PLAN-4);
@@ -39,6 +43,7 @@ scope:
     - "the Celseler table, the links, times and the in-person mark of the celses made: nazar.sessions.manage; cancelling one and its make-up (the same write, a pattern of one): nazar.sessions.cancel"
     - "entering an exam's scores and releasing them, which the exam leads to: nazar.evaluation.examScores; the talebe's side of a celse: the tedris celse flows"
     - "the same planner in nizam, for a köşk's nazım: nizam.courses.planSessions"
+    - "the pattern's own messages after a refused press: `sent` is never reset (plan-form.tsx:115, :179), so once a press was refused for a title, a link, a score or a place, clearing the days says 'En az bir gün seçin.' (an alert, :573-577) and a time, length, date or end gone wrong is said under its field; no state or node here draws them (F-C-course-a-09)"
     - "the extra paragraph the form shows when the course is held in person (plan-form.tsx:652-656), and the loading skeleton (loading.tsx)"
     - "a session that ended while the form was open: both server calls send the person to sign in (handleUnauthenticated), realm.auth.signIn"
     - "the exam's invitation mail and the EXAM_SCHEDULED notification the write sends to the enrolled talebe (the walk's course has none)"
@@ -47,7 +52,7 @@ decisions:
   D1:
     question: >-
       Should the button stay reachable when the preview is empty, and say what is missing? Today it is natively disabled, says "0 celse oluştur"
-      and gives no reason, so a keyboard user cannot reach it to learn why, and the form's own messages for the pattern are never shown.
+      and gives no reason, so a keyboard user cannot reach it to learn why, and the form's own messages for the pattern are said only after a refused press for another cause.
     recommend: >-
       Keep it focusable (aria-disabled), word it "Celse oluştur" until a preview exists, and say under the form what is missing.
     affects: [form, previewFailed]
@@ -118,7 +123,8 @@ context:
 guards:
   lesson: "kind == 'weekly' or kind == 'weeklyCount' or kind == 'single'"
   examKind: "kind == 'exam' or kind == 'examOpen'"
-  # `sent` of plan-form.tsx:178: a title, a first-celse link, an exam's score or place that is wrong; the pattern's own problems never get here
+  # `sent` of plan-form.tsx:179 is set by the first refused press, which only a title, a first-celse link, an exam's score or place that is wrong can make
+  # (the button is off while the pattern is not whole); the pattern's own messages that `sent` then lets through are not drawn
   wrongTitle: "not fixed and fields == 'noTitle' and kind != 'exam'"
   wrongLink: "not fixed and fields == 'badLink' and links == 'first' and kind != 'exam'"
   wrongScore: "not fixed and fields == 'noScore' and kind == 'examOpen'"
@@ -282,7 +288,7 @@ states:
       CANCEL: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:663, say: "'Vazgeç': back to Celseler with nothing made; no guard for what was typed (F-C-course-a-13)" }
       BREADCRUMB: { target: sessions_opened, source: apps/nazar/features/sessions/components/plan-form.tsx:359, say: "the breadcrumb's 'Celseler': the same link" }
       NAVIGATE: { target: left, source: apps/nazar/features/sessions/components/plan-form.tsx:349, say: "they follow the menu" }
-      FILL_IN_WEEKLY: { guard: "kind == 'weekly'", target: previewing, effect: [typedIn], source: apps/nazar/features/sessions/components/plan-form.tsx:119, say: "they choose the days, type the start date and the end date, and the title: the pattern is whole" }
+      REFILL: { guard: "kind == 'weekly'", target: previewing, effect: [typedIn], source: apps/nazar/features/sessions/components/plan-form.tsx:132, say: "they change the end date: the pattern is whole again, the page asks again (and is refused again, with the days and dates of the case). Not FILL_IN_WEEKLY: that event presses the day chips, which are already pressed here and would be pressed off (the audit found it, as nizam.courses.planSessions did)" }
 
   formReady:
     title: The planner, the celses are previewed

@@ -8,7 +8,7 @@
 #     toast that stays until it is closed, except on a link row, where the page leaves in the same breath (INBOX-1).
 #   - Nazar sends no `types`: it lists and counts every type, as the bell and the menu badge do (features/notifications/notifications.ts:6).
 #     So the two API findings notification-types-code-reaches-the-client and unreadable-input-is-a-400 cannot be reached from this page
-#     (the tedris flow's comment says the nazar page sends `types`; in this tree it does not).
+#     (only nizam's page sends `types`: nizam.notifications.triage).
 #   - The pages the rows lead to (a course, a celse, a deck, a köşk) are Tedris's: the exit tedris_opened names them. The frame around the
 #     page (the picker, the rest of the menu) is nazar.shell.scopeAndMenu's; this flow draws only the entry "Bildirimler", the number it
 #     carries and the bell's name, because the stack's accounts hold no notification and that flow could not draw a number.

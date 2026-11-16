@@ -6,7 +6,7 @@
 # NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
 #
 # How the world is made to refuse. Three course bans stand (applicantC, D, E). When the dialog's reason is filled in, the binding first has the
-# köşk nazım lift the newest ban through the API (./bans.mjs lift --newest): a second hand that decided first. The newest is the first row of
+# köşk nazım lift the newest ban through the API (helpers/kosk-bans.mjs lift --newest): a second hand that decided first. The newest is the first row of
 # the list, the one the press chose. The submit then reaches a lifted ban and tedrisat answers 409 BAN_ALREADY_LIFTED; the page shows the error
 # toast and keeps the dialog open. A second FILL_IN in the same dialog finds the next ban and lifts it too (the helper cannot tell the dialogs
 # apart): `--cover transitions` takes FILL_IN once in a dialog.
@@ -25,7 +25,7 @@ states:
 # the other hand first, then the reason: this file's FILL_IN replaces the shared one
 events:
   FILL_IN:
-    - run: [node, ../nizam/moderation/decideBan/bans.mjs, lift, decideBan, --who, 'APPLICANT_C,APPLICANT_D,APPLICANT_E', --newest]
+    - run: [node, helpers/kosk-bans.mjs, lift, decideBan, --who, 'APPLICANT_C,APPLICANT_D,APPLICANT_E', --newest]
       expect: 'lifted APPLICANT_'
     - fill: { role: textbox, within: { role: dialog }, value: '{reasonText}' }
 
@@ -37,10 +37,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
         expect: 'ready: 3 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
         expect: removed
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'

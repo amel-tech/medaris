@@ -6,7 +6,7 @@
 //
 // It does NOT appoint or dismiss anyone: the appointment is the walk's own story, and a person who is to hold a seat before the walk (the
 // `already` scenario) and the dismissal in `teardown` are the job of the flow-local helper of nizam.home.medarisNazimCut,
-// ../nizam/home/medarisNazimCut/nazim.mjs (`up`, `down`), which is reused here as it is. This file is only what that one does not do.
+// helpers/nazim.mjs (`up`, `down`), which is reused here as it is. This file is only what that one does not do.
 //
 //   node ../nizam/nazims/appoint/appoint-data.mjs up
 //       makes the platform group "Deneme grubu nzappt" (two permissions, platform.kosk_create and platform.kosk_edit; a live group of that

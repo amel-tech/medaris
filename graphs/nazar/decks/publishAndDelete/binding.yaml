@@ -4,9 +4,9 @@
 #
 # What a walk makes and takes away. `setup` makes the course `Deneme dersi pubDel` with helpers/course.mjs (PUBLISHED, in the seed's second köşk, one week of one live
 # celse from tomorrow, `MUDERRIS` its hoca, anyone takes a seat, and `applicantG`, a woman with a full profile, seated at once so that the walk can read the talebe's
-# tab through the API) and then one deck of it with ../nazar/decks/publishAndDelete/deck-data.mjs (three cards, `Deneme destesi pubDel`; a draft, or published for
-# the scenario that opens a published deck). Their ids go to graphs/.local/made/pubDel.json and graphs/.local/pub-del.json, read here as {made.*} and {pd.*}.
-# `teardown` removes the deck (deck-data.mjs remove: back to a draft, then DELETE, a 404 is fine because the walk deletes it in some paths) and then the course with
+# tab through the API) and then one deck of it with helpers/course-deck.mjs (three cards, `Deneme destesi pubDel`; a draft, or published for
+# the scenario that opens a published deck). Their ids go to graphs/.local/made/pubDel.json and graphs/.local/made/pubDel-deck.json, read here as {made.*} and {pd.*}.
+# `teardown` removes the deck (course-deck.mjs remove --unpublish: back to a draft, then DELETE, a 404 is fine because the walk deletes it in some paths) and then the course with
 # its invitation mails (course.mjs remove). A walk that died leaves both files; the next `setup` removes them first. Nothing of the seed is touched and no SQL is
 # used. Every run of these helpers by hand takes the replay lock (CONVENTIONS, round R2).
 #
@@ -38,7 +38,7 @@ flow: nazar.decks.publishAndDelete
 
 data:
   made: { json: ../.local/made/pubDel.json }
-  pd: { json: ../.local/pub-del.json }
+  pd: { json: ../.local/made/pubDel-deck.json }
 
 scenarios:
   draftDeck:
@@ -50,11 +50,11 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, pubDel, --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, APPLICANT_G]
         expect: '"APPLICANT_G":"ENROLLED"'
-      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, make]
-        expect: 'made 1 deck (draft)'
+      - run: [node, helpers/course-deck.mjs, make, pubDel, --title, 'Deneme destesi pubDel', --description, 'Dersin temel terimleri: fiil, isim, harf.', --cards, 'فعل=fiil,اسم=isim,حرف=harf', --unpublish]
+        expect: '"published":false'
     teardown:
-      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, remove]
-        expect: 'deck-data remove'
+      - run: [node, helpers/course-deck.mjs, remove, pubDel, --unpublish]
+        expect: 'deck remove pubDel'
       - run: [node, helpers/course.mjs, remove, pubDel]
         expect: 'course remove pubDel'
 
@@ -67,11 +67,11 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, pubDel, --weeks, '1', --lessons, '1', --hoca, MUDERRIS, --talebe, APPLICANT_G]
         expect: '"APPLICANT_G":"ENROLLED"'
-      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, make, --published]
-        expect: 'made 1 deck (published)'
+      - run: [node, helpers/course-deck.mjs, make, pubDel, --title, 'Deneme destesi pubDel', --description, 'Dersin temel terimleri: fiil, isim, harf.', --cards, 'فعل=fiil,اسم=isim,حرف=harf', --unpublish, --published]
+        expect: '"published":true'
     teardown:
-      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, remove]
-        expect: 'deck-data remove'
+      - run: [node, helpers/course-deck.mjs, remove, pubDel, --unpublish]
+        expect: 'deck remove pubDel'
       - run: [node, helpers/course.mjs, remove, pubDel]
         expect: 'course remove pubDel'
 
@@ -83,13 +83,13 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, pubDel, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"title":"Deneme dersi pubDel"'
-      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, make]
-        expect: 'made 1 deck (draft)'
+      - run: [node, helpers/course-deck.mjs, make, pubDel, --title, 'Deneme destesi pubDel', --description, 'Dersin temel terimleri: fiil, isim, harf.', --cards, 'فعل=fiil,اسم=isim,حرف=harf', --unpublish]
+        expect: '"published":false'
       - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, dersNazir, --codes, none]
         expect: 'course-nazir-grants DERS_NAZIR'
     teardown:
-      - run: [node, ../nazar/decks/publishAndDelete/deck-data.mjs, remove]
-        expect: 'deck-data remove'
+      - run: [node, helpers/course-deck.mjs, remove, pubDel, --unpublish]
+        expect: 'deck remove pubDel'
       - run: [node, helpers/course.mjs, remove, pubDel]
         expect: 'course remove pubDel'
 

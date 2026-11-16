@@ -21,7 +21,7 @@ flow: nizam.inactive.viewContent
 
 events:
   ATTENDED_ELSEWHERE:
-    - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, attend, viewContent, gone]
+    - run: [node, helpers/passive-scopes.mjs, attend, viewContent, gone]
       expect: 'passive-scopes attend viewContent gone'
 
 scenarios:
@@ -38,10 +38,10 @@ scenarios:
       targetEntity: kosk
     samples: { name: '{made.goneName}', kind: Ders, kosk: '{made.hostName}' }
     setup:
-      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, make, viewContent]
+      - run: [node, helpers/passive-scopes.mjs, make, viewContent]
         expect: 'passive-scopes make viewContent ready'
     teardown:
-      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, remove, viewContent]
+      - run: [node, helpers/passive-scopes.mjs, remove, viewContent]
         expect: 'passive-scopes remove viewContent'
 
 # What the event and the refusal leave outside the screen.

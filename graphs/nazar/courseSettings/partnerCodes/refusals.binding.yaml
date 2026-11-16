@@ -31,20 +31,20 @@ scenarios:
     as: systemAdmin
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
       - run: [node, helpers/course.mjs, make, partnerCodesTaken, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodesTaken"'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, add, --course, '{madeTaken.course}', --codes, deneme-alinmis-kod]
+      - run: [node, helpers/partner.mjs, add, --client, deneme-ortak-uygulama, --course, '{madeTaken.course}', --codes, deneme-alinmis-kod]
         expect: 'codes'
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
       - run: [node, helpers/course.mjs, remove, partnerCodesTaken]
         expect: 'course remove partnerCodesTaken'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -61,14 +61,14 @@ scenarios:
     as: systemAdmin
     open: '{nazar}/ders/{made.course}/ayarlar'
     setup:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, up, --kosk, '{seed.kosk2}']
+      - run: [node, helpers/partner.mjs, up, --client, deneme-ortak-uygulama, --name, 'Deneme ortak uygulaması', --kosk, '{seed.kosk2}']
         expect: 'partner up'
       - run: [node, helpers/course.mjs, make, partnerCodes, --weeks, '1', --lessons, '1']
         expect: '"tag":"partnerCodes"'
     teardown:
       - run: [node, helpers/course.mjs, remove, partnerCodes]
         expect: 'course remove partnerCodes'
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, down]
+      - run: [node, helpers/partner.mjs, down, --client, deneme-ortak-uygulama]
         expect: 'partner removed'
       - run: [node, helpers/sql.mjs, "select count(*)::int as n from integration_partners where client_id = 'deneme-ortak-uygulama'"]
         expect: '"n":0'
@@ -86,14 +86,14 @@ states:
   empty:
     url: '{nazar}/ders/*/ayarlar'
     before:
-      - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, race, '{race}']
+      - run: [node, helpers/partner.mjs, race, --client, deneme-ortak-uygulama, '{race}']
         expect: 'race'
 
 # What a refusal leaves outside the screen: nothing was mapped to the course.
 effects:
   saidTaken:
-    - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, held, --course, '{made.course}']
+    - run: [node, helpers/partner.mjs, held, --client, deneme-ortak-uygulama, --course, '{made.course}']
       expect: 'held none'
   saidUnknownPartner:
-    - run: [node, ../nazar/courseSettings/partnerCodes/partner.mjs, held, --course, '{made.course}']
+    - run: [node, helpers/partner.mjs, held, --client, deneme-ortak-uygulama, --course, '{made.course}']
       expect: 'held none'

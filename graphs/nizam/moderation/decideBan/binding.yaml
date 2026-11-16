@@ -19,7 +19,7 @@
 # the code and unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and walked nothing).
 #
 # Data. Every scenario makes its own course in the seed's second köşk (helpers/course.mjs make decideBan --kosk {seed.kosk2}: published, the
-# müderris as hoca; the ids are read from graphs/.local/made/decideBan.json as {made.*}), enrols spare talebe in it, and ./bans.mjs puts
+# müderris as hoca; the ids are read from graphs/.local/made/decideBan.json as {made.*}), enrols spare talebe in it, and helpers/kosk-bans.mjs puts
 # open bans on them through the API: as the müderris (a course ban, "Hoca"), as the başnazım (a course ban, "Medaris yönetimi") or as the
 # köşk nazım (a köşk ban). The teardown removes the bans with SQL (no route deletes a ban or its notices to the nazıms), then deletes the
 # course. What the walk cannot undo: the audit rows of every ban, lift and widening (no route removes them, and nothing depends on them) and
@@ -66,10 +66,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC, applicantD, applicantE]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --low, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
         expect: 'ready: 3 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, 'APPLICANT_C,APPLICANT_D,APPLICANT_E']
         expect: removed
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'
@@ -86,10 +86,10 @@ scenarios:
     setup:
       - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
         expect: '"tag":"decideBan"'
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --wide, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, up, decideBan, --wide, APPLICANT_C]
         expect: 'ready: 1 open'
     teardown:
-      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_C]
+      - run: [node, helpers/kosk-bans.mjs, down, decideBan, --people, APPLICANT_C]
         expect: removed
       - run: [node, helpers/course.mjs, remove, decideBan]
         expect: 'course remove decideBan'

@@ -35,7 +35,7 @@
 // hosting_right.grant and .revoke, madrasah.hide, course.open, user.lookup). NOT RUN: the owner's word is that nothing writes to the stack
 // before the walk phase; every call below is read from the controllers (kosk.controller.ts:310, 367; madrasah.controller.ts:399, 495, 691;
 // hosting.controller.ts:92, 143) and from the peer helpers nizam/madrasahs/passivate/passivate-data.mjs and
-// nizam/shell/noAccessAndNotFound/make-kosk.mjs. Run it under the replay lock when walks are running and you run it by hand.
+// helpers/make-kosk.mjs. Run it under the replay lock when walks are running and you run it by hand.
 import {
   existsSync,
   mkdirSync,

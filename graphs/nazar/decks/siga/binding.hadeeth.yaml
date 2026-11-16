@@ -26,14 +26,14 @@ scenarios:
       edited: 'O yardım etti'
       expectCards: 'cards 28 HADEETH metas=28 kips=mazi,muzari kok=ن ص ر bab=nasara first=نَصَرَ'
     setup:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, make, siga, --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
         expect: '"course"'
-      - run: [node, ../nazar/decks/siga/deck.mjs, make, siga, --type, HADEETH]
+      - run: [node, helpers/course-deck.mjs, make, siga, --type, HADEETH]
         expect: '"deck"'
     teardown:
-      - run: [node, ../nazar/decks/siga/deck.mjs, remove, siga]
+      - run: [node, helpers/course-deck.mjs, remove, siga]
         expect: 'deck remove siga'
       - run: [node, helpers/course.mjs, remove, siga]
         expect: 'course remove siga'

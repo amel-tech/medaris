@@ -8,7 +8,26 @@
           "name": "delurio",
           "version": "0.8.0",
           "informationUri": "https://delur.io",
-          "rules": []
+          "rules": [
+            {
+              "id": "nav-problem",
+              "shortDescription": {
+                "text": "A problem of the navigation graph"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "nav-note",
+              "shortDescription": {
+                "text": "A note on the navigation graph"
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            }
+          ]
         }
       },
       "automationDetails": {
@@ -20,7 +39,414 @@
           "exitCode": 0
         }
       ],
-      "results": []
+      "results": [
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "A link or button is named differently from the page it opens. (words-differ)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/landing/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "landing.nav/words-differ"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "c63698fc5c65f31e6626ebc68329f8e0"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "A link or button is named differently from the page it opens. (words-differ)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nazar/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nazar.nav/words-differ"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "e65603b5d6052676506fde1f45ea2d22"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Different pages share a title, so two tabs or two history entries cannot be told apart. (same-title)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nazar/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nazar.nav/same-title"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "5a671bf3b3ff38971da314a611472cb8"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Two entries in one menu open the same page. (menu-twins)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nazar/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nazar.nav/menu-twins"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "0b4206984b73eb15d4a4a18a2d892d86"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "1 of 90 things people come to do fail. (goals)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nazar/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nazar.nav/goals"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "31744b4d9311453c302f9090e2b36306"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "A link or button is drawn for a person whose destination then refuses them. (link-refused)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nazar/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nazar.nav/link-refused"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "5d31572652b224c0e366f29f58063c3b"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Some pages cannot be reached by any kind of user. (unreachable)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nazar/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nazar.nav/unreachable"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "aa34d42492ea3eb6b73e06a17d2c86a1"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "The menu offers entries whose page then refuses the person. Only “Ödevler”, “Değerlendirme” and “Ders destesi” are drawn by permission; every other entry is drawn for everyone and the page decides. (menu-refused)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nazar/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nazar.nav/menu-refused"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "5ae7f88b7f10930467d7c5abca349685"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "A link or button is named differently from the page it opens. (words-differ)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nizam/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nizam.nav/words-differ"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "11e00dbd2d065d4db474c13def4ccc8a"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Different pages share a title, so two tabs or two history entries cannot be told apart. (same-title)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nizam/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nizam.nav/same-title"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "7c963a9ac007d416be9165f93fdbea12"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "2 entries in the menus lead to a page that does not exist, so the server answers not found. (menu-missing)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nizam/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nizam.nav/menu-missing"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "5ef77a2d51e8d16d870fb27146ef6ab9"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "A link or button is drawn for a person whose destination then refuses them. (link-refused)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nizam/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nizam.nav/link-refused"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "d84d76a7c2f837a8412b50610011f81e"
+          }
+        },
+        {
+          "ruleId": "nav-problem",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Some pages cannot be reached by any kind of user. (unreachable)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/nizam/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "nizam.nav/unreachable"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "41cbcf1a9900ef6980050faab5efbe57"
+          }
+        },
+        {
+          "ruleId": "nav-note",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "A link or button is named differently from the page it opens. (words-differ)"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "graphs/tedris/nav/nav.yaml"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "tedris.nav/words-differ"
+                }
+              ]
+            }
+          ],
+          "fingerprints": {
+            "delurio/v1": "66acf65c2f2487087551c56991f560fc"
+          }
+        }
+      ]
     }
   ]
 }

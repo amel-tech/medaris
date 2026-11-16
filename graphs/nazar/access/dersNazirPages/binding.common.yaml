@@ -17,7 +17,7 @@
 # nazırları (helpers/course-nazir-grants.mjs). The ids go to graphs/.local/made/dnp.json, read here as {dnp.course} and {dnp.lessons.0}; a
 # scenario that makes a question has them in graphs/.local/made/dnpQ.json ({dnpQ.waiting.0}). The seeded ders nazırı (DERS_NAZIR, Rukiye)
 # and her post in "Bina ve İzhar Şerhi" are never touched.
-# `teardown` puts the hoca back where a walk took them out, dismisses every post of the course (dnp.mjs clear), removes the course (as the
+# `teardown` puts the hoca back where a walk took them out, dismisses every post of the course (helpers/course-nazir-grants.mjs --dismiss), removes the course (as the
 # başnazım: its celses, the questions, the talebe's seat, the invitation mails and the notifications that point at it) and clears the
 # notifications and the mailbox of the people it used. The people in the course are applicantD (the ders nazırı), applicantE (the talebe),
 # `other` (a person the nazır appoints), applicantF (a person the hoca appoints) and MUDERRIS; no seeded course is touched.

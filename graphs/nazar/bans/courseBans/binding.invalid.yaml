@@ -20,14 +20,14 @@ scenarios:
     open: '{nazar}/ders/{made.course}'
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:ders->dersBans' }
     setup:
-      - run: [node, ../nazar/bans/decide/bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+      - run: [node, helpers/madrasah-bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
         expect: removed
       - run: [node, helpers/course.mjs, make, cbans, --madrasah, '{seed.madrasah}', --weeks, '1', --lessons, '1', --talebe, applicantE, applicantG]
         expect: '"APPLICANT_G":"ENROLLED"'
       - run: [node, helpers/course-nazir-grants.mjs, --course, '{made.course}', --nazir, applicantG, --codes, none]
         expect: 'course-nazir-grants APPLICANT_G'
     teardown:
-      - run: [node, ../nazar/bans/decide/bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
+      - run: [node, helpers/madrasah-bans.mjs, down, cbans, --people, 'APPLICANT_E,APPLICANT_G']
         expect: removed
       - run: [node, helpers/course.mjs, remove, cbans]
         expect: 'course remove cbans'

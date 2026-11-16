@@ -13,7 +13,7 @@
 #   koskNazim     KOSK_NAZIM, 'Cemal Köşk Nazımı': two rows 'Köşk nazımı' (Süleymaniye Köşkü and Kubbealtı Köşkü, both given by the
 #                 başnazım, 'Süresiz'), one group of nine sentences that names both köşks. The main story, and the only scenario that
 #                 chooses a zone: its `setup` keeps what the account holds (GET /me answers timeZone null: the page shows İstanbul), sets
-#                 Europe/Istanbul, and its `teardown` puts the kept value back (zone.mjs, a helper of this folder). It is first in the
+#                 Europe/Istanbul, and its `teardown` puts the kept value back (helpers/zone.mjs). It is first in the
 #                 file so that the picks, which any scenario could walk, are walked here and nowhere else.
 #   chief         SYSTEM_ADMIN, 'Vedat Başnazım': no assignment, the page's own row ('Medaris başnazımı', 'Platform', 'Giriş sisteminde
 #                 tanımlı', 'Süresiz'), the one group 'Bütün izinler, her kapsamda.' (e2e account#8)
@@ -28,7 +28,7 @@
 #                 başmüderris is seated beside the hoca by seat-hoca.mjs; `teardown` removes the course with its hocas.
 # What a walk writes, and how it is taken away: the main story writes the zone of KOSK_NAZIM (users.time_zone, PATCH /me) and puts it
 # back as it was; the last scenario makes and removes one course (and its invitation mails, which course.mjs clears). Nothing else is
-# written. What it cannot undo: nothing known. A walk that crashed leaves graphs/.local/made/nizam-account-settings-KOSK_NAZIM.json
+# written. What it cannot undo: nothing known. A walk that crashed leaves graphs/.local/made/zone-KOSK_NAZIM.json
 # (the zone kept: the next `keep` leaves it alone and the next `restore` uses it) and possibly the course (course.mjs make removes an
 # old one of its tag first).
 # The scenarios of one batch run one at a time under the replay lock; the zone is KOSK_NAZIM's own and no other flow of the stack reads it.
@@ -59,12 +59,12 @@ scenarios:
     enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->account' }
     samples: { name: 'Cemal Köşk Nazımı', roles: 'Köşk nazımı', email: '{secret.E2E_KOSK_NAZIM_EMAIL}' }
     setup:
-      - run: [node, ../nizam/account/settings/zone.mjs, keep, koskNazim]
+      - run: [node, helpers/zone.mjs, keep, koskNazim]
         expect: 'zone kept KOSK_NAZIM'
-      - run: [node, ../nizam/account/settings/zone.mjs, set, koskNazim, Europe/Istanbul]
+      - run: [node, helpers/zone.mjs, set, koskNazim, Europe/Istanbul]
         expect: 'zone set KOSK_NAZIM Europe/Istanbul'
     teardown:
-      - run: [node, ../nizam/account/settings/zone.mjs, restore, koskNazim]
+      - run: [node, helpers/zone.mjs, restore, koskNazim]
         expect: 'zone restored KOSK_NAZIM'
   chief:
     given: { holds: chief, read: ok }
@@ -125,13 +125,13 @@ states:
 # What a save leaves outside the screen: what tedrisat holds for the account, read through the API as that account.
 effects:
   savedIstanbul:
-    - run: [node, ../nizam/account/settings/zone.mjs, get, koskNazim]
+    - run: [node, helpers/zone.mjs, get, koskNazim]
       expect: 'zone KOSK_NAZIM Europe/Istanbul'
   savedBerlin:
-    - run: [node, ../nizam/account/settings/zone.mjs, get, koskNazim]
+    - run: [node, helpers/zone.mjs, get, koskNazim]
       expect: 'zone KOSK_NAZIM Europe/Berlin'
   savedTokyo:
-    - run: [node, ../nizam/account/settings/zone.mjs, get, koskNazim]
+    - run: [node, helpers/zone.mjs, get, koskNazim]
       expect: 'zone KOSK_NAZIM Asia/Tokyo'
 
 # Where role and name cannot find a node. Hesap's <main> is found by its subtitle, because the page a walk leaves for has a <main> of its

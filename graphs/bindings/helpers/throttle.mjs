@@ -1,4 +1,4 @@
-// How binding.yaml makes a read fail on the local stack: it spends one person's request budget on one route, so tedrisat answers
+// How a binding makes a read fail on the local stack (nazar.shell.errorStates, nizam.moderation.decideAppeal): it spends one person's request budget on one route, so tedrisat answers
 // that person's next calls to that route with 429 for the rest of the window, and every other call, route and person is left
 // alone. nazar-web takes any answer but 401 for a failed read, so the roles read (GET /me/assignments) or a page's own read
 // (GET /madrasahs/<id>/appeals) then draws its retry face. It changes no row: the only thing it writes is a counter in tedrisat's
@@ -15,13 +15,7 @@
 // counted (the guards answer before the interceptor), so `hold` fails with a message on a 4xx or 5xx other than 429.
 //
 // ACCOUNT is a role key of graphs/.local/accounts.env or the binding's name for it (basmuderris). Nothing secret is printed.
-import {
-  API,
-  Fail,
-  options,
-  run,
-  token,
-} from "../../../bindings/helpers/lib.mjs";
+import { API, Fail, options, run, token } from "./lib.mjs";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

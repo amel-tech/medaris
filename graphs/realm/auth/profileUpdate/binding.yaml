@@ -3,8 +3,8 @@
 #     --bind graphs/realm/auth/profileUpdate/binding.yaml --out <dir>
 #
 # What a walk uses up, and how it is given back. The main story completes the page of the seed's PENDING_PROFILE account: Keycloak
-# then holds the privacy-notice tick, and the account no longer stops at sign-in. `setup` and `teardown` run rearm.mjs (this
-# folder) as Keycloak's admin, which removes the tick again (it widens the realm's user profile for a second, to be allowed to,
+# then holds the privacy-notice tick, and the account no longer stops at sign-in. `setup` and `teardown` run helpers/rearm.mjs
+# as Keycloak's admin, which removes the tick again (it widens the realm's user profile for a second, to be allowed to,
 # and puts it back), so the next walk meets the page as the seed left it; `setup` does it too, so a walk that died before its
 # teardown leaves nothing behind. The admin's credentials are read inside the helper from graphs/.local/accounts.env; nothing
 # secret is in a command line. The walk also gives the account a tedrisat `users` row (tedris's /my-courses reads GET /me),
@@ -42,10 +42,10 @@ scenarios:
       given: { app: tedris, entry: protectedPage, session: none, credentials: right, account: profileIncomplete }
       event: DONE
     setup:
-      - { run: [node, ../realm/auth/profileUpdate/rearm.mjs, profile], expect: armed }
+      - { run: [node, helpers/rearm.mjs, profile], expect: armed }
       - { run: [node, helpers/sql.mjs, "delete from users where id = '{secret.E2E_PENDING_PROFILE_SUB}'"], expect: '"rows"' }
     teardown:
-      - { run: [node, ../realm/auth/profileUpdate/rearm.mjs, profile], expect: armed }
+      - { run: [node, helpers/rearm.mjs, profile], expect: armed }
       - { run: [node, helpers/sql.mjs, "delete from users where id = '{secret.E2E_PENDING_PROFILE_SUB}'"], expect: '"rows"' }
     vars: { appUrl: '{tedris}', asked: /my-courses, askedEncoded: '%2Fmy-courses', landedAt: '{tedris}/my-courses' }
   accountCancel: # a signed-in talebe changes their profile on purpose and cancels
@@ -57,7 +57,7 @@ scenarios:
 # What the save leaves outside the screen: Keycloak holds the tick. The check reads the account back through the admin API.
 effects:
   profileSaved:
-    - run: [node, ../realm/auth/profileUpdate/rearm.mjs, status]
+    - run: [node, helpers/rearm.mjs, status]
       expect: privacyNoticeRead=yes
 
 states:

@@ -5,7 +5,7 @@
 # NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code and
 # the catalog (inactive-view.tsx, libs/ui/src/mds/table.tsx and button.tsx, sonner's own attributes); none was seen in a browser.
 #
-# The scopes, made by passive-scopes.mjs (this folder; by SQL, as apps/nizam/e2e/inactive-seed.ts does, because no route leaves a
+# The scopes, made by helpers/passive-scopes.mjs (by SQL, as apps/nizam/e2e/inactive-seed.ts does, because no route leaves a
 # course without its last müderris) under the tag viewContent and read from graphs/.local/made/viewContent.json:
 #   koskName     "Pasif köşk viewContent"       a köşk whose last nazım's term ran out on 30 Eylül 2026
 #   courseTitle  "Pasif ders viewContent"       a course of the köşk hostName, whose last müderris (the imam) ran out the same day

@@ -84,7 +84,7 @@ effects:
 
 failures:
   opened:
-    from: getMadrasahNazirs
+    from: listMadrasahNazirs
     forbidden: [AUTHZ_FORBIDDEN]
     missing: [MADRASAH_NOT_FOUND]
   asking:
@@ -116,7 +116,7 @@ states:
       platform.madrasah_nazir_grant and a nazır granted madrasah.nazir_appoint are let in; a plain medrese nazır is refused and the header keeps
       its title with an alert in place of the table (state forbidden, nazar.access.medreseNazirRefused); a 404 is the 404 page; any other failure
       draws 'Medrese nazırları okunamadı' (not drawn here: it is not a refusal of the API's).
-    invoke: { action: getMadrasahNazirs }
+    invoke: { action: listMadrasahNazirs }
     on:
       DONE: roster
       FAIL.forbidden: forbidden
