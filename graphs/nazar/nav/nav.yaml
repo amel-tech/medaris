@@ -40,9 +40,20 @@ source:
 
 extract:
   adapter: nazar
+  entries:
+    # The phone bar's bell is drawn only when the frame has a scope (portal-frame.tsx:107-113 passes bellLabel only for a
+    # current scope, portal-menu.tsx:88 draws the link only with a bellLabel); the extractor reads the link, not that condition.
+    # The no-access page draws its frame with current={null} (no-access-page.tsx:29), so it never has the bell: left out.
+    erisimYok->bildirimler: { skip: "the no-access page's frame has no scope, so the bar draws no bell (portal-frame.tsx:107-113, no-access-page.tsx:29)" }
+    # A page outside any scope has a bell when the person lands in a scope; the başnazım with no seat gets the shell with current={null}, so no bell (portal-layout.tsx:76-86)
+    frame:remembered->bildirimler: { when: "landsIn != 'none'" }
   names:
     /: start
     /ders/{id}/deste/{id}: dersDeckOne
+    /auth/signin: signIn
+    /auth/signout: signOut
+    /medrese/{id}/{bolum}: medreseSegment
+    /ders/{id}/{bolum}: dersSegment
   locales: [tr]
 
 frames:
@@ -398,7 +409,7 @@ pages:
     title: Auth.redirectingTitle
     kind: screen
     frame: none
-    source: app/auth/signin/page.tsx
+    source: apps/nazar/app/auth/signin/page.tsx
     evidence: >-
       where the proxy and a page whose session is over send the visitor (callbackUrl, error, reauth); it sends the
       browser on to Keycloak by itself, or draws an error box; the tab title is "Medaris Nazar" in every state (F-E-23)
@@ -407,7 +418,7 @@ pages:
     title: Auth.signOutTitle
     kind: screen
     frame: none
-    source: app/auth/signout/page.tsx
+    source: apps/nazar/app/auth/signout/page.tsx
     evidence: >-
       the confirmation page; nothing in nazar links to it, the two real "Çıkış yap" buttons (Hesap, the no-access page)
       sign out with no confirmation, so it is reached only by typing its address (F-E-18)
@@ -416,7 +427,7 @@ pages:
     title: Any other section of a medrese
     kind: missing
     frame: medrese
-    source: app/medrese/[medreseId]/[bolum]/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/[bolum]/page.tsx
     evidence: >-
       meant to draw a "not built yet" page for a menu entry with no screen; every one of the 7 medrese segments has its
       own folder now, a static folder wins, so the placeholder is unreachable and any other segment answers 404
@@ -426,7 +437,7 @@ pages:
     title: Any other section of a course
     kind: missing
     frame: ders
-    source: app/ders/[dersId]/[bolum]/page.tsx
+    source: apps/nazar/app/ders/[dersId]/[bolum]/page.tsx
     evidence: >-
       the same for the 12 course segments (F-L-4, F-C-course-a-24); any other segment answers 404
   realmSignIn:

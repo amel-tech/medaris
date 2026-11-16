@@ -12,7 +12,7 @@ Graflar koddan çıkarılırken bulunanlar. Her bulgunun bağlamı, nedeni, `dos
 
 ## Sayılar
 
-Bulgu satırları (kural ve her sayfada yinelenen kayıtlar sayılmadı). Düzelen: üç pilot yürütmede düzelenler (aşağıda). Alan satırları her uygulamanın bölümünde.
+Bulgu satırları (kural ve her sayfada yinelenen kayıtlar sayılmadı). Düzelen: üç pilot yürütmenin uygulamada düzelttikleri (aşağıda). Bu düzeltmeler bu dalda değil: kodları da grafikleri de yürütme fazının ilk commit'iyle gelecek. Bu dalda bu 6 bulgu açıktır; pilot akışların bu daldaki `rules` girdileri onları açık gösterir. Alan satırları her uygulamanın bölümünde.
 
 | Uygulama | Akış | Yüksek | Orta | Düşük | Düzelen | Kural |
 |---|---|---|---|---|---|---|
@@ -64,7 +64,7 @@ Kimliği olmayan iki not (aynı güvenlik listesinden): köşk nazımı ekleme y
 
 ## Taban çizgisine giren gezinti hataları
 
-`check --strict graphs/domain graphs/{landing,nazar,nizam,tedris}/nav` 4 grafta 7 hata ve 7 uyarı veriyor. Yedi hatanın yedisi de kodun gerçek bulgusu, graf hatası değil; her biri aşağıdaki kimlikle taban çizgisine (`delurio.baseline.sarif`) girecek. Bu komut 16 Kasım 2026'da çalıştırıldı ve 4 graf, 7 hata, 7 uyarı verdi; hata-bulgu eşlemesi gezinti grafı yazarının koddan okumasıdır, hatalar çalıştırılarak doğrulanmadı.
+`check --strict graphs/domain graphs/{landing,nazar,nizam,tedris}/nav` 4 grafta 7 hata ve 7 uyarı veriyor (16 Kasım 2026'da, gezinti grafları delurio motorunun güncel çıkarıcısıyla yeniden üretildikten sonra da aynı 7 hata; Köşk sayfasının ders tablosundaki "Ders" bağlantısı KOVERVIEW-5'e iki not ekledi). Yedi hatanın yedisi de kodun gerçek bulgusu, graf hatası değil; her biri aşağıdaki kimlikle taban çizgisine (`delurio.baseline.sarif`) girecek. Bu komut 16 Kasım 2026'da çalıştırıldı ve 4 graf, 7 hata, 7 uyarı verdi; hata-bulgu eşlemesi gezinti grafı yazarının koddan okumasıdır, hatalar çalıştırılarak doğrulanmadı.
 
 | Graf | Hata | Bulgu kimliği | Ne |
 |---|---|---|---|
@@ -74,7 +74,7 @@ Kimliği olmayan iki not (aynı güvenlik listesinden): köşk nazımı ekleme y
 | nazar | `goals` (1) | F-L-8, F-E-17, PCODES-1 | Koltuğu olmayan başnazımın hiçbir derse tıklayarak giden yolu yok (ortak uygulama kodları hedefi başnazıma verilince ortaya çıktı) |
 | nizam | `menu-missing` (2: Kalıcı yasak talepleri, YouTube bağlantısı) | F-P0-4 (F-X-11) | Planlı sayfaların menü girişleri bugün var, sayfalar yok (MDRS-140, MDRS-195) |
 | nizam | `unreachable` (1: `/decks`) | F-P0-16 | Eski deste sayfasına hiçbir bağlantı gitmiyor |
-| nizam | `link-refused` (12 not) | MANAGE-1, F-W3-4, KOVERVIEW-5, NCL-4, CDA-5, TRIAGE-2 | Arşiv'e git (2), Barındırma hakları (4), Ders → Genel bakış (2), Düzenle → Müfredat (2), Başvurulara git (1), Bildirim listesi (1): her biri reddedileceği kişiye çiziliyor |
+| nizam | `link-refused` (14 not) | MANAGE-1, F-W3-4, KOVERVIEW-5, NCL-4, CDA-5, TRIAGE-2 | Arşiv'e git (2), Barındırma hakları (4), Ders → Genel bakış (4: Dersler'de ve Köşk sayfasının ders tablosunda), Düzenle → Müfredat (2), Başvurulara git (1), Bildirim listesi (1): her biri reddedileceği kişiye çiziliyor |
 
 Not: nizam gezinti grafında `notifications→koskBans` bağlantısı artık yalnız yasak bildirimi alanlara (köşk nazımı, Medaris nazımı) çiziliyor; bu TRIAGE-2'yi (ve başnazıma hiç bildirim gitmemesini, TRIAGE-1) gösteriyor. NCL-4, gezinti grafı yazarının önerdiği yeni bir bulgu; ilgili `ui.yaml`'a girene kadar kaynağı onun raporu. (Bu dosyada `nizam.courses.list` altında, kural girdisi olarak henüz yok.)
 
@@ -127,16 +127,16 @@ Farklı kimlikler yazarların kendi sözleriyle ("aynısı", "ikizi", "nazar'dak
 - **REVBANS-3** = NDB-5 — düşük, arayüz; 2 akış. Yasağı kaldıramayan Medaris nazımına gösterilen 'onu koyan kademe ya da üstü' cümlesi, asıl sebep izin eksikliği olduğunda yanlış sebebi söylüyor.
 - **SHL-12** = CLS-14 — düşük, arayüz; 1 akış. Tedris'in alt bilgisindeki "Aydınlatma Metni" bağlantısı yeni sekmede açılıyor ama bunu görünür ya da gizli hiçbir söz belirtmiyor; ekran okuyucu ve telefon kullanıcıları şaşırıyor.
 
-## Düzelenler
+## Düzelenler (pilot yürütmeler; bu dalda henüz yok)
 
-Üç pilot akışın yürütmesinde (`tedris.learning.schedule`, `tedris.decks.create`, `tedris.account.profile`) uygulamada düzeltilenler; düzeltmeler `apps/tedris` ve `libs/i18n` içinde, işlenmemiş durumda ve aynı işle birlikte işlenecek; bulgular o akışların `rules` girdisinden çıkarıldı ya da "düzeldi" diye yeniden yazıldı. Kısmen düzelenler aşağıda ayrı.
+Üç pilot akışın yürütmesinde (`tedris.learning.schedule`, `tedris.decks.create`, `tedris.account.profile`) uygulamada düzeltilenler. Düzeltmeler (`apps/tedris`, `libs/i18n` ve bu üç akışın grafik dosyaları) bu dalda değil: workhouse'taki çalışma ağacında işlenmemiş duruyor ve yürütme fazının ilk commit'iyle gelecek. O commit'e kadar bu dalın kodu düzeltilmemiş, bu dalın grafikleri de bu bulguları açık gösteriyor; aşağıdaki satırlar o commit'le doğru olacak. Kısmen düzelenler aşağıda ayrı.
 
-- **SCHED-3** · düzeldi — Programım'da canlı celsenin 'Celseye katıl' bağlantısı artık celsenin adını ve yeni sekmede açıldığını söylüyor. (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx`)
-- **DSC-09 (b)** · düzeldi — Programım'ın son gezintisi artık 'Hafta gezintisi' adını taşıyor; eskiden 'Celseler' adıyla hafta bağlantılarını gösteriyordu (DSC-09 başka akışlarda açık). (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx`)
-- **ACC-09** · düzeldi — Hesap sayfasındaki cinsiyet bağlantısı artık 'Cinsiyet: Değiştir' ya da 'Cinsiyet: Ekle' adını taşıyor (aynı kimlik `realm.auth.profileUpdate`'te açık). (`tedris.account.profile`; `apps/tedris/features/account/components/account-settings.tsx`)
-- **ACC-10** · düzeldi — Davet anahtarı kaydedilirken artık devre dışı kalmıyor; odak anahtarda kalıyor ve ikinci basış bir şey yapmıyor (aynı kimlik bildirimler ve herkese açık profil sayfalarında açık). (`tedris.account.profile`; `apps/tedris/features/account/components/account-settings.tsx`)
-- **ACC-16** · düzeldi — profile#1 sayfada olmayan bir dil alanını bekliyordu; iki yanlış iddia ve başlıktaki 've dil' kaldırıldı (e2e çalıştırılmadı). (`tedris.account.profile`; `apps/tedris/e2e/profile.e2e.ts`)
-- **DCK-06 (Oluştur)** · düzeldi — Başarısız 'Oluştur' artık odağı hatalı ilk alana taşıyor ve alanlar hatalı olarak işaretleniyor; öteki deste sayfalarında DCK-06 açık. (`tedris.decks.create`; `apps/tedris/features/flashcards/components/create-deck-page.tsx`)
+- **SCHED-3** · pilotta düzeldi, bu dalda açık — Programım'da canlı celsenin 'Celseye katıl' bağlantısı artık celsenin adını ve yeni sekmede açıldığını söylüyor. (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx`)
+- **DSC-09 (b)** · pilotta düzeldi, bu dalda açık — Programım'ın son gezintisi artık 'Hafta gezintisi' adını taşıyor; eskiden 'Celseler' adıyla hafta bağlantılarını gösteriyordu (DSC-09 başka akışlarda açık). (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx`)
+- **ACC-09** · pilotta düzeldi, bu dalda açık — Hesap sayfasındaki cinsiyet bağlantısı artık 'Cinsiyet: Değiştir' ya da 'Cinsiyet: Ekle' adını taşıyor (aynı kimlik `realm.auth.profileUpdate`'te açık). (`tedris.account.profile`; `apps/tedris/features/account/components/account-settings.tsx`)
+- **ACC-10** · pilotta düzeldi, bu dalda açık — Davet anahtarı kaydedilirken artık devre dışı kalmıyor; odak anahtarda kalıyor ve ikinci basış bir şey yapmıyor (aynı kimlik bildirimler ve herkese açık profil sayfalarında açık). (`tedris.account.profile`; `apps/tedris/features/account/components/account-settings.tsx`)
+- **ACC-16** · pilotta düzeldi, bu dalda açık — profile#1 sayfada olmayan bir dil alanını bekliyordu; iki yanlış iddia ve başlıktaki 've dil' kaldırıldı (e2e çalıştırılmadı). (`tedris.account.profile`; `apps/tedris/e2e/profile.e2e.ts`)
+- **DCK-06 (Oluştur)** · pilotta düzeldi, bu dalda açık — Başarısız 'Oluştur' artık odağı hatalı ilk alana taşıyor ve alanlar hatalı olarak işaretleniyor; öteki deste sayfalarında DCK-06 açık. (`tedris.decks.create`; `apps/tedris/features/flashcards/components/create-deck-page.tsx`)
 
 Kısmen düzelenler: ACC-02 (başarısız Kaydet artık odağı adı eksik ilk kutuya taşıyor; okuyucuya duyurulması hâlâ yok, `tedris.account.profile`, `tedris.account.publicProfile`), DCK-23 (Oluştur'un meşgul etiketi artık Türkçe katalogdan geliyor; kitin sabit "Yükleniyor" ve "Kapat" sözleri duruyor, `libs/ui`). Pilot yürütmenin düzeltmediği ama kendi raporunda öneri olarak yazdığı: DCKCREATE-1 (deste başlığı uzunluğu UTF-16 birimiyle sayılıyor, API karakterle sayıyor).
 
@@ -193,9 +193,9 @@ Kısmen düzelenler: ACC-02 (başarısız Kaydet artık odağı adı eksik ilk k
 - **notification-types-code-dropped** · düşük · API — Bilinmeyen bildirim türü isteğinin özel hata kodu istemciye ulaşmıyor, genel 400 görünüyor; sayfa bu parametreyi hiç göndermiyor, yalnız başka istemciler etkilenir. (`tedris.account.notifications`; `apps/tedrisat/src/notification/notification.controller.ts:104`)
 - **ROLES-1** · düşük · arayüz — İzin grupları kod taşımadığı için elenince "Etkin izinlerin" başlığı ve girişi altında hiçbir şey olmadan duruyor; Medaris nazımı bunu görüyor. (`tedris.account.rolesOverview`; `apps/tedris/features/account/components/roles-section.tsx:115`)
 - **unreadable-input-500** · düşük · API — Üç uçta null ya da çift verilen girdi doğrulamadan geçip 400 yerine 500 hatasına düşüyor; Tedris bunları göndermiyor, yalnız başka istemciler etkilenir. (`tedris.account.publicProfile`, `tedris.account.notifications` +1; `apps/tedrisat/src/user/dto/public-profile.dto.ts:140-145`)
-- **ACC-09** · düzeldi — Hesap sayfasındaki cinsiyet bağlantısı artık 'Cinsiyet: Değiştir' ya da 'Cinsiyet: Ekle' adını taşıyor (aynı kimlik `realm.auth.profileUpdate`'te açık). (`tedris.account.profile`)
-- **ACC-10** · düzeldi — Davet anahtarı kaydedilirken artık devre dışı kalmıyor; odak anahtarda kalıyor ve ikinci basış bir şey yapmıyor (aynı kimlik bildirimler ve herkese açık profil sayfalarında açık). (`tedris.account.profile`)
-- **ACC-16** · düzeldi — profile#1 sayfada olmayan bir dil alanını bekliyordu; iki yanlış iddia ve başlıktaki 've dil' kaldırıldı (e2e çalıştırılmadı). (`tedris.account.profile`)
+- **ACC-09** · pilotta düzeldi, bu dalda açık — Hesap sayfasındaki cinsiyet bağlantısı artık 'Cinsiyet: Değiştir' ya da 'Cinsiyet: Ekle' adını taşıyor (aynı kimlik `realm.auth.profileUpdate`'te açık). (`tedris.account.profile`)
+- **ACC-10** · pilotta düzeldi, bu dalda açık — Davet anahtarı kaydedilirken artık devre dışı kalmıyor; odak anahtarda kalıyor ve ikinci basış bir şey yapmıyor (aynı kimlik bildirimler ve herkese açık profil sayfalarında açık). (`tedris.account.profile`)
+- **ACC-16** · pilotta düzeldi, bu dalda açık — profile#1 sayfada olmayan bir dil alanını bekliyordu; iki yanlış iddia ve başlıktaki 've dil' kaldırıldı (e2e çalıştırılmadı). (`tedris.account.profile`)
 
 ### tedris/celse
 
@@ -344,7 +344,7 @@ Kısmen düzelenler: ACC-02 (başarısız Kaydet artık odağı adı eksik ilk k
 - **MCARDS-2** · düşük · arayüz — Kart düzenleme, değişmese de iki yüzü gönderiyor ve "Kart güncellendi" diyor; deste düzenleme ise sessizce kapanıyor; değişiklik olmadan yazma ve bildirim yapılıyor. (`tedris.decks.manageCards`; `apps/tedris/features/flashcards/components/card-form-dialog.tsx:67-70`)
 - **MDRS-224** · düşük · arayüz — Tablo başlığı ve bildirim deste adına "destesi" ekliyor; adı "… destesi" olan deste "… destesi destesinin kartları" diye okunuyor. (`tedris.decks.readAndCopy`)
 - **STUDY-2** · düşük · arayüz — Başlıktaki "tekrar bekleyen {n} kart" yalnız tekrarları sayıyor; tur hiç çalışılmamış kartları da içerdiği için çubuktaki toplamla uyuşmuyor. (`tedris.decks.study`; `apps/tedris/features/flashcards/components/study-session.tsx:111-112`)
-- **DCK-06 (Oluştur)** · düzeldi — Başarısız 'Oluştur' artık odağı hatalı ilk alana taşıyor ve alanlar hatalı olarak işaretleniyor; öteki deste sayfalarında DCK-06 açık. (`tedris.decks.create`)
+- **DCK-06 (Oluştur)** · pilotta düzeldi, bu dalda açık — Başarısız 'Oluştur' artık odağı hatalı ilk alana taşıyor ve alanlar hatalı olarak işaretleniyor; öteki deste sayfalarında DCK-06 açık. (`tedris.decks.create`)
 
 ### tedris/discover
 
@@ -440,8 +440,8 @@ Kısmen düzelenler: ACC-02 (başarısız Kaydet artık odağı adı eksik ilk k
 - **MYC-1** · düşük · arayüz — Devam eden derslerin başlığı h3, diğer üç bölümün dersleri düz bağlantı; başlık listesi yalnız devam edenleri tutuyor, diğerlerine yalnız bağlantıyla ulaşılıyor. (`tedris.learning.myCourses`; `apps/tedris/features/courses/components/my-courses-page.tsx:163`)
 - **SCHED-1** · düşük · arayüz — "Sonraki yedi günü göster" üst sınırsız; 9999-12-24'ten sonra bağlantı gidiyor ve sayfa "Bir şeyler ters gitti" hata sayfasıyla 200 dönüyor. (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx:299`)
 - **SCHED-2** · düşük · arayüz — Boş hafta tek ve eylemsiz bir cümle ("Bu yedi günde celsen yok."); hiçbir derse kayıtlı olmayan talebe de aynı sözü okuyor, Derslerim ya da Keşfet'e yönlendirilmiyor. (`tedris.learning.schedule`; `apps/tedris/features/schedule/components/schedule-page.tsx:256`)
-- **SCHED-3** · düzeldi — Programım'da canlı celsenin 'Celseye katıl' bağlantısı artık celsenin adını ve yeni sekmede açıldığını söylüyor. (`tedris.learning.schedule`)
-- **DSC-09 (b)** · düzeldi — Programım'ın son gezintisi artık 'Hafta gezintisi' adını taşıyor; eskiden 'Celseler' adıyla hafta bağlantılarını gösteriyordu (DSC-09 başka akışlarda açık). (`tedris.learning.schedule`)
+- **SCHED-3** · pilotta düzeldi, bu dalda açık — Programım'da canlı celsenin 'Celseye katıl' bağlantısı artık celsenin adını ve yeni sekmede açıldığını söylüyor. (`tedris.learning.schedule`)
+- **DSC-09 (b)** · pilotta düzeldi, bu dalda açık — Programım'ın son gezintisi artık 'Hafta gezintisi' adını taşıyor; eskiden 'Celseler' adıyla hafta bağlantılarını gösteriyordu (DSC-09 başka akışlarda açık). (`tedris.learning.schedule`)
 
 ### tedris/session
 

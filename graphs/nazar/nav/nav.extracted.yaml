@@ -3,7 +3,7 @@
 kind: nav-extracted
 schema: delurio-graph/0
 source:
-  commit: 51633bde
+  commit: dc22fd10
 guards:
   curriculumOpen: "'course.edit' in held or 'session.manage' in held or 'week.hide' in held"
   decksOpen: "'deck.manage_course' in held"
@@ -20,97 +20,117 @@ pages:
     route: /
     kind: redirect
     frame: none
-    source: app/page.tsx
+    source: apps/nazar/app/page.tsx
+  signIn:
+    route: /auth/signin
+    kind: screen
+    frame: none
+    source: apps/nazar/app/auth/signin/page.tsx
+  signOut:
+    route: /auth/signout
+    kind: screen
+    frame: none
+    source: apps/nazar/app/auth/signout/page.tsx
   erisimYok:
     route: /erisim-yok
     title: NoAccess.title
     kind: screen
     frame: none
-    source: app/erisim-yok/page.tsx
+    source: apps/nazar/app/erisim-yok/page.tsx
   bildirimler:
     route: /bildirimler
     title: Notifications.title
     kind: screen
     frame: remembered
-    source: app/(global)/bildirimler/page.tsx
+    source: apps/nazar/app/(global)/bildirimler/page.tsx
   hesap:
     route: /hesap
     title: Account.pageTitle
     kind: screen
     frame: remembered
-    source: app/(global)/hesap/page.tsx
+    source: apps/nazar/app/(global)/hesap/page.tsx
   medresePano:
     route: /medrese/{id}
     title: Pano.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/page.tsx
+  medreseSegment:
+    route: /medrese/{id}/{bolum}
+    kind: placeholder
+    frame: medrese
+    source: apps/nazar/app/medrese/[medreseId]/[bolum]/page.tsx
   medreseCourses:
     route: /medrese/{id}/dersler
     title: Courses.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/dersler/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/dersler/page.tsx
   medreseCoursesTalep:
     route: /medrese/{id}/dersler/talep
     title: Offsite.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/dersler/talep/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/dersler/talep/page.tsx
   medreseCoursesYeni:
     route: /medrese/{id}/dersler/yeni
     title: OpenCourse.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/dersler/yeni/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/dersler/yeni/page.tsx
   medreseStudents:
     route: /medrese/{id}/talebeler
     title: Students.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/talebeler/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/talebeler/page.tsx
   medreseNazirs:
     route: /medrese/{id}/nazirlar
     title: Nazirs.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/nazirlar/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/nazirlar/page.tsx
   medreseBans:
     route: /medrese/{id}/yasaklamalar
     title: Bans.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/yasaklamalar/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/yasaklamalar/page.tsx
   medreseAppeals:
     route: /medrese/{id}/itirazlar
     title: Appeals.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/itirazlar/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/itirazlar/page.tsx
   medreseArchive:
     route: /medrese/{id}/arsiv
     title: Archive.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/arsiv/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/arsiv/page.tsx
   medreseSettings:
     route: /medrese/{id}/ayarlar
     title: Settings.title
     kind: screen
     frame: medrese
-    source: app/medrese/[medreseId]/ayarlar/page.tsx
+    source: apps/nazar/app/medrese/[medreseId]/ayarlar/page.tsx
   dersOverview:
     route: /ders/{id}
     title: Nav.ders.overview
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/page.tsx
+    source: apps/nazar/app/ders/[dersId]/page.tsx
+  dersSegment:
+    route: /ders/{id}/{bolum}
+    kind: placeholder
+    frame: ders
+    source: apps/nazar/app/ders/[dersId]/[bolum]/page.tsx
   dersCurriculum:
     route: /ders/{id}/mufredat
     title: Curriculum.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/mufredat/page.tsx
+    source: apps/nazar/app/ders/[dersId]/mufredat/page.tsx
     opensFor: curriculumOpen
     pageCodes: curriculum
     evidence: features/curriculum/components/curriculum-page.tsx gates it with PAGE_CODES.curriculum
@@ -119,13 +139,13 @@ pages:
     title: CurriculumHide.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/mufredat/gizle/page.tsx
+    source: apps/nazar/app/ders/[dersId]/mufredat/gizle/page.tsx
   dersSessions:
     route: /ders/{id}/celseler
     title: Sessions.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/celseler/page.tsx
+    source: apps/nazar/app/ders/[dersId]/celseler/page.tsx
     opensFor: sessionsOpen
     pageCodes: sessions
     evidence: features/sessions/components/sessions-page.tsx gates it with PAGE_CODES.sessions
@@ -134,7 +154,7 @@ pages:
     title: SessionPlan.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/celseler/planla/page.tsx
+    source: apps/nazar/app/ders/[dersId]/celseler/planla/page.tsx
     opensFor: planOpen
     pageCodes: plan
     evidence: features/sessions/components/plan-page.tsx gates it with PAGE_CODES.plan
@@ -143,7 +163,7 @@ pages:
     title: CourseStudents.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/talebeler/page.tsx
+    source: apps/nazar/app/ders/[dersId]/talebeler/page.tsx
     opensFor: studentsOpen
     pageCodes: students
     evidence: features/enrolments/components/enrolments-page.tsx gates it with PAGE_CODES.students
@@ -152,13 +172,13 @@ pages:
     title: Questions.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/sorular/page.tsx
+    source: apps/nazar/app/ders/[dersId]/sorular/page.tsx
   dersHomework:
     route: /ders/{id}/odevler
     title: Homework.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/odevler/page.tsx
+    source: apps/nazar/app/ders/[dersId]/odevler/page.tsx
     opensFor: homeworkOpen
     pageCodes: homework
     evidence: features/homework/components/homework-page.tsx gates it with PAGE_CODES.homework
@@ -167,7 +187,7 @@ pages:
     title: Evaluation.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/degerlendirme/page.tsx
+    source: apps/nazar/app/ders/[dersId]/degerlendirme/page.tsx
     opensFor: evaluationOpen
     pageCodes: evaluation
     evidence: features/evaluation/components/evaluation-page.tsx gates it with PAGE_CODES.evaluation
@@ -176,7 +196,7 @@ pages:
     title: Recordings.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/kayitlar/page.tsx
+    source: apps/nazar/app/ders/[dersId]/kayitlar/page.tsx
     opensFor: recordingsOpen
     pageCodes: recordings
     evidence: features/recordings/components/recordings-page.tsx gates it with PAGE_CODES.recordings
@@ -185,7 +205,7 @@ pages:
     title: Decks.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/deste/page.tsx
+    source: apps/nazar/app/ders/[dersId]/deste/page.tsx
     opensFor: decksOpen
     pageCodes: decks
     evidence: features/decks/components/decks-page.tsx gates it with PAGE_CODES.decks
@@ -194,7 +214,7 @@ pages:
     title: Decks.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/deste/[desteId]/page.tsx
+    source: apps/nazar/app/ders/[dersId]/deste/[desteId]/page.tsx
     opensFor: decksOpen
     pageCodes: decks
     evidence: features/decks/components/deck-detail-page.tsx gates it with PAGE_CODES.decks
@@ -203,19 +223,19 @@ pages:
     title: Bans.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/yasaklamalar/page.tsx
+    source: apps/nazar/app/ders/[dersId]/yasaklamalar/page.tsx
   dersArchive:
     route: /ders/{id}/arsiv
     title: CourseArchive.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/arsiv/page.tsx
+    source: apps/nazar/app/ders/[dersId]/arsiv/page.tsx
   dersNazirs:
     route: /ders/{id}/nazirlar
     title: CourseNazirs.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/nazirlar/page.tsx
+    source: apps/nazar/app/ders/[dersId]/nazirlar/page.tsx
     opensFor: nazirsOpen
     pageCodes: nazirs
     evidence: features/course-nazirs/components/course-nazirs-page.tsx gates it with PAGE_CODES.nazirs
@@ -224,7 +244,7 @@ pages:
     title: CourseSettings.title
     kind: screen
     frame: ders
-    source: app/ders/[dersId]/ayarlar/page.tsx
+    source: apps/nazar/app/ders/[dersId]/ayarlar/page.tsx
     opensFor: settingsOpen
     pageCodes: settings
     evidence: features/course-settings/components/course-settings-page.tsx gates it with PAGE_CODES.settings
@@ -254,3 +274,12 @@ entries:
   - { from: frame:ders, to: dersArchive, how: menu, label: Nav.ders.archive }
   - { from: frame:ders, to: dersNazirs, how: menu, label: Nav.ders.nazirs }
   - { from: frame:ders, to: dersSettings, how: menu, label: Nav.ders.settings }
+  - { from: erisimYok, to: start, how: auto, clicks: 0, source: apps/nazar/app/erisim-yok/page.tsx:27 }
+  - { from: signIn, to: start, how: link, label: a link in auth-entry.tsx, source: apps/nazar/features/auth/auth-entry.tsx:90 }
+  - { from: signIn, to: start, how: link, label: Auth.backHome, source: apps/nazar/features/auth/auth-entry.tsx:99 }
+  - { from: signOut, to: start, how: link, label: Auth.signOutDescription, source: apps/nazar/features/auth/sign-out-confirm.tsx:28 }
+  - { from: signOut, to: start, how: link, label: Auth.signOutCancel, source: apps/nazar/features/auth/sign-out-confirm.tsx:39 }
+  - { from: medreseCourses, to: medreseArchive, how: link, label: a link in courses-page.tsx, data: true, source: apps/nazar/features/courses/components/courses-page.tsx:154 }
+  - { from: dersCurriculum, to: dersCurriculumGizle, how: link, label: Curriculum.hidePage, data: true, source: apps/nazar/features/curriculum/components/curriculum-editor.tsx:466 }
+  - { from: medreseSettings, to: medreseCourses, how: link, label: a link in settings-page.tsx, data: true, source: apps/nazar/features/settings/components/settings-page.tsx:190 }
+  - { from: frame:remembered, to: bildirimler, how: link, label: a link in portal-menu.tsx, source: apps/nazar/features/shell/components/portal-menu.tsx:77, when: landsIn != 'none' }

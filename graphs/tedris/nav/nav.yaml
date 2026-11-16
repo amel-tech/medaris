@@ -17,9 +17,9 @@
 #   - an entry offered to the talebe that needs no item is labelled with the app's own words (a catalog key that is
 #     the control's accessible name); an entry whose control only exists with data (a row, a card, a state) says
 #     `data: true` and is labelled in plain words, except where two entries share their ends and their `how` and a
-#     binding must tell them apart: the key is then the only handle (SPEC section 7), and the one composed key of this
-#     catalog, `composed.MyCoursesPage.courseCard` ("{title}": the course's own title, built in code at
-#     my-courses-page.tsx:102), is that handle for Derslerim's card;
+#     binding must tell them apart: the label is then the only handle (SPEC section 7). Derslerim's card is labelled in
+#     plain words, "the course card's title" (its name is the course's own title, built in code at my-courses-page.tsx:102),
+#     since the extractor keeps only the app's own keys in the catalog;
 #   - a link the code draws for a visitor to a page that refuses a visitor does not exist: such an entry is
 #     `when: signedIn`.
 schema: delurio-graph/0
@@ -42,11 +42,71 @@ source:
   repo: EsTharian/medaris
   app: apps/tedris
   menu: apps/tedris/components/phone-menu/desktop-bar.tsx
-  locales: libs/i18n/src/locales/{locale}/tedris.json
+  locales:
+    - libs/i18n/src/locales/{locale}/tedris.json
+    - libs/i18n/src/locales/{locale}/tedris-account.json
+    - libs/i18n/src/locales/{locale}/tedris-learn.json
+    - libs/i18n/src/locales/{locale}/common.json
 
 extract:
   adapter: tedris
   locales: [tr]
+  entries:
+    # The header's account menu and bell, the bar's bell and initials, and the member phone menu render only with a session
+    # (header.tsx:31, desktop-bar.tsx:81, phone-chrome.tsx:42); the extractor does not read that condition.
+    frame:app->account link: { when: signedIn }
+    frame:app->notifications link: { when: signedIn }
+    # the header's account menu, "Çıkış yap" with it, renders only with a session (header.tsx:31, user-header-menu.tsx:82); no other chrome of the app links to the sign-out page
+    frame:app->signOut link: { when: signedIn }
+
+    # ---- generated entries that repeat an entry written below (same ends, same control), or that name a control by the sentence beside it ----
+    # Decks: the owner's overview renders only for the author (deck-detail-page.tsx:44-53,71); a visitor gets DeckPublicView (app/decks/(medaris)/[id]/page.tsx:39-50), a signed-in reader DeckReaderView
+    # deck-owner-overview.tsx:160-166, the "Bütün kartlar" link; written below (:161) with when: signedIn
+    deck->deckCards Decks.allCards: { skip: "written below (deck-owner-overview.tsx:161), where it is signedIn: the owner's overview is not drawn for a visitor" }
+    # deck-owner-overview.tsx:170,181: the EmptyState and its sentence, not a control; the button in it is "Kart ekle" (:173-178), written below (:174) with when: signedIn
+    deck->deckCards Decks.emptyCards: { skip: "the sentence of the EmptyState (deck-owner-overview.tsx:181), not a control: the button in it is Decks.addCard (:173), written below" }
+    # deck-owner-overview.tsx:173-178, the "Kart ekle" button; written below (:174) with when: signedIn
+    deck->deckCards Decks.addCard: { skip: "written below (deck-owner-overview.tsx:174), where it is signedIn: the owner's overview is not drawn for a visitor" }
+    # deck-owner-overview.tsx:170,181 again, on the edit page, which draws the same overview with the dialog over it (edit/page.tsx:28-34, deck-detail-page.tsx:71-72)
+    deckEdit->deckCards Decks.emptyCards: { skip: "the sentence of the EmptyState (deck-owner-overview.tsx:181), not a control: the button in it is Decks.addCard (:173), which the extractor also writes for this page" }
+    # deck-owner-overview.tsx:240-247, the owner's "Düzenle"; written below (:241) with when: signedIn
+    deck->deckEdit Decks.edit: { skip: "written below (deck-owner-overview.tsx:241), where it is signedIn: the owner's overview is not drawn for a visitor" }
+    # deck-owner-overview.tsx:90, the push to /decks after the delete dialog's confirm (:259-262); written below (:90) as Decks.delete with when: signedIn
+    deck->decks button: { skip: "written below as Decks.delete (deck-owner-overview.tsx:90), where it is signedIn: the owner's overview is not drawn for a visitor" }
+    # deck-unavailable.tsx:26: DeckUnavailable is drawn only after isSignedIn() (app/decks/(medaris)/[id]/page.tsx:39,53); a visitor is sent to sign in instead (:42)
+    deck->decks DeckUnavailable.backToDecks: { skip: "written below (deck-unavailable.tsx:26) with when: signedIn: a visitor never gets the unavailable screen" }
+    # deck-unavailable.tsx:26 again, on the study page (app/decks/(medaris)/study/[id]/page.tsx:38,59)
+    deckStudy->decks DeckUnavailable.backToDecks: { skip: "written below (deck-unavailable.tsx:26) with when: signedIn: a visitor never gets the unavailable screen" }
+    # copy-card-dialog.tsx:94, the dialog's "Deste oluştur" button; the dialog is opened by DeckReaderView (deck-reader-view.tsx:225), which a visitor never gets (app/decks/(medaris)/[id]/page.tsx:39-50); written below (:94) with when: signedIn
+    deck->decksCreate Decks.create: { skip: "written below (copy-card-dialog.tsx:94), where it is signedIn: the dialog belongs to the reader view, not to a visitor's page" }
+    # copy-card-dialog.tsx:81,104: the Dialog and its sentence, not a control; the button is Decks.create (:94), written below
+    deck->decksCreate Decks.noOwnDecks: { skip: "the sentence of the dialog (copy-card-dialog.tsx:104), not a control: the button is Decks.create (:94), written below" }
+    # create-deck-page.tsx:197-199, "Vazgeç"; written below (:197) with back: true (the generated twin has no back, so the check reads its words against the page's title)
+    decksCreate->decks Decks.cancel: { skip: "written below (create-deck-page.tsx:197) with back: true" }
+    # study-session.tsx:135-137, "Çalışmayı bitir"; written below (:135) with back: true
+    deckStudy->deck tedrisLearn.Study.finish: { skip: "written below as Study.finish (study-session.tsx:135) with back: true" }
+    # study-session.tsx:156,163 and :167,174: an EmptyState and its title (<strong>), not a control; the button in each is Study.backToDeck (:158-160, :169-171), already an entry
+    deckStudy->deck tedrisLearn.Study.nothingTitle: { skip: "the title of the EmptyState (study-session.tsx:163), not a control: the button in it is Study.backToDeck (:158)" }
+    deckStudy->deck tedrisLearn.Study.doneTitle: { skip: "the title of the EmptyState (study-session.tsx:174), not a control: the button in it is Study.backToDeck (:169)" }
+
+    # Keşfet, the course page, Derslerim, the köşk and the medrese
+    # discover-page.tsx:203: the application card renders only when signedIn (a visitor gets the invitation, :210-218); written below (:206) with when: signedIn
+    discover->newKoskApplication DiscoverPage.applyLink: { skip: "written below (discover-page.tsx:206), where it is signedIn" }
+    # course-aside.tsx:200: the "revoked" card is the state of an enrolment (state, :56-63; the visitor's is :350); written below (:214) with when: signedIn
+    course->myCourses CoursePage.backToMyCourses: { skip: "written below (course-aside.tsx:214), where it is signedIn: only a person with an enrolment is in this state" }
+    # course-aside.tsx:226: the "completed" card is the state of an enrolment; written below (:258) with when: signedIn
+    course->celse CoursePage.openSession: { skip: "written below (course-aside.tsx:258), where it is signedIn: only a person with an enrolment is in this state" }
+    # course-aside.tsx:271: the seat card (state enrolled, :133) is the state of an enrolment; written below (:289) with when: signedIn
+    course->celse CoursePage.continue: { skip: "written below (course-aside.tsx:289), where it is signedIn: only a person with a seat is in this state" }
+    # my-courses-page.tsx:100-103: a card's link is its title (written below at :102); "İlerlemen" is the progress bar's label inside it (:142-144)
+    myCourses->course MyCoursesPage.progress: { skip: "the card's link is its title, written below (my-courses-page.tsx:102); the extractor named it by the progress label (:143)" }
+    # my-courses-page.tsx:224,231: the EmptyState and its sentence, not a control; the button in it is MyCoursesPage.goDiscover (:226), written below
+    myCourses->discover MyCoursesPage.noCourses: { skip: "the sentence of the EmptyState (my-courses-page.tsx:231), not a control: the button in it is MyCoursesPage.goDiscover (:226), written below" }
+    # madrasah-page.tsx:69: a course card's link is its title; "Yüz yüze" is a badge in its body (:119-121); the card is written below (:71)
+    madrasah->course MadrasahPage.inPerson: { skip: "the card's link is its title, written below as the course card (madrasah-page.tsx:71); the extractor named it by the badge (:121)" }
+    # kosk-page.tsx:73: the same card on the köşk page, written below (:75); the badge is at :107-109
+    kosk->course KoskPage.inPerson: { skip: "the card's link is its title, written below as the course card (kosk-page.tsx:75); the extractor named it by the badge (:109)" }
+
   names:
     /: start
     /home: home
@@ -197,7 +257,7 @@ pages:
     title: SystemPages.notFoundTitle
     kind: screen
     frame: app
-    source: app/not-found.tsx
+    source: apps/tedris/app/not-found.tsx
     evidence: every address no page owns and every notFound() a page throws (a private deck, a draft course, an unlisted köşk); HTTP 404, or 200 under a loading.tsx boundary because the shell is streamed first. The error page (app/error.tsx) and the global error document (app/global-error.tsx) have no address and are not drawn here
 
   # ---- outside tedris-web ----
@@ -243,105 +303,105 @@ pages:
     title: "Sign-in routes: signin, callback/keycloak, signout, session, backchannel-logout"
     kind: external
     frame: endpoints
-    source: app/api/auth/[...auth]/route.ts
+    source: apps/tedris/app/api/auth/[...auth]/route.ts
     evidence: outside the proxy (proxy.ts:42-44) except session; GET signin starts the round trip to Keycloak, GET callback/keycloak takes its answer, POST signout ends the session here and there (GET signout answers 405), backchannel-logout takes GET and POST, anything else under /api/auth is 404
   filesCourseResource:
     route: /api/files/courses/:courseId/resources/:resourceId
     title: A course resource's file
     kind: external
     frame: endpoints
-    source: app/api/files/courses/[courseId]/resources/[resourceId]/route.ts
+    source: apps/tedris/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts
     evidence: GET, streamed from tedrisat with the token added on the server, as an attachment; a refusal comes back as ?fileError= on the course page
   filesLessonResource:
     route: /api/files/lessons/:lessonId/resources/:resourceId
     title: A celse resource's file
     kind: external
     frame: endpoints
-    source: app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts
+    source: apps/tedris/app/api/files/lessons/[lessonId]/resources/[resourceId]/route.ts
   filesLessonAssignment:
     route: /api/files/lessons/:lessonId/assignment/:fileId
     title: A file of the homework set on a celse
     kind: external
     frame: endpoints
-    source: app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts
+    source: apps/tedris/app/api/files/lessons/[lessonId]/assignment/[fileId]/route.ts
   filesSubmissionFile:
     route: /api/files/lessons/:lessonId/submission/files/:fileId
     title: One of the talebe's own homework files
     kind: external
     frame: endpoints
-    source: app/api/files/lessons/[lessonId]/submission/files/[fileId]/route.ts
+    source: apps/tedris/app/api/files/lessons/[lessonId]/submission/files/[fileId]/route.ts
   filesSubmissionUpload:
     route: /api/files/lessons/:lessonId/submission/files
     title: Add a file to the talebe's homework (POST, multipart)
     kind: external
     frame: endpoints
-    source: app/api/files/lessons/[lessonId]/submission/files/route.ts
+    source: apps/tedris/app/api/files/lessons/[lessonId]/submission/files/route.ts
     evidence: called by the upload of the "Ödevim" card, never followed as a link; proxy.ts matches it so that the session is renewed on the way
   filesReviewFile:
     route: /api/files/lessons/:lessonId/submission/review-files/:fileId
     title: A file the course team returned with a review
     kind: external
     frame: endpoints
-    source: app/api/files/lessons/[lessonId]/submission/review-files/[fileId]/route.ts
+    source: apps/tedris/app/api/files/lessons/[lessonId]/submission/review-files/[fileId]/route.ts
   lessonCalendar:
     route: /api/lessons/:id/calendar
     title: The .ics file of one celse
     kind: external
     frame: endpoints
-    source: app/api/lessons/[id]/calendar/route.ts
+    source: apps/tedris/app/api/lessons/[id]/calendar/route.ts
     evidence: GET with ?locale=; a person with no session is redirected to sign-in and back to this address
   calendarFeed:
     route: /calendar/:file
     title: The personal calendar feed (<token>.ics)
     kind: external
     frame: endpoints
-    source: app/calendar/[file]/route.ts
+    source: apps/tedris/app/calendar/[file]/route.ts
     evidence: outside the proxy; the token in the address is the credential (MDRS-120), so no session is read
   deckSample:
     route: /api/decks/sample
     title: The import template (xlsx or csv)
     kind: external
     frame: endpoints
-    source: app/api/decks/sample/route.ts
+    source: apps/tedris/app/api/decks/sample/route.ts
   deckExport:
     route: /api/decks/:id/export
     title: A deck's cards as a file
     kind: external
     frame: endpoints
-    source: app/api/decks/[id]/export/route.ts
+    source: apps/tedris/app/api/decks/[id]/export/route.ts
     evidence: only the deck's author gets a file
   deckImport:
     route: /api/decks/:id/import
     title: Import cards into a deck (POST, CSV or Excel)
     kind: external
     frame: endpoints
-    source: app/api/decks/[id]/import/route.ts
+    source: apps/tedris/app/api/decks/[id]/import/route.ts
     evidence: called by the import dialog, never followed as a link
   legacyDecksApi:
     route: /api/decks
     title: Legacy read handler, no caller (DCK-22)
     kind: external
     frame: endpoints
-    source: app/api/decks/route.ts
+    source: apps/tedris/app/api/decks/route.ts
     evidence: no component or page calls it
   legacyDeckApi:
     route: /api/decks/:id
     title: Legacy read handler, no caller (DCK-22)
     kind: external
     frame: endpoints
-    source: app/api/decks/[id]/route.ts
+    source: apps/tedris/app/api/decks/[id]/route.ts
   legacyDeckCardsApi:
     route: /api/decks/:id/cards
     title: Legacy read handler, no caller (DCK-22)
     kind: external
     frame: endpoints
-    source: app/api/decks/[id]/cards/route.ts
+    source: apps/tedris/app/api/decks/[id]/cards/route.ts
   legacyCardApi:
     route: /api/cards/:id
     title: Legacy read handler, no caller (DCK-22)
     kind: external
     frame: endpoints
-    source: app/api/cards/[id]/route.ts
+    source: apps/tedris/app/api/cards/[id]/route.ts
 
 entries:
   # ---- the chrome: the extractor reads the five places; the rest of the bar and the footer are here ----
@@ -450,7 +510,7 @@ entries:
   - { from: celseWatch, to: celse, how: link, label: WatchPage.details, source: apps/tedris/features/courses/components/watch-view.tsx:233 }
 
   # ---- Derslerim and Programım ----
-  - { from: myCourses, to: course, how: link, label: composed.MyCoursesPage.courseCard, data: true, source: apps/tedris/features/courses/components/my-courses-page.tsx:102 } # the card's title link: its name is the course's own title, composed in code (`title={course.title}`); the key exists so that a binding can tell this entry from the recordings link below (they share their ends and their `how`)
+  - { from: myCourses, to: course, how: link, label: "the course card's title", data: true, source: apps/tedris/features/courses/components/my-courses-page.tsx:102 } # the card's title link: its name is the course's own title, composed in code (`title={course.title}`); the key exists so that a binding can tell this entry from the recordings link below (they share their ends and their `how`)
   - { from: myCourses, to: course, how: link, label: MyCoursesPage.recordings, data: true, source: apps/tedris/features/courses/components/my-courses-page.tsx:406 } # on a completed course
   - { from: myCourses, to: accountCalendar, how: link, label: CalendarSubscription.link, source: apps/tedris/features/courses/components/my-courses-page.tsx:207 }
   - { from: myCourses, to: discover, how: link, label: MyCoursesPage.goDiscover, data: true, source: apps/tedris/features/courses/components/my-courses-page.tsx:226 } # the empty state

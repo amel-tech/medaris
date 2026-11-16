@@ -42,7 +42,63 @@ source:
 extract:
   adapter: nizam
   locales: [tr]
+  entries:
+    # The extractor reads a link or a redirect but not the condition it is drawn under. Each key below is a generated
+    # entry that has a hand-written twin in `entries:` (same ends, same element) which carries the condition, or a link
+    # the code does not draw at that page; the generated one is left out, because without its condition it is offered
+    # to every persona that can stand on its page.
+    #
+    # ---- "/": a köşk nazımı is sent on to their köşk's home ----
+    # (home)/page.tsx:56 redirects only variant == 'kosk'; the hand-written entry of nav.yaml says so
+    start->koskHome auto: { skip: "the redirect of (home)/page.tsx:56-58 is a köşk nazımı's alone and the hand-written entry carries variant == 'kosk'; without it the başnazım and a Medaris nazımı were taken to a page no link of theirs reaches" }
+    # ---- the Medaris home: MedarisHome is drawn for the başnazım and a Medaris nazımı only ----
+    # (home)/page.tsx:61 renders MedarisHome for variant chief or medaris; a visitor gets the welcome page (:23), a person with no role or only medrese roles is redirected (:48-49), a köşk nazımı too (:56-58). Each section needs its data (medaris-home.tsx:59), the permission behind it
+    start->koskApplications Dashboard.reviewLabel: { skip: "the aria-label of the row button the hand-written Dashboard.review entry already draws, under the permission that fills the section (medaris-home.tsx:59, button :90-91)" }
+    # medaris-home.tsx:103 (latestDeckRequests, filled by platform.deck_publish)
+    start->deckRequests Dashboard.reviewLabel: { skip: "the aria-label of the row button the hand-written Dashboard.review entry already draws, under platform.deck_publish (medaris-home.tsx:103, button :134-135)" }
+    # medaris-home.tsx:154 (inactiveScopes, filled by platform.inactive_scopes_manage)
+    start->inactive Dashboard.passive.assignLabel: { skip: "the aria-label of the row button the hand-written Dashboard.passive.assign.KOSK entry already draws, under platform.inactive_scopes_manage (medaris-home.tsx:154, button :189-190)" }
+    # medaris-home.tsx:214 (latestBans, filled by platform.ban_scoped or ban_account)
+    start->bans Dashboard.reviewLabel: { skip: "the aria-label of the row button the hand-written Dashboard.review entry already draws, under banReader (medaris-home.tsx:214, button :231-232)" }
+    start->bans Dashboard.bans.goTo: { skip: "the hand-written entry of medaris-home.tsx:243 carries banReader; the link sits inside the bans section (medaris-home.tsx:214)" }
+    # medaris-home.tsx:265 `chief ?`
+    start->kosks Dashboard.counts.goKosks: { skip: "drawn for the başnazım only (medaris-home.tsx:265 `chief ?`); the hand-written entry carries variant == 'chief'" }
+    # medaris-home.tsx:307 `data.can.openKosk ?`, which tedrisat dashboard-sections.ts:28 sets for the başnazım alone
+    start->kosks Dashboard.openKosk: { skip: "drawn for the başnazım only (medaris-home.tsx:307, tedrisat dashboard-sections.ts:28); the hand-written entry carries variant == 'chief'" }
+    # medaris-home.tsx:277 `chief ?`
+    start->madrasahs Dashboard.counts.goMadrasahs: { skip: "drawn for the başnazım only (medaris-home.tsx:277 `chief ?`); the hand-written entry carries variant == 'chief'" }
+    # ---- the köşk home: its page opens for a köşk nazımı only as far as any link goes (menu, picker, "/") ----
+    # kosk-home.tsx:412 is the header button of the köşk home; the hand-written entry (koskManager) is the same button
+    koskHome->courseNew link: { skip: "the same button as the hand-written Dashboard.openCourse entry, which carries koskManager (kosk-home.tsx:412)" }
+    # kosk-home.tsx:305-306 is the href and the aria-label of the button the hand-written Dashboard.sessions.action.addLink entry draws
+    koskHome->courseSessions link: { skip: "the aria-label of the row button the hand-written Dashboard.sessions.action.addLink entry draws, under koskManager (kosk-home.tsx:305-306)" }
+    # ---- Dersler ----
+    # kosk-courses-view.tsx:113 `mayOpenCourse ?` (koskAbilities.openCourse), the condition of the hand-written entry (koskManager)
+    koskCourses->courseNew link: { skip: "the same button as the hand-written KoskCourses.open entry, under mayOpenCourse (kosk-courses-view.tsx:113-115)" }
+    # kosk-course-table.tsx:122 is the course's own title as a link; the hand-written KoskCourses.columns.course entry is that link, and the refusal it meets stays a finding of nav.yaml
+    koskCourses->courseOverview link: { skip: "the same link as the hand-written KoskCourses.columns.course entry (kosk-course-table.tsx:122), which stays and keeps its finding" }
+    # kosk-course-table.tsx:271-279 "Düzenle", the same button as the hand-written KoskCourses.edit entry
+    koskCourses->courseCurriculum link: { skip: "the same button as the hand-written KoskCourses.edit entry (kosk-course-table.tsx:271), which stays and keeps its finding" }
+    # ---- the management view of a köşk (Köşk) draws the same table in mode "manage" ----
+    # kosk-course-table.tsx:241 draws the actions column ("Düzenle", "Gizle", ...) only in mode "nazim"; kosk-manage-page.tsx:625 passes mode="manage", and kosk-course-table.tsx:122 (the "Ders" link, koskManage->courseOverview) is drawn in both modes
+    koskManage->courseCurriculum link: { skip: "the management view draws the table with mode=\"manage\", which has no actions column (kosk-course-table.tsx:241, kosk-manage-page.tsx:625); the course's own link to the overview is drawn there and stays a finding" }
+    # kosk-manage-page.tsx:542 has no condition; the hand-written KoskManage.toArchive entry (same line) says who gets the view: variant chief or medaris
+    koskManage->archive link: { skip: "the same link as the hand-written KoskManage.toArchive entry (kosk-manage-page.tsx:542), which carries variant == 'chief' or variant == 'medaris': a köşk nazımı is redirected to Dersler before the view is drawn (kosks/[id]/page.tsx:50)" }
+    # ---- the Archive links of the two directories ----
+    # kosks-directory.tsx:308 `chief ?`
+    kosks->archive link: { skip: "drawn for the başnazım only (kosks-directory.tsx:308 `chief ?`); the hand-written KoskDirectory.archive entry carries variant == 'chief'" }
+    # madrasahs-view.tsx:379 `can.archive ?`, true for the başnazım alone (madrasahs/present.ts:89, :109)
+    madrasahs->archive link: { skip: "drawn for the başnazım only (madrasahs-view.tsx:379 `can.archive ?`, present.ts:89 and :109); the hand-written MadrasahsPage.archive entry carries variant == 'chief'" }
+    # ---- the shell: the person row, the brand and the bell are drawn by ShellFrame, which a visitor and an auth page do not get ----
+    # shell-frame.tsx:159, in the shell branch only; nizam-shell.tsx:52 draws no shell without a session. The hand-written frame:shell->account (user, signedIn) is this link
+    frame:shell->account link: { skip: "the person row of shell-frame.tsx:159 is the hand-written frame:shell->account entry (how user), which carries signedIn; nizam-shell.tsx:52 draws no shell for a visitor" }
+    # shell-frame.tsx:80-86 returns the page and the footer alone for isBarePath (/auth/...), before :159, :182 and :213 are reached
+    frame:bare->account link: { skip: "the bare frame draws no chrome: ShellFrame returns the page alone for /auth/... (shell-frame.tsx:80-86), before the person row at :159" }
+    frame:bare->start link: { skip: "the bare frame draws no chrome: ShellFrame returns the page alone for /auth/... (shell-frame.tsx:80-86), before the brand link at :182" }
+    frame:bare->notifications link: { skip: "the bare frame draws no chrome: ShellFrame returns the page alone for /auth/... (shell-frame.tsx:80-86), before the bell at :213, which is also left out when variant == 'none'" }
   names:
+    # app/[...rest]/page.tsx is the page of the hand-written `notFound` (route /:rest, "Sayfa bulunamadı"); named so, the generated page is that page and not a second, unreachable one titled "Nizam"
+    /{...rest}: notFound
     /: start
     /arsiv: archive
     /auth/signin: signIn
@@ -423,7 +479,7 @@ pages:
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: apps/nizam/app/[...rest]/page.tsx:9 calls notFound(); apps/nizam/app/[...rest]/not-found.tsx:12 draws components/errors/page-not-found.tsx
-    source: app/[...rest]/page.tsx
+    source: apps/nizam/app/[...rest]/page.tsx
   realmSignIn:
     # Where /api/auth/signin sends the browser; drawn by the realm flows (realm.auth.signIn), not here.
     route: Keycloak's sign-in page of the medaris realm (login.ftl)

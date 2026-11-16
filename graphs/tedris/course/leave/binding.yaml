@@ -15,7 +15,7 @@
 # Walked on 15 Nov 2026 (replays under the lock): the main story (scenario leavesSeat, 10 steps, every check passes) and
 # `--to application_withdrawn` (scenario withdrawsApplication). `--to apply_card` (scenario leavesFromCourse) died at load, before
 # any walk, because its first entry key `myCourses->course` then named two entries of tedris.nav (the card has its own key now,
-# `myCourses->course composed.MyCoursesPage.courseCard`); the entry is `discover->course`,
+# `myCourses->course the course card's title`); the entry is `discover->course`,
 # the one tedris.course.apply uses (checked statically: one entry, one locator), and was not run again (the run cap).
 #
 # Not walked, so not bound or not reached: TEAM_APPROVES (the course team's step, in nazar, `as: muderris`; bound below for a later

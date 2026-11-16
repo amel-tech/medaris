@@ -9,6 +9,7 @@
   "Auth.retry": "Tekrar dene",
   "Auth.signOutCancel": "Vazgeç",
   "Auth.signOutConfirm": "Çıkış yap",
+  "Auth.signOutDescription": "Bu tarayıcıda Medaris’ten çıkarsınız. Görevleriniz ve tercihleriniz hesabınızda kalır.",
   "Auth.signOutTitle": "Çıkış yapmak istiyor musunuz?",
   "Bans.title": "Yasaklamalar",
   "CourseArchive.title": "Arşiv",

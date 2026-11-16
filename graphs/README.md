@@ -7,7 +7,7 @@ the source of tutorials.
 
 A graph says what the code does, not what it should do. Where the code is wrong for its users (a missing name, a focus that is
 lost, an error nobody announces, a refusal that reaches no one), the graph says so as a finding, in the flow's `ui.yaml`
-`rules`; [`FINDINGS.md`](FINDINGS.md) collects them. Application code is not changed to fit a graph; where a walk of a flow fixed a finding in an app's own UI, `FINDINGS.md` says so under "Düzelenler".
+`rules`; [`FINDINGS.md`](FINDINGS.md) collects them. Application code is not changed to fit a graph; where a walk of a flow fixed a finding in an app's own UI, `FINDINGS.md` says so under "Düzelenler". The three pilot walks' fixes are not on this branch yet: their code and their graphs come with the walk phase's first commit, and until then those six findings are open here.
 
 ## What is here
 
@@ -75,7 +75,11 @@ A flow's id is its path with dots: `graphs/tedris/course/apply/` is `tedris.cour
 - Generated, never written by hand: `viz/` (the pages, git-ignored); later also `anchors.lock.yaml` and `video/`.
 
 The navigation graph of an app (`nav.yaml`) holds its pages, menus, frames, personas, facts and goals; `nav.extracted.yaml` beside
-it (tedris, nazar and nizam) is what the engine's `extract` read from the code, and is not edited.
+it (tedris, nazar and nizam) is what the engine's `extract` read from the code, and is not edited. They were last extracted on
+16 November 2026 by the engine at delurio's main (04c6a9f9), which writes every anchor from the repository root and finds the links
+a page draws as well as its menus. Where it reads a link but not the condition the code draws it under, or finds a control a
+hand-written entry already carries, `nav.yaml`'s `extract.entries` lays the condition over the generated entry or leaves it out
+(`skip`), each with the line of code that decides it.
 
 ## Status
 

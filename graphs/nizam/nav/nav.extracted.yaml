@@ -3,7 +3,7 @@
 kind: nav-extracted
 schema: delurio-graph/0
 source:
-  commit: 51633bde
+  commit: dc22fd10
 guards: {}
 pages:
   start:
@@ -11,13 +11,13 @@ pages:
     title: Nizam
     kind: screen
     frame: shell
-    source: app/(home)/page.tsx
+    source: apps/nizam/app/(home)/page.tsx
   notifications:
     route: /bildirimler
     title: NotificationsPage.title
     kind: screen
     frame: shell
-    source: app/bildirimler/page.tsx
+    source: apps/nizam/app/bildirimler/page.tsx
     opensFor: signedIn and variant != 'none'
     refusal: sends a visitor to sign in; answers 403 to a person whose menu variant is “none”
     evidence: lib/public-paths.ts does not list it; app/bildirimler/page.tsx (variant === "none")
@@ -26,7 +26,7 @@ pages:
     title: MadrasahsPage.title
     kind: screen
     frame: shell
-    source: app/medreseler/page.tsx
+    source: apps/nizam/app/medreseler/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -35,7 +35,7 @@ pages:
     title: KoskDirectory.title
     kind: screen
     frame: shell
-    source: app/kosks/page.tsx
+    source: apps/nizam/app/kosks/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -44,7 +44,7 @@ pages:
     title: KoskManage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/page.tsx
+    source: apps/nizam/app/kosks/[id]/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -53,7 +53,7 @@ pages:
     title: CourseCreate.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/courses/new/page.tsx
+    source: apps/nizam/app/kosks/[id]/courses/new/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -62,7 +62,7 @@ pages:
     title: CourseOverview.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/courses/[courseId]/page.tsx
+    source: apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -71,7 +71,7 @@ pages:
     title: CourseSettings.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx
+    source: apps/nizam/app/kosks/[id]/courses/[courseId]/ayarlar/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -80,7 +80,7 @@ pages:
     title: Curriculum.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/courses/[courseId]/curriculum/page.tsx
+    source: apps/nizam/app/kosks/[id]/courses/[courseId]/curriculum/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -88,13 +88,13 @@ pages:
     route: /kosks/{id}/courses/{courseId}/edit
     kind: redirect
     frame: shell
-    source: app/kosks/[id]/courses/[courseId]/edit/page.tsx
+    source: apps/nizam/app/kosks/[id]/courses/[courseId]/edit/page.tsx
   courseSessions:
     route: /kosks/{id}/courses/{courseId}/sessions
     title: Sessions.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/courses/[courseId]/sessions/page.tsx
+    source: apps/nizam/app/kosks/[id]/courses/[courseId]/sessions/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -103,7 +103,7 @@ pages:
     title: SessionPlan.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/courses/[courseId]/sessions/new/page.tsx
+    source: apps/nizam/app/kosks/[id]/courses/[courseId]/sessions/new/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -112,7 +112,7 @@ pages:
     title: StudentsPage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/courses/[courseId]/students/page.tsx
+    source: apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -121,7 +121,7 @@ pages:
     title: NazimsPage.title
     kind: screen
     frame: shell
-    source: app/medaris-nazimlari/page.tsx
+    source: apps/nizam/app/medaris-nazimlari/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -130,7 +130,7 @@ pages:
     title: GroupsPage.title
     kind: screen
     frame: shell
-    source: app/izin-gruplari/page.tsx
+    source: apps/nizam/app/izin-gruplari/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -139,7 +139,7 @@ pages:
     title: InactivePage.title
     kind: screen
     frame: shell
-    source: app/pasif-kapsamlar/page.tsx
+    source: apps/nizam/app/pasif-kapsamlar/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -148,7 +148,7 @@ pages:
     title: KoskApplicationsPage.title
     kind: screen
     frame: shell
-    source: app/talepler/kosk-basvurulari/page.tsx
+    source: apps/nizam/app/talepler/kosk-basvurulari/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -157,7 +157,7 @@ pages:
     title: DeckRequestsPage.title
     kind: screen
     frame: shell
-    source: app/talepler/deste-yayin-istekleri/page.tsx
+    source: apps/nizam/app/talepler/deste-yayin-istekleri/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -166,7 +166,7 @@ pages:
     title: AppealsPage.title
     kind: screen
     frame: shell
-    source: app/talepler/itirazlar/page.tsx
+    source: apps/nizam/app/talepler/itirazlar/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -180,7 +180,7 @@ pages:
     title: BansPage.title
     kind: screen
     frame: shell
-    source: app/yasaklamalar/page.tsx
+    source: apps/nizam/app/yasaklamalar/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -189,7 +189,7 @@ pages:
     title: AuditPage.title
     kind: screen
     frame: shell
-    source: app/denetim-kaydi/page.tsx
+    source: apps/nizam/app/denetim-kaydi/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -198,7 +198,7 @@ pages:
     title: ArchivePage.title
     kind: screen
     frame: shell
-    source: app/arsiv/page.tsx
+    source: apps/nizam/app/arsiv/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -212,7 +212,7 @@ pages:
     title: PlatformSettingsPage.title
     kind: screen
     frame: shell
-    source: app/ayarlar/platform/page.tsx
+    source: apps/nizam/app/ayarlar/platform/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -221,7 +221,7 @@ pages:
     title: PartnersPage.title
     kind: screen
     frame: shell
-    source: app/ayarlar/ortak-uygulamalar/page.tsx
+    source: apps/nizam/app/ayarlar/ortak-uygulamalar/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -230,7 +230,7 @@ pages:
     title: Dashboard.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/ana-sayfa/page.tsx
+    source: apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -239,7 +239,7 @@ pages:
     title: KoskCourses.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/dersler/page.tsx
+    source: apps/nizam/app/kosks/[id]/dersler/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -248,7 +248,7 @@ pages:
     title: ApplicationsPage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/basvurular/page.tsx
+    source: apps/nizam/app/kosks/[id]/basvurular/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -257,7 +257,7 @@ pages:
     title: CourseRequestsPage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/ders-talepleri/page.tsx
+    source: apps/nizam/app/kosks/[id]/ders-talepleri/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -266,7 +266,7 @@ pages:
     title: KoskDecksPage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/desteler/page.tsx
+    source: apps/nizam/app/kosks/[id]/desteler/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -275,7 +275,7 @@ pages:
     title: KoskDeckForm.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/desteler/yeni/page.tsx
+    source: apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -284,7 +284,7 @@ pages:
     title: BansPage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/yasaklamalar/page.tsx
+    source: apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -293,7 +293,7 @@ pages:
     title: ArchivePage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/arsiv/page.tsx
+    source: apps/nizam/app/kosks/[id]/arsiv/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -302,7 +302,7 @@ pages:
     title: KoskGrantsPage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/izinler/page.tsx
+    source: apps/nizam/app/kosks/[id]/izinler/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -311,7 +311,7 @@ pages:
     title: KoskSettings.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/ayarlar/page.tsx
+    source: apps/nizam/app/kosks/[id]/ayarlar/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -320,7 +320,7 @@ pages:
     title: HostingPage.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/ayarlar/barindirma/page.tsx
+    source: apps/nizam/app/kosks/[id]/ayarlar/barindirma/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -329,7 +329,7 @@ pages:
     title: KoskNazims.title
     kind: screen
     frame: shell
-    source: app/kosks/[id]/ayarlar/nazimlar/page.tsx
+    source: apps/nizam/app/kosks/[id]/ayarlar/nazimlar/page.tsx
     opensFor: signedIn and landing == 'nizam'
     refusal: sends a visitor to sign in; answers 403 to anyone else
     evidence: lib/public-paths.ts does not list it; app/kosks/layout.tsx (landingFor !== "nizam")
@@ -338,7 +338,7 @@ pages:
     title: Nizam
     kind: screen
     frame: shell
-    source: app/decks/page.tsx
+    source: apps/nizam/app/decks/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -347,7 +347,7 @@ pages:
     title: Nizam
     kind: screen
     frame: shell
-    source: app/decks/[id]/cards/page.tsx
+    source: apps/nizam/app/decks/[id]/cards/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -356,7 +356,7 @@ pages:
     title: AccountPage.pageTitle
     kind: screen
     frame: shell
-    source: app/hesap/page.tsx
+    source: apps/nizam/app/hesap/page.tsx
     opensFor: signedIn
     refusal: sends a visitor to sign in
     evidence: lib/public-paths.ts does not list it
@@ -365,7 +365,7 @@ pages:
     title: NazarRedirectPage.title
     kind: screen
     frame: shell
-    source: app/nazar-yonlendirme/page.tsx
+    source: apps/nizam/app/nazar-yonlendirme/page.tsx
     opensFor: signedIn and landing == 'nazar'
     refusal: sends a visitor to sign in; sends anyone else to the home page
     evidence: lib/public-paths.ts does not list it; app/nazar-yonlendirme/page.tsx (landingFor !== "nazar")
@@ -374,22 +374,31 @@ pages:
     title: NoRole.title
     kind: screen
     frame: shell
-    source: app/yetki-yok/page.tsx
+    source: apps/nizam/app/yetki-yok/page.tsx
     opensFor: signedIn and landing == 'none'
     refusal: sends a visitor to sign in; sends anyone else to the home page
     evidence: lib/public-paths.ts does not list it; app/yetki-yok/page.tsx (landingFor !== "none")
+  notFound:
+    route: /{...rest}
+    title: Nizam
+    kind: screen
+    frame: shell
+    source: apps/nizam/app/[...rest]/page.tsx
+    opensFor: signedIn
+    refusal: sends a visitor to sign in
+    evidence: lib/public-paths.ts does not list it
   signIn:
     route: /auth/signin
     title: Nizam
     kind: screen
     frame: bare
-    source: app/auth/signin/page.tsx
+    source: apps/nizam/app/auth/signin/page.tsx
   signOut:
     route: /auth/signout
     title: Nizam
     kind: screen
     frame: bare
-    source: app/auth/signout/page.tsx
+    source: apps/nizam/app/auth/signout/page.tsx
 entries:
   - { from: frame:shell, to: start, how: menu, label: Shell.items.home, when: variant == 'chief' or variant == 'medaris' }
   - { from: frame:shell, to: notifications, how: menu, label: Shell.items.notifications, when: variant != 'none' }
@@ -417,3 +426,39 @@ entries:
   - { from: frame:shell, to: koskArchive, how: menu, label: Shell.items.archive, when: variant == 'kosk' }
   - { from: frame:shell, to: koskGrants, how: menu, label: Shell.items.permissions, when: variant == 'kosk' }
   - { from: frame:shell, to: koskSettings, how: menu, label: Shell.items.koskSettings, when: variant == 'kosk' }
+  - { from: start, to: nazarRedirect, how: auto, clicks: 0, source: apps/nizam/app/(home)/page.tsx:48 }
+  - { from: start, to: noRole, how: auto, clicks: 0, source: apps/nizam/app/(home)/page.tsx:49 }
+  - { from: koskManage, to: koskCourses, how: auto, clicks: 0, data: true, source: "apps/nizam/app/kosks/[id]/page.tsx:50" }
+  - { from: koskManage, to: koskHosting, how: auto, clicks: 0, data: true, source: "apps/nizam/app/kosks/[id]/page.tsx:52" }
+  - { from: courseEdit, to: courseCurriculum, how: auto, clicks: 0, data: true, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/edit/page.tsx:16" }
+  - { from: nazarRedirect, to: start, how: auto, clicks: 0, source: apps/nizam/app/nazar-yonlendirme/page.tsx:25 }
+  - { from: noRole, to: start, how: auto, clicks: 0, source: apps/nizam/app/yetki-yok/page.tsx:26 }
+  - { from: start, to: signIn, how: link, label: a link in page.tsx, source: apps/nizam/app/(home)/page.tsx:26 }
+  - { from: start, to: signIn, how: link, label: Auth.signIn, source: apps/nizam/app/(home)/page.tsx:37 }
+  - { from: courseStudents, to: courseEdit, how: link, label: StudentsPage.back, data: true, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:51" }
+  - { from: account, to: signOut, how: link, label: a link in account-page.tsx, source: apps/nizam/features/account/components/account-page.tsx:264 }
+  - { from: signIn, to: start, how: link, label: Auth.backHome, source: apps/nizam/features/auth/auth-entry.tsx:103 }
+  - { from: signOut, to: start, how: button, label: a button in sign-out-confirm.tsx, source: apps/nizam/features/auth/sign-out-confirm.tsx:34 }
+  - { from: courseNew, to: courseSessionsNew, how: button, label: a button in course-create-form.tsx, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:187 }
+  - { from: courseNew, to: koskCourses, how: button, label: a button in course-create-form.tsx, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:194 }
+  - { from: courseNew, to: koskCourses, how: link, label: CourseCreate.cancel, data: true, source: apps/nizam/features/courses/components/course-create-form.tsx:507 }
+  - { from: courseSettings, to: koskSettings, how: link, label: CourseSettings.policyLink, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:288 }
+  - { from: courseSettings, to: koskCourses, how: button, label: a button in course-settings-page.tsx, data: true, source: apps/nizam/features/courses/components/course-settings-page.tsx:452 }
+  - { from: courseSessionsNew, to: courseSessions, how: button, label: a button in session-plan-form.tsx, data: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:154 }
+  - { from: courseSessionsNew, to: courseSessions, how: link, label: SessionPlan.cancel, data: true, source: apps/nizam/features/courses/components/session-plan-form.tsx:392 }
+  - { from: koskDeckNew, to: koskDecks, how: button, label: a button in kosk-deck-form.tsx, data: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }
+  - { from: koskDeckNew, to: koskDecks, how: link, label: KoskDeckForm.cancel, data: true, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+  - { from: koskDecks, to: legacyDeckCards, how: link, label: KoskDecksPage.editCardsLabel, data: true, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:221 }
+  - { from: legacyDecks, to: legacyDeckCards, how: button, label: a button in useDecksColumns.tsx, data: true, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:52 }
+  - { from: courseOverview, to: courseSessions, how: link, label: CourseOverview.allSessions, data: true, source: apps/nizam/features/kosks/components/course-overview.tsx:371 }
+  - { from: courseOverview, to: courseStudents, how: link, label: CourseOverview.students, data: true, source: apps/nizam/features/kosks/components/course-overview.tsx:397 }
+  - { from: koskManage, to: courseOverview, how: link, label: a link in kosk-course-table.tsx, data: true, source: apps/nizam/features/kosks/components/kosk-course-table.tsx:122 }
+  - { from: koskCourses, to: koskArchive, how: link, label: KoskCourses.archive, data: true, source: apps/nizam/features/kosks/components/kosk-courses-view.tsx:161 }
+  - { from: koskManage, to: koskCourses, how: link, label: KoskManage.nazimView, data: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:364 }
+  - { from: koskManage, to: koskSettings, how: link, label: KoskManage.openSettings, data: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:466 }
+  - { from: koskManage, to: koskHosting, how: link, label: KoskManage.hostingLink, data: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:584 }
+  - { from: koskManage, to: koskArchive, how: link, label: KoskManage.archive, data: true, source: apps/nizam/features/kosks/components/kosk-manage-page.tsx:614 }
+  - { from: koskSettings, to: kosks, how: button, label: a button in kosk-settings.tsx, source: apps/nizam/features/kosks/components/kosk-settings.tsx:289 }
+  - { from: kosks, to: koskManage, how: link, label: a link in kosks-directory.tsx, data: true, source: apps/nizam/features/kosks/components/kosks-directory.tsx:168 }
+  - { from: kosks, to: courseEdit, how: link, label: a link in taught-courses.tsx, data: true, source: apps/nizam/features/kosks/components/taught-courses.tsx:28 }
+  - { from: nazims, to: permissionGroups, how: link, label: a link in permissions-dialog.tsx, source: apps/nizam/features/permissions/components/permissions-dialog.tsx:246 }
