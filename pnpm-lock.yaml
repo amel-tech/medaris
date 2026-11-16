@@ -352,7 +352,7 @@ catalogs:
 
 overrides:
   uuid: ^11.1.1
-  follow-redirects: ^1.16.1
+  follow-redirects: ^1.16.2
   multer: ^2.5.0
   file-type: ^21.3.2
   esbuild: '>=0.24.3 <1'
@@ -7049,8 +7049,8 @@ packages:
   fn.name@1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
 
-  follow-redirects@1.16.1:
-    resolution: {integrity: sha512-FNvFGzoMLWmE6Yj9spb/zjd7yiNCHiAW9/Tg9CXrQ8wuu32HtlJOwWO11OJafl5FfY3DxTdQ0vj42zU1kvv5jg==}
+  follow-redirects@1.16.3:
+    resolution: {integrity: sha512-toOSoqN6d51Wjf1aOFJYcoVv1aND9rj/CwjLU0Vz40oDuSpWDayCeKe4JpL5NL0WdFvoOOCI3BRo69HahjbR1A==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -8024,6 +8024,7 @@ packages:
 
   node-abort-controller@3.1.1:
     resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
+    deprecated: This package is no longer needed on supported Node.js versions. Node.js 16+ includes AbortController and AbortSignal as built-in globals. All Node.js versions requiring this polyfill are end-of-life. Use the built-in globals instead.
 
   node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
@@ -8998,8 +8999,8 @@ packages:
     resolution: {integrity: sha512-b19dMThMV4HVFynSAM1++gBHAbk2Tc/osgLIBZMKsyqh34jb2e8Os7T6ZW/Bt3pJFdBTd2JwAnAAEQV7rSNvcQ==}
     engines: {node: '>=0.10'}
 
-  systeminformation@5.33.9:
-    resolution: {integrity: sha512-mlE+h4IVAA4F4O6sc8NFpClFvsO6yjQ/uVKTq3kmruYqno2CenyDQhyOqRO7q5sl2FZie9c+R3E7pKOBKPDHCA==}
+  systeminformation@5.33.19:
+    resolution: {integrity: sha512-Zm7wGeCG7PqfvzegMJIzrxICopWqYCeLATVmvxOOci1isLcNVKgY4Fr0hhYQzvc7cgtK3377jQVChTFAnznOiA==}
     engines: {node: '>=10.0.0'}
     os: [darwin, linux, win32, freebsd, openbsd, netbsd, sunos, android]
     hasBin: true
@@ -12097,7 +12098,7 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/instrumentation': 0.222.0(@opentelemetry/api@1.9.1)
-      systeminformation: 5.33.9
+      systeminformation: 5.33.19
     transitivePeerDependencies:
       - supports-color
 
@@ -14460,7 +14461,7 @@ snapshots:
 
   axios@1.20.0:
     dependencies:
-      follow-redirects: 1.16.1
+      follow-redirects: 1.16.3
       form-data: 4.0.6
       https-proxy-agent: 5.0.1
       proxy-from-env: 2.1.0
@@ -15627,7 +15628,7 @@ snapshots:
 
   fn.name@1.1.0: {}
 
-  follow-redirects@1.16.1: {}
+  follow-redirects@1.16.3: {}
 
   foreground-child@3.3.1:
     dependencies:
@@ -17730,7 +17731,7 @@ snapshots:
 
   symbol-observable@4.0.0: {}
 
-  systeminformation@5.33.9: {}
+  systeminformation@5.33.19: {}
 
   tailwind-merge@3.6.0: {}
 
