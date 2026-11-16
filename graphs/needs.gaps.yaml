@@ -3,11 +3,12 @@
 # finding ids of the flow's ui.yaml `rules` (graphs/FINDINGS.md). `delurio check` holds this file to the needs: a missing need that
 # is not listed here fails (need-unlisted), and so does an entry whose need is met (gap-met), so the list only shrinks.
 #
-# 1267 missing needs in 175 flows, of 2640 needs in 175 flows (counted by the script that wrote this file,
-# from the needs.yaml files). 196 name a Linear issue first, the most MDRS-284 (35), MDRS-238 (17), MDRS-140 (12), MDRS-246 (11), MDRS-141 (11), MDRS-197 (9), MDRS-239 (8), MDRS-113 (7); 1071 have no Linear issue.
+# 1267 missing needs in 175 flows, of 2640 needs in 175 flows (counted by script from the needs.yaml files). 196 name a Linear
+# issue first, the most MDRS-284 (35), MDRS-238 (17), MDRS-140 (12), MDRS-141 (11), MDRS-246 (11), MDRS-197 (9), MDRS-239 (8),
+# MDRS-113 (7); 1071 have no Linear issue.
 #
 # Not listed here: a need that is met but that no walk covers yet. A met need names its evidence; one whose evidence names no
-# `test` and no `scenario` is walked by nothing (README.md, "needs.yaml and the gaps", says how to list them).
+# `scenario` and no browser e2e test (apps/*/e2e/*.e2e.ts) is walked by nothing. There are 583; README.md says so under Gaps.
 
 schema: delurio-graph/0
 kind: gaps
