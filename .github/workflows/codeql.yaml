@@ -74,12 +74,6 @@ jobs:
               - 'libs/services/src/**/generated'
               - 'apps/keycloak-theme/src/kc.gen.tsx'
               - 'design-system'
-              # The delurio graphs and their replay helpers, which run only on a
-              # developer's machine against a local stack: they read cached
-              # tokens from disk, call the stack and write what it returns,
-              # which is what http-to-file and file-to-http report. Nothing
-              # here ships, and CI only runs `delurio check` over it.
-              - 'graphs'
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
