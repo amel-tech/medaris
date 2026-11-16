@@ -29,6 +29,16 @@ const EXTENSIONS: ReadonlyMap<IFileType, readonly string[]> = new Map<
 const RESERVED = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i;
 
 /**
+ * `value` without the dots and white space at its end. A loop, because
+ * `/[.\s]+$/` backtracks quadratically on a long run of dots in a sent name.
+ */
+const trimEndDotsAndSpaces = (value: string): string => {
+  let end = value.length;
+  while (end > 0 && /[.\s]/.test(value.charAt(end - 1))) end--;
+  return value.slice(0, end);
+};
+
+/**
  * The name a file is stored and handed back under (MDRS-287): only ever a
  * label, shown in lists and put in the download's `Content-Disposition`,
  * never part of a storage key. From what the browser sent it keeps the last
@@ -47,11 +57,13 @@ export function sanitizeFileName(
 ): string {
   let name = (sent ?? "").normalize("NFC");
   name = name.split(/[\\/]/).pop() ?? "";
-  name = name
-    .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, "")
-    .replace(/[<>:"|?*]/g, "_")
-    .replace(/\s+/g, " ")
-    .replace(/^[.\s]+|[.\s]+$/g, "");
+  name = trimEndDotsAndSpaces(
+    name
+      .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, "")
+      .replace(/[<>:"|?*]/g, "_")
+      .replace(/\s+/g, " ")
+      .replace(/^[.\s]+/, "")
+  );
 
   const allowed = EXTENSIONS.get(type) ?? [type.extension];
   const dot = name.lastIndexOf(".");
@@ -62,7 +74,7 @@ export function sanitizeFileName(
     base = name.slice(0, dot);
     extension = sentExtension;
   }
-  base = base.replace(/[.\s]+$/g, "");
+  base = trimEndDotsAndSpaces(base);
   if (!base || RESERVED.test(base.split(".")[0] ?? "")) {
     base = base ? `_${base}` : FALLBACK_NAME;
   }

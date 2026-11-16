@@ -157,7 +157,9 @@ overrides:
   # Reached through the axios under @openapitools/openapi-generator-cli (nx
   # dropped axios in 24.0), dev tooling; the floor stays on the 1.x line every
   # consumer declares.
-  follow-redirects: ^1.16.1
+  # 2026-11-16: raised to 1.16.2 for GHSA-mrwp-f3q8-3g9p (high: sensitiveHeaders
+  # from another realm are dropped, and custom credentials follow redirects).
+  follow-redirects: ^1.16.2
 
   # MDRS-76. multer 2.2.0 carries three high DoS advisories — GHSA-535w-7cp7-47q4
   # (oversized array), GHSA-qfvm-cv95-jqjf (fd leak), GHSA-wc9g-mqfw-jrwm

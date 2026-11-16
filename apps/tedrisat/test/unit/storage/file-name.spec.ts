@@ -60,6 +60,15 @@ describe("sanitizeFileName (MDRS-287)", () => {
     expect(name.endsWith(".pdf")).toBe(true);
   });
 
+  it("takes linear time on a long run of dots", () => {
+    const name = sanitizeFileName(
+      `a${".".repeat(200_000)}b.pdf`,
+      FILE_TYPES.PDF
+    );
+    expect(Array.from(name)).toHaveLength(MAX_FILE_NAME_LENGTH);
+    expect(name.endsWith(".pdf")).toBe(true);
+  }, 1000);
+
   it("normalises to NFC", () => {
     const decomposed = "s\u0327erh.pdf"; // ş as s + combining cedilla
     expect(sanitizeFileName(decomposed, FILE_TYPES.PDF)).toBe("şerh.pdf");

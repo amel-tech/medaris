@@ -247,7 +247,7 @@ test.describe("the enrolled talebe", () => {
     // the same answer beside the recording, on the session's watch page
     // (MDRS-285); the Bunny video id is made up, so nothing leaves for Bunny
     await page.route(
-      (url) => url.hostname.endsWith("mediadelivery.net"),
+      (url) => /(^|\.)mediadelivery\.net$/.test(url.hostname),
       (route) => route.abort()
     );
     await page.goto(`/courses/${fixture.courseId}/lessons/${s.id}/izle`);

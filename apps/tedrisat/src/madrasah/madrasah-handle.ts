@@ -35,9 +35,9 @@ export function handleFromName(name: string): string {
     .toLowerCase();
   const slug = ascii
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^-|-$/g, "")
     .slice(0, MAX_HANDLE)
-    .replace(/-+$/g, "");
+    .replace(/-$/, "");
   return MADRASAH_HANDLE_PATTERN.test(slug) ? slug : FALLBACK_HANDLE;
 }
 

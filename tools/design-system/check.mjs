@@ -173,6 +173,15 @@ for (const f of LAYERS) {
     }
   }
 }
+/**
+ * An inline style holding only `--mds-*` custom properties, `;`-separated.
+ * Split rather than one regex: `(…:[^;]+;?\s*)+$` backtracks exponentially.
+ */
+const onlyMdsProperties = (style) => {
+  const parts = style.split(";");
+  if (parts.length > 1 && parts.at(-1).trim() === "") parts.pop();
+  return parts.every((p) => /^\s*--mds-[\w-]+\s*:[^;]+$/.test(p));
+};
 const icons = new Set(
   exists("assets/icons.svg")
     ? [
@@ -193,7 +202,7 @@ for (const { file, src, kind } of sources) {
   }
   if (kind === "page") {
     for (const m of src.matchAll(/style="([^"]*)"/g)) {
-      if (!/^\s*(--mds-[\w-]+\s*:[^;]+;?\s*)+$/.test(m[1])) {
+      if (!onlyMdsProperties(m[1])) {
         fail("MDS-COMP-01", `${file}: inline style "${m[1]}"`);
       }
     }
