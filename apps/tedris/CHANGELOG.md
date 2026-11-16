@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.12.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.11.0...tedris-web-v2.12.0) (2026-11-16)
+
+
+### Features
+
+* **tedrisat, nazar-web, tedris-web, nizam-web, keycloak-theme:** MDRS-248 the open work in one PR ([#394](https://github.com/amel-tech/medaris/issues/394)) ([0574044](https://github.com/amel-tech/medaris/commit/05740445dc76774bb0a740542b9d6e4d3f202f55))
+
 ## [2.11.0](https://github.com/amel-tech/medaris/compare/tedris-web-v2.10.1...tedris-web-v2.11.0) (2026-10-26)
 
 
