@@ -1,0 +1,168 @@
+# nizam.courses.settingsAndPublish on the local stack, the parts every file of this folder shares: the data source, the events that no node sends, the exits, the
+# locators of the nodes that role and name cannot find, and the effects (the checks of what a step leaves in the API). It has no scenario: `binding.yaml` (the walks
+# that save, publish and hide, and the pages that open differently) and `binding.refused.yaml` (the writes that are refused, and the stale page) extend it, because
+# `extends` merges scenarios by key and a walk of the second file must not walk the first's again.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator, every var and every expectation below is from the code,
+# unverified until a walk.
+#
+# The data. The walk never changes a seeded course, a seeded köşk's courses or either köşk's policies beyond what `settings-data.mjs` records and puts back. `setup`
+# makes a course of the walk's own ("Deneme dersi ssMain", helpers/course.mjs tag ssMain) with settings-data.mjs, a helper of this folder; `teardown` takes it away and
+# puts the köşk's policies back. Every run of these helpers by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# Where role and name are enough: the three boxes, the two selects, Kaydet and Vazgeç (the page has ONE pair, so no scope by a form's test id is needed; they are
+# looked for inside the page's form only so that a dialog's "Vazgeç" is never taken for the form's), the Yayın card's buttons (inside its region, because the question's
+# confirming button has the same name), and the dialogs (an alertdialog named by its title). The toasts are Sonner's: found by `[data-sonner-toast]` and a word.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.settingsAndPublish
+
+data:
+  made: { json: ../.local/made/ssMain.json } # helpers/course.mjs's file for the tag: {course, title, weeks, lessons, talebe}
+
+# What no node sends. Every press (the boxes, the lists and their options, Kaydet, Vazgeç, the buttons of the cards and of the questions, the link) is a node's.
+events:
+  RELOAD:
+    - reload: true
+  DISMISS:
+    - key: Escape # the open list closes
+  # leaving by an address no flow of this page owns: the notifications page opens for every nazım
+  NAVIGATE:
+    - goto: '{nizam}/bildirimler'
+
+# The exits. `dersler_opened` is the list of courses a hide goes to; `no_access` is the layout's refusal at the page's own address (it is HTTP 403, which the replay does not
+# read); `load_failed` is not bound (the stack cannot make a read fail).
+states:
+  left: { url: '{nizam}/bildirimler' }
+  dersler_opened: { url: '{nizam}/kosks/*/dersler' }
+  no_access: { url: '{nizam}/kosks/*/courses/*/ayarlar', text: Bu bölüm için izniniz yok }
+
+nodes:
+  # a bare <main> is also the page a walk leaves for: the heading of this page tells it apart
+  page: { role: main, hasText: Ders ayarları }
+  breadcrumb: { role: navigation, name: Sayfa yolu }
+  crumbRoot: { role: link, name: Dersler, within: { role: navigation, name: Sayfa yolu } }
+  crumbCourse: { role: link, name: Deneme dersi ssMain, within: { role: navigation, name: Sayfa yolu } }
+  crumbCurrent: { css: '[aria-current=page]', hasText: Ders ayarları, within: { role: navigation, name: Sayfa yolu } }
+  title: { role: heading, name: '/^Ders ayarları$/' }
+  viewPublic: { role: link, name: '/^Tanıtım sayfasını gör/' }
+  # the card is a <form class="mds-card"> with no name: its heading is found by its words
+  accessTitle: { role: heading, name: 'Erişim, kayıt ve saat dilimi' }
+  closedBox: { role: checkbox, name: Kapalı ders }
+  approvalBox: { role: checkbox, name: Kayıt onayı gereksin }
+  inPersonBox: { role: checkbox, name: Celseler yüz yüze yapılır }
+  neverPublicBox: { role: checkbox, name: Ders kayıtları herkese açılamaz }
+  # the kit's Select is a button with role combobox; its text is the option it shows
+  sampleField: { role: combobox, name: '/^Örnek ders/' }
+  sampleReadsNone: { role: combobox, name: '/^Örnek ders/', hasText: Örnek ders yok }
+  sampleReadsFirst: { role: combobox, name: '/^Örnek ders/', hasText: Hafta 1 · Celse 1 }
+  zoneField: { role: combobox, name: '/^Saat dilimi/' }
+  zoneReadsIstanbul: { role: combobox, name: '/^Saat dilimi/', hasText: İstanbul }
+  zoneReadsBerlin: { role: combobox, name: '/^Saat dilimi/', hasText: Berlin }
+  # the page's one pair of buttons; a question's own "Vazgeç" and a toast's "Kapat" have the names too, so these are looked for inside the form
+  cancel: { role: button, name: '/^Vazgeç$/', within: { css: 'main form' } }
+  submit: { role: button, name: '/^Kaydet$/', within: { css: 'main form' } }
+  submitBusy: { css: output, hasText: Kaydediliyor, within: { css: 'main form' } }
+  # the Yayın card: a region named by its heading; the question's confirming button is "Taslağa çek" too, so the buttons are found inside the region
+  publishRegion: { role: region, name: Yayın }
+  publishTitle: { role: heading, name: '/^Yayın$/' }
+  statusPublished: { css: .mds-badge, hasText: '/^Yayında$/', within: { role: region, name: Yayın } }
+  statusDraft: { css: .mds-badge, hasText: '/^Taslak$/', within: { role: region, name: Yayın } }
+  unpublishButton: { role: button, name: '/^Taslağa çek$/', within: { role: region, name: Yayın } }
+  publishButton: { role: button, name: '/^Yayımla$/', within: { role: region, name: Yayın } }
+  publishBusy: { css: output, hasText: Yükleniyor, within: { role: region, name: Yayın } }
+  # Hocalar and Dersi gizle: the heading and the button of "Dersi gizle" have the same words, so each is found by its role inside its region
+  teamRegion: { role: region, name: Hocalar }
+  teamTitle: { role: heading, name: '/^Hocalar$/' }
+  teamList: { role: list, within: { role: region, name: Hocalar } }
+  editTeam: { role: button, name: Hocaları düzenle }
+  hideRegion: { role: region, name: Dersi gizle }
+  hideTitle: { role: heading, name: '/^Dersi gizle$/', within: { role: region, name: Dersi gizle } }
+  hideButton: { role: button, name: '/^Dersi gizle$/', within: { role: region, name: Dersi gizle } }
+  # the toasts: Sonner's, one element each with its title and its body; where two steps leave a body of the same words (the three "dersinin ayarları güncellendi"), the
+  # toast is told by its title as well. An error toast stays until closed, so one may still be there when the next is checked.
+  savedTitle: { css: '[data-sonner-toast]', hasText: Ders ayarları kaydedildi }
+  savedBody: { css: '[data-sonner-toast]', hasText: '/Ders ayarları kaydedildi[\s\S]*dersinin ayarları güncellendi/' }
+  draftedTitle: { css: '[data-sonner-toast]', hasText: Ders taslağa çekildi }
+  draftedBody: { css: '[data-sonner-toast]', hasText: '/Ders taslağa çekildi[\s\S]*dersinin ayarları güncellendi/' }
+  publishedTitle: { css: '[data-sonner-toast]', hasText: Ders yayımlandı }
+  publishedBody2: { css: '[data-sonner-toast]', hasText: '/Ders yayımlandı[\s\S]*dersinin ayarları güncellendi/' }
+  failedTitle: { css: '[data-sonner-toast]', hasText: Ayarlar kaydedilemedi }
+  staleBody: { css: '[data-sonner-toast]', hasText: başkası tarafından kaydedildi }
+  genericBody: { css: '[data-sonner-toast]', hasText: İşlem tamamlanamadı }
+  hideFailedTitle: { css: '[data-sonner-toast]', hasText: Ders gizlenemedi }
+  hideFailedBody: { css: '[data-sonner-toast]', hasText: Bir şeyler ters gitti }
+  # the two open lists: a Base UI listbox in a popup, its options named by their words
+  sampleList: { role: listbox }
+  zoneList: { role: listbox }
+  optSampleNone: { role: option, name: Örnek ders yok }
+  optSampleFirst: { role: option, name: Hafta 1 · Celse 1 }
+  optSampleSecond: { role: option, name: Hafta 1 · Celse 2 }
+  optIstanbul: { role: option, name: İstanbul }
+  optBerlin: { role: option, name: Berlin }
+  # "Dersi taslağa çek": an alertdialog named by its title; a toast's own "Kapat" is a button of the same name, so the dialog's buttons are found inside the dialog
+  unpublishDialog: { role: alertdialog, name: Dersi taslağa çek }
+  unpublishEyebrow: { css: .mds-eyebrow, within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishTitle: { role: heading, name: Dersi taslağa çek, within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishBody: { css: .mds-dialog__body, hasText: taslağa çekilecek, within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishWay: { css: .mds-dialog__body, hasText: yeniden yayımlayabilirsiniz, within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishClose: { role: button, name: Kapat, within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishCancel: { role: button, name: '/^Vazgeç$/', within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishConfirm: { role: button, name: '/^Taslağa çek$/', within: { role: alertdialog, name: Dersi taslağa çek } }
+  unpublishBusy: { css: output, hasText: Yükleniyor, within: { role: alertdialog, name: Dersi taslağa çek } }
+  # "Dersi gizle": the same
+  hideDialog: { role: alertdialog, name: Dersi gizle }
+  hideEyebrow: { css: .mds-eyebrow, within: { role: alertdialog, name: Dersi gizle } }
+  hideDialogTitle: { role: heading, name: Dersi gizle, within: { role: alertdialog, name: Dersi gizle } }
+  hideDialogBody: { css: .mds-dialog__body, hasText: gizlenecek, within: { role: alertdialog, name: Dersi gizle } }
+  hideWay: { css: .mds-dialog__body, hasText: Hiçbir şey silinmez, within: { role: alertdialog, name: Dersi gizle } }
+  hideClose: { role: button, name: Kapat, within: { role: alertdialog, name: Dersi gizle } }
+  hideCancel: { role: button, name: '/^Vazgeç$/', within: { role: alertdialog, name: Dersi gizle } }
+  hideConfirm: { role: button, name: '/^Gizle$/', within: { role: alertdialog, name: Dersi gizle } }
+  hideBusy: { css: output, hasText: Yükleniyor, within: { role: alertdialog, name: Dersi gizle } }
+
+# What the page and its writes leave outside the screen, read through the API as the başnazım (e2e courses#6 a6, #7 a4 and a6, #8 a3, #9 a5 and a6): the course's closed
+# flag, approval flag, in-person mark, zone and sample session ("Celse 1" or null), its status, whether it is hidden, and the köşk's two policies, on one line of JSON.
+# The expectation is the scenario's own (`vars`); a substring of the line, so a check names the keys it means (they come in the order the helper writes them).
+effects:
+  # the page was read as the walk's own course is: published, asking approval, open, in Istanbul, no sample; and the köşk's policies as the scenario sets them
+  loadedPlain:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectLoaded}'
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectKosk}'
+  loadedDraft:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectLoadedDraft}'
+  # the sample's write landed: the course holds the sample and nothing else of the save yet
+  sampleLanded:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectSample}'
+  # the save is done: the course and the köşk hold every value that was pressed
+  savedAll:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectSaved}'
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectSavedKosk}'
+  # after a reload the page shows what the API holds: the same check, as the e2e reads each value back (courses#9 a5, a6)
+  reloadedSaved:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectSaved}'
+  drafted:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '"status":"DRAFT"'
+  published:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '"status":"PUBLISHED"'
+  # a refusal: what the course holds after it (the e2e's "nothing is written")
+  toastStale:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectRefused}'
+  toastGeneric:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '{expectRefused}'
+  # the hide landed (the domain action's own effect: it runs after `hiding` ends with DONE)
+  hideCourse:
+    - run: [node, ../nizam/courses/settingsAndPublish/settings-data.mjs, state]
+      expect: '"archived":true'

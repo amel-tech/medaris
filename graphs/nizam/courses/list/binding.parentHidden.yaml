@@ -1,0 +1,67 @@
+# nizam.courses.list: the medrese's başmüderris (APPLICANT_D) hid the medrese, and with it the course it opened in the köşk, at the medrese's
+# kademe. The köşk's nazımı is above that kademe, so the course has "Geri al" for her, and pressing it is refused while the medrese is still
+# hidden: 409 ARCHIVE_PARENT_HIDDEN, the error toast "Ders geri alınamadı" with "Dersin medresesi ya da köşkü hâlâ gizli; ders onlarla birlikte geri
+# gelir.", and the page is not read again, so the row stays (FAIL.parentHidden; kosk-view.e2e.ts has no check of it).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/list \
+#     --bind graphs/nizam/courses/list/binding.parentHidden.yaml --cover transitions --out <dir>
+# NOT RUN. The refusal is the data's, so the event below only reads (the replay drives a FAIL walk only where the binding names its event): read only the walk that covers `FAIL.parentHidden`. The seeded medrese is never hidden:
+# this one is the walk's own (./data.mjs make-medrese, hosting right in the walk's köşk), and `teardown` deletes it with the köşk.
+# Data: the köşk with nclOwn (published, one application waiting) and nclMed, a course of the medrese, hidden with it. No locked row, so `held`
+# is restorable. The card of hosting says 0, for a hidden medrese holds no hosting right that counts.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.list
+
+data:
+  ncl: { json: ../.local/made/ncl.json }
+  nclm: { json: ../.local/made/nclm.json }
+  nclMed: { json: ../.local/made/nclMed.json }
+  nclOwn: { json: ../.local/made/nclOwn.json }
+
+events:
+  # the refusal is the data's, so the event makes nothing happen: it only reads that the medrese is still hidden, which is why the restore is refused
+  FAIL.parentHidden:
+    - run: [node, helpers/sql.mjs, "select archived_at is not null as hidden from madrasahs where id = '{nclm.madrasah}'"]
+      expect: '"hidden":true'
+
+scenarios:
+  parentHidden:
+    given: { courses: some, held: restorable }
+    as: koskNazim
+    open: '{nizam}/kosks/{ncl.kosk}'
+    setup:
+      - run: [node, ../nizam/courses/list/data.mjs, make-kosk, ncl, KOSK_NAZIM]
+        expect: '"tag":"ncl"'
+      - run: [node, ../nizam/courses/list/data.mjs, make-medrese, nclm, --kosk, ncl, --head, APPLICANT_D]
+        expect: '"tag":"nclm"'
+      - run: [node, helpers/course.mjs, make, nclMed, --madrasah, '{nclm.madrasah}', --kosk, '{ncl.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclMed"'
+      - run: [node, helpers/course.mjs, make, nclOwn, --kosk, '{ncl.kosk}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+      - run: [node, ../nizam/courses/list/data.mjs, hide-medrese, --as, applicantD, --tag, nclm]
+        expect: 'hide-medrese nclm by APPLICANT_D'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nclOwn]
+        expect: 'course remove nclOwn'
+      - run: [node, helpers/course.mjs, remove, nclMed]
+        expect: 'course remove nclMed'
+      - run: [node, ../nizam/courses/list/data.mjs, remove-medrese, nclm]
+        expect: 'data remove-medrese nclm'
+      - run: [node, ../nizam/courses/list/data.mjs, remove-kosk, ncl]
+        expect: 'data remove-kosk ncl'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ncl%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from kosks where name like 'Deneme köşkü ncl%') + (select count(*) from madrasahs where name like 'Deneme medresesi ncl%') as n"]
+        expect: '"n":0'
+
+nodes:
+  # two courses: nclOwn published and nclMed hidden with its medrese; a hide of nclOwn would make it 0 and 2
+  tabAll: { role: tab, name: '/^Tümü2$/' }
+  tabPublished: { role: tab, name: '/^Yayında[01]$/' }
+  tabDraft: { role: tab, name: '/^Taslak0$/' }
+  tabHidden: { role: tab, name: '/^Gizli[12]$/' }
+  hostingNumber: { css: .mds-stat__value, hasText: '/^0$/', within: { css: .mds-stat, hasText: Barındırma hakkı olan medrese } }
+  # nclMed is the hidden one: it has no "Dersi gör" and no "Gizle", but "Geri al"
+  medreseView: { skip: 'nclMed is hidden here: its row has Geri al only' }
+  medreseHide: { skip: 'nclMed is hidden here: its row has Geri al only' }

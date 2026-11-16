@@ -1,0 +1,124 @@
+# The screens of nizam.madrasahs.passivate: the Medreseler page (/medreseler) with the "Pasife al" button on a row, the dialog "Medreseyi
+# pasife al" over it, and the page again once the medrese is passive. Read from apps/nizam/features/madrasahs/components/madrasahs-view.tsx
+# and features/passivation/components/passivate-scope-dialog.tsx on 15 Nov 2026; the words are copied from
+# libs/i18n/src/locales/tr/nizam.json (namespaces MadrasahsPage and PassivateScopeDialog).
+#
+# Two kinds of catalog entry are not copied. `composed.*` is text the app builds in code and that is in no i18n file:
+#   composed.PassivateScopeDialog.eyebrow  the medrese's own name over the dialog's title, `eyebrow={name}` (passivate-scope-dialog.tsx:189)
+#   composed.Button.loading                "Yükleniyor", the hidden status beside a busy Button, a default of libs/ui/src/mds/button.tsx (the
+#                                          button passes no loadingLabel)
+# `Changes.note` is the one message written for the graph: no message of the app tells the person what the window changed (the dialog tells it
+# before, in its warning, and the toast says only that the medrese is passive).
+#
+# The page behind the dialog is drawn where the dialog is closed (`listed`, `passivated`): the dialog is modal, so the page is inert while it
+# is open and none of its nodes is listed in a dialog state.
+schema: delurio-graph/0
+kind: ui
+id: nizam.madrasahs.passivate
+flow: nizam.madrasahs.passivate
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Örnek Medrese
+  count: "2"
+  published: "1"
+  draft: "1"
+  days: "7"
+  title: Örnek Ders
+  kosk: Örnek Köşk
+  enrolled: "3"
+  course: Örnek Ders
+  when: "16 Kas 2026 21:00"
+  dateLocative: "15 Kasım’da"
+  dateAblative: "15 Kasım’dan"
+
+# Nothing in features/madrasahs or features/passivation sets the focus of the page on load or after the dialog's result (`rules`:
+# focus-not-set), so the page node has no `initialFocus`. The dialog does: "Vazgeç".
+nodes:
+  # ---- the page, the dialog closed ----------------------------------------------------------------------------------------------
+  madrasahsPage: { type: page, component: Page, role: main, in: [listed, passivated], source: apps/nizam/app/medreseler/page.tsx:51 } # the shell's one <main id="main">; it has no name
+  title: { type: text, component: Heading, role: heading, text: { key: MadrasahsPage.title }, in: [listed, passivated], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:332 } # h1
+  intro: { type: text, component: Text, text: { key: MadrasahsPage.intro }, in: [listed, passivated], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:333 }
+  passiveWarning: { type: alert, component: Alert, role: status, text: { key: MadrasahsPage.passiveTitleOne, params: { name: madrasah.name } }, in: [passivated], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:346 } # a warning Alert is a status; "{n} medrese pasif" when more than one medrese is passive (data-testid=passive-warning)
+  passiveWarningBody: { type: text, component: Text, text: { key: MadrasahsPage.passiveBodyOne, params: { dateLocative: madrasah.since } }, in: [passivated], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:355 } # F-W2-passivate-4: "Başmüderrisin görev süresi {tarih} doldu" is said of a medrese the başnazım passivated
+  listRegion: { type: page, component: Page, role: region, name: { labelledBy: listHeading }, in: [listed, passivated], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:371 }
+  listHeading: { type: text, component: Heading, role: heading, text: { key: MadrasahsPage.heading }, in: [listed, passivated], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:376 } # h2
+  table: { type: list, component: List, role: table, name: { key: MadrasahsPage.caption.ALL }, in: [listed, passivated], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:427 } # the caption is visually hidden; the tab "Tümü" is the default
+  passivate: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.passivateLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.passivate }, in: [listed], when: "may != 'mayNot'", repeat: directory.items, emits: PASSIVATE, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:300 } # one on every active row; the başnazım, or platform.madrasah_edit (present.ts:99-111); drawn to anyone when the roles could not be read (F-W2-2)
+
+  # ---- the row and the page once the medrese is passive ------------------------------------------------------------------------
+  rowBadge: { type: text, component: Text, text: { key: MadrasahsPage.status.PASSIVE }, in: [passivated], repeat: directory.items, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:216 } # the "Pasif" badge of the Durum column
+  rowSince: { type: text, component: Text, text: { key: MadrasahsPage.since, params: { dateAblative: madrasah.since } }, in: [passivated], repeat: directory.items, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:224 }
+  rowHead: { type: text, component: Text, text: { key: MadrasahsPage.unassigned }, in: [passivated], repeat: directory.items, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:175 } # the heads were revoked
+  rowTermEnded: { type: text, component: Text, text: { key: MadrasahsPage.termEnded, params: { dateLocative: madrasah.since } }, in: [passivated], repeat: directory.items, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:178 } # F-W2-passivate-4: said of every passive row, here of one the başnazım passivated
+  assign: { type: action, component: Button, role: button, intent: secondary, name: { key: MadrasahsPage.assignLabel, params: { name: madrasah.name } }, text: { key: MadrasahsPage.assign }, in: [passivated], when: "may == 'chief'", repeat: directory.items, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:258 } # the row's button now; a Medaris nazımı has it with platform.head_muderris_manage (nizam.madrasahs.headMuderris)
+  toastDone: { type: status, component: Status, text: { key: PassivateScopeDialog.doneMadrasah }, in: [passivated], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:91 } # a sonner toast (no role); the replay finds it by [data-sonner-toast]
+  toastDoneBody: { type: text, component: Text, text: { key: PassivateScopeDialog.doneMadrasahBody, params: { name: madrasah.name } }, in: [passivated], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:92 }
+
+  # ---- the dialog ---------------------------------------------------------------------------------------------------------------
+  dialog: { type: page, component: Page, role: dialog, name: { labelledBy: dialogTitle }, in: [loading, loadFailed, alreadyPassive, ready, deactivating], initialFocus: cancel, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:184 } # role dialog, not alertdialog (F-W2-6); the scrim does not close it (`dismissible={false}`, :193)
+  eyebrow: { type: text, component: Text, text: { key: composed.PassivateScopeDialog.eyebrow, params: { name: madrasah.name } }, in: [loading, loadFailed, alreadyPassive, ready, deactivating], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:189 }
+  dialogTitle: { type: text, component: Heading, role: heading, text: { key: PassivateScopeDialog.titleMadrasah }, in: [loading, loadFailed, alreadyPassive, ready, deactivating], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:190 }
+  closeIcon: { type: action, component: Button, role: button, intent: dismiss, name: { key: PassivateScopeDialog.close }, in: [loading, loadFailed, alreadyPassive, ready, deactivating], emits: CANCEL, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:191 } # it stays on and does nothing while the call runs (F-W2-passivate-2)
+
+  # reading
+  loadingText: { type: text, component: Text, text: { key: PassivateScopeDialog.loading }, in: [loading], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:210 } # a plain paragraph in an aria-busy div: nothing announces it (F-W2-passivate-3)
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: PassivateScopeDialog.loadFailed }, in: [loadFailed], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:212 } # every refusal of the preview is this one (F-W2-passivate-1)
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: PassivateScopeDialog.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:213 }
+  alreadyPassiveAlert: { type: alert, component: Alert, role: status, text: { key: PassivateScopeDialog.errors.alreadyPassive }, in: [alreadyPassive], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:124 } # an info Alert is a status
+
+  # the stale notice
+  changedNotice: { type: alert, component: Alert, role: status, text: { key: PassivateScopeDialog.changed }, in: [ready, deactivating], when: "said == 'changed'", source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:129 } # no toast for the 409: this Alert, inserted with its text, is the only word (F-W2-passivate-3)
+
+  # what passivating takes along
+  warning: { type: alert, component: Alert, role: status, text: { key: PassivateScopeDialog.warningTitle }, in: [ready, deactivating], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:130 }
+  staffLine: { type: text, component: Text, text: { key: PassivateScopeDialog.staffMadrasah }, in: [ready, deactivating], source: apps/nizam/features/passivation/present.ts:49 } # "Görevde başmüderris yok" instead when the head's post had lapsed already
+  coursesLine: { type: text, component: Text, text: { key: PassivateScopeDialog.courses, params: { count: impact.courses, published: impact.published, draft: impact.draft } }, in: [ready, deactivating], when: "courses == 'some'", source: apps/nizam/features/passivation/present.ts:59 }
+  coursesLiveLine: { type: text, component: Text, text: { key: PassivateScopeDialog.coursesLive, params: { count: impact.withLiveMuderris } }, in: [ready, deactivating], when: "courses == 'some'", source: apps/nizam/features/passivation/present.ts:67 }
+  coursesNoneLine: { type: text, component: Text, text: { key: PassivateScopeDialog.coursesNone }, in: [ready, deactivating], when: "courses == 'none'", source: apps/nizam/features/passivation/present.ts:57 }
+  studentsLine: { type: text, component: Text, text: { key: PassivateScopeDialog.students, params: { count: impact.students } }, in: [ready, deactivating], when: "courses == 'some'", source: apps/nizam/features/passivation/present.ts:72 }
+  sessionsLine: { type: text, component: Text, text: { key: PassivateScopeDialog.sessions, params: { days: impact.windowDays, count: impact.sessions } }, in: [ready, deactivating], when: "courses == 'some'", source: apps/nizam/features/passivation/present.ts:81 }
+  sessionsNoneLine: { type: text, component: Text, text: { key: PassivateScopeDialog.sessionsNone, params: { days: impact.windowDays } }, in: [ready, deactivating], when: "courses == 'none'", source: apps/nizam/features/passivation/present.ts:81 }
+  studentsNote: { type: text, component: Text, text: { key: PassivateScopeDialog.studentsNote }, in: [ready, deactivating], when: "courses == 'some'", source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:137 }
+  courseItem: { type: text, component: Text, text: { key: PassivateScopeDialog.courseItem, params: { title: course.title, kosk: course.koskName, enrolled: course.enrolled } }, in: [ready, deactivating], when: "courses == 'some'", repeat: impact.courses.items, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:143 } # the most enrolled first, at most 50
+  sessionItem: { type: text, component: Text, text: { key: PassivateScopeDialog.sessionItem, params: { title: session.title, course: session.courseTitle, when: session.scheduledAt } }, in: [ready, deactivating], when: "courses == 'some'", repeat: impact.sessions.next, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:163 } # the first five, the date in the viewer's zone
+  wayLine: { type: text, component: Text, text: { key: PassivateScopeDialog.wayMadrasah }, in: [ready, deactivating], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:175 }
+
+  # the footer
+  cancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: PassivateScopeDialog.cancel }, in: [loading, loadFailed, alreadyPassive, ready, deactivating], emits: CANCEL, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:197 } # the focus starts here; it does nothing while the call runs (F-W2-passivate-2)
+  confirm: { type: action, component: Button, role: button, intent: confirm, text: { key: PassivateScopeDialog.confirm }, in: [loading, loadFailed, alreadyPassive, ready, deactivating], disabledIn: [loading, loadFailed, alreadyPassive, deactivating], emits: CONFIRM, source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:198 } # natively disabled until the numbers are on the screen (canConfirm, present.ts:101-105) and again while the call runs, when it is also busy (loading, aria-busy): both at once, F-W2-passivate-6
+  busy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [deactivating], source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:200 } # the hidden <output> beside the busy button
+
+  # a refusal: a sticky error toast over the dialog, which stays open
+  failedTitle: { type: status, component: Status, text: { key: PassivateScopeDialog.failed }, in: [ready], when: "toast != 'none'", source: apps/nizam/features/passivation/components/passivate-scope-dialog.tsx:106 } # a sonner error toast, `duration: Infinity`
+  failedAlreadyPassive: { type: text, component: Text, text: { key: PassivateScopeDialog.errors.alreadyPassive }, in: [ready], when: "toast == 'alreadyPassive'", source: apps/nizam/features/passivation/present.ts:113 }
+  failedGone: { type: text, component: Text, text: { key: PassivateScopeDialog.errors.notFound }, in: [ready], when: "toast == 'gone'", source: apps/nizam/features/passivation/present.ts:116 }
+  failedForbidden: { type: text, component: Text, text: { key: PassivateScopeDialog.errors.forbidden }, in: [ready], when: "toast == 'forbidden'", source: apps/nizam/features/passivation/present.ts:118 }
+  failedGeneric: { type: text, component: Text, text: { key: PassivateScopeDialog.errors.generic }, in: [ready], when: "toast == 'failed'", source: apps/nizam/features/passivation/present.ts:123 }
+
+edges:
+  - { labelledBy: [listRegion, listHeading] }
+  - { labelledBy: [dialog, dialogTitle] }
+  - { triggers: [passivate, loading] }
+  - { triggers: [retry, loading] }
+  - { triggers: [confirm, deactivating] }
+  - { returnsFocus: [dialog, passivate] } # Vazgeç, the close icon or Esc: Base UI gives the focus back to the element that had it, the row's "Pasife al"; after a success that button is replaced (F-W2-10). Not verified in a browser
+
+rules:
+  - { id: focus-not-set, rule: "Nothing in features/madrasahs or features/passivation moves the focus of the page, on load or after the dialog's result: the page has no initialFocus. The dialog starts on 'Vazgeç' (initialFocus={cancelRef}, passivate-scope-dialog.tsx:194), so the button that confirms is never the one the focus is on." }
+  - { id: F-W2-6, rule: "The destructive confirmation is a plain Dialog (role dialog), not the kit's AlertDialog (role alertdialog), at passivate-scope-dialog.tsx:184-205; libs/ui/src/mds/dialog.tsx:46-50 says a confirmation that waits for an answer is an AlertDialog, and the component's own comment (:41-50) says the choice is deliberate (canvas rule 11). CORRECTION to the inventory, which says a click on the scrim closes it: the code passes `dismissible={false}` (:193), which sets disablePointerDismissal, so the scrim does not close it; Esc, 'Vazgeç' and the close icon do, except while the call runs. Fix: decide the role (decision D1); if alertdialog, the AlertDialog already supports confirmDisabled and confirmLoading." }
+  - { id: F-UI-W1-1, rule: "libs/ui/src/mds/dialog.tsx:103-112 wraps the whole body in Base UI's Dialog.Description, so opening this dialog reads the warning, every course and celse as its description before the person has chosen anything. Fix: give only an intro paragraph aria-describedby." }
+  - { id: F-W2-2, rule: "madrasahAbilities (apps/nizam/features/madrasahs/present.ts:103) draws every button, 'Pasife al' included, when the roles or the permission codes could not be read (`!me || !held`), for a Medaris nazımı who may hold none of them. The preview then meets a 403, which this dialog draws as 'Etki hesaplanamadı. Biraz sonra yeniden deneyin.' (F-W2-passivate-1). Fix: keep the failure visible, or hide the buttons." }
+  - { id: F-W2-10, rule: "After the result the pressed button is replaced: Base UI returns the focus to the row's 'Pasife al' when the dialog closes, and the refresh that follows (revalidatePath and router.refresh, madrasahs/actions.ts:73, madrasahs-view.tsx:109) draws the row with 'Başmüderris ata' instead, so the focus falls to the page and only a toast says what happened. Not verified in a browser. Fix: move the focus to the row's new button or to the page heading." }
+  - { id: F-W2-passivate-1, rule: "New. `load()` turns every failure of the preview into `{ kind: 'failed' }` (passivate-scope-dialog.tsx:71-75), so a 403 (a Medaris nazımı without platform.madrasah_edit, F-W2-2), a 404 (the medrese was deleted) and a dropped network all say 'Etki hesaplanamadı. Biraz sonra yeniden deneyin.' with a 'Yeniden dene' that cannot help the first two. The confirmation path tells them apart (passivationErrorKey, present.ts:107-124: 'Bunu yapma izniniz yok.', 'Bu kapsam artık yok.'). Fix: pass the refusal's code through and use the same texts." }
+  - { id: F-W2-passivate-2, rule: "New. While the confirmation is on its way `onOpenChange` is guarded (`if (!saving) onOpenChange(next)`, passivate-scope-dialog.tsx:186-188) but 'Vazgeç' (a DialogClose, :197) and the close icon stay enabled and do nothing, and nothing says they are held: a person who wants out presses them and nothing happens, with no word. The same family as F-W3-open-2 in nizam.kosks.open. Fix: disable them while saving, or let them close the dialog and report the result in a toast." }
+  - { id: F-W2-passivate-3, rule: "New, from the code and not verified with a reader. 'Pasife almanın neleri götüreceği hesaplanıyor…' is a plain <p> in a div with aria-busy (passivate-scope-dialog.tsx:209-210), which is not a live region, and the warning then replaces it: a status Alert inserted with its text is usually not announced. The 'Etki siz bakarken değişti' notice (:129) is also such an Alert, and it is the only word that the numbers under the focus have just changed (no toast, no focus move). Fix: put the loading line and the stale notice in a live region that exists before it speaks, or move the focus to the notice." }
+  - { id: F-W2-passivate-4, rule: "New. After 'Pasife al' the list says that the başmüderris's term ended: the passive warning 'Başmüderrisin görev süresi {tarih} doldu.' (MadrasahsPage.passiveBodyOne, madrasahs-view.tsx:355-363) and the row's 'Görev süresi {tarih} doldu' under 'Atanmamış' (:174-180, present.ts:215-232 termEndedLabel). The başnazım took the head off the post; tedrisat writes passive_reason DEACTIVATED_BY_ADMIN (madrasah.repository.ts:747), but the directory answer does not carry it (madrasah/dto/madrasah-directory-response.dto.ts has `status` and `since` only) and nothing in apps/nizam reads it. Fix: return the reason in the directory item and say 'Medaris yönetimi pasife aldı' (decision D2)." }
+  - { id: F-W2-passivate-5, rule: "New, from the code and not run. The list's Etkin/Pasif/Gizli is a column, `passive_since` (madrasah.repository.ts:849), and the only code that writes it is this dialog's deactivate (:746); the engine's own passive test is role-based (isPassiveScope, used by the portal and the dashboards) and Pasif kapsamlar lists a medrese by the absence of a held başmüderris row (inactive-scope.repository.ts:59-89). A medrese whose head's term ran out is therefore closed for its talebe and listed in Pasif kapsamlar, while /medreseler still says Etkin with 'Atanmamış' and offers 'Pasife al' (whose preview then says 'Görevde başmüderris yok'). The schema comment (madrasah.schema.ts:27-30) describes a status that nothing sets. Fix: derive the list's status from the same role test, or have the lapse write passive_since." }
+  - { id: inactive-scope-accepts-new-scope, rule: "Security ledger, drawn here only where this flow's dialog meets it. This dialog and the list under it agree that a scope is passive only after it had a manager once: the preview sets closesContent from `ever_managed` (apps/tedrisat/src/passivation/passivation-impact.repository.ts:67-72, 153) and draws 'Bu kapsamın hiç yöneticisi olmadı; pasife almak içeriği kapatmaz.' (PassivateScopeDialog.neverAttended, present.ts:53); Pasif kapsamlar lists only scopes with a past manager (inactive-scope.repository.ts:59-89, 'A scope that never had one (a fresh draft) is not passive, it is new'). The route this flow hands over to does not apply that rule: assign and view call mustBeInactive (inactive-scope.service.ts:225-231, used at :246 and :296), which is `isInactive` (inactive-scope.repository.ts:263-279): the scope exists, is not hidden and has no held manager row, with no ever-managed test. So a holder of platform.inactive_scopes_manage alone can seat a nazım in a new köşk, medrese or course through POST /nizam/inactive-scopes/:type/:id/assign, which the page never offers. A medrese is opened with a head, so it is drawn on nizam.inactive.reassign and not here. Fix: share the ever-managed test between lastPosts and isInactive." }
+  - { id: F-W2-passivate-6, rule: "New, from the code and not verified in a browser. The confirm button passes `loading={saving}` and `disabled={!canConfirm(state)}` together (passivate-scope-dialog.tsx:199-201), and canConfirm is false while saving (present.ts:101-105), so while the call runs the button is natively disabled as well as busy. The Button's own contract is 'busy: aria-disabled and aria-busy, never `disabled`, so focus survives a submit' (libs/ui/src/mds/button.tsx:29). A browser may drop the focus from a button that becomes disabled, and after a refusal (the button is enabled again) the focus is no longer on it. Fix: keep `disabled` for the loading, failed and already-passive states only, and let `loading` be the one that says saving." }
+  - { id: label-in-name, rule: "A button's visible text is contained in its accessible name: 'Pasife al' in 'Pasife al: {name}', 'Başmüderris ata' in 'Başmüderris ata: {name}' (WCAG 2.5.3). Holds. The dialog's buttons are named by their text." }
+  - { id: confirm-before-passivating, rule: "The medrese is made passive only after the person has read what it takes along: the button 'Yine de pasife al' is natively disabled until the numbers are on the screen (canConfirm, present.ts:101-105), it is not the focus when the dialog opens, and the confirmation it posts is tied by the server to exactly those numbers and to the caller. Nothing is deleted; a new başmüderris opens the medrese again (wayMadrasah)." }
+  - { id: toast-is-the-only-word, rule: "The result is said by a sonner toast (a list item in a live region of the app's Toaster): 'Medrese pasife alındı' closes by itself after 6 seconds (TOAST_DURATION, libs/ui/src/components/sonner.tsx:18); a refusal ('Pasife alınamadı' with its reason) stays until closed (`duration: Infinity`). Nothing on the page itself says it except the row and the passive warning, which then tell the wrong story (F-W2-passivate-4)." }

@@ -1,0 +1,61 @@
+# nizam.moderation.restoreArchived on the local stack: the page lists a course the nazım may restore, and something changes before he presses "Geri al": someone brought it back first
+# (FAIL.gone: 404 ARCHIVE_ITEM_NOT_FOUND, "Bu öğe artık arşivde değil."), or the başnazım brought it back and hid it again at the platform's kademe (FAIL.level: 403 ARCHIVE_RESTORE_LEVEL,
+# "Bunu geri alamazsınız: ..." and the row turned to a sentence, which says the köşk's nazımı hid it: RESTORE-2).
+#   node apps/engine/src/cli.ts replay graphs/nizam/moderation/restoreArchived \
+#     --bind graphs/nizam/moderation/restoreArchived/binding.stale.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Read only the walks that cover `FAIL.gone` and `FAIL.level`: the others repeat binding.yaml's. Do NOT use --absent: after FAIL.level the page really draws the
+# sentence on a row the model still has `held` courses for.
+#
+# How the answer is made: neither event is a node's, so the binding gives them. Each runs through the API, as a second person, while the press's call is held (`states.restoring.call` in the shared
+# file). FAIL.gone: the nazım's own restore through the API; the page's call then finds nothing hidden. FAIL.level: the same restore, then the BAŞNAZIM hides the course again (POST /courses/:id/archive
+# stamps the platform's kademe), so the page's call is refused for its level. That the replay runs an event's actions before it releases the held call is not verified (the same caveat as
+# nazar.archive.hideAndRestoreCourse's stale files); if it runs them after, the call is already answered and the walk reports the success branch, which means these events need
+# `states.restoring.before` (SPEC §7). ARCHIVE_FORBIDDEN, COURSE_NOT_FOUND and the 400s are not bound: nothing on the stack makes them (the caller acts at a level on every row he is shown).
+#
+# Data: arsKeep and arsStale, both hidden by the nazım, arsStale last, so the first "Geri al" is arsStale's and arsKeep keeps the list non-empty (`held` is kept by the replay). The köşk is new.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.restoreArchived
+
+data:
+  mine: { json: ../.local/made/arsKosk.json }
+
+events:
+  FAIL.gone:
+    - run: [node, ../nizam/moderation/restoreArchived/data.mjs, restore, --as, koskNazim, --tag, arsStale]
+      expect: 'restore arsStale course by KOSK_NAZIM'
+  FAIL.level:
+    - run: [node, ../nizam/moderation/restoreArchived/data.mjs, restore, --as, koskNazim, --tag, arsStale]
+      expect: 'restore arsStale course by KOSK_NAZIM'
+    - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, systemAdmin, --tag, arsStale]
+      expect: 'hide-course arsStale by SYSTEM_ADMIN'
+
+scenarios:
+  stale:
+    given: { view: kosk, held: courses }
+    as: koskNazim
+    open: '{nizam}/kosks/{mine.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'frame:shell->koskArchive' }
+    setup:
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, make-kosk, arsKosk, KOSK_NAZIM]
+        expect: '"tag":"arsKosk"'
+      - run: [node, helpers/course.mjs, make, arsKeep, --kosk, '{mine.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi arsKeep"'
+      - run: [node, helpers/course.mjs, make, arsStale, --kosk, '{mine.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi arsStale"'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, koskNazim, --tag, arsKeep]
+        expect: 'hide-course arsKeep'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, koskNazim, --tag, arsStale]
+        expect: 'hide-course arsStale'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, arsStale]
+        expect: 'course remove arsStale'
+      - run: [node, helpers/course.mjs, remove, arsKeep]
+        expect: 'course remove arsKeep'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, remove-kosk, arsKosk]
+        expect: 'remove-kosk arsKosk'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ars%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]
+        expect: '"n":0'

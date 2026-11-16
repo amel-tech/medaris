@@ -1,0 +1,124 @@
+# What nizam.home.koskNazimLanding's bindings share: the data the page's numbers are checked against, the events no node sends, the
+# address of each exit, and where role and name cannot find a node of the köşk home. It carries no scenario, so it is not walked by
+# itself:
+#   binding.yaml        a wide window: the seeded köşk (the main story, entered at "/"), the seed's second köşk, which has no course
+#                       (the empty home), and the address of a köşk the person does not manage (the refusal)
+#   binding.phone.yaml  the same seeded köşk in a 390 x 844 window: the bar with "Menü", and the sheet behind it
+# The scenarios are in files of their own because the window's size belongs to a binding file, not to a scenario (see the header of
+# binding.phone.yaml).
+#
+# The numbers are data: the page counts celse in the next seven days of the seed's weekly courses, so what it shows depends on the day
+# the walk runs. `setup` runs home-numbers.mjs (this folder), which makes the API's own reads, writes them to graphs/.local/koskhome.json
+# (read below as {home.*}) and checks that the stack is in the state the scenario's `given` says. A placeholder inside a /regex/ is NOT
+# filled in (the emitted spec shows it); one inside css or a plain string is. A Stat is two spans, the label then the number, in one
+# card, so the number node is the value span of the card whose label is the node's own, with the number spelled in the css.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.home.koskNazimLanding
+
+data:
+  home: { json: ../.local/koskhome.json }
+
+events:
+  # the person goes to another page: Hesap, which every signed-in person may open
+  NAVIGATE: [{ goto: '{nizam}/hesap' }]
+  # Not bound, with the reason:
+  #   DECIDE_APPLICATIONS  no node sends it, and pressing Onayla or Reddet would answer the seed's own waiting application (TALEBE_MALE's),
+  #                        which no walk may touch; nizam.home.decideApplications walks it on an application of its own
+  #   RETRY, RETRY_TAB     the stack cannot make tedrisat refuse a read, so neither box is ever on the screen
+  #   WIDEN                not in this flow: no action resizes the window (see binding.phone.yaml)
+
+states:
+  home: { url: '{nizam}/kosks/*/ana-sayfa' }
+  refused: { url: '{nizam}/kosks/*/ana-sayfa' }
+  sheet: { url: '{nizam}/kosks/*/ana-sayfa' }
+  # the Server Action that reads another tab posts to the page's own address; it is held while the busy table is looked at
+  readingTab: { call: '{nizam}/kosks/*/ana-sayfa' }
+  # An exit has no nodes, so its address is all the replay can check. The pages they are belong to the flows they start.
+  handed_over.manage_sessions: { url: '{nizam}/kosks/*/courses/*/sessions' }
+  handed_over.open_course: { url: '{nizam}/kosks/*/courses/new' }
+  landing_opened: { url: '{nizam}/kosks/*/ana-sayfa' }
+  left: { url: '{nizam}/hesap' }
+  # loadFailed and tabUnreadable are not bound: the stack has no way to make a read fail
+
+nodes:
+  # ---- the page ----
+  # the shell's <main>; every page the walk leaves for has one too, so the home's is found by what only it holds
+  homePage: { css: '#main:has([data-testid=home-kosk])' }
+  # one <p data-testid="home-greeting"> holds both sentences: the greeting, then how many celse the week holds
+  greetingNone: { testId: home-greeting, hasText: '/^Selâmün aleyküm, .+ Hoca\. Önümüzdeki yedi günde celse yok\.$/' }
+  greetingSome: { css: '[data-testid=home-greeting]:has-text("Önümüzdeki yedi günde {home.upcoming} celse var.")' }
+  greetingMissing: { css: '[data-testid=home-greeting]:has-text("Önümüzdeki yedi günde {home.upcoming} celse var; ")', hasText: '/ katılım yolu eksik\.$/' }
+
+  # the menu on a wide window is the shell's <aside>; on a phone it is hidden and the bar has "Menü"
+  sidebar: { css: aside }
+
+  # ---- the warning: a warning-tone Alert; its title is an ICU plural, its sentence has a test id ----
+  missingAlert: { css: '.mds-alert--warning', hasText: '/celsenin katılım yolu eksik/' }
+  missingBody: { testId: home-missing-link, hasText: '{home.missingCourse}' }
+
+  # ---- the four numbers: "<label><number>" in a card, the number read from the dashboard just before the page opens ----
+  statCourse: { css: '[data-testid=home-counts] .mds-stat > .mds-caption:first-child', hasText: '/^Ders$/' }
+  valueCourse: { css: '[data-testid=home-counts] .mds-stat:has(.mds-caption:text-is("Ders")) .mds-stat__value:text-is("{home.courses}")' }
+  statStudents: { css: '[data-testid=home-counts] .mds-stat > .mds-caption:first-child', hasText: '/^Kayıtlı talebe$/' }
+  valueStudents: { css: '[data-testid=home-counts] .mds-stat:has(.mds-caption:text-is("Kayıtlı talebe")) .mds-stat__value:text-is("{home.students}")' }
+  statUpcoming: { css: '[data-testid=home-counts] .mds-stat > .mds-caption:first-child', hasText: '/^Yaklaşan celse$/' }
+  valueUpcoming: { css: '[data-testid=home-counts] .mds-stat:has(.mds-caption:text-is("Yaklaşan celse")) .mds-stat__value:text-is("{home.upcoming}")' }
+  statPending: { css: '[data-testid=home-counts] .mds-stat > .mds-caption:first-child', hasText: '/^Bekleyen başvuru$/' }
+  valuePending: { css: '[data-testid=home-counts] .mds-stat:has(.mds-caption:text-is("Bekleyen başvuru")) .mds-stat__value:text-is("{home.pending}")' }
+
+  # ---- the celse list ----
+  # a tab's name is its words and the badge's number, so it is found by its beginning, and the number is looked for in it
+  tabUpcoming: { role: tab, name: '/^Yaklaşan/', hasText: '{home.upcoming}' }
+  tabPast: { role: tab, name: '/^Geçmiş/', hasText: '{home.past}' }
+  tabCancelled: { role: tab, name: '/^İptal edilen/', hasText: '{home.cancelled}' }
+  # the same sentence is the note under the tabs (a <p>) and the table's own hidden caption: only the <p> is the note
+  upcomingNote: { css: 'p.mds-caption', hasText: '/^Önümüzdeki yedi günün celseleri$/' }
+  # the applications card has a table of its own with a "Talebe" and an "İşlemler" column, so the celse table's cells are looked for inside it
+  columnCourse: { role: columnheader, name: Ders, within: { testId: home-sessions-table } }
+  columnWhen: { role: columnheader, name: Zaman, within: { testId: home-sessions-table } }
+  columnAttendance: { role: columnheader, name: Katılım, within: { testId: home-sessions-table } }
+  columnStudents: { role: columnheader, name: Talebe, within: { testId: home-sessions-table } }
+  columnState: { role: columnheader, name: Durum, within: { testId: home-sessions-table } }
+  columnActions: { role: columnheader, name: İşlemler, within: { testId: home-sessions-table } }
+  loadingRow: { role: cell, name: Celseler okunuyor…, within: { testId: home-sessions-table } }
+  emptyUpcoming: { role: cell, name: Önümüzdeki yedi günde celse yok., within: { testId: home-sessions-table } }
+  emptyPast: { role: cell, name: Geçmiş celse yok., within: { testId: home-sessions-table } }
+  emptyCancelled: { role: cell, name: İptal edilen celse yok., within: { testId: home-sessions-table } }
+
+  # the rows: data, so found by the table's own hooks. A cell of the stacked table is `td[data-label=<column>]`, for the columns that have a
+  # words-only header; the first column is the row header.
+  rowCourse: { css: '[data-testid=home-sessions-table] tbody [role=rowheader]' }
+  rowLine: { css: '[data-testid=home-sessions-table] tbody [role=rowheader] .mds-caption', hasText: '/^Hafta \d+/' }
+  rowWhen: { css: '[data-testid=home-sessions-table] tbody td[data-label="Zaman"]', hasText: '/\d{1,2}:\d{2}$/' }
+  rowStudents: { css: '[data-testid=home-sessions-table] tbody td[data-label="Talebe"]', hasText: '/^\d+$/' }
+  # Durum, Katılım and the button say different things on each tab, so each tab's has a node and the number of rows it must show
+  stateUpcoming: { css: '[data-testid=home-sessions-table] tbody td[data-label="Durum"]', hasText: Planlandı, count: '{home.upcomingRows}' }
+  statePast: { css: '[data-testid=home-sessions-table] tbody td[data-label="Durum"]', hasText: Yapıldı, count: '{home.pastRows}' }
+  stateCancelled: { css: '[data-testid=home-sessions-table] tbody td[data-label="Durum"]', hasText: İptal edildi, count: '{home.cancelledRows}' }
+  attendanceMissing: { testId: attendance-missing, count: '{home.withoutAccess}' }
+  # the seed's meeting links are on meet.example.test, a host the page does not know: the chip says "Bilinmeyen platform" and the host
+  waysUpcoming: { css: '[data-testid=home-sessions-table] tbody td[data-label="Katılım"]', hasText: '/Bilinmeyen platform|Zoom|Google Meet|Jitsi Meet|YouTube|Yüz yüze|Yalnız yayın/', count: '{home.upcomingWays}' }
+  waysPast: { css: '[data-testid=home-sessions-table] tbody td[data-label="Katılım"]', hasText: '/Bilinmeyen platform|Zoom|Google Meet|Jitsi Meet|YouTube|Yüz yüze|Yalnız yayın/', count: '{home.pastWays}' }
+  nonePast: { css: '[data-testid=home-sessions-table] tbody td[data-label="Katılım"]', hasText: Eklenmedi, count: '{home.pastNone}' }
+  cancelledCell: { css: '[data-testid=home-sessions-table] tbody td[data-label="Katılım"]', hasText: '/^—$/', count: '{home.cancelledRows}' }
+  actionUpcoming: { role: link, name: '/^(Toplantı bağlantısı ekle|Düzenle): /', within: { testId: home-sessions-table }, count: '{home.upcomingRows}' }
+  actionPast: { role: link, name: '/^Celseyi gör: /', within: { testId: home-sessions-table }, count: '{home.pastRows}' }
+  actionCancelled: { role: link, name: '/^Celseyi gör: /', within: { testId: home-sessions-table }, count: '{home.cancelledRows}' }
+
+  # ---- the hocas ----
+  muderrisList: { testId: home-muderris-list }
+  muderrisRow: { testId: home-muderris-row, count: '{home.muderrisRows}' }
+  muderrisCaption: { css: '[data-testid=home-muderris-row] .mds-caption', hasText: '/\d+ ders · \d+ talebe$/' }
+
+  # ---- the phone's sheet: the page behind it is inert, so its controls are looked for inside the dialog ----
+  sheetClose: { role: button, name: Kapat, within: { role: dialog, name: Ana menü } }
+  sheetNav: { role: navigation, name: Ana menü, within: { role: dialog, name: Ana menü } }
+  sheetHome: { role: link, name: Ana sayfa, within: { role: dialog, name: Ana menü } }
+
+  # ---- the screen for a köşk that is not the person's: a <section> inside the shell's <main> ----
+  refusedMain: { css: '#main:has(.mds-system-state)' }
+  refusedBody: { css: '.mds-system-state__text', hasText: '/^Bu bölümün izni hesabınıza verilmemiş\./' }
+  refusedAccount: { css: '.mds-system-state p.mds-caption', hasText: '/^Giriş yaptığınız hesap: /' }
+  # the box that says the home could not be read: not bound, the stack cannot make the read fail

@@ -1,0 +1,38 @@
+# nizam.nazims.editPermissions, the person is dismissed while the dialog is open (`answer: gone`; no e2e check does this: permissions.e2e.ts has none).
+# Written without a replay; see locators.binding.yaml for the data and the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/nazims/editPermissions \
+#     --bind graphs/nizam/nazims/editPermissions/binding.gone.yaml --cover transitions --absent --out <dir>
+# The dialog was opened on the person and the walk pressed "Kaydet": `before` on it dismisses the person as the başnazım would (nazim.mjs down: DELETE
+# /nizam/medaris-nazims/<id>, the dismissal of nizam.nazims.dismiss), so the PUT meets no seat (MEDARIS_NAZIM_NOT_FOUND, 404). The page toasts "İzinler kaydedilemedi" /
+# "Bu kişi artık Medaris nazımı değil." and the dialog stays open on the form as it was, with the row still in the table (EPERM-1). A path that presses "Kaydet" and
+# stops on the page (an end that is wrong) does not run the hook: the button is off. Pressing it again runs the hook again, which is fine (a seat that is not there).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.nazims.editPermissions
+
+scenarios:
+  gone:
+    given: { seat: dated, answer: gone }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, up]
+        expect: edit-data up
+    teardown:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+
+nodes:
+  save:
+    role: button
+    name: '/^Kaydet$/'
+    within: { role: dialog, name: İzinleri düzenle }
+    before: [{ run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD], expect: 'down APPLICANT_D' }]

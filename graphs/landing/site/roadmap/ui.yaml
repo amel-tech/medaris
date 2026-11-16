@@ -1,0 +1,93 @@
+# The screen of landing.site.roadmap: the page /yol-haritasi. PLANNED (MDRS-246): no code, so no node of the page carries a `source`.
+# Two things on it exist today and carry their real one: the header (site-header.tsx:54) and the footer's navigation
+# (site-footer.tsx:21, a nav named "Alt bilgi"). The links in them that lead to this page do not exist yet.
+#
+# Words. Landing has no i18n file, and this page has no literals yet. catalog/tr.json holds one key that exists in the app's
+# graphs (Footer.nav, copied from landing.site.readLegal's catalog, where it is the footer's aria-label) and every other key is
+# new: `planned.<Namespace>.<name>`, Turkish only, FOR REVIEW. What is new:
+#   - the phases and statuses (planned.Roadmap.phase.*, planned.Roadmap.status.*): decided words, 4 October;
+#   - the items (planned.Roadmap.today.1-9, soon.1-4, next.1-6, far.1-6): the owner's draft in MDRS-246, in its own words, with
+#     one change (the calendar item's parenthesis keeps the file format only, "(.ics)": the draft named a calendar product beside it, and no product is named here); they are NOT checked against the code and
+#     part of them is out of date (ROADMAP-1 to ROADMAP-4);
+#   - the page's title, the link's label and the introduction (planned.Roadmap.title, planned.Footer.roadmap,
+#     planned.Header.roadmap, planned.Roadmap.intro): the writer's, from the address ("Yol haritası") and the story.
+# No `changes` note: the page writes nothing and invokes no action.
+#
+# The words of each phase are drawn from the draft as four lists, one per phase, so the phase and its status stay together. Items
+# of the first three phases are links (D4); the far items are plain list items. The items are repeated nodes whose text is one of
+# the phase's items (`oneOf`).
+schema: delurio-graph/0
+kind: ui
+id: landing.site.roadmap
+flow: landing.site.roadmap
+status: proposed
+catalog: catalog/tr.json
+locales: [tr]
+samples: {}
+
+# No `initialFocus` and no `focus`: nothing in the story gives the page an initial focus, and a link of an item leaves the page
+# (rule focus-not-set).
+
+nodes:
+  # ---- the header, on every landing page (EXISTS; the link to the roadmap is planned) ----
+  banner: { type: page, component: Page, role: banner, in: [roadmap], source: apps/landing/components/site-header.tsx:54 } # two <header> elements are rendered today, one shown at 768 px and up
+  headerRoadmap: { type: action, component: LinkButton, role: link, text: { key: planned.Header.roadmap }, in: [roadmap] } # PLANNED, decided 4 October: "linked from the header and the footer"; the wording and the phone bar are D5 and D6
+
+  # ---- the page ----
+  page: { type: page, component: Page, role: main, in: [roadmap], script: optional } # PLANNED. A static page (the acceptance criteria), so it reads and its links work without JavaScript; no name, no initial focus
+  title: { type: text, component: Heading, role: heading, text: { key: planned.Roadmap.title }, in: [roadmap] } # h1
+  intro: { type: text, component: Text, text: { key: planned.Roadmap.intro }, in: [roadmap] } # the writer's sentence (D5)
+
+  # ---- Bugün: Yayında ----
+  todayRegion: { type: page, component: Page, role: region, name: { labelledBy: todayTitle }, in: [roadmap] }
+  todayTitle: { type: text, component: Heading, role: heading, text: { key: planned.Roadmap.phase.today }, in: [roadmap] } # h2
+  todayStatus: { type: text, component: Text, text: { key: planned.Roadmap.status.live }, in: [roadmap] } # a pill: its word, never colour alone
+  todayList: { type: list, component: List, role: list, name: { labelledBy: todayTitle }, in: [roadmap] }
+  todayItem: { type: action, component: LinkButton, role: link, text: { oneOf: [planned.Roadmap.today.1, planned.Roadmap.today.2, planned.Roadmap.today.3, planned.Roadmap.today.4, planned.Roadmap.today.5, planned.Roadmap.today.6, planned.Roadmap.today.7, planned.Roadmap.today.8, planned.Roadmap.today.9] }, in: [roadmap], repeat: roadmap.today, emits: OPEN_ISSUE } # each in an <li>; D1: the draft's nine, of which "Herkese açık profil" is switched off (ROADMAP-1)
+
+  # ---- Yakında: Yapılıyor ----
+  soonRegion: { type: page, component: Page, role: region, name: { labelledBy: soonTitle }, in: [roadmap] }
+  soonTitle: { type: text, component: Heading, role: heading, text: { key: planned.Roadmap.phase.soon }, in: [roadmap] } # h2
+  soonStatus: { type: text, component: Text, text: { key: planned.Roadmap.status.doing }, in: [roadmap] }
+  soonList: { type: list, component: List, role: list, name: { labelledBy: soonTitle }, in: [roadmap] }
+  soonItem: { type: action, component: LinkButton, role: link, text: { oneOf: [planned.Roadmap.soon.1, planned.Roadmap.soon.2, planned.Roadmap.soon.3, planned.Roadmap.soon.4] }, in: [roadmap], repeat: roadmap.soon, emits: OPEN_ISSUE } # the draft's four; three have shipped since (ROADMAP-2); the recordings item never names the host
+
+  # ---- Sıradaki: Planlandı ----
+  nextRegion: { type: page, component: Page, role: region, name: { labelledBy: nextTitle }, in: [roadmap] }
+  nextTitle: { type: text, component: Heading, role: heading, text: { key: planned.Roadmap.phase.next }, in: [roadmap] } # h2
+  nextStatus: { type: text, component: Text, text: { key: planned.Roadmap.status.planned }, in: [roadmap] }
+  nextList: { type: list, component: List, role: list, name: { labelledBy: nextTitle }, in: [roadmap] }
+  nextItem: { type: action, component: LinkButton, role: link, text: { oneOf: [planned.Roadmap.next.1, planned.Roadmap.next.2, planned.Roadmap.next.3, planned.Roadmap.next.4, planned.Roadmap.next.5, planned.Roadmap.next.6] }, in: [roadmap], repeat: roadmap.next, emits: OPEN_ISSUE } # the draft's six; "E-posta davetleri ve bildirimleri" is partly built (ROADMAP-4)
+
+  # ---- Uzak: Vizyon ----
+  farRegion: { type: page, component: Page, role: region, name: { labelledBy: farTitle }, in: [roadmap] }
+  farTitle: { type: text, component: Heading, role: heading, text: { key: planned.Roadmap.phase.far }, in: [roadmap] } # h2
+  farStatus: { type: text, component: Text, text: { key: planned.Roadmap.status.vision }, in: [roadmap] }
+  farList: { type: list, component: List, role: list, name: { labelledBy: farTitle }, in: [roadmap] }
+  farItem: { type: text, component: ListItem, role: listitem, text: { oneOf: [planned.Roadmap.far.1, planned.Roadmap.far.2, planned.Roadmap.far.3, planned.Roadmap.far.4, planned.Roadmap.far.5, planned.Roadmap.far.6] }, in: [roadmap], repeat: roadmap.far } # plain text: no issue stands behind a far item (D4); "Ödev" is built (ROADMAP-3); D2 is which of them stay
+
+  # ---- the footer (EXISTS; its link to this page is planned) ----
+  footerNav: { type: page, component: Page, role: navigation, name: { key: Footer.nav }, in: [roadmap], source: apps/landing/components/site-footer.tsx:21 }
+  footerRoadmapHere: { type: action, component: LinkButton, role: link, text: { key: planned.Footer.roadmap }, in: [roadmap] } # PLANNED: one more entry of footerLinks (site-footer.tsx:3-9), and the page passes current="/yol-haritasi" so that, like the five links there, it carries aria-current="page" (site-footer.tsx:27); D5, D6
+
+edges:
+  - { labelledBy: [todayRegion, todayTitle] }
+  - { labelledBy: [todayList, todayTitle] }
+  - { labelledBy: [soonRegion, soonTitle] }
+  - { labelledBy: [soonList, soonTitle] }
+  - { labelledBy: [nextRegion, nextTitle] }
+  - { labelledBy: [nextList, nextTitle] }
+  - { labelledBy: [farRegion, farTitle] }
+  - { labelledBy: [farList, farTitle] }
+  - { triggers: [todayItem, issue_opened] }
+  - { triggers: [soonItem, issue_opened] }
+  - { triggers: [nextItem, issue_opened] }
+
+rules:
+  - { id: ROADMAP-1, rule: "FINDING AGAINST THE DRAFT, not against code. The draft of 4 October lists \"Herkese açık profil\" under Bugün, Yayında. The public profile is built and switched off: PUBLIC_PROFILE_ENABLED is false (apps/tedris/features/public-profile/availability.ts:14, the owner hid it on 4 October, MDRS-141 back in Backlog), the Hesap card that links to it is left out, and a signed-in person who types the address gets the not-found page. A visitor cannot use it, so \"Yayında\" would be untrue. Take the item out of Bugün, or word it as planned; D1." }
+  - { id: ROADMAP-2, rule: "FINDING AGAINST THE DRAFT. Three of the four items under Yakında, Yapılıyor have shipped since 4 October. Read in Linear on 16 Nov 2026: MDRS-150 (notes and questions on lesson videos, with answers) Done, last updated 11 Oct; MDRS-135 (the permission catalogue, scoped groups, time-limited grants) Done, 5 Oct; MDRS-114 (recordings in nazar, watched in tedris) Done, 5 Oct, with MDRS-116 Done and MDRS-119 In Review. The code is there: apps/tedris/features/courses/lesson-note-model.ts, apps/nazar/features/recordings/, apps/tedris/features/courses/recordings-model.ts. \"Yeni görünüm, tüm uygulamalarda\" (the fourth) was not looked up. The phase is stale; D1." }
+  - { id: ROADMAP-3, rule: "FINDING AGAINST THE DRAFT. \"Ödev, müzakere, imtihan\" is one Uzak item, and homework is built: apps/nazar/features/homework/ (the review of a talebe's homework, MDRS-290 and pull request #349), and tedris-web's hand-in and review of it (drawn by tedris.learn.homeworkHandIn and tedris.learn.homeworkReview). Exams are partly built (apps/tedrisat/src/exam/, the \"Sınav\" celse, MDRS-248). Only müzakere is not. The item names three things at three different distances; split it or reword it; D1, D2." }
+  - { id: ROADMAP-4, rule: "FINDING AGAINST THE DRAFT, not verified end to end. \"E-posta davetleri ve bildirimleri\" is under Sıradaki, Planlandı, and code for the lesson invitation e-mail exists: apps/tedrisat/src/lesson-invitation/invitation-mail.ts, invitation-ics.ts, lesson-invitation.service.ts. Whether invitations are sent today, and which notices (change, ban) are not, was not checked (planned.md P-29, MDRS-189 and MDRS-121). The item may be half done; D1." }
+  - { id: focus-not-set, rule: "The page sets no initial focus (nothing in the story asks for one), and a link of an item leaves the page. A keyboard visitor starts at the top of the document: the logo, the theme toggle, \"Giriş yap\", \"Kayıt ol\" and the header's roadmap link, then the heading." }
+  - { id: status-is-text, rule: "A status is a word in the page (\"Yayında\", \"Yapılıyor\", \"Planlandı\", \"Vizyon\"), never a colour or an icon alone, and each phase's list is named by the phase's heading, so a screen reader hears \"Bugün, Yayında\" with the list it belongs to. MDRS-246 asks for an accessible page; this is how the graph reads it." }
+  - { id: outside-link-says-so, rule: "An item's link leaves the site. If it opens a new tab, the page must say so: the footer's GitHub link opens one with no word of it today (L5, apps/landing/components/site-footer.tsx:32-39), and a roadmap link that did the same would repeat the finding. Drawn as the same tab (D4)." }

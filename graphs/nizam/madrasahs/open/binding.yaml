@@ -1,0 +1,173 @@
+# nizam.madrasahs.open on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım (SYSTEM_ADMIN) signed in
+# through Keycloak's real form, and a spare applicant account (APPLICANT_F, "Tahsin Başvuran") as the başmüderris the picker finds. The
+# shared locators, events and effects are in locators.binding.yaml. Run, once the owner says so:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/madrasahs/open \
+#     --bind graphs/nizam/madrasahs/open/binding.yaml --cover transitions --out <dir>
+# A scenario that takes no transition of its own (the same story by another person) is not walked by `--cover transitions`, so it has a file
+# of its own:
+#   binding.medarisNazim.yaml    a Medaris nazımı who holds platform.madrasah_create opens a medrese (--to opened; FLOWS.md P-MEDARIS)
+# NOT RUN: written without a replay (the owner's word: replays come once, at the end). Every locator is unverified until a walk.
+#
+# What a walk writes, and how it is taken away. The main story really opens a medrese (POST /madrasahs): a row of `madrasahs`, one
+# MEDRESE_BASMUDERRIS role assignment for APPLICANT_F, and audit rows (madrasah.create, user.lookup). The head is never a seeded persona. `setup`
+# and `teardown` remove every medrese with the walk's short name through the API, as the başnazım: ./remove-madrasah.mjs does DELETE
+# /madrasahs/:id, which is the başnazım's alone and takes the medrese with every role assignment of its scope, the head's included, in
+# one transaction (apps/tedrisat/src/madrasah/madrasah.controller.ts:691). No SQL is used to write; the one helper is this folder's own
+# (it uses the shared lib.mjs): ask, to move it to graphs/bindings/helpers/ as remove-kosk.mjs was. `setup` removes too, so a walk that died
+# before its teardown leaves nothing to be refused as "taken" or to make the next walk's handle "-2". The audit rows stay: the API has no way
+# to remove them and nothing depends on them. The helper refuses to remove the seed's medrese, and any medrese that holds a course.
+#
+# Never remove the seed's medrese: `handleTaken` types its own short name and creates nothing, so it has no teardown.
+#
+# The scenarios, and the answer each needs:
+#   opened        the main story: the menu's "Medreseler", "Medrese aç", the form filled in, APPLICANT_F found by e-mail, the medrese made
+#                 (madrasahs.e2e.ts#6 and #7; the e2e used the seeded MUDERRIS as head, this uses a spare applicant)
+#   noHandle      the short name left empty: the server makes one from the name, and the list shows it
+#   notFound      an address no account has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and nobody is chosen (madrasahs.e2e.ts#6)
+#   handleTaken   the short name of the seed's medrese: the server answers 409 and the form says so under the field (madrasahs.e2e.ts#7)
+#   noName, shortName, badHandle   each message under its field, once the field was left; nothing is sent (madrasahs.e2e.ts#6 for the third)
+#   selfNamed     a Medaris nazımı (the seeded MEDARIS_NAZIM, who holds platform.madrasah_create) chooses themselves: tedrisat refuses before it
+#                 writes (SelfGrantGuard), and the toast has the words written for a head change (F-W2-open-2). Nothing is made; the
+#                 teardown is the same removal, for the case that the guard failed. The seeded persona is only typed into the picker.
+# Not bound, with the reason: `lookup: down`, `answer: forbidden` and `failed` need the realm's directory down, a başnazım who may not, and a
+# server that does not answer: nothing the local stack can be made to do on request (F-W2-2 is how `forbidden` arises in the page). The
+# unit specs of the app (apps/nizam/test/madrasahs.spec.tsx) pin the page's words for them.
+#
+# Not carried from madrasahs.e2e.ts#6: the scrim click that leaves the form open (`page.mouse.click(5, 5)`: the binding has no way to click
+# at a point outside the dialog); the correction of a wrong short name that clears its message (`fields` is the one case a walk takes);
+# #7's count of exactly one new user.lookup row (the effect reads the newest row of the address, not a count before and after).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.madrasahs.open
+
+scenarios:
+  opened:
+    given: { fields: valid, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    teardown: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    vars:
+      madrasahName: Örnek Açılış Medresesi
+      madrasahHandle: ornek-acilis
+      rowHandle: ornek-acilis
+      madrasahDescription: Mantık ve belâğat metinlerini şerhleriyle okuyan bir medrese.
+      headEmail: '{secret.E2E_APPLICANT_F_EMAIL}'
+      headSub: '{secret.E2E_APPLICANT_F_SUB}'
+      headName: Tahsin Başvuran
+      lookupFound: 'true'
+
+  # The short name left empty: tedrisat makes `ornek-otomatik-acilis-medresesi` from the name (Turkish letters transliterated), and numbers it
+  # -2, -3 when it is taken, which is why the removal is `--numbered`.
+  noHandle:
+    given: { fields: noHandle, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/medreseler'
+    samples: { handle: ornek-otomatik-acilis-medresesi, madrasah: Örnek Otomatik Açılış Medresesi }
+    setup: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{rowHandle}', --numbered], expect: removed }]
+    teardown: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{rowHandle}', --numbered], expect: removed }]
+    vars:
+      madrasahName: Örnek Otomatik Açılış Medresesi
+      madrasahHandle: ''
+      rowHandle: ornek-otomatik-acilis-medresesi
+      madrasahDescription: ''
+      headEmail: '{secret.E2E_APPLICANT_F_EMAIL}'
+      headSub: '{secret.E2E_APPLICANT_F_SUB}'
+      headName: Tahsin Başvuran
+      lookupFound: 'true'
+
+  # An address no account has: the message under the field and nobody chosen. The audit row of the miss says found: false.
+  notFound:
+    given: { fields: valid, lookup: notFound, answer: created }
+    as: systemAdmin
+    open: '{nizam}/medreseler'
+    vars:
+      madrasahName: Örnek Açılış Medresesi
+      madrasahHandle: ornek-acilis
+      rowHandle: ornek-acilis
+      madrasahDescription: ''
+      headEmail: kimse.yok@example.test
+      headSub: ''
+      headName: ''
+      lookupFound: 'false'
+
+  # The short name of the seed's medrese: the server answers 409 and the form says so under the field. Nothing is made, so there is
+  # nothing to remove (and remove-madrasah must never be run with this short name; it refuses the seed's medrese all the same).
+  handleTaken:
+    given: { fields: valid, lookup: found, answer: handleTaken }
+    as: systemAdmin
+    open: '{nizam}/medreseler'
+    samples: { handle: hadis-ve-siyer }
+    vars:
+      madrasahName: Örnek İkinci Medrese
+      madrasahHandle: hadis-ve-siyer
+      rowHandle: hadis-ve-siyer
+      madrasahDescription: ''
+      headEmail: '{secret.E2E_APPLICANT_F_EMAIL}'
+      headSub: '{secret.E2E_APPLICANT_F_SUB}'
+      headName: Tahsin Başvuran
+      lookupFound: 'true'
+
+  # A name left empty, a one-letter name and a short name that is not allowed: each is said under its field once the field was left.
+  # Nothing is sent.
+  noName:
+    given: { fields: noName, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/medreseler'
+    vars:
+      madrasahName: ''
+      madrasahHandle: ''
+      rowHandle: ''
+      madrasahDescription: ''
+      headEmail: '{secret.E2E_APPLICANT_F_EMAIL}'
+      headSub: '{secret.E2E_APPLICANT_F_SUB}'
+      headName: Tahsin Başvuran
+      lookupFound: 'true'
+  shortName:
+    given: { fields: shortName, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/medreseler'
+    vars:
+      madrasahName: A
+      madrasahHandle: ''
+      rowHandle: ''
+      madrasahDescription: ''
+      headEmail: '{secret.E2E_APPLICANT_F_EMAIL}'
+      headSub: '{secret.E2E_APPLICANT_F_SUB}'
+      headName: Tahsin Başvuran
+      lookupFound: 'true'
+  badHandle:
+    given: { fields: badHandle, lookup: found, answer: created }
+    as: systemAdmin
+    open: '{nizam}/medreseler'
+    vars:
+      madrasahName: Örnek Açılış Medresesi
+      madrasahHandle: Atik Ali
+      rowHandle: ''
+      madrasahDescription: ''
+      headEmail: '{secret.E2E_APPLICANT_F_EMAIL}'
+      headSub: '{secret.E2E_APPLICANT_F_SUB}'
+      headName: Tahsin Başvuran
+      lookupFound: 'true'
+
+  # The seeded Medaris nazımı names themselves: the picker finds their own address, the button is on, and tedrisat answers 403
+  # SELF_GRANT_REFUSED. The başnazım may name themselves; this walk is the Medaris nazımı's alone. Nothing is made; the removal is only
+  # for the case that the guard let it through (the role it would give is deleted with the medrese).
+  selfNamed:
+    given: { fields: valid, lookup: found, answer: selfNamed }
+    as: medarisNazim
+    open: '{nizam}/medreseler'
+    samples: { name: Selma Medaris Nazımı, handle: ornek-kendini-atayan, madrasah: Örnek Kendini Atayan Medrese }
+    setup: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    teardown: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    vars:
+      madrasahName: Örnek Kendini Atayan Medrese
+      madrasahHandle: ornek-kendini-atayan
+      rowHandle: ornek-kendini-atayan
+      madrasahDescription: ''
+      headEmail: '{secret.E2E_MEDARIS_NAZIM_EMAIL}'
+      headSub: '{secret.E2E_MEDARIS_NAZIM_SUB}'
+      headName: Selma Medaris Nazımı
+      lookupFound: 'true'

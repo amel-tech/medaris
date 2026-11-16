@@ -1,0 +1,192 @@
+# What must exist for the başnazım to delete an archived item for good in nizam.moderation.deleteArchived: the flow's product list,
+# written from the flow's story, the e2e checks it carries and the open decisions, never from what the page does today. A need that is not
+# met is a gap in graphs/needs.gaps.yaml (the orchestrator merges it; this file does not edit it).
+#
+# No replay has been run on this flow (the first walks are a later phase), so `walked` names e2e checks only. The four binding files
+# (binding.yaml, binding.rest.yaml, binding.gone.yaml, binding.blocked.yaml) load and are unwalked. Carried e2e: archive#7 (the heading, the
+# row of a hidden item of another köşk, its "Kalıcı olarak sil"; its title also says "10 at a time, and filters by scope", which its body
+# never asserts) and archive#8 (the dialog, "2 hafta", the audit sentence, the focus on "Vazgeç", the click, the row gone, the course gone).
+# archive#6 (a köşk nazımı is refused /arsiv) is nizam.shell.noAccessAndNotFound's.
+#
+# Gaps of this file, for that merge:
+#   missing:   the-count-names-everything-that-goes (PURGE-1), already-gone-is-a-notice-not-an-error (PURGE-3),
+#              a-refused-delete-is-told-in-the-dialog (F-W5-3), a-week-or-session-with-a-recording-can-be-deleted (MDRS-244),
+#              the-focus-goes-somewhere-after-a-delete (F-W5-5), a-delete-does-not-skip-a-row-of-the-next-page (PURGE-2),
+#              a-busy-dialog-is-not-closed-by-mistake (PURGE-4), a-late-count-does-not-fill-another-dialog (PURGE-5)
+#   unwalked:  the-list-pages-ten-at-a-time (code, no e2e assertion, no scenario: a list of more than ten rows is not made),
+#              already-gone-is-handled (code, no e2e; binding.gone.yaml written and not run),
+#              a-count-that-fails-does-not-block-the-delete (code, no e2e; binding.gone.yaml written and not run)
+kind: needs
+flow: nizam.moderation.deleteArchived
+status: proposed
+
+needs:
+  - id: find-the-item-in-one-list
+    need: >-
+      The başnazım reads one list of everything hidden on the platform, newest first, and narrows it by the köşk or medrese it sits in, by
+      its kind and by its name, to find the one item he means. Each row says what it is, what it holds, where it sits, who hid it and when.
+    drawn: [listed, filtering]
+    built:
+      - action: medaris.api:listPlatformArchive
+      - action: medaris.api:getArchiveScopes
+      - route: apps/nizam/features/archive/components/archive-view.tsx:112
+    walked:
+      - e2e: apps/nizam/e2e/archive.e2e.ts
+        check: 'archive#7'
+
+  - id: the-list-pages-ten-at-a-time
+    need: >-
+      A list of more than ten rows shows ten, says how many there are in all, and a button reads the next ten and adds them below.
+    drawn: [listed]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:485
+    # archive#7's title says it ("10 at a time") and its body asserts neither the ten nor the button; no scenario here makes a list of more than ten
+
+  - id: only-the-basnazim-deletes-for-good
+    need: >-
+      Only the başnazım sees "Kalıcı olarak sil" and the API refuses everyone else; a köşk nazımı or a Medaris nazımı who opens the page
+      meets "Bu bölüm için izniniz yok" and no menu entry leads there.
+    drawn: [opened, refused]
+    built:
+      - action: medaris.api:listPlatformArchive
+      - action: medaris.api:deleteArchiveItem
+      - route: apps/nizam/app/arsiv/page.tsx:26
+    walked:
+      - e2e: apps/nizam/e2e/archive.e2e.ts
+        check: 'archive#6' # carried by nizam.shell.noAccessAndNotFound
+
+  - id: the-dialog-says-what-goes
+    need: >-
+      Before anything is deleted the başnazım reads what goes with the item, in numbers: for a course its weeks, its celses and its talebe
+      records (any status), for a week its celses; a kind that is zero is not listed.
+    drawn: [readingImpact, confirming]
+    built:
+      - action: medaris.api:getArchiveImpact
+      - route: apps/nizam/features/archive/present.ts:169
+    walked:
+      - e2e: apps/nizam/e2e/archive.e2e.ts
+        check: 'archive#8'
+
+  - id: the-count-names-everything-that-goes
+    need: >-
+      The count lists every kind the purge deletes, so that "ve ona bağlı her şey" is true of it: the recordings, the notes and questions,
+      the talebe's homework with its files, the exams and the course's resources and appointments, not only the weeks, celses and talebe
+      records. Where a kind is not counted, the dialog says which.
+    drawn: [confirming]
+    built:
+      - route: apps/tedrisat/src/archive/archive.repository.ts:629
+    missing: none # PURGE-1, ui.yaml `rules`; the API's `recordings` is a constant 0
+
+  - id: deleting-asks-once-and-cannot-be-pressed-by-mistake
+    need: >-
+      The delete asks first, in a window that names the kind, says it cannot be undone and that it is written to the audit log under the
+      person's name, starts on the safe answer, and has its confirm off until the count is read; the scrim does not close it.
+    drawn: [readingImpact, confirming, confirmingBlind]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:507
+      - route: libs/ui/src/mds/alert-dialog.tsx:62
+    walked:
+      - e2e: apps/nizam/e2e/archive.e2e.ts
+        check: 'archive#8'
+
+  - id: a-delete-is-final-and-signed
+    need: >-
+      The item and everything bound to it go in one transaction, nothing of it can be brought back, and an audit entry names who did it and
+      what went; the files and invitation mails it owed are sent after it commits.
+    drawn: [deleting, settled]
+    built:
+      - action: medaris.api:deleteArchiveItem
+      - route: apps/tedrisat/src/archive/archive.repository.ts:691
+    walked:
+      - e2e: apps/nizam/e2e/archive.e2e.ts
+        check: 'archive#8'
+
+  - id: the-list-follows-a-delete
+    need: >-
+      When the delete is done the dialog closes, the row leaves the list, the count of hidden items drops, and a notice says what was
+      deleted and that its bound records went too.
+    drawn: [settled, listEmpty, listedAfter]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:228
+    walked:
+      - e2e: apps/nizam/e2e/archive.e2e.ts
+        check: 'archive#8'
+
+  - id: already-gone-is-handled
+    need: >-
+      An item that someone else deleted or brought back after the page was read is not an error of the page: the delete answers that it is
+      not there, the row leaves the list and the dialog closes.
+    drawn: [deleting, settled, confirmingBlind]
+    built:
+      - action: medaris.api:deleteArchiveItem
+      - route: apps/nizam/features/archive/components/archive-view.tsx:225
+    # no e2e; binding.gone.yaml (GONE_ELSEWHERE in the list and in the open dialog) is written and not run
+
+  - id: a-count-that-fails-does-not-block-the-delete
+    need: >-
+      If the count cannot be read the dialog says so and still lets the başnazım delete, knowing he cannot see what goes.
+    drawn: [readingImpact, confirmingBlind]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:532
+    # no e2e; binding.gone.yaml (the item gone before the count is asked for) is written and not run
+
+  - id: already-gone-is-a-notice-not-an-error
+    need: >-
+      An item that is already gone is told as a notice that closes by itself, with words that say whether it was deleted or brought back,
+      not as the error "Silinemedi" that stays until it is closed.
+    drawn: [deleting, settled]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:235
+    missing: none # PURGE-3
+
+  - id: a-refused-delete-is-told-in-the-dialog
+    need: >-
+      When the server refuses the delete, the window that is still open says so in words from the catalog, naming the cause where it is
+      known, and the person is not left to find a toast in another part of the page.
+    drawn: [deleting, confirming]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:244
+    missing: none # F-W5-3
+
+  - id: a-week-or-session-with-a-recording-can-be-deleted
+    need: >-
+      A hidden week or session that holds a recording is deleted like one that does not, the recording with it, as a course's is.
+    drawn: [deleting]
+    built:
+      - route: apps/tedrisat/src/archive/archive.repository.ts:747
+    missing: MDRS-244
+
+  - id: the-focus-goes-somewhere-after-a-delete
+    need: >-
+      After a delete the keyboard focus lands on something the person can use (the table, the next row's button or the count), and what
+      happened is said in a way a screen reader hears.
+    drawn: [settled, listEmpty, listedAfter]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:228
+    missing: none # F-W5-5
+
+  - id: a-delete-does-not-skip-a-row-of-the-next-page
+    need: >-
+      After a row is deleted from a list that has more than one page, the next page begins where the last one shown ended: no row is
+      missing and none is shown twice, and a row hidden meanwhile is found.
+    drawn: [listedAfter]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:490
+    missing: none # PURGE-2
+
+  - id: a-busy-dialog-is-not-closed-by-mistake
+    need: >-
+      While the delete runs, "Vazgeç", the close icon and Esc say they are not available (disabled or busy) instead of being on and doing
+      nothing.
+    drawn: [deleting]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:509
+    missing: none # PURGE-4
+
+  - id: a-late-count-does-not-fill-another-dialog
+    need: >-
+      A count that arrives after its dialog was closed is dropped, so that the dialog of another row never shows the first one's numbers.
+    drawn: [readingImpact]
+    built:
+      - route: apps/nizam/features/archive/components/archive-view.tsx:200
+    missing: none # PURGE-5

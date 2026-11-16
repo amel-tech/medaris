@@ -1,0 +1,257 @@
+# Planned, not built: in-person registration for a celse, with seats kept apart for women and for men (MDRS-284).
+# Written graph-first for the two flows tedris.session.registerInPerson and nazar.sessions.inPersonSeats, from planned.md (P-08), the
+# Linear issue MDRS-284 (Backlog, parked by the owner on 2026-10-11: "sonraki konu ama issue'sunu açarız durur") and the owner's decisions
+# kept in it. Nothing here exists in apps/tedrisat: no route, no table, no job. Every action and entity says so in its `note`, none has a
+# `source`, and every code and permission name below is a PROPOSAL (the flows' headers list the choices still open).
+#
+# What the owner has decided (MDRS-284, 2026-10-11; the rest is the simplest reading and is listed as open):
+#   1. The seats are weekly from the start: they belong to a celse, never to the term.
+#   2. Women and men have separate quotas, and gender is always mandatory. So there is never one total: InPersonSeats holds two counts.
+#   3. A talebe who registers in person counts as enrolled (remote) in the whole course; recordings and live streams have no quota.
+#   4. A seat is taken AT APPROVAL, not at application, and the application order decides: first come, first served. The course team
+#      must be able to approve in that order.
+#   5. Existing enrolments stay remote when a course becomes in person; the team changes them afterwards.
+#
+# Drawn here (the simplest reading of the story; the choices are in the flows' headers):
+#   - the seats are set per celse (a course-wide default with a per-celse override is not drawn);
+#   - a celse takes registrations once both counts are set, it is held in person (Lesson.inPersonOverride, else Course.inPerson: both
+#     exist today) and it has not begun; "not open" is one refusal for all of those;
+#   - the talebe must already hold an ENROLLED seat in the course (the story's "not enrolled" refusal); registering does not enrol;
+#   - the application is refused while every seat of the caller's gender is given; the approval is refused the same way, under a lock;
+#   - the talebe may withdraw whatever the status; the row is then deleted, and a new application goes to the end of the order;
+#   - the staff may set a count below the seats already given: nothing is taken back, the quota just reads full;
+#   - order is advice: the list shows the application order and the team may approve any waiting row.
+#
+# Who may call what, as the existing @Authz permissions would say: a talebe acts through course.view on the lesson's course and an
+# ENROLLED row of their own, like the notes and the questions do; the team uses session.manage (the permission that already sets the
+# in-person mark, the link and the time of a celse), so the müderris and a ders nazırı who holds it. No new permission code is proposed.
+#
+# Existing actions that would change when this is built (no edit is made here):
+#   - leaveCourse, removeEnrollment (and a ban that revokes a seat): the caller's in-person registrations of that course must go with
+#     the seat, or an approved seat of a person who left would hold a place nobody uses;
+#   - cancelLesson, and updateLesson when inPersonOverride turns the celse out of in person: what happens to its registrations is open;
+#   - getSession: unchanged (the page reads the registration through getMyInPersonRegistration, which tells whether the card is drawn);
+#   - getMe already sends the gender (the mirror of the token's claim, user-sync.service.ts:75); the realm requires the attribute and
+#     tedrisat's column stays nullable, which is invariant gender-always-known of domain.yaml (holds: false, MDRS-284).
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+entities:
+  # planned (MDRS-284): no code yet. (An entity has no `note` key in the schema, so the sentence is this comment.)
+  InPersonSeats: # the seats of one celse, kept apart for women and for men; there is no total and no shared pool
+    key: [lessonId]
+    required: [lessonId, femaleSeats, maleSeats, createdAt, updatedAt]
+    fields:
+      lessonId: { type: string, format: uuid, references: Lesson, note: "planned (MDRS-284): one row per celse; no row means the celse takes no in-person registration" }
+      femaleSeats: { type: integer, minimum: 0, note: "the seats for women; 0 is a valid count and means none may be given" }
+      maleSeats: { type: integer, minimum: 0, note: "the seats for men; counted apart from femaleSeats, never against it" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> set: the team sets both counts of a celse that is held in person and has not begun (audit in_person.seats_set); registrations open"
+      - "set -> set: the team changes a count; a count below the seats already given takes nothing back, the quota only reads full"
+
+  # planned (MDRS-284): no code yet.
+  InPersonRegistration: # one talebe's in-person place at one celse: an application, then a seat once approved
+    key: [lessonId, userId]
+    required: [lessonId, userId, gender, status, appliedAt]
+    fields:
+      lessonId: { type: string, format: uuid, references: Lesson, note: "planned (MDRS-284)" }
+      userId: { type: string, format: uuid, note: "Keycloak sub; the caller's own seat in the course must be ENROLLED" }
+      gender:
+        enum: [FEMALE, MALE]
+        note: "the account's gender at the time of the application (user_profiles.gender, a nullable column today: apps/tedrisat/src/database/schema/user-profile.schema.ts:11 and :33, the mirror of the token's claim); never null here: an application with none is refused, GENDER_REQUIRED. The quota that counts the row is the one of this value"
+      studentName: { type: [string, "null"], sensitivity: personal, note: "what the list shows; copied at application time, as Enrollment.studentName is" }
+      status: { enum: [PENDING, APPROVED], default: PENDING, note: "PENDING holds no seat; APPROVED is the one status that counts against femaleSeats or maleSeats. A withdrawn row is deleted, not kept" }
+      appliedAt: { type: string, format: date-time, note: "the application order: the list is sorted by it, per gender, and the position is counted from it; a new application after a withdrawal gets a new time" }
+      approvedAt: { type: [string, "null"], format: date-time }
+      approvedBy: { type: [string, "null"], format: uuid, note: "Keycloak sub of the course team member who gave the seat" }
+    lifecycle:
+      - "none -> pending: the talebe applies; refused while every seat of their gender is given (IN_PERSON_QUOTA_FULL)"
+      - "pending -> approved: the course team gives a seat, counted under a lock on the celse's seat row; refused while every seat of that gender is given (IN_PERSON_QUOTA_FULL); the talebe is notified"
+      - "pending | approved -> none: the talebe withdraws, or the course seat ends (leave, removal, ban); a withdrawn approved seat is free for the next approval"
+
+actions:
+  # -----------------------------------------------------------------------------------------------------------------------------
+  # The talebe's side (tedris.session.registerInPerson)
+  # -----------------------------------------------------------------------------------------------------------------------------
+  getMyInPersonRegistration:
+    route: GET /lessons/{id}/in-person/registration
+    summary: What the celse page needs to draw its in-person card
+    description: >-
+      Answers whether the celse takes in-person registrations for this caller (it is held in person, both counts are set and it has not
+      begun), whether every seat of the CALLER'S gender is given, and the caller's own registration if there is one. It never tells
+      the other gender's count and never a total: the talebe is shown only their own gender's "dolu". `genderKnown` is false when the
+      account has no gender, so the card can say how to add it.
+    needs: >-
+      course.view on the lesson's course, then the caller's own rows only (an ENROLLED talebe sees the card; anyone else is told it is
+      not offered)
+    result:
+      status: 200
+      type: object
+      required: [offered, genderKnown, registration]
+      properties:
+        offered: { type: boolean }
+        genderKnown: { type: boolean }
+        seatsFull: { type: boolean, description: "every seat of the caller's own gender is given; false when the gender is not known" }
+        registration: { type: [object, "null"], description: "the caller's InPersonRegistration (status, appliedAt), or null" }
+    refusals:
+      LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk" }
+      HTTP_400: { status: 400, note: "id is not a uuid" }
+    note: "planned (MDRS-284): no code yet."
+
+  registerInPerson:
+    route: POST /lessons/{id}/in-person/registration
+    summary: Apply for an in-person place at a celse
+    description: >-
+      Takes no body: the gender is the account's, read from the caller's profile (the mirror of the token's claim), never typed. The
+      order of the checks is the order of the refusals below: not enrolled, no gender, not open, quota full. Creates a PENDING row and
+      gives no seat: a seat is given at approval. A caller who already has a row gets it back unchanged, as enrollInCourse does. A talebe
+      who registers here does not become enrolled: the ENROLLED seat in the course is what lets them ask.
+    needs: >-
+      an ENROLLED talebe with no bar and the content open (course.view on the lesson's course, then the caller's own ENROLLED row); the
+      caller's own row only
+    result: { status: 201, returns: InPersonRegistration }
+    refusals:
+      IN_PERSON_NOT_ENROLLED: { status: 403, note: "proposed code: the caller holds no ENROLLED seat in the course (pending, removed, barred, completed, a stranger, staff who are not enrolled)" }
+      GENDER_REQUIRED: { status: 409, note: "proposed code and status: the caller's profile has no gender; nothing is written. The fix is the account's own profile page (Keycloak holds the attribute)" }
+      IN_PERSON_NOT_OPEN: { status: 409, note: "proposed code: the celse is not held in person, has no seats set, has begun or is cancelled" }
+      IN_PERSON_QUOTA_FULL: { status: 409, note: "proposed code: every seat of the caller's gender is given; the other gender's seats are never looked at" }
+      LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk" }
+      HTTP_400: { status: 400, note: "id is not a uuid" }
+    sideEffects:
+      - "creates a PENDING InPersonRegistration with the caller's gender and the time"
+      - "no notification yet: the course team reads the list; a notice to the team is open (MANAGE-3 of nazar.sessions.manage is the same gap)"
+    note: "planned (MDRS-284): no code yet."
+
+  withdrawInPersonRegistration:
+    route: DELETE /lessons/{id}/in-person/registration
+    summary: Take an application, or a given seat, back
+    description: >-
+      Deletes the caller's own row whatever its status, so the application leaves the order, and an approved seat is free for the next
+      approval. Unlike withdrawEnrollmentRequest it does not refuse an approved row: the talebe may let a place go. A stale page that
+      still says "waiting" after the team approved therefore releases the seat; whether that should ask first is open.
+    needs: course.view on the lesson's course, which every signed-in caller holds; the row is the caller's own
+    result: { status: 200, type: boolean, const: true }
+    refusals:
+      IN_PERSON_REGISTRATION_NOT_FOUND: { status: 404, note: "proposed code: the caller has no registration for the celse (taken back already, or the seat ended)" }
+      LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
+      COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk" }
+      HTTP_400: { status: 400, note: "id is not a uuid" }
+    sideEffects:
+      - "deletes the caller's InPersonRegistration; the freed seat is given by the next approval, never by a queue that moves by itself"
+    note: "planned (MDRS-284): no code yet."
+
+  # -----------------------------------------------------------------------------------------------------------------------------
+  # The team's side (nazar.sessions.inPersonSeats)
+  # -----------------------------------------------------------------------------------------------------------------------------
+  listInPersonRegistrations:
+    route: GET /lessons/{id}/in-person
+    summary: A celse's seats and its applications, in the order they came
+    description: >-
+      One read for the page: the two counts (null while not set), how many seats of each gender are given, and the registrations as two
+      lists, women and men, each oldest first with its position (1, 2, 3 ...) counted from the application time. Approved and waiting
+      rows are both listed, so the team sees who holds a place and who is next. The list carries each talebe's name only; a roster read
+      is audited as course.roster_read, and this one would be too.
+    needs: session.manage on the lesson's course (byLessonCourse)
+    result:
+      status: 200
+      type: object
+      required: [femaleSeats, maleSeats, femaleGiven, maleGiven, women, men]
+      properties:
+        femaleSeats: { type: [integer, "null"] }
+        maleSeats: { type: [integer, "null"] }
+        femaleGiven: { type: integer, minimum: 0 }
+        maleGiven: { type: integer, minimum: 0 }
+        women: { type: array, items: { type: object, required: [position, userId, status, appliedAt], properties: { position: { type: integer, minimum: 1 }, userId: { type: string, format: uuid }, studentName: { type: [string, "null"] }, status: { enum: [PENDING, APPROVED] }, appliedAt: { type: string, format: date-time } } } }
+        men: { type: array, items: { type: object, required: [position, userId, status, appliedAt], properties: { position: { type: integer, minimum: 1 }, userId: { type: string, format: uuid }, studentName: { type: [string, "null"] }, status: { enum: [PENDING, APPROVED] }, appliedAt: { type: string, format: date-time } } } }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "session.manage is not held on the lesson's course (a ders nazırı who holds only session.live_link is refused)" }
+      LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or an archived one" }
+      COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk and the caller may not open it" }
+      HTTP_400: { status: 400, note: "id is not a uuid" }
+    sideEffects:
+      - "audit:course.roster_read, as a roster read is audited"
+    note: "planned (MDRS-284): no code yet."
+
+  setInPersonSeats:
+    route: PUT /lessons/{id}/in-person/seats
+    summary: Set a celse's seats for women and for men
+    description: >-
+      Writes both counts at once, each a whole number from 0; there is no total and no way to give one number for both. The first write
+      opens the celse to registration. A count below the seats already given is accepted: no seat is taken back and the quota reads
+      full. Only a celse that is held in person (its own mark, else the course's) and has not begun takes seats.
+    needs: session.manage on the lesson's course (byLessonCourse)
+    body:
+      type: object
+      additionalProperties: false
+      required: [femaleSeats, maleSeats]
+      properties:
+        femaleSeats: { type: integer, minimum: 0, maximum: 10000 }
+        maleSeats: { type: integer, minimum: 0, maximum: 10000 }
+    result: { status: 200, returns: InPersonSeats }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "session.manage is not held on the lesson's course" }
+      VALIDATION_ERROR: { status: 400, note: "a count is missing, negative, not a whole number, or an unknown property" }
+      LESSON_NOT_IN_PERSON: { status: 409, note: "proposed code: the celse is not held in person, so it has no seats" }
+      LESSON_CANCELLED: { status: 409, note: "the celse is cancelled (the code setLessonLiveStream already uses)" }
+      LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or an archived one" }
+      COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk and the caller may not open it" }
+      HTTP_400: { status: 400, note: "id is not a uuid" }
+    sideEffects:
+      - "audit:in_person.seats_set (proposed key) with both counts"
+    note: "planned (MDRS-284): no code yet."
+
+  approveInPersonRegistration:
+    route: POST /lessons/{id}/in-person/registrations/{userId}/approve
+    summary: Give a waiting talebe an in-person seat
+    description: >-
+      PENDING becomes APPROVED, and the seat is counted against the quota of THE ROW'S gender only, under a lock on the celse's seat row
+      so that parallel approvals cannot go past it (the acceptance check of MDRS-284 is a spec with parallel requests). A full quota
+      refuses the approval of that gender and nothing else: the other gender's rows can still be approved. The order of the list is
+      advice, not a rule: the team may approve any waiting row. An APPROVED row comes back unchanged (a second approval is not an error).
+    needs: session.manage on the lesson's course (byLessonCourse)
+    result: { status: 201, returns: InPersonRegistration }
+    refusals:
+      AUTHZ_FORBIDDEN: { status: 403, note: "session.manage is not held on the lesson's course" }
+      IN_PERSON_QUOTA_FULL: { status: 409, note: "proposed code: every seat of the row's gender is given; the same code the application gets" }
+      IN_PERSON_REGISTRATION_NOT_FOUND: { status: 404, note: "proposed code: the talebe has no registration for the celse (withdrawn meanwhile)" }
+      IN_PERSON_NOT_OPEN: { status: 409, note: "proposed code: the celse has begun, is cancelled or is no longer held in person" }
+      LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or an archived one" }
+      COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk and the caller may not open it" }
+      HTTP_400: { status: 400, note: "id or userId is not a uuid" }
+    sideEffects:
+      - "sets InPersonRegistration.status to APPROVED, with approvedAt and approvedBy"
+      - "notification:IN_PERSON_SEAT_GIVEN to the talebe (proposed type), not when the actor is the talebe; the page of the talebe is not live, so it reads it on its next load"
+      - "audit:in_person.approve (proposed key)"
+    note: "planned (MDRS-284): no code yet."
+
+invariants:
+  - id: in-person-seat-counted-at-approval
+    rule: >-
+      Only an APPROVED InPersonRegistration counts against InPersonSeats; a PENDING one holds no seat. The count of each gender is
+      kept under a lock on the celse's seat row, so no parallel approvals give more seats of a gender than its quota.
+    holds: false
+    finding: MDRS-284
+    note: "planned (MDRS-284): no code yet. Owner decision 4: a seat is taken at approval, so applications never wait on a person."
+
+  - id: in-person-seats-are-never-shared
+    rule: >-
+      InPersonSeats has one count for women and one for men and nothing else: no total, no shared pool, no seat a woman may take
+      from the men's count or the other way. A registration is counted against the count of its own gender.
+    holds: false
+    finding: MDRS-284
+    note: "planned (MDRS-284): no code yet. Owner: separation by gender is given; it is never asked and never optional."
+
+  - id: in-person-needs-an-enrolled-seat
+    rule: >-
+      A registration is asked only by a talebe who already holds an ENROLLED seat in the course, and it ends with that seat: remote
+      enrolment is never limited by a quota, and a registration never enrols anyone.
+    holds: false
+    finding: MDRS-284
+    note: >-
+      planned (MDRS-284): no code yet. MDRS-284's decision 3 reads "a talebe who registers in person once counts as enrolled in the
+      whole course"; this draws the story's refusal "not enrolled" instead (registering needs the seat). Open decision: which of the two.

@@ -1,0 +1,169 @@
+# nizam.kosks.browse on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001 in a wide window, as the başnazım,
+# the seeded Medaris nazımı, the köşk nazımı and the talebe, and as one spare account made a Medaris nazımı with no permission.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/browse \
+#     --bind graphs/nizam/kosks/browse/binding.yaml --cover transitions --out <dir>
+#   ... --bind .../binding.notHidden.yaml | binding.gone.yaml | binding.level.yaml | binding.forbidden.yaml   the four refusals of "Geri al": each
+#       a scenario of its own that acts as a second person while the page is open (see locators.binding.yaml), each walked with --cover transitions
+# Try it without --absent first: the toast that "Geri al" leaves (an error toast stays until it is closed) is still on screen in the states after
+# it, which the graph does not draw (a toast is drawn in the state it appears in only), so --absent would report it. The pager's two buttons
+# are told apart by their disabled attribute, so they do not hold --absent back.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Nothing here was seen in a browser; the locators are read
+# from the code, and the only things looked at were the GET answers of the API (the directory as each persona, the 403 of the talebe, the 200 with
+# no rows of a page past the last, the 500 of a page too large to be a number) and the HTML nizam-web served for /kosks as the başnazım, the
+# Medaris nazımı, the köşk nazımı and the talebe, on 16 Nov 2026. A later walk checks each of them.
+#
+# What each scenario starts from, and the e2e check it carries (the köşks it makes are the walk's own, made by kosks.mjs, which uses the API only):
+#   chiefMixed    the başnazım; the seed's two köşks, a passive one and a hidden, unlisted one       kosks#1, #2, #3 (the main story: type, restore)
+#   chiefSeed     the başnazım; only the seed's two köşks (no passive or hidden row)                   kosks#2 (the empty tab and chip)
+#   chiefMany     the başnazım; twelve more köşks, so the list is two pages of 12                      (none: the page was never e2e-tested paged)
+#   chiefFailed   the başnazım at ?sayfa=100000000000000000000, which tedrisat answers 500              (none: the box has no e2e)
+#   medarisMixed  the seeded Medaris nazımı; the same köşks as chiefMixed                              (none: the e2e never signs in as one)
+#   koskLocked    the köşk nazımı; a hidden köşk of his that the başnazım hid                           kosks#4 (his own list, "Siz", no Köşk aç, no Geri al)
+#   koskOwn       the köşk nazımı; a hidden köşk of his that he hid himself: "Geri al" is his           kosks#9's last line (his own Geri al), kosks#3
+#   koskTeaches   the köşk nazımı, who is also the hoca of a course in another köşk                       (none)
+#   medarisBare   a spare account made a Medaris nazımı with no permission: the directory refuses       (none: platform-admin#6 is the köşk nazımı's)
+#   outsider      the talebe: the /kosks layout refuses                                                  (none; shell#6 and deck-review#10 are the same face)
+#
+# What a walk changes. The seeded köşks are only read; none is ever hidden, restored or removed. chiefMixed, medarisMixed, koskLocked, koskOwn,
+# koskTeaches and chiefMany `setup` makes köşks of the walk's own through tedrisat's API (kosks.mjs: POST /kosks as the başnazım, hide and
+# deactivate as the people who may, the course of koskTeaches through helpers/course.mjs) and `teardown` deletes them (DELETE /kosks/<id>, which
+# takes the köşk's roles and courses with it). `setup` removes a köşk of that tag first, so a walk that died before its teardown leaves nothing
+# for the next one. medarisBare appoints applicantF a Medaris nazımı with an empty list of permissions and dismisses them in `teardown`. What the
+# API cannot undo: the audit rows of every creation, hide, restore and deletion. Run every walk, and kosks.mjs by hand, under the replay lock.
+# After the last run, check what is left: `node ../nizam/kosks/browse/kosks.mjs remove <tag>` says `removed 0` for brs, brsk, brso, brst, brsm and
+# brsf, and a directory search for `deneme-brs` finds nothing.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.browse
+
+scenarios:
+  # The main story: the menu's "Köşkler", the text that finds the hidden köşk, "Geri al" and the köşk back as an active, unlisted row.
+  chiefMixed:
+    given: { viewer: chief, world: mixed, answer: restored, taught: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->kosks' }
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, make, brs, hidden, passive]
+        expect: '"tag":"brs"'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, remove, brs]
+        expect: 'kosk remove brs removed'
+    vars: { tag: brs, typeActive: Süleymaniye, typePassive: brs pasif, typeHidden: brs gizli, typeNobody: zzz yok }
+
+  # Only the seed: no passive and no hidden row, so the tabs Pasif and Gizli and the chip Listelenmeyen say "Sonuç yok".
+  chiefSeed:
+    given: { viewer: chief, world: seed, answer: restored, taught: none }
+    as: systemAdmin
+    open: '{nizam}/kosks'
+    vars: { tag: brss, typeActive: Süleymaniye, typePassive: brs pasif, typeHidden: brs gizli, typeNobody: zzz yok }
+
+  # Twelve more active, listed köşks: with the seed's two, 14 rows, so the pager shows "1 / 2" and "Sonraki" goes to the seed's two (they sort
+  # after "Deneme köşkü ...").
+  chiefMany:
+    given: { viewer: chief, world: many, answer: restored, taught: none }
+    as: systemAdmin
+    open: '{nizam}/kosks'
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, make, brsm, many]
+        expect: '"tag":"brsm"'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, remove, brsm]
+        expect: 'kosk remove brsm removed'
+    vars: { tag: brsm, typeActive: Süleymaniye, typePassive: brsm pasif, typeHidden: brsm gizli, typeNobody: zzz yok }
+
+  # The directory read fails: a page too large to be a number is sent to tedrisat as it is and answers 500 (KBROWSE-2). "Yeniden dene" reads the
+  # same address again and fails again; a tab, a chip, a text or a page asks for page 1, which answers. Nothing is made.
+  chiefFailed:
+    given: { viewer: chief, world: failed, answer: restored, taught: none }
+    as: systemAdmin
+    open: '{nizam}/kosks?sayfa=100000000000000000000'
+    vars: { tag: brsf, typeActive: Süleymaniye, typePassive: brsf pasif, typeHidden: brsf gizli, typeNobody: zzz yok }
+
+  # The seeded Medaris nazımı (platform.kosk_create and kosk_edit): every köşk, no "Köşk aç" and no Arşiv link, "Geri al" on what Medaris
+  # yönetimi hid. The menu has "Köşkler" for the codes it holds. Note: `viewer: medaris` is the one account with this role in the seed, and it
+  # is only read here (its grants are never changed).
+  medarisMixed:
+    given: { viewer: medaris, world: mixed, answer: restored, taught: none }
+    as: medarisNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->kosks' }
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, make, brs, hidden, passive]
+        expect: '"tag":"brs"'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, remove, brs]
+        expect: 'kosk remove brs removed'
+    vars: { tag: brs, typeActive: Süleymaniye, typePassive: brs pasif, typeHidden: brs gizli, typeNobody: zzz yok }
+
+  # The köşk nazımı: no menu entry leads to Köşkler (decision D1), so he types the address. His own list holds the seeded two and a hidden köşk
+  # that the başnazım hid: "Siz" on each, no "Köşk aç", no Arşiv, and under the hidden one the sentence that names Medaris yönetimi.
+  koskLocked:
+    given: { viewer: kosk, world: mixed, answer: restored, taught: none }
+    as: koskNazim
+    open: '{nizam}/kosks'
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, make, brsk, hidden]
+        expect: '"tag":"brsk"'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, remove, brsk]
+        expect: 'kosk remove brsk removed'
+    vars: { tag: brsk, typeActive: Süleymaniye, typePassive: brsk pasif, typeHidden: brsk gizli, typeNobody: zzz yok }
+
+  # The same köşk nazımı, with the köşk hidden by himself: his own kademe reaches it, so the row has "Geri al".
+  koskOwn:
+    given: { viewer: koskOwn, world: mixed, answer: restored, taught: none }
+    as: koskNazim
+    open: '{nizam}/kosks'
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, make, brso, hiddenOwn]
+        expect: '"tag":"brso"'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, remove, brso]
+        expect: 'kosk remove brso removed'
+    vars: { tag: brso, typeActive: Süleymaniye, typePassive: brso pasif, typeHidden: brso gizli, typeNobody: zzz yok }
+
+  # The köşk nazımı who is also the hoca of a course in a köşk he does not manage: "Verdiğiniz dersler" under his table.
+  koskTeaches:
+    given: { viewer: kosk, world: seed, answer: restored, taught: some }
+    as: koskNazim
+    open: '{nizam}/kosks'
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, make, brst, teach]
+        expect: '"tag":"brst"'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, remove, brst]
+        expect: 'kosk remove brst removed'
+    vars: { tag: brst, typeActive: Süleymaniye, typePassive: brst pasif, typeHidden: brst gizli, typeNobody: zzz yok }
+
+  # A Medaris nazımı who holds no permission and manages no köşk: Nizam is theirs (the layout lets them through) and tedrisat refuses the directory.
+  medarisBare:
+    given: { viewer: medarisBare, world: seed, answer: restored, taught: none }
+    as: applicantF
+    open: '{nizam}/kosks'
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, medaris, up, APPLICANT_F]
+        expect: 'medaris up APPLICANT_F codes=none'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, medaris, down, APPLICANT_F]
+        expect: 'medaris down APPLICANT_F'
+    vars: { tag: brsx, typeActive: Süleymaniye, typePassive: brsx pasif, typeHidden: brsx gizli, typeNobody: zzz yok }
+
+  # A talebe: no role at all, so the /kosks layout refuses before the page reads anything.
+  outsider:
+    given: { viewer: outsider, world: seed, answer: restored, taught: none }
+    as: talebe
+    open: '{nizam}/kosks'
+    vars: { tag: brsx, typeActive: Süleymaniye, typePassive: brsx pasif, typeHidden: brsx gizli, typeNobody: zzz yok }
+
+# Not bound, with the reason:
+#   world: empty       the platform has no köşk: the seed holds two, which no walk may remove, so "Henüz köşk yok." is drawn from the code
+#   world: flaky       the read fails once and answers on the retry: nothing on the stack makes tedrisat fail one read and not the next, so the
+#                      retry that works is drawn from the code (the retry that fails again is chiefFailed's)
+#   answer: failed     a restore the server does not answer: nothing here can make it, so the generic toast is drawn from the code
+#   viewer: medaris at a hidden köşk that the başnazım hid and the Medaris nazımı has no kademe for: the seeded one holds platform.kosk_edit, so
+#                      it reaches every level; the sentence is the köşk nazımı's (koskLocked)
+#   a signed-out person  the proxy sends them to sign in before any page runs (realm.auth.signIn)

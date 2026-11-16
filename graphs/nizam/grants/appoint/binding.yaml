@@ -1,0 +1,261 @@
+# nizam.grants.appoint on the local stack: the köşk nazımı (Cemal Köşk Nazımı, KOSK_NAZIM) at nizam-web on http://localhost:4001 in the real Keycloak sign-in of
+# local.nizam.binding.yaml, at the İzinler page of the seed's second köşk, "Kubbealtı Köşkü" (seed.kosk2: the nazım manages it and it has no course of its own), where the walk makes a
+# course of its own. The data, the locators and the effects every file shares are in locators.binding.yaml (it extends ../../../bindings/local.nizam.binding.yaml); this file holds
+# the scenarios of the nazım.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/grants/appoint \
+#     --bind graphs/nizam/grants/appoint/binding.yaml --cover transitions --absent --out <dir>
+#   (the other files are walked on their own, with --cover transitions --absent: binding.gone.yaml, binding.own.yaml, binding.chief.yaml, binding.note.yaml)
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). It loads: `replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and
+# walked nothing; every locator and every command is from the code and unverified until a walk.
+#
+# Every scenario that signs in as the nazım opens the köşk's home and presses the menu's "İzinler" (the nav graph's entry frame:shell->koskGrants, on the köşk variant's menu), and starts
+# from the same data (grants-data.mjs): a course "Deneme dersi nzgrants" in the köşk, the spare applicantC, and the days for the end field. `setup` begins with `down`, which ends what a
+# walk that died left, so each scenario can be run again at once. The Medaris nazımı and the başnazım have no İzinler entry in their menus: they open it by its address.
+#
+# Scenarios (two must not share a `given`; `--cover transitions` takes the shortest scenario per transition):
+#   appoints   the main story (e2e grants#4, #5, #6, #8): the empty list, "Ders nazırı ata", the address typed and searched, the person found, the course chosen, two boxes ticked, an end
+#              ahead typed, "Kaydet": the toast and the row "2 izin" with the end and "(siz)"; then "İzinleri düzenle" (a third box), "Kaydet", and "Görevden al" with its confirmation.
+#              The cover also walks, from the same start, the end in the past, "Seçimi kaldır", Vazgeç, every box unticked, and the dialogs' other exits.
+#   member     the spare holds a post already (the seeded post of grants#1, with an end that does not run out): the list has her row; typing her address finds her and "Kaydet" is refused
+#              with COURSE_NAZIR_EXISTS, the dialog stays open (GRANTS-2)
+#   refused    the nazım types his own address: found like anyone, and "Kaydet" is refused with SELF_GRANT_REFUSED, which the page words as "Bir şeyler ters gitti." (GRANTS-1)
+#   nobody     an address no account has (grants#4 a2): "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and nobody is chosen
+#   notAddress text that is no address, then Enter: nothing is searched and nothing is said (GRANTS-3)
+#   handedOn   one ders nazırı holds the permission to appoint and has appointed another: "Görevden al" of the first is refused with DISMISS_SEAT_HANDED_ON (GRANTS-5)
+#   medaris    the seeded Medaris nazımı opens the page by its address: "Bu bölüm için izniniz yok" (grants#2)
+#   missing    the nazım opens an address that is no köşk: the same screen (grants#3)
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.grants.appoint
+
+scenarios:
+  appoints:
+    given: { start: empty, person: fresh, edit: saved, revoke: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    setup:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, make, nzgrants, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzgrants"'
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, up]
+        expect: 'nzgrants up'
+    teardown:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, remove, nzgrants]
+        expect: 'course remove nzgrants'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nzgrants'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'DERS_NAZIR' and ra.revoked_at is null and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_KOSK_NAZIM_SUB}', '{secret.E2E_SYSTEM_ADMIN_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      typed: '{secret.E2E_APPLICANT_C_EMAIL}'
+      foundName: '{grants.spare.name}'
+      foundEmail: '{grants.spare.email}'
+      rowName: '{grants.spare.name}'
+      rowEmail: '{grants.spare.email}'
+      rowSub: '{grants.spare.sub}'
+      giverName: '{grants.viewer.name}'
+      giverText: '{grants.viewer.name} (siz)'
+      endMs: '{grants.futureMs}'
+
+  # The spare holds a post already: two permissions and an end 30 days ahead, made by the nazım in `setup`. Her address finds her and "Kaydet" is refused (COURSE_NAZIR_EXISTS).
+  member:
+    given: { start: held, person: member, edit: saved, revoke: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    setup:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, make, nzgrants, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzgrants"'
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, up, --held]
+        expect: 'nzgrants up held'
+    teardown:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, remove, nzgrants]
+        expect: 'course remove nzgrants'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nzgrants'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'DERS_NAZIR' and ra.revoked_at is null and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_KOSK_NAZIM_SUB}', '{secret.E2E_SYSTEM_ADMIN_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      typed: '{secret.E2E_APPLICANT_C_EMAIL}'
+      foundName: '{grants.spare.name}'
+      foundEmail: '{grants.spare.email}'
+      rowName: '{grants.spare.name}'
+      rowEmail: '{grants.spare.email}'
+      rowSub: '{grants.spare.sub}'
+      giverName: '{grants.viewer.name}'
+      giverText: '{grants.viewer.name} (siz)'
+      endMs: '{grants.futureMs}'
+
+  # The nazım's own address: found, and refused at "Kaydet" with SELF_GRANT_REFUSED (the page says "Bir şeyler ters gitti."). The refusal writes an audit row and nothing else.
+  refused:
+    given: { start: empty, person: refused, edit: saved, revoke: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    setup:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, make, nzgrants, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzgrants"'
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, up]
+        expect: 'nzgrants up'
+    teardown:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, remove, nzgrants]
+        expect: 'course remove nzgrants'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nzgrants'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'DERS_NAZIR' and ra.revoked_at is null and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_KOSK_NAZIM_SUB}', '{secret.E2E_SYSTEM_ADMIN_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      typed: '{secret.E2E_KOSK_NAZIM_EMAIL}'
+      foundName: '{grants.nazim.name}'
+      foundEmail: '{grants.nazim.email}'
+      rowName: '{grants.spare.name}'
+      rowEmail: '{grants.spare.email}'
+      rowSub: '{grants.spare.sub}'
+      giverName: '{grants.viewer.name}'
+      giverText: '{grants.viewer.name} (siz)'
+      endMs: '{grants.futureMs}'
+
+  # An address no account has: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." and nobody is chosen. Nothing is written.
+  nobody:
+    given: { start: empty, person: nobody, edit: saved, revoke: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    setup:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, make, nzgrants, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzgrants"'
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, up]
+        expect: 'nzgrants up'
+    teardown:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, remove, nzgrants]
+        expect: 'course remove nzgrants'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nzgrants'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'DERS_NAZIR' and ra.revoked_at is null and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_KOSK_NAZIM_SUB}', '{secret.E2E_SYSTEM_ADMIN_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      typed: 'kimse.yok@example.test'
+      foundName: '-'
+      foundEmail: '-'
+      rowName: '{grants.spare.name}'
+      rowEmail: '{grants.spare.email}'
+      rowSub: '{grants.spare.sub}'
+      giverName: '{grants.viewer.name}'
+      giverText: '{grants.viewer.name} (siz)'
+      endMs: '{grants.futureMs}'
+
+  # Text that is no address, then Enter: nothing is searched and nothing is said (GRANTS-3). Nothing is written.
+  notAddress:
+    given: { start: empty, person: notAddress, edit: saved, revoke: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    setup:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, make, nzgrants, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzgrants"'
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, up]
+        expect: 'nzgrants up'
+    teardown:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, remove, nzgrants]
+        expect: 'course remove nzgrants'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nzgrants'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'DERS_NAZIR' and ra.revoked_at is null and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_KOSK_NAZIM_SUB}', '{secret.E2E_SYSTEM_ADMIN_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      typed: 'kimse'
+      foundName: '-'
+      foundEmail: '-'
+      rowName: '{grants.spare.name}'
+      rowEmail: '{grants.spare.email}'
+      rowSub: '{grants.spare.sub}'
+      giverName: '{grants.viewer.name}'
+      giverText: '{grants.viewer.name} (siz)'
+      endMs: '{grants.futureMs}'
+
+  # D holds the two permissions and `course_nazir.assign`, an end 30 days ahead, and has appointed E from the course. The list has two rows; "Görevden al" of D is refused
+  # (DISMISS_SEAT_HANDED_ON). The walk types an address no account has, so that nobody is appointed in this start (nothing is written by the walk itself).
+  handedOn:
+    given: { start: handedOn, person: nobody, edit: saved, revoke: handedOn }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskGrants' }
+    setup:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, make, nzgrants, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"nzgrants"'
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, up, --handed-on]
+        expect: 'nzgrants up handed-on'
+    teardown:
+      - run: [node, ../nizam/grants/appoint/grants-data.mjs, down]
+        expect: 'nzgrants down'
+      - run: [node, helpers/course.mjs, remove, nzgrants]
+        expect: 'course remove nzgrants'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi nzgrants'"]
+        expect: '{"n":0}'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from role_assignments ra where ra.role = 'DERS_NAZIR' and ra.revoked_at is null and ra.user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_KOSK_NAZIM_SUB}', '{secret.E2E_SYSTEM_ADMIN_SUB}') and not exists (select 1 from courses c where c.id = ra.scope_id)"]
+        expect: '{"n":0}'
+    vars:
+      typed: 'kimse.yok@example.test'
+      foundName: '-'
+      foundEmail: '-'
+      rowName: '{grants.holder.name}'
+      rowEmail: '{grants.holder.email}'
+      rowSub: '{grants.holder.sub}'
+      giverName: '{grants.viewer.name}'
+      giverText: '{grants.viewer.name} (siz)'
+      endMs: '{grants.futureMs}'
+
+  # The seeded Medaris nazımı (platform.kosk_create and four more, no course_nazir.assign_kosk) opens the page by its address: 403, and the app's "Bu bölüm için izniniz yok" (e2e grants#2). Nothing is made.
+  medaris:
+    given: { start: medaris, person: nobody, edit: saved, revoke: saved }
+    as: medarisNazim
+    open: '{nizam}/kosks/{seed.kosk2}/izinler'
+    vars:
+      typed: 'kimse.yok@example.test'
+      foundName: '-'
+      foundEmail: '-'
+      rowName: '-'
+      rowEmail: '-'
+      rowSub: '-'
+      giverName: '-'
+      giverText: '-'
+      endMs: 'none'
+
+  # An address that is no köşk (e2e grants#3: a made-up uuid): 404, the same screen. The nazım is signed in; the başnazım would see the same.
+  missing:
+    given: { start: missing, person: nobody, edit: saved, revoke: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/00000000-0000-4000-8000-0000000000ff/izinler'
+    vars:
+      typed: 'kimse.yok@example.test'
+      foundName: '-'
+      foundEmail: '-'
+      rowName: '-'
+      rowEmail: '-'
+      rowSub: '-'
+      giverName: '-'
+      giverText: '-'
+      endMs: 'none'

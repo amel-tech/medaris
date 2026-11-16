@@ -1,0 +1,119 @@
+# nizam.shell.landingByRole on the local stack: nizam-web on :4001, which the shared base lists first, as a visitor, as the people
+# the seed makes, and as two of the seed's accounts the flow does not change. This file is the main story and the scenarios that
+# between them take every transition the stack can drive:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/shell/landingByRole \
+#     --bind graphs/nizam/shell/landingByRole/binding.yaml --cover transitions --absent --out <dir>
+# A scenario that takes no transition of its own (another kind of person on the same states) is not walked by `--cover transitions`,
+# so each has a file of its own, with the nodes, events, states and effects they share in locators.binding.yaml:
+#   binding.madrasah.yaml        the başmüderris: a medrese row with the role alone                        (--to nazarList; assignments#1 a5)
+#   binding.draft.yaml           a hoca of a draft course the walk makes: "Taslak" and no count              (--to nazarList; assignments#1 a4)
+#   binding.nazarAtNoRole.yaml   the müderris opens /yetki-yok: sent to "/", then to /nazar-yonlendirme    (--to nazarList; the reverse guard)
+#   binding.noRoleAtNazar.yaml   the talebe opens /nazar-yonlendirme: sent to "/", then to /yetki-yok      (--to noRolePage; the reverse guard)
+# NOT RUN: the graphs were written without a replay (the owner's word: replays come once, at the end). What is written here comes from
+# the code, and the unit specs (apps/nizam/test/no-role.spec.tsx, nazar-redirect.spec.ts, welcome.spec.tsx). Every locator is
+# unverified until a walk.
+#
+# What each scenario starts from (the stack's seed, STACK.md). Nothing is created and nothing is removed, except in binding.draft.yaml:
+#   noRole        the seeded TALEBE, who holds no role, opens "/"                                   (the main story; shell#1)
+#   noRoleAtOwn   the same person opens /yetki-yok by its address: it stays
+#   visitor       nobody signed in opens "/": the welcome page, then "Giriş yap"
+#   visitorGate   nobody signed in opens /yetki-yok: the proxy sends them to Keycloak                (shell#2)
+#   hoca          the seeded MUDERRIS (three published courses, no medrese) opens "/"             (assignments#1, #2)
+#   hocaAtOwn     the same person opens /nazar-yonlendirme by its address: it stays
+#   kosk          the seeded KOSK_NAZIM (two köşks) opens "/": the first köşk's home                 (assignments#3 a1)
+#   koskAtNazar   the same person opens /nazar-yonlendirme: sent to "/", then to the köşk's home      (assignments#3 a2)
+#   medaris       the seeded MEDARIS_NAZIM opens "/": the Medaris home, which nizam.home.medarisNazimCut draws
+#   chief         the seeded SYSTEM_ADMIN opens "/": the Medaris home, which nizam.home.chiefOverview draws
+#   chiefAtNoRole the başnazım opens /yetki-yok: sent to "/", where he stays
+# The e2e's own seed (seedMuderris, seedShell) is not used: it inserts rows by SQL for accounts the stack already gives roles, and the
+# seeded people are enough. assignments#3 needs "a köşk the account manages", which the seed gives KOSK_NAZIM.
+#
+# Not walked, with the reason:
+#   - `read: assignmentsFailed` and `read: rolesFailed` (exits noRoleUnread, nazarUnread, rootUnread): tedrisat answers every read on this
+#     stack and nothing makes it refuse one. The unit specs prove the markup of the first two; the third has none.
+#   - `enter`: the nav graph's goal for this flow is the page `start` for the başnazım and a Medaris nazımı, at `within: 0`, and its binding
+#     skips that page because "/" never stays at its address for most personas; so every scenario opens its own address.
+#   - "Tedris’e dön" and "Nazar’a git" when TEDRIS_URL or NAZAR_URL is empty: the stack sets both.
+#   - the köşk nazımı with no köşk, and a person who holds both a nazım's role and a course role: the seed has neither.
+#   - the phone layout.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.landingByRole
+
+scenarios:
+  # The main story: a person with no role signs in, "/" sends them to /yetki-yok, and "Tedris’e dön" goes back to tedris-web.
+  noRole:
+    given: { address: root, person: noRole, tasks: courses, read: ok }
+    as: talebe
+    open: '{nizam}/'
+    vars: { acct: TALEBE, held: '"assignments":[]', chief: 'false' }
+
+  # /yetki-yok opened by its address by the person it is for: it stays (the transition that "/" does not take).
+  noRoleAtOwn:
+    given: { address: noRolePage, person: noRole, tasks: courses, read: ok }
+    as: talebe
+    open: '{nizam}/yetki-yok'
+    vars: { acct: TALEBE, held: '"assignments":[]', chief: 'false' }
+
+  # A visitor: the welcome page, and "Giriş yap" leaves for Keycloak (which realm.auth.signIn walks on).
+  visitor:
+    given: { address: root, person: visitor, tasks: courses, read: ok }
+    as: visitor
+    signIn: false
+    open: '{nizam}/'
+
+  # shell#2: a visitor who opens /yetki-yok is not left on it and meets Keycloak's form.
+  visitorGate:
+    given: { address: noRolePage, person: visitor, tasks: courses, read: ok }
+    as: visitor
+    signIn: false
+    open: '{nizam}/yetki-yok'
+
+  # assignments#1 and #2: the hoca of the seed's three courses lands on the hand-over, reads the rows and follows "Nazar’a git".
+  hoca:
+    given: { address: root, person: nazarOnly, tasks: courses, read: ok }
+    as: muderris
+    open: '{nizam}/'
+    vars: { acct: MUDERRIS, held: '"role":"MUDERRIS"', chief: 'false' }
+
+  # /nazar-yonlendirme opened by its address by the person it is for: it stays.
+  hocaAtOwn:
+    given: { address: nazarPage, person: nazarOnly, tasks: courses, read: ok }
+    as: muderris
+    open: '{nizam}/nazar-yonlendirme'
+    vars: { acct: MUDERRIS, held: '"role":"MUDERRIS"', chief: 'false' }
+
+  # assignments#3 a1: the köşk nazımı lands on the home of the first köşk they manage.
+  kosk:
+    given: { address: root, person: koskNazim, tasks: courses, read: ok }
+    as: koskNazim
+    open: '{nizam}/'
+    vars: { acct: KOSK_NAZIM, held: '"role":"KOSK_NAZIM"', chief: 'false' }
+
+  # assignments#3 a2: the same person opens /nazar-yonlendirme and is sent on to the same köşk home (the reverse guard).
+  koskAtNazar:
+    given: { address: nazarPage, person: koskNazim, tasks: courses, read: ok }
+    as: koskNazim
+    open: '{nizam}/nazar-yonlendirme'
+    vars: { acct: KOSK_NAZIM, held: '"role":"KOSK_NAZIM"', chief: 'false' }
+
+  # The Medaris nazımı and the başnazım stay on "/": the replay checks only that they are not sent away (their home is
+  # nizam.home.medarisNazimCut and nizam.home.chiefOverview).
+  medaris:
+    given: { address: root, person: medarisNazim, tasks: courses, read: ok }
+    as: medarisNazim
+    open: '{nizam}/'
+    vars: { acct: MEDARIS_NAZIM, held: '"role":"MEDARIS_NAZIM"', chief: 'false' }
+  chief:
+    given: { address: root, person: chief, tasks: courses, read: ok }
+    as: systemAdmin
+    open: '{nizam}/'
+    vars: { acct: SYSTEM_ADMIN, held: '"assignments":[]', chief: 'true' }
+
+  # The başnazım opens /yetki-yok: sent to "/", where he stays (the reverse guard on the page of the roleless).
+  chiefAtNoRole:
+    given: { address: noRolePage, person: chief, tasks: courses, read: ok }
+    as: systemAdmin
+    open: '{nizam}/yetki-yok'
+    vars: { acct: SYSTEM_ADMIN, held: '"assignments":[]', chief: 'true' }

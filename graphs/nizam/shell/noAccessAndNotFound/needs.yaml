@@ -1,0 +1,167 @@
+# What must exist for a person of nizam-web to open something that is not theirs or not there and find their way back: the flow's product
+# list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and the inventory's findings (nizam.md part 0
+# and the cross-cutting section), not from what the pages do today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator
+# merges. Read by people for now: no checker runs on this file yet. No replay has run: a `replay:` entry is named only once a scenario has
+# passed, so none is named here, and an e2e check is the only evidence of a walk. An e2e check that cannot pass as written is not named as
+# a walk (F-X-20): assignments#4 and #6 end with an address regex that wants the /tr segment MDRS-248 removed.
+#
+# missing (no code): the-kalici-yasak-entry-opens-a-page (MDRS-140), the-youtube-entry-opens-a-page (MDRS-195),
+#   a-refusal-and-a-missing-page-are-announced-and-focused, a-refusal-is-served-as-a-refusal, a-face-names-its-tab,
+#   a-refusal-names-whom-to-ask-only-to-someone-who-can-ask
+# unwalked (code, no e2e and no replay that passes): a-refusal-shows-the-account-and-the-way-back,
+#   a-refusal-names-the-chief-or-says-so-in-general, a-refusal-reads-without-a-name, an-address-no-page-owns-says-so,
+#   a-menu-person-keeps-the-shell-around-the-face
+kind: needs
+flow: nizam.shell.noAccessAndNotFound
+status: proposed
+
+needs:
+  - id: a-refusal-says-so
+    need: >-
+      A person who opens a page their account may not open is told so in plain words ("Bu bölüm için izniniz yok") and is shown none of
+      the page's data, whatever their role: a köşk nazımı at a page of the başnazım, a Medaris nazımı at a page of the başnazım or of a
+      permission they were not given, a person with no role at any page of a köşk.
+    drawn: [noAccess, noAccessSection, noAccessTitle, a-refusal-is-not-a-missing-page]
+    built:
+      - route: apps/nizam/components/errors/no-access.tsx:19
+      - route: apps/nizam/app/not-found.tsx:13
+      - route: apps/nizam/app/forbidden.tsx:1
+    walked:
+      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
+        check: 'bans-medaris#8 (a köşk nazımı at Yasaklamalar)'
+      - e2e: apps/nizam/e2e/archive.e2e.ts
+        check: 'archive#6 (a köşk nazımı at Arşiv and at another köşk''s Arşiv)'
+      - e2e: apps/nizam/e2e/deck-review.e2e.ts
+        check: 'deck-review#5 (a köşk nazımı at Deste yayın istekleri), deck-review#10 (a person with no role at a köşk''s Desteler)'
+      - e2e: apps/nizam/e2e/permissions.e2e.ts
+        check: 'permissions#2 (a Medaris nazımı at Medaris nazımları and İzin grupları)'
+      - e2e: apps/nizam/e2e/inactive.e2e.ts
+        check: 'inactive#4 (a köşk nazımı at Pasif kapsamlar), inactive#5 (a Medaris nazımı without the permission: the refusal half)'
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#2 (a Medaris nazımı at a köşk''s İzinler)'
+      - e2e: apps/nizam/e2e/bans.e2e.ts
+        check: 'bans#9 (a müderris at a köşk''s Yasaklamalar)'
+      # madrasahs#8 (a Medaris nazımı with no permission at Medreseler) builds that person with fixture.makeMedarisNazim; the seeded Medaris
+      # nazımı holds madrasah_create, so Medreseler opens for them and this flow's walks do not repeat the check (binding.medaris.yaml says so).
+
+  - id: a-refusal-shows-the-account-and-the-way-back
+    need: >-
+      The refusal says which account the person is signed in with (a person on the wrong account sees why) and offers one way back, to the
+      home page, which sends each person on by their roles; the frame of the app stays around it, so the menu and the person row still work.
+    drawn: [noAccess, accountLabel, accountEmail, noAccessHome, home_opened, left]
+    built:
+      - route: apps/nizam/components/errors/no-access.tsx:35
+      - route: apps/nizam/components/shell/nizam-shell.tsx:51
+    # unwalked: assignments#4 asserts the e-mail, the <aside> and the way back, and cannot pass (F-X-20)
+
+  - id: a-refusal-names-the-chief-or-says-so-in-general
+    need: >-
+      The refusal says that the permission is the Medaris başnazımı's to give and names them when the directory knows who that is; the
+      name is read for any signed-in person (GET /nizam/chief-nazim answers every signed-in caller).
+    drawn: [readingChief, noAccessBody]
+    built:
+      - action: medaris.api:getChiefNazim
+      - route: apps/nizam/features/assignments/reads.ts:39
+    # unwalked: the sentence was read from the served stream ("... şu kişiden isteyin: <ad>."); no e2e checks it
+
+  - id: a-refusal-reads-without-a-name
+    need: >-
+      When the directory does not know the başnazım or does not answer, the refusal is still drawn, with a sentence that names nobody,
+      and the person is not shown an error.
+    drawn: [readingChief, noAccessBodyGeneric]
+    built:
+      - action: medaris.api:getChiefNazim
+      - route: apps/nizam/features/assignments/reads.ts:39
+    # unwalked: the stack has the başnazım and the directory, and nothing here may take them away (binding.yaml, "Not bound")
+
+  - id: a-foreign-and-a-missing-kosk-read-alike
+    need: >-
+      A köşk that is not the person's and one that is not there are one screen in the same words, so the page never tells which köşks
+      exist; a page whose own read answers 403 or 404 gives that screen.
+    drawn: [noAccess, a-foreign-and-a-missing-kosk-read-alike]
+    built:
+      - route: apps/nizam/app/not-found.tsx:13
+      - route: apps/nizam/app/kosks/[id]/page.tsx:54
+    walked:
+      - e2e: apps/nizam/e2e/assignments.e2e.ts
+        check: 'assignments#5 (an id no köşk has, and one that is no uuid)'
+      - e2e: apps/nizam/e2e/shell.e2e.ts
+        check: 'shell#6 (another köşk''s Başvurular)'
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#3 (a köşk that is not there)'
+
+  - id: a-person-without-a-role-is-refused-at-the-door
+    need: >-
+      A person who holds no nazım role and opens a page of a köşk is turned away before any page reads for them, with the same refusal;
+      a person whose roles cannot be read is let through to the API's own refusal.
+    drawn: [opening, noAccess]
+    built:
+      - route: apps/nizam/app/kosks/layout.tsx:20
+    walked:
+      - e2e: apps/nizam/e2e/deck-review.e2e.ts
+        check: 'deck-review#10'
+      - e2e: apps/nizam/e2e/bans.e2e.ts
+        check: 'bans#9'
+
+  - id: an-address-no-page-owns-says-so
+    need: >-
+      An address no page owns, at any depth and for anyone signed in, says "Sayfa bulunamadı" with a way home, inside the frame of the app,
+      and is never worded as a refusal (nobody can give a permission for a page that does not exist).
+    drawn: [notFound, notFoundSection, notFoundBody, notFoundHome, an-unknown-address-is-not-a-refusal]
+    built:
+      - route: apps/nizam/app/[...rest]/page.tsx:8
+      - route: apps/nizam/app/[...rest]/not-found.tsx:12
+      - route: apps/nizam/components/errors/page-not-found.tsx:14
+    # unwalked: assignments#6 asserts it and cannot pass (F-X-20)
+
+  - id: a-menu-person-keeps-the-shell-around-the-face
+    need: >-
+      Both faces are drawn inside the app's frame (the sidebar and its menu), so the person can leave by the menu at once; the frame of a
+      person with no menu is the brand and the person row.
+    drawn: [shellSidebar, shellMain]
+    built:
+      - route: apps/nizam/app/layout.tsx:54
+      - route: libs/ui/src/mds/app-shell.tsx:81
+    # unwalked: assignments#4 and #6 assert the <aside>, and cannot pass (F-X-20)
+
+  - id: the-kalici-yasak-entry-opens-a-page
+    need: >-
+      "Kalıcı yasak talepleri", which the başnazım's menu (and that of a Medaris nazımı holding the permission to ban an account) offers,
+      opens the page where a permanent-ban request is decided, or the entry is not offered (F-P0-4, F-X-11, decision D2).
+    drawn: [notFound, notFoundBody]
+    missing: MDRS-140
+
+  - id: the-youtube-entry-opens-a-page
+    need: >-
+      "YouTube bağlantısı", which the başnazım's menu offers, opens the page where the platform's YouTube connection is set, or the entry
+      is not offered (F-P0-4, F-X-11, decision D2).
+    drawn: [notFound, notFoundBody]
+    missing: MDRS-195
+
+  - id: a-refusal-and-a-missing-page-are-announced-and-focused
+    need: >-
+      A face that replaces what the person was reading is announced to a screen reader and gives the focus a place to be, by role="alert"
+      or by focusing its heading, as /yetki-yok already does (NOACC-1).
+    drawn: [noAccess, notFound]
+    missing: none
+
+  - id: a-refusal-is-served-as-a-refusal
+    need: >-
+      A refusal answers HTTP 403 and an address no page owns 404, whether or not the page has a loading skeleton, and neither is left to
+      a noindex tag on a 200 (NOACC-2).
+    drawn: [noAccess, notFound]
+    missing: none
+
+  - id: a-face-names-its-tab
+    need: >-
+      The tab names the face: "Bu bölüm için izniniz yok" for a refusal and "Sayfa bulunamadı" for a missing page, never the title of the
+      page that refused, and never just "Nizam" (NOACC-3, WCAG 2.4.2).
+    drawn: [noAccess, notFound]
+    missing: none
+
+  - id: a-refusal-names-whom-to-ask-only-to-someone-who-can-ask
+    need: >-
+      The refusal names the başnazım to a person who holds a management role and is therefore told whom to ask; a person with no role
+      is told the app is not theirs, in the words of /yetki-yok, instead of being sent to ask a named person for a permission (decision D1).
+    drawn: [noAccessBody]
+    missing: none

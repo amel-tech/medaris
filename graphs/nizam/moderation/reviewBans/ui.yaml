@@ -1,0 +1,159 @@
+# The screens of nizam.moderation.reviewBans: Yasaklamalar as Medaris administration meets it (nizam-web, /yasaklamalar), in both tabs, with its
+# kind chips, its search, its "Daha fazla göster", its empty, narrowed-to-nothing, busy and unreadable states. Read on 16 Nov 2026 from
+# apps/nizam/app/yasaklamalar/page.tsx, features/bans (all-bans-view.tsx, present.ts, reads.ts, actions.ts), libs/ui/src/mds (tabs, choice-chips,
+# table, input, alert, button, skeleton) and tedrisat's ban module (ban.controller.ts, ban.service.ts, ban.repository.ts, ban-codes.ts). Nothing was
+# opened in a browser: what the screen looks like, where the focus goes and what a screen reader says are from the code (marked in `rules`).
+#
+# Words. Every `BansPage.*` and `AllBansPage.*` key is copied, letter for letter, from libs/i18n/src/locales/tr/nizam.json by key (the file's root is the
+# namespace `nizam`, so the key is the path inside it). The page reads them as `nizam.BansPage` and `nizam.AllBansPage`.
+# The `composed.*` keys are in no i18n file: they are the cells the page builds from what the API sends, written with their placeholders so that a
+# replay can match them (a placeholder with no sample matches any text):
+#   composed.AllBansPage.activeCount / liftedCount  the tab's number, a <span class=mds-tab__count> (libs/ui/src/mds/tabs.tsx:67), Intl.NumberFormat of the
+#                                                   page's locale; the platform's whole count, whatever the filters leave
+#   composed.AllBansPage.person                     the name, else the e-mail, else "Bilinmiyor" (all-bans-view.tsx:164), in <bdi> (:202)
+#   composed.AllBansPage.email                      the person's e-mail under the name, <bdi dir=ltr> (:208)
+#   composed.AllBansPage.courseTitle / koskName     the course's title and the köşk's name under "Ders" (present.ts:80-89, with the köşk: withKosk)
+#   composed.AllBansPage.reason                     the reason as the placer typed it (:250)
+#   composed.AllBansPage.placedBy / role            the placer's name, and under it the role: "Hoca", "Köşk nazımı", "Medaris yönetimi", "Medaris nazımı"
+#                                                   (BansPage.roles.*) or, for a ban the reader placed, "{role} (siz)" (BansPage.you; present.ts:41-48)
+#   composed.AllBansPage.when                       "Bugün 14:30", "Dün 09:10" or "28 Eyl 16:10", the viewer's clock (features/archive/present.ts:51-73)
+#   composed.AllBansPage.liftedBy / liftedWhen / liftReason   the Kaldırılan tab's last cell: who, when, why (:316-323)
+#   composed.Button.loading                         "Yükleniyor", the hidden <output> of a busy Button (libs/ui/src/mds/button.tsx:62,114)
+# No `changes`: the flow only reads (GET /bans). Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nizam.moderation.reviewBans
+flow: nizam.moderation.reviewBans
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  activeCount: "3"
+  liftedCount: "2"
+  count: "3"
+  person: Ömer Örnek
+  email: omer.ornek@example.test
+  courseTitle: Bina ve İzhar Şerhi
+  koskName: Süleymaniye Köşkü
+  course: Bina ve İzhar Şerhi
+  reason: Celselerde ders dışı reklam yaptı.
+  placedBy: Nuri Hoca
+  role: Hoca
+  when: Bugün 14:30
+  liftedBy: Selim Köşk Nazımı
+  liftedWhen: Bugün 16:30
+  liftReason: Süre doldu; söz verdi.
+  name: Ömer Örnek
+
+# Nothing in features/bans sets the focus when the page opens, after a tab, a chip, a search or "Daha fazla göster": there is no `initialFocus` and no
+# `focus` here (rule focus-not-set). A press on a row's button opens a dialog that nizam.moderation.decideBan draws.
+nodes:
+  # --- the page: a title, its line, the section --------------------------------------------------------------------------------------------
+  bansPage: { type: page, component: Page, role: main, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:358 } # the shell's one <main id="main">; it has no name
+  bansTitle: { type: text, component: Heading, role: heading, text: { key: BansPage.title }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:363 } # h1
+  bansIntro: { type: text, component: Text, text: { key: AllBansPage.intro }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:364 }
+  sectionRegion: { type: page, component: Page, role: region, name: { labelledBy: sectionHeading }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:367 } # <section aria-labelledby="all-bans-heading">
+  sectionHeading: { type: text, component: Heading, role: heading, text: { key: BansPage.heading }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:372 } # h2 "Yasaklar"
+  recentLine: { type: text, component: Text, text: { key: BansPage.recent, params: { count: counts.recent } }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], when: anyBans, source: apps/nizam/features/bans/components/all-bans-view.tsx:375 } # beside the h2, data-testid=all-bans-recent: the platform's open bans of the last 24 hours, whatever tab or filter is on; left out when there are none
+
+  # --- the tabs: a real tablist with a panel, each tab with the platform's whole count --------------------------------------------------------
+  tabList: { type: list, component: List, role: tablist, name: { key: BansPage.tabsLabel }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: libs/ui/src/mds/tabs.tsx:103 } # Base UI Tabs.List, activateOnFocus: an arrow key moves and selects
+  tabActive: { type: action, component: Button, role: tab, intent: secondary, text: { key: BansPage.tabs.ACTIVE }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], emits: OPEN_ACTIVE, source: libs/ui/src/mds/tabs.tsx:110 } # its name carries the count: "Etkin 3". The selected tab (aria-selected) is not drawn: no node can say it (rule tabs-selected-not-drawn)
+  tabActiveCount: { type: text, component: Text, text: { key: composed.AllBansPage.activeCount, params: { activeCount: counts.active } }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: libs/ui/src/mds/tabs.tsx:67 } # the platform's whole count of open bans (counts.activeCount), whatever the chip and the search leave (F-W5-10)
+  tabLifted: { type: action, component: Button, role: tab, intent: secondary, text: { key: BansPage.tabs.LIFTED }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], emits: OPEN_LIFTED, source: libs/ui/src/mds/tabs.tsx:110 } # "Kaldırılan 2"
+  tabLiftedCount: { type: text, component: Text, text: { key: composed.AllBansPage.liftedCount, params: { liftedCount: counts.lifted } }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: libs/ui/src/mds/tabs.tsx:67 }
+  tabPanel: { type: page, component: Page, role: tabpanel, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:399 } # one panel per tab, the other is not drawn; each carries the search, the chips and the table (unlike the köşk's list, this page does have its panels)
+
+  # --- the filters: a name and a kind ------------------------------------------------------------------------------------------------------
+  searchField: { type: field, component: TextField, role: searchbox, text: { key: AllBansPage.searchLabel }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:408 } # type=search named by its aria-label; the placeholder says "Kişi adı ya da e-posta ara". 300 ms after the typing stops the list is asked again (:140-151, the server does the search, F-W5-10). It holds what is typed, which the walk chooses (no `value` here)
+  scopeLegend: { type: text, component: Text, text: { key: AllBansPage.scopeLegend }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:421 } # the visible legend, a <div class=mds-label> (legendVisible)
+  scopeGroup: { type: page, component: Page, role: group, name: { labelledBy: scopeLegend }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], source: libs/ui/src/mds/choice-chips.tsx:75 } # Base UI ToggleGroup, aria-labelledby the legend
+  chipAll: { type: action, component: Button, role: button, intent: secondary, text: { key: AllBansPage.scopeAll }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], emits: PICK_ALL, source: apps/nizam/features/bans/components/all-bans-view.tsx:424 } # "Tümü"; a toggle with aria-pressed, which the graph cannot draw (rule chips-toggle). Pressing a chip that is already pressed turns it off and gives Tümü
+  chipCourse: { type: action, component: Button, role: button, intent: secondary, text: { key: BansPage.scope.COURSE }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], emits: PICK_COURSE, source: apps/nizam/features/bans/components/all-bans-view.tsx:425 } # "Ders": asks for scope COURSE
+  chipKosk: { type: action, component: Button, role: button, intent: secondary, text: { key: BansPage.scope.KOSK }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], emits: PICK_KOSK, source: apps/nizam/features/bans/components/all-bans-view.tsx:426 } # "Köşk": asks for scope KOSK. There is no chip for a medrese-wide ban (REVBANS-2)
+
+  # --- while the list is asked again -------------------------------------------------------------------------------------------------------
+  busyText: { type: text, component: Text, text: { key: BansPage.loading }, in: [narrowing], source: apps/nizam/features/bans/components/all-bans-view.tsx:447 } # <span class=mds-visually-hidden> inside <div aria-busy>; three Skeleton rows follow it. aria-busy is not spoken and the span is no live region (F-W5-10)
+
+  # --- the table --------------------------------------------------------------------------------------------------------------------------
+  summaryActive: { type: text, component: Text, text: { key: AllBansPage.summary.ACTIVE, params: { count: counts.total } }, in: [listed, empty, noMatch, loadingMore], when: "tab == 'ACTIVE'", source: apps/nizam/features/bans/components/all-bans-view.tsx:332 } # data-testid=all-bans-summary: how many open bans match the chip and the search (the list's `total`, not the tab's count); no live region (F-W5-10)
+  summaryLifted: { type: text, component: Text, text: { key: AllBansPage.summary.LIFTED, params: { count: counts.total } }, in: [listed, empty, noMatch, loadingMore], when: "tab == 'LIFTED'", source: apps/nizam/features/bans/components/all-bans-view.tsx:332 }
+  tableActive: { type: list, component: List, role: table, name: { key: AllBansPage.caption.ACTIVE }, in: [listed, empty, noMatch, loadingMore], when: "tab == 'ACTIVE'", source: apps/nizam/features/bans/components/all-bans-view.tsx:335 } # Table responsive="stack": explicit table roles, named by its hidden caption. Newest placed first, but not marked aria-sort
+  tableLifted: { type: list, component: List, role: table, name: { key: AllBansPage.caption.LIFTED }, in: [listed, empty, noMatch, loadingMore], when: "tab == 'LIFTED'", source: apps/nizam/features/bans/components/all-bans-view.tsx:335 } # the API orders it by when the ban was lifted (REVBANS-5)
+  columnPerson: { type: text, component: Text, role: columnheader, text: { key: BansPage.columns.person }, in: [listed, empty, noMatch, loadingMore], source: apps/nizam/features/bans/components/all-bans-view.tsx:222 }
+  columnScope: { type: text, component: Text, role: columnheader, text: { key: BansPage.columns.scope }, in: [listed, empty, noMatch, loadingMore], source: apps/nizam/features/bans/components/all-bans-view.tsx:229 }
+  columnReason: { type: text, component: Text, role: columnheader, text: { key: BansPage.columns.reason }, in: [listed, empty, noMatch, loadingMore], source: apps/nizam/features/bans/components/all-bans-view.tsx:247 }
+  columnBannedBy: { type: text, component: Text, role: columnheader, text: { key: BansPage.columns.bannedBy }, in: [listed, empty, noMatch, loadingMore], source: apps/nizam/features/bans/components/all-bans-view.tsx:253 }
+  columnWhen: { type: text, component: Text, role: columnheader, text: { key: BansPage.columns.when }, in: [listed, empty, noMatch, loadingMore], source: apps/nizam/features/bans/components/all-bans-view.tsx:264 } # the day the ban was placed, in both tabs
+  columnActions: { type: text, component: Text, role: columnheader, text: { key: BansPage.columns.actions }, in: [listed, empty, noMatch, loadingMore], when: "tab == 'ACTIVE'", source: apps/nizam/features/bans/components/all-bans-view.tsx:271 } # its text is visually hidden
+  columnLiftedBy: { type: text, component: Text, role: columnheader, text: { key: BansPage.columns.liftedBy }, in: [listed, empty, noMatch, loadingMore], when: "tab == 'LIFTED'", source: apps/nizam/features/bans/components/all-bans-view.tsx:313 }
+
+  # --- a row, in both tabs ----------------------------------------------------------------------------------------------------------------
+  rowPerson: { type: text, component: Text, role: rowheader, text: { key: composed.AllBansPage.person, params: { person: ban.name } }, in: [listed, loadingMore], repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:202 } # a row header; the name is in <bdi>
+  rowEmail: { type: text, component: Text, text: { key: composed.AllBansPage.email, params: { email: ban.email } }, in: [listed, loadingMore], repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:208 } # the person's e-mail address, in plain view to everyone who may read the list (rule TRIAGE-2)
+  rowScopeCourse: { type: text, component: Text, text: { key: BansPage.scope.COURSE }, in: [listed, loadingMore], when: "courseBans == 'some' and scope != 'kosk'", repeat: bans.courseItems, source: apps/nizam/features/bans/present.ts:80 } # "Ders"
+  rowCourseTitle: { type: text, component: Text, text: { key: composed.AllBansPage.courseTitle, params: { courseTitle: ban.courseTitle } }, in: [listed, loadingMore], when: "courseBans == 'some' and scope != 'kosk'", repeat: bans.courseItems, source: apps/nizam/features/bans/present.ts:83 } # under "Ders"
+  rowCourseKosk: { type: text, component: Text, text: { key: composed.AllBansPage.koskName, params: { koskName: ban.koskName } }, in: [listed, loadingMore], when: "courseBans == 'some' and scope != 'kosk'", repeat: bans.courseItems, source: apps/nizam/features/bans/present.ts:85 } # the köşk's name, next under a course ban (a medrese's course adds the medrese's name after it)
+  rowScopeKosk: { type: text, component: Text, text: { key: BansPage.scope.KOSK }, in: [listed, loadingMore], when: "koskBans == 'some' and scope != 'course'", repeat: bans.koskItems, source: apps/nizam/features/bans/present.ts:91 } # "Köşk". A medrese-wide ban reads "Köşk" too (REVBANS-2)
+  rowKoskName: { type: text, component: Text, text: { key: composed.AllBansPage.koskName, params: { koskName: ban.koskName } }, in: [listed, loadingMore], when: "koskBans == 'some' and scope != 'course'", repeat: bans.koskItems, source: apps/nizam/features/bans/present.ts:93 }
+  rowExtendedFrom: { type: text, component: Text, text: { key: BansPage.extendedFrom, params: { course: ban.extendedFromCourseTitle } }, in: [listed, loadingMore], when: "koskBans == 'some' and scope != 'course'", repeat: bans.widenedItems, source: apps/nizam/features/bans/present.ts:94 } # a köşk ban placed from a course remembers it
+  rowReason: { type: text, component: Text, text: { key: composed.AllBansPage.reason, params: { reason: ban.reason } }, in: [listed, loadingMore], repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:250 } # the reason, in <bdi>, shown to everyone who may read the list
+  rowBannedBy: { type: text, component: Text, text: { key: composed.AllBansPage.placedBy, params: { placedBy: ban.bannedBy.name } }, in: [listed, loadingMore], repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:258 }
+  rowRole: { type: text, component: Text, text: { key: composed.AllBansPage.role, params: { role: ban.role } }, in: [listed, loadingMore], repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:259 } # under the placer's name, a caption: the role the ban was placed in, with "(siz)" on a ban the reader placed
+  rowWhen: { type: text, component: Text, text: { key: composed.AllBansPage.when, params: { when: ban.when } }, in: [listed, loadingMore], repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:268 } # when the ban was placed ("Bugün 14:30"), in the viewer's zone
+
+  # --- a row of the Etkin tab only ---------------------------------------------------------------------------------------------------------
+  badgeNew: { type: text, component: Text, text: { key: BansPage.new }, in: [listed, loadingMore], when: "tab == 'ACTIVE'", repeat: bans.recentItems, source: apps/nizam/features/bans/components/all-bans-view.tsx:204 } # an open ban placed in the last 24 hours, a Badge (info) beside the name; text, not colour alone
+  lift: { type: action, component: Button, role: button, intent: secondary, name: { key: BansPage.liftLabel, params: { name: ban.name } }, text: { key: BansPage.lift }, in: [listed, loadingMore], when: "tab == 'ACTIVE' and viewer != 'reader' and not (viewer == 'scoped' and scope == 'course')", repeat: bans.liftableItems, emits: LIFT, source: apps/nizam/features/bans/components/all-bans-view.tsx:285 } # only where the API says viewerMayLift: the başnazım lifts every open ban; a Medaris nazımı with platform.ban_scoped only the köşk-wide ones; one with platform.ban_account none (ban.service.ts:639-668, ban-codes.ts:43-60). The first action of a row is an outline button
+  extend: { type: action, component: Button, role: button, intent: secondary, name: { key: AllBansPage.extendLabel, params: { name: ban.name } }, text: { key: AllBansPage.extend }, in: [listed, loadingMore], when: "tab == 'ACTIVE' and viewer != 'reader' and courseBans == 'some' and scope != 'kosk'", repeat: bans.widenableItems, emits: EXTEND, source: apps/nizam/features/bans/components/all-bans-view.tsx:299 } # an open COURSE ban the viewer may widen to the köşk (viewerMayExtend; ghost button): never on a köşk row, and not on a course ban of someone whose köşk ban stands on the same page (REVBANS-1)
+  noteHigher: { type: text, component: Text, text: { key: BansPage.higherOnly }, in: [listed, loadingMore], when: "tab == 'ACTIVE' and (viewer == 'reader' or (viewer == 'scoped' and scope != 'kosk'))", repeat: bans.higherItems, source: apps/nizam/features/bans/present.ts:55 } # in the place of "Yasağı kaldır" on an open ban the viewer may not lift, when its placer is not Medaris: said also to a Medaris nazımı who is above the placer but whose permission reaches no course ban (REVBANS-3)
+  notePlatform: { type: text, component: Text, text: { key: BansPage.platformOnly }, in: [listed, loadingMore], when: "tab == 'ACTIVE' and viewer in ['scoped', 'reader'] and scope != 'kosk'", repeat: bans.platformItems, source: apps/nizam/features/bans/present.ts:55 } # the same place, on a ban a Medaris nazımı or the başnazım placed
+
+  # --- a row of the Kaldırılan tab only ---------------------------------------------------------------------------------------------------
+  rowLiftedBy: { type: text, component: Text, text: { key: composed.AllBansPage.liftedBy, params: { liftedBy: ban.liftedBy.name } }, in: [listed, loadingMore], when: "tab == 'LIFTED'", repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:318 }
+  rowLiftedWhen: { type: text, component: Text, text: { key: composed.AllBansPage.liftedWhen, params: { liftedWhen: ban.liftedAt } }, in: [listed, loadingMore], when: "tab == 'LIFTED'", repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:319 } # a caption
+  rowLiftReason: { type: text, component: Text, text: { key: composed.AllBansPage.liftReason, params: { liftReason: ban.liftReason } }, in: [listed, loadingMore], when: "tab == 'LIFTED'", repeat: bans.items, source: apps/nizam/features/bans/components/all-bans-view.tsx:321 } # left out when the lift reason is empty
+
+  # --- no row ---------------------------------------------------------------------------------------------------------------------------
+  emptyActive: { type: text, component: Text, text: { key: BansPage.empty.ACTIVE }, in: [empty], when: "tab == 'ACTIVE'", source: apps/nizam/features/bans/components/all-bans-view.tsx:340 } # "Etkin yasak yok": the table's one line when nothing narrows the list
+  emptyLifted: { type: text, component: Text, text: { key: BansPage.empty.LIFTED }, in: [empty], when: "tab == 'LIFTED'", source: apps/nizam/features/bans/components/all-bans-view.tsx:340 }
+  noMatchLine: { type: text, component: Text, text: { key: AllBansPage.emptyFiltered }, in: [noMatch], source: apps/nizam/features/bans/components/all-bans-view.tsx:340 } # the same line for a chip that holds nothing and for a name nobody has; no button offers the way back (the chips and the box are the way)
+
+  # --- under the table --------------------------------------------------------------------------------------------------------------------
+  loadMore: { type: action, component: Button, role: button, intent: secondary, text: { key: AllBansPage.more }, in: [listed, loadingMore], when: moreButton, disabledIn: [loadingMore], emits: LOAD_MORE, source: apps/nizam/features/bans/components/all-bans-view.tsx:345 } # a ghost button, drawn only while rows are left (items.length < total); busy, not disabled: aria-busy and aria-disabled, so it keeps the focus. It goes away with the last page, with the focus on it (REVBANS-4)
+  moreBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [loadingMore], source: libs/ui/src/mds/button.tsx:114 } # the hidden <output> beside the button, empty until it is busy; the word is the Button's own, in no catalog
+
+  # --- the list cannot be read -----------------------------------------------------------------------------------------------------------
+  failedAlert: { type: alert, component: Alert, role: alert, text: { key: BansPage.loadFailedTitle }, in: [loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:439 } # tone error: role alert, in the table's place; the tabs, the search and the chips stay
+  failedText: { type: text, component: Text, text: { key: BansPage.loadFailed }, in: [loadFailed], source: apps/nizam/features/bans/components/all-bans-view.tsx:440 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: BansPage.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/bans/components/all-bans-view.tsx:441 } # outline, small: reads the same query again
+  toastFailed: { type: status, component: Status, text: { key: BansPage.loadFailedTitle }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], when: "toast == 'failed'", source: apps/nizam/features/bans/components/all-bans-view.tsx:116 } # a sticky sonner toast (duration: Infinity), raised only by a failed re-read, never by the first read; it says what the alert says (F-X-4)
+  toastFailedText: { type: text, component: Text, text: { key: BansPage.loadFailed }, in: [listed, empty, noMatch, narrowing, loadingMore, loadFailed], when: "toast == 'failed'", source: apps/nizam/features/bans/components/all-bans-view.tsx:117 }
+
+edges:
+  - { labelledBy: [sectionRegion, sectionHeading] }
+  - { labelledBy: [scopeGroup, scopeLegend] }
+  - { triggers: [tabActive, narrowing] }
+  - { triggers: [tabLifted, narrowing] }
+  - { triggers: [chipAll, narrowing] }
+  - { triggers: [chipCourse, narrowing] }
+  - { triggers: [chipKosk, narrowing] }
+  - { triggers: [loadMore, loadingMore] }
+  - { triggers: [retry, narrowing] }
+  - { triggers: [lift, handed_over.lift] }
+  - { triggers: [extend, handed_over.extend] }
+
+rules:
+  - { id: focus-not-set, rule: "No code of features/bans sets the focus when the page opens, after a tab, a chip, the search or 'Daha fazla göster' (the tab, the chip and the button keep it until the row or the panel changes under them). Nothing is drawn as `initialFocus` or `focus`." }
+  - { id: TRIAGE-2, rule: "Read from this side, from the code and from one API call on the stack (seen at the API, not in a browser): the page does NOT show every ban to every Medaris nazımı. Its list read asks platform.ban_scoped or platform.ban_account at the platform (ban.service.ts:233, ban-codes.ts:65-69; MEDARIS_NAZIM has no default permissions) and the seeded Medaris nazımı, who holds neither, is answered 403 BAN_FORBIDDEN, so the page draws the section refusal (page.tsx:25) while the notice of the same ban already told her the person's name and the reason (TRIAGE-2 of nizam.notifications.triage, whose title links to the köşk's own list, which she may not read either). The other side holds too: ONE of the two codes opens the whole platform's list, every köşk and every medrese's ban with the person's name, e-mail address and the reason, and nothing narrows it to a köşk or a medrese (ban.service.ts:228-262); platform.ban_account, which bans and lifts nothing, reads the reasons as fully as the başnazım. Fix: decide whether a reader of the platform list should see the reason and the e-mail address, and notify only those who may read (TRIAGE-2 decision D1)." }
+  - { id: REVBANS-1, rule: "New, from the code (ban.service.ts:228-262), not seen in a browser. 'Yasağı genişlet' is drawn on an open course ban whose person ALREADY has an open köşk ban whenever that köşk ban is not among the rows of the page that was asked for: `widened` is built from the page's own items (the open list is read only for the Kaldırılan tab, where no row can be widened), so with the Ders chip on (scope COURSE sends no köşk row) or on a long list's first page while the köşk ban sits on the second, the button is there; with Tümü and both rows on the page it is not. The extend route hands back the standing ban, so nothing breaks, but the person who presses it is asked for a reason for a widening that already exists (nizam.moderation.decideBan). Fix: ask the repository for the page's persons' open köşk bans, not the page's rows." }
+  - { id: REVBANS-2, rule: "The same finding as NDB-4 of nizam.moderation.decideBan, met here from the reading side; from the code (present.ts:71-99, all-bans-view.tsx:424-427, ban.repository.ts:394-412), not seen in a browser. The API lists a MEDRESE-wide ban (scope MADRASAH, placed from nazar) beside the köşk's and the course's, but scopeParts gives every scope that is not COURSE the label 'Köşk', with no köşk name (a medrese-wide ban has none) and, for a widened one, '{course} dersinden genişletildi'; and the chips only send COURSE and KOSK, so the same ban vanishes under both. The page's own comment says the Medrese and Platform chips 'wait for bans of those scopes', and e2e bans-medaris#3 pins that there is no 'Platform' chip, but the medrese scope exists now. Fix: label the scope 'Medrese' with the medrese's name and add the chip (the platform scope still waits for MDRS-113)." }
+  - { id: REVBANS-3, rule: "The same finding as NDB-5 of nizam.moderation.decideBan, met here with the two Medaris nazım viewers; from the code (present.ts:51-58, ban-codes.ts:17-22, ban.service.ts:639-668). Where the row has no 'Yasağı kaldır' the page says 'Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir.' (a ban of a lower kademe) or 'Bu yasağı yalnız Medaris yönetimi kaldırabilir.' (a ban Medaris placed). The first sentence is false for a Medaris nazımı holding only platform.ban_scoped, who is above the placer of a course ban but lifts no course ban (the permission is the reason, not the kademe), and for one holding only platform.ban_account, who lifts nothing at all and is told the same of every row. Fix: say which permission is missing when the kademe is not the reason." }
+  - { id: REVBANS-4, rule: "New, from the code (all-bans-view.tsx:343-353), not seen in a browser. 'Daha fazla göster' is drawn only while rows are left; pressing it for the last page removes the button that has the focus, so the focus falls to the document, and nothing says that rows were added or how many (F-W5-10, F-X-7). Fix: move the focus to the first new row, or keep the button with a status that says 'tümü gösterildi'." }
+  - { id: REVBANS-5, rule: "New, from the code (ban.repository.ts:419, all-bans-view.tsx:263-269). The Kaldırılan tab is ordered by when the ban was LIFTED (desc lifted_at), but its 'Zaman' column shows when it was PLACED, so a list that is sorted looks unsorted; the lift time is in the last column. The table carries no aria-sort in either tab. Fix: show the lift time in the column the order follows, or order by the placed time." }
+  - { id: F-W5-10, rule: "The search is the server's (300 ms after the typing stops, loadAllBans), and neither it, a chip, a tab nor 'Daha fazla göster' says how many rows came: the only count text is the caption <p data-testid=all-bans-summary>, which is no live region, and the skeleton's 'Yükleniyor' sits in an aria-busy <div> that is not spoken (all-bans-view.tsx:332,446-451). The tab's number is the platform's whole count, not the filtered one, so 'Etkin 3' can sit over '1 etkin yasak'. Fix: a live status line '{n} yasak' after each answer." }
+  - { id: F-W5-1, rule: "Touched, not owned by this flow: the widening from THIS page ('Yasağı genişlet') opens ExtendDialog and asks for a reason, where the same widening on the köşk's own list ('Köşkten de yasakla', bans-view.tsx:137-160) is one click with no reason; nizam.moderation.decideBan draws both. Fix: open the dialog on the köşk list too." }
+  - { id: chips-toggle, rule: "The chips are Base UI toggles with aria-pressed (choice-chips.tsx:75-93), which no node of this graph can draw. Pressing the pressed 'Ders' or 'Köşk' turns it off and the list asks again for Tümü (onChange gets null, all-bans-view.tsx:429-436), and pressing 'Tümü' while it is pressed asks again for nothing new (every chip press makes a new query object, :153-158, so the list is read again and shows its skeleton)." }
+  - { id: tabs-selected-not-drawn, rule: "The tabs are a tablist with panels (Tabs, mode tabs) and the selected tab has aria-selected, which no node of this graph can say; the graph says which tab is on by the table's caption and the summary line." }
+  - { id: label-in-name, rule: "A row button's visible text is contained in its accessible name: 'Yasağı kaldır' in 'Yasağı kaldır: {name}', 'Yasağı genişlet' in 'Yasağı genişlet: {name}' (WCAG 2.5.3). Holds. The tab's name is its text then its count, 'Etkin 3'." }
+  - { id: actions-absent-not-disabled, rule: "An action the API says the viewer may not take is not drawn (absent, not disabled), and a ban the viewer may not lift says so in a sentence (REVBANS-3); a lifted ban draws nothing. The 'Yeni' badge is text, not colour alone." }

@@ -1,0 +1,205 @@
+# What must exist for a person to look after their flashcard decks and the cards in them on the two legacy pages of nizam-web (/decks and /decks/<id>/cards)
+# (LAYOUT.md section 7). Each need is what the product must do, from the flow's story, its decisions D1 and D2 and the findings of the pages, not from what the
+# pages do today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet.
+# No e2e check of nizam-web touches these pages (the nizam inventory lists none), the unit specs of the app have none for them, and no replay has been run
+# (the owner moved every replay to the walk phase), so no `walked` entry names one: every need that has code is `unwalked` below. The Linear key of a missing
+# need is `none`: nothing is planned for these pages, and decision D1 says whether they stay.
+#
+# missing (no code, Linear key `none`): only-what-is-yours-is-offered, a-bad-value-is-told-on-the-field, a-refused-save-is-undone, a-failure-says-why-in-the-persons-words,
+#   every-control-has-a-name, every-word-is-the-persons-own, a-saved-change-is-said-in-the-persons-words, big-files-can-be-imported, the-table-keeps-an-order,
+#   the-table-keeps-the-right-text, the-import-says-it-is-working, one-place-to-edit-a-deck, a-page-has-a-title-and-a-loading-state
+# unwalked (code, no e2e and no replay yet): see-your-decks-in-a-table, make-a-deck, rename-in-place, delete-a-deck-after-asking, open-a-decks-cards, edit-a-card-in-place,
+#   delete-a-card-after-asking, import-cards-from-a-file, export-a-deck, get-a-sample-file, a-failed-read-is-told
+kind: needs
+flow: nizam.decks.legacyCards
+status: proposed
+
+needs:
+  - id: see-your-decks-in-a-table
+    need: >-
+      A signed-in person sees the decks that are theirs, one row each with its title and description, and a person who has none is told so. The table says what
+      it holds and in what order.
+    drawn: [list, listTitle, listIntro, deckTable, colTitle, colDescription, rowTitle, rowDescription, emptyRow]
+    built:
+      - action: medaris.api:listDecks
+      - route: apps/nizam/features/decks/components/decks.tsx:60
+    walked: []
+
+  - id: only-what-is-yours-is-offered
+    need: >-
+      A person is offered a rename, a delete, a card edit, an import and an export only on a deck they may change. A public deck of someone else is shown as
+      something to read, and nobody learns it is not theirs by pressing and being refused.
+    drawn: [rowTitle, rowDescription, rowRemove, cardFront, cardBack, cardRemove, importItem, exportItem, toastReason]
+    missing: none
+
+  - id: make-a-deck
+    need: >-
+      A person makes a deck from a title of 5 to 100 characters and an optional description; it is theirs alone and has no card; they are told it exists and the
+      table shows it. A title that is only blanks is not sent.
+    drawn: [newButton, newDeck, newDeckInvalid, creating, newDeckFailed, titleField, descriptionField, newDeckSubmit, newDeckSubmitBusy, toastCreated, toastCreatedBody, toastBlank]
+    built:
+      - action: medaris.api:createDeck
+      - route: apps/nizam/features/decks/components/decks-table-header.tsx:46
+    walked: []
+
+  - id: a-bad-value-is-told-on-the-field
+    need: >-
+      A title that is blank, too short or too long, and a card face that is too short, are told where they were typed, in the person's words, before or when the
+      person presses; the focus goes to the field and the message is announced.
+    drawn: [newDeckInvalid, toastBlank, toastBlankBody, toastCreateFailed, toastReason, newDeckFailed]
+    missing: none
+
+  - id: rename-in-place
+    need: >-
+      A person changes the title or the description of a deck where it stands, and it is saved when they leave the cell or press Enter; the page tells them it was
+      saved and keeps the focus.
+    drawn: [rowTitle, rowDescription, renaming, toastRenamed, toastRenamedBody]
+    built:
+      - action: medaris.api:updateDeck
+      - route: apps/nizam/features/decks/components/decks.tsx:38
+    walked: []
+
+  - id: a-refused-save-is-undone
+    need: >-
+      When the server refuses a change made in a cell, the cell goes back to what is stored and says why, instead of showing the refused text as if it were saved.
+    drawn: [renaming, savingCard, toastRenameFailed, toastCardFailed, toastReason, rowTitle, cardBack]
+    missing: none
+
+  - id: a-saved-change-is-said-in-the-persons-words
+    need: >-
+      A cell that was saved, a deck made or deleted, a card deleted or imported are told in Turkish, in one voice, naming the deck or the card and not its id; the
+      page also says when a cell saves.
+    drawn: [toastRenamed, toastRenamedBody, toastRemoved, toastRemovedBody, toastCardSaved, toastCardSavedBody, toastCardRemoved, toastCardRemovedBody, toastImported, toastImportedBody]
+    missing: none
+
+  - id: delete-a-deck-after-asking
+    need: >-
+      A deck is deleted only after the person is asked once, in words that say the cards go with it and it cannot be undone, and the table follows at once; the
+      person is told it is gone.
+    drawn: [rowRemove, confirmRemoveDeck, removeDeckDialog, removeDeckTitle, removeDeckBody, removeDeckCancel, removeDeckConfirm, removingDeck, toastRemoved]
+    built:
+      - action: medaris.api:deleteDeck
+      - route: apps/nizam/features/decks/hooks/useDecksColumns.tsx:57
+    walked: []
+
+  - id: open-a-decks-cards
+    need: >-
+      A person opens the cards of a deck from the table, or from the köşk decks page's link, and sees its title, its description and each card's two faces; a deck
+      that is not there, or is another person's private one, says so in the person's words.
+    drawn: [rowOpen, readingCards, cards, cardsTitle, cardsIntro, cardsTable, cardFront, cardBack, cardsEmptyRow, pageError]
+    built:
+      - action: medaris.api:getDeck
+      - action: medaris.api:listDeckCards
+      - route: apps/nizam/features/decks/hooks/useDecksColumns.tsx:52
+    walked: []
+
+  - id: edit-a-card-in-place
+    need: >-
+      A person changes a card's front or back where it stands, and it is saved when they leave it; a face of fewer than 3 characters is refused where it was
+      typed; the page says it was saved.
+    drawn: [cardFront, cardBack, savingCard, toastCardSaved, toastCardSavedBody, toastCardFailed]
+    built:
+      - action: medaris.api:updateCard
+      - route: apps/nizam/features/decks/components/cards.tsx:41
+    walked: []
+
+  - id: delete-a-card-after-asking
+    need: >-
+      A card is deleted only after the person is asked once, and the table keeps the cards that are left, each with its own text.
+    drawn: [cardRemove, confirmRemoveCard, removeCardDialog, removeCardBody, removeCardCancel, removeCardConfirm, removingCard, toastCardRemoved]
+    built:
+      - action: medaris.api:deleteCard
+      - route: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:47
+    walked: []
+
+  - id: the-table-keeps-the-right-text
+    need: >-
+      After a card or a deck is deleted, or the rows come in another order, every cell shows its own row's text and an edit goes to that row.
+    drawn: [cards, list, removingCard, removingDeck, cardFront, cardBack, rowTitle]
+    missing: none
+
+  - id: import-cards-from-a-file
+    need: >-
+      A person adds cards to a deck from an Excel or CSV file; if one row is wrong none is added and each wrong row and field is listed in the person's words; the
+      page tells them how many were added.
+    drawn: [bulkButton, importItem, choosingFile, importing, importErrors, importErrorsDialog, importRowTitle, importRowField, toastImported, toastImportedBody]
+    built:
+      - action: medaris.api:importCards
+      - route: apps/nizam/features/decks/components/cards.tsx:61
+    walked: []
+
+  - id: big-files-can-be-imported
+    need: >-
+      A file the API takes (up to 5 MB) can be imported from the page; a file that cannot be sent is told, not dropped.
+    drawn: [importing, choosingFile]
+    missing: none
+
+  - id: the-import-says-it-is-working
+    need: >-
+      While a file is on its way the page says so, and a failure of the transfer is told.
+    drawn: [importing]
+    missing: none
+
+  - id: export-a-deck
+    need: >-
+      The author of a deck takes its cards out as a CSV or an Excel file, and is told when that is refused.
+    drawn: [exportItem, exportMenu, exportCsv, exportXlsx, exporting, toastCardFailed]
+    built:
+      - action: medaris.api:exportCards
+      - route: apps/nizam/features/decks/components/cards.tsx:105
+    walked: []
+
+  - id: get-a-sample-file
+    need: >-
+      A person downloads a sample file of the columns an import wants, as CSV or Excel.
+    drawn: [sampleItem, sampleMenu, sampleCsv, sampleXlsx, sampling]
+    built:
+      - action: medaris.api:downloadCardSample
+      - route: apps/nizam/features/decks/components/cards.tsx:118
+    walked: []
+
+  - id: a-failure-says-why-in-the-persons-words
+    need: >-
+      A refused action says why in the person's language and in the product's words ("bu deste sizin değil", "başlık en az 5 karakter olmalı"), not with the API's
+      English sentence.
+    drawn: [toastReason, toastRenameFailed, toastRemoveFailed, toastCardFailed, toastCardRemoveFailed, toastCreateFailed]
+    missing: none
+
+  - id: every-control-has-a-name
+    need: >-
+      Every button and every cell of the tables has an accessible name that says what it does and on which deck or card, and the dialogs' close icon is named in
+      the person's language.
+    drawn: [rowOpen, rowRemove, cardRemove, rowTitle, rowDescription, cardFront, cardBack, newDeckClose, importErrorsClose]
+    missing: none
+
+  - id: every-word-is-the-persons-own
+    need: >-
+      Every word on the pages comes from the catalog, in the person's language, and is the right word ("Yeni Deste", not "Yeni Güverte"; "kart", not "kartvizit").
+    drawn: [newButton, newDeckCancel, removeDeckConfirm, toastRenamed, toastRemoved, toastCardSavedBody, toastImported, exportCsv, exportXlsx]
+    missing: none
+
+  - id: the-table-keeps-an-order
+    need: >-
+      The decks come in a stable, stated order, without the person's hidden köşk decks, and a long list can be paged or searched.
+    drawn: [list, deckTable]
+    missing: none
+
+  - id: a-failed-read-is-told
+    need: >-
+      A deck that is not there, or is another person's private one, and a read that fails, say what happened and offer a way on.
+    drawn: [readingCards, pageError, errorTitle, errorBody, errorRetry]
+    built:
+      - route: apps/nizam/app/error.tsx:16
+    walked: []
+
+  - id: a-page-has-a-title-and-a-loading-state
+    need: >-
+      Each page names itself in the tab and shows a loading state while it reads, as every page of the design system does.
+    drawn: [listPage, cardsPage]
+    missing: none
+
+  - id: one-place-to-edit-a-deck
+    need: >-
+      A deck is edited in one place, on the design system; the köşk decks page's "Kartları düzenle" leads there and the legacy pages are retired (decision D1).
+    drawn: [list, cards]
+    missing: none

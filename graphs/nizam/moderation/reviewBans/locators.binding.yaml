@@ -1,0 +1,130 @@
+# What the walks of nizam.moderation.reviewBans share: the page's locators, its events, its states, and the one check of what a read leaves outside the screen.
+# It has no scenario: binding.yaml (the başnazım's walks and the refused köşk nazımı), binding.paged.yaml (a long list), binding.scoped.yaml and binding.reader.yaml
+# (a Medaris nazımı with one permission each) and binding.noCode.yaml (the seeded Medaris nazımı, refused) extend it and add theirs, each in a file of its own because
+# a walk takes the first scenario of a file whose `given` fits and two scenarios must not share a `given`.
+#
+# NOT RUN: the graphs were written without a replay (the owner's word: replays come once, after every graph is written). Every locator below comes from the code
+# (apps/nizam/features/bans, libs/ui/src/mds) and the catalog, and is unverified until a walk. The binding loads (`replay <dir> --bind <file> --emit-spec` wrote a
+# spec to the scratchpad and walked nothing).
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewBans \
+#     --bind graphs/nizam/moderation/reviewBans/binding.yaml --cover transitions --out <dir>
+# Without --absent, because the rows are data: a locator that finds a row of one kind would be "visible" in a state that does not draw that kind, which --absent would
+# call a fault. What is drawn is still checked, on every row (a repeat node is checked on every item). The stack's other walks clean up after themselves, so the
+# list holds the rows of this walk and nothing else; a leftover ban of another walk shows as a row the graph did not expect.
+#
+# What a read leaves outside the screen: the page asks GET /bans, and `effects.listAllBans` below reads the same list through the API as the başnazım, fails unless the
+# Etkin tab's number equals the unfiltered list's own count and the Kaldırılan tab's the same (e2e bans-medaris#2), and writes the two numbers to
+# graphs/.local/made/reviewbans-counts.json, which the tab nodes read as {counts.activeText} and {counts.liftedText}. The graph never states a total.
+#
+# Not walked, with the reason:
+#   - FAIL.unreadable of the first read, of a re-read and of "Daha fazla göster" (loadFailed, RETRY, the toast): nothing on the stack makes tedrisat fail one read.
+#   - `call` is on `narrowing` and `loadingMore` only to hold the busy state: a server action answers 200 on the page's own address whatever it does, so a status
+#     cannot be compared there. It is never put on `reading` (a page load).
+#   - the row of a medrese-wide ban (REVBANS-2) and a ban older than a day: the data makes none (see needs.yaml).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.moderation.reviewBans
+
+data:
+  counts: { json: ../.local/made/reviewbans-counts.json }
+
+events:
+  # the search box sends no event of its own: the binding types in it, and 300 ms later the list is asked again (all-bans-view.tsx:140-151)
+  TYPE_NAME:
+    - fill: { role: searchbox, name: Kişi ara, value: '{typed}' }
+  CLEAR_NAME:
+    - fill: { role: searchbox, name: Kişi ara, value: '' }
+  NAVIGATE: [{ goto: '{nizam}/' }]
+  # OPEN_*, PICK_*, LOAD_MORE, LIFT, EXTEND and RETRY are pressed on their nodes
+
+states:
+  # a hold on the server action loadAllBans (a POST to the page's own address), so the skeleton and the busy button can be seen
+  narrowing: { call: '{nizam}/yasaklamalar**' }
+  loadingMore: { call: '{nizam}/yasaklamalar**' }
+  # the exits that no node draws are checked by their address: the dialogs open over the page, and the refusal is the shell's, at the page's own address
+  handed_over.no_access: { url: '{nizam}/yasaklamalar', text: Bu bölüm için izniniz yok }
+  handed_over.lift: { url: '{nizam}/yasaklamalar' }
+  handed_over.extend: { url: '{nizam}/yasaklamalar' }
+  left: { url: '{nizam}/' }
+
+# Where role and name cannot find a node. The shell's <main> is on every page the walk leaves for, so the page node is found by the sentence only this page says.
+# The table is Table responsive="stack": its cells carry data-label (the column's words) and the person's cell is a row header. The rows are data: the people of a
+# walk have "{personWord}" in their names, and the course and the köşk are read from the scenario's vars.
+nodes:
+  bansPage: { role: main, hasText: '/ders ve köşk düzeyinde konan bütün yasaklar/' }
+  bansTitle: { role: heading, name: '/^Yasaklamalar$/', within: { role: main } } # the sidebar's "Yasaklamalar" is a link, not a heading
+  sectionRegion: { role: region, name: '/^Yasaklar$/' } # not "Bütün köşklerdeki etkin yasaklar", the table's own region, when it scrolls
+  sectionHeading: { role: heading, name: '/^Yasaklar$/' }
+  recentLine: { testId: all-bans-recent }
+
+  # the tabs: the name is the text and the count together, "Etkin 3"; the count is a span inside the tab
+  tabActive: { role: tab, name: '/^Etkin/' }
+  tabLifted: { role: tab, name: '/^Kaldırılan/' }
+  tabActiveCount: { css: '[role=tablist] [role=tab]:first-of-type .mds-tab__count', hasText: '/^{counts.activeText}$/' }
+  tabLiftedCount: { css: '[role=tablist] [role=tab]:last-of-type .mds-tab__count', hasText: '/^{counts.liftedText}$/' }
+  tabPanel: { role: tabpanel }
+
+  # the chips: toggles inside the group named by the visible legend "Kapsam"
+  scopeLegend: { css: '.mds-chips-field .mds-label', hasText: Kapsam }
+  scopeGroup: { role: group, name: Kapsam }
+  chipAll: { role: button, name: '/^Tümü$/', within: { role: group, name: Kapsam } }
+  chipCourse: { role: button, name: '/^Ders$/', within: { role: group, name: Kapsam } }
+  chipKosk: { role: button, name: '/^Köşk$/', within: { role: group, name: Kapsam } }
+
+  # the skeleton's hidden word, inside the aria-busy <div>
+  busyText: { css: '[aria-busy=true] .mds-visually-hidden', hasText: Yükleniyor }
+
+  # the line over the table: how many rows the narrowed list holds ("3 etkin yasak"); the number is the list's own, so only the words are bound
+  summaryActive: { testId: all-bans-summary, hasText: '/^\d[\d.]* etkin yasak$/' }
+  summaryLifted: { testId: all-bans-summary, hasText: '/^\d[\d.]* kaldırılan yasak$/' }
+
+  # a row: person (the row header), scope, reason, placed by, when, then the buttons or the lifter
+  rowPerson: { role: rowheader, hasText: '{personWord}' }
+  rowEmail: { css: 'tbody th bdi[dir=ltr]' }
+  badgeNew: { css: 'tbody th .mds-badge', hasText: '/^Yeni$/' }
+  rowScopeCourse: { css: 'tbody td[data-label="Kapsam"]', hasText: '/^Ders/' }
+  rowCourseTitle: { css: 'bdi', hasText: '{courseTitle}', within: { css: 'tbody td[data-label="Kapsam"]', hasText: '/^Ders/' } }
+  rowCourseKosk: { css: 'bdi', hasText: '{koskName}', within: { css: 'tbody td[data-label="Kapsam"]', hasText: '/^Ders/' } }
+  rowScopeKosk: { css: 'tbody td[data-label="Kapsam"]', hasText: '/^Köşk/' }
+  rowKoskName: { css: 'bdi', hasText: '{koskName}', within: { css: 'tbody td[data-label="Kapsam"]', hasText: '/^Köşk/' } }
+  rowExtendedFrom: { css: 'tbody td[data-label="Kapsam"] bdi', hasText: '/dersinden genişletildi$/' }
+  rowReason: { css: 'tbody td[data-label="Gerekçe"] bdi' }
+  rowBannedBy: { css: 'tbody td[data-label="Yasaklayan"] bdi' }
+  rowRole: { css: 'tbody td[data-label="Yasaklayan"] .mds-caption' }
+  rowWhen: { css: 'tbody td[data-label="Zaman"]' }
+
+  # the buttons carry the person's name in their accessible name; the notes take the buttons' place in the same cell and are the only captions with these words
+  lift: { role: button, name: '/^Yasağı kaldır: /' }
+  extend: { role: button, name: '/^Yasağı genişlet: /' }
+  noteHigher: { css: 'tbody span.mds-caption', hasText: Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir. }
+  notePlatform: { css: 'tbody span.mds-caption', hasText: Bu yasağı yalnız Medaris yönetimi kaldırabilir. }
+
+  # the Kaldırılan tab's last cell: who, when (a caption), why (a caption in <bdi>)
+  rowLiftedBy: { css: 'tbody td[data-label="Kaldıran"] bdi:not(.mds-caption)' }
+  rowLiftedWhen: { css: 'tbody td[data-label="Kaldıran"] span.mds-caption' }
+  rowLiftReason: { css: 'tbody td[data-label="Kaldıran"] bdi.mds-caption' }
+
+  # the table's one line when it has no row
+  emptyActive: { role: cell, hasText: Etkin yasak yok }
+  emptyLifted: { role: cell, hasText: Kaldırılan yasak yok }
+  noMatchLine: { role: cell, hasText: Bu süzgece uyan yasak yok }
+
+  # under the table
+  loadMore: { role: button, name: Daha fazla göster }
+  moreBusy: { css: 'output.mds-visually-hidden', hasText: Yükleniyor }
+
+  # the unreadable page (not walked) and the toast beside it
+  failedAlert: { css: '.mds-alert--error', hasText: Yasaklar yüklenemedi }
+  failedText: { css: '.mds-alert--error p', hasText: '/Yasaklar şu an okunamıyor/' }
+  retry: { role: button, name: Yeniden dene }
+  toastFailed: { css: '[data-sonner-toast]', hasText: Yasaklar yüklenemedi }
+  toastFailedText: { css: '[data-sonner-toast]', hasText: '/Yasaklar şu an okunamıyor/' }
+
+# What a read leaves outside the browser: the API's own answer as the başnazım, which says what the tabs' numbers must be. It runs after every state that ends the
+# invoke with DONE (the first read, a re-read, "Daha fazla göster") and writes the numbers the tab nodes read.
+effects:
+  listAllBans:
+    - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, counts]
+      expect: counts agree

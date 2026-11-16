@@ -1,0 +1,595 @@
+# The permission groups of the platform in nizam-web (/izin-gruplari, "İzin grupları"), the başnazım's alone: a group is made in a form on
+# the page (name, scope, permissions), edited and deleted in the same form, and a change of the permissions of a group people hold, or its
+# deletion, asks what becomes of those people first. "İzinlerini düzenle" beside a person opens that person's permissions dialog, which
+# nizam.nazims.editPermissions draws. Read from the code of PR #394's branch on 15 Nov 2026 (apps/nizam/app/izin-gruplari/page.tsx,
+# features/permissions/{reads.ts, actions.ts, present.ts}, components/{groups-view, group-form, users-policy-dialog, permission-boxes}.tsx,
+# libs/ui/src/mds/alert-dialog.tsx, and the API's /nizam/permission-groups in apps/tedrisat/src/assignment/admin). Nothing here was
+# walked in a browser: every behaviour is "from the code" until the walk phase; the owner moved every replay to the end.
+#
+# What the page does today, and where it is wrong for its people (each finding is in ui.yaml `rules`):
+#   - Unlike the medrese's groups of nazar-web, which are cards that open a dialog, this is a page: the groups are a list on the left, the
+#     selected group's form is on the right, and the selection is the address (`?grup=<id>`; `?grup=yeni` is the empty form; with neither,
+#     the oldest group is selected). Choosing another group, or "Grup oluştur", remounts the form: what was typed and not saved is dropped
+#     without a word (F-W2-8).
+#   - The list is a <nav aria-label="Gruplar"> that holds a visually hidden <h2> "Gruplar": the same name twice, and a list of in-page
+#     choices announced as navigation (F-W2-9).
+#   - The name is checked in the browser against the loaded list as it is typed (case aside, in Turkish); a blank name only after a first try
+#     to save. "En az bir izin seçin." is announced (role alert). The other messages are not live regions and nothing moves the focus
+#     (F-UI-W3-1).
+#   - "Bir ders" is drawn and disabled for a new group, with no reason said (F-W2-groups-5); an existing group cannot change its scope: the
+#     other two options are disabled. Choosing "Her ders" or "Platform" drops the ticks the other scope cannot hold.
+#   - Saving a changed set of permissions, and deleting, ask first when somebody holds the group: an alert dialog with two answers and no
+#     default; "Kaydet" or "Grubu sil" is off until one is chosen. A group nobody holds is deleted after a plain confirmation. A rename alone
+#     asks nothing. The question is described by its whole body (F-W2-13).
+#   - While the call runs "Vazgeç" and the close icon of the question stay on and do nothing (F-W2-groups-1). A refusal is a sticky toast
+#     over a question that stays open (F-W2-groups-2), and a refusal for a stale count (USERS_POLICY_REQUIRED) has no way out on the page
+#     (F-W2-groups-3). After a create or a delete the button that had the focus is gone with its form (F-W2-groups-4). "Kaydet" with nothing
+#     changed is sent all the same (F-W2-groups-6). The busy button says "Yükleniyor" from a hard-coded default (F-UI-W1-3).
+# The e2e checks that carry this flow (apps/nizam/e2e/permissions.e2e.ts, "nizam/13", the inventory's permissions#10 to #16) seed three
+# groups with holders by SQL; this flow's walk makes its own groups and one holder through the API instead (see binding.yaml).
+schema: delurio-graph/0
+kind: flow
+id: nizam.nazims.groups
+status: captured
+domain: medaris.api
+ui: nizam.nazims.groups
+title: Manage the platform's permission groups
+summary: >-
+  The başnazım opens İzin grupları. The groups are listed on the left, oldest first, each with its scope, how many permissions it
+  holds and how many people use it; the form of the selected group is on the right. "Grup oluştur" opens the empty form: a name, a
+  scope (Platform or Her ders; Bir ders is off), and at least one permission. A blank name is refused after a try, a name another
+  group has is refused as it is typed, and so is a name over 80 characters. The group is made and its form opens, with the people
+  who use it. Saving a changed set of permissions or deleting a group somebody uses asks first what becomes of those people:
+  "İzinleri kalsın" gives each of them the group's permissions as single permissions, "İzinleri kalksın" takes them away; neither is
+  chosen for them. A group nobody uses is deleted after a plain question. "İzinlerini düzenle" beside a person opens that person's
+  permissions dialog (nizam.nazims.editPermissions).
+
+scope:
+  shows: >-
+    the İzin grupları page with its list and the form of the selected group, the form's name, scope and permission boxes (all 19
+    platform boxes and all 21 course boxes, one set for each scope), the users of a group, the question over a changed or deleted
+    group people use, and the toasts that follow
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the screen a person who is no başnazım meets ('Bu bölüm için izniniz yok': tedrisat answers every read 403, a Medaris nazımı included): nizam.shell.noAccessAndNotFound"
+    - "the page's load-failed box ('İzin grupları yüklenemedi', 'Yeniden dene') and the box for a `?grup=` that names no group ('Bu grup yok'): neither can be walked on the local stack, and no e2e visits them"
+    - "the users list failing to read ('Kullananlar okunamadı'), and a group of one course (scope 'Bir ders', whose form says 'Ders: <course>'): no page makes one yet"
+    - "a name of over 80 characters is drawn as a message but the input takes 100 characters, so nothing cuts it (group-form.tsx:206)"
+    - "unticking every box of a saved group, which gives the same 'En az bir izin seçin.' as the empty new form"
+    - "a person who holds the group and has no name ('Adı bilinmiyor') or whose appointment has an end ('Medaris nazımı · bitiş <date>', permissions#16 asserts a fixed one): the walk's holder has no end"
+    - "a session that has ended: each server action sends the person to sign in (realm.auth.signIn) instead of drawing a message"
+    - "the permissions dialog that 'İzinlerini düzenle' opens, and what its save does: nizam.nazims.editPermissions, which this flow starts"
+    - "the Medaris nazımları page and the dialog's own link back to this page: nizam.nazims.appoint, nizam.nazims.editPermissions, nizam.nazims.dismiss"
+
+decisions:
+  D1:
+    question: >-
+      Should the form warn before another group, or "Grup oluştur", is chosen while it holds changes? The list items are links to
+      the same page, the form is remounted by its key, and what was typed is dropped (F-W2-8).
+    recommend: >-
+      Warn (or keep a draft per group) when the form differs from the group; the dirty check is the one `reset` already knows.
+    affects: [newForm, editForm, editFormCourses]
+  D2:
+    question: >-
+      Should a refusal that says people now use the group (USERS_POLICY_REQUIRED) ask the question? Today the form reads the count
+      it was given when the page loaded, so a person given the group in the meantime makes the save fail with 'Grubu kullananların
+      izinleri için bir seçim yapın.' and there is nothing to choose, and nothing reads the page again (F-W2-groups-3).
+    recommend: >-
+      On that refusal read the group again and open the question with the new count.
+    affects: [updating, deletingPlain]
+
+context:
+  list:
+    values: [empty, one, several]
+    initial: any
+    say:
+      empty: "the platform has no permission group: the list says so and the empty form is open"
+      one: "the platform has one group (or the walk opens its group by address): its form is open"
+      several: "the platform has two or more groups: the list offers the others"
+  groupScope:
+    values: [platform, courses]
+    initial: any
+    say:
+      platform: "the group the page opens on is a platform group: the radio 'Platform' is chosen and the 19 platform boxes are drawn"
+      courses: "the group the page opens on is an every-course group: 'Her ders' is chosen and the 21 course boxes are drawn"
+  held:
+    values: [unused, used]
+    initial: any
+    say:
+      unused: "nobody holds the group the page opens on: a change of its permissions is saved at once and it is deleted after a plain question"
+      used: "a Medaris nazımı holds the group the page opens on: a change of its permissions, or its deletion, asks what becomes of them"
+  nameFor:
+    values: [valid, blank, taken, long]
+    initial: any
+    say:
+      valid: "the person types a name no group has"
+      blank: "the person types nothing, or clears the name"
+      taken: "the person types the name of another group, in other letters (the browser reads the loaded list, case aside)"
+      long: "the person types a name of over 80 characters"
+  answer:
+    values: [done, taken, gone, failed]
+    initial: any
+    say:
+      done: "the server makes, changes or deletes the group"
+      taken: "another group got the name since the page was read (409 PERMISSION_GROUP_NAME_TAKEN); only a make, or a change that renamed, is told this; a delete ignores it"
+      gone: "the group is not there any more (404 PERMISSION_GROUP_NOT_FOUND); only a change or a delete is told this; a make ignores it"
+      failed: "anything else: a count that is out of date (USERS_POLICY_REQUIRED: somebody was given the group since the page was read, which refuses a changed set of permissions and a delete), a body the API refuses, a caller who may not, a call that fails"
+  rows:
+    values: [none, one, several]
+    initial: none
+    say:
+      none: "the list says 'Henüz grup yok.'"
+      one: "the list has one group"
+      several: "the list has two or more groups (after a delete the model keeps one: the smallest case that matters)"
+  scope:
+    values: [platform, courses]
+    initial: platform
+    say:
+      platform: "the radio 'Platform' is chosen: the five platform sections are drawn"
+      courses: "the radio 'Her ders' is chosen: only the 'Ders izinleri' section is drawn"
+  name:
+    values: [blank, ok, taken, long]
+    initial: blank
+    say:
+      blank: "the name field is empty: its message shows once a save was tried"
+      ok: "the name is acceptable: no message"
+      taken: "the name is another group's: 'Bu adda bir grup var.' shows as it is typed"
+      long: "the name has over 80 characters: 'Grup adı en çok 80 karakter olabilir.' shows as it is typed"
+  ticked:
+    values: [none, some]
+    initial: none
+    say: { none: "no permission box is ticked", some: "at least one permission box is ticked" }
+  changed:
+    values: [true, false]
+    initial: false
+    say: { "true": "the set of permissions differs from the group's saved one", "false": "the set is the saved one" }
+  renamed:
+    values: [true, false]
+    initial: false
+    say: { "true": "the name field holds a name other than the group's saved one", "false": "the name is the group's saved one" }
+  touched:
+    values: [true, false]
+    initial: false
+    say: { "true": "a save was tried on this form", "false": "no save was tried yet" }
+  listUsed:
+    values: [true, false]
+    initial: false
+    say: { "true": "the list shows the 'N kişi kullanıyor' badge on a group", "false": "no group in the list is used" }
+  holders:
+    values: [unused, used]
+    initial: unused
+    say: { unused: "the selected group has no users: 'Bu grubu kimse kullanmıyor.'", used: "the selected group has a user: the list names them" }
+  policy:
+    values: [none, keep, revoke]
+    initial: none
+    say:
+      none: "no answer is chosen in the question"
+      keep: "'İzinleri kalsın' is chosen"
+      revoke: "'İzinleri kalksın' is chosen"
+  toast:
+    values: [none, created, saved, deleted, saveTaken, saveGone, saveFailed, deleteGone, deleteFailed]
+    initial: none
+    say:
+      none: "no toast of this flow is up"
+      created: "'Grup oluşturuldu' is up (it closes after 6 seconds)"
+      saved: "'Grup kaydedildi' is up"
+      deleted: "'Grup silindi' is up"
+      saveTaken: "'Grup kaydedilemedi: Bu adda bir grup zaten var.' is up (it stays until closed)"
+      saveGone: "'Grup kaydedilemedi: Bu grup artık yok.' is up"
+      saveFailed: "'Grup kaydedilemedi: Bir şeyler ters gitti.' is up"
+      deleteGone: "'Grup silinemedi: Bu grup artık yok.' is up"
+      deleteFailed: "'Grup silinemedi: Bir şeyler ters gitti.' is up"
+
+guards:
+  # groupNameError (present.ts:283) is not null
+  nameProblem: "name != 'ok'"
+  # needsUsersQuestion (present.ts:333): somebody holds the group and the set of permissions changed
+  asksUsers: "holders == 'used' and changed"
+  # the field's own message: shown once a save was tried or the field holds text (group-form.tsx:200)
+  showRequired: "name == 'blank' and touched"
+  showTaken: "name == 'taken'"
+  showLong: "name == 'long'"
+  showHelp: "name == 'ok' or (name == 'blank' and not touched)"
+  showNoBox: "touched and ticked == 'none'"
+  # which calls the server refuses, from `answer` (a refusal needs the thing it refuses to be in the call)
+  refusedTakenSave: "answer == 'taken' and renamed"
+  refusedStaleSave: "answer == 'failed' and changed"
+  savesOk: "not (answer == 'taken' and renamed) and answer != 'gone' and not (answer == 'failed' and changed)"
+  # the refusal's toast: a make or a change, or a delete
+  saveToast: "toast == 'saveTaken' or toast == 'saveGone' or toast == 'saveFailed'"
+  deleteToast: "toast == 'deleteGone' or toast == 'deleteFailed'"
+
+effects:
+  rowsNone: { set: { rows: none } }
+  rowsOne: { set: { rows: one } }
+  rowsSeveral: { set: { rows: several } }
+  # the empty form: key="new" (groups-view.tsx:133), state starts from nothing (group-form.tsx:74-81)
+  freshNew: { set: { scope: platform, name: blank, ticked: none, changed: false, renamed: false, touched: false, holders: unused, policy: none } }
+  # a group's form: its own name and permissions (group-form.tsx:74-78)
+  groupOpened: { set: { name: ok, ticked: some, changed: false, renamed: false, touched: false, policy: none } }
+  scopePlatform: { set: { scope: platform } }
+  scopeCourses: { set: { scope: courses } }
+  holdersUsed: { set: { holders: used, listUsed: true } }
+  typedValid: { set: { name: ok } }
+  typedTaken: { set: { name: taken } }
+  typedLong: { set: { name: long } }
+  typedBlank: { set: { name: blank } }
+  # the same on a saved group's form: the name is now not the saved one
+  renameValid: { set: { name: ok, renamed: true } }
+  renameTaken: { set: { name: taken, renamed: true } }
+  renameLong: { set: { name: long, renamed: true } }
+  renameBlank: { set: { name: blank, renamed: true } }
+  # a box is ticked (group-form.tsx:240)
+  ticks: { set: { ticked: some, changed: true } }
+  # a scope change drops what the new scope cannot hold (present.ts:313)
+  toCourses: { set: { scope: courses, ticked: none } }
+  toPlatform: { set: { scope: platform, ticked: none } }
+  tried: { set: { touched: true } }
+  # "Vazgeç": the form goes back to the group (group-form.tsx:87)
+  resetEdit: { set: { name: ok, ticked: some, changed: false, renamed: false, touched: false } }
+  resetNew: { set: { scope: platform, name: blank, ticked: none, changed: false, renamed: false, touched: false } }
+  clearToast: { set: { toast: none } }
+  # every opening of the question starts with no answer (users-policy-dialog.tsx:42)
+  asking: { set: { policy: none } }
+  chosenKeep: { set: { policy: keep } }
+  chosenRevoke: { set: { policy: revoke } }
+  # the group is made: its own form opens with nobody using it
+  createdPlatform: { set: { scope: platform, name: ok, ticked: some, changed: false, renamed: false, touched: false, holders: unused, policy: none, toast: created } }
+  createdCourses: { set: { scope: courses, name: ok, ticked: some, changed: false, renamed: false, touched: false, holders: unused, policy: none, toast: created } }
+  saved: { set: { name: ok, changed: false, renamed: false, touched: false, toast: saved } }
+  # a saved change of permissions detaches every holder, whatever the answer (the API: updatePermissionGroup)
+  savedAsked: { set: { name: ok, changed: false, renamed: false, touched: false, holders: unused, listUsed: false, policy: none, toast: saved } }
+  deletedPlain: { set: { toast: deleted, holders: unused, policy: none } }
+  deletedAsked: { set: { toast: deleted, holders: unused, listUsed: false, policy: none } }
+  # after a delete the page selects the oldest group left; the model takes a platform group nobody uses
+  firstGroup: { set: { scope: platform, name: ok, ticked: some, changed: false, renamed: false, touched: false, holders: unused, policy: none } }
+  saveTaken: { set: { toast: saveTaken } }
+  saveGone: { set: { toast: saveGone } }
+  saveFailed: { set: { toast: saveFailed } }
+  deleteGone: { set: { toast: deleteGone } }
+  deleteFailed: { set: { toast: deleteFailed } }
+
+failures:
+  creating:
+    from: createPermissionGroup
+    taken: [PERMISSION_GROUP_NAME_TAKEN]
+    other: [VALIDATION_ERROR, PERMISSION_GROUP_EMPTY, PERMISSION_UNKNOWN, PERMISSION_GROUP_SCOPE_INVALID, AUTHZ_FORBIDDEN]
+  updating:
+    from: updatePermissionGroup
+    taken: [PERMISSION_GROUP_NAME_TAKEN]
+    gone: [PERMISSION_GROUP_NOT_FOUND]
+    other: [VALIDATION_ERROR, PERMISSION_GROUP_EMPTY, PERMISSION_UNKNOWN, USERS_POLICY_REQUIRED, AUTHZ_FORBIDDEN]
+  savingAsked:
+    from: updatePermissionGroup
+    taken: [PERMISSION_GROUP_NAME_TAKEN]
+    gone: [PERMISSION_GROUP_NOT_FOUND]
+    other: [VALIDATION_ERROR, PERMISSION_GROUP_EMPTY, PERMISSION_UNKNOWN, USERS_POLICY_REQUIRED, AUTHZ_FORBIDDEN]
+  deletingPlain:
+    from: deletePermissionGroup
+    gone: [PERMISSION_GROUP_NOT_FOUND]
+    other: [VALIDATION_ERROR, USERS_POLICY_REQUIRED, AUTHZ_FORBIDDEN]
+  deletingAsked:
+    from: deletePermissionGroup
+    gone: [PERMISSION_GROUP_NOT_FOUND]
+    other: [VALIDATION_ERROR, USERS_POLICY_REQUIRED, AUTHZ_FORBIDDEN]
+
+# The main story: the page opens with no group, the person tries to save the empty form, types a name, ticks two permissions and
+# makes the group; its form opens; they rename it, save, and delete it after the plain question.
+main:
+  given: { list: empty, groupScope: platform, held: unused, nameFor: valid, answer: done }
+  events: [SUBMIT, TYPE_NAME, TICK, SUBMIT, DONE, RENAME, SUBMIT, DONE, DELETE, CONFIRM, DONE]
+
+initial: start
+states:
+  start:
+    title: Which group the page opens on
+    description: >-
+      Not a screen. The page reads the list, the catalog and the nazımlar together, and selects what `?grup=` says: `yeni` is the
+      empty form; an id is that group; with neither the oldest group is selected, or the empty form when there is none
+      (apps/nizam/app/izin-gruplari/page.tsx:43-44). The walk opens a group by its address when it has made one, so the group is the one
+      it made whatever else the list holds.
+    source: apps/nizam/app/izin-gruplari/page.tsx:43
+    always:
+      - { guard: "list == 'empty'", target: newForm, effect: [rowsNone, freshNew], source: "apps/nizam/app/izin-gruplari/page.tsx:44", say: "no group: the empty form and 'Henüz grup yok.'" }
+      - { guard: "list == 'one'", target: openedScope, effect: [rowsOne, groupOpened], source: "apps/nizam/app/izin-gruplari/page.tsx:44", say: "one group: its form" }
+      - { target: openedScope, effect: [rowsSeveral, groupOpened], source: "apps/nizam/app/izin-gruplari/page.tsx:44", say: "several groups: the oldest one's form" }
+
+  openedScope:
+    title: The scope of the group the page opens on
+    description: >-
+      Not a screen. A group's scope decides which radio is chosen and which boxes are drawn: `catalogFor` (present.ts:303) gives the
+      platform's five sections or the one course section.
+    source: apps/nizam/features/permissions/present.ts:303
+    always:
+      - { guard: "groupScope == 'platform' and held == 'used'", target: editForm, effect: [scopePlatform, holdersUsed], source: "apps/nizam/features/permissions/present.ts:303", say: "a platform group somebody holds" }
+      - { guard: "groupScope == 'platform'", target: editForm, effect: [scopePlatform], source: "apps/nizam/features/permissions/present.ts:303", say: "a platform group nobody holds" }
+      - { guard: "held == 'used'", target: editFormCourses, effect: [scopeCourses, holdersUsed], source: "apps/nizam/features/permissions/present.ts:303", say: "an every-course group somebody holds" }
+      - { target: editFormCourses, effect: [scopeCourses], source: "apps/nizam/features/permissions/present.ts:303", say: "an every-course group nobody holds" }
+
+  backToForm:
+    title: Back to the group's form
+    description: >-
+      Not a screen. The form of a saved group stays mounted (its key is the group's id), so after a save, a refusal or a question
+      that was given up it is the same form, on the same scope.
+    source: apps/nizam/features/permissions/components/groups-view.tsx:132
+    always:
+      - { guard: "scope == 'platform'", target: editForm, say: "the platform group's form" }
+      - { target: editFormCourses, say: "the every-course group's form" }
+
+  newForm:
+    title: The empty form, nothing is sent
+    by: human
+    goal: true
+    description: >-
+      `?grup=yeni`, or the oldest group's place when there is none: the form headed "Yeni grup" with the scope badge, the name field
+      (empty), the scope radios ("Platform" chosen; "Her ders" on; "Bir ders" off with no reason said, F-W2-groups-5), the boxes of the
+      scope, and "Vazgeç" and "Kaydet". No save was tried, so no message shows. The name is checked as it is typed against the list the
+      page holds, in Turkish letters and case aside: "Bu adda bir grup var." shows at once; a blank name is told only after "Kaydet" was
+      pressed, together with "En az bir izin seçin." (role alert) when no box is ticked, and nothing moves the focus (F-UI-W3-1). "Kaydet" is
+      never off. The page keeps no focus of its own. Choosing "Her ders" or "Platform" drops the ticks the other scope cannot hold. Choosing
+      a group in the list, or typing nothing and leaving, loses what was typed (F-W2-8).
+    source: apps/nizam/features/permissions/components/group-form.tsx:182
+    on:
+      TYPE_NAME:
+        - { guard: "nameFor == 'valid'", target: newForm, effect: [typedValid], source: "apps/nizam/features/permissions/present.ts:283", say: "they type a name no group has" }
+        - { guard: "nameFor == 'taken' and rows != 'none'", target: newForm, effect: [typedTaken], source: "apps/nizam/features/permissions/present.ts:297", say: "they type a name a group has, in other letters: the message shows at once" }
+        - { guard: "nameFor == 'long'", target: newForm, effect: [typedLong], source: "apps/nizam/features/permissions/present.ts:290", say: "they type over 80 characters" }
+        - { guard: "nameFor == 'blank'", target: newForm, effect: [typedBlank], source: "apps/nizam/features/permissions/present.ts:289", say: "they type nothing: the field stays empty" }
+      TICK: { guard: "scope == 'platform' and ticked == 'none'", target: newForm, effect: [ticks], source: "apps/nizam/features/permissions/components/group-form.tsx:240", say: "they tick platform boxes" }
+      TICK_COURSE: { guard: "scope == 'courses' and ticked == 'none'", target: newForm, effect: [ticks], source: "apps/nizam/features/permissions/components/group-form.tsx:240", say: "they tick a course box" }
+      PICK_COURSES: { guard: "scope == 'platform'", target: newForm, effect: [toCourses], source: "apps/nizam/features/permissions/components/group-form.tsx:217", say: "they choose 'Her ders': the platform boxes go and their ticks are dropped" }
+      PICK_PLATFORM: { guard: "scope == 'courses'", target: newForm, effect: [toPlatform], source: "apps/nizam/features/permissions/components/group-form.tsx:217", say: "they choose 'Platform' again: the course boxes go and their ticks are dropped" }
+      SUBMIT:
+        - { guard: nameProblem, target: newForm, effect: [tried], source: "apps/nizam/features/permissions/components/group-form.tsx:149", say: "a blank, long or taken name: nothing is sent, the messages show" }
+        - { guard: "ticked == 'none'", target: newForm, effect: [tried], source: "apps/nizam/features/permissions/components/group-form.tsx:150", say: "no box is ticked: nothing is sent, 'En az bir izin seçin.' shows" }
+        - { target: creating, effect: [clearToast], source: "apps/nizam/features/permissions/components/group-form.tsx:161", say: "they press Kaydet: the group is sent" }
+      RESET: { target: newForm, effect: [resetNew], source: "apps/nizam/features/permissions/components/group-form.tsx:87", say: "they press Vazgeç: the form is emptied" }
+      SELECT_OTHER: { guard: "rows != 'none'", target: editForm, effect: [firstGroup], source: "apps/nizam/features/permissions/components/groups-view.tsx:94", say: "they choose a group in the list: its form replaces this one, and what was typed is dropped (F-W2-8)" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  creating:
+    title: The group is being made
+    description: >-
+      The form is sent by the server action `createGroup` (POST /nizam/permission-groups): the name trimmed, the scope and the codes.
+      Every field, radio and box and "Vazgeç" are disabled; "Kaydet" is busy (aria-busy and aria-disabled, never disabled) and a status
+      line says "Yükleniyor" from a hard-coded default (F-UI-W1-3). On success a toast says "Grup oluşturuldu", the address becomes
+      `?grup=<id>` and the page reads again: the form is remounted for the new group, so the button that had the focus is gone
+      (F-W2-groups-4). A refusal is a sticky toast and the form stays as it was.
+    invoke: { action: createPermissionGroup }
+    source: apps/nizam/features/permissions/components/group-form.tsx:116
+    on:
+      DONE: { guard: "answer == 'done' or answer == 'gone'", target: afterCreate, source: "apps/nizam/features/permissions/components/group-form.tsx:124", say: "the group is made" }
+      FAIL.taken: { guard: "answer == 'taken'", target: newForm, effect: [saveTaken], source: "apps/nizam/features/permissions/components/group-form.tsx:123", say: "another group got the name since the page was read: a toast, not a message under the field" }
+      FAIL.other: { guard: "answer == 'failed'", target: newForm, effect: [saveFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:123", say: "any other refusal: a toast, the form as it was" }
+
+  afterCreate:
+    title: The new group's form opens
+    description: >-
+      Not a screen. The list grew by one; the form that opens is the new group's, on the scope it was made with.
+    source: apps/nizam/features/permissions/components/group-form.tsx:127
+    always:
+      - { guard: "rows == 'none' and scope == 'platform'", target: editForm, effect: [rowsOne, createdPlatform], source: "apps/nizam/features/permissions/components/group-form.tsx:127", say: "the first group, a platform one" }
+      - { guard: "rows == 'none'", target: editFormCourses, effect: [rowsOne, createdCourses], source: "apps/nizam/features/permissions/components/group-form.tsx:127", say: "the first group, an every-course one" }
+      - { guard: "scope == 'platform'", target: editForm, effect: [rowsSeveral, createdPlatform], source: "apps/nizam/features/permissions/components/group-form.tsx:127", say: "another platform group" }
+      - { target: editFormCourses, effect: [rowsSeveral, createdCourses], source: "apps/nizam/features/permissions/components/group-form.tsx:127", say: "another every-course group" }
+
+  editForm:
+    title: A platform group's form
+    by: human
+    goal: true
+    description: >-
+      The group's form: its name as the title, the scope badge, the name field with the group's name, the scope radios (the group's own
+      is chosen and on; the others are off, so the scope cannot change), the five platform sections of boxes (the ones the group has are ticked), the people who use the group ("{n} kişi", and for each
+      one a line and, for a Medaris nazımı, "İzinlerini düzenle: {name}") or "Bu grubu kimse kullanmıyor.", the note about what saving or
+      deleting does to them, "Grubu sil: {name}", "Vazgeç" and "Kaydet". "Kaydet" is never off and is sent even when nothing changed
+      (F-W2-groups-6). Saving asks first only when somebody uses the group and its set of permissions changed; a rename asks nothing.
+      "Grubu sil" always asks. Choosing another group in the list, or "Grup oluştur", replaces the form and drops what was typed (F-W2-8).
+      The list marks the selected group with aria-current.
+    source: apps/nizam/features/permissions/components/group-form.tsx:182
+    on:
+      RENAME:
+        - { guard: "nameFor == 'valid'", target: editForm, effect: [renameValid], source: "apps/nizam/features/permissions/present.ts:283", say: "they change the name to one no group has" }
+        - { guard: "nameFor == 'taken' and rows == 'several'", target: editForm, effect: [renameTaken], source: "apps/nizam/features/permissions/present.ts:297", say: "they change it to another group's name, in other letters: the message shows at once" }
+        - { guard: "nameFor == 'long'", target: editForm, effect: [renameLong], source: "apps/nizam/features/permissions/present.ts:290", say: "they type over 80 characters" }
+        - { guard: "nameFor == 'blank'", target: editForm, effect: [renameBlank], source: "apps/nizam/features/permissions/present.ts:289", say: "they clear the name: its message shows after a try" }
+      TICK: { guard: "not changed", target: editForm, effect: [ticks], source: "apps/nizam/features/permissions/components/group-form.tsx:240", say: "they tick a box the group does not have: its set of permissions changes" }
+      SUBMIT:
+        - { guard: nameProblem, target: editForm, effect: [tried], source: "apps/nizam/features/permissions/components/group-form.tsx:149", say: "a blank, long or taken name: nothing is sent" }
+        - { guard: asksUsers, target: askSave, effect: [asking], source: "apps/nizam/features/permissions/components/group-form.tsx:151", say: "somebody uses the group and its permissions changed: the question opens before anything is sent" }
+        - { target: updating, effect: [clearToast], source: "apps/nizam/features/permissions/components/group-form.tsx:161", say: "they press Kaydet: the group is sent, with no answer to give" }
+      RESET: { target: editForm, effect: [resetEdit], source: "apps/nizam/features/permissions/components/group-form.tsx:87", say: "they press Vazgeç: the form goes back to the group" }
+      DELETE:
+        - { guard: "holders == 'used'", target: askDelete, effect: [asking], source: "apps/nizam/features/permissions/components/group-form.tsx:317", say: "somebody uses the group: the question opens" }
+        - { target: askDeletePlain, source: "apps/nizam/features/permissions/components/group-form.tsx:317", say: "nobody uses it: a plain question opens" }
+      EDIT_USER: { guard: "holders == 'used'", target: handed_over.edit_permissions, starts: { flow: nizam.nazims.editPermissions }, source: "apps/nizam/features/permissions/components/group-form.tsx:295", say: "they press İzinlerini düzenle beside a person: that person's permissions dialog opens over this page" }
+      SELECT_OTHER: { guard: "rows == 'several'", target: editForm, effect: [firstGroup], source: "apps/nizam/features/permissions/components/groups-view.tsx:94", say: "they choose another group in the list: its form replaces this one, and what was typed is dropped (F-W2-8)" }
+      NEW_GROUP: { target: newForm, effect: [freshNew], source: "apps/nizam/features/permissions/components/groups-view.tsx:67", say: "they press Grup oluştur: the empty form replaces this one (F-W2-8)" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  editFormCourses:
+    title: An every-course group's form
+    by: human
+    goal: true
+    description: >-
+      The group's form: its name as the title, the scope badge, the name field with the group's name, the scope radios (the group's own
+      is chosen and on; the others are off, so the scope cannot change), the one section "Ders izinleri" with the 21 course boxes (the ones the group has are ticked), the people who use the group ("{n} kişi", and for each
+      one a line and, for a Medaris nazımı, "İzinlerini düzenle: {name}") or "Bu grubu kimse kullanmıyor.", the note about what saving or
+      deleting does to them, "Grubu sil: {name}", "Vazgeç" and "Kaydet". "Kaydet" is never off and is sent even when nothing changed
+      (F-W2-groups-6). Saving asks first only when somebody uses the group and its set of permissions changed; a rename asks nothing.
+      "Grubu sil" always asks. Choosing another group in the list, or "Grup oluştur", replaces the form and drops what was typed (F-W2-8).
+      The list marks the selected group with aria-current.
+    source: apps/nizam/features/permissions/components/group-form.tsx:182
+    on:
+      RENAME:
+        - { guard: "nameFor == 'valid'", target: editFormCourses, effect: [renameValid], source: "apps/nizam/features/permissions/present.ts:283", say: "they change the name to one no group has" }
+        - { guard: "nameFor == 'taken' and rows == 'several'", target: editFormCourses, effect: [renameTaken], source: "apps/nizam/features/permissions/present.ts:297", say: "they change it to another group's name, in other letters: the message shows at once" }
+        - { guard: "nameFor == 'long'", target: editFormCourses, effect: [renameLong], source: "apps/nizam/features/permissions/present.ts:290", say: "they type over 80 characters" }
+        - { guard: "nameFor == 'blank'", target: editFormCourses, effect: [renameBlank], source: "apps/nizam/features/permissions/present.ts:289", say: "they clear the name: its message shows after a try" }
+      TICK_COURSE: { guard: "not changed", target: editFormCourses, effect: [ticks], source: "apps/nizam/features/permissions/components/group-form.tsx:240", say: "they tick a box the group does not have: its set of permissions changes" }
+      SUBMIT:
+        - { guard: nameProblem, target: editFormCourses, effect: [tried], source: "apps/nizam/features/permissions/components/group-form.tsx:149", say: "a blank, long or taken name: nothing is sent" }
+        - { guard: asksUsers, target: askSave, effect: [asking], source: "apps/nizam/features/permissions/components/group-form.tsx:151", say: "somebody uses the group and its permissions changed: the question opens before anything is sent" }
+        - { target: updating, effect: [clearToast], source: "apps/nizam/features/permissions/components/group-form.tsx:161", say: "they press Kaydet: the group is sent, with no answer to give" }
+      RESET: { target: editFormCourses, effect: [resetEdit], source: "apps/nizam/features/permissions/components/group-form.tsx:87", say: "they press Vazgeç: the form goes back to the group" }
+      DELETE:
+        - { guard: "holders == 'used'", target: askDelete, effect: [asking], source: "apps/nizam/features/permissions/components/group-form.tsx:317", say: "somebody uses the group: the question opens" }
+        - { target: askDeletePlain, source: "apps/nizam/features/permissions/components/group-form.tsx:317", say: "nobody uses it: a plain question opens" }
+      SELECT_OTHER: { guard: "rows == 'several'", target: editForm, effect: [firstGroup], source: "apps/nizam/features/permissions/components/groups-view.tsx:94", say: "they choose another group in the list: its form replaces this one, and what was typed is dropped (F-W2-8)" }
+      NEW_GROUP: { target: newForm, effect: [freshNew], source: "apps/nizam/features/permissions/components/groups-view.tsx:67", say: "they press Grup oluştur: the empty form replaces this one (F-W2-8)" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+
+  updating:
+    title: The group is being saved
+    description: >-
+      The form is sent by `updateGroup` (PUT /nizam/permission-groups/:id): the name trimmed, the codes, and no answer about the users
+      (the question was not needed, or the group has none). Fields, radios, boxes, "Grubu sil" and "Vazgeç" are disabled, "Kaydet" is busy.
+      On success a toast says "Grup kaydedildi" and the page reads again; the form stays mounted. A refusal is a sticky toast and the form
+      stays. A stale count answers USERS_POLICY_REQUIRED here and nothing on the page can answer it (F-W2-groups-3).
+    invoke: { action: updatePermissionGroup }
+    source: apps/nizam/features/permissions/components/group-form.tsx:103
+    on:
+      DONE: { guard: savesOk, target: backToForm, effect: [saved], source: "apps/nizam/features/permissions/components/group-form.tsx:111", say: "the group is saved" }
+      FAIL.taken: { guard: refusedTakenSave, target: backToForm, effect: [saveTaken], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "another group got the name since the page was read" }
+      FAIL.gone: { guard: "answer == 'gone'", target: backToForm, effect: [saveGone], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "the group was deleted since the page was read: the form stays, the list is not read again" }
+      FAIL.other: { guard: refusedStaleSave, target: backToForm, effect: [saveFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "any other refusal" }
+
+  askSave:
+    title: The question before saving, no answer chosen
+    by: human
+    description: >-
+      An alert dialog over the page, titled "Bu grubu {count} kişi kullanıyor" under the group's name. It asks "Grubun izinleri değişiyor;
+      kullanan {count} kişinin izinleri ne olsun?" with two radios, "İzinleri kalsın" (they keep the group's present permissions as single
+      permissions; the new ones do not pass on) and "İzinleri kalksın" (they lose what came from the group), and neither is chosen
+      (permissions#13 asks it of delete; the save is the same dialog). "Kaydet" is off until one is chosen. The focus starts on "Vazgeç"; the scrim
+      does not close the dialog. The page behind is inert. The dialog is described by its whole body (F-W2-13).
+    source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:48
+    on:
+      CHOOSE_KEEP: { target: askSaveReady, effect: [chosenKeep], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:72", say: "they choose 'İzinleri kalsın'" }
+      CHOOSE_REVOKE: { target: askSaveReady, effect: [chosenRevoke], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:72", say: "they choose 'İzinleri kalksın'" }
+      CANCEL: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press Vazgeç: nothing is sent and the form is as it was" }
+      CLOSE: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press the close icon" }
+
+  askSaveReady:
+    title: The question before saving, an answer chosen
+    by: human
+    description: >-
+      The same dialog with one radio chosen: "Kaydet" is on. Choosing the other radio changes the answer.
+    source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:62
+    on:
+      CHOOSE_KEEP: { target: askSaveReady, effect: [chosenKeep], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:72", say: "they choose 'İzinleri kalsın'" }
+      CHOOSE_REVOKE: { target: askSaveReady, effect: [chosenRevoke], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:72", say: "they choose 'İzinleri kalksın'" }
+      CONFIRM: { target: savingAsked, effect: [clearToast], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:64", say: "they press Kaydet: the group is sent with the answer" }
+      CANCEL: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press Vazgeç" }
+      CLOSE: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press the close icon" }
+
+  savingAsked:
+    title: The group is being saved with the answer
+    description: >-
+      `updateGroup` with `usersPolicy` (keep or revoke). The dialog stays open: its radios are off and "Kaydet" is busy; "Vazgeç" and the
+      close icon stay on and do nothing, because the dialog ignores a close while busy (F-W2-groups-1). On success every holder is
+      detached from the group (the API gives them the old permissions as single ones for 'keep', nothing for 'revoke'), the dialog closes, a
+      toast says "Grup kaydedildi" and the page reads again: the group now has no users. A refusal is a sticky toast raised over the open
+      dialog, which stays open (F-W2-groups-2).
+    invoke: { action: updatePermissionGroup }
+    source: apps/nizam/features/permissions/components/group-form.tsx:103
+    on:
+      DONE: { guard: "answer == 'done' or (answer == 'taken' and not renamed)", target: backToForm, effect: [savedAsked], source: "apps/nizam/features/permissions/components/group-form.tsx:112", say: "the group is saved and its people are detached" }
+      FAIL.taken: { guard: refusedTakenSave, target: askSaveReady, effect: [saveTaken], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "another group got the name: a toast over the question, which stays" }
+      FAIL.gone: { guard: "answer == 'gone'", target: askSaveReady, effect: [saveGone], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "the group is gone: a toast, the question stays" }
+      FAIL.other: { guard: "answer == 'failed'", target: askSaveReady, effect: [saveFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:110", say: "any other refusal: a toast, the question stays" }
+
+  askDelete:
+    title: The question before deleting, no answer chosen
+    by: human
+    description: >-
+      The same alert dialog, opened by "Grubu sil: {name}" on a group somebody uses: titled "Bu grubu {count} kişi kullanıyor", asking "Grup
+      siliniyor; kullanan {count} kişinin izinleri ne olsun?" with the same two radios and neither chosen (permissions#13: the dialog's name
+      is "Bu grubu 1 kişi kullanıyor", the focus is on "Vazgeç", a click outside leaves it open, "Grubu sil" is off). The page is inert.
+    source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:48
+    on:
+      CHOOSE_KEEP: { target: askDeleteReady, effect: [chosenKeep], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:72", say: "they choose 'İzinleri kalsın'" }
+      CHOOSE_REVOKE: { target: askDeleteReady, effect: [chosenRevoke], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:72", say: "they choose 'İzinleri kalksın'" }
+      CANCEL: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press Vazgeç: the group is not deleted (permissions#13)" }
+      CLOSE: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press the close icon" }
+
+  askDeleteReady:
+    title: The question before deleting, an answer chosen
+    by: human
+    description: >-
+      The same dialog with one radio chosen: "Grubu sil" is on.
+    source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:62
+    on:
+      CHOOSE_KEEP: { target: askDeleteReady, effect: [chosenKeep], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:72", say: "they choose 'İzinleri kalsın'" }
+      CHOOSE_REVOKE: { target: askDeleteReady, effect: [chosenRevoke], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:72", say: "they choose 'İzinleri kalksın'" }
+      CONFIRM: { target: deletingAsked, effect: [clearToast], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:64", say: "they press Grubu sil: the group is deleted with the answer" }
+      CANCEL: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press Vazgeç" }
+      CLOSE: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press the close icon" }
+
+  deletingAsked:
+    title: The group is being deleted with the answer
+    description: >-
+      `deleteGroup` with `usersPolicy` (DELETE /nizam/permission-groups/:id, a DELETE with a body). The dialog stays open, its radios off,
+      "Grubu sil" busy, "Vazgeç" and the close icon on and doing nothing (F-W2-groups-1). On success the holders are detached the way the
+      answer says, the dialog closes, a toast says "Grup silindi", and the page goes to `/izin-gruplari`, which selects the oldest group
+      left or the empty form; the form that had the focus is gone (F-W2-groups-4). A refusal is a sticky toast over the question, which stays.
+    invoke: { action: deletePermissionGroup }
+    source: apps/nizam/features/permissions/components/group-form.tsx:134
+    on:
+      DONE: { guard: "answer == 'done' or answer == 'taken'", target: afterDelete, effect: [deletedAsked], source: "apps/nizam/features/permissions/components/group-form.tsx:138", say: "the group is deleted and its people are detached" }
+      FAIL.gone: { guard: "answer == 'gone'", target: askDeleteReady, effect: [deleteGone], source: "apps/nizam/features/permissions/components/group-form.tsx:137", say: "the group is gone already: a toast, the question stays" }
+      FAIL.other: { guard: "answer == 'failed'", target: askDeleteReady, effect: [deleteFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:137", say: "any other refusal: a toast, the question stays" }
+
+  askDeletePlain:
+    title: The question before deleting a group nobody uses
+    by: human
+    description: >-
+      The same alert dialog with no radios: titled "{name} silinsin mi?" under the group's name, saying "Bu grubu kimse kullanmıyor. Silinen
+      grup listeden kalkar ve geri alınamaz.", with "Vazgeç" (the focus) and "Grubu sil", which is on. Deleting always asks, even here.
+    source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:94
+    on:
+      CONFIRM: { target: deletingPlain, effect: [clearToast], source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:64", say: "they press Grubu sil" }
+      CANCEL: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press Vazgeç: the group is not deleted" }
+      CLOSE: { target: backToForm, source: "apps/nizam/features/permissions/components/users-policy-dialog.tsx:51", say: "they press the close icon" }
+
+  deletingPlain:
+    title: A group nobody uses is being deleted
+    description: >-
+      `deleteGroup` with no answer. The dialog stays open with "Grubu sil" busy and "Vazgeç" doing nothing (F-W2-groups-1). A group somebody
+      began to use meanwhile makes the API answer USERS_POLICY_REQUIRED, which only a toast says (F-W2-groups-3).
+    invoke: { action: deletePermissionGroup }
+    source: apps/nizam/features/permissions/components/group-form.tsx:134
+    on:
+      DONE: { guard: "answer == 'done' or answer == 'taken'", target: afterDelete, effect: [deletedPlain], source: "apps/nizam/features/permissions/components/group-form.tsx:138", say: "the group is deleted" }
+      FAIL.gone: { guard: "answer == 'gone'", target: askDeletePlain, effect: [deleteGone], source: "apps/nizam/features/permissions/components/group-form.tsx:137", say: "the group is gone already: a toast, the question stays" }
+      FAIL.other: { guard: "answer == 'failed'", target: askDeletePlain, effect: [deleteFailed], source: "apps/nizam/features/permissions/components/group-form.tsx:137", say: "any other refusal: a toast, the question stays" }
+
+  afterDelete:
+    title: The page after a delete
+    description: >-
+      Not a screen. `router.push("/izin-gruplari")` with no `?grup=`: the oldest group left is selected, or the empty form when none is
+      (page.tsx:44). The model takes a platform group nobody uses for the group left.
+    source: apps/nizam/features/permissions/components/group-form.tsx:142
+    always:
+      - { guard: "rows == 'one'", target: newForm, effect: [rowsNone, freshNew], source: "apps/nizam/features/permissions/components/group-form.tsx:142", say: "that was the last group: the list says 'Henüz grup yok.' and the empty form opens" }
+      - { target: editForm, effect: [rowsOne, firstGroup], source: "apps/nizam/features/permissions/components/group-form.tsx:142", say: "other groups are left: the oldest one's form opens" }
+
+  left:
+    type: final
+    leavesPage: true
+    title: They leave the page
+    description: "A link or the menu takes them elsewhere; nothing here is changed by it."
+
+  handed_over.edit_permissions:
+    type: final
+    title: They go on to a person's permissions
+    description: >-
+      nizam.nazims.editPermissions draws the dialog "İzinleri düzenle" for that person (the same PermissionsDialog its own page opens). Here it
+      opens over this page and the page stays behind it; its save reads this page again (`onSaved` is a refresh, groups-view.tsx:154).
+
+assertions:
+  - { id: asks-before-detaching-people, never: "state == 'updating' and holders == 'used' and changed", say: "A change of a group's permissions never goes to the API without the question while somebody uses the group (needsUsersQuestion)", source: apps/nizam/features/permissions/present.ts:333 }
+  - { id: delete-asks-the-users, never: "state == 'deletingPlain' and holders == 'used'", say: "A group somebody uses is never deleted by the plain question", source: apps/nizam/features/permissions/components/group-form.tsx:317 }
+  - { id: no-default-answer, never: "(state == 'askSave' or state == 'askDelete') and policy != 'none'", say: "The question opens with no answer chosen", source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:42 }
+  - { id: the-answer-is-given, never: "(state == 'savingAsked' or state == 'deletingAsked') and policy == 'none'", say: "A group is never saved or deleted with the question's answer missing", source: apps/nizam/features/permissions/components/users-policy-dialog.tsx:62 }
+  - { id: no-blank-name-is-sent, never: "(state == 'creating' or state == 'updating' or state == 'savingAsked') and name != 'ok'", say: "A blank, over-long or taken name is never sent", source: apps/nizam/features/permissions/components/group-form.tsx:149 }
+  - { id: no-empty-group-is-made, never: "state == 'creating' and ticked == 'none'", say: "A group with no permission is never sent", source: apps/nizam/features/permissions/components/group-form.tsx:150 }

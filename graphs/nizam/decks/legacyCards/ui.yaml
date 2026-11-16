@@ -1,0 +1,201 @@
+# The screens of nizam.decks.legacyCards: the table of decks at /decks and the table of one deck's cards at /decks/<id>/cards, with the Yeni Güverte dialog,
+# the two delete confirmations, the Toplu İşlemler menu, the import-errors dialog, the toasts and the error page. Read on 15 Nov 2026 from
+# apps/nizam/features/decks (decks, decks-table-header, cards, cards-table-header, import-errors-dialog, useDecksColumns, useFlashcardColumns, actions),
+# apps/nizam/components/data-table, apps/nizam/app/error.tsx, and the shadcn kit in libs/ui/src/components (dialog, alert-dialog, dropdown-menu, table, sonner).
+# Nothing was seen in a browser by its writer: every behaviour is "from the code" unless a rule says otherwise.
+#
+# What this file leaves to its neighbours: the shell around both pages (sidebar, person row, footer: nizam.shell.menuPerPersona; only its <main> is drawn here)
+# and the köşk decks page that links to the cards (nizam.decks.koskDecks).
+#
+# Words: every key without a `composed.` prefix is copied letter for letter from libs/i18n/src/locales/tr/nizam.json (the file the app reads as `nizam`; a key
+# is the path under its root) by <scratchpad>/mkcat-legacycards.mjs, except `Changes.note`: the app has a toast for each action and none that says, in one
+# place, what these pages change and what follows, so one short factual note is authored (the only catalog entry not copied from the app). The `composed.*`
+# keys are text the app builds in code, in no i18n file, each with its line:
+#   composed.Decks.titleLabel          "Başlık *"            TableHeader.title and " *" typed after it in the JSX (decks-table-header.tsx:104)
+#   composed.Decks.deckTitle           "{title}"             the deck's own title as the h1 of the cards page (cards-table-header.tsx:51)
+#   composed.Decks.deckDescription     "{description}"       its description in the <p> under it, empty when there is none (cards-table-header.tsx:52)
+#   composed.Decks.renamed / renamedBody      "Card Updated" / "Flashcard was updated successfully."   English, hard-coded (decks.tsx:45-48)
+#   composed.Decks.renameFailed               "Update Error"                       English, hard-coded; its body is the server's words (decks.tsx:51-54)
+#   composed.Decks.removed / removedBody      "Card Deleted" / "Card with ID {id} was deleted."        English, hard-coded; {id} is the deck's uuid (decks.tsx:22-27)
+#   composed.Decks.removeFailed               "Delete Error"                       English, hard-coded (decks.tsx:31-34)
+#   composed.Decks.serverMessage       "{reason}"            the API's own message, shown as the description of every failure toast (authenticated-action.ts:56)
+#   composed.Dialog.close              "Close"               the shadcn Dialog's hard-coded visually hidden word on its close icon (libs/ui/src/components/dialog.tsx:75)
+#   composed.CardsTableHeader.csv / excel     "CSV" / "Excel"                      hard-coded menu items (cards-table-header.tsx:80, 83, 96, 101)
+#   composed.ImportErrors.summary      "{summary}"           the dialog's description, the API's own "message" (import-errors-dialog.tsx:27)
+#   composed.ImportErrors.fieldMessage "{field}: {message}"  one error of a row: the property name and the validator's sentence (import-errors-dialog.tsx:38-39)
+schema: delurio-graph/0
+kind: ui
+id: nizam.decks.legacyCards
+flow: nizam.decks.legacyCards
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  title: Deneme destesi legacy
+  description: Bilgi kartı destesi denemesi.
+  id: 3f2c8a1e-5b7d-4c0e-9a6f-1d2e3f4a5b6c
+  count: '2'
+  row: '2'
+  summary: Validation Error
+  field: contentFront
+  message: contentFront must be longer than or equal to 3 characters
+  reason: Caller is not authorized for the requested scope on this resource
+  decks: '1'
+  cards: '3'
+  rows: '1'
+
+# No page moves the focus on load (nothing in features/decks calls focus() or autofocuses), so no page has an `initialFocus` (rule focus-not-set). What the
+# code gives is: a dialog's own focus (Radix: the first tabbable element of the Yeni Güverte dialog, "İptal etmek" of an AlertDialog, the Close icon of the
+# import-errors dialog), and, after the blank title, the button that was pressed.
+focus:
+  newDeckInvalid: newDeckSubmit
+
+nodes:
+  # ---- /decks: the page ------------------------------------------------------------------------------------------------------------------
+  listPage: { type: page, component: Page, role: main, in: [list, renaming, removingDeck], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's <main>; it has no name, and the page is a <div> inside it
+  listTitle: { type: text, component: Heading, role: heading, text: { key: TableHeader.flashcardDecks }, in: [list, renaming, removingDeck], source: apps/nizam/features/decks/components/decks-table-header.tsx:80 } # h1 "Bilgi Kartı Desteleri"
+  listIntro: { type: text, component: Text, text: { key: TableHeader.manageDecks }, in: [list, renaming, removingDeck], source: apps/nizam/features/decks/components/decks-table-header.tsx:83 }
+  newButton: { type: action, component: Button, role: button, intent: confirm, text: { key: TableHeader.newDeck }, in: [list, renaming, removingDeck], emits: NEW_DECK, source: apps/nizam/features/decks/components/decks-table-header.tsx:88 } # "Yeni Güverte"; the flow offers it over an empty table only (outOfView), and it is on the page beside a row too
+  deckTable: { type: list, component: List, role: table, in: [list, renaming, removingDeck], source: apps/nizam/components/data-table/index.tsx:115 } # a shadcn <table>; no caption, so no name
+  colTitle: { type: text, component: Text, role: columnheader, text: { key: DecksPage.Table.titleColumn }, in: [list, renaming, removingDeck], source: apps/nizam/components/data-table/index.tsx:122 } # "Başlık"; the third column's header is an empty <th>
+  colDescription: { type: text, component: Text, role: columnheader, text: { key: DecksPage.Table.descriptionColumn }, in: [list, renaming, removingDeck], source: apps/nizam/components/data-table/index.tsx:122 } # "Açıklama"
+  rowTitle: { type: field, component: TextField, role: textbox, name: { key: DecksColumns.titlePlaceholder }, in: [list, removingDeck], when: hasRow, repeat: decks, source: apps/nizam/components/data-table/editable/editable-input.tsx:36 } # an <input> with only a placeholder to name it (F-P0-11); saves on Enter or on leaving it; absent (a Skeleton) while its own save runs
+  rowDescription: { type: field, component: TextField, role: textbox, name: { key: DecksColumns.descriptionPlaceholder }, in: [list, renaming, removingDeck], when: hasRow, repeat: decks, source: apps/nizam/components/data-table/editable/editable-input.tsx:36 } # the same machinery; not drawn apart (outOfView)
+  rowOpen: { type: action, component: Button, role: button, intent: secondary, in: [list, renaming, removingDeck], when: hasRow, repeat: decks, emits: OPEN_CARDS, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:49 } # an eye icon and no accessible name (F-P0-10); router.push, not a link
+  rowRemove: { type: action, component: Button, role: button, intent: secondary, in: [list, renaming, removingDeck], when: hasRow, repeat: decks, emits: DELETE_DECK, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:59 } # a trash icon and no accessible name (F-P0-10)
+  emptyRow: { type: text, component: Text, text: { key: DataTable.noResults }, in: [list, renaming, removingDeck], when: "not hasRow", source: apps/nizam/components/data-table/index.tsx:158 } # "Sonuç bulunamadı."
+
+  # ---- Yeni Deste Oluştur: the dialog ----------------------------------------------------------------------------------------------------
+  newDeckDialog: { type: page, component: Page, role: dialog, name: { labelledBy: newDeckTitle }, in: [newDeck, newDeckInvalid, creating, newDeckFailed], initialFocus: titleField, source: apps/nizam/features/decks/components/decks-table-header.tsx:93 } # Radix Dialog; the first tabbable element has the focus
+  newDeckTitle: { type: text, component: Heading, role: heading, text: { key: TableHeader.createNewDeck }, in: [newDeck, newDeckInvalid, creating, newDeckFailed], source: apps/nizam/features/decks/components/decks-table-header.tsx:96 } # a DialogTitle, an h2
+  newDeckIntro: { type: text, component: Text, text: { key: TableHeader.createNewDeckDescription }, in: [newDeck, newDeckInvalid, creating, newDeckFailed], source: apps/nizam/features/decks/components/decks-table-header.tsx:97 } # the dialog's description
+  titleField: { type: field, component: TextField, role: textbox, text: { key: composed.Decks.titleLabel }, in: [newDeck, newDeckInvalid, creating, newDeckFailed], disabledIn: [creating], source: apps/nizam/features/decks/components/decks-table-header.tsx:105 } # id=title, `required`; a blank is told by a toast only (F-P0-12)
+  descriptionField: { type: field, component: TextField, role: textbox, text: { key: TableHeader.description }, in: [newDeck, newDeckInvalid, creating, newDeckFailed], disabledIn: [creating], source: apps/nizam/features/decks/components/decks-table-header.tsx:119 } # id=description, a <textarea>
+  newDeckCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: TableHeader.cancel }, in: [newDeck, newDeckInvalid, creating, newDeckFailed], disabledIn: [creating], emits: CANCEL, source: apps/nizam/features/decks/components/decks-table-header.tsx:133 } # "İptal etmek", an infinitive (LEGACY-8)
+  newDeckClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Dialog.close }, in: [newDeck, newDeckInvalid, creating, newDeckFailed], emits: CLOSE, source: libs/ui/src/components/dialog.tsx:70 } # an X icon named "Close", English and hard-coded (LEGACY-8); not disabled while the deck is made (outOfView)
+  newDeckSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: TableHeader.createDeck }, in: [newDeck, newDeckInvalid, newDeckFailed], emits: SUBMIT, source: apps/nizam/features/decks/components/decks-table-header.tsx:141 } # "Deste Oluştur"
+  newDeckSubmitBusy: { type: action, component: Button, role: button, intent: confirm, text: { key: TableHeader.creating }, in: [creating], disabledIn: [creating], source: apps/nizam/features/decks/components/decks-table-header.tsx:142 } # the same button reads "Oluşturuluyor..." and is natively disabled; no <output>, no aria-busy
+
+  # ---- the delete confirmation of a deck -------------------------------------------------------------------------------------------------
+  removeDeckDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: removeDeckTitle }, in: [confirmRemoveDeck], initialFocus: removeDeckCancel, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:63 } # Radix AlertDialog: the focus starts on "İptal etmek"
+  removeDeckTitle: { type: text, component: Heading, role: heading, text: { key: DecksColumns.areYouSure }, in: [confirmRemoveDeck], source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:65 } # "Emin misin?"
+  removeDeckBody: { type: text, component: Text, text: { key: DecksColumns.deleteConfirmation }, in: [confirmRemoveDeck], source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:68 }
+  removeDeckCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: TableHeader.cancel }, in: [confirmRemoveDeck], emits: CANCEL_REMOVE_DECK, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:73 }
+  removeDeckConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: DecksColumns.delete }, in: [confirmRemoveDeck], emits: CONFIRM_REMOVE_DECK, source: apps/nizam/features/decks/hooks/useDecksColumns.tsx:76 } # "Silmek", an infinitive (LEGACY-8); the shadcn action is not styled as destructive
+
+  # ---- the toasts of /decks and of its dialog (sonner: no role; the English ones are hard-coded) ------------------------------------------
+  toastCreated: { type: status, component: Status, text: { key: TableHeader.deckCreated }, in: [list], when: "last == 'created'", source: apps/nizam/features/decks/components/decks-table-header.tsx:49 }
+  toastCreatedBody: { type: status, component: Status, text: { key: TableHeader.deckCreatedDescription }, in: [list], when: "last == 'created'", source: apps/nizam/features/decks/components/decks-table-header.tsx:51 }
+  toastBlank: { type: status, component: Status, text: { key: TableHeader.validationError }, in: [newDeckInvalid], source: apps/nizam/features/decks/components/decks-table-header.tsx:39 } # "Doğrulama Hatası"
+  toastBlankBody: { type: status, component: Status, text: { key: TableHeader.validationErrorDescription }, in: [newDeckInvalid], source: apps/nizam/features/decks/components/decks-table-header.tsx:40 } # "Deste başlığı zorunludur."
+  toastCreateFailed: { type: status, component: Status, text: { key: TableHeader.creationError }, in: [newDeckFailed], source: apps/nizam/features/decks/components/decks-table-header.tsx:60 } # "Oluşturma Hatası"; an error toast stays until it is closed
+  toastRenamed: { type: status, component: Status, text: { key: composed.Decks.renamed }, in: [list], when: "last == 'renamed'", source: apps/nizam/features/decks/components/decks.tsx:46 }
+  toastRenamedBody: { type: status, component: Status, text: { key: composed.Decks.renamedBody }, in: [list], when: "last == 'renamed'", source: apps/nizam/features/decks/components/decks.tsx:47 }
+  toastRenameFailed: { type: status, component: Status, text: { key: composed.Decks.renameFailed }, in: [list], when: "last == 'renameFailed'", source: apps/nizam/features/decks/components/decks.tsx:52 }
+  toastRemoved: { type: status, component: Status, text: { key: composed.Decks.removed }, in: [list], when: "last == 'removed'", source: apps/nizam/features/decks/components/decks.tsx:24 }
+  toastRemovedBody: { type: status, component: Status, text: { key: composed.Decks.removedBody, params: { id: deck.id } }, in: [list], when: "last == 'removed'", source: apps/nizam/features/decks/components/decks.tsx:25 } # the deck's raw uuid (LEGACY-5)
+  toastRemoveFailed: { type: status, component: Status, text: { key: composed.Decks.removeFailed }, in: [list], when: "last == 'removeFailed'", source: apps/nizam/features/decks/components/decks.tsx:32 }
+
+  # ---- /decks/<id>/cards: the page --------------------------------------------------------------------------------------------------------
+  cardsPage: { type: page, component: Page, role: main, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's <main>, with no name
+  cardsTitle: { type: text, component: Heading, role: heading, text: { key: composed.Decks.deckTitle, params: { title: deck.title } }, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], source: apps/nizam/features/decks/components/cards-table-header.tsx:51 } # h1: the deck's own title
+  cardsIntro: { type: text, component: Text, text: { key: composed.Decks.deckDescription, params: { description: deck.description } }, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], source: apps/nizam/features/decks/components/cards-table-header.tsx:52 } # an empty <p> when the deck has no description
+  bulkButton: { type: action, component: Button, role: button, intent: secondary, text: { key: CardsTableHeader.bulkActions }, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], emits: OPEN_BULK, source: apps/nizam/features/decks/components/cards-table-header.tsx:64 } # "Toplu İşlemler"; a menu button
+  cardsTable: { type: list, component: List, role: table, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], source: apps/nizam/components/data-table/index.tsx:115 }
+  colFront: { type: text, component: Text, role: columnheader, text: { key: FlashcardColumns.frontFace }, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], source: apps/nizam/components/data-table/index.tsx:122 } # "Ön Yüz"
+  colBack: { type: text, component: Text, role: columnheader, text: { key: FlashcardColumns.backFace }, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], source: apps/nizam/components/data-table/index.tsx:122 } # "Arka Yüz"
+  cardFront: { type: field, component: TextField, role: textbox, name: { key: FlashcardColumns.frontFacePlaceholder }, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], when: "not noCards", repeat: deck.cards, source: apps/nizam/components/data-table/editable/editable-textarea.tsx:30 } # a <textarea> named by its placeholder only (F-P0-11); saves only on leaving it (LEGACY-6)
+  cardBack: { type: field, component: TextField, role: textbox, name: { key: FlashcardColumns.backFacePlaceholder }, in: [cards, removingCard, exporting, sampling, choosingFile, importing], when: "not noCards", repeat: deck.cards, source: apps/nizam/components/data-table/editable/editable-textarea.tsx:30 } # absent (a Skeleton) while its own save runs
+  cardRemove: { type: action, component: Button, role: button, intent: secondary, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], when: "not noCards", repeat: deck.cards, emits: DELETE_CARD, source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:49 } # a trash icon and no accessible name (F-P0-10)
+  cardsEmptyRow: { type: text, component: Text, text: { key: DataTable.noResults }, in: [cards, savingCard, removingCard, exporting, sampling, choosingFile, importing], when: noCards, source: apps/nizam/components/data-table/index.tsx:158 }
+
+  # ---- Toplu İşlemler: the menu and its two submenus ---------------------------------------------------------------------------------------
+  menuBox: { type: page, component: Page, role: menu, name: { key: CardsTableHeader.bulkActions }, in: [bulkMenu, exportMenu, sampleMenu], source: apps/nizam/features/decks/components/cards-table-header.tsx:68 } # Radix DropdownMenu (modal): the rest of the page is inert while it is open
+  importItem: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: CardsTableHeader.importFromExcel }, in: [bulkMenu, exportMenu, sampleMenu], emits: PICK_IMPORT, source: apps/nizam/features/decks/components/cards-table-header.tsx:69 } # "Excel'den İçe Aktar", also for a deck the person may not write into
+  exportItem: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: CardsTableHeader.exportCards }, in: [bulkMenu, exportMenu, sampleMenu], emits: OPEN_EXPORT, source: apps/nizam/features/decks/components/cards-table-header.tsx:74 } # "Dışa Aktar", a submenu trigger
+  sampleItem: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: CardsTableHeader.downloadSampleFile }, in: [bulkMenu, exportMenu, sampleMenu], emits: OPEN_SAMPLE, source: apps/nizam/features/decks/components/cards-table-header.tsx:88 } # "Örnek Dosyayı İndir", a submenu trigger
+  exportSub: { type: page, component: Page, role: menu, name: { key: CardsTableHeader.exportCards }, in: [exportMenu], source: apps/nizam/features/decks/components/cards-table-header.tsx:78 }
+  exportCsv: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: composed.CardsTableHeader.csv }, in: [exportMenu], emits: EXPORT_CSV, source: apps/nizam/features/decks/components/cards-table-header.tsx:79 } # "CSV", hard-coded (F-P0-13)
+  exportXlsx: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: composed.CardsTableHeader.excel }, in: [exportMenu], emits: EXPORT_XLSX, source: apps/nizam/features/decks/components/cards-table-header.tsx:82 }
+  sampleSub: { type: page, component: Page, role: menu, name: { key: CardsTableHeader.downloadSampleFile }, in: [sampleMenu], source: apps/nizam/features/decks/components/cards-table-header.tsx:92 }
+  sampleCsv: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: composed.CardsTableHeader.csv }, in: [sampleMenu], emits: SAMPLE_CSV, source: apps/nizam/features/decks/components/cards-table-header.tsx:93 }
+  sampleXlsx: { type: action, component: Button, role: menuitem, intent: secondary, text: { key: composed.CardsTableHeader.excel }, in: [sampleMenu], emits: SAMPLE_XLSX, source: apps/nizam/features/decks/components/cards-table-header.tsx:98 }
+
+  # ---- the delete confirmation of a card -----------------------------------------------------------------------------------------------------
+  removeCardDialog: { type: page, component: Page, role: alertdialog, name: { labelledBy: removeCardTitle }, in: [confirmRemoveCard], initialFocus: removeCardCancel, source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:53 }
+  removeCardTitle: { type: text, component: Heading, role: heading, text: { key: FlashcardColumns.areYouSure }, in: [confirmRemoveCard], source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:55 } # "Emin misin?"
+  removeCardBody: { type: text, component: Text, text: { key: FlashcardColumns.deleteConfirmation }, in: [confirmRemoveCard], source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:58 }
+  removeCardCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: TableHeader.cancel }, in: [confirmRemoveCard], emits: CANCEL_REMOVE_CARD, source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:63 }
+  removeCardConfirm: { type: action, component: Button, role: button, intent: confirm, text: { key: FlashcardColumns.delete }, in: [confirmRemoveCard], emits: CONFIRM_REMOVE_CARD, source: apps/nizam/features/decks/hooks/useFlashcardColumns.tsx:66 }
+
+  # ---- the import-errors dialog (opened from the code, with no trigger) ------------------------------------------------------------------------
+  importErrorsDialog: { type: page, component: Page, role: dialog, name: { labelledBy: importErrorsTitle }, in: [importErrors], initialFocus: importErrorsClose, source: apps/nizam/features/decks/components/import-errors-dialog.tsx:24 } # Radix Dialog; the Close icon is its only tabbable element
+  importErrorsTitle: { type: text, component: Heading, role: heading, text: { key: ImportErrors.title }, in: [importErrors], source: apps/nizam/features/decks/components/import-errors-dialog.tsx:26 } # "Dosya içe aktarılamadı", an h2
+  importErrorsSummary: { type: text, component: Text, text: { key: composed.ImportErrors.summary, params: { summary: errors.message } }, in: [importErrors], source: apps/nizam/features/decks/components/import-errors-dialog.tsx:27 } # the API's own word, "Validation Error"
+  importRowTitle: { type: text, component: Text, text: { key: ImportErrors.row, params: { row: errors.row } }, in: [importErrors], repeat: errors.rows, source: apps/nizam/features/decks/components/import-errors-dialog.tsx:32 } # "{row}. satırda hata"
+  importRowField: { type: text, component: Text, text: { key: composed.ImportErrors.fieldMessage, params: { field: errors.field, message: errors.fieldMessage } }, in: [importErrors], repeat: errors.fields, source: apps/nizam/features/decks/components/import-errors-dialog.tsx:38 } # "contentFront: contentFront must be longer than or equal to 3 characters": English, in red
+  importErrorsClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: composed.Dialog.close }, in: [importErrors], emits: CLOSE_ERRORS, source: libs/ui/src/components/dialog.tsx:70 } # named "Close" (LEGACY-8)
+
+  # ---- the toasts of /decks/<id>/cards ------------------------------------------------------------------------------------------------------
+  toastCardSaved: { type: status, component: Status, text: { key: DeckCards.cardUpdated }, in: [cards], when: "last == 'cardSaved'", source: apps/nizam/features/decks/components/cards.tsx:49 }
+  toastCardSavedBody: { type: status, component: Status, text: { key: DeckCards.cardUpdatedDescription }, in: [cards], when: "last == 'cardSaved'", source: apps/nizam/features/decks/components/cards.tsx:50 } # "Kartvizit ..." (F-P0-14)
+  toastCardFailed: { type: status, component: Status, text: { key: DeckCards.updateError }, in: [cards], when: "last == 'cardFailed'", source: apps/nizam/features/decks/components/cards.tsx:55 } # "Güncelleme Hatası": the title of a failed card save, import, export and sample file alike
+  toastCardRemoved: { type: status, component: Status, text: { key: DeckCards.cardDeleted }, in: [cards], when: "last == 'cardRemoved'", source: apps/nizam/features/decks/components/cards.tsx:90 }
+  toastCardRemovedBody: { type: status, component: Status, text: { key: DeckCards.cardDeletedDescription, params: { id: card.id } }, in: [cards], when: "last == 'cardRemoved'", source: apps/nizam/features/decks/components/cards.tsx:91 } # the card's raw uuid (LEGACY-5)
+  toastCardRemoveFailed: { type: status, component: Status, text: { key: DeckCards.deleteError }, in: [cards], when: "last == 'cardRemoveFailed'", source: apps/nizam/features/decks/components/cards.tsx:99 } # "Silme Hatası"
+  toastImported: { type: status, component: Status, text: { key: DeckCards.cardsImported }, in: [cards], when: "last == 'imported'", source: apps/nizam/features/decks/components/cards.tsx:66 } # "İthal Kartlar" (LEGACY-8)
+  toastImportedBody: { type: status, component: Status, text: { key: DeckCards.cardsImportedDescription, params: { count: import.count } }, in: [cards], when: "last == 'imported'", source: apps/nizam/features/decks/components/cards.tsx:67 }
+  toastReason: { type: status, component: Status, text: { key: composed.Decks.serverMessage, params: { reason: error.reason } }, in: [list, newDeckFailed, cards], when: "last in ['createFailed', 'renameFailed', 'removeFailed', 'cardFailed', 'cardRemoveFailed']", source: apps/nizam/lib/authenticated-action.ts:56 } # the API's own sentence, in English (LEGACY-2)
+
+  # ---- the error page ------------------------------------------------------------------------------------------------------------------------------
+  errorMain: { type: page, component: Page, role: main, in: [pageError], source: libs/ui/src/mds/app-shell.tsx:41 }
+  errorSection: { type: page, component: Page, role: region, name: { labelledBy: errorTitle }, in: [pageError], source: libs/ui/src/mds/system-state.tsx:33 } # SystemState with `shell` is a <section aria-labelledby>
+  errorTitle: { type: text, component: Heading, role: heading, text: { key: PageError.title }, in: [pageError], source: libs/ui/src/mds/system-state.tsx:43 } # h1 "Bir şeyler ters gitti"
+  errorBody: { type: text, component: Text, text: { key: PageError.body }, in: [pageError], source: apps/nizam/app/error.tsx:39 }
+  errorRetry: { type: action, component: Button, role: button, intent: secondary, text: { key: PageError.retry }, in: [pageError], emits: RETRY, source: apps/nizam/app/error.tsx:34 } # "Yeniden dene": Next's retry, which reads the page from the server again
+
+edges:
+  - { labelledBy: [newDeckDialog, newDeckTitle] }
+  - { labelledBy: [removeDeckDialog, removeDeckTitle] }
+  - { labelledBy: [removeCardDialog, removeCardTitle] }
+  - { labelledBy: [importErrorsDialog, importErrorsTitle] }
+  - { labelledBy: [errorSection, errorTitle] }
+  - { triggers: [newButton, newDeck] }
+  - { triggers: [newDeckSubmit, creating] }
+  - { triggers: [rowRemove, confirmRemoveDeck] }
+  - { triggers: [removeDeckConfirm, removingDeck] }
+  - { triggers: [rowOpen, readingCards] }
+  - { triggers: [cardRemove, confirmRemoveCard] }
+  - { triggers: [removeCardConfirm, removingCard] }
+  - { triggers: [bulkButton, bulkMenu] }
+  - { returnsFocus: [newDeckDialog, newButton] } # Esc, "İptal etmek", the Close icon or a made deck: Radix gives the focus back to the trigger, which is still there; not verified in a browser
+  - { returnsFocus: [removeDeckDialog, rowRemove] } # "İptal etmek" or Esc: the trigger is still there; after "Silmek" the row is gone and the focus is lost
+  - { returnsFocus: [removeCardDialog, cardRemove] }
+
+rules:
+  - { id: F-P0-10, rule: "The eye and trash buttons of a deck row, and the trash button of a card row, hold only an icon and have no accessible name (useDecksColumns.tsx:49-60, useFlashcardColumns.tsx:49-51): a screen reader says 'button' three times. A deck of two dozen cards has two dozen unnamed trash buttons. Fix: aria-label with the title ('Kartları aç', 'Sil') and the row's own words." }
+  - { id: F-P0-11, rule: "The editable cells are an <input> or a <textarea> whose only name is its placeholder (editable-input.tsx:36-43, editable-textarea.tsx:30). Nothing announces a save but a toast, and the cell's own input is replaced by a Skeleton while its save runs (editable-input.tsx:25, editable-textarea.tsx:25), so the focus is lost at the moment the person has just pressed Enter or left the cell (F-X-8). Nothing on the page says that a cell saves when it is left; Enter saves a one-line cell and makes a new line in a textarea (LEGACY-6). Fix: aria-label from the column's header, keep the field mounted and aria-busy, and say when it saves." }
+  - { id: F-P0-12, rule: "A title of blanks is stopped by a toast alone (decks-table-header.tsx:37-43): the field has no aria-invalid and no message, and the focus stays on the pressed button. A title that is empty never gets there: `required` is on the field (decks-table-header.tsx:110), so the browser's own bubble stops it. Fix: aria-invalid and a described message on #title, and no toast." }
+  - { id: F-P0-13, rule: "Hard-coded English that is in no catalog: the toasts 'Card Updated', 'Flashcard was updated successfully.', 'Update Error', 'Card Deleted', 'Card with ID {id} was deleted.', 'Delete Error' (decks.tsx:22-54) and the menu items 'CSV' and 'Excel' (cards-table-header.tsx:80, 83, 96, 101). Fix: move them to nizam.DecksPage.Toast and the like (F-X-17)." }
+  - { id: F-P0-14, rule: "'Kart Güncellendi' goes with 'Kartvizit başarıyla güncellendi.' (nizam.json DeckCards.cardUpdatedDescription, line 119): kartvizit is a business card. Fix: 'Kart başarıyla güncellendi.'" }
+  - { id: F-P0-15, rule: "When a create is answered 'unauthenticated' the button stays 'Oluşturuluyor...' and disabled: handleSubmit returns before setIsLoading(false) (decks-table-header.tsx:47). The redirect to sign-in follows, so it shows only while it is under way. Fix: reset the loading before returning." }
+  - { id: F-P0-16, rule: "Neither page is guarded beyond sign-in (app/decks/page.tsx, app/decks/[id]/cards/page.tsx), so a person with no role at all opens them (app/kosks/layout.tsx covers only /kosks/**); neither has generateMetadata (the tab says 'Nizam'), a loading.tsx or a catch: a failed read is the generic error page. Fix: decide to retire them or put them on the design system (decision D1)." }
+  - { id: F-X-18, rule: "The same decision seen from the köşk side: these two pages are the second UI of the köşk decks, with F-P0-10 to F-P0-16 and F-W5-8 (the köşk decks page's 'Kartları düzenle' links here, to a page that checks no köşk)." }
+  - { id: F-W5-8, rule: "'Kartları düzenle' on the köşk decks page links to /decks/<id>/cards, which checks neither that the deck belongs to that köşk nor who the person is beyond what tedrisat decides (kosk-decks-view.tsx:224). Carried here as the page it opens. Fix: build the editor under /kosks/<id>/desteler/<deck>." }
+  - { id: F-X-8, rule: "Fields that are replaced or disabled while their own save runs, so the focus is lost: the editable cells (a Skeleton instead of the input) and, here, every field and button of the Yeni Güverte dialog while the deck is made (decks-table-header.tsx:111, 144 `disabled={isLoading}`). Fix: keep the control mounted with aria-busy." }
+  - { id: F-X-17, rule: "Hard-coded text outside the catalogs: the six English toasts of decks.tsx and the two menu words of cards-table-header.tsx (F-P0-13), and the shadcn Dialog's visually hidden 'Close' (libs/ui/src/components/dialog.tsx:75; LEGACY-8)." }
+  - { id: LEGACY-1, rule: "A save that fails leaves the typed text in the cell. EditableCell.handleSave sets its stored text to the typed one before the save has an answer (editable-cell.tsx:61-66), and DataTable.handleUpdateData reverts only when onRowUpdate throws, while both pages' onRowUpdate return false on a refusal (components/data-table/index.tsx:78-83, decks.tsx:51-55, cards.tsx:54-58). So after 'Update Error' the cell shows the text the server refused, nothing is read again (a failure runs no revalidatePath) and leaving the cell a second time sends nothing, because it is not 'changed'. The screen and the data disagree until a reload. Fix: put the stored text back when the answer is a failure, or mark the cell invalid." }
+  - { id: LEGACY-2, rule: "Every failure toast prints the API's own message as its description (authenticated-action.ts:56, getErrorMessage in libs/services/src/utils/error-handler.ts): 'Caller is not authorized for the requested scope on this resource' for a deck that is not the person's, and the validator's 'title must be longer than or equal to 5 characters' for a short title, in English under a Turkish or an English title. Fix: map the refusal's code to a Turkish sentence in the catalog and say whose deck it is." }
+  - { id: LEGACY-3, rule: "GET /flashcard/decks has no order (flashcard-deck.repository.ts:48-51, a findMany with no orderBy, and the TODO at :102 and :111), so a row can move after an edit (an UPDATE writes a new row version) and the table has no stable order; it lists every public deck and the person's own including their hidden köşk decks (the domain's hidden-decks-in-lists). The table has no paging and no search. Fix: order by title or by date, and filter the hidden." }
+  - { id: LEGACY-4, rule: "A public deck of another person is drawn with editable cells and a trash button exactly like one's own: the response carries `authorId` and the page never reads it (decks.tsx, useDecksColumns.tsx). The first press is answered 403 and the page then says so in English (LEGACY-2); the cards page offers the same edits, the trash buttons, 'Excel'den İçe Aktar' and 'Dışa Aktar' on a deck the person may only read. Fix: draw it read-only (decision D2)." }
+  - { id: LEGACY-5, rule: "The deck's and the card's success toasts print the record's raw uuid: 'Card with ID 3f2c8a1e-... was deleted.' (decks.tsx:25) and '3f2c8a1e-... kimlik numaralı kart silindi.' (nizam.json DeckCards.cardDeletedDescription). Fix: name the deck by its title and the card by its front." }
+  - { id: LEGACY-6, rule: "A textarea cell saves only when it is left: EditableTextarea has no key handler (editable-textarea.tsx:30-39), so Enter makes a new line and sends nothing, while the one-line cells of /decks save on Enter (editable-input.tsx:29-33). Two behaviours in one table, and neither is said on the page. Fix: say it, or save on Ctrl+Enter." }
+  - { id: LEGACY-7, rule: "The import has no busy state, no progress and no 'done' beyond a toast: onDeckFileImport awaits the Server Action with nothing drawn (cards.tsx:61-83). The file travels as a Server Action argument, whose body Next limits to 1 MB unless next.config.js sets serverActions.bodySizeLimit, and it does not (apps/nizam/next.config.js), while the API takes 5 MB (flashcard.controller.ts:491): a file between the two probably dies in the framework, the awaited promise rejects with no catch and the person sees nothing. NOT VERIFIED in a browser (nazar.decks.import carries the same doubt as F-D1-18). Fix: bodySizeLimit of 6mb, a try/catch and a busy label." }
+  - { id: LEGACY-8, rule: "Wrong or hard-coded words: 'Yeni Güverte' (TableHeader.newDeck) is a ship's deck, not a card deck; 'İthal Kartlar' (DeckCards.cardsImported) is imported goods; the buttons 'İptal etmek' and 'Silmek' are infinitives; the failure title of an export, an import and a sample file is 'Güncelleme Hatası' (an update's), reused (cards.tsx:109-112, 122-125); and the two dialogs' close icon is named 'Close', in English, by the shadcn kit (libs/ui/src/components/dialog.tsx:75) while the toasts' is 'Kapat' (common.toast.close). The catalog also holds DecksPage.Dialog.* and DecksPage.Toast.* that no code reads. Fix: 'Yeni Deste', 'Kartlar içe aktarıldı', 'Vazgeç', 'Sil', a failure title for each action and a closeLabel prop." }
+  - { id: LEGACY-9, rule: "While a deck is made, every field and both buttons of the dialog are disabled (decks-table-header.tsx:111, 124, 135, 141), so the focused field loses the focus and Esc may be the only way out; the Close icon stays enabled and closes the dialog while the request goes on (the success toast then still comes). Not verified in a browser. Fix: keep the fields mounted, aria-busy on the button." }
+  - { id: LEGACY-10, rule: "DERIVED FROM THE CODE, NOT SEEN: both tables are keyed by row index (DataTable passes no getRowId, so TanStack's default id is the index), and each EditableCell copies the text of its row once (`useState(getValue())`, editable-cell.tsx:23) while the cards' textarea is uncontrolled (`defaultValue`, editable-textarea.tsx:30). After a delete of a row that is not the last, or a reorder (LEGACY-3), a cell that stays mounted may keep the old row's text: the deleted card's face stays on screen and the last card's is gone. The decks table rebuilds its default column on every render (decks.tsx:58) and may remount its cells, which hides the same fault there. The walk should delete the first of three cards and read the table. Fix: getRowId from the record's id." }
+  - { id: createcards-no-whitelist, rule: "Neither page calls createCards (POST /flashcard/decks/{id}/cards, whose pipe has no whitelist, ledger/security.md): the only way they add cards is importCards, which validates every row with whitelist and forbidNonWhitelisted against the three fixed columns Card Type, Content Front and Content Back (flashcard-bulk.service.ts:98-102, config-excel.dto.ts), so a card id cannot be chosen from here. The binding's data helper does use createCards, to put cards into its own deck." }
+  - { id: focus-not-set, rule: "No page sets an initial focus: nothing in features/decks, app/decks, app/error.tsx calls focus() or autofocuses, and neither page has a FocusHeading (only /yetki-yok has one), so a person who arrives from the köşk page lands with the focus at the start of the document. The graph draws a focus only where Radix gives one (the three dialogs) and on the button that was pressed after a blank title. Not verified in a browser." }
+  - { id: label-in-name, rule: "Where a button has a visible word it is in its accessible name: 'Yeni Güverte', 'Toplu İşlemler', 'Deste Oluştur', 'İptal etmek', 'Silmek', 'Yeniden dene'. The icon buttons have no visible word and no name at all (F-P0-10). Holds, apart from those." }
+  - { id: confirm-before-deleting, rule: "A deck and a card are deleted only after 'Emin misin?', in an alertdialog whose focus starts on 'İptal etmek'; the dialog says the delete cannot be undone, and a deck's says that everything about it goes, but not whose deck it is or that its talebe's progress rows stay behind (the domain's progress-orphans). An edit of a cell is not confirmed. Holds." }

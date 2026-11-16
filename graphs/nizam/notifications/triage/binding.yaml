@@ -1,0 +1,68 @@
+# nizam.notifications.triage on the local stack: Bildirimler of nizam-web (:4001), read by the köşk nazımı of "Süleymaniye Köşkü", who arrives
+# by the menu's entry "Bildirimler" (the nizam navigation graph's entry frame:shell->notifications). The main story and three more
+# scenarios; what every walk of the flow shares, and the account of each scenario, are in walk.common.binding.yaml, whose header also says
+# what the data is and what is not walkable. NOT RUN in the writing phase.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/notifications/triage \
+#     --bind graphs/nizam/notifications/triage/binding.yaml --cover transitions --out <dir>
+schema: delurio-graph/0
+kind: binding
+extends: walk.common.binding.yaml
+flow: nizam.notifications.triage
+
+scenarios:
+  # The main story: three unread notices of twenty-six, Okunmamış, the chip Yasaklar, one mark, Tümü, the chip Tümü, the next page, every
+  # mark (e2e notifications#1 to #5 pin the same page; they are not replayed).
+  triage:
+    given: { read: ok, scope: kosk, holds: several, pages: several, answer: ok }
+    as: koskNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->notifications' }
+    vars: { person: koskNazim }
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, koskNazim, --set, triage]
+        expect: 'ready: triage total=26 unread=3'
+    teardown:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+        expect: 'removed'
+
+  # Exactly one unread notice: marking it leaves nothing unread (markingLast) and the button disabled.
+  lastUnread:
+    given: { read: ok, scope: kosk, holds: one, pages: one, answer: ok }
+    as: koskNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->notifications' }
+    vars: { person: koskNazim }
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, koskNazim, --set, last]
+        expect: 'ready: last total=3 unread=1'
+    teardown:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+        expect: 'removed'
+
+  # Every notice read: the button is disabled from the start, no badge, no "Okundu say", no number in the menu; Okunmamış says there is nothing.
+  allRead:
+    given: { read: ok, scope: kosk, holds: allRead, pages: one, answer: ok }
+    as: koskNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->notifications' }
+    vars: { person: koskNazim }
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, koskNazim, --set, allRead]
+        expect: 'ready: allRead total=3 unread=0'
+    teardown:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+        expect: 'removed'
+
+  # No notice at all: "Bildirim yok", the tabs at 0 and no button.
+  empty:
+    given: { read: ok, scope: kosk, holds: nothing, pages: one, answer: ok }
+    as: koskNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->notifications' }
+    vars: { person: koskNazim }
+    setup:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, up, koskNazim, --set, empty]
+        expect: 'ready: empty total=0 unread=0'
+    teardown:
+      - run: [node, ../nizam/notifications/triage/triage.mjs, down, koskNazim]
+        expect: 'removed'

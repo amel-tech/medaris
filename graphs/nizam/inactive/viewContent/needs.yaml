@@ -1,0 +1,118 @@
+# What must exist for a başnazım who opens the content of a scope that has no manager: nizam.inactive.viewContent, written on 15 Nov 2026
+# in the format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story; none is read off what the page
+# does today. Nothing here comes from planned.md: no planned feature (P-nn) names this button. "a1" to "a7" below are the seven
+# assertions of apps/nizam/e2e/inactive.e2e.ts#10, in the order the test makes them: a1 the medrese row has no button (L358), a2 the
+# köşk opens (L367), a3 one audit row (L368), a4 the köşk opens again (L374), a5 two audit rows (L375), a6 the course opens on its
+# curriculum (L382), a7 one audit row for the course (L387).
+#
+# For the orchestrator's gaps merge. missing (no code, or code that does the opposite): openings-found-in-the-audit-page (VIEWC-3),
+# list-follows-the-refusal (VIEWC-1), one-press-one-opening (VIEWC-2), medaris-nazim-opens-what-they-may (VIEWC-4, decision D1),
+# medaris-nazim-finds-the-page (F-W2-1), refusal-is-announced (F-X-4, F-X-5). unwalked (code, no e2e and no replay can walk it):
+# other-refusals-are-told. The gaps are the same ones the findings of ui.yaml name; none has a Linear issue.
+kind: needs
+flow: nizam.inactive.viewContent
+status: proposed
+
+needs:
+  - id: open-a-passive-scope
+    need: >-
+      The başnazım can open the content of a köşk or a course that has no manager, which is closed to everyone else, to read what is
+      there and decide who should manage it; the page they land on is the scope's own management page.
+    drawn: [listed, kosk_opened, course_curriculum_opened, row-opens-its-own-page, opens-only-while-passive]
+    built:
+      - action: medaris.api:viewInactiveScope
+      - route: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:65
+      - route: apps/nizam/features/inactive-scopes/present.ts:68
+    walked:
+      - e2e: apps/nizam/e2e/inactive.e2e.ts
+        check: 'inactive#10 (a2, a4, a6)'
+      - replay: kosk
+      - replay: course
+
+  - id: every-opening-is-on-the-record
+    need: >-
+      Each time the content of a passive scope is opened, the audit log gets one line that says who opened which scope and when. Two
+      openings are two lines, and an opening that is refused leaves none.
+    drawn: [recording, viewFailed, opens-only-while-passive]
+    built:
+      - action: medaris.api:viewInactiveScope
+      - route: apps/tedrisat/src/inactive-scope/inactive-scope.repository.ts:358
+    walked:
+      - e2e: apps/nizam/e2e/inactive.e2e.ts
+        check: 'inactive#10 (a3, a5, a7)'
+      - replay: kosk # one row for the köşk
+      - replay: course # one row for the course
+      - replay: koskAgain # the first opening is made through the API, not the page: two rows, not one
+      - replay: gone # the refused press writes none
+
+  - id: openings-found-in-the-audit-page
+    need: >-
+      An opening of passive content is found in the audit page under the kind that stands for reading closed content ("İçerik okuma"),
+      not only among all the rows.
+    drawn: [recording]
+    missing: none # VIEWC-3: written as inactive_scope.view, which the page files under OTHER; the kind lists scope.passive_open, written by nothing for this button; no Linear issue
+
+  - id: medrese-has-no-open-button
+    need: >-
+      A passive medrese offers no way to open its content from this list, because Nizam has no page of a medrese to open.
+    drawn: [listed, medrese-has-no-button]
+    built:
+      - route: apps/nizam/features/inactive-scopes/present.ts:68
+    walked:
+      - e2e: apps/nizam/e2e/inactive.e2e.ts
+        check: 'inactive#10 (a1)'
+      - replay: madrasah # with --absent: the button of the medrese's row is not there while the köşk's and the course's are
+
+  - id: refusal-says-so
+    need: >-
+      When the scope was given a manager after the list was read, the press is refused, nothing is written, and the person is told
+      that the scope is no longer passive.
+    drawn: [viewFailed, recording]
+    built:
+      - action: medaris.api:viewInactiveScope
+      - route: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:72
+    walked:
+      - replay: gone # no e2e and no unit spec draws the toast
+
+  - id: list-follows-the-refusal
+    need: >-
+      After a press is refused because the scope has a manager now, the list shows it: the row is gone and the person is not left
+      with two buttons that are both refused.
+    drawn: [viewFailed]
+    missing: none # VIEWC-1: the failure branch never re-reads the list; no Linear issue
+
+  - id: refusal-is-announced
+    need: >-
+      A refused press is told to a screen-reader user in the region they are in, with a role that announces it, and in the page's
+      language.
+    drawn: [viewFailed]
+    missing: none # F-X-4 and F-X-5: a sticky sonner toast with no role, in a region labelled in English; no Linear issue
+
+  - id: other-refusals-are-told
+    need: >-
+      A refusal that is not "no longer passive" (the person may not do it, or the server failed) is told in its own sentence.
+    drawn: [viewFailed]
+    built:
+      - route: apps/nizam/features/inactive-scopes/present.ts:76
+    # walked: nothing. The unit spec apps/nizam/test/inactive-scopes.spec.tsx maps the codes to the messages; no e2e and no replay draws
+    # the toast, and the stack cannot make tedrisat answer 403 to the başnazım or fail on request.
+
+  - id: one-press-one-opening
+    need: >-
+      One press writes one line and opens one page: while the page is on its way the row stays busy, so that a second press cannot
+      write a second line.
+    drawn: [recording]
+    missing: none # VIEWC-2: the busy state ends when the answer arrives, before the navigation; from the code, not seen; no Linear issue
+
+  - id: medaris-nazim-opens-what-they-may
+    need: >-
+      A Medaris nazımı who holds only the permission to manage passive scopes is shown "İçeriği gör" only where the page it opens
+      will let them in, and no line is written for a page they are refused (decision D1 of the flow).
+    drawn: [listed]
+    missing: none # VIEWC-4: from the code; what the destination does for them was not seen; no Linear issue
+
+  - id: medaris-nazim-finds-the-page
+    need: >-
+      A Medaris nazımı who may manage passive scopes finds Pasif kapsamlar in their menu and does not have to know its address.
+    drawn: [listed]
+    missing: none # F-W2-1: the entry is in the başnazım's menu only (lib/shell-nav.ts:178-186); no Linear issue

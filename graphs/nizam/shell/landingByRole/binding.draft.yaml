@@ -1,0 +1,26 @@
+# nizam.shell.landingByRole, a hoca of a course that is still a draft: the row says "Taslak" and carries no number of talebe
+# (assignments#1 a4). It takes no transition the main file's `hoca` does not, so it is walked on its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/shell/landingByRole \
+#     --bind graphs/nizam/shell/landingByRole/binding.draft.yaml --to nazarList --absent --out <dir>
+# The seed has no draft course, and the seeded müderris is not touched: the walk makes a draft course of its own, in the seed's second
+# köşk, with the spare talebe account H as its one hoca (so H holds one role and the list is that one row), and removes it. H is
+# taken because no other writer of this batch was told to use it; a walk that finds H busy changes the letter here. `course.mjs`
+# makes the course through the API as the köşk's nazım, keeps its ids in graphs/.local/made/landing-draft.json and removes the course
+# (and with it every role row in it, deleteAssignmentsIn) as the başnazım. Both commands are safe to run twice, so a walk that died
+# before its teardown leaves nothing behind for the next one. Run under the replay lock. NOT RUN.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.landingByRole
+
+scenarios:
+  draft:
+    given: { address: root, person: nazarOnly, tasks: draft, read: ok }
+    as: applicantH
+    open: '{nizam}/'
+    setup:
+      - run: [node, helpers/course.mjs, make, landing-draft, --draft, --weeks, '1', --lessons, '1', --hoca, APPLICANT_H]
+        expect: '"tag":"landing-draft"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, landing-draft]
+    vars: { acct: APPLICANT_H, held: '"role":"MUDERRIS"', chief: 'false' }

@@ -1,0 +1,222 @@
+# What must exist for the köşk's nazım to appoint a ders nazırı from İzinler, give them permissions and an end, change them, take the post away, and be refused: the flow's product
+# list (LAYOUT.md section 7). Each need is what the product must do, from the flow's story (FLOWS.md), the inventory's findings (F-W4-17, F-X-20, F-X-3) and the flow's own (GRANTS-1 to
+# GRANTS-6), and from the findings it shares with nazar's hoca pages (CAPPOINT-n, CNP-n, CNDIS-n), not from what the page does today. Read by people for now: no checker runs on this file yet.
+# Nothing planned in planned.md belongs to this flow.
+#
+# For the orchestrator's gaps merge (nothing here was replayed; the e2e checks of apps/nizam/e2e/grants.e2e.ts, the unit spec apps/nizam/test/kosk-grants.spec.tsx and the API's own e2e named
+# under `walked` are the only runs, and the replay scenarios of binding.yaml, binding.gone.yaml, binding.own.yaml, binding.chief.yaml and binding.note.yaml are written and not run):
+#   missing:  warn-before-naming-oneself (none), a-refused-write-reads-the-list-again (none), text-that-is-no-address-is-told (none), kaydet-says-why-it-is-off (none),
+#             the-count-is-announced (none), a-post-with-no-permission-reads-izin-yok (none), the-tab-names-the-kosk (none), the-end-shows-its-hour (none),
+#             the-dialogs-open-on-their-first-field (none), a-dismissal-names-who-stands-in-the-way (none)
+#   unwalked: revoke-is-refused-while-appointees-hold-posts (the API's own e2e and the replay scenario `handedOn`, not run; no web e2e), the-nazim-does-not-edit-his-own-post-the-chief-may
+#             (a unit spec and the API's own e2e; the replay scenarios `own` and `chief` are written, not run; no web e2e), a-stranger-leaves-no-audit-row (read from the code only, GRANTS-6),
+#             the-list-says-which-courses-it-leaves-out (grants#1 carries it as written, but with a seeded post that lapses on 2026-12-31: F-X-20; the replay scenario `note` is written, not run)
+kind: needs
+flow: nizam.grants.appoint
+status: proposed
+
+needs:
+  - id: list-of-posts
+    need: >-
+      The köşk's nazım reads, in one table, who holds a ders nazırı post in the köşk's own courses: the person (name and address), the course, how many permissions and which, when the
+      post ends (or that it does not), who gave it and on which day. A köşk with no post says so, and the list is read again after every write.
+    drawn: [listed, rosterTable, emptyLine, rowPerson, rowAddress, rowCourse, rowCount, rowNames, rowNever, rowEnd, rowSameDay, rowGiver, rowGiverDay, count]
+    built:
+      - action: medaris.api:listKoskGrants
+      - route: apps/nizam/features/grants/components/grants-view.tsx:206
+    walked:
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#1' # a1-a8: date-bound, the seeded post ends 2026-12-31 and the list is empty after that day (F-X-20); the replay's `member` scenario starts from a post with an end 30 days ahead
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#8' # a11, a12: after the dismissal the line "Henüz ders nazırı yok." is there
+      - e2e: apps/tedrisat/test/e2e/kosk-grants.e2e.spec.ts # :298, the list, the courses and the codes the caller may hand out
+      - test: apps/nizam/test/kosk-grants.spec.tsx # :234-303, the row, "siz", the empty line, the error state
+
+  - id: the-list-says-which-courses-it-leaves-out
+    need: >-
+      A köşk that hosts a medrese's courses is told, on the page, that those posts are the medrese's staff's to give and which courses they are; the select of the dialog offers only the köşk's own.
+    drawn: [madrasahNote, courseField]
+    built:
+      - route: apps/nizam/features/grants/present.ts:174
+      - route: apps/nizam/features/grants/components/grants-view.tsx:226
+    walked:
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#1' # a9-a10 (the note), and grants#4 a9-a10 (the select lists the köşk's own course and not the medrese's)
+    # unwalked as a replay: `binding.note.yaml` opens the seed's first köşk and is written, not run
+
+  - id: find-by-exact-address
+    need: >-
+      The nazım finds a person by their exact e-mail address in the realm's directory (which holds people who never opened the app), sees who was found by name and address before doing anything,
+      and is told when no account has the address and when the directory does not answer; nobody is chosen from an unknown address.
+    drawn: [asking, searching, picked, emailField, emailHelp, emailNobody, emailDown, searchingStatus, chosenRegion, chosenTitle, chosenName, chosenAddress, chosenAnnounce, removePerson]
+    built:
+      - action: medaris.api:lookupUser
+      - route: apps/nizam/features/madrasahs/components/head-picker.tsx:53
+    walked:
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#4' # a2, a3: the unknown address is told, and the person found is chosen (`chosen-head`)
+
+  - id: appoint-with-course-permissions-and-an-end
+    need: >-
+      The nazım makes a person the ders nazırı of one of the köşk's own courses with the permissions he ticks (only ones he holds himself) and, if he wants, an end; the post and its permissions
+      end together, the appointment is written to the audit log, and the list says what was given. Nothing is sent until a person, a course and at least one permission are there.
+    drawn: [appointing, ready, listed, courseField, permSession, permEnrollment, endField, summary, save, toastAssignedTitle, toastAssignedBody, rowCount, rowNames, rowEnd, rowGiver]
+    built:
+      - action: medaris.api:createKoskGrant
+      - route: apps/nizam/features/grants/components/grant-dialog.tsx:102
+      - route: apps/nizam/features/grants/present.ts:220
+    walked:
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#4' # a4-a15: "Kaydet" off, 21 boxes, "2 izin seçili", an end typed, the row says "2 izin" and "(siz)", the post and each grant end at the same instant, the audit row
+      - e2e: apps/tedrisat/test/e2e/kosk-grants.e2e.spec.ts # :314-385, the post, the grants, the end, the giver, the audit row, the refusals
+      - test: apps/nizam/test/kosk-grants.spec.tsx # :111-141, what "Kaydet" needs
+
+  - id: edit-the-whole-set-and-the-end
+    need: >-
+      The nazım opens a post, sees what the person holds and when it ends, changes the permissions and the end, and saves: what is ticked is what the person holds from now on, what stays keeps its
+      giver and its date, and the post ends with its permissions. A post is edited to something, never to nothing: no permission, no save.
+    drawn: [editReady, editNone, editPast, saving, editButton, cardName, cardAddress, cardLine, permRecording, endField, endError, toastEditedTitle, toastEditedBody]
+    built:
+      - action: medaris.api:updateKoskGrant
+      - route: apps/nizam/features/grants/components/grant-dialog.tsx:114
+    walked:
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#5' # STALE: a4 and a13 type 2026-11-15T12:00, which is past from 15 Nov 2026 12:00 Istanbul (F-X-20); the replay types an end computed from now
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#6' # a1-a3: the scrim does not close it, an end in the past is told where it is typed and "Kaydet" is off, no permission and no save (2026-12-31T12:00 must stay ahead)
+      - e2e: apps/tedrisat/test/e2e/kosk-grants.e2e.spec.ts # :386-466, the whole set is replaced, null takes the end away, the refusals
+
+  - id: revoke-with-a-confirmation
+    need: >-
+      The nazım ends a post and every permission the person holds in the course at once, after a question that starts on "Vazgeç"; "Vazgeç" and a stray click change nothing; the dismissal is
+      written to the audit log and the list says "Henüz ders nazırı yok." when it was the last.
+    drawn: [revoking, dismissing, revokeButton, revokeDialog, revokeIntro, revokeEffect, revokeCancel, confirmRevoke, toastRevokedTitle, toastRevokedBody, emptyLine]
+    built:
+      - action: medaris.api:revokeKoskGrant
+      - route: apps/nizam/features/grants/components/revoke-dialog.tsx:288
+    walked:
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#7' # "Görevden al" is on whatever the date (MDRS-215: no version gate; the clock is fixed to 2026-10-02)
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#8' # the focus on "Vazgeç", the scrim keeps it, "Vazgeç" changes nothing, the confirmation ends the post and every grant, the audit row (the clock is fixed to 2026-10-05)
+      - e2e: apps/tedrisat/test/e2e/kosk-grants.e2e.spec.ts # :468-540, the post and the grants end, rows kept as history, 404 for a post that is gone
+
+  - id: revoke-is-refused-while-appointees-hold-posts
+    need: >-
+      A ders nazırı who has appointed others cannot be taken out of post while they hold theirs: the refusal says so and nothing is written. The nazım is told before he confirms, and is shown
+      who stands in the way (see a-dismissal-names-who-stands-in-the-way).
+    drawn: [dismissing, revoking, toastRevokeFailed, toastHandedOn]
+    built:
+      - action: medaris.api:revokeKoskGrant
+      - route: apps/nizam/features/grants/present.ts:243
+    walked:
+      - e2e: apps/tedrisat/test/e2e/kosk-grants.e2e.spec.ts # :507, 409 DISMISS_SEAT_HANDED_ON, then the appointee first and the holder after; no web e2e does it, and the replay scenario `handedOn` is written and not run
+
+  - id: the-nazim-does-not-edit-his-own-post-the-chief-may
+    need: >-
+      The köşk's nazım cannot widen or lengthen his own post (a co-nazım or the başnazım may; the server refuses him with SELF_GRANT_REFUSED), so his own row has no "İzinleri düzenle"; he may
+      still end it. The başnazım is the one person who may rewrite his own post and the page offers it to him on every row.
+    drawn: [editButton, revokeButton, listed]
+    built:
+      - route: apps/nizam/features/grants/components/grants-view.tsx:181
+      - route: libs/common/src/authz/self-grant.guard.ts:67
+    walked:
+      - test: apps/nizam/test/kosk-grants.spec.tsx # :285, the viewer's own post has no edit button and the başnazım keeps it (MDRS-108)
+      - e2e: apps/tedrisat/test/e2e/self-grant.e2e.spec.ts # :613, a nazım cannot widen or lengthen his own post, a co-nazım can
+
+  - id: no-right-to-the-page-says-the-same-for-a-403-and-a-404
+    need: >-
+      A person with no right to this köşk's İzinler (the Medaris nazımı with no grant, a nazım of another köşk), and an address that is no köşk, meet the same words, "Bu bölüm için izniniz yok":
+      the page never tells which köşks exist.
+    drawn: [refused, not_found, refusalTitle, refusalPage]
+    built:
+      - action: medaris.api:listKoskGrants
+      - route: apps/nizam/features/grants/reads.ts:142
+      - route: apps/nizam/app/kosks/[id]/izinler/page.tsx:32
+    walked:
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#2' # the Medaris nazımı: "Bu bölüm için izniniz yok" and no `grants` list
+      - e2e: apps/nizam/e2e/grants.e2e.ts
+        check: 'grants#3' # a made-up köşk id: the same screen
+
+  - id: a-stranger-leaves-no-audit-row
+    need: >-
+      A caller who has no right to the köşk's İzinler is refused before anything is written: unlike the köşk nazımları route, naming oneself on these three routes writes the audit row only after the
+      permission check passed.
+    drawn: [reading, refused]
+    built:
+      - route: apps/tedrisat/src/kosk/kosk-grants.controller.ts:90
+      - route: libs/common/src/authz/authz.guard.ts:84
+    # unwalked: no test asserts the order; GRANTS-6 reads it from the code
+
+  - id: a-refusal-is-worded
+    need: >-
+      A refused write says what is wrong in words for each code the server answers with: a person who holds a post already, a post that is gone, a code the nazım may not give, an unknown permission, a
+      course that is no longer the köşk's, an end in the past, an account that is gone, no right, and a post whose appointees are still in post; the toast stays until it is closed.
+    drawn: [toastAssignFailed, toastEditFailed, toastRevokeFailed, toastExists, toastGone, toastHandedOn, toastRefused]
+    built:
+      - route: apps/nizam/features/grants/present.ts:234
+    walked:
+      - test: apps/nizam/test/kosk-grants.spec.tsx # :143-175, the codes the page words, the generic sentence for the rest, and a sentence in all three languages
+
+  - id: warn-before-naming-oneself
+    need: >-
+      The dialog tells the nazım, beside the person found, that he cannot make himself a ders nazırı, and gives the refusal of the server its own sentence, so that a nazım is never told to try again
+      later when the answer is final.
+    drawn: [picked, ready, appointing, chosenName, toastRefused]
+    missing: none # GRANTS-1, decision D1
+
+  - id: a-refused-write-reads-the-list-again
+    need: >-
+      A write that is refused because the post is gone or already there closes its dialog and reads the list again, as the hoca's page does, so that the list never keeps a row that does not exist or lacks
+      one that does.
+    drawn: [ready, editReady, revoking, toastExists, toastGone, listed]
+    missing: none # GRANTS-2, decision D2
+
+  - id: text-that-is-no-address-is-told
+    need: >-
+      Text that cannot be an address is told in the field, on Enter and when the field is left, as the hoca's dialog does on Enter; an empty Enter is told too.
+    drawn: [asking, emailField, emailHelp]
+    missing: none # GRANTS-3
+
+  - id: kaydet-says-why-it-is-off
+    need: >-
+      "Kaydet" says what is missing while it is off (a person, a course, a permission, a fine end), in words a reader of the screen is given and tied to the button.
+    drawn: [asking, searching, picked, editNone, editPast, save]
+    missing: none # F-X-3, CAPPOINT-2, decision D3
+
+  - id: the-count-is-announced
+    need: >-
+      The count of the permissions ticked ("2 izin seçili", "0 izin seçili") is announced to a reader of the screen when a box is ticked, and says "İzin seçilmedi" for none as the hoca's dialog does.
+    drawn: [summary]
+    missing: none # CAPPOINT-3, CNP-4
+
+  - id: a-post-with-no-permission-reads-izin-yok
+    need: >-
+      A post that holds no permission (the hoca can make one from nazar's page) reads "İzin yok" in the list, as it does there, not "0 izin" with nothing under it.
+    drawn: [rowCount, rowNames]
+    missing: none # GRANTS-4
+
+  - id: a-dismissal-names-who-stands-in-the-way
+    need: >-
+      A row whose person has appointed others is marked, or the refusal names them, so that the nazım can end them first without reading the giver column of every row.
+    drawn: [revokeButton, toastHandedOn]
+    missing: none # GRANTS-5
+
+  - id: the-end-shows-its-hour
+    need: >-
+      The "Bitiş" cell of a post says the hour as well as the day, because the access ends at that hour and the dialog edits it.
+    drawn: [rowEnd, rowSameDay]
+    missing: none # CNP-2
+
+  - id: the-tab-names-the-kosk
+    need: >-
+      The tab's title and the page's own line name the köşk whose İzinler it is, so that two köşks' İzinler are told apart in the tabs and in the history.
+    drawn: [title, intro]
+    missing: none # F-W4-17
+
+  - id: the-dialogs-open-on-their-first-field
+    need: >-
+      "Ders nazırı ata" opens on its e-mail field and "İzinleri düzenle" on its first box, not on the close icon; the required fields are marked as required for a reader of the screen.
+    drawn: [assignDialog, editDialog, emailField, courseField]
+    missing: none # F-W2-12, F-W2-open-8

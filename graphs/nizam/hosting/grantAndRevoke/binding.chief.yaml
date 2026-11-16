@@ -1,0 +1,44 @@
+# nizam.hosting.grantAndRevoke, walked by the başnazım (SYSTEM_ADMIN) instead of the köşk nazımı. The page, the windows and the flow are
+# the same; what differs is what the data says: the granter's role is "Medaris başnazımı" (the audit row says SYSTEM_ADMIN), and a
+# withdrawal that hides the courses hides them at the platform's level (courses.archived_level = platform), so that the medrese's own
+# başmüderris cannot bring them back. The same scenario as binding.yaml's `grantsAndKeeps` with another person takes no transition of its
+# own, so `--cover transitions` of binding.yaml never walks it: it has this file.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay \
+#     graphs/nizam/hosting/grantAndRevoke --bind graphs/nizam/hosting/grantAndRevoke/binding.chief.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. The data is made and taken away as binding.yaml says; the başnazım is not made a nazım of the köşk
+# (a köşk's owner is not a nazım), so the page opens for them by the platform's own rights (`platform.hosting_grant` of the realm role).
+#
+# A Medaris nazımı holding platform.hosting_grant is the third person of the story and is not bound: see binding.yaml.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.hosting.grantAndRevoke
+
+scenarios:
+  chiefGrantsAndKeeps:
+    given: { read: ok, before: none, tabs: shown, options: some, courses: some, rest: none, answer: done }
+    as: systemAdmin
+    open: '{nizam}/kosks/{made.kosk}/ayarlar/barindirma'
+    setup:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, make, hosting, --held]
+        expect: '"tag":"hosting"'
+      - run: [node, helpers/course.mjs, make, hosting-ders, --madrasah, '{made.madrasah}', --kosk, '{made.kosk}', --weeks, '1', --lessons, '1', --hoca, MUDERRIS]
+        expect: '"tag":"hosting-ders"'
+      - run: [node, helpers/course.mjs, make, hosting-taslak, --madrasah, '{made.madrasah}', --kosk, '{made.kosk}', --weeks, '1', --lessons, '1', --draft, --hoca, MUDERRIS]
+        expect: '"tag":"hosting-taslak"'
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, withdraw, hosting, KEEP]
+        expect: 'walk-data withdraw hosting: withdrawn (KEEP)'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, hosting-ders]
+        expect: 'course remove hosting-ders'
+      - run: [node, helpers/course.mjs, remove, hosting-taslak]
+        expect: 'course remove hosting-taslak'
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, remove, hosting]
+        expect: 'walk-data remove hosting'
+    vars: { grantRole: SYSTEM_ADMIN, hideLevel: platform }
+
+# the two server actions are held while the busy state is checked; the walk never meets a refusal here
+states:
+  granting: { call: '{nizam}/kosks/*/ayarlar/barindirma' }
+  revoking: { call: '{nizam}/kosks/*/ayarlar/barindirma' }

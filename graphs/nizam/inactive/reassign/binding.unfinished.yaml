@@ -1,0 +1,43 @@
+# nizam.inactive.reassign, the end field half typed ("Bitiş tarihini ve saatini tamamlayın."): a native datetime-local reads "" until every
+# segment is filled and says so only in `validity.badInput`, so the window finds it when the field is left (assign-scope-dialog.tsx:157).
+# NOT RUN, like its sisters; see locators.binding.yaml for what every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/inactive/reassign \
+#     --bind graphs/nizam/inactive/reassign/binding.unfinished.yaml --cover transitions --out <dir>
+# It is a file of its own because an event is the binding's and not a scenario's: SET_END here types a day into the first segment of the
+# picker and leaves it by clicking the window's title, which a `fill` cannot do (Playwright's fill takes a whole value only). Which segment
+# a click on the field's centre focuses depends on the browser's locale (tr-TR: day, month, year, hour, minute); any one segment typed leaves
+# the value "" with badInput true, which is all the window asks. Not verified in a browser.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.inactive.reassign
+
+scenarios:
+  endUnfinished:
+    given: { read: ok, list: rows, lookup: found, endAt: unfinished, answer: assigned }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    setup:
+      - run: [node, ../nizam/inactive/reassign/scopes.mjs, down]
+        expect: 'inactive-reassign down'
+      - run: [node, ../nizam/inactive/reassign/scopes.mjs, up]
+        expect: 'inactive-reassign up'
+      - run: [node, helpers/course.mjs, make, inreassign, --hoca, OTHER, --weeks, '1', --lessons, '1']
+        expect: '"tag":"inreassign"'
+      - run: [node, ../nizam/inactive/reassign/scopes.mjs, passive]
+        expect: 'inactive-reassign passive'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, inreassign]
+        expect: 'course remove inreassign'
+      - run: [node, ../nizam/inactive/reassign/scopes.mjs, down]
+        expect: 'inactive-reassign down'
+    vars:
+      typed: '{secret.E2E_APPLICANT_G_EMAIL}'
+
+events:
+  SET_END:
+    - click: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)' }
+    - key: '1'
+    - key: '5'
+    - click: { css: '.mds-dialog__title' }

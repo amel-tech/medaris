@@ -1,0 +1,58 @@
+# What the walks of nizam.inactive.viewContent share: the scopes they read, where the page's nodes are found where role and name
+# cannot find them, and the addresses of the pages. Each scenario (binding.yaml, binding.madrasah.yaml, binding.again.yaml,
+# binding.gone.yaml) makes the same scopes in its `setup` and removes them in its `teardown`, so a walk that dies leaves
+# nothing the next one cannot clear. Nothing here changes data by itself.
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code and
+# the catalog (inactive-view.tsx, libs/ui/src/mds/table.tsx and button.tsx, sonner's own attributes); none was seen in a browser.
+#
+# The scopes, made by passive-scopes.mjs (this folder; by SQL, as apps/nizam/e2e/inactive-seed.ts does, because no route leaves a
+# course without its last müderris) under the tag viewContent and read from graphs/.local/made/viewContent.json:
+#   koskName     "Pasif köşk viewContent"       a köşk whose last nazım's term ran out on 30 Eylül 2026
+#   courseTitle  "Pasif ders viewContent"       a course of the köşk hostName, whose last müderris (the imam) ran out the same day
+#   madrasahName "Pasif medrese viewContent"    a medrese whose başmüderris ran out on 27 Eylül 2026
+#   goneName     "Devredilen köşk viewContent"  a köşk like the first, which `attend` gives a nazım while the page is open
+#   hostName     "Ev sahibi köşk viewContent"   the course's köşk, which has a nazım of its own and so is not listed
+# The list is global: rows of other scopes may stand beside these, so every node of a row is found by the scenario's own name
+# (`target`) and a button by its exact accessible name "İçeriği gör: <name>".
+#
+# The pages' addresses: Pasif kapsamlar is /pasif-kapsamlar. "İçeriği gör" on the köşk row pushes /kosks/<id>, where the başnazım
+# stays (kosk-entry.ts:47); on the course row it pushes .../courses/<id>/edit, which redirects to .../curriculum (F-X-19).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.inactive.viewContent
+
+# a wide window, so that the sidebar (the menu the walk enters by) is drawn and not the phone's sheet
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/viewContent.json }
+
+events:
+  # the person goes on to another page of the menu: Bildirimler, which every başnazım may open
+  NAVIGATE: [{ goto: '{nizam}/bildirimler' }]
+  # PRESS and CLOSE_TOAST are sent by nodes (the row's button and the toast's "Kapat"). ATTENDED_ELSEWHERE is bound in
+  # binding.gone.yaml only: it gives the köşk `gone` a nazım, and a walk of another scenario would attend a row it does not press.
+
+states:
+  listed: { url: '{nizam}/pasif-kapsamlar' }
+  recording: { url: '{nizam}/pasif-kapsamlar' }
+  viewFailed: { url: '{nizam}/pasif-kapsamlar' }
+  # the exits are checked by their address; the pages are the flows nizam.kosks.manage and nizam.courses.curriculum
+  kosk_opened: { url: '{nizam}/kosks/{koskId}' }
+  course_curriculum_opened: { url: '{nizam}/kosks/{made.host}/courses/{made.course}/curriculum' }
+  left: { url: '{nizam}/bildirimler' }
+
+nodes:
+  # the shell's <main>; the pages the walk leaves for have one too, so it is found by what only this page says (the h2 and the caption)
+  inactivePage: { role: main, hasText: 'Yöneticisi olmayan kapsamlar' }
+  # a row's first cell is <th scope=row> with the name in <bdi class="font-semibold"> and the kind in <bdi class="mds-caption"> under it
+  # (inactive-view.tsx:93-100); the column Son yönetici has no <bdi class="mds-caption">, only a <bdi> and a <span class="mds-caption">
+  rowName: { css: 'bdi.font-semibold:text-is("{target}")' }
+  rowKind: { css: 'tr:has(bdi.font-semibold:text-is("{target}")) bdi.mds-caption', hasText: '{kindText}' }
+  # the hidden <output> beside every "İçeriği gör" (empty while idle): the busy row's says "Yükleniyor"
+  viewBusyStatus: { css: 'tr:has(bdi.font-semibold:text-is("{target}")) output', hasText: 'Yükleniyor' }
+  # sonner's toast has no role: found by its own attributes and its words. The toast of another page's walk is dismissed on
+  # navigation (useDismissStaleToasts), and none is open when this one starts.
+  failedToast: { css: '[data-sonner-toast]', hasText: 'İçerik açılamadı' }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }

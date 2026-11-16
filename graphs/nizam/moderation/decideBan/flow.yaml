@@ -1,0 +1,453 @@
+# Yasaklamalar in nizam-web, read by the people above a course (the köşk's nazım, the Medaris nazım, the başnazım), who decide on an
+# open ban: lift it with a reason, or widen a course ban to the whole köşk. Two pages carry the same three words, and they do not behave
+# alike (read from the code of PR #394: apps/nizam/features/bans/components/{bans-view,all-bans-view,lift-dialog,extend-dialog}.tsx,
+# present.ts, actions.ts, reads.ts, app/kosks/[id]/yasaklamalar/page.tsx and app/yasaklamalar/page.tsx; and, for what each route does
+# and refuses, apps/tedrisat/src/ban/{ban.controller,ban.service,ban.repository,ban-codes,ban-tier,ban-authority}.ts):
+#   - the köşk's own list, /kosks/<id>/yasaklamalar (viewer `kosk`). "Yasağı kaldır" opens the lift dialog. "Köşkten de yasakla" opens
+#     NOTHING: one click calls createBan with scope KOSK from the ban's course, the person and the ban's own reason, and a toast says
+#     it is done (F-W5-1). Its route reads the person's roles (ban.service.ts:155-163) but only at that course, its köşk and its medrese.
+#   - the Medaris list, /yasaklamalar (viewer `chief`, the başnazım, or `medaris`, a Medaris nazım who holds platform.ban_scoped). The
+#     same lift dialog, and "Yasağı genişlet", which opens a dialog with a required reason and calls extendBan, a route that never
+#     reads the person's roles at all (ban.service.ts:270-312).
+#   - the lift is offered where the API says so (viewerMayLift): the permission of the ban's level AND a kademe that reaches the
+#     ban's. A ban Medaris placed shows "Bu yasağı yalnız Medaris yönetimi kaldırabilir." to a köşk nazım. A Medaris nazım holding only
+#     platform.ban_scoped lifts köşk bans and no course ban (ban-codes.ts:45-53), yet the note under a course row tells her that only the
+#     kademe that placed it or higher may (NDB-5).
+#   - nothing in either dialog is refused inline: a refusal is a toast of the sonner host that stays until closed, the dialog stays
+#     open, and the list is NOT read again, although the toast says "sayfayı yenileyin" (NDB-6, F-W5-3, F-X-4).
+#   - SECURITY (finding ban-staff-check-gaps, the domain's invariant ban-staff-cannot-be-barred holds: false). Placing a ban refuses a
+#     person who runs the course (BAN_TARGET_INVALID, createBan :155-163); extendBan, the Medaris list's widening, does not look
+#     (NDB-1), and appointing a hoca, a başmüderris, a köşk nazım or a Medaris nazım never looks at open bans. The graph draws what each
+#     route does: the one-click widening is refused for a person who runs THIS course (`answer: invalid`) and accepted for a person
+#     who runs another course of the köşk (`answer: done`, row `staff`); the Medaris dialog accepts both. escalateBan, the route the
+#     brief names, is nazar's widening to the medrese (nazar.bans.decide) and nizam never calls it; here the two widening routes are
+#     createBan (scope KOSK) and extendBan.
+#   - the list is read again after a lift or a widening and the pressed row's button is gone with it: the focus falls to the page, and the
+#     köşk's list also puts a skeleton in the table's place first (NDB-9, F-X-7, F-X-10).
+# E2E carried: bans#6 (the list, its two tab counts, "Hoca" and "Yeni", the lift where the kademe reaches, none and the note for a
+# Medaris nazım's ban), bans#7 (lift with a reason, Kaldırılan with who and why), bans#8 (one-click widening), the list half of bans#5
+# (the köşk-wide ban reads "Köşk" and "{ders} dersinden genişletildi"; its placing half is nizam.moderation.banStudent's), bans-medaris#5
+# (the widening dialog needs a reason; a köşk ban stands beside the course ban; audit `ban.extend`), #6 (a köşk row offers the lift and
+# no widening) and, in spirit, #7 (a Medaris nazım lifts: the walk lifts a köşk ban, not the course ban of the e2e, which needs
+# `ban.lift_course` at every course and only SQL gives it). bans#9 and bans-medaris#8 (the wrong persona sees "Bu bölüm için izniniz yok")
+# are nizam.shell.noAccessAndNotFound's; here that screen is the exit `no_access`.
+schema: delurio-graph/0
+kind: flow
+id: nizam.moderation.decideBan
+status: captured
+domain: medaris.api
+ui: nizam.moderation.decideBan
+title: Lift or widen a ban
+summary: >-
+  A person above the course opens Yasaklamalar and decides on an open ban. On the köşk's list the köşk nazım presses "Yasağı kaldır",
+  writes a reason in a dialog and sends it: the row moves to the Kaldırılan tab, which says who lifted it, when, and why; the talebe is
+  not told. She presses "Köşkten de yasakla" and the course ban is widened at once, with no question, the course ban's own reason
+  reused: a köşk ban stands beside it. On the Medaris list the başnazım and a Medaris nazım do the same through "Yasağı genişlet", which
+  asks for a reason of its own. The lift is hidden where the person's permission or kademe does not reach the ban, with a note that says
+  who can lift it. A ban lifted or gone meanwhile is a sticky error toast ("sayfayı yenileyin") and the dialog stays open; a lift the
+  caller may no longer make is another. The one-click widening is refused for a person who runs this course, and the Medaris dialog is
+  not (ban-staff-check-gaps).
+
+scope:
+  shows: >-
+    Yasaklamalar of a köşk for its nazım and the Medaris list for the başnazım and a Medaris nazım: the heading, the Etkin and
+    Kaldırılan tabs with their counts, the table of open bans with each row's actions and note, the lift dialog and the widening dialog,
+    the one-click widening and its busy button, the toasts of a decision, and the Kaldırılan tab as the place a lifted ban lands
+  world: open
+  outOfView:
+    - "placing a ban, from a course's Talebeler (BanDialog, 'Yasakla'): nizam.moderation.banStudent; the köşk-wide ban it can place reads on this page as 'Köşk · {ders} dersinden genişletildi'"
+    - "the Medaris list's search, its Kapsam chips, 'Daha fazla göster' and the Kaldırılan tab as a list in its own right: nizam.moderation.reviewBans"
+    - "the same lift, widening to the medrese and request for a permanent ban on a medrese's own Yasaklamalar: nazar.bans.decide; a medrese-wide ban shows on the Medaris list as a 'Köşk' row with no köşk (NDB-4)"
+    - "a request for a permanent ban, and the Keycloak disable and device recognition the product plans (P-02, P-35): nizam.moderation.decidePermanentBan (planned); needs.yaml"
+    - "the başnazım or a Medaris nazım reading a köşk's own list (the route lets them; the dialog then names 'köşk nazımı' for a Medaris nazım, NDB-8): not walked"
+    - "a refused person: bans#9 and bans-medaris#8 are nizam.shell.noAccessAndNotFound's; here the screen is the exit `no_access`"
+    - "the failed read of the list ('Yasaklar yüklenemedi' with 'Yeniden dene'): the exit `load_failed`, which the stack cannot make"
+    - "an ended session: every action answers 'unauthenticated' and the person is sent to sign in (realm.auth.signIn)"
+    - "the person's seat: a lift gives access back with no word to the talebe, a widening tells the seats it newly bars 'erişimin kaldırıldı' (tedris.account.notifications)"
+
+decisions:
+  D1:
+    question: >-
+      Should widening a ban refuse a person who runs a course, as placing one does? createBan refuses a hoca, a ders nazırı, a köşk nazım
+      or a Medaris nazım of THIS course, köşk or medrese (BAN_TARGET_INVALID), but not one who runs another course of the köşk; extendBan
+      (the Medaris dialog) refuses nobody, and appointing a hoca, a başmüderris, a köşk nazım or a Medaris nazım looks at no ban
+      (ban-staff-check-gaps, NDB-1).
+    recommend: >-
+      Yes, on both routes: read the person's roles at every course of the köşk before a KOSK ban is placed, from createBan and from
+      extendBan alike, and answer 400 BAN_TARGET_INVALID (Bans.errors.BAN_TARGET_INVALID is worded: 'Bu kişi yasaklanamaz.'). Independently,
+      refuse to name a person who holds an open ban to a post that cannot be barred, as a ders nazırı and a medrese nazır are refused.
+    affects: [extending, widening]
+  D2:
+    question: >-
+      Should the one-click widening stay one click? It asks nothing, reuses the course ban's reason, writes the audit row `ban.create`
+      where the Medaris dialog writes `ban.extend`, and carries no ban id, so a ban lifted behind the page is widened all the same (NDB-2).
+    recommend: >-
+      Open the same dialog the Medaris list has (the page already has ExtendDialog), and send the ban's id to extendBan so that a ban
+      lifted meanwhile is 409 BAN_ALREADY_LIFTED and the audit row says what happened (F-W5-1).
+    affects: [widening]
+  D3:
+    question: >-
+      After a refusal the dialog stays open and the list is not read again, while the toast says to refresh the page (NDB-6). Should a
+      'moved' refusal (BAN_ALREADY_LIFTED, BAN_NOT_FOUND) close the dialog and read the list, as nazar's does?
+    recommend: >-
+      Yes: close the dialog and read the list again for the two 'moved' codes; keep it open for a refusal the person can mend.
+    affects: [lifting, extending]
+
+context:
+  viewer:
+    values: [kosk, chief, medaris]
+    initial: any
+    say:
+      kosk: "the köşk's nazım, on the köşk's list: she may lift what her permission and kademe reach (not what Medaris placed), and widens in one click"
+      chief: "the başnazım, on the Medaris list: she may lift anything, and widens through a dialog with a reason"
+      medaris: "a Medaris nazım holding platform.ban_scoped, on the Medaris list: she lifts a köşk ban and no course ban, and widens through the dialog"
+  read:
+    values: [ok, forbidden, missing]
+    initial: any
+    say:
+      ok: "the API answers the list"
+      forbidden: "the API refuses the person (a köşk nazım at the Medaris list, a müderris at a köşk's list): the screen 'Bu bölüm için izniniz yok'"
+      missing: "there is no such köşk: the same screen"
+  row:
+    values: [low, staff, platform, wide, none]
+    initial: any
+    say:
+      low: "the list holds an open course ban a hoca placed on an ordinary talebe: it offers the lift (to who may) and the widening"
+      staff: "the same, but the person has since been named hoca of a course of the köşk: the list does not know, and the widening is offered all the same"
+      platform: "the list holds an open course ban Medaris administration placed: no lift for a köşk nazım or a Medaris nazım, the note says why; the widening is offered"
+      wide: "the list holds an open köşk ban, the widest scope there is: it offers the lift and never the widening"
+      none: "no ban is open: the list says 'Etkin yasak yok'"
+  answer:
+    values: [done, moved, refused, invalid, failed]
+    initial: any
+    say:
+      done: "the API takes the decision"
+      moved: "the ban was lifted or is gone meanwhile: BAN_ALREADY_LIFTED or BAN_NOT_FOUND"
+      refused: "the API refuses the caller: BAN_LIFT_FORBIDDEN on the lift, BAN_FORBIDDEN on a widening"
+      invalid: "the one-click widening names a person who runs THIS course: BAN_TARGET_INVALID"
+      failed: "anything else: the reason is refused (VALIDATION_ERROR), a malformed id (HTTP_400), a course that is gone (COURSE_NOT_FOUND)"
+  after:
+    values: [more, none]
+    initial: any
+    say:
+      more: "other open bans are still on the list once the lift is made"
+      none: "the lifted ban was the last open one: the list is empty once the lift is made (only the köşk's list can be emptied: the Medaris list is every köşk's)"
+  kind:
+    values: [lift, extend, widen]
+    initial: lift
+    say:
+      lift: "the dialog is 'Yasağı kaldır', or the last decision pressed was a lift"
+      extend: "the dialog is 'Yasağı genişlet'"
+      widen: "the last decision pressed was the one-click 'Köşkten de yasakla'"
+  touched: { values: [true, false], initial: false } # the reason field was left while empty: its error is drawn
+  drained: { values: [true, false], initial: false } # the lift just made left the list empty
+  liftedHere: { values: [true, false], initial: false } # a ban was lifted in this visit: the Kaldırılan tab holds it
+  widenedHere: { values: [true, false], initial: false } # a ban was widened in this visit: its person has a köşk row beside the course row
+  last:
+    values: [nothing, lifted, extended, widened, moved, refused, invalid, failed]
+    initial: nothing
+    say:
+      nothing: "no decision has been made in this visit, or its toast is gone"
+      lifted: "a ban was just lifted (a toast of 6 seconds)"
+      extended: "a ban was just widened through the dialog (6 seconds)"
+      widened: "a ban was just widened with one click (6 seconds)"
+      moved: "the ban had been lifted or was gone: an error toast that stays until closed; the dialog stays open"
+      refused: "the API refused the caller: an error toast that stays until closed"
+      invalid: "the one-click widening was refused for a person who runs the course: an error toast that stays"
+      failed: "any other refusal: an error toast that stays"
+
+guards:
+  # the API's viewerMayLift and viewerMayExtend as the page draws them (present.ts:137-148, ban.service.ts:639-667)
+  mayLift: "(viewer == 'chief' and row != 'none') or (viewer == 'kosk' and row in ['low', 'staff', 'wide']) or (viewer == 'medaris' and row == 'wide')"
+  mayWiden: "row in ['low', 'staff', 'platform']"
+  showLifted: "liftedHere"
+
+effects:
+  openLift: { set: { kind: lift, touched: false, last: nothing } }
+  openExtend: { set: { kind: extend, touched: false, last: nothing } }
+  startWiden: { set: { kind: widen, last: nothing } }
+  leftEmpty: { set: { touched: true } }
+  lifted: { set: { last: lifted, drained: false, liftedHere: true } } # the row left the Etkin tab; other bans remain
+  liftedLast: { set: { last: lifted, drained: true, liftedHere: true } } # ... and it was the last one
+  extended: { set: { last: extended, widenedHere: true } }
+  widened: { set: { last: widened, widenedHere: true } }
+  moved: { set: { last: moved } }
+  refused: { set: { last: refused } }
+  invalid: { set: { last: invalid } }
+  failed: { set: { last: failed } }
+
+failures:
+  openedKosk:
+    from: listKoskBans
+    forbidden: [BAN_FORBIDDEN]
+    missing: [KOSK_NOT_FOUND]
+  openedAll:
+    from: listAllBans
+    forbidden: [BAN_FORBIDDEN]
+  lifting:
+    from: liftBan
+    moved: [BAN_NOT_FOUND, BAN_ALREADY_LIFTED]
+    refused: [BAN_LIFT_FORBIDDEN]
+    failed: [VALIDATION_ERROR, HTTP_400]
+  extending:
+    from: extendBan
+    moved: [BAN_NOT_FOUND, BAN_ALREADY_LIFTED]
+    refused: [BAN_FORBIDDEN]
+    failed: [VALIDATION_ERROR, HTTP_400]
+  widening:
+    from: createBan
+    refused: [BAN_FORBIDDEN]
+    invalid: [BAN_TARGET_INVALID]
+    failed: [COURSE_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+
+# The story the köşk's list tells first: the köşk nazım lifts one ban with a reason, reads it on Kaldırılan with who and why, and widens
+# another course ban to the whole köşk with one click.
+main:
+  given: { viewer: kosk, read: ok, row: low, answer: done, after: more }
+  events: [DONE, LIFT, FILL_IN, SUBMIT, DONE, OPEN_LIFTED, OPEN_ACTIVE, WIDEN_NOW, DONE]
+
+initial: entering
+
+states:
+  entering:
+    title: Yasaklamalar is opened at one of two addresses
+    description: >-
+      A step with no screen of its own: the köşk's list at /kosks/<id>/yasaklamalar (the köşk menu's "Yasaklamalar", a ban notification's
+      link) or the Medaris list at /yasaklamalar (the menu's "Yasaklamalar" under Denetim, the Medaris home's bans card). `viewer` says
+      which: the köşk nazım is on the first, the başnazım and a Medaris nazım on the second.
+    always:
+      - { guard: "viewer == 'kosk'", target: openedKosk, source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:28" }
+      - { target: openedAll, source: apps/nizam/app/yasaklamalar/page.tsx:23 }
+    source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:26"
+
+  openedKosk:
+    title: The köşk's list is read
+    description: >-
+      The page reads the köşk and GET /kosks/:id/bans (the open bans with the counts of both tabs) on the server behind a skeleton
+      (loading.tsx), and the caller. The köşk's nazım, a Medaris nazım holding platform.ban_scoped or platform.ban_account and the
+      başnazım read it; anyone else (a müderris) and a köşk that is not there get the same screen, "Bu bölüm için izniniz yok" (exit
+      no_access; bans#9, which nizam.shell.noAccessAndNotFound walks). Any other failure draws "Yasaklar yüklenemedi" with "Yeniden dene"
+      in the page (exit load_failed).
+    invoke: { action: listKoskBans }
+    on:
+      DONE:
+        - { guard: "row == 'none'", target: empty, source: "apps/nizam/features/bans/components/bans-view.tsx:301" }
+        - { target: listed, source: "apps/nizam/features/bans/components/bans-view.tsx:295" }
+      FAIL.forbidden: { guard: "read == 'forbidden'", target: no_access, source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:35" }
+      FAIL.missing: { guard: "read == 'missing'", target: no_access, source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:34" }
+    source: "apps/nizam/app/kosks/[id]/yasaklamalar/page.tsx:30"
+
+  openedAll:
+    title: The Medaris list is read
+    description: >-
+      The page reads GET /bans (the first twenty open bans of every köşk, newest first, with platform-wide counts) and the caller on the
+      server behind a skeleton. The başnazım and a Medaris nazım holding platform.ban_scoped or platform.ban_account read it; a köşk
+      nazım is refused with "Bu bölüm için izniniz yok" (exit no_access; bans-medaris#8, nizam.shell.noAccessAndNotFound's). The list
+      holds every scope the API has, a medrese-wide ban too, which it draws as a "Köşk" row with no köşk name (NDB-4).
+    invoke: { action: listAllBans }
+    on:
+      DONE:
+        - { guard: "row == 'none'", target: empty, source: "apps/nizam/features/bans/components/all-bans-view.tsx:340" }
+        - { target: listed, source: "apps/nizam/features/bans/components/all-bans-view.tsx:330" }
+      FAIL.forbidden: { guard: "read == 'forbidden'", target: no_access, source: apps/nizam/app/yasaklamalar/page.tsx:25 }
+    source: apps/nizam/app/yasaklamalar/page.tsx:24
+
+  listed:
+    title: The open bans are listed
+    description: >-
+      The page: the heading "Yasaklamalar", a lead paragraph, "{n} yeni yasak" (the bans of the last day), the tabs Etkin and Kaldırılan
+      with their counts, and the table of open bans, newest first, with a "Yeni" badge on a ban of the last 24 hours. On the Medaris list
+      a line above the table counts them ("{n} etkin yasak"). Each row offers what the API says the caller may do and the buttons are
+      absent, not disabled: "Yasağı kaldır" (`mayLift`), "Köşkten de yasakla" on the köşk's list or "Yasağı genişlet" on the Medaris
+      list (`mayWiden`: an open course ban whose person holds no open köşk ban). A row that cannot be lifted says who can instead:
+      "Bu yasağı yalnız Medaris yönetimi kaldırabilir." under a ban Medaris placed, "Bu yasağı yalnız onu koyan kademe ya da üstü
+      kaldırabilir." under any other, which is the wrong reason for a Medaris nazım who holds no course permission (NDB-5). The last
+      decision's toast stands in the page for its time (`last`). Findings read here: F-W5-1 (the one-click widening asks nothing),
+      F-W5-10 (the list and the counts change after a decision with no announcement, NDB-10), F-X-7 and NDB-9 (the pressed row's button
+      is gone and the focus falls to the page), NDB-5, NDB-4, NDB-8, ban-staff-check-gaps (the row `staff` offers the widening).
+    by: human
+    goal: true
+    on:
+      LIFT: { guard: mayLift, target: form, effect: [openLift], say: "they press 'Yasağı kaldır' on a row", source: "apps/nizam/features/bans/components/bans-view.tsx:253" }
+      WIDEN_NOW: { guard: "viewer == 'kosk' and mayWiden", target: widening, effect: [startWiden], say: "they press 'Köşkten de yasakla' on a row: nothing is asked", source: "apps/nizam/features/bans/components/bans-view.tsx:264" }
+      WIDEN: { guard: "viewer != 'kosk' and mayWiden", target: form, effect: [openExtend], say: "they press 'Yasağı genişlet' on a row", source: "apps/nizam/features/bans/components/all-bans-view.tsx:303" }
+      OPEN_LIFTED: { guard: showLifted, target: liftedTab, say: "they open the Kaldırılan tab to read what they lifted", source: "apps/nizam/features/bans/components/bans-view.tsx:106" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: "apps/nizam/features/bans/components/bans-view.tsx:295"
+
+  empty:
+    title: No ban is open
+    description: >-
+      The table says "Etkin yasak yok" in its one cell, the Etkin count reads 0 and the "yeni yasak" line is gone. A toast of the last
+      decision may still be up. Only the köşk's list can be emptied by a lift; the Medaris list holds every köşk's bans.
+    by: human
+    on:
+      OPEN_LIFTED: { guard: showLifted, target: liftedTab, say: "they open the Kaldırılan tab", source: "apps/nizam/features/bans/components/bans-view.tsx:106" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: "apps/nizam/features/bans/components/bans-view.tsx:301"
+
+  form:
+    title: The reason dialog, the button off
+    description: >-
+      A form dialog over the page (the page behind is inert), either "Yasağı kaldır" or "Yasağı genişlet" (`kind`). Over the title stands
+      the course the ban sits on. The lift dialog names the person (name and address), shows the ban in a list (Kapsam, Yasaklayan
+      with name, role and day, Gerekçe), then one sentence: "Bu yasağı {rol} koydu; {siz} olarak kaldırabilirsiniz. Yasak kalkınca {ad}
+      bu derse yeniden başvurabilir." (true of a course ban only: NDB-3). The widening dialog names the person and says they cannot reach any
+      course of the köşk and that the course ban goes on. Then "* zorunlu alan" and the reason field. The focus starts in the reason. The
+      submit is natively off until the reason holds a letter, and nothing says why (F-X-3). The scrim does not close the dialog, so a
+      typed reason is not lost. "Bir gerekçe yazın." appears under the field only after the field was left, replacing the help line, as
+      plain text with no live region (F-W5-4, F-X-2). The whole body is the dialog's description (F-X-6).
+    by: human
+    on:
+      LEAVE_EMPTY: { target: form, effect: [leftEmpty], source: "apps/nizam/features/bans/components/lift-dialog.tsx:181", say: "they leave the empty reason (Tab, or a click elsewhere): the error appears under it" }
+      FILL_IN: { target: formReady, source: "apps/nizam/features/bans/components/lift-dialog.tsx:180", say: "they type a reason" }
+      CANCEL: { target: listed, source: "apps/nizam/features/bans/components/lift-dialog.tsx:111", say: "Vazgeç, or Esc: the dialog closes, nothing is sent and the focus goes back to the row's button" }
+      CLOSE: { target: listed, source: "apps/nizam/features/bans/components/lift-dialog.tsx:107", say: "the close icon: the same" }
+    source: "apps/nizam/features/bans/components/lift-dialog.tsx:98"
+
+  formReady:
+    title: The reason dialog, the button on
+    description: >-
+      The same dialog with a reason in the field (trimmed when sent, 500 characters at most): the submit is on. Pressing it sends the
+      decision of the dialog's kind. A refusal brings the dialog back here with its reason and a toast that stays.
+    by: human
+    on:
+      FILL_IN: { target: formReady, source: "apps/nizam/features/bans/components/lift-dialog.tsx:180", say: "they change the reason" }
+      CLEAR: { target: form, source: "apps/nizam/features/bans/components/lift-dialog.tsx:180", say: "they empty the reason: the submit goes off" }
+      SUBMIT:
+        - { guard: "kind == 'lift'", target: lifting, source: "apps/nizam/features/bans/components/lift-dialog.tsx:79", say: "they press 'Yasağı kaldır'" }
+        - { target: extending, source: "apps/nizam/features/bans/components/extend-dialog.tsx:68", say: "they press 'Yasağı genişlet'" }
+      CANCEL: { target: listed, source: "apps/nizam/features/bans/components/lift-dialog.tsx:111", say: "Vazgeç, or Esc: what was typed is lost and the focus goes back to the row's button" }
+      CLOSE: { target: listed, source: "apps/nizam/features/bans/components/lift-dialog.tsx:107", say: "the close icon: the same" }
+    source: "apps/nizam/features/bans/components/lift-dialog.tsx:112"
+
+  lifting:
+    title: The lift is on its way
+    description: >-
+      The server action liftBan calls POST /bans/:banId/lift with the reason: the ban is lifted with the lifter's name and the reason,
+      in one transaction with its audit row `ban.lift`; the seat is not touched and no notification is sent, so the talebe is never told
+      that access has returned. The dialog stays open: the submit is busy (aria-disabled, "Yükleniyor" to a reader of the screen), and
+      Vazgeç, the close icon and Esc do nothing (`if (!saving) onOpenChange(next)`), drawn as usable and unannounced (NDB-7, the family
+      of F-W3-open-2). A success shows the toast "Yasak kaldırıldı", closes the dialog and reads the list again. A refusal is a sticky
+      toast, and the dialog stays open with the reason: BAN_ALREADY_LIFTED and BAN_NOT_FOUND say "sayfayı yenileyin" and the list is NOT
+      read again (NDB-6); BAN_LIFT_FORBIDDEN says only the kademe that placed it or higher may lift it.
+    invoke: { action: liftBan }
+    on:
+      DONE:
+        - { guard: "answer == 'done' and after == 'none'", target: settled, effect: [liftedLast], source: "apps/nizam/features/bans/components/lift-dialog.tsx:89", say: "the only open ban moves to Kaldırılan: the list is empty" }
+        - { guard: "answer == 'done'", target: settled, effect: [lifted], source: "apps/nizam/features/bans/components/lift-dialog.tsx:89", say: "the row moves to Kaldırılan; the Etkin count goes down by one and the Kaldırılan count up" }
+      FAIL.moved: { guard: "answer == 'moved'", target: formReady, effect: [moved], source: "apps/nizam/features/bans/components/lift-dialog.tsx:82", say: "someone lifted it first, or it is gone: an error toast that stays; the dialog stays open and the list is not read again" }
+      FAIL.refused: { guard: "answer == 'refused'", target: formReady, effect: [refused], source: "apps/nizam/features/bans/components/lift-dialog.tsx:82", say: "the caller's permission or kademe no longer reaches the ban's: an error toast, the dialog stays open with the reason" }
+      FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failed], source: "apps/nizam/features/bans/components/lift-dialog.tsx:82", say: "an error toast, the dialog stays open" }
+    source: "apps/nizam/features/bans/components/lift-dialog.tsx:79"
+
+  extending:
+    title: The widening is on its way
+    description: >-
+      The server action extendBan calls POST /bans/:banId/extend with the reason: a KOSK ban is made for the same person with the
+      reason typed here and the caller's own kademe (ban.service.ts:294-306), the course ban stays open, and the audit row says
+      `ban.extend` (a person already barred from the köşk gets that ban back and nothing is written). The seats the new ban newly bars
+      are told 'erişimin kaldırıldı'; the reason is never sent to them. The route asks the caller's standing at the köşk
+      (ban.manage_kosk or platform.ban_scoped) and nothing about the person: it never reads their roles (ban.service.ts:270-312;
+      BAN_TARGET_INVALID there means only 'Only a course ban can be widened', :278, which no drawn row can reach), so it does not
+      refuse a person who runs a course of the köşk (ban-staff-check-gaps, NDB-1). The dialog stays open while it runs, as the lift's does
+      (NDB-7); a refusal is a sticky toast and the list is not read again (NDB-6).
+    invoke: { action: extendBan }
+    on:
+      DONE:
+        - { guard: "answer == 'done' and row == 'staff'", target: settled, effect: [extended], source: "apps/tedrisat/src/ban/ban.service.ts:294", say: "the API makes the köşk ban over a person who runs a course of the köşk; there is no BAN_TARGET_INVALID, because the route never reads the person's roles (ban-staff-check-gaps)" }
+        - { guard: "answer == 'done'", target: settled, effect: [extended], source: "apps/nizam/features/bans/components/extend-dialog.tsx:78", say: "the toast says 'Yasak genişletildi'; the list gains the köşk row, and the course row loses its widening button" }
+      FAIL.moved: { guard: "answer == 'moved'", target: formReady, effect: [moved], source: "apps/nizam/features/bans/components/extend-dialog.tsx:72", say: "the ban was lifted or is gone: an error toast that stays; the dialog stays open and the list is not read again" }
+      FAIL.refused: { guard: "answer == 'refused'", target: formReady, effect: [refused], source: "apps/nizam/features/bans/components/extend-dialog.tsx:72", say: "the caller may not widen to the köşk: an error toast, the dialog stays open" }
+      FAIL.failed: { guard: "answer == 'failed'", target: formReady, effect: [failed], source: "apps/nizam/features/bans/components/extend-dialog.tsx:72", say: "an error toast, the dialog stays open" }
+    source: "apps/nizam/features/bans/components/extend-dialog.tsx:68"
+
+  widening:
+    title: The one-click widening is on its way
+    description: >-
+      The server action createBan calls POST /courses/:courseId/bans with scope KOSK, the course ban's course and person and the course
+      ban's own reason (bans-view.tsx:137-162): no dialog, no question, no reason prompt (F-W5-1). It carries no ban id, so it never asks
+      whether the ban on the page is still open: a ban lifted behind the page is widened all the same and the toast says it is done
+      (NDB-2); and the audit row says `ban.create`, not `ban.extend` (ban.repository.ts:309). The route reads the person's roles at THIS
+      course, its köşk and its medrese (ban.service.ts:155-163, rolesHeld :273) and refuses one who runs them with 400 BAN_TARGET_INVALID:
+      a hoca of this course, a köşk nazım, a Medaris nazım. A person who runs another course of the köşk is not found there and is
+      barred from the whole köşk (NDB-1, ban-staff-check-gaps). The pressed row's button is busy ("Yükleniyor" to a reader), the other
+      rows stay live. A success shows "Köşkten de yasaklandı" and reads the list again; a refusal is a sticky toast and nothing moves.
+    invoke: { action: createBan }
+    on:
+      DONE: { guard: "answer == 'done'", target: settled, effect: [widened], source: "apps/nizam/features/bans/components/bans-view.tsx:155", say: "the toast says 'Köşkten de yasaklandı'; the list gains the köşk row beside the course row, and the course row loses its button; for the row `staff` this is the person who runs another course of the köşk" }
+      FAIL.refused: { guard: "answer == 'refused'", target: listed, effect: [refused], source: "apps/nizam/features/bans/components/bans-view.tsx:148", say: "the caller may not bar from the whole köşk: an error toast 'Köşk yasağı konamadı', the row stays" }
+      FAIL.invalid: { guard: "answer == 'invalid'", target: listed, effect: [invalid], source: "apps/tedrisat/src/ban/ban.service.ts:159", say: "the person runs this course (a hoca named after the course ban): 'Bu kişi yasaklanamaz.', the row stays" }
+      FAIL.failed: { guard: "answer == 'failed'", target: listed, effect: [failed], source: "apps/nizam/features/bans/components/bans-view.tsx:148", say: "an error toast, the row stays" }
+    source: "apps/nizam/features/bans/components/bans-view.tsx:140"
+
+  settled:
+    title: The list is read again
+    description: >-
+      Not a screen: the dialog is closed by the page itself (onLifted, onExtended) and the list is read again. The köşk's list empties its
+      cache first, so the table is replaced by three skeleton bars and a hidden "Yükleniyor" that is no live region (NDB-9, F-X-10);
+      the Medaris list shows the skeleton too. The counts of both tabs and the "yeni yasak" line are the server's new ones, said by
+      nothing (NDB-10). The pressed row's button is gone, and the focus with it (F-X-7).
+    always:
+      - { guard: drained, target: empty, source: "apps/nizam/features/bans/components/bans-view.tsx:301" }
+      - { target: listed, source: "apps/nizam/features/bans/components/bans-view.tsx:377" }
+    source: "apps/nizam/features/bans/components/bans-view.tsx:377"
+
+  liftedTab:
+    title: The Kaldırılan tab says who lifted it and why
+    description: >-
+      The tab of lifted bans, read when it is opened: the same table, with the column Kaldıran in place of the actions, which holds the
+      lifter's name, the day and hour and the reason typed in the dialog (bans#7: who and why). A lifted ban has no buttons. The tab as a
+      list of its own (search, chips, more) is nizam.moderation.reviewBans'.
+    by: human
+    on:
+      OPEN_ACTIVE:
+        - { guard: drained, target: empty, source: "apps/nizam/features/bans/components/bans-view.tsx:106", say: "they open the Etkin tab: the list is empty" }
+        - { target: listed, source: "apps/nizam/features/bans/components/bans-view.tsx:106", say: "they open the Etkin tab again" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: "apps/nizam/features/bans/components/bans-view.tsx:279"
+
+  no_access:
+    title: The page says "Bu bölüm için izniniz yok"
+    description: >-
+      A 403 or a 404 of the read: a köşk nazım at the Medaris list, a müderris at a köşk's list, another köşk or one that is not there.
+      One screen for all of them, drawn and walked by nizam.shell.noAccessAndNotFound (bans#9, bans-medaris#8); here it is the exit.
+    type: final
+    leavesPage: true
+
+  load_failed:
+    title: The read failed
+    description: >-
+      The page's own alert "Yasaklar yüklenemedi" with "Yeniden dene". Not reachable on the local stack.
+    type: final
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-dialog-is-opened-for-what-the-row-offers
+    never: "(state == 'form' or state == 'formReady') and ((kind == 'lift' and not mayLift) or (kind == 'extend' and not mayWiden))"
+    say: A decision's dialog opens only from a row that offers that decision; the buttons are absent otherwise.
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:284
+  - id: a-ban-medaris-placed-is-not-lifted-by-a-kosk-nazim
+    never: "state == 'lifting' and viewer == 'kosk' and row == 'platform'"
+    say: A ban that Medaris administration placed is never lifted from the köşk's list.
+    source: apps/tedrisat/src/ban/ban.service.ts:333
+  - id: a-medaris-nazim-lifts-no-course-ban
+    never: "state == 'lifting' and viewer == 'medaris' and row != 'wide'"
+    say: A Medaris nazım holding only platform.ban_scoped lifts a köşk ban and no course ban.
+    source: apps/tedrisat/src/ban/ban-codes.ts:45
+  - id: a-kosk-ban-is-not-widened
+    never: "(state == 'widening' or state == 'extending') and row == 'wide'"
+    say: A köşk ban, the widest scope there is, is never widened again.
+    source: apps/nizam/features/bans/present.ts:146
+  - id: one-click-is-the-kosk-lists
+    never: "(state == 'widening' and viewer != 'kosk') or (state == 'extending' and viewer == 'kosk')"
+    say: The one-click widening is the köşk's list's and the widening dialog the Medaris list's.
+    source: apps/nizam/features/bans/components/all-bans-view.tsx:298
+  - id: a-list-that-was-emptied-shows-the-empty-line
+    never: "state == 'listed' and (drained or row == 'none')"
+    say: The table is drawn with rows only while a ban is open.
+    source: apps/nizam/features/bans/components/bans-view.tsx:301

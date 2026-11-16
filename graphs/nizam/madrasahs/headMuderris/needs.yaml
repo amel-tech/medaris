@@ -1,0 +1,220 @@
+# What must exist for the Medaris administration to give a medrese its başmüderris and to replace the one it has: the flow's product list (LAYOUT.md section 7). Each need is
+# what the product must do, from the flow's story, not from what the page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by
+# people for now: no checker runs on this file.
+#
+# For needs.gaps.yaml (nizam.madrasahs.headMuderris):
+#   missing:  say-why-the-button-is-off (none, F-X-3), name-a-permission-in-words (none, HEAD-2), refuse-the-same-head-in-words (none, HEAD-1),
+#             say-a-second-search-found-nobody (none, HEAD-3), tell-naming-oneself-from-a-take-over (none, HEAD-4), answer-each-person-by-a-radio (none, F-W2-5),
+#             open-on-the-first-field (none, F-W2-12), keep-the-focus-after-a-change (none, F-W2-10), search-on-a-button-not-on-blur (none, F-W2-3 and F-X-14),
+#             answer-for-each-item (MDRS-201)
+#   unwalked: a-stale-list-is-refused-and-asked-again, a-dropped-seat-with-a-grantee-is-refused, nobody-takes-over-a-row-given-to-themselves,
+#             an-unreadable-list-can-be-retried (code, no e2e: a walk makes them with a second change of the world, a seat handed on under a dropped one, a
+#             Medaris nazımı who is also a person on the list, and a read that fails; the replay's scenarios cascade, selfGrant and the event ELSEWHERE carry the first three,
+#             the fourth cannot be made on the stack)
+# No replay is named below: none has run (the walk phase is later); the scenarios of binding.yaml (change, assign, bare, notFound, sameHead, cascade, selfGrant) are added
+# to `walked` as each passes.
+kind: needs
+flow: nizam.madrasahs.headMuderris
+status: proposed
+
+needs:
+  - id: give-a-passive-medrese-its-head
+    need: >-
+      The başnazım, or a Medaris nazımı holding platform.head_muderris_manage, gives a medrese that has no başmüderris one from the Medreseler page, in one act: the person
+      is found by e-mail address, an end may be set, and the medrese is Etkin and opens again for visitors and talebe. A message names the medrese and its new head.
+    drawn: [assignButton, dialogAssign, assignSubmit, saving, assigned, rowStatusNow, savedBody]
+    built:
+      - action: medaris.api:setMadrasahHeadMuderris
+      - route: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:127
+    walked:
+      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
+        check: 'madrasahs#5'
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#4'
+
+  - id: find-the-head-by-e-mail
+    need: >-
+      The new head is found by the exact e-mail address of an account in the realm, whether or not the person ever opened Medaris, and shown with name and address before the
+      appointment; an address no account has is said under the field, a directory that does not answer is said too. Every search is written to the audit log.
+    drawn: [headFieldAssign, headFieldChange, headHelp, headNotFound, headDown, searching, chosenTitle, removeHead, looking]
+    built:
+      - action: medaris.api:lookupUser
+      - route: apps/nizam/features/madrasahs/components/head-picker.tsx:53
+    walked:
+      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
+        check: 'madrasahs#5'
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#2'
+
+  - id: an-end-is-optional
+    need: >-
+      The appointment may carry an end, "Görev bitiş tarihi ve saati"; left empty it lasts until somebody changes it. An end that is not in the future, or half typed, is
+      refused where it is typed and never sent. A medrese whose head's term ends with no successor becomes passive and is listed in Pasif kapsamlar.
+    drawn: [endField, endHelp, endPast, endUnfinished, a-past-end-is-never-sent]
+    built:
+      - route: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:114
+      - route: apps/tedrisat/src/madrasah/madrasah.service.ts:231
+    walked:
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#2'
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#3'
+
+  - id: change-the-head-of-an-active-medrese
+    need: >-
+      "Başmüderrisi değiştir" is on the row of every active medrese that has a head, whatever the date (the October version gate was lifted by MDRS-215); the new head takes the
+      seat, the old head's seat ends in the caller's name, and the table shows the new head. The scrim does not close the dialog.
+    drawn: [changeButton, dialogChange, changeSubmit, saving, changed, rowHeadNew, changedBody, scrim-does-not-close]
+    built:
+      - action: medaris.api:setMadrasahHeadMuderris
+      - route: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:282
+    walked:
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#1'
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#3'
+
+  - id: ask-about-what-the-old-head-handed-on
+    need: >-
+      Before the head is replaced the caller is shown everyone the old head gave a role or a permission to, in the medrese and in its courses, what each was given, for how long
+      and since when; a head who gave nobody anything says so and asks nothing. The list is read again every time the dialog opens.
+    drawn: [reading, handedOnRegion, handedOnTitle, handedOnPerson, personName, personEmail, personLine, personMore, nothingNote]
+    built:
+      - action: medaris.api:getMadrasahHeadDelegations
+      - route: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:88
+    walked:
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#2'
+
+  - id: every-person-needs-an-answer
+    need: >-
+      Nothing is chosen for the caller: "Devral" or "Düşür" for each person the old head gave something to, and "Değiştir" stays off until every person has one; a line in the
+      footer says so. Nothing is written until the button is pressed.
+    drawn: [answerGroup, takeOver, drop, pressedChip, answersNote, answersNeeded, changeSubmit, a-head-is-never-replaced-with-an-answer-missing]
+    built:
+      - route: apps/nizam/features/madrasahs/present.ts:368
+      - route: apps/nizam/features/madrasahs/present.ts:418
+    walked:
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#2'
+
+  - id: take-over-keeps-and-drop-revokes
+    need: >-
+      "Devral" leaves the right in place and makes the caller its giver; "Düşür" takes it back at once, and a seat taken back takes with it what its holder was given in that
+      scope. One audit entry records the change and how many were taken over and dropped.
+    drawn: [takeOver, drop, saving, changed, answersNote]
+    built:
+      - action: medaris.api:setMadrasahHeadMuderris
+      - route: apps/tedrisat/src/madrasah/madrasah.repository.ts:491
+    walked:
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#3'
+
+  - id: a-passive-medrese-asks-nothing
+    need: >-
+      On a passive medrese the dialog is "Başmüderris ata": no list of what was handed on and no "Değiştir"; the person, an optional end, and the one button.
+    drawn: [dialogAssign, titleAssign, introAssign, assignSubmit, handedOnRegion]
+    built:
+      - route: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:74
+    walked:
+      - e2e: apps/nizam/e2e/head-change.e2e.ts
+        check: 'head-change#4'
+
+  - id: a-stale-list-is-refused-and-asked-again
+    need: >-
+      If what the old head gave changed while the dialog was open, nothing is written; the caller is told, the answers are wiped, the list is read again and the caller answers again.
+    drawn: [staleRefused, toastStale, reading]
+    built:
+      - action: medaris.api:setMadrasahHeadMuderris
+      - route: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:148
+    walked: []
+
+  - id: a-dropped-seat-with-a-grantee-is-refused
+    need: >-
+      A "Düşür" that would leave what the dropped seat's holder handed on, with nothing to back it, is refused whole: nothing changes and the toast says to dismiss that person
+      first or take their seat over.
+    drawn: [cascadeToast, toastCascade]
+    built:
+      - action: medaris.api:setMadrasahHeadMuderris
+      - route: apps/tedrisat/src/madrasah/madrasah.repository.ts:616
+    walked: []
+
+  - id: nobody-takes-over-a-row-given-to-themselves
+    need: >-
+      A Medaris nazımı cannot name themselves the head, nor take over a role or a permission the old head gave to them: it would make them the giver of their own right. The refusal
+      is written to the audit log and the page says which. The başnazım is not asked.
+    drawn: [selfGrantToast, toastSelfGrant]
+    built:
+      - action: medaris.api:setMadrasahHeadMuderris
+      - route: apps/tedrisat/src/madrasah/madrasah.controller.ts:455
+    walked: []
+
+  - id: an-unreadable-list-can-be-retried
+    need: >-
+      When the list of what the old head handed on cannot be read the caller is told and can try again; "Değiştir" stays off meanwhile.
+    drawn: [listFailed, loadFailedAlert, loadFailedText, retry]
+    built:
+      - route: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:318
+    walked: []
+
+  - id: say-why-the-button-is-off
+    need: >-
+      The submit button says what is missing: a person, an end that is not in the future, an answer for a person. Today it is natively disabled and only the end and, for the
+      answers, a footer line speak (F-X-3).
+    drawn: [assignSubmit, changeSubmit, answersNeeded]
+    missing: none
+
+  - id: refuse-the-same-head-in-words
+    need: >-
+      Choosing the person who already heads the medrese is said where it happens: "Bu kişi zaten bu medresenin başmüderrisi." The message exists and is never shown (HEAD-1).
+    drawn: [pickedSame]
+    missing: none
+
+  - id: name-a-permission-in-words
+    need: >-
+      A permission the old head gave is named in a sentence, as Nazar names it ("Medrese nazırı ata"), not by its code (HEAD-2).
+    drawn: [personMore]
+    missing: none
+
+  - id: say-a-second-search-found-nobody
+    need: >-
+      A search that finds nobody or fails says so even when a person is already chosen (HEAD-3).
+    drawn: [headNotFound, headDown]
+    missing: none
+
+  - id: tell-naming-oneself-from-a-take-over
+    need: >-
+      The refusal of a Medaris nazımı who names themselves says that, and not "you cannot take over a row given to you" (HEAD-4).
+    drawn: [toastSelfGrant]
+    missing: none
+
+  - id: answer-each-person-by-a-radio
+    need: >-
+      "Devral" and "Düşür" are a required choice per person, announced as one, named with the person, and not switched off by pressing again (F-W2-5).
+    drawn: [answerGroup, takeOver, drop, pressedChip]
+    missing: none
+
+  - id: open-on-the-first-field
+    need: >-
+      The dialog opens with the focus on the e-mail field, not on the close icon (F-W2-12).
+    drawn: [dialogAssign, dialogChange, closeIcon]
+    missing: none
+
+  - id: keep-the-focus-after-a-change
+    need: >-
+      After an appointment the focus goes to the row's new button or the table's caption, and a message says what happened (F-W2-10).
+    drawn: [assigned, changeButtonNow]
+    missing: none
+
+  - id: search-on-a-button-not-on-blur
+    need: >-
+      The directory is searched when the person asks, with a button or Enter, and not when the field is left; the field stays enabled while it searches and the result is
+      announced (F-W2-3, F-X-14).
+    drawn: [headFieldAssign, headFieldChange, searching, looking]
+    missing: none
+
+  - id: answer-for-each-item
+    need: >-
+      The caller may adopt, edit or drop each role and permission the old head gave, not only a whole person's (MDRS-201, decision D1).
+    drawn: [handedOnPerson, takeOver, drop]
+    missing: MDRS-201

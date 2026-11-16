@@ -1,0 +1,136 @@
+# What every binding of nizam.moderation.decideBan shares: the locators of the nodes that role and name cannot find, the events no node sends,
+# the exit's address and the checks of what a decision leaves in the database. It holds no scenario and no address of the lists (the köşk's
+# list and the Medaris list have two addresses, and a binding has one `states`): the files that extend it do (binding.yaml, binding.platform.yaml,
+# binding.moved.yaml, binding.stale.yaml and binding.staff.yaml at the köşk's list; binding.all.yaml, binding.allMoved.yaml,
+# binding.medaris.yaml, binding.refused.yaml and binding.noAccess.yaml at the Medaris list). NOT RUN: every locator is from the code and unverified until a walk
+# (the owner's word: replays come once, at the end).
+#
+# The people. A scenario makes one course of its own in the seed's second köşk, "Kubbealtı Köşkü" (helpers/course.mjs make decideBan --kosk
+# {seed.kosk2}), enrols spare talebe in it and puts open bans on them through the API (./bans.mjs up). The pages name a person by the name
+# tedrisat holds (STACK.md): applicantC "Esma Başvuran", applicantD "Salih Başvuran", applicantE "Betül Başvuran", applicantG "Dilek Başvuran"
+# (the Medaris nazım of binding.medaris.yaml and binding.refused.yaml; never a person a ban is on). Never F or H (other flows'). The list is
+# newest first (ban.repository.ts:405-410) and a repeated node is pressed on its first item, so a press decides the person whose ban was
+# placed last; what a press decided is told to the effects by the people, not by the row. A button is found inside a row that holds the
+# walk's own course, "Deneme dersi decideBan", so a row of another flow's is never pressed.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.moderation.decideBan
+
+# a wide window, so that the sidebar (not the phone's sheet) is drawn and the table is not stacked
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/decideBan.json }
+
+events:
+  # the reason is a textarea with no node that sends an event: the binding fills the one textbox of the dialog
+  FILL_IN:
+    - fill: { role: textbox, within: { role: dialog }, value: '{reasonText}' }
+  CLEAR:
+    - fill: { role: textbox, within: { role: dialog }, value: '' }
+  # the focus starts in the reason: Tab leaves it empty, and the field's blur is what shows its error (F-W5-4)
+  LEAVE_EMPTY:
+    - key: Tab
+  NAVIGATE:
+    - goto: '{nizam}/bildirimler'
+
+states:
+  left: { url: '{nizam}/bildirimler' }
+
+nodes:
+  # ---- the page ----
+  # the shell's <main> is the same on every page: this one holds the heading "Yasaklamalar"
+  bansPage: { role: main, hasText: Yasaklamalar }
+  bansRegion: { role: region, name: Yasaklar }
+  recentLine: { text: '/^\d+ yeni yasak$/' }
+  tabsList: { role: tablist, name: Yasak durumu }
+  # a tab's name ends with its count ("Etkin 3"); the count is a span of its own
+  tabActiveSelected: { role: tab, name: '/^Etkin/' }
+  tabActive: { role: tab, name: '/^Etkin/' }
+  tabLifted: { role: tab, name: '/^Kaldırılan/' }
+  tabLiftedSelected: { role: tab, name: '/^Kaldırılan/' }
+  tabActiveCount: { css: '.mds-tab__count', nth: 0, hasText: '/^\d+$/' }
+  tabLiftedCount: { css: '.mds-tab__count', nth: 1, hasText: '/^\d+$/' }
+  summaryLine: { testId: all-bans-summary, hasText: '/^\d+ etkin yasak$/' }
+  summaryLiftedLine: { testId: all-bans-summary, hasText: '/^\d+ kaldırılan yasak$/' }
+  emptyLine: { css: td.mds-table__empty, hasText: Etkin yasak yok }
+
+  # ---- the rows: the words alone find too many ("Ders" is in every course's title) ----
+  newBadge: { text: '/^Yeni$/', within: { role: table } }
+  scopeCourse: { text: '/^Ders$/', within: { role: table } }
+  scopeKosk: { text: '/^Köşk$/', within: { role: table } }
+  scopeExtendedFrom: { text: '/Deneme dersi decideBan dersinden genişletildi$/', within: { role: table } }
+  bannedByTeacher: { text: '/^Hoca$/', within: { role: table } }
+  bannedByAdmin: { text: '/^Medaris yönetimi$/', within: { role: table } }
+  bannedByYou: { text: '/\(siz\)$/', within: { role: table } }
+  bannedByKosk: { text: '/^Köşk nazımı$/', within: { role: table } }
+  placedWhen: { css: 'tbody td', hasText: '/^(Bugün|Dün) \d\d:\d\d$/' }
+  # the buttons are named by the person and found inside a row of the walk's own course
+  liftButton: { role: button, name: '/^Yasağı kaldır: (Esma|Salih|Betül|Dilek) Başvuran$/', within: { css: 'tbody tr', hasText: Deneme dersi decideBan } }
+  widenNowButton: { role: button, name: '/^Köşkten de yasakla: (Esma|Salih|Betül|Dilek) Başvuran$/', within: { css: 'tbody tr', hasText: Deneme dersi decideBan } }
+  widenNowBusy: { role: button, name: '/^Köşkten de yasakla: (Esma|Salih|Betül|Dilek) Başvuran$/', within: { css: 'tbody tr', hasText: Deneme dersi decideBan }, nth: 0 }
+  widenNowStatus: { css: output, hasText: Yükleniyor }
+  widenButton: { role: button, name: '/^Yasağı genişlet: (Esma|Salih|Betül|Dilek) Başvuran$/', within: { css: 'tbody tr', hasText: Deneme dersi decideBan } }
+  notePlatform: { text: Bu yasağı yalnız Medaris yönetimi kaldırabilir., within: { role: table } }
+  noteHigher: { text: Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir., within: { role: table } }
+
+  # ---- the Kaldırılan tab: the Kaldıran column is the last cell of a row ----
+  liftedByName: { css: 'tbody td:last-child bdi:first-child', hasText: '/Köşk Nazımı|Başnazım|Başvuran/' }
+  liftedWhen: { css: 'tbody td:last-child span.mds-caption', hasText: '/^(Bugün|Dün) \d\d:\d\d$/' }
+  liftedReason: { css: 'tbody td:last-child bdi.mds-caption', hasText: '/\S/' }
+
+  # ---- the toasts: sonner's, with no role, found by their own attribute and their words ----
+  toastLiftedTitle: { css: '[data-sonner-toast]', hasText: Yasak kaldırıldı }
+  toastLiftedBody: { css: '[data-sonner-toast]', hasText: '/yeniden başvurabilir\./' }
+  toastExtendedTitle: { css: '[data-sonner-toast]', hasText: Yasak genişletildi }
+  toastExtendedBody: { css: '[data-sonner-toast]', hasText: '/içindeki hiçbir derse başvuramaz\./' }
+  toastWidenedTitle: { css: '[data-sonner-toast]', hasText: Köşkten de yasaklandı }
+  toastWidenedBody: { css: '[data-sonner-toast]', hasText: '/içindeki hiçbir derse başvuramaz\./' }
+  toastLiftFailedTitle: { css: '[data-sonner-toast]', hasText: Yasak kaldırılamadı }
+  toastExtendFailedTitle: { css: '[data-sonner-toast]', hasText: Yasak genişletilemedi }
+  toastWidenFailedTitle: { css: '[data-sonner-toast]', hasText: Köşk yasağı konamadı }
+  # one of two messages (text: oneOf is found by its first only)
+  toastMoved: { css: '[data-sonner-toast]', hasText: '/zaten kaldırılmış|artık yok/' }
+  toastRefusedLift: { css: '[data-sonner-toast]', hasText: Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir. }
+  toastRefusedForbidden: { css: '[data-sonner-toast]', hasText: Bu yasağı koymak için yetkiniz yok. }
+  toastInvalid: { css: '[data-sonner-toast]', hasText: Bu kişi yasaklanamaz. }
+  toastFailed: { css: '[data-sonner-toast]', hasText: İşlem tamamlanamadı. }
+
+  # ---- the dialogs: found by their title; the page behind them is inert ----
+  dialogEyebrow: { text: Deneme dersi decideBan, within: { role: dialog } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog } }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog } }
+  targetPerson: { css: '[data-testid="lift-target"], [data-testid="extend-target"]', hasText: '/Başvuran/' }
+  targetEmail: { css: '[data-testid="lift-target"], [data-testid="extend-target"]', hasText: '/@medaris\.test/' }
+  summaryScopeTerm: { text: Kapsam, within: { testId: lift-summary } }
+  summaryBannedByTerm: { text: Yasaklayan, within: { testId: lift-summary } }
+  summaryReasonTerm: { text: Gerekçe, within: { testId: lift-summary } }
+  summaryScope: { testId: lift-summary, hasText: '/(Ders|Köşk) · /' }
+  summaryBannedBy: { testId: lift-summary, hasText: '/, (hoca|köşk nazımı|medaris yönetimi) · /' }
+  summaryReason: { testId: lift-summary, hasText: '/reklam|kullandırdı|sorun çıkardı/' }
+  liftInfo: { css: p, hasText: '/olarak kaldırabilirsiniz\./', within: { role: dialog } }
+  extendInfo: { css: p, hasText: '/hâle gelecek/', within: { role: dialog } }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/', within: { role: dialog } }
+  # the two submits are named like the row buttons: told apart by being in the dialog and by the whole name
+  liftSubmit: { role: button, name: '/^Yasağı kaldır$/', within: { role: dialog } }
+  extendSubmit: { role: button, name: '/^Yasağı genişlet$/', within: { role: dialog } }
+  busy: { role: status, hasText: Yükleniyor, within: { role: dialog } }
+
+# What a decision leaves outside the screen, read from tedrisat's database by ./bans.mjs (the people and the words come from the scenario's
+# `vars`; the walk's own people only). `expect: 'has:'` is the helper saying the line is there.
+effects:
+  liftBan:
+    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --has, '{liftHas}']
+      expect: 'has:'
+  # the Medaris list's widening: a köşk ban stands beside the course ban, and the audit row says it is a widening (bans-medaris#5)
+  extendBan:
+    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --has, '{widenHas}']
+      expect: 'has:'
+    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --audit, ban.extend]
+      expect: 'audit: ban.extend'
+  # the köşk's one-click widening: the same köşk ban, whose audit row says ban.create (NDB-2)
+  createBan:
+    - run: [node, ../nizam/moderation/decideBan/bans.mjs, check, decideBan, --who, '{who}', --has, '{widenHas}']
+      expect: 'has:'

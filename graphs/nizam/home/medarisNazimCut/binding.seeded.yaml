@@ -1,0 +1,18 @@
+# nizam.home.medarisNazimCut for the stack's own Medaris nazımı ("Selma Medaris Nazımı", FEMALE; platform.kosk_create, madrasah_create,
+# kosk_edit, audit_read and course_hide, STACK.md), in a wide window. Read only: nothing is made, nothing is removed, and her grants are
+# never changed (nazim.mjs refuses her, and this file does not call it). It walks the cut the seed gives: Platform with Medreseler and
+# Köşkler, no Talepler and no Denetim, no card at all, five grants of which the flow draws two (kosk_create, madrasah_create), and no
+# "Köşk aç" although platform.kosk_create is hers (e2e dashboard#9).
+#   node apps/engine/src/cli.ts replay graphs/nizam/home/medarisNazimCut --bind graphs/nizam/home/medarisNazimCut/binding.seeded.yaml \
+#     --cover transitions --absent --out <dir>
+# The greeting says "Selâmün aleyküm, Selma Bey." to her (MCUT-1).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.medarisNazimCut
+
+scenarios:
+  seeded:
+    given: { granted: some, applications: none, decks: none, appeals: none, bans: none, passive: none, platform: both, read: ok }
+    as: medarisNazim
+    open: '{nizam}/'

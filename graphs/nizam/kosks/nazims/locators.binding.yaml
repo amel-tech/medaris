@@ -1,0 +1,207 @@
+# What the bindings of nizam.kosks.nazims share: the data sources, the events no node sends, the places each exit opens, where role and name
+# cannot find a node, and what a step leaves outside the screen. It carries no scenario, so it is not walked by itself:
+#   binding.yaml           the başnazım (SYSTEM_ADMIN) at a köşk of the walk's own: adds, passive, notFound, again
+#   binding.exists.yaml    the same, adding the köşk's own nazım again: the refusal (no held call, see `states`)
+#   binding.nazim.yaml     a nazım of the köşk reads the list (APPLICANT_E)
+#   binding.medaris.yaml   the seeded Medaris nazımı reads it (platform.kosk_edit)
+#   binding.stranger.yaml  the seeded köşk nazımı, who manages the seed's köşks and not this one, is refused
+# The page is `/kosks/<id>/ayarlar/nazimlar` of nizam-web at http://localhost:4001, in a wide window (1440 x 900, as the e2e).
+#
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). Every locator, every account fact and every
+# command below comes from the code, the catalog and read-only looks at the API, and is unverified until a walk. Where the walk may need a
+# fix, a comment says so. The binding loads: `replay <dir> --bind <file> --emit-spec --out <dir>` wrote a spec and walked nothing.
+#
+# Data. Each scenario's `setup` makes the walk's own, and `teardown` takes it away; the seed's two köşks, its accounts and its posts are
+# never changed (the seeded köşk nazımı is the person who is refused, and is a nazım of the seed's köşks, never of this one):
+#   - the köşk "Nazımlar Deneme Köşkü" (short name deneme-nznazims, unlisted), opened through POST /kosks as the başnazım with the spare
+#     APPLICANT_E ("Betül Başvuran") as its one nazım, by ./nazims-data.mjs up (with --passive: taken out of service afterwards, so
+#     its list is empty); its ids, names, addresses and days are in graphs/.local/nznazims.json, read as the data source `nz`
+#     ({nz.kosk}, {nz.title}, {nz.first.name}, {nz.add.name}, {nz.add.email}, {nz.more.name}, {nz.chiefName}, {nz.today}, {nz.future},
+#     {nz.futureIso}, {nz.futureLabel}, {nz.past});
+#   - the two people the başnazım adds are the spare APPLICANT_D ("Salih Başvuran") and APPLICANT_G ("Dilek Başvuran"). Spare accounts
+#     chosen from C-G; H is left to the flows that already use it, and nobody else of nizam's batch is told to use E, D or G at the same time
+#     (walks run one at a time under the replay lock).
+#   `teardown` deletes the köşk (DELETE /kosks/<id> as the başnazım), which takes the posts of all three accounts with it; `setup` begins
+#   with the same deletion inside `up`, so a walk that died leaves nothing the next one trips on. What it cannot undo: the audit rows
+#   (user.lookup, kosk.create, kosk.deactivate, kosk.nazim.add, kosk.delete), which the API has no way to remove.
+#
+# Not bound, each for what the stack cannot be made to do on request:
+#   read: failed                       the API does not answer the list (listFailed): the stack's tedrisat would have to be stopped
+#   lookup: down                       the directory does not answer
+#   answer: unknownAccount, endPassed, gone, forbidden, failed
+#                                      an account that vanishes between the search and the click; an end that passes in the seconds
+#                                      between typing and pressing; a köşk deleted behind the page's back (possible with a `before` on
+#                                      "Ekle", but it would delete the walk's own köşk and leave the dialog on nothing); a başnazım
+#                                      who may not; any other failure (more than ten people, the directory down at the save)
+#   OPEN_KOSKS, OPEN_KOSK, OPEN_HOSTING, OPEN_SETTINGS, NAVIGATE      are bound (links and an address)
+# The second person of "one or more" is found by the cover (`SEARCH_ANOTHER`), but no walk presses "Ekle" with two people: the shortest
+# path to each transition adds one, and `main` is the e2e's story.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.kosks.nazims
+
+browser: { width: 1440, height: 900 }
+
+data:
+  nz: { json: ../.local/nznazims.json }
+
+# The placeholders of the catalog's messages (a placeholder has one value in a walk): the köşk's name in the cases the page puts it in, and
+# the people. `names` is one person: no walk presses "Ekle" with two.
+samples:
+  title: '{nz.title}'
+  kosk: '{nz.title}'
+  koskAccusative: '{nz.accusative}'
+  koskGenitive: '{nz.genitive}'
+  firstName: '{nz.first.name}'
+  addedName: '{nz.add.name}'
+  addedEmail: '{nz.add.email}'
+  moreName: '{nz.more.name}'
+  names: '{nz.add.name}'
+  name: '{nz.add.name}'
+  chiefName: '{nz.chiefName}'
+  today: '{nz.today}'
+  endDate: '{nz.futureLabel}'
+
+events:
+  # the address field has no node that sends an event: the binding types in it and presses Enter (the address is searched on Enter, and also
+  # when the field is left). `nazimEmail` and `anotherEmail` are the scenario's own `vars`.
+  SEARCH:
+    - fill: { role: textbox, name: Köşk nazımı, within: { role: dialog, name: '/^Köşk nazımı ekle$/' }, value: '{nazimEmail}' }
+    - key: Enter
+  SEARCH_ANOTHER:
+    - fill: { role: textbox, name: Köşk nazımı, within: { role: dialog, name: '/^Köşk nazımı ekle$/' }, value: '{anotherEmail}' }
+    - key: Enter
+  # a datetime-local field takes `YYYY-MM-DDTHH:mm`; it is found by its label (the e2e's getByRole textbox with the same name)
+  TYPE_FUTURE_END: [{ fill: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)', value: '{nz.future}' } }]
+  TYPE_PAST_END: [{ fill: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)', value: '{nz.past}' } }]
+  # Vazgeç and the close icon both send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç }
+  # "Yeniden dene" is not bound (read: failed is not bound)
+  NAVIGATE:
+    - goto: '{nizam}/hesap'
+
+states:
+  listed: { url: '{nizam}/kosks/*/ayarlar/nazimlar' }
+  # the lookup and the addition are Next server actions: a POST to the page's own address, held while the busy state is checked
+  looking: { call: '{nizam}/kosks/*/ayarlar/nazimlar' }
+  # `adding` has no `call` here: a server action answers 200 on the page's own address whatever the API says, so the replay could not
+  # compare the 409 of the walk that takes FAIL.exists (binding.exists.yaml); binding.yaml holds the call to check the busy button
+  # exits with no screen of their own are checked by their address; the refusal is the same address, with its sentence
+  handed_over.no_access: { url: '{nizam}/kosks/*/ayarlar/nazimlar', text: Bu bölüm için izniniz yok }
+  settings_opened: { url: '{nizam}/kosks/*/ayarlar' }
+  hosting_opened: { url: '{nizam}/kosks/*/ayarlar/barindirma' }
+  kosks_opened: { url: '{nizam}/kosks' }
+  kosk_opened: { url: '{nizam}/kosks/*' }
+  left: { url: '{nizam}/hesap' }
+
+# Role and name find most nodes. Below are the ones they cannot find alone: a bare main, names that several elements share (the sidebar has
+# "Köşkler" and an <aside> too, the toasts have a "Kapat"), data in the text, and the sonner toasts, found by their parts.
+nodes:
+  # the shell's one <main id="main"> is on every page; the intro line is this page's own
+  page: { role: main, hasText: '/yöneten köşk nazımları\./' }
+  # the breadcrumb: a named <nav> of an ordered list; its links are told from the sidebar's by `within`
+  breadcrumb: { role: navigation, name: Sayfa yolu }
+  crumbKosks: { role: link, name: '/^Köşkler$/', within: { role: navigation, name: Sayfa yolu } }
+  crumbKosk: { role: link, name: '{nz.title}', within: { role: navigation, name: Sayfa yolu } }
+  crumbSettings: { role: link, name: '/^Köşk ayarları$/', within: { role: navigation, name: Sayfa yolu } }
+  crumbCurrent: { css: '.mds-breadcrumb__current', hasText: Köşk nazımları }
+  # "Köşk nazımı ekle" is the button and the dialog's name, and "eklendi" and "eklenemedi" are the toasts' titles: the whole name
+  addButton: { role: button, name: '/^Köşk nazımı ekle$/' }
+  # the tabs: a named <nav> of three links; each name is its words and a count with no space (KNZ-6), so a name starts with them
+  tabsNav: { role: navigation, name: Köşk ayarları bölümleri }
+  tabGeneral: { role: link, name: '/^Genel/', within: { role: navigation, name: Köşk ayarları bölümleri } }
+  tabNazims: { role: link, name: '/^Köşk nazımları/', within: { role: navigation, name: Köşk ayarları bölümleri } }
+  tabHosting: { role: link, name: '/^Barındırma hakları/', within: { role: navigation, name: Köşk ayarları bölümleri } }
+  readOnlyNote: { role: status, hasText: Köşk nazımlarını Medaris yönetimi atar }
+  removeNever: { role: button, name: '/Çıkar/' }
+  # the table's caption is "<köşk> köşk nazımları", hidden; the table is named by it
+  rosterTable: { role: table, name: '/ köşk nazımları$/' }
+  # a row's cells: the person is in a row header, the giver, the day and the end in cells. The köşk's own nazım's row and the row of the
+  # person the başnazım added are told apart by the name in them: one locator stands for one node, so the two sets of nodes cannot share one
+  rowName: { text: '{nz.first.name}', within: { role: row } }
+  rowYou: { text: '/^Siz$/', within: { role: row, hasText: '{nz.first.name}' } }
+  rowGiver: { text: '{nz.chiefName}', within: { role: row, hasText: '{nz.first.name}' } }
+  rowGiverRole: { text: '/^Medaris başnazımı$/', within: { role: row, hasText: '{nz.first.name}' } }
+  rowDate: { text: '{nz.today}', within: { role: row, hasText: '{nz.first.name}' } }
+  rowNever: { text: '/^Süresiz$/', within: { role: row, hasText: '{nz.first.name}' } }
+  rowAddedName: { text: '{nz.add.name}', within: { role: row } }
+  rowAddedGiver: { text: '{nz.chiefName}', within: { role: row, hasText: '{nz.add.name}' } }
+  rowAddedRole: { text: '/^Medaris başnazımı$/', within: { role: row, hasText: '{nz.add.name}' } }
+  rowAddedDate: { text: '{nz.today}', within: { role: row, hasText: '{nz.add.name}' } }
+  rowAddedNever: { text: '/^Süresiz$/', within: { role: row, hasText: '{nz.add.name}' } }
+  rowAddedEnd: { text: '{nz.futureLabel}', within: { role: row, hasText: '{nz.add.name}' } }
+  rowMoreName: { text: '{nz.more.name}', within: { role: row } }
+  # the card: an <aside class=mds-card>; the sidebar is an <aside> too
+  abilitiesAside: { css: 'aside.mds-card' }
+  abilitiesList: { role: list, within: { css: 'aside.mds-card' } }
+  # the toasts of the page are sonner's: a title and a description, found by their attributes
+  toastSaved: { css: '[data-sonner-toast] [data-title]', hasText: Köşk nazımı eklendi }
+  toastSavedBody: { css: '[data-sonner-toast] [data-description]', hasText: '/ artık .* köşk nazımı\.$/' }
+  # the dialog
+  dialog: { role: dialog, name: '/^Köşk nazımı ekle$/' }
+  dialogEyebrow: { css: '.mds-eyebrow', hasText: '{nz.title}' }
+  dialogTitle: { role: heading, name: '/^Köşk nazımı ekle$/' }
+  # a toast has a "Kapat" of its own, so the dialog's is found inside the dialog
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: '/^Köşk nazımı ekle$/' } }
+  requiredNote: { text: '/zorunlu alan/' }
+  nazimField: { role: textbox, name: Köşk nazımı, within: { role: dialog, name: '/^Köşk nazımı ekle$/' } }
+  # the hidden <output> beside the field says "Aranıyor" while it searches and "<ad> seçildi" after; the chosen block says the person's name and address
+  # the field's own error (no live region) and the alert beside the field (role=alert, data-testid=picker-note) are both `.mds-error`
+  pickerNotFound: { css: '.mds-error:not([role=alert])', hasText: Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. }
+  pickerDown: { css: '.mds-error:not([role=alert])', hasText: Arama şu an yapılamıyor. }
+  pickerAlertNotFound: { testId: picker-note, hasText: Bu e-posta adresiyle kayıtlı bir hesap bulunamadı. }
+  pickerAlertDown: { testId: picker-note, hasText: Arama şu an yapılamıyor. }
+  pickerAlertAlready: { testId: picker-note, hasText: Bu kişi zaten seçildi. }
+  searching: { role: status, hasText: Aranıyor }
+  chosenAnnounce: { role: status, hasText: '{nz.add.name} seçildi' }
+  chosenAnnounceMore: { role: status, hasText: '{nz.more.name} seçildi' }
+  chosenFirst: { text: '{nz.add.name}', within: { testId: chosen-nazims } }
+  chosenFirstEmail: { text: '{nz.add.email}', within: { testId: chosen-nazims } }
+  chosenSecond: { text: '{nz.more.name}', within: { testId: chosen-nazims } }
+  removeFirst: { role: button, name: 'Seçimi kaldır: {nz.add.name}' }
+  # an <input type=datetime-local> is found by its label
+  endField: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)' }
+  endHelp: { text: '/Boş bırakırsanız/' }
+  endPast: { text: Bitiş zamanı şu andan sonra olmalı., within: { role: dialog, name: '/^Köşk nazımı ekle$/' } }
+  # "Ekle" alone: the dialog's other buttons are "Vazgeç" and "Kapat", and the page behind is inert
+  submit: { role: button, name: '/^Ekle$/', within: { role: dialog, name: '/^Köşk nazımı ekle$/' } }
+  busy: { role: status, hasText: Yükleniyor }
+  cancel: { role: button, name: Vazgeç, within: { role: dialog, name: '/^Köşk nazımı ekle$/' } }
+  # the error toasts: one title and six sentences, told apart by their sentence
+  toastFailed: { css: '[data-sonner-toast] [data-title]', hasText: Köşk nazımı eklenemedi }
+  toastExists: { css: '[data-sonner-toast] [data-description]', hasText: Seçilen kişi zaten bu köşkün nazımı. }
+  toastUnknownAccount: { css: '[data-sonner-toast] [data-description]', hasText: Bu hesap Medaris’te bulunamadı. }
+  toastEndPassed: { css: '[data-sonner-toast] [data-description]', hasText: Bitiş zamanı şu andan sonra olmalı. }
+  toastGone: { css: '[data-sonner-toast] [data-description]', hasText: Bu köşk artık yok. }
+  toastForbidden: { css: '[data-sonner-toast] [data-description]', hasText: Bunu yapma izniniz yok. }
+  toastGeneric: { css: '[data-sonner-toast] [data-description]', hasText: Bir şeyler ters gitti. }
+  # the list failing is not bound; its nodes are found by role and name when a walk can reach them
+  failAlert: { role: alert, name: Köşk nazımları yüklenemedi }
+
+# What a step leaves outside the screen, read through the API (nazims-data.mjs: GET /kosks/<id>/nazims and /kosks/directory as the başnazım)
+# and, where no route gives it, the database (the audit rows: SQL against tedrisat's database, through helpers/sql.mjs).
+# After a search the audit log has it, found or not (the help line says so, kosks.e2e.ts#12 searches twice). After the addition the person
+# holds the post, granted by the başnazım, with no end ("Süresiz") or the one typed, and the audit log has one `kosk.nazim.add` row (#12 a-last
+# reads one, with one person; the walk adds one). A passive köşk is ACTIVE after it. A refused call writes nothing (#12: the list is as it was).
+effects:
+  lookupUser:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'user.lookup' and actor_id = '{nz.chiefSub}' and details->>'email' = lower('{nazimEmail}') and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  addedNoEnd:
+    - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, held, applicantD, --ends, none]
+      expect: 'held APPLICANT_D ends=none by=SYSTEM_ADMIN'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'kosk.nazim.add' and entity_id = '{nz.kosk}'"]
+      expect: '"n":1'
+  addedWithEnd:
+    - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, held, applicantD, --ends, future]
+      expect: 'held APPLICANT_D ends=future by=SYSTEM_ADMIN'
+  # the passive köşk is active again, which no screen says (KNZ-1): the directory's status is the only place that shows it
+  reopen:
+    - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, status, ACTIVE]
+      expect: 'status ACTIVE'
+  # the whole call is refused and nobody is written: the one nazım of the köşk is still the only one (#12 a-last)
+  existsToast:
+    - run: [node, ../nizam/kosks/nazims/nazims-data.mjs, count, '1']
+      expect: 'count 1'

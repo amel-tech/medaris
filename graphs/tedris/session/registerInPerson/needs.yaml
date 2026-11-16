@@ -1,0 +1,217 @@
+# What must exist for a talebe to register for the in-person celse of the week: the product list of MDRS-284, from its Linear text, the
+# owner's decisions kept in it and planned.md (P-08), never from what the page does today. The flow draws it graph-first; nothing here is
+# built except the parts marked `built`. Nothing is walked: there is no binding, and no e2e check of the feature.
+# Gender separation is given: kontenjan is always two counts, one per gender, and gender is always required. So every need that decides a
+# seat is `missing: MDRS-284`; a need whose shape the owner has not decided is `missing: none`, with the open decision in its note.
+#
+# MISSING (no code; the orchestrator merges these into graphs/needs.gaps.yaml): apply-for-an-in-person-seat, kontenjan-per-gender-per-celse,
+# gender-reaches-the-api-and-is-checked, only-an-enrolled-talebe-asks, seat-given-at-approval-in-order, take-back-and-let-go,
+# full-quota-says-so-for-the-callers-gender, calendar-location, waiting-list-or-remote-only (none), registration-window (none),
+# registering-enrols-or-not (none), place-of-the-seat-and-its-visibility (none), talebe-sees-their-place-in-line (none),
+# team-hears-of-an-application (none), letting-a-seat-go-asks-first (none).
+# UNWALKED (code exists, nothing walks it yet): the-celse-is-marked-in-person, gender-is-mirrored-from-the-account.
+kind: needs
+flow: tedris.session.registerInPerson
+status: proposed
+
+needs:
+  - id: the-celse-is-marked-in-person
+    need: >-
+      A celse is held in person by its own mark, or by the course's when it has none, and the celse page says so ("Yüz yüze"). This is
+      the base the registration stands on: it decides whether a celse can take registrations at all.
+    drawn:
+      - eyebrowInPerson
+      - headingInPerson
+    built:
+      - action: medaris.api:updateLesson
+      - route: apps/tedris/features/courses/components/session-action-card.tsx:339
+      - route: apps/nazar/features/sessions/attendance.ts:25
+      - route: apps/nazar/features/course-settings/components/course-settings-form.tsx:212
+    walked: []
+    note: >-
+      MDRS-283 built it (a label only: no address and no seats). tedris.celse.attend's scenario `inPerson` and nazar.courseSettings.access
+      draw it; their replays are walk phase.
+
+  - id: apply-for-an-in-person-seat
+    need: >-
+      A talebe who holds a seat in the course registers, from the celse page, for the week's in-person celse. The application gives no seat:
+      it puts the talebe in the order of application, the talebe is told it was received and can see when it went in, and the course team is
+      the one who decides.
+    drawn:
+      - applyCard
+      - registering
+      - registered
+      - pending
+    missing: MDRS-284
+    note: >-
+      No code: no table, no route, no card. Linear's outline asks for "an in-person registration per celse and talebe carrying gender,
+      application time and status" (domain: InPersonRegistration, registerInPerson, getMyInPersonRegistration; graphs/domain/planned-in-person.yaml).
+
+  - id: kontenjan-per-gender-per-celse
+    need: >-
+      Seats belong to a celse and are two counts, one for women and one for men; a talebe is counted against the count of their own
+      gender and never against the other's, there is no total and no shared pool, and a celse with no seats takes no registration.
+    drawn:
+      - registering
+      - full
+      - applyCard
+    missing: MDRS-284
+    note: >-
+      Owner decisions 1 and 2 (2026-10-11): weekly from the start, separate quotas, gender always mandatory. The team's half is
+      nazar.sessions.inPersonSeats (InPersonSeats, setInPersonSeats). A course-wide default with a per-celse override is not drawn.
+
+  - id: gender-is-mirrored-from-the-account
+    need: >-
+      The account's gender (FEMALE or MALE) is Keycloak's attribute, required by the realm, and tedrisat mirrors it into the profile on
+      every request that carries it, so an in-person registration can read it and nobody types it.
+    drawn:
+      - registering
+    built:
+      - route: config/keycloak/user-profile.json:36
+      - route: apps/tedrisat/src/user/user-sync.service.ts:75
+      - action: medaris.api:getMe
+    walked: []
+    note: >-
+      Built by #317. tedris.account.profile draws the Hesap row that shows the mirror ("Belirtilmemiş" with "Ekle" when it is empty); its
+      replay is walk phase. The column is nullable, which the next need closes.
+
+  - id: gender-reaches-the-api-and-is-checked
+    need: >-
+      Gender is always known where a seat is decided: an application from a profile with no gender is refused and writes nothing, the
+      card says how to add it (Hesap's gender row), and the application copies the gender it was made with.
+    drawn:
+      - registering
+      - genderMissing
+      - registered
+    missing: MDRS-284
+    note: >-
+      Domain invariant gender-always-known (holds: false, MDRS-284): user_profiles.gender is nullable with no check and no enrolment path reads
+      it (apps/tedrisat/src/database/schema/user-profile.schema.ts:33). Linear also asks that an existing account without one is asked before
+      its first in-person registration. Open choice D5: the card could ask before the click.
+
+  - id: only-an-enrolled-talebe-asks
+    need: >-
+      Only a talebe who holds an ENROLLED seat in the course can register in person; a talebe who lost the seat meanwhile is refused and the
+      page read again is the locked card. Remote enrolment is never limited by a quota, and registering never enrols anyone.
+    drawn:
+      - registering
+      - locked_shown
+    missing: MDRS-284
+    note: >-
+      The story's refusal "not enrolled" (assertion an-application-needs-a-seat-in-the-course). See registering-enrols-or-not for the other reading.
+
+  - id: seat-given-at-approval-in-order
+    need: >-
+      A seat is taken when the course team approves, not when the talebe applies, so an application never waits on a person; applications
+      are approved in the order they came, first come first served, and the talebe is told when the seat is given.
+    drawn:
+      - registered
+      - pending
+      - seat
+    missing: MDRS-284
+    note: >-
+      Owner decision 4. The decision is the team's (nazar.sessions.inPersonSeats, approveInPersonRegistration, with a lock so parallel
+      approvals cannot pass the quota); this flow draws what the talebe meets: the waiting card, then the seat card on the next read. The
+      page is not live. The notification IN_PERSON_SEAT_GIVEN is proposed.
+
+  - id: take-back-and-let-go
+    need: >-
+      The talebe may withdraw an application and let a given seat go whenever they like; a seat let go is free for the next approval, and
+      the talebe may apply again at the end of the order.
+    drawn:
+      - withdrawing
+      - pending
+      - seat
+    missing: MDRS-284
+    note: >-
+      The story's "the talebe may withdraw". Unlike withdrawEnrollmentRequest, which refuses an approved row, withdrawInPersonRegistration
+      deletes whatever the status (see letting-a-seat-go-asks-first).
+
+  - id: full-quota-says-so-for-the-callers-gender
+    need: >-
+      When every seat of the talebe's own gender is given, the card says that gender's quota is full and offers nothing, whatever is left
+      of the other gender's seats, and an application that arrives after the last seat is refused with the same words.
+    drawn:
+      - full
+      - registering
+    missing: MDRS-284
+    note: >-
+      Assertions full-is-the-callers-own-gender and an-application-never-meets-a-full-quota. The talebe is never shown the other
+      gender's count or a total. The refusal code IN_PERSON_QUOTA_FULL is proposed.
+
+  - id: calendar-location
+    need: >-
+      The calendar invitation of a talebe who holds a seat in person carries the place as LOCATION, when they may see it.
+    drawn: []
+    missing: MDRS-284
+    note: >-
+      Linear's outline. Not drawn: it needs the place, and the place is not decided (place-of-the-seat-and-its-visibility). The invitations
+      are tedris.account.calendarFeed's and nazar.sessions.manage's (MANAGE-3: a change of how a celse is attended sends nothing today).
+
+  - id: waiting-list-or-remote-only
+    need: >-
+      When one gender's seats are all given, the next applicant either waits on a list in application order or is offered only remote
+      attendance, and is told which.
+    drawn:
+      - full
+    missing: none
+    note: >-
+      Open decision D1, Linear's first question to decide. Drawn: refused, "{gender} kontenjanı doldu.", no list, and no promise of a remote
+      way in (a celse held in person may have none).
+
+  - id: registration-window
+    need: >-
+      Registration for a celse opens and closes at set times: Linear names the lesson day, 08:00 to 20:00 Turkish time, and asks whether it is set
+      per course.
+    drawn:
+      - applyCard
+    missing: none
+    note: "Open decision D2. Drawn: open from the day the seats are set until the celse begins (`door` in the flow)."
+
+  - id: registering-enrols-or-not
+    need: >-
+      Either a talebe must already be enrolled to register in person (the story's refusal), or registering in person enrols them in the
+      whole course (Linear's decision 3: "counts as enrolled in the whole course").
+    drawn:
+      - registering
+      - locked_shown
+    missing: none
+    note: "Open decision D3. Drawn: the first reading, because the story lists \"not enrolled\" as a refusal."
+
+  - id: place-of-the-seat-and-its-visibility
+    need: >-
+      An in-person celse has a place, and the owner decides whether the address is public (so a prospective talebe can choose by it) or
+      shown to enrolled talebe only.
+    drawn: []
+    missing: none
+    note: >-
+      Belongs to MDRS-284 (its decision 6), not to MDRS-283, and is not decided. tedris.celse.attend's rule in-person-names-no-place says the
+      page has no field for it. Not drawn.
+
+  - id: talebe-sees-their-place-in-line
+    need: >-
+      A waiting talebe sees their position in the order of application.
+    drawn: []
+    missing: none
+    note: Not in the story and not decided; the team sees positions (nazar.sessions.inPersonSeats), the talebe is not drawn seeing one.
+
+  - id: team-hears-of-an-application
+    need: >-
+      The course team is told when someone applies, so an application does not wait unseen.
+    drawn:
+      - registered
+    missing: none
+    note: >-
+      Not decided. Nothing is sent today by enrollInCourse either (tedris.course.apply), and MDRS-189 (e-mail notices) is title only. The team reads
+      the list.
+
+  - id: letting-a-seat-go-asks-first
+    need: >-
+      Letting a given seat go asks the talebe first, as leaving an enrolled seat does, and a stale "waiting" card cannot release a seat the
+      team gave meanwhile without saying so.
+    drawn:
+      - seat
+      - pending
+      - withdrawing
+    missing: none
+    note: "Open decision D4. Drawn: no question, and the stale withdrawal succeeds."

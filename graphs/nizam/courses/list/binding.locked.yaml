@@ -1,0 +1,52 @@
+# nizam.courses.list over a list whose only hidden course was hidden by Medaris yönetimi (`held` locked): the nazım has the sentence "Bunu Medaris
+# yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir." on it and no button, and hiding a course beside it makes `held` both.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/list \
+#     --bind graphs/nizam/courses/list/binding.locked.yaml --cover transitions --out <dir>
+# NOT RUN. Read only the walks that cover the `locked` branch of `afterHide` and the sentence in `listed` (`--absent` there proves that no
+# "Geri al" is on the page, since the only hidden course has none).
+# Data: the köşk with nclOwn (published, one application waiting) and nclLock, hidden by the başnazım. No medrese.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.list
+
+data:
+  ncl: { json: ../.local/made/ncl.json }
+  nclOwn: { json: ../.local/made/nclOwn.json }
+  nclLock: { json: ../.local/made/nclLock.json }
+
+scenarios:
+  locked:
+    given: { courses: some, held: locked }
+    as: koskNazim
+    open: '{nizam}/kosks/{ncl.kosk}'
+    setup:
+      - run: [node, ../nizam/courses/list/data.mjs, make-kosk, ncl, KOSK_NAZIM]
+        expect: '"tag":"ncl"'
+      - run: [node, helpers/course.mjs, make, nclLock, --kosk, '{ncl.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclLock"'
+      - run: [node, helpers/course.mjs, make, nclOwn, --kosk, '{ncl.kosk}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+      - run: [node, ../nizam/courses/list/data.mjs, hide-course, --as, systemAdmin, --tag, nclLock]
+        expect: 'hide-course nclLock by SYSTEM_ADMIN'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nclOwn]
+        expect: 'course remove nclOwn'
+      - run: [node, helpers/course.mjs, remove, nclLock]
+        expect: 'course remove nclLock'
+      - run: [node, ../nizam/courses/list/data.mjs, remove-kosk, ncl]
+        expect: 'data remove-kosk ncl'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ncl%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where name like 'Deneme köşkü ncl%'"]
+        expect: '"n":0'
+
+nodes:
+  # two courses: nclOwn published and nclLock hidden; the hide of nclOwn makes it 0 and 2
+  tabAll: { role: tab, name: '/^Tümü2$/' }
+  tabPublished: { role: tab, name: '/^Yayında[01]$/' }
+  tabDraft: { role: tab, name: '/^Taslak0$/' }
+  tabHidden: { role: tab, name: '/^Gizli[12]$/' }
+  hostingNumber: { css: .mds-stat__value, hasText: '/^0$/', within: { css: .mds-stat, hasText: Barındırma hakkı olan medrese } }
+  medreseView: { skip: 'this köşk holds no medrese course' }
+  medreseHide: { skip: 'this köşk holds no medrese course' }

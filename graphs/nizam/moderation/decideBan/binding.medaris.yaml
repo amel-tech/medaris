@@ -1,0 +1,75 @@
+# nizam.moderation.decideBan on the Medaris list as a Medaris nazım (viewer `medaris`) who holds platform.ban_scoped and nothing else: she reads
+# the list, lifts a köşk ban (the permission to ban at the köşk's level also lifts there, tier 4 reaches tier 3) and no course ban, and widens a
+# course ban through the dialog.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideBan \
+#     --bind graphs/nizam/moderation/decideBan/binding.medaris.yaml --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`).
+#
+# The person. The seed's own Medaris nazım holds five platform permissions and none of the ban's (STACK.md), and a walk never changes her, so
+# the walk appoints a spare of its own: applicantG, "Dilek Başvuran", through ../nizam/home/medarisNazimCut/nazim.mjs (the başnazım's API, as the
+# Medaris nazımları page uses; no SQL), with platform.ban_scoped only. The teardown dismisses her. She bans nobody and is never a person a ban is on.
+#   medarisLifts  a köşk ban the köşk nazım placed on applicantC: her row offers "Yasağı kaldır" (platform.ban_scoped lifts at the köşk's level)
+#                 and the walk lifts it; the dialog names her "medaris nazımı" (app/yasaklamalar/page.tsx:36; on a köşk's list it would say "köşk nazımı", NDB-8). bans-medaris#7
+#                 in spirit: the e2e lifts a COURSE ban with ban.lift_course given in every course by SQL; no API gives a Medaris nazım that.
+#   medarisWidens a course ban a hoca placed on applicantC: her row offers no lift and the note "Bu yasağı yalnız onu koyan kademe ya da üstü
+#                 kaldırabilir." though she is above it (NDB-5), and "Yasağı genişlet"; she widens it, and the new köşk row offers her the lift.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.decideBan
+
+states:
+  listed: { url: '{nizam}/yasaklamalar' }
+  empty: { url: '{nizam}/yasaklamalar' }
+  liftedTab: { url: '{nizam}/yasaklamalar' }
+  lifting: { call: '{nizam}/yasaklamalar' }
+  extending: { call: '{nizam}/yasaklamalar' }
+
+scenarios:
+  medarisLifts:
+    given: { viewer: medaris, read: ok, row: wide, answer: done, after: more }
+    as: applicantG
+    open: '{nizam}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"tag":"decideBan"'
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
+        expect: 'up APPLICANT_G'
+      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --wide, APPLICANT_C]
+        expect: 'ready: 1 open'
+    teardown:
+      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_C]
+        expect: removed
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+        expect: 'down APPLICANT_G'
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: 'KOSK lifted by APPLICANT_G "Yeniden değerlendirildi"'
+      widenHas: KOSK open
+
+  medarisWidens:
+    given: { viewer: medaris, read: ok, row: low, answer: done, after: more }
+    as: applicantG
+    open: '{nizam}/yasaklamalar'
+    setup:
+      - run: [node, helpers/course.mjs, make, decideBan, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, applicantC]
+        expect: '"tag":"decideBan"'
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, platform.ban_scoped]
+        expect: 'up APPLICANT_G'
+      - run: [node, ../nizam/moderation/decideBan/bans.mjs, up, decideBan, --low, APPLICANT_C]
+        expect: 'ready: 1 open'
+    teardown:
+      - run: [node, ../nizam/moderation/decideBan/bans.mjs, down, decideBan, --people, APPLICANT_C]
+        expect: removed
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+        expect: 'down APPLICANT_G'
+      - run: [node, helpers/course.mjs, remove, decideBan]
+        expect: 'course remove decideBan'
+    vars:
+      reasonText: Yeniden değerlendirildi
+      who: APPLICANT_C
+      liftHas: 'KOSK lifted by APPLICANT_G'
+      widenHas: KOSK open

@@ -1,0 +1,137 @@
+# nizam.applications.decide on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım
+# (SYSTEM_ADMIN) signed in through Keycloak's real form, on "Köşk başvuruları".
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/applications/decide \
+#     --bind graphs/nizam/applications/decide/binding.yaml --cover transitions --out <dir>
+# The two other readings are in the files beside this one (each its own binding: they add events or a state's `before`, and a scenario
+# that adds no transition to the main file's cannot be walked from it): binding.meanwhile.yaml (answered by someone else first) and
+# binding.forbidden.yaml (a Medaris nazımı who loses the permission). The shared locators are in locators.binding.yaml.
+#
+# NOT RUN: the owner's word is that replays happen once, at the end. Every locator, every account fact and every expectation here is
+# from the code and unverified. The file loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` writes a spec and walks nothing).
+#
+# Data. Nothing is seeded for this page (the stack makes no köşk application), so each scenario files its own through tedrisat's route
+# (POST /kosk-applications, as the spare talebe: the call tedris.discover.applyForKosk's form makes) with ./applications.mjs, reads the ids
+# from graphs/.local/made/ndk.json as {made.*}, and removes them in `teardown` (applications by SQL: no route deletes one; the köşk the walk
+# opens, by its short name through DELETE /kosks/:id; the notices the answers sent the applicants by SQL). `up` removes what a walk that
+# died left first, so `setup` is safe to run twice. The accounts: applicantC files `open` (its köşk is opened), applicantD files `reject`
+# (refused) and `bare` (no telephone number); neither is a Medaris nazımı or holds a role at the start, so the page says "Henüz bir rolü yok".
+# What a walk cannot undo: the audit rows (kosk_application.contact_read of every selection, .approve, .reject, kosk.create, the köşk's
+# removal); the API has no way to remove them and nothing depends on them. Others' applications on the page (a crashed walk of
+# another flow) are never touched: the rows this flow presses are found by name.
+#
+#   decides    the main story (from the home's "İncele" address): ?secili= names `open`; "Köşkü aç" (the form is filled by the walk with a
+#              short name, "Köşk aç"), the approval, the next application is `reject` (picked by its row), "Reddet" with a written reason.
+#              `--cover transitions` also takes the cancel of both dialogs, the empty-field error and the answered tab (the walk does not
+#              reload the list between the decisions and the tab, so the tab is read, `answered: rejected`).
+#              e2e platform-admin#3 and #4 (the decisions) and dashboard#2 (the address; the aria-current mark is not checked by a replay).
+#   tabs       entered by the menu ("Köşk başvuruları"): no ?secili=, so the oldest waiting application is selected (assumed to be `open`:
+#              a walk of another flow that left one older would change it). setup also refuses `reject` through the API, so that the
+#              answered tab has a row with a reason: "Karara bağlanan", the tab counts, the answered detail and its "Ret gerekçesi".
+#              e2e platform-admin#1 (the counts, the detail, the telephone).
+#   staleLink  ?secili= names an id nobody has (a decided application behaves the same): the first waiting application is selected, in
+#              silence (APPDEC-1). Walk with `--to waitingDetail`.
+#   none       nothing waits and nothing was answered: "Karar bekleyen köşk başvurusu yok.", then the answered tab's empty line. Needs a
+#              stack where no application is on the page (the seed makes none; a crashed walk of another flow can leave one).
+#              Nothing is filed. Walk with `--to empty`.
+#   noPhone    `bare` has no telephone number: "Verilmedi" (e2e platform-admin#1). Walk with `--to waitingDetail`.
+#   refused    the seed's Medaris nazımı holds five codes and not platform.kosk_application_decide: tedrisat answers 403 and the page is
+#              the screen "Bu bölüm için izniniz yok". Nothing is filed. Walk with `--to no_access`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.applications.decide
+
+data:
+  made: { json: ../.local/made/ndk.json }
+
+# the sample values of the detail are the first application's (`open`, filed by applicantC); the second one's (`reject`, applicantD) are
+# found by place in locators.binding.yaml, which does not compare their text
+samples:
+  name: '{made.open.name}'
+  applicant: '{made.open.applicant}'
+  email: '{made.open.email}'
+  phone: '{made.open.phone}'
+
+scenarios:
+  decides:
+    given: { read: ok, link: waiting, queue: some, phone: given, answered: rejected, answer: done }
+    as: systemAdmin
+    open: '{nizam}/talepler/kosk-basvurulari?secili={made.open.id}'
+    vars: { koskHandle: ornek-kelam, reason: 'Aynı alanda başka bir köşk var.' }
+    setup:
+      - run: [node, ../nizam/applications/decide/applications.mjs, up, ndk, 'open:applicantC', 'reject:applicantD']
+        expect: '"tag":"ndk"'
+    teardown:
+      - run: [node, ../nizam/applications/decide/applications.mjs, down, ndk]
+        expect: 'applications down ndk'
+
+  tabs:
+    given: { read: ok, link: none, queue: some, phone: given, answered: rejected, answer: done }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskApplications' }
+    vars: { koskHandle: ornek-kelam, reason: 'Aynı alanda başka bir köşk var.' }
+    setup:
+      - run: [node, ../nizam/applications/decide/applications.mjs, up, ndk, 'open:applicantC', 'reject:applicantD']
+        expect: '"tag":"ndk"'
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/nizam/kosk-applications/{made.reject.id}/reject', '{"reason":"Aynı alanda başka bir köşk var."}']
+        expect: 'HTTP 204'
+    teardown:
+      - run: [node, ../nizam/applications/decide/applications.mjs, down, ndk]
+        expect: 'applications down ndk'
+
+  staleLink:
+    given: { read: ok, link: gone, queue: some, phone: given, answered: none, answer: done }
+    as: systemAdmin
+    open: '{nizam}/talepler/kosk-basvurulari?secili=00000000-0000-4000-8000-000000000000'
+    vars: { koskHandle: ornek-kelam, reason: 'Aynı alanda başka bir köşk var.' }
+    setup:
+      - run: [node, ../nizam/applications/decide/applications.mjs, up, ndk, 'open:applicantC']
+        expect: '"tag":"ndk"'
+    teardown:
+      - run: [node, ../nizam/applications/decide/applications.mjs, down, ndk]
+        expect: 'applications down ndk'
+
+  none:
+    given: { read: ok, link: none, queue: none, phone: given, answered: none, answer: done }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskApplications' }
+    vars: { koskHandle: ornek-kelam, reason: 'Aynı alanda başka bir köşk var.' }
+    setup:
+      - run: [node, ../nizam/applications/decide/applications.mjs, down, ndk]
+        expect: 'applications down ndk'
+
+  noPhone:
+    given: { read: ok, link: waiting, queue: some, phone: missing, answered: none, answer: done }
+    as: systemAdmin
+    open: '{nizam}/talepler/kosk-basvurulari?secili={made.bare.id}'
+    vars: { koskHandle: ornek-belagat, reason: 'Aynı alanda başka bir köşk var.' }
+    setup:
+      - run: [node, ../nizam/applications/decide/applications.mjs, up, ndk, 'open:applicantC', 'bare:applicantD']
+        expect: '"tag":"ndk"'
+    teardown:
+      - run: [node, ../nizam/applications/decide/applications.mjs, down, ndk]
+        expect: 'applications down ndk'
+
+  refused:
+    given: { read: refused, link: none, queue: some, phone: given, answered: none, answer: done }
+    as: medarisNazim
+    open: '{nizam}/talepler/kosk-basvurulari'
+    vars: { koskHandle: ornek-kelam, reason: 'Aynı alanda başka bir köşk var.' }
+
+# What a decision leaves outside the screen, read straight from tedrisat's database (no route reads an application by id for a person
+# who is not its reader, and the SQL is how the e2e reads it too).
+effects:
+  # e2e platform-admin#2: opening the selected application wrote the read of its contact details to the audit log
+  getKoskApplication:
+    - run: [node, helpers/sql.mjs, "select count(*) > 0 as seen from audit_log where action = 'kosk_application.contact_read' and entity_id in (select id from kosk_applications where name like 'Örnek % Köşkü')"]
+      expect: '"seen":true'
+  # e2e platform-admin#4: the application is APPROVED and names the köşk that was opened
+  approveKoskApplication:
+    - run: [node, helpers/sql.mjs, "select status, kosk_id is not null as opened from kosk_applications where id = '{made.open.id}'"]
+      expect: '"status":"APPROVED","opened":true'
+  # e2e platform-admin#3: the application is REJECTED with the reason that was written
+  rejectKoskApplication:
+    - run: [node, helpers/sql.mjs, "select status, reject_reason from kosk_applications where id = '{made.reject.id}'"]
+      expect: '"status":"REJECTED","reject_reason":"Aynı alanda başka bir köşk var."'

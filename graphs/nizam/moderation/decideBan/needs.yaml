@@ -1,0 +1,223 @@
+# What must exist for the people above a course to decide on an open ban from Yasaklamalar in nizam-web (lift it with a reason, or widen a
+# course ban to the whole köşk): the flow's product list (LAYOUT.md section 7). Each need is what the product must do, from the flow's
+# story and the planned work in the inventory (planned.md P-01, P-02, P-35), not from what the pages do today. The known gaps go to
+# graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file. No replay has been run in
+# this phase, so no replay is named under `walked`: the scenarios of binding.yaml, binding.all.yaml, binding.medaris.yaml and the others
+# are written and unrun, and a comment under each need names the one that will walk it.
+#
+# Gaps of this file, for that merge:
+#   missing:   widen-refuses-a-person-who-runs-a-course (finding ban-staff-check-gaps, NDB-1, no issue),
+#              a-hoca-is-not-named-over-an-open-ban (same finding, no issue),
+#              one-widening-asks-the-same-way-everywhere (F-W5-1, NDB-2, no issue),
+#              a-widening-names-the-ban-it-widens (NDB-2, no issue),
+#              a-refusal-is-told-in-the-dialog-and-the-list-follows (NDB-6, F-W5-3, no issue),
+#              the-list-and-the-focus-follow-a-decision (NDB-9, NDB-10, F-X-7, no issue),
+#              an-empty-reason-is-told (F-W5-4, no issue),
+#              the-lift-says-what-it-lifts (NDB-3, no issue),
+#              the-note-under-a-ban-tells-the-true-reason (NDB-5, no issue),
+#              a-medrese-ban-reads-as-one (NDB-4, no issue),
+#              bans-at-every-level-reach-the-people-above (MDRS-113), a-ban-at-platform-level (MDRS-113),
+#              a-ban-recognises-the-device (MDRS-125, MDRS-199), a-ban-can-close-the-account (MDRS-197)
+#   unwalked:  every-refusal-is-told (BAN_NOT_FOUND, VALIDATION_ERROR, HTTP_400, COURSE_NOT_FOUND: no row the page draws can make them;
+#              BAN_ALREADY_LIFTED and BAN_LIFT_FORBIDDEN have replay scenarios, written)
+# Gender separation is given and does not touch this flow: no seat is decided here.
+kind: needs
+flow: nizam.moderation.decideBan
+status: proposed
+
+needs:
+  - id: lift-with-a-reason
+    need: >-
+      A person above a course lifts an open ban with a reason. The ban moves to Kaldırılan with the lifter's name, the day and the
+      reason; the person's access comes back, and only the kademe that placed the ban, or a higher one, holding the permission of its
+      level, may do it.
+    drawn: [listed, liftButton, liftDialog, form, formReady, lifting, toastLiftedTitle, toastLiftedBody, settled, tabActiveCount, tabLiftedCount]
+    built:
+      - action: medaris.api:liftBan
+      - route: apps/nizam/features/bans/components/lift-dialog.tsx:79
+    walked:
+      - e2e: apps/nizam/e2e/bans.e2e.ts
+        check: 'bans#7'
+      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
+        check: 'bans-medaris#7' # in spirit: the e2e lifts a course ban with ban.lift_course given in every course; the written scenario lifts a köşk ban
+    # replay: decides, chiefDecides, medarisLifts (written, not run)
+
+  - id: a-lifted-ban-says-who-and-why
+    need: >-
+      The Kaldırılan tab lists the ban that was lifted with who lifted it, when, and the reason they gave, so that a later reader can
+      see the decision and not only the ban.
+    drawn: [liftedTab, colLiftedBy, liftedByName, liftedWhen, liftedReason, tableLiftedKosk, tableLiftedAll]
+    built:
+      - action: medaris.api:listKoskBans
+      - action: medaris.api:listAllBans
+      - route: apps/nizam/features/bans/components/bans-view.tsx:279
+    walked:
+      - e2e: apps/nizam/e2e/bans.e2e.ts
+        check: 'bans#7'
+    # replay: decides (OPEN_LIFTED), chiefDecides (written, not run)
+
+  - id: the-lift-is-hidden-where-the-kademe-is-too-low
+    need: >-
+      A row offers the lift only where the person's permission at the ban's level and their kademe reach the ban's; a ban Medaris
+      placed shows a köşk nazım no lift and says who can, and the page and the API agree (a hidden button is also a refusal).
+    drawn: [listed, mayLift, liftButton, notePlatform, noteHigher, a-ban-medaris-placed-is-not-lifted-by-a-kosk-nazim, a-medaris-nazim-lifts-no-course-ban]
+    built:
+      - action: medaris.api:listKoskBans
+      - action: medaris.api:listAllBans
+      - route: apps/nizam/features/bans/present.ts:137
+    walked:
+      - e2e: apps/nizam/e2e/bans.e2e.ts
+        check: 'bans#6'
+    # replay: platform, medarisWiden (written, not run)
+
+  - id: widen-to-the-kosk-in-one-click
+    need: >-
+      From the köşk's list the nazım widens a course ban to the whole köşk: a köşk ban stands beside the course ban, the person cannot
+      reach or apply to any course of the köşk, and the row of the widened ban offers no further widening.
+    drawn: [listed, widenNowButton, widening, widenNowBusy, toastWidenedTitle, toastWidenedBody, scopeKosk, scopeExtendedFrom, a-kosk-ban-is-not-widened]
+    built:
+      - action: medaris.api:createBan
+      - route: apps/nizam/features/bans/components/bans-view.tsx:137
+    walked:
+      - e2e: apps/nizam/e2e/bans.e2e.ts
+        check: 'bans#8'
+      - e2e: apps/nizam/e2e/bans.e2e.ts
+        check: 'bans#5' # the list half: the köşk-wide ban reads "Köşk" and "{ders} dersinden genişletildi"
+    # replay: decides (WIDEN_NOW), wide (written, not run)
+
+  - id: widen-to-the-kosk-with-a-reason
+    need: >-
+      From the Medaris list the başnazım or a Medaris nazım widens a course ban through a dialog that asks for a reason of its own,
+      written to the audit log as the widening of that ban; a köşk row offers the lift and no widening.
+    drawn: [listed, widenButton, extendDialog, form, formReady, extending, toastExtendedTitle, toastExtendedBody, extendSubmit]
+    built:
+      - action: medaris.api:extendBan
+      - route: apps/nizam/features/bans/components/extend-dialog.tsx:68
+    walked:
+      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
+        check: 'bans-medaris#5'
+      - e2e: apps/nizam/e2e/bans-medaris.e2e.ts
+        check: 'bans-medaris#6'
+    # replay: chiefDecides, medarisWiden (written, not run)
+
+  - id: lifted-before-you-or-no-longer-allowed-is-told
+    need: >-
+      A lift or a widening on a ban that someone lifted first, or that the person may no longer lift, is told in words
+      (BAN_ALREADY_LIFTED, BAN_LIFT_FORBIDDEN) and changes nothing.
+    drawn: [lifting, extending, toastMoved, toastRefusedLift, toastRefusedForbidden, formReady]
+    built:
+      - action: medaris.api:liftBan
+      - action: medaris.api:extendBan
+      - route: apps/nizam/features/bans/present.ts:112
+    # replay: moved (köşk's list), allMoved (Medaris list: lift and widening), refused (BAN_LIFT_FORBIDDEN) (written, not run)
+    # No e2e names either code: they are pinned by the API's own e2e and unit specs.
+
+  - id: every-refusal-is-told
+    need: >-
+      Every other refusal a decision can meet (BAN_NOT_FOUND, VALIDATION_ERROR, HTTP_400, COURSE_NOT_FOUND, BAN_TARGET_INVALID of the
+      widening dialog) is told in words and leaves the page as it was.
+    drawn: [lifting, extending, widening, toastFailed, toastInvalid]
+    built:
+      - route: apps/nizam/features/bans/present.ts:101
+
+  - id: widen-refuses-a-person-who-runs-a-course
+    need: >-
+      A ban cannot be widened to the köşk over a person who runs a course of it (hoca, ders nazırı, köşk nazım, Medaris nazım,
+      başnazım), as it cannot be placed over them, whichever page widens it and at whichever course of the köşk they teach; a refusal
+      is BAN_TARGET_INVALID and the page words it already ("Bu kişi yasaklanamaz.").
+    drawn: [extending, widening, toastInvalid, toastWidenedBody]
+    missing: none # finding ban-staff-check-gaps, NDB-1: extendBan reads no roles (ban.service.ts:270), createBan reads them at the ban's own course only (:155)
+    # replay: staff (Medaris dialog, accepted) and staffKosk (one click, refused for this course), written, not run
+
+  - id: a-hoca-is-not-named-over-an-open-ban
+    need: >-
+      A person an open ban bars from a course or a köşk is not named hoca, başmüderris, köşk nazım or Medaris nazım of it until the ban
+      is lifted, as a ders nazırı and a medrese nazır are refused while barred (COURSE_NAZIR_BARRED, MADRASAH_NAZIR_BARRED); otherwise
+      the ban can later be widened over a person who runs the course.
+    drawn: [listed, extending, widening]
+    missing: none # finding ban-staff-check-gaps: the müderris, başmüderris and nazım routes look at no ban
+
+  - id: one-widening-asks-the-same-way-everywhere
+    need: >-
+      Widening a ban asks for a reason in both lists, in the same dialog, and says what it does before it does it.
+    drawn: [widenNowButton, widening, widenButton, extendDialog]
+    missing: none # F-W5-1: the köşk's list widens on one click and reuses the course ban's reason
+
+  - id: a-widening-names-the-ban-it-widens
+    need: >-
+      A widening is made from the ban the person sees and refuses a ban that was lifted meanwhile (409), and its audit row says it is a
+      widening, from either page.
+    drawn: [widening, toastWidenedBody]
+    missing: none # NDB-2: the one-click widening sends the course, the person and the reason, no ban id, and writes ban.create
+
+  - id: a-refusal-is-told-in-the-dialog-and-the-list-follows
+    need: >-
+      A refusal is told inside the dialog (an alert), and for a ban lifted or gone meanwhile the dialog closes and the list is read
+      again, instead of asking the person to refresh the page by hand.
+    drawn: [lifting, extending, formReady, toastMoved, toastLiftFailedTitle, toastExtendFailedTitle]
+    missing: none # NDB-6, F-W5-3 (F-X-4)
+
+  - id: the-list-and-the-focus-follow-a-decision
+    need: >-
+      After a decision the focus lands where a keyboard or screen-reader user can use it (the table's caption or the next row's
+      button), the table stays while it is read again, and a line on the page, not only a toast, says what was decided and what the
+      counts are now.
+    drawn: [listed, settled, toastLiftedTitle, tabActiveCount, tabLiftedCount, recentLine, summaryLine]
+    missing: none # NDB-9, NDB-10, F-W5-10, F-X-7, F-X-10
+
+  - id: an-empty-reason-is-told
+    need: >-
+      The reason is required, and a person who tries to send it empty is told so where they are, in a way a screen reader announces and
+      with the focus on the field, not by a submit that is simply off and a message that appears silently after the field is left.
+    drawn: [form, reasonRequired, liftSubmit, extendSubmit]
+    missing: none # F-W5-4 (F-X-2, F-X-3)
+
+  - id: the-lift-says-what-it-lifts
+    need: >-
+      The lift dialog and its toast say what the lift gives back for the ban's scope: a course ban gives the course back, a köşk ban
+      the köşk's other courses and not the course it was widened from.
+    drawn: [liftInfo, toastLiftedBody]
+    missing: none # NDB-3
+
+  - id: the-note-under-a-ban-tells-the-true-reason
+    need: >-
+      The note under a ban that a person cannot lift names the true reason: the permission she lacks, or that only Medaris
+      administration may; it never tells a Medaris nazım that only a higher kademe may lift it.
+    drawn: [notePlatform, noteHigher]
+    missing: none # NDB-5
+
+  - id: a-medrese-ban-reads-as-one
+    need: >-
+      A ban placed over a whole medrese reads in the Medaris list as a medrese ban, with the medrese's name, has its own Kapsam chip,
+      and its lift dialog speaks of the medrese.
+    drawn: [scopeKosk]
+    missing: none # NDB-4
+
+  - id: bans-at-every-level-reach-the-people-above
+    need: >-
+      Every ban, at course, köşk, medrese or platform level, is shown to the people above its level when it is placed, always with its
+      reason (P-01). A medrese-wide ban and a widening to the medrese notify no köşk nazım and no Medaris nazım today (announce returns
+      when the ban has no köşk, ban.service.ts:354).
+    drawn: [listed]
+    missing: MDRS-113
+
+  - id: a-ban-at-platform-level
+    need: >-
+      A ban at platform level exists, with its chip on the Medaris list and its own place in the kademe, and is lifted by the başnazım
+      alone (P-01). Today the scopes are course, köşk and medrese.
+    drawn: [listed, scopeKosk]
+    missing: MDRS-113
+
+  - id: a-ban-recognises-the-device
+    need: >-
+      A banned person who comes back under a second account on the same browser is recognised and stopped, and a ban's page shows the
+      device events (P-02). The köşk's list says in a code comment that its device tab waits for a backend (bans-view.tsx:44).
+    drawn: [listed]
+    missing: MDRS-125 # also MDRS-199 (the deferred screen)
+
+  - id: a-ban-can-close-the-account
+    need: >-
+      A platform-wide ban disables the person's Keycloak account through the Admin API (P-35). Today platform.ban_account only reads
+      the lists, nothing bars an account, and no ban touches Keycloak (domain invariant keycloak-is-read-only).
+    drawn: [listed]
+    missing: MDRS-197

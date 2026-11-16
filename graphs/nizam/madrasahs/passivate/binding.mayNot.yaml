@@ -1,0 +1,29 @@
+# nizam.madrasahs.passivate for a Medaris nazımı who may not: the seeded MEDARIS_NAZIM holds platform.madrasah_create (among five codes,
+# none of them platform.madrasah_edit), so Medreseler opens for her with "Medrese aç" and no "Pasife al" on any row. She reads the list and
+# leaves; the walk makes the one active row (the walk's own medrese) so that there is a row that would carry the button. It adds no
+# transition to the others (and the dialog is never opened), so it needs a file of its own.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay \
+#     graphs/nizam/madrasahs/passivate --bind graphs/nizam/madrasahs/passivate/binding.mayNot.yaml --to listed --absent --out <dir>
+#
+# NOT RUN: written without a replay. With `--absent` it also checks that the button is not drawn (`passivate` has `when: may != 'mayNot'`).
+# The nav entry 'frame:shell->madrasahs' is the Medaris nazımı's too (nizam.nav: the menu shows Medreseler for a Medaris nazımı with
+# platform.madrasah_create). `courses: none` is a placeholder for the case variable: the dialog is never opened, so what is under the medrese
+# does not matter, and the walk makes no course.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.madrasahs.passivate
+
+scenarios:
+  mayNot:
+    given: { may: mayNot, courses: none }
+    as: medarisNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup:
+      - run: [node, ../nizam/madrasahs/passivate/passivate-data.mjs, make, pasife, --head, APPLICANT_C]
+        expect: '"tag":"pasife"'
+    teardown:
+      - run: [node, ../nizam/madrasahs/passivate/passivate-data.mjs, remove, pasife]
+        expect: 'passivate-data remove pasife'

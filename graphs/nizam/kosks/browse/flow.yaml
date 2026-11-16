@@ -1,0 +1,476 @@
+# Köşkler (nizam-web, /kosks), the directory of every köşk, as the Medaris başnazım, a Medaris nazımı who holds a köşk permission and a köşk
+# nazımı read it. Read from the code of the branch (the tree of PR #394) on 16 Nov 2026: apps/nizam/app/kosks/{layout,page}.tsx,
+# features/kosks/components/{kosks-directory,taught-courses,directory-skeleton}.tsx, features/kosks/admin-present.ts (the filters and the
+# error keys), features/kosks/admin-reads.ts, features/kosks/admin-actions.ts, features/archive/hide-level.ts, libs/ui/src/mds (tabs, table,
+# choice-chips, alert, button) and tedrisat's GET /kosks/directory and POST /kosks/:id/restore (kosk-admin.controller.ts:131, :382,
+# kosk-admin.service.ts:190-207 scopeOf, :263-286 restore, kosk-admin.repository.ts:151-262). The running stack was looked at with GET requests
+# only, as the başnazım, the Medaris nazımı, the köşk nazımı and the talebe: the directory answers (two köşks, both active, counts 2 / 2 / 0 / 0,
+# the same two rows for the Medaris nazımı and the köşk nazımı), the 403 the talebe gets, the 200 with no rows that a page past the last one
+# gets (?page=99999) and the 500 that a page too large to be a number gets (?page=100000000000000000000). The HTML that nizam-web serves for /kosks
+# (and for ?durum=pasif, ?gorunurluk=listelenmeyen, ?q=, ?sayfa=99999 and ?sayfa=100000000000000000000) was read too, signed in as the same four: the
+# tabs with their counts, the chips (a group of aria-pressed buttons), the table's explicit roles and data-labels, the empty line, the box
+# (role=alert) and which buttons and links each person is given. No page was opened in a browser: what the screen looks like, where the focus
+# goes and what a screen reader says are from the code. It says what the code does today:
+#   - The URL is the one source of the filters: ?durum=etkin|pasif|gizli (none is Tümü), ?gorunurluk=listelenen|listelenmeyen (none is Tümü), ?q=
+#     (cut to 100) and ?sayfa= (above 1). A tab, a chip or a page is router.push, the typed text router.replace after 300 ms; the server reads
+#     again each time and a tab, a chip or a text starts again at page 1. The old ?seviye= and ?alan= filter nothing (e2e kosks#2).
+#   - Who sees what is tedrisat's decision (scopeOf): the başnazım and a Medaris nazımı who holds any of platform.kosk_create, kosk_edit,
+#     kosk_nazim_manage or hosting_grant see every köşk; a köşk nazımı sees the köşks he manages; anyone else is refused (403). The /kosks layout
+#     refuses first, with forbidden(), every person whose roles do not make Nizam theirs (a talebe, a müderris): they never reach the read.
+#   - "Köşk aç" and the Arşiv link are drawn to the başnazım alone (`chief`); the tab numbers are the viewer's whole scope whatever the chip
+#     and the text leave; "Geri al" is drawn on a hidden row when the API says the viewer may (`canRestore`, the kademe ladder: the level that
+#     hid it or above), else the row says who hid it and that only that level or above brings it back.
+#   - Findings it carries (the inventory's ids): F-W3-12 (a tab, a chip, a text or a page changes the rows and nothing says so), F-W3-16 (the
+#     "Verdiğiniz dersler" block), F-X-7 (the row's button leaves the page when "Geri al" works). Three more are this flow's own, KBROWSE-1 to
+#     KBROWSE-3 (ui.yaml `rules`). F-5 (a hidden köşk can still be followed, ledger/security.md) is not on this page: it has no follow control.
+#   - e2e checks it takes over: kosks#1 to #4. The inventory marks all four consistent with the code; the two dates they assert depend on the
+#     seeded rows (the DB `since` of "kalender", 24 Eylül), which the walk replaces by the date of its own hide, so the date is matched by shape.
+schema: delurio-graph/0
+kind: flow
+id: nizam.kosks.browse
+status: captured
+domain: medaris.api
+ui: nizam.kosks.browse
+title: Read the köşk directory
+summary: >-
+  The başnazım (every köşk), a Medaris nazımı who holds a köşk permission (every köşk, with no "Köşk aç" and no Arşiv link) or a köşk
+  nazımı (the köşks he manages) opens Köşkler and reads them in a table: the köşk's name and short name, a "Listelenmeyen" badge for one
+  kept off the lists, its nazımları ("Siz" when one of them is the viewer), its courses and its state ("Etkin", "Pasif" or "Gizli", with
+  the date a passive or hidden one began). Four tabs, "Tümü", "Etkin", "Pasif" and "Gizli", each with the number of köşks in that state; the
+  Görünürlük chips "Tümü", "Listelenen" and "Listelenmeyen"; a search over the köşk's name, short name and its nazımları's names; and a
+  pager of 12 rows a page when there are more. A hidden row has "Geri al" when the viewer's kademe reaches the one that hid it, which brings
+  the köşk back at once and says so in a toast, or a sentence naming who hid it. A list with nothing to show says "Sonuç yok" (or "Henüz
+  köşk yok." when there is no köşk at all); a read that fails puts a box with "Yeniden dene" in the table's place. A person tedrisat does
+  not let in, a Medaris nazımı with no köşk permission who manages none and a person whose roles are not Nizam's, meets "Bu bölüm için
+  izniniz yok". A köşk nazımı who also teaches elsewhere finds those courses under the table.
+
+scope:
+  shows: >-
+    the Köşkler page: its header, the tabs with their numbers, the search box, the Görünürlük chips, the table with its rows, its empty line
+    and its pager, the box that says the list could not be read, "Geri al" and its toasts, and the block of courses the viewer teaches
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the dialog \"Köşk aç\" and what it writes: nizam.kosks.open; the köşk's own page behind a row (nizam.kosks.manage for the başnazım and a Medaris nazımı, nizam.courses.list for a köşk nazımı, whom /kosks/<id> sends to Dersler); the platform archive behind Arşiv (nizam.moderation.restoreArchived); the curriculum behind a taught course (nizam.courses.curriculum)"
+    - "hiding a köşk, which a köşk nazımı does from Köşk ayarları and the başnazım from the köşk's management page (nizam.kosks.editAndHide, nizam.kosks.manage); a köşk nazımı who hides his own köşk lands on this page under Gizli, which this flow draws as an ordinary arrival"
+    - "the shell around the page (sidebar, scope picker, person row, bell, phone bar: nizam.shell.menuPerPersona) and the section refusal itself (nizam.shell.noAccessAndNotFound), which the two exits handed_over.no_access start"
+    - "the page's second read, GET /me: when it fails the page is drawn as for a person who is not the başnazım, with no \"Köşk aç\", no Arşiv link, no \"Siz\" and no block of taught courses, and says nothing (KBROWSE-3); the stack cannot make it fail"
+    - "an ended session: both reads send the person to sign in (realm.auth.signIn) instead of drawing a box"
+    - "the loading skeleton (DirectorySkeleton, a plain div with aria-busy, F-X-10), the aria-busy that the table's wrapper carries while a read is pending, the tab panel (role tabpanel) around the search and the table, the phone layout (below 768 px each row is a card) and the date and time zone of the \"beri\" lines (the viewer's, Europe/Istanbul on the stack)"
+    - "the köşk's cover swatch and the link icon on the badge, which are decoration; the footnote about hiding is drawn as one paragraph"
+    - "the köşk menu: no entry of the köşk variant leads to /kosks, so a köşk nazımı arrives by the address or after hiding a köşk (nizam.nav; decision D1)"
+
+decisions:
+  D1:
+    question: >-
+      Should a köşk nazımı be able to reach Köşkler from the menu? The page is written for him (his own köşks, "Siz", the courses he teaches
+      elsewhere), and a nazım of one köşk is sent to that köşk's Ana sayfa from "/", but no entry of the köşk menu and no link of a köşk page
+      leads here: he arrives only by typing /kosks or after hiding his köşk, which sends him here.
+    recommend: >-
+      Give the köşk menu a "Köşklerim" entry for a person who manages more than one köşk (or teaches elsewhere), where the picker already
+      stands; or take the köşk nazımı out of this page and leave it to the Medaris yönetimi (P-14, MDRS-107: role-aware navigation).
+    affects: [listed]
+
+context:
+  viewer:
+    values: [chief, medaris, kosk, koskOwn, medarisBare, outsider]
+    initial: any
+    say:
+      chief: "the Medaris başnazım (the realm role SYSTEM_ADMIN): every köşk, \"Köşk aç\" and the Arşiv link"
+      medaris: "a Medaris nazımı who holds platform.kosk_create and platform.kosk_edit (the stack's seeded one): every köşk, no \"Köşk aç\", no Arşiv link, and \"Geri al\" on what Medaris yönetimi hid"
+      kosk: "a köşk nazımı: only the köşks he manages; a köşk of his that Medaris yönetimi hid reads the sentence that names who hid it, with no button"
+      koskOwn: "a köşk nazımı who hid his own köşk: the same list and \"Geri al\" on it, since his own kademe hid it"
+      medarisBare: "a Medaris nazımı who holds none of the four köşk permissions and manages no köşk: the landing is Nizam's, so the layout lets him through, and tedrisat refuses the directory"
+      outsider: "a person whose roles do not make Nizam theirs (a talebe, a müderris, a medrese nazırı): the /kosks layout refuses them before the page reads anything"
+  world:
+    values: [empty, seed, mixed, many, failed, flaky]
+    initial: any
+    say:
+      empty: "the platform has no köşk at all"
+      seed: "only active, listed köşks: the stack's two"
+      mixed: "the seeded ones and, for a viewer who sees all, a passive köşk; for every viewer a hidden, unlisted köşk (the viewer manages it, if he is a köşk nazımı)"
+      many: "more köşks than a page holds: twelve more active, listed ones, so the list is two pages of 12"
+      failed: "the directory read fails at this address, for any reason but a 403, and fails again when it is read again at it (the stack: a page number too large to be a number, ?sayfa=100000000000000000000); a tab, a chip, a text or a page asks for another address, which answers"
+      flaky: "the directory read fails once and answers on the next read, whichever control reads it"
+  answer:
+    values: [restored, notHidden, gone, level, forbidden, failed]
+    initial: any
+    say:
+      restored: "the server brings the köşk back"
+      notHidden: "someone brought the köşk back while the page was open (409 KOSK_NOT_HIDDEN)"
+      gone: "someone deleted the köşk while the page was open (404 KOSK_NOT_FOUND)"
+      level: "a higher kademe hid the köşk again while the page was open (403 ARCHIVE_RESTORE_LEVEL)"
+      forbidden: "the viewer's post ended while the page was open (403 AUTHZ_FORBIDDEN)"
+      failed: "anything else: the server does not answer"
+  taught:
+    values: [none, some]
+    initial: any
+    say:
+      none: "the viewer teaches no course in a köşk he does not manage"
+      some: "he teaches a course in a köşk he does not manage: \"Verdiğiniz dersler\" stands under the table"
+  tab:
+    values: [ALL, ACTIVE, PASSIVE, HIDDEN]
+    initial: ALL
+    say:
+      ALL: "Tümü, the address with no ?durum="
+      ACTIVE: "Etkin (?durum=etkin)"
+      PASSIVE: "Pasif (?durum=pasif)"
+      HIDDEN: "Gizli (?durum=gizli)"
+  listing:
+    values: [ALL, LISTED, UNLISTED]
+    initial: ALL
+    say:
+      ALL: "Görünürlük Tümü, the address with no ?gorunurluk="
+      LISTED: "Listelenen (?gorunurluk=listelenen)"
+      UNLISTED: "Listelenmeyen (?gorunurluk=listelenmeyen)"
+  text:
+    values: [none, active, passive, hidden, nobody]
+    initial: none
+    say:
+      none: "the search box is empty"
+      active: "a text is typed that finds an active köşk"
+      passive: "a text is typed that finds the passive köşk"
+      hidden: "a text is typed that finds the hidden köşk"
+      nobody: "a text is typed that finds no köşk"
+  pageNo:
+    values: [first, last]
+    initial: first
+    say: { first: "page 1 (no ?sayfa=)", last: "the second and last page (?sayfa=2)" }
+  back: { values: [true, false], initial: false } # the hidden köşk has been brought back: it is an active, unlisted köşk now
+  retried: { values: [true, false], initial: false } # \"Yeniden dene\" has been pressed
+  moved: { values: [true, false], initial: false } # a tab, a chip, a text or a page has asked for another address
+  toast: { values: [none, ok, refused], initial: none } # the toast that "Geri al" left: it is drawn in the state it appears in only
+
+guards:
+  failing: "not moved and (world == 'failed' or (world == 'flaky' and not retried))"
+  # who may press "Geri al": the başnazım and a Medaris nazımı who holds platform.kosk_edit act as the platform, a köşk nazımı as the köşk (restore, kosk-admin.service.ts:278)
+  mayRestore: "viewer == 'chief' or viewer == 'medaris' or viewer == 'koskOwn'"
+  yours: "viewer == 'kosk' or viewer == 'koskOwn'"
+  hasPassive: "world == 'mixed' and (viewer == 'chief' or viewer == 'medaris')"
+  hasHidden: "world == 'mixed'"
+  # which kinds of row the tab, the chip, the text and the page leave. The kinds: an active, listed köşk (a seeded one, or one of the twelve);
+  # the passive one; the hidden, unlisted one; and that one again once it was brought back (active, still unlisted)
+  showsActive: "world != 'empty' and (tab == 'ALL' or tab == 'ACTIVE') and listing != 'UNLISTED' and (text == 'none' or text == 'active')"
+  showsPassive: "hasPassive and (tab == 'ALL' or tab == 'PASSIVE') and listing != 'UNLISTED' and (text == 'none' or text == 'passive')"
+  showsHidden: "hasHidden and not back and (tab == 'ALL' or tab == 'HIDDEN') and listing != 'LISTED' and (text == 'none' or text == 'hidden')"
+  showsBack: "hasHidden and back and (tab == 'ALL' or tab == 'ACTIVE') and listing != 'LISTED' and (text == 'none' or text == 'hidden')"
+  rowsShown: "showsActive or showsPassive or showsHidden or showsBack"
+  anyActive: "showsActive or showsBack"
+  pager: "world == 'many' and text == 'none' and showsActive"
+
+effects:
+  toAll: { set: { tab: ALL, pageNo: first, toast: none, moved: true } }
+  toActive: { set: { tab: ACTIVE, pageNo: first, toast: none, moved: true } }
+  toPassive: { set: { tab: PASSIVE, pageNo: first, toast: none, moved: true } }
+  toHidden: { set: { tab: HIDDEN, pageNo: first, toast: none, moved: true } }
+  listingAll: { set: { listing: ALL, pageNo: first, toast: none, moved: true } }
+  listingListed: { set: { listing: LISTED, pageNo: first, toast: none, moved: true } }
+  listingUnlisted: { set: { listing: UNLISTED, pageNo: first, toast: none, moved: true } }
+  typedActive: { set: { text: active, pageNo: first, toast: none, moved: true } }
+  typedPassive: { set: { text: passive, pageNo: first, toast: none, moved: true } }
+  typedHidden: { set: { text: hidden, pageNo: first, toast: none, moved: true } }
+  typedNobody: { set: { text: nobody, pageNo: first, toast: none, moved: true } }
+  cleared: { set: { text: none, pageNo: first, toast: none, moved: true } }
+  nextPage: { set: { pageNo: last, toast: none, moved: true } }
+  previousPage: { set: { pageNo: first, toast: none, moved: true } }
+  again: { set: { retried: true } }
+  mended: { set: { back: true, toast: ok } }
+  refused: { set: { toast: refused } }
+
+failures:
+  readingDirectory:
+    from: getKoskDirectory
+    forbidden: [AUTHZ_FORBIDDEN]
+    unreadable: [HTTP_400]
+  restoring:
+    from: restoreKosk
+    notHidden: [KOSK_NOT_HIDDEN]
+    gone: [KOSK_NOT_FOUND]
+    level: [ARCHIVE_RESTORE_LEVEL]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: []
+# `forbidden` of the directory is the 403 the page turns into forbidden() (admin-reads.ts:26); `unreadable` stands for every other answer, which the
+# page treats alike (a null, admin-reads.ts:30): the domain lists HTTP_400 for the directory, and the answer a page too large to be a number gets is a
+# 500 INTERNAL_ERROR that the domain lists nowhere (KBROWSE-2). The restore's five codes are the ones the page has a sentence for (koskErrorKey,
+# admin-present.ts:431); any other answer is the generic sentence, the class `failed`.
+
+# The story the page tells first, and the one e2e kosks#3 carries: the başnazım finds the hidden köşk by its name and brings it back.
+main:
+  given: { viewer: chief, world: mixed, answer: restored, taught: none }
+  events: [DONE, TYPE_HIDDEN, DONE, RESTORE, DONE, DONE]
+
+initial: opening
+
+states:
+  opening:
+    title: Ask for the address
+    description: >-
+      The request goes through proxy.ts first (a signed-out one is sent to sign in: out of view), then the /kosks layout, which reads the person's
+      roles (GET /me/assignments and /me/roles) and calls forbidden() for everyone whose landing is not Nizam's: a talebe, a müderris, a
+      medrese nazırı (HTTP 403, before the page reads anything). When the roles cannot be read the layout lets the page through to tedrisat's own
+      refusal. Nothing is shown in this state.
+    source: apps/nizam/app/kosks/layout.tsx:19
+    always:
+      - { guard: "viewer == 'outsider'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'noRoleKosk'" } }, say: "the layout refuses: the shell draws “Bu bölüm için izniniz yok” at the same address (nizam.shell.noAccessAndNotFound)", source: apps/nizam/app/kosks/layout.tsx:20 }
+      - { target: readingDirectory, say: "the person belongs to Nizam: the page reads the directory", source: apps/nizam/app/kosks/page.tsx:34 }
+
+  readingDirectory:
+    title: The directory is read
+    description: >-
+      The page's server side asks tedrisat for GET /kosks/directory with the status, the Görünürlük, the text and the page of the address, 12 rows
+      a page, at the same time as GET /me (page.tsx:33-36), under its skeleton. The answer holds the rows ordered by name, the total, and the four
+      counts of the viewer's whole scope, whatever the chip and the text ask. A row carries its status (hidden wins over passive wins over active),
+      since when, who hid it and whether the caller may bring it back. A 403 is told apart and the page calls forbidden() (page.tsx:37); any other
+      failure is a null the page draws as a box (admin-reads.ts:30). The same step runs again after every tab, chip, text, page and "Geri al".
+    includes: ["the rows with their nazımları, course count, status and canRestore", "the four counts", "the viewer's roles and the courses he teaches"]
+    source: apps/nizam/app/kosks/page.tsx:34
+    invoke: { action: getKoskDirectory }
+    on:
+      DONE: { guard: "viewer != 'medarisBare' and not failing", target: classify, source: apps/nizam/app/kosks/page.tsx:39 }
+      FAIL.forbidden: { guard: "viewer == 'medarisBare'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'section'" } }, say: "tedrisat refuses (403: the köşk table is for the başnazım and the köşk nazımları): the page calls forbidden()", source: apps/nizam/app/kosks/page.tsx:37 }
+      FAIL.unreadable: { guard: "viewer != 'medarisBare' and failing", target: loadFailed, say: "any other failure is a null: the page draws its box in the table's place", source: apps/nizam/features/kosks/admin-reads.ts:30 }
+
+  classify:
+    title: What the answer holds decides which table
+    description: >-
+      Classification only. A platform with no köşk at all says "Henüz köşk yok." (the viewer's whole scope is empty); a list the tab, the chip, the
+      text and the page leave with rows is the table; a list they leave empty says "Sonuç yok", whatever left it empty, a page past the last one
+      included (KBROWSE-1).
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:280
+    always:
+      - { guard: "world == 'empty'", target: emptyAll, say: "every count is 0", source: apps/nizam/features/kosks/components/kosks-directory.tsx:281 }
+      - { guard: "rowsShown", target: listed, say: "some row fits", source: apps/nizam/features/kosks/components/kosks-directory.tsx:378 }
+      - { target: emptyFilter, say: "nothing fits", source: apps/nizam/features/kosks/components/kosks-directory.tsx:379 }
+
+  listed:
+    title: The köşks are listed
+    by: human
+    goal: true
+    description: >-
+      The page: the h1 "Köşkler" and its sentence, "Köşk aç" in the header for the başnazım, the section "Bütün köşkler" with "Arşiv" for the
+      başnazım, the tabs with the number of köşks in each state (the viewer's whole scope, not what the chip and the text leave: KBROWSE-3), the
+      search box, the Görünürlük chips, the table named "Köşkler" and the footnote. A row has the köşk's name as a link to /kosks/<id> and, under
+      it, "@short name"; the badge "Listelenmeyen" beside it for a köşk kept off the lists; the nazımları ("A ve B", "Köşk nazımı yok" for none, and
+      "Siz" when the viewer is one); the number of its courses, hidden and draft ones included; and its state: "Etkin" in a badge, "Pasif" in a
+      badge with a lock, "Gizli" as plain text with an eye-off glyph, the last two with "<tarih>’den beri" under them. A hidden row has the button
+      "Geri al: <ad>" when the viewer's kademe reaches the one that hid it, else the sentence "Bunu <kademe> gizledi; yalnız o kademe ya da üstü geri
+      alabilir." A pager ("Önceki", "n / n", "Sonraki") stands under the table when the answer holds more than 12 rows. A köşk nazımı who teaches
+      elsewhere has "Verdiğiniz dersler" under it. No focus is set when the page opens (focus-not-set), and a press on a tab or a chip, or typing,
+      keeps the focus where it was. Findings read here: F-W3-12 (a tab, a chip, a text or a page changes the rows and nothing says so), KBROWSE-3
+      (the numbers ignore the chip and the text), F-A-12 (the name of a tab carries its count), F-W3-16 (the taught-courses block).
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:283
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      CHIP_ALL: { guard: "listing != 'ALL'", target: readingDirectory, effect: [listingAll], say: "they press the chip Tümü of Görünürlük", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+      CHIP_LISTED:
+        - { guard: "listing != 'LISTED'", target: readingDirectory, effect: [listingListed], say: "they press the chip Listelenen", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+        - { guard: "listing == 'LISTED'", target: readingDirectory, effect: [listingAll], say: "they press the chip that is pressed: the group is a single-choice toggle group, so it clears and the page goes back to Tümü", source: apps/nizam/features/kosks/components/kosks-directory.tsx:360 }
+      CHIP_UNLISTED:
+        - { guard: "listing != 'UNLISTED'", target: readingDirectory, effect: [listingUnlisted], say: "they press the chip Listelenmeyen", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+        - { guard: "listing == 'UNLISTED'", target: readingDirectory, effect: [listingAll], say: "they press the chip that is pressed: it clears and the page goes back to Tümü", source: apps/nizam/features/kosks/components/kosks-directory.tsx:360 }
+      TYPE_ACTIVE: { guard: "text != 'active'", target: readingDirectory, effect: [typedActive], say: "they type a text that finds an active köşk and no other kind (an active köşk is found by its name, short name or nazım): after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_PASSIVE: { guard: "text != 'passive'", target: readingDirectory, effect: [typedPassive], say: "they type a text that finds the passive köşk and no other kind: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_HIDDEN: { guard: "text != 'hidden'", target: readingDirectory, effect: [typedHidden], say: "they type a text that finds the hidden köşk and no other kind: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_NOBODY: { guard: "text != 'nobody'", target: readingDirectory, effect: [typedNobody], say: "they type a text that finds no köşk: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      CLEAR_SEARCH: { guard: "text != 'none'", target: readingDirectory, effect: [cleared], say: "they erase the text", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      OPEN_FORM: { guard: "viewer == 'chief'", target: handed_over.open, starts: { flow: nizam.kosks.open, given: { fromApplication: "false", quick: "false" } }, say: "they press Köşk aç in the header: the form dialog opens over the page (the button is the başnazım's alone)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:293 }
+      OPEN_ARCHIVE: { guard: "viewer == 'chief'", target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv (the başnazım's alone)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:309 }
+      OPEN_TAUGHT: { guard: "taught == 'some'", target: handed_over.taught, starts: { flow: nizam.courses.curriculum }, say: "they follow a course they teach in a köşk they do not manage, under the table: /kosks/<köşk>/courses/<ders>/edit, which ends on the curriculum", source: apps/nizam/features/kosks/components/taught-courses.tsx:30 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+      NEXT_PAGE: { guard: "pager and pageNo == 'first'", target: readingDirectory, effect: [nextPage], say: "they press Sonraki: the address gets ?sayfa=2", source: apps/nizam/features/kosks/components/kosks-directory.tsx:408 }
+      PREVIOUS_PAGE: { guard: "pager and pageNo == 'last'", target: readingDirectory, effect: [previousPage], say: "they press Önceki: the address goes back to page 1", source: apps/nizam/features/kosks/components/kosks-directory.tsx:392 }
+      RESTORE: { guard: "showsHidden and mayRestore", target: restoring, say: "they press Geri al on the hidden row: it works at once, with no question", source: apps/nizam/features/kosks/components/kosks-directory.tsx:262 }
+      OPEN_ROW:
+        - { guard: "viewer == 'chief' or viewer == 'medaris'", target: handed_over.manage, starts: { flow: nizam.kosks.manage }, say: "they follow a köşk's name: a full page load of /kosks/<id>, which shows the başnazım and a Medaris nazımı the management view", source: apps/nizam/features/kosks/components/kosks-directory.tsx:168 }
+        - { guard: "yours", target: handed_over.courses, starts: { flow: nizam.courses.list }, say: "they follow a köşk's name: /kosks/<id> sends a köşk nazımı on to the köşk's Dersler", source: apps/nizam/features/kosks/components/kosks-directory.tsx:168 }
+
+  restoring:
+    title: The köşk is brought back
+    description: >-
+      The server action restoreKosk, POST /kosks/:id/restore: it asks which kademe the caller acts at (the başnazım and platform.kosk_edit as the
+      platform, the köşk's nazımı as the köşk), refuses a restore by a level below the one that hid, and clears the hide, with an audit row. The row's
+      button is busy (aria-disabled, aria-busy, and a hidden status that says "Yükleniyor" from a default of the button, F-A-14) and the rest of the
+      page stays live. When it works a toast says "Köşk geri alındı" and the page reads again (router.refresh); when it does not, a toast that stays
+      until it is closed says "Köşk geri alınamadı" with the sentence of the code, and the row is as it was.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:125
+    invoke: { action: restoreKosk }
+    on:
+      DONE: { guard: "answer == 'restored'", target: readingDirectory, effect: [mended], say: "a toast says the köşk is back and the row is read again: it is an active köşk now (on the Gizli tab it leaves the table)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:137 }
+      FAIL.notHidden: { guard: "answer == 'notHidden'", target: listed, effect: [refused], say: "a toast: \"Bu köşk zaten gizli değil.\" (someone brought it back first); the row is not read again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:131 }
+      FAIL.gone: { guard: "answer == 'gone'", target: listed, effect: [refused], say: "a toast: \"Bu köşk artık yok.\"", source: apps/nizam/features/kosks/components/kosks-directory.tsx:131 }
+      FAIL.level: { guard: "answer == 'level' and viewer == 'koskOwn'", target: listed, effect: [refused], say: "a toast: \"Bunu daha üst bir kademe gizlemiş; yalnız o kademe ya da üstü geri alabilir.\"", source: apps/nizam/features/kosks/components/kosks-directory.tsx:131 }
+      FAIL.forbidden: { guard: "answer == 'forbidden' and viewer == 'koskOwn'", target: listed, effect: [refused], say: "a toast: \"Bunu yapma izniniz yok.\"", source: apps/nizam/features/kosks/components/kosks-directory.tsx:131 }
+      FAIL.failed: { guard: "answer == 'failed'", target: listed, effect: [refused], say: "a toast with the generic sentence: \"Bir şeyler ters gitti. Biraz sonra yeniden deneyin.\"", source: apps/nizam/features/kosks/components/kosks-directory.tsx:131 }
+
+  emptyFilter:
+    title: Nothing fits
+    by: human
+    description: >-
+      The tab, the chip, the text or the page leave no row: the table's one line says "Sonuç yok", whatever left it empty, and the tabs still carry the
+      numbers of the viewer's whole scope, so "Gizli 1" can sit over a table that says nothing fits (KBROWSE-3). A page past the last one reads like
+      this too and has no pager to go back with (KBROWSE-1; not drawn: only a typed address reaches it). The toast of a "Geri al" that just worked
+      stands here when the köşk left the Gizli tab.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:281
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      CHIP_ALL: { guard: "listing != 'ALL'", target: readingDirectory, effect: [listingAll], say: "they press the chip Tümü of Görünürlük", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+      CHIP_LISTED:
+        - { guard: "listing != 'LISTED'", target: readingDirectory, effect: [listingListed], say: "they press the chip Listelenen", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+        - { guard: "listing == 'LISTED'", target: readingDirectory, effect: [listingAll], say: "they press the chip that is pressed: the group is a single-choice toggle group, so it clears and the page goes back to Tümü", source: apps/nizam/features/kosks/components/kosks-directory.tsx:360 }
+      CHIP_UNLISTED:
+        - { guard: "listing != 'UNLISTED'", target: readingDirectory, effect: [listingUnlisted], say: "they press the chip Listelenmeyen", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+        - { guard: "listing == 'UNLISTED'", target: readingDirectory, effect: [listingAll], say: "they press the chip that is pressed: it clears and the page goes back to Tümü", source: apps/nizam/features/kosks/components/kosks-directory.tsx:360 }
+      TYPE_ACTIVE: { guard: "text != 'active'", target: readingDirectory, effect: [typedActive], say: "they type a text that finds an active köşk and no other kind (an active köşk is found by its name, short name or nazım): after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_PASSIVE: { guard: "text != 'passive'", target: readingDirectory, effect: [typedPassive], say: "they type a text that finds the passive köşk and no other kind: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_HIDDEN: { guard: "text != 'hidden'", target: readingDirectory, effect: [typedHidden], say: "they type a text that finds the hidden köşk and no other kind: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_NOBODY: { guard: "text != 'nobody'", target: readingDirectory, effect: [typedNobody], say: "they type a text that finds no köşk: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      CLEAR_SEARCH: { guard: "text != 'none'", target: readingDirectory, effect: [cleared], say: "they erase the text", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      OPEN_FORM: { guard: "viewer == 'chief'", target: handed_over.open, starts: { flow: nizam.kosks.open, given: { fromApplication: "false", quick: "false" } }, say: "they press Köşk aç in the header: the form dialog opens over the page (the button is the başnazım's alone)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:293 }
+      OPEN_ARCHIVE: { guard: "viewer == 'chief'", target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv (the başnazım's alone)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:309 }
+      OPEN_TAUGHT: { guard: "taught == 'some'", target: handed_over.taught, starts: { flow: nizam.courses.curriculum }, say: "they follow a course they teach in a köşk they do not manage, under the table: /kosks/<köşk>/courses/<ders>/edit, which ends on the curriculum", source: apps/nizam/features/kosks/components/taught-courses.tsx:30 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  emptyAll:
+    title: There is no köşk
+    by: human
+    description: >-
+      The viewer's whole scope holds no köşk: the table's one line says "Henüz köşk yok." on every tab and whatever is typed, and every tab reads 0.
+      A fresh platform meets this before the first "Köşk aç". The stack never does: its seed holds two köşks, which no walk may remove, so this state is
+      not walked.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:281
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      CHIP_ALL: { guard: "listing != 'ALL'", target: readingDirectory, effect: [listingAll], say: "they press the chip Tümü of Görünürlük", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+      CHIP_LISTED:
+        - { guard: "listing != 'LISTED'", target: readingDirectory, effect: [listingListed], say: "they press the chip Listelenen", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+        - { guard: "listing == 'LISTED'", target: readingDirectory, effect: [listingAll], say: "they press the chip that is pressed: the group is a single-choice toggle group, so it clears and the page goes back to Tümü", source: apps/nizam/features/kosks/components/kosks-directory.tsx:360 }
+      CHIP_UNLISTED:
+        - { guard: "listing != 'UNLISTED'", target: readingDirectory, effect: [listingUnlisted], say: "they press the chip Listelenmeyen", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+        - { guard: "listing == 'UNLISTED'", target: readingDirectory, effect: [listingAll], say: "they press the chip that is pressed: it clears and the page goes back to Tümü", source: apps/nizam/features/kosks/components/kosks-directory.tsx:360 }
+      TYPE_ACTIVE: { guard: "text != 'active'", target: readingDirectory, effect: [typedActive], say: "they type a text that finds an active köşk and no other kind (an active köşk is found by its name, short name or nazım): after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_PASSIVE: { guard: "text != 'passive'", target: readingDirectory, effect: [typedPassive], say: "they type a text that finds the passive köşk and no other kind: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_HIDDEN: { guard: "text != 'hidden'", target: readingDirectory, effect: [typedHidden], say: "they type a text that finds the hidden köşk and no other kind: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_NOBODY: { guard: "text != 'nobody'", target: readingDirectory, effect: [typedNobody], say: "they type a text that finds no köşk: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      CLEAR_SEARCH: { guard: "text != 'none'", target: readingDirectory, effect: [cleared], say: "they erase the text", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      OPEN_FORM: { guard: "viewer == 'chief'", target: handed_over.open, starts: { flow: nizam.kosks.open, given: { fromApplication: "false", quick: "false" } }, say: "they press Köşk aç in the header: the form dialog opens over the page (the button is the başnazım's alone)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:293 }
+      OPEN_ARCHIVE: { guard: "viewer == 'chief'", target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv (the başnazım's alone)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:309 }
+      OPEN_TAUGHT: { guard: "taught == 'some'", target: handed_over.taught, starts: { flow: nizam.courses.curriculum }, say: "they follow a course they teach in a köşk they do not manage, under the table: /kosks/<köşk>/courses/<ders>/edit, which ends on the curriculum", source: apps/nizam/features/kosks/components/taught-courses.tsx:30 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  loadFailed:
+    title: The list could not be read
+    by: human
+    description: >-
+      The directory read failed for a reason other than a 403: where the table would be, an alert says "Köşkler yüklenemedi" and that the list cannot
+      be read now, with "Yeniden dene", which reads the page again (router.refresh). The header, the buttons the viewer holds, the tabs (without
+      numbers: the counts came with the answer), the chips and the search box stay. The stack can make tedrisat fail this read by an address: a page
+      too large to be a number (?sayfa=100000000000000000000) answers 500, and "Yeniden dene", which reads the same address again, fails again
+      (KBROWSE-2); a tab, a chip, a text or a page asks for another address (page 1) and answers. A retry that works, after a failure that was
+      only a moment's, is drawn through `flaky` and not walked.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:365
+    on:
+      TAB_ALL: { guard: "tab != 'ALL'", target: readingDirectory, effect: [toAll], say: "they press Tümü: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_ACTIVE: { guard: "tab != 'ACTIVE'", target: readingDirectory, effect: [toActive], say: "they press Etkin: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_PASSIVE: { guard: "tab != 'PASSIVE'", target: readingDirectory, effect: [toPassive], say: "they press Pasif: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      TAB_HIDDEN: { guard: "tab != 'HIDDEN'", target: readingDirectory, effect: [toHidden], say: "they press Gizli: the address gets ?durum= (none for Tümü) and the server reads again, so the numbers and the rows come from one answer", source: apps/nizam/features/kosks/components/kosks-directory.tsx:319 }
+      CHIP_ALL: { guard: "listing != 'ALL'", target: readingDirectory, effect: [listingAll], say: "they press the chip Tümü of Görünürlük", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+      CHIP_LISTED:
+        - { guard: "listing != 'LISTED'", target: readingDirectory, effect: [listingListed], say: "they press the chip Listelenen", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+        - { guard: "listing == 'LISTED'", target: readingDirectory, effect: [listingAll], say: "they press the chip that is pressed: the group is a single-choice toggle group, so it clears and the page goes back to Tümü", source: apps/nizam/features/kosks/components/kosks-directory.tsx:360 }
+      CHIP_UNLISTED:
+        - { guard: "listing != 'UNLISTED'", target: readingDirectory, effect: [listingUnlisted], say: "they press the chip Listelenmeyen", source: apps/nizam/features/kosks/components/kosks-directory.tsx:358 }
+        - { guard: "listing == 'UNLISTED'", target: readingDirectory, effect: [listingAll], say: "they press the chip that is pressed: it clears and the page goes back to Tümü", source: apps/nizam/features/kosks/components/kosks-directory.tsx:360 }
+      TYPE_ACTIVE: { guard: "text != 'active'", target: readingDirectory, effect: [typedActive], say: "they type a text that finds an active köşk and no other kind (an active köşk is found by its name, short name or nazım): after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_PASSIVE: { guard: "text != 'passive'", target: readingDirectory, effect: [typedPassive], say: "they type a text that finds the passive köşk and no other kind: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_HIDDEN: { guard: "text != 'hidden'", target: readingDirectory, effect: [typedHidden], say: "they type a text that finds the hidden köşk and no other kind: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      TYPE_NOBODY: { guard: "text != 'nobody'", target: readingDirectory, effect: [typedNobody], say: "they type a text that finds no köşk: after a pause of 300 ms the address follows (router.replace, ?q=) and the server reads again", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      CLEAR_SEARCH: { guard: "text != 'none'", target: readingDirectory, effect: [cleared], say: "they erase the text", source: apps/nizam/features/kosks/components/kosks-directory.tsx:114 }
+      OPEN_FORM: { guard: "viewer == 'chief'", target: handed_over.open, starts: { flow: nizam.kosks.open, given: { fromApplication: "false", quick: "false" } }, say: "they press Köşk aç in the header: the form dialog opens over the page (the button is the başnazım's alone)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:293 }
+      OPEN_ARCHIVE: { guard: "viewer == 'chief'", target: handed_over.archive, starts: { flow: nizam.moderation.restoreArchived }, say: "they follow Arşiv, a plain link to /arsiv (the başnazım's alone)", source: apps/nizam/features/kosks/components/kosks-directory.tsx:309 }
+      OPEN_TAUGHT: { guard: "taught == 'some'", target: handed_over.taught, starts: { flow: nizam.courses.curriculum }, say: "they follow a course they teach in a köşk they do not manage, under the table: /kosks/<köşk>/courses/<ders>/edit, which ends on the curriculum", source: apps/nizam/features/kosks/components/taught-courses.tsx:30 }
+      NAVIGATE: { target: left, say: "they follow the menu, the person row or the address bar", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+      RETRY: { target: readingDirectory, effect: [again], say: "they press Yeniden dene: the page is read again at the same address, and the answer may differ", source: apps/nizam/features/kosks/components/kosks-directory.tsx:368 }
+
+  handed_over.open:
+    title: The "Köşk aç" dialog opens
+    description: "\"Köşk aç\" opens a form dialog over the page: nizam.kosks.open draws it. The page stays at its address, and it keeps its filters."
+    type: final
+  handed_over.manage:
+    title: The köşk's management page opens
+    description: "A köşk's name is a link to /kosks/<id>. For the başnazım, and for a Medaris nazımı who holds platform.kosk_edit, it is the management view of one köşk: nizam.kosks.manage draws it. A Medaris nazımı who holds only platform.hosting_grant is sent on to Barındırma hakları; one who holds neither is refused (that flow)."
+    type: final
+    leavesPage: true
+  handed_over.courses:
+    title: The köşk's Dersler opens
+    description: "A köşk nazımı who follows a köşk's name is sent on from /kosks/<id> to /kosks/<id>/dersler, the köşk's courses: nizam.courses.list draws it."
+    type: final
+    leavesPage: true
+  handed_over.archive:
+    title: The platform archive opens
+    description: "\"Arşiv\" is a plain link (a full page load) to /arsiv, the başnazım's archive of everything hidden: nizam.moderation.restoreArchived draws it."
+    type: final
+    leavesPage: true
+  handed_over.taught:
+    title: The course opens
+    description: "A taught course is a link to /kosks/<köşk>/courses/<ders>/edit, which redirects to the course's curriculum (F-X-19): nizam.courses.curriculum draws it."
+    type: final
+    leavesPage: true
+  handed_over.no_access:
+    title: The section refusal opens
+    description: "The layout or the page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" at the same address: nizam.shell.noAccessAndNotFound draws it."
+    type: final
+    leavesPage: true
+  left:
+    title: The person leaves the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-person-the-app-refuses-meets-no-list
+    never: "(viewer == 'outsider' or viewer == 'medarisBare') and state in ['listed', 'restoring', 'emptyFilter', 'emptyAll', 'loadFailed']"
+    say: A person who is not Nizam's, or whom tedrisat refuses the directory, is never shown the table, the empty lines or the box; they get the section refusal.
+    source: apps/nizam/app/kosks/layout.tsx:20
+  - id: rows-mean-the-answer-holds-some
+    never: "state == 'listed' and not rowsShown"
+    say: The table is drawn with rows only when the tab, the chip, the text and the page leave some.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:378
+  - id: nothing-fits-says-so
+    never: "state == 'emptyFilter' and (rowsShown or world == 'empty')"
+    say: The line "Sonuç yok" shows only when the answer holds some köşk and none fits.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:281
+  - id: no-kosk-means-the-first-line
+    never: "state == 'emptyAll' and world != 'empty'"
+    say: The line "Henüz köşk yok." shows only when the viewer's whole scope holds no köşk.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:281
+  - id: a-box-only-after-a-failed-read
+    never: "state == 'loadFailed' and not failing"
+    say: The box that says the list could not be read is drawn only when the directory read failed.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:365
+  - id: a-kosk-nazim-sees-no-passive-kosk
+    never: "state == 'listed' and yours and showsPassive"
+    say: A passive köşk has no nazım, so a köşk nazımı never finds it in his own list.
+    source: apps/tedrisat/src/kosk/kosk-admin.repository.ts:151
+  - id: only-the-basnazim-opens-and-reads-the-archive
+    never: "state in ['handed_over.open', 'handed_over.archive'] and viewer != 'chief'"
+    say: "Köşk aç and Arşiv are the başnazım's alone: a Medaris nazımı who may open a köşk in the API is given no button (F-W3-open-1)."
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:293
+  - id: geri-al-only-where-the-kademe-reaches
+    never: "state == 'restoring' and not mayRestore"
+    say: A köşk nazımı is given no button on a köşk that Medaris yönetimi hid; the row names who hid it.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:255
+  - id: a-toast-only-after-a-restore
+    never: "(toast == 'ok' and answer != 'restored') or (toast == 'refused' and answer == 'restored')"
+    say: The toast that says the köşk is back follows a restore that worked, and a refusal toast one that did not.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:137
+  - id: a-second-page-needs-twelve-more
+    never: "pageNo == 'last' and world != 'many'"
+    say: The pager exists only when the answer holds more than one page of 12.
+    source: apps/nizam/features/kosks/components/kosks-directory.tsx:382

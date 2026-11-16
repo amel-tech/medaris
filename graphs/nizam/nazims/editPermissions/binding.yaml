@@ -1,0 +1,59 @@
+# nizam.nazims.editPermissions on the local stack (graphs/bindings/local.nizam.binding.yaml, through ./locators.binding.yaml): nizam-web on :4001 in a wide
+# window, the başnazım (SYSTEM_ADMIN, "Vedat Başnazım") signed in through Keycloak's real form, and applicantD ("Salih Başvuran", a spare talebe) as the
+# Medaris nazımı whose permissions are edited, in a seat and a group the walk makes and removes (see locators.binding.yaml for the data and every locator).
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/nazims/editPermissions \
+#     --bind graphs/nizam/nazims/editPermissions/binding.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay (the owner moved every replay to the end). It loads: `replay --emit-spec` reads it and walks nothing.
+#
+# The two scenarios (`given` differs, so each is chosen by what it starts from):
+#   dated    the main story (e2e permissions#6, #7, #8 without their fixed dates): the seat ends twenty days ahead; the başnazım reaches the page by the menu's
+#            "Medaris nazımları" (the nav graph's entry frame:shell->nazims), presses "İzinleri düzenle: Salih Başvuran", opens the group list and chooses "Grup yok",
+#            unticks "Desteyi herkese yayımla", types an end ten days ahead and saves (the row says the new end), opens it again, empties the end and saves (a
+#            seat that has an end keeps the appointment's). The branches are the same scenario's other paths: an end in the past and one after the appointment's
+#            (the message under the field and "Kaydet" off), the group chosen again, Vazgeç, the close icon, Esc of the list, and "İzin gruplarını düzenle".
+#   forever  the seat has no end: the field starts empty and says so; a typed end is saved and shows with its days left, and emptying it gives "Süresiz" again.
+# What the cover cannot drive from these two: `answer: gone`, `groupGone` and `expiry` (each has its own small file, because each only changes what happens before
+# one button is pressed), `answer: forbidden` and `failed`, and the exits `no_access` and `loadFailed` (locators.binding.yaml says why).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.nazims.editPermissions
+
+scenarios:
+  # The main story: a seat with a group, two single permissions and an end twenty days ahead.
+  dated:
+    given: { seat: dated, answer: saved }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, up]
+        expect: edit-data up
+    teardown:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+
+  # The seat has no end.
+  forever:
+    given: { seat: forever, answer: saved }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, up, --forever]
+        expect: edit-data up
+    teardown:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down

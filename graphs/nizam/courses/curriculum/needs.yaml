@@ -1,0 +1,250 @@
+# What must exist for the köşk nazımı to edit a course's info, weeks, celses and resources in Müfredat and save them: the flow's product list (LAYOUT.md
+# section 7). Each need is what the product must do, from the flow's story, its decisions and the findings of the page, not from what the page does today; the
+# known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file yet. No replay has been run,
+# so no `walked` entry names one: the unit specs under apps/nizam/test are listed as `test:` and are not e2e or replay. The nazar page's own list is in
+# nazar.curriculum.edit and nazar.curriculum.resources; the needs below that are the same as theirs are named alike.
+#
+# missing (no code, Linear key `none`): a-refused-save-says-so, a-conflict-offers-the-current-course, unsaved-edits-survive-a-link, a-save-keeps-the-focus-and-says-it,
+#   hiding-says-what-it-does-and-keeps-the-place, a-refused-download-keeps-the-edits, reorder-the-course-list, name-each-row-and-field,
+#   a-failed-call-is-told, the-form-is-locked-while-it-is-sent, buttons-land-on-the-page-they-name
+# unwalked (code, no e2e and no replay yet): add-a-week-or-a-celse, links-on-the-course-and-its-celses, attach-a-file, file-refusals-are-worded,
+#   taking-a-file-off-asks, download-a-file, a-save-over-someone-elses-is-refused, hide-a-week
+# On this stack attach-a-file and file-refusals-are-worded cannot be walked at all (the replay cannot set a file input, and every upload answers 503);
+# download-a-file can be walked as far as its refusal, the toast "Dosyalara şu an ulaşılamıyor.".
+kind: needs
+flow: nizam.courses.curriculum
+status: proposed
+
+needs:
+  - id: read-the-course-as-stored
+    need: >-
+      The köşk nazımı opens Müfredat of a course and finds it as stored: its name, cover colour, description, resources, weeks and celses, with
+      nothing to save and nothing to undo until something is changed.
+    drawn: [clean, pageTitle, nameField, weeksSummary, save, cancel, dirtyNote]
+    built:
+      - action: medaris.api:getCourse
+      - route: "apps/nizam/app/kosks/[id]/courses/[courseId]/curriculum/page.tsx:29"
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#10'
+
+  - id: see-that-something-is-unsaved
+    need: >-
+      While the form differs from what is stored a line says so and "Vazgeç" and "Kaydet" are on; "Vazgeç" puts the stored values back and the line
+      goes. Nothing is written until Kaydet.
+    drawn: [edited, dirtyNote, cancel, save]
+    built:
+      - route: apps/nizam/features/courses/components/curriculum-editor.tsx:293
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#10'
+      - test: apps/nizam/test/curriculum-resources.spec.tsx
+
+  - id: edit-and-save-the-whole-course
+    need: >-
+      The nazım changes the name, a celse's title or link, adds a week or a celse and saves with one press of Kaydet; everything changed is stored together or
+      none of it is, the page says it was saved, and what was stored is there after a reload.
+    drawn: [edited, saving, toastSavedTitle, toastSavedBody]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nizam/features/courses/components/curriculum-editor.tsx:232
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#10'
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#12'
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#13'
+
+  - id: add-a-week-or-a-celse
+    need: >-
+      "Hafta ekle" and "Celse ekle" add a row to the draft that has no title; Kaydet stores it, and a celse added to a week takes the date of the week's last
+      celse at 21:00 for 60 minutes.
+    drawn: [edited, addWeek, addLesson, weekTitleField, sessionTitleField]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nizam/features/courses/components/curriculum-editor.tsx:423
+    walked:
+      - test: apps/nizam/test/course-views.spec.tsx
+
+  - id: a-blank-stops-the-save
+    need: >-
+      A week, a celse or a resource row without a title or a name, and a meeting link that does not start with https, stop Kaydet; each says what is wrong
+      under its field and nothing is sent.
+    drawn: [invalid, weekTitleError, sessionTitleError, linkError, courseNameError, courseUrlError, lessonNameError, lessonUrlError]
+    built:
+      - route: apps/nizam/features/courses/present.ts:941
+      - route: apps/nizam/features/courses/components/curriculum-editor.tsx:234
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#11'
+
+  - id: a-refused-save-says-so
+    need: >-
+      A refused Kaydet tells the person it was refused and where: it moves the focus to the first field with an error, or says in a live region how many
+      there are, also for a field inside a folded week.
+    drawn: [invalid, weekTitleError, sessionTitleError, linkError]
+    missing: none   # F-W4-2, F-X-2, F-UI-W4-1
+
+  - id: copy-a-week
+    need: >-
+      "Haftayı kopyala" adds the week again seven days later, with the same titles, no links and nothing cancelled, as a new last week; Kaydet stores it.
+    drawn: [edited, copyWeek, weeksSummary]
+    built:
+      - route: apps/nizam/features/courses/present.ts:990
+      - route: apps/nizam/features/courses/components/curriculum-editor.tsx:798
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#12'
+
+  - id: hide-a-celse
+    need: >-
+      "Gizle" takes a celse out of the draft and Kaydet hides it (it is archived, not deleted); the Arşiv restores it.
+    drawn: [edited, hideSession]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nizam/features/courses/components/curriculum-editor.tsx:558
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#13'
+
+  - id: hide-a-week
+    need: >-
+      "Haftayı gizle" takes a week and its celses out of the draft and Kaydet hides them (archived, not deleted); the Arşiv restores them.
+    drawn: [edited, hideWeek]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nizam/features/courses/components/curriculum-editor.tsx:812
+    walked:
+      - test: apps/nizam/test/course-views.spec.tsx
+
+  - id: hiding-says-what-it-does-and-keeps-the-place
+    need: >-
+      The button that hides a celse or a week names its row, says that Kaydet is what hides it, and leaves the focus on the next row; the person can tell
+      what was taken out.
+    drawn: [edited, hideSession, hideWeek, dirtyNote]
+    missing: none   # F-W4-3, F-W4-4, F-C-course-a-15, F-C-course-a-16
+
+  - id: links-on-the-course-and-its-celses
+    need: >-
+      The nazım adds, fills, removes and (on a celse) reorders links, each with a name, an optional short line and an http(s) address; Kaydet stores them in
+      the order of the form, and one left out is deleted.
+    drawn: [edited, addCourseLink, lessonAddLink, lessonRemove, courseRemove, courseUrl, lessonRowUrl, lessonMoveDown]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nizam/features/courses/components/resources-editor.tsx:36
+      - route: apps/nizam/features/courses/components/lesson-resources-editor.tsx:38
+    walked:
+      - test: apps/nizam/test/curriculum-resources.spec.tsx
+
+  - id: reorder-the-course-list
+    need: >-
+      The course's own resource list can be reordered, as a celse's can, without taking rows out and adding them again (which deletes a file for good).
+    drawn: [courseRemove, lessonMoveUp, lessonMoveDown]
+    missing: none   # RESOURCES-1 (found in nazar)
+
+  - id: attach-a-file
+    need: >-
+      "Dosya yükle" stores a file of at most 25 MB (a type the app takes) as the last resource of the course or of a stored celse at once, without Kaydet, and
+      the next Kaydet keeps it and does not conflict.
+    drawn: [uploadDialog, uploadingCourse, uploadingLesson, fileInput, sendButton, toastUploadedTitle]
+    built:
+      - action: medaris.api:webUploadCourseResourceFile
+      - action: medaris.api:webUploadLessonResourceFile
+      - route: apps/nizam/features/courses/components/resource-file-parts.tsx:108
+    walked:
+      - test: apps/nizam/test/curriculum-files.spec.tsx
+      - test: apps/nizam/test/resource-files.spec.ts
+
+  - id: file-refusals-are-worded
+    need: >-
+      A file that is empty, too large, of a type the app does not take, or an upload the server refuses (no store, no permission, no course) is told in words
+      that name the cause, and the dialog stays open for another try; the file's own refusals are under the file field, the others are an alert.
+    drawn: [pickMissingText, pickEmptyText, pickTooLargeText, pickWrongTypeText, uploadFailedStorage, uploadFailedRejected, uploadFailedGone]
+    built:
+      - route: apps/nizam/features/courses/resource-files.ts:89
+    walked:
+      - test: apps/nizam/test/resource-files.spec.ts
+
+  - id: taking-a-file-off-asks
+    need: >-
+      Taking a stored file out of the list asks first and says that Kaydet deletes it for good and that Vazgeç of the page gives it back until then; a link goes
+      at once.
+    drawn: [removeFile, removeDialog, removeBody, removeWay, removeConfirm, removeCancel]
+    built:
+      - route: apps/nizam/features/courses/components/resource-file-parts.tsx:65
+    walked:
+      - test: apps/nizam/test/curriculum-files.spec.tsx
+
+  - id: download-a-file
+    need: >-
+      A person who may read the course's content downloads a stored file through the app, as an attachment; a refusal says so on the page in words that name the
+      cause.
+    drawn: [downloading, courseFileLink, toastFileTitle, toastFileUnavailable, toastFileForbidden, toastFileGone, toastFileFailed]
+    built:
+      - action: medaris.api:webDownloadCourseResourceFile
+      - route: "apps/nizam/app/api/files/courses/[courseId]/resources/[resourceId]/route.ts:11"
+      - route: apps/nizam/features/courses/components/file-error-notice.tsx:19
+    walked:
+      - test: apps/nizam/test/file-routes.spec.ts
+      - test: apps/nizam/test/file-error-notice.spec.tsx
+
+  - id: a-refused-download-keeps-the-edits
+    need: >-
+      A refused download, or a served one, leaves the page and its unsaved edits as they were; the refusal is a toast on the same page.
+    drawn: [downloading, edited, courseFileLink]
+    missing: none   # NCURR-3
+
+  - id: a-save-over-someone-elses-is-refused
+    need: >-
+      When another person saved the course after the page read it, Kaydet writes nothing and says so.
+    drawn: [saving, edited, toastFailedTitle, toastConflict]
+    built:
+      - action: medaris.api:replaceCourse
+      - route: apps/nizam/features/courses/components/curriculum-editor.tsx:246
+    walked:
+      - test: apps/nizam/test/course-views.spec.tsx
+
+  - id: a-conflict-offers-the-current-course
+    need: >-
+      After a refused save for a stale version the page offers the current course (and says what is discarded), so Kaydet does not keep answering 409 until the
+      person reloads and loses the edits.
+    drawn: [edited, toastConflict, save]
+    missing: none   # NCURR-1
+
+  - id: unsaved-edits-survive-a-link
+    need: >-
+      A link or a menu entry that leaves the page with unsaved edits asks first (or the browser is made to), instead of dropping them.
+    drawn: [edited, navSessions, navSettings, changeZone, generate, crumbCourses]
+    missing: none   # F-W4-5, F-C-course-a-13
+
+  - id: a-save-keeps-the-focus-and-says-it
+    need: >-
+      After a save the focus is on a node that stays on the page, and the word that it was saved is a status line, not only a toast of six seconds.
+    drawn: [clean, save, toastSavedTitle]
+    missing: none   # F-W4-8
+
+  - id: a-failed-call-is-told
+    need: >-
+      A save whose call fails outright (no network) unlocks Kaydet and says so.
+    drawn: [saving, saveBusy]
+    missing: none   # F-C-course-a-19
+
+  - id: the-form-is-locked-while-it-is-sent
+    need: >-
+      While Kaydet is sent the fields and the row buttons are locked, so what the answer puts into the form cannot overwrite what the person typed meanwhile.
+    drawn: [saving, saveBusy, weekTitleField, sessionTitleField, addWeek]
+    missing: none   # NCURR-2
+
+  - id: name-each-row-and-field
+    need: >-
+      The buttons of a row (Gizle, Haftayı gizle, Celse ekle, Haftayı kopyala, Kaynağı çıkar, Yukarı taşı, Aşağı taşı) are named with their row, the fields of a
+      celse are grouped by it, and a required field says it is required.
+    drawn: [hideSession, hideWeek, addLesson, copyWeek, courseRemove, lessonRemove, lessonMoveUp, lessonMoveDown, sessionHeading, sessionTitleField]
+    missing: none   # F-W4-3, F-C-course-a-04, F-C-course-a-07
+
+  - id: buttons-land-on-the-page-they-name
+    need: >-
+      The buttons of other pages named "Celse planla", "Ders ayarları", "Derse dön" and a celse's "Düzenle" open the page they name, not this one through /edit.
+    drawn: [clean]
+    missing: none   # F-W4-1, F-X-19 (nizam.courses.overview's buttons; the page they land on is this one)

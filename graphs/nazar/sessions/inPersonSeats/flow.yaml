@@ -1,0 +1,353 @@
+# The hoca of a course, or a ders nazırı who holds session.manage, sets the in-person seats of a celse for women and for men, sees the
+# applications in the order they came and gives the seats, in nazar-web (from /ders/<id>/celseler).
+# PLANNED, NOT BUILT (MDRS-284, Backlog; the owner parked it on 2026-10-11: "sonraki konu ama issue'sunu açarız durur"). Written
+# graph-first, `status: proposed`, from planned.md (P-08), the Linear issue and the owner's decisions kept in it. There is no code of the
+# feature: no state of this flow has a `source`. What exists and takes part has its real `source` in ui.yaml: the Celseler page, its
+# table, the "Katılım" cell that says "Yüz yüze", and the button "Yüz yüze ayarı" that sets the celse's in-person mark; the course
+# setting "Celseler yüz yüze yapılır" is drawn by nazar.courseSettings.access. Not walkable: no code, so no binding and no replay.
+#
+# Given by the owner, never asked again: seats are counted apart for women and for men (two counts, never a total), gender is always
+# set, a seat is taken at approval and not at application, and application order decides: first come, first served, and the team can
+# approve in that order. A full quota refuses approvals for that gender only.
+#
+# This flow is started by tedris.session.registerInPerson, which hands over `gender`: the gender of the application that was just made
+# and waits in the list. The talebe's page is not live, so what happens here reaches it when it is read again.
+#
+# What this flow draws is the simplest reading of the story. The choices the story leaves open are listed here and as `decisions`
+# below; none is decided by this graph:
+#   D1  Where the screen sits. Drawn: a page of its own for one celse, reached by a new button on the celse's row, like "Celse planla";
+#       the other ways are a dialog or a fifth inline form under the table.
+#   D2  Where the seats are set. Drawn: per celse only. Linear says "set on the course and overridable per celse"; a course-wide default
+#       is not drawn.
+#   D3  Is the application order a rule or advice? Drawn: advice, the list shows it and any waiting row may be approved.
+#   D4  A count set below the seats already given. Drawn: accepted, nothing is taken back, the quota reads full. Linear asks whether staff
+#       may knowingly go over a quota.
+#   D5  Is "Onayla" off for a gender whose seats are all given? Drawn: it stays on and the API refuses, so a stale page is refused too.
+#   D6  Who may do it. Drawn: session.manage on the course, the permission that already sets the in-person mark; no new code.
+# Not drawn and listed in needs.yaml: declining an application, moving a talebe between remote and in person, the address of the place,
+# a notice to the team when someone applies, the same list in nizam (a sibling flow, not written), and a count of a talebe's no-shows.
+schema: delurio-graph/0
+kind: flow
+id: nazar.sessions.inPersonSeats
+status: proposed
+domain: medaris.api
+ui: nazar.sessions.inPersonSeats
+title: Set a celse's in-person seats and give them in order
+summary: >-
+  On Celseler, a celse that is held in person has a new button, "Yüz yüze kontenjan", for a person who holds session.manage. It opens a
+  page for that celse: two numbers, "Kadın kontenjanı" and "Erkek kontenjanı", with "Kaydet"; the counts "Kadın 18/25 · Erkek 30/40"; and
+  two lists of applications, women and men, each in the order the talebe applied, with its position, the name, the time and the status.
+  A waiting row has "Onayla". Approving gives that row a seat out of ITS OWN gender's count, under a lock, and tells the talebe. When
+  every seat of that gender is given the approval is refused and the other gender's rows can still be approved. Until the first save the
+  celse takes no registration and the page says so.
+
+scope:
+  shows: >-
+    the Celseler row's new button, the page of one celse's seats (the two counts, the form, the two lists, the approval) and the toasts of
+    its two writes
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of Celseler (the other buttons and forms of a row, the past celses, the plan page): nazar.sessions.manage, nazar.sessions.plan; the in-person MARK of a celse and of the course: \"Yüz yüze ayarı\" there and \"Celseler yüz yüze yapılır\" in nazar.courseSettings.access"
+    - "how the talebe applies, waits and withdraws: tedris.session.registerInPerson, which starts this flow"
+    - "declining an application, taking a given seat back, and moving a talebe between remote and in person: not decided (needs.yaml)"
+    - "the same list for a köşk's courses in nizam (a sibling flow of nazar.sessions.manage and nizam.courses.manageSessions, not written): the same actions"
+    - "a person who holds neither session.manage nor session.live_link (the page refuses: nazar.access.dersNazirPages), and a ders nazırı who holds session.live_link alone (the page opens and the new button is not drawn)"
+    - "a read that failed outright (the retry state \"Celseler okunamadı\" of the page) and an ended session (both calls then send the person to sign in: realm.auth.signIn)"
+    - "a course in a hidden köşk or a passive scope, a celse hidden or cancelled meanwhile: the API answers 404 or 409 and the page says it could not be done"
+
+decisions:
+  D1:
+    question: >-
+      Where does the screen for a celse's seats sit: a page of its own, a dialog over Celseler, or one more inline form under the table?
+    recommend: >-
+      A page of its own: it holds a form and two lists with a button on each row, which a dialog or the small forms of the table do not
+      carry on a phone, and "Celse planla" is the precedent for a page that hangs from Celseler with a breadcrumb back.
+    affects: [listed, reading, applications]
+  D2:
+    question: >-
+      Are the seats set on the celse only, or on the course with an override per celse (as the in-person mark is)?
+    recommend: >-
+      On the celse only: seats are weekly from the start, the owner said, and a course-wide number says nothing about one week. A default
+      for new celses can be added later without changing this page.
+    affects: [unset, applications, saving]
+  D3:
+    question: >-
+      Is the order of application a rule the API enforces (a later application cannot be approved while an earlier one of the same gender
+      waits) or advice the team follows?
+    recommend: >-
+      Advice: the list shows the order and its position, and the team may approve any waiting row (a talebe who has since left the
+      course, or cannot come, must be skippable). The owner's words are that the team must be ABLE to approve in that order.
+    affects: [applications, approving]
+  D4:
+    question: >-
+      May the team set a count below the seats already given, and what happens to the seats given?
+    recommend: >-
+      Accept it, take nothing back, and let the quota read full until someone lets a seat go. Linear asks whether staff may knowingly
+      exceed a quota; this allows it only by lowering, never by an approval.
+    affects: [applications, saving]
+  D5:
+    question: >-
+      Is "Onayla" off on a row of a gender whose seats are all given?
+    recommend: >-
+      Off, with the reason in the counts line ("Kadın 25/25"), and the API still refuses a stale click. Drawn the simplest way: it stays
+      on and the refusal is a toast.
+    affects: [applications, approving]
+  D6:
+    question: >-
+      Which permission opens this page and gives the seat: session.manage, enrollment.decide (which approves a course application), or a
+      new code?
+    recommend: >-
+      session.manage, as the owner's story says (the hoca and a ders nazırı who holds it): it is the code that already sets the celse's
+      in-person mark, link and time. A ders nazırı who may decide enrolments but not manage celses would not see the page.
+    affects: [listed, reading]
+
+context:
+  gender:
+    values: [female, male]
+    initial: any
+    say:
+      female: "the application that was just made is a woman's: it waits in the women's list"
+      male: "the application that was just made is a man's: it waits in the men's list"
+  holds:
+    values: [manage, streamOnly]
+    initial: any
+    say:
+      manage: "the müderris of the course, or a ders nazırı who holds session.manage: the new button is drawn"
+      streamOnly: "a ders nazırı who holds session.live_link alone: Celseler opens and the new button is not drawn"
+  seats:
+    values: [unset, set]
+    initial: any
+    say:
+      unset: "the celse has no seats yet, so it takes no registration"
+      set: "the celse has both counts; the applications that came are listed"
+  other:
+    values: ["none", waits]
+    initial: any
+    say:
+      "none": "no application of the other gender waits"
+      waits: "an application of the other gender waits too, in its own list"
+  femaleLeft:
+    values: [some, "none"]
+    initial: any
+    say:
+      some: "at least one seat of the women's count is not yet given when the click arrives"
+      "none": "every seat of the women's count is given: the quota is full"
+  maleLeft:
+    values: [some, "none"]
+    initial: any
+    say:
+      some: "at least one seat of the men's count is not yet given when the click arrives"
+      "none": "every seat of the men's count is given: the quota is full"
+  picked:
+    values: [female, male]
+    initial: female
+    say:
+      female: "the row being approved is in the women's list"
+      male: "the row being approved is in the men's list"
+  saved:
+    values: ["no", "yes"]
+    initial: "no"
+    say:
+      "no": "the seats were not saved on this page"
+      "yes": "the person saved the seats on this page"
+  toast:
+    values: [none, seatsSaved, full, gone, refused, notInPerson, failed]
+    initial: none
+    say:
+      none: "no toast"
+      seatsSaved: "a toast says the seats were saved"
+      full: "a toast says the quota of that gender is full and no seat was given"
+      gone: "a toast says the application is no longer there and the list was read again"
+      refused: "a toast says the person may not do it (the permission was taken away after the page opened)"
+      notInPerson: "a toast says the celse is no longer held in person, so it has no seats"
+      failed: "a toast says it could not be done"
+
+guards:
+  seatsHeld: "holds == 'manage'"
+  isUnset: "seats == 'unset' and saved == 'no'"
+  femaleWaits: "seats == 'set' and (gender == 'female' or other == 'waits')"
+  maleWaits: "seats == 'set' and (gender == 'male' or other == 'waits')"
+  seatFree: "(picked == 'female' and femaleLeft == 'some') or (picked == 'male' and maleLeft == 'some')"
+
+effects:
+  pickedFemale: { set: { picked: female, toast: none } }
+  pickedMale: { set: { picked: male, toast: none } }
+  clearToast: { set: { toast: none } }
+  seatsSaved: { set: { saved: "yes", toast: seatsSaved } }
+  toastFull: { set: { toast: full } }
+  toastGone: { set: { toast: gone } }
+  toastRefused: { set: { toast: refused } }
+  toastNotInPerson: { set: { toast: notInPerson } }
+  toastFailed: { set: { toast: failed } }
+
+failures:
+  reading:
+    from: listInPersonRegistrations
+    forbidden: [AUTHZ_FORBIDDEN]
+    gone: [LESSON_NOT_FOUND, COURSE_NOT_FOUND]
+  saving:
+    from: setInPersonSeats
+    forbidden: [AUTHZ_FORBIDDEN]
+    notInPerson: [LESSON_NOT_IN_PERSON, LESSON_CANCELLED]
+    other: [VALIDATION_ERROR, LESSON_NOT_FOUND, COURSE_NOT_FOUND, HTTP_400]
+  approving:
+    from: approveInPersonRegistration
+    forbidden: [AUTHZ_FORBIDDEN]
+    full: [IN_PERSON_QUOTA_FULL]
+    gone: [IN_PERSON_REGISTRATION_NOT_FOUND]
+    other: [IN_PERSON_NOT_OPEN, LESSON_NOT_FOUND, COURSE_NOT_FOUND, HTTP_400]
+
+# The main story: a woman's application has come; the hoca opens the celse's seats from Celseler and gives her the seat.
+main:
+  given: { gender: female, holds: manage, seats: set, other: "none", femaleLeft: some, maleLeft: some }
+  events: [OPEN_SEATS, DONE, APPROVE_FEMALE, DONE]
+
+initial: listed
+states:
+  listed:
+    title: Celseler, with the button for a celse's seats
+    by: human
+    source: apps/nazar/features/sessions/components/sessions-page.tsx:70 # the page exists (nazar.sessions.manage draws it); only this state's new button is planned
+    description: >-
+      The existing page Celseler (/ders/<id>/celseler): the table of the celses still ahead, each row with its "Katılım" cell and its
+      buttons. A celse is held in person by its own mark ("Yüz yüze ayarı" on this page) or, when it has none, by the course's setting
+      "Celseler yüz yüze yapılır" (nazar.courseSettings.access): both exist, are a label only, and say "Yüz yüze" in the Katılım cell. This
+      flow adds one button to the row of such a celse, "Yüz yüze kontenjan", beside "Yüz yüze ayarı". It is drawn for a person who holds
+      session.manage (the code that already sets the in-person mark) and for no one else. The page keeps no focus of its own on load
+      (nazar.sessions.manage, `focus-not-set`).
+    on:
+      OPEN_SEATS: { guard: seatsHeld, target: reading, effect: [clearToast], say: "the button opens the seats of that celse: a page of its own (D1)" }
+      NAVIGATE: left
+
+  reading:
+    title: Read the celse's seats and applications
+    description: >-
+      The action listInPersonRegistrations, GET /lessons/{id}/in-person: the two counts (null before the first save), how many seats of
+      each gender are given, and the registrations as two lists, women and men, each oldest first with its position. Approved and waiting
+      rows are both listed, so the hoca sees who holds a place and who is next. A person whose permission was taken away since Celseler
+      was read is refused.
+    invoke: { action: listInPersonRegistrations }
+    on:
+      DONE: loaded
+      FAIL.forbidden: forbidden
+      FAIL.gone: not_found
+
+  loaded:
+    title: The page is drawn as the read says
+    description: A step with no screen of its own. A celse with no seats gets the empty form, and one with seats gets the counts and the lists.
+    always:
+      - { guard: "seats == 'unset'", target: unset }
+      - { target: applications }
+
+  unset:
+    title: The celse has no seats yet
+    by: human
+    description: >-
+      The page with the form empty and one line that says no in-person registration is taken until the seats are written. Neither count
+      has a default and no total can be written: the two fields are separate and both are needed. There are no lists, because no
+      application can exist before the seats do.
+    on:
+      SAVE_SEATS: { target: saving, effect: [clearToast], say: "\"Kaydet\" with both counts written" }
+      BREADCRUMB: sessions_opened
+      NAVIGATE: left
+
+  applications:
+    title: The seats and the applications, in order
+    by: human
+    goal: true
+    description: >-
+      The page for one celse. At the top, the counts of given seats against the seats of each gender ("Kadın 18/25 · Erkek 30/40"), then
+      the form with the two numbers as they stand, then "Başvurular" with two lists, women first and men after, each in the order the
+      talebe applied. A row has its position, the talebe's name, the time of the application and a status, "Onay bekliyor" or "Yer
+      verildi". A waiting row has "Onayla"; a given seat has nothing. The order is advice (D3): any waiting row can be approved. A
+      gender with no waiting application says so under its heading. The button stays on for a gender whose seats are all given (D5): the
+      API refuses it.
+    on:
+      SAVE_SEATS: { target: saving, effect: [clearToast], say: "\"Kaydet\" with new counts: both are written, the lists are read again" }
+      APPROVE_FEMALE: { guard: femaleWaits, target: approving, effect: [pickedFemale], say: "\"Onayla\" on a woman's row" }
+      APPROVE_MALE: { guard: maleWaits, target: approving, effect: [pickedMale], say: "\"Onayla\" on a man's row" }
+      BREADCRUMB: sessions_opened
+      NAVIGATE: left
+
+  saving:
+    title: Save the seats
+    description: >-
+      The action setInPersonSeats, PUT /lessons/{id}/in-person/seats with both counts, each a whole number from 0 (D4: a count below the
+      seats already given is accepted). The first save opens the celse to registration. The button is busy while the call runs. The
+      counts the page shows are read again afterwards.
+    invoke: { action: setInPersonSeats }
+    on:
+      DONE: { target: applications, effect: [seatsSaved], say: "a toast says the seats were saved; the page is read again" }
+      FAIL.forbidden:
+        - { guard: isUnset, target: unset, effect: [toastRefused] }
+        - { target: applications, effect: [toastRefused] }
+      FAIL.notInPerson:
+        - { guard: isUnset, target: unset, effect: [toastNotInPerson] }
+        - { target: applications, effect: [toastNotInPerson] }
+      FAIL.other:
+        - { guard: isUnset, target: unset, effect: [toastFailed] }
+        - { target: applications, effect: [toastFailed] }
+
+  approving:
+    title: Give the seat
+    description: >-
+      The action approveInPersonRegistration, POST /lessons/{id}/in-person/registrations/{userId}/approve. The API counts the seat against
+      the quota of THE ROW'S gender only, under a lock on the celse's seat row, so parallel approvals cannot go past it. A full quota
+      refuses the approval of that gender and of nothing else: a row of the other gender, whose seats are not all given, is approved as
+      usual. Success sets the status, tells the talebe and counts the seat. The row's own button is busy while the call runs.
+    invoke: { action: approveInPersonRegistration }
+    on:
+      DONE: { guard: seatFree, target: seat_given, say: "the seat is counted and the talebe is told" }
+      FAIL.full: { guard: "not seatFree", target: applications, effect: [toastFull], say: "every seat of that gender is given: nothing is written, the list stays as it is" }
+      FAIL.gone: { target: applications, effect: [toastGone], say: "the talebe took the application back meanwhile; the list is read again" }
+      FAIL.forbidden: { target: applications, effect: [toastRefused] }
+      FAIL.other: { target: applications, effect: [toastFailed] }
+
+  seat_given:
+    type: final
+    title: The seat is given
+    description: >-
+      The seat is counted against the quota of the row's gender, the row reads "Yer verildi" and the counts move by one when the page is
+      read again. The talebe gets a notification (IN_PERSON_SEAT_GIVEN, a proposed type); their page, which is not live, shows the seat
+      card when it is read again (tedris.session.registerInPerson). This flow ends here; the person may approve the next row on the same
+      page, which is the same state again.
+
+  forbidden:
+    title: The person may not open the seats
+    by: human
+    description: >-
+      The read was refused with AUTHZ_FORBIDDEN: the page's own heading and the neutral alert "Bu sayfaya izniniz yok" (the page's
+      PageProblem). Reached only by a person whose permission was taken away after Celseler was read, or by an address typed by someone
+      who never held session.manage.
+    on:
+      BREADCRUMB: sessions_opened
+      NAVIGATE: left
+
+  not_found:
+    type: final
+    title: The celse is not found
+    description: "The read answered 404: the celse was hidden or the course left the person's reach after Celseler was read. nazar.shell.errorStates draws the page."
+
+  sessions_opened:
+    type: final
+    title: Back to Celseler
+    description: The breadcrumb's "Celseler" is a link; nothing typed is lost because there is nothing unsaved but the two counts (a guard for them is not decided).
+
+  left:
+    type: final
+    title: The person goes to another page
+    leavesPage: true
+
+assertions:
+  - id: seats-only-for-session-manage
+    never: "state in ['reading', 'unset', 'applications', 'saving', 'approving'] and holds != 'manage'"
+    say: "The page of a celse's seats opens only for a person who holds session.manage: a ders nazırı who holds session.live_link alone never sees the button"
+  - id: a-seat-never-goes-past-its-gender-quota
+    never: "state == 'seat_given' and ((picked == 'female' and femaleLeft == 'none') or (picked == 'male' and maleLeft == 'none'))"
+    say: "A seat is given only while a seat of the row's own gender is left: the approval is counted against that gender's count and never against the other's"
+  - id: a-full-refusal-names-a-full-gender
+    never: "toast == 'full' and femaleLeft == 'some' and maleLeft == 'some'"
+    say: "A full-quota refusal is never shown while neither gender is full: one gender's full quota never refuses the other gender"
+  - id: lists-only-after-the-seats
+    never: "state == 'applications' and seats == 'unset' and saved == 'no'"
+    say: "The lists of applications are drawn only for a celse whose seats are set: until then it takes no registration"

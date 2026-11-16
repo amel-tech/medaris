@@ -1,0 +1,405 @@
+# The three places where nizam-web lets a köşk's nazım decide the applications that wait, and that are not the köşk home: the köşk's own
+# list "Başvurular" (/kosks/<id>/basvurular), the "Bekleyen başvurular" card of a course's Genel bakış (/kosks/<id>/courses/<id>) and the
+# Başvurular tab of a course's Talebeler (/kosks/<id>/courses/<id>/students). All three call one hook, useDecisions
+# (apps/nizam/features/applications/use-decisions.ts), so one flow draws them, with a case variable `place` that says which page the
+# person is on. Written from the code of PR #394 (the three pages and their components under features/applications and
+# features/kosks, the two server actions in features/kosks/actions/courses.ts, decisionErrorKey in features/applications/present.ts and
+# the API's GET /kosks/:id/enrollments/pending, GET /courses/:id/stats, GET /courses/:id/enrollments and the two decision routes). It is
+# the twin of nizam.home.decideApplications, nazar.roster.decide and nazar.pano.decideApplications and shares their context names
+# (`approval`, `last`, `row`, `note`). It says what the code does today:
+#   - the first value of `approval` is the hand-over of tedris.course.apply: an application that asks for approval waits here (and on
+#     the köşk home, on the course's Talebeler in nazar and on the Pano). tedris.course.apply's two `starts` name nazar.roster.decide and
+#     this flow, with `approval: needed`.
+#   - "Reddet" here asks nothing: no dialog, no reason, no undo. One press deletes the application, tells the talebe and shows a toast
+#     (F-W4-7). The köşk home's Reddet opens a form dialog with an optional reason, and nazar asks in an alertdialog, so the one
+#     decision is made three ways in two apps. This is why this flow has no confirmation state.
+#   - a refusal is worded by decisionErrorKey from the HTTP status, the same function the köşk home uses: a barred talebe's approval
+#     (403 BAN_ACTIVE) is told as "Bu başvuruya karar verme yetkiniz yok." (HOME-1); an application someone else settled is an error
+#     toast and the row leaves; any other failure, a dropped network included, is caught: the row stays and a toast says try again.
+#   - the three pages show a row in flight in three ways (CDA-2, CDA-3): the list and the tab switch both of its buttons off natively, with
+#     no spinner and no status; the overview shows a spinner and "Yükleniyor" on Onayla whichever button was pressed.
+#   - the köşk-wide list is the köşk nazım's alone: the başnazım and a Medaris nazım with platform.kosk_edit are refused it (tedrisat's
+#     KoskService.assertManager, pinned by roster-contact.e2e.spec.ts#6) although the başnazım may decide on a course's own pages (CDA-5).
+#   - findings this flow touches (ui.yaml `rules` carries the same ids):
+#       F-W4-6   after a decision the pressed row leaves and the focus with it (the family of F-W1-4 and F-X-7)
+#       F-W4-7   Reddet deletes at once: no confirmation, no reason, no undo
+#       F-W4-10  an unreadable roster is a bare caption on the Talebeler page (the exit load_failed of the third place)
+#       F-W4-1   "Derse dön" on the Talebeler page goes to /edit, which redirects to the curriculum, not to the overview
+#       HOME-1   (cited) a barred talebe's approval is told as "no authority"
+#       HOME-3   (cited) one `busy` key for the whole table; ROSTER-1 (cited) the note reads the course's own approval flag
+#       ROSTER-2 (cited) a barred applicant is listed like any other
+#       CDA-1 (new) `decided` is never cleared, so a talebe who applies again after a rejection stays hidden on a page that stays open
+#       CDA-2 (new) a row in flight is shown three ways and none of them is announced
+#       CDA-3 (new) on the overview a Reddet in flight is shown on the Onayla button
+#       CDA-4 (new) the sidebar's number needs the whole waiting list, and every read of it is an audit row
+#       CDA-5 (new) the başnazım is refused the köşk-wide list, which the nav graph says she opens
+#       CDA-6 (new) the same decision is worded two ways: the köşk home's toasts and these pages' toasts differ
+#   - HOME-2 (the list and the number are copies made once) does not apply: these pages read their rows from a prop that
+#     router.refresh() renews. HOME-4 and HOME-5 are the köşk home's dialog and passive-scope sentences, which these pages do not have.
+# E2E carried: shell#4 (the list: rows, the count, the sidebar's badge, the course filter, the Turkish-folding search), shell#5
+# (Onayla and Reddet on the list: the rows go, the toast, the count and the badge fall, the seat and the deleted row), shell#6 (another
+# köşk's list is "Bu bölüm için izniniz yok": carried by nizam.shell.noAccessAndNotFound, which opens a köşk made for it; here
+# no_access is an exit, walked as the başnazım's refusal in binding.noAccess.yaml, CDA-5), shell#7 (a course's Talebeler opens on Başvurular and Onayla moves the talebe to Kayıtlı) and kosk-view#14 (the overview:
+# Onayla takes the row off and the two numbers move). The refusal and failure branches of a decision exist only in the unit spec
+# apps/nizam/test/applications.spec.tsx (decisionErrorKey and the table, no mocked actions) and are carried as drawn states, with the ones
+# the stack can make bound in binding.gone.yaml and binding.barred.yaml.
+schema: delurio-graph/0
+kind: flow
+id: nizam.courses.decideApplications
+status: captured
+domain: medaris.api
+ui: nizam.courses.decideApplications
+title: Decide applications across the köşk
+summary: >-
+  The köşk's nazım decides the applications that wait, in the three places that are not the köşk home. On "Başvurular" she sees
+  every waiting application of the köşk's courses, newest first, with a course filter, a search that folds Turkish letters, and a
+  count that follows both; the menu's "Başvurular" carries the number that wait in all. On a course's Genel bakış the card "Bekleyen
+  başvurular" lists that course's applications and the two numbers above it ("Kayıtlı talebe", "Bekleyen başvuru") move after a
+  decision. On the course's Talebeler, "Başvurular" is the first tab and its count and the "Kayıtlı" count move. In all three places
+  "Onayla" takes the talebe in at once and "Reddet" deletes the application at once, with no question and no reason; a toast says what
+  was done, the row leaves, and the page is read again so that the menu's number follows. An application someone else settled meanwhile
+  is an error toast and the row leaves; a refusal or an unknown failure leaves the row and says so in a toast. The pressed button leaves
+  with its row and the focus with it (F-W4-6).
+
+scope:
+  shows: >-
+    the köşk's Başvurular list with its course filter, search and count, the "Bekleyen başvurular" card and the two numbers of a course's
+    Genel bakış, the Başvurular tab of a course's Talebeler with its tab counts and note, the buttons of a row while a decision is on its
+    way, the toasts of a decision, the empty lines, and the sidebar's "Başvurular" with its badge
+  world: open
+  outOfView:
+    - "the rest of the course's Genel bakış (the upcoming celseler and the warning about one nobody can attend, the team, the settings summary, 'Nazar'da aç'): nizam.courses.overview"
+    - "the three other tabs of Talebeler and what they do (Kayıtlı, Tamamlayanlar, Erişimi kaldırılanlar: search, 'Daha fazla göster', 'Tamamladı say', 'Dersten çıkar', 'Yasakla'): nizam.courses.roster, nizam.moderation.banStudent"
+    - "the same decision on the köşk home (with a reason dialog) and in nazar (on the Pano and on the course's Talebeler): nizam.home.decideApplications, nazar.pano.decideApplications, nazar.roster.decide"
+    - "the talebe applying and the notice they are sent: tedris.course.apply, tedris.account.notifications"
+    - "the date column's sort button, which only reorders the rows (a decision is the same press in either order); and a decision made while the course filter or the search narrows the list, which is the same press on a shorter list"
+    - "'Derse dön' on the Talebeler page, which goes to /edit and so to the curriculum (F-W4-1), and the köşk menu's other entries"
+    - "the başnazım on a course's own pages: she reads and decides there as the nazım does (the API gives SYSTEM_ADMIN every permission); the walks use the köşk's nazım"
+    - "the Medaris nazım with platform.kosk_edit alone: the list refuses her and the course pages are not hers (nizam.courses.overview walks what she reads)"
+    - "an ended session: both server actions answer 'unauthenticated' and the person is sent to sign in (realm.auth.signIn)"
+    - "a failed read of the list ('Başvurular yüklenemedi' with 'Yeniden dene') and of the overview's numbers: the exit load_failed; the stack cannot make tedrisat fail"
+    - "kontenjan: the code gives a seat with no count and no gender rule; needs.yaml carries it as missing (MDRS-284)"
+
+decisions:
+  D1:
+    question: >-
+      Should Reddet ask first, and take the optional reason the API accepts? Here it deletes at once and the talebe is told with no
+      reason; the köşk home asks for a reason in a dialog; nazar asks in an alertdialog that takes none (F-W4-7).
+    recommend: >-
+      One behaviour for all four places, decided with the köşk home's D1 and D2: ask once, take an optional reason, and say truly who
+      reads it. The API is ready on every route.
+    affects: [rejecting]
+  D2:
+    question: >-
+      Should the başnazım read the köşk-wide list? The route asks course.manage_all, which she holds, and then refuses her because she
+      is no row of the köşk's nazım (KOSK_FORBIDDEN), while she may decide on each course's own pages (CDA-5).
+    recommend: >-
+      Decide whether the list is the nazım's alone or the köşk manager's. If the first, the nav graph's `opensFor` for the page must say
+      so; if the second, the service must let SYSTEM_ADMIN through as the guard already does.
+    affects: [openedKosk, no_access]
+  D3:
+    question: >-
+      Should the page forget a decision once the server has answered it? `decided` only grows, so a talebe who applies again is hidden
+      (CDA-1).
+    recommend: >-
+      Hide a row only while its decision is on its way; derive the list from the server data after router.refresh().
+    affects: [settled, listed]
+
+context:
+  approval:
+    values: [needed, none]
+    initial: any
+    say:
+      needed: "an application of the köşk's (or the course's) waits for a decision"
+      none: "no application waits"
+  place:
+    values: [kosk, overview, students]
+    initial: any
+    say:
+      kosk: "the person is on the köşk's list, /kosks/<id>/basvurular"
+      overview: "the person is on the course's Genel bakış, /kosks/<id>/courses/<id>, at its card 'Bekleyen başvurular'"
+      students: "the person is on the course's Talebeler, /kosks/<id>/courses/<id>/students, at its first tab"
+  note:
+    values: [asks, open]
+    initial: any
+    say:
+      asks: "the course's own approval flag is on: the Başvurular tab's note says the course needs approval"
+      open: "the course's own approval flag is off: the note says it needs none, whatever else makes an application wait (ROSTER-1)"
+  row:
+    values: [waiting, gone, barred]
+    initial: waiting
+    say:
+      waiting: "the newest waiting application is still waiting on the server, as the page shows it"
+      gone: "someone settled it behind the page's back (another nazım rejected it, or the talebe took it back): the page still draws it"
+      barred: "a ban was placed on its talebe: the page still draws it like any other (HOME-1, ROSTER-2)"
+  course:
+    values: [all, picked]
+    initial: all
+    say:
+      all: "the list's course filter reads 'Ders: tümü'"
+      picked: "the list's course filter holds one course, which has waiting applications"
+  last:
+    values: [nothing, approved, rejected, gone, refused, failed]
+    initial: nothing
+    say:
+      nothing: "no decision has been made in this visit, or its toast is gone"
+      approved: "a decision just approved an application"
+      rejected: "a decision just rejected one"
+      gone: "the application was not waiting any more: an error toast says so and the row left"
+      refused: "the API refused the decision (403): 'Bu başvuruya karar verme yetkiniz yok.'"
+      failed: "any other failure, a dropped network included: 'Başvuru işlenemedi. Biraz sonra yeniden deneyin.'"
+
+guards:
+  nobodyWaits: "approval == 'none'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  pickedCourse: { set: { course: picked } }
+  allCourses: { set: { course: all } }
+  settledElsewhere: { set: { row: gone } }
+  banPlaced: { set: { row: barred } }
+  approved: { set: { last: approved, row: waiting }, havoc: [approval] } # other applications may still wait, or this was the last
+  rejected: { set: { last: rejected, row: waiting }, havoc: [approval] }
+  gone: { set: { last: gone, row: waiting }, havoc: [approval] }
+  refused: { set: { last: refused } }
+  failed: { set: { last: failed } }
+
+failures:
+  openedKosk:
+    from: listKoskPendingEnrollments
+    forbidden: [AUTHZ_FORBIDDEN, KOSK_FORBIDDEN]
+    missing: [KOSK_NOT_FOUND]
+    failed: [HTTP_400]
+  openedOverview:
+    from: getCourseStats
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+    failed: [INTERNAL_ERROR, HTTP_400]
+  openedStudents:
+    from: listCourseEnrollments
+    forbidden: [AUTHZ_FORBIDDEN]
+    missing: [COURSE_NOT_FOUND]
+    failed: [INTERNAL_ERROR, HTTP_400]
+  approving:
+    from: approveEnrollment
+    gone: [ENROLLMENT_NOT_FOUND, ENROLLMENT_STATE_CONFLICT, COURSE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    barred: [BAN_ACTIVE]
+    other: [HTTP_400]
+  rejecting:
+    from: rejectEnrollment
+    gone: [ENROLLMENT_NOT_FOUND, COURSE_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [VALIDATION_ERROR, HTTP_400]
+
+# The story the köşk's list tells first: the nazım narrows the list to one course and back, searches for a talebe by a name typed
+# without its Turkish letters, finds nobody for a word that matches none, clears it, approves the newest application and rejects the
+# next; others still wait.
+main:
+  given: { approval: needed, place: kosk, note: asks }
+  events: [DONE, FILTER_COURSE, FILTER_ALL, SEARCH_FOUND, SEARCH_NOTHING, CLEAR_SEARCH, APPROVE, DONE, REJECT, DONE]
+
+initial: entering
+
+states:
+  entering:
+    title: The page is opened at one of three addresses
+    description: >-
+      A step with no screen of its own: the köşk's list at /kosks/<id>/basvurular (the menu's "Başvurular" and the köşk home's "Tümünü
+      gör" go there), the course's Genel bakış at /kosks/<id>/courses/<id> (the Dersler table's course name) or its Talebeler at
+      .../students (the overview's "Talebeler" link). `place` says which. The köşk menu's number, "Başvurular", is read by the shell on
+      every full render of the köşk nazım's layout, one read of the whole waiting list per managed köşk (CDA-4).
+    always:
+      - { guard: "place == 'overview'", target: openedOverview, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:39" }
+      - { guard: "place == 'students'", target: openedStudents, source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:36" }
+      - { target: openedKosk, source: "apps/nizam/app/kosks/[id]/basvurular/page.tsx:28" }
+    source: "apps/nizam/app/kosks/[id]/basvurular/page.tsx:23"
+
+  openedKosk:
+    title: The köşk's list is read
+    description: >-
+      The page reads GET /kosks/:id/enrollments/pending on the server, behind a skeleton (loading.tsx), once the köşk layout has let the
+      person in, and GET /kosks/:id/courses for the hoca names beside the course titles (a failure there is ignored). The list is the
+      köşk nazım's alone: a 403 (the başnazım, a Medaris nazım, a ders nazırı, a müderris) and a 404 are the same screen on purpose,
+      "Bu bölüm için izniniz yok" (exit no_access; CDA-5 for the başnazım). Any other failure draws "Başvurular yüklenemedi" with
+      "Yeniden dene" in the page (exit load_failed). The read writes an audit row each time, with no exemption (CDA-4).
+    invoke: { action: listKoskPendingEnrollments }
+    on:
+      DONE:
+        - { guard: nobodyWaits, target: empty, source: "apps/nizam/features/applications/components/applications-view.tsx:128" }
+        - { target: listed, source: "apps/nizam/features/applications/components/applications-view.tsx:50" }
+      FAIL.forbidden: no_access
+      FAIL.missing: no_access
+      FAIL.failed: load_failed
+    source: "apps/nizam/app/kosks/[id]/basvurular/page.tsx:29"
+
+  openedOverview:
+    title: The course's overview is read
+    description: >-
+      The page reads the course's numbers first, GET /courses/:id/stats (course.staff_read), with the course, its roster and the köşk in
+      one Promise.all. A refused read is the screen "Bu bölüm için izniniz yok" (forbidden()), a missing course the same (notFound()); a
+      read that failed with the course or the köşk unreadable too is "Bölüm yüklenemedi" with a retry (exit load_failed); a read that
+      failed alone leaves the three numbers as an alert "Sayısal bilgiler yüklenemedi" and every decision still works (not drawn).
+    invoke: { action: getCourseStats }
+    on:
+      DONE:
+        - { guard: nobodyWaits, target: empty, source: "apps/nizam/features/kosks/components/course-overview.tsx:417" }
+        - { target: listed, source: "apps/nizam/features/kosks/components/course-overview.tsx:415" }
+      FAIL.forbidden: no_access
+      FAIL.missing: no_access
+      FAIL.failed: load_failed
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/page.tsx:40"
+
+  openedStudents:
+    title: The course's Talebeler is read
+    description: >-
+      The page reads the köşk, the course, GET /courses/:id/enrollments (course.staff_read), the removed list and GET /me in one
+      Promise.all. A köşk or course that is not there, or is another köşk's, is notFound() (the same "Bu bölüm için izniniz yok" screen).
+      A roster that could not be read leaves the header and one bare caption, "Bu dersin kayıtları şu anda okunamadı.", with no alert
+      and no retry (F-W4-10; exit load_failed). The waiting rows are the PENDING ones; the other three tabs read the rest.
+    invoke: { action: listCourseEnrollments }
+    on:
+      DONE:
+        - { guard: nobodyWaits, target: empty, source: "apps/nizam/features/applications/components/students-tabs.tsx:121" }
+        - { target: listed, source: "apps/nizam/features/applications/components/students-tabs.tsx:65" }
+      FAIL.forbidden: no_access
+      FAIL.missing: no_access
+      FAIL.failed: load_failed
+    source: "apps/nizam/app/kosks/[id]/courses/[courseId]/students/page.tsx:37"
+
+  listed:
+    title: The waiting applications are listed
+    description: >-
+      The page of the place `place` names, with its rows. On the list (`kosk`): the heading "Başvurular", its intro, the course filter
+      ("Ders süzgeci"), the search ("Başvurularda ara"), the line "N başvuru bekliyor" (a polite live region that follows both and the
+      decisions) and the table of every waiting application, newest first, each row with the talebe's name and e-mail, the course and the
+      hoca names, the day, and "Onayla" and "Reddet". On the overview (`overview`): the numbers "Kayıtlı talebe" and "Bekleyen
+      başvuru", and the card "Bekleyen başvurular" with the talebe, the day and the same two buttons, named by the talebe alone. On the
+      Talebeler page (`students`): the four tabs with their counts, a note that says what a decision does ("Bu derse kayıt için onayınız
+      gerekiyor…") and the table of the course's waiting applications with the e-mail in a column of its own. Findings read here: F-W4-6
+      (the pressed button leaves with its row and the focus with it), CDA-1 (a talebe who applied again is hidden), CDA-4 (the menu's
+      number), HOME-3 (one busy key), ROSTER-1 (the note reads the course's own flag), ROSTER-2 and HOME-1 (a barred talebe is listed
+      like any other). The toast of the last decision stands in the page for six seconds when it is a success (`last`); an error toast
+      stays until closed. `SETTLED_ELSEWHERE` and `BAN_PLACED` are what happens to the newest row on the server behind the page: the page
+      does not know until the person presses. The three filter and search events are the list's alone.
+    by: human
+    goal: true
+    on:
+      APPROVE: { target: approving, effect: [clearNote], say: "they press Onayla on a row", source: "apps/nizam/features/applications/use-decisions.ts:43" }
+      REJECT: { target: rejecting, effect: [clearNote], say: "they press Reddet on a row: nothing is asked", source: "apps/nizam/features/applications/use-decisions.ts:44" }
+      FILTER_COURSE: { guard: "place == 'kosk' and course == 'all'", target: listed, effect: [pickedCourse], say: "they pick one course in 'Ders süzgeci': the rows and the count narrow to it", source: "apps/nizam/features/applications/components/applications-view.tsx:99" }
+      FILTER_ALL: { guard: "place == 'kosk' and course == 'picked'", target: listed, effect: [allCourses], say: "they pick 'Ders: tümü' again", source: "apps/nizam/features/applications/components/applications-view.tsx:99" }
+      SEARCH_FOUND: { guard: "place == 'kosk'", target: listed, say: "they type a word that some waiting talebe's name or e-mail holds, in any case and with or without the Turkish letters ('betul' finds 'Betül')", source: "apps/nizam/features/applications/present.ts:50" }
+      SEARCH_NOTHING: { guard: "place == 'kosk'", target: noMatch, say: "they type a word that no waiting talebe's name or e-mail holds", source: "apps/nizam/features/applications/components/applications-view.tsx:128" }
+      SETTLED_ELSEWHERE: { guard: "row == 'waiting'", target: listed, effect: [settledElsewhere], say: "another nazım rejects the newest application, or its talebe takes it back, while this page stays open", source: apps/tedrisat/src/course/course.service.ts:1686 }
+      BAN_PLACED: { guard: "row == 'waiting'", target: listed, effect: [banPlaced], say: "the newest application's talebe is barred from the course while this page stays open", source: apps/tedrisat/src/ban/ban.service.ts:616 }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: "apps/nizam/features/applications/components/applications-view.tsx:124"
+
+  noMatch:
+    title: The filter and the search leave nothing
+    description: >-
+      The list's table says "Bu süzgece uyan başvuru yok" in its one cell and the count reads 0, while applications still wait (the menu's
+      badge keeps its number). Only the list has a search, so only the list reaches it. Emptying the search brings the rows back.
+    by: human
+    on:
+      CLEAR_SEARCH: { target: listed, say: "they empty the search box", source: "apps/nizam/features/applications/components/applications-view.tsx:108" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: "apps/nizam/features/applications/components/applications-view.tsx:128"
+
+  empty:
+    title: Nothing waits
+    description: >-
+      The table says it in its one cell: "Bekleyen başvuru yok" on the list and on the overview's card, "Onay bekleyen başvuru yok" on
+      the Talebeler tab. The list's count reads 0, the overview's "Bekleyen başvuru" number reads 0 and the tab's count 0; the menu's
+      "Başvurular" has no badge (it shows only above zero). The toast of the last decision may still be up. Nothing announces that the
+      last row has just left (F-W4-6). The Talebeler tab says "Bu ders onay istemiyor" here too when the course's flag is off.
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: "apps/nizam/features/applications/components/applications-view.tsx:128"
+
+  approving:
+    title: The approval is on its way
+    description: >-
+      approveEnrollment (the server action) calls POST /courses/:id/enrollments/:userId/approve with no body; the API answers 201, the
+      talebe is told and the calendar invitations are sent. On the list and on the Talebeler tab the row's two buttons are switched off
+      natively (`disabled`, no spinner, no aria-busy, no status: nothing says anything is happening, CDA-2) and the other rows stay
+      live (HOME-3). On the overview the row's "Onayla" is busy (aria-disabled, aria-busy, a spinner and "Yükleniyor" to a reader of
+      the screen) and every "Reddet" of the card is switched off. A success removes the row at once, shows the toast "Başvuru onaylandı",
+      and reads the page's server parts again, so the menu's badge, the overview's two numbers and the tab's counts follow. A row someone
+      else approved first is not an error: the API answers 201 again and this page says the same. A 404 or 409 (the row was rejected or
+      taken back, the course is gone) is an error toast "İşlem yapılamadı: Bu başvuru artık bekleyenler arasında değil; liste
+      yenilendi." and the row leaves all the same. A 403, a barred talebe's (BAN_ACTIVE) included, is "Bu başvuruya karar verme yetkiniz
+      yok." and the row stays (HOME-1); any other answer, or a call that never arrives, is "Başvuru işlenemedi. Biraz sonra yeniden
+      deneyin." and the row stays.
+    invoke: { action: approveEnrollment }
+    on:
+      DONE: { guard: "row == 'waiting'", target: settled, effect: [approved], source: "apps/nizam/features/applications/use-decisions.ts:73" }
+      FAIL.gone: { guard: "row == 'gone'", target: settled, effect: [gone], source: "apps/nizam/features/applications/use-decisions.ts:66" }
+      FAIL.barred: { guard: "row == 'barred'", target: listed, effect: [refused], source: "apps/nizam/features/applications/present.ts:183" }
+      FAIL.forbidden: { target: listed, effect: [refused], source: "apps/nizam/features/applications/present.ts:175" }
+      FAIL.other: { target: listed, effect: [failed], source: "apps/nizam/features/applications/present.ts:186" }
+    source: "apps/nizam/features/applications/use-decisions.ts:34"
+
+  rejecting:
+    title: The rejection is on its way
+    description: >-
+      rejectEnrollment (the server action) calls DELETE /courses/:id/enrollments/:userId with an empty body: no confirmation was asked
+      and no reason was taken (F-W4-7), so the audit row `enrollment.reject` has none and the talebe's notice carries none. The waiting
+      row is deleted, so the talebe may apply again (CDA-1), and is told. The buttons are shown as in approving; on the overview it is
+      "Onayla" that spins while "Reddet" was pressed (CDA-3). A success removes the row, shows the toast "Başvuru reddedildi" and reads
+      the page again. A 404 or 409 is the same error toast as above and the row leaves; a 403 or any other failure leaves the row and
+      says so in a toast. A ban does not stop a rejection.
+    invoke: { action: rejectEnrollment }
+    on:
+      DONE: { guard: "row != 'gone'", target: settled, effect: [rejected], source: "apps/nizam/features/applications/use-decisions.ts:73" }
+      FAIL.gone: { guard: "row == 'gone'", target: settled, effect: [gone], source: "apps/nizam/features/applications/use-decisions.ts:66" }
+      FAIL.forbidden: { target: listed, effect: [refused], source: "apps/nizam/features/applications/present.ts:175" }
+      FAIL.other: { target: listed, effect: [failed], source: "apps/nizam/features/applications/present.ts:186" }
+    source: "apps/nizam/features/applications/use-decisions.ts:34"
+
+  settled:
+    title: The list follows the decision
+    description: >-
+      The row's key is added to `decided`, which hides it, and router.refresh() reads the server parts again: the menu's badge, the
+      overview's numbers and the tab's counts are the server's, the list's count is the list's own length. `decided` is never emptied
+      (CDA-1). No code moves the focus, and the pressed button is gone (F-W4-6).
+    always:
+      - { guard: nobodyWaits, target: empty, source: "apps/nizam/features/applications/components/applications-view.tsx:128" }
+      - { target: listed, source: "apps/nizam/features/applications/use-decisions.ts:86" }
+    source: "apps/nizam/features/applications/use-decisions.ts:73"
+
+  no_access:
+    title: The page says "Bu bölüm için izniniz yok"
+    description: >-
+      A 403 or a 404 of the read: a person who is not the köşk's nazım on the list (the başnazım too, CDA-5), another köşk, or a course
+      that is not there. One screen for all of them, drawn and walked by nizam.shell.noAccessAndNotFound; here it is the exit.
+    type: final
+    leavesPage: true
+
+  load_failed:
+    title: The read failed
+    description: >-
+      The list's own alert "Başvurular yüklenemedi" with "Yeniden dene" (applications-view.tsx:77), the overview's "Bölüm yüklenemedi",
+      or the Talebeler page's bare caption "Bu dersin kayıtları şu anda okunamadı." (F-W4-10). Not reachable on the local stack.
+    type: final
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: empty-means-nothing-waits
+    never: "state == 'empty' and approval == 'needed'"
+    say: The empty line shows only when nothing waits, as far as the page was told.
+    source: "apps/nizam/features/applications/components/applications-view.tsx:128"
+  - id: rows-mean-something-waits
+    never: "state in ['listed', 'noMatch', 'approving', 'rejecting'] and approval == 'none'"
+    say: Rows, and a button to press, are drawn only while an application waits.
+    source: "apps/nizam/features/applications/components/applications-table.tsx:149"
+  - id: filter-and-search-are-the-lists
+    never: "state == 'noMatch' and place != 'kosk'"
+    say: Only the köşk's list has a course filter and a search, so only it can leave nothing while applications wait.
+    source: "apps/nizam/features/applications/components/applications-view.tsx:90"

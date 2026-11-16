@@ -1,0 +1,106 @@
+# What the bindings of nizam.madrasahs.restore share: the walk's medrese (read from the file medrese.mjs writes), the events no node sends,
+# the places the exits open, what a step leaves outside the screen, and where role and name cannot find a node. It carries no scenario, so it
+# is not walked by itself:
+#   binding.yaml          the başnazım on the Gizli tab: the main story and the two races (ELSEWHERE_RESTORES, ELSEWHERE_DELETES)
+#   binding.all.yaml      the başnazım on Tümü, entered through the menu: the row stays and reads Etkin (madrasahs.e2e.ts#3)
+#   binding.noButton.yaml the seeded Medaris nazımı, who may open the page and may not restore: the hidden row has no button (RESTORE-2)
+# `--cover transitions` walks the shortest scenario per transition, and the last two add no transition of their own (they only change
+# which nodes are shown), so each has a small file and is walked with `--to`.
+#
+# NOT RUN: written without a replay (the first walks are a later phase). Every locator below comes from the code
+# (apps/nizam/features/madrasahs, libs/ui/src/mds, libs/ui/src/components/sonner.tsx) and is unverified until a walk.
+#
+# The walk never touches the seeded medrese: see medrese.mjs and the `setup` of each file (a medrese of its own, "Geri Alma Denemesi
+# Medresesi", hidden by its başmüderris through the API, with one course of its own). Not driven, so the replay reports them as not bound:
+#   viewer nazimUnread (the kademe sentence): the page draws it only when it could not read the viewer's roles or permissions, which the
+#                   local stack cannot be made to do (RESTORE-1, F-W2-2). No scenario has that `given`.
+#   viewer nazimEdit: no stack account holds platform.madrasah_edit without being the başnazım, and the seeded Medaris nazımı's grants are
+#                   not changed for a walk (other flows read them). A Medaris nazımı made for the walk (POST /nizam/medaris-nazims, a spare
+#                   account) would do it; not written, to keep to the walk's own data.
+#   FAIL.forbidden and FAIL.failed of the restore (a permission taken away while the page is open; a server that does not answer), and the
+#                   FAIL.level of the failures (no viewer can cause it, RESTORE-1).
+# A FAIL status cannot be compared on `restoring`: the page's server action answers 200 on the page's own address whatever the API said,
+# so `call` only holds the busy state and the replay will report a mismatch on the statuses of FAIL.notHidden and FAIL.gone; the effects
+# below say what really happened.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.madrasahs.restore
+
+data:
+  mine: { json: ../.local/made/restoreMedrese-medrese.json }
+
+# The replay fills a catalog placeholder from the binding's samples, not from ui.yaml's: without these a name that has `{name}` in it is
+# matched by a pattern, and "Geri al: .+" would find the button of every other hidden medrese on the stack too.
+samples:
+  name: Geri Alma Denemesi Medresesi
+  handle: geri-alma-denemesi
+  head: Dilek Başvuran
+  level: medrese yönetimi
+
+events:
+  # another person's steps, through the routes nazar's and nizam's pages call; this page does not know (the answers are 200)
+  ELSEWHERE_RESTORES:
+    - run: [node, ../nizam/madrasahs/restore/medrese.mjs, restore, --by, head]
+      expect: 'medrese restore head'
+  ELSEWHERE_DELETES:
+    - run: [node, ../nizam/madrasahs/restore/medrese.mjs, delete]
+      expect: 'medrese delete'
+  # Hesap, a page outside every scope: it opens for whoever is signed in
+  NAVIGATE: [{ goto: '{nizam}/hesap' }]
+
+states:
+  # the restore is a Next server action: a POST to the page's own address (with its ?durum= on the Gizli tab), held while the busy state is
+  # checked. The glob also takes the page's own reads (?_rsc=), which come after the answer, never before it.
+  restoring: { call: '{nizam}/medreseler*' }
+  left: { url: '{nizam}/hesap' }
+
+# What a step leaves outside the screen, read through the API as the başnazım (the answer the page draws) and, once, from the audit log.
+effects:
+  # madrasahs#3 (L155-L170) and the database half of it: the medrese is shown again, its başmüderris is still its head and its course is counted
+  restoreMadrasah:
+    - run: [node, ../nizam/madrasahs/restore/medrese.mjs, state]
+      expect: 'medrese ACTIVE head=yes courses=1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'madrasah.restore' and entity_id = '{mine.madrasah}'"]
+      expect: '"n":1'
+  # the başmüderris's own restore in Nazar, which this page does not see
+  elsewhereRestored:
+    - run: [node, ../nizam/madrasahs/restore/medrese.mjs, state]
+      expect: 'medrese ACTIVE head=yes courses=1'
+  elsewhereDeleted:
+    - run: [node, ../nizam/madrasahs/restore/medrese.mjs, state]
+      expect: 'medrese GONE'
+
+# Role and name find most nodes. Where they cannot: the page's <main> (a bare main is also on the page a walk leaves for, so it is told by
+# the intro that only this page has), the tabs (their names carry the count: "Gizli1", the same finding as nazar's F-A-12), the cells of
+# the walk's row (the table lists every medrese, so each cell is found inside the row that holds the walk's name), and the toasts.
+nodes:
+  page: { css: main, hasText: 'Bir medrese, başmüderrisiyle birlikte açılır.' }
+  tabAll: { role: tab, name: '/^Tümü/' }
+  tabActive: { role: tab, name: '/^Etkin/' }
+  tabPassive: { role: tab, name: '/^Pasif/' }
+  tabHidden: { role: tab, name: '/^Gizli/' }
+  # the row header holds the name and the short name in two <bdi>
+  rowName: { css: 'tbody tr th bdi', hasText: Geri Alma Denemesi Medresesi }
+  rowHandle: { css: 'tbody tr th bdi', hasText: '@geri-alma-denemesi' }
+  rowHead: { css: 'td bdi', hasText: Dilek Başvuran, within: { css: 'tbody tr', hasText: Geri Alma Denemesi Medresesi } }
+  rowCoursesNone: { css: 'td span.tabular-nums', hasText: '/^0$/', within: { css: 'tbody tr', hasText: Geri Alma Denemesi Medresesi } }
+  rowCoursesBack: { css: 'td span.tabular-nums', hasText: '/^1$/', within: { css: 'tbody tr', hasText: Geri Alma Denemesi Medresesi } }
+  # the Durum cell: a plain span with the glyph and "Gizli", its caption "<date> beri" under it; a badge "Etkin" once it is back
+  rowStatusHidden: { css: 'td span.inline-flex', hasText: Gizli, within: { css: 'tbody tr', hasText: Geri Alma Denemesi Medresesi } }
+  rowSince: { css: 'td span.mds-caption', hasText: '/ beri$/', within: { css: 'tbody tr', hasText: Geri Alma Denemesi Medresesi } }
+  rowStatusActive: { css: 'td', hasText: '/^Etkin$/', within: { css: 'tbody tr', hasText: Geri Alma Denemesi Medresesi } }
+  # a busy button's hidden <output> says "Yükleniyor"; the other buttons' are empty
+  restoreBusy: { css: output, hasText: Yükleniyor, within: { css: 'tbody tr', hasText: Geri Alma Denemesi Medresesi } }
+  # the kademe sentence (not driven)
+  lockedNote: { css: 'td span.mds-caption', hasText: yalnız o kademe, within: { css: 'tbody tr', hasText: Geri Alma Denemesi Medresesi } }
+  # Sonner's toasts: a list item `[data-sonner-toast]` holding a title and a description, found by the words that tell it from its twins;
+  # the title and the description are two elements of one toast, so a pattern or a word of either finds the toast
+  toastRestored: { css: '[data-sonner-toast]', hasText: Geri alındı }
+  toastRestoredBody: { css: '[data-sonner-toast]', hasText: yeniden listelerde }
+  toastFailed: { css: '[data-sonner-toast]', hasText: Geri alınamadı }
+  toastNotHidden: { css: '[data-sonner-toast]', hasText: Bu medrese zaten gizli değil. }
+  toastGone: { css: '[data-sonner-toast]', hasText: Bu medrese artık yok. }
+  toastForbidden: { css: '[data-sonner-toast]', hasText: Bunu yapma izniniz yok. }
+  toastGeneric: { css: '[data-sonner-toast]', hasText: Bir şeyler ters gitti. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }

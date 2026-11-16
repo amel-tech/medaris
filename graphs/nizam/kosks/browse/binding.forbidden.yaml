@@ -1,0 +1,32 @@
+# nizam.kosks.browse, the refusal of "Geri al" that says the person's post ended (403 AUTHZ_FORBIDDEN), in a binding of its own (it adds no transition to binding.yaml's scenarios and
+# needs a `before` on the state `restoring`, which a scenario cannot carry):
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/kosks/browse \
+#     --bind graphs/nizam/kosks/browse/binding.forbidden.yaml --cover transitions --out <dir>
+# The page is opened with the hidden köşk and its "Geri al"; when the walk presses it, the replay holds the server action (the `call` of
+# `restoring`), runs the `before` below as a second person through the API, then lets the action go, so it meets the world that the başnazım took the köşk nazımı off the köşk, naming himself the successor, so he holds no rung on it.
+# NOT RUN: written without a replay (the first walks are a later phase); the `before` and the answer are from the code
+# (kosk-admin.service.ts:263-286, kosk-admin.repository.ts:489-541), never seen. Nothing outside the walk's own köşk is touched; `teardown` removes it.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.kosks.browse
+
+scenarios:
+  forbidden:
+    given: { viewer: koskOwn, world: mixed, answer: forbidden, taught: none }
+    as: koskNazim
+    open: '{nizam}/kosks'
+    setup:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, make, brsd, hiddenOwn]
+        expect: '"tag":"brsd"'
+    teardown:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, remove, brsd]
+        expect: 'kosk remove brsd removed'
+    vars: { tag: brsd, typeActive: Süleymaniye, typePassive: brsd pasif, typeHidden: brsd gizli, typeNobody: zzz yok }
+
+states:
+  restoring:
+    call: '{nizam}/kosks**'
+    before:
+      - run: [node, ../nizam/kosks/browse/kosks.mjs, dismiss, brsd]
+        expect: 'dismissed brsd'

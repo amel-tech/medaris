@@ -1,0 +1,21 @@
+{
+  "InactivePage.caption": "Yöneticisi olmayan kapsamlar",
+  "InactivePage.errors.forbidden": "Bunu yapma izniniz yok.",
+  "InactivePage.errors.generic": "Bir şeyler ters gitti. Biraz sonra yeniden deneyin.",
+  "InactivePage.errors.notFound": "Bu kapsam artık pasif değil.",
+  "InactivePage.heading": "Yöneticisi olmayan kapsamlar",
+  "InactivePage.intro": "Son yöneticisi görevden alınan ya da görev süresi dolan köşk, medrese ve dersler.",
+  "InactivePage.kindInKosk": "{kind} · {kosk}",
+  "InactivePage.kinds.COURSE": "Ders",
+  "InactivePage.kinds.KOSK": "Köşk",
+  "InactivePage.kinds.MADRASAH": "Medrese",
+  "InactivePage.noticeBody": "Pasif bir kapsamı yalnız Medaris başnazımı ve izni olan Medaris nazımları açabilir; her açış denetim kaydına yazılır.",
+  "InactivePage.noticeTitle": "Yönetici atandığında kapsam yeniden etkin olur",
+  "InactivePage.title": "Pasif kapsamlar",
+  "InactivePage.view": "İçeriği gör",
+  "InactivePage.viewFailed": "İçerik açılamadı",
+  "InactivePage.viewLabel": "İçeriği gör: {name}",
+  "common.toast.close": "Kapat",
+  "composed.Button.loading": "Yükleniyor",
+  "composed.InactivePage.name": "{name}"
+}

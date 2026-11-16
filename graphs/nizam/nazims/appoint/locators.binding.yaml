@@ -1,0 +1,210 @@
+# What the bindings of nizam.nazims.appoint share: the data, the events no node sends, the places each exit opens, where role and name cannot
+# find a node, and what a step leaves outside the screen. It carries no scenario, so it is not walked by itself:
+#   binding.yaml          the başnazım at "Medaris nazımları" with the stack's own Medaris nazımı in office: the main story (appoints), a person
+#                         who is a Medaris nazımı already (already), an address no account has (nobody) and text that is no address (notAddress)
+#   binding.groupGone.yaml  the group the başnazım chose is deleted while the dialog is open (person: groupGone); a file of its own because
+#                         it puts a `before` on "Kaydet", which is the binding's and not a scenario's
+# The page is /medaris-nazimlari of nizam-web at http://localhost:4001, read by the başnazım (Vedat Başnazım, SYSTEM_ADMIN) in a wide window.
+#
+# NOT RUN: the graphs were written without a replay (the owner moved every replay to the end). Every locator, every account fact and every command
+# below comes from the code, the catalogue and read-only looks at the API, and is unverified until a walk. Where the walk may need a fix, a
+# comment says so. The bindings load: `replay <dir> --bind <file> --emit-spec --out <dir>` wrote a spec and walked nothing.
+#
+# Data. Each scenario's `setup` makes the walk's own, and `teardown` takes it away; the seeded Medaris nazımı (Selma Medaris Nazımı) is read
+# and never written:
+#   - the spare talebe applicantE ("Betül Başvuran"), the person the başnazım appoints: she is dismissed first in `setup` (nazim.mjs down: the
+#     helper of nizam.home.medarisNazimCut, reused as it is, a walk that died left her seated or not) and again in `teardown`;
+#   - the platform group "Deneme grubu nzappt" (two permissions), the names, the days the end field is typed with and a record of what the walk
+#     typed, by ./appoint-data.mjs up into graphs/.local/nzappt.json ({appt.*}, see that file's header);
+#   - the spare applicantD ("Salih Başvuran"), who holds a seat with one permission, platform.kosk_nazim_manage (not the box the walk ticks, so
+#     her row never reads like the new person's), before the walk in `already` only (nazim.mjs up).
+#   `teardown` dismisses the spare (DELETE /nizam/medaris-nazims/<id>: the seat and every grant are revoked; the person gave nothing, so the
+#   answer list is empty) and deletes the group. What it cannot undo: the audit rows (user.lookup, medaris_nazim.appoint, permission.grant,
+#   permission.revoke, permission_group.create and delete), the revoked role and grant rows kept as history.
+#   Why E and D: the spare accounts A to H are shared by the writers; nizam.home.decideApplications takes C, F, G and H, and
+#   nizam.home.medarisNazimCut F. The seat makes the spare a Medaris nazımı while the scenario lasts, so no other flow may sign her in as a
+#   talebe at the same time (walks run under the lock, one at a time).
+#
+# Not bound, each for what the stack cannot be made to do on request:
+#   read: failed         one of the three reads fails (the box 'Medaris nazımları yüklenemedi')
+#   roster: empty        nobody in office: the seeded Medaris nazımı cannot be dismissed for a walk
+#   person: down         the directory does not answer (Keycloak would have to be stopped)
+#   person: chief        the başnazım appoints himself: not walked, because dismissing that seat asks about everything he ever gave (MAPPT-2)
+#   person: refused      the save is refused for another reason (an end that passed while the dialog was open, an unknown code, not allowed)
+#   state refused        a caller who is not the başnazım meets the 403 screen: nizam.shell.noAccessAndNotFound walks it
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.nazims.appoint
+
+browser: { width: 1440, height: 900 }
+
+data:
+  appt: { json: ../.local/nzappt.json }
+
+samples:
+  name: '{foundName}'
+  email: '{foundEmail}'
+  group: '{appt.group.name}'
+  list: Denetim kaydını oku
+  giver: '{appt.chiefName}'
+  day: '{appt.today}'
+  fromGroup: '2'
+
+events:
+  # the address field has no node that sends an event: the binding types in it and presses Enter (it is searched on Enter, and also when it is left)
+  SEARCH:
+    - fill: { css: 'input[name=nazimEmail]', value: '{typed}' }
+    - key: Enter
+  # the group is a Base UI Select: its trigger is a combobox, its options are in a popup; the helper keeps what was chosen, for the check after "Kaydet"
+  CHOOSE_GROUP:
+    - click: { role: combobox, name: '/^Hazır izin grubu/' }
+    - click: { role: option, name: '{appt.group.name}' }
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, record, group, chosen]
+      expect: 'appoint record group=chosen'
+  # the box the e2e's permissions#9 ticks
+  TICK_PERMISSION:
+    - click: { role: checkbox, name: Denetim kaydını oku }
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, record, ticks, some]
+      expect: 'appoint record ticks=some'
+  # a datetime-local field takes `YYYY-MM-DDTHH:mm`, in the zone of the page; it has no role, so it is found by its label (the e2e's getByLabel)
+  TYPE_END_SOON:
+    - fill: { label: Bitiş tarihi ve saati (isteğe bağlı), value: '{appt.soon.field}' }
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, record, end, soon]
+      expect: 'appoint record end=soon'
+  TYPE_END_TODAY:
+    - fill: { label: Bitiş tarihi ve saati (isteğe bağlı), value: '{appt.todayEnd.field}' }
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, record, end, today]
+      expect: 'appoint record end=today'
+  TYPE_END_FAR:
+    - fill: { label: Bitiş tarihi ve saati (isteğe bağlı), value: '{appt.far.field}' }
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, record, end, far]
+      expect: 'appoint record end=far'
+  TYPE_END_PAST:
+    - fill: { label: Bitiş tarihi ve saati (isteğe bağlı), value: '{appt.past.field}' }
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, record, end, past]
+      expect: 'appoint record end=past'
+  CLEAR_END:
+    - fill: { label: Bitiş tarihi ve saati (isteğe bağlı), value: '' }
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, record, end, none]
+      expect: 'appoint record end=none'
+  # Vazgeç and the close icon both send CANCEL
+  CANCEL:
+    - click: { role: button, name: '/^Vazgeç$/' }
+  # the person appointed, in her own browser, opens Ana sayfa (the second person's step; nizam.home.medarisNazimCut draws what she sees)
+  APPOINTEE_OPENS_HOME:
+    - goto: '{nizam}/'
+      as: applicantE
+  # the bell's page, which every nazım may open
+  NAVIGATE:
+    - goto: '{nizam}/bildirimler'
+
+states:
+  # the list is one address; the states that show it are told apart by their nodes
+  listed: { url: '{nizam}/medaris-nazimlari' }
+  appointed: { url: '{nizam}/medaris-nazimlari' }
+  loadFailed: { url: '{nizam}/medaris-nazimlari' }
+  # the lookup and the appointment are Next server actions: a POST to the page's own address, held while the busy state is checked. A refusal
+  # is a 200 of the action, so its HTTP status is not the API's (the walk phase decides whether the held call may also compare it)
+  searching: { call: '{nizam}/medaris-nazimlari' }
+  appointing: { call: '{nizam}/medaris-nazimlari' }
+  # exits with no screen of their own are checked by their address
+  refused: { url: '{nizam}/medaris-nazimlari' }
+  groups_opened: { url: '{nizam}/izin-gruplari' }
+  handed_over.edit_permissions: { url: '{nizam}/medaris-nazimlari' }
+  handed_over.dismiss: { url: '{nizam}/medaris-nazimlari' }
+  # her own screen, in her own browser: Ana sayfa of the appointed person
+  handed_over.cut: { as: applicantE, url: '{nizam}/' }
+  left: { url: '{nizam}/bildirimler' }
+
+# Role and name find most nodes. Below are the ones they cannot find alone: a bare main, names that several elements share, one row's cells,
+# the toasts. A name given as a string is matched whole; one between slashes is a pattern. A row is found by the address in it, and the
+# seeded Medaris nazımı's row by her address (an `E2E_MEDARIS_NAZIM_EMAIL` of the stack).
+nodes:
+  # the shell's one <main id="main"> is on every page; the intro line is this page's own
+  page: { role: main, hasText: '/Süresi dolan izin kendiliğinden düşer/' }
+  title: { role: heading, name: '/^Medaris nazımları$/' }
+  # "Medaris nazımı ata" is the button, the dialog's name and the dialog's title; the toasts say "atandı" and "atanamadı"
+  appointButton: { role: button, name: '/^Medaris nazımı ata$/' }
+  count: { testId: nazim-count }
+  listHeading: { role: heading, name: '/^Görevde$/' }
+  # the table's caption is hidden; the name is the caption's
+  rosterTable: { role: table, name: Görevdeki Medaris nazımları }
+  # the cells every row has
+  rowPerson: { role: rowheader }
+  rowAddress: { css: 'tbody bdi[dir=ltr]' }
+  rowGiver: { css: 'tbody tr td:nth-child(4) bdi' }
+  rowGiverDay: { css: 'tbody tr td:nth-child(4) .mds-caption' }
+  # a button of a row is named after the person; the first row is pressed
+  editButton: { role: button, name: '/^İzinleri düzenle: /', nth: 0 }
+  dismissButton: { role: button, name: '/^Görevden al: /', nth: 0 }
+  # the stack's own Medaris nazımı: five single permissions, in the catalogue's order, no group, no end
+  seedGrants: { testId: single-permissions, within: { role: row, hasText: '{secret.E2E_MEDARIS_NAZIM_EMAIL}' } }
+  # the new person's row: what she holds and when it ends
+  rowNoGrants: { text: İzin verilmemiş, within: { role: row, hasText: '{foundEmail}' } }
+  rowGroup: { css: '.mds-badge', hasText: '{appt.group.name}', within: { role: row, hasText: '{foundEmail}' } }
+  rowSingles: { testId: single-permissions, hasText: '/^Denetim kaydını oku$/', within: { role: row, hasText: '{foundEmail}' } }
+  rowSinglesAfterGroup: { testId: single-permissions, hasText: '/^ve Denetim kaydını oku$/', within: { role: row, hasText: '{foundEmail}' } }
+  rowNever: { text: '/^Süresiz$/' }
+  # a day is the only text with a year in the end column
+  rowEndDate: { css: 'td:nth-child(3)', hasText: '/\d{4}/', within: { role: row, hasText: '{foundEmail}' } }
+  rowDaysLeft: { testId: days-left, hasText: '/^\d+ gün kaldı$/', within: { role: row, hasText: '{foundEmail}' } }
+  rowEndsToday: { testId: days-left, hasText: Bugün bitiyor, within: { role: row, hasText: '{foundEmail}' } }
+  # sonner's toasts are <li data-sonner-toast> with no role; the error ones stay until they are closed
+  toastAppointed: { css: '[data-sonner-toast]', hasText: Medaris nazımı atandı }
+  toastAppointedBody: { css: '[data-sonner-toast]', hasText: '{foundName} Medaris nazımı oldu.' }
+  toastFailed: { css: '[data-sonner-toast]', hasText: Medaris nazımı atanamadı }
+  toastAlready: { css: '[data-sonner-toast]', hasText: Bu kişi zaten Medaris nazımı. }
+  toastGroupGone: { css: '[data-sonner-toast]', hasText: Bu grup artık yok. }
+  toastRefused: { css: '[data-sonner-toast]', hasText: '/Bunu yapma izniniz yok|Bitiş tarihi geçmişte|Bu kapsam bu grup için geçerli değil|Bir şeyler ters gitti/' }
+  # the dialog and what is in it
+  dialog: { role: dialog, name: '/^Medaris nazımı ata$/' }
+  dialogEyebrow: { css: '.mds-eyebrow', hasText: Platform }
+  dialogTitle: { role: heading, name: '/^Medaris nazımı ata$/' }
+  # a toast has a "Kapat" of its own, so the dialog's is found inside the dialog
+  closeIcon: { role: button, name: Kapat, within: { role: dialog, name: '/^Medaris nazımı ata$/' } }
+  pickerField: { css: 'input[name=nazimEmail]' }
+  searchingStatus: { role: status, hasText: Aranıyor }
+  # the chosen block says the person's name and address, and a hidden "<name> seçildi"
+  chosenName: { text: '{foundName}', within: { testId: chosen-nazim } }
+  chosenAddress: { text: '{foundEmail}', within: { testId: chosen-nazim } }
+  chosenAnnounce: { role: status, hasText: '{foundName} seçildi' }
+  removePerson: { role: button, name: 'Seçimi kaldır: {foundName}' }
+  groupSelect: { role: combobox, name: '/^Hazır izin grubu/' }
+  editGroups: { role: link, name: İzin gruplarını düzenle }
+  # an <input type=datetime-local> has no role
+  endField: { label: Bitiş tarihi ve saati (isteğe bağlı) }
+  # "Gruptan gelir." is said under each locked box
+  lockedNote: { text: '/^Gruptan gelir\.$/' }
+  # the footer's counts
+  summaryNone: { css: '.mds-dialog__meta', hasText: '/^0 izin$/' }
+  summaryTicked: { css: '.mds-dialog__meta', hasText: '/^1 izin$/' }
+  summaryGroup: { css: '.mds-dialog__meta', hasText: '/^Gruptan 2 izin ve 0 ek izin$/' }
+  summaryGroupTicked: { css: '.mds-dialog__meta', hasText: '/^Gruptan 2 izin ve 1 ek izin$/' }
+  # "Vazgeç" and "Kaydet" alone; the busy word is the kit's hidden status
+  cancel: { role: button, name: '/^Vazgeç$/' }
+  save: { role: button, name: '/^Kaydet$/' }
+  busy: { role: status, hasText: Yükleniyor }
+
+# What a step leaves outside the screen, read through the API and the database. After a search the audit log has it (every search is
+# written, found or not: the help line says so). After an appointment the spare holds the seat the walk typed (the helper compares the group,
+# the single permission, the end, and the giver with what the walk recorded) and the audit row exists. A refused save writes nothing.
+effects:
+  lookupUser:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'user.lookup' and actor_id = '{secret.E2E_SYSTEM_ADMIN_SUB}' and details->>'email' = lower('{typed}') and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  appointMedarisNazim:
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, verify]
+      expect: 'appoint verify'
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as logged from audit_log where action = 'medaris_nazim.appoint' and entity_id = '{appt.sub}' and created_at > now() - interval '10 minutes'"]
+      expect: '"logged":true'
+  # a refused save writes nothing: the person who held a seat holds it as it was, and the spare holds none
+  alreadyToast:
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, still-other]
+      expect: 'appoint still-other'
+  groupGoneToast:
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, not-seated]
+      expect: 'appoint not-seated'
+  refusedToast:
+    - run: [node, ../nizam/nazims/appoint/appoint-data.mjs, not-seated]
+      expect: 'appoint not-seated'

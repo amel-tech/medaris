@@ -1,0 +1,73 @@
+# nizam.moderation.decideAppeal, the answers of a race: the two refusals of a decision that the local stack can cause. It extends binding.yaml and
+# adds a scenario for each, which starts as `rejects` does (one waiting appeal of the walk's own, the başnazım on "İtirazlar") with a different
+# `answer`:
+#   answered   the appeal was decided in another tab meanwhile (APPEAL_NOT_PENDING)
+#   gone       the appeal is gone meanwhile (APPEAL_NOT_FOUND)
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideAppeal \
+#     --bind graphs/nizam/moderation/decideAppeal/races.binding.yaml --cover transitions --out <dir>
+# NOT RUN (see binding.yaml).
+#
+# How each is made: the page has read its list when the walk first reaches "listed", and a state's `before` runs when the walk reaches the state,
+# before it is checked, so the race is made there: `appeals.mjs meanwhile <mode>` does what someone else would do (the başnazım refuses the same
+# appeal through the API with another note; the appeal's request is deleted, the one SQL, as no route does it). The page still holds the row it read,
+# so "Kabul et" and "Reddet" both ask the API about an appeal that is no longer as the page saw it: the one hook serves the walk that presses
+# "Kabul et" and the walk that opens the dialog. Each mode is safe to run twice, because `listed` is reached again after a decision when more than
+# one appeal waits. The answer takes the row off the list and says so in a sticky error toast; after "Reddet" it also closes the dialog.
+#
+# `accepting` and `rejecting` drop the `call` of binding.yaml: a Next server action answers 200 on the page's own address, and the replay compares a
+# FAIL class with the call's HTTP status (SPEC.md section 7), which cannot pass here. The busy states are walked in binding.yaml. `listed` repeats
+# its address, because a state's entry replaces the base's whole entry.
+#
+# The scenarios of binding.yaml are inherited and walk here without a race (their `meanwhile` is `none`). What this file does not do: `answer:
+# forbidden` (the başnazım's role taken away: it would change the seed's SYSTEM_ADMIN) and `answer: other`.
+schema: delurio-graph/0
+kind: binding
+extends: binding.yaml
+flow: nizam.moderation.decideAppeal
+
+scenarios:
+  answered:
+    given: { read: one, decidedTab: none, answer: answered, retry: failed }
+    as: systemAdmin
+    open: '{nizam}/talepler/itirazlar'
+    vars: { meanwhile: answered }
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up, --waiting, '1', --alone]
+        expect: 'ready: 1 waiting'
+    teardown:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'
+
+  gone:
+    given: { read: one, decidedTab: none, answer: gone, retry: failed }
+    as: systemAdmin
+    open: '{nizam}/talepler/itirazlar'
+    vars: { meanwhile: gone }
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up, --waiting, '1', --alone]
+        expect: 'ready: 1 waiting'
+    teardown:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'
+
+states:
+  # a state's entry replaces the base's whole entry: no `call` here
+  accepting: {}
+  rejecting: {}
+  # the race is made when the list is first on the screen, before the state is checked and before either button is pressed
+  listed:
+    url: '{nizam}/talepler/itirazlar'
+    before:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, meanwhile, '{meanwhile}']
+        expect: 'meanwhile'
+
+# What a race leaves outside the screen, read through the database as the walk's own row.
+effects:
+  # the other decision stands; this page's own was never written
+  answeredElsewhere:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as elsewhere from appeals a join course_requests r on r.id = a.course_request_id where r.title = '{made.first.title}' and a.status = 'REJECTED' and a.decision_note = 'Başka bir karar aynı anda verildi.'"]
+      expect: '"elsewhere":true'
+  # no row is left to be decided
+  vanishedIt:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_requests where id = '{made.first.id}'"]
+      expect: '"n":0'

@@ -1,0 +1,34 @@
+# nizam.courses.editHocalar: a course that has a hoca with no account beside its one hoca with an account (F-W4-hocalar-4). The dialog
+# lists one hoca, and a save deletes the other: the effect of locators.binding.yaml that no row without an account is left on the
+# course passes only because of that. Its own file because its `given` is the one of `lone` (binding.yaml), and the first scenario
+# in file order is the only one a walk would take.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/editHocalar \
+#     --bind graphs/nizam/courses/editHocalar/binding.guestRow.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay. The row is made with SQL because no route makes a course with a hoca who has no account beside
+# one who has (tedrisat's PUT /courses/:id/muderris refuses such a list's shape the other way: it only ever saves accounts). One
+# transaction, through helpers/sql.mjs, in tedrisat's database; the course and the row go with `course.mjs remove`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.editHocalar
+
+scenarios:
+  guestRow:
+    given: { team: lone, read: ok, lookup: found, answer: saved }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->koskCourses' }
+    setup:
+      - run: [node, helpers/course.mjs, make, editHocalar, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"tag":"editHocalar"'
+      - run: [node, helpers/sql.mjs, "insert into course_muderris(course_id, user_id, name, order_index) values ('{made.course}', null, 'Konuk Örnek', 1)"]
+        expect: '"rows":1'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_muderris where course_id = '{made.course}' and user_id is null"]
+        expect: '{"n":1}'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, editHocalar]
+        expect: 'course remove editHocalar'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title = 'Deneme dersi editHocalar'"]
+        expect: '{"n":0}'
+    vars:
+      lookupEmail: '{secret.E2E_APPLICANT_D_EMAIL}'

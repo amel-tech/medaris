@@ -1,0 +1,24 @@
+# nizam.home.medarisNazimCut for a Medaris nazımı who holds platform.ban_scoped and platform.inactive_scopes_manage: applicantF. The
+# menu has Genel and Denetim ("Yasaklamalar") and no Talepler; the page has the bans card and the passive scopes card, no
+# permanent-ban card; and the passive scopes card is a card the menu has no entry for (F-X-12). Its two links carry her to the exits
+# bans_opened and passive_opened, which binding.yaml's person (no passive permission, ban_account) cannot take.
+#   node apps/engine/src/cli.ts replay graphs/nizam/home/medarisNazimCut --bind graphs/nizam/home/medarisNazimCut/binding.bans.yaml \
+#     --cover transitions --absent --out <dir>
+# `setup` and `teardown` as in binding.yaml, with no deck. The rows of the two cards (an open ban, a scope with no manager) are not
+# made: the cards are walked by their headings and links, which are there with or without rows.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.medarisNazimCut
+
+scenarios:
+  bans:
+    given: { granted: some, applications: none, decks: none, appeals: none, bans: scoped, passive: held, platform: none, read: ok }
+    as: applicantF
+    open: '{nizam}/'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantF, --codes, 'platform.ban_scoped,platform.inactive_scopes_manage']
+        expect: 'up APPLICANT_F'
+    teardown:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantF]
+        expect: 'down APPLICANT_F'

@@ -1,0 +1,23 @@
+# nizam.home.medarisNazimCut for a Medaris nazımı who holds no permission: applicantF appointed with an empty list (POST
+# /nizam/medaris-nazims with permissions: []), which is what "İzinleri düzenle" leaves a person whose last permission was taken away. The
+# menu is Genel alone (Ana sayfa, Bildirimler), the page is the greeting, the two numbers and "İzinleriniz" with "Size verilmiş bir
+# izin yok.", and the greeting says nothing waits.
+#   node apps/engine/src/cli.ts replay graphs/nizam/home/medarisNazimCut --bind graphs/nizam/home/medarisNazimCut/binding.bare.yaml \
+#     --cover transitions --absent --out <dir>
+# `setup` and `teardown` as in binding.yaml, with no deck: nazim.mjs up --codes none, then down.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.medarisNazimCut
+
+scenarios:
+  bare:
+    given: { granted: none, applications: none, decks: none, appeals: none, bans: none, passive: none, platform: none, read: ok }
+    as: applicantF
+    open: '{nizam}/'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantF, --codes, none]
+        expect: 'up APPLICANT_F codes=none'
+    teardown:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantF]
+        expect: 'down APPLICANT_F'

@@ -1,0 +1,196 @@
+# What must exist for the people who read the köşk directory (nizam.kosks.browse): the flow's product list, written from the flow's story and
+# the open decisions, never from what the page does today. A need that is not met is a gap in graphs/needs.gaps.yaml (the orchestrator merges
+# it; this file does not edit it).
+#
+# Gaps of this file, for that merge:
+#   missing:   the-list-says-how-many-and-when-it-changes (F-W3-12), the-numbers-follow-the-filter (KBROWSE-3),
+#              a-page-past-the-end-has-a-way-back (KBROWSE-1), a-bad-address-is-a-refusal-not-a-crash (KBROWSE-2),
+#              a-failure-of-the-viewer-read-is-said (KBROWSE-4), the-focus-survives-a-restore (F-X-7),
+#              role-aware-navigation and a-nazim-reaches-the-list-by-the-menu (MDRS-107, decision D1), a-medaris-nazim-may-open (F-W3-open-1:
+#              nizam.kosks.open owns it)
+#   unwalked:  every need below that names no e2e check: each has a scenario in binding.yaml or one of its four small files, written and
+#              loaded but not yet replayed (the first walks are a later phase): a-long-list-is-paged (chiefMany),
+#              a-hidden-kosk-says-who-locked-it (koskLocked), a-refused-restore-says-why (notHidden, gone, level, forbidden; the
+#              generic `failed` is not bound), a-failed-read-says-so-and-retries (chiefFailed; a retry that works is not bound),
+#              a-medaris-nazim-reads-the-list (medarisMixed), a-person-with-no-right-meets-izniniz-yok (medarisBare, outsider),
+#              the-courses-a-nazim-teaches-elsewhere (koskTeaches), an-empty-list-says-so (the empty-filter half is walked by chiefSeed;
+#              "Henüz köşk yok." is not: the stack's seed always holds two köşks, which no walk may remove)
+kind: needs
+flow: nizam.kosks.browse
+status: proposed
+
+needs:
+  - id: read-every-kosk-by-state
+    need: >-
+      The başnazım reads every köşk on the platform, hidden and passive ones included, with its nazımları, the number of its courses and its
+      state with the date it began, and a tab for each state with the number of köşks in it.
+    drawn: [listed, readingDirectory]
+    built:
+      - action: medaris.api:getKoskDirectory
+      - route: apps/nizam/features/kosks/components/kosks-directory.tsx:283
+    walked:
+      - e2e: apps/nizam/e2e/kosks.e2e.ts
+        check: 'kosks#1'
+
+  - id: a-kosk-nazim-reads-only-his-own
+    need: >-
+      A köşk nazımı reads the köşks he manages and no other, with "Siz" on each, and is offered neither "Köşk aç" nor "Geri al" on a köşk he does
+      not own.
+    drawn: [listed]
+    built:
+      - action: medaris.api:getKoskDirectory
+      - route: apps/nizam/features/kosks/components/kosks-directory.tsx:196
+    walked:
+      - e2e: apps/nizam/e2e/kosks.e2e.ts
+        check: 'kosks#4'
+
+  - id: narrow-the-list-by-state-visibility-and-text
+    need: >-
+      The list narrows by state (tab), by Görünürlük (Listelenen, Listelenmeyen) and by a text that finds a köşk's name, short name or a nazım's
+      name; the address keeps the choices, so a reload and the back button keep them; an old link's unknown filters narrow nothing.
+    drawn: [listed, emptyFilter, readingDirectory]
+    built:
+      - action: medaris.api:getKoskDirectory
+      - route: apps/nizam/features/kosks/admin-present.ts:80
+    walked:
+      - e2e: apps/nizam/e2e/kosks.e2e.ts
+        check: 'kosks#2'
+
+  - id: a-long-list-is-paged
+    need: >-
+      A list of more than 12 köşks is read a page at a time, with "Önceki" and "Sonraki" and the number of the page, and a filter starts again at
+      page 1.
+    drawn: [listed]
+    built:
+      - route: apps/nizam/features/kosks/components/kosks-directory.tsx:383
+
+  - id: bring-a-hidden-kosk-back
+    need: >-
+      The başnazım, a Medaris nazımı who holds platform.kosk_edit, and the köşk's own nazımı for what he hid, bring a hidden köşk back from the
+      list with one press; it is listed again, its toast says so, and the restore is written to the audit log.
+    drawn: [listed, restoring]
+    built:
+      - action: medaris.api:restoreKosk
+      - route: apps/nizam/features/kosks/components/kosks-directory.tsx:256
+    walked:
+      - e2e: apps/nizam/e2e/kosks.e2e.ts
+        check: 'kosks#3'
+
+  - id: a-hidden-kosk-says-who-locked-it
+    need: >-
+      A person whose kademe is below the one that hid a köşk is not offered a button the API would refuse: the row says who hid it and that only
+      that level or above brings it back.
+    drawn: [listed]
+    built:
+      - action: medaris.api:getKoskDirectory
+      - route: apps/nizam/features/kosks/components/kosks-directory.tsx:269
+
+  - id: a-refused-restore-says-why
+    need: >-
+      A restore the server refuses (the köşk is not hidden any more, is gone, was hidden again by a higher kademe, or the person's post ended) says
+      so in words and leaves the row as it was.
+    drawn: [restoring, listed]
+    built:
+      - action: medaris.api:restoreKosk
+      - route: apps/nizam/features/kosks/admin-present.ts:431
+
+  - id: an-empty-list-says-so
+    need: >-
+      A list with nothing to show says why in words: no köşk at all, or none that fits the tab, the chip, the text or the page.
+    drawn: [emptyAll, emptyFilter]
+    built:
+      - route: apps/nizam/features/kosks/components/kosks-directory.tsx:281
+
+  - id: a-failed-read-says-so-and-retries
+    need: >-
+      When the directory cannot be read, the page says so where the table would be and offers a retry that reads it again; the rest of the page
+      stays.
+    drawn: [loadFailed]
+    built:
+      - route: apps/nizam/features/kosks/components/kosks-directory.tsx:365
+
+  - id: a-medaris-nazim-reads-the-list
+    need: >-
+      A Medaris nazımı who holds one of the four köşk permissions reads every köşk; one who holds none and manages none is refused.
+    drawn: [listed, handed_over.no_access]
+    built:
+      - action: medaris.api:getKoskDirectory
+      - route: apps/tedrisat/src/kosk/kosk-admin.service.ts:190
+
+  - id: a-person-with-no-right-meets-izniniz-yok
+    need: >-
+      A person whose roles are not Nizam's, and a Medaris nazımı who may not read the directory, meet "Bu bölüm için izniniz yok" and a way back,
+      never a table.
+    drawn: [opening, handed_over.no_access]
+    built:
+      - route: apps/nizam/app/kosks/layout.tsx:20
+      - route: apps/nizam/app/kosks/page.tsx:37
+
+  - id: the-courses-a-nazim-teaches-elsewhere
+    need: >-
+      A köşk nazımı who teaches in a köşk he does not manage reaches those courses from Köşkler, since the list leaves that köşk out.
+    drawn: [listed, handed_over.taught]
+    built:
+      - route: apps/nizam/features/kosks/components/taught-courses.tsx:19
+
+  - id: role-aware-navigation
+    need: >-
+      P-14 (MDRS-107): each person's menu offers the sections their roles open and a person with none is told so, so that nobody reaches a refusal
+      through the app's own links.
+    drawn: [handed_over.no_access]
+    built:
+      - route: apps/nizam/lib/shell-nav.ts:205
+    missing: MDRS-107 # the Medaris and köşk menus are cut by role, but no entry of the köşk menu leads to Köşkler (decision D1)
+
+  - id: a-nazim-reaches-the-list-by-the-menu
+    need: >-
+      DECISION OPEN (D1): a köşk nazımı reaches Köşkler from the menu or from a link, instead of only by typing the address or after hiding his köşk.
+    drawn: [listed]
+    missing: MDRS-107
+
+  - id: a-medaris-nazim-may-open
+    need: >-
+      DECISION OPEN: a Medaris nazımı who holds platform.kosk_create is offered "Köşk aç" on this page, as the API allows, or the permission is taken
+      off the role's defaults. nizam.kosks.open records the decision; here it is the viewer `medaris` with no button.
+    drawn: [listed]
+    built:
+      - action: medaris.api:createKosk
+    missing: none # F-W3-open-1, F-X-12
+
+  - id: the-list-says-how-many-and-when-it-changes
+    need: >-
+      A person who cannot see the table is told how many köşks the tab, the chip, the text or the page left, and that the list changed.
+    drawn: [listed, readingDirectory]
+    missing: none # F-W3-12: only aria-busy on the wrapper
+
+  - id: the-numbers-follow-the-filter
+    need: >-
+      The numbers on the tabs mean what the person asked for: they follow the chip and the text, or the page says that they do not.
+    drawn: [listed]
+    missing: none # KBROWSE-3
+
+  - id: a-page-past-the-end-has-a-way-back
+    need: >-
+      A page number past the last one shows the last page, or a pager that goes back, instead of "Sonuç yok" with no way out.
+    drawn: [emptyFilter]
+    missing: none # KBROWSE-1
+
+  - id: a-bad-address-is-a-refusal-not-a-crash
+    need: >-
+      A page number the API cannot use is answered 400, or clamped by the page, and not a 500 that the page turns into a box whose retry can
+      never work.
+    drawn: [loadFailed]
+    missing: none # KBROWSE-2
+
+  - id: a-failure-of-the-viewer-read-is-said
+    need: >-
+      When the page cannot read who the viewer is, it says so instead of silently dropping "Köşk aç", the Arşiv link, "Siz" and the taught courses.
+    drawn: [readingDirectory]
+    missing: none # KBROWSE-4
+
+  - id: the-focus-survives-a-restore
+    need: >-
+      After "Geri al" works, the focus goes to a control of the page (the row's name link or the heading) instead of falling to the page when the
+      button leaves.
+    drawn: [listed]
+    missing: none # F-X-7

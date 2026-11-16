@@ -1,0 +1,95 @@
+# nizam.shell.noAccessAndNotFound on the local stack: nizam-web on http://localhost:4001, as the köşk nazımı (Cemal Köşk Nazımı, nazım of
+# "Süleymaniye Köşkü" and "Kubbealtı Köşkü"), the talebe (no role at all) and the başnazım.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/noAccessAndNotFound \
+#     --bind graphs/nizam/shell/noAccessAndNotFound/binding.yaml --cover transitions --absent --out <dir>
+#   ... --bind .../binding.medaris.yaml | binding.muderris.yaml | binding.talebe.yaml | binding.youtube.yaml      the persons that add no
+#       transition of their own (see locators.binding.yaml), each walked with --cover transitions --absent (binding.medaris.yaml's scenario is the main story, so --main also finds it)
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Nothing below was seen in a browser; every locator
+# is read from the code, and the only things looked at were the HTML and the stream nizam-web served to GET requests as the köşk nazımı,
+# the talebe and the Medaris nazımı on 15 Nov 2026 (status, tab title, noindex, the 403 and 404 digests, the sentence with the başnazım's
+# name and the e-mail). A later walk checks each of them.
+#
+# What each scenario starts from (the stack's seed, STACK.md) and the e2e check it carries:
+#   koskSection    arrival section       the köşk nazımı opens İzin grupları, the başnazım's alone        assignments#4 (the 'izniniz yok' half),
+#                                        (the main story)                                                inactive#4, archive#6 a1, deck-review#5
+#   strangerKosk   arrival strangerKosk  the köşk nazımı opens Başvurular of a köşk of the walk's own,    shell#6
+#                                        whose nazım is applicantH (make-kosk.mjs, below)
+#   missingKosk    arrival missingKosk   an id no köşk has (a0000000-...-ff)                              assignments#5 a1, grants#3, archive#6 a2
+#   noRoleKosk     arrival noRoleKosk    the talebe opens the seeded köşk's Desteler: the /kosks layout   deck-review#10 (a1; the second address
+#                                        refuses a person with no nazım role, HTTP 403                   draws the same face)
+#   koskNoPage     arrival noPage        the köşk nazımı opens /kosks/<id>/celseler, a page the menu once   assignments#6
+#                                        offered (MDRS-211)
+#   menuEntry      arrival menuEntry     the başnazım presses "Kalıcı yasak talepleri" in the menu         (none: the e2e pins the labels, shell#9/#10)
+# The wrong-persona refusals of the other pages (bans-medaris#8, madrasahs#8, permissions#2, inactive#5, grants#2, bans#9) are the same
+# face at another address for another person: binding.medaris.yaml and binding.muderris.yaml walk one of each (see needs.yaml).
+#
+# What a walk changes. Nothing, except strangerKosk: its `setup` opens a köşk "Deneme köşkü noaccess" (handle deneme-noaccess) through
+# tedrisat's API as the başnazım, with applicantH as its only nazım (make-kosk.mjs; POST /kosks, which also writes the audit rows kosk.create
+# and user.lookup that the API has no way to remove), and `teardown` deletes it (DELETE /kosks/<id>, which takes the nazım's role with it in one
+# transaction). `setup` removes a köşk of that handle first, so a walk that died before its teardown leaves nothing for the next one. The
+# seed's own köşks, courses and people are only read. Never run make-kosk.mjs by hand without the replay lock (COMMON.md, round R2).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.noAccessAndNotFound
+
+scenarios:
+  # The main story: a köşk nazımı opens İzin grupları (/izin-gruplari), which is the başnazım's alone, and the face keeps the shell; "Ana
+  # sayfaya dön" is '/', which sends him on to his first köşk's home.
+  koskSection:
+    given: { arrival: section, chief: named }
+    as: koskNazim
+    open: '{nizam}/izin-gruplari'
+    vars: { home: '/kosks/*/ana-sayfa' }
+
+  # A köşk the nazım does not manage: tedrisat refuses the köşk's Başvurular (403) and the page calls forbidden(). The köşk is the walk's own.
+  strangerKosk:
+    given: { arrival: strangerKosk, chief: named }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/basvurular'
+    vars: { home: '/kosks/*/ana-sayfa' }
+    setup:
+      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, make, noaccess, applicantH]
+        expect: '"handle":"deneme-noaccess"'
+    teardown:
+      - run: [node, ../nizam/shell/noAccessAndNotFound/make-kosk.mjs, remove, noaccess]
+        expect: 'kosk remove noaccess'
+
+  # An id no köşk has (assignments#5 a1): the köşk's own page cannot place it among the ones he manages and refuses, as for a köşk that is
+  # not his. (a2, /kosks/not-a-uuid, goes the same way and draws the same face; grants#3 is /kosks/<no such id>/izinler.)
+  missingKosk:
+    given: { arrival: missingKosk, chief: named }
+    as: koskNazim
+    open: '{nizam}/kosks/a0000000-0000-4000-8000-0000000000ff'
+    vars: { home: '/kosks/*/ana-sayfa' }
+
+  # A person with no nazım role at a /kosks/ page that exists: the layout refuses before the page reads anything. The talebe has no role at
+  # all, so '/' sends them on to /yetki-yok (nizam.shell.landingByRole's page).
+  noRoleKosk:
+    given: { arrival: noRoleKosk, chief: named }
+    as: talebe
+    open: '{nizam}/kosks/{seed.kosk}/desteler'
+    vars: { home: /yetki-yok }
+
+  # A path under his own köşk that no page owns (the menu once offered Celseler; assignments#6): the catch-all's face, in the shell.
+  koskNoPage:
+    given: { arrival: noPage, chief: named }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk}/celseler'
+    vars: { home: '/kosks/*/ana-sayfa' }
+
+  # The başnazım presses "Kalıcı yasak talepleri" in the menu of the Medaris home: the nav graph's entry frame:shell->permanentBans, which
+  # opens /talepler/kalici-yasak, an address no folder holds (F-P0-4). The page is planned (nizam.moderation.decidePermanentBan, MDRS-140).
+  menuEntry:
+    given: { arrival: menuEntry, chief: named }
+    as: systemAdmin
+    open: '{nizam}/'
+    vars: { home: / }
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->permanentBans' }
+
+# Not bound, with the reason:
+#   chief: unnamed       GET /nizam/chief-nazim answers null only when nobody holds SYSTEM_ADMIN or the realm directory is not set up or does
+#                        not answer; the stack has the başnazım and the directory, and nothing here may take them away. So the sentence
+#                        without a name (noAccessBodyGeneric), and the transition readingChief --FAIL.unavailable--> noAccess, are drawn
+#                        from the code and not walked.
+#   a signed-out person  the proxy sends them to sign-in before any page runs (realm.auth.signIn).

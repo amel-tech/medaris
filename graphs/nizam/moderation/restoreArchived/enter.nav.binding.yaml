@@ -1,0 +1,13 @@
+# How nizam.moderation.restoreArchived's scenarios enter through the navigation graph (graphs/nizam/nav): the nav binding as it is, with one change. The köşk of the nav's `:kosk` is the seeded
+# "Süleymaniye Köşkü"; this flow works in a köşk of its own ("Deneme köşkü arsKosk", made by data.mjs make-kosk), so the menu entry "Arşiv" must lead to that köşk's address, which a nav replay
+# checks against the route. `mine` is the file data.mjs writes; the köşk's nazımı is its only nazım, so the menu he opens from its pages is its menu. NOT RUN: loaded only.
+schema: delurio-graph/0
+kind: binding
+nav: nizam.nav
+extends: ../../nav/binding.yaml
+
+data:
+  mine: { json: ../.local/made/arsKosk.json }
+
+samples:
+  kosk: '{mine.kosk}'

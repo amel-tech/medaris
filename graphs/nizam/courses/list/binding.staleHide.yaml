@@ -1,0 +1,65 @@
+# nizam.courses.list: the nazım presses "Gizle" and confirms, and something changed since the page was read: someone else (the same kademe) hid the
+# course meanwhile (FAIL.already: 409 COURSE_ALREADY_HIDDEN, which counts as done: the toast "Ders gizlendi" and the list read again), or the
+# course was deleted (FAIL.other: 404 COURSE_NOT_FOUND: the error toast "Ders gizlenemedi" and the window stays open, F-X-4).
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/list \
+#     --bind graphs/nizam/courses/list/binding.staleHide.yaml --cover transitions --out <dir>
+# NOT RUN. Read only the walks that cover `FAIL.already` and `FAIL.other` of `hiding`. Do NOT use --absent after FAIL.other: the page really
+# still lists the course the model calls hidden (the list is not read again). The events are the binding's own, as in nazar's
+# binding.staleHide.yaml (that the replay runs them before it releases the held call is not verified). A server action answers 200 on the page's
+# address whatever the API said, so the status the replay compares for a FAIL walk is the engine's limit, not the app's.
+# Data: the köşk with nclOwn (one application waiting) and nclDraft; nothing hidden, `held` none. The medrese's nodes are skipped.
+# `FAIL.other` is also the class of the roster's read (`reading` to `rowsFailed`): the engine takes an event by its name, so `--cover transitions` also
+# plans a walk to `rowsFailed` that runs the event below while the page reads fine. Ignore that walk (the stack cannot make the roster fail).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.list
+
+data:
+  ncl: { json: ../.local/made/ncl.json }
+  nclOwn: { json: ../.local/made/nclOwn.json }
+  nclDraft: { json: ../.local/made/nclDraft.json }
+
+events:
+  # the second person, at the same kademe: the köşk's nazımı, behind the page's back
+  FAIL.already:
+    - run: [node, ../nizam/courses/list/data.mjs, hide-course, --as, koskNazim, --tag, nclOwn]
+      expect: 'hide-course nclOwn by KOSK_NAZIM'
+  # the course is deleted (only the başnazım may): the window's call finds nothing
+  FAIL.other:
+    - run: [node, helpers/course.mjs, remove, nclOwn]
+      expect: 'course remove nclOwn'
+
+scenarios:
+  staleHide:
+    given: { courses: some, held: none }
+    as: koskNazim
+    open: '{nizam}/kosks/{ncl.kosk}'
+    setup:
+      - run: [node, ../nizam/courses/list/data.mjs, make-kosk, ncl, KOSK_NAZIM]
+        expect: '"tag":"ncl"'
+      - run: [node, helpers/course.mjs, make, nclDraft, --kosk, '{ncl.kosk}', --draft, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclDraft"'
+      - run: [node, helpers/course.mjs, make, nclOwn, --kosk, '{ncl.kosk}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nclOwn]
+        expect: 'course remove nclOwn'
+      - run: [node, helpers/course.mjs, remove, nclDraft]
+        expect: 'course remove nclDraft'
+      - run: [node, ../nizam/courses/list/data.mjs, remove-kosk, ncl]
+        expect: 'data remove-kosk ncl'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ncl%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where name like 'Deneme köşkü ncl%'"]
+        expect: '"n":0'
+
+nodes:
+  # two courses and no medrese: Yayında 1 and Gizli 0 until the hide, then 0 and 1
+  tabAll: { role: tab, name: '/^Tümü2$/' }
+  tabPublished: { role: tab, name: '/^Yayında[01]$/' }
+  tabDraft: { role: tab, name: '/^Taslak1$/' }
+  tabHidden: { role: tab, name: '/^Gizli[01]$/' }
+  hostingNumber: { css: .mds-stat__value, hasText: '/^0$/', within: { css: .mds-stat, hasText: Barındırma hakkı olan medrese } }
+  medreseView: { skip: 'this köşk holds no medrese course' }
+  medreseHide: { skip: 'this köşk holds no medrese course' }

@@ -1,0 +1,90 @@
+# nizam.moderation.restoreArchived on the local stack: the köşk's nazımı in a köşk of the walk's own, at http://localhost:4001.
+#   node apps/engine/src/cli.ts replay graphs/nizam/moderation/restoreArchived \
+#     --bind graphs/nizam/moderation/restoreArchived/binding.yaml --main --cover transitions --out <dir>
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Everything here is from the code; a locator or an expected word may need a fix at the first walk.
+# Loaded only, with `--emit-spec --out <dir>`, which writes a spec and walks nothing.
+#
+# The walk makes its own data and leaves the seed alone. The seeded köşks are other flows' (and the Arşiv of one holds whatever another walk left hidden), so `setup` opens a köşk of
+# its own, "Deneme köşkü arsKosk" (short name deneme-arskosk), with KOSK_NAZIM (the seed's köşk nazımı) as its only nazım, makes four courses of it through helpers/course.mjs (as the
+# başnazım, who may open one anywhere) and hides what gives the Arşiv four rows of different kinds and kademe (data.mjs, this folder, built on helpers/lib.mjs):
+#   arsParts    "Deneme dersi arsParts", two weeks of one celse each, stays shown; its first session ("Celse 1", of the shown week "Hafta 1") is hidden by the nazım, and then its second week
+#               ("Hafta 2", with its own session, hidden at the same instant, so the session is not a row of its own) too: two rows, a session and a week
+#   arsLocked   "Deneme dersi arsLocked", hidden by the BAŞNAZIM (SYSTEM_ADMIN) at the platform's kademe: the row says "Bunu Medaris yönetimi gizledi; ..." and has no button for the nazım
+#   arsMain     "Deneme dersi arsMain", hidden by the nazım at the köşk's kademe, LAST, so it is the newest and is the first "Geri al": the course the walk restores
+#   arsForeign  "Deneme dersi arsForeign", a course of the seeded second köşk, hidden by the nazım (he manages that köşk too): it must never be a row of this köşk's Arşiv (archive#1)
+# The list is then newest first: arsMain, arsLocked, Hafta 2, Celse 1 (four rows, "4 gizli öğe"), of which three have a "Geri al" and one a sentence. Kinds: two Ders, one Hafta, one Celse.
+# `setup` is idempotent (`make-kosk` removes a köşk of that short name first, `course.mjs make` removes a tag made before) and `teardown` ends with a check that no "Deneme dersi ars..."
+# course and no "deneme-ars..." köşk is left. What it cannot undo: the audit rows the creations, hides, restores and deletes write (audit_log is append-only by design).
+#
+# What the main story walks, in the e2e's words: archive#1 (the list: title, intro, the rows with their kind, context, who hid them with their role and when, the count, no "Kalıcı olarak sil",
+# and another köşk's hidden course is not in it), archive#2 (the type narrows the list, the count follows, a search for text no title has says "Bu süzgece uyan gizli öğe yok"), archive#3 ("Geri al"
+# brings the course back, the row leaves, the count drops, "Geri alındı", the course is shown again) and, with the sentence of arsLocked, the rule that a row of a higher kademe has no button.
+# archive#4 (a session and a week come back) is binding.session.yaml's and binding.week.yaml's; archive#5 (the köşk page's link) is binding.fromCourses.yaml's; archive#6 is
+# nizam.shell.noAccessAndNotFound's; archive#7 and #8 are nizam.moderation.deleteArchived's.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.restoreArchived
+
+data:
+  mine: { json: ../.local/made/arsKosk.json }
+  main: { json: ../.local/made/arsMain.json }
+
+scenarios:
+  # Open: the köşk's own home, then the menu's "Arşiv" (the köşk of the path is the köşk in scope, so the menu leads to its Arşiv).
+  kosk:
+    given: { view: koskLocked, held: both }
+    as: koskNazim
+    open: '{nizam}/kosks/{mine.kosk}/ana-sayfa'
+    enter: { nav: ../../nav, bind: ./enter.nav.binding.yaml, entry: 'frame:shell->koskArchive' }
+    setup:
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, make-kosk, arsKosk, KOSK_NAZIM]
+        expect: '"tag":"arsKosk"'
+      - run: [node, helpers/course.mjs, make, arsParts, --kosk, '{mine.kosk}', --weeks, '2', --lessons, '1']
+        expect: '"title":"Deneme dersi arsParts"'
+      - run: [node, helpers/course.mjs, make, arsLocked, --kosk, '{mine.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi arsLocked"'
+      - run: [node, helpers/course.mjs, make, arsMain, --kosk, '{mine.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi arsMain"'
+      - run: [node, helpers/course.mjs, make, arsForeign, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi arsForeign"'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-session, --as, koskNazim, --tag, arsParts, --nth, '0']
+        expect: 'hide-session arsParts'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-week, --as, koskNazim, --tag, arsParts, --nth, '1']
+        expect: 'hide-week arsParts'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, systemAdmin, --tag, arsLocked]
+        expect: 'hide-course arsLocked'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, koskNazim, --tag, arsForeign]
+        expect: 'hide-course arsForeign'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, hide-course, --as, koskNazim, --tag, arsMain]
+        expect: 'hide-course arsMain'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, arsMain]
+        expect: 'course remove arsMain'
+      - run: [node, helpers/course.mjs, remove, arsLocked]
+        expect: 'course remove arsLocked'
+      - run: [node, helpers/course.mjs, remove, arsParts]
+        expect: 'course remove arsParts'
+      - run: [node, helpers/course.mjs, remove, arsForeign]
+        expect: 'course remove arsForeign'
+      - run: [node, ../nizam/moderation/restoreArchived/data.mjs, remove-kosk, arsKosk]
+        expect: 'remove-kosk arsKosk'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ars%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from kosks where handle like 'deneme-ars%'"]
+        expect: '"n":0'
+
+# What a step leaves outside the screen, read through the API and the database as the account that did it (e2e archive#1, #3).
+effects:
+  # archive#1: another köşk's hidden course is never in this list, and the course the başnazım hid is one the nazım may not bring back (`canRestore` false: no button leads to a 403, MDRS-108)
+  listKoskArchive:
+    - run: [node, helpers/api.mjs, koskNazim, GET, '/kosks/{mine.kosk}/archive?q=arsForeign']
+      expect: '"total":0'
+    - run: [node, helpers/api.mjs, koskNazim, GET, '/kosks/{mine.kosk}/archive?q=arsLocked']
+      expect: '"canRestore":false'
+  # archive#3 a: the first "Geri al" is arsMain's, so it is shown again and no longer listed
+  restoreArchiveItem:
+    - run: [node, helpers/sql.mjs, "select archived_at is null as shown from courses where id = '{main.course}'"]
+      expect: '"shown":true'
+    - run: [node, helpers/api.mjs, koskNazim, GET, '/kosks/{mine.kosk}/archive?q=arsMain']
+      expect: '"total":0'

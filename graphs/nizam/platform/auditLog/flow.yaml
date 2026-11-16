@@ -1,0 +1,347 @@
+# Denetim kaydı (nizam-web, /denetim-kaydi), read from the code of the branch (the tree of PR #394) on 16 Nov 2026: apps/nizam/app/denetim-kaydi,
+# features/platform-admin (audit-view.tsx, present.ts, reads.ts, actions.ts), the route handler app/api/audit-log/export, tedrisat's audit module
+# (audit.controller.ts, audit.service.ts, audit.repository.ts, audit-types.ts) and libs/ui/src/mds (table, field, select, button, alert). The running
+# stack was looked at read-only (a few SELECTs on tedrisat's audit_log: 633 rows, five people, 249 of them platform-scoped, none of the kind
+# POLICY_CHANGE yet). Nothing was opened in a browser, so what the screen looks like, where the focus goes and how the browser treats the download is
+# from the code.
+#
+# What the page does today:
+#   - The filters are the address: ?actor=, ?type=, ?scope=, ?range=(24h|7d|30d|custom), ?from= and ?to= (days, with range=custom). Each change is
+#     router.replace, the server page reads again, and the view is KEYED by the filters (page.tsx:36), so every filter change mounts a new view with a
+#     new first page; rows loaded with "Daha eskileri göster" are dropped. The text box waits 400 ms after the typing stops (audit-view.tsx:84).
+#   - Fifty rows a page, newest first, a cursor for the rest. "Dışa aktar" is a plain link with `download` to the app's own route, which streams
+#     tedrisat's CSV (the same filters, no paging, the newest 10 000 rows at most) and which tedrisat writes to the log as `audit.export` BEFORE it sends
+#     the file (audit.service.ts:197). A refusal or failure comes back as JSON the browser downloads or shows; the page says nothing (F-W3-4b).
+#   - Who reads: the başnazım (the realm role SYSTEM_ADMIN) and a Medaris nazımı who holds platform.audit_read (the seeded one does). The menu entry is
+#     the başnazım's alone; a Medaris nazımı opens the page by its address. Everybody else (a köşk nazımı, a başmüderris, a talebe) gets a 403 and the
+#     shell's "Bu bölüm için izniniz yok" (nizam.shell.noAccessAndNotFound).
+#   - The one failure a person can make: a person text over 200 characters. The field has no limit, the API's DTO caps `actor` at 200 (audit.dto.ts:24),
+#     the read answers 400, the page cannot tell that from any other failure and says "Kayıt okunamadı ... Biraz sonra yeniden deneyin" (AUDIT-4).
+#   - The page is read-only by construction (audit.controller.ts has no route that writes or deletes), and so is the graph: reading and filtering
+#     change nothing; the only row a visit writes is the export's.
+# Findings, each in ui.yaml `rules`: F-W3-2 and F-X-21 (the retention line is an unfilled placeholder), F-W3-4b (a failed export says nothing),
+# F-W3-12 (a filter or an older page changes the table with no announcement); new: AUDIT-1 (the cap of 10 000 rows is not said), AUDIT-2 (the view is
+# remounted on every filter change: the filter form is replaced under the person's hands), AUDIT-3 (a deleted köşk's rows say "Platform" as the scope
+# name), AUDIT-4 (the person text has no limit), AUDIT-5 (the "Ne yaptı" list has sixteen kinds, not seventeen, and one of them never matches),
+# AUDIT-6 ("Bu kaydı yalnız siz görürsünüz" is not true), AUDIT-7 (a Medaris nazımı who may read the log has no way to find it).
+schema: delurio-graph/0
+kind: flow
+id: nizam.platform.auditLog
+status: captured
+domain: medaris.api
+ui: nizam.platform.auditLog
+title: Read and export the audit log
+summary: >-
+  The başnazım (or a Medaris nazımı who holds platform.audit_read, by the page's address) opens Denetim kaydı and reads who read or changed what, newest
+  first: the record number and time, the person and their role, the kind of act with a detail line where its writer kept a name, a title or a
+  reason, and the scope (the platform, a köşk or a medrese). Four filters narrow it through the address: the person (a name or e-mail fragment), the
+  kind ("Ne yaptı"), the scope and the time (a preset or two days). Fifty rows are read at a time and "Daha eskileri göster" adds the next fifty.
+  "Dışa aktar" downloads the same filters as a CSV file and writes that export into the log. After a policy was switched (nizam.platform.policies
+  starts this flow), the person filters by "Politika değişikliği" and finds the row it wrote. A person who may not read the log is shown the section
+  refusal.
+
+scope:
+  shows: the Denetim kaydı page, its four filters, the table with its older rows, the export link and the answers of the two reads behind them
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the CSV file itself: its name, its byte-order mark, its header line (no,time,actor,actor_role,type,action,scope_kind,scope_name), its CRLF lines and its ten thousand row cap are what tedrisat sends (exportAuditLog) and the browser's download manager keeps; the page does not show them and the replay cannot read a download (the binding checks the row the export writes, and the same file through the API)"
+    - "a failed export from a list that did load (a 401, 403 or 502 of the route): the same silence as the one drawn from a list that did not load"
+    - "Dışa aktar from an empty answer: a CSV with its header line alone"
+    - "an ended session: both reads send the person to sign in again (realm.auth.signIn) instead of drawing an error"
+    - "the section refusal and the shell around the page (nizam.shell.noAccessAndNotFound, nizam.shell.menuPerPersona)"
+    - "the other kinds of act in the list and the rows of the other people: the log is shared and grows with every walk; the graph says what a row is, never how many there are"
+    - "the loading skeleton (loading.tsx), the phone layout (below 768 px each row is a card) and the Select's open list, which is a popup the person picks from"
+    - "arriving by an address that already carries filters (a link a colleague sent): the page reads them as the filters of its first read"
+
+decisions:
+  D1:
+    question: >-
+      What should the page say about how long the log is kept? Today every reader is told "Kayıtlar [KVKK saklama süresi] boyunca saklanır.", with the
+      bracketed words never filled in, and the e2e check pins the placeholder.
+    recommend: >-
+      Write the real period (the KVKK retention schedule is the owner's to state), drop the pin in the e2e check, and add the period to the CSV's
+      description in the export's tooltip or the page.
+    affects: [listed, listedMore, empty]
+  D2:
+    question: >-
+      Should a failed export say so? Today the link is a plain download link, so a refusal comes back as JSON {"error":"Export failed"} that the browser
+      downloads or shows, and the page is silent.
+    recommend: >-
+      Fetch the file from a button, and answer a failure with a toast and a status line; keep the link for a person who prefers it. Say in the same place
+      that the file holds the newest 10 000 rows at most.
+    affects: [exporting, exportingMore, exportingBad]
+  D3:
+    question: >-
+      Where does a Medaris nazımı who holds platform.audit_read find the log? The page admits them, the menu does not list it, and nothing links to it.
+    recommend: >-
+      Give the Medaris menu a "Denetim kaydı" entry for the holders of platform.audit_read, as it does for the other platform permissions.
+    affects: [reading]
+
+context:
+  viewer:
+    values: [chief, medaris, stranger]
+    initial: any
+    say:
+      chief: "the Medaris başnazım (the realm role SYSTEM_ADMIN), who has the menu entry"
+      medaris: "a Medaris nazımı who holds platform.audit_read (the stack's seeded one does): the same page, opened by its address, and no menu entry"
+      stranger: "a person tedrisat refuses the log: a köşk nazımı, a başmüderris, a Medaris nazımı without platform.audit_read, a talebe"
+  older:
+    values: [some, none]
+    initial: any
+    say:
+      some: "the log holds more than 50 rows in every view that is not narrowed by the kind (the stack's log holds hundreds, and a walk adds more)"
+      none: "the log holds 50 rows or fewer in those views (a fresh database; the stack cannot be made to this)"
+  olderRead:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "the read of the next page answers"
+      failed: "the read of the next page fails: the sticky toast says so (the stack cannot be made to)"
+  policyChange:
+    values: [true, false]
+    initial: any
+    say:
+      true: "a platform policy was switched shortly before (nizam.platform.policies hands over): the log holds the row it wrote, so the kind \"Politika değişikliği\" finds it"
+      false: "no policy was switched: the kind \"Politika değişikliği\" finds nothing unless an earlier change left a row (the stack cannot be made to hold none)"
+  person:
+    values: [none, some, nobody, tooLong]
+    initial: none
+    say:
+      none: "the person box is empty"
+      some: "a name the log has (the başnazım's, \"Vedat\" on the stack) is typed"
+      nobody: "a name nobody in the log has is typed"
+      tooLong: "more than 200 characters are typed: the API refuses the read"
+  kind:
+    values: [all, policy]
+    initial: all
+    say:
+      all: "\"Ne yaptı\" says \"Tümü\""
+      policy: "\"Ne yaptı\" says \"Politika değişikliği\", the kind that one policy switch writes (the graph draws this one kind of the sixteen)"
+  scope:
+    values: [all, platform]
+    initial: all
+    say:
+      all: "\"Kapsam\" says \"Bütün kapsamlar\""
+      platform: "\"Kapsam\" says \"Platform\""
+  range:
+    values: [all, recent, custom]
+    initial: all
+    say:
+      all: "\"Tarih\" says \"Bütün zamanlar\""
+      recent: "\"Tarih\" says \"Son 24 saat\", \"Son 7 gün\" or \"Son 30 gün\" (one behaviour: a from moment)"
+      custom: "\"Tarih\" says \"Aralık seç\" and the two day fields are shown (no day typed means no limit)"
+  toast:
+    values: [none, olderFailed]
+    initial: none
+    say:
+      none: "no toast"
+      olderFailed: "\"Eski kayıtlar okunamadı\" is on the screen: the toast is sticky (duration: Infinity) and nothing here clears it"
+
+guards:
+  allowed: "viewer != 'stranger'"
+  # an actor over 200 characters is refused by the API's DTO (audit.dto.ts:24): a 400, which the page reads as a failure
+  longPerson: "person == 'tooLong'"
+  # the table's empty line: a name nobody has, or the policy kind when no policy was switched
+  emptied: "person == 'nobody' or (kind == 'policy' and not policyChange)"
+  # a page of fifty and rows beyond it: every view not narrowed by the kind (the policy rows are a few)
+  fullPage: "older == 'some' and kind == 'all'"
+
+effects:
+  typedPerson: { set: { person: some } }
+  typedNobody: { set: { person: nobody } }
+  typedLong: { set: { person: tooLong } }
+  clearedPerson: { set: { person: none } }
+  choseKind: { set: { kind: policy } }
+  anyKind: { set: { kind: all } }
+  choseScope: { set: { scope: platform } }
+  anyScope: { set: { scope: all } }
+  choseRecent: { set: { range: recent } }
+  choseCustom: { set: { range: custom } }
+  anyTime: { set: { range: all } }
+  olderToast: { set: { toast: olderFailed } }
+
+failures:
+  reading: { from: listAuditLog, forbidden: [AUTHZ_FORBIDDEN], unreadable: [VALIDATION_ERROR] }
+  loadingOlder: { from: listAuditLog, unreadable: [] }
+  exportingBad: { from: webExportAuditLog, refused: [HTTP_400] }
+# `forbidden` is the 403 the page turns into forbidden() (reads.ts:31). `unreadable` of the first read stands for every other answer, which the page
+# treats alike (a null, reads.ts:34): the one a person can make is the 400 an over-long person text earns. The next page's read (actions.ts:71) is a
+# server action that answers the page with a failed result whatever the cause, so it lists no code. The export route passes tedrisat's status on as
+# {error: "Export failed"}; the 400 is the one the stack can make.
+
+# The main story: the başnazım opens the log, filters by the kind the policy switch wrote, finds the row, and downloads the file of that filter.
+main:
+  given: { viewer: chief, older: some, olderRead: ok, policyChange: true }
+  events: [DONE, CHOOSE_KIND, DONE, EXPORT, DONE]
+
+initial: reading
+states:
+  reading:
+    title: Read the log
+    description: >-
+      The page's server side reads GET /nizam/audit-log with the address's filters (a preset range becomes a from moment, two picked days become the
+      start of the first and the end of the last, in UTC+3) and draws the first fifty rows, or the section refusal, or the box that says the log could
+      not be read. The graph draws it again after every filter, because the view is keyed by the filters.
+    source: apps/nizam/app/denetim-kaydi/page.tsx:30
+    invoke: { action: listAuditLog }
+    on:
+      DONE: { guard: "allowed and not longPerson", target: sorting }
+      FAIL.forbidden: { guard: "not allowed", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'section'" } }, say: "a 403: the page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\"", source: apps/nizam/app/denetim-kaydi/page.tsx:31 }
+      FAIL.unreadable: { guard: "allowed and longPerson", target: loadFailed, say: "a 400 (or any other answer but a refusal) is a null: the view draws its error box", source: apps/nizam/features/platform-admin/reads.ts:34 }
+
+  sorting:
+    title: See what the answer holds
+    description: classification only
+    source: apps/nizam/app/denetim-kaydi/page.tsx:39
+    always:
+      - { guard: emptied, target: empty, say: "nothing fits the filters" }
+      - { guard: fullPage, target: listedMore, say: "fifty rows and an older page after them" }
+      - { target: listed, say: "the answer fits one page" }
+
+  listed:
+    title: Read the log (one page)
+    by: human
+    goal: true
+    description: >-
+      The log, newest first: a table with one row per recorded act (record number and time, who, what, scope) and, under it, the line that says how
+      long records are kept (a bracketed placeholder, F-W3-2). The filters narrow it through the address; no older rows are offered because the answer
+      fits one page (50 rows). The header carries "Dışa aktar" and the notice that only they see the log.
+    source: apps/nizam/app/denetim-kaydi/page.tsx:30
+    on:
+      TYPE_PERSON: { target: reading, effect: [typedPerson], say: "they type a name that the log knows (the başnazım's); 400 ms after the typing stops the address gets ?actor= and the page reads again", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      TYPE_NOBODY: { target: reading, effect: [typedNobody], say: "they type a name nobody in the log has", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      TYPE_LONG: { target: reading, effect: [typedLong], say: "they type or paste more than 200 characters: the field has no limit and the API refuses the read", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      CLEAR_PERSON: { guard: "person != 'none'", target: reading, effect: [clearedPerson], say: "they erase the text", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      CHOOSE_KIND: { guard: "kind == 'all'", target: reading, effect: [choseKind], say: "\"Ne yaptı\" is set to \"Politika değişikliği\" (?type=POLICY_CHANGE)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:225 }
+      ANY_KIND: { guard: "kind != 'all'", target: reading, effect: [anyKind], say: "\"Ne yaptı\" is set back to \"Tümü\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:225 }
+      CHOOSE_SCOPE: { guard: "scope == 'all'", target: reading, effect: [choseScope], say: "\"Kapsam\" is set to \"Platform\" (?scope=PLATFORM)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:243 }
+      ANY_SCOPE: { guard: "scope != 'all'", target: reading, effect: [anyScope], say: "\"Kapsam\" is set back to \"Bütün kapsamlar\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:243 }
+      CHOOSE_RECENT: { target: reading, effect: [choseRecent], say: "\"Tarih\" is set to a preset (Son 24 saat, Son 7 gün or Son 30 gün; ?range=24h, 7d or 30d)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:262 }
+      CHOOSE_CUSTOM: { guard: "range != 'custom'", target: reading, effect: [choseCustom], say: "\"Tarih\" is set to \"Aralık seç\": the two day fields appear (?range=custom)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:262 }
+      SET_DAYS: { guard: "range == 'custom'", target: reading, say: "they pick a day in \"Başlangıç\" and \"Bitiş\" (?from=, ?to=)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:282 }
+      ANY_TIME: { guard: "range != 'all'", target: reading, effect: [anyTime], say: "\"Tarih\" is set back to \"Bütün zamanlar\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:262 }
+      EXPORT: { target: exporting, say: "they press \"Dışa aktar\": the browser asks for the file of the same filters (a download; the page stays)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:194 }
+      NAVIGATE: { target: left, say: "they go to another page (the menu, or the address)", source: apps/nizam/app/denetim-kaydi/page.tsx:24 }
+  listedMore:
+    title: Read the log (older rows wait)
+    by: human
+    goal: true
+    description: >-
+      The same page, with "Daha eskileri göster" under the 50 rows: the answer holds more than one page. The stack's log holds hundreds of rows, so
+      this is the page a walk meets first. The button appends the next 50 rows below the first, with the same filters; rows already read stay.
+    source: apps/nizam/features/platform-admin/components/audit-view.tsx:327
+    on:
+      TYPE_PERSON: { target: reading, effect: [typedPerson], say: "they type a name that the log knows (the başnazım's); 400 ms after the typing stops the address gets ?actor= and the page reads again", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      TYPE_NOBODY: { target: reading, effect: [typedNobody], say: "they type a name nobody in the log has", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      TYPE_LONG: { target: reading, effect: [typedLong], say: "they type or paste more than 200 characters: the field has no limit and the API refuses the read", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      CLEAR_PERSON: { guard: "person != 'none'", target: reading, effect: [clearedPerson], say: "they erase the text", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      CHOOSE_KIND: { guard: "kind == 'all'", target: reading, effect: [choseKind], say: "\"Ne yaptı\" is set to \"Politika değişikliği\" (?type=POLICY_CHANGE)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:225 }
+      CHOOSE_SCOPE: { guard: "scope == 'all'", target: reading, effect: [choseScope], say: "\"Kapsam\" is set to \"Platform\" (?scope=PLATFORM)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:243 }
+      ANY_SCOPE: { guard: "scope != 'all'", target: reading, effect: [anyScope], say: "\"Kapsam\" is set back to \"Bütün kapsamlar\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:243 }
+      CHOOSE_RECENT: { target: reading, effect: [choseRecent], say: "\"Tarih\" is set to a preset (Son 24 saat, Son 7 gün or Son 30 gün; ?range=24h, 7d or 30d)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:262 }
+      CHOOSE_CUSTOM: { guard: "range != 'custom'", target: reading, effect: [choseCustom], say: "\"Tarih\" is set to \"Aralık seç\": the two day fields appear (?range=custom)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:262 }
+      SET_DAYS: { guard: "range == 'custom'", target: reading, say: "they pick a day in \"Başlangıç\" and \"Bitiş\" (?from=, ?to=)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:282 }
+      ANY_TIME: { guard: "range != 'all'", target: reading, effect: [anyTime], say: "\"Tarih\" is set back to \"Bütün zamanlar\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:262 }
+      LOAD_OLDER: { target: loadingOlder, say: "they press \"Daha eskileri göster\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:327 }
+      EXPORT: { target: exportingMore, say: "they press \"Dışa aktar\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:194 }
+      NAVIGATE: { target: left, say: "they go to another page (the menu, or the address)", source: apps/nizam/app/denetim-kaydi/page.tsx:24 }
+  empty:
+    title: No row fits the filters
+    by: human
+    description: >-
+      The table keeps its header and holds one line, "Bu süzgeçlere uyan kayıt yok."; the filters, the export link and the retention line stay.
+    source: apps/nizam/features/platform-admin/components/audit-view.tsx:323
+    on:
+      TYPE_PERSON: { target: reading, effect: [typedPerson], say: "they type a name that the log knows", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      TYPE_NOBODY: { target: reading, effect: [typedNobody], say: "they type a name nobody has", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      CLEAR_PERSON: { guard: "person != 'none'", target: reading, effect: [clearedPerson], say: "they erase the text", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      ANY_KIND: { guard: "kind != 'all'", target: reading, effect: [anyKind], say: "\"Ne yaptı\" is set back to \"Tümü\"", source: apps/nizam/features/platform-admin/components/audit-view.tsx:225 }
+      NAVIGATE: { target: left, say: "they go to another page (the menu, or the address)", source: apps/nizam/app/denetim-kaydi/page.tsx:24 }
+  loadFailed:
+    title: The log could not be read
+    by: human
+    description: >-
+      An error box in the table's place ("Kayıt okunamadı", the sentence that says to try again, "Tekrar dene"); the header, the notice and the filters stay,
+      and so does "Dışa aktar". The retention line and the table are gone. The only way here that the stack can make is a person text over 200
+      characters (AUDIT-4): the API refuses it with 400, the page cannot tell that from a failure, and "Tekrar dene" reads the same address again.
+    source: apps/nizam/features/platform-admin/components/audit-view.tsx:304
+    on:
+      TYPE_PERSON: { target: reading, effect: [typedPerson], say: "they type a name that the log knows", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      TYPE_NOBODY: { target: reading, effect: [typedNobody], say: "they type a name nobody has", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      CLEAR_PERSON: { guard: "person != 'none'", target: reading, effect: [clearedPerson], say: "they erase the text", source: apps/nizam/features/platform-admin/components/audit-view.tsx:216 }
+      RETRY: { target: reading, say: "they press \"Tekrar dene\": router.refresh() reads the same address again", source: apps/nizam/features/platform-admin/components/audit-view.tsx:307 }
+      EXPORT: { target: exportingBad, say: "they press \"Dışa aktar\" although the list did not load", source: apps/nizam/features/platform-admin/components/audit-view.tsx:194 }
+      NAVIGATE: { target: left, say: "they go to another page (the menu, or the address)", source: apps/nizam/app/denetim-kaydi/page.tsx:24 }
+
+  loadingOlder:
+    title: Read the next fifty
+    by: human
+    description: >-
+      "Daha eskileri göster" is busy (aria-busy and aria-disabled, never `disabled`, so it keeps the focus) and a hidden status says "Yükleniyor"
+      while the server action reads GET /nizam/audit-log with the same filters and the cursor. The rows already shown stay. The focus stays on the
+      button and nothing announces how many rows came (F-W3-12).
+    source: apps/nizam/features/platform-admin/components/audit-view.tsx:93
+    invoke: { action: listAuditLog }
+    on:
+      DONE: { guard: "olderRead == 'ok'", target: listedMore, say: "the next rows are appended below the others; the button stays while a cursor is left (the stack's log holds several more pages)", source: apps/nizam/features/platform-admin/components/audit-view.tsx:106 }
+      FAIL.unreadable: { guard: "olderRead == 'failed'", target: listedMore, effect: [olderToast], say: "a sticky error toast, \"Eski kayıtlar okunamadı\"; the rows stay and the button comes back", source: apps/nizam/features/platform-admin/components/audit-view.tsx:100 }
+
+  exporting:
+    title: Download the file (one page)
+    description: >-
+      The browser follows the "Dışa aktar" link: it asks the app's route /api/audit-log/export for the same filters, the route adds the person's token
+      and asks tedrisat (GET /nizam/audit-log/export), which reads at most 10 000 rows, writes an `audit.export` row with the row count and the
+      filters, and only then sends the file (denetim-kaydi.csv, text/csv, a UTF-8 byte-order mark). The page does not move and shows nothing of it.
+      The state draws the page as it was.
+    source: apps/nizam/app/api/audit-log/export/route.ts:86
+    invoke: { action: webExportAuditLog }
+    on:
+      DONE: { target: listed, say: "the file is in the browser's downloads; the page is as it was", source: apps/nizam/app/api/audit-log/export/route.ts:111 }
+
+  exportingMore:
+    title: Download the file (older rows wait)
+    description: The same download, from the page that has "Daha eskileri göster". The file holds the newest 10 000 rows of the filters, not the fifty that are shown (AUDIT-1). The state draws the page as it was.
+    source: apps/nizam/app/api/audit-log/export/route.ts:86
+    invoke: { action: webExportAuditLog }
+    on:
+      DONE: { target: listedMore, say: "the file is in the browser's downloads; the page is as it was", source: apps/nizam/app/api/audit-log/export/route.ts:111 }
+
+  exportingBad:
+    title: Download the file from a log that did not load
+    description: >-
+      The link is on the page even when the list could not be read, so a person can press it with an over-long person text: the route passes the
+      filters on, tedrisat answers 400, and the route answers 400 {"error":"Export failed"}. The browser's own download list reports the failure (or
+      shows the JSON); the page says nothing (F-W3-4b). The state draws the page as it was.
+    source: apps/nizam/app/api/audit-log/export/route.ts:105
+    invoke: { action: webExportAuditLog }
+    on:
+      FAIL.refused: { guard: longPerson, target: loadFailed, say: "nothing on the page changes", source: apps/nizam/app/api/audit-log/export/route.ts:106 }
+
+  handed_over.no_access:
+    title: The section refusal opens
+    description: "The page calls forbidden() and the shell draws \"Bu bölüm için izniniz yok\" at the same address: nizam.shell.noAccessAndNotFound draws it."
+    type: final
+    leavesPage: true
+
+  left:
+    title: The person leaves the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: a-stranger-meets-no-log
+    never: "viewer == 'stranger' and state in ['listed', 'listedMore', 'empty', 'loadFailed', 'loadingOlder']"
+    say: A person tedrisat refuses the log is never shown the table, the empty line or the error box; they get the section refusal.
+    source: apps/nizam/app/denetim-kaydi/page.tsx:31
+  - id: older-rows-only-with-a-full-page
+    never: "state == 'listedMore' and kind != 'all'"
+    say: "\"Daha eskileri göster\" is drawn only on a view that holds more than a page, which the kind \"Politika değişikliği\" does not."
+    source: apps/nizam/features/platform-admin/components/audit-view.tsx:326
+  - id: the-empty-line-needs-a-filter-that-finds-nothing
+    never: "state == 'empty' and person != 'nobody' and kind == 'all'"
+    say: The line "Bu süzgeçlere uyan kayıt yok." shows only for a name nobody has or for a kind with no row, never for the whole log.
+    source: apps/nizam/features/platform-admin/components/audit-view.tsx:323
+  - id: the-error-box-needs-a-refused-read
+    never: "state == 'loadFailed' and person != 'tooLong'"
+    say: The box "Kayıt okunamadı" shows only after a read the API refused, which the stack can only make with a person text over 200 characters.
+    source: apps/nizam/features/platform-admin/components/audit-view.tsx:304

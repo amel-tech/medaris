@@ -1,0 +1,295 @@
+# A köşk nazımı's home (nizam-web, /kosks/<id>/ana-sayfa), read from the code of the branch (the tree of PR #394) on 15 Nov 2026.
+# Nothing here is approved. What it draws:
+#   - the two ways in: "/", which sends a köşk nazımı to the home of the first köşk they manage, and the address of a köşk's home;
+#   - the one read behind the page (GET /kosks/:id/dashboard) and its three answers: the home, the screen "Bu bölüm için izniniz yok"
+#     for a köşk the person does not manage, and the box "Ana sayfa okunamadı";
+#   - the home itself: the greeting with the week's celse count, the alert for a celse nobody can attend, the four numbers, the
+#     three tabs of the celse list with their rows and the row link to the course's celse list, and the hocas' card;
+#   - the phone's window, where the menu is a button that opens a sheet.
+# What it leaves to other flows: the card "Son başvurular" with Onayla and Reddet (nizam.home.decideApplications), what "/" does
+# before it redirects (nizam.shell.landingByRole), the menu's entries and the köşk picker (nizam.shell.menuPerPersona).
+# Findings it carries (the inventory's ids): F-X-1 and F-W1-2, F-X-10 and F-W1-8, F-W1-11, F-W1-10. Three more are this flow's
+# own, proposed as KOSKHOME-1 to KOSKHOME-3 (ui.yaml `rules`). MENU-2 is nizam.shell.menuPerPersona's and is cited, not repeated: "/"
+# opens the köşk of the person's OLDEST role, while a page whose address names no köşk (Bildirimler, Hesap, and the refusal drawn
+# here) makes the menu name the NEWEST köşk.
+# E2E it takes over: dashboard#4 and #7, up to what a replay can hold (needs.yaml says what is left).
+# Seen, as opposed to read: the API's answers to GET /kosks/:id/dashboard on the local stack (the seeded köşk, the tabs, a
+# köşk id that is no uuid, a uuid nobody has, and a bad `sessions` value) and GET /me/assignments, as the seeded köşk nazımı, on
+# 15 Nov 2026. Every screen is from the code: nothing was opened in a browser. Not walked yet: the owner's word is that replays
+# happen once, at the end; binding.yaml and binding.phone.yaml load and each scenario is bound.
+schema: delurio-graph/0
+kind: flow
+id: nizam.home.koskNazimLanding
+status: captured
+domain: medaris.api
+ui: nizam.home.koskNazimLanding
+title: Read the köşk's home
+summary: >-
+  A köşk nazımı opens Nizam's root and lands on the home of the first köşk they manage: a greeting that says how many celse
+  the next seven days hold, a warning when some of them have no way in, four numbers (courses, enrolled talebe, celse ahead,
+  waiting applications), the celse list with its tabs Yaklaşan, Geçmiş and İptal edilen, and the hocas of the köşk. A row's
+  button leads to that course's celse list. The address of a köşk they do not manage, or that is not there, is the screen
+  "Bu bölüm için izniniz yok". On a phone the menu is behind a button and opens as a sheet.
+
+scope:
+  shows: >-
+    the köşk home as its nazım reads it, from "/" to the row link, the refusal for a köşk that is not theirs, and the phone's menu
+    sheet
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the card 'Son başvurular' with its Onayla and Reddet buttons, the reject dialog and the toasts (nizam.home.decideApplications); the number 'Bekleyen başvuru' is drawn here, and the link 'Tümünü gör' of that card goes to nizam.courses.decideApplications"
+    - "what '/' does before it redirects: the read of the roles, and where every other person is sent (nizam.shell.landingByRole); a failed roles read on '/' draws a bare 'Hoş geldiniz' (F-W1-1, LBR-1 there)"
+    - "the menu: the sidebar's entries and numbers, the köşk picker 'Köşk değiştir', the person row, the bell and the theme toggle (nizam.shell.menuPerPersona); the sheet is drawn here only as far as its button, its close button and the entry 'Ana sayfa' that e2e dashboard#7 asserts"
+    - "the same page read by the başnazım or by a Medaris nazımı who holds platform.kosk_edit: the API then answers contentLocked, the applications card is left out and every Katılım cell is a dash with 'Katılım bilgisi gösterilmez'; the seeded Medaris nazımı holds that permission, but no flow draws this reading (an ask)"
+    - "a person who is no nazım at all: app/kosks/layout.tsx answers the same screen 'Bu bölüm için izniniz yok' before the page runs (nizam.shell.noAccessAndNotFound)"
+    - "an ended session: the read and the tab's Server Action send the person to sign in and back, with no error (realm.auth.sessionEnded)"
+    - "a second click on a tab while one loads: the older answer is dropped (the `wanted` ref, kosk-home.tsx:110); the imam's star after a hoca's name, which shows only among more than one müderris; the 'telafi celsesi' mark of a make-up celse"
+    - "the layout of a row on a phone, where the table is a card list: the roles stay those of a table (the `stack` mode keeps them), and e2e dashboard#7 a5 reads the computed `display` of a row, which a replay does not"
+    - "the loading skeleton's look, and the footer (common.shell.privacyNotice)"
+
+decisions:
+  D1:
+    question: >-
+      The badges of Geçmiş and İptal edilen count every celse there has ever been, but each list holds the newest 20 and nothing
+      leads to the rest, because the köşk-wide Celseler page is not built (MDRS-211, the comment above the card in kosk-home.tsx:448).
+      Should the list say how many of how many it shows, and where the rest is?
+    recommend: >-
+      Yes: say "En yeni 20 celse" under a tab whose badge is above 20, and give the rest a "Tümünü gör" link when MDRS-211 builds the
+      page (KOSKHOME-2).
+    affects: [home]
+  D2:
+    question: >-
+      The alert counts the celse with no way in but names only the first, and holds no link; the rows below each carry a button that
+      leads to the course's celse list. Should the alert lead to the first one's list too?
+    recommend: >-
+      Yes: make the course's name in the alert a link to that course's celse list, as the row button does (F-W1-10 asks the same of the
+      rows: that the link reach the celse, not only the list).
+    affects: [home]
+
+context:
+  arrival:
+    values: [root, own, foreign]
+    initial: any
+    say:
+      root: "they open '/', and Nizam sends a köşk nazımı to the home of the first köşk they manage"
+      own: "they open the home of a köşk they manage by its address: the menu's Ana sayfa, the köşk picker, a bookmark"
+      foreign: "they open the address of a köşk they do not manage, or of one that is not there, or that is no uuid"
+  read:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "tedrisat answers the home's read"
+      failed: "the home's read fails with anything but a refusal (the API is down, a 5xx)"
+  data:
+    values: [seeded, covered, empty]
+    initial: any
+    say:
+      seeded: "the köşk as the stack's seed makes it: celse ahead of which some have no way in and one has a link, celse behind us (some with a link, some without), none cancelled, one application waiting, one hoca"
+      covered: "a köşk whose every celse in the next seven days has a way in, with celse behind us and a cancelled one (no scenario can make it: the seed has none)"
+      empty: "a köşk with no course: no celse, no application, no hoca"
+  view:
+    values: [wide, phone]
+    initial: any
+    say:
+      wide: "the window is 768 px or wider: the menu is the sidebar"
+      phone: "the window is narrower than 768 px: the menu is behind the button Menü and opens as a sheet"
+  tabRead:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: "tedrisat answers the read of another tab"
+      failed: "the read of another tab fails (or the Server Action throws)"
+  tab:
+    values: [upcoming, past, cancelled]
+    initial: upcoming
+    say:
+      upcoming: "the tab Yaklaşan is selected: the list the page's own read brought"
+      past: "the tab Geçmiş is selected"
+      cancelled: "the tab İptal edilen is selected"
+
+guards:
+  onPhone: "view == 'phone'"
+  # the three lists, as the data makes them: Yaklaşan and Geçmiş have rows unless the köşk is empty; İptal edilen only where a celse was cancelled
+  hasRows: "data == 'covered' or (data == 'seeded' and tab != 'cancelled')"
+  # the card 'Son başvurular' holds a waiting application: the seeded köşk has one (TALEBE_MALE's), the empty one none
+  hasApplication: "data == 'seeded'"
+
+effects:
+  tabUpcoming: { set: { tab: upcoming } }
+  tabPast: { set: { tab: past } }
+  tabCancelled: { set: { tab: cancelled } }
+  againTab: { havoc: [tabRead] } # the button asks again, and the answer may differ
+  againPage: { havoc: [read] }
+
+failures:
+  reading: { from: getKoskDashboard, refused: [AUTHZ_FORBIDDEN, KOSK_NOT_FOUND], unreadable: [] }
+  readingTab: { from: getKoskDashboard, unreadable: [] }
+# `refused` is the one screen for both codes (page.tsx:30). `unreadable` stands for any answer but a refused token: the page
+# treats a network error and a 5xx alike, and a 400 (a `sessions` the UI never sends) the same way; a 401 is the guard's and sends
+# the person to sign in again (realm.auth.sessionEnded).
+
+# The main story: the seeded köşk nazımı opens '/', reads the köşk's home, looks at Geçmiş and İptal edilen, comes back to Yaklaşan and
+# follows the first row's button to its course's celse list.
+main:
+  given: { arrival: root, read: ok, data: seeded, view: wide, tabRead: ok }
+  events: [DONE, OPEN_PAST, DONE, OPEN_CANCELLED, DONE, OPEN_UPCOMING, OPEN_SESSIONS]
+
+initial: start
+states:
+  start:
+    title: Where the page opens
+    description: >-
+      Two ways in. "/" (app/(home)/page.tsx) reads the person's roles and sends a köşk nazımı to the home of the first köşk they
+      manage, which is the köşk of their OLDEST KOSK_NAZIM row: GET /me/assignments is ordered by when the role was given
+      (assignment.repository.ts:115) and the page takes the first (page.tsx:57), so the stack's köşk nazımı, who holds two, lands on
+      Süleymaniye Köşkü and not on Kubbealtı Köşkü, which was given to him later (nizam.shell.landingByRole draws that read and what
+      it does for everyone else). The menu does not agree with it on a page whose address names no köşk: it names the newest
+      köşk (MENU-2, nizam.shell.menuPerPersona). Or the person opens a köşk's home by its address, which is what the menu's "Ana
+      sayfa" and the köşk picker do for a köşk nazımı.
+    source: "apps/nizam/app/(home)/page.tsx:56"
+    always:
+      - { guard: "arrival == 'root'", target: reading, say: "'/' redirects to /kosks/<the first köşk>/ana-sayfa", source: "apps/nizam/app/(home)/page.tsx:58" }
+      - { target: reading, say: "the address names the köşk", source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:28" }
+
+  reading:
+    title: Read the köşk's home
+    description: >-
+      The page's server side reads GET /kosks/:id/dashboard?sessions=UPCOMING with the person's token (a failed read is `null`; a 403
+      and a 404 are told apart). A köşk the person does not manage answers 403, one nobody has answers 404, and so does an id that is
+      no uuid (seen: "KOSK_NOT_FOUND", "Köşk with id not-a-uuid not found"); the page draws the same screen for both on purpose, so
+      it never says which ids exist. Any other failure draws the box "Ana sayfa okunamadı". While it reads, Next shows loading.tsx,
+      a div with aria-busy and skeletons that are aria-hidden: a screen reader hears nothing (F-W1-8, F-X-10). tedrisat writes the
+      read to the audit log before it answers: one course.roster_read for the applications it hands out and one course.content_read
+      for each course whose meeting link it hands out (apps/tedrisat/src/kosk/kosk-dashboard.service.ts:93, :196-240).
+    source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:29"
+    invoke: { action: getKoskDashboard }
+    on:
+      DONE: { guard: "arrival != 'foreign' and read == 'ok'", target: home, say: "the home is drawn from the one answer", source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:45" }
+      FAIL.refused: { guard: "arrival == 'foreign'", target: refused, say: "403 or 404: forbidden()", source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:30" }
+      FAIL.unreadable: { guard: "arrival != 'foreign' and read == 'failed'", target: loadFailed, say: "the read is null: the box says so", source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:32" }
+
+  home:
+    title: Read the köşk's home
+    by: human
+    goal: true
+    description: >-
+      The page in <main>: the h1 "Ana sayfa", a greeting that adds the week's celse count to "Selâmün aleyküm, {name} Hoca." (and
+      says how many have no way in), the button "Ders aç", the warning when some celse has no way in, the section "Köşk sayıları"
+      with Ders, Kayıtlı talebe, Yaklaşan celse and Bekleyen başvuru, the section "Celseler" with its three tabs and one table, and
+      the section "Hocalar". The warning is a warning-tone Alert, a status: it is not announced when the page loads (an observation of the
+      inventory, not a finding). It names the first such celse and no more, and holds no link (D2). The tabs are Base UI tabs
+      with `activateOnFocus` and no panel: the table sits beside them, not in a tab panel, so `aria-controls` is empty, a tab
+      switch is announced nowhere, and each arrow key makes a server call (F-X-1, F-W1-2). Yaklaşan is the page's own list (celse
+      from now to seven days, up to 50); Geçmiş and İptal edilen read theirs when opened (up to 20, newest first); the badges count
+      them all (KOSKHOME-2). The table has the columns Ders, Zaman, Katılım, Talebe, Durum and a hidden İşlemler. Katılım says "Eksik"
+      in a warning badge for a celse ahead with no way in, the ways in joined by " · " for one that has some (a meeting link names
+      its platform, or "Bilinmeyen platform" and its host), "Eklenmedi" for one behind us with none, and a bare "—" for a cancelled
+      one, with no text for a reader (F-W1-11). The row's button is named "{action}: {course}, {when}" and is always a link to the
+      course's celse list, the same address for every celse of that course, whatever its words promise: "Toplantı bağlantısı ekle"
+      for a celse with no way in, "Düzenle" for one that has, "Celseyi gör" for a past or cancelled one (F-W1-10). Where a list is
+      empty its one cell says so. No focus is moved when the page opens or a tab changes (rule focus-not-set).
+    source: "apps/nizam/features/dashboard/components/kosk-home.tsx:399"
+    on:
+      OPEN_PAST: { guard: "tab != 'past'", target: readingTab, effect: [tabPast], say: "Geçmiş: the page asks for the list", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:92" }
+      OPEN_CANCELLED: { guard: "tab != 'cancelled'", target: readingTab, effect: [tabCancelled], say: "İptal edilen: the page asks for the list", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:92" }
+      OPEN_UPCOMING: { guard: "tab != 'upcoming'", target: home, effect: [tabUpcoming], say: "Yaklaşan is the page's own list: it is put back with no read", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:96" }
+      OPEN_SESSIONS: { guard: hasRows, target: handed_over.manage_sessions, starts: { flow: nizam.courses.manageSessions }, say: "a row's button opens that course's celse list (/kosks/<id>/courses/<course>/sessions)", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:299" }
+      OPEN_COURSE: { target: handed_over.open_course, starts: { flow: nizam.courses.open }, say: "'Ders aç' opens the form for a new course of the köşk", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:411" }
+      DECIDE_APPLICATIONS: { guard: hasApplication, target: handed_over.decide_applications, starts: { flow: nizam.home.decideApplications, given: { approval: "'needed'", mayDecide: "'may'" } }, say: "the card 'Son başvurular' holds a waiting application and the köşk's nazım may decide it: Onayla and Reddet answer it on this page", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:499" }
+      OPEN_SHEET: { guard: onPhone, target: sheet, say: "on a phone they press Menü", source: "libs/ui/src/mds/app-bar.tsx:64" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  readingTab:
+    title: Read another tab
+    description: >-
+      Server Action loadKoskSessions asks GET /kosks/:id/dashboard?sessions=PAST or CANCELLED. The table's body says "Celseler
+      okunuyor…" and its wrapper is aria-busy. The answer carries the whole page's numbers and its applicants again, and the page
+      keeps only the celse list; tedrisat has written the audit rows of a full read all the same (KOSKHOME-1).
+    source: "apps/nizam/features/dashboard/actions.ts:13"
+    invoke: { action: getKoskDashboard }
+    on:
+      DONE: { guard: "tabRead == 'ok'", target: home, say: "the table shows the rows of the tab", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:118" }
+      FAIL.unreadable: { guard: "tabRead == 'failed'", target: tabUnreadable, say: "the list is emptied and an alert takes the table's place", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:113" }
+
+  tabUnreadable:
+    title: The tab could not be read
+    by: human
+    description: >-
+      An error Alert (role alert) in the table's place: "Celseler okunamadı", one sentence, and a button "Yeniden dene" that asks
+      again. The tabs stay. The alert is inserted after a click, so it is announced; the focus is not moved to it and stays on the tab.
+    source: "apps/nizam/features/dashboard/components/kosk-home.tsx:468"
+    on:
+      RETRY_TAB: { target: readingTab, effect: [againTab], say: "Yeniden dene", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:474" }
+      OPEN_UPCOMING: { guard: "tab != 'upcoming'", target: home, effect: [tabUpcoming], say: "Yaklaşan is put back with no read", source: "apps/nizam/features/dashboard/components/kosk-home.tsx:96" }
+      OPEN_PAST: { guard: "tab != 'past'", target: readingTab, effect: [tabPast], source: "apps/nizam/features/dashboard/components/kosk-home.tsx:92" }
+      OPEN_CANCELLED: { guard: "tab != 'cancelled'", target: readingTab, effect: [tabCancelled], source: "apps/nizam/features/dashboard/components/kosk-home.tsx:92" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  sheet:
+    title: The phone's menu sheet
+    by: human
+    description: >-
+      Below 768 px the sidebar is hidden and the bar above the page has a button named "Menü". It opens a Base UI dialog named "Ana
+      menü": the brand, a button "Kapat", the köşk picker, the menu (the same entries as the sidebar's) and the person row. The page
+      behind it is inert. The app sets no initial focus in it; Base UI focuses the first tabbable element, which is the brand link
+      before "Kapat" (not verified in a browser). Esc, "Kapat" and the scrim close it and give the focus back to "Menü"; following
+      an entry closes it and opens the page. The entries and the picker are nizam.shell.menuPerPersona's.
+    source: "libs/ui/src/mds/app-bar.tsx:62"
+    on:
+      CLOSE_SHEET: { target: home, say: "Kapat, Esc or a click on the scrim: the focus goes back to Menü", source: "libs/ui/src/mds/app-bar.tsx:82" }
+      FOLLOW_HOME: { target: home, say: "Ana sayfa in the sheet: the sheet closes and the page opens again at the same address", source: "libs/ui/src/mds/app-bar.tsx:92" }
+      NAVIGATE: { target: left, say: "they follow another entry of the menu" }
+
+  refused:
+    title: Bu bölüm için izniniz yok
+    by: human
+    description: >-
+      The screen for a section the account may not open and for a record that is not there, the same words for both: a section
+      inside <main> with the h1 "Bu bölüm için izniniz yok", one sentence naming the Medaris başnazımı when the directory knows who
+      that is, the account the person signed in as, and the button "Ana sayfaya dön". The answer is a 403. The shell is around it, and
+      since the address names none of the person's köşks its menu names the newest köşk they manage, not the one "/" opens (MENU-2).
+      "Ana sayfaya dön" goes to "/", which sends the person to the home of their oldest köşk.
+    source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:30"
+    on:
+      BACK_HOME: { target: landing_opened, say: "'/' sends a köşk nazımı to their first köşk's home", source: "apps/nizam/components/errors/no-access.tsx:38" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  loadFailed:
+    title: The home could not be read
+    by: human
+    description: >-
+      An error Alert alone in <main>: "Ana sayfa okunamadı", one sentence and a button "Yeniden dene" that reads the page again
+      (router.refresh). The page has no heading, so it has no h1, and the tab still says "Ana sayfa" (KOSKHOME-3). The menu is
+      around it.
+    source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:32"
+    on:
+      RETRY: { target: reading, effect: [againPage], say: "Yeniden dene", source: "apps/nizam/features/kosks/components/load-failed.tsx:29" }
+      NAVIGATE: { target: left, say: "they go on to another page" }
+
+  handed_over.manage_sessions: { type: final, title: "The person opens the course's celse list", leavesPage: true }
+  handed_over.open_course: { type: final, title: "The person opens the form for a new course", leavesPage: true }
+  handed_over.decide_applications: { type: final, title: "The person answers an application on this page" }
+  landing_opened: { type: final, title: "The person goes back to /, which sends them to their köşk's home", leavesPage: true }
+  left: { type: final, title: The person leaves the page, leavesPage: true }
+
+assertions:
+  - id: foreign-kosk-is-never-drawn
+    never: "state == 'home' and arrival == 'foreign'"
+    say: "A köşk the person does not manage is never drawn as a home"
+    source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:30"
+  - id: refusal-only-for-a-foreign-kosk
+    never: "state == 'refused' and arrival != 'foreign'"
+    say: "The screen 'Bu bölüm için izniniz yok' is drawn only when the read was refused"
+    source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:30"
+  - id: a-failed-read-draws-no-home
+    never: "state == 'home' and arrival != 'foreign' and read == 'failed'"
+    say: "A failed read never leaves a home on the screen"
+    source: "apps/nizam/app/kosks/[id]/ana-sayfa/page.tsx:32"
+  - id: the-first-tab-needs-no-read
+    never: "state == 'readingTab' and tab == 'upcoming'"
+    say: "Yaklaşan is the page's own list and is never read again when its tab is chosen"
+    source: "apps/nizam/features/dashboard/components/kosk-home.tsx:96"
+  - id: the-sheet-is-a-phone-thing
+    never: "state == 'sheet' and view == 'wide'"
+    say: "The menu sheet opens only in a window narrower than 768 px"
+    source: "libs/ui/src/mds/app-bar.tsx:50"

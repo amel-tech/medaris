@@ -1,0 +1,32 @@
+# nizam.madrasahs.open, the Medaris nazımı: the seeded MEDARIS_NAZIM ("Selma Medaris Nazımı", who holds platform.madrasah_create) opens
+# /medreseler and opens a medrese. The page draws "Medrese aç" for them (`madrasahAbilities`, apps/nizam/features/madrasahs/present.ts:105),
+# which the köşk's page does not for "Köşk aç" (F-W3-open-1). It takes no transition the main file's `opened` does not, so it is walked on
+# its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/madrasahs/open \
+#     --bind graphs/nizam/madrasahs/open/binding.medarisNazim.yaml --to opened --out <dir>
+# The head is a spare applicant (APPLICANT_F), never the Medaris nazımı: a Medaris nazımı may not name themselves (binding.yaml, selfNamed).
+# The medrese has a name and a short name of its own, so that it never meets the main file's. `setup` and `teardown` remove it
+# through ./remove-madrasah.mjs as the başnazım (see binding.yaml). NOT RUN, from the code.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.madrasahs.open
+
+scenarios:
+  medarisNazim:
+    given: { fields: valid, lookup: found, answer: created }
+    as: medarisNazim
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    samples: { handle: ornek-nazim-acilis, madrasah: Örnek Nazım Açılış Medresesi }
+    setup: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    teardown: [{ run: [node, ../nizam/madrasahs/open/remove-madrasah.mjs, '{madrasahHandle}'], expect: removed }]
+    vars:
+      madrasahName: Örnek Nazım Açılış Medresesi
+      madrasahHandle: ornek-nazim-acilis
+      rowHandle: ornek-nazim-acilis
+      madrasahDescription: Mantık metinlerini okuyan bir medrese.
+      headEmail: '{secret.E2E_APPLICANT_F_EMAIL}'
+      headSub: '{secret.E2E_APPLICANT_F_SUB}'
+      headName: Tahsin Başvuran
+      lookupFound: 'true'

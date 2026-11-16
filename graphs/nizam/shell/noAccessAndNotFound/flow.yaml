@@ -1,0 +1,199 @@
+# The two faces nizam-web draws when what the person asked for is not theirs or is not there: "Bu bölüm için izniniz yok" (a page their
+# account may not open, a köşk that is not theirs or not there, and every /kosks/ page for a person with no nazım role) and "Sayfa
+# bulunamadı" (an address no page owns, and the two menu entries of the başnazım whose pages were never built). Read from the code of
+# PR #394 (apps/nizam/app/{layout,forbidden,not-found}.tsx, app/[...rest]/{page,not-found}.tsx, app/kosks/layout.tsx,
+# components/errors/{no-access,page-not-found}.tsx, features/assignments/reads.ts, lib/shell-nav.ts, libs/ui/src/mds/{system-state,
+# app-shell}.tsx) on 15 Nov 2026, and from the HTML and the stream that the running nizam-web served to GET requests as the köşk nazımı,
+# the talebe and the Medaris nazımı (status, tab title, `noindex`, the 403 and 404 digests); nothing was seen in a browser. It says what
+# the code does:
+#   - Unlike nazar, nizam draws both faces INSIDE the shell: the shell is the root layout's (app/layout.tsx:54), so the sidebar and the
+#     shell's <main> are there and the face is a <section> in it (SystemState `shell`). The one face for every refusal is app/not-found.tsx
+#     (forbidden.tsx re-exports it); the catch-all's own not-found.tsx, the nearer boundary, answers an address no page owns.
+#   - A refusal and a record that is not there are one screen on purpose, so the page never tells which köşk exists (app/not-found.tsx:6).
+#   - What refuses is tedrisat, not the app: a page maps its read's 403 (and 404) to forbidden(); only the /kosks layout decides alone, by
+#     landingFor(), and lets a person through when their roles cannot be read.
+#   - Findings it carries (inventory ids): F-P0-4 and F-X-11 (two menu entries with no page), F-X-20 (the stale checks). Three more are
+#     this flow's own, proposed as NOACC-1 to NOACC-3 (ui.yaml `rules`).
+#   - e2e checks it takes over: assignments#4 (stale), #5, #6 (stale), shell#6, bans#9, deck-review#10, permissions#2, grants#2, #3 and the
+#     refusals of bans-medaris#8, archive#6, deck-review#5, inactive#4, #5 and madrasahs#8 (which the seeded Medaris nazımı cannot repeat,
+#     see needs.yaml); see needs.yaml.
+schema: delurio-graph/0
+kind: flow
+id: nizam.shell.noAccessAndNotFound
+status: captured
+domain: medaris.api
+ui: nizam.shell.noAccessAndNotFound
+title: Meet a refusal or a missing page
+summary: >-
+  A person who opens a page their account may not open, a köşk that is not theirs or that is not there, or any /kosks/ page without
+  being a nazım, meets "Bu bölüm için izniniz yok" in the shell: a sentence that says the permission is the başnazım's to give and
+  names them when the directory knows who that is, the account they are signed in with, and "Ana sayfaya dön". A foreign and a missing
+  köşk read the same, so the page does not say which ids exist. An address no page owns, and the two menu entries of the başnazım that
+  point at pages nobody has built (Kalıcı yasak talepleri, YouTube bağlantısı), meet "Sayfa bulunamadı" with the same way back, also
+  inside the shell. "Ana sayfaya dön" is "/", which sends each person on by their roles. Neither face sets focus, takes a role="alert"
+  or names its tab (NOACC-1, NOACC-3), and a refusal that sits under a loading skeleton is served as HTTP 200 (NOACC-2).
+
+scope:
+  shows: what the person meets when a page is refused or is not there, and the way back from each face
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the page behind the face: what each page of nizam draws when it opens (nizam.home.*, nizam.kosks.*, nizam.courses.* and the others); this flow draws only what takes its place"
+    - "the shell's content, drawn here only as the sidebar and the shell's <main>: the menu entries, the köşk picker, the person row, the bell and the phone bar are nizam.shell.menuPerPersona's; a person with no menu variant has a sidebar with the brand and the person row only"
+    - "where '/' sends each person (the köşk's home, the Medaris home, /yetki-yok, /nazar-yonlendirme): nizam.shell.landingByRole, which owns /yetki-yok as the landing of a person with no role"
+    - "which page refuses which person: that is nizam.nav's `opensFor` and `refusal` per page; the scenarios here take one page per kind of refusal (the same screen at another address)"
+    - "a signed-out request: the proxy sends it to sign-in before any page runs, so a visitor meets neither face (realm.auth.signIn)"
+    - "the roles read failing: the /kosks layout then lets the page through to tedrisat's own refusal, and '/' shows only 'Hoş geldiniz' (F-P0-9); no flow of nizam draws it yet"
+    - "a page that throws (app/error.tsx, 'Bir şeyler ters gitti') and the root document (app/global-error.tsx): the FLOWS.md entry of this flow does not name them and no other flow does (reported)"
+    - "a 401 from tedrisat while the face is drawn: getChiefNazimName sends the person to sign in again (passOnSignIn)"
+    - "the loading skeleton each page shows while it reads, which a refusal replaces: a transient screen of every page, never a state of its own"
+    - "the HTTP status of each face: the replay does not read a navigation's status (NOACC-2)"
+    - "a session with no e-mail address: the 'Giriş yaptığınız hesap' line is then left out; the realm requires an e-mail, so it does not happen"
+    - "the phone layout: below 768 px the shell is the app bar and its sheet; the faces themselves do not change"
+
+decisions:
+  D1:
+    question: >-
+      Should the refusal name the başnazım, by full name, to every signed-in person, including one with no management role? GET
+      /nizam/chief-nazim answers every signed-in caller (domain policy signed-in-reader-of-own-holdings), and a talebe who opens a
+      /kosks/ page by an old link is told to ask that person for a permission, in a sentence written for a nazım.
+    recommend: >-
+      Keep the name for a person who holds a management role, who knows what to ask for. For a person with none, send them to the
+      words of /yetki-yok ("Yönetim yetkiniz yok", the way back to Tedris), which already says the app is not theirs; that is
+      nizam.shell.landingByRole's page, so the layout could redirect there instead of refusing.
+    affects: [noAccess]
+  D2:
+    question: >-
+      Should the two menu entries with no page stay in the başnazım's menu until the pages exist (MDRS-140, MDRS-195)? Today each one is a
+      link that opens "Bu adreste bir sayfa yok. Adresi denetleyin", words for a mistyped address, for a link the app itself offered.
+    recommend: >-
+      Hide them until built, as the köşk menu already does ("holds only pages that exist", lib/shell-nav.ts:205); or build the pages.
+    affects: [notFound]
+
+context:
+  arrival:
+    values: [section, strangerKosk, missingKosk, noRoleKosk, noPage, menuEntry]
+    initial: any
+    say:
+      section: "a signed-in person opens a page of the app that their account may not open (a köşk nazımı opening İzin grupları or Arşiv, a Medaris nazımı opening Medaris nazımları, a person with no role opening Medreseler)"
+      strangerKosk: "a nazım opens a page of a köşk they do not manage"
+      missingKosk: "a nazım opens a köşk page for an id that no köşk has, or that is no uuid at all"
+      noRoleKosk: "a person with no nazım role (no role at all, or only medrese and course roles) opens a /kosks/ page that exists"
+      noPage: "a signed-in person asks for an address no page owns: a typed or an old link, or a path under their own köşk that has no page (Celseler)"
+      menuEntry: "the başnazım presses a menu entry the app offers whose page was never built (Kalıcı yasak talepleri, YouTube bağlantısı)"
+  chief:
+    values: [named, unnamed]
+    initial: any
+    say:
+      named: "the directory knows who holds the realm role SYSTEM_ADMIN, and GET /nizam/chief-nazim gives their name"
+      unnamed: "it gives no name (nobody holds the role, the directory is not set up or does not answer), or the read fails"
+
+# The story the page tells first, and the one the e2e carries: a köşk nazımı opens a page that is above them (assignments#4) and goes home.
+main:
+  given: { arrival: section, chief: named }
+  events: [DONE, GO_HOME]
+
+initial: opening
+
+failures:
+  readingChief:
+    from: getChiefNazim
+    unavailable: []
+
+states:
+  opening:
+    title: Ask for the address
+    description: >-
+      The request goes through proxy.ts first (a signed-out one is sent to sign in; see outOfView), then the root layout, which draws the
+      shell around whatever the address gives (app/layout.tsx:54). What is drawn is decided by who answers no: the /kosks layout alone,
+      for a person with no nazım role; the page's own read, which tedrisat refuses with a 403 or a 404 and the page turns into
+      forbidden() or notFound(); or nobody, because no page owns the address and the catch-all calls notFound(). A refusal and a
+      record that is not there both end in app/not-found.tsx, which draws "Bu bölüm için izniniz yok". Nothing is shown in this state.
+    source: apps/nizam/app/layout.tsx:54
+    always:
+      - { guard: "arrival == 'noRoleKosk'", target: readingChief, say: "the /kosks layout reads the roles and refuses everyone whose landing is not nizam with forbidden(), before the page reads anything (HTTP 403)", source: apps/nizam/app/kosks/layout.tsx:20 }
+      - { guard: "arrival == 'section'", target: readingChief, say: "the page's reads are refused by tedrisat and the page calls forbidden() (the page's loading skeleton has been sent by then: NOACC-2)", source: apps/nizam/app/izin-gruplari/page.tsx:40 }
+      - { guard: "arrival == 'strangerKosk'", target: readingChief, say: "tedrisat refuses the köşk's read (403) and the page calls forbidden()", source: "apps/nizam/app/kosks/[id]/basvurular/page.tsx:35" }
+      - { guard: "arrival == 'missingKosk'", target: readingChief, say: "the köşk is not among the ones the person manages (or tedrisat answers 404), and the page calls forbidden() or notFound(): both are the same screen as a köşk that is not theirs", source: "apps/nizam/app/kosks/[id]/page.tsx:54" }
+      - { guard: "arrival == 'noPage'", target: notFound, say: "no page owns the address, so the catch-all calls notFound() and its own not-found file answers, inside the shell (HTTP 404)", source: "apps/nizam/app/[...rest]/page.tsx:8" }
+      - { guard: "arrival == 'menuEntry'", target: notFound, say: "the menu entry's address is one the catch-all answers: no folder under app/talepler or app/ayarlar holds it (F-P0-4)", source: apps/nizam/lib/shell-nav.ts:125 }
+
+  readingChief:
+    title: Ask who the başnazım is
+    description: >-
+      Before the refusal is drawn, the server component asks tedrisat for the name of the Medaris başnazımı (GET /nizam/chief-nazim,
+      for any signed-in caller): the first holder of the realm role SYSTEM_ADMIN, by given and family name, else their e-mail. A
+      directory that does not answer, or nobody holding the role, is a null name, never an error. Either way the screen is drawn; the
+      sentence differs. Only a 401 from tedrisat leaves the page (to sign in again), which is out of view.
+    source: apps/nizam/components/errors/no-access.tsx:22
+    invoke: { action: getChiefNazim }
+    on:
+      DONE: { target: noAccess, say: "the sentence names the başnazım when the read gave a name, and says 'ondan isteyin' when it gave none", source: apps/nizam/components/errors/no-access.tsx:44 }
+      FAIL.unavailable: { target: noAccess, say: "a failed read is a null name: the sentence without a name is drawn", source: apps/nizam/features/assignments/reads.ts:45 }
+
+  noAccess:
+    title: Read that the section is not theirs
+    by: human
+    goal: true
+    description: >-
+      In the shell, a <section> named by its <h1>, "Bu bölüm için izniniz yok", then "Bu bölümün izni hesabınıza verilmemiş.
+      İzinleri Medaris başnazımı verir; gerekirse şu kişiden isteyin: <ad>." (without the name: "... gerekirse ondan isteyin."), a small
+      line "Giriş yaptığınız hesap:" with the session's e-mail address in <code>, and one link, "Ana sayfaya dön" (/), drawn as a
+      secondary button. The same markup answers a page the account may not open, a köşk that is not theirs and a köşk that is not
+      there (app/not-found.tsx:6: the page never tells which ids exist), and, for a person with no nazım role, any /kosks/ page that
+      exists (the layout's forbidden(); a /kosks/ address with no page is "Sayfa bulunamadı" instead, because the layout wraps only the
+      pages that exist; seen as the talebe). It is the page's own refusal: no role="alert", no focus (NOACC-1; unlike /yetki-yok, which
+      focuses its heading), and the tab keeps the title of the page that refused (NOACC-3). Served by `next dev` on 15 Nov 2026 as HTTP
+      403 for the layout's refusal and as HTTP 200 with a noindex tag for a page's own (NOACC-2). The words and the e-mail were read from
+      the served stream; the final page was not seen in a browser.
+    includes: ["the shell: the sidebar and the shell's <main>", "an <h1> and the sentence", "the account's e-mail address", "\"Ana sayfaya dön\""]
+    source: apps/nizam/components/errors/no-access.tsx:28
+    on:
+      GO_HOME: { target: home_opened, say: "\"Ana sayfaya dön\" is a link to '/', which sends the person on by their roles (nizam.shell.landingByRole)", source: apps/nizam/components/errors/no-access.tsx:38 }
+      NAVIGATE: { target: left, say: "the shell is still around the face: its menu, the person row and the address bar all lead on", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  notFound:
+    title: Read that the page is not there
+    by: human
+    description: >-
+      In the shell, a <section> named by its <h1>, "Sayfa bulunamadı", "Bu adreste bir sayfa yok. Adresi denetleyin ya da ana sayfadan
+      devam edin." and one link, "Ana sayfaya dön" (/). It answers an address no page owns at any depth, so a /kosks/<id>/celseler (a
+      page the köşk menu once drew and no longer does, MDRS-211) and the folders /ayarlar and /talepler, which have no index page, are
+      this face for a nazım and for a person with no role alike. The same face answers the two menu entries of the başnazım whose pages
+      were never built, "Kalıcı yasak talepleri" (/talepler/kalici-yasak, also in the menu of a Medaris nazımı holding
+      platform.ban_account) and "YouTube bağlantısı" (/ayarlar/youtube): the words are for a mistyped address and the app is the one that
+      offered the link (F-P0-4, F-X-11, decision D2); the planned pages are nizam.moderation.decidePermanentBan and
+      nizam.youtube.liveBroadcasts. Served by `next dev` as HTTP 404 with a noindex tag and the title "Nizam" (NOACC-3). The words were
+      read from the served stream, where the shell's model comes with the face; the final page was not seen in a browser. No role="alert"
+      and no focus (NOACC-1).
+    includes: ["the shell: the sidebar and the shell's <main>", "an <h1> and the sentence", "\"Ana sayfaya dön\""]
+    source: apps/nizam/components/errors/page-not-found.tsx:18
+    on:
+      GO_HOME: { target: home_opened, say: "\"Ana sayfaya dön\" is a link to '/', which sends the person on by their roles (nizam.shell.landingByRole)", source: apps/nizam/components/errors/page-not-found.tsx:22 }
+      NAVIGATE: { target: left, say: "the shell is still around the face: its menu, the person row and the address bar all lead on", source: apps/nizam/components/shell/shell-frame.tsx:188 }
+
+  home_opened:
+    type: final
+    title: "'/' opens and sends the person on by their roles (nizam.shell.landingByRole)"
+    description: >-
+      The köşk nazımı ends at /kosks/<first köşk>/ana-sayfa, the başnazım and a Medaris nazımı at '/', a person with no role at /yetki-yok
+      and one with only medrese or course roles at /nazar-yonlendirme. assignments#4 and #6 expect the address to end in /tr, which
+      MDRS-248 removed, so they cannot pass (F-X-20); the graph draws what the code does.
+    leavesPage: true
+  left:
+    type: final
+    title: The person leaves by the menu, the person row or the address
+    leavesPage: true
+
+assertions:
+  - id: a-foreign-and-a-missing-kosk-read-alike
+    never: "arrival in ['strangerKosk', 'missingKosk'] and state == 'notFound'"
+    say: A köşk that is not the person's and one that is not there are never told apart; both are the refusal, never "Sayfa bulunamadı".
+    source: apps/nizam/app/not-found.tsx:13
+  - id: a-refusal-is-not-a-missing-page
+    never: "arrival in ['section', 'noRoleKosk'] and state == 'notFound'"
+    say: A page the account may not open, and a /kosks/ page for a person with no nazım role, are worded as a refusal and never as a page that is not there.
+    source: apps/nizam/app/kosks/layout.tsx:20
+  - id: an-unknown-address-is-not-a-refusal
+    never: "arrival in ['noPage', 'menuEntry'] and state == 'noAccess'"
+    say: An address no page owns, and a menu entry with no page, are never worded as a refusal; nobody can give a permission for a page that does not exist.
+    source: "apps/nizam/app/[...rest]/not-found.tsx:12"

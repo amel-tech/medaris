@@ -1,0 +1,54 @@
+# nizam.madrasahs.restore on the local stack: the Medreseler page of nizam-web, at http://localhost:4001, as the başnazım (SYSTEM_ADMIN) on
+# the Gizli tab. The main story and the two races.
+#   node apps/engine/src/cli.ts replay graphs/nizam/madrasahs/restore --bind graphs/nizam/madrasahs/restore/binding.yaml --out <dir>
+#   ... --cover transitions      (not --absent at first: a toast of the step before may still be on screen)
+# NOT RUN in the writing phase (no replay is run in it): nothing below has been walked. Where it rests on the code alone it says so.
+#
+# `setup` has medrese.mjs (a helper of this folder, through tedrisat's HTTP API) make "Geri Alma Denemesi Medresesi" (handle
+# geri-alma-denemesi), with the spare talebe APPLICANT_G as its başmüderris and a hosting right in the seed's second köşk, the one no
+# seeded flow reads; helpers/course.mjs then opens one course of its own in it ("Deneme dersi restoreMedrese", published, one week of one
+# celse, APPLICANT_G as its hoca); and the başmüderris hides the medrese through the API (POST /madrasahs/<id>/hide as her), which hides the
+# course at the same instant, at the level `madrasah`. The medrese's id goes to graphs/.local/made/restoreMedrese-medrese.json, read as
+# {mine.madrasah}. `teardown` brings the medrese back if it is still hidden (a hidden course is not removed by its route), removes the
+# course (helpers/course.mjs remove) and deletes the medrese (as the başnazım alone may), with the başmüderris role and the hosting right
+# that go with it. `setup` begins with the same clean-up, so a walk that crashed leaves nothing for the next one. Nothing of the seed is
+# changed; what the walk leaves behind is the audit rows (madrasah.create, hide, restore, delete: no route removes one), which no other
+# flow reads for this medrese. Every run of the helper by hand takes the replay lock (CONVENTIONS, round R2).
+#
+# restoresHidden (viewer chief, tab hidden) opens /medreseler?durum=gizli: the row is on the Gizli tab with "Geri al". The main story presses
+# it (the call is held while the busy button is checked), the toast says "Geri alındı" and the row leaves the tab. The same scenario drives
+# the two races: ELSEWHERE_RESTORES (the başmüderris brings the medrese back in Nazar while the page shows it hidden: the press is refused,
+# FAIL.notHidden) and ELSEWHERE_DELETES (the başnazım deletes it: FAIL.gone), each run through the API, so it is another person's step with
+# no second browser.
+# What madrasahs#3 checks is carried: the toast "Geri alındı", the medrese no longer archived and one `madrasah.restore` audit row (its `effects`
+# read the API as the başnazım and count the audit row once); the row reading Etkin with its two buttons is binding.all.yaml's.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.madrasahs.restore
+
+scenarios:
+  restoresHidden:
+    given: { viewer: chief, tab: hidden }
+    as: systemAdmin
+    open: '{nizam}/medreseler?durum=gizli'
+    setup:
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, thaw]
+        expect: 'medrese thaw'
+      - run: [node, helpers/course.mjs, remove, restoreMedrese]
+        expect: 'course remove restoreMedrese'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, up]
+        expect: 'medrese up'
+      - run: [node, helpers/course.mjs, make, restoreMedrese, --madrasah, '{mine.madrasah}', --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --hoca, applicantG]
+        expect: '"madrasah"'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, hide]
+        expect: 'medrese hide head'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, state]
+        expect: 'medrese HIDDEN level=madrasah canRestore=yes head=yes courses=0'
+    teardown:
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, thaw]
+        expect: 'medrese thaw'
+      - run: [node, helpers/course.mjs, remove, restoreMedrese]
+        expect: 'course remove restoreMedrese'
+      - run: [node, ../nizam/madrasahs/restore/medrese.mjs, down]
+        expect: 'medrese down'

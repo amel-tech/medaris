@@ -1,0 +1,166 @@
+# What must exist for the başnazım (and a Medaris nazımı who holds a platform.madrasah_* code) in nizam.madrasahs.browse: the flow's product list, written
+# from the flow's story and its open decisions, never from what the page does today. A need that is not met is a gap in graphs/needs.gaps.yaml (the
+# orchestrator merges it; this file does not edit it).
+#
+# Gaps of this file, for that merge:
+#   missing:   a-passive-medrese-says-why-it-is-passive, a-medrese-with-no-head-is-in-the-passive-list, the-numbers-say-what-they-count,
+#              a-change-of-rows-is-announced, the-rest-of-a-long-list-is-reachable, a-tab-is-chosen-not-passed, an-unread-viewer-is-not-trusted
+#   unwalked:  a-viewer-is-offered-only-what-they-may-do (no e2e check draws a Medaris nazımı with madrasah_create only; the replay scenario
+#              medarisOpen is written, not run), the-list-says-when-it-cannot-be-read (nothing on the stack makes the read fail),
+#              the-archive-is-one-click-away, the-chief-opens-a-medrese-in-nazar (no e2e check and no replay has passed on either yet)
+# No gender or kontenjan need: no seat is decided on this page.
+kind: needs
+flow: nizam.madrasahs.browse
+status: proposed
+
+needs:
+  - id: read-the-tab-counts
+    need: >-
+      The başnazım, and a Medaris nazımı who may open the page, read at a glance how many medreses the platform holds in all and in each state,
+      active, passive and hidden, and the numbers are the platform's true totals.
+    drawn: [tabAllCount, tabActiveCount, tabPassiveCount, tabHiddenCount, listed]
+    built:
+      - action: medaris.api:getMadrasahDirectory
+      - route: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:386
+    walked:
+      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
+        check: 'madrasahs#1'
+
+  - id: each-row-reads-as-its-state-says
+    need: >-
+      Every medrese is one row that says its name and short name, who its başmüderris is (or that nobody is), how many courses it has, which
+      köşks host it, and its state with the date the state began.
+    drawn: [listed, rowName, rowHandle, rowHeadActive, rowHeadHidden, rowUnassigned, rowTermEnded, rowCourses, rowHosting, rowStatusActive, rowStatusPassive, rowStatusHidden, rowSincePassive, rowSinceHidden]
+    built:
+      - action: medaris.api:getMadrasahDirectory
+      - route: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:148
+    walked:
+      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
+        check: 'madrasahs#1'
+
+  - id: narrow-by-state-in-the-address
+    need: >-
+      A person narrows the list to the active, the passive or the hidden medreses, and the address says which (?durum=etkin, pasif or gizli), so
+      that Back, a reload and a link a colleague is sent open the same list.
+    drawn: [tabAll, tabActive, tabPassive, tabHidden, readingDirectory, listed]
+    built:
+      - action: medaris.api:getMadrasahDirectory
+      - route: apps/nizam/features/madrasahs/present.ts:43
+    walked:
+      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
+        check: 'madrasahs#2'
+
+  - id: narrow-by-search
+    need: >-
+      A person finds a medrese by a part of its name, its short name or its başmüderris's name, the address carries the text (?q=), and a text
+      that fits nobody is told so in the table.
+    drawn: [searchField, readingDirectory, listed, emptySearch]
+    built:
+      - action: medaris.api:getMadrasahDirectory
+      - route: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:406
+    walked:
+      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
+        check: 'madrasahs#2' # types a name; the başmüderris's name and the text that finds nobody are not asserted
+
+  - id: the-warning-names-the-passive-medreses
+    need: >-
+      Above the tabs a warning names every passive medrese, whichever tab is open and whatever is typed, and says what being passive means and
+      what ends it.
+    drawn: [passiveWarningOne, passiveBodyOne, passiveWarningMany, passiveBodyMany]
+    built:
+      - action: medaris.api:getMadrasahDirectory
+      - route: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:345
+    walked:
+      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
+        check: 'madrasahs#2'
+
+  - id: a-viewer-is-offered-only-what-they-may-do
+    need: >-
+      A Medaris nazımı is offered the buttons their permissions open and no other, and the platform archive is the başnazım's alone, so that no
+      button leads to a refusal (MDRS-108).
+    drawn: [openButton, restoreButton, assignButton, changeButton, passivateButton, archiveLink, nazarLink]
+    built:
+      - route: apps/nizam/features/madrasahs/present.ts:99
+    # no e2e check draws a Medaris nazımı who holds one of the codes (madrasahs#8 is the one with none); replay: medarisOpen is written, not run
+
+  - id: an-unread-viewer-is-not-trusted
+    need: >-
+      When the page cannot read who the viewer is or what they hold, it says so and offers only the buttons it can vouch for, instead of every
+      button and a refusal toast for each (decision D2).
+    drawn: [readingViewer]
+    missing: none # F-W2-2: madrasahAbilities switches every ability on when a read fails (present.ts:103)
+
+  - id: a-person-without-the-permission-is-refused
+    need: >-
+      A person who holds none of the three platform codes (a Medaris nazımı with no grants, a köşk nazımı, a başmüderris, a talebe) is refused
+      the page and told the permission is the başnazım's to give, not shown an empty list.
+    drawn: [readingDirectory, handed_over.no_access]
+    built:
+      - action: medaris.api:getMadrasahDirectory
+      - route: apps/nizam/app/medreseler/page.tsx:48
+    walked:
+      - e2e: apps/nizam/e2e/madrasahs.e2e.ts
+        check: 'madrasahs#8' # a Medaris nazımı with no grants; taken over by nizam.shell.noAccessAndNotFound, which draws the refusal
+
+  - id: the-list-says-when-it-cannot-be-read
+    need: >-
+      When the directory cannot be read the page says so in place of the table and offers to try again, and the rest of the page stays.
+    drawn: [loadFailed, loadFailedAlert, retryButton]
+    built:
+      - route: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:418
+    # unwalked: nothing on the local stack makes tedrisat fail the read, and no e2e check or unit spec of the app draws it
+
+  - id: the-archive-is-one-click-away
+    need: The başnazım reaches the platform archive of everything hidden from the same page that lists the hidden medreses.
+    drawn: [archiveLink]
+    built:
+      - route: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:380
+    # unwalked: no e2e check follows it (archive.e2e.ts opens /arsiv by address); replay: chief takes it once, not run
+
+  - id: the-chief-opens-a-medrese-in-nazar
+    need: >-
+      The başnazım opens an active medrese's Pano in nazar-web from its row, in a new tab, to appoint its nazırs and open its courses.
+    drawn: [nazarLink]
+    built:
+      - route: apps/nizam/features/madrasahs/present.ts:119
+    # unwalked: no e2e check follows it; replay: chief takes it once, not run
+
+  - id: a-passive-medrese-says-why-it-is-passive
+    need: >-
+      A passive medrese says why it is passive: the başnazım passivated it, or its başmüderris's term ended; the warning and the row word it by the
+      reason, not always as an ended term (decision D1, MBROWSE-1).
+    drawn: [passiveBodyOne, rowTermEnded]
+    missing: none # the directory sends no reason (madrasah.repository.ts:922, :984); passiveReason is stored and not read
+
+  - id: a-medrese-with-no-head-is-in-the-passive-list
+    need: >-
+      A medrese whose başmüderris's term has ended is found in the same list and tab as the ones the başnazım passivated, with the way to give it
+      a başmüderris from that row, so that Medreseler and Pasif kapsamlar agree (decision D1, MBROWSE-1).
+    drawn: [rowHeadActive, rowStatusActive, assignButton]
+    missing: none # status reads passive_since alone (madrasah.repository.ts:849); an active row has no "Başmüderris ata"
+
+  - id: the-numbers-say-what-they-count
+    need: >-
+      A person who types a text or opens a tab can tell which number is the platform's and which is what the list shows: the table says how
+      many rows fit, or the numbers follow the text (MBROWSE-2).
+    drawn: [tabAllCount, tabActiveCount, tabPassiveCount, tabHiddenCount, emptySearch]
+    missing: none
+
+  - id: a-change-of-rows-is-announced
+    need: >-
+      A person who cannot see the table is told when a tab or a search has changed its rows, and how many are left (MBROWSE-3).
+    drawn: [listed, emptyStatus, emptySearch]
+    missing: none
+
+  - id: the-rest-of-a-long-list-is-reachable
+    need: >-
+      A platform with more than 50 medreses can read all of them from the page, not only the first 50 by name and what a search finds
+      (MBROWSE-4).
+    drawn: [listed]
+    missing: none # the page never sends `page`; the API takes it (getMadrasahDirectory)
+
+  - id: a-tab-is-chosen-not-passed
+    need: >-
+      A keyboard user moves along the four tabs without reading the directory and adding a history entry for each tab they pass (MBROWSE-5).
+    drawn: [tabsList, tabAll, tabActive, tabPassive, tabHidden]
+    missing: none

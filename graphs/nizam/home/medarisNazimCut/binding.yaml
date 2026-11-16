@@ -1,0 +1,48 @@
+# nizam.home.medarisNazimCut on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the spare talebe
+# account applicantF made a Medaris nazımı for the length of the walk, with the three permissions of e2e dashboard#8 (köşk
+# applications, deck publication, the ban of an account), and one deck of her own waiting for publication so that the greeting has a
+# number to lose.
+#   KC_ADMIN_USER is not needed: nazim.mjs signs in as the başnazım through the real authorization-code flow (helpers/lib.mjs).
+#   node apps/engine/src/cli.ts replay graphs/nizam/home/medarisNazimCut --bind graphs/nizam/home/medarisNazimCut/binding.yaml \
+#     --cover transitions --absent --out <dir>
+#
+# What a walk writes, and how it is taken away. `setup` (nazim.mjs up) appoints applicantF through POST /nizam/medaris-nazims as the
+# başnazım (or, when a walk that died left the seat, replaces her permissions with PUT .../grants), and makes her deck "Deneme
+# destesi medarisNazimCut" and asks for its publication (POST /flashcard/decks, POST .../publish-request): one row of
+# role_assignments, three of permission_grants, one of decks, and audit rows (medaris_nazim.appoint, permission.grant). `teardown`
+# (nazim.mjs down) dismisses her (DELETE /nizam/medaris-nazims/<id>, which revokes the seat and every grant) and deletes the deck. The
+# audit rows stay: the API has no way to remove them. The seeded Medaris nazımı is never touched (nazim.mjs refuses her).
+# The revoke the story ends on is the başnazım's real call (nazim.mjs drop: PUT .../grants without platform.deck_publish), not the
+# e2e's SQL; the effect `taken` asks the API as applicantF whether she still holds the code.
+#
+# Why applicantF: the spare accounts A to H are shared by the writers; C to H are for the walks that need an account of their own. The
+# seat makes her a Medaris nazımı while the scenario lasts, so no other flow may sign her in as a talebe at the same time (walks run under
+# the lock, one at a time).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.home.medarisNazimCut
+
+scenarios:
+  three:
+    given: { granted: some, applications: empty, decks: waiting, appeals: none, bans: account, passive: none, platform: none, read: ok }
+    as: applicantF
+    open: '{nizam}/'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantF, --codes, 'platform.kosk_application_decide,platform.deck_publish,platform.ban_account', --deck, 'Deneme destesi medarisNazimCut']
+        expect: 'up APPLICANT_F'
+    teardown:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantF, --deck, 'Deneme destesi medarisNazimCut']
+        expect: 'down APPLICANT_F'
+
+events:
+  # the başnazım takes "Desteyi herkese yayımla" away, in the API, while applicantF has the page open
+  REVOKE_DECKS:
+    - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, drop, applicantF, --code, platform.deck_publish]
+      expect: 'dropped APPLICANT_F platform.deck_publish'
+
+effects:
+  # after the reload the API itself says she no longer holds the code
+  taken:
+    - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, lacks, applicantF, platform.deck_publish]
+      expect: 'lacks APPLICANT_F platform.deck_publish'

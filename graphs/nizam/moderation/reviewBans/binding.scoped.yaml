@@ -1,0 +1,40 @@
+# nizam.moderation.reviewBans read by a Medaris nazımı who holds platform.ban_scoped alone (the P-MEDARIS of the story), applicantG ("Dilek Başvuran"), appointed for the
+# walk. She reads every ban; "Yasağı kaldır" is drawn on the köşk-wide ones only (her permission lifts a köşk ban and no course ban: ban-codes.ts:43-60); "Yasağı genişlet"
+# on the course bans that stand alone; and every other open row has a sentence instead: "Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir." for the müderris's
+# course ban (REVBANS-3: she is above him, her permission is what is missing) and "Bu yasağı yalnız Medaris yönetimi kaldırabilir." for the one the başnazım placed.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewBans \
+#     --bind graphs/nizam/moderation/reviewBans/binding.scoped.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. This file adds no transition to binding.yaml's walk, so it has a file of its own to be walked at all (CONVENTIONS).
+#
+# The data is binding.yaml's (the course "Deneme dersi reviewbans", Esma's and Salih's bans, all read from the same list) plus the appointment: ./bans-data.mjs medaris up
+# makes applicantG a Medaris nazımı holding exactly platform.ban_scoped (POST /nizam/medaris-nazims as the başnazım), `medaris down` dismisses her. The seeded Medaris
+# nazımı is never changed. She is not on the menu entry's route (the nav graph's persona has the seeded account), so the walk opens the address. The bans are placed
+# first and her appointment last: every ban placed while she is a Medaris nazımı would write her a notice, which `down` would also remove by its course's title.
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nizam.moderation.reviewBans
+
+scenarios:
+  scoped:
+    given: { viewer: scoped, read: ok, refetch: ok, courseBans: some, koskBans: some, match: some, pages: one }
+    as: applicantG
+    open: '{nizam}/yasaklamalar'
+    vars: { typed: Başvuran, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, down, applicantG]
+        expect: 'medaris down APPLICANT_G'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, make, reviewbans, --kosk, '{seed.kosk}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD']
+        expect: '"tag":"reviewbans"'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, up, reviewbans]
+        expect: 'ready: 3 open, 2 lifted'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, up, applicantG, --codes, platform.ban_scoped]
+        expect: 'codes=platform.ban_scoped'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, down, applicantG]
+        expect: 'medaris down APPLICANT_G'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, remove, reviewbans]

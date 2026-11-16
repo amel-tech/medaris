@@ -1,0 +1,383 @@
+# A talebe registers for the in-person celse of the week, from the celse page (/courses/<course>/lessons/<celse>) of tedris-web.
+# PLANNED, NOT BUILT (MDRS-284, Backlog; the owner parked it on 2026-10-11: "sonraki konu ama issue'sunu açarız durur"). Written
+# graph-first, `status: proposed`, from planned.md (P-08), the Linear issue and the owner's decisions kept in it. There is no code of the
+# feature: no state of this flow has a `source`. What exists today and is used here has its real `source` in ui.yaml: the celse page
+# itself, its "Yüz yüze" eyebrow and the line "Bu celse yüz yüze yapılır. ...", and the Hesap page's gender row that the "no gender"
+# refusal leads to (flow tedris.account.profile). Not walkable: no code, so no binding and no replay.
+#
+# Given by the owner, never asked again: seats are counted apart for women and for men, there is no total and no shared pool; the
+# profile's gender decides which count a talebe is in, and it is always set. Seats are weekly (a celse's, not the term's), are given
+# at approval and not at application, and application order decides. A talebe who took a seat in person stays enrolled in the whole
+# course; recordings and streams have no quota.
+#
+# What this flow draws is the simplest reading of that story. The choices the story leaves open are listed here and as `decisions`
+# below; none is decided by this graph:
+#   D1  A gender's seats are all given: the application is refused and the card says so (drawn). Or the applicant waits on a list in
+#       application order, or only remote is offered (Linear's first open question). Drawn: refused, no waiting list.
+#   D2  The registration window: drawn open from the day the seats are set until the celse begins. The Linear text names a weekly
+#       window (the lesson day, 08:00 to 20:00 Turkish time) and asks whether it is per course.
+#   D3  "Not enrolled": the talebe must already hold an ENROLLED seat in the course (the story's refusal). Linear's decision 3 reads
+#       "a talebe who registers in person once counts as enrolled in the whole course", which could mean registering enrols.
+#   D4  Does letting a given seat go ask first, as "Dersten ayrıl" does? Drawn: no, and a stale "waiting" card then releases the seat
+#       the team gave meanwhile (withdrawEnrollmentRequest refuses that case; this does not).
+#   D5  The "no gender" refusal comes after the click, from the API, and then shows how to add it. Or the card asks the account's gender
+#       before the click, so no request goes that cannot work. Drawn: after the click.
+# Not drawn and listed in needs.yaml: the address of the place and whether it is public (Linear decision 6), the talebe seeing their
+# place in the line, a notice to the team when someone applies, and the calendar LOCATION.
+#
+# The two flows are one goal across two apps: this one ends with the application made and `starts` nazar.sessions.inPersonSeats, which
+# is where the team gives the seat. What the team decides reaches this page only when it is read again (the page is not live).
+schema: delurio-graph/0
+kind: flow
+id: tedris.session.registerInPerson
+status: proposed
+domain: medaris.api
+ui: tedris.session.registerInPerson
+title: Register for the week's in-person celse
+summary: >-
+  A talebe who holds a seat in a course opens the page of a celse that is held in person and whose seats the hoca has set. A card
+  "Yüz yüze katılım" offers "Yüz yüze başvur". The application is made with the profile's gender, which is always set: there is no
+  field to type it. It gives no seat and puts the talebe in the order of application; the hoca (or a ders nazırı who may manage celses)
+  gives the seat at approval in nazar. Until then the card says "Onay bekliyor" and offers "Başvuruyu geri çek"; once a seat is given
+  it says "Yerin ayrıldı" and offers "Yerimi bırak". Kadın and erkek seats are counted apart, so when the seats of the talebe's own
+  gender are all given the card says that gender's quota is full and offers nothing, whatever is left of the other. The API refuses an
+  application when the talebe holds no seat in the course, when the profile has no gender (the card then says how to add it on Hesap),
+  when the celse no longer takes registrations, and when the quota is full by the time the click arrives.
+
+scope:
+  shows: >-
+    the card of a celse that offers in-person registration, in every standing a talebe meets it: the application card, the waiting
+    card, the card of a given seat, the full card, the card that asks for a gender, and the toasts of the three actions
+  world: open # what is not drawn is not ruled out; only `outOfView` and `assertions` are binding
+  outOfView:
+    - "the rest of the celse page (the header, the date card, the way in, the agenda, the resources, the pager): tedris.celse.attend; this flow draws only the nodes of that page that the card sits beside"
+    - "a celse that is not held in person, has no seats set, has begun or is cancelled: the card is not drawn and the page is as tedris.celse.attend draws it"
+    - "what the team does with the application: nazar.sessions.inPersonSeats (started below); and the same list in nizam, which is a sibling flow not written yet"
+    - "the course's own enrolment (tedris.course.apply, tedris.course.leave): a talebe is enrolled before this card exists, and leaving the course ends the in-person place with it"
+    - "adding the gender on the account page and Keycloak's profile form: tedris.account.profile, realm.auth.profileUpdate; this flow ends where the talebe goes there"
+    - "the address of the place and who may read it, the talebe's place in the line, a notice to the team, the calendar LOCATION: not decided (needs.yaml)"
+    - "a person who is not signed in or not enrolled (the locked card of tedris.celse.locked), a banned talebe and a course in a passive scope: the same locked card"
+
+decisions:
+  D1:
+    question: >-
+      When the seats of a gender are all given, does the next applicant wait on a list in application order, or is only remote offered?
+    recommend: >-
+      Draw the refusal and the "kontenjanı doldu" card, no list: a waiting list that moves by itself would give seats at withdrawal,
+      and the owner decided seats are given at approval by the team. Withdrawals free a seat for the next approval, not for a queue.
+    affects: [registering, full, withdrawing]
+  D2:
+    question: >-
+      Until when does a celse take registrations, and is the window set per course? Linear names the lesson day, 08:00 to 20:00 Turkish time.
+    recommend: >-
+      Open from the day the seats are set until the celse begins (`door` in this flow); the weekly window of the Linear text is a later
+      narrowing, and a window that is per course needs the course-level setting the owner has not asked for.
+    affects: [applyCard, registering]
+  D3:
+    question: >-
+      Must a talebe already hold an ENROLLED seat in the course to register in person, or does registering enrol them?
+    recommend: >-
+      Hold a seat first, as the story's refusal "not enrolled" says: the celse page is a seat holder's page, and enrolment keeps its own
+      approval rules. Registering in person then never enrols anyone, and remote enrolment is never limited by a quota.
+    affects: [registering, locked_shown]
+  D4:
+    question: >-
+      Should "Yerimi bırak" ask first, as leaving an enrolled seat does? And should a stale "waiting" card that withdraws a seat the team
+      gave meanwhile be refused, as withdrawEnrollmentRequest refuses it?
+    recommend: >-
+      Ask first for a given seat (it can be lost to the next person in the line), and refuse the stale withdrawal of a given seat with a
+      conflict toast. Drawn the simplest way: no question, and the withdrawal succeeds.
+    affects: [seat, pending, withdrawing]
+  D5:
+    question: >-
+      Does the card ask the account's gender before the click, so that a talebe with none is told at once and no request is sent?
+    recommend: >-
+      Yes where the read says the gender is unknown (`genderKnown` of getMyInPersonRegistration): draw the notice in place of the button.
+      Drawn the simplest way: the click, the API's GENDER_REQUIRED, then the notice.
+    affects: [applyCard, registering, genderMissing]
+
+context:
+  gender:
+    values: [female, male, none]
+    initial: any
+    say:
+      female: "the talebe's profile says FEMALE: the seats of women are the ones that count for them"
+      male: "the talebe's profile says MALE: the seats of men are the ones that count for them"
+      none: "the profile has no gender: the account was made before the realm required it, or the token lacks the claim"
+  enrolment:
+    values: [held, lost]
+    initial: any
+    say:
+      held: "the talebe's ENROLLED seat in the course stands when the click arrives"
+      lost: "the course team took the seat away (a removal or a ban) after the page was read; the page is stale"
+  door:
+    values: [open, shut]
+    initial: any
+    say:
+      open: "the celse still takes registrations when the click arrives: it is held in person, has seats set, has not begun and is not cancelled"
+      shut: "it stopped taking them after the page was read: it began, was cancelled, or its in-person mark was taken off"
+  quota:
+    values: [free, filling, full]
+    initial: any
+    say:
+      free: "the seats of the talebe's OWN gender are not all given, and still are not when the click arrives"
+      filling: "the page read them as not all given, and the last one is given before the click arrives"
+      full: "the page reads every seat of the talebe's own gender as given; the other gender's seats are never looked at"
+  held:
+    values: [none, pending, seat]
+    initial: any
+    say:
+      none: "the talebe has no registration for this celse"
+      pending: "the talebe applied and no seat is given yet"
+      seat: "the team gave the talebe a seat"
+  settled:
+    values: [waiting, approved]
+    initial: waiting
+    say:
+      waiting: "the application still waits"
+      approved: "the team gave the seat, and this page has not been read again"
+  seenFull:
+    values: ["no", "yes"]
+    initial: "no"
+    say:
+      "no": "the card has not been told by the API that the quota is full"
+      "yes": "a refused application told it, so the card now says full whatever the page read"
+  leaving:
+    values: [application, seat]
+    initial: application
+    say:
+      application: "the talebe presses \"Başvuruyu geri çek\" on a waiting application"
+      seat: "the talebe presses \"Yerimi bırak\" on a given seat"
+  notice:
+    values: [none, withdrawn, released, quotaFull, failed]
+    initial: none
+    say:
+      none: "no toast"
+      withdrawn: "a toast says the application was taken back"
+      released: "a toast says the seat was let go"
+      quotaFull: "a toast says the last seat was given a moment ago"
+      failed: "a toast says the action could not be completed"
+
+guards:
+  registrable: "enrolment == 'held' and gender != 'none' and door == 'open' and quota == 'free'"
+  stillWaiting: "settled == 'waiting'"
+  staleApproved: "settled == 'approved'"
+  isFull: "quota == 'full' or seenFull == 'yes'"
+  fromApplication: "leaving == 'application'"
+
+effects:
+  clearNotice: { set: { notice: none } }
+  toastWithdrawn: { set: { notice: withdrawn } }
+  toastReleased: { set: { notice: released } }
+  toastQuotaFull: { set: { notice: quotaFull } }
+  toastFailed: { set: { notice: failed } }
+  sawFull: { set: { seenFull: "yes" } }
+  teamApproves: { set: { settled: approved } }
+  readAgain: { set: { settled: waiting } }
+  askedWithdraw: { set: { leaving: application } }
+  askedRelease: { set: { leaving: seat } }
+
+failures:
+  reading: { from: getMyInPersonRegistration, unreadable: [] }
+  registering:
+    from: registerInPerson
+    signedOut: [HTTP_401]
+    notEnrolled: [IN_PERSON_NOT_ENROLLED]
+    noGender: [GENDER_REQUIRED]
+    closed: [IN_PERSON_NOT_OPEN]
+    full: [IN_PERSON_QUOTA_FULL]
+    other: [LESSON_NOT_FOUND, COURSE_NOT_FOUND, HTTP_400]
+  withdrawing:
+    from: withdrawInPersonRegistration
+    signedOut: [HTTP_401]
+    gone: [IN_PERSON_REGISTRATION_NOT_FOUND]
+    other: [LESSON_NOT_FOUND, COURSE_NOT_FOUND, HTTP_400]
+
+# The main story: a woman applies for the celse of the week while seats of women are left, and waits for the hoca.
+main:
+  given: { gender: female, enrolment: held, door: open, quota: free, held: none }
+  events: [DONE, APPLY, DONE]
+
+initial: reading
+states:
+  reading:
+    title: Read the in-person card
+    description: >-
+      The celse page reads, beside the celse, what the card needs (getMyInPersonRegistration): whether the celse offers registration at
+      all, whether every seat of the caller's own gender is given, whether the account has a gender, and the caller's own registration.
+      This flow starts where that read said the card is offered. What the page does when this read alone fails is not decided: the
+      simplest reading is a page with no card.
+    invoke: { action: getMyInPersonRegistration }
+    on:
+      DONE: landed
+      FAIL.unreadable: card_absent
+
+  landed:
+    title: The card is drawn as the read says
+    description: >-
+      A step with no screen of its own. A registration that waits is the waiting card, a seat that was given is the seat card, every
+      seat of the talebe's gender given is the full card, anything else is the application card. A talebe with no gender gets the
+      application card too (D5): the API refuses the click.
+    always:
+      - { guard: "held == 'pending'", target: pending }
+      - { guard: "held == 'seat'", target: seat }
+      - { guard: isFull, target: full }
+      - { target: applyCard }
+
+  applyCard:
+    title: The application card
+    by: human
+    goal: true
+    description: >-
+      The card "Yüz yüze katılım" under the celse's date card: one button, "Yüz yüze başvur", and a line that says seats are kept apart
+      for women and for men and are given when the hoca approves. It shows no count and no total: the talebe is told only their own
+      gender's "dolu", never the other's. Nothing moves the focus when the page opens (the celse page sets none, `focus-not-set`).
+    on:
+      APPLY: { target: registering, effect: [clearNotice] }
+      NAVIGATE: left
+
+  registering:
+    title: Send the application
+    description: >-
+      The action registerInPerson, POST /lessons/{id}/in-person/registration with no body: the gender is read from the profile, never
+      typed. The API checks, in this order: a held ENROLLED seat in the course, a gender on the profile, that the celse still takes
+      registrations, and that a seat of the caller's gender is not all given. The first to fail is the answer. Success creates a waiting
+      registration and gives no seat. The button is busy while the call runs.
+    invoke: { action: registerInPerson }
+    on:
+      DONE: { guard: registrable, target: registered, say: "the application is in the order, with the profile's gender and the time" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.notEnrolled: { guard: "enrolment == 'lost'", target: locked_shown, starts: { flow: tedris.celse.locked }, say: "the seat in the course is gone: a toast says the enrolment changed, and the page read again is the locked card" }
+      FAIL.noGender: { guard: "enrolment == 'held' and gender == 'none'", target: genderMissing, say: "the profile has no gender: nothing is written and the card says how to add it" }
+      FAIL.closed: { guard: "enrolment == 'held' and gender != 'none' and door == 'shut'", target: card_gone, say: "the celse stopped taking registrations: a toast says so, and the page read again has no card" }
+      FAIL.full: { guard: "enrolment == 'held' and gender != 'none' and door == 'open' and quota == 'filling'", target: full, effect: [sawFull, toastQuotaFull], say: "the last seat of the talebe's gender was given between the read and the click" }
+      FAIL.other: { target: applyCard, effect: [toastFailed] }
+
+  registered:
+    title: The application reaches the course team
+    description: >-
+      A step with no screen of its own. The registration is waiting in the list of its gender in nazar, in application order, where the
+      hoca or a ders nazırı who holds session.manage gives the seat. Nothing is sent to the team (a notice is open, needs.yaml); the
+      talebe is told when a seat is given.
+    always:
+      - { target: pending, starts: { flow: nazar.sessions.inPersonSeats, given: { gender: gender } } }
+
+  pending:
+    title: The application waits
+    by: human
+    description: >-
+      The card with the badge "Onay bekliyor", the line that says when the application went to the course team, and "Başvuruyu geri
+      çek". Seats are given at approval, so nothing is held for the talebe yet, and a quota that fills meanwhile does not take the
+      application away: it waits. The page is not live: when the team gives the seat this card stays as it is until the page is read
+      again, and a withdrawal on it then lets the given seat go (D4). When the card replaces the button that had the focus, the focus goes
+      to "Başvuruyu geri çek" (a recommendation of this graph, `focus` in ui.yaml).
+    on:
+      WITHDRAW: { target: withdrawing, effect: [askedWithdraw, clearNotice] }
+      TEAM_APPROVES: { guard: stillWaiting, target: pending, effect: [teamApproves], say: "the hoca gives the seat in nazar (nazar.sessions.inPersonSeats); this page does not know" }
+      RELOAD:
+        - { guard: staleApproved, target: seat, effect: [readAgain], say: "the page is read again and draws the seat card" }
+        - { target: pending, say: "the page is read again and the application still waits" }
+      NAVIGATE: left
+
+  seat:
+    title: A seat is given
+    by: human
+    description: >-
+      The card with the badge "Yerin ayrıldı", the line that says the talebe may attend in person, and "Yerimi bırak". The seat was
+      counted against the quota of the talebe's gender when the team approved, and only that. Letting it go asks nothing first (D4),
+      deletes the registration and frees the seat for the team's next approval.
+    on:
+      RELEASE: { target: withdrawing, effect: [askedRelease, clearNotice] }
+      NAVIGATE: left
+
+  withdrawing:
+    title: Take the application back, or let the seat go
+    description: >-
+      The action withdrawInPersonRegistration, DELETE /lessons/{id}/in-person/registration. It deletes the caller's own row whatever
+      its status, so the talebe leaves the order, and a given seat is free again. Afterwards the card is drawn as the page reads it: the
+      application card, or the full card while every seat of the talebe's gender is still given (a withdrawn application frees none).
+    invoke: { action: withdrawInPersonRegistration }
+    on:
+      DONE:
+        - { guard: "fromApplication and quota == 'full'", target: full, effect: [toastWithdrawn], say: "the application is gone, and the seats of the talebe's gender are all still given" }
+        - { guard: fromApplication, target: applyCard, effect: [toastWithdrawn] }
+        - { target: applyCard, effect: [toastReleased], say: "the seat is free again; the next approval may give it" }
+      FAIL.signedOut: sent_to_sign_in
+      FAIL.gone: { target: applyCard, say: "the registration was gone already (taken back elsewhere, or the seat in the course ended): the card is drawn as the page reads it, with no toast" }
+      FAIL.other:
+        - { guard: fromApplication, target: pending, effect: [toastFailed] }
+        - { target: seat, effect: [toastFailed] }
+
+  full:
+    title: The seats of the talebe's gender are all given
+    by: human
+    description: >-
+      The card says that the talebe's gender's quota is full, and offers nothing: no button, no list of waiting talebe, and no count of
+      the other gender (D1). It is drawn when the page reads the quota full, and when an application is refused because the last seat
+      was given between the read and the click (the toast then says so). The talebe's remote attendance is not touched by it: the celse's
+      other ways in, if it has any, are the date card's.
+    on:
+      NAVIGATE: left
+
+  genderMissing:
+    title: The profile has no gender
+    by: human
+    description: >-
+      The API refused with GENDER_REQUIRED and wrote nothing. The card says that a gender must be on the account to ask for an in-person
+      place and offers a link that leads to the gender row of Hesap, where "Ekle" opens Keycloak's profile form (tedris.account.profile,
+      which draws that row as it exists today). Gender is required by the realm and mirrored from the token; this refusal catches the
+      account the mirror has none for (invariant gender-always-known of the domain).
+    on:
+      OPEN_ACCOUNT: { target: account_opened, starts: { flow: tedris.account.profile, given: { gender: "'unknown'" } }, say: "the link goes to Hesap, whose gender row says \"Belirtilmemiş\" with \"Ekle\"" }
+      NAVIGATE: left
+
+  card_absent:
+    type: final
+    title: The page is drawn with no card
+    description: "The read of the card failed: the page is as tedris.celse.attend draws it. What the person is told, if anything, is not decided."
+
+  card_gone:
+    type: final
+    title: The celse no longer takes registrations
+    description: The API answered IN_PERSON_NOT_OPEN. A toast says the registration has closed, and the page read again has no card.
+
+  locked_shown:
+    type: final
+    title: The seat in the course is gone
+    leavesPage: true
+    description: >-
+      The API answered IN_PERSON_NOT_ENROLLED for a talebe whose seat was taken away after the page was read. A toast says the enrolment
+      changed; the page read again is the locked card of tedris.celse.locked.
+
+  account_opened:
+    type: final
+    title: The talebe goes to Hesap to add the gender
+    leavesPage: true
+
+  sent_to_sign_in:
+    type: final
+    title: The session is over
+    leavesPage: true
+    description: "The action answered \"unauthenticated\": the app sends the person to sign in and back to this address (realm.auth.signIn)."
+
+  left:
+    type: final
+    title: The person goes to another page
+    leavesPage: true
+
+assertions:
+  - id: an-application-needs-a-seat-in-the-course
+    never: "state == 'registered' and enrolment == 'lost'"
+    say: "An application is made only by a talebe who still holds an ENROLLED seat in the course: registering in person never enrols anyone"
+  - id: an-application-needs-a-gender
+    never: "state == 'registered' and gender == 'none'"
+    say: "An application is never made for a profile with no gender: the count it falls in is the gender's, so the gender is always set"
+  - id: an-application-never-meets-a-full-quota
+    never: "state == 'registered' and quota != 'free'"
+    say: "An application is made only while a seat of the talebe's own gender is left: a gender whose seats are all given is refused, and the other gender's seats are never looked at"
+  - id: an-application-needs-an-open-celse
+    never: "state == 'registered' and door == 'shut'"
+    say: "An application is made only for a celse that still takes registrations"
+  - id: full-is-the-callers-own-gender
+    never: "state == 'full' and quota != 'full' and seenFull == 'no'"
+    say: "The full card is drawn only when the seats of the talebe's own gender are all given (or were found given by a refusal): never because the other gender's are"

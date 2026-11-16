@@ -1,0 +1,89 @@
+# nizam.moderation.deleteArchived on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001 and Arşiv read as the
+# başnazım (SYSTEM_ADMIN), who signs in through Keycloak's real form and reaches the page by the menu entry "Arşiv".
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/apps/engine/src/cli.ts replay graphs/nizam/moderation/deleteArchived \
+#     --bind graphs/nizam/moderation/deleteArchived/binding.yaml --cover transitions --absent --out <dir>
+# The other files of the folder are walked the same way: binding.rest.yaml, binding.gone.yaml, binding.blocked.yaml. The shared parts
+# (events, addresses, locators, effects) are in locators.binding.yaml.
+#
+# NOT RUN: no replay was run when this was written (the owner's word: replays happen once, at the end). The file was checked only by
+# loading it (replay --emit-spec). Everything here is from the code; nothing was seen in a browser. A locator or an expected word may need
+# a fix at the first walk.
+#
+# THIS WALK DELETES FOR GOOD, AND ONLY WHAT IT MADE. The archive is shared by every walk and holds other people's hidden items, which this
+# walk never presses, opens or counts. `setup` makes ONE course of its own through the API and hides it, and the walk deletes that one:
+#   "Deneme dersi delItem"   (helpers/course.mjs make delItem) in the seed's second köşk, "Kubbealtı Köşkü" (--kosk {seed.kosk2}; the köşk's nazım
+#                            opens it, the seeded müderris is its hoca), PUBLISHED, anyone may enrol, with
+#                              2 weeks (--weeks 2), each of 2 celses (--lessons 2), so 4 celses in all,
+#                              3 talebe records: applicantC and applicantG (women) and applicantD (a man), all ENROLLED.
+#                            The setup reads all three numbers back with SQL and stops if any is different, so the dialog's counts, which
+#                            the binding pins ("2 haftalık müfredatı", "4 celse", "3 talebe kaydı"), come from what was made. Then it hides
+#                            the course as the başnazım (POST /courses/<id>/archive, level `platform`), and clears the mailboxes of the three
+#                            talebe (the hide and the delete each make the invitation sweep mail them CANCELs).
+# The spares are the ones the brief names (C, D and G, never F or H). Nobody else's course is touched. The seeded courses, the seeded köşks
+# and every other row of the archive stay as they were.
+#
+# The walk: the başnazım opens Arşiv, chooses "Kubbealtı Köşkü" in the scope select and "Ders" in the type select, so that the list holds the
+# one hidden course of that köşk (rest: none: if another walk left a hidden course in the köşk, the walk that finds it sets `rest: some`,
+# which is binding.rest.yaml), presses "Kalıcı olarak sil" on its row, reads the dialog (the köşk above the title, "Dersi kalıcı olarak
+# sil", the three lines, the audit sentence, the focus on "Vazgeç"), and confirms. Carries e2e archive#7 (the heading, the row, its button)
+# and archive#8 (the dialog, "2 hafta", the audit sentence, the focus, the click, the row gone, the course gone).
+#
+# What `teardown` does, and what it cannot: `course.mjs remove delItem` deletes the course if the walk stopped before the delete (the
+# başnazım's DELETE /courses/<id>, which also takes a hidden one; a second remove says `none`) and is idempotent; the three mailboxes are
+# cleared; a SQL count says no "Deneme dersi del..." course is left and that the three spares hold no REVOKED row (a REVOKED row would
+# block their next apply and leave). What stays: the `course.hide` and `course.delete` rows of audit_log (append-only by design, no route
+# deletes one) and the notifications of the invitation sweep, which `remove` clears by their targets.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.deleteArchived
+
+scenarios:
+  # The main story: scope, type, "Kalıcı olarak sil", the count, confirm. Open: the Medaris home, then the menu entry "Arşiv".
+  deletes:
+    given: { item: course, rest: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->archive' }
+    samples:
+      title: '{del.title}'
+      kosk: Kubbealtı Köşkü
+      value: tümü
+    setup:
+      - run: [node, helpers/course.mjs, make, delItem, --kosk, '{seed.kosk2}', --weeks, '2', --lessons, '2', --talebe, applicantC, applicantD, applicantG]
+        expect: '"APPLICANT_G":"ENROLLED"'
+      # what the dialog will count, read back: 2 weeks, 4 celses, 3 talebe records
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_weeks where course_id = '{del.course}'"]
+        expect: '"n":2'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{del.course}'"]
+        expect: '"n":4'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where course_id = '{del.course}'"]
+        expect: '"n":3'
+      # hidden as the başnazım: the row's hider is his own name and no role, and the level is the platform's
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/courses/{del.course}/archive']
+        expect: '{del.course}'
+      - run: [node, helpers/sql.mjs, "select archived_level from courses where id = '{del.course}'"]
+        expect: '"archived_level":"platform"'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    teardown:
+      - run: [node, helpers/course.mjs, remove, delItem]
+        expect: 'course remove delItem'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi del%'"]
+        expect: '"n":0'
+      # a REVOKED row blocks apply and leave (409): the spares must hold none
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_G_SUB}')"]
+        expect: '"n":0'
+
+states:
+  # the count and the delete are Next server actions: a POST to the page's own address, held while the busy dialog is checked (the count: the
+  # line "Silinecekler hesaplanıyor" and the confirm natively off; the delete: the confirm busy and "Yükleniyor"). This file's walk only ever
+  # answers DONE through them; the walks that go through FAIL.gone (binding.gone.yaml) hold neither, for a server action answers 200 on that
+  # address whatever the API said and the replay would compare it with the 404
+  readingImpact: { call: '{nizam}/arsiv' }
+  deleting: { call: '{nizam}/arsiv' }

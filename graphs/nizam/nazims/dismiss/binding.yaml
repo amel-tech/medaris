@@ -1,0 +1,196 @@
+# nizam.nazims.dismiss on the local stack (graphs/bindings/local.nizam.binding.yaml): the Medaris başnazım (SYSTEM_ADMIN) at nizam-web, http://localhost:4001, dismissing a spare
+# talebe account that the walk made a Medaris nazımı and that has handed something on. Never the seeded Medaris nazımı ("Selma Medaris Nazımı"): its row is first on the
+# roster and no locator below presses it, and neither helper accepts it.
+#   node apps/engine/src/cli.ts replay graphs/nizam/nazims/dismiss --bind graphs/nizam/nazims/dismiss/binding.yaml --main --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay (the walk phase comes later). Every locator below is from the code and the catalog and is unverified until a walk; what the code leaves in
+# doubt is named in the notes. Read-only check done: the binding loads (replay --emit-spec).
+#
+# Who is made and who is dismissed. applicantC ("Esma Başvuran") is made a Medaris nazımı holding platform.kosk_create (../../home/medarisNazimCut/nazim.mjs up, API only, as the
+# başnazım); she then opens a köşk, "Deneme köşkü nazim-dismiss", and names applicantG ("Dilek Başvuran") and applicantB ("Ferhat Başvuran") its nazımları
+# (./dismiss.mjs hand: POST /kosks as her). Each of the two nazım seats is a KOSK_NAZIM role row given by her, which is what the dialog lists, one row a person. The roster has the
+# seeded nazımı first and Esma second (oldest appointment first), so the row the walk presses is the one named "Görevden al: Esma Başvuran".
+# What the dismissal does to them is read through the API (./dismiss.mjs state, as the başnazım) and, for the audit row, through SQL (no route reads it by person): Devral leaves
+# Dilek a nazım of the köşk, now given by the başnazım; Düşür takes Ferhat's seat away.
+#
+# What a walk writes, and how it is taken away. setup: one MEDARIS_NAZIM role row and one platform.kosk_create grant for applicantC (audit: medaris_nazim.appoint,
+# permission.grant), one köşk with two KOSK_NAZIM role rows (audit: kosk.create). teardown, in this order: helpers/remove-kosk.mjs deletes the köşk (DELETE /kosks/:id, as the başnazım,
+# which takes it with its role assignments), then nazim.mjs down dismisses applicantC if the walk did not (it drops anything left that she gave, which is nothing then), so a
+# walk that stops before the dismissal leaves no seat behind. setup begins with the same two, in the same order: `up` puts a seat left by a crashed walk right, `hand` removes a köşk
+# of that short name first. The audit rows stay: no route removes them. Nothing is done by SQL except reading the one audit row.
+#
+# Scenarios, in the order a transition takes its shortest one:
+#   many     the story. Esma gave Dilek and Ferhat a köşk nazımı seat each; the dialog lists two rows; the walk answers Dilek Devral and Ferhat Düşür. The e2e: permissions#4 and #5.
+#   one      the same with Dilek only: the one row has no partial state, so Devral is the whole answer (choosing -> answered).
+#   nothing  Esma was appointed and gave nothing: the dialog has no row and says so (the e2e has no such case; permissions#4's dialog has one row).
+# Not bound, with the reason: `groupOnly` and `manyGroup` need a permission group that Esma defined or changed (audit rows permission_group.create/.update by her). tedrisat lets a
+# Medaris nazımı define a group of a medrese only for codes she holds in that medrese herself (madrasah-permission.service.ts:359, the ceiling of MDRS-209), and a Medaris nazımı
+# holds none there, so no call of the API makes the row; the walk phase may seed it with SQL as permissions-seed.ts does. The failures (`FAIL.*` of getMedarisNazimGiven and
+# dismissMedarisNazim: a failed read, a list that moved under the dialog, the two 400/409 cascade refusals, a refused caller) are drawn and not driven:
+# a Next server action answers 200 at the page's own address whatever the API said, so a status cannot be compared, and no stack condition makes the API refuse on request.
+# The one failure the walk can make: `FAIL.gone`, through the event GONE_ELSEWHERE (the başnazım's other session dismisses Esma while the dialog is open). Its path takes the shortest
+# scenario that reaches `answered` (`one`) or `nothingToAsk` (`nothing`); teardown tolerates the person already being gone.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.nazims.dismiss
+
+scenarios:
+  many:
+    given: { given: many }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    vars:
+      rows: '2'
+      koskName: Deneme köşkü nazim-dismiss
+      expectKept: 'nazim APPLICANT_C held; kosk-nazim APPLICANT_G held, given by APPLICANT_C; kosk-nazim APPLICANT_B held, given by APPLICANT_C'
+      expectAfter: 'nazim APPLICANT_C none; kosk-nazim APPLICANT_G held, given by SYSTEM_ADMIN; kosk-nazim APPLICANT_B none'
+      expectAudit: '"outcome":"1/1"'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
+        expect: 'up APPLICANT_C codes=platform.kosk_create'
+      - run: [node, ../nizam/nazims/dismiss/dismiss.mjs, hand, --nazim, applicantC, --kosk, nazim-dismiss, --to, 'applicantG,applicantB']
+        expect: 'handed APPLICANT_C kosk=nazim-dismiss'
+    teardown:
+      - run: [node, helpers/remove-kosk.mjs, nazim-dismiss]
+        expect: 'remove-kosk nazim-dismiss removed'
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+        expect: 'down APPLICANT_C'
+  one:
+    given: { given: one }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    vars:
+      rows: '1'
+      koskName: Deneme köşkü nazim-dismiss
+      expectKept: 'nazim APPLICANT_C held; kosk-nazim APPLICANT_G held, given by APPLICANT_C; kosk-nazim APPLICANT_B none'
+      expectAfter: 'nazim APPLICANT_C none; kosk-nazim APPLICANT_G held, given by SYSTEM_ADMIN; kosk-nazim APPLICANT_B none'
+      expectAudit: '"outcome":"1/0"'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
+        expect: 'up APPLICANT_C codes=platform.kosk_create'
+      - run: [node, ../nizam/nazims/dismiss/dismiss.mjs, hand, --nazim, applicantC, --kosk, nazim-dismiss, --to, applicantG]
+        expect: 'handed APPLICANT_C kosk=nazim-dismiss'
+    teardown:
+      - run: [node, helpers/remove-kosk.mjs, nazim-dismiss]
+        expect: 'remove-kosk nazim-dismiss removed'
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+        expect: 'down APPLICANT_C'
+  nothing:
+    given: { given: nothing }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    vars:
+      rows: '0'
+      koskName: Deneme köşkü nazim-dismiss
+      expectKept: 'nazim APPLICANT_C held; kosk nazim-dismiss none'
+      expectAfter: 'nazim APPLICANT_C none; kosk nazim-dismiss none'
+      expectAudit: '"outcome":"0/0"'
+    setup:
+      - run: [node, helpers/remove-kosk.mjs, nazim-dismiss]
+        expect: 'remove-kosk nazim-dismiss removed'
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantC, --codes, platform.kosk_create]
+        expect: 'up APPLICANT_C codes=platform.kosk_create'
+    teardown:
+      - run: [node, helpers/remove-kosk.mjs, nazim-dismiss]
+        expect: 'remove-kosk nazim-dismiss removed'
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+        expect: 'down APPLICANT_C'
+
+# The chips are pressed by events, because the nodes cannot say which row: the first answer is Dilek's Devral, the last answer Ferhat's Düşür. The rows come in no fixed order (both
+# seats are written in one transaction, so the API sorts them by an id), so each chip is found through its row's group, whose hidden legend is '<what>, <person>'. NAVIGATE goes to
+# a page of the menu; CLEAR is sent by the node pressedChip.
+events:
+  ANSWER: [{ click: { role: button, name: Devral, within: { role: group, name: '/, Dilek Başvuran$/' } } }]
+  ANSWER_LAST: [{ click: { role: button, name: Düşür, within: { role: group, name: '/, Ferhat Başvuran$/' } } }]
+  NAVIGATE: [{ goto: '{nizam}/bildirimler' }]
+  # somebody else dismisses Esma while the dialog is open: the başnazım's own call through the API (nazim.mjs down), which also drops what she gave. The dialog does not notice; the
+  # next 'Görevden al' is answered 404 MEDARIS_NAZIM_NOT_FOUND and the page shows the toast 'Bu kişi artık Medaris nazımı değil.' with the dialog still open (NZDIS-1).
+  GONE_ELSEWHERE:
+    - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantC]
+      expect: 'down APPLICANT_C'
+
+states:
+  roster: { url: '{nizam}/medaris-nazimlari' }
+  settled: { url: '{nizam}/medaris-nazimlari' }
+  # the two calls are Next server actions: a POST to the page's own address, held while the busy screen is checked. A FAIL status cannot be compared there (a server action
+  # answers 200), so no refusal is walked from them.
+  asking: { call: '{nizam}/medaris-nazimlari' }
+  dismissing: { call: '{nizam}/medaris-nazimlari' }
+  left: { url: '{nizam}/bildirimler' }
+  # no_access is not bound: only a person who is not the başnazım meets it (nizam.shell.noAccessAndNotFound walks it)
+
+# Role and name find most nodes; the ones below need more. The people's names are the stack's invented ones (STACK.md): Esma Başvuran (applicantC), Dilek Başvuran (applicantG),
+# Ferhat Başvuran (applicantB).
+nodes:
+  # the shell's one <main>; the page a walk leaves for has one too, so tell them apart by what only this page has
+  nazimsPage: { role: main, hasText: Medaris nazımı ata }
+  # the count is the roster's own: the seeded nazımı, Esma, and whoever else is in office, so match the frame of the sentence
+  nazimCount: { testId: nazim-count, hasText: '/ kişi$/' }
+  # every row's buttons, whoever the person is (the seeded one is among them: it is only counted, never pressed)
+  rowEdit: { role: button, name: '/^İzinleri düzenle: /' }
+  dismissRow: { role: button, name: '/^Görevden al: /' }
+  # the row of the person the walk made, the only one it presses
+  dismissThis: { role: button, name: '/^Görevden al: Esma /' }
+
+  # the dialog: named by its title alone; the submit and the title read the same word, so each is looked for inside it
+  dismissDialog: { role: dialog, name: '/^Görevden al$/' }
+  dismissTitle: { role: heading, name: '/^Görevden al$/', within: { role: dialog, name: '/^Görevden al$/' } }
+  # the person's name above the title
+  dismissEyebrow: { css: '.mds-eyebrow', hasText: Esma Başvuran, within: { role: dialog, name: '/^Görevden al$/' } }
+  # the toasts' close buttons are called Kapat too
+  dismissClose: { role: button, name: Kapat, within: { role: dialog, name: '/^Görevden al$/' } }
+  dismissCancel: { role: button, name: Vazgeç, within: { role: dialog, name: '/^Görevden al$/' } }
+  submit: { role: button, name: '/^Görevden al$/', within: { role: dialog, name: '/^Görevden al$/' } }
+  # the button's own hidden <output>; nothing else in the dialog says 'Yükleniyor'
+  submitBusy: { role: status, hasText: Yükleniyor, within: { role: dialog, name: '/^Görevden al$/' } }
+  # the intro names the person; match the sentence, not the name
+  introText: { text: '/Medaris nazımı görevinden alınacak; platform izinleri kalkacak\./' }
+  nothingLine: { text: 'Bu kişinin başkalarına verdiği bir izin ya da rol yok.' }
+  # the count is the number of rows
+  question: { text: '/^Bu kişi başkalarına \d+ izin ya da rol vermiş\. Her biri için bir seçim yapın\.$/' }
+  givenList: { testId: given-items }
+  givenItem: { testId: given-item, count: '{rows}' }
+  # what was given, in bold, and the person and the köşk under it ('Dilek Başvuran · Deneme köşkü nazim-dismiss')
+  itemWhat: { css: '[data-testid=given-item] bdi.font-semibold', hasText: Köşk nazımı, count: '{rows}' }
+  itemLine: { css: '[data-testid=given-item] bdi.mds-caption', hasText: ' · {koskName}', count: '{rows}' }
+  answerGroup: { role: group, name: '/^Köşk nazımı, /', count: '{rows}' }
+  takeOver: { role: button, name: Devral, within: { role: dialog, name: '/^Görevden al$/' }, count: '{rows}' }
+  drop: { role: button, name: Düşür, within: { role: dialog, name: '/^Görevden al$/' }, count: '{rows}' }
+  # the chips that are pressed: none while nothing is chosen
+  pressedChip: { css: '[data-testid=given-item] button[aria-pressed=true]' }
+  answersNote: { text: '/^Devral: izin yerinde kalır, veren siz olursunuz\./' }
+  auditNote: { text: Görevden alma denetim kaydına yazılır. }
+  loadFailedAlert: { role: alert, hasText: Liste okunamadı }
+  retry: { role: button, name: Yeniden dene, within: { role: dialog, name: '/^Görevden al$/' } }
+
+  # the toasts are Sonner's: one <li data-sonner-toast> with the title in [data-title] and the description in [data-description]
+  toastDismissedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Görevden alındı }
+  toastDismissedBody: { css: '[data-sonner-toast] [data-description]', hasText: artık Medaris nazımı değil. }
+  toastFailedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Görevden alınamadı }
+  toastChanged: { css: '[data-sonner-toast] [data-description]', hasText: Bu kişinin verdikleri değişmiş }
+  toastCascade: { css: '[data-sonner-toast] [data-description]', hasText: Düşürdüğünüz görevlerden birinin sahibi }
+  toastSeatless: { css: '[data-sonner-toast] [data-description]', hasText: Görevi düşürülen birinin iznini devralamazsınız }
+  toastGone: { css: '[data-sonner-toast] [data-description]', hasText: Bu kişi artık Medaris nazımı değil. }
+  toastRefused: { css: '[data-sonner-toast] [data-description]', hasText: Bunu yapma izniniz yok. }
+  toastFailed: { css: '[data-sonner-toast] [data-description]', hasText: Bir şeyler ters gitti. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+
+# What a dismissal leaves outside the screen, read through the API as the başnazım (./dismiss.mjs state) and, for the audit row, through SQL. The scenario's vars say what each walk
+# expects: `expectAfter` after a dismissal (Esma gone; Dilek still a nazım of the köşk, now given by the başnazım after a Devral; Ferhat gone after a Düşür), `expectKept` when the dialog
+# was closed without one (Esma still in office, both seats still hers), `expectAudit` for the last audit row (tookOver/dropped). The effect `kept` runs after every Vazgeç, Esc and close
+# icon of the walk: permissions#5's "Vazgeç changes nothing".
+effects:
+  dismissMedarisNazim:
+    - run: [node, ../nizam/nazims/dismiss/dismiss.mjs, state, --nazim, applicantC, --kosk, nazim-dismiss, --who, 'applicantG,applicantB']
+      expect: '{expectAfter}'
+    # the platform permission is gone too (permissions#4: every grant of the person is revoked): the API itself says she no longer holds it
+    - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, lacks, applicantC, platform.kosk_create]
+      expect: 'lacks APPLICANT_C platform.kosk_create'
+    - run: [node, helpers/sql.mjs, "select (details->>'tookOver') || '/' || (details->>'dropped') as outcome from audit_log where action = 'medaris_nazim.dismiss' and entity_id = '{secret.E2E_APPLICANT_C_SUB}' order by seq desc limit 1"]
+      expect: '{expectAudit}'
+  kept:
+    - run: [node, ../nizam/nazims/dismiss/dismiss.mjs, state, --nazim, applicantC, --kosk, nazim-dismiss, --who, 'applicantG,applicantB']
+      expect: '{expectKept}'

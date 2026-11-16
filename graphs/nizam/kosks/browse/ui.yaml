@@ -1,0 +1,159 @@
+# The screens of nizam.kosks.browse: nizam-web's Köşkler (/kosks, app/kosks/page.tsx) as the başnazım, a Medaris nazımı who holds a köşk
+# permission and a köşk nazımı meet it: the page (features/kosks/components/kosks-directory.tsx) with its header, the tabs and their numbers,
+# the search box, the Görünürlük chips, the table with its rows, its one empty line and its pager, the box that says the list could not be
+# read, the toasts of "Geri al" and the block of courses the viewer teaches elsewhere (taught-courses.tsx). The dialog "Köşk aç" is
+# nizam.kosks.open's; the shell around the page (sidebar, person row, bell, skip link) is nizam.shell.menuPerPersona's. Read from the code on
+# 16 Nov 2026; nothing was opened in a browser, but the HTML nizam-web serves for /kosks was read as the başnazım, the Medaris nazımı, the köşk
+# nazımı and the talebe (the roles, names and data-labels the locators use).
+#
+# Words: every `KoskDirectory.*`, `HideLevel.locked` and `KosksPage.taught*` key is copied by script from libs/i18n/src/locales/tr/nizam.json
+# (the app reads them as `nizam.KoskDirectory`, `nizam.HideLevel`, `nizam.KosksPage`), the key being the path inside that file;
+# `common.toast.close` from common.json. The `composed.*` keys are NOT in any i18n file: they are texts the app builds in code from data,
+# written here with their placeholders. No node names `params`: a row's name, its short name, its nazımları, its course count, a tab's number,
+# a taught course's title, the "n / n" of the pager and the name inside a toast or a button's label are data, one text per row, so the sample
+# below serves the check and the page, and the binding gives each of these nodes a locator of its own (locators.binding.yaml):
+#   composed.KoskDirectory.name        a köşk's name, in <bdi> (kosks-directory.tsx:169)
+#   composed.KoskDirectory.handle      "@" and its short name, in <bdi dir=ltr> (handleLabel, admin-present.ts; :177)
+#   composed.KoskDirectory.nazims      the nazımları's names joined "A ve B" with Intl.ListFormat, in <bdi> (nazimNames; :195)
+#   composed.KoskDirectory.courses     the number of the köşk's courses, every one (:207)
+#   composed.KoskDirectory.count       a tab's number, a <span class=mds-tab__count> formatted for the page's language (tabs.tsx:67)
+#   composed.KoskDirectory.courseTitle a taught course's title (taught-courses.tsx:30)
+# "<tarih>’den beri" is the catalog's `since` with a date the page spells in the Turkish ablative (dateWithCase): matched by any text.
+# `Changes.note` is the one entry not copied from the app: the app says only "Köşk geri alındı" / "<ad> yeniden listelerde." in a toast, and
+# nothing of what else follows, so one short factual Turkish note was written (what comes back, what stays, the audit row).
+# The table is Table responsive="stack": the table, its rows and its cells carry explicit roles and each cell a data-label, and the caption
+# that names it is visually hidden (libs/ui/src/mds/table.tsx:94-132). The row's first cell is a <th scope=row> (a rowheader); it is not drawn
+# as a node of its own, since its name is the whole cell (the link, the badge and the short name). The tab panel (role tabpanel), the
+# aria-busy the panel's wrapper carries while a read is pending, and the cover swatch of a row are not drawn.
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nizam.kosks.browse
+flow: nizam.kosks.browse
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  name: Örnek Köşk
+  handle: ornek-kosk
+  count: "2"
+  courses: "3"
+  names: Örnek Kişi ve İkinci Örnek Kişi
+  level: Medaris yönetimi
+  title: Örnek Ders
+  dateAblative: 15 Kasım’dan
+  page: "1"
+  total: "2"
+changes: { key: Changes.note }
+
+nodes:
+  # ---- the page: its frame, which every state that draws it shares ----
+  kosksPage: { type: page, component: Page, role: main, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: apps/nizam/app/kosks/page.tsx:71 } # the shell's <main>, with no name and no initialFocus: nothing moves the focus when the page opens (rule focus-not-set)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: KoskDirectory.title }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:290 } # h1
+  pageIntro: { type: text, component: Text, text: { key: KoskDirectory.intro }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:291 }
+  openButton: { type: action, component: Button, role: button, text: { key: KoskDirectory.open }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], when: "viewer == 'chief'", emits: OPEN_FORM, source: apps/nizam/features/kosks/components/kosks-directory.tsx:293 } # the başnazım's alone; a Medaris nazımı with platform.kosk_create, whom the API admits, gets none (F-W3-open-1, F-X-12)
+
+  # ---- the section: its heading, the archive link, the tabs, the search, the chips ----
+  listSection: { type: page, component: Page, role: region, name: { labelledBy: listHeading }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:303 }
+  listHeading: { type: text, component: Heading, role: heading, text: { key: KoskDirectory.heading }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:305 } # h2
+  archiveLink: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: KoskDirectory.archive }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], when: "viewer == 'chief'", emits: OPEN_ARCHIVE, source: apps/nizam/features/kosks/components/kosks-directory.tsx:309 } # a plain <a href="/arsiv">, a full page load; the başnazım's alone
+  tabsList: { type: list, component: List, role: tablist, name: { key: KoskDirectory.tabsLabel }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: libs/ui/src/mds/tabs.tsx:103 } # Base UI tabs with activateOnFocus: the arrow keys move and select, and each selection is a navigation
+  tabAll: { type: action, component: Button, role: tab, text: { key: KoskDirectory.tabs.ALL }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], emits: TAB_ALL, source: libs/ui/src/mds/tabs.tsx:110 } # the selected tab is aria-selected, which the graph cannot say; its name ends with its number (F-A-12)
+  tabActive: { type: action, component: Button, role: tab, text: { key: KoskDirectory.tabs.ACTIVE }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], emits: TAB_ACTIVE, source: libs/ui/src/mds/tabs.tsx:110 }
+  tabPassive: { type: action, component: Button, role: tab, text: { key: KoskDirectory.tabs.PASSIVE }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], emits: TAB_PASSIVE, source: libs/ui/src/mds/tabs.tsx:110 }
+  tabHidden: { type: action, component: Button, role: tab, text: { key: KoskDirectory.tabs.HIDDEN }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], emits: TAB_HIDDEN, source: libs/ui/src/mds/tabs.tsx:110 }
+  tabAllCount: { type: text, component: Text, text: { key: composed.KoskDirectory.count }, in: [listed, restoring, emptyFilter, emptyAll], source: libs/ui/src/mds/tabs.tsx:67 } # the number of köşks in that state in the viewer's whole scope, whatever the chip and the text leave (KBROWSE-3); not drawn when the read failed
+  tabActiveCount: { type: text, component: Text, text: { key: composed.KoskDirectory.count }, in: [listed, restoring, emptyFilter, emptyAll], source: libs/ui/src/mds/tabs.tsx:67 }
+  tabPassiveCount: { type: text, component: Text, text: { key: composed.KoskDirectory.count }, in: [listed, restoring, emptyFilter, emptyAll], source: libs/ui/src/mds/tabs.tsx:67 }
+  tabHiddenCount: { type: text, component: Text, text: { key: composed.KoskDirectory.count }, in: [listed, restoring, emptyFilter, emptyAll], source: libs/ui/src/mds/tabs.tsx:67 }
+  searchField: { type: field, component: TextField, role: searchbox, text: { key: KoskDirectory.searchLabel }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:337 } # type=search, named by its aria-label; the placeholder says the same words; it follows the address when that changes from outside (the back button), and what is typed reaches the address after 300 ms. No `value`: the walk fills it in
+  listingGroup: { type: list, component: List, role: group, name: { labelledBy: listingLegend }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: libs/ui/src/mds/choice-chips.tsx:75 } # Base UI ToggleGroup: a group named by the visible legend, whose chips are toggle buttons (aria-pressed, which the graph cannot say)
+  listingLegend: { type: text, component: Text, text: { key: KoskDirectory.listingLegend }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:351 }
+  chipAll: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskDirectory.listing.ALL }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], emits: CHIP_ALL, source: apps/nizam/features/kosks/components/kosks-directory.tsx:353 }
+  chipListed: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskDirectory.listing.LISTED }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], emits: CHIP_LISTED, source: apps/nizam/features/kosks/components/kosks-directory.tsx:353 } # a single-choice toggle group: pressing the chip that is pressed clears it and the page goes back to Tümü
+  chipUnlisted: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskDirectory.listing.UNLISTED }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], emits: CHIP_UNLISTED, source: apps/nizam/features/kosks/components/kosks-directory.tsx:353 }
+
+  # ---- the box that takes the table's place when the read failed ----
+  loadFailedAlert: { type: alert, component: Alert, role: alert, text: { key: KoskDirectory.loadFailedTitle }, in: [loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:366 } # an error-tone Alert is announced
+  loadFailedText: { type: text, component: Text, text: { key: KoskDirectory.loadFailed }, in: [loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:367 }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskDirectory.retry }, in: [loadFailed], emits: RETRY, source: apps/nizam/features/kosks/components/kosks-directory.tsx:368 } # router.refresh()
+
+  # ---- the table, named by its caption (visually hidden); its header row is there whatever the rows ----
+  table: { type: list, component: List, role: table, name: { key: KoskDirectory.caption }, in: [listed, restoring, emptyFilter, emptyAll], source: apps/nizam/features/kosks/components/kosks-directory.tsx:374 } # Table responsive="stack": the table, its rows and cells carry explicit roles and each cell a data-label; the row's first cell is a <th scope=row> (a rowheader, not drawn: its name is the whole cell)
+  columnKosk: { type: text, component: Text, role: columnheader, text: { key: KoskDirectory.columns.kosk }, in: [listed, restoring, emptyFilter, emptyAll], source: apps/nizam/features/kosks/components/kosks-directory.tsx:160 }
+  columnNazims: { type: text, component: Text, role: columnheader, text: { key: KoskDirectory.columns.nazims }, in: [listed, restoring, emptyFilter, emptyAll], source: apps/nizam/features/kosks/components/kosks-directory.tsx:187 }
+  columnCourses: { type: text, component: Text, role: columnheader, text: { key: KoskDirectory.columns.courses }, in: [listed, restoring, emptyFilter, emptyAll], source: apps/nizam/features/kosks/components/kosks-directory.tsx:204 }
+  columnStatus: { type: text, component: Text, role: columnheader, text: { key: KoskDirectory.columns.status }, in: [listed, restoring, emptyFilter, emptyAll], source: apps/nizam/features/kosks/components/kosks-directory.tsx:211 }
+  columnActions: { type: text, component: Text, role: columnheader, text: { key: KoskDirectory.columns.actions }, in: [listed, restoring, emptyFilter, emptyAll], source: apps/nizam/features/kosks/components/kosks-directory.tsx:250 } # its text is visually hidden
+  emptyAllLine: { type: text, component: Text, role: cell, text: { key: KoskDirectory.emptyAll }, in: [emptyAll], source: apps/nizam/features/kosks/components/kosks-directory.tsx:281 }
+  emptyFilterLine: { type: text, component: Text, role: cell, text: { key: KoskDirectory.emptyFilter }, in: [emptyFilter], source: apps/nizam/features/kosks/components/kosks-directory.tsx:281 } # the same line whether a tab, a chip, a text or a page past the last one left nothing (KBROWSE-1)
+
+  # ---- a row: the cells every row has ----
+  rowLink: { type: action, component: LinkButton, role: link, text: { key: composed.KoskDirectory.name }, in: [listed, restoring], repeat: kosks, emits: OPEN_ROW, source: apps/nizam/features/kosks/components/kosks-directory.tsx:168 } # a plain <a href="/kosks/{id}">, the köşk's name in <bdi>; the table's only link per row
+  rowHandle: { type: text, component: Text, text: { key: composed.KoskDirectory.handle }, in: [listed, restoring], repeat: kosks, source: apps/nizam/features/kosks/components/kosks-directory.tsx:177 } # "@" and the short name, in <bdi dir=ltr>, a caption in mono type
+  rowCourses: { type: text, component: Text, role: cell, text: { key: composed.KoskDirectory.courses }, in: [listed, restoring], repeat: kosks, source: apps/nizam/features/kosks/components/kosks-directory.tsx:207 } # every course of the köşk, hidden and draft ones too (the footnote says so)
+  rowUnlisted: { type: text, component: Text, text: { key: KoskDirectory.unlisted }, in: [listed, restoring], when: "showsHidden or showsBack", repeat: kosks.unlisted, source: apps/nizam/features/kosks/components/kosks-directory.tsx:171 } # an outline Badge with a link glyph, beside the name
+
+  # ---- the nazımları, by kind of row ----
+  rowNazims: { type: text, component: Text, role: cell, text: { key: composed.KoskDirectory.nazims }, in: [listed, restoring], when: "anyActive or showsHidden", repeat: kosks.named, source: apps/nizam/features/kosks/components/kosks-directory.tsx:195 } # the names joined "A ve B" (Intl.ListFormat), in <bdi>; "Adı bilinmiyor" for a nazım with no name
+  rowNoNazim: { type: text, component: Text, role: cell, text: { key: KoskDirectory.noNazim }, in: [listed, restoring], when: showsPassive, repeat: kosks.passive, source: apps/nizam/features/kosks/components/kosks-directory.tsx:192 } # a passive köşk has none: taking it out of service ends every post
+  rowYou: { type: text, component: Text, text: { key: KoskDirectory.you }, in: [listed, restoring], when: "yours and (anyActive or showsHidden)", repeat: kosks.named, source: apps/nizam/features/kosks/components/kosks-directory.tsx:197 } # a caption under the names when one of them is the viewer: every row of a köşk nazımı's own list
+
+  # ---- the state, by kind of row ----
+  rowStatusActive: { type: text, component: Text, role: cell, text: { key: KoskDirectory.status.ACTIVE }, in: [listed, restoring], when: anyActive, repeat: kosks.active, source: apps/nizam/features/kosks/components/kosks-directory.tsx:228 } # a secondary Badge, no caption
+  rowStatusPassive: { type: text, component: Text, role: cell, text: { key: KoskDirectory.status.PASSIVE }, in: [listed, restoring], when: showsPassive, repeat: kosks.passive, source: apps/nizam/features/kosks/components/kosks-directory.tsx:228 } # a warning Badge with a lock glyph
+  rowSincePassive: { type: text, component: Text, text: { key: KoskDirectory.since }, in: [listed, restoring], when: showsPassive, repeat: kosks.passive, source: apps/nizam/features/kosks/components/kosks-directory.tsx:242 } # "<tarih>’den beri", the Turkish ablative of a day and a month in the viewer's zone (dateWithCase)
+  rowStatusHidden: { type: text, component: Text, role: cell, text: { key: KoskDirectory.status.HIDDEN }, in: [listed, restoring], when: showsHidden, repeat: kosks.hidden, source: apps/nizam/features/kosks/components/kosks-directory.tsx:237 } # plain text with an eye-off glyph and no badge: the words carry the state, not the colour
+  rowSinceHidden: { type: text, component: Text, text: { key: KoskDirectory.since }, in: [listed, restoring], when: showsHidden, repeat: kosks.hidden, source: apps/nizam/features/kosks/components/kosks-directory.tsx:242 }
+
+  # ---- the buttons of a hidden row, by what the viewer's kademe may do ----
+  restoreButton: { type: action, component: Button, role: button, intent: secondary, name: { key: KoskDirectory.restoreLabel }, text: { key: KoskDirectory.restore }, in: [listed, restoring], disabledIn: [restoring], when: "showsHidden and mayRestore", repeat: kosks.hidden, emits: RESTORE, source: apps/nizam/features/kosks/components/kosks-directory.tsx:256 } # drawn when the row's canRestore says so; busy (aria-disabled, aria-busy) while the call runs, with a hidden status that says "Yükleniyor" from a default of the button (F-A-14); the name is "Geri al: <ad>"
+  lockedCaption: { type: text, component: Text, text: { key: HideLevel.locked }, in: [listed, restoring], when: "showsHidden and not mayRestore", repeat: kosks.hidden, source: apps/nizam/features/kosks/components/kosks-directory.tsx:269 } # "Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir.": instead of a button the API would refuse (MDRS-143)
+
+  # ---- the pager: under the table, only when the answer holds more than 12 rows ----
+  pagerNav: { type: page, component: Page, role: navigation, name: { key: KoskDirectory.pagerLabel }, in: [listed, restoring], when: pager, source: apps/nizam/features/kosks/components/kosks-directory.tsx:383 } # data-testid=pager
+  previousButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskDirectory.previous }, in: [listed, restoring], when: "pager and pageNo == 'last'", emits: PREVIOUS_PAGE, source: apps/nizam/features/kosks/components/kosks-directory.tsx:388 }
+  previousOff: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskDirectory.previous }, in: [listed, restoring], disabledIn: [listed, restoring], when: "pager and pageNo == 'first'", source: apps/nizam/features/kosks/components/kosks-directory.tsx:391 } # natively disabled on page 1
+  pageOf: { type: text, component: Text, text: { key: KoskDirectory.pageOf }, in: [listed, restoring], when: pager, source: apps/nizam/features/kosks/components/kosks-directory.tsx:398 } # "1 / 2"; the numbers are the page's own, matched by any text
+  nextButton: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskDirectory.next }, in: [listed, restoring], when: "pager and pageNo == 'first'", emits: NEXT_PAGE, source: apps/nizam/features/kosks/components/kosks-directory.tsx:404 }
+  nextOff: { type: action, component: Button, role: button, intent: secondary, text: { key: KoskDirectory.next }, in: [listed, restoring], disabledIn: [listed, restoring], when: "pager and pageNo == 'last'", source: apps/nizam/features/kosks/components/kosks-directory.tsx:407 } # natively disabled on the last page
+
+  # ---- what "Geri al" says (Sonner toasts: libs/ui/src/components/sonner.tsx) ----
+  restoredTitle: { type: status, component: Status, text: { key: KoskDirectory.restored }, in: [listed, emptyFilter], when: "toast == 'ok'", source: apps/nizam/features/kosks/components/kosks-directory.tsx:137 } # a success toast, 6 s; it has no role of its own and its region is named by the library's English default (F-X-5)
+  restoredBody: { type: text, component: Text, text: { key: KoskDirectory.restoredBody }, in: [listed, emptyFilter], when: "toast == 'ok'", source: apps/nizam/features/kosks/components/kosks-directory.tsx:138 } # "<ad> yeniden listelerde."
+  failedTitle: { type: status, component: Status, text: { key: KoskDirectory.restoreFailed }, in: [listed], when: "toast == 'refused'", source: apps/nizam/features/kosks/components/kosks-directory.tsx:131 } # an error toast: it stays until it is closed (duration infinite) and is polite, not assertive; the graph draws it only in the state it appears in
+  failedNotHidden: { type: text, component: Text, text: { key: KoskDirectory.errors.notHidden }, in: [listed], when: "toast == 'refused' and answer == 'notHidden'", source: apps/nizam/features/kosks/admin-present.ts:431 }
+  failedGone: { type: text, component: Text, text: { key: KoskDirectory.errors.notFound }, in: [listed], when: "toast == 'refused' and answer == 'gone'", source: apps/nizam/features/kosks/admin-present.ts:431 }
+  failedLevel: { type: text, component: Text, text: { key: KoskDirectory.errors.restoreLevel }, in: [listed], when: "toast == 'refused' and answer == 'level'", source: apps/nizam/features/kosks/admin-present.ts:431 }
+  failedForbidden: { type: text, component: Text, text: { key: KoskDirectory.errors.forbidden }, in: [listed], when: "toast == 'refused' and answer == 'forbidden'", source: apps/nizam/features/kosks/admin-present.ts:431 }
+  failedGeneric: { type: text, component: Text, text: { key: KoskDirectory.errors.generic }, in: [listed], when: "toast == 'refused' and answer == 'failed'", source: apps/nizam/features/kosks/admin-present.ts:431 }
+  toastClose: { type: action, component: Button, role: button, name: { key: common.toast.close }, in: [listed, emptyFilter], when: "toast != 'none'", source: libs/ui/src/components/sonner.tsx:55 } # a close button on each toast, "Kapat" in every language (MDRS-233)
+
+  # ---- the courses the viewer teaches in köşks he does not manage, under the table (taught-courses.tsx) ----
+  taughtHeading: { type: text, component: Heading, role: heading, text: { key: KosksPage.taughtTitle }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], when: "taught == 'some'", source: apps/nizam/features/kosks/components/taught-courses.tsx:20 } # h2, outside the section "Bütün köşkler"
+  taughtDescription: { type: text, component: Text, text: { key: KosksPage.taughtDescription }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], when: "taught == 'some'", source: apps/nizam/features/kosks/components/taught-courses.tsx:21 }
+  taughtList: { type: list, component: List, role: list, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], when: "taught == 'some'", source: apps/nizam/features/kosks/components/taught-courses.tsx:24 } # a <ul> of links with shadcn-era classes and decorative icons that are not marked aria-hidden (F-W3-16)
+  taughtLink: { type: action, component: LinkButton, role: link, text: { key: composed.KoskDirectory.courseTitle }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], when: "taught == 'some'", repeat: taught, emits: OPEN_TAUGHT, source: apps/nizam/features/kosks/components/taught-courses.tsx:28 } # a Next <Link> to /kosks/<köşk>/courses/<ders>/edit, named by the course's title
+
+  footnote: { type: text, component: Text, text: { key: KoskDirectory.footnote }, in: [listed, restoring, emptyFilter, emptyAll, loadFailed], source: apps/nizam/features/kosks/components/kosks-directory.tsx:423 } # what the course count and "Listelenmeyen" and hiding mean
+
+edges:
+  - { labelledBy: [listSection, listHeading] }
+  - { labelledBy: [listingGroup, listingLegend] }
+
+rules:
+  - { id: focus-not-set, rule: "Köşkler sets no initial focus (no autoFocus and no focus() in features/kosks or app/kosks), so the page node has no `initialFocus`. A press on a tab or a chip, or typing, keeps the focus where it was (a soft navigation of the same page); the recorded silence is not a finding." }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): the row button's aria-label is its visible words, a colon and the köşk's name, and a tab's name is its words followed by its number" }
+  - { id: F-W3-12, rule: "searching, a tab, a chip or a page changes the table with only `aria-busy` on the panel's wrapper (kosks-directory.tsx:98-122, :331), which a screen reader does not read: nothing says how many köşks are left, that the list changed, or that a page past the last is empty. The e2e waits for the rows; a person who cannot see them does not know they changed. Fix: a visually hidden role=status line, \"<n> köşk\", that follows each read." }
+  - { id: F-A-12, rule: "a tab's content is its label immediately followed by the count <span> with no space (libs/ui/src/mds/tabs.tsx:65-69, the component nazar's Arşiv tabs use too), so its name can read \"Etkin2\". The e2e finds the number by reading the tab's text and asks for the tab by /^Etkin/. Not verified in a browser. Fix: a visually hidden space, or the count in an aria-label." }
+  - { id: F-W3-16, rule: "the \"Verdiğiniz dersler\" block (taught-courses.tsx:19-37) is the one part of the page still in shadcn-era classes (`text-muted-foreground`, `rounded-lg border`, `hover:bg-muted/40`) with two decorative icons from @medaris/icons/ssr that carry no aria-hidden (not verified); its <section> has no name, so it is not a landmark, and it sits outside the table's own section. Fix: design-system classes, aria-hidden icons, a name for the section." }
+  - { id: F-X-7, rule: "after \"Geri al\" works, the row's button is unmounted (status Gizli turns Etkin, or the row leaves the Gizli tab), so the focus falls to the page and only a toast tells the result (kosks-directory.tsx:255, :140). The same pattern as the medrese's Geri al (F-W2-10) and every row that leaves after an action. Fix: move the focus to the row's name link, or the next row's control, or the heading." }
+  - { id: F-A-14, rule: "a busy button passes no loadingLabel, so its hidden <output> says \"Yükleniyor\" from a default in libs/ui/src/mds/button.tsx:62, outside the catalog; every \"Geri al\" button carries that empty <output> all the time." }
+  - { id: F-X-5, rule: "the toasts are Sonner's: the region is named by the library's English default (\"Notifications alt+T\") and polite, also for an error that stays until closed (\"Köşk geri alınamadı\"); the close button's name \"Kapat\" is a prop of the app's Toaster. The graph draws a toast as a status with no role (MDRS-233 for the close name)." }
+  - { id: F-X-10, rule: "while the directory is read the page shows DirectorySkeleton, a plain <div aria-busy=true> whose children are aria-hidden skeletons: the loading state is silent (directory-skeleton.tsx:6). Out of view in the graph, listed here because every tab, chip and text navigation passes through it only when the whole page streams again." }
+  - { id: F-W3-open-1, rule: "the API lets a Medaris nazımı who holds platform.kosk_create open a köşk (POST /kosks), and the seeded one holds it, yet this page gives \"Köşk aç\" to the başnazım alone (`chief`, kosks-directory.tsx:293; F-X-12): the Medaris nazımı reads the same list with no way to the form. The finding is nizam.kosks.open's; here it is the viewer `medaris` without the button, drawn." }
+  - { id: F-5, rule: "related, not on this page: a hidden köşk can still be followed (POST /kosks/<id>/follow answers 201, ledger/security.md, seen by tedris.discover.followKosk). This directory has no follow control and its footnote says only that a hidden köşk leaves the lists talebe and visitors see; the list is where the başnazım and the köşk's nazımları learn which köşks are hidden and bring one back, so a hidden köşk that keeps its followers is one of the things \"Geri al\" restores." }
+  - { id: KBROWSE-1, rule: "new: a page past the last (?sayfa=99999, a stale bookmark or a link from before köşks were removed) draws the table's one line \"Sonuç yok\" and no pager: the pager is drawn when the total is more than one page, and the total is the whole list's, which fits on one page (kosks-directory.tsx:382), so there is no \"Önceki\" to go back with. Seen with a GET: the API answers 200 with no rows, total 2, page 99999, and the served page holds the one line and no pager. The tab, the chip or the search resets to page 1; nothing says so. Not drawn (only a typed address reaches it). Fix: draw the pager when the page is above 1, or send the person to the last page." }
+  - { id: KBROWSE-2, rule: "new: a page number too large to be a number (?sayfa=100000000000000000000) is sent to tedrisat as it is and answers 500 INTERNAL_ERROR (the OFFSET overflows): GET /kosks/directory?page=100000000000000000000&limit=12 was seen to answer 500 as the başnazım, and the served page then holds the box (role=alert) and no tab numbers. The page then draws \"Köşkler yüklenemedi\" with \"Yeniden dene\", a retry that can never work at that address, and the domain lists no such refusal (only HTTP_400). It is also how the graph makes the box walkable on the stack. Fix: clamp the page in filtersFromParams and answer 400 (not 500) for an out-of-range page in the controller." }
+  - { id: KBROWSE-3, rule: "new: the tab numbers are the viewer's whole scope, whatever the chip and the text leave (statusCounts takes only the scope, kosk-admin.repository.ts:251; the domain says so), so \"Gizli 1\" can sit over a table that says \"Sonuç yok\" for Listelenen, and the numbers do not change when a text is typed. The same finding as MBROWSE-2 of Medreseler. Fix: say how many rows fit in the status line of F-W3-12, or count by the chip and the text." }
+  - { id: KBROWSE-4, rule: "new: when the page's second read, GET /me, fails (page.tsx:35, getMe returns null), `chief` is false and `viewerId` null, so the başnazım loses \"Köşk aç\" and the Arşiv link and a köşk nazımı loses \"Siz\" and the block of taught courses, and nothing says the read failed (kosks-directory.tsx:293, :308). Not drawn and not walkable on the stack. Fix: keep the failure visible, or hide nothing." }

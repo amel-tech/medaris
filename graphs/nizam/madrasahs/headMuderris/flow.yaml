@@ -1,0 +1,362 @@
+# Giving a medrese its başmüderris, or replacing the one it has: the "Başmüderris ata" and "Başmüderrisi değiştir" dialogs of the Medreseler page
+# (/medreseler) in nizam-web, read from the code of PR #394's branch on 15 Nov 2026 (apps/nizam/features/madrasahs/components/assign-head-dialog.tsx,
+# head-picker.tsx, madrasahs-view.tsx, present.ts, actions.ts; the API's GET /madrasahs/:id/head-muderris/delegations and PUT /madrasahs/:id/head-muderris
+# in apps/tedrisat/src/madrasah). Nothing here was seen in a browser: every behaviour is from the code.
+#
+# The two halves are one dialog (`AssignHeadDialog`) in two modes, which the row decides:
+#   - a PASSIVE medrese has no head, so its row has "Başmüderris ata": the dialog asks for the person (an exact e-mail address looked up in the
+#     realm's directory) and an optional end, and nothing else; the medrese is Etkin again.
+#   - an ACTIVE medrese with a head has "Başmüderrisi değiştir": the same fields, and the dialog reads, on every opening, everything the sitting head
+#     gave to others (roles and permissions, in the medrese and its courses, that are still held), grouped by PERSON. Each person needs "Devral" (the
+#     right stays, the caller becomes its giver) or "Düşür" (it is revoked); "Değiştir" is natively off until every person has an answer. The page
+#     gives one answer per person and posts it for each of that person's items (present.ts:404-415), so the e2e's "every row" is every person.
+#
+# Three refusals of the API are drawn as the page tells them, each a sticky toast over the dialog, which stays open:
+#   - the list is stale (DISMISS_DECISIONS_INCOMPLETE): the answers are wiped and the list is read again (assign-head-dialog.tsx:148-155);
+#   - a seat answered Düşür whose holder handed something on that nothing else backs (DISMISS_SEAT_HANDED_ON, 409);
+#   - Devral on a row given to the caller, or naming oneself (SELF_GRANT_REFUSED, 403). SYSTEM_ADMIN is never asked (self-grant.guard.ts:67), so this
+#     branch is a Medaris nazımı's who holds platform.head_muderris_manage: the API admits them (madrasah.controller.ts:449) and the page offers them the button
+#     (present.ts:106). The order of the server's checks is in ui.yaml (HEAD-5).
+#
+# Where the page is wrong for its people, each finding is in ui.yaml `rules` and again in the description of the state it touches:
+# HEAD-1 (the "already the head" message is never shown), HEAD-2 (a handed-on permission is printed as its raw code), HEAD-3 (a second search that finds nobody says
+# nothing), HEAD-4 (naming oneself is answered with the take-over sentence), HEAD-5 (the check order), HEAD-6 (Vazgeç does nothing while saving),
+# HEAD-7 (the API's own summary says SYSTEM_ADMIN only), and the inventory's F-W2-3, F-W2-5, F-W2-10, F-W2-12, F-X-14.
+schema: delurio-graph/0
+kind: flow
+id: nizam.madrasahs.headMuderris
+status: captured
+domain: medaris.api
+ui: nizam.madrasahs.headMuderris
+title: Give a medrese its başmüderris, or change it
+summary: >-
+  On Medreseler the başnazım, or a Medaris nazımı who holds platform.head_muderris_manage, presses "Başmüderris ata" on a passive medrese or
+  "Başmüderrisi değiştir" on an active one. A dialog finds the person by exact e-mail address in the realm's directory (when the field is left or on
+  Enter) and takes an optional end, "Görev bitiş tarihi ve saati". For a passive medrese that is all: "Başmüderris ata" seats the person, the medrese is
+  Etkin and opens again. For an active medrese the dialog first reads what the sitting head gave to others, one line per person, and asks "Devral"
+  (the right stays, the caller becomes its giver) or "Düşür" (it is taken back) for each; "Değiştir" stays off until every person has an answer. The
+  server can refuse a stale list, a Düşür that would leave what the dropped seat's holder handed on, and a Devral of a row given to the caller; each
+  is a sticky toast and the dialog stays open. The scrim does not close it. After a success a toast names the medrese and its new head.
+
+scope:
+  shows: >-
+    the Medreseler row and its two buttons, the dialog in both modes (the list being read, unreadable, empty, with its per-person answers), the e-mail
+    search of the new head, the optional end, the refusals' toasts, and the row after a success
+  world: open
+  outOfView:
+    - "the page's tabs, search, counts and the passive warning: nizam.madrasahs.browse; opening a medrese with its head: nizam.madrasahs.open; making one passive: nizam.madrasahs.passivate"
+    - "a Medaris nazımı without platform.head_muderris_manage never meets the buttons (MDRS-108), and one without any of the three codes meets the refusal screen: nizam.shell.noAccessAndNotFound"
+    - "the same Devral or Düşür question for a Medaris nazımı or a medrese nazır, on their own pages: nizam.nazims.dismiss, nazar.nazirs.dismiss"
+    - "an ended session: both server calls send the person to sign in (realm.auth.signIn) instead of drawing an error"
+    - "the new head's own side: they find the medrese in Nazar (nazar.pano.decideApplications and the rest); the old head loses it"
+    - "the audit entry madrasah.head_muderris.set and the notification the new head gets: no screen of this flow"
+
+decisions:
+  D1:
+    question: >-
+      The page asks once for each PERSON and posts that answer for each of the person's items, so a person who was given a seat and a permission cannot
+      be answered Devral for one and Düşür for the other, and the API's DISMISS_TAKE_OVER_WITHOUT_SEAT can never be reached from this page. Should a
+      row stay one person, or should each item be answerable (MDRS-201 adopts, edits or drops each grant)?
+    recommend: >-
+      Decide it with MDRS-201; until then the page asks per person and the API still takes an answer for every item.
+    affects: [form, formReady]
+
+context:
+  medrese:
+    values: [passive, active]
+    initial: any
+    say:
+      passive: "the medrese has no başmüderris (its term ended, or it was made passive): its row has 'Başmüderris ata'"
+      active: "the medrese has a başmüderris: its row has 'Başmüderrisi değiştir'"
+  handed:
+    values: [nothing, some, unreadable]
+    initial: any
+    say:
+      nothing: "the sitting başmüderris gave nobody a role or a permission that is still held"
+      some: "the sitting başmüderris gave roles and permissions to several people"
+      unreadable: "the list cannot be read (the API refuses or fails)"
+  lookup:
+    values: [found, sameHead, notFound, down]
+    initial: any
+    say:
+      found: "the realm has an account with that e-mail address, and it is not the sitting başmüderris"
+      sameHead: "the address is the sitting başmüderris's own"
+      notFound: "the realm has no account with that address"
+      down: "the directory does not answer"
+  answer:
+    values: [done, cascade, seatless, selfGrant, expiry, gone, forbidden, failed]
+    initial: any
+    say:
+      done: "the server seats the new başmüderris"
+      cascade: "a seat answered Düşür belongs to someone who handed something on that nothing else backs (DISMISS_SEAT_HANDED_ON)"
+      seatless: "a grant answered Devral would go with a seat answered Düşür in the same change (DISMISS_TAKE_OVER_WITHOUT_SEAT)"
+      selfGrant: "the caller is a Medaris nazımı who names themselves, or takes over a row given to them (SELF_GRANT_REFUSED)"
+      expiry: "the end the server reads is already past (GRANT_EXPIRY_INVALID)"
+      gone: "the medrese no longer exists (MADRASAH_NOT_FOUND)"
+      forbidden: "the caller no longer holds platform.head_muderris_manage (AUTHZ_FORBIDDEN)"
+      failed: "anything else: the body is refused, the server does not answer"
+  mode:
+    values: [assign, change]
+    initial: assign
+    say: { assign: "the dialog is 'Başmüderris ata'", change: "the dialog is 'Başmüderrisi değiştir'" }
+  rows:
+    values: [none, some, failed]
+    initial: none
+    say: { none: "no list drawn: a passive medrese asks nothing, or the head gave nothing", some: "one line per person with Devral and Düşür", failed: "'Liste okunamadı' with its retry" }
+  chosen:
+    values: [none, some, same]
+    initial: none
+    say: { none: "nobody is chosen", some: "a person is chosen", same: "the person chosen is the sitting başmüderris" }
+  note:
+    values: [none, notFound, down]
+    initial: none
+  answered:
+    values: [none, some, all]
+    initial: none
+    say: { none: "no person has an answer", some: "some persons have one", all: "every person has one" }
+  end:
+    values: [none, valid, past, unfinished]
+    initial: none
+    say: { none: "the end is left empty", valid: "an end in the future", past: "an end that is not in the future", unfinished: "a half-typed date and time" }
+  toast:
+    values: [none, stale, cascade, seatless, selfGrant, expiry, gone, forbidden, failed]
+    initial: none
+  drift:
+    values: [false, true]
+    initial: false
+    say: { "true": "someone changed what the sitting başmüderris handed on after the dialog read it", "false": "the list is as the dialog read it" }
+
+guards:
+  # `canOpen` of assign-head-dialog.tsx:125: a head chosen who is not the sitting one, an end that is empty or fine, and, when somebody is replaced,
+  # an answer for every person (an empty list has nobody to answer; a list that failed or is still being read never allows it)
+  ready: "chosen == 'some' and end != 'past' and end != 'unfinished' and (mode == 'assign' or rows == 'none' or (rows == 'some' and answered == 'all'))"
+  canAnswer: "mode == 'change' and rows == 'some'"
+  # the field's own message under the e-mail input: shown only while nobody is chosen (head-picker.tsx:101)
+  pickerError: "chosen == 'none' and note != 'none'"
+  # the list changed under the dialog: the API refuses first anything else that gets as far as the transaction
+  stale: "drift and answer in ['done', 'cascade', 'seatless']"
+
+effects:
+  openedChange: { set: { mode: change } }
+  readNothing: { set: { rows: none } }
+  readSome: { set: { rows: some } }
+  readFailed: { set: { rows: failed } }
+  picked: { set: { chosen: some, note: none } }
+  pickedSame: { set: { chosen: same, note: none } }
+  nobodyFound: { set: { note: notFound } }
+  directoryDown: { set: { note: down } }
+  removedHead: { set: { chosen: none, note: none } }
+  endValid: { set: { end: valid } }
+  endPast: { set: { end: past } }
+  endHalf: { set: { end: unfinished } }
+  answeredSome: { set: { answered: some } }
+  answeredAll: { set: { answered: all } }
+  answeredNone: { set: { answered: none } }
+  elsewhere: { set: { drift: true } }
+  clearToast: { set: { toast: none } }
+  staleRefused: { set: { toast: stale, answered: none, drift: false } }
+  cascadeToast: { set: { toast: cascade } }
+  seatlessToast: { set: { toast: seatless } }
+  selfGrantToast: { set: { toast: selfGrant } }
+  expiryToast: { set: { toast: expiry } }
+  goneToast: { set: { toast: gone } }
+  forbiddenToast: { set: { toast: forbidden } }
+  failedToast: { set: { toast: failed } }
+
+failures:
+  reading:
+    from: getMadrasahHeadDelegations
+    unreadable: [AUTHZ_FORBIDDEN, MADRASAH_NOT_FOUND]
+  looking:
+    from: lookupUser
+    unavailable: [KEYCLOAK_ADMIN_UNAVAILABLE, KEYCLOAK_ADMIN_NOT_CONFIGURED, USER_LOOKUP_FORBIDDEN]
+  saving:
+    from: setMadrasahHeadMuderris
+    stale: [DISMISS_DECISIONS_INCOMPLETE]
+    cascade: [DISMISS_SEAT_HANDED_ON]
+    seatless: [DISMISS_TAKE_OVER_WITHOUT_SEAT]
+    selfGrant: [SELF_GRANT_REFUSED]
+    expiry: [GRANT_EXPIRY_INVALID]
+    gone: [MADRASAH_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    failed: [VALIDATION_ERROR]
+
+# The story the page tells first: the başnazım presses "Başmüderrisi değiştir" on an active medrese, finds the new head by e-mail, sets an end, answers for
+# the two people the old head gave something to (Devral the first, Düşür the second) and confirms.
+main:
+  given: { medrese: active, handed: some, lookup: found, answer: done }
+  events: [OPEN_CHANGE, DONE, SEARCH, DONE, FILL_END, ANSWER_SOME, ANSWER_REST, SUBMIT, DONE]
+
+initial: listed
+
+states:
+  listed:
+    title: Medreseler, the dialog closed
+    by: human
+    description: >-
+      The medrese's row on the Medreseler table. A passive medrese shows "Atanmamış" in the Başmüderris column and has "Başmüderris ata: {name}"; an
+      active one shows its head's name and has "Başmüderrisi değiştir: {name}" beside "Nazar’da aç" (the başnazım's) and "Pasife al". A button is drawn only to a
+      person whose permissions open it (`can.assign` is platform.head_muderris_manage for a Medaris nazımı, everything for the başnazım); when the person's
+      roles or permission codes could not be read every button is on (F-W2-2, nizam.madrasahs.browse). The page sets no focus of its own.
+    source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:257
+    on:
+      OPEN_ASSIGN: { guard: "medrese == 'passive'", target: form, source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:262, say: "they press 'Başmüderris ata' on the passive medrese's row: the dialog opens at once with nothing to read" }
+      OPEN_CHANGE: { guard: "medrese == 'active'", target: reading, effect: [openedChange], source: apps/nizam/features/madrasahs/components/madrasahs-view.tsx:287, say: "they press 'Başmüderrisi değiştir' on the active medrese's row: the dialog opens and starts reading what the head gave" }
+      NAVIGATE: { target: left, say: "they go to another page" }
+
+  reading:
+    title: The dialog reads what the head handed on
+    description: >-
+      The dialog is open on "Başmüderrisi değiştir" and shows two bars while its first action runs: getHeadDelegations, GET /madrasahs/:id/head-muderris/delegations.
+      It reads on every opening (the effect of assign-head-dialog.tsx:98-108), so the list is as old as the opening. The API lists every ROLE
+      (a medrese nazır seat, a müderris or ders nazırı seat in one of the medrese's courses) and every GRANT (a single permission or a group) that a
+      current head gave and that is still held, to anyone, the incoming head included. The focus is on the close icon (F-W2-12); the
+      scrim does not close the dialog. Vazgeç and the close icon work: the answer is dropped.
+    source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:88
+    invoke: { action: getMadrasahHeadDelegations }
+    on:
+      DONE:
+        - { guard: "handed == 'nothing'", target: settle, effect: [readNothing], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:329, say: "the head gave nobody anything: 'Başmüderrisin başkalarına verdiği bir izin ya da rol yok.' and nothing to answer" }
+        - { guard: "handed == 'some'", target: settle, effect: [readSome], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:333, say: "one line per person: who they are, what they were given and for how long, with Devral and Düşür unpressed" }
+      FAIL.unreadable: { guard: "handed == 'unreadable'", target: listFailed, effect: [readFailed], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:93, say: "the list cannot be read: 'Liste okunamadı' with 'Yeniden dene'; 'Değiştir' stays off" }
+      CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:249, say: "Vazgeç, the close icon or Escape: the dialog closes and the answer is dropped" }
+
+  listFailed:
+    title: The list could not be read
+    by: human
+    description: >-
+      The dialog says "Liste okunamadı" with "Yeniden dene" in place of the list; the e-mail field and the end field still work, but "Değiştir" is off for good
+      until a read succeeds (`answered` needs an array). The footer note "Her satır için seçim yapılmadan..." is not drawn: it needs a non-empty list.
+    source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:318
+    on:
+      RETRY: { target: reading, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:324, say: "'Yeniden dene' reads the list again" }
+      CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:249, say: "Vazgeç, the close icon or Escape" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  settle:
+    title: Is the button on?
+    description: >-
+      Not a screen: after every change of the dialog its submit button is on or off. It is natively `disabled={!ready}` (assign-head-dialog.tsx:262), where
+      `ready` is a head chosen who is not the sitting one, an end that is empty or in the future and, when somebody is replaced, an answer for every person.
+      Nothing says which of these is missing except the end's own message and, for the answers, the footer note (F-X-3).
+    source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:125
+    always:
+      - { guard: ready, target: formReady, say: "everything is right: the button is on" }
+      - { target: form, say: "something is missing or wrong: the button is off" }
+
+  form:
+    title: The dialog, the button off
+    by: human
+    description: >-
+      The dialog, "Başmüderris ata" or "Başmüderrisi değiştir", with "Başmüderris ata" or "Değiştir" natively off. The fields are the e-mail of the head ("Başmüderris", or
+      "Yeni başmüderris" when somebody is replaced) and "Görev bitiş tarihi ve saati (isteğe bağlı)"; in the change dialog the list of people follows. The e-mail is
+      looked up when the field is left or Enter is pressed, never on every key, and tedrisat writes every search to the audit log (F-W2-3, F-X-14). A person
+      chosen who is already the sitting head leaves the button off and the message written for it ("Bu kişi zaten bu medresenin başmüderrisi.") is never shown (HEAD-1).
+      A search that finds nobody says so under the field only while nobody is chosen (HEAD-3). A pressed "Devral" or "Düşür" can be pressed again to
+      take the answer back (F-W2-5). The focus started on the close icon and nothing moves it (F-W2-12).
+    source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:246
+    on:
+      SEARCH: { target: looking, source: apps/nizam/features/madrasahs/components/head-picker.tsx:53, say: "they type an e-mail address and press Enter, or leave the field: the directory is searched for it" }
+      REMOVE_HEAD: { guard: "chosen != 'none'", target: settle, effect: [removedHead], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen person: nothing asks first and the focus is not moved" }
+      FILL_END: { target: settle, effect: [endValid], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:114, say: "they type an end in the future" }
+      FILL_END_PAST: { target: settle, effect: [endPast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:114, say: "they type an end that is not in the future: 'Bitiş zamanı şu andan sonra olmalı.' under the field and the button off" }
+      FILL_END_HALF: { target: settle, effect: [endHalf], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:301, say: "they leave the date and time half typed: 'Bitiş tarihini ve saatini tamamlayın.' and the button off" }
+      ANSWER_SOME: { guard: "canAnswer and answered == 'none'", target: settle, effect: [answeredSome], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:368, say: "they answer for the first person: the button stays off" }
+      ANSWER_REST: { guard: "canAnswer and answered != 'all'", target: settle, effect: [answeredAll], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:368, say: "they answer for every person that is left" }
+      CLEAR_ANSWER:
+        - { guard: "canAnswer and answered == 'all'", target: settle, effect: [answeredSome], source: libs/ui/src/mds/choice-chips.tsx:58, say: "they press a pressed 'Devral' or 'Düşür' again: it is taken back, the row has no answer (F-W2-5)" }
+        - { guard: "canAnswer and answered == 'some'", target: settle, effect: [answeredNone], source: libs/ui/src/mds/choice-chips.tsx:58, say: "the same, with one answer left" }
+      ELSEWHERE: { guard: canAnswer, target: settle, effect: [elsewhere], say: "somebody else, the old head or another administrator, gives or takes a role or a permission while the dialog is open: the list on screen is now stale" }
+      CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:249, say: "Vazgeç, the close icon or Escape: nothing is written" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  formReady:
+    title: The dialog, the button on
+    by: human
+    description: The same dialog with "Başmüderris ata" or "Değiştir" on; pressing it sends the appointment.
+    source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:262
+    on:
+      SEARCH: { target: looking, source: apps/nizam/features/madrasahs/components/head-picker.tsx:53, say: "they look up another person" }
+      REMOVE_HEAD: { guard: "chosen != 'none'", target: settle, effect: [removedHead], source: apps/nizam/features/madrasahs/components/head-picker.tsx:81, say: "they remove the chosen person: the button goes off" }
+      FILL_END: { target: settle, effect: [endValid], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:114, say: "they change the end to another in the future" }
+      FILL_END_PAST: { target: settle, effect: [endPast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:114, say: "they type an end that is not in the future: the message and the button off" }
+      FILL_END_HALF: { target: settle, effect: [endHalf], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:301, say: "they leave the date and time half typed: the button goes off" }
+      CLEAR_ANSWER:
+        - { guard: "canAnswer and answered == 'all'", target: settle, effect: [answeredSome], source: libs/ui/src/mds/choice-chips.tsx:58, say: "they take one answer back: the button goes off" }
+      ELSEWHERE: { guard: canAnswer, target: settle, effect: [elsewhere], say: "somebody else changes what the head handed on while the dialog is open; the button stays on and the refusal comes when it is pressed" }
+      SUBMIT: { target: saving, effect: [clearToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:127, say: "they press 'Başmüderris ata' or 'Değiştir'" }
+      CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:249, say: "Vazgeç, the close icon or Escape: nothing is written" }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  looking:
+    title: Look the person up
+    description: >-
+      The server action lookupUserByEmail, GET /users/lookup?email=: the realm's directory is searched for the exact address (0 or 1 account) and tedrisat
+      writes the search to the audit log, found or not. The e-mail field is disabled while it runs, so it loses the focus (F-W2-3), and a hidden
+      "Aranıyor" says so. The rest of the dialog stays live: Vazgeç closes it, and "Başmüderris ata" keeps the state it had (not drawn here).
+    source: apps/nizam/features/madrasahs/actions.ts:123
+    invoke: { action: lookupUser }
+    on:
+      DONE:
+        - { guard: "lookup == 'found'", target: settle, effect: [picked], source: apps/nizam/features/madrasahs/components/head-picker.tsx:61, say: "the person is chosen: their name, address and a note appear, and the field is emptied" }
+        - { guard: "lookup == 'sameHead' and mode == 'change'", target: settle, effect: [pickedSame], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:113, say: "the person is the sitting head: they are chosen like anyone, the button stays off, and the message written for it is hidden by the chosen person (HEAD-1)" }
+        - { guard: "lookup == 'notFound'", target: settle, effect: [nobodyFound], source: apps/nizam/features/madrasahs/components/head-picker.tsx:66, say: "no account with that address: 'Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.' under the field, while nobody is chosen" }
+      FAIL.unavailable: { guard: "lookup == 'down'", target: settle, effect: [directoryDown], source: apps/nizam/features/madrasahs/components/head-picker.tsx:68, say: "the directory is not reachable: 'Arama şu an yapılamıyor. Biraz sonra yeniden deneyin.'" }
+      CANCEL: { target: closed, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:249, say: "they close the dialog while the search runs; its answer is dropped" }
+
+  saving:
+    title: Seat the new başmüderris
+    description: >-
+      The server action setHeadMuderris, PUT /madrasahs/:id/head-muderris with {userId, endsAt?, delegations?}, one transaction with the medrese row locked. The
+      server checks, in this order (HEAD-5): the medrese exists (404), the caller holds platform.head_muderris_manage (403), the body (400); then, for
+      anyone but SYSTEM_ADMIN, that they do not name themselves and that no row they take over was given to them (403 SELF_GRANT_REFUSED, each written to the
+      audit log); then that the end is not past (400 GRANT_EXPIRY_INVALID); then, inside the transaction, that the answers are exactly the list as it is
+      now (400 DISMISS_DECISIONS_INCOMPLETE); then it applies them, revokes the old head, seats the new one, clears the passive state, and refuses (400
+      DISMISS_TAKE_OVER_WITHOUT_SEAT, 409 DISMISS_SEAT_HANDED_ON) when a grant would outlive its seat or a dropped seat leaves what its holder handed on.
+      The fields are disabled and the button is busy; Vazgeç, the close icon and Escape stay on and do nothing (HEAD-6).
+    source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:136
+    invoke: { action: setMadrasahHeadMuderris }
+    on:
+      DONE:
+        - { guard: "answer == 'done' and not drift and mode == 'change'", target: changed, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:158, say: "the new head sits, the old one's seat ends, each answer is applied: a toast 'Başmüderris değiştirildi', the dialog closes and the table is read again" }
+        - { guard: "answer == 'done' and not drift and mode == 'assign'", target: assigned, source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:158, say: "the person is seated and the medrese is Etkin again: a toast 'Başmüderris atandı', the dialog closes and the table is read again" }
+      FAIL.stale: { guard: stale, target: reading, effect: [staleRefused], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:148, say: "'Başmüderrisin verdikleri değişmiş; listeyi yeniden okuyup seçimleri tekrar yapın.': every answer is wiped and the list is read again, the dialog stays open" }
+      FAIL.cascade: { guard: "not drift and mode == 'change' and answer == 'cascade'", target: settle, effect: [cascadeToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "a Düşür would leave what a dropped seat's holder handed on: the toast names it and asks to dismiss that person first or take their seat over; the answers are kept" }
+      FAIL.seatless: { guard: "not drift and mode == 'change' and answer == 'seatless'", target: settle, effect: [seatlessToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "a Devral would outlive a seat answered Düşür: the page asks one answer per person, so this cannot come from it (decision D1)" }
+      FAIL.selfGrant: { guard: "answer == 'selfGrant'", target: settle, effect: [selfGrantToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "a Medaris nazımı took over a row given to them or named themselves: 'Size verilmiş bir rolü ya da izni devralamazsınız...', in both cases (HEAD-4); the answers are kept" }
+      FAIL.expiry: { guard: "answer == 'expiry'", target: settle, effect: [expiryToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "the end is past for the server although it was in the future for the page: 'Bitiş tarihi geçmişte.'" }
+      FAIL.gone: { guard: "answer == 'gone'", target: settle, effect: [goneToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "'Bu medrese artık yok.'" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: settle, effect: [forbiddenToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "'Bunu yapma izniniz yok.'" }
+      FAIL.failed: { guard: "answer == 'failed'", target: settle, effect: [failedToast], source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:143, say: "'Bir şeyler ters gitti. Biraz sonra yeniden deneyin.'" }
+
+  assigned:
+    type: final
+    title: The medrese has its başmüderris
+    description: >-
+      The toast "Başmüderris atandı" names the medrese and the new head, the dialog is closed and the table is read again: the row is Etkin and shows the
+      new head. The "Başmüderris ata" button that opened the dialog is gone from the row (it became "Başmüderrisi değiştir"), so Base UI has no element to give the
+      focus back to and it falls to the page (F-W2-10; not verified in a browser). The new head finds the medrese in Nazar.
+
+  changed:
+    type: final
+    title: The başmüderris is changed
+    description: >-
+      The toast "Başmüderris değiştirildi" names the medrese and the new head, the dialog is closed and the table is read again: the row shows the new head. The
+      old head's seat is revoked, and what they gave is the caller's (Devral) or revoked (Düşür). The row's "Başmüderrisi değiştir" button is still there, so the
+      focus goes back to it (not verified in a browser; F-W2-10 for the rows that move).
+
+  closed:
+    type: final
+    title: The dialog is closed and nothing was written
+    description: The medrese is as it was; the focus goes back to the button that opened the dialog.
+
+  left:
+    type: final
+    title: The person leaves the page
+    leavesPage: true
+
+assertions:
+  - { id: a-dialog-that-is-on-is-the-one-sent, never: "state == 'saving' and not ready", say: "Only a dialog the button allowed is sent: a new head, an end that is empty or in the future, and an answer for every person", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:125 }
+  - { id: never-without-a-new-head, never: "state == 'saving' and chosen != 'some'", say: "Nobody is made başmüderris without a person chosen, and never the person who already is", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:125 }
+  - { id: a-head-is-never-replaced-with-an-answer-missing, never: "state == 'saving' and mode == 'change' and rows == 'some' and answered != 'all'", say: "A başmüderris is never replaced while a person the old one gave something to has no answer", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:123 }
+  - { id: a-past-end-is-never-sent, never: "state == 'saving' and (end == 'past' or end == 'unfinished')", say: "An end that is not in the future, or half typed, is never sent", source: apps/nizam/features/madrasahs/components/assign-head-dialog.tsx:114 }

@@ -1,0 +1,39 @@
+# nizam.nazims.editPermissions, the group is deleted while the dialog is open (`answer: groupGone`; no e2e check does this).
+# Written without a replay; see locators.binding.yaml for the data and the locators every file shares.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/nazims/editPermissions \
+#     --bind graphs/nizam/nazims/editPermissions/binding.groupGone.yaml --cover transitions --absent --out <dir>
+# The dialog was opened with the group chosen and the walk pressed "Kaydet": `before` on it deletes the group as the başnazım would on İzin grupları (edit-data.mjs
+# drop-group: DELETE /nizam/permission-groups/<id> with usersPolicy keep, so the person keeps the group's two permissions as single ones), so the PUT names a group
+# that is not there (PERMISSION_GROUP_NOT_FOUND, 404). The page toasts "İzinler kaydedilemedi" / "Bu grup artık yok." and the dialog stays open with the select
+# still listing the group (EPERM-1). A path that chose "Grup yok" first sends no group and is saved, so the graph's FAIL.groupGone is guarded by the group being
+# chosen and the cover takes only those paths. `down` of the teardown finds no group to delete, which is fine.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.nazims.editPermissions
+
+scenarios:
+  groupGone:
+    given: { seat: dated, answer: groupGone }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->nazims' }
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, up]
+        expect: edit-data up
+    teardown:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantD]
+        expect: 'down APPLICANT_D'
+      - run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, down]
+        expect: edit-data down
+
+nodes:
+  save:
+    role: button
+    name: '/^Kaydet$/'
+    within: { role: dialog, name: İzinleri düzenle }
+    before: [{ run: [node, ../nizam/nazims/editPermissions/edit-data.mjs, drop-group], expect: edit-data drop-group }]

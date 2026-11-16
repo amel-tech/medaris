@@ -1,0 +1,218 @@
+# What must exist for the köşk's nazımı (and the başnazım) to read the courses of a köşk, hide one and bring it back: the flow's product list
+# (LAYOUT.md section 7). Each need is what the product must do, from the flow's story and what the e2e and the findings ask, not from what the
+# page does today; the known gaps go to graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file.
+#
+# Missing (no code): hide-says-how-many-talebe-lose-access, a-failed-hide-is-told-in-the-window, focus-follows-a-hide-or-a-restore,
+#   a-tab-name-has-its-count-apart, closing-follows-the-busy-state, a-medrese-course-can-always-be-opened, the-page-names-the-kosk-in-its-title.
+# Unwalked (code, and neither an e2e check nor a replay scenario that can drive it): none. Six needs have no e2e check and only a replay
+#   scenario to walk them: a-higher-kademe-keeps-what-it-hid, a-refused-hide-is-told, a-restore-refused-for-the-kademe-says-why,
+#   a-restore-refused-while-the-medrese-is-hidden-says-why, any-other-restore-refusal-is-told and no-access-says-so. Nothing was replayed when
+#   this file was written (the first walks are a later phase), so every `replay:` below names the scenario that will walk it, not one that passed.
+kind: needs
+flow: nizam.courses.list
+status: proposed
+
+needs:
+  - id: nazim-lands-on-dersler
+    need: >-
+      A köşk's nazımı who opens her köşk is taken to its list of courses, the page her work is on; the başnazım opens the same list from the
+      köşk's management view or by its address.
+    drawn: [begin, reading, listed, title]
+    built:
+      - route: apps/nizam/app/kosks/[id]/page.tsx:50
+      - route: apps/nizam/features/kosks/kosk-entry.ts:49
+    walked:
+      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
+        check: 'kosk-view#6'
+      - replay: hides
+      - replay: chief
+
+  - id: courses-listed-by-status
+    need: >-
+      The nazım sees every course of the köşk, hidden ones too, newest first, in tabs Tümü, Yayında, Taslak and Gizli that carry their number;
+      a tab always holds as many courses as its number says, a tab with none says so, and a köşk with no course says "Henüz ders yok.".
+    drawn: [listed, tablist, tabAll, tabPublished, tabDraft, tabHidden, table, rowTitle, statusHidden, emptyTab, empty, emptyAll]
+    built:
+      - action: medaris.api:getKoskCourseRoster
+      - route: apps/nizam/features/kosks/components/kosk-course-table.tsx:347
+    walked:
+      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
+        check: 'kosk-view#7'
+      - replay: hides
+      - replay: emptyKosk
+
+  - id: cards-lead-on
+    need: >-
+      Three cards say how many applications wait, how many medreses hold a hosting right and how many nazımlar the köşk has, and each has the link
+      to the page that deals with it.
+    drawn: [cardsRegion, applicationsNumber, applicationsLink, hostingNumber, hostingLink, nazimsNumber, nazimsLink]
+    built:
+      - action: medaris.api:getKoskOverview
+      - route: apps/nizam/features/kosks/components/kosk-courses-view.tsx:124
+    walked:
+      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
+        check: 'kosk-view#7'
+      - replay: hides
+
+  - id: row-offers-what-its-kind-allows
+    need: >-
+      A course of the köşk's own can be edited, have its hocalar changed and be hidden; a course a medrese opened (the medrese picks its hocalar)
+      can be viewed and hidden but not edited; a hidden course can be brought back, and offers nothing else. No button leads to a refusal the page
+      could have foreseen.
+    drawn: [ownEdit, ownHocas, ownHide, medreseView, medreseHide, restoreButton, lockedNote]
+    built:
+      - route: apps/nizam/features/kosks/overview-present.ts:95
+      - route: apps/nizam/features/kosks/components/kosk-course-table.tsx:267
+    walked:
+      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
+        check: 'kosk-view#8'
+      - replay: hides
+
+  - id: hide-asks-first
+    need: >-
+      The nazım hides a course only after being asked once. The question names the course, says who it is hidden from and that nothing is
+      deleted; she may cancel, and the course then stays where it is.
+    drawn: [ownHide, confirmHide, hideDialog, hideEyebrow, hideBody, hideWay, hideCancel, hideConfirm]
+    built:
+      - route: apps/nizam/features/kosks/components/hide-course-dialog.tsx:60
+      - action: medaris.api:hideCourse
+    walked:
+      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
+        check: 'kosk-view#9'
+      - replay: hides
+
+  - id: hide-takes-the-course-off-every-list-and-says-so
+    need: >-
+      Once she confirms, the course leaves the lists of talebe and visitors, turns Gizli in this table, the tab numbers follow, a toast says it
+      was hidden, and the hide is on the audit record; nothing is deleted. Someone else hiding it first counts as done.
+    drawn: [hiding, afterHide, listedHidden, toastHidden, toastHiddenBody, statusHidden, tabHidden]
+    built:
+      - action: medaris.api:hideCourse
+      - route: apps/nizam/features/kosks/components/hide-course-dialog.tsx:36
+    walked:
+      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
+        check: 'kosk-view#9'
+      - replay: hides
+      - replay: staleHide # the already-hidden half; the deleted-course half is the next need's
+
+  - id: a-refused-hide-is-told
+    need: >-
+      When the course cannot be hidden (it no longer exists, or the nazım may not), she is told so and the course stays where it is.
+    drawn: [toastHideFailed, toastHideFailedBody, confirmHide]
+    built:
+      - action: medaris.api:hideCourse
+      - route: apps/nizam/features/kosks/components/hide-course-dialog.tsx:46
+    walked:
+      - replay: staleHide
+
+  - id: restore-at-once
+    need: >-
+      "Geri al" brings a hidden course back where it was, at once and without a question, a toast says so, the course is Yayında or Taslak again
+      and the numbers follow, and the restore is on the audit record. The başnazım brings back any hidden course.
+    drawn: [restoring, restoreButton, rowRestore, restoreBusy, toastRestored, toastRestoredBody]
+    built:
+      - action: medaris.api:restoreCourse
+      - route: apps/nizam/features/kosks/components/kosk-course-table.tsx:82
+    walked:
+      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
+        check: 'kosk-view#9'
+      - replay: hides
+      - replay: chief
+
+  - id: a-higher-kademe-keeps-what-it-hid
+    need: >-
+      What Medaris yönetimi hid shows the köşk's nazımı no button, only a sentence that names the kademe; what she hid herself, or a medrese
+      did, has "Geri al".
+    drawn: [lockedNote, restoreButton]
+    built:
+      - action: medaris.api:getKoskCourseRoster
+      - route: apps/nizam/features/kosks/components/kosk-course-table.tsx:256
+    walked:
+      - replay: locked # no e2e check reads the sentence: kosk-view#8 only asserts that a hidden course has Geri al
+      - replay: hides
+
+  - id: a-restore-refused-for-the-kademe-says-why
+    need: >-
+      A restore refused because a higher kademe hid the course since the page was read says so in the person's words, and the list is read again,
+      so the row shows the sentence and no button.
+    drawn: [toastRestoreFailed, toastRestoreLevel, restoring, lockedNote]
+    built:
+      - action: medaris.api:restoreCourse
+      - route: apps/nizam/features/kosks/overview-present.ts:107
+    walked:
+      - replay: staleRestore # FAIL.level; and FAIL.notHidden (brought back by someone else first), which counts as done
+
+  - id: a-restore-refused-while-the-medrese-is-hidden-says-why
+    need: >-
+      A course whose medrese is still hidden cannot be brought back; the person is told that it comes back with the medrese, and the list stays as
+      it was.
+    drawn: [toastRestoreFailed, toastRestoreParentHidden, restoring]
+    built:
+      - action: medaris.api:restoreCourse
+      - route: apps/nizam/features/kosks/overview-present.ts:107
+    walked:
+      - replay: parentHidden
+
+  - id: any-other-restore-refusal-is-told
+    need: >-
+      A restore refused for any other reason (the course is gone) says "Bir şeyler ters gitti. Biraz sonra yeniden deneyin." and leaves the list
+      as it was.
+    drawn: [toastRestoreFailed, toastRestoreFailedBody]
+    built:
+      - action: medaris.api:restoreCourse
+      - route: apps/nizam/features/kosks/components/kosk-course-table.tsx:90
+    walked:
+      - replay: restoreGone
+
+  - id: no-access-says-so
+    need: >-
+      A person who may not read this köşk's courses, and an address no köşk has, meet the screen that says "Bu bölüm için izniniz yok".
+    drawn: [reading, refused, not_found]
+    built:
+      - route: apps/nizam/app/kosks/[id]/dersler/page.tsx:42
+    walked:
+      - replay: refused # the screen's own story is nizam.shell.noAccessAndNotFound's
+
+  - id: hide-says-how-many-talebe-lose-access
+    need: >-
+      The window that asks before hiding says how many talebe are enrolled and lose their access and that the celses leave their calendar, as the
+      same question does in nazar-web (NCL-2); the row already carries the number.
+    drawn: [confirmHide, hideBody]
+    missing: none
+
+  - id: a-failed-hide-is-told-in-the-window
+    need: >-
+      When a hide is refused the window itself says so (an Alert), not only an error toast in another portal (F-X-4).
+    drawn: [confirmHide, toastHideFailed]
+    missing: none
+
+  - id: focus-follows-a-hide-or-a-restore
+    need: >-
+      After a hide or a restore the focus lands on a place a keyboard or screen-reader user can use (the table's caption or the next row's first
+      button), and a line on the page, not only a toast of six seconds, says what was done (F-W4-6).
+    drawn: [listedHidden, listed, toastHidden, toastRestored]
+    missing: none
+
+  - id: a-tab-name-has-its-count-apart
+    need: >-
+      A tab's accessible name reads its label and its count apart ("Gizli, 2", not "Gizli2") (NCL-3).
+    drawn: [tabAll, tabPublished, tabDraft, tabHidden]
+    missing: none
+
+  - id: closing-follows-the-busy-state
+    need: >-
+      While the hide runs, "Vazgeç" and the close icon are marked busy or disabled like "Gizle", not left live and doing nothing (NCL-1).
+    drawn: [hiding, hideCancel, hideClose]
+    missing: none
+
+  - id: a-medrese-course-can-always-be-opened
+    need: >-
+      A course a medrese opened can be viewed from this list in every deployment, not only where tedris's address is configured (F-W4-21).
+    drawn: [medreseView, medreseHide]
+    missing: none
+
+  - id: the-page-names-the-kosk-in-its-title
+    need: >-
+      The document's title says which köşk's courses it lists, so two tabs of two köşks can be told apart (F-W4-17).
+    drawn: [title, subtitle]
+    missing: none

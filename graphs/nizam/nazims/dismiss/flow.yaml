@@ -1,0 +1,323 @@
+# Medaris nazımları in nizam-web (/medaris-nazimlari), read by the Medaris başnazım, who presses "Görevden al: {name}" on a row, answers Devral or Düşür for
+# everything that Medaris nazımı handed on to other people, and confirms. Read from the code of PR #394 on 15 Nov 2026 (apps/nizam/features/permissions, the
+# API's GET /nizam/medaris-nazims/:userId/given and DELETE /nizam/medaris-nazims/:userId). It says what the code does today:
+#   - the dialog asks the API what the person gave, every time it opens (nothing is cached), and shows one row for each ROLE or GRANT given to someone else.
+#     "Görevden al" is natively off until every such row has an answer (F-W2-4: nothing says why). With nothing to answer it is on at once.
+#   - what a Medaris nazımı can hand on, through the API, is a role: the köşk nazımı seats of a köşk they opened (POST /kosks names its first nazımları, and
+#     the caller gives those rows, kosk-admin.repository.ts:429). A Medaris nazımı gives no permission by this route, and the rows they gave themselves and
+#     the groups they defined are shown apart and need no answer. The e2e seeds a role row by SQL (permissions-seed.ts:185).
+#   - the person being dismissed is not a variable of this flow: the walk makes one and presses their row. `given` folds what the dialog lists: how many rows ask
+#     an answer, and whether groups the person defined are listed too. Impossible pairs (a row to answer and nothing handed on) are not in it.
+#   - a refusal leaves the dialog open with the answers kept and says why in a toast that stays (sonner, not the kit's toaster); the roster is read again
+#     only after a success, so a "this person is no longer a Medaris nazımı" leaves the stale row in place (NZDIS-1).
+schema: delurio-graph/0
+kind: flow
+id: nizam.nazims.dismiss
+status: captured
+domain: medaris.api
+ui: nizam.nazims.dismiss
+title: Dismiss a Medaris nazımı, answering for what they handed on
+summary: >-
+  The başnazım opens Medaris nazımları and presses "Görevden al: {name}" on a row. A dialog titled "Görevden al", with the person's name above its title, opens
+  with the focus on "Vazgeç" and asks the API what that person gave to others. For every role or permission given to someone else it lists what it is, who got it
+  and where (a köşk), with two toggle chips, "Devral" (it stays and the başnazım becomes its giver) and "Düşür" (it is taken back at once); nothing is chosen at
+  the start and "Görevden al" stays off until every row has an answer. With nothing to answer the dialog says so and the button is on. Groups the person defined
+  are listed under the rows and need no answer. The confirmation closes the dialog, the row leaves the list and a toast of six seconds says so. "Vazgeç", Esc and
+  the close icon write nothing. The scrim does not close the dialog. After a success the pressed button is gone with its row and the focus is lost (F-W2-10).
+
+scope:
+  shows: >-
+    the roster of the Medaris nazımları with its "Görevden al" row buttons, the dismissal dialog (reading, failed, nothing to answer, choosing, every row
+    answered, in flight), the toasts of a refused dismissal, and the roster after a dismissal
+  world: open
+  outOfView:
+    - "appointing a Medaris nazımı and changing their permissions (the other buttons of the same page and their dialogs): nizam.nazims.appoint, nizam.nazims.editPermissions; the permission groups: nizam.nazims.groups"
+    - "the page for a person who is not the başnazım: tedrisat answers every route of the page 403 and Next draws 'Bu bölüm için izniniz yok' (page.tsx:27), which nizam.shell.noAccessAndNotFound walks; a Medaris nazımı meets it too"
+    - "the roster, the catalog or the groups failing to read for another reason than a refusal: the page draws an alert 'Medaris nazımları yüklenemedi' with 'Yeniden dene' in place of the table (nazims-view.tsx:228), so no row button exists"
+    - "the same Devral or Düşür question for a medrese nazırı or a ders nazırı, on nazar's own page and API: nazar.nazirs.dismiss, nazar.courseNazirs.dismiss, the siblings of this flow"
+    - "the section for what the person gave themselves ('Bu kişi kendine {count} izin ya da rol vermiş ...', dismiss-dialog.tsx:241, no answer asked): the API would list such a row but no route lets a Medaris nazımı make one for themselves (the köşk and medrese routes refuse it), and the e2e does not seed one; not drawn, not walked"
+    - "a row that is a single permission or a group the person was given to give on (kind GRANT): no API route lets a Medaris nazımı give a permission by this path, so a walk cannot make one; the dialog would name it by its catalog title (dismiss-dialog.tsx:137) and the e2e does not seed one"
+    - "an ended session: the two server calls send the person to sign in (redirectIfUnauthenticated, dismiss-dialog.tsx:81 and :107) instead of drawing an error: realm.auth.signIn"
+    - "closing the dialog while it is still reading: 'Vazgeç', Esc and the close icon work then (only a call in flight blocks them), the late answer is ignored; not drawn as a transition"
+
+decisions:
+  D1:
+    question: >-
+      Should each row also offer "Düzenle", so the başnazım can change a grant before the seat ends instead of only taking it over or dropping it (MDRS-201, "adopt, edit
+      or drop")? The dialog's comment (dismiss-dialog.tsx:49) and the answers note ("Devral ... Düşür ...") know two answers only.
+    recommend: >-
+      Decide it with MDRS-201; until then the dialog offers two answers and no third, and the graph draws two.
+    affects: [choosing]
+
+context:
+  given:
+    values: [nothing, one, many, groupOnly, manyGroup]
+    initial: any
+    say:
+      nothing: "the person gave nobody anything and defined no group, so the dialog has nothing to ask"
+      one: "the person gave one other person a role, so the dialog lists one row to answer"
+      many: "the person gave two other people roles (the two nazımları of a köşk they opened), so the dialog lists two rows to answer"
+      groupOnly: "the person gave nobody anything but defined or changed a permission group, which the dialog lists and asks nothing about"
+      manyGroup: "two rows to answer, and a group the person defined listed under them"
+  seat:
+    values: [held, ended]
+    initial: held
+    say:
+      held: "the person still holds the Medaris nazımı seat and its platform permissions"
+      ended: "the seat and the platform permissions are revoked"
+  elsewhere:
+    values: [nothing, gone]
+    initial: nothing
+    say:
+      nothing: "nobody else has touched the person while the dialog was open"
+      gone: "somebody else dismissed the person while the dialog was open, so the API no longer finds the seat (MEDARIS_NAZIM_NOT_FOUND)"
+  last:
+    values: [nothing, dismissed, changed, cascade, seatless, gone, refused, failed]
+    initial: nothing
+    say:
+      nothing: "no dismissal has been tried in this visit"
+      dismissed: "a dismissal just succeeded"
+      changed: "the API said what the person handed on changed while the dialog was open (DISMISS_DECISIONS_INCOMPLETE)"
+      cascade: "the API refused a Düşür that would leave what a dropped seat's holder handed on with no seat (DISMISS_SEAT_HANDED_ON)"
+      seatless: "the API refused a Devral of a permission whose seat is dropped beside it (DISMISS_TAKE_OVER_WITHOUT_SEAT)"
+      gone: "the person no longer holds the seat (MEDARIS_NAZIM_NOT_FOUND)"
+      refused: "the API refused for lack of permission (AUTHZ_FORBIDDEN)"
+      failed: "the API refused for another reason, or failed"
+
+guards:
+  # the rows of `decisionItems` (present.ts:227): roles and grants given to someone else
+  asks: "given in ['one', 'many', 'manyGroup']"
+  # the groups of `groupItems` (present.ts:254)
+  hasGroups: "given in ['groupOnly', 'manyGroup']"
+
+effects:
+  dismissed: { set: { last: dismissed, seat: ended } }
+  changed: { set: { last: changed } }
+  cascade: { set: { last: cascade } }
+  seatless: { set: { last: seatless } }
+  gone: { set: { last: gone } }
+  refused: { set: { last: refused } }
+  failed: { set: { last: failed } }
+  goneElsewhere: { set: { elsewhere: gone } }
+  # a dialog closed without a dismissal: the seat and everything handed on are as they were (permissions.e2e.ts#5)
+  kept: { set: { seat: held } }
+
+failures:
+  opened:
+    from: listMedarisNazims
+    forbidden: [AUTHZ_FORBIDDEN]
+  asking:
+    from: getMedarisNazimGiven
+    unread: [MEDARIS_NAZIM_NOT_FOUND, AUTHZ_FORBIDDEN, HTTP_400]
+  dismissing:
+    from: dismissMedarisNazim
+    changed: [DISMISS_DECISIONS_INCOMPLETE]
+    cascade: [DISMISS_SEAT_HANDED_ON]
+    seatless: [DISMISS_TAKE_OVER_WITHOUT_SEAT]
+    gone: [MEDARIS_NAZIM_NOT_FOUND]
+    forbidden: [AUTHZ_FORBIDDEN]
+    other: [VALIDATION_ERROR, HTTP_400]
+
+# The story the page tells first: a Medaris nazımı who opened a köşk and named two nazımları; the başnazım takes over the first, drops the second and confirms.
+main:
+  given: { given: many }
+  events: [DONE, DISMISS, DONE, ANSWER, ANSWER_LAST, SUBMIT, DONE]
+
+initial: opened
+
+states:
+  opened:
+    title: The roster is read
+    description: >-
+      The page reads GET /nizam/medaris-nazims, GET /nizam/permissions and GET /nizam/permission-groups together on the server and draws behind a loading
+      fallback of bars (loading.tsx). Nothing is on the screen of this step. Only the Medaris başnazım is let in: tedrisat answers each of the three reads 403 to
+      anyone else, a Medaris nazımı included, and any 403 is Next's forbidden page 'Bu bölüm için izniniz yok' (no_access). Any other failure of a read draws an
+      alert in place of the table (not drawn here: out of view).
+    invoke: { action: listMedarisNazims }
+    on:
+      DONE: roster
+      FAIL.forbidden: no_access
+    source: apps/nizam/app/medaris-nazimlari/page.tsx:22
+
+  roster:
+    title: The Medaris nazımları are listed
+    description: >-
+      The page: the title, the intro, "Medaris nazımı ata", the section "Görevde" with its count, and the table of the nazımları in the order they were appointed
+      (oldest first; the seeded Medaris nazımı is the first row and is never pressed by a walk). Every row has "İzinleri düzenle: {name}" and "Görevden al: {name}",
+      on whatever the date: MDRS-215 removed the version gate that permissions#3 and #4 still name, and nothing in nazims-view.tsx reads a date (permissions#3).
+      A row whose person has no name gets the label 'Görevden al: ' with nothing after the colon (F-W2-11). The page keeps no focus of its own on load.
+    by: human
+    goal: true
+    on:
+      DISMISS: { target: asking, say: "they press Görevden al on a row" }
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/permissions/components/nazims-view.tsx:185
+
+  asking:
+    title: The dialog asks what the person handed on
+    description: >-
+      The dialog is open, titled "Görevden al" under the person's name, over the inert roster, and the focus is on "Vazgeç" (permissions#4). It calls GET
+      /nizam/medaris-nazims/:userId/given (every opening asks again: nothing is kept; the list of the last opening may show for a moment before the first
+      ask clears it: not verified). While it waits the body is two bars in a div marked aria-busy and hidden from assistive technology, so nothing is said or
+      announced (NZDIS-2), the intro line is already there, and "Görevden al" is off. 'Vazgeç', Esc and the close icon work while it reads (not drawn). Any failure of
+      the read, even a 404 because the person stopped being a Medaris nazımı meanwhile, draws the load-failed alert. The dialog is described by its whole body, so a
+      reader hears all of it as the description (F-W2-13).
+    invoke: { action: getMedarisNazimGiven }
+    on:
+      DONE:
+        - { guard: asks, target: choosing, source: "apps/nizam/features/permissions/present.ts:227" }
+        - { target: nothingToAsk }
+      FAIL.unread: loadFailed
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:77
+
+  loadFailed:
+    title: The list could not be read
+    description: >-
+      An error alert 'Liste okunamadı' with 'Bu kişinin verdikleri şu an okunamıyor. Biraz sonra yeniden deneyin.' and a "Yeniden dene" button; "Görevden al" stays
+      off. Nothing writes. Not reachable by a walk: no condition of the stack makes the read fail, and the one refusal the API gives here (the person is no longer
+      a Medaris nazımı) is a race.
+    by: human
+    on:
+      RETRY: { target: asking, say: "they press Yeniden dene" }
+      CANCEL: { target: roster, effect: [kept], say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, effect: [kept], say: "they press the close icon" }
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:177
+
+  nothingToAsk:
+    title: There is nothing to answer
+    description: >-
+      No role or permission was given to anyone else, so the dialog asks nothing: 'Bu kişinin başkalarına verdiği bir izin ya da rol yok.' (a person who defined a
+      group is listed under it, with 'Gruplar yerinde kalır ...', and the page draws an empty bordered list above that, NZDIS-4). "Görevden al" is on: with no row
+      the every-row-answered test is true at once (present.ts:258), and no text says what the button waits for in the other cases either (F-W2-4).
+    by: human
+    on:
+      SUBMIT: { target: dismissing, say: "they press Görevden al" }
+      GONE_ELSEWHERE: { target: nothingToAsk, effect: [goneElsewhere], say: "somebody else dismisses the person while the dialog is open; nothing on the screen changes" }
+      CANCEL: { target: roster, effect: [kept], say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, effect: [kept], say: "they press the close icon" }
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:184
+
+  choosing:
+    title: Nothing is chosen yet
+    description: >-
+      'Bu kişi başkalarına {count} izin ya da rol vermiş. Her biri için bir seçim yapın.' and one row for each: what was given ('Köşk nazımı', the name of the role),
+      who got it and where ('Dilek Başvuran · <köşk>'), and a group of two toggle chips, Devral and Düşür, none pressed (permissions#4: "Köşk nazımı" and the köşk's name are in
+      the row). Pressing a chip presses it and un-presses the other, pressing a pressed chip clears the row. A caption says what the two do ('Devral: izin yerinde
+      kalır, veren siz olursunuz. Düşür: izin geri alınır.'). "Görevden al" is off and the footer carries only the audit note, so nothing says why (F-W2-4). The chips are
+      toggle buttons, announced as toggles that can be switched off again, and every button of every row is named only Devral or Düşür; the person is only in the
+      group's hidden legend ('Köşk nazımı, Dilek Başvuran') (F-W2-5). The whole dialog is its own description (F-W2-13).
+    by: human
+    on:
+      ANSWER:
+        - { guard: "given == 'one'", target: answered, say: "they press Devral or Düşür for the one row", source: "apps/nizam/features/permissions/present.ts:258" }
+        - { target: partlyAnswered, say: "they press Devral or Düşür for the first of two rows" }
+      CANCEL: { target: roster, effect: [kept], say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, effect: [kept], say: "they press the close icon" }
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:188
+
+  partlyAnswered:
+    title: Some rows have an answer
+    description: >-
+      The same dialog with one row answered and one not: "Görevden al" stays off (dismissReady asks every row, present.ts:258). Pressing the pressed chip again clears
+      its row.
+    by: human
+    on:
+      ANSWER_LAST: { target: answered, say: "they answer the row that has no answer" }
+      CLEAR: { target: choosing, say: "they press a pressed chip again" }
+      CANCEL: { target: roster, effect: [kept], say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, effect: [kept], say: "they press the close icon" }
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:217
+
+  answered:
+    title: Every row has an answer
+    description: >-
+      "Görevden al" is on. Changing a row's answer to the other chip keeps this state; the transition is not drawn because no flow event tells it from answering a row
+      (both chips send the same press).
+    by: human
+    on:
+      SUBMIT: { target: dismissing, say: "they press Görevden al" }
+      GONE_ELSEWHERE: { target: answered, effect: [goneElsewhere], say: "somebody else dismisses the person while the dialog is open; nothing on the screen changes" }
+      CLEAR:
+        - { guard: "given == 'one'", target: choosing, say: "they press the one pressed chip again", source: "apps/nizam/features/permissions/present.ts:258" }
+        - { target: partlyAnswered, say: "they press a pressed chip again" }
+      CANCEL: { target: roster, effect: [kept], say: "they press Vazgeç, or Esc" }
+      CLOSE: { target: roster, effect: [kept], say: "they press the close icon" }
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:96
+
+  dismissing:
+    title: The dismissal is on its way
+    description: >-
+      dismissNazim calls DELETE /nizam/medaris-nazims/:userId with `{decisions}`: one { kind, id, action } for each row listed (the rows made for the person themselves
+      are not sent), `[]` when none. The API does it in one transaction: Devral gives the row to the caller as giver (the right stays), Düşür revokes it and, for a
+      seat, what its holder was given inside that seat's scope; then the person's platform permissions and the seat are revoked and the audit log gets one row
+      (medaris_nazim.dismiss, with how many were taken over and dropped). "Görevden al" is busy (aria-disabled, a hidden word 'Yükleniyor'). Closing is ignored while it
+      waits: Vazgeç, Esc and the close icon do nothing and look as live as before (NZDIS-3).
+    invoke: { action: dismissMedarisNazim }
+    on:
+      DONE: { target: settled, effect: [dismissed], guard: "elsewhere == 'nothing'", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:124 }
+      FAIL.changed: { target: asking, effect: [changed], say: "the answers are cleared and the list is read again", guard: "elsewhere == 'nothing'", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:114 }
+      FAIL.cascade: { target: backToDialog, effect: [cascade], guard: "elsewhere == 'nothing'", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:108 }
+      FAIL.seatless: { target: backToDialog, effect: [seatless], guard: "elsewhere == 'nothing'", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:108 }
+      FAIL.gone: { target: backToDialog, effect: [gone], guard: "elsewhere == 'gone'", source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:108 }
+      FAIL.forbidden: { target: backToDialog, effect: [refused] }
+      FAIL.other: { target: backToDialog, effect: [failed] }
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:102
+
+  backToDialog:
+    title: The dialog stays as it was
+    description: >-
+      Every refusal but a changed list leaves the dialog open with every answer kept and says so in a toast titled 'Görevden alınamadı' that stays until it is closed.
+      After 'Bu kişi artık Medaris nazımı değil.' (MEDARIS_NAZIM_NOT_FOUND, reached by the event GONE_ELSEWHERE: the walk dismisses the person through the API while the dialog is open) the dialog stays too and the roster is not read again, so the row of a person who is gone
+      stays on it and the button can only fail again (NZDIS-1). The cascade refusal does not say whose rows block it (NZDIS-5).
+    always:
+      - { guard: asks, target: answered }
+      - { target: nothingToAsk }
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:108
+
+  settled:
+    title: The roster follows the dismissal
+    description: >-
+      The dialog has closed and the page is read again (router.refresh and revalidatePath): the dismissed person's row is gone, and the people taken over are still
+      listed where they belong (a köşk's nazımları), now given by the başnazım. A toast of six seconds says 'Görevden alındı' and '{name} artık Medaris nazımı değil.'.
+      The button that opened the dialog is gone with its row, so the focus has nowhere to return to and falls to the document (F-W2-10; not verified in a browser).
+    by: human
+    on:
+      NAVIGATE: { target: left, say: "they follow a link or the menu" }
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:124
+
+  no_access:
+    title: The page says the person may not
+    description: "Next's forbidden page, 'Bu bölüm için izniniz yok' (nizam.shell.noAccessAndNotFound). Only a person who is not the başnazım meets it, so no walk of this flow reaches it."
+    type: final
+    leavesPage: true
+
+  left:
+    title: They leave the page
+    type: final
+    leavesPage: true
+
+assertions:
+  - id: choice-only-when-something-was-given
+    never: "state in ['choosing', 'partlyAnswered', 'answered'] and not asks"
+    say: The choice step is drawn only when the person gave someone a role or a permission.
+    source: apps/nizam/features/permissions/present.ts:227
+  - id: no-choice-when-nothing-was-given
+    never: "state == 'nothingToAsk' and asks"
+    say: The dialog says there is nothing to answer only when no row asks for an answer.
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:184
+  - id: one-row-has-no-partial-answer
+    never: "state == 'partlyAnswered' and given == 'one'"
+    say: With one row listed it is answered or not; there is no state between.
+    source: apps/nizam/features/permissions/present.ts:258
+  - id: the-seat-ends-only-with-the-dismissal
+    never: "seat == 'ended' and state not in ['settled', 'left']"
+    say: The seat and the platform permissions end only when the dismissal succeeds; closing the dialog or a refusal leaves them as they were.
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:124
+  - id: a-dismissal-that-succeeded-ends-the-seat
+    never: "state == 'settled' and seat == 'held'"
+    say: A roster that follows a dismissal never shows the seat as held.
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:124
+  - id: a-person-who-is-gone-is-not-dismissed-again
+    never: "state == 'settled' and elsewhere == 'gone'"
+    say: A dismissal of a person whom somebody else already dismissed never reaches the roster that follows a dismissal; the dialog stays and says so.
+    source: apps/nizam/features/permissions/components/dismiss-dialog.tsx:108

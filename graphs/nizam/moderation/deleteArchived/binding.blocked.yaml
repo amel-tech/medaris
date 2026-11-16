@@ -1,0 +1,77 @@
+# nizam.moderation.deleteArchived, a delete the server refuses (MDRS-244): the row is a hidden WEEK of a live course, and one of its celses
+# holds a recording. The purge of a week (and of a session) does not delete recordings, a course's does, so the foreign key refuses, the call
+# answers a server error, and the dialog stays open under the error toast "Silinemedi" with the server's own message (F-W5-3). The walk then
+# cancels, and the week is still there.
+#   flock <scratchpad>/replay.lock nice -n 10 node <engine>/apps/engine/src/cli.ts replay graphs/nizam/moderation/deleteArchived \
+#     --bind graphs/nizam/moderation/deleteArchived/binding.blocked.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay; every behaviour is from the code. If MDRS-244 is fixed before the walk, `deleting` goes DONE instead
+# and this file's walk stops being the refusal: the setup's last SQL check would still hold, and the walk's mismatch is the evidence.
+#
+# What the setup makes (a course of its own, "Deneme dersi delItem", in the seed's second köşk, with no talebe, so the recording tells nobody):
+#   2 weeks of 2 celses, a pasted YouTube recording on the first celse (POST /lessons/<id>/recordings as the müderris, who is the course's hoca),
+#   then the first week hidden as the başnazım (POST /courses/<id>/weeks/<week>/hide: the week and its two celses get one stamp).
+# The archive row is the week "Hafta 1" of that course, "Hafta · Hafta 1 · Deneme dersi delItem"; the dialog is "Haftayı kalıcı olarak sil" and
+# counts "1 hafta" and "2 celse, celse akışları ve toplantı bağlantıları" (no talebe line: a week has none). The recording is not counted
+# (PURGE-1). The type select is chosen as "Hafta". The teardown removes the whole course with the recording (DELETE /courses/<id>, whose purge does
+# delete recordings), and a SQL count says nothing is left.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.deleteArchived
+
+events:
+  CHOOSE_TYPE:
+    - click: { role: combobox, name: Tür süzgeci }
+    - click: { role: option, name: '/^Hafta$/' }
+
+scenarios:
+  blockedWeek:
+    given: { item: blockedWeek, rest: none }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->archive' }
+    samples:
+      kosk: Kubbealtı Köşkü
+      value: tümü
+    setup:
+      - run: [node, helpers/course.mjs, make, delItem, --kosk, '{seed.kosk2}', --weeks, '2', --lessons, '2']
+        expect: '"title":"Deneme dersi delItem"'
+      - run: [node, helpers/api.mjs, muderris, POST, '/lessons/{del.lessons.0}/recordings', '{"title":"Dersin kaydı","url":"https://www.youtube.com/watch?v=Ab3dEfGh1jK"}']
+        expect: YOUTUBE
+      - run: [node, helpers/api.mjs, systemAdmin, POST, '/courses/{del.course}/weeks/{del.weeks.0}/hide']
+        expect: '"hiddenSessions":2'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from lesson_recordings r join lessons l on l.id = r.lesson_id where l.week_id = '{del.weeks.0}'"]
+        expect: '"n":1'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, delItem]
+        expect: 'course remove delItem'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi del%'"]
+        expect: '"n":0'
+
+states:
+  # a delete the server refuses is not held: a server action answers 200 whatever the API said
+  readingImpact: { call: '{nizam}/arsiv' }
+
+nodes:
+  # the row is the week: its title is "Hafta 1" (the other weeks of other courses have the same), so every cell is found in the row that also
+  # holds this course's title in its grey line
+  rowTitle: { css: 'bdi.font-semibold', within: { css: '[data-testid=archive] tbody tr', hasText: '/Hafta 1.*{del.title}/' } }
+  rowLine: { css: 'th .mds-caption', within: { css: '[data-testid=archive] tbody tr', hasText: '/Hafta 1.*{del.title}/' } }
+  rowKosk: { css: 'td:nth-of-type(1) bdi', within: { css: '[data-testid=archive] tbody tr', hasText: '/Hafta 1.*{del.title}/' } }
+  rowHider: { css: 'td:nth-of-type(2) bdi', within: { css: '[data-testid=archive] tbody tr', hasText: '/Hafta 1.*{del.title}/' } }
+  rowWhen: { css: 'td:nth-of-type(3)', hasText: '/^Bugün \d{2}:\d{2}$/', within: { css: '[data-testid=archive] tbody tr', hasText: '/Hafta 1.*{del.title}/' } }
+  deleteButton: { role: button, name: '/^Kalıcı olarak sil: Hafta 1, .*{del.title}/' }
+  # a week: one week and its two celses; no weeks line of a course and no talebe
+  impactWeeksOnly: { css: '[data-testid=impact-lines] li', hasText: '/^1 hafta$/' }
+  impactSessions: { css: '[data-testid=impact-lines] li', hasText: '2 celse, celse akışları ve toplantı bağlantıları' }
+
+effects:
+  # "Vazgeç" after the refusal: the week is still there, still hidden, and no `week.delete` row was written (the transaction rolled back)
+  cancelled:
+    - run: [node, helpers/sql.mjs, "select archived_at is not null as hidden from course_weeks where id = '{del.weeks.0}'"]
+      expect: '"hidden":true'
+  deleteFailed:
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from course_weeks where id = '{del.weeks.0}'"]
+      expect: '"n":1'
+    - run: [node, helpers/sql.mjs, "select count(*)::int as n from audit_log where action = 'week.delete' and entity_id = '{del.weeks.0}'"]
+      expect: '"n":0'

@@ -1,0 +1,600 @@
+# The köşk's decks of nizam-web, /kosks/<id>/desteler ("Köşk desteleri") and /kosks/<id>/desteler/yeni ("Köşk destesi aç"), read from the code of PR #394 on 16 Nov 2026:
+# apps/nizam/app/kosks/[id]/desteler/{page,loading}.tsx, .../yeni/page.tsx, features/deck-review/{reads,actions,present}.ts and
+# features/deck-review/components/{kosk-decks-view,kosk-deck-form,reject-dialog,load-failed}.tsx, libs/ui/src/mds/{table,card,field,alert-dialog,dialog,breadcrumb,
+# radio-group}.tsx and libs/ui/src/components/sonner.tsx; and, on the API side, apps/tedrisat/src/deck-review/{kosk-decks.controller,deck-review.service,
+# deck-review.repository}.ts. Read-only looks at the running stack (GET /kosks/<kosk2>/decks/manage as the nazım: empty, the seed holds no deck and no proposal of the
+# second köşk; GET /me of the müderris) are the only things seen alive. Nothing was seen in a browser, so every behaviour below is "from the code" unless a rule says it was
+# seen. Nothing was walked: the owner moved every replay to the walk phase.
+#
+# What the two pages do:
+#   - The list. The server reads the köşk and its decks (GET /kosks/{id}, GET /kosks/{id}/decks/manage, in parallel); a refusal (403) or a missing köşk (404) is the one
+#     screen "Bu bölüm için izniniz yok" (app/not-found.tsx: forbidden.tsx re-exports it), a read that failed in any other way draws the page with an error Alert
+#     and "Yeniden dene" and a DISABLED "Köşk destesi aç" beside it (F-W5-9). Opened as a person who is no nazım at all the /kosks layout refuses before the page reads.
+#     The page lists the waiting proposals of the köşk's hocas (oldest first, a block that is not drawn when none waits) and the köşk's shown decks (newest update first),
+#     twelve of each; "Daha fazla göster" reads the next twelve (out of view).
+#   - Answering a proposal. "Kabul et" is a LINK to /yeni?oneri=<id>: the form opens filled in from the proposal and opening the deck accepts the proposal in the same
+#     transaction (a 409 when it was answered meanwhile). "Reddet" opens the shared reject dialog (kind proposal): a reason is required, the proposer reads it in their
+#     notifications. Both leave the proposal out of the list; accepting tells the proposer nothing (KDECK-2).
+#   - Opening a deck. "Köşk destesi aç" is a link to /yeni: a page form (not a dialog) with a name, a description, a card type and a note about who sees the deck. The
+#     name is the only rule: validation runs on SUBMIT (noValidate, no disabled button) and on leaving the field; an empty name moves the focus to the field and says
+#     "Bir deste adı yazın." under it, and nothing is sent (e2e deck-review#8). The cards come later.
+#   - Hiding a deck. "Gizle" opens an AlertDialog "Deste gizlensin mi?" (focus on "Vazgeç"); the deck is not deleted, it moves to the köşk's archive. The archive page is
+#     nizam.moderation.restoreArchived's: the page draws no link to it, only the köşk menu's "Arşiv" leads there.
+#   - "Kartları düzenle" is a link to the LEGACY page /decks/<id>/cards (nizam.decks.legacyCards): the shadcn UI, English toasts, no title (F-W5-8).
+#
+# The model, and where it simplifies (the graph never claims more than this):
+#   - `world` is what the page finds at the start (seven cases), `answer` what tedrisat says to the next write (five). Both are case variables, so a walk is one
+#     `given` of the binding. The counts of what the page shows are two small ladders, `proposals` and `decks` (none, one, two), moved by pass-through states, because
+#     the model has no row identity: it speaks of "a proposal" and "a deck", and the binding presses the first row of each. The e2e's two proposals and one deck are
+#     the starting rung `both`.
+#   - `decks` saturates at two (the page of three decks or more is out of view); `proposals` only ever goes down.
+#   - The model forgets a toast at the next step it takes, though a success toast lasts 6 seconds and an error toast stays until it is closed; a replay without --absent does
+#     not see the difference (`last` is cleared by the next press, not by the toast closing).
+#   - A failed write is drawn as the toast the code shows, because the code shows nothing else (F-W5-3): a refused open leaves the form as it was, a refused refusal
+#     leaves the dialog open, a refused hide leaves the dialog open; an answer that says "it is gone" or "already answered" closes the dialog and drops the row.
+schema: delurio-graph/0
+kind: flow
+id: nizam.decks.koskDecks
+status: captured
+domain: medaris.api
+ui: nizam.decks.koskDecks
+title: Open, answer and hide a köşk's decks
+summary: >-
+  "Köşk desteleri" lists the köşk's shared decks, with the waiting proposals of its hocas above them. The köşk's nazımı opens a deck from nothing ("Köşk destesi aç", a name
+  that must not be empty, a card type) or from a proposal ("Kabul et": the same form, filled in, and opening the deck accepts the proposal), refuses a proposal with a reason
+  the hoca will read ("Reddet"), and hides a deck after "Deste gizlensin mi?": the deck is not deleted, it goes to the köşk's archive. "Kartları düzenle" leads to the
+  legacy card editor. Every result is a toast; a failed write says so only in a toast (F-W5-3), and the row that was answered leaves the list with the focus lost (F-W5-5).
+
+scope:
+  shows: >-
+    the list (a proposal or two, a deck or two, and the empty table), the warning of a first read that failed, the form (from nothing and from a proposal, the empty name
+    refused, the card type chosen, busy, a refused write), the reject dialog (button off, button on, busy), the hide confirmation (asking, busy), the toasts of every
+    answer, and the exits to the legacy card pages, the archive and the screen "Bu bölüm için izniniz yok"
+  world: open
+  outOfView:
+    - "the page's shell (sidebar with the köşk menu and picker, person row, bell, footer): nizam.shell.menuPerPersona. The köşk menu's 'Köşk desteleri' and 'Arşiv' entries are the way in and one way out"
+    - "the archive page itself, 'Geri al' and the locked rows: nizam.moderation.restoreArchived; this flow only reaches it (the hide toast says 'köşkün arşivine taşındı' and the page links nowhere)"
+    - "the legacy card pages /decks and /decks/<id>/cards: nizam.decks.legacyCards, started with the nazım's own deck with cards"
+    - "'Daha fazla göster' (kosk-decks-view.tsx:93-122, two buttons, twelve rows a time) and a köşk of more than twelve decks or proposals: not drawn, and not walked (it needs thirteen of each)"
+    - "a köşk of three decks or more: `decks` stops at two, so an open from two stays at two and a hide from two goes to one"
+    - "a proposal that was answered by a colleague before 'Kabul et' is pressed: /yeni?oneri=<id> names a proposal no longer waiting, the form opens EMPTY and says nothing of it (page.tsx:53-56; KDECK-1, which also covers a waiting proposal beyond the first twelve); only the answered-meanwhile race at the submit is drawn"
+    - "typing a description and choosing the card type in the form after an empty-name refusal, and clearing the typed reason again in the reject dialog (the button goes off again): drawn once, where a walk meets them"
+    - "leaving the empty name field with Tab (onBlur sets touched): the same error line appears with the focus where the Tab put it (the next field), so no step of the graph says the focus is on the name; only a submit does (kosk-deck-form.tsx:76, 156)"
+    - "the başnazım on these pages (assertKoskNazim lets him in, and he hides as the platform: KDECK-3) and a Medaris nazımı (refused): the persona of this flow is the köşk's nazımı"
+    - "the köşk being hidden or removed, or the nazım dismissed, between the list and the form: the same screen 'Bu bölüm için izniniz yok' as the first refusal"
+    - "the session ending: every read and write answers unauthenticated and the person goes to sign-in and back with no toast (realm.auth.sessionEnded; redirectIfUnauthenticated, passOnSignIn)"
+    - "a second tab, a second nazım who answers the same proposal or hides the same deck: it is drawn only as the answer the write gets (`answer`)"
+    - "the phone layout: below 768 px the table's rows are cards (responsive stack) and the sidebar is a sheet; the roles stay"
+
+decisions:
+  D1:
+    question: >-
+      Where should the cards of a köşk deck be edited? "Kartları düzenle" leaves this design-system page for the legacy shadcn editor (F-W5-8), which has English toasts, no
+      title, icon-only buttons with no name, no check beyond sign-in, and lists every public deck beside the nazım's own.
+    recommend: >-
+      Build the card editor on the design system under /kosks/<id>/desteler/<deck>, with the köşk's check, and retire /decks (nizam.decks.legacyCards D1).
+    affects: [list, handed_over.edit_cards]
+  D2:
+    question: >-
+      Should the page offer "Köşk destesi aç" while the first read of the köşk failed? Today the button is drawn disabled beside the error Alert, with no word of why (F-W5-9),
+      and "Yeniden dene" is the only way on.
+    recommend: >-
+      Hide the button in the error state (the Alert already says what to do), or keep it as a link: the form page does its own read and has its own warning.
+    affects: [listUnreadable]
+  D3:
+    question: >-
+      Should the hoca be told when a proposal is accepted? A refusal writes a notification with the reason; an acceptance writes nothing (deck-review.service.ts:219-245), so the
+      hoca learns of it only by finding the deck, and the toast says only that the deck is open (KDECK-2).
+    recommend: >-
+      Send the same kind of notification on acceptance, naming the deck; the notification type already exists (DECK_PUBLISH_RESULT).
+    affects: [submitting, afterOpen]
+
+context:
+  world:
+    values: [both, decksOnly, proposalsOnly, nothing, unreadable, formFails, refused]
+    initial: any
+    say:
+      both: "the köşk holds a deck and two proposals wait for an answer"
+      decksOnly: "the köşk holds a deck and no proposal waits: the block 'Hoca önerileri' is not drawn"
+      proposalsOnly: "one proposal waits and the köşk holds no deck: the table says 'Bu köşkün henüz destesi yok.'"
+      nothing: "the köşk holds no deck and no proposal waits"
+      unreadable: "the first read of the page fails (the API down, a 5xx): the page draws its error Alert and a disabled 'Köşk destesi aç'"
+      formFails: "the list reads, and the read of the form page, a moment later, fails"
+      refused: "the person is no nazım of the köşk (or of any köşk), or there is no such köşk: tedrisat or the /kosks layout refuses and the screen says 'Bu bölüm için izniniz yok'"
+  answer:
+    values: [done, answered, gone, forbidden, failed]
+    initial: any
+    say:
+      done: "tedrisat takes the write the person makes next"
+      answered: "the proposal, or the deck, was answered by someone else since the page was read (409 DECK_PROPOSAL_NOT_PENDING; for a deck, 404 KOSK_DECK_NOT_FOUND, which also says it is hidden already)"
+      gone: "the proposal or the deck is not there any more (404 DECK_PROPOSAL_NOT_FOUND, KOSK_DECK_NOT_FOUND)"
+      forbidden: "the person is no longer a nazım of the köşk (403 DECK_REVIEW_FORBIDDEN)"
+      failed: "any other failure: the server does not answer, a code the page has no sentence for"
+  proposals:
+    values: [none, one, two]
+    initial: none
+    say:
+      none: "no proposal waits: the block is not drawn"
+      one: "one proposal waits"
+      two: "two proposals wait (the e2e's fixture)"
+  decks:
+    values: [none, one, two]
+    initial: none
+    say:
+      none: "the table holds no deck: 'Bu köşkün henüz destesi yok.'"
+      one: "the table holds one deck"
+      two: "the table holds two decks (or more: out of view)"
+  from:
+    values: [scratch, proposal]
+    initial: scratch
+    say:
+      scratch: "the form was opened with 'Köşk destesi aç': empty"
+      proposal: "the form was opened with 'Kabul et': filled in from the proposal, with its banner"
+  name:
+    values: [blank, filled]
+    initial: blank
+    say:
+      blank: "the Deste adı field is empty or holds only blanks"
+      filled: "the Deste adı field holds a name"
+  cardType:
+    values: [vocabulary, hadeeth]
+    initial: vocabulary
+    say:
+      vocabulary: "the radio 'Kelime' is chosen (the default, and the proposal's own in the walk's data)"
+      hadeeth: "the radio 'Hadis' is chosen: the side panel shows the hadith card"
+  reason:
+    values: [untouched, touched, typed]
+    initial: untouched
+    say:
+      untouched: "the reason field of the reject dialog has not been used"
+      touched: "the field was left empty: 'Bir gerekçe yazın.' replaces its help"
+      typed: "a reason is written: 'Reddet' is on"
+  last:
+    values: [nothing, opened, openAnswered, openGone, openForbidden, openFailed, proposalRefused, refuseAnswered, refuseGone, refuseForbidden, refuseFailed, hidden, hideGone, hideForbidden, hideFailed]
+    initial: nothing
+    say:
+      nothing: "no toast of this page is up"
+      opened: "a toast says the deck is open ('Deste açıldı')"
+      openAnswered: "a toast says the deck could not be opened because the proposal was answered meanwhile"
+      openGone: "a toast says the deck could not be opened because the proposal is gone"
+      openForbidden: "a toast says the deck could not be opened: the person is not the köşk's nazım"
+      openFailed: "a toast says the deck could not be opened, in the page's one generic sentence"
+      proposalRefused: "a toast says the proposal was refused and the hoca will read the reason"
+      refuseAnswered: "a toast 'İşlem yapılamadı': the proposal was answered meanwhile; the dialog closed and the proposal left the list"
+      refuseGone: "a toast 'İşlem yapılamadı': the proposal is gone; the dialog closed and the proposal left the list"
+      refuseForbidden: "a toast 'İşlem yapılamadı': the person has no permission; the dialog stays open"
+      refuseFailed: "a toast 'İşlem yapılamadı' with the generic sentence; the dialog stays open"
+      hidden: "a toast says the deck moved to the köşk's archive"
+      hideGone: "a toast 'İşlem yapılamadı': the deck is gone or hidden already; the dialog closed and the deck left the table"
+      hideForbidden: "a toast 'İşlem yapılamadı': the person has no permission; the dialog stays open"
+      hideFailed: "a toast 'İşlem yapılamadı' with the generic sentence; the dialog stays open"
+
+guards:
+  readable: "world in ['both', 'decksOnly', 'proposalsOnly', 'nothing', 'formFails']"
+  anyProposal: "proposals != 'none'"
+  anyDeck: "decks != 'none'"
+  fromProposal: "from == 'proposal'"
+  nameBlank: "name == 'blank'"
+  # the proposal's own two answers exist only when the form was opened from one: a deck from nothing sends no proposal id
+  openAnswered: "from == 'proposal' and answer == 'answered'"
+  openGone: "from == 'proposal' and answer == 'gone'"
+  opens: "not (openAnswered or openGone or answer == 'forbidden' or answer == 'failed')"
+  # the API's one answer for a deck that is not shown any more: not found, a deck hidden already included
+  deckGone: "answer == 'answered' or answer == 'gone'"
+
+effects:
+  clearNote: { set: { last: nothing } }
+  # what the page holds when it is first read
+  startBoth: { set: { proposals: two, decks: one, last: nothing } }
+  startDecks: { set: { proposals: none, decks: one, last: nothing } }
+  startProposals: { set: { proposals: one, decks: none, last: nothing } }
+  startNothing: { set: { proposals: none, decks: none, last: nothing } }
+  # the form
+  toScratchForm: { set: { from: scratch, name: blank, cardType: vocabulary, last: nothing } }
+  toProposalForm: { set: { from: proposal, name: filled, cardType: vocabulary, last: nothing } }
+  typedName: { set: { name: filled } }
+  clearedName: { set: { name: blank } }
+  chosenHadeeth: { set: { cardType: hadeeth } }
+  chosenVocabulary: { set: { cardType: vocabulary } }
+  openedFromScratch: { set: { last: opened } }
+  openedFromProposal: { set: { last: opened } }
+  openAnswered: { set: { last: openAnswered } }
+  openGone: { set: { last: openGone } }
+  openForbidden: { set: { last: openForbidden } }
+  openFailed: { set: { last: openFailed } }
+  # the ladders
+  decksUp: { set: { decks: two } }
+  decksOne: { set: { decks: one } }
+  decksDown: { set: { decks: one } }
+  decksNone: { set: { decks: none } }
+  proposalsOne: { set: { proposals: one } }
+  proposalsNone: { set: { proposals: none } }
+  # the reject dialog
+  freshReason: { set: { reason: untouched, last: nothing } }
+  typedReason: { set: { reason: typed } }
+  leftReasonEmpty: { set: { reason: touched } }
+  proposalRefused: { set: { last: proposalRefused } }
+  refuseAnswered: { set: { last: refuseAnswered } }
+  refuseGone: { set: { last: refuseGone } }
+  refuseForbidden: { set: { last: refuseForbidden } }
+  refuseFailed: { set: { last: refuseFailed } }
+  # the hide dialog
+  hidden: { set: { last: hidden } }
+  hideGone: { set: { last: hideGone } }
+  hideForbidden: { set: { last: hideForbidden } }
+  hideFailed: { set: { last: hideFailed } }
+
+failures:
+  reading:
+    from: getManagedKoskDecks
+    refused: [DECK_REVIEW_FORBIDDEN, KOSK_NOT_FOUND]
+    failed: [HTTP_400]
+  openingForm:
+    from: getManagedKoskDecks
+    failed: [HTTP_400]
+  submitting:
+    from: createKoskDeck
+    answered: [DECK_PROPOSAL_NOT_PENDING]
+    gone: [DECK_PROPOSAL_NOT_FOUND]
+    forbidden: [DECK_REVIEW_FORBIDDEN]
+    failed: [KOSK_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+  rejecting:
+    from: rejectKoskDeckProposal
+    answered: [DECK_PROPOSAL_NOT_PENDING]
+    gone: [DECK_PROPOSAL_NOT_FOUND]
+    forbidden: [DECK_REVIEW_FORBIDDEN]
+    failed: [KOSK_NOT_FOUND, VALIDATION_ERROR, HTTP_400]
+  hiding:
+    from: hideKoskDeck
+    gone: [KOSK_DECK_NOT_FOUND]
+    forbidden: [DECK_REVIEW_FORBIDDEN]
+    failed: [HTTP_400]
+
+# The story the page tells first, and the three things the köşk's nazımı does there: a proposal is accepted through the form (the name is cleared and refused once, and a
+# hadith deck is chosen), the other is refused with a reason, and a deck is hidden; then he follows the menu to the archive.
+main:
+  given: { world: both, answer: done }
+  events: [DONE, ACCEPT, DONE, CLEAR_NAME, SUBMIT, TYPE_NAME, CHOOSE_HADEETH, SUBMIT, DONE, DONE, REJECT, TYPE_REASON, SUBMIT, DONE, HIDE, CONFIRM_HIDE, DONE, OPEN_ARCHIVE]
+
+initial: arriving
+
+states:
+  arriving:
+    title: The person opens /kosks/<id>/desteler
+    description: >-
+      By the menu's "Köşk desteleri", by an address, or by the form's breadcrumb. `world` says what the page finds. The /kosks layout (app/kosks/layout.tsx) has refused anyone whose
+      landing is not nizam before the page runs, and lets a person through when the roles cannot be read.
+    always:
+      - { guard: "world == 'both' or world == 'formFails'", target: reading, effect: [startBoth], source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:29" }
+      - { guard: "world == 'decksOnly'", target: reading, effect: [startDecks], source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:29" }
+      - { guard: "world == 'proposalsOnly'", target: reading, effect: [startProposals], source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:29" }
+      - { target: reading, effect: [startNothing], source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:29" }
+    source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:24"
+
+  reading:
+    title: The köşk and its decks are read
+    description: >-
+      The server reads GET /kosks/{id} and GET /kosks/{id}/decks/manage (twelve decks and twelve proposals) together. The person sees loading.tsx meanwhile: a heading bar, two
+      card-shaped bars and three row-shaped bars in a <div aria-busy>, whose children are aria-hidden, so nothing is announced (F-X-10; not drawn). 403 or 404 of either read is
+      the screen "Bu bölüm için izniniz yok" (403 and a missing köşk look the same on purpose); any other failure of either read draws the page with the warning (F-W5-9).
+    invoke: { action: getManagedKoskDecks }
+    on:
+      DONE: { guard: readable, target: list, source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:38" }
+      FAIL.refused: { guard: "world == 'refused'", target: handed_over.no_access, starts: { flow: nizam.shell.noAccessAndNotFound, given: { arrival: "'strangerKosk'" } }, say: "tedrisat answers 403 or 404 (or the layout refused first, for a person with no nazım role): forbidden() or notFound(), the same screen", source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:34" }
+      FAIL.failed: { guard: "world == 'unreadable'", target: listUnreadable, say: "a read that failed: neither screen, the page draws its warning with an empty köşk name", source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:38" }
+    source: "apps/nizam/app/kosks/[id]/desteler/page.tsx:30"
+
+  list:
+    title: Köşk desteleri
+    description: >-
+      The h1 "Köşk desteleri" and an intro that names the köşk, with "Köşk destesi aç" (a link) at its end. Where proposals wait, the section "Hoca önerileri" comes first
+      (h2, "{count} öneri kararınızı bekliyor", and one card per proposal, oldest first: the title as an h3, the description, "Öneren {name} · {course} · {date}", a link "Kabul et"
+      and a button "Reddet", each named after its proposal; the card does not say whether the deck is a vocabulary or a hadith deck, which the nazım learns only in the form: KDECK-5)
+      with a note under it; where none waits the block is not drawn at all, with no empty line. The section "Desteler"
+      (h2, "{count} deste") holds a table named "{köşk} desteleri": the deck with its description and type, the number of cards, the last change, "Kartları düzenle" (a link to the
+      LEGACY editor: F-W5-8) and "Gizle", both named after the deck; an empty table says "Bu köşkün henüz destesi yok.". The page sets no focus (nothing in the view does). A toast of
+      the last answer may be up: a success goes after 6 seconds, an error stays until it is closed; they are in sonner's portal, not under the page's inert layer. The row or
+      the card that was answered has left, with the button that had the focus (F-W5-5, KDECK-4).
+    by: human
+    goal: true
+    on:
+      OPEN_NEW:
+        target: openingForm
+        effect: [toScratchForm]
+        say: "they follow 'Köşk destesi aç': /kosks/<id>/desteler/yeni"
+        source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:265
+      ACCEPT:
+        guard: anyProposal
+        target: openingForm
+        effect: [toProposalForm]
+        say: "they follow a proposal's 'Kabul et': /kosks/<id>/desteler/yeni?oneri=<proposal id>"
+        source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:310
+      REJECT:
+        guard: anyProposal
+        target: rejectForm
+        effect: [freshReason]
+        say: "they press a proposal's 'Reddet': the dialog 'Öneriyi reddet' opens"
+        source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:318
+      HIDE:
+        guard: anyDeck
+        target: confirmHide
+        effect: [clearNote]
+        say: "they press a deck's 'Gizle': the dialog 'Deste gizlensin mi?' opens"
+        source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:229
+      EDIT_CARDS:
+        guard: anyDeck
+        target: handed_over.edit_cards
+        starts: { flow: nizam.decks.legacyCards, given: { world: "'cardsMine'", typed: "'ok'" } }
+        say: "they follow a deck's 'Kartları düzenle': the legacy card table of that deck (/decks/<id>/cards); the deck is the nazım's own, with cards"
+        source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:221
+      OPEN_ARCHIVE:
+        target: handed_over.archive
+        starts: { flow: nizam.moderation.restoreArchived, given: { view: "'kosk'" } }
+        say: "they follow the köşk menu's 'Arşiv' (the page itself links nowhere): a hidden deck is in the köşk's archive, which the page's toast and the hide dialog both promise"
+        source: apps/nizam/lib/shell-nav.ts:253
+      NAVIGATE: { target: left, say: "they follow another link of the shell" }
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:242
+
+  listUnreadable:
+    title: The first read failed
+    description: >-
+      The page is drawn with an empty köşk name: the h1, the short intro ("Köşk desteleri, köşkün herhangi bir dersine kayıtlı talebelere açıktır."), an error Alert "Desteler
+      okunamadı" (role alert) above them with the sentence and "Yeniden dene", and "Köşk destesi aç" as a DISABLED button (not a link) with no word of why (F-W5-9). Neither section is
+      drawn. "Yeniden dene" is router.refresh(): the server reads again.
+    by: human
+    on:
+      RETRY: { target: reading, effect: [clearNote], say: "they press 'Yeniden dene'", source: apps/nizam/features/deck-review/components/load-failed.tsx:23 }
+      NAVIGATE: { target: left, say: "they follow a link of the shell" }
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:247
+
+  # ===================================== /kosks/<id>/desteler/yeni ==============================================================
+  openingForm:
+    title: The form page is read
+    description: >-
+      The same two reads as the list, on the page /yeni. `?oneri=<id>` is looked up among the proposals of the page that was just read: a proposal that is not there any more
+      opens the EMPTY form with no word of it (page.tsx:53-56; KDECK-1; out of view). A refusal here (the köşk gone since the list) is the same screen as the list's: out of view. A read
+      that failed draws only the warning "Köşk bilgisi okunamadı", with no form and no breadcrumb.
+    invoke: { action: getManagedKoskDecks }
+    on:
+      DONE:
+        - { guard: "world != 'formFails' and from == 'proposal'", target: formProposal, source: "apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx:53" }
+        - { guard: "world != 'formFails'", target: formScratch, source: "apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx:58" }
+      FAIL.failed: { guard: "world == 'formFails'", target: formUnreadable, say: "the second read fails: the page shows its warning in place of the form", source: "apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx:40" }
+    source: "apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx:33"
+
+  formUnreadable:
+    title: The form page could not read the köşk
+    description: >-
+      The page's <main> holds only the error Alert "Köşk bilgisi okunamadı" with its sentence and "Yeniden dene" (router.refresh()); no heading, no breadcrumb, no way back to the
+      list but the shell's menu. The Alert's title is a paragraph, so the page has no h1 (the family of F-X-10).
+    by: human
+    on:
+      RETRY: { target: openingForm, say: "they press 'Yeniden dene'", source: apps/nizam/features/deck-review/components/load-failed.tsx:23 }
+      NAVIGATE: { target: left, say: "they follow a link of the shell" }
+    source: "apps/nizam/app/kosks/[id]/desteler/yeni/page.tsx:40"
+
+  formScratch:
+    title: Köşk destesi aç, from nothing
+    description: >-
+      The breadcrumb "Köşk desteleri / Köşk destesi aç", the h1 "Köşk destesi aç", the intro, "* zorunlu alan" and the form: "Deste adı" (empty, help "Köşkün talebeleri bu adı görür."), "Açıklama"
+      (a textarea, help "İsteğe bağlı..."), the group "Kart türü" with two radios ("Kelime", chosen, and "Hadis", each with its sentence), the note "Kimler görür" with the number of talebe, then "Vazgeç"
+      (a link back to the list) and "Desteyi aç". Beside it an aside "Kartlar sonra eklenir" says the cards come after, names the CSV and Excel import, and shows a front and a back of the
+      chosen type. Nothing is disabled, and nothing sets the focus on load. The form has noValidate: validation is the page's own, on submit and on leaving the name field.
+      A toast of a refused open may be up (F-W5-3: it stays until closed).
+    by: human
+    on:
+      TYPE_NAME: { target: formScratch, effect: [typedName], say: "they type a name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:153 }
+      CLEAR_NAME: { guard: "name == 'filled'", target: formScratch, effect: [clearedName], say: "they empty the name again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:153 }
+      CHOOSE_HADEETH: { target: formScratch, effect: [chosenHadeeth], say: "they choose 'Hadis': the side panel shows the hadith card", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
+      CHOOSE_VOCABULARY: { target: formScratch, effect: [chosenVocabulary], say: "they choose 'Kelime' again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
+      SUBMIT:
+        - { guard: nameBlank, target: formInvalid, say: "they press 'Desteyi aç' with the name empty: the page refuses it before anything is sent (e2e deck-review#8)", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74 }
+        - { target: submitting, effect: [clearNote], say: "they press 'Desteyi aç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:80 }
+      BACK: { target: reading, effect: [clearNote], say: "they follow the breadcrumb's 'Köşk desteleri'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
+      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç': nothing is saved", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+      NAVIGATE: { target: left, say: "they follow a link of the shell" }
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:50
+
+  formProposal:
+    title: Köşk destesi aç, from a proposal
+    description: >-
+      The same form, opened by "Kabul et": above the fields a neutral Alert "Hoca önerisinden açılıyor" (role status) says "<b>{title}</b> önerisi · {hoca} · {course} · {date}. Ad ve açıklama
+      önerideki gibi geldi; değiştirebilirsiniz. Desteyi açtığınızda öneri kabul edilmiş olur."; the name, the description and the card type hold the proposal's own words (e2e deck-review#7).
+      Everything else is as in the empty form. The nazım may change them; opening the deck sends the proposal's id with them.
+    by: human
+    on:
+      TYPE_NAME: { target: formProposal, effect: [typedName], say: "they change the name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:153 }
+      CLEAR_NAME: { guard: "name == 'filled'", target: formProposal, effect: [clearedName], say: "they empty the name", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:153 }
+      CHOOSE_HADEETH: { target: formProposal, effect: [chosenHadeeth], say: "they choose 'Hadis' (e2e deck-review#7)", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
+      CHOOSE_VOCABULARY: { target: formProposal, effect: [chosenVocabulary], say: "they choose 'Kelime' again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:178 }
+      SUBMIT:
+        - { guard: nameBlank, target: formInvalid, say: "they press 'Desteyi aç' after emptying the name: refused", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74 }
+        - { target: submitting, effect: [clearNote], say: "they press 'Desteyi aç': the deck is opened and the proposal accepted in one write (e2e deck-review#7)", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:80 }
+      BACK: { target: reading, effect: [clearNote], say: "they follow the breadcrumb's 'Köşk desteleri'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
+      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+      NAVIGATE: { target: left, say: "they follow a link of the shell" }
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:127
+
+  formInvalid:
+    title: The name is refused
+    description: >-
+      The form with the name empty and touched: the field is invalid and "Bir deste adı yazın." takes the place of its help (Base UI's Field.Error: tied to the field by aria-describedby,
+      no live region, nothing announces it: F-X-2; unlike the reason dialogs of F-W5-4, this form validates on submit and moves the focus); on a submit the focus goes to the name field (titleRef.focus(), kosk-deck-form.tsx:76), on a blur it stays where the
+      Tab put it. Nothing was sent (e2e deck-review#8: the köşk still holds the same decks). The banner of a proposal, if the form came from one, is still above the fields.
+    by: human
+    on:
+      TYPE_NAME:
+        - { guard: fromProposal, target: formProposal, effect: [typedName], say: "they type a name: the error goes", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:70 }
+        - { target: formScratch, effect: [typedName], say: "they type a name: the error goes", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:70 }
+      SUBMIT: { target: formInvalid, say: "they press 'Desteyi aç' again: the same refusal, the focus goes to the field again", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74 }
+      BACK: { target: reading, effect: [clearNote], say: "they follow the breadcrumb's 'Köşk desteleri'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:111 }
+      CANCEL: { target: reading, effect: [clearNote], say: "they follow 'Vazgeç'", source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:196 }
+      NAVIGATE: { target: left, say: "they follow a link of the shell" }
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:74
+
+  submitting:
+    title: The deck is on its way
+    description: >-
+      openKoskDeck is a Server Action: POST /kosks/{id}/decks with {title, description, cardType} and, from a proposal, its id (deck-review.service.ts:219-245). The deck is born private to
+      nobody but the köşk's talebe, authored by the person, with no card; the proposal is marked ACCEPTED in the same transaction, and nobody is told (KDECK-2). "Desteyi aç" is busy
+      (aria-disabled, aria-busy, a hidden status "Yükleniyor" from the kit's default) and "Vazgeç" loses its address; the fields stay editable. A success is a toast "Deste açıldı" and a
+      push to the list, which is read again. A refusal is a toast "Deste açılamadı" with the sentence of its code, over the form as it was (F-W5-3).
+    invoke: { action: createKoskDeck }
+    on:
+      DONE:
+        - { guard: "opens and from == 'proposal'", target: afterOpen, effect: [openedFromProposal], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:93, say: "the deck is open, the proposal accepted: the toast, then the list" }
+        - { guard: "opens", target: afterOpen, effect: [openedFromScratch], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:93, say: "the deck is open: the toast, then the list" }
+      FAIL.answered: { guard: openAnswered, target: answeredInForm, effect: [openAnswered], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87, say: "409 DECK_PROPOSAL_NOT_PENDING: no deck was made; the toast 'Deste açılamadı' says the proposal was answered; the form stays" }
+      FAIL.gone: { guard: openGone, target: answeredInForm, effect: [openGone], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87, say: "404 DECK_PROPOSAL_NOT_FOUND: no deck was made; the toast says the proposal is gone; the form stays" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: backToForm, effect: [openForbidden], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87, say: "403: the toast says 'Bu köşkün nazımı değilsiniz.'; the form stays" }
+      FAIL.failed: { guard: "answer == 'failed'", target: backToForm, effect: [openFailed], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87, say: "any other failure: the toast with the generic sentence; the form stays" }
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:80
+
+  afterOpen:
+    title: The deck is counted
+    description: "Not a screen: the opened deck joins the table (one more, up to two) before the list is read again."
+    always:
+      - { guard: "decks == 'none'", target: afterOpenProposal, effect: [decksOne], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }
+      - { target: afterOpenProposal, effect: [decksUp], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96
+
+  afterOpenProposal:
+    title: The accepted proposal is counted out
+    description: "Not a screen: a deck opened from a proposal takes that proposal out of the waiting ones; one from nothing leaves them as they are. Then router.push to the list and router.refresh()."
+    always:
+      - { guard: "from == 'scratch'", target: reading, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }
+      - { guard: "proposals == 'two'", target: reading, effect: [proposalsOne], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }
+      - { target: reading, effect: [proposalsNone], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:96 }
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:97
+
+  answeredInForm:
+    title: The proposal is counted out
+    description: "Not a screen: the proposal the form tried to accept is no longer waiting, so the list the person returns to will not hold it."
+    always:
+      - { guard: "proposals == 'two'", target: backToForm, effect: [proposalsOne], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87 }
+      - { target: backToForm, effect: [proposalsNone], source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87 }
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87
+
+  backToForm:
+    title: Back to the form
+    description: "Not a screen: the form after a refused write is the form as it was, with what was typed."
+    always:
+      - { guard: fromProposal, target: formProposal, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87 }
+      - { target: formScratch, source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87 }
+    source: apps/nizam/features/deck-review/components/kosk-deck-form.tsx:87
+
+  # ===================================== refusing a proposal ==========================================================================
+  rejectForm:
+    title: The reject dialog, the button off
+    by: human
+    description: >-
+      The shared reject dialog (reject-dialog.tsx, kind proposal) over the inert page, with the proposal's title above its title: "Öneriyi reddet", "Öneri kapanır. Gerekçeyi öneren, bildirimlerinde görür.",
+      "* zorunlu alan" and a required textarea "Ret gerekçesi" (at most 1000 characters, no counter) with the help "Öneren bu gerekçeyi okuyacak." The focus starts in the field and the scrim does not
+      close the dialog. "Reddet" is natively disabled until something other than blanks is written (F-W5-4); leaving the field empty swaps the help for "Bir gerekçe yazın." with no
+      live region and no move of the focus (F-X-2).
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:77
+    on:
+      TYPE_REASON: { target: rejectFormReady, effect: [typedReason], say: "they write a reason: the button goes on", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113 }
+      LEAVE_REASON: { target: rejectForm, effect: [leftReasonEmpty], say: "they leave the field empty: 'Bir gerekçe yazın.' appears", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:114 }
+      CANCEL: { target: list, effect: [clearNote], say: "Vazgeç, the close icon or Escape: nothing is written; the focus goes back to the 'Reddet' that opened it (Base UI; not verified)", source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:380 }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  rejectFormReady:
+    title: The reject dialog, the button on
+    by: human
+    description: >-
+      The same dialog with a reason written and "Reddet" on. A refusal that keeps the dialog open (the person is not the nazım, any other failure) comes back here with an error toast that stays
+      until it is closed, over a modal dialog; whether a screen reader reaches it there is not verified (F-W5-3).
+    source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92
+    on:
+      TYPE_REASON: { target: rejectFormReady, effect: [typedReason], say: "they change the reason", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:113 }
+      SUBMIT: { target: rejecting, effect: [clearNote], say: "they press 'Reddet'", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:65 }
+      CANCEL: { target: list, effect: [clearNote], say: "Vazgeç, the close icon or Escape: the reason is thrown away", source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:380 }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  rejecting:
+    title: The refusal is on its way
+    description: >-
+      rejectDeckProposal, POST /kosks/{id}/deck-proposals/{proposalId}/reject with the trimmed reason. "Reddet" is busy (aria-disabled, a hidden status "Yükleniyor") and "Vazgeç" and the close icon
+      stay on and do nothing (the dialog ignores a close while it saves, reject-dialog.tsx:81). The proposal is marked REJECTED with the reason, who decided and when, and the hoca who proposed
+      it gets a notification with the reason (a failure to write it is logged and ignored). A success, or an answer that says the proposal is answered already or gone, drops the proposal
+      from the list and closes the dialog; the other refusals keep it open with an error toast.
+    invoke: { action: rejectKoskDeckProposal }
+    on:
+      DONE: { guard: "answer == 'done'", target: afterReject, effect: [proposalRefused], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:147, say: "refused: the toast 'Öneri reddedildi', the dialog closes and the proposal leaves (e2e deck-review#9)" }
+      FAIL.answered: { guard: "answer == 'answered'", target: afterReject, effect: [refuseAnswered], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:140, say: "409: someone answered it first: an error toast, the proposal leaves, the dialog closes" }
+      FAIL.gone: { guard: "answer == 'gone'", target: afterReject, effect: [refuseGone], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:140, say: "404: the proposal is gone: an error toast, the proposal leaves, the dialog closes" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: rejectFormReady, effect: [refuseForbidden], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:140, say: "403: an error toast 'Bu işlem için izniniz yok.'; the dialog stays open with the reason as it was" }
+      FAIL.failed: { guard: "answer == 'failed'", target: rejectFormReady, effect: [refuseFailed], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:140, say: "any other failure: an error toast with the generic sentence; the dialog stays open" }
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:134
+
+  afterReject:
+    title: The proposal is counted out
+    description: "Not a screen: the refused (or answered, or gone) proposal leaves the list and the count under the heading goes down; the last one takes the whole block with it."
+    always:
+      - { guard: "proposals == 'two'", target: list, effect: [proposalsOne], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:124 }
+      - { target: list, effect: [proposalsNone], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:124 }
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:124
+
+  # ===================================== hiding a deck ================================================================================
+  confirmHide:
+    title: Deste gizlensin mi?
+    by: human
+    description: >-
+      An AlertDialog (Base UI, modal, role alertdialog, never closed by the scrim) over the inert page, with the deck's title above "Deste gizlensin mi?": "{deck}, {köşk} talebelerinden gizlenecek; deste
+      silinmez. Arşivden istediğiniz an geri alabilirsiniz." (KDECK-3: said to everyone, true for the köşk's nazımı only), "Vazgeç" (the focus starts here), the close icon and "Gizle", a primary button and not
+      a destructive one: nothing is deleted. The focus returns to the 'Gizle' that opened it when the dialog is only cancelled.
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:388
+    on:
+      CONFIRM_HIDE: { target: hiding, source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:399, say: "they press 'Gizle'" }
+      CANCEL: { target: list, effect: [clearNote], say: "Vazgeç, the close icon or Escape: nothing changes", source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:391 }
+      NAVIGATE: { target: left, say: "they leave the page" }
+
+  hiding:
+    title: The deck is on its way to the archive
+    description: >-
+      hideKoskDeck, POST /decks/{id}/hide. "Gizle" is busy (confirmLoading: aria-disabled, aria-busy, a hidden status "Yükleniyor") and "Vazgeç" and the close icon stay on and do nothing (onOpenChange is ignored
+      while busy). The deck gets archivedAt, archivedBy and the level of whoever hid it (the köşk's nazımı: KOSK); nothing is deleted, no audit row is written (the domain's kosk-deck-hide-no-audit)
+      and the deck is still listed, with every hidden köşk deck, by the legacy /decks (nizam.decks.legacyCards LEGACY-3). A success, or an answer that says the deck is not there or is hidden already, drops the row and
+      closes the dialog; the other refusals keep it open with an error toast.
+    invoke: { action: hideKoskDeck }
+    on:
+      DONE: { guard: "answer == 'done'", target: afterHide, effect: [hidden], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:169, say: "hidden: the toast 'Deste gizlendi', the dialog closes and the row leaves (e2e deck-review#9)" }
+      FAIL.gone: { guard: deckGone, target: afterHide, effect: [hideGone], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:163, say: "404 KOSK_DECK_NOT_FOUND: someone hid it first, or it is gone: an error toast, the row leaves, the dialog closes" }
+      FAIL.forbidden: { guard: "answer == 'forbidden'", target: confirmHide, effect: [hideForbidden], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:162, say: "403: an error toast 'Bu işlem için izniniz yok.'; the dialog stays open" }
+      FAIL.failed: { guard: "answer == 'failed'", target: confirmHide, effect: [hideFailed], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:162, say: "any other failure: an error toast with the generic sentence; the dialog stays open" }
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:154
+
+  afterHide:
+    title: The deck is counted out
+    description: "Not a screen: the hidden deck leaves the table and the count under the heading goes down; the last one leaves the empty line."
+    always:
+      - { guard: "decks == 'two'", target: list, effect: [decksDown], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:129 }
+      - { target: list, effect: [decksNone], source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:129 }
+    source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:129
+
+  # ===================================== exits ========================================================================================
+  handed_over.no_access:
+    type: final
+    title: The screen "Bu bölüm için izniniz yok"
+    description: "forbidden() or notFound(): the same screen of nizam.shell.noAccessAndNotFound, inside the shell (e2e deck-review#10, which that flow carries)."
+  handed_over.edit_cards:
+    type: final
+    title: The person opens the legacy card table of a deck
+    leavesPage: true
+  handed_over.archive:
+    type: final
+    title: The person opens the köşk's archive
+    leavesPage: true
+  left:
+    type: final
+    title: They leave the page
+    leavesPage: true
+
+assertions:
+  - { id: a-deck-needs-a-name, never: "state == 'submitting' and name == 'blank'", say: "A deck is sent only with a name written: the page refuses an empty or blank name before it calls the server", source: apps/nizam/features/deck-review/present.ts:181 }
+  - { id: a-refusal-needs-a-reason, never: "state == 'rejecting' and reason != 'typed'", say: "A proposal is refused only with a reason written: 'Reddet' stays off while the reason is blank", source: apps/nizam/features/deck-review/components/reject-dialog.tsx:92 }
+  - { id: a-proposal-form-opens-from-a-waiting-proposal, never: "state == 'openingForm' and from == 'proposal' and proposals == 'none'", say: "'Kabul et' is offered only while a proposal waits, so the page that opens from one is asked for while one waits", source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:274 }
+  - { id: a-reject-dialog-needs-a-proposal, never: "(state == 'rejectForm' or state == 'rejectFormReady' or state == 'rejecting') and proposals == 'none'", say: "The reject dialog opens from a proposal's own button, so one waits while it is open", source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:318 }
+  - { id: a-hide-dialog-needs-a-deck, never: "(state == 'confirmHide' or state == 'hiding') and decks == 'none'", say: "The hide dialog opens from a deck's own button, so a deck is in the table while it is open", source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:229 }
+  - { id: the-warning-has-no-rows, never: "state == 'listUnreadable' and (proposals != 'none' or decks != 'none')", say: "A page whose first read failed draws neither section: no proposal and no deck is shown", source: apps/nizam/features/deck-review/components/kosk-decks-view.tsx:274 }

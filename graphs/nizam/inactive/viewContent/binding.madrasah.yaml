@@ -1,0 +1,31 @@
+# nizam.inactive.viewContent, the medrese's row: it has no "İçeriği gör" (e2e inactive#10 a1). Nothing is pressed: the walk reads the
+# list as the başnazım meets it, finds the row of the medrese made for it, and checks with --absent that the button of that row is not
+# there, while the köşk's and the course's rows, made beside it, still carry theirs. Then the person goes on to another page.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/inactive/viewContent \
+#     --bind graphs/nizam/inactive/viewContent/binding.madrasah.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay. The scenario adds no transition the main file does not walk, so it has a file of its own
+# (locators.binding.yaml has the scopes, the locators and what a walk makes). Its data is the same tag, made and removed the same way.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.inactive.viewContent
+
+scenarios:
+  madrasah:
+    given: { scope: madrasah, answer: normal }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    vars:
+      target: '{made.madrasahName}'
+      kindText: Medrese
+      koskId: '{made.kosk}'
+      targetId: '{made.madrasah}'
+      targetEntity: madrasah
+    samples: { name: '{made.madrasahName}', kind: Ders, kosk: '{made.hostName}' }
+    setup:
+      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, make, viewContent]
+        expect: 'passive-scopes make viewContent ready'
+    teardown:
+      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, remove, viewContent]
+        expect: 'passive-scopes remove viewContent'

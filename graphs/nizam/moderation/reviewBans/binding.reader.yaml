@@ -1,0 +1,36 @@
+# nizam.moderation.reviewBans read by a Medaris nazımı who holds platform.ban_account alone, applicantG ("Dilek Başvuran"), appointed for the walk. The permission "bans and
+# lifts nothing yet" (ban-codes.ts:33-34): she opens the page, reads every ban with its reason and the person's e-mail address (TRIAGE-2, decision D1), and is drawn no
+# button; every open row has a sentence, "Bu yasağı yalnız onu koyan kademe ya da üstü kaldırabilir." or "Bu yasağı yalnız Medaris yönetimi kaldırabilir." (REVBANS-3: for
+# her it is the permission that is missing, not the kademe).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/moderation/reviewBans \
+#     --bind graphs/nizam/moderation/reviewBans/binding.reader.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. A file of its own because it adds no transition to binding.yaml's walk (CONVENTIONS). Data and teardown as binding.scoped.yaml, with
+# the one permission platform.ban_account. The seeded Medaris nazımı is never changed; the walk opens the address because the nav graph's persona is the seeded account.
+schema: delurio-graph/0
+kind: binding
+extends: locators.binding.yaml
+flow: nizam.moderation.reviewBans
+
+scenarios:
+  reader:
+    given: { viewer: reader, read: ok, refetch: ok, courseBans: some, koskBans: some, match: some, pages: one }
+    as: applicantG
+    open: '{nizam}/yasaklamalar'
+    vars: { typed: Başvuran, personWord: Başvuran, courseTitle: Deneme dersi reviewbans, koskName: '{seed.titles.kosk}' }
+    setup:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, down, applicantG]
+        expect: 'medaris down APPLICANT_G'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, make, reviewbans, --kosk, '{seed.kosk}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD']
+        expect: '"tag":"reviewbans"'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, up, reviewbans]
+        expect: 'ready: 3 open, 2 lifted'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, up, applicantG, --codes, platform.ban_account]
+        expect: 'codes=platform.ban_account'
+    teardown:
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, medaris, down, applicantG]
+        expect: 'medaris down APPLICANT_G'
+      - run: [node, ../nizam/moderation/reviewBans/bans-data.mjs, down, reviewbans]
+        expect: down reviewbans
+      - run: [node, helpers/course.mjs, remove, reviewbans]

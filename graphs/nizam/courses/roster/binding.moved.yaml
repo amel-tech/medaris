@@ -1,0 +1,58 @@
+# nizam.courses.roster where the seat has moved: the köşk's nazım presses "Tamamladı say" on the first row (Betül Başvuran, applicantE), and the talebe leaves the
+# course while the completion is on its way, so the server answers ENROLLMENT_NOT_FOUND (404): an error toast "İşlem tamamlanamadı" with "Kayıt artık yok;
+# sayfayı yenileyin." that stays until closed, and the stale row stays where it was, because the failure path never reads the list again (NROS-3).
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/courses/roster \
+#     --bind graphs/nizam/courses/roster/binding.moved.yaml --cover transitions --out <dir>
+# NOT RUN, and the least sure of the bindings: the leaving is the `before` of the node the walk presses, so the PATCH reaches the API after the row is gone. It is a file of its
+# own because that `before` would run in every walk of a file that holds the other scenarios; `--cover transitions` also walks DONE from here, which fails here by design
+# (the seat is gone): read only the walk that takes FAIL.moved. No `call` is set, so the HTTP status of the FAIL walk (404; a server action answers 200 on the page's own
+# address anyway) is not compared.
+#
+# Same course, data and teardown as binding.yaml (see its header); the leaving is DELETE /courses/:id/enrollment as applicantE (helpers/leave.mjs), which an ENROLLED
+# row allows. ENROLLMENT_STATE_CONFLICT, the other code of the class (a seat that is no longer ENROLLED: a removal landed), gives the other sentence, "Bu kayıt bu işleme
+# uygun durumda değil; sayfayı yenileyin.", and is not walked separately: both codes are one class and one toast, found by the words "sayfayı yenileyin".
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.roster
+
+scenarios:
+  moved:
+    given: { read: ok, held: none, size: short }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'courseOverview->courseStudents' }
+    setup:
+      - run: [node, helpers/course.mjs, make, rosternizam, --kosk, '{seed.kosk2}', --weeks, '1', --lessons, '1', --talebe, 'applicantC,applicantD,applicantE,applicantG']
+        expect: '"APPLICANT_G":"ENROLLED"'
+      - run: [node, helpers/api.mjs, applicantC, PUT, '/courses/{made.course}/progress', '{"progress":40}']
+        expect: '"progress":40'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, rosternizam]
+        expect: course remove rosternizam
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from enrollments where status = 'REVOKED' and user_id in ('{secret.E2E_APPLICANT_C_SUB}', '{secret.E2E_APPLICANT_D_SUB}', '{secret.E2E_APPLICANT_E_SUB}', '{secret.E2E_APPLICANT_G_SUB}')"]
+        expect: '"n":0'
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_C_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_D_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_E_EMAIL}']
+      - run: [node, helpers/mail.mjs, clear, 'to:{secret.E2E_APPLICANT_G_EMAIL}']
+    vars:
+      reason: Ayrıldığı için kaydı kapatıldı
+      reasonSaved: Ayrıldığı için kaydı kapatıldı
+      removedAddress: '{secret.E2E_APPLICANT_E_EMAIL}'
+      removerName: Cemal Köşk Nazımı
+
+# The event FAIL.moved is no node's, and an event the binding gives runs after the call has been made, so it cannot cause the refusal. What causes it is `before` on the
+# node the walk presses: just before the click, the talebe of the first row leaves (the API, as her), so the click finds no seat. The event itself only waits for what the
+# app says, which is also what marks the step drivable to the replay (an unguarded FAIL transition is otherwise not walked).
+events:
+  FAIL.moved:
+    - waitText: Kayıt artık yok; sayfayı yenileyin.
+
+nodes:
+  complete:
+    role: button
+    name: '/^Tamamladı say: /'
+    before:
+      - run: [node, helpers/leave.mjs, applicantE, '{made.course}']
+        expect: leave APPLICANT_E

@@ -1,0 +1,82 @@
+# nizam.inactive.viewContent on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001 and the seeded
+# başnazım (SYSTEM_ADMIN) signed in through Keycloak's real form, who enters Pasif kapsamlar by its menu entry and presses
+# "İçeriği gör" on a köşk row and on a course row. This file holds the two scenarios that open a page; the three that open none are
+# binding.madrasah.yaml, binding.again.yaml and binding.gone.yaml (a scenario that adds no new transition is walked only from a file of
+# its own), and what they all share is locators.binding.yaml.
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/inactive/viewContent \
+#     --bind graphs/nizam/inactive/viewContent/binding.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay (the owner's word: replays happen once, at the end). Every behaviour is from the code.
+#
+# What a walk makes and how it is taken away. `setup` makes four scopes with no manager (a köşk, a course, a medrese and a second
+# köşk) and the köşk that has a nazım and holds the course, all under the tag viewContent, by SQL: no route makes them
+# (passive-scopes.mjs says why, and that the NOT NULL columns were read from the database). `teardown` removes them, the people made
+# for them, and every audit row that names one of their ids: the opening this walk writes, and any read the opened page wrote.
+# `make` removes first, so a walk that died leaves nothing for the next one to trip on; a second `remove` finds nothing. If a walk
+# dies before its teardown the four scopes stay in Pasif kapsamlar (and in the home's warning and the passive counts) until the next
+# `make` or `remove` of the tag.
+# Nothing of the seed is touched: the seeded köşks, the course and the medrese are not read, changed or listed here.
+#
+# What each scenario checks outside the screen (`effects`): the audit row. After the call that ends in DONE, the database holds
+# exactly one row `inactive_scope.view` for the scope, written by the başnazım, with the scope's own entity name (e2e inactive#10 a3,
+# a7). The row is read, never written, by helpers/sql.mjs.
+#
+#   kosk    the main story: PRESS on the köşk's row, the busy state while the call is held, the köşk's page (inactive#10 a2, a3)
+#   course  PRESS on the course's row, the curriculum page the redirect ends on (inactive#10 a6, a7)
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.inactive.viewContent
+
+scenarios:
+  kosk:
+    given: { scope: kosk, answer: normal }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    vars:
+      target: '{made.koskName}'
+      kindText: Köşk
+      koskId: '{made.kosk}'
+      targetId: '{made.kosk}'
+      targetEntity: kosk
+    samples: { name: '{made.koskName}', kind: Ders, kosk: '{made.hostName}' }
+    setup:
+      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, make, viewContent]
+        expect: 'passive-scopes make viewContent ready'
+    teardown:
+      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, remove, viewContent]
+        expect: 'passive-scopes remove viewContent'
+  course:
+    given: { scope: course, answer: normal }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->inactive' }
+    vars:
+      target: '{made.courseTitle}'
+      kindText: 'Ders · {made.hostName}'
+      koskId: '{made.kosk}'
+      targetId: '{made.course}'
+      targetEntity: course
+    samples: { name: '{made.courseTitle}', kind: Ders, kosk: '{made.hostName}' }
+    setup:
+      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, make, viewContent]
+        expect: 'passive-scopes make viewContent ready'
+    teardown:
+      - run: [node, ../nizam/inactive/viewContent/passive-scopes.mjs, remove, viewContent]
+        expect: 'passive-scopes remove viewContent'
+
+states:
+  # the call is a Next server action: a POST to the page's own address, held while the busy row is checked (the page's own reads are
+  # GETs, so the glob, which is anchored, matches only the POST). It answers 200 whatever the API said; the two walks here end in DONE,
+  # for which the replay asks only for an answer that is not an error. The refusals are walked in binding.gone.yaml, which holds no call.
+  recording: { url: '{nizam}/pasif-kapsamlar', call: '{nizam}/pasif-kapsamlar' }
+
+# What a press leaves outside the screen: one audit row, by the başnazım, for this scope and no other. The row is read from the table
+# the audit page reads; entity is the type in lower case (inactive-scope.repository.ts:361-366). The entity id is the scenario's own.
+effects:
+  viewInactiveScope:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select count(*)::int as n from audit_log where action = 'inactive_scope.view' and entity = '{targetEntity}' and entity_id = '{targetId}' and actor_id = '{secret.E2E_SYSTEM_ADMIN_SUB}'"
+      expect: '"n":1'

@@ -1,0 +1,37 @@
+# nizam.shell.menuPerPersona for the same köşk nazımı of one köşk on a phone (390 x 844): the bar's bell is named "Bildirimler, 1 okunmamış"
+# (the unread count is in the name, not on the icon), the sheet holds the plain label, the menu with its number and the person's row. See
+# binding.koskOne.yaml for what the walk makes and removes.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/menuPerPersona --bind graphs/nizam/shell/menuPerPersona/binding.koskOnePhone.yaml \
+#     --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.menuPerPersona
+
+browser: { width: 390, height: 844 }
+
+scenarios:
+  koskOnePhone:
+    given: { opensAt: phone, who: koskOne, unread: some, waiting: none }
+    as: applicantF
+    open: '{nizam}/'
+    setup:
+      - run: [node, helpers/remove-kosk.mjs, menu-tek]
+        expect: 'remove-kosk menu-tek removed'
+      - run: [node, helpers/api.mjs, systemAdmin, POST, /kosks, '{"name":"Örnek Tek Köşk","handle":"menu-tek","description":"Menü yürüyüşü için açılmış, tek nazımlı bir köşk.","field":"Tefsir & Hadis","level":"ALL","tags":["Sarf"],"managerUserIds":["{secret.E2E_APPLICANT_F_SUB}"]}']
+        expect: '"handle":"menu-tek"'
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+        expect: 'notify APPLICANT_F clear'
+      - run: [node, helpers/notify.mjs, applicantF, raw, KOSK_BAN_PLACED]
+        expect: 'raw KOSK_BAN_PLACED'
+    teardown:
+      - run: [node, helpers/notify.mjs, applicantF, clear]
+        expect: 'notify APPLICANT_F clear'
+      - run: [node, helpers/remove-kosk.mjs, menu-tek]
+        expect: 'remove-kosk menu-tek removed'
+
+nodes:
+  # the plain label of the one köşk. The walk has one köşk, so the flow draws it as the landing whatever `scope` says, and the node of the
+  # newest keeps the shared file's name (Kubbealtı Köşkü), which is nowhere on the page, so --absent finds none
+  koskLabelLanding: { css: 'aside bdi, [role=dialog] bdi', hasText: Örnek Tek Köşk }

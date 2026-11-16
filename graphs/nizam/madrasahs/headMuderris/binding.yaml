@@ -1,0 +1,327 @@
+# nizam.madrasahs.headMuderris on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım (SYSTEM_ADMIN) signed in through Keycloak's real
+# form on a medrese of the walk's own, with spare talebe accounts as its heads and as the people the old head gave something to.
+#
+#   nice -n 10 node <engine>/src/cli.ts replay graphs/nizam/madrasahs/headMuderris --bind graphs/nizam/madrasahs/headMuderris/binding.yaml --cover transitions --out <dir>
+#
+# NOT RUN: written without a replay (the walk phase comes later). Every locator below is from the code (apps/nizam/features/madrasahs, libs/ui/src/mds) and the catalog and is
+# unverified until a walk; where the code leaves a doubt a comment says so. Check that it loads: `replay <dir> --bind <file> --emit-spec --out <scratchpad>/emit/...` (writes a spec, walks nothing).
+#
+# Data. ./head-data.mjs (the flow's own helper, tedrisat's HTTP API only, plus one SQL delete in `down`) makes, in each scenario's `setup`, the medrese "Başmüderris Deneme Medresesi" (handle
+# baslik-deneme) with APPLICANT_F ("Tahsin Başvuran") as its başmüderris, and takes it away in `teardown` (`up` begins with the same, so a walk that died leaves nothing):
+#   active    F gave D (APPLICANT_D, "Salih Başvuran") a nazır seat and madrasah.nazir_appoint + enrollment.decide, and E (APPLICANT_E, "Betül Başvuran") a nazır seat: two persons in the dialog
+#   bare      F gave nobody anything
+#   passive   the medrese was made passive (the Pasife al call), so its row has "Başmüderris ata"
+#   handedOn  as active, and D appointed H (APPLICANT_H) a nazır: a Düşür for D would leave H under a dropped seat
+#   self      as active, and E is also a Medaris nazımı holding platform.head_muderris_manage: the walk is E's, and E's own row is among the rows
+# APPLICANT_G ("Dilek Başvuran") is the new head in every scenario: the walk finds it by its e-mail address. The seeded başmüderris and "Hadis ve Siyer Medresesi" are never touched.
+# What a walk leaves: the audit rows (madrasah.create, madrasah.head_muderris.set, madrasah.delete, permission.*, user.lookup), which no route removes.
+#
+# Which scenario takes which transition (`--cover transitions` walks the shortest scenario per transition, first in file order):
+#   change     the story: active medrese, two persons, Devral the first and Düşür the second. It also takes the stale refusal: the path to FAIL.stale goes through the event ELSEWHERE.
+#   assign     the passive medrese gets a head.         bare       an active medrese whose head gave nothing.     notFound   an address the realm does not know.
+#   sameHead   the sitting head's own address.          cascade    D answered Düşür while H hangs under D's seat.  selfGrant  E, a Medaris nazımı, takes over E's own row.
+# Not bound, with the reason: handed: unreadable (the read cannot be made to fail on the stack), lookup: down, answer: seatless | expiry | gone | forbidden | failed (the page cannot make the
+# API say them: seatless is out of reach of a page that answers per person, expiry needs a clock that disagrees, gone and forbidden need the medrese deleted or the permission taken from the
+# walker's own session mid-walk), and the event FILL_END_HALF (a half-typed datetime-local cannot be made with `fill`).
+#
+# The three server calls are Next server actions, a POST to the page's own address, so their status cannot be compared and a FAIL walk needs the call to go through at once: `saving` has no
+# `call` (its busy state is not held), `reading` and `looking` hold theirs to check the skeleton and "Aranıyor".
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.madrasahs.headMuderris
+
+# the dialog is a 640 px modal and the table a real table from 768 px: the size the e2e uses
+browser: { width: 1440, height: 900 }
+
+data:
+  made: { json: ../.local/made/headMuderris.json }
+
+# `person` and `email` are left out on purpose: the rows are two different people and the replay matches any text. `given` too (it is the day the walk made the rows).
+samples:
+  name: '{made.name}'
+  place: '{made.name}'
+  head: '{made.newHead}'
+  oldHead: '{made.oldHead}'
+  role: Medrese nâzırı
+  until: süresiz
+  count: "2"
+
+scenarios:
+  # The story: the başnazım opens Medreseler from the menu, presses "Başmüderrisi değiştir", finds G by e-mail, sets an end, answers Devral for D and Düşür for E, and confirms.
+  change:
+    given: { medrese: active, handed: some, lookup: found, answer: done }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->madrasahs' }
+    setup:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, up, --case, active]
+        expect: 'ready: active'
+    teardown:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, down]
+        expect: 'removed'
+    vars:
+      headEmail: '{secret.E2E_APPLICANT_G_EMAIL}'
+      firstAnswer: Devral
+      secondAnswer: Düşür
+      rows: '2'
+      expectHead: 'new 1 other 0 active true'
+      expectRows: 'D seat 1 grants 2 E seat 0'
+      expectAudit: 'dropped 1'
+
+  # The passive medrese gets its head: "Başmüderris ata", the person by e-mail, nothing to answer (head-change#4, madrasahs#5). The medrese is Etkin afterwards.
+  assign:
+    given: { medrese: passive, handed: nothing, lookup: found, answer: done }
+    as: systemAdmin
+    open: '{nizam}/medreseler?q=baslik-deneme'
+    setup:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, up, --case, passive]
+        expect: 'ready: passive'
+    teardown:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, down]
+        expect: 'removed'
+    vars:
+      headEmail: '{secret.E2E_APPLICANT_G_EMAIL}'
+      firstAnswer: Devral
+      secondAnswer: Düşür
+      rows: '0'
+      expectHead: 'new 1 other 0 active true'
+      expectRows: 'D seat 0 grants 0 E seat 0'
+      expectAudit: 'dropped 0'
+
+  # An active medrese whose head gave nobody anything: the dialog says so and the button is on as soon as a person is chosen.
+  bare:
+    given: { medrese: active, handed: nothing, lookup: found, answer: done }
+    as: systemAdmin
+    open: '{nizam}/medreseler?q=baslik-deneme'
+    setup:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, up, --case, bare]
+        expect: 'ready: bare'
+    teardown:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, down]
+        expect: 'removed'
+    vars:
+      headEmail: '{secret.E2E_APPLICANT_G_EMAIL}'
+      firstAnswer: Devral
+      secondAnswer: Düşür
+      rows: '0'
+      expectHead: 'new 1 other 0 active true'
+      expectRows: 'D seat 0 grants 0 E seat 0'
+      expectAudit: 'dropped 0'
+
+  # An address the realm does not know: "Bu e-posta adresiyle kayıtlı bir hesap bulunamadı." under the field, nobody chosen.
+  notFound:
+    given: { medrese: passive, handed: nothing, lookup: notFound, answer: done }
+    as: systemAdmin
+    open: '{nizam}/medreseler?q=baslik-deneme'
+    setup:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, up, --case, passive]
+        expect: 'ready: passive'
+    teardown:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, down]
+        expect: 'removed'
+    vars:
+      headEmail: kimse.yok@example.test
+      firstAnswer: Devral
+      secondAnswer: Düşür
+      rows: '0'
+      expectHead: 'new 0 other 0 active false'
+      expectRows: 'D seat 0 grants 0 E seat 0'
+      expectAudit: 'dropped 0'
+
+  # The sitting head's own address: the person is chosen, the button stays off, and nothing says why (HEAD-1).
+  sameHead:
+    given: { medrese: active, handed: some, lookup: sameHead, answer: done }
+    as: systemAdmin
+    open: '{nizam}/medreseler?q=baslik-deneme'
+    setup:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, up, --case, active]
+        expect: 'ready: active'
+    teardown:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, down]
+        expect: 'removed'
+    vars:
+      headEmail: '{secret.E2E_APPLICANT_F_EMAIL}'
+      firstAnswer: Devral
+      secondAnswer: Devral
+      rows: '2'
+      expectHead: 'new 0 other 1 active true'
+      expectRows: 'D seat 1 grants 2 E seat 1'
+      expectAudit: 'dropped 0'
+
+  # D answered Düşür while H hangs under D's seat (D appointed it): DISMISS_SEAT_HANDED_ON, a toast, the dialog stays open and nothing is written.
+  cascade:
+    given: { medrese: active, handed: some, lookup: found, answer: cascade }
+    as: systemAdmin
+    open: '{nizam}/medreseler?q=baslik-deneme'
+    setup:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, up, --case, handedOn]
+        expect: 'ready: handedOn'
+    teardown:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, down]
+        expect: 'removed'
+    vars:
+      headEmail: '{secret.E2E_APPLICANT_G_EMAIL}'
+      firstAnswer: Düşür
+      secondAnswer: Devral
+      rows: '2'
+      expectHead: 'new 0 other 1 active true'
+      expectRows: 'D seat 0 grants 0 E seat 1'
+      expectAudit: 'dropped 0'
+
+  # E, a Medaris nazımı holding platform.head_muderris_manage, answers Devral for E's own row: SELF_GRANT_REFUSED. E is the walker, in their own browser.
+  selfGrant:
+    given: { medrese: active, handed: some, lookup: found, answer: selfGrant }
+    as: applicantE
+    open: '{nizam}/medreseler?q=baslik-deneme'
+    setup:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, up, --case, self]
+        expect: 'ready: self'
+    teardown:
+      - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, down]
+        expect: 'removed'
+    vars:
+      headEmail: '{secret.E2E_APPLICANT_G_EMAIL}'
+      firstAnswer: Devral
+      secondAnswer: Devral
+      rows: '2'
+      expectHead: 'new 0 other 1 active true'
+      expectRows: 'D seat 1 grants 2 E seat 1'
+      expectAudit: 'dropped 0'
+
+events:
+  # the e-mail field has no node that sends an event: the binding fills it in, then Enter searches (the field is also searched when it is left)
+  SEARCH:
+    - fill: { role: textbox, name: '/^(Yeni başmüderris|Başmüderris)/', value: '{headEmail}' }
+    - key: Enter
+  # a datetime-local field takes `YYYY-MM-DDTHH:mm` and has no role, so it is found by its label (the e2e's getByLabel). FILL_END_HALF has no binding.
+  FILL_END:
+    - fill: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)', value: '{made.endValid}' }
+  FILL_END_PAST:
+    - fill: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)', value: '{made.endPast}' }
+  # the chips are pressed by events, because the nodes cannot say which row: the first answer is the first row's (D), the rest the second row's (E). The nth of a button is its row's
+  # place among the buttons of that name, whatever the name: each row has one Devral and one Düşür.
+  ANSWER_SOME:
+    - click: { role: button, name: '{firstAnswer}', nth: 0, within: { role: dialog, name: Başmüderrisi değiştir } }
+  ANSWER_REST:
+    - click: { role: button, name: '{secondAnswer}', nth: 1, within: { role: dialog, name: Başmüderrisi değiştir } }
+  # somebody else changes what the old head gave while the dialog is open: the old head gives D one more permission
+  ELSEWHERE:
+    - run: [node, ../nizam/madrasahs/headMuderris/head-data.mjs, elsewhere]
+      expect: 'elsewhere:'
+  NAVIGATE:
+    - goto: '{nizam}/'
+
+states:
+  listed: { url: '{nizam}/medreseler**' }
+  reading: { call: '{nizam}/medreseler**' }
+  looking: { call: '{nizam}/medreseler**' }
+  assigned: { url: '{nizam}/medreseler**' }
+  changed: { url: '{nizam}/medreseler**' }
+  closed: { url: '{nizam}/medreseler**' }
+  # NAVIGATE goes to the home page, where the başnazım and a Medaris nazımı land; an exit with no screen of its own is checked by its address
+  left: { url: '{nizam}/' }
+
+# Role and name find most nodes; the ones below need more.
+nodes:
+  # the shell's one <main>; the page a walk leaves for has one too, so tell them apart by the table's heading
+  listPage: { role: main, hasText: Bütün medreseler }
+  # the h1 is "Medreseler"; the table's h2, "Bütün medreseler", and the menu's link contain the word too
+  listTitle: { role: heading, name: '/^Medreseler$/' }
+  # the row of the walk's medrese, whoever else is on the page
+  rowHeadNone: { text: Atanmamış, within: { role: row, hasText: '{made.name}' } }
+  rowHeadOld: { text: '{made.oldHead}', within: { role: row, hasText: '{made.name}' } }
+  rowHeadNew: { text: '{made.newHead}', within: { role: row, hasText: '{made.name}' } }
+  rowStatusPassive: { text: Pasif, within: { role: row, hasText: '{made.name}' } }
+  rowStatusActive: { text: Etkin, within: { role: row, hasText: '{made.name}' } }
+  rowStatusNow: { text: Etkin, within: { role: row, hasText: '{made.name}' } }
+
+  # the dialog; the row's buttons are inert behind it
+  eyebrow: { css: '.mds-eyebrow', hasText: '{made.name}', within: { role: dialog } }
+  closeIcon: { role: button, name: Kapat, within: { role: dialog } }
+  introChange: { text: '/şu an bu medresenin başmüderrisi\./' }
+  requiredNote: { text: '/zorunlu alan/' }
+  headHelp: { text: '/her arama denetim kaydına yazılır/' }
+  # the hidden <output> beside the chosen name, whose {name} is the person's and not the medrese's, and the remove button, named by the person
+  chosenAnnounce: { role: status, hasText: '/ seçildi$/' }
+  removeHead: { role: button, name: '/^Seçimi kaldır: /' }
+  endField: { label: 'Görev bitiş tarihi ve saati (isteğe bağlı)' }
+  endHelp: { text: '/Boş bırakırsanız görev siz değiştirene dek sürer\./' }
+
+  # what the old head gave: one <li data-testid=delegation> a PERSON, the section by its test id
+  handedOnRegion: { testId: delegations }
+  handedOnTitle: { role: heading, name: '/şu kişilere rol ve izin vermişti/' }
+  handedOnList: { css: '[data-testid=delegations] ul' }
+  handedOnPerson: { testId: delegation, count: '{rows}' }
+  personName: { css: '[data-testid=delegation] bdi.font-semibold', count: '{rows}' }
+  personEmail: { css: '[data-testid=delegation] bdi.font-mono', count: '{rows}' }
+  # "Medrese nâzırı · <medrese> · süresiz · verildi <date>": the one caption of a row that carries the three dots and "verildi"
+  personLine: { css: '[data-testid=delegation] .mds-caption', hasText: '/ · .+ · .+ · verildi /', count: '{rows}' }
+  # only D's row has it, and the codes come in the order the database gives them
+  personMore: { css: '[data-testid=delegation] .mds-caption', hasText: '/^\d+ izin: /', count: 1 }
+  answerGroup: { role: group, name: '/ için karar$/', count: '{rows}' }
+  takeOver: { role: button, name: Devral, within: { testId: delegations }, count: '{rows}' }
+  drop: { role: button, name: Düşür, within: { testId: delegations }, count: '{rows}' }
+  # the chips that are pressed: none while nothing is answered
+  pressedChip: { css: '[data-testid=delegations] button[aria-pressed=true]' }
+
+  # the footer: the row's own button is "Başmüderris ata: <medrese>", so the dialog's is found inside the dialog
+  cancel: { role: button, name: Vazgeç, within: { role: dialog } }
+  assignSubmit: { role: button, name: Başmüderris ata, within: { role: dialog, name: Başmüderris ata } }
+  changeSubmit: { role: button, name: '/^Değiştir$/', within: { role: dialog, name: Başmüderrisi değiştir } }
+
+  # the toasts: a sonner toast, found by its frame and its words; an error toast stays until closed
+  savedTitle: { css: '[data-sonner-toast]', hasText: Başmüderris atandı }
+  savedBody: { css: '[data-sonner-toast]', hasText: '{made.name} için başmüderris {made.newHead} oldu' }
+  changedTitle: { css: '[data-sonner-toast]', hasText: Başmüderris değiştirildi }
+  changedBody: { css: '[data-sonner-toast]', hasText: '{made.name} için başmüderris {made.newHead} oldu' }
+  failedTitleAssign: { css: '[data-sonner-toast]', hasText: Başmüderris atanamadı }
+  failedTitleChange: { css: '[data-sonner-toast]', hasText: Başmüderris değiştirilemedi }
+  toastStale: { css: '[data-sonner-toast]', hasText: Başmüderrisin verdikleri değişmiş }
+  toastCascade: { css: '[data-sonner-toast]', hasText: Düşürdüğünüz görevlerden birinin sahibi }
+  toastSeatless: { css: '[data-sonner-toast]', hasText: Görevi düşürülen birinin iznini }
+  toastSelfGrant: { css: '[data-sonner-toast]', hasText: Size verilmiş bir rolü ya da izni devralamazsınız }
+  toastExpiry: { css: '[data-sonner-toast]', hasText: Bitiş tarihi geçmişte. }
+  toastGone: { css: '[data-sonner-toast]', hasText: Bu medrese artık yok. }
+  toastForbidden: { css: '[data-sonner-toast]', hasText: Bunu yapma izniniz yok. }
+  toastFailed: { css: '[data-sonner-toast]', hasText: Bir şeyler ters gitti. }
+
+# What a step leaves outside the screen, read through SQL on tedrisat's database (helpers/sql.mjs, read-only here; the same database the e2e's seed reads). Each scenario's vars say what it
+# expects: `expectHead` (G heads the medrese and it is active, or F still does), `expectRows` (D's seat and its two grants held under the başnazım after a Devral, E's seat still held), and
+# `expectAudit` (how many items the audit row says were dropped). The two permissions counted are the two the walk gave D; ELSEWHERE adds a third, which is not counted.
+effects:
+  setMadrasahHeadMuderris:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select 'new ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null and lower(user_id::text) = lower('{secret.E2E_APPLICANT_G_SUB}'))::text || ' other ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null and lower(user_id::text) <> lower('{secret.E2E_APPLICANT_G_SUB}'))::text || ' active ' || (select (passive_since is null)::text from madrasahs where id = '{made.madrasah}') as r"
+      expect: '{expectHead}'
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select 'D seat ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_NAZIR' and revoked_at is null and lower(user_id::text) = lower('{secret.E2E_APPLICANT_D_SUB}') and lower(granted_by::text) = lower('{secret.E2E_SYSTEM_ADMIN_SUB}'))::text || ' grants ' || (select count(*) from permission_grants where scope_id = '{made.madrasah}' and revoked_at is null and permission in ('madrasah.nazir_appoint', 'enrollment.decide') and lower(user_id::text) = lower('{secret.E2E_APPLICANT_D_SUB}') and lower(granted_by::text) = lower('{secret.E2E_SYSTEM_ADMIN_SUB}'))::text || ' E seat ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_NAZIR' and revoked_at is null and lower(user_id::text) = lower('{secret.E2E_APPLICANT_E_SUB}'))::text as r"
+      expect: '{expectRows}'
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select 'dropped ' || coalesce(details->>'dropped', '?') as r from audit_log where action = 'madrasah.head_muderris.set' and lower(details->>'headMuderrisUserId') = lower('{secret.E2E_APPLICANT_G_SUB}') order by created_at desc limit 1"
+      expect: '{expectAudit}'
+  # a refusal writes nothing: the old head still heads the medrese, and a refused stale list is as refused
+  staleRefused:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select 'new ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null and lower(user_id::text) = lower('{secret.E2E_APPLICANT_G_SUB}'))::text || ' other ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null and lower(user_id::text) <> lower('{secret.E2E_APPLICANT_G_SUB}'))::text || ' active ' || (select (passive_since is null)::text from madrasahs where id = '{made.madrasah}') as r"
+      expect: 'new 0 other 1 active true'
+  cascadeToast:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select 'new ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null and lower(user_id::text) = lower('{secret.E2E_APPLICANT_G_SUB}'))::text || ' other ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null and lower(user_id::text) <> lower('{secret.E2E_APPLICANT_G_SUB}'))::text || ' active ' || (select (passive_since is null)::text from madrasahs where id = '{made.madrasah}') as r"
+      expect: 'new 0 other 1 active true'
+  selfGrantToast:
+    - run:
+        - node
+        - helpers/sql.mjs
+        - "select 'new ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null and lower(user_id::text) = lower('{secret.E2E_APPLICANT_G_SUB}'))::text || ' other ' || (select count(*) from role_assignments where scope_id = '{made.madrasah}' and role = 'MEDRESE_BASMUDERRIS' and revoked_at is null and lower(user_id::text) <> lower('{secret.E2E_APPLICANT_G_SUB}'))::text || ' active ' || (select (passive_since is null)::text from madrasahs where id = '{made.madrasah}') as r"
+      expect: 'new 0 other 1 active true'

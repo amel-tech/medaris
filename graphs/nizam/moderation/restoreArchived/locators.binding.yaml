@@ -1,0 +1,103 @@
+# What the bindings of nizam.moderation.restoreArchived share: the events no node sends (the filters, which a select and a search box take), the address each state has, and where role and
+# name cannot find a node of the two pages. It carries no scenario, no data and no effect, so it is not walked by itself:
+#   binding.yaml              the köşk's nazımı in a köşk of the walk's own, whose Arşiv holds a course the başnazım hid: `kosk` (the main story: filters, "Geri al", the row leaving)
+#   binding.platform.yaml     the başnazım on the platform's Arşiv: `platform` (the same story with no locked row, and the press of "Kalıcı olarak sil")
+#   binding.empty.yaml        a köşk with nothing hidden: `empty` ("Gizlenen öğe yok", and the filters of an empty list)
+#   binding.stale.yaml        the item is brought back, or hidden again at a higher kademe, after the list was read: ARCHIVE_ITEM_NOT_FOUND and ARCHIVE_RESTORE_LEVEL
+#   binding.parentHidden.yaml a course of a hidden medrese: ARCHIVE_PARENT_HIDDEN
+#   binding.fromCourses.yaml  the same page entered from the "Arşiv" link of the köşk's Dersler (archive#5), read only
+# Two scenarios must not share a `given`, and a scenario that adds no transition is never chosen by `--cover transitions` beside the first, so each of the others has a small file.
+#
+# NOT RUN: the graphs were written without a replay (the first walks are a later phase). Every locator below comes from the code (apps/nizam/features/archive/components/archive-view.tsx, the shared
+# Table, Select, Button and sonner toast of libs/ui) and is unverified until a walk. Where the walk may need a fix, a comment says so.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.moderation.restoreArchived
+
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+  # The type is a Base UI Select: its trigger is a button with role combobox, named by its aria-label, and the list that opens holds options named by their labels. The search box asks
+  # the API again 300 ms after the last key, and so does a type chosen at once, so each event ends by waiting for the server action's answer (a POST to the page's own address).
+  # `waitResponse` also takes an answer that came after the event began, so a fast one is not missed. Not verified: that the replay's mark is set before the first action of an event.
+  CHOOSE_TYPE_ALL:
+    - click: { role: combobox, name: Tür süzgeci }
+    - click: { role: option, name: '/^Tür: tümü$/' }
+    - waitResponse: '{nizam}/**arsiv'
+  CHOOSE_TYPE_COURSE:
+    - click: { role: combobox, name: Tür süzgeci }
+    - click: { role: option, name: '/^Ders$/' }
+    - waitResponse: '{nizam}/**arsiv'
+  CHOOSE_TYPE_WEEK:
+    - click: { role: combobox, name: Tür süzgeci }
+    - click: { role: option, name: '/^Hafta$/' }
+    - waitResponse: '{nizam}/**arsiv'
+  CHOOSE_TYPE_SESSION:
+    - click: { role: combobox, name: Tür süzgeci }
+    - click: { role: option, name: '/^Celse$/' }
+    - waitResponse: '{nizam}/**arsiv'
+  CHOOSE_TYPE_RECORDING:
+    - click: { role: combobox, name: Tür süzgeci }
+    - click: { role: option, name: '/^Ders kaydı$/' }
+    - waitResponse: '{nizam}/**arsiv'
+  # a fragment of the title of the one course the walk restores ("Deneme dersi arsMain"), and text no title has; a search box emptied is a search box emptied
+  SEARCH_MATCH:
+    - fill: { role: searchbox, name: Gizlenenlerde ara, value: arsMain }
+    - waitResponse: '{nizam}/**arsiv'
+  SEARCH_NOTHING:
+    - fill: { role: searchbox, name: Gizlenenlerde ara, value: zzz }
+    - waitResponse: '{nizam}/**arsiv'
+  CLEAR_SEARCH:
+    - fill: { role: searchbox, name: Gizlenenlerde ara, value: '' }
+    - waitResponse: '{nizam}/**arsiv'
+
+states:
+  # the screens: `*` is one path segment, `**` any number; the köşk's address is /kosks/<id>/arsiv and the platform's /arsiv
+  listed: { url: '{nizam}/**arsiv' }
+  listEmpty: { url: '{nizam}/**arsiv' }
+  loadFailed: { url: '{nizam}/**arsiv' }
+  # the restore is a Next server action: a POST to the page's own address, held while the busy button is checked. A FAIL status cannot be compared there (the action answers 200), so
+  # `call` is only used to hold the call; the filters are server actions too and are not held
+  restoring: { call: '{nizam}/**arsiv' }
+  # an exit has no nodes, so its address is all the replay can check
+  delete_asked: { url: '{nizam}/arsiv' } # the window opens over the same page
+  left: { url: 'about:blank' }
+  # refused is not bound here: archive#6 is nizam.shell.noAccessAndNotFound's, and nothing the stack holds makes either read fail for the köşk's nazımı of a köşk of his own
+
+nodes:
+  # ---- the page ----
+  # a bare role=main is also matched on the page a walk leaves for, so the page's is told by what it holds
+  archivePage: { css: 'main:has([data-testid=archive])' }
+  # the köşk's table is named by its caption "<köşk> içinde gizlenenler"; the walk's köşk is "Deneme köşkü arsKosk"
+  archiveTableKosk: { role: table, name: Deneme köşkü arsKosk içinde gizlenenler }
+  archiveCount: { testId: archive-count, hasText: '/^\d+ gizli öğe$/' } # the number is the walk's data and changes with a filter and a restore, so only its shape is held
+  # ---- the cells of a row: every td of the stacked table carries its column's header as data-label; the first cell is a row header holding the title and, under it, the grey line ----
+  rowTitle: { css: '[data-testid=archive] tbody th bdi.font-semibold' }
+  rowContext: { css: '[data-testid=archive] tbody th .mds-caption' }
+  rowType: { css: '[data-testid=archive] tbody td[data-label="Tür"] .mds-badge', hasText: '/^(Ders|Hafta|Celse)$/' } # oneOf is found by its first text only, so a pattern
+  rowKosk: { css: '[data-testid=archive] tbody td[data-label="Kapsam"] bdi:not(.mds-caption)' } # the platform's column: the köşk's name, then the medrese's in a .mds-caption
+  rowHider: { css: '[data-testid=archive] tbody td[data-label="Gizleyen"] bdi' }
+  rowHiderRole: { css: '[data-testid=archive] tbody td[data-label="Gizleyen"] .mds-caption' } # a row the başnazım hid has none
+  rowWhen: { css: '[data-testid=archive] tbody td[data-label="Gizlendiği tarih"]', hasText: '/^(Bugün|Dün) \d{2}:\d{2}$/' } # the walk hides today
+  # "Geri al: <title>, <grey line>" on every row the person may restore; the one pressed is the first of them: the page lists newest hidden first, and the walk hides the course it restores last
+  restoreButton: { role: button, name: '/^Geri al: /' }
+  rowRestore: { role: button, name: '/^Geri al: /', nth: 0 }
+  restoreBusy: { css: '[data-testid=archive] output', hasText: Yükleniyor } # an empty <output> sits beside every "Geri al"; this one says it is busy
+  # the sentences that stand where a higher kademe hid a row (no testid on them in nizam: a caption inside the actions cell)
+  lockedAdmin: { css: '[data-testid=archive] tbody td .mds-caption', hasText: 'Bunu Medaris yönetimi gizledi; yalnız o kademe ya da üstü geri alabilir.' }
+  lockedStale: { css: '[data-testid=archive] tbody td .mds-caption', hasText: 'Bunu köşk nazımı gizledi; yalnız o kademe ya da üstü geri alabilir.' }
+  permanentDelete: { role: button, name: '/^Kalıcı olarak sil: /' }
+  archiveShown: { testId: archive-shown, hasText: '/^Toplam \d+ öğe, \d+ tanesi gösteriliyor$/' }
+  # ---- the page's own error ----
+  failedAlert: { role: alert, hasText: Arşiv yüklenemedi }
+  # ---- the toasts: sonner's, one <li data-sonner-toast> each; the title and the description are told apart by their words ----
+  toastRestored: { css: '[data-sonner-toast]', hasText: Geri alındı }
+  toastRestoredBody: { css: '[data-sonner-toast]', hasText: eski yerine döndü }
+  toastRestoreFailed: { css: '[data-sonner-toast]', hasText: Geri alınamadı }
+  toastRestoreGone: { css: '[data-sonner-toast]', hasText: Bu öğe artık arşivde değil }
+  toastRestoreLevel: { css: '[data-sonner-toast]', hasText: Bunu geri alamazsınız }
+  toastParentHidden: { css: '[data-sonner-toast]', hasText: Bağlı olduğu öğe hâlâ gizli }
+  toastRestoreRaw: { skip: "the API's own English message: a refusal with no sentence of its own (COURSE_NOT_FOUND, a 400) cannot be made on the stack" }
+  toastLoadFailed: { skip: 'a read that fails cannot be made on the stack' }
+  toastLoadFailedBody: { skip: 'a read that fails cannot be made on the stack' }
+  retryButton: { skip: 'a read that fails cannot be made on the stack' }

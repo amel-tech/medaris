@@ -1,0 +1,41 @@
+# nizam.hosting.grantAndRevoke, the refusal MADRASAH_NOT_FOUND of the grant: the medrese is hidden after the person chose it, so the call is
+# answered 404 and the toast says "Bu medrese artık yok ya da gizli.". Nothing on the page hides a medrese, so a hook does it: `nodes.grantSubmit.before`
+# runs walk-data.mjs hide before every press of "Barındırma hakkı ver", which no other scenario may do (a binding has one `nodes` for all its
+# scenarios), and that is why this scenario has a file of its own. The first press is refused; the window stays open with the medrese still
+# chosen (HOST-4), a second press would be refused again, and the walk ends there. A second `hide` finds the medrese hidden and says so.
+#
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay \
+#     graphs/nizam/hosting/grantAndRevoke --bind graphs/nizam/hosting/grantAndRevoke/binding.madrasahGone.yaml --cover transitions --out <dir>
+# NOT RUN: written without a replay. Data: the walk's own köşk and medrese with no right held and no course (binding.yaml says how they are
+# made and removed); the hidden medrese is deleted by `teardown`.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.hosting.grantAndRevoke
+
+scenarios:
+  madrasahGone:
+    given: { read: ok, before: none, tabs: shown, options: some, courses: none, rest: none, answer: madrasahGone }
+    as: koskNazim
+    open: '{nizam}/kosks/{made.kosk}/ayarlar/barindirma'
+    setup:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, make, hosting]
+        expect: '"tag":"hosting"'
+    teardown:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, remove, hosting]
+        expect: 'walk-data remove hosting'
+    vars: { grantRole: KOSK_NAZIM, hideLevel: kosk }
+
+nodes:
+  grantSubmit:
+    role: button
+    name: '/^Barındırma hakkı ver$/'
+    within: { role: dialog, name: Barındırma hakkı ver }
+    before:
+      - run: [node, ../nizam/hosting/grantAndRevoke/walk-data.mjs, hide, hosting]
+        expect: 'walk-data hide hosting'
+
+states:
+  # `granting` holds no server call here: walking a FAIL class makes the replay compare the call's HTTP status with the refusal's (404),
+  # and a Next server action answers 200 on the page's own address whatever the API said, so the call is left off and only the address is checked
+  granting: { url: '{nizam}/kosks/*/ayarlar/barindirma' }

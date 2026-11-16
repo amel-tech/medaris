@@ -1,0 +1,150 @@
+# What must exist for the başnazım to change a Medaris nazımı's permissions and end: the flow's product list (LAYOUT.md section 7). Each need is what the
+# product must do, from the flow's story (FLOWS.md, nizam.md part W2) and the findings, not from what the page does today; the known gaps go to
+# graphs/needs.gaps.yaml, which the orchestrator merges. Read by people for now: no checker runs on this file. No replay has been run (the owner's word:
+# replays happen once, after every graph is written), so `walked` names the e2e checks and the specs that carry a need and no replay scenario; the replays
+# bound in binding*.yaml (dated, forever, gone, groupGone, expiry) are named in the comments, not in `walked`.
+#
+# missing  (no code): a-wrong-end-is-announced (none, F-UI-W3-1), a-refusal-says-what-is-true-now (none, EPERM-1, decision D1), a-save-that-changes-nothing-says-so
+#          (none, EPERM-2, decision D2), the-dialog-starts-on-the-work (none, F-W2-12), the-table-shows-the-hour (none, EPERM-4), the-count-is-announced (none, CNP-4
+#          of nazar), the-checks-do-not-expire (none, F-W2-7)
+# unwalked (code, no e2e and no replay that passed): a-refusal-keeps-the-form (a unit spec pins the code's sentences; that the dialog stays open on the form
+#          is walked only by the replays gone, groupGone and expiry, which are written and not run)
+kind: needs
+flow: nizam.nazims.editPermissions
+status: proposed
+
+needs:
+  - id: change-the-group-and-the-singles-in-one-save
+    need: >-
+      The başnazım changes the ready group and the single permissions of a Medaris nazımı in one save: what is ticked is what the person holds from then on,
+      what stays keeps its giver and its date, the rest is revoked or added in the başnazım's name, and the row says it at once.
+    drawn: [editButton, editing, choosingGroup, permDeck, saving, applied, rowGroup, rowSingles, toastSaved]
+    built:
+      - action: medaris.api:setMedarisNazimGrants
+      - route: apps/nizam/features/permissions/components/permissions-dialog.tsx:136
+      - route: apps/nizam/features/permissions/components/nazims-view.tsx:176
+    walked:
+      - e2e: apps/nizam/e2e/permissions.e2e.ts
+        check: 'permissions#7' # date-bound (F-W2-7, F-X-20): it needs the seed's fixed appointment end of 2026-12-31; carried here without the date
+      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts # "changes the group and single permissions, leaving what stays alone"
+
+  - id: a-group-locks-what-it-carries
+    need: >-
+      Choosing a group ticks and locks the boxes it carries and says where they come from; "Grup yok" frees them; the footer counts what the group gives and
+      what is ticked besides; a single permission the group carries is no longer a single one.
+    drawn: [groupSelect, groupList, optionGroup, optionNone, permAudit, permInactive, auditFromGroup, inactiveFromGroup, summaryGroup, summaryPlain]
+    built:
+      - route: apps/nizam/features/permissions/components/permission-boxes.tsx:28
+      - route: apps/nizam/features/permissions/present.ts:169
+    walked:
+      - e2e: apps/nizam/e2e/permissions.e2e.ts
+        check: 'permissions#6' # date-bound too: its first half reads the seeded person's card and end
+      - test: apps/nizam/test/permissions.spec.tsx # "the dialog's boxes (nizam 12 criteria 1, 2)"
+
+  - id: change-or-clear-the-end
+    need: >-
+      The başnazım gives the permissions an end on her own clock, moves it sooner, or empties it. An empty field means "with the appointment": a seat that has an
+      end keeps it (the row still says its day) and a seat with none stays endless; the dialog says which in its help line. A field she leaves alone sends the
+      stored instant back unchanged.
+    drawn: [endField, endHelpDated, endHelpForever, editing, appliedEnd, rowEnd, rowDaysLeft, rowForever]
+    built:
+      - action: medaris.api:setMedarisNazimGrants
+      - route: libs/utils/src/end-instant.ts:141
+      - route: apps/nizam/features/permissions/components/permissions-dialog.tsx:282
+    walked:
+      - e2e: apps/nizam/e2e/permissions.e2e.ts
+        check: 'permissions#8' # date-bound; its last step (an end of 15 Aralık and the row saying so) is the one this need carries
+      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts # "a shorter end shows in the list; an empty one falls back to the appointment's"
+      - test: libs/utils/test/end-instant.spec.ts
+
+  - id: a-wrong-end-is-said-under-the-field
+    need: >-
+      An end that is not after now, or is after the appointment's end, is said in words under the field as it is typed, and nothing is sent while it stands; the
+      server refuses it too.
+    drawn: [endPastMessage, endBeyondMessage, formBlocked, save, a-wrong-end-is-never-sent]
+    built:
+      - action: medaris.api:setMedarisNazimGrants
+      - route: apps/nizam/features/permissions/components/permissions-dialog.tsx:289
+      - route: libs/utils/src/end-instant.ts:112
+    walked:
+      - e2e: apps/nizam/e2e/permissions.e2e.ts
+        check: 'permissions#8' # date-bound: it types 2027-01-01 against the seed's 31 Aralık 2026 end
+      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts # "refuses an end after the appointment's, or in the past, and a stranger"
+
+  - id: a-wrong-end-is-announced
+    need: >-
+      A person who cannot see the screen is told, when she types a wrong end, that it is wrong and why "Kaydet" is off, and keeps her place in the field.
+    drawn: [endPastMessage, endBeyondMessage, formBlocked]
+    missing: none # F-UI-W3-1: the message is a Field error with no role and no live region
+
+  - id: a-refusal-says-what-is-true-now
+    need: >-
+      When the server says the person is no longer a Medaris nazımı, or the group is gone, the page reads again, says which, and does not leave a dialog open on a
+      person or a group that is no longer there.
+    drawn: [toastGone, toastGroupGone, saving, editing]
+    missing: none # EPERM-1, decision D1; the API's refusals exist (MEDARIS_NAZIM_NOT_FOUND, PERMISSION_GROUP_NOT_FOUND), the page reads nothing again
+
+  - id: a-save-that-changes-nothing-says-so
+    need: >-
+      A save with the same group, the same permissions and the same end writes nothing and does not say that the permissions were updated.
+    drawn: [saving, toastSaved]
+    missing: none # EPERM-2, decision D2
+
+  - id: a-refusal-keeps-the-form
+    need: >-
+      A refused save keeps the dialog open with the form as it was, and says the refusal in the sentence of its code; the generic sentence is for the codes
+      the page has no sentence for.
+    drawn: [toastFailedTitle, toastGone, toastGroupGone, toastExpiry, toastForbidden, toastFailedGeneric, saving]
+    built:
+      - route: apps/nizam/features/permissions/present.ts:365
+      - route: apps/nizam/features/permissions/components/permissions-dialog.tsx:155
+    walked:
+      - test: apps/nizam/test/permissions.spec.tsx # "maps the API's codes to a message and falls back to the generic one"
+
+  - id: the-person-sees-the-change-at-once
+    need: >-
+      After a save the person's own pages follow her new permissions the next time she reads them: the menu, the home's cards and "İzinleriniz" show what she
+      holds now and nothing she lost.
+    drawn: [appliedEnd]
+    built:
+      - action: medaris.api:getMyPermissions
+      - route: apps/nizam/components/shell/nizam-shell.tsx:87
+    walked:
+      - e2e: apps/nizam/e2e/dashboard.e2e.ts
+        check: 'dashboard#8' # carried by nizam.home.medarisNazimCut, which this flow starts with granted: some
+
+  - id: a-medaris-nazim-cannot-edit-grants
+    need: >-
+      Only the başnazım changes what a Medaris nazımı holds: a Medaris nazımı, whatever she holds, meets "Bu bölüm için izniniz yok" on the page and 403 from the API.
+    drawn: [no_access, reading]
+    built:
+      - action: medaris.api:setMedarisNazimGrants
+      - route: apps/nizam/app/medaris-nazimlari/page.tsx:28
+    walked:
+      - e2e: apps/nizam/e2e/permissions.e2e.ts
+        check: 'permissions#2'
+      - test: apps/tedrisat/test/e2e/permission-admin.e2e.spec.ts # "answers anyone but the başnazım with 403, a Medaris nazımı included"
+
+  - id: the-dialog-starts-on-the-work
+    need: >-
+      The dialog opens on the group select (or the first thing to decide), not on the header's close icon, so a keyboard user starts where the work is.
+    drawn: [dialog, closeIcon, groupSelect]
+    missing: none # F-W2-12
+
+  - id: the-table-shows-the-hour
+    need: >-
+      The table's end cell says the hour the permissions end at, not only the day, as the dialog's field does.
+    drawn: [rowEnd]
+    missing: none # EPERM-4 (the same as CNP-2 of nazar's table)
+
+  - id: the-count-is-announced
+    need: >-
+      A person who ticks or unticks a box hears the new count of permissions.
+    drawn: [summaryGroup, summaryPlain]
+    missing: none # the footer's meta line is not a live region (the same as CNP-4 of nazar's ders nazırı dialog)
+
+  - id: the-checks-do-not-expire
+    need: >-
+      The e2e checks of this story derive the appointment's end and the typed days from the clock, so they pass after 2026-12-31.
+    drawn: [endHelpDated, endBeyondMessage]
+    missing: none # F-W2-7, F-X-20: permissions#6, #7 and #8 use the seed's fixed 2026-12-31 end; this flow's walk makes its own seat

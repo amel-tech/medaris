@@ -1,0 +1,349 @@
+# nizam.courses.curriculum on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on http://localhost:4001, the köşk nazımı of the
+# stack signed in through Keycloak's real form, on Müfredat of a course of the walk's own in the seed's second köşk.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/curriculum \
+#     --bind graphs/nizam/courses/curriculum/binding.yaml --out <dir>                       (the main story, the `edits` scenario)
+#   ... --cover transitions --out <dir>       (every transition the two scenarios below can drive; not --absent: a toast of the step before may still be
+#                                              on screen, and the field errors of a refused Kaydet stay once Kaydet was refused (`sent`))
+#
+# NOT RUN: the owner's word is that replays happen once, at the end, so every locator, every account fact and every expectation below is from the code and
+# unverified. The binding loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` wrote a spec and walked nothing).
+#
+# Data. Every scenario makes its own course and takes it away, so no seeded course, resource or setting is touched: curriculum-data.mjs make opens "Deneme
+# dersi nzcurr" with helpers/course.mjs (`--kosk {seed.kosk2}`: published, two weeks of two celses from tomorrow, "Hafta 1", "Hafta 2", "Celse 1" to "Celse 4",
+# `muderris` as its one hoca; the köşk nazımı of the stack opens a course in that köşk and so may edit it), and teardown removes it with everything under it
+# (course.mjs remove, as the başnazım). The ids are read from graphs/.local/made/nzcurr.json as {made.*}. For `withFile` one stored file is written to
+# the course's resources by SQL (no upload works here): the one SQL write of the flow, said in curriculum-data.mjs. The words a walk types are its own (`vars`).
+# What the walk cannot undo: the audit rows of a save, an upload and a delete (no route removes them and nothing depends on them).
+#
+#   edits      (the main story) the course has no resource. e2e courses#10: RETITLE (the dirty line), CANCEL (Vazgeç), RETITLE, SAVE: the title is stored.
+#              `--cover transitions` takes from here every other change of the form and its save: a new name (and, in between, someone else's save and the
+#              refused Kaydet: the 409 is made by COURSE_CHANGED), the second celse's title emptied (courses#11) and written again, an http link (courses#11)
+#              and an https one, a week and a celse added and named, the first week copied (courses#12), the second celse and the second week taken out
+#              (courses#13), a link added to the course and to the first celse (twice, then the rows put the other way round) and taken out, and the refusals
+#              of Kaydet with a blank. Also the upload dialog (it opens from each list, "Yükle" with no file says "Yüklenecek dosyayı seçin.", Vazgeç and
+#              the close icon close it), the page's links that leave, a reload, and the entry through the nav graph (the köşk's Dersler list, "Düzenle").
+#   withFile   the course holds one stored file (by SQL). Its link and "Dosya" are read, "Kaynağı çıkar" asks, "Vazgeç" and the close icon leave the file in
+#              the list, "Çıkar" takes it out, "Vazgeç" of the page puts it back and "Kaydet" deletes it (the effect counts the course's resources and the
+#              deletion queue). Following the file's link is the refused download: this stack answers 503, the page comes back with the toast "Dosyalara şu
+#              an ulaşılamıyor. Biraz sonra yeniden deneyin.".
+# Not bound, and why (the replay's own "unreached" lines):
+#   - CHOOSE, CHOOSE_EMPTY, CHOOSE_LARGE and everything after them: the file field is a native <input type=file>, and the replay has no action that sets one
+#     (its verbs are goto, reload, click, fill, key, waitUrl, waitText, waitResponse and run; Playwright's `fill` refuses a file input). So no walk reaches
+#     `uploadingCourse` or `uploadingLesson`, a file the page refuses before sending, or an alert of the server. Even with such an action this stack answers 503
+#     to every upload (no Bunny Storage), so `files: works` would stay out of reach; `unavailable` could be walked, and is the given of both scenarios.
+#   - `files: works` and `files: refused`: an upload stored, a download served, a 403 taken from a person who still has the page open: no stack condition makes
+#     them happen. The unguarded refusals (`FAIL.fileRefused`, `FAIL.gone`, `FAIL.failed`) are not driven by the engine either.
+#   - `FAIL.forbidden` and `FAIL.other` of Kaydet (nothing makes tedrisat refuse the köşk nazımı's own valid save), `FAIL.signedOut` (the walk cannot end the
+#     session) and `not_found` (the course is the walk's own).
+#   - The 409 itself is driven (a second writer: COURSE_CHANGED below), but `states.saving.call` compares the HTTP status of a Next server action, which is 200
+#     on the page's own address whatever the API said; if the walk reports that as a mismatch on `FAIL.conflict`, leave `call` off (the busy state is then not
+#     held).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.courses.curriculum
+
+data:
+  made: { json: ../.local/made/nzcurr.json }
+
+# the walk's own course gives the intro its name and the toast its body; the other placeholders match as written
+samples:
+  name: '{made.title}'
+
+scenarios:
+  edits:
+    given: { stored: plain, files: unavailable }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/dersler'
+    enter: { nav: ../../nav, bind: enter.nav.binding.yaml, entry: 'koskCourses->courseCurriculum' }
+    vars:
+      retitle: Celse 1 (düzeltildi)
+      retitle2: Celse 2 (yeniden yazıldı)
+      httpLink: http://zoom.us/j/81234567890
+      httpsLink: https://meet.example.test/nzcurr
+      weekTitle: Yeni hafta
+      sessionTitle: Yeni celse
+      linkName: Hâşiye listesi
+      linkUrl: https://kaynak.example.test/hasiye
+      lessonLinkName: Birinci bâb özeti
+      lessonLinkUrl: https://kaynak.example.test/bab-1
+      lessonLinkName2: İkinci bâb özeti
+      lessonLinkUrl2: https://kaynak.example.test/bab-2
+      queued: '0'
+    setup:
+      - run: [node, ../nizam/courses/curriculum/curriculum-data.mjs, make, plain]
+        expect: 'curriculum-data make plain'
+    teardown:
+      - run: [node, ../nizam/courses/curriculum/curriculum-data.mjs, remove]
+        expect: 'curriculum-data remove'
+
+  withFile:
+    given: { stored: withFile, files: unavailable }
+    as: koskNazim
+    open: '{nizam}/kosks/{seed.kosk2}/courses/{made.course}/curriculum'
+    vars:
+      retitle: Celse 1 (düzeltildi)
+      retitle2: Celse 2 (yeniden yazıldı)
+      httpLink: http://zoom.us/j/81234567890
+      httpsLink: https://meet.example.test/nzcurr
+      weekTitle: Yeni hafta
+      sessionTitle: Yeni celse
+      linkName: Hâşiye listesi
+      linkUrl: https://kaynak.example.test/hasiye
+      lessonLinkName: Birinci bâb özeti
+      lessonLinkUrl: https://kaynak.example.test/bab-1
+      lessonLinkName2: İkinci bâb özeti
+      lessonLinkUrl2: https://kaynak.example.test/bab-2
+      queued: '1'
+    setup:
+      - run: [node, ../nizam/courses/curriculum/curriculum-data.mjs, make, withFile]
+        expect: 'curriculum-data make withFile'
+    teardown:
+      - run: [node, ../nizam/courses/curriculum/curriculum-data.mjs, remove]
+        expect: 'curriculum-data remove'
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in. A celse's fields are found inside its list item,
+  # `lesson-<week>-<celse>` (a week is a position in the form, so the first week is 0 and the course's own "Celse 1" is lesson-0-0).
+  RENAME:
+    - fill: { role: textbox, name: Ders adı, value: '{made.title} (yeni ad)' }
+  RETITLE:
+    - fill: { role: textbox, name: Celse başlığı, within: { testId: lesson-0-0 }, value: '{retitle}' }
+  CLEAR_TITLE:
+    - fill: { role: textbox, name: Celse başlığı, within: { testId: lesson-0-1 }, value: '' }
+  FIX_TITLE:
+    - fill: { role: textbox, name: Celse başlığı, within: { testId: lesson-0-1 }, value: '{retitle2}' }
+  SET_LINK:
+    - fill: { role: textbox, name: '/^Toplantı bağlantısı/', within: { testId: lesson-0-1 }, value: '{httpsLink}' }
+  BAD_LINK:
+    - fill: { role: textbox, name: '/^Toplantı bağlantısı/', within: { testId: lesson-0-1 }, value: '{httpLink}' }
+  FIX_LINK:
+    - fill: { role: textbox, name: '/^Toplantı bağlantısı/', within: { testId: lesson-0-1 }, value: '{httpsLink}' }
+  # "Hafta ekle" opens the new week and appends it last, so the last "Hafta başlığı" on the screen is its (the second week is folded, and a folded
+  # week's fields are hidden until found); a new celse is the third of the first week, `lesson-0-2`
+  NAME_WEEK:
+    - fill: { role: textbox, name: Hafta başlığı, nth: -1, value: '{weekTitle}' }
+  NAME_SESSION:
+    - fill: { role: textbox, name: Celse başlığı, within: { testId: lesson-0-2 }, value: '{sessionTitle}' }
+  # "Haftayı gizle" is in the week's panel: the second week is folded at first, so its heading's button is pressed to open it, then its own button
+  HIDE_WEEK:
+    - click: { css: '[data-week="2"] .mds-week__trigger' }
+    - click: { role: button, name: Haftayı gizle, within: { css: '[data-week="2"]' } }
+  # the new link of the course's list is the only row of its list: name and address, in the row `resource-0`
+  FILL_COURSE:
+    - fill: { role: textbox, name: Kaynak adı, within: { testId: resource-0 }, value: '{linkName}' }
+    - fill: { role: textbox, name: Bağlantı, within: { testId: resource-0 }, value: '{linkUrl}' }
+  # the new link of the first celse's list is its last row (the rows are an <ol> in the celse's block; the dialog is not in it)
+  FILL_LESSON:
+    - fill: { role: textbox, name: Kaynak adı, within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' }, value: '{lessonLinkName}' }
+    - fill: { role: textbox, name: Bağlantı, within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' }, value: '{lessonLinkUrl}' }
+  FILL_LESSON_NEXT:
+    - fill: { role: textbox, name: Kaynak adı, within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' }, value: '{lessonLinkName2}' }
+    - fill: { role: textbox, name: Bağlantı, within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' }, value: '{lessonLinkUrl2}' }
+  # the first row's "Aşağı taşı": the two rows change places (its twin, the second row's "Yukarı taşı", does the same)
+  MOVE:
+    - click: { role: button, name: Aşağı taşı, within: { css: '[data-testid="resources-lesson-0-0"] ol' }, nth: 0 }
+  # Someone else saves the course: PATCH /courses/:id as the course's hoca bumps the version (the API's invariant course-optimistic-version) and changes
+  # one field the form does not hold. A PUT is not used on purpose: a PUT that leaves out weeks or resources drops them all (PUT /courses/{id}).
+  COURSE_CHANGED:
+    - run: [node, helpers/api.mjs, muderris, PATCH, '/courses/{made.course}', '{"subtitle":"Baska bir sekmede kaydedildi"}']
+      expect: 'Baska bir sekmede kaydedildi'
+  # the person reloads the browser's page
+  RELOAD:
+    - reload: true
+  # CHOOSE, CHOOSE_EMPTY and CHOOSE_LARGE are not bound: the replay cannot set a file input (see above)
+
+states:
+  clean: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  edited: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  invalid: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  # Kaydet is a Next server action: a POST to the page's own address, held while the busy state is checked. The page's own reads are GETs with a query, so
+  # this matches only the POST. The action answers 200 on that address whatever the API said, so the 409 of FAIL.conflict cannot be compared here: if the
+  # walk reports that as a mismatch, leave `call` off.
+  saving: { call: '{nizam}/kosks/*/courses/*/curriculum' }
+  removeFile: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  uploadDialog: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  # the upload is a fetch to the app's own route: held to compare its status (503 on this stack); unreachable until a file input can be set
+  uploadingCourse: { call: '{nizam}/api/files/courses/*/resources' }
+  uploadingLesson: { call: '{nizam}/api/files/lessons/*/resources' }
+  # the file's link is followed as a page: nothing is held, the 303 comes back by itself and the page is read again with the toast. The address carries
+  # ?fileError= until FileErrorNotice takes it off after hydration (not verified how the replay's url check meets that)
+  not_found: { url: '{nizam}/kosks/*/courses/*/curriculum' }
+  plan_opened: { url: '{nizam}/kosks/*/courses/*/sessions/new' }
+  settings_opened: { url: '{nizam}/kosks/*/courses/*/ayarlar' }
+  sessions_opened: { url: '{nizam}/kosks/*/courses/*/sessions' }
+  left: { url: '{nizam}/kosks/*/dersler' }
+
+# What a save leaves outside the screen, read from tedrisat's database (helpers/sql.mjs, SELECT only). The words of every row are the walk's own (`vars`);
+# the made course is the only one with its tag, so nothing else is in the counts.
+effects:
+  savedElsewhere:
+    - run: [node, helpers/sql.mjs, "select subtitle from courses where id = '{made.course}'"]
+      expect: 'Baska bir sekmede kaydedildi'
+  # the 409 wrote nothing: the title is still the one the course was made with, whatever the form held
+  conflicted:
+    - run: [node, helpers/sql.mjs, "select title from courses where id = '{made.course}'"]
+      expect: '"title":"{made.title}"'
+  # courses.e2e.ts#11: a refused Kaydet sends nothing, so no http link is ever stored
+  blankRefused:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.meeting_url like 'http://%'"]
+      expect: '"n":0'
+  savedRenamed:
+    - run: [node, helpers/sql.mjs, "select title from courses where id = '{made.course}'"]
+      expect: '(yeni ad)'
+  savedRetitled:
+    - run: [node, helpers/sql.mjs, "select l.title from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.title = '{retitle}'"]
+      expect: '"title":"{retitle}"'
+  savedLinkSet:
+    - run: [node, helpers/sql.mjs, "select l.meeting_url from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.title = 'Celse 2'"]
+      expect: '"meeting_url":"{httpsLink}"'
+  savedWeekNamed:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_weeks where course_id = '{made.course}' and title = '{weekTitle}'"]
+      expect: '"n":1'
+  savedSessionNamed:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.title = '{sessionTitle}'"]
+      expect: '"n":1'
+  # courses.e2e.ts#12: the copy is week 3 and each of its celses is seven days after the celse of week 1 that has its title
+  savedCopied:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lessons c join course_weeks cw on cw.id = c.week_id join lessons s on s.title = c.title and s.id <> c.id join course_weeks sw on sw.id = s.week_id and sw.course_id = cw.course_id where cw.course_id = '{made.course}' and cw.week_number = 3 and sw.week_number = 1 and c.scheduled_at - s.scheduled_at = interval '7 days'"]
+      expect: '"n":2'
+  # courses.e2e.ts#13: a celse taken out of the form is archived, not deleted
+  savedSessionHidden:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lessons l join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}' and l.title = 'Celse 2' and l.archived_at is not null"]
+      expect: '"n":1'
+  savedWeekHidden:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_weeks where course_id = '{made.course}' and week_number = 2 and archived_at is not null"]
+      expect: '"n":1'
+  savedCourseLink:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_resources where course_id = '{made.course}' and name = '{linkName}' and url = '{linkUrl}'"]
+      expect: '"n":1'
+  savedCourseLinkGone:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_resources where course_id = '{made.course}'"]
+      expect: '"n":0'
+  # a file taken off was queued for deletion under the walk's own key prefix, and the row is gone
+  savedCourseFileGone:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from course_resources where course_id = '{made.course}'"]
+      expect: '"n":0'
+    - run: [node, helpers/sql.mjs, "select count(*) as n from storage_deletions where storage_key like 'walk/nizam-curriculum/%'"]
+      expect: '"n":{queued}'
+  savedLessonOne:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":1'
+  savedLessonTwo:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":2'
+  savedLessonDownToOne:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":1'
+  savedLessonDownToNone:
+    - run: [node, helpers/sql.mjs, "select count(*) as n from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"n":0'
+  # the two rows were stored in the order of adding (name 1, then name 2); after "Aşağı taşı" on the first they are stored the other way
+  savedMoved:
+    - run: [node, helpers/sql.mjs, "select string_agg(r.name, '>' order by r.order_index) as names from lesson_resources r join lessons l on l.id = r.lesson_id join course_weeks w on w.id = l.week_id where w.course_id = '{made.course}'"]
+      expect: '"names":"{lessonLinkName2}>{lessonLinkName}"'
+
+# Role and name find most nodes. Below are the ones they cannot find alone: a name shared by several elements (scoped by test id or by a landmark), a text
+# the replay would read differently, and a control it cannot find by role. A repeat node is checked on every item it finds.
+nodes:
+  # a bare role main is also matched on the page a walk leaves for (the list, the settings, the planner): "Bağlı kaynaklar" is in this one only
+  page: { role: main, hasText: Bağlı kaynaklar }
+  # the shell's sidebar has its own "Dersler"; the breadcrumb's is found inside its landmark
+  crumbCourses: { role: link, name: Dersler, within: { role: navigation, name: Sayfa yolu } }
+  crumbCurrent: { css: '[aria-current=page]', hasText: Müfredat, within: { role: navigation, name: Sayfa yolu } }
+  # "Müfredat" is the h1, the current crumb and the sub-nav's first link: told apart by role
+  pageTitle: { role: heading, name: Müfredat }
+  # the intro names the saved course, which a rename changes: found by the words that follow the name
+  intro: { text: '/dersinin bilgileri, haftaları ve celseleri\./' }
+  # the <output data-testid="dirty"> of the header, and the hidden <output> of the busy Kaydet
+  dirtyNote: { testId: dirty }
+  saveBusy: { css: output, hasText: Kaydediliyor… }
+  navCurriculum: { role: link, name: Müfredat, within: { role: navigation, name: Ders sayfaları } }
+  navSessions: { role: link, name: Celseler, within: { role: navigation, name: Ders sayfaları } }
+  navSettings: { role: link, name: Ders ayarları, within: { role: navigation, name: Ders sayfaları } }
+  # "* zorunlu alan": the star is part of the caption's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # a radio's words are its label's, beside it, with the colour swatch before them: found by role and name, not by the text it contains (not verified)
+  toneLaciverd: { role: radio, name: '/Lâciverd/' }
+  toneBordo: { role: radio, name: '/Bordo/' }
+  toneZumrut: { role: radio, name: '/Zümrüt/' }
+  toneMurekkep: { role: radio, name: '/Mürekkep/' }
+  # the course's list: its test id is `resources`, its one row `resource-0`; the celse's lists are `resources-lesson-<week>-<celse>`
+  courseRowHeading: { role: heading, name: Kaynak 1, within: { testId: resources } }
+  courseRemove: { role: button, name: Kaynağı çıkar, within: { testId: resource-0 } }
+  courseName: { role: textbox, name: Kaynak adı, within: { testId: resource-0 } }
+  courseMeta: { role: textbox, name: Kısa bilgi, within: { testId: resource-0 } }
+  courseMetaHelp: { text: '/Ör\. PDF · 88 sayfa/', within: { testId: resource-0 } }
+  courseUrl: { role: textbox, name: Bağlantı, within: { testId: resource-0 } }
+  courseUrlHelp: { text: '/ya da https:\/\/ ile başlayan tam adres/', within: { testId: resource-0 } }
+  courseNameError: { text: Kaynağın adını yazın., within: { testId: resource-0 } }
+  courseUrlError: { text: '/tam bir adres olmalı/', within: { testId: resource-0 } }
+  # a file row: "Dosya", its link named by the file ("ders-notu.pdf") and a type chip and a size beside it
+  courseFileLabel: { css: '[data-testid=resource-file] .mds-label' }
+  courseFileLink: { role: link, name: ders-notu.pdf, within: { testId: resource-file } }
+  addCourseLink: { role: button, name: Kaynak ekle, within: { testId: resources } }
+  courseUpload: { testId: upload-course-file }
+  # the summary reads the form's weeks and celses, which change as it is edited
+  weeksSummary: { text: '/\d+ hafta · \d+ celse · Saatler İstanbul saatiyle/' }
+  # the buttons of a week, the same name on every week: the first week's (the only one that is open at first); a copied or added week opens too
+  addLesson: { role: button, name: Celse ekle, nth: 0 }
+  copyWeek: { role: button, name: Haftayı kopyala, nth: 0 }
+  hideWeek: { role: button, name: Haftayı gizle, nth: 0 }
+  # a celse's heading carries its date: "Celse 1 · Sal 17 Kas 21:00"
+  sessionHeading: { role: heading, name: '/^Celse \d+ · /' }
+  # the second celse's "Gizle" (courses.e2e.ts#13 presses `lesson-1-1`: the second celse of the second week; here the first week is the open one)
+  hideSession: { role: button, name: Gizle, within: { testId: lesson-0-1 } }
+  # a date and a time have no role of their own: found by their labels
+  dateField: { label: Tarih }
+  timeField: { label: Saat }
+  linkField: { role: textbox, name: '/^Toplantı bağlantısı/' }
+  # the first celse's list
+  lessonRowName: { role: textbox, name: Kaynak adı, within: { css: '[data-testid="resources-lesson-0-0"] ol' } }
+  lessonRowMeta: { role: textbox, name: Kısa bilgi, within: { css: '[data-testid="resources-lesson-0-0"] ol' } }
+  lessonRowUrl: { role: textbox, name: Bağlantı, within: { css: '[data-testid="resources-lesson-0-0"] ol' } }
+  lessonNameError: { text: Kaynağın adını yazın., within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' } }
+  lessonUrlError: { text: '/tam bir adres olmalı/', within: { css: '[data-testid="resources-lesson-0-0"] ol > li:last-child' } }
+  lessonMoveUp: { skip: "the first row's button is off and the others' are on, and the graph has one node for them all (a repeat node is checked on every item); MOVE presses the first row's 'Aşağı taşı' through the events" }
+  lessonMoveDown: { skip: "the last row's button is off and the others' are on, and the graph has one node for them all; MOVE presses the first row's 'Aşağı taşı' through the events" }
+  lessonRemove: { role: button, name: Kaynağı çıkar, within: { css: '[data-testid="resources-lesson-0-0"] ol' }, nth: 0 }
+  lessonAddLink: { role: button, name: Kaynak ekle, within: { testId: resources-lesson-0-0 } }
+  lessonUpload: { testId: upload-lesson-0-0 }
+  # a celse added or copied on this page has no id: its "Dosya yükle" is natively disabled, with the sentence beside it
+  freshUpload: { css: 'button[data-testid^="upload-lesson-"][disabled]', nth: 0 }
+  freshSaveFirst: { text: '/önce müfredatı kaydedin/', nth: 0 }
+  # the toasts are Sonner's: one <li data-sonner-toast> with the title in [data-title] and the description in [data-description]
+  toastSavedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Müfredat kaydedildi }
+  toastSavedBody: { css: '[data-sonner-toast] [data-description]', hasText: dersinin müfredatı kaydedildi. }
+  toastUploadedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Dosya yüklendi }
+  toastUploadedBody: { css: '[data-sonner-toast] [data-description]', hasText: kaynakların sonuna eklendi. }
+  toastFailedTitle: { css: '[data-sonner-toast] [data-title]', hasText: Müfredat kaydedilemedi }
+  toastConflict: { css: '[data-sonner-toast] [data-description]', hasText: başkası tarafından kaydedildi }
+  toastRefused: { css: '[data-sonner-toast] [data-description]', hasText: Bu işlem için yetkiniz yok. }
+  toastFailed: { css: '[data-sonner-toast] [data-description]', hasText: İşlem tamamlanamadı. }
+  toastFileTitle: { css: '[data-sonner-toast] [data-title]', hasText: Dosya indirilemedi }
+  toastFileForbidden: { css: '[data-sonner-toast] [data-description]', hasText: Bu dosyayı indirme izniniz yok. }
+  toastFileGone: { css: '[data-sonner-toast] [data-description]', hasText: Bu dosya artık yok. }
+  toastFileUnavailable: { css: '[data-sonner-toast] [data-description]', hasText: Dosyalara şu an ulaşılamıyor. }
+  toastFileFailed: { css: '[data-sonner-toast] [data-description]', hasText: Bir sorun çıktı. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+  # the question: the file's name is the eyebrow, and the body repeats it in one paragraph
+  removeBody: { text: '/kaynaklardan çıkarılır\./' }
+  removeCancel: { role: button, name: Vazgeç, within: { role: alertdialog } }
+  removeConfirm: { role: button, name: Çıkar, within: { role: alertdialog } }
+  removeClose: { role: button, name: Kapat, within: { role: alertdialog } }
+  # the upload dialog (a dialog, not an alertdialog): the page behind it is inert
+  uploadTitle: { role: heading, name: Dosya yükle, within: { role: dialog } }
+  uploadClose: { role: button, name: Kapat, within: { role: dialog } }
+  fileInput: { css: 'input[type=file]' }
+  uploadName: { role: textbox, name: Kaynak adı, within: { role: dialog } }
+  uploadMeta: { role: textbox, name: Kısa bilgi, within: { role: dialog } }
+  uploadNameHelp: { text: '/Boş bırakırsanız dosyanın adı kullanılır/' }
+  uploadMetaHelp: { text: '/Ör\. PDF · 88 sayfa/', within: { role: dialog } }
+  sendButton: { role: button, name: '/^Yükle/', within: { role: dialog } }
+  sendBusy: { css: output, hasText: Yükleniyor…, within: { role: dialog } }
+  cancelUpload: { role: button, name: '/^Vazgeç$/', within: { role: dialog } }
+  chosenLine: { testId: upload-chosen }
+  uploadingOutput: { testId: upload-status }
+  uploadFailedStorage: { role: alert, hasText: '/Dosya yükleme henüz açılmadı|Dosya deposuna şu an ulaşılamıyor/' }
+  uploadFailedRejected: { role: alert, hasText: '/yetkiniz yok|Dosya yüklenemedi/' }
+  uploadFailedGone: { role: alert, hasText: Ders ya da celse bulunamadı. }

@@ -1,0 +1,17 @@
+# nizam.shell.noAccessAndNotFound for a müderris, who holds only a course role: the /kosks layout refuses a person whose landing is not
+# nizam, so Yasaklamalar of a köşk (bans#9: "the müderris of the course gets the no-access screen") is the same face as for the talebe, and
+# the shell has no menu. "Ana sayfaya dön" is '/', which sends a person with only course roles on to /nazar-yonlendirme.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/noAccessAndNotFound --bind graphs/nizam/shell/noAccessAndNotFound/binding.muderris.yaml \
+#     --cover transitions --absent --out <dir>   (its scenario is not the flow's main story, so --main would not find it)
+# NOT RUN: written without a replay. It makes and removes nothing: the stack's seed is the data (STACK.md).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.noAccessAndNotFound
+
+scenarios:
+  muderrisKosk:
+    given: { arrival: noRoleKosk, chief: named }
+    as: muderris
+    open: '{nizam}/kosks/{seed.kosk}/yasaklamalar'
+    vars: { home: /nazar-yonlendirme }

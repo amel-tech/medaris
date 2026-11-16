@@ -1,0 +1,290 @@
+# nizam.moderation.decideAppeal on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım (SYSTEM_ADMIN)
+# signed in through Keycloak's real form, on "İtirazlar" of the Talepler group.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideAppeal \
+#     --bind graphs/nizam/moderation/decideAppeal/binding.yaml --cover transitions --out <dir>
+# NOT RUN: the owner's word is that replays happen once, at the end. Every locator, every account fact and every expectation here is from the
+# code and unverified. The file loads (`replay <dir> --bind <this file> --emit-spec --out <dir>` writes a spec and walks nothing).
+#
+# Data. Nothing is seeded for this page (the stack makes no appeal), so each scenario makes its own with ./appeals.mjs, in the way the people
+# themselves make one, through tedrisat's routes: the başmüderris of "Hadis ve Siyer Medresesi" sends the seeded köşk, "Süleymaniye Köşkü", a course
+# request titled "Deneme dersi appeals-decide A" (and B), the route nazar.offsite.requestCourse uses (POST /madrasahs/:id/offsite-course-requests);
+# the köşk's nazım refuses it (POST /course-requests/:id/reject, nizam.courseRequests.decide's route); the başmüderris appeals the refusal (POST
+# /madrasahs/:id/appeals, nazar.appeals.open's route). Two more are decided in setup, by the başnazım, through the routes of this page: "C" is
+# refused with an earlier note and "D" is accepted (so its request is waiting at the köşk again), to give the Karara bağlanan tab something to hold.
+# All four are this walk's own. The walk presses Kabul et or Reddet only on appeals it made: `up --alone` fails, naming the count, if the platform
+# holds any other appeal, because the page lists the appeals of every medrese, selects the oldest waiting one on load, and a walk must never decide
+# an appeal it did not make. `teardown` removes the walk's requests (the one SQL: no route deletes a request; its appeal goes by cascade), any course
+# whose title is a request's (none is ever made: "Kabul et" only sends the request back, and no step of this walk opens the Ders aç form) and the
+# made file graphs/.local/made/appeals-decide.json, which this file reads as the data source `made` ({made.first.title}, {made.kosk},
+# {made.rejectReason}, {made.note}, ...). Both `setup` and `teardown` are safe to run twice. What it cannot undo: the audit rows
+# (course_request.create and .reject, appeal.create, appeal.accept and .reject).
+#
+# How a person gets to the page, drawn by the scenarios that enter through the menu: the başnazım's sidebar, group "Talepler", entry "İtirazlar"
+# (nav entry frame:shell->appeals). There is no other way for her: the Medaris home counts appeals and links nowhere (CHIEF-1) and a Medaris
+# nazımı who holds platform.appeal_decide has no entry at all (MCUT-2, F-W5-12); `refused` opens the address as the seeded Medaris nazımı, who
+# does not hold the code.
+#
+# Scenarios (each `given` is different: the first in file order wins): rejects (the main story), accepts, opens (two waiting appeals and one
+# decided before: choose one, accept it), empty (nothing waits), refused, unreadable. The files beside this one: races.binding.yaml (an appeal
+# decided by someone else, or gone, while the dialog is open) and decided.binding.yaml (the Karara bağlanan tab with an accepted appeal in it).
+#
+# Not bound anywhere, each with its reason:
+#   - `decidedTab: failed` and `retry: served`: the answered tab must fail alone (the throttle of `unreadable` holds the whole route, so the first
+#     read fails too), and a retry must work after a failure (the hold lifts only when its window ends, 60 s, which no step of a walk waits for).
+#   - `answer: forbidden` and `answer: other`: the başnazım would have to lose her role between the page and the press, and the note's own check
+#     and the textarea's maxLength never let a refused one through.
+#   - `answer: answered` and `answer: gone` on "Kabul et" and on "Reddet" are bound, in races.binding.yaml (its `before` on `listed` makes the race before
+#     either button is pressed). What `--emit-spec --cover transitions` lists as unreached in that file: the failures that need a refusal or a
+#     failure the stack cannot cause (`forbidden`, `other` and `signedOut` of both buttons), `retry: served`, and the failed read of the
+#     answered tab (`loadingDecided` FAIL.other, `decidedFailed`, `retryingDecided`).
+#   - the signed-out exits (sent_to_sign_in), and NAVIGATE away from the page beyond its one address.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.moderation.decideAppeal
+
+data:
+  made: { json: ../.local/made/appeals-decide.json }
+
+# every scenario's setup writes the made file (the words of the walk's appeals, with no appeal behind a letter where none was made), so these
+# read in all of them
+samples:
+  title: '{made.first.title}'
+  madrasah: '{made.madrasah}'
+  kosk: '{made.kosk}'
+  rejectReason: '{made.rejectReason}'
+  appealReason: '{made.appealReason}'
+  note: '{made.note}'
+
+scenarios:
+  # The main story from the menu: the Medaris home, "İtirazlar", the one waiting appeal, the decided tab (empty), back, Reddet, a note, "Reddet" in
+  # the dialog, the empty line, the decided tab with the refusal. The path of `--cover transitions` from this start also walks the empty field that
+  # is left (the error), emptying the field again, Vazgeç, and the way out through the menu.
+  rejects:
+    given: { read: one, decidedTab: none, answer: rejected, retry: failed }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->appeals' }
+    vars: { meanwhile: none } # nothing happens elsewhere; races.binding.yaml's walks say otherwise
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up, --waiting, '1', --alone]
+        expect: 'ready: 1 waiting'
+    teardown:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'
+
+  # "Kabul et": one click, the toast, the empty line, and the decided tab with the accepted appeal (no note). The request is back with the köşk.
+  accepts:
+    given: { read: one, decidedTab: none, answer: accepted, retry: failed }
+    as: systemAdmin
+    open: '{nizam}/talepler/itirazlar'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up, --waiting, '1', --alone]
+        expect: 'ready: 1 waiting'
+    teardown:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'
+
+  # Two waiting appeals and one refused before the walk: the card follows the row that is chosen, "Kabul et" on the second leaves the first on the
+  # list (the list does not empty), and the decided tab holds the new acceptance above the earlier refusal.
+  opens:
+    given: { read: many, decidedTab: rejected, answer: accepted, retry: failed }
+    as: systemAdmin
+    open: '{nizam}/talepler/itirazlar'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up, --waiting, '2', --rejected, '1', --alone]
+        expect: 'ready: 2 waiting, 1 rejected'
+    teardown:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'
+
+  # No appeal at all: "Karar bekleyen itiraz yok." and, on the other tab, "Karara bağlanmış itiraz yok." `--alone` fails the walk early, naming the
+  # count, if another writer left an appeal on the platform.
+  empty:
+    given: { read: nothing, decidedTab: none, answer: accepted, retry: failed }
+    as: systemAdmin
+    open: '{nizam}/talepler/itirazlar'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up, --alone]
+        expect: 'ready: 0 waiting'
+    teardown:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'
+
+  # The seeded Medaris nazımı holds five codes and not platform.appeal_decide: tedrisat answers 403 and the page is the screen "Bu bölüm için izniniz
+  # yok" (F-W5-12: a nazım who does hold it is let in and has no menu entry). The appeal made here only gives the made file its words.
+  refused:
+    given: { read: refused, decidedTab: none, answer: accepted, retry: failed }
+    as: medarisNazim
+    open: '{nizam}/talepler/itirazlar'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up]
+        expect: 'ready: 0 waiting'
+    teardown:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'
+
+  # A read that fails: the başnazım's request budget for GET /appeals is spent first (nazar/shell/errorStates/throttle.mjs, the helper of
+  # nazar.shell.errorStates: it writes no row, and the budget comes back by itself after one window), so tedrisat answers 429 and the page
+  # takes it for any failed read: "İtirazlar okunamadı". "Tekrar dene" asks again, is refused again, and puts up the sticky toast. `teardown`
+  # waits until the route answers again, so the next walk of this account is not held.
+  unreadable:
+    given: { read: unreadable, decidedTab: none, answer: accepted, retry: failed }
+    as: systemAdmin
+    open: '{nizam}/talepler/itirazlar'
+    vars: { meanwhile: none }
+    setup:
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, up]
+        expect: 'ready: 0 waiting'
+      - run: [node, ../nazar/shell/errorStates/throttle.mjs, hold, systemAdmin, '/appeals?status=PENDING']
+        expect: 'held'
+    teardown:
+      - run: [node, ../nazar/shell/errorStates/throttle.mjs, clear, systemAdmin, '/appeals?status=PENDING']
+        expect: 'clear'
+      - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, down]
+        expect: 'restored'
+
+events:
+  # the note has no node that sends an event: the binding types it into the dialog's textarea; the page trims what is sent
+  TYPE_REASON:
+    - fill: { role: textbox, name: Karar notu, value: '{made.note}' }
+  CLEAR_REASON:
+    - fill: { role: textbox, name: Karar notu, value: '' }
+  # leaving the empty field: Tab from the textarea (it has the focus, the dialog starts there) goes to Vazgeç
+  LEAVE_REASON:
+    - key: Tab
+  # Vazgeç, the close icon and Escape all send CANCEL
+  CANCEL:
+    - click: { role: button, name: Vazgeç, within: { role: dialog, name: İtirazı reddet } }
+  # leaving the page: another page of the same app, by address (the menu's entries are the nav graph's)
+  NAVIGATE:
+    - goto: '{nizam}/bildirimler'
+
+states:
+  # the page keeps one address through every state; the home page and the notifications are other addresses
+  listed: { url: '{nizam}/talepler/itirazlar' }
+  empty: { url: '{nizam}/talepler/itirazlar' }
+  loadingDecided: { url: '{nizam}/talepler/itirazlar' }
+  decidedList: { url: '{nizam}/talepler/itirazlar' }
+  decidedEmpty: { url: '{nizam}/talepler/itirazlar' }
+  decidedFailed: { url: '{nizam}/talepler/itirazlar' }
+  unreadable: { url: '{nizam}/talepler/itirazlar' }
+  retrying: { url: '{nizam}/talepler/itirazlar' }
+  noAccess: { url: '{nizam}/talepler/itirazlar' }
+  confirmReject: { url: '{nizam}/talepler/itirazlar' }
+  confirmRejectTouched: { url: '{nizam}/talepler/itirazlar' }
+  confirmRejectReady: { url: '{nizam}/talepler/itirazlar' }
+  # both decisions are Next server actions: a POST to the page's own address, held while the busy button is checked; each answers 200 whatever the
+  # API said, so a FAIL class cannot be compared with its status here (races.binding.yaml drops these `call`s)
+  accepting: { call: '{nizam}/talepler/itirazlar' }
+  rejecting: { call: '{nizam}/talepler/itirazlar' }
+  # "Ana sayfaya dön" of the Medaris nazımı
+  home_opened: { url: '{nizam}/' }
+  left: { url: '{nizam}/bildirimler' }
+
+# Where role and name cannot find a node, or would find the wrong one. React also streams a hidden copy of the page in before it swaps the loading
+# skeleton out, which role queries skip and test ids and classes do not, so every card and list is found with `:visible`.
+nodes:
+  # the shell's one <main>; any other page of the app has one too, so it is told apart by the words under it
+  page: { role: main, hasText: '/İtirazlar|Bu bölüm için izniniz yok/' }
+  # the tab's count is a span inside the tab, which is named by its word and the number ("Bekleyen 1"): digits only
+  pendingCount: { css: '.mds-tab__count', hasText: '/^\d+$/', within: { role: tab, name: '/^Bekleyen/' } }
+  decidedCount: { css: '.mds-tab__count', hasText: '/^\d+$/', within: { role: tab, name: '/^Karara bağlanan/' } }
+  # the list, its rows and the card are found by the test ids the view gives them
+  waitingList: { css: '[data-testid=appeal-list]:visible' }
+  # a repeated node that sends an event is pressed on its first item, which is the one already selected: the walk of PICK presses it and the card does
+  # not change (the graph says it shows the chosen appeal: from the code, not seen). `opens` makes two rows so that there is something to choose between.
+  waitingItem: { css: '[data-testid=appeal-item]:visible' }
+  decidedListNode: { css: '[data-testid=appeal-list]:visible' }
+  decidedItem: { css: '[data-testid=appeal-item]:visible' }
+  decidedOutcomeRejected: { css: '[data-testid=appeal-item]:visible .mds-caption', hasText: Reddedildi }
+  decidedOutcomeAccepted: { css: '[data-testid=appeal-item]:visible .mds-caption', hasText: Kabul edildi }
+  # the card: the section is named by its h2, whose id is the page's own; two such ids never exist together, one card is drawn at a time
+  waitingCard: { css: '[data-testid=appeal-detail]:visible' }
+  waitingEyebrow: { css: '.mds-eyebrow', hasText: DERS TALEBİNE İTİRAZ, within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingCardTitle: { css: '[data-testid=appeal-detail]:visible #appeal-title', hasText: '/^Deneme dersi appeals-decide/' }
+  waitingBadge: { css: '.mds-badge', hasText: Karar bekliyor, within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingMadrasahTerm: { css: dt, hasText: '/^Medrese$/', within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingMadrasah: { css: dd, hasText: '{made.madrasah}', within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingKoskTerm: { css: dt, hasText: '/^Köşk$/', within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingKosk: { css: dd, hasText: '{made.kosk}', within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingRejectReasonTerm: { css: span.mds-caption, hasText: '/^Ret gerekçesi$/', within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingRejectReason: { css: '[data-testid=reject-reason]', hasText: '{made.rejectReason}', within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingAppealReasonTerm: { css: span.mds-caption, hasText: '/^İtiraz gerekçesi$/', within: { css: '[data-testid=appeal-detail]:visible' } }
+  waitingAppealReason: { css: '[data-testid=appeal-reason]', hasText: '{made.appealReason}', within: { css: '[data-testid=appeal-detail]:visible' } }
+  # "Reddet" is also the dialog's button, and "Kabul et" is also a word of the tab and the badge; the card's own are found inside the card (the
+  # page behind an open dialog is inert, and the replay looks for these only where the dialog is closed)
+  accept: { role: button, name: Kabul et, within: { css: '[data-testid=appeal-detail]:visible' } }
+  acceptBusyStatus: { role: status, hasText: Yükleniyor, within: { css: '[data-testid=appeal-detail]:visible' } }
+  reject: { role: button, name: Reddet, within: { css: '[data-testid=appeal-detail]:visible' } }
+  rejectBesideBusy: { role: button, name: Reddet, within: { css: '[data-testid=appeal-detail]:visible' } }
+  # the decided tab's card
+  decidedCard: { css: '[data-testid=appeal-detail]:visible' }
+  decidedEyebrow: { css: '.mds-eyebrow', hasText: DERS TALEBİNE İTİRAZ, within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedCardTitle: { css: '[data-testid=appeal-detail]:visible #appeal-title', hasText: '/^Deneme dersi appeals-decide/' }
+  decidedBadgeRejected: { css: '.mds-badge', hasText: Reddedildi, within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedBadgeAccepted: { css: '.mds-badge', hasText: Kabul edildi, within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedMadrasahTerm: { css: dt, hasText: '/^Medrese$/', within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedMadrasah: { css: dd, hasText: '{made.madrasah}', within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedKoskTerm: { css: dt, hasText: '/^Köşk$/', within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedKosk: { css: dd, hasText: '{made.kosk}', within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedRejectReasonTerm: { css: span.mds-caption, hasText: '/^Ret gerekçesi$/', within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedRejectReason: { css: '[data-testid=reject-reason]', hasText: '{made.rejectReason}', within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedAppealReasonTerm: { css: span.mds-caption, hasText: '/^İtiraz gerekçesi$/', within: { css: '[data-testid=appeal-detail]:visible' } }
+  decidedAppealReason: { css: '[data-testid=appeal-reason]', hasText: '{made.appealReason}', within: { css: '[data-testid=appeal-detail]:visible' } }
+  # a neutral Alert is a status with no name of its own: found by its title inside the card
+  decisionNoteAlert: { css: '.mds-alert--neutral', hasText: Karar notu, within: { css: '[data-testid=appeal-detail]:visible' } }
+  # the error Alert of a failed read: role alert, but no accessible name of its own
+  loadAlert: { css: '[role=alert]', hasText: İtirazlar okunamadı, within: { role: main } }
+  # the screen that says no: the sentence names the başnazım or says it generally, the account follows in <code>
+  noAccessBody: { css: p.mds-system-state__text, hasText: '/^Bu bölümün izni hesabınıza verilmemiş/' }
+  noAccessAccount: { css: p.mds-caption, hasText: 'Giriş yaptığınız hesap:' }
+  # the dialog: "Kapat" is also the name of a toast's close button, "Reddet" of the card's button
+  rejectEyebrow: { css: 'p.mds-eyebrow', hasText: '/^Deneme dersi appeals-decide/', within: { role: dialog, name: İtirazı reddet } }
+  rejectClose: { role: button, name: Kapat, within: { role: dialog, name: İtirazı reddet } }
+  rejectCancel: { role: button, name: Vazgeç, within: { role: dialog, name: İtirazı reddet } }
+  rejectSubmit: { role: button, name: Reddet, within: { role: dialog, name: İtirazı reddet } }
+  rejectSubmitBusy: { role: button, name: Reddet, within: { role: dialog, name: İtirazı reddet } }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  # the busy button's hidden <output>
+  submitBusyStatus: { role: status, hasText: Yükleniyor, within: { role: dialog, name: İtirazı reddet } }
+  # the toasts are sonner's: list items with a title and a description, found by their own words; an error toast has data-type=error
+  toastAccepted: { css: '[data-sonner-toast] [data-title]', hasText: '/^İtiraz kabul edildi$/' }
+  toastAcceptedBody: { css: '[data-sonner-toast] [data-description]', hasText: 'talebi yeniden köşkün kararına gönderildi.' }
+  toastRejected: { css: '[data-sonner-toast] [data-title]', hasText: '/^İtiraz reddedildi$/' }
+  toastRejectedBody: { css: '[data-sonner-toast] [data-description]', hasText: 'için karar notu medreseye iletildi.' }
+  toastErrorTitle: { css: '[data-sonner-toast][data-type=error] [data-title]', hasText: Karar kaydedilemedi }
+  toastAnswered: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: Bu itiraz az önce karara bağlanmış. }
+  toastGone: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: Bu itiraz artık yok. }
+  toastForbidden: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: Bu işlem için izniniz yok. }
+  toastFailed: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: İşlem tamamlanamadı. Biraz sonra yeniden deneyin. }
+  toastLoadFailedTitle: { css: '[data-sonner-toast][data-type=error] [data-title]', hasText: İtirazlar okunamadı }
+  toastLoadFailed: { css: '[data-sonner-toast][data-type=error] [data-description]', hasText: İtirazlar şu anda alınamıyor. }
+  toastClose: { css: '[data-sonner-toast] [data-close-button]' }
+
+# What a step leaves outside the screen, read through the database and the API as the walk's own rows. The page has no e2e of its own, so none of
+# these is a carried check; they are what the tedrisat API suite (appeals.e2e.spec.ts) asserts, asked of the stack.
+effects:
+  # the tab counts the page was given are the database's own (after every read the replay makes of the list)
+  listAppeals:
+    - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, counts]
+      expect: 'counts'
+  # "Kabul et": the appeal is ACCEPTED with no note, its request is PENDING again, and the köşk's nazım finds one of the walk's requests waiting
+  acceptedIt:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as accepted from appeals a join course_requests r on r.id = a.course_request_id where r.title like 'Deneme dersi appeals-decide %' and a.status = 'ACCEPTED' and a.decision_note is null and r.status = 'PENDING' and r.decided_by is null"]
+      expect: '"accepted":true'
+    - run: [node, ../nizam/moderation/decideAppeal/appeals.mjs, waits, '1']
+      expect: 'waits'
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as audited from audit_log where action = 'appeal.accept' and details->>'title' like 'Deneme dersi appeals-decide %'"]
+      expect: '"audited":true'
+  # "Reddet": the appeal is REJECTED with the note as typed and trimmed, and its request stays REJECTED
+  refusedIt:
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as refused from appeals a join course_requests r on r.id = a.course_request_id where r.title like 'Deneme dersi appeals-decide %' and a.status = 'REJECTED' and a.decision_note = '{made.note}' and r.status = 'REJECTED'"]
+      expect: '"refused":true'
+    - run: [node, helpers/sql.mjs, "select count(*) >= 1 as audited from audit_log where action = 'appeal.reject' and details->>'title' like 'Deneme dersi appeals-decide %'"]
+      expect: '"audited":true'

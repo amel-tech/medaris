@@ -1,0 +1,17 @@
+# nizam.shell.noAccessAndNotFound for the talebe at an address no page owns: "Sayfa bulunamadı" in a shell with no menu (a sidebar with the
+# brand and the person row only). It adds no transition to binding.yaml (the face is the same for every person) and so has its own file.
+# "Ana sayfaya dön" is '/', which sends a person with no role on to /yetki-yok.
+#   node apps/engine/src/cli.ts replay graphs/nizam/shell/noAccessAndNotFound --bind graphs/nizam/shell/noAccessAndNotFound/binding.talebe.yaml \
+#     --cover transitions --absent --out <dir>   (its scenario is not the flow's main story, so --main would not find it)
+# NOT RUN: written without a replay. It makes and removes nothing: the stack's seed is the data (STACK.md).
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.noAccessAndNotFound
+
+scenarios:
+  talebeNoPage:
+    given: { arrival: noPage, chief: named }
+    as: talebe
+    open: '{nizam}/sayfa-yok'
+    vars: { home: /yetki-yok }

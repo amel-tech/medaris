@@ -1,0 +1,242 @@
+# What must exist for a köşk nazımı to open a course of the köşk: the flow's product list (LAYOUT.md section 7). Each need is what the product
+# must do, from the flow's story and the findings of the page, not from what the page does today. The known gaps go to
+# graphs/needs.gaps.yaml, which the orchestrator merges; this file does not edit it. Read by people for now: no checker runs on this file yet.
+#
+# Gaps of this file, for that merge:
+#   missing:   kontenjan-per-gender and gender-is-always-required (`missing: MDRS-284`: an in-person course has no seat count, and the form
+#              asks no gender of anyone); every-answer-is-announced, lookup-only-on-request, removing-a-hoca-is-said, the-refusal-is-said-in-the-form,
+#              the-required-fields-are-exposed, a-refused-celse-plan-is-explained-and-kept, a-schedule-the-server-refuses-is-said-before,
+#              a-request-answer-that-failed-is-told-truly, a-request-that-is-gone-is-said, naming-oneself-is-explained, the-days-have-names
+#              (each `missing: none`; F-W4-13..F-W4-20, F-X-2, F-X-4 and F-W4-open-1..8 of ui.yaml are their evidence)
+#   unwalked:  accept-a-request-by-opening-its-course, say-when-a-hoca-is-unknown-or-the-celses-fail and open-from-the-kosk-home-or-a-request
+#              (code, no e2e: no check opens a course from a request or sees a refused plan, and the replay scenarios `fromRequest`, `requestLeft`,
+#              `sessionsFailed` and `forbidden` have not been run); give-a-hoca-an-unvan (code, no e2e picks an unvan; the walk presses the
+#              select, and no effect says what was sent); the-kosk-can-fix-approval (code, no e2e: courses#1-#3 run on a köşk with no policy)
+kind: needs
+flow: nizam.courses.open
+status: proposed
+
+needs:
+  - id: open-a-course-with-its-hocas-and-celses
+    need: >-
+      The köşk nazımı opens a course of the köşk's own in one step: its name, at least one hoca, and a weekly schedule from which its celses are
+      made at once, each in its week. The course is a draft unless the nazım chooses to publish it, and Dersler lists it with its weeks and its
+      status straight away. Who opened it and when is on record.
+    drawn: [form, opening, planning, opened, a-nothing-is-sent-with-a-problem, a-course-has-a-hoca, a-course-has-a-schedule, the-celses-follow-a-made-course, createdToast, newRowTitle, newRowWeeks, newRowDraft]
+    built:
+      - action: medaris.api:createCourse
+      - action: medaris.api:createSessionBatch
+      - route: apps/nizam/features/courses/components/course-create-form.tsx:124
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#2'
+
+  - id: say-what-is-missing
+    need: >-
+      A press of "Dersi aç" that cannot be sent says, under each field, what is missing (the name, a hoca, the start date, a celse day), sends
+      nothing and makes no course; the messages go the moment the field is fixed. The button is never dead.
+    drawn: [form, nameError, teamEmpty, startDateError, daysError, submit]
+    built:
+      - route: apps/nizam/features/courses/components/course-create-form.tsx:127
+      - route: apps/nizam/features/courses/present.ts:95
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#1'
+
+  - id: every-answer-is-announced
+    need: >-
+      Every answer the form gives is announced to a person who cannot see it and tied to the field it is about: the four missing-field
+      messages, the outcomes of a hoca search (not found, directory down, already listed), the weekday group and the required marks. After a
+      refused press the focus goes to the first field with a message.
+    drawn: [nameError, startDateError, teamEmpty, daysError, hocaNotFound, hocaDown, hocaListed, daysGroup, summary]
+    missing: none # F-W4-13 (corrected), F-W4-15, F-W4-19, F-X-2, F-W2-3
+
+  - id: the-required-fields-are-exposed
+    need: >-
+      A field that is required says so to assistive technology, not only to the eye: the name, the start date, the length, the hour, the length
+      of a celse, the list of hocas and the group of days.
+    drawn: [nameField, startDateField, weeksField, startTimeField, durationField, teamList, daysGroup, requiredNote]
+    missing: none # F-W4-open-1
+
+  - id: find-hocas-by-exact-email
+    need: >-
+      Each hoca is found by the exact e-mail address of an account in the realm, even one that never opened the app; a person already listed is
+      not added twice; an address with no account and a directory that does not answer are said in words.
+    drawn: [looking, lookingAnother, hocaField, hocaNotFound, hocaDown, hocaListed, searching]
+    built:
+      - action: medaris.api:lookupUser
+      - route: apps/nizam/features/courses/components/team-picker.tsx:80
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#2'
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#3'
+
+  - id: lookup-only-on-request
+    need: >-
+      A person's address is searched in the realm only when the nazım asks (Enter or a button), never because they tabbed through the field,
+      since every search is written to the audit log; the result is announced and the focus stays in the field.
+    drawn: [looking, hocaField]
+    missing: none # F-W4-20, F-X-14, F-W2-3
+
+  - id: choose-the-imam
+    need: >-
+      A lone hoca is the imam; with several the first is the imam until the nazım picks another, and the row of the imam says so. The list the
+      API gets always names exactly one imam among its hocas.
+    drawn: [teamList, imamRadioA, imamRadioB, imamBadge, soleNote, manyNote, removeA, removeB, opening]
+    built:
+      - action: medaris.api:createCourse
+      - route: apps/nizam/features/courses/present.ts:298
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#2'
+
+  - id: give-a-hoca-an-unvan
+    need: >-
+      Each hoca can carry an unvan in this course from the day it is opened ("Prof. Dr.", "Doç. Dr.", ... or none, the default), written
+      before their name wherever the course shows them; it is kept in this course only.
+    drawn: [unvanA, unvanB, form]
+    built:
+      - action: medaris.api:createCourse
+      - route: apps/nizam/features/courses/components/team-picker.tsx:212
+
+  - id: removing-a-hoca-is-said
+    need: >-
+      Taking a hoca off the list is said (who was taken off), keeps the focus on a control of the form, and a status that said "added" does not
+      go on saying it.
+    drawn: [removeA, removeB, addedA, addedB]
+    missing: none # F-W4-open-5
+
+  - id: weekly-schedule-with-a-live-count
+    need: >-
+      The schedule is one weekly pattern (a start date, a length in weeks, the days, an hour, a length for each celse, a time zone), and a
+      summary says how many celses it makes, from which day to which, as the fields change.
+    drawn: [startDateField, weeksField, daysGroup, dayMon, startTimeField, durationField, zoneField, summary, summaryBody, summaryNone, summaryEmpty]
+    built:
+      - route: apps/nizam/features/courses/present.ts:1199
+      - route: apps/nizam/features/courses/components/course-create-form.tsx:425
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#2'
+
+  - id: a-schedule-the-server-refuses-is-said-before
+    need: >-
+      A schedule that makes more celses than one batch can hold (200) is said in the summary, and the course is not made first: the nazım
+      is told before the press, not after the course exists.
+    drawn: [summary, form, planning, session_planner]
+    missing: none # F-W4-open-4, decision D2
+
+  - id: closed-approval-and-in-person-are-options
+    need: >-
+      The nazım can make the course closed (its content and recordings never open to everyone), ask that every application be approved
+      (checked at first), and mark its celses as in person; each is kept on the course and, for the celses, each celse follows it unless it has its
+      own mark.
+    drawn: [closedBox, approvalBox, inPersonBox, closedDesc, approvalDesc, inPersonDesc, opening]
+    built:
+      - action: medaris.api:createCourse
+      - route: apps/nizam/features/courses/components/course-create-form.tsx:455
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#3'
+
+  - id: draft-or-published
+    need: >-
+      The nazım chooses to open the course as a draft (hocas prepare it, talebe do not see it) or to publish it at once (the introduction is open
+      to everyone and talebe can apply); the course is listed with the status chosen.
+    drawn: [visibilityGroup, draftRadio, publishRadio, newRowDraft, newRowPublished]
+    built:
+      - action: medaris.api:createCourse
+      - route: apps/nizam/features/courses/components/course-create-form.tsx:487
+    walked:
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#2'
+      - e2e: apps/nizam/e2e/courses.e2e.ts
+        check: 'courses#3'
+
+  - id: the-kosk-can-fix-approval
+    need: >-
+      A köşk policy that every enrolment waits for approval fixes "Kayıt onayı gereksin" on in the form, says so and says who can change the
+      policy; the course is made with approval on whatever the form sends.
+    drawn: [approvalBox, approvalFixed, approvalDesc]
+    built:
+      - route: apps/nizam/features/courses/components/course-create-form.tsx:470
+
+  - id: accept-a-request-by-opening-its-course
+    need: >-
+      A request that a medrese sent to the köşk is accepted by opening the course it asks for: the form opens with the request's name, the course
+      is made, the request is marked accepted with the course's id, and the course stays a köşk course with no medrese.
+    drawn: [readingRequest, answering, the-request-is-answered-after-its-course]
+    built:
+      - action: medaris.api:listCourseRequests
+      - action: medaris.api:acceptCourseRequest
+      - route: apps/nizam/app/kosks/[id]/courses/new/page.tsx:39
+      - route: apps/nizam/features/courses/components/course-create-form.tsx:163
+
+  - id: a-request-answer-that-failed-is-told-truly
+    need: >-
+      When the answer to the request fails after the course was made, the nazım is told what happened (answered by another nazım, refused, or not
+      sent), the course stays, and Ders talepleri is offered; the words do not say a thing that was not checked.
+    drawn: [answering, requestLeftToast, requestLeftBody]
+    missing: none # F-W4-open-3
+
+  - id: a-request-that-is-gone-is-said
+    need: >-
+      A request that was answered meanwhile, or that cannot be found, is said when the form opens from its link: the nazım is not left to open a
+      course that answers nothing without knowing.
+    drawn: [readingRequest, form]
+    missing: none # F-W4-open-6
+
+  - id: a-refused-course-is-said-with-its-reason
+    need: >-
+      A course the server refuses (the right is gone, a hoca's account is gone, anything else) is said with its reason where the nazım is
+      looking, not only in a toast that stays until closed, and a nazım who names themselves a hoca is told that is not allowed, not to try again.
+    drawn: [opening, form, failedToast, toastForbidden, toastUnknownUser, toastFailed]
+    missing: none # F-X-4, F-W4-open-7
+
+  - id: a-refused-celse-plan-is-explained-and-kept
+    need: >-
+      When the course is made and its celses are refused, the nazım is told why, the schedule they typed is carried to Celse planla, and the
+      course is not left with no celse and no sign of it.
+    drawn: [planning, session_planner, sessionsFailedToast, sessionsFailedBody]
+    missing: none # F-W4-open-2, decision D1
+
+  - id: say-when-a-hoca-is-unknown-or-the-celses-fail
+    need: >-
+      The two refusals the stack can make on request, the nazım's right gone and the celses refused, are told in the words the catalog already
+      has, and each leaves the form or the page the nazım is on in a known state.
+    drawn: [opening, planning, form, session_planner, toastForbidden]
+    built:
+      - action: medaris.api:createCourse
+      - action: medaris.api:createSessionBatch
+
+  - id: the-days-have-names
+    need: >-
+      The weekday buttons are named by the day, not by three letters, and say which are pressed.
+    drawn: [daysGroup, dayMon, dayTue, dayWed, dayThu, dayFri, daySat, daySun]
+    missing: none # F-W4-open-8
+
+  - id: open-from-the-kosk-home-or-a-request
+    need: >-
+      "Ders aç" opens the form from Dersler, from the köşk's home and from a request's "Kabul et"; its address opens it for a nazım of the
+      köşk and the başnazım, and a person who may not gets the refusal in words, not a form.
+    drawn: [reading, no_access, not_found, readFailed]
+    built:
+      - route: apps/nizam/features/kosks/components/kosk-courses-view.tsx:114
+      - route: apps/nizam/features/platform-admin/components/course-requests-view.tsx:234
+      - route: "apps/nizam/app/kosks/[id]/courses/new/page.tsx:35"
+    walked:
+      - e2e: apps/nizam/e2e/kosk-view.e2e.ts
+        check: 'kosk-view#10'
+
+  - id: kontenjan-per-gender
+    need: >-
+      A course held in person has seats, and the seats are two counts, one for women and one for men, set where the course or its celses are
+      opened (planned per celse and per week, not per course). The form's "Celseler yüz yüze yapılır" box is the base: today it only marks the celses.
+    drawn: [inPersonBox, inPersonDesc]
+    missing: MDRS-284
+
+  - id: gender-is-always-required
+    need: >-
+      Gender is always required of a talebe who takes or asks for a seat, so that the two counts can be told apart; it is never optional.
+    drawn: [inPersonBox]
+    missing: MDRS-284

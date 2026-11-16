@@ -1,0 +1,189 @@
+# What must exist for a person who works in Nizam to find their way by its menu: nizam.shell.menuPerPersona, written on 15 Nov 2026
+# in the format of LAYOUT.md section 7. Each need is what the product must do, from the flow's story and the plan; none is read off
+# what the page does today. The gaps it leaves are reported to the orchestrator, who merges them into graphs/needs.gaps.yaml.
+# No replay has been run, so no `walked` entry names a replay scenario: only e2e checks that exist are named.
+#
+# missing (no code; the key is the Linear issue, or `none` for a finding of the flow with no issue yet):
+#   medaris-menu-offers-each-permitted-page (none: F-X-12), menu-offers-only-pages-that-exist (none: F-P0-4), the-whole-kosk-menu-has-its-pages
+#   (MDRS-211), menu-keeps-the-kosk-the-person-works-in (none: MENU-2), badge-is-not-an-audited-roster-read (none: MENU-3),
+#   skip-link-first (none: F-UI-P0-1), links-use-the-router (none: F-P0-8, MENU-4), landmarks-are-named (none: MENU-5),
+#   sheet-opens-on-a-safe-control (none: MENU-6), one-kosk-is-not-a-choice (none: MENU-1), role-names-in-english-and-arabic (MDRS-202),
+#   v2-role-names (MDRS-144), grant-ceiling-for-a-medaris-nazim (MDRS-209), course-permissions-in-groups (MDRS-226)
+# unwalked (code, and no e2e and no replay yet):
+#   chief-sees-every-entry (shell#9 is stale), a-nazim-of-several-kosks-has-a-picker (the e2e seeds one köşk), language-is-no-part-of-the-address
+kind: needs
+flow: nizam.shell.menuPerPersona
+status: proposed
+
+needs:
+  - id: menu-fits-the-role
+    need: >-
+      A person who signs in to Nizam sees the menu that fits their work and no other: the Medaris başnazım the whole platform, a
+      Medaris nazımı the entries their permissions open, a köşk nazımı the köşk's, and a person with no management role none.
+    drawn: [wide, bar, sheet, a-cut-menu-is-never-the-whole-menu]
+    built:
+      - action: medaris.api:getMyAssignments
+      - route: apps/nizam/lib/shell-nav.ts:25
+      - route: apps/nizam/components/shell/nizam-shell.tsx:63
+    walked:
+      - e2e: apps/nizam/e2e/shell.e2e.ts
+        check: 'shell#8 (a1, a3, a4), shell#10 (a1, a2)'
+
+  - id: chief-sees-every-entry
+    need: The Medaris başnazım finds every section of the platform in the menu, in the order the designs draw, and finds no picker.
+    drawn: [wide, sheet]
+    built:
+      - route: apps/nizam/lib/shell-nav.ts:74
+    # walked: shell.e2e.ts#9 (a2, a3 hold: the role line and no picker) but its a1 compares 21 texts and the menu has 22 since "Ortak
+    # uygulamalar" was added (F-X-20); this flow carries the 17 entries the code draws. No replay has been run.
+
+  - id: medaris-menu-follows-permissions
+    need: >-
+      A Medaris nazımı finds in the menu exactly the entries whose permission they hold, and a section left with no entry is gone
+      altogether; when their permissions cannot be read they are offered the Medaris menu and the API refuses what is not theirs.
+    drawn: [wide, readingPermissions, a-cut-menu-is-never-the-whole-menu]
+    built:
+      - action: medaris.api:getMyPermissions
+      - route: apps/nizam/lib/shell-nav.ts:313
+    walked:
+      - e2e: apps/nizam/e2e/shell.e2e.ts
+        check: 'shell#10 (a1, a2)'
+
+  - id: medaris-menu-offers-each-permitted-page
+    need: >-
+      A Medaris nazımı who holds a permission that opens a page, such as platform.audit_read for the audit log, finds that page in
+      the menu and does not have to know its address.
+    drawn: [navAuditLog, navAppeals, navNazims]
+    missing: none # F-X-12, decision D2: medarisGroups holds none of the six entries ITEM_PERMISSIONS lists for them; no Linear issue
+
+  - id: menu-offers-only-pages-that-exist
+    need: A person is never offered an entry whose only answer is "Sayfa bulunamadı".
+    drawn: [navPermanentBans, navYoutube]
+    missing: none # F-P0-4, F-X-11, decision D3: "Kalıcı yasak talepleri" and "YouTube bağlantısı"; no Linear issue
+
+  - id: the-whole-kosk-menu-has-its-pages
+    need: >-
+      A köşk nazımı finds Celseler, Talebeler and Ders kayıtları for the whole köşk in the menu, as the design draws them, and each
+      leads to a page.
+    drawn: [navSessionsAll, navStudentsAll, navEnrollmentsAll]
+    missing: MDRS-211 # named by the comment at apps/nizam/lib/shell-nav.ts:211; the issue's state in Linear was not read
+
+  - id: a-nazim-of-several-kosks-has-a-picker
+    need: >-
+      A köşk nazımı of two köşks or more reads which köşk the menu is about and changes it from the menu, on a köşk's home without
+      leaving the page.
+    drawn: [picking, kept, sheetPicking, pickerButton, koskMenu, rowKosk]
+    built:
+      - route: libs/ui/src/mds/scope-picker.tsx:106
+      - route: apps/nizam/components/shell/shell-frame.tsx:141
+    # walked: nothing. shell.e2e.ts seeds one köşk (seedShell), so no e2e opens the picker; the stack's köşk nazımı has two köşks and
+    # the binding of this flow is written for him, but no replay has been run.
+
+  - id: one-kosk-is-not-a-choice
+    need: A köşk nazımı of one köşk is not told that they can change it.
+    drawn: [koskLabelLanding, pickerRole]
+    missing: none # MENU-1: the hidden "Köşk değiştir:" is in the plain label too; no Linear issue
+
+  - id: menu-keeps-the-kosk-the-person-works-in
+    need: >-
+      A köşk nazımı of two köşks or more who has chosen a köşk stays in it: Bildirimler, Hesap and the brand link do not move the
+      menu to another köşk.
+    drawn: [koskLabelNewest, a-cut-menu-is-never-the-whole-menu, the-fallback-kosk-is-the-newest]
+    missing: none # MENU-2, decision D1; no Linear issue
+
+  - id: badges-follow-the-kosk-and-the-bell
+    need: >-
+      The menu says, with a number, how many ban notifications are unread and how many applications wait in the köşk in scope, and
+      the bell says the unread number in its name; a number of zero is not drawn.
+    drawn: [unreadBadge, pendingLanding, pendingNewest, bell, bellUnread]
+    built:
+      - action: medaris.api:getNotificationCounts
+      - action: medaris.api:listKoskPendingEnrollments
+      - route: apps/nizam/components/shell/nizam-shell.tsx:68
+      - route: apps/nizam/components/shell/nizam-shell.tsx:79
+    walked:
+      - e2e: apps/nizam/e2e/shell.e2e.ts
+        check: 'shell#8 (a4: Başvurular carries a number)'
+      - e2e: apps/nizam/e2e/notifications.e2e.ts
+        check: 'notifications#3 (a1, a2, a7, a8), notifications#4 (a4)' # the bell's name and the entry's number, and their lowering; nizam.notifications.triage carries them
+
+  - id: badge-is-not-an-audited-roster-read
+    need: >-
+      The number on Başvurular is a count: reading it for every köşk on every page does not return every applicant's name and
+      e-mail and does not write one roster-read row per köşk to the audit log.
+    drawn: [pendingLanding, pendingNewest]
+    missing: none # MENU-3; no Linear issue
+
+  - id: sheet-behaves-as-a-dialog
+    need: >-
+      On a phone the menu is a sheet that opens on its head, closes on Esc, on "Kapat", on a followed link and when the window
+      widens, and gives the focus back to the button that opened it.
+    drawn: [bar, sheet, sheetPicking, menuButton, sheetClose]
+    built:
+      - route: libs/ui/src/mds/app-bar.tsx:35
+    walked:
+      - e2e: apps/nizam/e2e/shell.e2e.ts
+        check: 'shell#8 (a1, a2, a8, a9, a10, a11, a12)'
+
+  - id: sheet-has-no-sign-out
+    need: >-
+      Signing out is not one tap away from the menu: it asks for its one confirmation on Hesap.
+    drawn: [sheet, signOut]
+    built:
+      - route: apps/nizam/components/shell/shell-frame.tsx:158
+    walked:
+      - e2e: apps/nizam/e2e/shell.e2e.ts
+        check: 'shell#8 (a5, a6, a7)'
+
+  - id: sheet-opens-on-a-safe-control
+    need: A keyboard user who opens the menu and presses Enter closes it or does nothing; they do not leave for another page.
+    drawn: [sheet, sheetBrand, sheetClose]
+    missing: none # MENU-6; no Linear issue
+
+  - id: skip-link-first
+    need: A keyboard or screen-reader user can skip the menu and reach the page in one key.
+    drawn: [sidebar, mainPage]
+    missing: none # F-UI-P0-1, F-X-9; no Linear issue
+
+  - id: links-use-the-router
+    need: The brand, the person's row, the bell and the köşk picker's rows move between pages without loading the whole document again, as the menu's entries do.
+    drawn: [brand, barBrand, bell, personRow, rowKosk]
+    missing: none # F-P0-8 and MENU-4; no Linear issue
+
+  - id: landmarks-are-named
+    need: >-
+      The sidebar and the sheet have landmarks a screen reader can tell apart: the menu is named once and the dialog has a name
+      of its own.
+    drawn: [sidebar, menuNav, sheet]
+    missing: none # MENU-5 (nazar.shell.scopeAndMenu F-L-2, F-L-3 are the same code); no Linear issue
+
+  - id: role-names-in-english-and-arabic
+    need: A person who reads Nizam in English or Arabic reads the role names and the menu in their language, and finds a language menu.
+    drawn: [roleChief, roleNazim, roleKosk, languageMenu]
+    missing: MDRS-202 # P-19: the en and ar catalogs hold the keys, the language menu is switched off (apps/nizam/lib/i18n/routing.ts:4-6) and Shell.languageMenu is used by no component
+
+  - id: v2-role-names
+    need: The role names of the v2 authorization model are the words the menu, the person's row and the API all use.
+    drawn: [roleChief, roleNazim, roleKosk]
+    missing: MDRS-144 # P-20: copy and naming; the issue was not read beyond planned.md
+
+  - id: language-is-no-part-of-the-address
+    need: The language a person chose does not appear in any address, and a link with an old language prefix still opens the page.
+    drawn: [sidebar]
+    built:
+      - route: apps/nizam/lib/i18n/routing.ts:19
+    # walked: nothing here. proxy.ts answers the old /tr, /en and /ar addresses with 308 (nizam.nav notModeled); MDRS-295 (P-21) is stale.
+
+  - id: grant-ceiling-for-a-medaris-nazim
+    need: >-
+      What a Medaris nazımı may hand on to others is capped by what the başnazım decided, so that the menu a nazımı they appoint
+      sees can never open more than the ceiling. The menu itself is unchanged; the plan names this issue for this flow.
+    drawn: [a-cut-menu-is-never-the-whole-menu]
+    missing: MDRS-209 # P-16: Ready to Test in Linear on 15 Nov 2026 (planned.md); the owner has to read it
+
+  - id: course-permissions-in-groups
+    need: >-
+      The başnazım and the nazımlar choose the course permissions of a grant by group, and the menu follows each code the groups
+      carry. The menu itself is unchanged; the plan names this issue for this flow.
+    drawn: [a-cut-menu-is-never-the-whole-menu]
+    missing: MDRS-226 # P-17: Backlog (planned.md)

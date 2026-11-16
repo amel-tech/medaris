@@ -1,0 +1,434 @@
+# nizam.nazims.groups on the local stack (graphs/bindings/local.nizam.binding.yaml): nizam-web on :4001, the başnazım (SYSTEM_ADMIN) signed in
+# through Keycloak's real form, at İzin grupları. Run, once the owner says so:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/nazims/groups \
+#     --bind graphs/nizam/nazims/groups/binding.yaml --cover transitions --absent --out <dir>
+# NOT RUN: written without a replay (the owner's word: replays come once, at the end). Every locator, every command and every account fact
+# below is unverified until a walk; the engine reads it ("--emit-spec" loads it and walks nothing).
+#
+# What a walk writes, and how it is taken away. The walk makes its own groups through tedrisat's HTTP API as the başnazım, never the seed's
+# (the seed makes none), through ./groups.mjs (a helper of this folder, over the shared helpers/lib.mjs): every group is named "Deneme grubu yonetim ..."
+# in plain ASCII (the browser's Turkish lower-casing and the database's lower() then mean the same). `setup` and `teardown` both clear every
+# group with that prefix first (with "revoke" where somebody holds it), so a walk that died leaves nothing in the next one's way, and
+# `teardown` ends with the clearing. The scenarios with a used group appoint a spare talebe account, APPLICANT_G ("Dilek Başvuran"), a Medaris
+# nazımı for the length of the walk with ../nizam/home/medarisNazimCut/nazim.mjs (the helper of nizam.home.medarisNazimCut: it appoints with
+# no permission, and dismisses), then give her the walk's group; `down` of that helper takes her seat away. The seeded Medaris nazımı, every
+# group whose name does not start with the prefix, and every seed account are never read or changed. The audit rows (permission_group.create,
+# update, delete, medaris_nazim.appoint, dismiss) stay: the API has no way to remove them.
+# What the walk expects of the world: no other permission group is live while a scenario runs (the seed makes none, and each flow of the batch
+# removes its own); the `defines` start opens the page with an empty list, and the other scenarios open their own group by address
+# (`?grup=<id>`), so a foreign group in the list would only change the number of rows. The walks run under the lock, one at a time.
+#
+# What each scenario walks (the `given` of flow.yaml picks the branch; `--cover transitions` takes every transition it can reach):
+#   defines       the main story: the menu's "İzin grupları", the empty list, a blank form refused, a name and two boxes, "Her ders" and back
+#                 ("Denetim kaydını oku" dropped, permissions#11-#12), the group made (#12), renamed and saved, deleted after the plain
+#                 question. e2e permissions#10 a1-a2 (the heading), #11, #12.
+#   taken         one group, A: "Grup oluştur" and the name of A in lower case: "Bu adda bir grup var." as it is typed (#12 a2).
+#   several       two groups, A and B: choosing B in the list, and a rename of A into "deneme grubu yonetim b" (#10 a: the list; #12).
+#   used          one group nobody should lose, held by APPLICANT_G: the list says "1 kişi kullanıyor", the form names her and offers
+#                 "İzinlerini düzenle: ..." (#10, #16 without its fixed date), a rename asks nothing (#15 a1), a changed set asks first with no
+#                 answer chosen, "Kaydet" off, "Vazgeç" focused (#13 a1-a5, #15), keep and revoke for a save (#15) and for a delete (#13, #14).
+#   courses       an every-course group: the radio "Her ders" is on and the others are off, the course boxes, a change saved, a make with
+#                 "Her ders" and a course box.
+#   long, cleared the name field holds 81 characters, or is emptied.
+#   goneUnused, takenAnswer, failedAnswer, usedGone, usedTaken    the refusals, made to happen while the call is held: the state's `before`
+#                 runs `groups.mjs interfere` after the button was pressed and before the held call is let go, so tedrisat meets a world that
+#                 changed after the page was read: another person deleted the group (`gone`), made a group with the typed name (`taken`), or gave
+#                 the group to somebody (`hold`, which makes a changed set and a delete need the answer the page did not ask). The first
+#                 three keep the group away from every answer; `usedGone` and `usedTaken` do the same for the saves and deletes that asked.
+#                 In the other scenarios the same `before` runs `interfere none`, which does nothing.
+# A path that makes a group by the name `groupName` twice in one walk (the cover's shortest paths do not, but a longer one could: "Grup oluştur"
+# after a make) meets "taken", which the model calls "ok": the walk phase will see it.
+#
+# e2e carried (apps/nizam/e2e/permissions.e2e.ts, against the walk's own groups: its SQL seed of three groups with holders is not the stack's):
+# permissions#10 (the heading, the intro sentence, a group's scope and count in the list, "N kişi kullanıyor", aria-current through the
+# list, the form's name, "N kişi", the user; "Platform · 4 izin" and the e2e's own names are not carried literally), #11 (the scope decides the
+# boxes, "Bir ders" is off, the ticks the other scope cannot hold are dropped), #12 (the blank name, the repeated name in lower case, "En az bir
+# izin seçin.", the group made with two boxes: `verify created` reads its codes through the API; the audit row is not read), #13 (the question,
+# no answer, "Vazgeç" focused, "Grubu sil" off, a click outside leaves it open: not carried, the binding cannot click at a point; "Vazgeç"
+# deletes nothing; keep leaves single permissions: `verify asked`), #14 (revoke: `verify asked`), #15 (a rename asks nothing; a changed set asks;
+# keep: `verify asked`), #16 (the button opens the dialog: this flow ends there, nizam.nazims.editPermissions draws it; its fixed date
+# "31 Aralık 2026" is not carried: F-W2-7, F-X-20).
+#
+# Not bound, with the reason:
+#   - `failed` for a make or a save that asked, and for any call that refuses with a body or a caller the walk cannot change (VALIDATION_ERROR,
+#     PERMISSION_UNKNOWN, AUTHZ_FORBIDDEN): nothing on the stack makes tedrisat refuse a body the page built. FAIL.other of `creating` and
+#     of `savingAsked` and `deletingAsked` stay unwalked; the stale count (`hold`) reaches FAIL.other of `updating` and `deletingPlain`.
+#   - the list's and the form's reads failing, an unknown `?grup=`, a person who is no başnazım: see flow.yaml scope.outOfView.
+#   - the click on the scrim of the question (permissions#13 a3): the binding cannot click at a point outside the dialog.
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.nazims.groups
+
+data:
+  made: { json: ../.local/made/nizam-groups.json }
+
+scenarios:
+  defines:
+    given: { list: empty, groupScope: platform, held: unused, nameFor: valid, answer: done }
+    as: systemAdmin
+    open: '{nizam}/'
+    enter: { nav: ../../nav, bind: ../../nav/binding.yaml, entry: 'frame:shell->permissionGroups' }
+    setup:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up]
+        expect: 'ready: 0 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+    vars:
+      groupName: Deneme grubu yonetim yeni
+      renameTo: Deneme grubu yonetim yeni ad
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: none
+      deleteMeanwhile: none
+
+  taken:
+    given: { list: one, groupScope: platform, held: unused, nameFor: taken, answer: done }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.a}'
+    setup:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'a|Deneme grubu yonetim A|platform.audit_read,platform.policy_edit']
+        expect: 'ready: 1 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+    vars:
+      groupName: deneme grubu yonetim a
+      renameTo: Deneme grubu yonetim yeni ad
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: none
+      deleteMeanwhile: none
+
+  # A is the oldest, so the list opens on it; B is the other group the list offers
+  several:
+    given: { list: several, groupScope: platform, held: unused, nameFor: taken, answer: done }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.a}'
+    setup:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'a|Deneme grubu yonetim A|platform.audit_read,platform.policy_edit;b|Deneme grubu yonetim B|platform.audit_read,platform.appeal_decide']
+        expect: 'ready: 2 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+    vars:
+      groupName: deneme grubu yonetim b
+      renameTo: deneme grubu yonetim b
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: none
+      deleteMeanwhile: none
+
+  # APPLICANT_G holds the group
+  used:
+    given: { list: one, groupScope: platform, held: used, nameFor: valid, answer: done }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.u}'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, none]
+        expect: 'up APPLICANT_G'
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'u|Deneme grubu yonetim kullanilan|platform.audit_read,platform.policy_edit', --hold, u=APPLICANT_G]
+        expect: 'ready: 1 groups, held by APPLICANT_G'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+        expect: 'down APPLICANT_G'
+    vars:
+      groupName: Deneme grubu yonetim yeni
+      renameTo: Deneme grubu yonetim kullanilan yeni
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: none
+      deleteMeanwhile: none
+
+  # an every-course group: week.hide and enrollment.decide
+  courses:
+    given: { list: one, groupScope: courses, held: unused, nameFor: valid, answer: done }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.c}'
+    setup:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'c|Deneme grubu yonetim ders|week.hide,enrollment.decide']
+        expect: 'ready: 1 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+    vars:
+      groupName: Deneme grubu yonetim yeni
+      renameTo: Deneme grubu yonetim ders yeni
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: none
+      deleteMeanwhile: none
+
+  # eighty-one characters
+  long:
+    given: { list: one, groupScope: platform, held: unused, nameFor: long, answer: done }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.a}'
+    setup:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'a|Deneme grubu yonetim A|platform.audit_read,platform.policy_edit']
+        expect: 'ready: 1 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+    vars:
+      groupName: Deneme grubu yonetim uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu
+      renameTo: Deneme grubu yonetim uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: none
+      deleteMeanwhile: none
+
+  # the name field is emptied
+  cleared:
+    given: { list: one, groupScope: platform, held: unused, nameFor: blank, answer: done }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.a}'
+    setup:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'a|Deneme grubu yonetim A|platform.audit_read,platform.policy_edit']
+        expect: 'ready: 1 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+    vars:
+      groupName: ''
+      renameTo: ''
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: none
+      deleteMeanwhile: none
+
+  # another person deletes the group while a save or a delete is held (404)
+  goneUnused:
+    given: { list: one, groupScope: platform, held: unused, nameFor: valid, answer: gone }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.a}'
+    setup:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'a|Deneme grubu yonetim A|platform.audit_read,platform.policy_edit']
+        expect: 'ready: 1 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+    vars:
+      groupName: Deneme grubu yonetim yeni
+      renameTo: Deneme grubu yonetim yeni ad
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: gone
+      deleteMeanwhile: gone
+
+  # another person makes a group with the typed name while a make or a rename is held (409)
+  takenAnswer:
+    given: { list: one, groupScope: platform, held: unused, nameFor: valid, answer: taken }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.a}'
+    setup:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'a|Deneme grubu yonetim A|platform.audit_read,platform.policy_edit']
+        expect: 'ready: 1 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+    vars:
+      groupName: Deneme grubu yonetim yeni
+      renameTo: Deneme grubu yonetim yeni ad
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: taken
+      updateMeanwhile: taken
+      deleteMeanwhile: none
+
+  # another person gives the group to APPLICANT_G while a changed save or a delete is held: USERS_POLICY_REQUIRED (F-W2-groups-3)
+  failedAnswer:
+    given: { list: one, groupScope: platform, held: unused, nameFor: valid, answer: failed }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.a}'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, none]
+        expect: 'up APPLICANT_G'
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'a|Deneme grubu yonetim A|platform.audit_read,platform.policy_edit']
+        expect: 'ready: 1 groups'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+        expect: 'down APPLICANT_G'
+    vars:
+      groupName: Deneme grubu yonetim yeni
+      renameTo: Deneme grubu yonetim yeni ad
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: hold
+      deleteMeanwhile: hold
+
+  # the held group is deleted while the question's call is held
+  usedGone:
+    given: { list: one, groupScope: platform, held: used, nameFor: valid, answer: gone }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.u}'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, none]
+        expect: 'up APPLICANT_G'
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'u|Deneme grubu yonetim kullanilan|platform.audit_read,platform.policy_edit', --hold, u=APPLICANT_G]
+        expect: 'ready: 1 groups, held by APPLICANT_G'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+        expect: 'down APPLICANT_G'
+    vars:
+      groupName: Deneme grubu yonetim yeni
+      renameTo: Deneme grubu yonetim kullanilan yeni
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: none
+      updateMeanwhile: gone
+      deleteMeanwhile: gone
+
+  # the new name is taken while the question's save is held
+  usedTaken:
+    given: { list: one, groupScope: platform, held: used, nameFor: valid, answer: taken }
+    as: systemAdmin
+    open: '{nizam}/izin-gruplari?grup={made.u}'
+    setup:
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, up, applicantG, --codes, none]
+        expect: 'up APPLICANT_G'
+      - run: [node, ../nizam/nazims/groups/groups.mjs, up, --make, 'u|Deneme grubu yonetim kullanilan|platform.audit_read,platform.policy_edit', --hold, u=APPLICANT_G]
+        expect: 'ready: 1 groups, held by APPLICANT_G'
+    teardown:
+      - run: [node, ../nizam/nazims/groups/groups.mjs, down]
+        expect: restored
+      - run: [node, ../nizam/home/medarisNazimCut/nazim.mjs, down, applicantG]
+        expect: 'down APPLICANT_G'
+    vars:
+      groupName: Deneme grubu yonetim yeni
+      renameTo: Deneme grubu yonetim kullanilan yeni
+      otherName: Deneme grubu yonetim B
+      createMeanwhile: taken
+      updateMeanwhile: taken
+      deleteMeanwhile: none
+
+events:
+  # a field the person types in has no node that sends an event: the binding fills it in
+  TYPE_NAME:
+    - fill: { role: textbox, name: Grup adı, value: '{groupName}' }
+  RENAME:
+    - fill: { role: textbox, name: Grup adı, value: '{renameTo}' }
+  # two platform boxes no group of the walk holds (e2e permissions#12 ticks the same two)
+  TICK:
+    - click: { role: checkbox, name: Desteyi herkese yayımla }
+    - click: { role: checkbox, name: YouTube bağlantısını yönet }
+  # a course box no walk group holds
+  TICK_COURSE:
+    - click: { role: checkbox, name: 'Dersi düzenle: başlık, tanıtım, müfredat, saat dilimi' }
+  # the other group of the list is chosen by its name, not by its place: the first item is the group already selected
+  SELECT_OTHER:
+    - click: { testId: group-item, hasText: '{otherName}' }
+  NAVIGATE:
+    - goto: '{nizam}/'
+
+effects:
+  # the answer chosen in the question is written down, so that `verify asked` can tell what the API should have done to the holder
+  chosenKeep:
+    - run: [node, ../nizam/nazims/groups/groups.mjs, note, keep]
+      expect: 'noted keep'
+  chosenRevoke:
+    - run: [node, ../nizam/nazims/groups/groups.mjs, note, revoke]
+      expect: 'noted revoke'
+  createdPlatform:
+    - run: [node, ../nizam/nazims/groups/groups.mjs, verify, created, --name, '{groupName}', --codes, 'platform.deck_publish,platform.youtube_manage']
+      expect: 'ok: created'
+  createdCourses:
+    - run: [node, ../nizam/nazims/groups/groups.mjs, verify, created, --name, '{groupName}', --codes, course.edit]
+      expect: 'ok: created'
+  saved:
+    - run: [node, ../nizam/nazims/groups/groups.mjs, verify, saved]
+      expect: 'ok: saved'
+  savedAsked:
+    - run: [node, ../nizam/nazims/groups/groups.mjs, verify, asked, --holder, APPLICANT_G]
+      expect: 'ok: '
+  deletedPlain:
+    - run: [node, ../nizam/nazims/groups/groups.mjs, verify, deleted]
+      expect: 'ok: left'
+  deletedAsked:
+    - run: [node, ../nizam/nazims/groups/groups.mjs, verify, asked, --holder, APPLICANT_G]
+      expect: 'ok: '
+
+nodes:
+  # the shell's <main>; every page a walk leaves for has one too, so it is found by what only this page has
+  groupsPage: { css: 'main:has([data-testid=groups])' }
+  # exact names: "Gruplar" is inside "İzin grupları", and "İzinler" inside "Ders izinleri" and "İzinlerini"
+  title: { role: heading, name: '/^İzin grupları$/' }
+  listNav: { role: navigation, name: '/^Gruplar$/' }
+  listHeading: { role: heading, name: '/^Gruplar$/' }
+  groupList: { css: 'nav[aria-label=Gruplar] ul' }
+  groupItem: { testId: group-item }
+  itemName: { css: '[data-testid=group-item] bdi' }
+  itemLine: { css: '[data-testid=group-item] .mds-caption' }
+  itemUsed: { css: '[data-testid=group-item] [role=img]', nth: 0 }
+  formTitleNew: { css: '[data-testid=group-form] h2' }
+  formTitleGroup: { css: '[data-testid=group-form] h2' }
+  scopeChipPlatform: { css: '[data-testid=group-form] header .mds-badge', hasText: Platform }
+  scopeChipCourses: { css: '[data-testid=group-form] header .mds-badge', hasText: Her ders }
+  # "* zorunlu alan": the star is part of the paragraph's text
+  requiredNote: { text: '/zorunlu alan/' }
+  permissionsHeading: { role: heading, name: '/^İzinler$/' }
+  secCourse: { role: heading, name: '/^Ders izinleri$/' }
+  usersHeading: { role: heading, name: '/^Kullananlar$/' }
+  usersCount: { testId: users-count }
+  userName: { css: '[data-testid=group-users] bdi' }
+  userLine: { css: '[data-testid=group-users] .mds-caption' }
+  busyStatus: { role: status, hasText: Yükleniyor }
+  # the sonner toasts, found by the words of their title or description
+  toastCreated: { css: '[data-sonner-toast]', hasText: Grup oluşturuldu }
+  toastCreatedBody: { css: '[data-sonner-toast]', hasText: '/ oluşturuldu\./' }
+  toastSaved: { css: '[data-sonner-toast]', hasText: Grup kaydedildi }
+  toastSavedBody: { css: '[data-sonner-toast]', hasText: '/ güncellendi\./' }
+  toastDeleted: { css: '[data-sonner-toast]', hasText: Grup silindi }
+  toastDeletedBody: { css: '[data-sonner-toast]', hasText: '/ silindi\./' }
+  toastSaveFailed: { css: '[data-sonner-toast]', hasText: Grup kaydedilemedi }
+  toastDeleteFailed: { css: '[data-sonner-toast]', hasText: Grup silinemedi }
+  toastTaken: { css: '[data-sonner-toast]', hasText: Bu adda bir grup zaten var. }
+  toastGone: { css: '[data-sonner-toast]', hasText: Bu grup artık yok. }
+  toastGeneric: { css: '[data-sonner-toast]', hasText: Bir şeyler ters gitti. }
+  # the three forms of the question: told apart by what only each says (the page behind is inert, so the form's own "Kaydet" is not in the way)
+  askSaveDialog: { role: alertdialog, hasText: Grubun izinleri değişiyor }
+  askSaveEyebrow: { css: '[role=alertdialog] .mds-eyebrow' }
+  askSaveTitle: { role: heading, name: '/kişi kullanıyor/' }
+  askSaveClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }
+  askSaveCancel: { css: '[role=alertdialog] button', hasText: '/^Vazgeç$/' }
+  askSaveConfirm: { css: '[role=alertdialog] button', hasText: '/^Kaydet$/' }
+  askDeleteDialog: { role: alertdialog, hasText: Grup siliniyor }
+  askDeleteEyebrow: { css: '[role=alertdialog] .mds-eyebrow' }
+  askDeleteTitle: { role: heading, name: '/kişi kullanıyor/' }
+  askDeleteClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }
+  askDeleteCancel: { css: '[role=alertdialog] button', hasText: '/^Vazgeç$/' }
+  askDeleteConfirm: { css: '[role=alertdialog] button', hasText: '/^Grubu sil$/' }
+  askPlainDialog: { role: alertdialog, hasText: geri alınamaz }
+  askPlainEyebrow: { css: '[role=alertdialog] .mds-eyebrow' }
+  askPlainTitle: { role: heading, name: '/silinsin mi/' }
+  askPlainClose: { css: '[role=alertdialog] button[aria-label=Kapat]' }
+  askPlainCancel: { css: '[role=alertdialog] button', hasText: '/^Vazgeç$/' }
+  askPlainConfirm: { css: '[role=alertdialog] button', hasText: '/^Grubu sil$/' }
+
+states:
+  # The calls are Next server actions: they answer on the page's own address, so the status of a refusal cannot be compared there (SPEC.md §7);
+  # `call` only holds the busy screen, and `before` is where the world changes while it is held (groups.mjs interfere; `none` does nothing).
+  creating:
+    call: '{nizam}/izin-gruplari**'
+    before: [{ run: [node, ../nizam/nazims/groups/groups.mjs, interfere, '{createMeanwhile}', --name, '{groupName}'], expect: interfered }]
+  updating:
+    call: '{nizam}/izin-gruplari**'
+    before: [{ run: [node, ../nizam/nazims/groups/groups.mjs, interfere, '{updateMeanwhile}', --name, '{renameTo}', --account, APPLICANT_G], expect: interfered }]
+  savingAsked:
+    call: '{nizam}/izin-gruplari**'
+    before: [{ run: [node, ../nizam/nazims/groups/groups.mjs, interfere, '{updateMeanwhile}', --name, '{renameTo}', --account, APPLICANT_G], expect: interfered }]
+  deletingPlain:
+    call: '{nizam}/izin-gruplari**'
+    before: [{ run: [node, ../nizam/nazims/groups/groups.mjs, interfere, '{deleteMeanwhile}', --name, '{groupName}', --account, APPLICANT_G], expect: interfered }]
+  deletingAsked:
+    call: '{nizam}/izin-gruplari**'
+    before: [{ run: [node, ../nizam/nazims/groups/groups.mjs, interfere, '{deleteMeanwhile}', --name, '{groupName}', --account, APPLICANT_G], expect: interfered }]
+  # NAVIGATE goes to the home page, where the başnazım lands; an exit with no screen of its own is checked by its address
+  left: { url: '{nizam}/' }
+  # "İzinlerini düzenle" opens the permissions dialog over this page (nizam.nazims.editPermissions draws it)
+  handed_over.edit_permissions: { url: '{nizam}/izin-gruplari**' }

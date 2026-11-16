@@ -1,0 +1,102 @@
+# What every binding of nizam.shell.landingByRole shares: where the states are, how the one typed address is left, where role and name
+# cannot find a node, and what a read leaves outside the screen. It names no scenario: binding.yaml and the binding.<x>.yaml files
+# next to it each extend it and give their own, because a scenario that takes no new transition is not walked by
+# `--cover transitions` and needs a run of its own (see binding.yaml).
+# NOT RUN: written without a replay (the owner's word: replays come once, at the end). Every locator is unverified until a walk, and
+# every behaviour of a signed-in person is from the code. What was seen is the signed-out page and the redirects of a visitor, by GET
+# with curl (the markup of the welcome page, <title>Nizam</title>, 307 to /auth/signin?callbackUrl=%2Fyetki-yok).
+schema: delurio-graph/0
+kind: binding
+extends: ../../../bindings/local.nizam.binding.yaml
+flow: nizam.shell.landingByRole
+
+# The visitor is an empty account and each of its scenarios says `signIn: false`, so the base's real sign-in through Keycloak never
+# runs for it (the tedris and landing visitor flows do the same, with `signIn: []` on the whole file).
+# It has an empty address and password: a locator that names {address} (the e-mail line of /yetki-yok) is looked up in every scenario
+# when the walk checks what is absent, and a visitor has none to give.
+accounts:
+  visitor: { address: '', password: '' }
+
+# NAVIGATE leaves for a blank page, as the other nizam flows do.
+events:
+  NAVIGATE: [{ goto: 'about:blank' }]
+
+# Where the states are. The pass-through states (start, readingAssignments, readingRoles, sorting, landing, unreadable) have no screen and
+# no address of their own. `call` is on none: the reads are made by the server, so the browser makes no fetch to hold, and every link
+# here is a plain navigation, on which `call` would hang the walk.
+states:
+  visitorWelcome: { url: '{nizam}/' }
+  noRolePage: { url: '{nizam}/yetki-yok' }
+  nazarList: { url: '{nizam}/nazar-yonlendirme' }
+  handed_over.sign_in: { url: '{keycloak}/realms/medaris/**' } # /auth/signin sends the browser on to Keycloak's form at once
+  handed_over.sign_in_gate: { url: '{keycloak}/realms/medaris/**' }
+  handed_over.tedris: { url: '{tedris}/**' } # TEDRIS_URL's root, then wherever tedris-web sends a person on
+  handed_over.nazar: { url: '{nazar}/**' } # NAZAR_URL's root, then the scope nazar-web lands the person in
+  home_opened.kosk: { url: '{nizam}/kosks/{seed.kosk}/ana-sayfa' } # the first köşk of the seeded nazım is "Süleymaniye Köşkü": the oldest of their KOSK_NAZIM rows (from the code: GET /me/assignments is ordered by created_at, and the seed makes it before the second)
+  home_opened.medaris: { url: '{nizam}/' }
+  home_opened.chief: { url: '{nizam}/' }
+  left: { url: 'about:blank' }
+  # not bound, with the reason: noRoleUnread, nazarUnread and rootUnread need tedrisat to fail a read, which the stack cannot be made to do
+
+# Where role and name cannot find a node. The headings, the sentences, the links and the regions are found from the graph (role and
+# name, or the exact text); what is bound here is what sits in a paragraph with another message, what is data, what two states would
+# share if found by role alone (`--absent` needs the shell's four <main>s told apart by what they hold), and the sidebar.
+nodes:
+  # "/" for a visitor: its <main> has no id; the shell's has (app-shell.tsx:41), so the two are never taken for each other
+  welcomeLogo: { role: img, name: 'Medaris — Nizam', within: { css: 'main:not(#main)' } }
+
+  # the shell's <main id="main">, told apart by its heading or its words (e2e shell#1 is asserted of the page, not of the <main>)
+  noRoleMain: { css: 'main#main', hasText: Yönetim yetkiniz yok }
+  noRoleUnreadMain: { css: 'main#main', hasText: Görevleriniz okunamadı }
+  nazarMain: { css: 'main#main', hasText: 'Medrese ve ders işleriniz Nazar’da' }
+  rootUnreadMain: { css: 'main#main', hasText: Hoş geldiniz }
+
+  # the sidebar: the one <aside>, with no <nav> in it (e2e shell#1 a5); the phone's app bar draws the same brand, toggle and person row
+  # again, hidden by CSS, so each is looked for inside the aside
+  sidebar: { css: aside }
+  brand: { css: 'aside a[href="/"]' }
+  themeToggle: { role: button, name: Koyu temaya geç, within: { css: aside } }
+  # the person's name and role line are two spans of one row; the name is data, so any text is accepted (e2e shell#1 a6)
+  userName: { css: 'aside .mds-nav-user__name' }
+  roleStudent: { css: 'aside .mds-nav-user__role', hasText: Talebe }
+  roleHeld: { css: 'aside .mds-nav-user__role', hasText: '/^(Medrese başmüderrisi|Medrese nâzırı|Hoca|Ders nâzırı)$/' }
+
+  # /yetki-yok: one paragraph holds the words, then the e-mail in a code element (e2e shell#1 a7); the button's address is Tedris's
+  # root (shell#1 a8 stubs it and follows it, the replay reads the href and then follows it)
+  accountLine: { css: 'main p.mds-caption', hasText: 'Giriş yaptığınız hesap:' }
+  accountEmail: { css: 'main p.mds-caption code', hasText: '{address}' }
+  backToTedris: { css: 'main a[href^="{tedris}"]', hasText: 'Tedris’e dön' }
+  noRoleAlert: { role: alert, hasText: Görevleriniz okunamadı }
+  noRoleRetry: { css: 'main a[href="/yetki-yok"]', hasText: Tekrar dene }
+
+  # /nazar-yonlendirme: a row is a li[data-testid=task-row]; its words are data, so the captions are found by their shape
+  # (assignments#1: "Hoca · <köşk> · <n> talebe", "Taslak" and no count for a draft, the role alone for a medrese)
+  taskList: { role: list, within: { role: region, name: Görevleriniz } }
+  taskRow: { testId: task-row }
+  rowTitle: { css: '[data-testid=task-row] bdi' }
+  rowCaptionCourse: { css: '[data-testid=task-row] .mds-caption', hasText: '/^(Hoca|Ders nazırı) · .+ · \d+ talebe$/' }
+  rowCaptionDraft: { css: '[data-testid=task-row] .mds-caption', hasText: '/^(Hoca|Ders nazırı) · [^·]+$/' }
+  rowCaptionMadrasah: { css: '[data-testid=task-row] .mds-caption', hasText: '/^Medrese (başmüderrisi|nazırı)$/' }
+  rowDraftBadge: { css: '[data-testid=task-row] .mds-badge', hasText: Taslak }
+  # the button's address is Nazar's (assignments#2 a1: href matches localhost:4002)
+  goToNazar: { css: 'main a[href^="{nazar}"]', hasText: 'Nazar’a git' }
+  unreadToast: { css: '[data-sonner-toast]', hasText: Görevleriniz yüklenemedi }
+  unreadToastText: { css: '[data-sonner-toast]', hasText: Görevleriniz şu an okunamadı }
+  nazarAlert: { css: 'main [role=alert]', hasText: Görevleriniz yüklenemedi }
+  nazarAlertBody: { css: 'main [role=alert] p', hasText: Görevleriniz şu an okunamadı }
+  nazarRetry: { css: 'main a[href="/nazar-yonlendirme"]', hasText: Tekrar dene }
+
+  # "/" with nothing else: a bare <div> that is the <main>'s first child, with a heading nowhere (F-P0-9)
+  rootUnreadLine: { css: 'main#main > div', hasText: '/^Hoş geldiniz$/' }
+
+# What a read leaves outside the screen: the API's own answer for the account whose screen it is. It checks the premise of each
+# scenario (the roles it holds, the başnazım or not) against the API, as the account itself: helpers/api.mjs signs in with the real
+# authorization-code flow and only reads. A scenario gives `acct` (the account's role key), `held` (the text its assignments must
+# hold) and `chief` (what GET /me/roles says of systemAdmin).
+effects:
+  getMyAssignments:
+    - run: [node, helpers/api.mjs, '{acct}', GET, /me/assignments]
+      expect: '{held}'
+  getMyRoles:
+    - run: [node, helpers/api.mjs, '{acct}', GET, /me/roles]
+      expect: '"systemAdmin":{chief}'

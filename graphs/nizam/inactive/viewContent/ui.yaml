@@ -1,0 +1,68 @@
+# The screens of nizam.inactive.viewContent: nizam-web's Pasif kapsamlar (/pasif-kapsamlar, app/pasif-kapsamlar/page.tsx) as far as
+# "İçeriği gör" goes: the page's frame and notice, the table's first column (the scope's name and kind), the button of a köşk or
+# course row while it is idle and while it is busy, and the toast that says a press was refused. Read from
+# apps/nizam/features/inactive-scopes/components/inactive-view.tsx and present.ts on 15 Nov 2026; nothing was opened in a browser.
+# The columns Neden, Ne zamandır and Son yönetici, the "… ata" buttons and their dialog, the filter and the read's failure box
+# are nizam.inactive.reassign's. The shell around the page (sidebar, bell) is nizam.shell.menuPerPersona's.
+#
+# Words: every `InactivePage.*` key is copied from libs/i18n/src/locales/tr/nizam.json (the app reads it as `nizam.InactivePage`),
+# `common.toast.close` from common.json, the key being the path inside each file. The two `composed.*` keys are NOT in any i18n
+# file: they are texts the app builds in code, written here with their placeholders so that a replay can match them:
+#   composed.InactivePage.name   the scope's name as the API gives it, in the first column (inactive-view.tsx:93)
+#   composed.Button.loading      "Yükleniyor", the hidden status beside a busy button, a default of the component (libs/ui/src/mds/button.tsx:62)
+# `changes` is the page's own notice: it already says what the press writes ("her açış denetim kaydına yazılır") and who may press.
+# Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: nizam.inactive.viewContent
+flow: nizam.inactive.viewContent
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: InactivePage.noticeBody }
+samples:
+  name: Örnek Köşk
+  kind: Ders
+  kosk: Örnek Köşk
+
+nodes:
+  # ---- the page ----
+  inactivePage: { type: page, component: Page, role: main, in: [listed, recording, viewFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">, no name and no initialFocus: nothing in features/inactive-scopes or app/pasif-kapsamlar moves the focus (rule focus-not-set)
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: InactivePage.title }, in: [listed, recording, viewFailed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:202 } # h1
+  pageIntro: { type: text, component: Text, text: { key: InactivePage.intro }, in: [listed, recording, viewFailed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:203 }
+  notice: { type: alert, component: Alert, role: status, text: { key: InactivePage.noticeTitle }, in: [listed, recording, viewFailed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:206 } # a neutral Alert: role=status, the title in a <p>
+  noticeBody: { type: text, component: Text, text: { key: InactivePage.noticeBody }, in: [listed, recording, viewFailed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:207 } # who may open a passive scope, and that every opening is written to the audit log
+
+  # ---- the list: the table and the first column of a row ----
+  listSection: { type: page, component: Page, role: region, name: { labelledBy: listHeading }, in: [listed, recording, viewFailed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:210 }
+  listHeading: { type: text, component: Heading, role: heading, text: { key: InactivePage.heading }, in: [listed, recording, viewFailed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:215 } # h2
+  scopesTable: { type: list, component: List, role: table, name: { key: InactivePage.caption }, in: [listed, recording, viewFailed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:242 } # the caption is visually hidden; its words are the h2's
+  rowName: { type: text, component: Text, role: rowheader, text: { key: composed.InactivePage.name, params: { name: scope.name } }, in: [listed, recording, viewFailed], repeat: scopes, source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:93 } # the row's <th scope=row>: the name, then its kind under it
+  rowKind: { type: text, component: Text, text: { oneOf: [InactivePage.kinds.KOSK, InactivePage.kinds.MADRASAH, InactivePage.kindInKosk] }, in: [listed, recording, viewFailed], repeat: scopes, source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:94 } # "Köşk", "Medrese", or "Ders · <köşk>" for a course (kinds.COURSE joined to its köşk)
+
+  # ---- "İçeriği gör": drawn for a köşk and a course row, never for a medrese ----
+  viewButton: { type: action, component: Button, role: button, intent: secondary, name: { key: InactivePage.viewLabel, params: { name: scope.name } }, text: { key: InactivePage.view }, in: [listed, viewFailed], when: viewable, repeat: scopes.viewable, emits: PRESS, source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:181 } # a ghost button beside "… ata"; the visible words are in the name (WCAG 2.5.3)
+  viewButtonBusy: { type: action, component: Button, role: button, intent: secondary, name: { key: InactivePage.viewLabel, params: { name: scope.name } }, text: { key: InactivePage.view }, in: [recording], disabledIn: [recording], when: viewable, source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:184 } # the pressed row only: aria-busy and aria-disabled, never `disabled`, so the focus stays on it
+  viewBusyStatus: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [recording], when: viewable, source: libs/ui/src/mds/button.tsx:113 } # the hidden <output> beside the busy button: "Yükleniyor" is a default of the component, outside the catalog (F-UI-W1-3)
+
+  # ---- the toast of a refusal: sonner, in its own portal, which stays until it is closed ----
+  failedToast: { type: status, component: Status, text: { key: InactivePage.viewFailed }, in: [viewFailed], source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:73 } # a sonner error toast with a description: no role of its own (the binding finds it by [data-sonner-toast]); the region around it is labelled in English (F-X-5)
+  reasonNotFound: { type: text, component: Text, text: { key: InactivePage.errors.notFound }, in: [viewFailed], when: "answer == 'normal'", source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:74 } # the toast's description for INACTIVE_SCOPE_NOT_FOUND (present.ts:77)
+  reasonForbidden: { type: text, component: Text, text: { key: InactivePage.errors.forbidden }, in: [viewFailed], when: "answer == 'forbidden'", source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:74 } # AUTHZ_FORBIDDEN (present.ts:80)
+  reasonGeneric: { type: text, component: Text, text: { key: InactivePage.errors.generic }, in: [viewFailed], when: "answer == 'broken'", source: apps/nizam/features/inactive-scopes/components/inactive-view.tsx:74 } # any other answer (present.ts:89)
+  toastClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: common.toast.close }, in: [viewFailed], emits: CLOSE_TOAST, source: libs/ui/src/components/sonner.tsx:62 } # sonner's close button, named "Kapat" by the Toaster's closeLabel (client-providers.tsx:53)
+
+edges:
+  - { labelledBy: [listSection, listHeading] }
+
+rules:
+  - { id: F-W2-1, rule: "A Medaris nazımı who holds platform.inactive_scopes_manage may open /pasif-kapsamlar (the page's own notice says so; inactive.e2e.ts#5) but the menu never lists \"Pasif kapsamlar\" for them: the entry is in the başnazım's menu only (lib/shell-nav.ts:178-186, :282-305). This graph draws the başnazım, who finds the page in the menu; the nav graph's entry to the köşk and the course is the başnazım's alone. Fix: add `inactive` to the Medaris menu or drop the permission." }
+  - { id: F-X-19, rule: "The course row's button pushes /kosks/<köşk>/courses/<id>/edit (present.ts:71), a page that only redirects to .../curriculum (app/kosks/[id]/courses/[courseId]/edit/page.tsx:15); the graph's exit is named for where the person ends. Fix: push the curriculum address directly, so the browser history holds one entry and not two." }
+  - { id: F-X-4, rule: "A refused press is told only by a sticky toast (inactive-view.tsx:73-77); nothing on the row says it failed, and the focus stays on the button. F-X-5: sonner's region is labelled in English (\"Notifications alt+T\") beside the unified kit's \"Bildirimler\", and the toast has no role of its own. Fix: one toaster with a catalog label, and a status line on the row." }
+  - { id: focus-not-set, rule: "Pasif kapsamlar sets no initial focus (no autoFocus and no focus() in features/inactive-scopes or app/pasif-kapsamlar), so the page node has no `initialFocus`; the busy button keeps the focus it had (a busy Button is aria-disabled, not disabled). Recorded so the silence is not read as an omission; the inventory does not call it a finding." }
+  - { id: VIEWC-1, rule: "After a refusal the list is not read again: the failure branch of `view` toasts and returns (inactive-view.tsx:72-78) and has no `refresh()`, though the page has one for \"Yeniden dene\" (:58). When the refusal is INACTIVE_SCOPE_NOT_FOUND (\"Bu kapsam artık pasif değil.\") the scope is attended, yet its row stays, with \"İçeriği gör\" and \"… ata\" both pressable and both refused again. Fix: call `refresh()` on a not-found answer, as a successful assignment does. Proposed id; not in the inventory. The same gap is on the assign dialog (assign-scope-dialog.tsx:81-87), which is nizam.inactive.reassign's." }
+  - { id: VIEWC-2, rule: "The busy state ends before the next page is shown: `setBusyId(null)` runs when the answer arrives (inactive-view.tsx:70) and `router.push` only starts the navigation (:79), which on a cold page takes seconds. For that time the button is idle again, a second press writes a second audit row, and the page does not say it is going anywhere. Fix: keep the row busy until the navigation starts to render (useTransition's pending state), and clear it only on a refusal. Proposed id; not in the inventory; from the code, not seen." }
+  - { id: VIEWC-3, rule: "The audit row is `inactive_scope.view`, which the audit page's kinds file under OTHER (\"Tümü\" only): CONTENT_READ lists `course.content_read` and `scope.passive_open` (apps/tedrisat/src/audit/audit-types.ts:17-19), whose comment says a passive scope opened by platform management is a read of closed content, and nothing writes `scope.passive_open` for this button. So the openings the notice promises to record are not found under \"İçerik okuma\". Fix: write the action the kind lists, or add `inactive_scope.view` to CONTENT_READ. The domain's own invariant every-audit-filter-has-a-writer (finding audit-types-never-written) is the same fact seen from the API. Proposed id; not in the inventory." }
+  - { id: VIEWC-4, rule: "The button is drawn for every row whoever holds the page, and the API writes the row for any person it lets onto the page (inactive-scope.service.ts:58-70, 290-297), but a Medaris nazımı who holds only platform.inactive_scopes_manage is then sent to /kosks/<id>, where koskEntry gives forbidden or the hosting page (kosk-entry.ts:39-52), or to the course curriculum, whose rules are the course's own. So the audit row is written for a page they are refused. Decision D1. From the code; what the destination does for them was not seen. Proposed id; not in the inventory." }
+  - { id: label-in-name, rule: "the button's visible text \"İçeriği gör\" is contained in its accessible name \"İçeriği gör: <name>\" (WCAG 2.5.3): the name starts with it" }
+  - { id: busy-keeps-focus, rule: "a busy button is aria-disabled and aria-busy, never `disabled`, and a hidden <output> says \"Yükleniyor\", so the focus survives the press (libs/ui/src/mds/button.tsx:29, :111-114)" }

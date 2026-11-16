@@ -1,0 +1,17 @@
+# nizam.shell.landingByRole, the reverse guard on the page of the roleless: the müderris opens /yetki-yok by its address, is sent to
+# "/", and "/" sends them on to /nazar-yonlendirme. It takes no transition the main file's `hoca` and `chiefAtNoRole` do not, so it is
+# walked on its own:
+#   flock <scratchpad>/replay.lock nice -n 10 node apps/engine/src/cli.ts replay graphs/nizam/shell/landingByRole \
+#     --bind graphs/nizam/shell/landingByRole/binding.nazarAtNoRole.yaml --to nazarList --absent --out <dir>
+# Nothing is created or removed. NOT RUN.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.shell.landingByRole
+
+scenarios:
+  nazarAtNoRole:
+    given: { address: noRolePage, person: nazarOnly, tasks: courses, read: ok }
+    as: muderris
+    open: '{nizam}/yetki-yok'
+    vars: { acct: MUDERRIS, held: '"role":"MUDERRIS"', chief: 'false' }

@@ -1,0 +1,192 @@
+# The screens of nizam.hosting.grantAndRevoke: Barındırma hakları (/kosks/<id>/ayarlar/barindirma), the window "Barındırma hakkı ver"
+# with the kit's select open over it, the window "Barındırma hakkını geri al", and the toasts of both calls. Read from
+# apps/nizam/features/hosting/components/{hosting-view,grant-dialog,revoke-dialog}.tsx, present.ts and the kit's Dialog, Select,
+# RadioGroup, Table, Tabs, Breadcrumb and Alert on 15 Nov 2026; nothing here was looked at in a browser, so every focus, role and name is
+# "from the code" unless a node says otherwise. The words are copied, key for key, from libs/i18n/src/locales/tr/nizam.json (namespaces
+# HostingPage, GrantDialog, RevokeDialog, NoAccess; the root key removed).
+#
+# Two kinds of catalog entry are not copied.
+#   `composed.*` is text the app builds in code and keeps in no file; each is the one placeholder it fills, or the join the code writes:
+#     composed.HostingPage.madrasahName   {name}: the medrese's own name in a row (hosting-view.tsx:86), and over the withdrawal window
+#     composed.HostingPage.person         {person}: who gave the right, or "Adı bilinmiyor" (:103)
+#     composed.HostingPage.date           {date}: "16 Kasım 2026" (present.ts:83, `grantedOn`, in the viewer's zone)
+#     composed.HostingPage.openCount      {count}: the number of open courses (:127)
+#     composed.HostingPage.summary        "1 yayında · 1 taslak": HostingPage.published and .draft, joined by " · " with a part of none left out (present.ts:27)
+#     composed.GrantDialog.eyebrow        {koskName}: the köşk's name over the window's title (grant-dialog.tsx:84)
+#     composed.GrantDialog.option         "{name} (@{handle})": one medrese in the list (grant-dialog.tsx:114)
+#     composed.RevokeDialog.courseTitle   {title}: a course's title in the list of open courses (revoke-dialog.tsx:157)
+#     composed.RevokeDialog.courseLine    "{studentsLine} · {imam}": RevokeDialog.students or .noStudents, then the imam's name with their
+#                                         unvan, or "{name} Hoca" without one (present.ts:52-72)
+#     composed.Button.loading             "Yükleniyor", the hidden status beside a busy Button, a default of libs/ui/src/mds/button.tsx
+#   `Changes.note` is the one message written for the graph: the app has a toast for each call and no message that says, before the
+#   first, what both do; the note is made of the app's own sentences (HostingPage.intro, .footnote, RevokeDialog.hideDesc and .auditNote).
+#
+# Where {name} is the medrese (the row, the buttons' labels, the toasts, the withdrawal window) the sample gives the medrese's name; in
+# HostingPage.head it is the başmüderris's, which the wireframe then draws wrongly ("Başmüderris Deneme medresesi hosting"); the binding
+# finds that line by a regular expression, as nizam.madrasahs.headMuderris does.
+#
+# The page behind a window is drawn only where the window is closed (`listed`): the window is modal, so the page is inert while it is
+# open, and none of its nodes is listed in a window state. In `choosing` the footer buttons are not drawn: whether "Barındırma hakkı ver"
+# is on depends on an earlier choice, and Base UI's select is modal over the window (not verified in a browser).
+schema: delurio-graph/0
+kind: ui
+id: nizam.hosting.grantAndRevoke
+flow: nizam.hosting.grantAndRevoke
+status: captured
+catalog: catalog/tr.json
+locales: [tr]
+changes: { key: Changes.note }
+samples:
+  name: Deneme medresesi hosting
+  handle: deneme-hosting
+  koskName: Barındırma Deneme Köşkü
+  koskLocative: Barındırma Deneme Köşkü’nde
+  person: Cemal Köşk Nazımı
+  date: 16 Kasım 2026
+  count: "2"
+  summary: 1 yayında · 1 taslak
+  countWord: iki
+  countWordCap: İki
+  students: "0"
+  title: Deneme dersi hosting-ders
+  studentsLine: Henüz talebe yok
+  imam: Hamdi Müderris Hoca
+
+# Nothing in page.tsx, hosting-view.tsx or loading.tsx moves the focus when the page opens (`rules`: focus-not-set), so the page has no
+# `initialFocus`. The grant window opens on its close icon (HOST-6) and the withdrawal window on "Vazgeç" (revoke-dialog.tsx:106).
+nodes:
+  # ---- the page: the shell's <main>, the crumbs, the heading, the tabs ---------------------------------------------------------
+  page: { type: page, component: Page, role: main, in: [listed, readFailed], source: libs/ui/src/mds/app-shell.tsx:41 } # the shell's one <main id="main">, with no name; the page's own div (data-testid=hosting) is inside it
+  breadcrumb: { type: list, component: List, role: navigation, name: { key: HostingPage.breadcrumbLabel }, in: [listed, readFailed], source: apps/nizam/features/hosting/components/hosting-view.tsx:159 } # the kit's Breadcrumb: <nav aria-label="Sayfa yolu"> and a list
+  crumbSettingsLink: { type: action, component: LinkButton, role: link, text: { key: HostingPage.settings }, in: [listed, readFailed], when: "tabs == 'shown'", source: apps/nizam/features/hosting/components/hosting-view.tsx:162 } # a link to /kosks/<id>/ayarlar
+  crumbSettingsText: { type: text, component: Text, text: { key: HostingPage.settings }, in: [listed, readFailed], when: "tabs == 'hidden'", source: apps/nizam/features/hosting/components/hosting-view.tsx:162 } # plain text for a Medaris nazımı who cannot open the settings (MDRS-137)
+  crumbCurrent: { type: text, component: Text, text: { key: HostingPage.title }, in: [listed, readFailed], source: libs/ui/src/mds/breadcrumb.tsx:37 } # aria-current="page", the same words as the h1
+  pageTitle: { type: text, component: Heading, role: heading, text: { key: HostingPage.title }, in: [listed, readFailed], source: apps/nizam/features/hosting/components/hosting-view.tsx:168 } # h1; it and the tab title name no köşk (F-W3-9)
+  intro: { type: text, component: Text, text: { key: HostingPage.intro, params: { koskLocative: kosk.locative } }, in: [listed, readFailed], source: apps/nizam/features/hosting/components/hosting-view.tsx:169 } # "{köşk, locative} barındırma hakkı olan medreseler. Bu hak, medreseye köşk üzerinde hiçbir yetki vermez."
+  grantButton: { type: action, component: Button, role: button, text: { key: HostingPage.grant }, in: [listed], emits: OPEN_GRANT, source: apps/nizam/features/hosting/components/hosting-view.tsx:171 } # also on the page when the rights could not be read, and then it opens the same window (not drawn from `readFailed`)
+  tabsNav: { type: list, component: List, role: navigation, name: { key: HostingPage.tabsLabel }, in: [listed, readFailed], when: "tabs == 'shown'", source: apps/nizam/features/hosting/components/hosting-view.tsx:180 } # Tabs mode="links": a <nav> of links, so no tab panel is missing here (F-W3-5 is not this page's)
+  tabGeneral: { type: action, component: LinkButton, role: link, text: { key: HostingPage.tabs.general }, in: [listed, readFailed], when: "tabs == 'shown'", source: apps/nizam/features/hosting/components/hosting-view.tsx:184 }
+  tabNazims: { type: action, component: LinkButton, role: link, text: { key: HostingPage.tabs.nazims }, in: [listed, readFailed], when: "tabs == 'shown'", source: apps/nizam/features/hosting/components/hosting-view.tsx:185 }
+  tabHosting: { type: action, component: LinkButton, role: link, text: { key: HostingPage.tabs.hosting }, in: [listed], when: "tabs == 'shown'", source: apps/nizam/features/hosting/components/hosting-view.tsx:190 } # aria-current="page"; the number of rights follows the label in the same link
+
+  # ---- the table -----------------------------------------------------------------------------------------------------------------
+  table: { type: list, component: List, role: table, name: { key: HostingPage.caption, params: { koskLocative: kosk.locative } }, in: [listed], source: apps/nizam/features/hosting/components/hosting-view.tsx:211 } # Table responsive="stack": explicit table roles; the caption is visually hidden
+  columnMadrasah: { type: text, component: Text, role: columnheader, text: { key: HostingPage.columns.madrasah }, in: [listed], source: apps/nizam/features/hosting/components/hosting-view.tsx:78 }
+  columnGrantedBy: { type: text, component: Text, role: columnheader, text: { key: HostingPage.columns.grantedBy }, in: [listed], source: apps/nizam/features/hosting/components/hosting-view.tsx:99 }
+  columnGrantedAt: { type: text, component: Text, role: columnheader, text: { key: HostingPage.columns.grantedAt }, in: [listed], source: apps/nizam/features/hosting/components/hosting-view.tsx:112 }
+  columnOpenCourses: { type: text, component: Text, role: columnheader, text: { key: HostingPage.columns.openCourses }, in: [listed], source: apps/nizam/features/hosting/components/hosting-view.tsx:122 }
+  columnActions: { type: text, component: Text, role: columnheader, text: { key: HostingPage.columns.actions }, in: [listed], source: apps/nizam/features/hosting/components/hosting-view.tsx:137 } # its text is visually hidden
+  emptyRow: { type: text, component: Text, role: cell, text: { key: HostingPage.empty }, in: [listed], when: "table == 'empty'", source: apps/nizam/features/hosting/components/hosting-view.tsx:216 } # the one row of an empty table
+  rowName: { type: text, component: Text, role: rowheader, text: { key: composed.HostingPage.madrasahName, params: { name: right.name } }, in: [listed], when: "table == 'listed'", repeat: rights, source: apps/nizam/features/hosting/components/hosting-view.tsx:85 } # the row's <th scope=row>: the name and, under it, the başmüderris
+  rowHead: { type: text, component: Text, text: { key: HostingPage.head, params: { name: right.head } }, in: [listed], when: "table == 'listed'", repeat: rights, source: apps/nizam/features/hosting/components/hosting-view.tsx:89 } # "Başmüderris {name}"; a medrese with none says HostingPage.noHead ("Başmüderris yok"), not drawn: a medrese opens with one (MDRS-170) and the walks make none without
+  rowGrantedBy: { type: text, component: Text, text: { key: composed.HostingPage.person, params: { person: right.grantedBy } }, in: [listed], when: "table == 'listed'", repeat: rights, source: apps/nizam/features/hosting/components/hosting-view.tsx:103 }
+  rowGrantedRole: { type: text, component: Text, text: { oneOf: [HostingPage.roles.SYSTEM_ADMIN, HostingPage.roles.MEDARIS_NAZIM, HostingPage.roles.KOSK_NAZIM] }, in: [listed], when: "table == 'listed'", repeat: rights, source: apps/nizam/features/hosting/components/hosting-view.tsx:105 } # the role the giver acted as; empty for a right older than the role was recorded (present.ts:75)
+  rowDate: { type: text, component: Text, role: cell, text: { key: composed.HostingPage.date, params: { date: right.grantedAt } }, in: [listed], when: "table == 'listed'", repeat: rights, source: apps/nizam/features/hosting/components/hosting-view.tsx:116 } # "1 Eylül 2026", in the viewer's time zone
+  rowCount: { type: text, component: Text, text: { key: composed.HostingPage.openCount, params: { count: right.openCourses } }, in: [listed], when: "table == 'listed'", repeat: rights, source: apps/nizam/features/hosting/components/hosting-view.tsx:127 }
+  rowSummary: { type: text, component: Text, text: { key: composed.HostingPage.summary, params: { summary: right.summary } }, in: [listed], when: "table == 'listed' and courses == 'some'", repeat: rights, source: apps/nizam/features/hosting/components/hosting-view.tsx:129 } # empty for a right with no open course
+  rowRevoke: { type: action, component: Button, role: button, intent: secondary, name: { key: HostingPage.revokeLabel, params: { name: right.name } }, text: { key: HostingPage.revoke }, in: [listed], when: "table == 'listed'", repeat: rights, emits: OPEN_REVOKE, source: apps/nizam/features/hosting/components/hosting-view.tsx:143 } # an outline small button named by aria-label; the first press of a row decides which medrese the window is about
+  footnote: { type: text, component: Text, text: { key: HostingPage.footnote }, in: [listed], source: apps/nizam/features/hosting/components/hosting-view.tsx:219 }
+
+  # ---- the rights could not be read -------------------------------------------------------------------------------------------
+  loadFailed: { type: alert, component: Alert, role: alert, text: { key: HostingPage.loadFailed }, in: [readFailed], source: apps/nizam/features/hosting/components/hosting-view.tsx:203 } # tone error: announced; its title is a paragraph, not a heading
+  loadFailedTitle: { type: text, component: Text, text: { key: HostingPage.loadFailedTitle }, in: [readFailed], source: apps/nizam/features/hosting/components/hosting-view.tsx:203 }
+  retry: { type: action, component: Button, role: button, intent: secondary, text: { key: HostingPage.retry }, in: [readFailed], emits: RETRY, source: apps/nizam/features/hosting/components/hosting-view.tsx:205 }
+
+  # ---- the toasts of a finished call, over the page (Sonner: a region of toasts, no role of their own) ---------------------------
+  toastGranted: { type: status, component: Status, text: { key: GrantDialog.granted }, in: [listed], when: "toast == 'granted'", source: apps/nizam/features/hosting/components/grant-dialog.tsx:65 } # it closes by itself after six seconds
+  toastGrantedBody: { type: status, component: Status, text: { key: GrantDialog.grantedBody, params: { name: madrasah.name } }, in: [listed], when: "toast == 'granted'", source: apps/nizam/features/hosting/components/grant-dialog.tsx:66 }
+  toastRevoked: { type: status, component: Status, text: { key: RevokeDialog.revoked }, in: [listed], when: "toast == 'revoked'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:87 }
+  toastRevokedBody: { type: status, component: Status, text: { key: RevokeDialog.revokedBody, params: { name: madrasah.name } }, in: [listed], when: "toast == 'revoked'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:88 }
+
+  # ---- the window "Barındırma hakkı ver" ----------------------------------------------------------------------------------------
+  grantDialog: { type: page, component: Page, role: dialog, name: { labelledBy: grantTitle }, in: [grantForm, choosing, grantReady, granting, grantNone, grantFailed], initialFocus: grantClose, source: apps/nizam/features/hosting/components/grant-dialog.tsx:76 } # a form dialog (size sm); the scrim does not close it; no `initialFocus` is passed, so Base UI's default, the first thing it can focus, is the close icon (HOST-6); described by its whole body (F-UI-W1-1)
+  grantEyebrow: { type: text, component: Text, text: { key: composed.GrantDialog.eyebrow, params: { koskName: kosk.name } }, in: [grantForm, choosing, grantReady, granting, grantNone, grantFailed], source: apps/nizam/features/hosting/components/grant-dialog.tsx:84 }
+  grantTitle: { type: text, component: Heading, role: heading, text: { key: GrantDialog.title }, in: [grantForm, choosing, grantReady, granting, grantNone, grantFailed], source: apps/nizam/features/hosting/components/grant-dialog.tsx:85 }
+  grantClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: GrantDialog.close }, in: [grantForm, grantReady, granting, grantNone, grantFailed], emits: CANCEL, source: apps/nizam/features/hosting/components/grant-dialog.tsx:86 } # an icon button named by aria-label; it stays on and does nothing while the call runs (HOST-2)
+  grantIntro: { type: text, component: Text, text: { key: GrantDialog.intro }, in: [grantForm, choosing, grantReady, granting, grantNone, grantFailed], source: apps/nizam/features/hosting/components/grant-dialog.tsx:96 }
+  madrasahField: { type: field, component: TextField, role: combobox, text: { key: GrantDialog.madrasahLabel }, in: [grantForm, choosing, grantReady, granting], disabledIn: [granting], emits: OPEN_LIST, source: apps/nizam/features/hosting/components/grant-dialog.tsx:105 } # the kit's Select: a button with role combobox, named by the Field's label, required (the asterisk is decorative)
+  madrasahPlaceholder: { type: text, component: Text, text: { key: GrantDialog.placeholder }, in: [grantForm, choosing, grantReady, granting], when: "not picked", source: apps/nizam/features/hosting/components/grant-dialog.tsx:107 } # what the select shows until something is chosen
+  madrasahChosen: { type: text, component: Text, text: { key: composed.GrantDialog.option, params: { name: madrasah.name, handle: madrasah.handle } }, in: [choosing, grantReady, granting], when: picked, source: apps/nizam/features/hosting/components/grant-dialog.tsx:114 } # what the select shows once a medrese is chosen
+  grantNoneText: { type: text, component: Text, text: { key: GrantDialog.none }, in: [grantNone], source: apps/nizam/features/hosting/components/grant-dialog.tsx:102 } # in place of the select
+  grantFailedAlert: { type: alert, component: Alert, role: alert, text: { key: GrantDialog.loadFailed }, in: [grantFailed], source: apps/nizam/features/hosting/components/grant-dialog.tsx:98 } # tone error; no button to try again (HOST-5)
+  grantFailedTitle: { type: text, component: Text, text: { key: GrantDialog.loadFailedTitle }, in: [grantFailed], source: apps/nizam/features/hosting/components/grant-dialog.tsx:98 }
+  grantCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: GrantDialog.cancel }, in: [grantForm, grantReady, granting, grantNone, grantFailed], emits: CANCEL, source: apps/nizam/features/hosting/components/grant-dialog.tsx:89 } # a ghost button that closes the dialog and never submits; it does nothing while the call runs (HOST-2)
+  grantSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: GrantDialog.submit }, in: [grantForm, grantReady, granting, grantNone, grantFailed], disabledIn: [grantForm, granting, grantNone, grantFailed], emits: SUBMIT, source: apps/nizam/features/hosting/components/grant-dialog.tsx:90 } # natively disabled until a medrese is chosen, nothing says why (F-W3-1); busy (aria-disabled, aria-busy) in `granting`
+  grantBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [granting], source: libs/ui/src/mds/button.tsx:114 } # the hidden <output> beside the busy button
+
+  # ---- the kit's select, open over the window ------------------------------------------------------------------------------------
+  madrasahList: { type: list, component: List, role: listbox, in: [choosing], source: libs/ui/src/mds/select.tsx:80 } # no name of its own: the kit sets no aria-label on the list
+  optMadrasah: { type: field, component: ListItem, role: option, text: { key: composed.GrantDialog.option, params: { name: madrasah.name, handle: madrasah.handle } }, in: [choosing], emits: PICK_MADRASAH, source: libs/ui/src/mds/select.tsx:82 } # one option per open medrese that holds no right, ordered by name as the API lists them; the walk chooses its own by name
+
+  # ---- the toasts of a refused grant, over the window -----------------------------------------------------------------------------
+  toastGrantFailed: { type: status, component: Status, text: { key: GrantDialog.failed }, in: [grantReady], when: grantRefused, source: apps/nizam/features/hosting/components/grant-dialog.tsx:59 } # it stays until it is closed (duration: Infinity)
+  toastGrantMadrasahGone: { type: status, component: Status, text: { key: HostingPage.errors.madrasahGone }, in: [grantReady], when: "toast == 'grantMadrasahGone'", source: apps/nizam/features/hosting/present.ts:113 }
+  toastGrantKoskGone: { type: status, component: Status, text: { key: HostingPage.errors.koskGone }, in: [grantReady], when: "toast == 'grantKoskGone'", source: apps/nizam/features/hosting/present.ts:114 }
+  toastGrantForbidden: { type: status, component: Status, text: { key: HostingPage.errors.forbidden }, in: [grantReady], when: "toast == 'grantForbidden'", source: apps/nizam/features/hosting/present.ts:115 }
+  toastGrantGeneric: { type: status, component: Status, text: { key: HostingPage.errors.generic }, in: [grantReady], when: "toast == 'grantFailed'", source: apps/nizam/features/hosting/present.ts:124 }
+
+  # ---- the window "Barındırma hakkını geri al" --------------------------------------------------------------------------------------
+  revokeDialog: { type: page, component: Page, role: dialog, name: { labelledBy: revokeTitle }, in: [revokeAsk, revokeReady, revokeNoCourses, revoking], initialFocus: revokeCancel, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:95 } # a form dialog (size md); the scrim does not close it; described by its whole body (F-UI-W1-1)
+  revokeEyebrow: { type: text, component: Text, text: { key: composed.HostingPage.madrasahName, params: { name: right.name } }, in: [revokeAsk, revokeReady, revokeNoCourses, revoking], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:103 } # the medrese's name over the title
+  revokeTitle: { type: text, component: Heading, role: heading, text: { key: RevokeDialog.title }, in: [revokeAsk, revokeReady, revokeNoCourses, revoking], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:104 }
+  revokeClose: { type: action, component: Button, role: button, intent: dismiss, name: { key: RevokeDialog.close }, in: [revokeAsk, revokeReady, revokeNoCourses, revoking], emits: CANCEL, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:105 } # it stays on and does nothing while the call runs (HOST-2)
+  introSome: { type: text, component: Text, text: { key: RevokeDialog.intro, params: { name: right.name, koskLocative: kosk.locative, count: right.openCourses, countWord: right.countWord } }, in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:122 } # "<b>{name}</b>, {köşk} yeni ders açamayacak. Medresenin bu köşkteki {iki} açık dersi kapanmaz; onlara ne olacağını seçin."
+  introNone: { type: text, component: Text, text: { key: RevokeDialog.intro, params: { name: right.name, koskLocative: kosk.locative, count: right.openCourses, countWord: right.countWord } }, in: [revokeNoCourses, revoking], when: "courses == 'none'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:122 } # the same message with a count of nought: "Medresenin bu köşkte açık dersi yok."; the wireframe's sample count is 2, so the binding finds it by its words
+  courseList: { type: list, component: List, role: list, in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:132 } # <ul data-testid="open-courses">, a card with a row for each open course
+  courseTitle: { type: text, component: Text, text: { key: composed.RevokeDialog.courseTitle, params: { title: course.title } }, in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", repeat: openCourses, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:147 }
+  courseLine: { type: text, component: Text, text: { key: composed.RevokeDialog.courseLine, params: { studentsLine: course.students, imam: course.imam } }, in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", repeat: openCourses, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:151 } # "3 talebe · Ayşe Nur Kılıçarslan Hoca"; the imam's star only where the course has more than one müderris
+  courseStatus: { type: text, component: Text, text: { oneOf: [RevokeDialog.courseStatus.PUBLISHED, RevokeDialog.courseStatus.DRAFT] }, in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", repeat: openCourses, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:153 } # a badge: "Yayında" or "Taslak"
+  choicesGroup: { type: list, component: List, role: radiogroup, name: { key: RevokeDialog.coursesLegend }, in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:163 } # required; no radio is chosen for the person
+  choiceKeep: { type: field, component: ListItem, role: radio, text: { key: RevokeDialog.keep }, checked: "choice == 'keep'", in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", disabledIn: [revoking], emits: CHOOSE_KEEP, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:173 } # named by its label; its description is read after the name
+  choiceHide: { type: field, component: ListItem, role: radio, text: { key: RevokeDialog.hide }, checked: "choice == 'hide'", in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", disabledIn: [revoking], emits: CHOOSE_HIDE, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:181 }
+  keepDesc: { type: text, component: Text, text: { key: RevokeDialog.keepDesc, params: { count: right.openCourses, countWordCap: right.countWordCap } }, in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:174 }
+  hideDesc: { type: text, component: Text, text: { key: RevokeDialog.hideDesc, params: { count: right.openCourses, countWordCap: right.countWordCap, students: right.students } }, in: [revokeAsk, revokeReady, revoking], when: "courses == 'some'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:182 } # the sentence about talebe is left out when the courses have none
+  noOpenCourses: { type: text, component: Text, text: { key: RevokeDialog.noOpenCourses }, in: [revokeNoCourses, revoking], when: "courses == 'none'", source: apps/nizam/features/hosting/components/revoke-dialog.tsx:192 } # a caption in place of the question
+  auditNote: { type: text, component: Text, text: { key: RevokeDialog.auditNote }, in: [revokeAsk, revokeReady, revokeNoCourses, revoking], source: apps/nizam/features/hosting/components/revoke-dialog.tsx:107 } # the dialog's footerMeta
+  revokeCancel: { type: action, component: Button, role: button, intent: dismiss, text: { key: RevokeDialog.cancel }, in: [revokeAsk, revokeReady, revokeNoCourses, revoking], emits: CANCEL, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:110 } # the focus starts here; it does nothing while the call runs (HOST-2)
+  revokeSubmit: { type: action, component: Button, role: button, intent: confirm, text: { key: RevokeDialog.submit }, in: [revokeAsk, revokeReady, revokeNoCourses, revoking], disabledIn: [revokeAsk, revoking], emits: SUBMIT, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:111 } # natively disabled while a question stands unanswered, nothing says why (F-W3-1); busy in `revoking`
+  revokeBusy: { type: status, component: Status, role: status, text: { key: composed.Button.loading }, in: [revoking], source: libs/ui/src/mds/button.tsx:114 }
+
+  # ---- the toasts of a refused withdrawal, over the window --------------------------------------------------------------------------
+  toastRevokeFailed: { type: status, component: Status, text: { key: RevokeDialog.failed }, in: [revokeReady, revokeNoCourses], when: revokeRefused, source: apps/nizam/features/hosting/components/revoke-dialog.tsx:81 } # it stays until it is closed (duration: Infinity)
+  toastRevokeNotHeld: { type: status, component: Status, text: { key: HostingPage.errors.notHeld }, in: [revokeReady, revokeNoCourses], when: "toast == 'revokeNotHeld'", source: apps/nizam/features/hosting/present.ts:112 }
+  toastRevokeKoskGone: { type: status, component: Status, text: { key: HostingPage.errors.koskGone }, in: [revokeReady, revokeNoCourses], when: "toast == 'revokeKoskGone'", source: apps/nizam/features/hosting/present.ts:114 }
+  toastRevokeForbidden: { type: status, component: Status, text: { key: HostingPage.errors.forbidden }, in: [revokeReady, revokeNoCourses], when: "toast == 'revokeForbidden'", source: apps/nizam/features/hosting/present.ts:115 }
+  toastRevokeGeneric: { type: status, component: Status, text: { key: HostingPage.errors.generic }, in: [revokeReady, revokeNoCourses], when: "toast == 'revokeFailed'", source: apps/nizam/features/hosting/present.ts:124 }
+
+  # ---- the two refusals of the page: the same screen -----------------------------------------------------------------------------------
+  noAccessTitle: { type: text, component: Heading, role: heading, text: { key: NoAccess.title }, in: [forbidden, not_found], source: libs/ui/src/mds/system-state.tsx:43 } # h1 of the shell's no-access face; nizam.shell.noAccessAndNotFound draws the rest of it
+
+edges:
+  - { labelledBy: [grantDialog, grantTitle] }
+  - { labelledBy: [revokeDialog, revokeTitle] }
+  - { triggers: [grantButton, grantForm] }
+  - { triggers: [grantButton, grantNone] }
+  - { triggers: [grantButton, grantFailed] }
+  - { triggers: [madrasahField, choosing] }
+  - { triggers: [optMadrasah, grantReady] }
+  - { triggers: [grantSubmit, granting] }
+  - { triggers: [rowRevoke, revokeAsk] }
+  - { triggers: [rowRevoke, revokeNoCourses] }
+  - { triggers: [choiceKeep, revokeReady] }
+  - { triggers: [choiceHide, revokeReady] }
+  - { triggers: [revokeSubmit, revoking] }
+  - { triggers: [retry, reading] }
+  - { returnsFocus: [grantDialog, grantButton] } # Vazgeç, the close icon, Escape or a success: Base UI gives the focus back to the element that had it, the header's "Barındırma hakkı ver". Not verified in a browser
+  - { returnsFocus: [revokeDialog, rowRevoke] } # the same, to the row's button; after a withdrawal that button is gone with its row (HOST-1)
+
+rules:
+  - { id: focus-not-set, rule: "Nothing in page.tsx, hosting-view.tsx or loading.tsx moves the focus when the page opens (no autoFocus, no FocusHeading), nor after a window's result, so the page node has no `initialFocus` and the graph says nothing of the focus there. Recorded so the silence is not read as an omission." }
+  - { id: no-default-accept, rule: "no page has initialFocus on an action with intent confirm: the withdrawal window starts on 'Vazgeç' (revoke-dialog.tsx:106), the grant window on its close icon (HOST-6)" }
+  - { id: label-in-name, rule: "a node's visible text is contained in its accessible name (WCAG 2.5.3): the row's button says 'Barındırma hakkını geri al' and is named 'Barındırma hakkını geri al: {medrese}'; holds" }
+  - { id: F-W3-1, rule: "a submit button is not natively disabled while the form is incomplete with nothing saying what is missing. 'Barındırma hakkı ver' is off until a medrese is chosen (grant-dialog.tsx:90) and 'Barındırma hakkını geri al' is off until an answer for the open courses is chosen (revoke-dialog.tsx:112-115, present.ts:99); the first has a select whose placeholder 'Bir medrese seçin' says what to do, the second has a required legend and no word about the button. A keyboard or screen-reader user meets a dead button. Fix: keep it enabled and say what is missing on submit, or tie the reason to the button with aria-describedby" }
+  - { id: F-X-3, rule: "the family of F-W3-1: natively disabled submit buttons with no reason given, in these two windows and in every dialog of the app" }
+  - { id: F-W3-9, rule: "the tab title and the h1 are 'Barındırma hakları' for every köşk (barindirma/page.tsx:12-15, hosting-view.tsx:168); only the sentence under the heading, the table's caption and the window's eyebrow name the köşk, so a nazım of several köşks cannot tell which page they are on from the title. Fix: put the köşk's name in the title and in an eyebrow above the h1" }
+  - { id: F-W3-5, rule: "does not apply to this page: FLOWS.md lists it for this flow, but F-W3-5 is `Tabs mode=tabs` with no tab panel on the köşk applications and course requests pages. Barındırma hakları draws its tabs with `mode=\"links\"` (hosting-view.tsx:180), a <nav> of links with aria-current, which is the right pattern" }
+  - { id: F-UI-W1-1, rule: "Dialog wraps the whole body in Base UI's Dialog.Description (libs/ui/src/mds/dialog.tsx:103), so a screen reader reads the intro, the list of courses, the radios and their descriptions as the window's description when it opens; in the withdrawal window that is the whole question" }
+  - { id: HOST-1, rule: "new, from the code: after a withdrawal the row whose button opened the window is gone. The window closes and Base UI gives the focus back to that row's 'Barındırma hakkını geri al' (revoke-dialog.tsx:90-91), and the refresh that follows (revalidatePath and router.refresh, actions.ts:48, hosting-view.tsx:68) draws the table without the row, so the focus falls to the page and only a toast says what happened; with a last right the table says 'Henüz barındırma hakkı yok'. The same family as F-A-2 of nazar.pano.decideApplications and F-W2-10 of nizam.madrasahs.passivate. Not verified in a browser. Fix: move the focus to the table's caption or the heading, and say it in a status line" }
+  - { id: HOST-2, rule: "new, from the code: while the call runs, 'Vazgeç', the close icon and Escape do nothing (`if (!saving) onOpenChange(next)`, grant-dialog.tsx:78-80, revoke-dialog.tsx:98-100) and stay enabled; the select and the radios are disabled and the button is busy. A control that is on and does nothing. Fix: disable them while the call runs, or let them close the window and leave the call to finish" }
+  - { id: HOST-3, rule: "new, from the code: the page reads every page of every open medrese on every load, 50 at a time and one after the other (getMadrasahOptions, reads.ts:43-60), whether or not the grant window is ever opened, and again on every router.refresh() that a grant or a withdrawal causes. With N open medreses that is ceil(N/50) requests in the page's critical path, and the medreses that already hold a right are discarded in the browser. Fix: read the list when the window opens, or ask the API for the medreses that hold no right in this köşk" }
+  - { id: HOST-4, rule: "new, from the code: a refusal leaves the page as it was. grant-dialog.tsx:58-64 and revoke-dialog.tsx:80-86 return before `onGranted`/`onRevoked`, so after 'Bu medrese artık yok ya da gizli.' the hidden medrese is still in the list, and after 'Bu medresenin bu köşkte barındırma hakkı yok.' (someone withdrew it first) the row and its button are still in the table; the person's next press gets the same refusal. The toast stays until it is closed. Fix: read the page again after MADRASAH_NOT_FOUND and HOSTING_RIGHT_NOT_FOUND" }
+  - { id: HOST-5, rule: "new, from the code: when the list of medreses could not be read the window shows 'Medreseler yüklenemedi' and no 'Yeniden dene' (grant-dialog.tsx:97-100). The list is read once, by the page, so closing and opening the window reads nothing; the person has to reload. The rights' own error box has a retry (hosting-view.tsx:205). Fix: a retry in the window that reads the list" }
+  - { id: HOST-6, rule: "new, from the code, the family of F-W2-12: the grant window passes no `initialFocus` to Dialog (grant-dialog.tsx:76-95; libs/ui/src/mds/dialog.tsx:138 gives Base UI `undefined` for a form), so it opens on the first thing it can focus, the close icon in its header, not on the select. The withdrawal window does pass one ('Vazgeç'). The graph draws `initialFocus: grantClose`, from the code. Fix: pass the select's trigger" }

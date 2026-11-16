@@ -1,0 +1,65 @@
+# nizam.courses.list as the başnazım (SYSTEM_ADMIN, the persona P-CHIEF) of the same köşk as binding.yaml: the same five courses, but every
+# hidden one has "Geri al", the one Medaris yönetimi hid included, since the başnazım acts at the platform's kademe and no row is locked
+# (`held` restorable). Nothing is drawn that the nazım's page does not draw; the sentence is absent from the page.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/courses/list \
+#     --bind graphs/nizam/courses/list/binding.chief.yaml --cover transitions --absent --out <dir>
+# NOT RUN. `--absent` is worth a try: it proves that `lockedNote` is not on the page for the başnazım. The başnazım lands on the Ana sayfa of
+# Medaris and reaches Dersler by its address, since /kosks/<id> is the management view for him (nizam.kosks.manage), so the walk opens the
+# address of Dersler itself. Data and teardown are binding.yaml's, written out again because a binding extends one file.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.courses.list
+
+data:
+  ncl: { json: ../.local/made/ncl.json }
+  nclm: { json: ../.local/made/nclm.json }
+  nclOwn: { json: ../.local/made/nclOwn.json }
+  nclDraft: { json: ../.local/made/nclDraft.json }
+  nclMed: { json: ../.local/made/nclMed.json }
+  nclHid: { json: ../.local/made/nclHid.json }
+  nclLock: { json: ../.local/made/nclLock.json }
+
+scenarios:
+  chief:
+    given: { courses: some, held: restorable }
+    as: systemAdmin
+    open: '{nizam}/kosks/{ncl.kosk}/dersler'
+    setup:
+      - run: [node, ../nizam/courses/list/data.mjs, make-kosk, ncl, KOSK_NAZIM]
+        expect: '"tag":"ncl"'
+      - run: [node, ../nizam/courses/list/data.mjs, make-medrese, nclm, --kosk, ncl, --head, APPLICANT_D]
+        expect: '"tag":"nclm"'
+      - run: [node, helpers/course.mjs, make, nclLock, --kosk, '{ncl.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclLock"'
+      - run: [node, helpers/course.mjs, make, nclHid, --kosk, '{ncl.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclHid"'
+      - run: [node, helpers/course.mjs, make, nclDraft, --kosk, '{ncl.kosk}', --draft, --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclDraft"'
+      - run: [node, helpers/course.mjs, make, nclMed, --madrasah, '{nclm.madrasah}', --kosk, '{ncl.kosk}', --weeks, '1', --lessons, '1']
+        expect: '"title":"Deneme dersi nclMed"'
+      - run: [node, helpers/course.mjs, make, nclOwn, --kosk, '{ncl.kosk}', --approval, --weeks, '1', --lessons, '1', --talebe, applicantE]
+        expect: '"APPLICANT_E":"PENDING"'
+      - run: [node, ../nizam/courses/list/data.mjs, hide-course, --as, systemAdmin, --tag, nclLock]
+        expect: 'hide-course nclLock by SYSTEM_ADMIN'
+      - run: [node, ../nizam/courses/list/data.mjs, hide-course, --as, koskNazim, --tag, nclHid]
+        expect: 'hide-course nclHid by KOSK_NAZIM'
+    teardown:
+      - run: [node, helpers/course.mjs, remove, nclOwn]
+        expect: 'course remove nclOwn'
+      - run: [node, helpers/course.mjs, remove, nclMed]
+        expect: 'course remove nclMed'
+      - run: [node, helpers/course.mjs, remove, nclDraft]
+        expect: 'course remove nclDraft'
+      - run: [node, helpers/course.mjs, remove, nclHid]
+        expect: 'course remove nclHid'
+      - run: [node, helpers/course.mjs, remove, nclLock]
+        expect: 'course remove nclLock'
+      - run: [node, ../nizam/courses/list/data.mjs, remove-medrese, nclm]
+        expect: 'data remove-medrese nclm'
+      - run: [node, ../nizam/courses/list/data.mjs, remove-kosk, ncl]
+        expect: 'data remove-kosk ncl'
+      - run: [node, helpers/sql.mjs, "select count(*)::int as n from courses where title like 'Deneme dersi ncl%'"]
+        expect: '"n":0'
+      - run: [node, helpers/sql.mjs, "select (select count(*) from kosks where name like 'Deneme köşkü ncl%') + (select count(*) from madrasahs where name like 'Deneme medresesi ncl%') as n"]
+        expect: '"n":0'

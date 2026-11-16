@@ -1,0 +1,34 @@
+# nizam.moderation.decideBan at the köşk's list, refused: a müderris reads "Bu bölüm için izniniz yok" (bans#9: only the köşk's nazım, a Medaris nazım
+# with a ban permission and the başnazım may read it), and so does a köşk that is not there (the 404 is the same screen on purpose: openedKosk
+# FAIL.forbidden and FAIL.missing, the exit no_access). nizam.shell.noAccessAndNotFound walks the same screen for every refused page.
+#   flock <scratchpad>/replay.lock nice -n 10 node /home/taha/delurio-wt/medaris-engine/apps/engine/src/cli.ts replay graphs/nizam/moderation/decideBan \
+#     --bind graphs/nizam/moderation/decideBan/binding.noAccessKosk.yaml --cover transitions --absent --out <dir>
+# NOT RUN (the owner's word: replays come once, at the end). It loads (`--emit-spec --out <dir>`; `--to no_access` takes one of the two
+# scenarios, `--cover transitions` both). As binding.noAccess.yaml: the read is made by the
+# server while the page is built, so no node sends the edge and the binding gives it as an event that waits for the screen. Nothing is made or
+# changed. A made-up köşk id (a valid uuid no köşk has) is the 404; the seeded müderris, who is no köşk nazım, is the 403.
+schema: delurio-graph/0
+kind: binding
+extends: ./locators.binding.yaml
+flow: nizam.moderation.decideBan
+
+events:
+  FAIL.forbidden:
+    - waitText: Bu bölüm için izniniz yok
+  FAIL.missing:
+    - waitText: Bu bölüm için izniniz yok
+
+states:
+  no_access: { url: '{nizam}/kosks/*/yasaklamalar', text: Bu bölüm için izniniz yok }
+
+scenarios:
+  refusedMuderris:
+    given: { viewer: kosk, read: forbidden, row: low, answer: done, after: more }
+    as: muderris
+    open: '{nizam}/kosks/{seed.kosk2}/yasaklamalar'
+    vars: { reasonText: Yeniden değerlendirildi, who: APPLICANT_C, liftHas: 'COURSE lifted', widenHas: KOSK open }
+  noSuchKosk:
+    given: { viewer: kosk, read: missing, row: low, answer: done, after: more }
+    as: koskNazim
+    open: '{nizam}/kosks/00000000-0000-4000-8000-000000000000/yasaklamalar'
+    vars: { reasonText: Yeniden değerlendirildi, who: APPLICANT_C, liftHas: 'COURSE lifted', widenHas: KOSK open }
