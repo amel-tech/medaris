@@ -36,7 +36,7 @@ run("recited", async () => {
   accountKey(account);
 
   const deadline = Date.now() + seconds * 1000;
-  let last = "no read yet";
+  let last;
   for (;;) {
     const r = await call(account, "GET", `/lessons/${lesson}/evaluation`);
     if (r.status === 200) {

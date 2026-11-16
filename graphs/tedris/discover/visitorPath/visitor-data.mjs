@@ -39,7 +39,7 @@ run("visitor-data", async () => {
   const done = [];
 
   if (mode === "up") {
-    let c = await read();
+    const c = await read();
     const lesson = first(c);
     if (lesson.isPreview !== true) {
       await must("muderris", "PATCH", `/lessons/${lesson.id}`, {
@@ -50,7 +50,6 @@ run("visitor-data", async () => {
       });
       done.push("sample celse");
     } else done.push("sample celse already");
-    c = await read();
     const have = await query(
       `select id from lesson_recordings where lesson_id = ${sample(lesson.id)}`
     );
