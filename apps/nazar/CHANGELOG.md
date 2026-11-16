@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.12](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.11...nazar-web-v0.2.12) (2026-11-16)
+
+
+### Features
+
+* **tedrisat, nazar-web, tedris-web, nizam-web, keycloak-theme:** MDRS-248 the open work in one PR ([#394](https://github.com/amel-tech/medaris/issues/394)) ([0574044](https://github.com/amel-tech/medaris/commit/05740445dc76774bb0a740542b9d6e4d3f202f55))
+
 ## [0.2.11](https://github.com/amel-tech/medaris/compare/nazar-web-v0.2.10...nazar-web-v0.2.11) (2026-10-26)
 
 
