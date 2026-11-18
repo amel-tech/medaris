@@ -86,11 +86,12 @@ export class KoskRepository implements IKoskRepository {
         string | null
       >`(select nullif(btrim(concat_ws(' ', u.given_name, u.family_name)), '') from "users" u where u.id::text = (${holderIdsOf(ASSIGNED_ROLES.KOSK_NAZIM, sql`"kosks"."id"`)})[1])`,
       // The course count leaves out drafts (MDRS-159: it is the number the köşk's
-      // page lists), and the three course-derived counts leave hidden courses
+      // page lists) and unlisted courses (MDRS-248, which that page does not
+      // list either), and the three course-derived counts leave hidden courses
       // out (MDRS-124):
       // a hidden course is in no list, so it is in no total either.
       courseCount:
-        sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id" and c.archived_at is null and c.status = 'PUBLISHED')`.mapWith(
+        sql<number>`(select count(*) from ${courses} c where c.kosk_id = "kosks"."id" and c.archived_at is null and c.status = 'PUBLISHED' and not c.is_unlisted)`.mapWith(
           Number
         ),
       studentCount:
@@ -357,6 +358,7 @@ export class KoskRepository implements IKoskRepository {
           isNull(kosks.archivedAt),
           eq(courses.status, CourseStatus.PUBLISHED),
           isNull(courses.archivedAt),
+          eq(courses.isUnlisted, false),
           sql`NOT EXISTS (
             SELECT 1 FROM ${enrollments}
             WHERE ${enrollments.courseId} = ${courses.id}

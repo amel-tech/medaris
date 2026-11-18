@@ -14,7 +14,8 @@ import type {
  * course (`GET /courses/:id/my-permissions`). `PATCH /courses/:id` asks
  * `course.edit` at the route and the setting's own code inside it, so a
  * control is open only when both are held: none is offered that the route
- * would refuse. The two boxes ask `course.edit` and `course.settings`;
+ * would refuse. The three boxes ask `course.edit` and `course.settings`
+ * ("Listelenmeyen ders", MDRS-248, has no policy over it, so it is never held);
  * publishing asks `course.edit` and `course.publish`; the time zone and
  * "Celseler yüz yüze yapılır" (MDRS-283) `course.edit`; the sample session
  * `session.manage` (`PATCH /lessons/:id`).
@@ -38,6 +39,7 @@ export function controlsOf(
     settings && stored.isClosed && !holds(held, CODES.settingCourseOpen)
       ? "locked"
       : open;
+  const unlisted = open;
   const approval: BoxState =
     settings && !holds(held, CODES.settingApprovalOff) ? "locked" : open;
   const zone = edit;
@@ -45,13 +47,19 @@ export function controlsOf(
   const sample = holds(held, CODES.sessionManage);
   return {
     closed,
+    unlisted,
     approval,
     inPerson,
     zone,
     sample,
     publish: edit && publish,
     save:
-      closed === "open" || approval === "open" || inPerson || zone || sample,
+      closed === "open" ||
+      unlisted === "open" ||
+      approval === "open" ||
+      inPerson ||
+      zone ||
+      sample,
     needsEdit: !edit && (settings || publish),
   };
 }

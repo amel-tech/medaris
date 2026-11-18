@@ -268,6 +268,18 @@ describe("Keşfet, köşk page and Derslerim reads (e2e)", () => {
       expect(res.body[0].courseCount).toBe(0);
     });
 
+    it("leaves out an unlisted course of a listed köşk (MDRS-248)", async () => {
+      await db()
+        .update(courses)
+        .set({ isUnlisted: true })
+        .where(eq(courses.title, "Bina ve İzhar Şerhi"));
+      const res = await http().get("/madrasahs/explore").expect(200);
+      expect(res.body[0].courseCount).toBe(1);
+      expect(
+        res.body[0].courses.map((c: { title: string }) => c.title)
+      ).toEqual(["İsâgûcî ile mantığa giriş"]);
+    });
+
     it("narrows by the level and field of the köşks the courses are in", async () => {
       const match = await http()
         .get(

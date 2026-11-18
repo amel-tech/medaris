@@ -315,6 +315,11 @@ class CourseBase {
       "Closed course (MDRS-176): its content and recordings are never opened to everyone; recordings marked PUBLIC are read by the course team and the enrolled talebe only.",
   })
   isClosed!: boolean;
+  @ApiProperty({
+    description:
+      "Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only; every enrollment waits for approval.",
+  })
+  isUnlisted!: boolean;
   @ApiPropertyOptional({
     type: String,
     nullable: true,

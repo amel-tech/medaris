@@ -313,11 +313,15 @@ export class CourseService {
     // A caller with no token (MDRS-122) holds neither `ARCHIVE` nor `EDIT`,
     // so a hidden course and a draft are both not-found to them, as below.
     // `resolveAnonymous` has already said so in front of the handler, and
-    // also refused every course of an unlisted köşk; this repeats the two
-    // rules a detail read can see for itself, so the answer does not rest on
-    // the guard alone.
+    // also refused an unlisted course (MDRS-248) and every course of an
+    // unlisted köşk; this repeats the three rules a detail read can see for
+    // itself, so the answer does not rest on the guard alone.
     if (user === null) {
-      if (course.archivedAt !== null || course.status === CourseStatus.DRAFT) {
+      if (
+        course.archivedAt !== null ||
+        course.status === CourseStatus.DRAFT ||
+        course.isUnlisted
+      ) {
         throw new CourseNotFoundError(id);
       }
       return course;
@@ -942,6 +946,8 @@ export class CourseService {
    * openness settings need `course.settings`; switching "requires approval" or
    * "closed" off needs the ability a policy on the köşk, the medrese or the
    * platform may have closed (`setting.approval_off`, `setting.course_open`).
+   * Listing a course or unlisting it (MDRS-248) is an openness setting:
+   * `course.settings`, with no policy over it.
    * The engine decides, so a grant from an authority above the policy opens
    * the ability for the person it was made to, and no other.
    *
@@ -952,11 +958,15 @@ export class CourseService {
   private async assertMayChangeSettings(
     id: string,
     user: AuthenticatedUser,
-    stored: Pick<ICourse, "status" | "requiresApproval" | "isClosed">,
+    stored: Pick<
+      ICourse,
+      "status" | "requiresApproval" | "isClosed" | "isUnlisted"
+    >,
     change: {
       status?: CourseStatus;
       requiresApproval?: boolean;
       isClosed?: boolean;
+      isUnlisted?: boolean;
     },
     /** A PATCH: a field it carries is a change. A whole-course save: only a field that differs from what is stored. */
     carried: boolean
@@ -972,7 +982,12 @@ export class CourseService {
     const closed =
       change.isClosed !== undefined &&
       (carried || change.isClosed !== stored.isClosed);
-    if (approval || closed) needs.push(PERMISSIONS.COURSE_SETTINGS);
+    const unlisted =
+      change.isUnlisted !== undefined &&
+      (carried || change.isUnlisted !== stored.isUnlisted);
+    if (approval || closed || unlisted) {
+      needs.push(PERMISSIONS.COURSE_SETTINGS);
+    }
     for (const code of needs) {
       if (!(await this.authz.can(user, resource, code))) {
         throw new AuthzForbiddenError(
@@ -1542,20 +1557,22 @@ export class CourseService {
     }
     // A course of an unlisted köşk always waits for approval (MDRS-122),
     // whatever its own `requires_approval` says: the link is how the köşk is
-    // found, and passing a link on must not hand out seats.
+    // found, and passing a link on must not hand out seats. An unlisted
+    // course (MDRS-248) is the same rule for one course.
     // The köşk's own policy (MDRS-174, nizam/24) says the same for all its
     // courses and a course's setting cannot loosen it.
     // The platform's own policy (MDRS-181, nizam/19) says it for every köşk.
     // So does a course of a medrese whose policy is "Kayıt her zaman onaylı"
     // (nazir/04), which its own settings cannot reopen.
     const koskRule = await this.koskService.findVisibility(course.koskId);
-    const unlisted =
+    const policyForcesApproval =
+      course.isUnlisted ||
       (koskRule?.isPrivate ?? false) ||
       (koskRule?.alwaysRequireApproval ?? false) ||
       (await this.platformPolicies.isOn("ALWAYS_REQUIRE_APPROVAL"));
     const status =
       course.requiresApproval ||
-      unlisted ||
+      policyForcesApproval ||
       (await this.courseRepo.forcesApproval(courseId))
         ? EnrollmentStatus.PENDING
         : EnrollmentStatus.ENROLLED;
