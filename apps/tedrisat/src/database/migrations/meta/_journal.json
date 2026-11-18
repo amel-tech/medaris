@@ -470,6 +470,13 @@
       "when": 1794527449239,
       "tag": "0071_lesson_exams",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794971446784,
+      "tag": "0072_course_unlisted",
+      "breakpoints": true
     }
   ]
 }

@@ -229,13 +229,16 @@ export class CourseRepository implements ICourseRepository {
     archived = false
   ): Promise<ICourseSummary[]> {
     const rows = await this.db.query.courses.findMany({
-      // DRAFT courses are only visible to the köşk owner. `archived` picks
-      // the list: live courses, or the hidden ones for the "Arşiv" view
-      // (MDRS-124) — never both, so a hidden course is in no ordinary list.
+      // DRAFT and unlisted (MDRS-248) courses are only on the köşk managers'
+      // shelf (`includeDrafts`); everyone else finds an unlisted course by its
+      // link alone. `archived` picks the list: live courses, or the hidden
+      // ones for the "Arşiv" view (MDRS-124) — never both, so a hidden course
+      // is in no ordinary list.
       where: and(
         eq(courses.koskId, koskId),
         archived ? isNotNull(courses.archivedAt) : isNull(courses.archivedAt),
-        includeDrafts ? undefined : eq(courses.status, CourseStatus.PUBLISHED)
+        includeDrafts ? undefined : eq(courses.status, CourseStatus.PUBLISHED),
+        includeDrafts ? undefined : eq(courses.isUnlisted, false)
       ),
       with: {
         weeks: {
@@ -1942,12 +1945,14 @@ export class CourseRepository implements ICourseRepository {
 
   /**
    * What decides whether a caller with no token may see the course
-   * (MDRS-122): its status, whether it is hidden, and whether its köşk is
-   * unlisted. One row, one join; null when the course is not there.
+   * (MDRS-122): its status, whether it is hidden, and whether it or its köşk
+   * is unlisted (MDRS-248). One row, one join; null when the course is not
+   * there.
    */
   async findPublicVisibility(id: string): Promise<{
     status: CourseStatus;
     archived: boolean;
+    unlisted: boolean;
     koskIsPrivate: boolean;
     koskHidden: boolean;
   } | null> {
@@ -1955,6 +1960,7 @@ export class CourseRepository implements ICourseRepository {
       .select({
         status: courses.status,
         archivedAt: courses.archivedAt,
+        isUnlisted: courses.isUnlisted,
         koskIsPrivate: kosks.isPrivate,
         koskArchivedAt: kosks.archivedAt,
       })
@@ -1967,6 +1973,7 @@ export class CourseRepository implements ICourseRepository {
     return {
       status: row.status,
       archived: row.archivedAt !== null,
+      unlisted: row.isUnlisted,
       koskIsPrivate: row.koskIsPrivate,
       koskHidden: row.koskArchivedAt !== null,
     };

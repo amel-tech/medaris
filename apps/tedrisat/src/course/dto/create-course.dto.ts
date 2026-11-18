@@ -451,6 +451,15 @@ export class CreateCourseDto {
   isClosed?: boolean;
 
   @ApiPropertyOptional({
+    example: false,
+    description:
+      "Unlisted course (MDRS-248): in no list or search but its köşk managers' shelf; opened by its link to signed-in callers only (404 with no token); every enrollment waits for approval. Not hidden: a hidden course is not-found even by its link.",
+  })
+  @IsOptional()
+  @IsBoolean()
+  isUnlisted?: boolean;
+
+  @ApiPropertyOptional({
     example: "Sarf",
     description: "The word printed on the cover.",
   })

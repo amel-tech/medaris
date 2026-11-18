@@ -13,9 +13,11 @@ import type {
  * because this module goes to the browser with the form.
  */
 
-/** What the form holds: the course's four fields and its sample session. */
+/** What the form holds: the course's five fields and its sample session. */
 export interface CourseSettingsValues {
   isClosed: boolean;
+  /** "Listelenmeyen ders" (MDRS-248): in no list, opened by its link only */
+  isUnlisted: boolean;
   requiresApproval: boolean;
   /** "Celseler yüz yüze yapılır" (MDRS-283): what a session without its own mark follows */
   inPerson: boolean;
@@ -62,10 +64,16 @@ export function sampleOptions(
 export const settingsOf = (
   course: Pick<
     CourseDetailResponse,
-    "isClosed" | "requiresApproval" | "inPerson" | "timeZone" | "weeks"
+    | "isClosed"
+    | "isUnlisted"
+    | "requiresApproval"
+    | "inPerson"
+    | "timeZone"
+    | "weeks"
   >
 ): CourseSettingsValues => ({
   isClosed: course.isClosed,
+  isUnlisted: course.isUnlisted,
   requiresApproval: course.requiresApproval,
   inPerson: course.inPerson,
   timeZone: course.timeZone,
@@ -86,6 +94,9 @@ export function courseSettingsPatch(
 ): UpdateCourseDto | null {
   const patch: UpdateCourseDto = {};
   if (draft.isClosed !== stored.isClosed) patch.isClosed = draft.isClosed;
+  if (draft.isUnlisted !== stored.isUnlisted) {
+    patch.isUnlisted = draft.isUnlisted;
+  }
   if (draft.requiresApproval !== stored.requiresApproval) {
     patch.requiresApproval = draft.requiresApproval;
   }
@@ -111,6 +122,8 @@ export type BoxState = "open" | "shown" | "locked";
 export interface CourseSettingsControls {
   /** "Kapalı ders" */
   closed: BoxState;
+  /** "Listelenmeyen ders" (MDRS-248): no policy holds it, so never `locked` */
+  unlisted: BoxState;
   /** "Kayıt onayı gereksin" */
   approval: BoxState;
   /** "Celseler yüz yüze yapılır" may be changed */

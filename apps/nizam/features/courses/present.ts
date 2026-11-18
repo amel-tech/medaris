@@ -1132,6 +1132,8 @@ export function sampleOf(course: Pick<CourseDetailResponse, "weeks">): string {
 
 export interface SettingsForm {
   isClosed: boolean;
+  /** "Listelenmeyen ders" (MDRS-248): in no list, opened by its link only */
+  isUnlisted: boolean;
   requiresApproval: boolean;
   /** "Celseler yüz yüze yapılır" (MDRS-283): what a session without its own mark follows */
   inPerson: boolean;
@@ -1142,11 +1144,17 @@ export interface SettingsForm {
 export function settingsOf(
   course: Pick<
     CourseDetailResponse,
-    "isClosed" | "requiresApproval" | "inPerson" | "timeZone" | "weeks"
+    | "isClosed"
+    | "isUnlisted"
+    | "requiresApproval"
+    | "inPerson"
+    | "timeZone"
+    | "weeks"
   >
 ): SettingsForm {
   return {
     isClosed: course.isClosed,
+    isUnlisted: course.isUnlisted,
     requiresApproval: course.requiresApproval,
     inPerson: course.inPerson,
     timeZone: course.timeZone,
@@ -1165,6 +1173,9 @@ export function settingsPatch(
 ): Partial<Omit<SettingsForm, "sampleLessonId">> | null {
   const patch: Partial<Omit<SettingsForm, "sampleLessonId">> = {};
   if (form.isClosed !== stored.isClosed) patch.isClosed = form.isClosed;
+  if (form.isUnlisted !== stored.isUnlisted) {
+    patch.isUnlisted = form.isUnlisted;
+  }
   if (form.requiresApproval !== stored.requiresApproval) {
     patch.requiresApproval = form.requiresApproval;
   }
