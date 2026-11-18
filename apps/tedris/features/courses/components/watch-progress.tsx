@@ -164,6 +164,7 @@ export function WatchProgress({
             size="small"
             onClick={() => {
               seek.seekTo(resume);
+              seek.play?.();
               setResumed(true);
             }}
           >

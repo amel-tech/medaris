@@ -46,7 +46,8 @@ export const watchMarkOf = (
 
 /**
  * Where "Kaldığın yerden devam et" goes, or null when there is nothing to go
- * back to: never played, barely started, or stopped in the last seconds.
+ * back to: never played, barely started, or stopped in the last seconds (ten,
+ * or a twentieth of a short video, whichever is less).
  */
 export const resumeFrom = (
   view: Pick<LessonViewResponse, "positionSeconds" | "durationSeconds"> | null
@@ -54,7 +55,9 @@ export const resumeFrom = (
   if (!view || view.positionSeconds < RESUME_MIN_SECONDS) return null;
   if (
     view.durationSeconds &&
-    view.positionSeconds >= view.durationSeconds - RESUME_MIN_SECONDS
+    view.positionSeconds >=
+      view.durationSeconds -
+        Math.min(RESUME_MIN_SECONDS, view.durationSeconds / 20)
   ) {
     return null;
   }

@@ -30,6 +30,7 @@ export type BunnyEvent =
 /** What the page asks of the player. */
 export interface BunnyControl {
   seekTo(seconds: number): void;
+  play(): void;
 }
 
 const parsed = (data: unknown): Record<string, unknown> | null => {
@@ -127,6 +128,7 @@ export function useBunnyPlayer(
         setControl({
           seekTo: (seconds) =>
             post(frame, { method: "setCurrentTime", value: seconds }),
+          play: () => post(frame, { method: "play" }),
         });
       } else if (event) {
         listener.current(event);

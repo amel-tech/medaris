@@ -57,6 +57,9 @@ describe("resumeFrom", () => {
     expect(resumeFrom(view(754, null))).toBe(754);
     expect(resumeFrom(view(5, 3480))).toBeNull();
     expect(resumeFrom(view(3475, 3480))).toBeNull();
+    // A short video keeps a place up to its last twentieth.
+    expect(resumeFrom(view(12, 19))).toBe(12);
+    expect(resumeFrom(view(19, 19))).toBeNull();
     expect(resumeFrom(null)).toBeNull();
   });
 });
