@@ -31,7 +31,7 @@
     "@nestjs/platform-express": "catalog:",
     "@nestjs/swagger": "catalog:",
     "@opentelemetry/auto-instrumentations-node": "catalog:",
-    "@opentelemetry/exporter-trace-otlp-grpc": "catalog:",
+    "@opentelemetry/exporter-trace-otlp-proto": "catalog:",
     "@opentelemetry/resources": "catalog:",
     "@opentelemetry/sdk-node": "catalog:",
     "@opentelemetry/semantic-conventions": "catalog:"

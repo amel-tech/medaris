@@ -81,12 +81,12 @@ services:
       # the container.
       AUTO_MIGRATIONS_FOLDER: ./dist/src/database/migrations
       OTEL_ENABLED: ${TEDRISAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${TEDRISAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
-      # The endpoint above carries no scheme, so the gRPC exporter needs the
-      # INSECURE flag to reach a plaintext collector. .env.example ships all
-      # three; unmapped they could not reach a container at all.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${TEDRISAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}}
+      # The APIs export OTLP over HTTP/protobuf (port 4318), the only OTLP
+      # port the hosted SigNoz collector publishes. INSECURE is a gRPC-only
+      # flag and stays mapped for a collector reached that way.
       OTEL_EXPORTER_OTLP_INSECURE: ${TEDRISAT__OTEL_EXPORTER_OTLP_INSECURE:-${API__OTEL_EXPORTER_OTLP_INSECURE:-true}}
-      OTEL_EXPORTER_OTLP_PROTOCOL: ${TEDRISAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${TEDRISAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}}
       OTEL_EXPORTER_OTLP_COMPRESSION: ${TEDRISAT__OTEL_EXPORTER_OTLP_COMPRESSION:-${API__OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}}
       KEYCLOAK_JWKS_URL: ${TEDRISAT__KEYCLOAK_JWKS_URL:-${API__KEYCLOAK_JWKS_URL:?set API__KEYCLOAK_JWKS_URL in .env}}
       # Required by apps/tedrisat/src/config/security-env.ts alongside the JWKS
@@ -237,10 +237,10 @@ services:
       # credentials, not app configuration: re-add these `environment:` lines
       # only when teskilat gains a DatabaseModule.
       OTEL_ENABLED: ${TESKILAT__OTEL_ENABLED:-${API__OTEL_ENABLED:-false}}
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${TESKILAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-localhost:4317}}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${TESKILAT__OTEL_EXPORTER_OTLP_ENDPOINT:-${API__OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}}
       # Same three as tedrisat above.
       OTEL_EXPORTER_OTLP_INSECURE: ${TESKILAT__OTEL_EXPORTER_OTLP_INSECURE:-${API__OTEL_EXPORTER_OTLP_INSECURE:-true}}
-      OTEL_EXPORTER_OTLP_PROTOCOL: ${TESKILAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}}
+      OTEL_EXPORTER_OTLP_PROTOCOL: ${TESKILAT__OTEL_EXPORTER_OTLP_PROTOCOL:-${API__OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}}
       OTEL_EXPORTER_OTLP_COMPRESSION: ${TESKILAT__OTEL_EXPORTER_OTLP_COMPRESSION:-${API__OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}}
       # MDRS-31, same rule as tedrisat above. No bulk pair here: teskilat's
       # AppModule imports only RateLimitModule's two layers, never the

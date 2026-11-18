@@ -293,7 +293,7 @@ catalog:
   '@types/express': ^5.0.0
   '@types/multer': ^2.0.0 # ADR §D4: runtime → dev
   '@opentelemetry/sdk-node': ^0.222.0 # MDRS-21: closes GHSA prometheus-exporter crash (<0.217 vulnerable)
-  '@opentelemetry/exporter-trace-otlp-grpc': ^0.222.0
+  '@opentelemetry/exporter-trace-otlp-proto': ^0.222.0
   '@opentelemetry/auto-instrumentations-node': ^0.80.0 # MDRS-21: same prometheus-exporter advisory, <0.75 vulnerable
   '@opentelemetry/resources': ^2.11.0
   '@opentelemetry/semantic-conventions': ^1.36.0
