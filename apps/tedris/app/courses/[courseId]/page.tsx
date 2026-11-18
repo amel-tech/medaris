@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
 import { env } from "~/env";
 import { getKosk } from "~/features/courses/actions";
 import {
@@ -9,7 +8,7 @@ import {
 import { CoursePage } from "~/features/courses/components/course-page";
 import { courseViewState, holdsSeat } from "~/features/courses/course-view";
 import { introMetadata } from "~/features/courses/intro-metadata";
-import { loadCourse } from "~/features/courses/load-course";
+import { loadCourseOrLeave } from "~/features/courses/load-course";
 import {
   getCourseDecks,
   getCourseForMetadata,
@@ -53,17 +52,7 @@ export default async function Page({
 }) {
   const { courseId } = await params;
   const { tab } = await searchParams;
-  const course = await loadCourse(courseId);
-  if (!course) {
-    // An unlisted course, or a course of an unlisted köşk, opens by its link
-    // to a signed-in caller only (MDRS-248, MDRS-122), and the API answers a
-    // signed-out one as it answers a missing course. So the link a müderris
-    // shares sends a signed-out talebe to sign in and back here, not to 404.
-    // A course that is truly missing is 404 after sign-in as before.
-    if (!(await isSignedIn()))
-      redirect(inviteHrefs(`/courses/${courseId}`).signIn);
-    notFound();
-  }
+  const course = await loadCourseOrLeave(courseId);
 
   // Köşk name for the breadcrumb (CourseDetailResponse only carries koskId),
   // and whether it is unlisted: every enrollment there waits for approval
