@@ -4,6 +4,7 @@ import {
   createServerTedrisatAPIs,
   type KoskDecksResponse,
   type KoskResponse,
+  type LessonViewResponse,
   type MadrasahOverviewResponse,
   type MadrasahResponse,
   type MyGradesResponse,
@@ -145,6 +146,18 @@ export const getMyGrades = (
 ): Promise<MyGradesResponse | null> =>
   orNull(async () =>
     (await viewerApi()).exams.getMyGrades({ id: courseId }, NO_STORE)
+  );
+
+/**
+ * How far the talebe has watched each celse of the course (MDRS-248, the
+ * "sayaç"): one record per celse they played. Null when the read failed: the
+ * page then draws no watch marks rather than marking everything unwatched.
+ */
+export const getMyLessonViews = (
+  courseId: string
+): Promise<LessonViewResponse[] | null> =>
+  orNull(async () =>
+    (await viewerApi()).lessons.listMyLessonViews({ id: courseId }, NO_STORE)
   );
 
 /** Whether the visitor has a usable token — what tedrisat will see. */

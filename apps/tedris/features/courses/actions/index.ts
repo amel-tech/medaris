@@ -175,20 +175,6 @@ export const withdrawEnrollment = async (
   return result;
 };
 
-export const updateCourseProgress = async (
-  courseId: string,
-  progress: number
-): Promise<AuthenticatedActionResult<EnrollmentResponse>> => {
-  const result = await authenticatedAction((api) =>
-    api.courses.updateCourseProgress({
-      id: courseId,
-      updateProgressDto: { progress },
-    })
-  );
-  if (result.success) revalidatePath(`/courses/${courseId}`);
-  return result;
-};
-
 /**
  * B11 (MDRS-120): whether the viewer has a calendar-feed URL. The URL itself
  * cannot be read back — tedrisat keeps only its hash — so this is all the

@@ -32,7 +32,6 @@ vi.mock("~/features/courses/actions", () => ({
   enrollInCourse: vi.fn(),
   leaveCourse: vi.fn(),
   withdrawEnrollment: vi.fn(),
-  updateCourseProgress: vi.fn(),
 }));
 
 // 3 Ekim 2026 Cumartesi 12:00 İstanbul.
@@ -245,7 +244,9 @@ describe("tedris/12: an enrolled talebe", () => {
     expect(html).toContain(tr.meetingNotAdded);
     expect(html).toContain(`>${tr.continue}</a>`);
     expect(html).toContain("%40");
-    expect(html).toContain(tr.updateProgress);
+    // MDRS-248: the progress is counted from the celses watched, not typed.
+    expect(html).toContain(tr.progressNote);
+    expect(html).not.toContain("İlerlemeni güncelle");
     expect(html).toContain(tr.tabDeck);
   });
 
@@ -267,10 +268,9 @@ describe("tedris/12: an enrolled talebe", () => {
     expect(html).not.toContain(tr.signInToApply);
   });
 
-  it("has no way to update progress or leave once the course is completed", async () => {
+  it("has no way to leave once the course is completed", async () => {
     const html = await render("COMPLETED");
     expect(html).toContain(tr.statusCompleted);
-    expect(html).not.toContain(tr.updateProgress);
     expect(html).not.toContain(tr.leaveCourse);
   });
 });

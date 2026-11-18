@@ -62,6 +62,9 @@ const questions = {
 };
 vi.mock("~/features/courses/actions/questions", () => questions);
 vi.mock("../features/courses/actions/questions", () => questions);
+const views = { recordLessonView: vi.fn(async () => ({ success: false })) };
+vi.mock("~/features/courses/actions/views", () => views);
+vi.mock("../features/courses/actions/views", () => views);
 
 interface FakeEvents {
   onReady: () => void;
@@ -420,6 +423,8 @@ describe("a recording", () => {
     bunny: false,
     facts: "Ders kaydı · 3 Ekim 2026 · 58 dk",
     reportsPosition: true,
+    tracked: null,
+    view: null,
   };
 
   it("has 'Soru sor' beside it and no chat, and its facts in the badge", async () => {
@@ -477,6 +482,8 @@ describe("a recording", () => {
         bunny: true,
         facts: "Ders kaydı",
         reportsPosition: false,
+        tracked: null,
+        view: null,
       },
     });
     const bunny = frame(host);
@@ -536,6 +543,8 @@ describe("a recording held back until its release time (MDRS-288)", () => {
         bunny: false,
         facts: "Ders kaydı · 3 Ekim 2026 · 58 dk",
         reportsPosition: false,
+        tracked: null,
+        view: null,
       },
       release: {
         text: "Talebelere 14 Ekim Çarşamba 20:00’de açılacak",

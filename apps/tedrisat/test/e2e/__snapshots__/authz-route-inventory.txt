@@ -47,6 +47,7 @@ GET /courses/:id/enrollments -> course.staff_read on course
 GET /courses/:id/enrollments/removed -> course.staff_read on course
 GET /courses/:id/evaluations -> session.manage on byExistingCourse
 GET /courses/:id/evaluations/export -> session.manage on byExistingCourse
+GET /courses/:id/lesson-views -> course.view on byExistingCourse
 GET /courses/:id/live-streams -> session.live_link on course
 GET /courses/:id/my-grades -> course.view on byExistingCourse
 GET /courses/:id/my-permissions -> course.view on byExistingCourse
@@ -279,6 +280,7 @@ PUT /lessons/:id/exam-results/:userId -> session.manage on byLessonCourse
 PUT /lessons/:id/live-stream -> session.live_link on byLessonCourse
 PUT /lessons/:id/recording-availability -> recording.manage on byLessonCourse
 PUT /lessons/:id/submission -> course.view on byLessonCourse
+PUT /lessons/:id/view -> course.view on byLessonCourse
 PUT /madrasahs/:id/courses/:courseId/muderrises -> madrasah.muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/head-muderris -> platform.head_muderris_manage on byExistingMadrasah
 PUT /madrasahs/:id/nazirs/:userId/permissions -> madrasah.nazir_appoint | platform.madrasah_nazir_grant on byExistingMadrasah

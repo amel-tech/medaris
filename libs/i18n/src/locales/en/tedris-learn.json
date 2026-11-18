@@ -161,7 +161,10 @@
     "questionsTitle": "Ask a question",
     "questionPlaceholder": "Write your question about this session…",
     "questionsList": "Your questions in this session",
-    "questionsEmpty": "You have not asked a question in this session yet."
+    "questionsEmpty": "You have not asked a question in this session yet.",
+    "watchedNote": "You have watched this celse",
+    "resumeNote": "You stopped at {time}",
+    "resumeButton": "Continue where you left off"
   },
   "Homework": {
     "title": "My homework",

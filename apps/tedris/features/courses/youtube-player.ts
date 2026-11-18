@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface YouTubePlayer {
   getCurrentTime(): number;
+  getDuration(): number;
   seekTo(seconds: number, allowSeekAhead: boolean): void;
 }
 
@@ -112,6 +113,8 @@ const attach = (api: YouTubeApi, frame: HTMLIFrameElement): Attached => {
 export interface PlayerControl {
   /** Whole seconds from the start of the video. */
   position(): number | null;
+  /** The video's length in whole seconds; null while the player does not know it (MDRS-248). */
+  duration(): number | null;
   seekTo(seconds: number): void;
 }
 
@@ -119,6 +122,12 @@ const controlOf = (player: YouTubePlayer): PlayerControl => ({
   position: () => {
     const seconds = player.getCurrentTime();
     return Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : null;
+  },
+  duration: () => {
+    const seconds = player.getDuration();
+    return Number.isFinite(seconds) && seconds >= 1
+      ? Math.floor(seconds)
+      : null;
   },
   seekTo: (seconds) => player.seekTo(seconds, true),
 });
