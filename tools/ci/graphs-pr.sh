@@ -80,6 +80,12 @@ if [ "$(jq -r .pull_request.head.repo.full_name "$GITHUB_EVENT_PATH")" != "$GITH
 fi
 pr=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
 id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$pr/comments" --paginate --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -n1)
+# The workflow runs on every pull request (it has no path filter), so one that changes no graph gets no comment: the summary has
+# the text. A comment written by an earlier push is still kept up to date, so it never says what the graphs no longer change.
+if [ -z "$id" ] && [ ${#dirs[@]} -eq 0 ] && [ ${#domains[@]} -eq 0 ]; then
+  echo "$body"
+  exit 0
+fi
 if [ -n "$id" ]; then
   gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" >/dev/null
 else
