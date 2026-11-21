@@ -1,0 +1,983 @@
+# Planned, not built: online multiple-choice exams (MDRS-299), the third format of an exam celse beside written and oral.
+# Written graph-first on 21 November 2026 for the eight flows tedris.exams.{mine,take,result}, nazar.exams.{mine,edit,publish,results}
+# and nizam.exams.zerothAnswers, from the owner's rules and his answers of that day (quoted at the top of each flow.yaml and kept in
+# MDRS-299). Nothing here exists in apps/tedrisat: no route, no table, no job. Every entity and action says so with `planned`, none has
+# a `source`, and every route, code, permission name and notification type below is a PROPOSAL.
+#
+# What the owner has decided, and these files draw:
+#   1. An online exam is a LessonExam of a third format, MULTIPLE_CHOICE, shown as "Çoktan seçmeli" beside "Yazılı" and "Şifahi".
+#      The format is not called ONLINE: the session plan already says "Çevrimiçi" of an exam's place (an exam with no location is
+#      held online today, written or oral), and an online multiple-choice exam is a different thing. Its celse's date and time are
+#      the earliest start; a talebe starts it until the latest start, and always gets the full length. The clock does not run while
+#      the connection is lost.
+#   2. Multiple choice: at least two options, no upper limit, one correct unless the preparer marks more. A question with several
+#      correct options is answered with one choice (SINGLE: any correct option gets the points) or with several (MULTIPLE: all or
+#      nothing, or in shares where each wrong mark takes a share off, never below 0). Nothing tells the talebe how many are correct.
+#   3. Every talebe gets the questions, and each question's options, in an order of their own, drawn when the attempt starts.
+#   4. 100 points, shared equally over the questions that have no points of their own; the shares are kept exact (a fraction, never a
+#      rounded number) and shown with two decimals; a score is reckoned from the exact points and rounded to two decimals once.
+#   5. Topics are the course's list (CourseTopic); an exam picks some and each question carries one or more.
+#   6. Every answer is saved when it is chosen. A deliberate switch to another tab or window starts the attempt again with the full
+#      length and a new order (the owner keeps the rule for now and asks again: tedris.exams.take D1); the zeroth answer stays.
+#      Opening the exam in a second tab or on a second device moves the attempt there, which is not a switch.
+#   7. The zeroth question: about the hadith "Bizi aldatan bizden değildir", shown fixed in Arabic and in its meaning; each exam's
+#      preparer writes the question and its options, none correct, no points; it is answered before the start and is required. The
+#      course team reads the answers per talebe; Medaris management in aggregate, a köşk nazımı for their own köşk; a count under five
+#      is never sent.
+#   8. A draft is the team's alone; a scheduled exam can be changed until it opens and nothing after; once a talebe has started it,
+#      it cannot be taken back to a draft, only closed early.
+#   9. The team releases the results (the existing releaseExamResults). After the exam has closed for everyone and the results are
+#      released, the talebe reads their answers with the correct ones.
+#
+# Who may call what, as the existing @Authz permissions would say:
+#   - a talebe acts through course.view on the exam's course and an ENROLLED seat of their own, as notes and hand-ins do; a COMPLETED
+#     talebe reads their results, as Notlarım lets them;
+#   - the course team prepares, publishes, closes and reads with a proposed course-scoped code, exam.prepare. A müderris holds it as
+#     every course code; a ders nazırı holds it when the hoca grants it, as the other granular, time-limited codes are granted;
+#   - the aggregate of the zeroth answers needs a proposed code, exam.zeroth_read: a Medaris nazımı by grant in the platform scope, a
+#     köşk nazımı in their köşk as every köşk-scoped code; the başnazım passes every decision.
+#
+# Existing parts that would change when this is built (no edit is made to their files here):
+#   - LessonExam.format gains MULTIPLE_CHOICE (entities-learning.yaml). Such an exam has no location and no place to choose ("Yer"):
+#     it is taken in tedris. Its maxScore is 100.
+#   - The session plan (nazar.sessions.plan, nizam.courses.planSessions) offers the third format; planning an online exam celse makes
+#     its OnlineExam draft, and the plan's own refusal EXAM_ONE_SESSION holds for it as for the others.
+#   - ExamResult.score is a whole number today; an online exam's score has two decimals (decision 4), so the column takes two decimals.
+#     Finishing an attempt writes the talebe's ExamResult, so Değerlendirme and Notlarım read it as any exam's; until the release no
+#     talebe reads it (resultsReleasedAt).
+#   - remindDueExams already reminds the enrolled talebe a day before an exam celse; an online exam is reminded only once it is
+#     scheduled (a draft is hidden).
+#   - getSession, the curriculum, Programım and the calendar: an online exam celse that is a draft is not shown to a talebe at all.
+#   - leaveCourse: the exams of a course the talebe left leave their Sınavlarım (tedris.exams.mine); their attempts and answers are kept
+#     for the team.
+schema: delurio-graph/0
+kind: domain
+id: medaris.api
+
+entities:
+  CourseTopic: # one topic of a course's exams: a short name, kept by the course and picked by its exams
+    planned: "MDRS-299: online exams, no code yet"
+    key: [id]
+    required: [id, courseId, name, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      courseId: { type: string, format: uuid, references: Course }
+      name: { type: string, minLength: 1, maxLength: 60, note: "one to three words; unique in the course without regard to case (Turkish casing); a rename is the course's, so every exam and question that carries it reads the new name" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> listed: the team types a topic not yet on the list while it picks an exam's topics (createCourseTopic)"
+      - "listed -> listed: the team renames it, for the whole course (renameCourseTopic)"
+
+  OnlineExam: # the online part of a LessonExam whose format is MULTIPLE_CHOICE: its settings, its zeroth question and where it stands
+    planned: "MDRS-299: online exams, no code yet"
+    key: [lessonId]
+    required: [lessonId, title, durationMinutes, zerothQuestion, version, createdAt, updatedAt]
+    fields:
+      lessonId: { type: string, format: uuid, unique: true, references: Lesson, note: "the exam celse; its LessonExam has format MULTIPLE_CHOICE, and its startsAt is the earliest start" }
+      title: { type: string, minLength: 1, maxLength: 200 }
+      durationMinutes: { type: integer, minimum: 1, default: 60, note: "no upper bound (the owner: \"Sınır yok\"); every attempt gets all of it" }
+      instructions: { type: [string, "null"], maxLength: 4000, note: "the team's own words, read in the briefing under what every exam says" }
+      zerothQuestion: { type: string, maxLength: 1000, note: "the preparer's question about the hadith; empty in a new draft, and an exam without it is not published" }
+      latestStartAt: { type: [string, "null"], format: date-time, note: "until when a talebe may start; set at publication, never before the earliest start" }
+      publishedAt: { type: [string, "null"], format: date-time, note: "null while it is a draft" }
+      closedEarlyAt: { type: [string, "null"], format: date-time }
+      version: { type: integer, minimum: 1, note: "bumped by every write of the exam, its questions and its points; a write that names an older version is refused (EXAM_STALE)" }
+      createdBy: { type: string, format: uuid, note: "Keycloak sub" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> draft: an exam celse of format MULTIPLE_CHOICE is planned; the draft is made with it, 60 minutes, no question"
+      - "draft -> scheduled: the team publishes it with a day and time ahead (publishOnlineExam); the celse takes that time"
+      - "draft -> open: the team publishes it now; the celse takes the present time"
+      - "scheduled -> open: the earliest start comes"
+      - "scheduled | open -> draft: the team takes it back, only while no talebe has started (unpublishOnlineExam)"
+      - "open -> closed: the latest start has passed and the last attempt has ended, or the team closes it early (closeOnlineExamEarly)"
+
+  ExamTopic: # a topic an exam has picked from its course's list
+    planned: "MDRS-299: online exams, no code yet"
+    key: [lessonId, topicId]
+    required: [lessonId, topicId, position]
+    fields:
+      lessonId: { type: string, format: uuid, references: OnlineExam }
+      topicId: { type: string, format: uuid, references: CourseTopic }
+      position: { type: integer, minimum: 0 }
+
+  ExamQuestion: # one multiple-choice question of an exam
+    planned: "MDRS-299: online exams, no code yet"
+    key: [id]
+    required: [id, lessonId, position, text, answerMode, topicIds, createdAt, updatedAt]
+    fields:
+      id: { type: string, format: uuid }
+      lessonId: { type: string, format: uuid, references: OnlineExam }
+      position: { type: integer, minimum: 0, note: "the preparer's order; a talebe sees an order of their own" }
+      text: { type: string, maxLength: 4000, note: "may be Arabic, or mix Arabic and Turkish" }
+      answerMode: { enum: [SINGLE, MULTIPLE], default: SINGLE, note: "SINGLE is radio buttons, MULTIPLE check boxes; MULTIPLE is offered only when more than one option is correct" }
+      scoring: { enum: [ALL_OR_NOTHING, IN_SHARES, null], note: "null unless answerMode is MULTIPLE" }
+      ownPoints: { type: [string, "null"], pattern: "^[0-9]{1,3}(\\.[0-9]{1,2})?$", note: "points of its own, as a decimal with at most two places; null means it shares the points left" }
+      topicIds: { type: array, items: { type: string, format: uuid }, note: "one or more of the exam's topics" }
+      createdAt: { type: string, format: date-time }
+      updatedAt: { type: string, format: date-time }
+    lifecycle:
+      - "none -> incomplete: added with its text, five empty option fields and no topic"
+      - "incomplete -> complete: it has its text, two options at least, one correct at least and a topic"
+      - "complete -> incomplete: something it needs is removed, such as its only topic unpicked"
+
+  ExamOption: # one option of a question
+    planned: "MDRS-299: online exams, no code yet"
+    key: [id]
+    required: [id, questionId, position, text, correct]
+    fields:
+      id: { type: string, format: uuid }
+      questionId: { type: string, format: uuid, references: ExamQuestion }
+      position: { type: integer, minimum: 0 }
+      text: { type: string, minLength: 1, maxLength: 1000 }
+      correct: { type: boolean, default: false, note: "never sent to a talebe before the exam has closed for everyone and the results are released" }
+
+  ZerothOption: # one option of an exam's zeroth question: none is correct and none carries points
+    planned: "MDRS-299: online exams, no code yet"
+    key: [id]
+    required: [id, lessonId, position, text]
+    fields:
+      id: { type: string, format: uuid }
+      lessonId: { type: string, format: uuid, references: OnlineExam }
+      position: { type: integer, minimum: 0 }
+      text: { type: string, minLength: 1, maxLength: 300 }
+
+  ZerothAnswer: # a talebe's answer to an exam's zeroth question; it stays when the attempt starts again
+    planned: "MDRS-299: online exams, no code yet"
+    key: [lessonId, userId]
+    required: [lessonId, userId, optionId, answeredAt]
+    fields:
+      lessonId: { type: string, format: uuid, references: OnlineExam }
+      userId: { type: string, format: uuid, sensitivity: personal, note: "Keycloak sub; never sent by the aggregate reads" }
+      optionId: { type: string, format: uuid, references: ZerothOption }
+      answeredAt: { type: string, format: date-time }
+
+  ExamAttempt: # one talebe's sitting of an exam: their order, where they are and how much time they have used
+    planned: "MDRS-299: online exams, no code yet"
+    key: [lessonId, userId]
+    required: [lessonId, userId, status, questionOrder, optionOrder, usedSeconds, restarts, startedAt]
+    fields:
+      lessonId: { type: string, format: uuid, references: OnlineExam }
+      userId: { type: string, format: uuid, note: "Keycloak sub; the talebe holds an ENROLLED seat in the course when they start" }
+      status: { enum: [IN_PROGRESS, FINISHED] }
+      questionOrder: { type: array, items: { type: string, format: uuid }, note: "drawn at the start and at every restart, for this talebe only" }
+      optionOrder: { type: object, note: "for each question, its option ids in this talebe's order" }
+      currentQuestionId: { type: [string, "null"], format: uuid, note: "where a resumed attempt goes on" }
+      usedSeconds: { type: integer, minimum: 0, note: "counted only while the page holding the attempt is connected (decision 1); the time left is durationMinutes·60 − usedSeconds" }
+      holderId: { type: [string, "null"], note: "the tab or device that holds the attempt now; the last one to open the exam holds it, and the other is told it is open elsewhere" }
+      restarts: { type: integer, minimum: 0, note: "how many times a switch started it again" }
+      startedAt: { type: string, format: date-time, note: "the first start; a restart does not move it" }
+      finishedAt: { type: [string, "null"], format: date-time }
+      finishedBy: { enum: [TALEBE, TIME, CLOSED_EARLY, null] }
+      score: { type: [string, "null"], pattern: "^[0-9]{1,3}\\.[0-9]{2}$", note: "set when it finishes, from the exact points, rounded once to two decimals; written to the talebe's ExamResult" }
+    lifecycle:
+      - "none -> in progress: the talebe starts it between the earliest and the latest start, with the zeroth question answered (startExamAttempt)"
+      - "in progress -> in progress: a deliberate switch starts it again: its answers are erased, a new order is drawn, usedSeconds is 0, restarts grows, a TabSwitch is kept (restartExamAttempt)"
+      - "in progress -> finished: the talebe finishes it, its time runs out, or the team closes the exam early; it is scored"
+
+  ExamAnswer: # a talebe's answer to one question of their attempt, saved when it is chosen
+    planned: "MDRS-299: online exams, no code yet"
+    key: [lessonId, userId, questionId]
+    required: [lessonId, userId, questionId, optionIds, skipped, savedAt]
+    fields:
+      lessonId: { type: string, format: uuid, references: OnlineExam }
+      userId: { type: string, format: uuid }
+      questionId: { type: string, format: uuid, references: ExamQuestion }
+      optionIds: { type: array, items: { type: string, format: uuid }, note: "one for a SINGLE question, any number for a MULTIPLE one; empty when skipped or cleared" }
+      skipped: { type: boolean, default: false, note: "Soruyu atla: the question comes back after the last one" }
+      savedAt: { type: string, format: date-time }
+
+  TabSwitch: # a deliberate switch to another tab or window during an attempt, kept for the team
+    planned: "MDRS-299: online exams, no code yet"
+    key: [id]
+    required: [id, lessonId, userId, at, answeredBefore]
+    fields:
+      id: { type: string, format: uuid }
+      lessonId: { type: string, format: uuid, references: OnlineExam }
+      userId: { type: string, format: uuid }
+      at: { type: string, format: date-time }
+      answeredBefore: { type: integer, minimum: 0, note: "how many answers the restart erased" }
+
+actions:
+  # -----------------------------------------------------------------------------------------------------------------------------
+  # The talebe's side (tedris.exams.mine, tedris.exams.take, tedris.exams.result)
+  # -----------------------------------------------------------------------------------------------------------------------------
+  listMyExams:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /me/exams
+    summary: "Sınavlarım: every exam of the caller's courses, of every format"
+    description: >-
+      The exams of the courses where the caller holds an ENROLLED or COMPLETED seat, written, oral and online, upcoming first and then
+      past, each with its course, its date, its format and where it stands for the caller: to come (with when it opens), open to start,
+      in progress, taken, missed, result released. A draft online exam is not listed. A course the caller left is not listed.
+    needs: any signed-in caller; their own seats only
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        when: { enum: [upcoming, past], default: upcoming }
+        courseId: { type: string, format: uuid }
+    result:
+      status: 200
+      type: array
+      items:
+        type: object
+        required: [lessonId, courseId, courseTitle, title, format, startsAt, state]
+        properties:
+          lessonId: { type: string, format: uuid }
+          courseId: { type: string, format: uuid }
+          courseTitle: { type: string }
+          title: { type: string }
+          format: { enum: [WRITTEN, ORAL, MULTIPLE_CHOICE] }
+          startsAt: { type: string, format: date-time }
+          latestStartAt: { type: [string, "null"], format: date-time }
+          state: { enum: [UPCOMING, OPEN, IN_PROGRESS, TAKEN, MISSED, RELEASED] }
+          score: { type: [string, "null"], description: "only once released" }
+          durationMinutes: { type: [integer, "null"], description: "a multiple-choice exam's length" }
+          questionCount: { type: [integer, "null"], description: "a multiple-choice exam's questions" }
+          place: { type: [string, "null"], description: "a written or oral exam's place, or null when it is held online" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify (AuthGuard, invariant access-token-only)" }
+      VALIDATION_ERROR: { status: 400, note: "an unknown query parameter or a courseId that is not a uuid" }
+
+  getExamBriefing:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /lessons/{id}/online-exam
+    summary: What the talebe reads before the exam, and where their attempt stands
+    description: >-
+      The exam's title and course, its length, its question count and how the points are given, the earliest and the latest start, the
+      team's instructions, the zeroth question with its options and the caller's answer to it, and the caller's attempt if there is one
+      (in progress or finished). No question and no option of the exam is sent here.
+    needs: course.view on the lesson's course and an ENROLLED seat of the caller's own, with no bar
+    result:
+      status: 200
+      type: object
+      required: [title, courseTitle, durationMinutes, questionCount, startsAt, latestStartAt, window, zeroth, attempt]
+      properties:
+        title: { type: string }
+        courseTitle: { type: string }
+        durationMinutes: { type: integer }
+        questionCount: { type: integer }
+        startsAt: { type: string, format: date-time }
+        latestStartAt: { type: string, format: date-time }
+        instructions: { type: [string, "null"] }
+        window: { enum: [BEFORE, OPEN, CLOSED] }
+        zeroth: { type: object, description: "{ question, options: [{ id, text }], answeredOptionId }" }
+        attempt: { type: [object, "null"], description: "{ status, finishedAt, finishedBy } of the caller's attempt" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify (AuthGuard, invariant access-token-only)" }
+      EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam, is a draft, or the caller holds no ENROLLED seat in its course: to them there is no such exam" }
+      LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or the session's course is hidden or a draft to this caller" }
+      HTTP_400: { status: 400, note: "id is not a uuid" }
+
+  answerZerothQuestion:
+    planned: "MDRS-299: online exams, no code yet"
+    route: PUT /lessons/{id}/online-exam/zeroth-answer
+    summary: Answer the zeroth question
+    description: >-
+      Saves the caller's choice among the zeroth question's options; a second call replaces it until the attempt starts. It is kept
+      when the attempt starts again after a switch.
+    needs: course.view on the lesson's course and an ENROLLED seat of the caller's own; the exam is open and the caller has not finished it
+    body:
+      type: object
+      additionalProperties: false
+      required: [optionId]
+      properties:
+        optionId: { type: string, format: uuid }
+    result: { status: 200, returns: ZerothAnswer }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      EXAM_NOT_OPEN: { status: 409, note: "proposed code: the earliest start has not come, or the latest start has passed with no attempt in progress, or the exam is closed" }
+      ZEROTH_OPTION_NOT_FOUND: { status: 400, note: "proposed code: the option is not one of this exam's zeroth question" }
+      EXAM_NOT_FOUND: { status: 404, note: "as getExamBriefing" }
+      VALIDATION_ERROR: { status: 400, note: "optionId missing or not a uuid, or an unknown property" }
+    sideEffects:
+      - "upserts the caller's ZerothAnswer"
+
+  startExamAttempt:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/attempt
+    summary: Sınava başla
+    description: >-
+      Starts the caller's attempt and the clock. The questions, and each question's options, are put in an order of this talebe's own;
+      the answer is the first question and everything the page needs to run: the order, the questions with their options (never which
+      are correct), each question's points and answer mode, and the time left. A caller whose attempt is in progress gets it back as it
+      stands, as resumeExamAttempt does.
+    needs: course.view on the lesson's course and an ENROLLED seat of the caller's own; the zeroth question answered; between the earliest and the latest start
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string, minLength: 8, maxLength: 64, description: "an id the page draws for itself, so a second tab or device can take the attempt over" }
+    result: { status: 201, returns: ExamAttempt }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ZEROTH_UNANSWERED: { status: 409, note: "proposed code: the zeroth question is not answered" }
+      EXAM_NOT_OPEN: { status: 409, note: "proposed code: before the earliest start, after the latest start, or closed" }
+      EXAM_ALREADY_TAKEN: { status: 409, note: "proposed code: the caller finished it already; an exam is taken once" }
+      EXAM_NOT_FOUND: { status: 404, note: "as getExamBriefing" }
+      VALIDATION_ERROR: { status: 400, note: "holderId missing or out of bounds" }
+    sideEffects:
+      - "creates the caller's ExamAttempt IN_PROGRESS with its drawn order"
+
+  resumeExamAttempt:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/attempt/resume
+    summary: Go on with an attempt in progress, here
+    description: >-
+      The same order, every saved answer, the question the talebe was on and the time left. The page that calls it holds the attempt
+      from then on (holderId): the tab or device that held it before is told, on its next call, that the exam is open elsewhere. Called
+      when the page is opened again and when the connection comes back.
+    needs: the caller's own attempt in progress
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string, minLength: 8, maxLength: 64 }
+    result: { status: 200, returns: ExamAttempt }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: the caller has no attempt in progress (finished meanwhile, by the time or by an early close)" }
+      EXAM_NOT_FOUND: { status: 404, note: "as getExamBriefing" }
+    sideEffects:
+      - "sets ExamAttempt.holderId; the clock goes on from the time left"
+
+  saveExamAnswer:
+    planned: "MDRS-299: online exams, no code yet"
+    route: PUT /lessons/{id}/online-exam/attempt/answers/{questionId}
+    summary: Save one answer the moment it is chosen
+    description: >-
+      Saves the options the talebe chose for one question, or that they skipped it, and the question they are on, so that a resumed
+      attempt goes on there. Called on every choice and on Önceki, Sonraki, Soruyu atla and a pick in the list; the last call wins.
+      Nothing is sent at the end: every answer the server holds is the talebe's answer.
+    needs: the caller's own attempt in progress, held by the calling page, with time left
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId, optionIds, skipped]
+      properties:
+        holderId: { type: string, minLength: 8, maxLength: 64 }
+        optionIds: { type: array, items: { type: string, format: uuid }, uniqueItems: true }
+        skipped: { type: boolean }
+        currentQuestionId: { type: string, format: uuid }
+    result: { status: 200, returns: ExamAnswer }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, note: "proposed code: another tab or device has opened the exam since; this page says it is open elsewhere" }
+      ATTEMPT_ENDED: { status: 409, note: "proposed code: the time ran out or the team closed the exam; the attempt is finished with the answers saved before" }
+      ANSWER_INVALID: { status: 400, note: "proposed code: an option that is not the question's, or more than one for a SINGLE question" }
+      ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: no attempt in progress" }
+      VALIDATION_ERROR: { status: 400, note: "a missing or malformed property" }
+    sideEffects:
+      - "upserts the ExamAnswer and moves ExamAttempt.currentQuestionId"
+
+  tickExamClock:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/attempt/clock
+    summary: Count the time while the page is connected
+    description: >-
+      The page calls it every few seconds while it holds the attempt and is connected; the server adds the time since the last call,
+      capped, to usedSeconds, so the clock stops while the connection is lost (decision 1) and goes on when it is back. The answer is
+      the time left. When nothing is left the attempt is finished by the time, with the answers saved so far.
+    needs: the caller's own attempt in progress, held by the calling page
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string, minLength: 8, maxLength: 64 }
+    result:
+      status: 200
+      type: object
+      required: [secondsLeft, status]
+      properties:
+        secondsLeft: { type: integer, minimum: 0 }
+        status: { enum: [IN_PROGRESS, FINISHED] }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, note: "proposed code: another tab or device holds the attempt" }
+      ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: no attempt in progress" }
+    sideEffects:
+      - "adds to ExamAttempt.usedSeconds; at the end of the time, finishes it (finishedBy TIME) and scores it, as finishExamAttempt does"
+
+  restartExamAttempt:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/attempt/restart
+    summary: A deliberate switch starts the attempt again
+    description: >-
+      Called by the page when the talebe comes back from another tab or window (the page was hidden while it held the attempt, and the
+      connection did not drop). Every answer of the attempt is erased, a new order of questions and options is drawn and the full length
+      is given again; the zeroth answer stays. The switch is kept, with its time and how many answers it erased, for the team. While the
+      owner's rule stands (tedris.exams.take D1).
+    needs: the caller's own attempt in progress, held by the calling page
+    body:
+      type: object
+      additionalProperties: false
+      required: [holderId]
+      properties:
+        holderId: { type: string, minLength: 8, maxLength: 64 }
+    result: { status: 200, returns: ExamAttempt }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_HELD_ELSEWHERE: { status: 409, note: "proposed code: the switch was to another tab of the exam, which now holds it: not a restart" }
+      ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: no attempt in progress" }
+    sideEffects:
+      - "deletes the attempt's ExamAnswer rows, draws a new order, sets usedSeconds to 0 and adds one to restarts"
+      - "creates a TabSwitch with the time and the number of answers erased"
+
+  finishExamAttempt:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/attempt/finish
+    summary: Sınavı bitir
+    description: >-
+      Ends the caller's attempt with the answers saved so far and scores it from the exact points: a SINGLE question gets its points
+      when the option chosen is a correct one; a MULTIPLE question all or nothing, or in shares (each correct mark an equal share, each
+      wrong mark a share off, never below 0). The score is rounded once to two decimals and written to the talebe's ExamResult, which
+      no talebe reads before the release.
+    needs: the caller's own attempt in progress
+    result: { status: 200, returns: ExamAttempt }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: no attempt in progress (finished meanwhile by the time or by an early close: the page reads it as finished)" }
+    sideEffects:
+      - "sets ExamAttempt FINISHED with finishedAt, finishedBy TALEBE and score"
+      - "upserts the talebe's ExamResult with the score (Değerlendirme, Notlarım)"
+
+  getMyExamResult:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /lessons/{id}/online-exam/my-result
+    summary: A talebe's own screen of a past online exam
+    description: >-
+      Before the release: that the exam was taken, when and how it ended, and that the result is not released yet. After the release:
+      the score out of 100, the standing in each of the exam's topics as a percentage of the points of that topic's questions, and, once
+      the exam has also closed for everyone, every question in the talebe's own order with their answer, the correct options and the
+      points it got.
+    needs: course.view on the lesson's course and an ENROLLED or COMPLETED seat of the caller's own; their own attempt only
+    result:
+      status: 200
+      type: object
+      required: [released, closed, attempt]
+      properties:
+        released: { type: boolean }
+        closed: { type: boolean }
+        attempt: { type: object, description: "{ startedAt, finishedAt, finishedBy, restarts }" }
+        score: { type: [string, "null"] }
+        counts: { type: [object, "null"], description: "only when released: { right, wrong, blank }, a question in shares counted right when it got all its points, wrong when it got less, blank when nothing was chosen" }
+        topics: { type: array, description: "only when released, the weakest first; a question with two topics counts in both", items: { type: object, properties: { topicId: { type: string, format: uuid }, name: { type: string }, percent: { type: integer, minimum: 0, maximum: 100 }, right: { type: integer, minimum: 0 }, wrong: { type: integer, minimum: 0 } } } }
+        questions: { type: [array, "null"], description: "only when released and closed: text, options with chosen and correct, points got" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      ATTEMPT_NOT_FOUND: { status: 404, note: "proposed code: the caller did not take this exam" }
+      EXAM_NOT_FOUND: { status: 404, note: "as getExamBriefing" }
+
+  getMyTopicStanding:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /courses/{id}/my-topic-standing
+    summary: How a talebe stands in each of the course's topics, across its released online exams
+    description: >-
+      For each topic of the course that a released exam of the caller's has asked about: the percentage of the points of its questions
+      the caller got, over every such exam, and how many exams it is counted from.
+    needs: course.view on the course and an ENROLLED or COMPLETED seat of the caller's own
+    result:
+      status: 200
+      type: array
+      items: { type: object, required: [topicId, name, percent, exams], properties: { topicId: { type: string, format: uuid }, name: { type: string }, percent: { type: integer, minimum: 0, maximum: 100 }, exams: { type: integer, minimum: 1 } } }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk, or the caller holds no seat in it" }
+
+  # -----------------------------------------------------------------------------------------------------------------------------
+  # The course team's side (nazar.exams.mine, nazar.exams.edit, nazar.exams.publish, nazar.exams.results)
+  # -----------------------------------------------------------------------------------------------------------------------------
+  listMyTeachingExams:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /me/teaching-exams
+    summary: "Sınavlarım of the team: every exam of the courses the caller teaches or prepares exams for"
+    description: >-
+      The exams, of every format, of the courses where the caller is a hoca or holds exam.prepare, upcoming first and then past, each
+      with its course, date, format and where it stands: a draft, scheduled for a day and time, open (with how many started and
+      finished), closed, results released. Drafts are listed only to the team.
+    needs: any signed-in caller; the courses where they hold session.manage or exam.prepare
+    query:
+      type: object
+      additionalProperties: false
+      properties:
+        when: { enum: [upcoming, past], default: upcoming }
+        status: { enum: [DRAFT, SCHEDULED, OPEN, CLOSED, RELEASED] }
+        courseId: { type: string, format: uuid }
+    result:
+      status: 200
+      type: object
+      required: [courses, exams]
+      properties:
+        courses: { type: array, description: "the courses where the caller is a hoca or holds exam.prepare, whatever the filter: { courseId, title }; empty for a person who prepares exams for none, whose page then says so", items: { type: object, required: [courseId, title], properties: { courseId: { type: string, format: uuid }, title: { type: string } } } }
+        exams:
+          type: array
+          items:
+            type: object
+            required: [lessonId, courseId, courseTitle, title, format, startsAt, state]
+            properties:
+              lessonId: { type: string, format: uuid }
+              courseId: { type: string, format: uuid }
+              courseTitle: { type: string }
+              title: { type: string }
+              format: { enum: [WRITTEN, ORAL, MULTIPLE_CHOICE] }
+              startsAt: { type: [string, "null"], format: date-time, description: "null for a draft whose celse has no time yet" }
+              state: { enum: [DRAFT, SCHEDULED, OPEN, CLOSED, RELEASED] }
+              durationMinutes: { type: [integer, "null"], description: "a multiple-choice exam's length" }
+              questionCount: { type: [integer, "null"], description: "a multiple-choice exam's questions, against the suggested 50" }
+              place: { type: [string, "null"], description: "a written or oral exam's place, or null when it is held online" }
+              scoresEntered: { type: [integer, "null"], description: "a written or oral exam: how many scores are entered" }
+              started: { type: integer, minimum: 0 }
+              finished: { type: integer, minimum: 0 }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      VALIDATION_ERROR: { status: 400, note: "an unknown query parameter or a courseId that is not a uuid" }
+
+  getOnlineExamDraft:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /lessons/{id}/online-exam/edit
+    summary: The editor's read of an online exam, with everything the talebe never sees
+    description: >-
+      The settings, the zeroth question and its options, the exam's topics and the course's list, the questions in the preparer's order
+      with their options and correct ones, each question's own points or share, whether each is complete and what it lacks, the total,
+      the status and the version. Read only once the exam has opened.
+    needs: exam.prepare on the lesson's course
+    result:
+      status: 200
+      type: object
+      required: [exam, topics, courseTopics, questions, status, version]
+      properties:
+        exam: { type: object, description: "OnlineExam with its zeroth options" }
+        topics: { type: array, items: { type: string, format: uuid } }
+        courseTopics: { type: array, items: { type: object, description: "CourseTopic" } }
+        questions: { type: array, items: { type: object, description: "ExamQuestion with its ExamOption rows, sharePoints as a decimal string with two places, complete and lacks" } }
+        status: { enum: [DRAFT, SCHEDULED, OPEN, CLOSED] }
+        startedCount: { type: integer, minimum: 0 }
+        version: { type: integer }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam" }
+      LESSON_NOT_FOUND: { status: 404, note: "an id that is not a session, or an archived one" }
+      HTTP_400: { status: 400, note: "id is not a uuid" }
+
+  updateOnlineExam:
+    planned: "MDRS-299: online exams, no code yet"
+    route: PATCH /lessons/{id}/online-exam
+    summary: Save the exam's settings, its zeroth question or its topics as the team works
+    description: >-
+      Any of the title, the length in whole minutes above zero, the instructions, the zeroth question and its options (at least two,
+      none correct), and the exam's topics picked from the course's list. Unpicking a topic that questions carry takes it off them; a
+      question left with none becomes incomplete. Refused once the exam has opened, and when the version named is not the stored one.
+    needs: exam.prepare on the lesson's course
+    body:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        durationMinutes: { type: integer, minimum: 1 }
+        instructions: { type: [string, "null"], maxLength: 4000 }
+        zerothQuestion: { type: string, maxLength: 1000 }
+        zerothOptions: { type: array, items: { type: string, minLength: 1, maxLength: 300 } }
+        topicIds: { type: array, items: { type: string, format: uuid }, uniqueItems: true }
+    result: { status: 200, returns: OnlineExam }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_STALE: { status: 409, note: "proposed code: someone else saved the exam since it was read; nothing is written and the page reads it again" }
+      EXAM_LOCKED: { status: 409, note: "proposed code: the exam has opened; nothing of it changes" }
+      TOPIC_NOT_FOUND: { status: 400, note: "proposed code: a topic that is not the course's" }
+      VALIDATION_ERROR: { status: 400, note: "a length of zero or less, a zeroth question with fewer than two options, or an unknown property" }
+      EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam" }
+    sideEffects:
+      - "bumps OnlineExam.version; audit:exam.update (proposed key)"
+
+  copyOnlineExam:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/copy
+    summary: Copy an earlier online exam of the same course into this draft
+    description: >-
+      Replaces this draft's settings, topics, questions, options, points and zeroth question with those of an earlier online exam of the
+      same course. Only into a draft with no question yet, so nothing of the team's is lost.
+    needs: exam.prepare on the lesson's course
+    body:
+      type: object
+      additionalProperties: false
+      required: [fromLessonId, version]
+      properties:
+        fromLessonId: { type: string, format: uuid }
+        version: { type: integer }
+    result: { status: 200, returns: OnlineExam }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_COPY_NOT_ALLOWED: { status: 409, note: "proposed code: the draft has questions already, or the source is not an online exam of the same course" }
+      EXAM_STALE: { status: 409, note: "proposed code: the draft changed since it was read" }
+      EXAM_NOT_FOUND: { status: 404, note: "either celse is not an online exam" }
+    sideEffects:
+      - "copies the rows; audit:exam.copy (proposed key)"
+
+  listCourseTopics:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /courses/{id}/exam-topics
+    summary: The course's list of topics
+    needs: exam.prepare on the course
+    result: { status: 200, type: array, items: { type: object, description: "CourseTopic, with how many questions of the course's exams carry it" } }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the course" }
+      COURSE_NOT_FOUND: { status: 404, note: "the course is in a hidden köşk" }
+
+  createCourseTopic:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /courses/{id}/exam-topics
+    summary: Add a topic to the course's list
+    needs: exam.prepare on the course
+    body:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+    result: { status: 201, returns: CourseTopic }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the course" }
+      TOPIC_TOO_LONG: { status: 400, note: "proposed code: more than three words" }
+      TOPIC_EXISTS: { status: 409, note: "proposed code: the course has a topic of that name, whatever its case" }
+      VALIDATION_ERROR: { status: 400, note: "an empty name or an unknown property" }
+    sideEffects:
+      - "creates the CourseTopic; audit:exam_topic.create (proposed key)"
+
+  renameCourseTopic:
+    planned: "MDRS-299: online exams, no code yet"
+    route: PATCH /courses/{id}/exam-topics/{topicId}
+    summary: Rename a topic, for the whole course
+    needs: exam.prepare on the course
+    body:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+    result: { status: 200, returns: CourseTopic }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the course" }
+      TOPIC_TOO_LONG: { status: 400, note: "proposed code: more than three words" }
+      TOPIC_EXISTS: { status: 409, note: "proposed code: another topic of the course has that name" }
+      TOPIC_NOT_FOUND: { status: 404, note: "proposed code: no such topic in the course" }
+    sideEffects:
+      - "renames it in every exam and question that carries it; audit:exam_topic.rename (proposed key)"
+
+  addExamQuestion:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/questions
+    summary: Add a question, last, with five empty option fields
+    needs: exam.prepare on the lesson's course
+    body:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer }
+    result: { status: 201, returns: ExamQuestion }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_STALE: { status: 409, note: "proposed code: the exam changed since it was read" }
+      EXAM_LOCKED: { status: 409, note: "proposed code: the exam has opened" }
+      EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam" }
+    sideEffects:
+      - "creates an incomplete ExamQuestion; the points are shared again over the questions with none of their own"
+
+  saveExamQuestion:
+    planned: "MDRS-299: online exams, no code yet"
+    route: PUT /lessons/{id}/online-exam/questions/{questionId}
+    summary: Save a question as the preparer writes it
+    description: >-
+      The text, the options (each a text and whether it is correct; empty fields are not sent), the answer mode and its scoring, and the
+      topics. A question that lacks its text, a second option, a correct one or a topic is saved as incomplete and the answer says what
+      it lacks; MULTIPLE with one correct option is refused.
+    needs: exam.prepare on the lesson's course
+    body:
+      type: object
+      additionalProperties: false
+      required: [version, text, options, answerMode, topicIds]
+      properties:
+        version: { type: integer }
+        text: { type: string, maxLength: 4000 }
+        options: { type: array, items: { type: object, required: [text, correct], properties: { text: { type: string, minLength: 1, maxLength: 1000 }, correct: { type: boolean } } } }
+        answerMode: { enum: [SINGLE, MULTIPLE] }
+        scoring: { enum: [ALL_OR_NOTHING, IN_SHARES, null] }
+        topicIds: { type: array, items: { type: string, format: uuid }, uniqueItems: true }
+    result: { status: 200, returns: ExamQuestion }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_STALE: { status: 409, note: "proposed code: the exam changed since it was read" }
+      EXAM_LOCKED: { status: 409, note: "proposed code: the exam has opened" }
+      QUESTION_MODE_INVALID: { status: 400, note: "proposed code: MULTIPLE with fewer than two correct options, or a scoring without MULTIPLE" }
+      TOPIC_NOT_FOUND: { status: 400, note: "proposed code: a topic the exam has not picked" }
+      QUESTION_NOT_FOUND: { status: 404, note: "proposed code: removed meanwhile" }
+      VALIDATION_ERROR: { status: 400, note: "a malformed property" }
+    sideEffects:
+      - "replaces the question's options; bumps the version; audit:exam_question.save (proposed key)"
+
+  removeExamQuestion:
+    planned: "MDRS-299: online exams, no code yet"
+    route: DELETE /lessons/{id}/online-exam/questions/{questionId}
+    summary: Remove a question
+    needs: exam.prepare on the lesson's course
+    query:
+      type: object
+      additionalProperties: false
+      required: [version]
+      properties:
+        version: { type: integer }
+    result: { status: 200, type: boolean, const: true }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_STALE: { status: 409, note: "proposed code: the exam changed since it was read" }
+      EXAM_LOCKED: { status: 409, note: "proposed code: the exam has opened" }
+      QUESTION_NOT_FOUND: { status: 404, note: "proposed code: removed meanwhile" }
+    sideEffects:
+      - "deletes the question and its options; its points, if it had its own, go back to the share; audit:exam_question.remove (proposed key)"
+
+  setExamQuestionPoints:
+    planned: "MDRS-299: online exams, no code yet"
+    route: PUT /lessons/{id}/online-exam/questions/{questionId}/points
+    summary: Give a question points of its own, or put it back into the equal share
+    description: >-
+      A decimal with at most two places, or null to share again. The points left (100 minus every question's own) are shared equally
+      over the questions that have none, kept exact. Refused when the total would pass 100, or when nothing would be left for the
+      questions that share; the refusal says how many points are left to give.
+    needs: exam.prepare on the lesson's course
+    body:
+      type: object
+      additionalProperties: false
+      required: [version, points]
+      properties:
+        version: { type: integer }
+        points: { type: [string, "null"], pattern: "^[0-9]{1,3}([.,][0-9]{1,2})?$" }
+    result: { status: 200, type: object, description: "every question's points after the change: own or share, two decimals, and the total" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      POINTS_OVER_TOTAL: { status: 409, note: "proposed code: the total would pass 100, or nothing would be left for the questions that share; carries pointsLeft" }
+      EXAM_STALE: { status: 409, note: "proposed code: the exam changed since it was read" }
+      EXAM_LOCKED: { status: 409, note: "proposed code: the exam has opened" }
+      QUESTION_NOT_FOUND: { status: 404, note: "proposed code: removed meanwhile" }
+      VALIDATION_ERROR: { status: 400, note: "not a number with at most two places, or zero" }
+    sideEffects:
+      - "sets ExamQuestion.ownPoints; bumps the version; audit:exam_question.points (proposed key)"
+
+  publishOnlineExam:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/publish
+    summary: "Yayınla: now, or at a day and time, with a latest start"
+    description: >-
+      Checks the exam as a whole first: no question, a question incomplete, points that do not total 100, or no zeroth question, are
+      each listed and nothing is published. A complete exam opens now (startsAt omitted) or is scheduled for a day and time ahead, which
+      becomes the exam celse's own time, with a latest start not before it. A scheduled exam can be published again to move it, until it
+      opens. The talebe of the course are told.
+    needs: exam.prepare on the lesson's course
+    body:
+      type: object
+      additionalProperties: false
+      required: [version, latestStartAt]
+      properties:
+        version: { type: integer }
+        startsAt: { type: string, format: date-time, description: "omitted: now" }
+        latestStartAt: { type: string, format: date-time }
+    result: { status: 200, returns: OnlineExam }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_NOT_READY: { status: 409, note: "proposed code: carries the list of problems, each with the question it is about" }
+      EXAM_TIME_PASSED: { status: 400, note: "proposed code: the day and time chosen have passed, or the latest start is before the earliest" }
+      EXAM_LOCKED: { status: 409, note: "proposed code: it has opened already" }
+      EXAM_STALE: { status: 409, note: "proposed code: the exam changed since it was read" }
+      EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam" }
+    sideEffects:
+      - "sets publishedAt and latestStartAt and moves the celse's startsAt; audit:exam.publish (proposed key)"
+      - "notification:ONLINE_EXAM_SCHEDULED (proposed type) to the course's ENROLLED talebe, with when it opens; remindDueExams tells them again a day before"
+
+  unpublishOnlineExam:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/unpublish
+    summary: Take a published exam back to a draft
+    needs: exam.prepare on the lesson's course
+    result: { status: 200, returns: OnlineExam }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_ALREADY_STARTED: { status: 409, note: "proposed code: a talebe has started it; carries how many are in progress. It can only be closed early" }
+      EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam" }
+    sideEffects:
+      - "clears publishedAt; the talebe no longer see it; audit:exam.unpublish (proposed key)"
+      - "notification:ONLINE_EXAM_WITHDRAWN (proposed type) to those told it was scheduled"
+
+  closeOnlineExamEarly:
+    planned: "MDRS-299: online exams, no code yet"
+    route: POST /lessons/{id}/online-exam/close
+    summary: Close an open exam early
+    description: Every attempt in progress ends with the answers saved so far and is scored; no one starts it any more.
+    needs: exam.prepare on the lesson's course
+    result: { status: 200, returns: OnlineExam }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_NOT_OPEN: { status: 409, note: "proposed code: it is not open" }
+      EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam" }
+    sideEffects:
+      - "sets closedEarlyAt; finishes the attempts in progress (finishedBy CLOSED_EARLY) and writes their ExamResult; audit:exam.close (proposed key)"
+
+  getOnlineExamResults:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /lessons/{id}/online-exam/results
+    summary: The exam's results, talebe by talebe, with the tab switches and the zeroth answers
+    description: >-
+      Every talebe with a seat in the course: not started, in progress (with the time left), finished (when and how, the score), and
+      missed once it has closed; how many times a switch started them again, with each time; their zeroth answer. Over them all: the
+      counts, the average and the standing of the class in each topic, and how the zeroth question was answered. The scores are the
+      ExamResult rows Değerlendirme reads; releasing them is the existing releaseExamResults.
+    needs: exam.prepare on the lesson's course
+    result:
+      status: 200
+      type: object
+      required: [talebe, counts, topics, zeroth, released]
+      properties:
+        talebe: { type: array, items: { type: object, description: "{ userId, name, state, startedAt, finishedAt, finishedBy, score, switches: [at], zerothOptionId }" } }
+        counts: { type: object, description: "{ seats, started, inProgress, finished, missed }" }
+        topics: { type: array, items: { type: object, description: "{ topicId, name, percent }" } }
+        zeroth: { type: object, description: "{ question, options: [{ id, text, count }] }" }
+        released: { type: boolean }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.prepare is not held on the lesson's course" }
+      EXAM_NOT_FOUND: { status: 404, note: "the celse is not an online exam" }
+    sideEffects:
+      - "audit:course.roster_read, as a roster read is audited"
+
+  # -----------------------------------------------------------------------------------------------------------------------------
+  # Medaris management (nizam.exams.zerothAnswers)
+  # -----------------------------------------------------------------------------------------------------------------------------
+  listZerothAnswerCounts:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /platform/exam-zeroth-answers
+    summary: How the zeroth questions were answered, in aggregate
+    description: >-
+      The zeroth questions of the online exams in the span and the place chosen, those asked in the same words with the same options
+      counted together, each with how many exams asked it, how many talebe answered and how many chose each option. A count under five
+      is not sent: it is sent as fewerThanFive, and so is any count from which it could be worked out. No name, no user id, no single
+      answer. A köşk nazımı gets the exams of their own köşk only.
+    needs: exam.zeroth_read in the platform scope, or in the köşk asked for (a köşk nazımı holds it in their köşk)
+    query:
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        koskId: { type: string, format: uuid }
+        madrasahId: { type: string, format: uuid }
+        courseId: { type: string, format: uuid }
+    result:
+      status: 200
+      type: array
+      items: { type: object, description: "{ questionKey, question, exams, answered | fewerThanFive, options: [{ text, count | fewerThanFive }] }" }
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "exam.zeroth_read is not held in the platform scope or in the köşk asked for" }
+      VALIDATION_ERROR: { status: 400, note: "a span with no end, an end before its start, or an unknown parameter" }
+    sideEffects:
+      - "audit:exam.zeroth_read (proposed key), as other platform reads are audited"
+
+  getZerothQuestionExams:
+    planned: "MDRS-299: online exams, no code yet"
+    route: GET /platform/exam-zeroth-answers/{questionKey}
+    summary: The exams that asked one zeroth question, each with its counts
+    needs: exam.zeroth_read, as listZerothAnswerCounts
+    query:
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        koskId: { type: string, format: uuid }
+        madrasahId: { type: string, format: uuid }
+        courseId: { type: string, format: uuid }
+    result:
+      status: 200
+      type: object
+      description: "{ question, options, total: counts, exams: [{ lessonId, courseTitle, koskName, startsAt, counts }] }, every count under five sent as fewerThanFive"
+    refusals:
+      HTTP_401: { status: 401, note: "no token, or one that does not verify" }
+      AUTHZ_FORBIDDEN: { status: 403, note: "as listZerothAnswerCounts" }
+      ZEROTH_QUESTION_NOT_FOUND: { status: 404, note: "proposed code: no exam in the span and place asked it" }
+    sideEffects:
+      - "audit:exam.zeroth_read (proposed key)"
+
+invariants:
+  - id: online-exam-points-total-100
+    rule: >-
+      The points of an online exam's questions total 100: each question's own points, and an equal, exact share of what is left for the
+      questions that have none. An exam whose points do not total 100 is not published.
+    holds: false
+    finding: MDRS-299
+    note: "planned (MDRS-299): no code yet"
+
+  - id: online-exam-order-is-the-talebe-s-own
+    rule: >-
+      Every attempt has an order of questions, and of each question's options, drawn for it alone when it starts and again when a switch
+      starts it again; a resumed attempt keeps its order.
+    holds: false
+    finding: MDRS-299
+    note: "planned (MDRS-299): no code yet"
+
+  - id: online-exam-correct-options-stay-hidden
+    rule: >-
+      No answer to a talebe says which options are correct, or how many, before the exam has closed for everyone and its results are
+      released.
+    holds: false
+    finding: MDRS-299
+    note: "planned (MDRS-299): no code yet"
+
+  - id: online-exam-taken-once
+    rule: A talebe has at most one attempt of an exam; a finished attempt is not started again.
+    holds: false
+    finding: MDRS-299
+    note: "planned (MDRS-299): no code yet"
+
+  - id: online-exam-fixed-once-open
+    rule: >-
+      Once an online exam has opened, its questions, options, points, topics, zeroth question and length do not change, and it is not
+      taken back to a draft after a talebe has started it.
+    holds: false
+    finding: MDRS-299
+    note: "planned (MDRS-299): no code yet"
+
+  - id: online-exam-clock-runs-connected
+    rule: >-
+      An attempt's time is used only while the page that holds it is connected; the time lost to a dropped connection is not counted.
+    holds: false
+    finding: MDRS-299
+    note: "planned (MDRS-299): no code yet. The owner: \"talebeye güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir\"."
+
+  - id: zeroth-answers-never-traced
+    rule: >-
+      An aggregate of the zeroth answers never carries a name, a user id or a single answer, and never a count under five, nor one from
+      which such a count could be worked out.
+    holds: false
+    finding: MDRS-299
+    note: "planned (MDRS-299): no code yet"

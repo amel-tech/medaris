@@ -1,0 +1,118 @@
+# The screen of tedris.exams.result: a talebe's own page of one past multiple-choice exam, reached from Sınavlarım and from Notlarım.
+# PLANNED, NOT BUILT (MDRS-299): the page and every node of it do not exist, so no node carries a `source`.
+#
+# One page, under the breadcrumb "Sınavlarım / <title>": the h1 is the exam's title with its course under it. Before the release it
+# says when the exam was handed in and "Sonuç henüz açıklanmadı", and nothing else. After, the score out of 100, the counts of right,
+# wrong and blank answers, and three ways on: "Konulara göre" (the exam's topics, weakest first), "Cevaplarım" (only once the exam has
+# closed for everyone) and "Dersin konularında durumum" (the course's topics across its released exams). Each of the three is a view
+# of the same page with "Sonuca dön". A standing is said in words and numbers ("Yüzde 62 · 8 doğru, 4 yanlış"); its bar only repeats
+# it, and is named with the same figures.
+#
+# The words are `planned.Exams.*` (Turkish only, for review), the same keys with the same text in every catalog of the online exams,
+# and the app's own planned.Exams.retry ("Yeniden dene"). A question or an option may be Arabic: it is set right to left on its own
+# element (rule arabic-on-its-own-element). Samples are invented and neutral.
+schema: delurio-graph/0
+kind: ui
+id: tedris.exams.result
+flow: tedris.exams.result
+status: proposed
+kit: ../../../kit
+catalog: catalog/tr.json
+locales: [tr]
+samples:
+  course: Fıkıh Usulü
+  title: Ara sınav
+  handedIn: 24 Kas Sal 21:12
+  score: "86,50"
+  right: "41"
+  wrong: "6"
+  blank: "3"
+  restarts: "1"
+  topic: Kıyas
+  percent: "62"
+  topicRight: "8"
+  topicWrong: "4"
+  exams: "3"
+  number: "12"
+  question: Kıyasın rükünleri kaç tanedir?
+  answer: Dört
+  correct: Dört
+  got: "2,00"
+  points: "2,00"
+
+nodes:
+  # --- the page, the breadcrumb, the heading ---------------------------------------------------------------------------------------
+  resultPage: { type: page, component: Page, role: main, in: [notFound, loadFailed, awaitingRelease, resultShown, topicsShown, answersShown, courseTopics] } # the shell's one <main>; where the focus goes on load is not decided (rule focus-not-decided)
+  crumbs: { type: list, component: List, role: navigation, name: { key: planned.Exams.breadcrumbLabel }, in: [notFound, loadFailed, awaitingRelease, resultShown, topicsShown, answersShown, courseTopics] }
+  crumbRoot: { type: action, component: LinkButton, role: link, intent: secondary, text: { key: planned.Exams.mine }, in: [notFound, loadFailed, awaitingRelease, resultShown, topicsShown, answersShown, courseTopics], emits: BACK_TO_LIST } # to Sınavlarım
+  crumbCurrent: { type: text, component: Text, text: { key: composed.Exams.title, params: { title: title } }, in: [awaitingRelease, resultShown, topicsShown, answersShown, courseTopics] } # aria-current=page, not a link
+  resultTitle: { type: text, component: Heading, role: heading, text: { key: composed.Exams.title, params: { title: title } }, in: [awaitingRelease, resultShown, topicsShown, answersShown, courseTopics] } # h1
+  resultCourse: { type: text, component: Text, text: { key: composed.Exams.course, params: { course: course } }, in: [awaitingRelease, resultShown, topicsShown, answersShown, courseTopics] }
+  handedIn: { type: text, component: Text, text: { oneOf: [planned.Exams.handedIn, planned.Exams.handedInByTime] }, in: [awaitingRelease, resultShown] } # by "Bitir", or by the time; an early close by the team reads as by the time
+
+  # --- before the release ----------------------------------------------------------------------------------------------------------
+  awaitingText: { type: text, component: Text, text: { key: planned.Exams.notReleased }, in: [awaitingRelease] }
+  awaitingHint: { type: text, component: Text, text: { key: planned.Exams.notReleasedHint }, in: [awaitingRelease] } # no score, no count, no answer
+
+  # --- the result ------------------------------------------------------------------------------------------------------------------
+  scoreText: { type: text, component: Text, text: { key: planned.Exams.scoreOutOf, params: { score: score } }, in: [resultShown] } # at most two decimals, reckoned once from the exact points
+  countsText: { type: text, component: Text, text: { key: planned.Exams.counts, params: { right: right, wrong: wrong, blank: blank } }, in: [resultShown] } # a skipped question left unanswered is blank
+  restartNote: { type: text, component: Text, text: { key: planned.Exams.restartNote, params: { restarts: restarts } }, in: [resultShown], when: "restarts == 'some'" } # while the restart stands (tedris.exams.take D1)
+  topicsButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.byTopic }, in: [resultShown], emits: TOPICS }
+  answersButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.myAnswers }, in: [resultShown], when: answersOpen, emits: ANSWERS }
+  answersLater: { type: text, component: Text, text: { key: planned.Exams.answersLater }, in: [resultShown], when: "closed == 'no'" } # in place of the button until the exam has closed for everyone
+  courseTopicsButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.courseTopics }, in: [resultShown], emits: COURSE_TOPICS }
+  toastCourseFailed: { type: alert, component: Alert, role: alert, text: { key: planned.Exams.courseTopicsFailed }, in: [resultShown], when: "toast == 'courseFailed'" }
+  backButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.backToResult }, in: [topicsShown, answersShown, courseTopics], emits: BACK }
+
+  # --- the standing by topic -------------------------------------------------------------------------------------------------------
+  topicsRegion: { type: page, component: Page, role: region, name: { labelledBy: topicsTitle }, in: [topicsShown] }
+  topicsTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.byTopic }, in: [topicsShown] } # h2
+  topicsList: { type: list, component: List, role: list, name: { labelledBy: topicsTitle }, in: [topicsShown] } # the weakest topic first
+  topicName: { type: text, component: Text, text: { key: composed.Exams.topic, params: { topic: row.topic } }, in: [topicsShown], repeat: result.topics }
+  topicLine: { type: text, component: Text, text: { key: planned.Exams.topicLine, params: { percent: row.percent, topicRight: row.topicRight, topicWrong: row.topicWrong } }, in: [topicsShown], repeat: result.topics } # the figures in words
+  topicBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.topicBarLabel, params: { topic: row.topic, percent: row.percent } }, text: { key: composed.Exams.percent, params: { percent: row.percent } }, in: [topicsShown], repeat: result.topics } # only repeats topicLine; aria-valuenow is the percentage
+
+  # --- the talebe's answers --------------------------------------------------------------------------------------------------------
+  answersRegion: { type: page, component: Page, role: region, name: { labelledBy: answersTitle }, in: [answersShown] }
+  answersTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.myAnswers }, in: [answersShown] } # h2
+  answersList: { type: list, component: List, role: list, name: { labelledBy: answersTitle }, in: [answersShown] } # in the talebe's own order
+  questionNumber: { type: text, component: Heading, role: heading, text: { key: planned.Exams.questionNumber, params: { number: row.number } }, in: [answersShown], repeat: result.questions } # h3
+  questionText: { type: text, component: Text, text: { key: composed.Exams.question, params: { question: row.question } }, in: [answersShown], repeat: result.questions } # Arabic set right to left on this element
+  givenAnswer: { type: text, component: Text, text: { oneOf: [planned.Exams.givenAnswer, planned.Exams.noAnswer] }, in: [answersShown], repeat: result.questions } # every option chosen, for check boxes
+  correctAnswer: { type: text, component: Text, text: { key: planned.Exams.correctAnswer, params: { correct: row.correct } }, in: [answersShown], repeat: result.questions } # every correct option
+  pointsGot: { type: text, component: Text, text: { key: planned.Exams.pointsGot, params: { got: row.got, points: row.points } }, in: [answersShown], repeat: result.questions }
+
+  # --- the standing across the course ----------------------------------------------------------------------------------------------
+  courseRegion: { type: page, component: Page, role: region, name: { labelledBy: courseTitle }, in: [courseTopics] }
+  courseTitle: { type: text, component: Heading, role: heading, text: { key: planned.Exams.courseTopics }, in: [courseTopics] } # h2
+  courseList: { type: list, component: List, role: list, name: { labelledBy: courseTitle }, in: [courseTopics] } # the weakest topic first
+  courseTopicName: { type: text, component: Text, text: { key: composed.Exams.topic, params: { topic: row.topic } }, in: [courseTopics], repeat: standing }
+  courseTopicLine: { type: text, component: Text, text: { key: planned.Exams.courseTopicLine, params: { percent: row.percent, exams: row.exams } }, in: [courseTopics], repeat: standing }
+  courseTopicBar: { type: status, component: Status, role: progressbar, name: { key: planned.Exams.topicBarLabel, params: { topic: row.topic, percent: row.percent } }, text: { key: composed.Exams.percent, params: { percent: row.percent } }, in: [courseTopics], repeat: standing }
+
+  # --- no such exam, and a read that failed ----------------------------------------------------------------------------------------
+  notFoundAlert: { type: alert, component: Alert, role: status, name: { key: planned.Exams.resultNotFoundTitle }, text: { key: planned.Exams.resultNotFound }, in: [notFound] } # a neutral alert, as a page's own problem is drawn
+  loadFailedAlert: { type: alert, component: Alert, role: alert, name: { key: planned.Exams.resultFailedTitle }, text: { key: planned.Exams.resultFailed }, in: [loadFailed] }
+  retryButton: { type: action, component: Button, role: button, intent: secondary, text: { key: planned.Exams.retry }, in: [loadFailed], emits: RETRY }
+
+edges:
+  - { labelledBy: [topicsRegion, topicsTitle] }
+  - { labelledBy: [topicsList, topicsTitle] }
+  - { labelledBy: [answersRegion, answersTitle] }
+  - { labelledBy: [answersList, answersTitle] }
+  - { labelledBy: [courseRegion, courseTitle] }
+  - { labelledBy: [courseList, courseTitle] }
+  - { triggers: [topicsButton, topicsShown] }
+  - { triggers: [answersButton, answersShown] }
+  - { triggers: [courseTopicsButton, readingCourse] }
+  - { triggers: [crumbRoot, list_opened] }
+  - { triggers: [retryButton, opening] }
+
+rules:
+  - { id: focus-not-decided, rule: "Proposal, not drawn: the page opens on its h1, each view moves the focus to its h2, \"Sonuca dön\" gives it back to the button that opened the view, and a failed read of the course's standing moves it to its alert. The graph says nothing of the focus here because nothing is built." }
+  - { id: own-attempt-only, rule: "The page shows the talebe's own attempt and nothing of anyone else's: no rank, no average of the class, no other talebe's score (needs the-talebe-s-own-screen)." }
+  - { id: correct-only-when-closed, rule: "The correct options are drawn only once the results are released and the exam has closed for everyone; before, the page does not have them (invariant online-exam-correct-options-stay-hidden)." }
+  - { id: words-and-numbers, rule: "A standing is said as a percentage and as counts, in text; the bar is a progressbar named with the same figures and only repeats them. No standing is told by colour alone." }
+  - { id: arabic-on-its-own-element, rule: "A question or an option in Arabic carries dir=rtl and the Arabic font on its own element, never on a shared ancestor, so a mixed Turkish and Arabic list keeps its order." }
+  - { id: planned-words, rule: "Every key planned.Exams.* is a proposal for the owner to review, with the same text in every catalog of the online exams; planned.Exams.retry is the app's own." }

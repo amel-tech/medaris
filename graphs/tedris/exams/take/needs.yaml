@@ -16,7 +16,9 @@ needs:
       only when they press "Sınava başla".
     evidence:
       - state: briefing
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: briefingFacts
+      - node: startButton
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"sınava girerken talebeye 'bilmeniz gerekenler' ekranı gösterilecek\"."
 
   - id: the-zeroth-question-first
@@ -27,7 +29,10 @@ needs:
       and no points, and is not part of the score.
     evidence:
       - state: briefing
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: hadithArabic
+      - node: zerothOptions
+      - node: startHint
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Owner: "'sıfırıncı soru' olacak, 'bizi aldatan bizden değildir' hadisi hakkında soru olacak her sınavda bu sıfırıncı soruda.
       mesela bu dönem 'bu hadisi ne zaman öğrendiniz' sorusu olacak, diğer dönem 'ne zaman ezberlersiniz' diye sorulacak. doğru yanlış
@@ -41,7 +46,9 @@ needs:
       no exam at all, and the server refuses every call of theirs to it.
     evidence:
       - state: opening
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - state: notFound
+      - node: notFoundAlert
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: As the course's other content is read (an ENROLLED seat; a ban or a passive scope shuts it).
 
   - id: started-between-the-earliest-and-the-latest
@@ -53,7 +60,9 @@ needs:
     evidence:
       - state: notOpen
       - state: closed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: notOpenAlert
+      - node: closedAlert
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Owner: "şimdilik 'en erken şu saatte en geç şu saatte sınava başlanmalı' olsun, süre kısalmasın, bunu da soralım"
       (nazar.exams.publish D1).
@@ -62,7 +71,8 @@ needs:
     need: An exam is taken once. A talebe who finished it cannot start it again, and opening it leads to its result.
     evidence:
       - state: already_finished
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: alreadyTaken
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Not one of the owner's rules; it follows from "verilen cevap kabul edilecek". A second chance is a make-up exam, as exam
       celses have one today (LessonExam.isRetake).
@@ -73,7 +83,7 @@ needs:
       talebe side by side do not see the same question or the same option in the same place.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"çoktan seçmeli, soru ve cevap sıraları karışık olacak her talebe için\". The order is drawn by the server when the attempt starts."
 
   - id: the-order-stays-for-the-attempt
@@ -83,7 +93,7 @@ needs:
     evidence:
       - state: resuming
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: answered-as-the-question-asks
     need: >-
@@ -92,7 +102,9 @@ needs:
       They can change their answer as long as the exam has not ended.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: radioOptions
+      - node: checkOptions
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Owner: "en az iki şık, üst limit yok, default'ta tek doğru ama istenirse birden fazla doğru olabilir"; "5 şıklı, 2'si doğru bi
       soruda sadece radio button olabilir. istenirse checkbox da olur"; asked whether the talebe is told: "Hiçbir şey söylenmez".
@@ -104,7 +116,8 @@ needs:
       the exam ends is the talebe's answer. The question says that its answer is saved.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: savedLine
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"her soruda cevap seçildiğinde ilerle geri git dendiğinde otomatik kaydolacak cevap, verilen cevap kabul edilecek direk 'sınav bitti tüm cevapları tek seferde gönder' demeye gerek yok\"."
 
   - id: an-answer-not-saved-is-said
@@ -114,7 +127,9 @@ needs:
     evidence:
       - state: offline
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: offlineAlert
+      - node: notSavedLine
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: the-countdown-is-always-there
     need: >-
@@ -122,7 +137,8 @@ needs:
       count, so setting the device's clock gives no time; it does not run while the connection is lost.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: timer
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"sınav ekranında geri sayım olacak\"."
 
   - id: the-last-five-minutes-stand-out
@@ -131,7 +147,8 @@ needs:
       sign, and a screen reader is told once that five minutes are left, not every second.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: lastFive
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"son 5 dk kala geri sayım mesela kırmızı olacak ki anlaşılsın\"."
 
   - id: the-time-running-out-ends-it
@@ -141,7 +158,8 @@ needs:
     evidence:
       - state: timeUp
       - state: finished
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: finishedByTime
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Not one of the owner's first rules: without it an exam would never end for a talebe who stays on the page. Asked whether it
       should end by itself, the owner answered "önerdiğin gibi" (21 Nov 2026).
@@ -152,14 +170,17 @@ needs:
       number and whether it is answered, skipped or not seen yet, marks the one shown, and takes the talebe to any question.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: questionList
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"soruların indicator'ü olabilir solda veya sağda falan, istediği soruya geri dönebilir böylece\"."
 
   - id: previous-and-next
     need: '"Önceki" and "Sonraki" move one question back or on, in the talebe''s own order.'
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: previousButton
+      - node: nextButton
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: skip-a-question
     need: >-
@@ -167,7 +188,8 @@ needs:
       can still be answered at any time.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: skipButton
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"soruyu atla seçeneği olacak\"."
 
   - id: the-skipped-come-back-after-the-last
@@ -176,7 +198,8 @@ needs:
       how many there are. When none is skipped, the last question offers "Sınavı bitir".
     evidence:
       - state: skippedTurn
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: skippedNotice
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"son soruya gelindiğinde atlanan sorulara dönülecek\"."
 
   - id: finish-asks-once
@@ -186,7 +209,9 @@ needs:
     evidence:
       - state: confirmFinish
       - state: finished
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: finishButton
+      - node: finishDialog
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"en son sınavı bitir butonuyla sınav bitecek\"."
 
   - id: resume-after-a-lost-connection
@@ -197,7 +222,8 @@ needs:
     evidence:
       - state: offline
       - state: resuming
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: resumedNotice
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Owner: "sınav sırasında talebe koparsa kaldığı yerden devam edecek"; asked whether the clock runs meanwhile: "talebeye
       güvenilecek burada, böyle bi yolla kandırırsa Allah Teâlâ'ya hesap verir".
@@ -209,7 +235,8 @@ needs:
       order of questions and options.
     evidence:
       - state: restarted
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: restartedDialog
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: >-
       Owner: "bilerek sekme veya pencere değiştirirse sınav baştan başlayacak (bu mantıklı gelmiyor bana ama öyle istendi, tekrar
       sorarız)", then "kural kalsın şimdilik, soracağız bunu akış videosunu çekip verdiğimizde" (D1); asked what a restart resets:
@@ -222,7 +249,9 @@ needs:
     evidence:
       - state: briefing
       - state: restarted
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: factSwitch
+      - node: restartedDialog
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: one-place-at-a-time
     need: >-
@@ -231,7 +260,9 @@ needs:
     evidence:
       - state: opening
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - state: elsewhere
+      - node: elsewhereAlert
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, asked what a second tab or device does: \"Yeni yere taşınsın\". It is not counted as a switch."
 
   - id: the-key-never-reaches-the-browser
@@ -240,7 +271,7 @@ needs:
       scores the exam. No talebe can read another's order or answers.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: answers-only-while-it-is-open
     need: >-
@@ -249,7 +280,7 @@ needs:
     evidence:
       - state: question
       - state: timeUp
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: arabic-in-questions
     need: >-
@@ -257,7 +288,7 @@ needs:
       and a quoted ayet in the Qur'an's face. A long question or option wraps and stays readable on a phone.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: The faces are the design system's (Scheherazade New for the Qur'an, Noto Naskh Arabic for other Arabic).
 
   - id: in-the-talebe-s-language
@@ -267,7 +298,7 @@ needs:
     evidence:
       - state: briefing
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: keyboard-and-screen-reader
     need: >-
@@ -276,7 +307,9 @@ needs:
       question list says each question's state in words, not by colour alone.
     evidence:
       - state: question
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: radioOptions
+      - node: questionListItem
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: the-end-says-what-comes-next
     need: >-
@@ -284,4 +317,6 @@ needs:
       result can be read (Sınavlarım).
     evidence:
       - state: finished
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: resultWhere
+      - node: toMine
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"

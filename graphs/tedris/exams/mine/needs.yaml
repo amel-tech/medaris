@@ -9,7 +9,8 @@ needs:
     need: tedris's menu has "Sınavlarım", on every page and on a phone, and it opens the talebe's exams.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: menuExams
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"hem tedris hem nazar'da 'sınavlarım' menüsü olacak\". The entry belongs to tedris's navigation graph once the page exists."
 
   - id: open-coming-and-past
@@ -19,7 +20,10 @@ needs:
     note: "Owner, asked which exams are listed: \"Hepsi\"; an online exam is the third format of the exam celse (\"üçüncü\")."
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: openTitle
+      - node: comingTitle
+      - node: pastTitle
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: only-their-courses-and-never-a-draft
     need: >-
@@ -29,7 +33,7 @@ needs:
     evidence:
       - state: opening
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, asked about completed and left courses: \"Tamamlanan kalır, ayrılan gider\"."
 
   - id: what-each-exam-says
@@ -39,13 +43,19 @@ needs:
       the talebe's own time zone.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: openFacts
+      - node: openUntil
+      - node: comingWhen
+      - node: comingPlace
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: enter-from-the-list
     need: An open exam is entered from its row through its briefing ("Sınava gir"); one in progress says so and offers "Devam et".
     evidence:
       - state: exam_entered
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: enterButton
+      - node: continueButton
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: a-past-exam-opens-the-talebe-s-own-screen
     need: >-
@@ -53,14 +63,18 @@ needs:
       talebe's own screen of it; a written or oral one opens its course's Notlarım.
     evidence:
       - state: result_opened
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: pastScore
+      - node: resultLink
+      - node: gradesLink
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
 
   - id: none-yet-says-so
-    need: With no exam, the page says "Henüz sınavınız yok." and that the exams of their courses will be listed here.
+    need: With no exam, the page says "Henüz sınavın yok." and that the exams of their courses will be listed here.
     evidence:
       - state: empty
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: emptyText
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
 
   - id: told-when-an-exam-is-set
     need: >-
@@ -68,7 +82,7 @@ needs:
       scheduled or opened, and is reminded before it opens.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"Zamanlanınca + 24 saat önce\". Exam celses are reminded 24 hours before today (LessonExam.remindedAt)."
 
   - id: reached-from-the-course-too
@@ -77,7 +91,7 @@ needs:
       and the home page on the day it opens.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: An online exam is an exam celse (owner, 21 Nov 2026), so it is where exam celses are.
 
   - id: readable-by-keyboard-and-screen-reader
@@ -86,4 +100,7 @@ needs:
       progress, past, released) is said in words, not by colour alone.
     evidence:
       - state: listed
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: openState
+      - node: comingState
+      - node: pastState
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"

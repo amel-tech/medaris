@@ -1,6 +1,8 @@
 # A talebe's own screen of a past online exam in tedris-web: the score, the standing by topic, and their answers.
-# PLANNED, NOT BUILT. Written needs-first on 21 November 2026 from the owner's rules for online exams; no code, no route and no
-# Linear issue yet. `status: proposed`: the states are the skeleton the needs are drawn on (needs.yaml).
+# PLANNED, NOT BUILT (MDRS-299). Written needs-first on 21 November 2026 from the owner's rules for online exams, and its screens drawn
+# the same day (ui.yaml); no code and no route yet. `status: proposed`: no state names code, and nothing here can be walked. The reads
+# are the planned actions getMyExamResult and getMyTopicStanding of graphs/domain/planned-exams.yaml. A multiple-choice exam
+# (MULTIPLE_CHOICE in the API, "Çoktan seçmeli" on the screen) has this screen; a written or oral one has its score in Notlarım only.
 #
 # The owner's rules this flow carries (21 Nov 2026): "geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler";
 # "her soru için hangi konu hakkında olduğu işaretlenecek"; "konulara göre talebe hangi konularda ne durumda olduğunu görebilecek".
@@ -15,6 +17,8 @@ schema: delurio-graph/0
 kind: flow
 id: tedris.exams.result
 status: proposed
+domain: medaris.api
+ui: tedris.exams.result
 title: Read my result of an exam, by topic
 summary: >-
   A talebe opens a past exam from Sınavlarım. Until the course team releases the results, the screen says "Sonuç henüz açıklanmadı".
@@ -26,41 +30,112 @@ scope:
   shows: the talebe's screen of one past exam in tedris-web
   world: open
 context:
+  read:
+    values: [ok, gone, failed]
+    initial: any
+    say:
+      ok: the talebe's attempt is read
+      gone: the talebe has no attempt of this exam, or there is no such exam for them
+      failed: the read fails
   released:
     values: [no, yes]
     initial: any
     say:
       no: the course team has not released the exam's results
       yes: the results are released
+  closed:
+    values: [no, yes]
+    initial: any
+    say:
+      no: the exam is still open to some talebe (its latest start has not passed, or an attempt is in progress)
+      yes: the exam has closed for everyone
+  restarts:
+    values: [none, some]
+    initial: any
+    say:
+      none: the attempt was never started again
+      some: a switch to another tab or window started the attempt again, once or more
+  courseRead:
+    values: [ok, failed]
+    initial: any
+    say:
+      ok: the standing across the course is read
+      failed: that read fails
+  toast:
+    values: [none, courseFailed]
+    initial: none
+    say:
+      none: no message
+      courseFailed: the standing across the course could not be read
+guards:
+  answersOpen: "closed == 'yes'"
+effects:
+  clearToast: { set: { toast: none } }
+  courseFailed: { set: { toast: courseFailed } }
+
+failures:
+  opening: { from: getMyExamResult, gone: [ATTEMPT_NOT_FOUND, EXAM_NOT_FOUND], unreadable: [network, timeout, 5xx] }
+  readingCourse: { from: getMyTopicStanding, gone: [COURSE_NOT_FOUND], unreadable: [network, timeout, 5xx] }
+# A 401 is the session's, and sends the talebe to sign in (realm.auth.signIn); it is not drawn here.
+
 main:
-  given: { released: yes }
-  events: [TOPICS]
+  given: { read: ok, released: yes }
+  events: [DONE, TOPICS]
 initial: opening
 states:
   opening:
     title: The talebe's screen of the exam is opened
-    description: Only the talebe whose attempt it is reads it; to anyone else there is no such screen.
+    description: >-
+      The action getMyExamResult, GET /lessons/{id}/online-exam/my-result. Only the talebe whose attempt it is reads it; to anyone
+      else, and to a talebe who did not take the exam, there is no such screen. Before the release it says only that the exam was
+      taken, when and how it ended; after, the score, the counts and the topics; once the exam has also closed for everyone, the
+      questions with the talebe's answers and the correct ones.
+    invoke: { action: getMyExamResult }
+    on:
+      DONE: { guard: "read == 'ok'", target: loaded, say: "the attempt is read" }
+      FAIL.gone: { guard: "read == 'gone'", target: notFound, say: "there is no such exam for this talebe" }
+      FAIL.unreadable: { guard: "read == 'failed'", target: loadFailed, say: "the read fails" }
+  loaded:
+    title: The screen is drawn as the read says
+    description: A step with no screen of its own.
     always:
       - { guard: "released == 'no'", target: awaitingRelease, say: "the results are not released" }
       - { target: resultShown, say: "the results are released" }
+  notFound:
+    title: No such exam
+    description: The page says there is no such exam among the talebe's, and leads back to Sınavlarım.
+    by: human
+    on:
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
+      NAVIGATE: left
+  loadFailed:
+    title: The result could not be read
+    description: The page says the result could not be read, with "Yeniden dene".
+    by: human
+    on:
+      RETRY: { target: opening, say: "they press Yeniden dene" }
+      NAVIGATE: left
   awaitingRelease:
     title: Sonuç henüz açıklanmadı
     description: The screen says the exam was handed in and when, and that the result is not released yet; no score.
     by: human
     on:
-      RELEASED: { target: resultShown, say: "the course team releases the results, and the page is read again" }
+      RELEASED: { target: opening, say: "the course team releases the results, and the page is read again" }
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   resultShown:
     title: The talebe's result
     description: >-
       The score out of 100, the counts of right, wrong and blank answers, when it was handed in and whether the time ended it, and the
-      standing in each topic of the exam.
+      standing in each topic of the exam. If a switch started the attempt again, it says so and how many times. Until the exam has
+      closed for everyone, it says the answers can be read once it has; after, "Cevaplarım" opens them.
     by: human
     goal: true
     on:
-      TOPICS: { target: topicsShown, say: "they open the standing by topic" }
-      ANSWERS: { target: answersShown, say: "they open their answers" }
-      COURSE_TOPICS: { target: courseTopics, say: "they open their standing across the course's exams" }
+      TOPICS: { target: topicsShown, effect: [clearToast], say: "they open the standing by topic" }
+      ANSWERS: { guard: answersOpen, target: answersShown, effect: [clearToast], say: "they open their answers, once the exam has closed for everyone" }
+      COURSE_TOPICS: { target: readingCourse, effect: [clearToast], say: "they open their standing across the course's exams" }
+      BACK_TO_LIST: { target: list_opened, say: "they go back to Sınavlarım" }
       NAVIGATE: left
   topicsShown:
     title: The standing by topic
@@ -78,6 +153,14 @@ states:
     on:
       BACK: resultShown
       NAVIGATE: left
+  readingCourse:
+    title: Read the standing across the course
+    description: The action getMyTopicStanding, GET /courses/{id}/my-topic-standing.
+    invoke: { action: getMyTopicStanding }
+    on:
+      DONE: { guard: "courseRead == 'ok'", target: courseTopics, say: "the standing is read" }
+      FAIL.gone: { guard: "courseRead == 'failed'", target: resultShown, effect: [courseFailed], say: "the course is no longer the talebe's" }
+      FAIL.unreadable: { guard: "courseRead == 'failed'", target: resultShown, effect: [courseFailed], say: "the read fails: the result stays, with a message" }
   courseTopics:
     title: The standing across the course's exams
     description: Each topic of the course with the talebe's percentage over every exam that carried it.
@@ -85,6 +168,10 @@ states:
     on:
       BACK: resultShown
       NAVIGATE: left
+  list_opened:
+    title: Sınavlarım is opened
+    description: tedris.exams.mine.
+    type: final
   left:
     title: The talebe left the page
     type: final

@@ -15,12 +15,12 @@ Counted by script on 16 November 2026, and the flows and the needs again on 21 N
 
 | What | How many |
 | -- | -- |
-| Flows (`flow.yaml`) | 183: 170 `captured`, 13 `proposed` (the planned ones: 5 drawn with their screens, and the 8 of online exams, written needs first) |
-| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | 175 flows with a `ui.yaml` (the 8 flows of online exams have none yet) |
+| Flows (`flow.yaml`) | 183: 170 `captured`, 13 `proposed` (the planned ones, each drawn with its screens: 5, and the 8 of online exams) |
+| Screens (`ui.yaml`) and their Turkish catalogs (`catalog/tr.json`) | every flow, 183 |
 | Navigation graphs | 4, one per web app (`landing`, `tedris`, `nazar`, `nizam`) |
-| The domain `medaris.api` | one domain over 26 files: 352 actions (329 in the code, 23 sketched for the planned flows), 64 entities, 319 invariants |
+| The domain `medaris.api` | one domain over 27 files: 380 actions (329 in the code, 51 sketched for the planned flows, 28 of them for online exams), 74 entities, 326 invariants |
 | `needs.yaml` (the product list of a flow) | 183 files, 2750 needs: 1373 met, 1377 missing (the gaps, listed in [`needs.gaps.yaml`](needs.gaps.yaml)); 583 of the met needs are walked by no scenario and no browser e2e test |
-| Findings (distinct ids in `ui.yaml` `rules`) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
+| Findings (distinct ids in `ui.yaml` `rules`, counted on 16 November 2026, before the screens of online exams, whose rules are proposals) | 1326 ids; 1085 findings after merging the ids that share a root (21 high, 579 medium, 485 low), 188 rules that record what holds and are not defects, and 4 ids repeated on every page |
 | Bindings (what a replay needs) | 170 flows carry a `binding.yaml`; with their variants and the four navigation bindings, 561 binding files hold 1024 scenarios |
 
 ## Layout
@@ -100,13 +100,17 @@ node src/cli.ts kit check $(ls <checkout>/graphs/*/*/*/ui.yaml | xargs -n1 dirna
 - Every flow is `captured` except the 13 planned ones, which are `proposed`: `landing.site.roadmap`, `nazar.sessions.inPersonSeats`, `nizam.moderation.decidePermanentBan`, `nizam.youtube.liveBroadcasts`, `tedris.session.registerInPerson`, and the eight of online exams. A planned flow draws a
   feature that has no code yet (its `needs.yaml` says which Linear issue builds it, and its API is sketched in
   `domain/planned-*.yaml`, every entry marked as planned and carrying no `source`).
-- **Online exams** (planned on 21 November 2026, no Linear issue yet) are written needs first: `tedris.exams.mine`,
+- **Online exams** (MDRS-299, planned on 21 November 2026) were written needs first and then drawn: `tedris.exams.mine`,
   `tedris.exams.take` and `tedris.exams.result` for the talebe, `nazar.exams.mine`, `nazar.exams.edit`, `nazar.exams.publish` and
-  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management, 110 needs, all missing. Each
-  `flow.yaml` is only the skeleton its needs are drawn on, with the owner's rules and his answers of the same day quoted at its top.
-  Two choices are still open, both to be asked again of those who asked for exams, with the flows' videos: whether a switch to
-  another tab starts the exam again (`tedris.exams.take` D1), and when a talebe may start it (`nazar.exams.publish` D1). Their
-  screens, their API (`domain/planned-exams.yaml`) and their bindings come next.
+  `nazar.exams.results` for the course team, `nizam.exams.zerothAnswers` for Medaris management; 110 needs, all missing. Each
+  `flow.yaml` quotes the owner's rules and his answers of that day at its top, and each flow has its screens and Turkish catalog.
+  Their API is `domain/planned-exams.yaml`: a third exam format, `MULTIPLE_CHOICE` ("Çoktan seçmeli", not "Çevrimiçi", which the
+  session plan already says of an exam's place), with proposed routes, codes and two proposed permissions, `exam.prepare` and
+  `exam.zeroth_read`. Two choices are still open, both to be asked again of those who asked for exams, with the flows' videos:
+  whether a switch to another tab starts the exam again (`tedris.exams.take` D1), and when a talebe may start it
+  (`nazar.exams.publish` D1). The hadith's Arabic and meaning in the zeroth question are for the owner to confirm. The menus'
+  "Sınavlarım" entries are drawn in the flows, not in the navigation graphs, which are read from the code. No binding: nothing
+  can be walked before there is code.
 - Nothing has been walked as a whole. The walk phase (`replay --cover transitions --absent` on every binding, then fixing what the
   walk finds) has not run. What exists is smaller: the six reference flows (`realm.auth.signIn`, `tedris.course.apply`,
   `tedris.account.rolesOverview`, `nazar.pano.decideApplications`, `nizam.kosks.open`, `landing.site.contact`) and a number of the

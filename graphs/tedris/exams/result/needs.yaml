@@ -12,7 +12,8 @@ needs:
     evidence:
       - state: opening
       - state: resultShown
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: notFoundAlert
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"geçmiş sınavlar hakkında kendilerine özel ekranları da görebilecekler\"."
 
   - id: waits-for-the-release
@@ -21,7 +22,9 @@ needs:
       score and no answer.
     evidence:
       - state: awaitingRelease
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: handedIn
+      - node: awaitingText
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, asked whether the team releases the results as today: \"evet\"."
 
   - id: the-score-out-of-100
@@ -30,7 +33,10 @@ needs:
       blank, when the exam was handed in, and whether the time ended it.
     evidence:
       - state: resultShown
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: scoreText
+      - node: countsText
+      - node: handedIn
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: The points of each question are nazar.exams.edit's; a blank or a skipped question gets no points.
 
   - id: standing-by-topic
@@ -39,14 +45,17 @@ needs:
       those questions they answered right and wrong, the weakest topic first. A question that carries two topics counts in both.
     evidence:
       - state: topicsShown
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: topicLine
+      - node: topicBar
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner: \"konulara göre talebe hangi konularda ne durumda olduğunu görebilecek\"; asked how it is shown: \"Yalnız yüzde\"."
 
   - id: standing-across-the-course
     need: The talebe sees their percentage in each topic of the course over all the course's exams that carried it.
     evidence:
       - state: courseTopics
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: courseTopicLine
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "The topics are the course's (owner, asked whose they are: \"dersin\"), so they add up across exams."
 
   - id: own-answers-beside-the-correct-ones
@@ -55,7 +64,10 @@ needs:
       with their answer, the correct one, and the points got.
     evidence:
       - state: answersShown
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: givenAnswer
+      - node: correctAnswer
+      - node: pointsGot
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: "Owner, asked whether the talebe reads their answers with the correct ones: \"evet\"."
 
   - id: in-notlarim-with-the-other-exams
@@ -63,14 +75,15 @@ needs:
       The score also stands in the course's "Notlarım" tab beside the course's other exams, and reaches this screen from there.
     evidence:
       - state: resultShown
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: tedris.course.grades lists exam celses today, and an online exam is one (owner, 21 Nov 2026).
 
   - id: a-restart-is-said
     need: If the exam was started again after a switch to another tab or window, the screen says so and how many times.
     evidence:
       - state: resultShown
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: restartNote
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
     note: While the restart stands (tedris.exams.take D1).
 
   - id: words-and-numbers-not-colour-alone
@@ -80,4 +93,6 @@ needs:
     evidence:
       - state: topicsShown
       - state: courseTopics
-    missing: online exams, planned on 21 Nov 2026; no code and no Linear issue yet
+      - node: topicLine
+      - node: courseTopicLine
+    missing: "MDRS-299: online exams, planned on 21 Nov 2026; no code yet"
