@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.15](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.14...tedrisat-v0.2.15) (2026-11-21)
+
+
+### Bug Fixes
+
+* **deps, tedrisat, ci:** clear [#385](https://github.com/amel-tech/medaris/issues/385) and the 12 code scanning alerts that need a code change ([#397](https://github.com/amel-tech/medaris/issues/397)) ([311dcae](https://github.com/amel-tech/medaris/commit/311dcaedf54f28308082e39fd4ffaf821b1fda44))
+
 ## [0.2.14](https://github.com/amel-tech/medaris/compare/tedrisat-v0.2.13...tedrisat-v0.2.14) (2026-11-16)
 
 
